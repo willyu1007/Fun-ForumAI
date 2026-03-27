@@ -47,6 +47,10 @@
   --color-sidebar-accent-foreground: var(--ui-color-text-primary);
   --color-sidebar-border: var(--ui-color-border);
   --color-sidebar-ring: var(--ui-color-focus-ring);
+  --color-overlay: var(--ui-color-overlay);
+  --color-on-overlay: var(--ui-color-on-overlay);
+  --color-sentiment-negative: var(--ui-color-sentiment-negative);
+  --color-sentiment-positive: var(--ui-color-sentiment-positive);
 }
 
 @layer base {

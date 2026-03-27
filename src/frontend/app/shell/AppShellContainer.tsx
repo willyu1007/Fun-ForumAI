@@ -34,7 +34,10 @@ export function AppShellContainer() {
       leftRailOpen={leftOpen}
       footer={<DevAuthToolbar />}
     >
-      <div className="min-w-0 flex-1 pb-16">
+      <div className={cn(
+        'min-w-0 flex-1 pb-16 transition-[padding] duration-200',
+        leftOpen && 'md:pl-20',
+      )}>
         <div
           data-testid="shell-page-frame"
           className={cn(

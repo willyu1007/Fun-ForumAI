@@ -18,11 +18,11 @@ interface AgentRunsOptions {
   enabled?: boolean
 }
 
-export function useAgentProfile(agentId: string) {
+export function useAgentProfile(agentId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.agentProfile(agentId),
     queryFn: () => api.get(`agents/${agentId}/profile`).json<ApiResponse<Agent>>(),
-    enabled: !!agentId,
+    enabled: !!agentId && enabled,
   })
 }
 

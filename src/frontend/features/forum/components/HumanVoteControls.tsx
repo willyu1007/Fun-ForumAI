@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useHumanVote } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { cn } from '@/lib/utils'
 import type { VoteDirection } from '@/api/types'
+
 interface HumanVoteControlsProps {
   targetType: 'POST' | 'THREAD' | 'TURN'
   targetId: string
@@ -11,11 +14,14 @@ interface HumanVoteControlsProps {
   initialDirection?: VoteDirection | null
   compact?: boolean
 }
+
 function resolveNextDirection(current: VoteDirection | null, next: 'UP' | 'DOWN'): VoteDirection {
   if (current === next) return 'NEUTRAL'
   return next
 }
+
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+
 export function HumanVoteControls({
   targetType,
   targetId,
@@ -29,22 +35,31 @@ export function HumanVoteControls({
   const [direction, setDirection] = useState<VoteDirection | null>(initialDirection)
   const [up, setUp] = useState(humanUp)
   const [down, setDown] = useState(humanDown)
+
   useEffect(() => {
     setDirection(initialDirection)
   }, [initialDirection])
+
   useEffect(() => {
     setUp(humanUp)
     setDown(humanDown)
   }, [humanUp, humanDown])
+
   const score = useMemo(() => up - down, [up, down])
+
   if (!HUMAN_PARTICIPATION_ENABLED) {
     return (
-      <div className={"inline-flex items-center gap-1 text-[11px] text-muted-foreground"}>
-        <span>H 👍 {up}</span>
-        <span>👎 {down}</span>
+      <div className={cn(
+        'inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.08] px-2.5 py-1 text-muted-foreground',
+        compact ? 'text-[10px]' : 'text-xs',
+      )}>
+        <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
+        <span className="tabular-nums">{score}</span>
+        <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
       </div>
     )
   }
+
   const submitVote = async (next: 'UP' | 'DOWN') => {
     const nextDirection = resolveNextDirection(direction, next)
     const res = await mutation.mutateAsync({
@@ -57,38 +72,64 @@ export function HumanVoteControls({
     setUp(summary.human_up)
     setDown(summary.human_down)
   }
+
   if (!isAuthenticated) {
     return (
-      <div className={"inline-flex items-center gap-1 text-[11px] text-muted-foreground"}>
-        <span>H 👍 {up}</span>
-        <span>👎 {down}</span>
-        <Link to="/login" className={"text-primary hover:underline"}>
+      <div className={cn(
+        'inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.08] px-2.5 py-1 text-muted-foreground',
+        compact ? 'text-[10px]' : 'text-xs',
+      )}>
+        <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
+        <span className="tabular-nums">{score}</span>
+        <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
+        <Link to="/login" className="ml-1 text-xs text-primary hover:underline">
           登录投票
         </Link>
       </div>
     )
   }
+
   return (
-    <div
-      className={`inline-flex items-center gap-1 ${compact ? "text-[10px]" : "text-xs"}`}
-    >
-      <button
-        type="button"
-        disabled={mutation.isPending}
-        onClick={() => submitVote('UP')}
-        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'UP' ? 'bg-success/10 text-success' : 'hover:bg-accent'}`}
-      >
-        👍 {up}
-      </button>
+    <div className={cn(
+      'inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.08] px-2.5 py-1',
+      compact ? 'text-[10px]' : 'text-xs',
+    )}>
       <button
         type="button"
         disabled={mutation.isPending}
         onClick={() => submitVote('DOWN')}
-        className={`${"rounded px-1 py-0.5 transition-colors"} ${direction === 'DOWN' ? 'bg-destructive/10 text-destructive' : 'hover:bg-accent'}`}
+        className={cn(
+          'rounded-full p-0.5 transition-colors',
+          direction === 'DOWN'
+            ? 'text-destructive'
+            : 'text-muted-foreground hover:text-foreground',
+        )}
+        aria-label="反对"
       >
-        👎 {down}
+        <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
       </button>
-      {!compact && <span className={"text-[10px] text-muted-foreground"}>H分: {score}</span>}
+      <span className={cn(
+        'min-w-[1.25rem] text-center tabular-nums',
+        direction === 'UP' && 'text-success',
+        direction === 'DOWN' && 'text-destructive',
+        !direction && 'text-muted-foreground',
+      )}>
+        {score}
+      </span>
+      <button
+        type="button"
+        disabled={mutation.isPending}
+        onClick={() => submitVote('UP')}
+        className={cn(
+          'rounded-full p-0.5 transition-colors',
+          direction === 'UP'
+            ? 'text-success'
+            : 'text-muted-foreground hover:text-foreground',
+        )}
+        aria-label="赞同"
+      >
+        <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
+      </button>
     </div>
   )
 }

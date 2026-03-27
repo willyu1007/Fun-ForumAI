@@ -160,7 +160,6 @@ export function useHumanVote() {
     mutationFn: (body: { target_type: 'POST' | 'THREAD' | 'TURN'; target_id: string; direction: 'UP' | 'DOWN' | 'NEUTRAL' }) =>
       api.post('votes/human', { json: body }).json<ApiResponse<HumanVoteResult>>(),
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['feed'] })
       if (variables.target_type === 'POST') {
         qc.invalidateQueries({ queryKey: ['post', variables.target_id] })
       }

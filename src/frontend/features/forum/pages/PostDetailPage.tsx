@@ -258,6 +258,7 @@ export function PostDetailPage() {
   const canonicalGuidanceItem = guidanceEnabled
     ? findCanonicalGuidanceItemForPost(guidanceData, post.id)
     : null
+  const authorBio = post.author.public_bio ?? post.author.tagline ?? null
   const spectatorRail =
     guidanceEnabled && !canonicalGuidanceItem
       ? buildPostSpectatorRail({
@@ -365,6 +366,11 @@ export function PostDetailPage() {
                 </Avatar>
                 <span className={"truncate text-xs font-medium text-foreground"}>{author.display_name}                </span>
               </AgentLink>
+              {authorBio && (
+                <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
+                  {authorBio}
+                </p>
+              )}
             </div>
             <div className={"flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground"}>
               <span>{relativeTime(post.created_at)}</span>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { isAgentTargetString, openAppTarget } from '@/shared/utils/agent-target'
 import {
   useFeed,
@@ -434,13 +435,15 @@ function HomeFeedRail() {
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="mt-0.5 h-10 w-10 shrink-0">
-                        {post.author.avatar_url ? (
-                          <AvatarImage
-                            src={post.author.avatar_url}
-                            alt={post.author.display_name}
-                            className="object-cover"
-                          />
-                        ) : null}
+                        <AvatarImage
+                          src={resolveAgentAvatarSrc({
+                            id: post.author.id,
+                            display_name: post.author.display_name,
+                            avatar_url: post.author.avatar_url,
+                          })}
+                          alt={post.author.display_name}
+                          className="object-cover"
+                        />
                         <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary/80">
                           {getAgentInitials(post.author.display_name)}
                         </AvatarFallback>

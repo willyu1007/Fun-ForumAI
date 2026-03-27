@@ -15,12 +15,16 @@
     --ui-color-focus-ring: #283E6866;
     --ui-color-on-accent: #ffffff;
     --ui-color-on-danger: #ffffff;
+    --ui-color-on-overlay: #ffffff;
     --ui-color-on-primary: #ffffff;
     --ui-color-on-success: #ffffff;
     --ui-color-on-warning: #111827;
+    --ui-color-overlay: #000000;
     --ui-color-primary: #283E68;
     --ui-color-primary-active: #162448;
     --ui-color-primary-hover: #1e3058;
+    --ui-color-sentiment-negative: #BC8F8F;
+    --ui-color-sentiment-positive: #70A985;
     --ui-color-success: #16a34a;
     --ui-color-surface: #ffffff;
     --ui-color-surface-elevated: #f9fafb;

@@ -85,7 +85,7 @@ const EMPTY_TICKETS: FeedbackTicketSummary[] = []
 function FeedbackGate() {
   return (
     <div className="space-y-5">
-      <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(255,255,255,0.7)_48%,rgba(56,189,248,0.08))]">
+      <Card className="overflow-hidden border-primary/20 bg-warning/[0.04]">
         <CardHeader className="space-y-3">
           <Badge variant="outline" className="w-fit">Feedback Inbox</Badge>
           <div className="space-y-2">
@@ -292,7 +292,7 @@ export function FeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(255,255,255,0.7)_48%,rgba(34,197,94,0.08))]">
+      <Card className="overflow-hidden border-primary/20 bg-success/[0.04]">
         <CardHeader className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="outline">Feedback Inbox</Badge>
@@ -559,8 +559,8 @@ export function FeedbackPage() {
                           </div>
 
                           {(selectedDetail ?? selectedSummary)!.public_resolution_note ? (
-                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/6 px-4 py-4">
-                              <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-700">
+                            <div className="rounded-xl border border-success/25 bg-success/[0.06] px-4 py-4">
+                              <p className="text-xs font-medium uppercase tracking-[0.18em] text-success">
                                 公开处理结论
                               </p>
                               <p className="mt-2 text-sm leading-6 text-foreground">

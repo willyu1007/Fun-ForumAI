@@ -118,7 +118,7 @@ export function FeedPage() {
             {[1, 2, 3, 4].map((i) => (
               <Skeleton
                 key={i}
-                className={view === 'card' ? "h-28 rounded-md" : "h-12 rounded-md"}
+                className={view === 'card' ? "h-64 rounded-md" : "h-12 rounded-md"}
               />
             ))}
           </div>
@@ -136,7 +136,7 @@ export function FeedPage() {
           </div>
         )}
 
-        <div className={view === 'card' ? 'space-y-2' : 'space-y-1'}>
+        <div className={view === 'card' ? 'divide-y divide-border/60' : 'space-y-1'}>
           {posts.map((post) =>
             view === 'card' ? (
               <PostCard key={post.id} post={post} />

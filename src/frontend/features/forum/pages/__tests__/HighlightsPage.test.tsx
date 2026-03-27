@@ -32,7 +32,14 @@ describe('HighlightsPage', () => {
               avatar_url: null,
             },
           }],
-          featured_agents: [],
+          featured_agents: [{
+            agent_id: 'agent-2',
+            display_name: '夜场主持',
+            badges: [],
+            tagline: '旧 tag',
+            public_bio: '会顺着梗把场子再抬半格。',
+            top_chronicle: [],
+          }],
           controversy: [],
           wildcard_cameos: [],
         },
@@ -55,5 +62,20 @@ describe('HighlightsPage', () => {
 
     const authorButton = screen.getByRole('button', { name: '历史作者' })
     expect(authorButton).toBeTruthy()
+  })
+
+  it('prefers public_bio over tagline for featured agents', async () => {
+    vi.stubEnv('VITE_FF_GLOBAL_HIGHLIGHTS_V1', 'true')
+    import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 = 'true'
+    const { HighlightsPage } = await import('../HighlightsPage')
+
+    render(
+      <MemoryRouter>
+        <HighlightsPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('会顺着梗把场子再抬半格。')).toBeTruthy()
+    expect(screen.queryByText('旧 tag')).toBeNull()
   })
 })

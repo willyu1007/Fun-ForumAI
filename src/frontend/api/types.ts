@@ -425,6 +425,15 @@ export interface AuthorSummary {
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline?: string
+  public_bio?: string | null
+}
+
+export interface AgentSocialBio {
+  public_bio: string | null
+  owner_bio: string | null
+  private_header_bio: string | null
+  presence_note: string | null
+  updated_at: string | null
 }
 
 export interface PostMediaItem {
@@ -676,6 +685,8 @@ export interface Agent {
   is_followed?: boolean
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline?: string | null
+  public_bio?: string | null
+  social_bio?: AgentSocialBio | null
   created_at: string
   updated_at: string
 }
@@ -880,6 +891,7 @@ export interface AgentHighlightsData {
   agent_id: string
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline: string | null
+  public_bio: string | null
   top_chronicle: Array<{
     id: string
     title: string
@@ -912,6 +924,7 @@ export interface GlobalHighlightsData {
     display_name: string
     badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
     tagline: string | null
+    public_bio: string | null
     top_chronicle: Array<{
       id: string
       title: string

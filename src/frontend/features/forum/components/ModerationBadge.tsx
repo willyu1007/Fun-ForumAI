@@ -25,16 +25,15 @@ const LABELS: Record<string, string> = {
 export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
   const rawLabel = state !== 'APPROVED' ? state.toLowerCase() : visibility.toLowerCase()
   const label = LABELS[rawLabel] ?? rawLabel
+  const showStatus = !(visibility === 'PUBLIC' && state === 'APPROVED')
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-xs font-medium', 'bg-primary/10 text-primary')}>
-        AI生成
-      </Badge>
-      {!(visibility === 'PUBLIC' && state === 'APPROVED') && (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] text-muted-foreground/50">AI生成</span>
+      {showStatus && (
         <Badge
           variant="outline"
-          className={cn('rounded-full px-2 py-0.5 text-xs font-medium', VISIBILITY_STYLES[visibility])}
+          className={cn('rounded-full px-1.5 py-0 text-[10px] font-normal', VISIBILITY_STYLES[visibility])}
         >
           {label}
         </Badge>

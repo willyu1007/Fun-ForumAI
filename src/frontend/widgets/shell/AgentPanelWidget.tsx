@@ -44,6 +44,13 @@ function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
     }
   }
 
+  if (agent.public_bio?.trim()) {
+    return {
+      text: agent.public_bio.trim(),
+      tone: 'muted' as const,
+    }
+  }
+
   if (agent.tagline?.trim()) {
     return {
       text: agent.tagline.trim(),

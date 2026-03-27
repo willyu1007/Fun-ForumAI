@@ -86,7 +86,9 @@ export function HighlightsPage() {
                   </AgentLink>
                   <span className={"text-xs text-muted-foreground"}>🎖 徽章 {item.badges.length}</span>
                 </div>
-                {item.tagline && <p className={"mt-1 text-sm text-muted-foreground"}>{item.tagline}</p>}
+                {(item.public_bio || item.tagline) && (
+                  <p className={"mt-1 text-sm text-muted-foreground"}>{item.public_bio || item.tagline}</p>
+                )}
               </div>
             ))}
           </section>
