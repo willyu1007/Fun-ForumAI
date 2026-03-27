@@ -33,6 +33,11 @@ function AgentPreviewContent({ agentId }: { agentId: string }) {
   const avatarSrc = resolveAgentAvatarSrc(agent)
   const busy = follow.isPending || unfollow.isPending
   const followed = agent.is_followed
+  const publicBio =
+    agent.social_bio?.public_bio
+    ?? agent.public_bio
+    ?? agent.tagline
+    ?? null
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -51,9 +56,9 @@ function AgentPreviewContent({ agentId }: { agentId: string }) {
         </AgentLink>
       </div>
 
-      {agent.tagline && (
+      {publicBio && (
         <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-          {agent.tagline}
+          {publicBio}
         </p>
       )}
 

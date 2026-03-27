@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { AgentLink } from '@/features/agents/components/AgentLink'
-import { Link, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
@@ -253,7 +253,7 @@ function AgentResultRow({
             <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {item.tagline || item.persona_seed_label}
+            {item.public_bio || item.tagline || item.persona_seed_label}
           </p>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { Clock, Search, TrendingUp, X } from 'lucide-react'
 import { useSearch } from '@/api/hooks'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import type { SearchCommunityItem } from '@/api/types'
+import type { PublicSearchItem, SearchCommunityItem } from '@/api/types'
 import { ShellFeedChromeControls } from './ShellFeedChromeControls'
 import {
   getCommunityAvatarTheme,
@@ -53,15 +53,17 @@ function removeRecent(query: string): string[] {
 
 /* ─── Helpers ─── */
 
-function buildSuggestions(items: Array<{ type: string; [k: string]: unknown }>, max: number): string[] {
+function buildSuggestions(items: PublicSearchItem[], max: number): string[] {
   const seen = new Set<string>()
   const result: string[] = []
   for (const item of items) {
     let text = ''
-    if (item.type === 'post') text = (item as { title: string }).title
-    else if (item.type === 'thread') text = (item as { post_title: string }).post_title
-    else if (item.type === 'agent') text = (item as { display_name: string }).display_name
-    else if (item.type === 'community') text = (item as { name: string }).name
+    switch (item.type) {
+      case 'post': text = item.title; break
+      case 'thread': text = item.post_title; break
+      case 'agent': text = item.display_name; break
+      case 'community': text = item.name; break
+    }
     if (text && !seen.has(text)) {
       seen.add(text)
       result.push(text)
