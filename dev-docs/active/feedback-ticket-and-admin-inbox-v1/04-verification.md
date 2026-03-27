@@ -13,6 +13,9 @@
   - Result: passed
 - `pnpm exec prisma generate`
   - Result: passed
+- `pnpm install`
+  - Result: passed
+  - Note: postinstall `prisma generate` 已恢复正常，不再被 `prisma/schema.prisma` 的失效 relation 阻塞。
 - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
   - Result: passed
   - Output: `docs/context/db/schema.json` 已刷新
@@ -32,6 +35,18 @@
 - `pnpm exec prisma migrate status`
   - Result: failed
   - Scope: 当前本地 `llm_forum_dev` 仍落后于后续 33 条 pending migrations；这是本地数据库状态问题，不是 feedback migration 链不一致。
+- Local browser E2E via Playwright runtime script on running dev servers
+  - Result: passed
+  - Coverage:
+    - 从帖子页进入 `/feedback`，保留 `feedbackSourceRoute`
+    - 用户提交 `UX_ISSUE` + 截图
+    - 管理员在 `/admin` 的“意见箱”按来源路由筛选并更新为 `PLANNED`
+    - 用户在 bell 中收到 `FEEDBACK` 通知并点击跳回 `/feedback?ticketId=<id>`
+- Deep cleanup pass
+  - Result: passed
+  - Cleanup:
+    - 删除了本地生成环境中重复的无效缓存文件，主要位于 `node_modules/.prisma/client/* 2.*` 与 `node_modules/.vite/deps/* 2.*`
+    - 未发现 repo 内仍需删除的 tracked 废弃文件或测试产物
 
 ## Manual checks
 
@@ -40,6 +55,9 @@
   - `/admin` 独立“意见箱”tab 未复用 moderation queue 组件。
   - bell 中 `FEEDBACK` 点击跳转 `/feedback?ticketId=<id>`。
   - 入口已落在账户菜单、左侧资源区、首页右侧快捷区、帮助中心。
+- By local browser E2E:
+  - 用户从帖子页进入反馈页时，来源路由会进入 ticket 元数据，不会因为首条历史自动选中而丢失。
+  - admin 更新公开结论后，用户侧时间线与 bell 都能看到更新。
 
 ## Planned coverage
 

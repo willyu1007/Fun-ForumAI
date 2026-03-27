@@ -29,6 +29,10 @@
   - 帮助中心
   - `/safety` cross-link
 - bell 已支持 `FEEDBACK` 类型图标、排序和 `/feedback?ticketId=...` 跳转。
+- rebase 收尾阶段追加修复：
+  - 恢复 `src/frontend/app/router.tsx` 对 `FeedbackPage` 的导入，避免 `/feedback` 路由失效。
+  - 恢复 `ShellLeftRail` 测试内的 `localStorage` stub，避免导航测试因环境缺口误报。
+  - 修正 `prisma/schema.prisma` 中失效的 `AgentInclinationAsset` relation，恢复 `prisma validate` 与 `pnpm install` 的可执行状态。
 
 ## Files/modules touched (high level)
 
@@ -79,6 +83,7 @@
 - 全仓 `pnpm exec tsc -b --pretty false` 仍有一批与 feedback 无关的历史错误；本次已确认无 feedback 相关诊断残留。
 - 当前 repo migration 链已可在 shadow DB cleanly replay，并与 `prisma/schema.prisma` 对齐；当前本地 `llm_forum_dev` 仍然落后于后续 33 条 pending migrations，因此本地环境若要继续 `migrate dev`，需要先把数据库迁移到当前链头或重建 dev DB。
 - 若后续要把附件迁到对象存储，可保留现有 `storage_key` 对外契约并在 repo 层替换读取实现。
+- 本轮 cleanup 已清除本地生成环境中的重复缓存文件（主要位于 `node_modules/.prisma` 与 `node_modules/.vite`），repo 内未发现需要继续删除的 tracked 废弃文件。
 
 ## Pitfalls / dead ends (do not repeat)
 
