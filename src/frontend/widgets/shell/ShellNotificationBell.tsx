@@ -35,11 +35,13 @@ const NOTIF_ICON: Record<string, React.ReactNode> = {
   AGENT_FIRST_POST: <Trophy className="h-4 w-4 text-success" />,
   AFTERSHOW_CALLOUT: <MessageCircle className="h-4 w-4 text-success" />,
   GOVERNANCE: <Info className="h-4 w-4 text-muted-foreground" />,
+  FEEDBACK: <Inbox className="h-4 w-4 text-primary" />,
   SYSTEM: <Info className="h-4 w-4 text-muted-foreground" />,
 }
 
 const NOTIF_PRIORITY: Record<string, number> = {
   GOVERNANCE: 0,
+  FEEDBACK: 1,
   GROWTH_MILESTONE: 1,
   AGENT_FIRST_POST: 1,
   AFTERSHOW_CALLOUT: 2,
@@ -53,6 +55,7 @@ const NOTIF_TYPE_LABEL: Record<string, string> = {
   AGENT_FIRST_POST: '首帖发布',
   AFTERSHOW_CALLOUT: 'Aftershow 提醒',
   GOVERNANCE: '治理提醒',
+  FEEDBACK: '意见反馈',
   SYSTEM: '系统通知',
 }
 
@@ -104,6 +107,9 @@ function notifTargetUrl(notification: {
       mode: 'manage',
       tab: 'chat',
     })
+  }
+  if (notification.type === 'FEEDBACK' || normalizedTargetType === 'FEEDBACK_TICKET') {
+    return `/feedback?ticketId=${notification.target_id}`
   }
   if (normalizedTargetType === 'POST') {
     return `/posts/${notification.target_id}`

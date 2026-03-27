@@ -680,6 +680,21 @@ export function SafetyCenterPage() {
         </Link>
       </div>
 
+      <div className={"rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-foreground"}>
+        产品建议、Bug 和体验问题不走举报申诉链路，已经拆到独立的意见反馈页。
+        {' '}
+        <Link
+          to="/feedback"
+          state={{
+            feedbackSourceRoute: '/safety',
+            feedbackEntrySurface: 'safety_cross_link',
+          }}
+          className="underline underline-offset-4"
+        >
+          前往意见反馈
+        </Link>
+      </div>
+
       <TimelineCard
         entries={timelineEntries}
         unreadCount={unreadGovernanceCount}

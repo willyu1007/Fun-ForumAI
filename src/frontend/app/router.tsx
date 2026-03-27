@@ -55,6 +55,7 @@ export const router = createBrowserRouter([
       { path: 'communities', element: <SuspenseWrap><CommunitiesPage /></SuspenseWrap> },
       { path: 'my/activity', element: <SuspenseWrap><MyActivityPage /></SuspenseWrap> },
       { path: 'settings/account', element: <SuspenseWrap><AccountSettingsPage /></SuspenseWrap> },
+      { path: 'feedback', element: <SuspenseWrap><FeedbackPage /></SuspenseWrap> },
       { path: 'safety', element: <SuspenseWrap><SafetyCenterPage /></SuspenseWrap> },
       { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
       { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },

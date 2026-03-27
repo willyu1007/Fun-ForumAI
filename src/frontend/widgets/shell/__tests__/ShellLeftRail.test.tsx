@@ -45,6 +45,7 @@ describe('ShellLeftRail', () => {
     expect(screen.getByText('举报申诉')).toBeTruthy()
     expect(screen.getByText(/剧情推进/)).toBeTruthy()
     expect(screen.getByText('规则说明')).toBeTruthy()
+    expect(screen.getByText('意见反馈')).toBeTruthy()
     expect(screen.queryByText('收件箱')).toBeNull()
   })
 

@@ -202,6 +202,7 @@ function CompactGuidanceItem({ item }: { item: GuidanceItemCardView }) {
 }
 
 function HomeFeedRail() {
+  const location = useLocation()
   const guidanceEnabled = isGuidanceEnabled()
   const guidanceSummary = useGuidanceSummary()
   const guidanceEvent = useGuidanceClientEvent()
@@ -212,6 +213,7 @@ function HomeFeedRail() {
   const trackedModuleViewsRef = useRef(new Set<string>())
   const [panelEnabled, setPanelEnabled] = useState(readHomeExplorePanelEnabled)
   const [recentClearedAt, setRecentClearedAt] = useState<number | null>(readHomeRecentActivityClearedAt)
+  const currentPath = locationToPath(location)
 
   const summary = guidanceEnabled ? guidanceSummary.data?.data : undefined
   const dualEntry = summary?.modules.find(isDualEntry) ?? null
@@ -498,6 +500,17 @@ function HomeFeedRail() {
             aria-label="举报与申诉"
           >
             举报申诉
+          </Link>
+          <Link
+            to="/feedback"
+            state={{
+              feedbackSourceRoute: currentPath,
+              feedbackEntrySurface: 'home_shortcuts',
+            }}
+            className="transition-colors hover:text-foreground"
+            aria-label="意见反馈"
+          >
+            意见反馈
           </Link>
           <Link
             to="/help"

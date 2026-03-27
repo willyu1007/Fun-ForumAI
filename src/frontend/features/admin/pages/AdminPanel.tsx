@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RuntimeDashboard } from '../components/RuntimeDashboard'
+import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
 import { GovernanceTab } from './admin-panel/GovernanceTab'
 import { HotTopicTab } from './admin-panel/HotTopicTab'
 import { useAdminPanelController } from './admin-panel/use-admin-panel-controller'
@@ -45,6 +46,7 @@ export function AdminPanel() {
       <Tabs defaultValue="governance">
         <TabsList>
           <TabsTrigger value="governance">治理操作</TabsTrigger>
+          <TabsTrigger value="feedback">意见箱</TabsTrigger>
           <TabsTrigger value="hot-topic">Hot Topic</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
         </TabsList>
@@ -55,6 +57,10 @@ export function AdminPanel() {
 
         <TabsContent value="hot-topic">
           <HotTopicTab hotTopic={controller.hotTopic} />
+        </TabsContent>
+
+        <TabsContent value="feedback" className={"mt-4"}>
+          <FeedbackInboxTab />
         </TabsContent>
 
         <TabsContent value="governance">

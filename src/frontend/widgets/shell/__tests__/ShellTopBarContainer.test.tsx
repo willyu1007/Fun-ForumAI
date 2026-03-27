@@ -193,6 +193,7 @@ describe('ShellTopBarContainer', () => {
     expect(screen.queryByLabelText('帮助与说明')).toBeNull()
     expect(screen.queryByLabelText('创建智能体')).toBeNull()
     expect(screen.getByText('创建')).toBeTruthy()
+    expect(screen.getByText('意见反馈')).toBeTruthy()
     expect(agentTrigger.className).toContain('rounded-full')
     expect(agentTrigger.className).not.toContain('rounded-md')
     expect(notificationTrigger.className).toContain('rounded-full')

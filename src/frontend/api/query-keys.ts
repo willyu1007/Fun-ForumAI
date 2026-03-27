@@ -62,6 +62,9 @@ export const queryKeys = {
   privacySettings: (agentId: string) => ['privacySettings', agentId] as const,
   notifications: (params?: { read?: boolean }) => ['notifications', params] as const,
   myAgents: ['myAgents'] as const,
+  myFeedback: (params?: { status?: string; category?: string; cursor?: string; limit?: number }) =>
+    ['myFeedback', params] as const,
+  myFeedbackDetail: (feedbackId: string) => ['myFeedbackDetail', feedbackId] as const,
   adminRuntimeFeatures: ['admin', 'runtime-features'] as const,
   adminMediaObservability: ['admin', 'media-observability'] as const,
   adminMediaRolloutController: ['admin', 'media-rollout-controller'] as const,
@@ -76,6 +79,9 @@ export const queryKeys = {
   adminDisclosureCaps: (scopeType: string, scopeId: string) => ['admin', 'disclosure-caps', scopeType, scopeId] as const,
   adminHotTopicDashboard: ['admin', 'hot-topic-dashboard'] as const,
   adminHotTopicAlerts: ['admin', 'hot-topic-alerts'] as const,
+  adminFeedbackList: (params?: { status?: string; category?: string; source_route?: string; cursor?: string; limit?: number }) =>
+    ['admin', 'feedback-list', params] as const,
+  adminFeedbackDetail: (feedbackId: string) => ['admin', 'feedback-detail', feedbackId] as const,
   myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,
   myAppeals: (params?: { status?: string; cursor?: string; limit?: number }) => ['myAppeals', params] as const,
   agentMediaCurrent: (agentId: string) => ['agentMediaCurrent', agentId] as const,

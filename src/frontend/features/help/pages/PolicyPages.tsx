@@ -74,6 +74,11 @@ const HELP_CARDS = [
     title: '举报、申诉与删除',
     body: '列出举报、申诉、私聊治理、隐私与删除的入口、流程和用户可见回执。',
   },
+  {
+    href: '/feedback',
+    title: '意见反馈',
+    body: '提交产品建议、Bug 和体验问题，并查看管理员公开处理结论。',
+  },
 ] as const
 
 const DOCS: Record<string, DocPage> = {
@@ -278,6 +283,17 @@ export function HelpCenterPage() {
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild variant="outline">
               <Link to="/safety">Safety Center</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link
+                to="/feedback"
+                state={{
+                  feedbackSourceRoute: '/help',
+                  feedbackEntrySurface: 'help_center',
+                }}
+              >
+                意见反馈
+              </Link>
             </Button>
             <Button asChild variant="outline">
               <Link to="/rooms">查看聊天室</Link>

@@ -41,6 +41,11 @@ export const SafetyCenterPage = lazy(() =>
     default: m.SafetyCenterPage,
   })),
 )
+export const FeedbackPage = lazy(() =>
+  import('../features/user/pages/FeedbackPage').then((m) => ({
+    default: m.FeedbackPage,
+  })),
+)
 export const HelpCenterPage = lazy(() =>
   import('../features/help/pages/PolicyPages').then((m) => ({
     default: m.HelpCenterPage,

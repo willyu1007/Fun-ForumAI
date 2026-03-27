@@ -43,6 +43,7 @@ const HIGHLIGHT_LINKS = [
 
 const RESOURCE_LINKS = [
   { to: '/help', label: '规则说明', icon: BookMarked },
+  { to: '/feedback', label: '意见反馈', icon: BookMarked },
   { to: '/safety', label: '举报申诉', icon: ShieldAlert },
   { to: '/privacy', label: '隐私政策', icon: Lock },
   { to: '/terms', label: '用户协议', icon: FileText },
@@ -165,6 +166,7 @@ function SidebarLink({
   nested = false,
   trailing,
   iconColorClass,
+  state,
 }: {
   to: string
   label: string
@@ -173,6 +175,7 @@ function SidebarLink({
   nested?: boolean
   trailing?: ReactNode
   iconColorClass?: string
+  state?: unknown
 }) {
   const isTopLevel = !nested
   const isFilled = active && isTopLevel
@@ -180,6 +183,7 @@ function SidebarLink({
   return (
     <Link
       to={to}
+      state={state}
       className="group block text-sm transition-colors"
     >
       <span
@@ -304,6 +308,7 @@ export function ShellLeftRail() {
   }, [pathname, search])
 
   const highlightLinks = GLOBAL_HIGHLIGHTS_ENABLED ? HIGHLIGHT_LINKS : HIGHLIGHT_LINKS.slice(1)
+  const currentPath = normalizePathKey(pathname, search)
 
   const toggleSection = (section: keyof LeftRailSectionState) => {
     setSectionState((current) => {
@@ -416,6 +421,12 @@ export function ShellLeftRail() {
                     icon={link.icon}
                     nested
                     active={isLinkActive(link.to, pathname, search)}
+                    state={link.to === '/feedback'
+                      ? {
+                          feedbackSourceRoute: currentPath,
+                          feedbackEntrySurface: 'left_rail_resources',
+                        }
+                      : undefined}
                   />
                 ))}
               </div>

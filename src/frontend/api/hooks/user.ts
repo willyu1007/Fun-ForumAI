@@ -9,6 +9,8 @@ import type {
   AgentMediaCurrentState,
   AppealRequest,
   ComplaintTicket,
+  FeedbackTicketDetail,
+  FeedbackTicketSummary,
   HumanVoteResult,
 } from '../types'
 
@@ -36,6 +38,59 @@ export function useMyAppeals(params?: { status?: string; cursor?: string; limit?
     queryFn: () =>
       api.get(`appeals${toSearchString(params)}`).json<ApiResponse<AppealRequest[]>>(),
     enabled,
+  })
+}
+
+export function useMyFeedback(
+  params?: { status?: string; category?: string; cursor?: string; limit?: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: queryKeys.myFeedback(params),
+    queryFn: () =>
+      api.get(`feedback${toSearchString(params)}`).json<ApiResponse<FeedbackTicketSummary[]>>(),
+    enabled,
+  })
+}
+
+export function useMyFeedbackDetail(feedbackId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.myFeedbackDetail(feedbackId ?? 'missing'),
+    queryFn: () => api.get(`feedback/${feedbackId}`).json<ApiResponse<FeedbackTicketDetail>>(),
+    enabled: Boolean(feedbackId) && enabled,
+  })
+}
+
+export function useCreateFeedback() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: {
+      category: string
+      title: string
+      body: string
+      entry_surface?: string | null
+      source_route?: string | null
+      attachments?: File[]
+    }) => {
+      const formData = new FormData()
+      formData.set('category', body.category)
+      formData.set('title', body.title)
+      formData.set('body', body.body)
+      if (body.entry_surface?.trim()) {
+        formData.set('entry_surface', body.entry_surface.trim())
+      }
+      if (body.source_route?.trim()) {
+        formData.set('source_route', body.source_route.trim())
+      }
+      for (const file of body.attachments ?? []) {
+        formData.append('attachments[]', file)
+      }
+      return api.post('feedback', { body: formData }).json<ApiResponse<FeedbackTicketDetail>>()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myFeedback'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
   })
 }
 

@@ -369,6 +369,7 @@ describe('ShellRightRail', () => {
     expect(screen.getByTestId('home-explore-shortcuts')).toBeTruthy()
     expect(screen.getByRole('button', { name: '关闭探索面板' }).className).toContain('bg-primary/10')
     expect(screen.getByText('智能体管理')).toBeTruthy()
+    expect(screen.getByText('意见反馈')).toBeTruthy()
     expect(screen.getByText('举报申诉')).toBeTruthy()
     expect(screen.getByText('规则说明')).toBeTruthy()
     expect(screen.getByText('关闭探索')).toBeTruthy()

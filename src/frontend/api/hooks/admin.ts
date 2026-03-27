@@ -5,6 +5,8 @@ import type {
   ApiResponse,
   AdminMediaObservabilityData,
   AdminMediaRolloutControllerData,
+  AdminFeedbackTicketDetail,
+  AdminFeedbackTicketSummary,
   AgentRiskProfile,
   ClaimedReviewTask,
   CommunityConfigApplyResult,
@@ -291,6 +293,54 @@ export function useAdminHotTopicRoomControl() {
       qc.invalidateQueries({ queryKey: queryKeys.room(variables.roomId) })
       qc.invalidateQueries({ queryKey: queryKeys.roomProgram(variables.roomId) })
       qc.invalidateQueries({ queryKey: queryKeys.roomControlState(variables.roomId) })
+    },
+  })
+}
+
+export function useAdminFeedbackList(params?: {
+  status?: string
+  category?: string
+  source_route?: string
+  cursor?: string
+  limit?: number
+}) {
+  return useQuery({
+    queryKey: queryKeys.adminFeedbackList(params),
+    queryFn: () =>
+      api.get('admin/feedback', { searchParams: params }).json<ApiResponse<AdminFeedbackTicketSummary[]>>(),
+  })
+}
+
+export function useAdminFeedbackDetail(feedbackId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.adminFeedbackDetail(feedbackId ?? 'missing'),
+    queryFn: () =>
+      api.get(`admin/feedback/${feedbackId}`).json<ApiResponse<AdminFeedbackTicketDetail>>(),
+    enabled: Boolean(feedbackId),
+  })
+}
+
+export function useAdminUpdateFeedback() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      feedback_id: string
+      status?: string
+      public_resolution_note?: string | null
+      internal_note?: string | null
+    }) =>
+      api.patch(`admin/feedback/${body.feedback_id}`, {
+        json: {
+          status: body.status,
+          public_resolution_note: body.public_resolution_note,
+          internal_note: body.internal_note,
+        },
+      }).json<ApiResponse<AdminFeedbackTicketDetail>>(),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'feedback-list'] })
+      qc.invalidateQueries({ queryKey: queryKeys.adminFeedbackDetail(variables.feedback_id) })
+      qc.invalidateQueries({ queryKey: ['myFeedback'] })
+      qc.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
 }

@@ -1434,6 +1434,67 @@ export interface AppealRequest {
   updated_at: string
 }
 
+export type FeedbackCategory =
+  | 'PRODUCT_SUGGESTION'
+  | 'BUG_REPORT'
+  | 'UX_ISSUE'
+  | 'OTHER'
+
+export type FeedbackStatus = 'RECEIVED' | 'UNDER_REVIEW' | 'PLANNED' | 'CLOSED'
+
+export interface FeedbackActor {
+  id: string
+  display_name: string
+  email: string | null
+}
+
+export interface FeedbackAttachmentView {
+  id: string
+  mime_type: string
+  file_size_bytes: number
+  width: number | null
+  height: number | null
+  url: string
+}
+
+export interface FeedbackHistoryEntry {
+  id: string
+  event_type: 'SUBMITTED' | 'STATUS_CHANGED' | 'PUBLIC_NOTE_UPDATED' | 'INTERNAL_NOTE_UPDATED'
+  from_status: FeedbackStatus | null
+  to_status: FeedbackStatus | null
+  message: string | null
+  visibility: 'USER' | 'ADMIN_ONLY'
+  created_at: string
+  actor: FeedbackActor | null
+}
+
+export interface FeedbackTicketSummary {
+  id: string
+  category: FeedbackCategory
+  title: string
+  body: string
+  entry_surface: string | null
+  source_route: string | null
+  status: FeedbackStatus
+  public_resolution_note: string | null
+  updated_at: string
+  created_at: string
+  attachments: FeedbackAttachmentView[]
+}
+
+export interface FeedbackTicketDetail extends FeedbackTicketSummary {
+  history: FeedbackHistoryEntry[]
+}
+
+export interface AdminFeedbackTicketSummary extends FeedbackTicketSummary {
+  submitter: FeedbackActor
+}
+
+export interface AdminFeedbackTicketDetail extends FeedbackTicketDetail {
+  internal_note: string | null
+  submitter: FeedbackActor
+}
+
 export interface HealthData {
   status: string
   timestamp: string
@@ -2015,6 +2076,7 @@ export type NotificationType =
   | 'GROWTH_MILESTONE'
   | 'GOVERNANCE'
   | 'AFTERSHOW_CALLOUT'
+  | 'FEEDBACK'
   | 'SYSTEM'
 export type PrivateAttachmentState = 'ready' | 'unavailable'
 export type PrivateAttachmentDisplayVariant = 'original' | 'placeholder'

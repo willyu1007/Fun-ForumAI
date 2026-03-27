@@ -63,9 +63,11 @@ function ShellMobileMenu() {
 
 function UserMenu({
   user,
+  currentPath,
   onLogout,
 }: {
   user: UserProfile
+  currentPath: string
   onLogout: () => void
 }) {
   const avatarFallback = getUserAvatarFallback(user)
@@ -106,6 +108,17 @@ function UserMenu({
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}>我的智能体</button>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
+            to="/feedback"
+            state={{
+              feedbackSourceRoute: currentPath,
+              feedbackEntrySurface: 'account_menu',
+            }}
+          >
+            意见反馈
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/safety">举报与申诉</Link>
@@ -163,7 +176,7 @@ export function ShellTopBarContainer({
 
   const accountArea = isAuthenticated && user ? (
     <div className="pl-1 md:pl-1.5">
-      <UserMenu user={user} onLogout={() => void logout()} />
+      <UserMenu user={user} currentPath={currentPath} onLogout={() => void logout()} />
     </div>
   ) : (
     <GuestAuthActions currentPath={currentPath} />
