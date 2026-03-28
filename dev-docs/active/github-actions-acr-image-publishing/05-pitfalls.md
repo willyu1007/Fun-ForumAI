@@ -58,3 +58,13 @@
   - 移除 `--output json`，直接依赖 CLI v3 的默认 JSON 输出给后续 Node 解析。
 - Prevention:
   - 以后在 GitHub runner 上调用 `aliyun` CLI 时，不要假设旧版 CLI 的输出参数仍可用；优先先在 runner 实机上验证一遍目标版本的命令行语法。
+
+### 2026-03-29 - Alibaba Cloud CLI v3 requires explicit region
+- Symptom:
+  - 去掉 `--output json` 后，publish workflow 仍在 `Log in to ACR` 阶段失败，`aliyun cr GetAuthorizationToken` 报错 `region can't be empty`。
+- What we tried:
+  - 先确认 OIDC/RAM Role 临时凭证已注入成功，再对照 runner 上 CLI 返回错误收窄到 region 缺失。
+- Fix / workaround:
+  - 在两个 ACR 登录步骤里显式传入 `--region "$ALICLOUD_REGION"`。
+- Prevention:
+  - 以后在 GitHub runner 上调用阿里云 CLI，不要只假设凭证生效就足够；region 这类全局参数也必须显式传递或预配置。

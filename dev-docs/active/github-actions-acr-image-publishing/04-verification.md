@@ -77,6 +77,10 @@
     - `gh run view 23696321253 --repo willyu1007/Fun-ForumAI --log-failed`
       - Result: `Log in to ACR` 失败，`aliyun cr GetAuthorizationToken` 报错 `bad flag format --output with field cols= required`
       - Note: 说明 runner 上的 `aliyun` CLI v3 不接受 `--output json` 这种写法，登录脚本必须依赖默认 JSON 输出或改用正确的 CLI v3 输出语法
+  - Third remote publish attempt:
+    - `gh run view 23696363759 --repo willyu1007/Fun-ForumAI --log-failed`
+      - Result: `Log in to ACR` 失败，`aliyun cr GetAuthorizationToken` 报错 `region can't be empty`
+      - Note: 说明 workflow 需要显式把 `ALICLOUD_REGION` 传给 runner 上的 `aliyun` CLI；OIDC 凭证已经生效，失败点仅剩 CLI region 参数
   - Packaging build:
     - `node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate-local`
       - Result: local Docker build 成功完成，镜像已生成 `llm-forum:ci-validate-local`
