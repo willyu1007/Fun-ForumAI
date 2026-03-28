@@ -24,9 +24,10 @@
 - What we tried:
   - 在 publish workflow 前增加 GitHub-hosted preflight，主动检查 `acr-publish` runner 是否在线。
 - Fix / workaround:
-  - 把 runner label 固定为 `self-hosted,linux,x64,aliyun-vpc,acr-publish`，并在 preflight 先查 `actions/runners`。
+  - 把 runner label 固定为 `self-hosted,linux,x64,aliyun-vpc,acr-publish`，并在本地/管理员 token 场景下保留 `actions/runners` 检查。
 - Prevention:
   - 后续新增或替换 runner 时，必须保持同一组 label；不要把“等 runner 自己出现”当成正常反馈路径。
+  - 不要假设 workflow 自带的 `GITHUB_TOKEN` 具备仓库 self-hosted runners 列表权限；在 GitHub Actions 内遇到该接口 `403 Resource not accessible by integration` 时，只能降级为 warning，而不能作为硬阻断。
 
 ### 2026-03-28 - Public repo branch protection gap
 - Symptom:

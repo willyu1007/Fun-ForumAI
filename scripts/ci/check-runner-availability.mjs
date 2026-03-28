@@ -21,12 +21,17 @@ function parseLabels(raw) {
     .filter((value) => value.length > 0)
 }
 
+function isTruthy(value) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase())
+}
+
 async function main() {
   const repo = required('repo', readFlag('repo', process.env.GITHUB_REPOSITORY))
   const token = required('token', process.env.GITHUB_TOKEN)
   const labels = parseLabels(
     required('labels', readFlag('labels', process.env.REQUIRED_RUNNER_LABELS || 'self-hosted,linux,x64,aliyun-vpc,acr-publish')),
   )
+  const allowForbidden = isTruthy(process.env.ALLOW_RUNNER_API_FORBIDDEN)
 
   const response = await fetch(`https://api.github.com/repos/${repo}/actions/runners?per_page=100`, {
     headers: {
@@ -38,6 +43,15 @@ async function main() {
 
   const body = await response.json()
   if (!response.ok) {
+    if (response.status === 403 && allowForbidden) {
+      console.warn(
+        `[warn] Skipping runner availability API check: ${response.status} ${body?.message ?? ''}`.trim(),
+      )
+      console.warn(
+        '[warn] GitHub Actions GITHUB_TOKEN cannot list self-hosted runners on this repository; relying on job routing to validate runner availability.',
+      )
+      return
+    }
     console.error(`[error] Failed to list self-hosted runners: ${response.status} ${body?.message ?? ''}`.trim())
     process.exit(1)
   }

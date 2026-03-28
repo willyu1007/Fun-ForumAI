@@ -69,6 +69,10 @@
       - Labels: `self-hosted`, `Linux`, `X64`, `aliyun-vpc`, `acr-publish`
     - `sudo ./svc.sh status`
       - Result: `actions.runner.willyu1007-Fun-ForumAI.ecs-acr-publish-hz-01.service` 为 `active (running)`，并已进入 `Listening for Jobs`
+  - First remote publish attempt:
+    - `gh run view 23696271210 --repo willyu1007/Fun-ForumAI --log-failed`
+      - Result: preflight 在 `Verify self-hosted publish runner exists` 失败，错误为 `403 Resource not accessible by integration`
+      - Note: 说明 workflow 内置的 `GITHUB_TOKEN` 无法调用仓库 self-hosted runners 列表接口，不能把该 API 能力当作 publish workflow 的硬前置
   - Packaging build:
     - `node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate-local`
       - Result: local Docker build 成功完成，镜像已生成 `llm-forum:ci-validate-local`

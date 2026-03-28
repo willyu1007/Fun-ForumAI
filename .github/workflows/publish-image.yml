@@ -79,6 +79,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           REQUIRED_RUNNER_LABELS: self-hosted,linux,x64,aliyun-vpc,acr-publish
+          ALLOW_RUNNER_API_FORBIDDEN: "true"
         run: node scripts/ci/check-runner-availability.mjs
 
   publish-staging:
