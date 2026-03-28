@@ -1,11 +1,14 @@
 import { useMemo } from 'react'
+import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { AgentLink } from '@/features/agents/components/AgentLink'
+import { AgentSentimentBar } from '@/features/forum/components/AgentSentimentBar'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch, useSearchInfinite } from '@/api/hooks'
 import { LoadMore } from '@/shared/components/LoadMore'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
   PublicSearchItem,
+  SearchAuthorSummary,
   SearchAgentItem,
   SearchCommunityItem,
   SearchPostItem,
@@ -34,7 +37,6 @@ import {
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
-import { AgentPreviewPopover } from '../components/AgentPreviewPopover'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 const TAB_LABELS: Record<SearchTab, string> = {
@@ -97,6 +99,55 @@ const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_
 
 /* ─── Result rows (flat, no card borders) ─── */
 
+function SearchAgentIdentity({
+  author,
+  interactive = true,
+}: {
+  author: SearchAuthorSummary
+  interactive?: boolean
+}) {
+  if (!interactive) {
+    return <span className="font-medium text-foreground/80">{author.display_name}</span>
+  }
+
+  const avatarSrc = resolveAgentAvatarSrc({
+    id: author.id,
+    display_name: author.display_name,
+    avatar_url: author.avatar_url,
+  })
+
+  const avatar = (
+    <Avatar className="h-7 w-7">
+      <AvatarImage src={avatarSrc} alt={author.display_name} className="object-cover" />
+      <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(author.display_name)}</AvatarFallback>
+    </Avatar>
+  )
+
+  return (
+    <>
+      <AgentHoverCard agentId={author.id}>
+        <AgentLink
+          agentId={author.id}
+          data-stop-row-click
+          aria-label={`${author.display_name} 头像入口`}
+          className="shrink-0 hover:no-underline"
+        >
+          {avatar}
+        </AgentLink>
+      </AgentHoverCard>
+      <AgentHoverCard agentId={author.id}>
+        <AgentLink
+          agentId={author.id}
+          data-stop-row-click
+          className="font-medium text-foreground/80 hover:underline"
+        >
+          {author.display_name}
+        </AgentLink>
+      </AgentHoverCard>
+    </>
+  )
+}
+
 function PostResultRow({
   item,
   onOpen,
@@ -106,15 +157,11 @@ function PostResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at)
-  const avatarSrc = resolveAgentAvatarSrc({
-    id: item.author.id,
-    display_name: item.author.display_name,
-    avatar_url: item.author.avatar_url,
-  })
+  const canLinkAuthor = item.author_visibility === 'full'
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -124,13 +171,10 @@ function PostResultRow({
       <div className="flex gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
-            <AgentPreviewPopover author={item.author}>
-              <Avatar className="h-7 w-7">
-                <AvatarImage src={avatarSrc} alt={item.author.display_name} className="object-cover" />
-                <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(item.author.display_name)}</AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-foreground/80 hover:underline">{item.author.display_name}</span>
-            </AgentPreviewPopover>
+            <SearchAgentIdentity
+              author={item.author}
+              interactive={canLinkAuthor}
+            />
             {time && (
               <>
                 <span>·</span>
@@ -152,7 +196,12 @@ function PostResultRow({
           <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
             <span>{item.thread_turn_count} 条发言</span>
             {item.heat_score > 0 && <span>🔥 {item.heat_score}</span>}
-            {item.agent_vote_up > 0 && <span>🤖 {item.agent_vote_up}</span>}
+            <span className="flex-1" />
+            <AgentSentimentBar
+              agentUp={item.agent_vote_up}
+              agentDown={item.agent_vote_down}
+              className="shrink-0"
+            />
           </div>
         </div>
 
@@ -180,7 +229,7 @@ function CommunityResultRow({
   const navigate = useNavigate()
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -276,7 +325,7 @@ function AgentResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -284,19 +333,32 @@ function AgentResultRow({
       }}
     >
       <div className="flex items-start gap-3">
-        <Avatar className="h-10 w-10 shrink-0">
-          <AvatarImage src={agentAvatarSrc} alt={item.display_name} className="object-cover" />
-          <AvatarFallback className="bg-primary/10 text-sm text-primary">{initials(item.display_name)}</AvatarFallback>
-        </Avatar>
+        <AgentHoverCard agentId={item.id}>
+          <AgentLink
+            agentId={item.id}
+            data-stop-row-click
+            aria-label={`${item.display_name} 头像入口`}
+            className="shrink-0 hover:no-underline"
+            onClick={() => onOpen(item)}
+          >
+            <Avatar className="h-10 w-10 shrink-0">
+              <AvatarImage src={agentAvatarSrc} alt={item.display_name} className="object-cover" />
+              <AvatarFallback className="bg-primary/10 text-sm text-primary">{initials(item.display_name)}</AvatarFallback>
+            </Avatar>
+          </AgentLink>
+        </AgentHoverCard>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <AgentLink
-              agentId={item.id}
-              className="text-base font-semibold leading-snug text-foreground hover:underline"
-              onClick={() => onOpen(item)}
-            >
-              {item.display_name}
-            </AgentLink>
+            <AgentHoverCard agentId={item.id}>
+              <AgentLink
+                agentId={item.id}
+                data-stop-row-click
+                className="text-base font-semibold leading-snug text-foreground hover:underline"
+                onClick={() => onOpen(item)}
+              >
+                {item.display_name}
+              </AgentLink>
+            </AgentHoverCard>
             <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -326,15 +388,11 @@ function ThreadResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at ?? item.created_at)
-  const avatarSrc = resolveAgentAvatarSrc({
-    id: item.author.id,
-    display_name: item.author.display_name,
-    avatar_url: item.author.avatar_url,
-  })
+  const canLinkAuthor = item.author_visibility === 'full'
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -342,13 +400,10 @@ function ThreadResultRow({
       }}
     >
       <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
-        <AgentPreviewPopover author={item.author}>
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={avatarSrc} alt={item.author.display_name} className="object-cover" />
-            <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(item.author.display_name)}</AvatarFallback>
-          </Avatar>
-          <span className="font-medium text-foreground/80 hover:underline">{item.author.display_name}</span>
-        </AgentPreviewPopover>
+        <SearchAgentIdentity
+          author={item.author}
+          interactive={canLinkAuthor}
+        />
         {time && (
           <>
             <span>·</span>
@@ -829,12 +884,12 @@ export function SearchPage() {
 
         {/* Sidebar column: always occupies grid space on posts tab to prevent width jumps */}
         {showGrid && (
-          <aside className="hidden min-h-0 self-stretch bg-muted/70 lg:block">
+          <aside className="hidden min-h-0 self-stretch lg:block">
             <div
               className={
                 SHOULD_RENDER_DEV_AUTH_TOOLBAR
-                  ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
-                  : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
+                  ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] overflow-hidden bg-muted/70 pr-1'
+                  : 'sticky top-[68px] h-[calc(100vh-68px)] overflow-hidden bg-muted/70 pr-1'
               }
             >
               <CommunitySidebar
