@@ -3,7 +3,7 @@
 ## Planned checks
 
 - governance `sync`、`lint` 与任务查询通过。
-- 文档已明确 PR 与 `main` / release tag 的不同职责。
+- 文档已明确 PR、`main` publish 与 manual prod promotion 的不同职责。
 - 文档已明确 `image_ref`、tag、OIDC、runner 形态与 Variables / Secrets 清单。
 
 ## Execution records
@@ -15,5 +15,71 @@
     - `node .ai/scripts/ctl-project-governance.mjs query --project main --text "acr"` -> 返回 `T-129`
   - Manual review:
     - 文档已明确 `PR` 只做 quality gate + `docker build validate`。
-    - 文档已明确 `main` / release tag 做 build + push 到 ACR，但不部署到 ECS/ECI。
+    - 文档已明确 `main` 负责 build + push 到 ACR，`workflow_dispatch` 负责 prod/release alias promotion，但都不部署到 ECS/ECI。
     - 文档已明确 `image_ref`、`sha-<commit>`、build-once-promote-many、`GitHub OIDC -> RAM Role -> ACR` 与 Runner 网络假设。
+- 2026-03-28:
+  - Local workflow parsing:
+    - `node - <<'NODE' ... YAML.parse('.github/workflows/ci.yml/.github/workflows/publish-image.yml') ... NODE`
+    - Result: `[ok] parsed .github/workflows/ci.yml`、`[ok] parsed .github/workflows/publish-image.yml`
+  - Publish context scripts:
+    - `scripts/ci/publish-image-context.mjs --mode publish`（with demo env）
+    - `scripts/ci/publish-image-context.mjs --mode promote`（with demo env）
+    - Result: 均正确输出 `image_repo`、tag/ref、dockerfile/context 与 pushed tags。
+  - Negative checks:
+    - `scripts/ci/check-runner-availability.mjs`
+      - Result: `[error] No online self-hosted runner matches labels: self-hosted, linux, x64, aliyun-vpc, acr-publish.`
+      - Note: 这是预期负例，说明当前 repo 远端仍缺 publish runner。
+  - GitHub remote setup:
+    - `gh api --method PUT repos/willyu1007/Fun-ForumAI/environments/staging ...`
+      - Result: `[ok] staging environment created with protected-branches policy`
+    - `gh api --method PUT repos/willyu1007/Fun-ForumAI/environments/prod ...`
+      - Result: `[ok] prod environment created with protected-branches policy and required reviewer`
+    - `gh api repos/willyu1007/Fun-ForumAI/environments`
+      - Result: 返回 `staging` 与 `prod`
+    - `gh api --method PUT repos/willyu1007/Fun-ForumAI/branches/main/protection ...`
+      - Result: `[ok] main branch protection enabled`
+    - `GITHUB_TOKEN=\"$(gh auth token)\" GITHUB_REPOSITORY=willyu1007/Fun-ForumAI REPOSITORY_VISIBILITY=public GITHUB_REF_NAME=main node scripts/ci/check-branch-protection.mjs --branch main`
+      - Result: `[ok] willyu1007/Fun-ForumAI@main is branch-protected.`
+    - `gh variable set ALICLOUD_REGION --body cn-hangzhou --repo willyu1007/Fun-ForumAI`
+      - Result: `[ok] repo variable created`
+    - `gh variable set ACR_REPOSITORY --body app --repo willyu1007/Fun-ForumAI`
+      - Result: `[ok] repo variable created`
+    - `gh variable set ACR_NAMESPACE --body talkshow-ai --repo willyu1007/Fun-ForumAI`
+      - Result: `[ok] repo variable created`
+    - `gh variable set ACR_LOGIN_SERVER --body talkshow-ai-acr-registry-vpc.cn-hangzhou.cr.aliyuncs.com --repo willyu1007/Fun-ForumAI`
+      - Result: `[ok] repo variable created`
+    - `gh variable set ACR_INSTANCE_ID --body cri-ugivu28goberlerj --repo willyu1007/Fun-ForumAI`
+      - Result: `[ok] repo variable created`
+    - `gh variable set ACR_API_ENDPOINT --body cr-vpc.cn-hangzhou.aliyuncs.com --repo willyu1007/Fun-ForumAI`
+      - Result: `[ok] repo variable created`
+    - `gh api repos/willyu1007/Fun-ForumAI/actions/variables`
+      - Result: 返回 `ALICLOUD_REGION`、`ACR_NAMESPACE`、`ACR_REPOSITORY`、`ACR_LOGIN_SERVER`、`ACR_INSTANCE_ID`、`ACR_API_ENDPOINT`
+  - Repository mapping check:
+    - `ALICLOUD_REGION=cn-hangzhou ACR_NAMESPACE=talkshow-ai ACR_REPOSITORY=app ACR_LOGIN_SERVER=talkshow-ai-acr-registry-vpc.cn-hangzhou.cr.aliyuncs.com ACR_INSTANCE_ID=cri-ugivu28goberlerj ACR_API_ENDPOINT=cr-vpc.cn-hangzhou.aliyuncs.com ALICLOUD_OIDC_PROVIDER_ARN=acs:ram::1234567890123456:oidc-provider/github-actions-demo ALICLOUD_ROLE_ARN=acs:ram::1234567890123456:role/github-actions-acr-publish GITHUB_SHA=1234567890abcdef1234567890abcdef12345678 node scripts/ci/publish-image-context.mjs --mode publish`
+      - Result: 成功输出 `image_repo=talkshow-ai-acr-registry-vpc.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app`，同时仍解析 packaging target `llm-forum`
+  - Cloud identity and runner wiring:
+    - 阿里云 RAM OIDC Provider `acs:ram::1183869713036194:oidc-provider/github-actions`
+      - Result: 已创建，issuer 为 `https://token.actions.githubusercontent.com`，audience 为 `sts.aliyuncs.com`
+    - 阿里云 RAM Role `acs:ram::1183869713036194:role/github-actions-acr-publish`
+      - Result: 已创建，并附加 `AliyunContainerRegistryFullAccess`
+    - `gh api repos/willyu1007/Fun-ForumAI/actions/variables`
+      - Result: 返回完整 8 个 publish variables，包括 `ALICLOUD_OIDC_PROVIDER_ARN` 与 `ALICLOUD_ROLE_ARN`
+    - `gh api repos/willyu1007/Fun-ForumAI/actions/runners`
+      - Result: 返回在线 runner `ecs-acr-publish-hz-01`
+      - Labels: `self-hosted`, `Linux`, `X64`, `aliyun-vpc`, `acr-publish`
+    - `sudo ./svc.sh status`
+      - Result: `actions.runner.willyu1007-Fun-ForumAI.ecs-acr-publish-hz-01.service` 为 `active (running)`，并已进入 `Listening for Jobs`
+  - Packaging build:
+    - `node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate-local`
+      - Result: local Docker build 成功完成，镜像已生成 `llm-forum:ci-validate-local`
+      - Note: 首次排查发现真正阻塞点不是 Docker Desktop 拉取元数据，而是 production stage 的 `pnpm install --prod` 在 install 时触发根包 `postinstall -> prisma generate`，但当时 Dockerfile 还未准备好 Prisma schema / CLI
+    - `docker pull node:20-alpine`
+      - Result: 成功，说明本机 Docker Desktop / registry reachability 可用。
+    - `docker image inspect llm-forum:ci-validate-local`
+      - Result: 成功，镜像 digest 为 `sha256:123c6998a08fc0f340ee7e0e24404d070d2abd09422eb6f317449631209237b5`
+    - `docker run --rm --entrypoint sh llm-forum:ci-validate-local -c 'node -v && test -f /app/src/backend/server.ts && test -f /app/dist/frontend/index.html && echo image-smoke-ok'`
+      - Result: 成功输出 `v20.20.2` 与 `image-smoke-ok`
+  - Input hardening:
+    - `scripts/ci/publish-image-context.mjs --mode promote` with `SOURCE_SHA=latest RELEASE_TAG=prod`
+      - Result: `[error] source_sha must be a full 40-character commit SHA...`
+      - Note: 说明 promotion 输入已收紧，不接受非 commit SHA 或保留 alias。

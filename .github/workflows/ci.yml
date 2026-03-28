@@ -109,6 +109,24 @@ jobs:
       - name: Governance lint
         run: node .ai/scripts/ctl-project-governance.mjs lint --check --project main
 
+  docker-build-validate:
+    name: Docker Build Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Docker build validate
+        env:
+          DOCKER_BUILDKIT: "1"
+        run: node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate
+
   mobile-runtime-scaffold:
     name: Mobile Runtime Scaffold
     runs-on: ubuntu-latest

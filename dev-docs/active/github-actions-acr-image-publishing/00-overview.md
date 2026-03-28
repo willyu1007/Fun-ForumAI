@@ -2,9 +2,10 @@
 
 ## Status
 
-- State: planned
+- State: in-progress
 - Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`
-- Next step: 冻结镜像发布契约、build-once-promote-many、Runner 网络形态、凭据方案和 GitHub 配置清单，然后再进入 workflow 实施。
+- Current status: 已落地 `ci.yml` 的 `docker build validate`、独立 `publish-image.yml`、发布前置检查脚本与 CI handbook；GitHub 远端已完成 `staging` / `prod` environments、`main` branch protection、repo variables、GitHub OIDC / RAM Role、以及 `acr-publish` self-hosted runner 的接通。
+- Next step: 将 workflow 与脚本改动合入远端默认分支，执行首次 `main` publish 与 `workflow_dispatch` promotion 验证，并在 ACR 中核对 `sha-<commit>`、`main`、`staging`、`prod` 的 digest 一致性。
 
 ## Goal
 
@@ -18,10 +19,10 @@
 
 ## Acceptance Criteria
 
-- [ ] 明确 PR 与 `main` / release tag 的工作流边界。
-- [ ] 明确 `image_ref` 模板、tag 规则与辅助 tag 用法。
-- [ ] 明确同一镜像采用 build-once-promote-many，不为 `staging` / `prod` 分别构建不同内容。
-- [ ] 明确默认凭据策略为 `GitHub OIDC -> RAM Role -> ACR`。
-- [ ] 明确 publish job 的 Runner 网络形态与 ACR ACL 假设。
-- [ ] 明确 GitHub Variables / Secrets 清单与作用范围。
-- [ ] 明确本任务不触发任何 ECS/ECI 部署副作用。
+- [x] 明确并实现 PR 与 `main` / manual promotion 的工作流边界。
+- [x] 明确并实现 `image_ref` 模板、tag 规则与辅助 tag 用法。
+- [x] 明确并实现同一镜像采用 build-once-promote-many，不为 `staging` / `prod` 分别构建不同内容。
+- [x] 明确并实现默认凭据策略为 `GitHub OIDC -> RAM Role -> ACR`。
+- [x] 明确并实现 publish job 的 Runner 网络形态与 ACR ACL 假设。
+- [x] 明确 GitHub Variables 清单、Environment 约束与“publish v1 无 repo secrets”边界。
+- [x] 明确并实现本任务不触发任何 ECS/ECI 部署副作用。

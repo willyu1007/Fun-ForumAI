@@ -8,9 +8,8 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY pnpm-lock.yaml package.json ./
-RUN pnpm install --frozen-lockfile
-
 COPY prisma ./prisma
+RUN pnpm install --frozen-lockfile
 RUN pnpm db:generate
 
 COPY . .
@@ -24,10 +23,9 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY pnpm-lock.yaml package.json ./
-RUN pnpm install --frozen-lockfile --prod
-RUN npm install -g prisma@7.4.1 tsx@4.21.0
-
 COPY prisma ./prisma
+RUN npm install -g prisma@7.4.1 tsx@4.21.0
+RUN pnpm install --frozen-lockfile --prod
 RUN pnpm db:generate
 
 COPY --from=builder /app/dist/frontend ./dist/frontend

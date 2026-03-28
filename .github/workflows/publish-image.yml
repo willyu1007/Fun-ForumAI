@@ -1,0 +1,307 @@
+name: Publish Image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA or sha-<commit> tag to promote to prod
+        required: true
+        type: string
+      release_tag:
+        description: Optional additional release tag (for example v1.2.3)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-image-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Publish Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enforce branch protection for public repo
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: main
+          REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+        run: node scripts/ci/check-branch-protection.mjs --branch main
+
+      - name: Validate publish variables
+        env:
+          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
+          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
+          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
+          ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/ci/publish-image-context.mjs --mode publish
+
+      - name: Validate promotion inputs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
+          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
+          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
+          ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node scripts/ci/publish-image-context.mjs --mode promote
+
+      - name: Verify self-hosted publish runner exists
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          REQUIRED_RUNNER_LABELS: self-hosted,linux,x64,aliyun-vpc,acr-publish
+        run: node scripts/ci/check-runner-availability.mjs
+
+  publish-staging:
+    name: Build and Push Staging Candidate
+    if: github.event_name == 'push'
+    needs: [preflight]
+    runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
+    timeout-minutes: 45
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve publish context
+        id: context
+        env:
+          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
+          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
+          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
+          ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/ci/publish-image-context.mjs --mode publish
+
+      - name: Check runner prerequisites
+        run: |
+          set -euo pipefail
+          docker --version
+          aliyun version
+
+      - name: Configure Alibaba Cloud credentials
+        uses: aliyun/configure-aliyun-credentials-action@b347e60e64028a4d567a8f31ca42e1b0706c3c99
+        with:
+          oidc-provider-arn: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
+          role-to-assume: ${{ vars.ALICLOUD_ROLE_ARN }}
+          role-session-name: github-action-acr-publish
+          role-session-expiration: 3600
+          audience: sts.aliyuncs.com
+
+      - name: Log in to ACR
+        env:
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          token_json="$(aliyun cr GetAuthorizationToken --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID" --output json)"
+          username="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const username=body.TempUsername ?? body.tempUsername ?? body.data?.TempUsername ?? body.data?.tempUsername ?? 'cr_temp_user';process.stdout.write(username);});")"
+          password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
+          printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"
+
+      - name: Build and push image tags
+        id: publish
+        env:
+          DOCKER_BUILDKIT: "1"
+          SHA_REF: ${{ steps.context.outputs.sha_ref }}
+          MAIN_REF: ${{ steps.context.outputs.main_ref }}
+          STAGING_REF: ${{ steps.context.outputs.staging_ref }}
+          DOCKERFILE: ${{ steps.context.outputs.dockerfile }}
+          BUILD_CONTEXT: ${{ steps.context.outputs.context }}
+          IMAGE_REF: ${{ steps.context.outputs.sha_ref }}
+          PUSHED_TAGS: ${{ steps.context.outputs.pushed_tags }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            -f "$DOCKERFILE" \
+            -t "$SHA_REF" \
+            -t "$MAIN_REF" \
+            -t "$STAGING_REF" \
+            "$BUILD_CONTEXT"
+          docker push "$SHA_REF"
+          docker push "$MAIN_REF"
+          docker push "$STAGING_REF"
+          docker pull "$SHA_REF"
+          digest="$(docker image inspect "$SHA_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
+          echo "image_ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
+          echo "final_digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "pushed_tags=$PUSHED_TAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Publish summary
+        env:
+          IMAGE_REF: ${{ steps.publish.outputs.image_ref }}
+          FINAL_DIGEST: ${{ steps.publish.outputs.final_digest }}
+          PUSHED_TAGS: ${{ steps.publish.outputs.pushed_tags }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## ACR publish result"
+            echo ""
+            echo "- image_ref: \`$IMAGE_REF\`"
+            echo "- pushed tags: \`$PUSHED_TAGS\`"
+            echo "- final digest: \`$FINAL_DIGEST\`"
+            echo "- commit sha: \`$COMMIT_SHA\`"
+            echo "- workflow run: $RUN_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  promote-prod:
+    name: Promote Existing Image to Prod
+    if: github.event_name == 'workflow_dispatch'
+    needs: [preflight]
+    runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
+    timeout-minutes: 30
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve promotion context
+        id: context
+        env:
+          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
+          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
+          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
+          ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node scripts/ci/publish-image-context.mjs --mode promote
+
+      - name: Check runner prerequisites
+        run: |
+          set -euo pipefail
+          docker --version
+          aliyun version
+
+      - name: Configure Alibaba Cloud credentials
+        uses: aliyun/configure-aliyun-credentials-action@b347e60e64028a4d567a8f31ca42e1b0706c3c99
+        with:
+          oidc-provider-arn: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
+          role-to-assume: ${{ vars.ALICLOUD_ROLE_ARN }}
+          role-session-name: github-action-acr-promote
+          role-session-expiration: 3600
+          audience: sts.aliyuncs.com
+
+      - name: Log in to ACR
+        env:
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          token_json="$(aliyun cr GetAuthorizationToken --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID" --output json)"
+          username="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const username=body.TempUsername ?? body.tempUsername ?? body.data?.TempUsername ?? body.data?.tempUsername ?? 'cr_temp_user';process.stdout.write(username);});")"
+          password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
+          printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"
+
+      - name: Promote existing image tag
+        id: promote
+        env:
+          SOURCE_REF: ${{ steps.context.outputs.source_ref }}
+          PROD_REF: ${{ steps.context.outputs.prod_ref }}
+          RELEASE_REF: ${{ steps.context.outputs.release_ref }}
+          PUSHED_TAGS: ${{ steps.context.outputs.pushed_tags }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$SOURCE_REF"
+          source_digest="$(docker image inspect "$SOURCE_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
+
+          docker tag "$SOURCE_REF" "$PROD_REF"
+          docker push "$PROD_REF"
+          docker pull "$PROD_REF"
+          prod_digest="$(docker image inspect "$PROD_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
+          if [ "$source_digest" != "$prod_digest" ]; then
+            echo "[error] prod digest $prod_digest does not match source digest $source_digest" >&2
+            exit 1
+          fi
+
+          if [ -n "$RELEASE_REF" ]; then
+            docker tag "$SOURCE_REF" "$RELEASE_REF"
+            docker push "$RELEASE_REF"
+            docker pull "$RELEASE_REF"
+            release_digest="$(docker image inspect "$RELEASE_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
+            if [ "$source_digest" != "$release_digest" ]; then
+              echo "[error] release digest $release_digest does not match source digest $source_digest" >&2
+              exit 1
+            fi
+          fi
+
+          echo "image_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
+          echo "final_digest=$source_digest" >> "$GITHUB_OUTPUT"
+          echo "pushed_tags=$PUSHED_TAGS" >> "$GITHUB_OUTPUT"
+
+      - name: Promotion summary
+        env:
+          IMAGE_REF: ${{ steps.promote.outputs.image_ref }}
+          FINAL_DIGEST: ${{ steps.promote.outputs.final_digest }}
+          PUSHED_TAGS: ${{ steps.promote.outputs.pushed_tags }}
+          COMMIT_SHA: ${{ steps.context.outputs.commit_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## ACR prod promotion result"
+            echo ""
+            echo "- image_ref: \`$IMAGE_REF\`"
+            echo "- pushed tags: \`$PUSHED_TAGS\`"
+            echo "- final digest: \`$FINAL_DIGEST\`"
+            echo "- commit sha: \`$COMMIT_SHA\`"
+            echo "- workflow run: $RUN_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

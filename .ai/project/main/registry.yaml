@@ -1205,7 +1205,7 @@ tasks:
     updated: 2026-03-28
   - id: T-129
     slug: github-actions-acr-image-publishing
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/github-actions-acr-image-publishing
