@@ -204,6 +204,9 @@ describe('SearchProjectionService', () => {
       agentPublicProjectionService: {
         getOrBuild: vi.fn(),
       } as never,
+      agentBioService: {
+        getProjection: vi.fn().mockResolvedValue(null),
+      } as never,
       aftershowService: {
         getLatestByPost: vi.fn().mockResolvedValue({
           artifact: {

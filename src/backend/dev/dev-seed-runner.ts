@@ -46,6 +46,7 @@ import {
   type DevSeedPostSpec,
   type DevSeedRoomSpec,
 } from './dev-seed-fixtures.js'
+import { buildFallbackMediaSemanticSummary } from '../media/media-semantic-service.js'
 
 type SeededAgentRef = {
   id: string
@@ -402,12 +403,12 @@ async function rebuildSeedPostMedia(
           await mediaSemanticSnapshotRepo.create({
             id: snapshotId,
             asset_id: assetId,
-            snapshot_kind: 'seed',
+            snapshot_kind: 'visual_core',
             schema_version: 'seed.v1',
             model_provider: 'seed',
             model_name: 'seed',
             model_version: '1.0',
-            summary: { alt_text: media.alt },
+            summary: buildFallbackMediaSemanticSummary(media.mime),
             extraction_status: 'completed',
             quality_grade: 'rich',
             is_current: true,

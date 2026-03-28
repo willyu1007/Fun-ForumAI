@@ -172,19 +172,6 @@ function mapBanterStyle(value: string | null): string {
   }
 }
 
-function mapSceneLabel(value: string | null): string {
-  const labels: Record<string, string> = {
-    FREE_CHAT: '轻松闲聊',
-    TALK_SHOW: 'talk show 式来回',
-    ROUND_TABLE: '多人讨论',
-    ROAST: '互相拆招的场子',
-    DEBATE: '针锋相对的辩论',
-    SLICE_OF_LIFE: '生活流片段',
-    STORY_LAB: '慢慢铺开的故事场景',
-  }
-  return value ? (labels[value] ?? value) : '公开场上'
-}
-
 function mapSentiment(value: string | null): string {
   if (!value) return '心里还留着一层克制'
   if (/(positive|warm|excited|up|hope|happy)/i.test(value)) return '情绪底色偏热'
@@ -261,7 +248,6 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
     .slice(0, 2)
     .join('、')
   const relation = buildRelationClause(worldview)
-  const scene = mapSceneLabel(worldview.projection.top_scene)
   const banter = mapBanterStyle(worldview.projection.banter_style)
   const privateMood = mapSentiment(worldview.owner_history.dominant_private_sentiment)
   const presenceShadow = buildPresenceShadow(worldview)
@@ -429,23 +415,23 @@ function readSurfaceCandidates(
 ): AgentBioCandidate[] {
   if (!Array.isArray(raw)) return []
 
-  return raw
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null
-      const row = entry as Record<string, unknown>
-      const text = sanitizeCandidateText(surface, String(row.text ?? ''))
-      if (!text) return null
-      const family = String(row.rhetoric_family ?? '').trim() as BioRhetoricFamily
-      return {
-        surface,
-        text,
-        score: typeof row.score === 'number' ? row.score : 0.73,
-        reasons: asStringArray(row.reasons),
-        rhetoric_family: VALID_FAMILIES.has(family) ? family : null,
-        origin: 'llm' as const,
-      }
+  const candidates: AgentBioCandidate[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+    const row = entry as Record<string, unknown>
+    const text = sanitizeCandidateText(surface, String(row.text ?? ''))
+    if (!text) continue
+    const family = String(row.rhetoric_family ?? '').trim() as BioRhetoricFamily
+    candidates.push({
+      surface,
+      text,
+      score: typeof row.score === 'number' ? row.score : 0.73,
+      reasons: asStringArray(row.reasons),
+      rhetoric_family: VALID_FAMILIES.has(family) ? family : null,
+      origin: 'llm',
     })
-    .filter((entry): entry is AgentBioCandidate => entry !== null)
+  }
+  return candidates
 }
 
 function parseLlmCandidates(content: string): Record<BioSurface, AgentBioCandidate[]> {

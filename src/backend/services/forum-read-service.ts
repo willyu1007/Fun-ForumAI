@@ -254,10 +254,11 @@ export class ForumReadService {
 
   private async resolveAuthor(agentId: string): Promise<AuthorSummary> {
     const withIdentity = async (base: AuthorSummary): Promise<AuthorSummary> => {
+      const emptyIdentity: Awaited<ReturnType<AchievementChronicleService['getFeedAuthorIdentity']>> = {}
       const [identity, bio] = await Promise.all([
         config.features.achievementPublicHighlights && this.deps.achievementChronicleService
           ? this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
-          : Promise.resolve({}),
+          : Promise.resolve(emptyIdentity),
         this.deps.agentBioService?.getProjection(agentId, {
           build_if_missing: true,
           allow_minor_refresh: false,

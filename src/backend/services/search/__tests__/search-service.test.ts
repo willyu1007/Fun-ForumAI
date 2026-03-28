@@ -51,6 +51,8 @@ describe('SearchService', () => {
         thread_turn_count: 3,
         heat_score: 42,
         last_activity_at: null,
+        thumbnail_url: null,
+        agent_vote_up: 0,
       },
     ])
     const communitiesProvider = createProvider('communities')
@@ -151,6 +153,8 @@ describe('SearchService', () => {
         thread_turn_count: 4,
         heat_score: 88,
         last_activity_at: null,
+        thumbnail_url: null,
+        agent_vote_up: 0,
       },
     ])
     const communitiesProvider = createProvider('communities')
@@ -168,6 +172,7 @@ describe('SearchService', () => {
         persona_seed_label: '毒舌主持',
         home_voice_line_label: '总能接住梗',
         tagline: '更适合 talk show',
+        public_bio: null,
         badges: [],
         active_communities: [],
         public_activity_score: 4.5,
