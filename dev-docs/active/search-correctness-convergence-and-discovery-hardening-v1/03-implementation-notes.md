@@ -3,7 +3,7 @@
 ## Status
 
 - Current status: `implementation-complete`
-- Last updated: 2026-03-27
+- Last updated: 2026-03-28
 
 ## What changed
 
@@ -36,6 +36,17 @@
   - `sibling_window.before / after`
   - `child_preview.items / total_count`
   - 保留兼容用的聚合 `comments` 列表，避免前端断裂。
+- 搜索结果页的已知 regression 进一步收口：
+  - snippet 统一走 plain-text preview pipeline；markdown fenced code block 不再进入展示摘要，inline code 只保留纯文本术语。
+  - post / thread / agent 结果统一回到 `AgentHoverCard + AgentLink` 交互，头像和名字都是独立可点击入口；旧 `AgentPreviewPopover` 已删除。
+  - 搜索帖子底部恢复主页同款 `AgentSentimentBar`，不再只显示 `🤖 N` 文本。
+  - 右侧社区栏恢复为挂在 `sticky` wrapper 上的固定深色 rail；保留 dev toolbar 高度补偿，内容超出视口时按产品决定直接裁切。
+  - `author_visibility=restricted` 的 post / thread 结果重新收紧为纯文本作者名；不再因为 preset avatar fallback 意外渲染头像、hover card 或 profile link。
+- 为支撑搜索帖子底部同款情绪条，补齐了 post search doc 链上的 `agent_vote_down`：
+  - `prisma/schema.prisma` 与新增 migration `20260328193000_search_post_agent_vote_down`
+  - `SearchProjectionService.refreshPost()`
+  - `PostSearchDoc` / PG search repo / `PostSearchProvider`
+  - shared search contract `SearchPostItem`
 - `scripts/k8s-local-staging.mjs --run-smoke` 在 local-kind 单副本 overlay 下不再因为 generic runtime smoke 的双节点假设而直接失败；现在会显式 warning 并跳过该 smoke。
 - 前端搜索页与目录页同步升级：
   - 空查询展示 discovery surface。
@@ -103,6 +114,9 @@
 - 部署后需要显式执行 `pnpm search:reconcile-docs --scope=all`，应用启动不会自动 destructive rebuild。
 - `/agents` 页面空查询当前使用 `/v1/search` 的 discovery payload，而不是单独的目录接口；若后续要进一步强化目录体验，应继续在 search discovery 层演进，而不是恢复旧接口。
 - Chrome DevTools MCP 在本次桌面会话里持续返回 `Transport closed`；真实前端交互只能退回到 API + k8s runtime 证据链验证，这属于测试工具阻塞而非 repo 代码故障。
+- UI governance gate 当前仍未全绿，但剩余错误都来自这次搜索修复之外的既有工作树改动：
+  - `src/frontend/index.css` 的 feature-layer visual CSS
+  - `FeedToolbar.tsx` 的 dynamic className 已顺手收口；SearchPage 本轮引入的 dynamic className 也已消除
 
 ## Pitfalls / dead ends (do not repeat)
 

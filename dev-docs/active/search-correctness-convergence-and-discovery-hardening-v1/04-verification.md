@@ -89,6 +89,29 @@
   - Result:
     - First rerun failed only because Playwright still引用旧基线；Errors 1 / Warnings 0。
     - Final rerun passed；latest run id `20260327T002407Z-67237`，Errors 0 / Warnings 0，`eslint=PASS`，`playwright=PASS (96 tests)`。
+- `pnpm exec prisma validate`
+  - Result: passed；`prisma/schema.prisma` 对新增 `PostSearchDoc.agentVoteDown` 字段校验通过。
+- `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: passed；`docs/context/db/schema.json` 已刷新，DB context checksum 更新。
+- `pnpm exec tsc -b --pretty false`
+  - Result: passed。
+  - Notes:
+    - 搜索相关变更与本轮顺手清理的 `FeedPage.tsx` 未使用变量一起通过整仓 TypeScript 构建。
+- `pnpm test -- src/backend/services/search/__tests__/search-snippet.test.ts src/backend/services/search/__tests__/search-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/frontend/features/search/pages/__tests__/SearchPage.test.tsx src/frontend/widgets/shell/__tests__/TopBarSearch.test.tsx`
+  - Result: passed。
+  - Evidence:
+    - `search-snippet.test.ts`: 5 tests passed，覆盖 fenced code block 移除与 plain-text preview。
+    - `search-service.test.ts`: 3 tests passed，覆盖 `SearchPostItem.agent_vote_down` contract 透传。
+    - `search-providers.test.ts`: 4 tests passed，覆盖 `PostSearchProvider` 的 `agent_vote_down` 透传。
+    - `search-projection-service.test.ts`: 2 tests passed，覆盖 `refreshPost()` 写入 `agent_vote_up/down`。
+    - `SearchPage.test.tsx`: 8 tests passed，覆盖 hover card / 双入口 / sentiment bar / restricted author 文本降级 / 固定深色 rail / 社区头像 `object-cover`。
+    - `TopBarSearch.test.tsx`: 1 test passed，覆盖顶部搜索下拉社区头像 `object-cover`。
+    - Total in targeted suite: 23 tests passed。
+- `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`
+  - Result: failed, but only on unrelated pre-existing frontend governance violations；latest run id `20260328T155535Z-94855`。
+  - Remaining gate errors:
+    - `src/frontend/index.css` feature-layer visual CSS (`background`, `color`)
+  - `eslint` 已通过；SearchPage 与 FeedToolbar 的 className 问题不再出现在 gate 报告中。
 
 ## Real k8s / runtime validation
 

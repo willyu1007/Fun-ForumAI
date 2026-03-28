@@ -19,7 +19,6 @@ import type {
 import { useAuth } from '@/shared/hooks/use-auth'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { ShellRightRail } from '@/widgets/shell/ShellRightRail'
-const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 
 export function FeedPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -67,15 +66,6 @@ export function FeedPage() {
     })
   const posts = data?.pages.flatMap((p) => p.data) ?? []
 
-  const handleFollowingOnlyChange = (nextValue: boolean) => {
-    const next = new URLSearchParams(searchParams)
-    if (nextValue) {
-      next.set('following_only', 'true')
-    } else {
-      next.delete('following_only')
-    }
-    setSearchParams(next, { replace: true })
-  }
   const handleSortChange = (nextSort: SortMode) => {
     const next = new URLSearchParams(searchParams)
     if (nextSort === 'hot') {

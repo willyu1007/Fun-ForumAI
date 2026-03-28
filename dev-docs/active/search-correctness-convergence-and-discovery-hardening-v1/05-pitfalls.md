@@ -79,3 +79,20 @@ This file exists to prevent repeating mistakes within this task.
   - `src/frontend/shared/utils/community-shell-meta.ts`
   - `public/community-avatars/*`
   - `rg -n "comm-avatar-(...)" -S .`
+
+### 2026-03-28 - UI gate will reject helper components that pass Tailwind classes as opaque strings
+- Symptom:
+  - `ui-governance-gate` 对 `SearchPage.tsx` 报 `tailwind-policy-unparseable`，即使实际 className 内容是合法的 layout / semantic token 组合。
+- Context:
+  - 为了复用 post/thread 作者入口，初版 `SearchAgentIdentity` helper 把 `avatarClassName`、`nameClassName` 等 Tailwind 字符串作为 props 传入，再在组件内部透传。
+- What we tried:
+  - 先保留 helper 结构，只通过 props 传递不同 className。
+- Why it failed (or current hypothesis):
+  - gate 的静态分析要求 className 由显式字符串字面量组成；把整串 class 作为 opaque prop 传递后，分析器无法判断是否合法。
+- Fix / workaround (if any):
+  - 把 helper 收敛成固定字面量 class；如果需要变体，使用显式枚举/分支，而不是任意字符串 props。
+- Prevention (how to avoid repeating it):
+  - 在受 UI gate 约束的组件里，不要设计“任意 className 字符串透传”的样式 helper；优先用固定字面量或有限 variant。
+- References (paths/commands/log keywords):
+  - `src/frontend/features/search/pages/SearchPage.tsx`
+  - `.ai/.tmp/ui/20260328T154222Z-74094/ui-gate-report.md`
