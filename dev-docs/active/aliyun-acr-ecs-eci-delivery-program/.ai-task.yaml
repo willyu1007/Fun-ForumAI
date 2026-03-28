@@ -1,0 +1,13 @@
+version: 1
+task_id: T-128
+project: main
+slug: aliyun-acr-ecs-eci-delivery-program
+status: in-progress
+updated: "2026-03-28"
+keywords:
+  - aliyun
+  - acr
+  - ecs
+  - eci
+  - github-actions
+  - delivery

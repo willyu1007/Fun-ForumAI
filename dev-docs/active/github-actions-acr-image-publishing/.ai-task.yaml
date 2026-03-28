@@ -1,0 +1,13 @@
+version: 1
+task_id: T-129
+project: main
+slug: github-actions-acr-image-publishing
+status: planned
+updated: "2026-03-28"
+keywords:
+  - github-actions
+  - acr
+  - docker
+  - oidc
+  - image
+  - publishing

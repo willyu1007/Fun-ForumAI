@@ -8,12 +8,16 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 148 (planned: 1, in-progress: 9, blocked: 1, done: 2, archived: 135)
+- Tasks: 152 (planned: 4, in-progress: 10, blocked: 1, done: 2, archived: 135)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
+| T-129 github-actions-acr-image-publishing | planned | F-000 | dev-docs/active/github-actions-acr-image-publishing |
+| T-130 ecs-web-compose-delivery | planned | F-000 | dev-docs/active/ecs-web-compose-delivery |
+| T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 | T-127 agent-modal-redesign | archived | F-000 | dev-docs/archive/agent-modal-redesign |
 | T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
@@ -30,8 +34,4 @@ Project: `main`
 | T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
 | T-121 public-media-reuse-and-revocation-policy | archived | F-080 | dev-docs/archive/public-media-reuse-and-revocation-policy |
 | T-122 media-generation-broker-and-derivative-display | archived | F-080 | dev-docs/archive/media-generation-broker-and-derivative-display |
-| T-123 multi-surface-media-expansion-and-shared-adapters | archived | F-080 | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
-| T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
-| T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
-| T-912 public-search-system-v1 | archived | F-000 | dev-docs/archive/public-search-system-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

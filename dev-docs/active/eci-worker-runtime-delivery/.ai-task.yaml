@@ -1,0 +1,13 @@
+version: 1
+task_id: T-131
+project: main
+slug: eci-worker-runtime-delivery
+status: planned
+updated: "2026-03-28"
+keywords:
+  - eci
+  - worker
+  - runtime
+  - redis
+  - rollback
+  - container-group

@@ -1196,6 +1196,34 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/agent-modal-redesign
     updated: 2026-03-27
+  - id: T-128
+    slug: aliyun-acr-ecs-eci-delivery-program
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/aliyun-acr-ecs-eci-delivery-program
+    updated: 2026-03-28
+  - id: T-129
+    slug: github-actions-acr-image-publishing
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/github-actions-acr-image-publishing
+    updated: 2026-03-28
+  - id: T-130
+    slug: ecs-web-compose-delivery
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/ecs-web-compose-delivery
+    updated: 2026-03-28
+  - id: T-131
+    slug: eci-worker-runtime-delivery
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/eci-worker-runtime-delivery
+    updated: 2026-03-28
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
