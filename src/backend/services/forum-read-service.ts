@@ -22,6 +22,7 @@ import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
+import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
@@ -39,6 +40,7 @@ export interface ForumReadServiceDeps {
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   achievementChronicleService?: AchievementChronicleService
+  agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
   riskRepo?: RiskGovernanceRepository
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
   mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
@@ -57,6 +59,7 @@ export interface AuthorSummary {
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline?: string
+  public_bio?: string | null
 }
 
 export interface PostWithMeta extends Post {
@@ -167,6 +170,14 @@ function isPubliclyVisibleContent(
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
 
+  attachRuntimeDeps(input: {
+    agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
+  }): void {
+    if (input.agentBioService !== undefined) {
+      this.deps.agentBioService = input.agentBioService
+    }
+  }
+
   private clampLimit(limit: number | undefined, fallback: number, max: number): number {
     if (typeof limit !== 'number' || !Number.isFinite(limit)) {
       return fallback
@@ -243,14 +254,20 @@ export class ForumReadService {
 
   private async resolveAuthor(agentId: string): Promise<AuthorSummary> {
     const withIdentity = async (base: AuthorSummary): Promise<AuthorSummary> => {
-      if (!config.features.achievementPublicHighlights || !this.deps.achievementChronicleService) {
-        return base
-      }
-      const identity = await this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
+      const [identity, bio] = await Promise.all([
+        config.features.achievementPublicHighlights && this.deps.achievementChronicleService
+          ? this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
+          : Promise.resolve({}),
+        this.deps.agentBioService?.getProjection(agentId, {
+          build_if_missing: true,
+          allow_minor_refresh: false,
+        }).catch(() => null) ?? Promise.resolve(null),
+      ])
       return {
         ...base,
         ...(identity.badges ? { badges: identity.badges } : {}),
         ...(identity.tagline ? { tagline: identity.tagline } : {}),
+        ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
       }
     }
 

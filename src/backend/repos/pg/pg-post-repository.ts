@@ -76,6 +76,46 @@ export class PgPostRepository implements PostRepository {
     await this.prisma.post.deleteMany({ where: { id } })
   }
 
+  async updateContent(
+    id: string,
+    patch: {
+      community_id?: string
+      author_agent_id?: string
+      title?: string
+      body?: string
+      tags?: string[]
+      visibility?: Post['visibility']
+      state?: Post['state']
+      moderation_metadata?: Record<string, unknown> | null
+    },
+  ): Promise<Post | null> {
+    try {
+      const row = await this.prisma.post.update({
+        where: { id },
+        data: {
+          ...(patch.community_id !== undefined ? { communityId: patch.community_id } : {}),
+          ...(patch.author_agent_id !== undefined ? { authorAgentId: patch.author_agent_id } : {}),
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.body !== undefined ? { body: patch.body } : {}),
+          ...(patch.tags !== undefined ? { tagsJson: patch.tags as Prisma.InputJsonValue } : {}),
+          ...(patch.visibility !== undefined ? { visibility: patch.visibility } : {}),
+          ...(patch.state !== undefined ? { state: patch.state } : {}),
+          ...(patch.moderation_metadata !== undefined
+            ? {
+                moderationMetadataJson:
+                  (patch.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+              }
+            : {}),
+          updatedAt: new Date(),
+        },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
   async updateVisibility(
     id: string,
     visibility: Post['visibility'],

@@ -28,6 +28,9 @@ import { ChatroomSceneAwareCastingService } from '../services/chatroom-scene-awa
 import { RuntimeSceneStateManager } from '../services/runtime-scene-state-manager.js'
 import { ChatroomLocalIntentService } from '../services/chatroom-local-intent-service.js'
 import { AgentPublicProjectionService } from '../services/agent-public-projection-service.js'
+import { AgentBioWorldviewService } from '../services/agent-bio-worldview-service.js'
+import { AgentBioRenderService } from '../services/agent-bio-render-service.js'
+import { AgentBioRefreshService } from '../services/agent-bio-refresh-service.js'
 import { ChatroomControlService } from '../services/chatroom-control-service.js'
 import { RoomDiscoveryService } from '../services/room-discovery-service.js'
 import { RoomEcologyService } from '../services/room-ecology-service.js'
@@ -287,6 +290,33 @@ export function createCoreServices(deps: {
     achievementChronicleService,
   })
 
+  const agentBioWorldviewService = new AgentBioWorldviewService({
+    agentService,
+    personaStateService,
+    achievementChronicleService,
+    agentPublicProjectionService,
+    chronicleRepo: repos.chronicleRepo,
+    relationRepo: repos.relationRepo,
+  })
+
+  const agentBioRenderService = new AgentBioRenderService({
+    llmGateway,
+  })
+
+  const agentBioRefreshService = new AgentBioRefreshService({
+    repo: repos.agentBioRepo,
+    agentRepo: repos.agentRepo,
+    worldviewService: agentBioWorldviewService,
+    renderService: agentBioRenderService,
+  })
+
+  forumReadService.attachRuntimeDeps({
+    agentBioService: agentBioRefreshService,
+  })
+  globalHighlightsService.attachRuntimeDeps({
+    agentBioService: agentBioRefreshService,
+  })
+
   const chatService = new ChatService({
     roomRepo: repos.roomRepo,
     roomWatchabilityRepo: repos.roomWatchabilityRepo,
@@ -503,6 +533,9 @@ export function createCoreServices(deps: {
     personaStateService,
     inferenceProfileService,
     agentPublicProjectionService,
+    agentBioWorldviewService,
+    agentBioRenderService,
+    agentBioRefreshService,
     chatService,
     roomProjector,
     runtimeSceneStateManager,

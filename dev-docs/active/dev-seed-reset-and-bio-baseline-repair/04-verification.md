@@ -1,0 +1,37 @@
+# 04 Verification — dev-seed-reset-and-bio-baseline-repair (T-928)
+
+- 2026-03-28: `sed -n '1,220p' dev-docs/AGENTS.md`
+  - 结果：确认该任务满足复杂任务 Decision Gate，必须先创建 task bundle 并在项目 hub 中同步。
+- 2026-03-28: `sed -n '1,220p' .ai/project/AGENTS.md`
+  - 结果：确认 task bundle 创建后需要运行 `ctl-project-governance sync --apply --project main`。
+- 2026-03-28: `rg -n "T-928|dev-seed|smoke-minimal" dev-docs .ai/project .ai/project/main || true`
+  - 结果：确认 `T-928` 尚未注册，当前仓库没有 `smoke-minimal` 现有实现。
+- 2026-03-28: `pnpm db:generate`
+  - 结果：Prisma Client 正常生成，包含 `DevSeedRegistryEntry` 新 schema。
+- 2026-03-28: `pnpm -s tsc --noEmit`
+  - 结果：通过。shared seed runner、reset CLI、registry repo、measure scope、agent-bio gating 与新测试全部类型收敛。
+- 2026-03-28: `pnpm vitest run src/backend/services/__tests__/agent-service.test.ts src/backend/services/__tests__/agent-bio-render-service.test.ts src/backend/dev/__tests__/dev-seed-reset.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts`
+  - 结果：`37` 个测试全部通过。
+  - 覆盖点：`/v1/dev/seed` canonical 幂等、room repair、media lineage、vote stability、canonical rerun 不再重复提交 major bio refresh、`smoke-minimal` 最小夹具、`DELETE /v1/dev/seed` 错误码、`agent-bio` generic/meta rejection、`dev:reset:seed` 环境安全闸、`suppress_hooks` 回归。
+- 2026-03-28: `export DASHSCOPE_API_KEY=*** DB_PERSISTENCE=true APP_ENV=dev NODE_ENV=development && pnpm dev:reset:seed`
+  - 结果：本地 `llm_forum_dev` 成功执行 full reset + migrate + canonical reseed + registry-scoped bio measure。
+  - 真实模型：bio render 命中 DashScope `qwen-plus-character` hidden profile；引入 `suppress_hooks` 后，每个 canonical agent 仅保留一轮显式 major refresh，不再出现 seed 内部的双重 bio refresh。
+- 2026-03-28: `export DASHSCOPE_API_KEY=*** DB_PERSISTENCE=true APP_ENV=dev NODE_ENV=development && pnpm seed -- --profile=smoke-minimal --skip-bio`
+  - 结果：返回 `communities=1, agents=1, posts=1, threads=0, rooms=0, votes=0, media=0, private_sessions=0`，符合最小 smoke fixture 设计，并复用 canonical 中的 `general` 社区与欢迎贴对象，不膨胀主论坛数据。
+- 2026-03-28: `export DASHSCOPE_API_KEY=*** DB_PERSISTENCE=true APP_ENV=dev NODE_ENV=development && pnpm agent-bio:measure -- --registry-profile=canonical`
+  - 结果：
+    - `projection_coverage_ratio = 1`
+    - `public_bio_present = 5 / 5`
+    - search fallback ratio `0`
+    - `public_meta_leak_count = 0`
+    - `public_generic_placeholder_count = 0`
+    - projection/search mismatch 全部 `0`
+    - `current_projection_max_family_ratio = 0.4`
+  - 结论：满足本任务包对 clean canonical bio baseline 的质量验收门槛。
+- 2026-03-28: `DB_PERSISTENCE=true pnpm exec tsx -e '(async () => { const { getPrismaClient, disconnectPrisma } = await import("./src/backend/persistence/prisma-client.js"); const prisma = getPrismaClient(); const count = await prisma.agentBioRenderLog.count(); console.log(count); await disconnectPrisma(); })();'`
+  - 结果：在连续两次 `pnpm seed -- --profile=canonical` 前后，`agent_bio_render_logs` 计数稳定为 `15 -> 15`，确认 canonical rerun 不再因为 seed 自身制造额外 bio render 漂移。
+- 2026-03-28: Chrome DevTools MCP 手动核验 `http://localhost:3001`
+  - 结果：
+    - `posts/seed-post-ai-consciousness` 作者区展示 `public_bio`，不是旧 `tagline` fallback。
+    - `/search?q=苏格拉底&tab=agents` 智能体搜索结果展示 `public_bio`，且 community chips 正常渲染。
+    - 页面读取的 canonical seed 数据与 CLI reseed 后的对象 ID 一致，未观察到重复帖子/agent 膨胀。

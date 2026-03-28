@@ -5,6 +5,7 @@ export interface PostMediaRepository {
   findByPostId(postId: string): PostMedia[]
   findByPostIds(postIds: string[]): Record<string, PostMedia[]>
   findByAssetId(assetId: string): PostMedia[]
+  deleteByPostIds(postIds: string[]): number
 }
 
 let counter = 0
@@ -52,5 +53,17 @@ export class InMemoryPostMediaRepository implements PostMediaRepository {
     return Array.from(this.store.values())
       .filter((item) => item.asset_id === assetId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  deleteByPostIds(postIds: string[]): number {
+    const lookup = new Set(postIds)
+    if (lookup.size === 0) return 0
+    let deleted = 0
+    for (const [id, item] of this.store.entries()) {
+      if (!lookup.has(item.post_id)) continue
+      this.store.delete(id)
+      deleted += 1
+    }
+    return deleted
   }
 }

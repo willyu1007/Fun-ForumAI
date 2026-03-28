@@ -26,6 +26,7 @@ import {
   mediaLineageService,
   searchTelemetryService,
   searchProjectionService,
+  agentBioRefreshService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { AppError, ValidationError } from '../lib/errors.js'
@@ -1032,6 +1033,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
         telemetry: search,
         health: searchHealth,
       },
+      agent_bio: agentBioRefreshService.inspectObservability(),
       observability: {
         ...observability,
         render_log_preview: personaObservability.latestRenderLog(recentLedgerEntries, 20),

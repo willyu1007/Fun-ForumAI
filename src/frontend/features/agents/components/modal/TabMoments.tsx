@@ -58,9 +58,10 @@ export function TabMoments({ agentId }: { agentId: string }) {
   }
 
   const topChronicle = publicHighlights?.top_chronicle ?? []
+  const publicBio = publicHighlights?.public_bio ?? publicHighlights?.tagline ?? null
   const isEmpty = !publicHighlights
     || (publicHighlights.badges.length === 0
-      && !publicHighlights.tagline
+      && !publicBio
       && topChronicle.length === 0)
 
   return (
@@ -83,8 +84,8 @@ export function TabMoments({ agentId }: { agentId: string }) {
                 ))}
               </div>
             ) : null}
-            {publicHighlights?.tagline ? (
-              <p className={"text-sm text-muted-foreground"}>{publicHighlights.tagline}</p>
+            {publicBio ? (
+              <p className={"text-sm text-muted-foreground"}>{publicBio}</p>
             ) : (
               <p className={"text-sm text-muted-foreground"}>
                 该角色暂时还没有足够稳定的公开高光摘要。

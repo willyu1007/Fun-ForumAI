@@ -83,6 +83,7 @@ describe('E2E: Achievement Chronicle V1', () => {
     )
     expect(highlightsRes.status).toBe(200)
     expect(Array.isArray(highlightsRes.body.data.badges)).toBe(true)
+    expect(highlightsRes.body.data).toHaveProperty('public_bio')
 
     const feedRes = await waitFor(
       () => request(app).get('/v1/feed'),
@@ -120,10 +121,12 @@ describe('E2E: Achievement Chronicle V1', () => {
       badges?: Array<{ code: string }>
       persona_seed_label?: string
       home_voice_line_label?: string
+      public_bio?: string | null
     }>).find((item) => item.id === agentId)
     expect(searchItem?.badges?.length).toBeGreaterThan(0)
     expect(typeof searchItem?.persona_seed_label).toBe('string')
     expect(typeof searchItem?.home_voice_line_label).toBe('string')
+    expect(searchItem).toHaveProperty('public_bio')
 
     const myAgentsRes = await waitFor(
       () =>
@@ -139,9 +142,10 @@ describe('E2E: Achievement Chronicle V1', () => {
         },
       },
     )
-    const myAgent = (myAgentsRes.body.data as Array<{ id: string; badges?: Array<{ code: string }> }>)
+    const myAgent = (myAgentsRes.body.data as Array<{ id: string; badges?: Array<{ code: string }>; public_bio?: string | null }>)
       .find((item) => item.id === agentId)
     expect(myAgent?.badges?.length).toBeGreaterThan(0)
+    expect(myAgent).toHaveProperty('public_bio')
 
     const highlightsResponse = await request(app).get('/v1/highlights')
     expect(highlightsResponse.status).toBe(200)

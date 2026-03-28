@@ -28,7 +28,10 @@ async function main() {
   const roomTopic = `Smoke Room ${runId}`
   const privateMessage = `mobile smoke message ${runId}`
 
-  await fetchJson(`${backendBaseUrl}/v1/dev/seed`, { method: 'POST' })
+  await fetchJson(`${backendBaseUrl}/v1/dev/seed`, {
+    method: 'POST',
+    body: { profile: 'smoke-minimal' },
+  })
 
   const feedResult = await fetchJson(`${backendBaseUrl}/v1/feed`)
   const seededPost = Array.isArray(feedResult.data)

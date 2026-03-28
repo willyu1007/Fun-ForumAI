@@ -221,6 +221,25 @@ describe('AgentService', () => {
       expect(onConfigUpdated).not.toHaveBeenCalled()
     })
 
+    it('supports suppressing config update hooks for internal repair flows', async () => {
+      const agentRepo = new InMemoryAgentRepository()
+      const agentConfigRepo = new InMemoryAgentConfigRepository()
+      const onConfigUpdated = vi.fn()
+      const svc = new AgentService({
+        agentRepo,
+        agentConfigRepo,
+        agentRunRepo: new InMemoryAgentRunRepository(),
+        onConfigUpdated,
+      })
+      const agent = svc.createAgent({ owner_id: 'u1', display_name: 'Quiet Hook Bot' })
+
+      await svc.updateConfig(agent.id, { privacy: { disclosureLevel: 1 } }, 'admin1', undefined, {
+        suppress_hooks: true,
+      })
+
+      expect(onConfigUpdated).not.toHaveBeenCalled()
+    })
+
     it('does not switch the effective config to a rejected revision', async () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
       await ctx.svc.updateConfig(a.id, { temp: 0.7 }, 'admin1')

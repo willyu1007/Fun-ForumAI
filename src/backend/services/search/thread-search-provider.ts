@@ -68,6 +68,7 @@ export class ThreadSearchProvider implements SearchProvider {
         { reason: '命中场景标签', code: 'scene_tag', field: 'scene_tags', value: hit.doc.scene_tags_text || parentPost.scene_tags_text },
         { reason: '命中社区', code: 'community', field: 'community', value: hit.doc.community_name },
         { reason: '命中角色标签', code: 'author_tagline', field: 'author_tagline', value: hit.doc.author_tagline },
+        { reason: '命中角色简介', code: 'author_tagline', field: 'author_public_bio', value: hit.doc.author_public_bio },
       ], { fallback_text: snippetSource })
       const reasons = appendBoostReasons(
         presentation.match_reasons,
@@ -112,6 +113,7 @@ export class ThreadSearchProvider implements SearchProvider {
           avatar_url: authorVisibility === 'full' ? hit.doc.author_avatar_url : null,
           ...(authorVisibility === 'full' && hit.doc.author_badges.length > 0 ? { badges: hit.doc.author_badges } : {}),
           ...(authorVisibility === 'full' && hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : {}),
+          ...(authorVisibility === 'full' ? { public_bio: hit.doc.author_public_bio } : {}),
         },
         author_visibility: authorVisibility,
         created_at: hit.doc.thread_created_at.toISOString(),

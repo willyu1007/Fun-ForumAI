@@ -16,6 +16,7 @@ import {
   feedbackService,
   inferenceProfileService,
   searchProjectionService,
+  agentBioRefreshService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
@@ -595,12 +596,19 @@ readApiRouter.get('/highlights', async (req, res) => {
 
 readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
   const agentId = String(req.params.agentId)
-  const highlights = await achievementChronicleService.getPublicHighlights(agentId)
+  const [highlights, projection] = await Promise.all([
+    achievementChronicleService.getPublicHighlights(agentId),
+    agentBioRefreshService.getProjection(agentId, {
+      build_if_missing: true,
+      allow_minor_refresh: false,
+    }).catch(() => null),
+  ])
   res.json({
     data: {
       agent_id: agentId,
       badges: highlights.badges,
       tagline: highlights.tagline,
+      public_bio: projection?.public_bio ?? null,
       top_chronicle: highlights.top_chronicle,
     },
   })
@@ -616,17 +624,29 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
       : false
   const isOwner = Boolean(user && user.userId === agent.owner_id)
   const isAdmin = user?.role === 'admin'
+  const canViewPrivateBio = isOwner || isAdmin
   const inferenceDebug = isAdmin ? await inferenceProfileService.getDebug(agent.id) : null
   const personalityNarrative = inferenceDebug
     ? inferenceDebug.narrative
     : isOwner
       ? await inferenceProfileService.getNarrative(agent.id)
       : null
+  const socialBio = await agentBioRefreshService.getProjection(agent.id, {
+    build_if_missing: true,
+    allow_minor_refresh: canViewPrivateBio,
+  }).catch(() => null)
 
   res.json({
     data: {
       ...buildAgentReadPayload(agent, latestConfig),
       is_followed,
+      social_bio: {
+        public_bio: socialBio?.public_bio ?? null,
+        owner_bio: canViewPrivateBio ? socialBio?.owner_bio ?? null : null,
+        private_header_bio: canViewPrivateBio ? socialBio?.private_header_bio ?? null : null,
+        presence_note: canViewPrivateBio ? socialBio?.presence_note ?? null : null,
+        updated_at: socialBio?.refreshed_at?.toISOString() ?? null,
+      },
       personality_narrative: personalityNarrative,
       inference_profile_debug: inferenceDebug
         ? {

@@ -791,3 +791,63 @@ templates:
       {{current_context_block}}
 
       请自然地开启这次私信。
+
+  - prompt_template_id: internal-agent-social-bio-render
+    version: 1
+    description: Hidden renderer for agent social bio projection with rhetoric-family control and strict JSON output
+    variables_schema:
+      type: object
+      properties:
+        worldview_json: { type: string }
+        render_context_json: { type: string }
+      required:
+        - worldview_json
+        - render_context_json
+    system_prompt: |
+      你正在为一个论坛/聊天室里的 Agent 更新“社交简介投影”。
+      这不是系统说明书，也不是人物小传。要写得像真人会放在社交资料、朋友备注、私聊页头里的简介。
+
+      输出必须是 JSON，不能输出解释文字、Markdown 或代码块。
+      JSON 结构：
+      {
+        "surface_candidates": {
+          "public": [
+            {
+              "text": "一句公开可见简介，14-96字",
+              "rhetoric_family": "stance/phase_shadow/side_profile/contrast",
+              "reasons": ["简短原因1", "简短原因2"]
+            }
+          ],
+          "owner": [
+            {
+              "text": "一句 owner 可见简介，20-140字",
+              "rhetoric_family": "stance/phase_shadow/side_profile/contrast",
+              "reasons": ["简短原因1"]
+            }
+          ],
+          "private_header": [
+            {
+              "text": "一句私聊头部简介，12-88字",
+              "rhetoric_family": "stance/phase_shadow/side_profile/contrast",
+              "reasons": ["简短原因1"]
+            }
+          ]
+        }
+      }
+
+      硬约束：
+      - 每个 surface 给 2-3 条候选
+      - public / owner / private_header 都必须返回
+      - 候选尽量分散到不同 rhetoric_family
+      - public 绝不能泄露 owner 私聊、内部记忆、系统机制
+      - 不要出现 “我是一个 / 最近我 / 我的性格 / 我通常会” 这类模板起手
+      - 不要出现 llm / agent / owner / prompt / token / state / system / 模型 / 提示词 / 记忆 等元词
+      - 不要把结构字段机械复述成清单，不要写事件流水账
+      - 语气要像真人社交简介，允许含蓄、侧写、带一点阶段感
+      - text 里不要加引号，不要编号
+    user_prompt: |
+      世界观输入：
+      {{worldview_json}}
+
+      渲染控制：
+      {{render_context_json}}

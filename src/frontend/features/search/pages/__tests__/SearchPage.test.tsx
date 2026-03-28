@@ -1,12 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import { useRecordSearchTelemetry, useSearch } from '@/api/hooks'
+import { useRecordSearchTelemetry, useSearchInfinite } from '@/api/hooks'
 import { buildAgentTarget } from '@/shared/utils/agent-target'
 import { SearchPage } from '../SearchPage'
 
 vi.mock('@/api/hooks', () => ({
   useSearch: vi.fn(),
+  useSearchInfinite: vi.fn(),
   useRecordSearchTelemetry: vi.fn(),
   useFollowAgent: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   useUnfollowAgent: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
@@ -16,7 +17,7 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(() => ({ isAuthenticated: true })),
 }))
 
-const useSearchMock = vi.mocked(useSearch)
+const useSearchInfiniteMock = vi.mocked(useSearchInfinite)
 const useRecordSearchTelemetryMock = vi.mocked(useRecordSearchTelemetry)
 
 function LocationProbe() {
@@ -59,52 +60,52 @@ describe('SearchPage', () => {
 
   useRecordSearchTelemetryMock.mockReturnValue(telemetryMutation as never)
 
-  it('renders enriched agent results and tab counts without changing the route contract', () => {
-    useSearchMock.mockReturnValue({
+  function mockInfiniteSearch(pageData: Record<string, unknown>) {
+    useSearchInfiniteMock.mockReturnValue({
       data: {
-        data: {
-          query: 'talk show',
-          normalized_query: 'talk show',
-          current_tab: 'agents',
-          counts: {
-            posts: 2,
-            communities: 1,
-            agents: 1,
-            threads: 3,
-          },
-          items: [
-            {
-              type: 'agent',
-              id: 'agent-1',
-              href: buildAgentTarget({
-                agentId: 'agent-1',
-                mode: 'readonly',
-              }),
-              display_name: 'Agent 1',
-              avatar_url: null,
-              status: 'ACTIVE',
-              persona_seed_label: '毒舌主持',
-              home_voice_line_label: '总能接住梗',
-              tagline: '会把火花抬高半格',
-              badges: [{ code: 'host', name: '主持', tier: 2 }],
-              active_communities: [{ id: 'community-1', name: 'Community 1', slug: 'community-1' }],
-              public_activity_score: 4.5,
-              is_followed: true,
-              score: 1.25,
-              snippet: '更适合 TALK_SHOW · 常站 HOST · 在 talk show 里接住爆梗',
-              highlights: [{ field: 'projection', snippet: '更适合 TALK_SHOW · 常站 HOST' }],
-              match_reasons: ['命中公域投射', '命中公共经历', '命中常驻社区'],
-              match_reason_codes: ['projection', 'chronicle', 'active_community'],
-            },
-          ],
-          discovery: null,
-          cursor: null,
-          took_ms: 12,
-        },
+        pages: [{ data: pageData }],
+        pageParams: [undefined],
       },
       isLoading: false,
       isError: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
     } as never)
+  }
+
+  it('renders enriched agent results and tab counts without changing the route contract', () => {
+    mockInfiniteSearch({
+      query: 'talk show',
+      normalized_query: 'talk show',
+      current_tab: 'agents',
+      counts: { posts: 2, communities: 1, agents: 1, threads: 3 },
+      items: [
+        {
+          type: 'agent',
+          id: 'agent-1',
+          href: buildAgentTarget({ agentId: 'agent-1', mode: 'readonly' }),
+          display_name: 'Agent 1',
+          avatar_url: null,
+          status: 'ACTIVE',
+          persona_seed_label: '毒舌主持',
+          home_voice_line_label: '总能接住梗',
+          tagline: '会把火花抬高半格',
+          badges: [{ code: 'host', name: '主持', tier: 2 }],
+          active_communities: [{ id: 'community-1', name: 'Community 1', slug: 'community-1' }],
+          public_activity_score: 4.5,
+          is_followed: true,
+          score: 1.25,
+          snippet: '更适合 TALK_SHOW · 常站 HOST · 在 talk show 里接住爆梗',
+          highlights: [{ field: 'projection', snippet: '更适合 TALK_SHOW · 常站 HOST' }],
+          match_reasons: ['命中公域投射', '命中公共经历', '命中常驻社区'],
+          match_reason_codes: ['projection', 'chronicle', 'active_community'],
+        },
+      ],
+      discovery: null,
+      cursor: null,
+      took_ms: 12,
+    })
 
     renderSearchPage('/search?q=talk%20show&tab=agents')
 
@@ -115,28 +116,16 @@ describe('SearchPage', () => {
   })
 
   it('reads tab and query from URL search params', () => {
-    useSearchMock.mockReturnValue({
-      data: {
-        data: {
-          query: 'talk show',
-          normalized_query: 'talk show',
-          current_tab: 'agents',
-          counts: {
-            posts: 2,
-            communities: 1,
-            agents: 1,
-            threads: 3,
-          },
-          items: [],
-          discovery: null,
-          cursor: null,
-          took_ms: 8,
-        },
-      },
-      isLoading: false,
-      isError: false,
-      isPlaceholderData: false,
-    } as never)
+    mockInfiniteSearch({
+      query: 'talk show',
+      normalized_query: 'talk show',
+      current_tab: 'agents',
+      counts: { posts: 2, communities: 1, agents: 1, threads: 3 },
+      items: [],
+      discovery: null,
+      cursor: null,
+      took_ms: 8,
+    })
 
     renderSearchPage('/search?q=talk%20show&tab=agents')
 
@@ -151,48 +140,37 @@ describe('SearchPage', () => {
   })
 
   it('renders blank-query discovery suggestions and featured sections', () => {
-    useSearchMock.mockReturnValue({
-      data: {
-        data: {
-          query: '',
-          normalized_query: '',
-          current_tab: 'posts',
-          counts: {
-            posts: 0,
-            communities: 0,
-            agents: 0,
-            threads: 0,
-          },
-          items: [],
-          discovery: {
-            suggested_queries: ['talk show', 'Community 1'],
-            featured_posts: [{
-              type: 'post',
-              id: 'post-1',
-              href: '/posts/post-1',
-              title: '精选帖子标题',
-              score: 2.1,
-              snippet: '精选帖子摘要',
-              highlights: [],
-              match_reasons: [],
-              match_reason_codes: [],
-              community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
-              author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
-              author_visibility: 'full',
-              thread_turn_count: 3,
-              heat_score: 42,
-              last_activity_at: null,
-            }],
-            featured_communities: [],
-            featured_agents: [],
-          },
-          cursor: null,
-          took_ms: 6,
-        },
+    mockInfiniteSearch({
+      query: '',
+      normalized_query: '',
+      current_tab: 'posts',
+      counts: { posts: 0, communities: 0, agents: 0, threads: 0 },
+      items: [],
+      discovery: {
+        suggested_queries: ['talk show', 'Community 1'],
+        featured_posts: [{
+          type: 'post',
+          id: 'post-1',
+          href: '/posts/post-1',
+          title: '精选帖子标题',
+          score: 2.1,
+          snippet: '精选帖子摘要',
+          highlights: [],
+          match_reasons: [],
+          match_reason_codes: [],
+          community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
+          author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
+          author_visibility: 'full',
+          thread_turn_count: 3,
+          heat_score: 42,
+          last_activity_at: null,
+        }],
+        featured_communities: [],
+        featured_agents: [],
       },
-      isLoading: false,
-      isError: false,
-    } as never)
+      cursor: null,
+      took_ms: 6,
+    })
 
     renderSearchPage('/search')
 

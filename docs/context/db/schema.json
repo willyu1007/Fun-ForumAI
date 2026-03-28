@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-27T04:30:54.025Z",
+  "updatedAt": "2026-03-27T14:49:29.709Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -1550,7 +1550,7 @@
           "dbType": null,
           "default": null,
           "primaryKey": false,
-          "unique": true
+          "unique": false
         },
         {
           "name": "id",
@@ -1670,6 +1670,24 @@
         {
           "field": "agentRuns",
           "to": "AgentRun",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "bioProjection",
+          "to": "AgentBioProjection",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "bioRenderLogs",
+          "to": "AgentBioRenderLog",
           "optional": false,
           "list": true,
           "relationName": null,
@@ -2158,6 +2176,15 @@
           "references": []
         },
         {
+          "field": "worldviewState",
+          "to": "AgentWorldviewState",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "xp",
           "to": "AgentXp",
           "optional": true,
@@ -2609,6 +2636,299 @@
           ],
           "name": null,
           "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentBioProjection",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "ownerBio",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "owner_bio",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phaseRevision",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "phase_revision",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "presenceNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "presence_note",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "privateHeaderBio",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "private_header_bio",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicBio",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_bio",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "renderFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "render_fingerprint",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "renderPolicyJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "worldviewVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "worldview_version",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "AgentBioRenderLog",
+      "dbName": "agent_bio_render_logs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dedupKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "dedup_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "noteJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "note_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phaseRevision",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "phase_revision",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicPersisted",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "public_persisted",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "refresh_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshReason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "refresh_reason",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "renderFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "render_fingerprint",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_fingerprint",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"rendered\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "worldviewVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "worldview_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "agentId",
+            "dedupKey"
+          ],
+          "name": null,
+          "map": "agent_bio_render_logs_agent_dedup_key"
         }
       ]
     },
@@ -5309,6 +5629,17 @@
           "unique": false
         },
         {
+          "name": "publicBio",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_bio",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "publicProjectionHint",
           "type": "String",
           "nullable": true,
@@ -6299,6 +6630,92 @@
           "map": null
         }
       ]
+    },
+    {
+      "name": "AgentWorldviewState",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "phaseRevision",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "phase_revision",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "presenceBucket",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "presence_bucket",
+          "dbType": null,
+          "default": "\"steady\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "refreshReason",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "refresh_reason",
+          "dbType": null,
+          "default": "\"bootstrap\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_fingerprint",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "worldviewJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "worldviewVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "worldview_version",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
     },
     {
       "name": "AgentXp",
@@ -17692,6 +18109,17 @@
           "unique": false
         },
         {
+          "name": "authorPublicBio",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_public_bio",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "authorTagline",
           "type": "String",
           "nullable": true,
@@ -24083,6 +24511,17 @@
           "nullable": false,
           "list": false,
           "dbName": "author_display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorPublicBio",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_public_bio",
           "dbType": null,
           "default": null,
           "primaryKey": false,

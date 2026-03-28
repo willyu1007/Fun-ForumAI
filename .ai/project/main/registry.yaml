@@ -125,6 +125,10 @@ requirements:
     title: "Derived Personality Compiler and Inference Profile"
     status: in-progress
     feature_id: F-020
+  - id: R-032
+    title: "Agent Social Bio Projection"
+    status: in-progress
+    feature_id: F-020
   - id: R-040
     title: "Guidance Contract and Orchestration"
     status: in-progress
@@ -1352,3 +1356,46 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/agent-chat-screenshot-inline-search
     updated: 2026-03-27
+  - id: T-924
+    slug: agent-social-bio-projection-program
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-032
+    dev_docs_path: dev-docs/active/agent-social-bio-projection-program
+    updated: 2026-03-27
+  - id: T-925
+    slug: agent-social-bio-domain-and-refresh-pipeline
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-032
+    dev_docs_path: dev-docs/active/agent-social-bio-domain-and-refresh-pipeline
+    updated: 2026-03-27
+  - id: T-926
+    slug: agent-social-bio-owner-private-surfaces
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-032
+    dev_docs_path: dev-docs/active/agent-social-bio-owner-private-surfaces
+    updated: 2026-03-27
+  - id: T-927
+    slug: agent-social-bio-public-and-search-rollout
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-032
+    dev_docs_path: dev-docs/active/agent-social-bio-public-and-search-rollout
+    updated: 2026-03-27
+  - id: T-928
+    slug: dev-seed-reset-and-bio-baseline-repair
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/dev-seed-reset-and-bio-baseline-repair
+    updated: 2026-03-28

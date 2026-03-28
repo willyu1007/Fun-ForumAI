@@ -172,6 +172,9 @@ export class AgentService {
     configJson: Record<string, unknown>,
     adminUserId: string,
     review?: Partial<AgentConfigReview>,
+    options?: {
+      suppress_hooks?: boolean
+    },
   ): Promise<AgentConfig> {
     await this.getAgentPersisted(agentId)
     await this.deps.agentConfigRepo.refreshPersisted?.()
@@ -195,6 +198,7 @@ export class AgentService {
 
     if (
       this.deps.onConfigUpdated
+      && options?.suppress_hooks !== true
       && (saved.review_status === 'NOT_REQUIRED' || saved.review_status === 'APPROVED')
     ) {
       Promise.resolve(this.deps.onConfigUpdated({

@@ -1,11 +1,13 @@
 import type { ForumReadService } from './forum-read-service.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { ChronicleRepository, SurfaceMediaAttachmentView } from '../repos/index.js'
+import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
   achievementChronicleService: AchievementChronicleService
   chronicleRepo: ChronicleRepository
+  agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
 }
 
 interface HighlightThreadItem {
@@ -30,6 +32,7 @@ interface FeaturedAgentItem {
   display_name: string
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline: string | null
+  public_bio: string | null
   top_chronicle: Array<{
     id: string
     title: string
@@ -88,6 +91,14 @@ export function buildEmptyGlobalHighlightsPayload(now = new Date()): GlobalHighl
 export class GlobalHighlightsService {
   constructor(private readonly deps: GlobalHighlightsServiceDeps) {}
 
+  attachRuntimeDeps(input: {
+    agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
+  }): void {
+    if (input.agentBioService !== undefined) {
+      this.deps.agentBioService = input.agentBioService
+    }
+  }
+
   async collectToday(): Promise<GlobalHighlightsPayload> {
     const hot = await this.deps.forumReadService.getFeed({
       sort: 'hot',
@@ -130,13 +141,20 @@ export class GlobalHighlightsService {
 
     const selected = uniqueAgentIds.slice(0, 8)
     const rows = await Promise.all(selected.map(async (agentId) => {
-      const highlights = await this.deps.achievementChronicleService.getPublicHighlights(agentId)
+      const [highlights, bio] = await Promise.all([
+        this.deps.achievementChronicleService.getPublicHighlights(agentId),
+        this.deps.agentBioService?.getProjection(agentId, {
+          build_if_missing: true,
+          allow_minor_refresh: false,
+        }).catch(() => null) ?? Promise.resolve(null),
+      ])
       const fallback = threads.find((item) => item.author.id === agentId)
       return {
         agent_id: agentId,
         display_name: fallback?.author.display_name ?? agentId,
         badges: highlights.badges,
         tagline: highlights.tagline,
+        public_bio: bio?.public_bio ?? null,
         top_chronicle: highlights.top_chronicle.map((entry) => ({
           ...entry,
           occurred_at: entry.occurred_at.toISOString(),

@@ -81,16 +81,16 @@ export class PrivateChannelService {
       throw new ForbiddenError('Only the agent owner can start a private session')
     }
 
+    if (this.deps.identityGateService) {
+      await this.deps.identityGateService.assertVerified(humanUserId, 'private_session_create')
+    }
+
     const existing = await this.deps.channelRepo.listSessions(agentId, {
       limit: 1,
       status: 'ACTIVE',
     })
     if (existing.items.length > 0) {
       return existing.items[0]
-    }
-
-    if (this.deps.identityGateService) {
-      await this.deps.identityGateService.assertVerified(humanUserId, 'private_session_create')
     }
 
     try {
@@ -541,9 +541,17 @@ export class PrivateChannelService {
 
   async listSessions(
     agentId: string,
+    humanUserId: string,
     opts: PaginationOpts & { status?: PrivateSessionStatus },
   ): Promise<PaginatedResult<PrivateSession>> {
-    return this.deps.channelRepo.listSessions(agentId, opts)
+    const result = await this.deps.channelRepo.listSessions(agentId, opts)
+    if (
+      this.deps.identityGateService
+      && result.items.some((session) => requiresProactiveReceiveGate(session))
+    ) {
+      await this.deps.identityGateService.assertVerified(humanUserId, 'proactive_receive')
+    }
+    return result
   }
 
   async getMessages(
@@ -555,6 +563,12 @@ export class PrivateChannelService {
     if (!session) throw new NotFoundError('PrivateSession', sessionId)
     if (session.human_user_id !== humanUserId) {
       throw new ForbiddenError('Not your session')
+    }
+    if (
+      this.deps.identityGateService
+      && requiresProactiveReceiveGate(session)
+    ) {
+      await this.deps.identityGateService.assertVerified(humanUserId, 'proactive_receive')
     }
     const result = await this.deps.channelRepo.listMessages(sessionId, opts)
     return {
@@ -734,6 +748,10 @@ export class PrivateChannelService {
       return null
     }
   }
+}
+
+function requiresProactiveReceiveGate(session: PrivateSession): boolean {
+  return session.initiator === 'AGENT'
 }
 
 function isPrismaForeignKeyError(err: unknown): boolean {

@@ -6,6 +6,16 @@ export interface PostRepository {
   findPublic(opts: PaginationOpts & { communityId?: string; authorAgentIds?: string[] }): Promise<PaginatedResult<Post>>
   findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>>
   delete(id: string): Promise<void>
+  updateContent(id: string, patch: {
+    community_id?: string
+    author_agent_id?: string
+    title?: string
+    body?: string
+    tags?: string[]
+    visibility?: Post['visibility']
+    state?: Post['state']
+    moderation_metadata?: Record<string, unknown> | null
+  }): Promise<Post | null>
   updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
   updateState(id: string, state: Post['state']): Promise<Post | null>
   updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<Post | null>
@@ -68,6 +78,35 @@ export class InMemoryPostRepository implements PostRepository {
 
   async delete(id: string): Promise<void> {
     this.store.delete(id)
+  }
+
+  async updateContent(
+    id: string,
+    patch: {
+      community_id?: string
+      author_agent_id?: string
+      title?: string
+      body?: string
+      tags?: string[]
+      visibility?: Post['visibility']
+      state?: Post['state']
+      moderation_metadata?: Record<string, unknown> | null
+    },
+  ): Promise<Post | null> {
+    const post = this.store.get(id)
+    if (!post) return null
+    if (patch.community_id !== undefined) post.community_id = patch.community_id
+    if (patch.author_agent_id !== undefined) post.author_agent_id = patch.author_agent_id
+    if (patch.title !== undefined) post.title = patch.title
+    if (patch.body !== undefined) post.body = patch.body
+    if (patch.tags !== undefined) post.tags = patch.tags
+    if (patch.visibility !== undefined) post.visibility = patch.visibility
+    if (patch.state !== undefined) post.state = patch.state
+    if (patch.moderation_metadata !== undefined) {
+      post.moderation_metadata = patch.moderation_metadata
+    }
+    post.updated_at = new Date()
+    return post
   }
 
   async updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null> {

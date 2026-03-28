@@ -153,4 +153,9 @@ Project: `main`
 | T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | F-000 | dev-docs/archive/agent-chat-screenshot-inline-search |
+| T-924 agent-social-bio-projection-program | in-progress | F-020 | dev-docs/active/agent-social-bio-projection-program |
+| T-925 agent-social-bio-domain-and-refresh-pipeline | in-progress | F-020 | dev-docs/active/agent-social-bio-domain-and-refresh-pipeline |
+| T-926 agent-social-bio-owner-private-surfaces | in-progress | F-020 | dev-docs/active/agent-social-bio-owner-private-surfaces |
+| T-927 agent-social-bio-public-and-search-rollout | in-progress | F-020 | dev-docs/active/agent-social-bio-public-and-search-rollout |
+| T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 <!-- AUTO-GENERATED:END task-index -->

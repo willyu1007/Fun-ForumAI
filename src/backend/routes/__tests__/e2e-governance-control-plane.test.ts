@@ -69,6 +69,23 @@ describe('E2E: Governance Control Plane', () => {
       expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
       expect(res.body.data.observability).toHaveProperty('rollout_gates')
       expect(Array.isArray(res.body.data.observability.render_log_preview)).toBe(true)
+      expect(res.body.data.agent_bio).toEqual(
+        expect.objectContaining({
+          counts: expect.objectContaining({
+            attempted: expect.any(Number),
+            committed: expect.any(Number),
+            deduped: expect.any(Number),
+            conflicts: expect.any(Number),
+            privacy_blocked: expect.any(Number),
+            errors: expect.any(Number),
+          }),
+          by_kind: expect.objectContaining({
+            bootstrap: expect.any(Object),
+            major: expect.any(Object),
+            minor_presence: expect.any(Object),
+          }),
+        }),
+      )
     } finally {
       featureFlags.runtimeFeaturesV1 = originalRuntimeFeatures
       featureFlags.guidanceRecallV1 = originalGuidanceRecall

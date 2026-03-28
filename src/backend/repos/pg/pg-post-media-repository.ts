@@ -69,6 +69,23 @@ export class PgPostMediaRepository implements PostMediaRepository {
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
+  deleteByPostIds(postIds: string[]): number {
+    const lookup = new Set(postIds)
+    if (lookup.size === 0) return 0
+    let deleted = 0
+    for (const [id, item] of this.cache.entries()) {
+      if (!lookup.has(item.post_id)) continue
+      this.cache.delete(id)
+      deleted += 1
+    }
+    void this.prisma.postMedia.deleteMany({
+      where: {
+        postId: { in: [...lookup] },
+      },
+    }).catch((err: unknown) => console.error('[PgPostMediaRepo] deleteByPostIds error:', err))
+    return deleted
+  }
+
   private toDomain(row: PrismaPostMedia): PostMedia {
     return {
       id: row.id,

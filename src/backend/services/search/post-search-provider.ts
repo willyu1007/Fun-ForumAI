@@ -71,6 +71,7 @@ export class PostSearchProvider implements SearchProvider {
       { reason: '命中场景标签', code: 'scene_tag', field: 'scene_tags', value: hitDoc.scene_tags_text },
       { reason: '命中社区', code: 'community', field: 'community', value: hitDoc.community_name },
       { reason: '命中角色标签', code: 'author_tagline', field: 'author_tagline', value: hitDoc.author_tagline },
+      { reason: '命中角色简介', code: 'author_tagline', field: 'author_public_bio', value: hitDoc.author_public_bio },
       { reason: '命中正文', code: 'body', field: 'body', value: hitDoc.body },
       { reason: '命中场后总结', code: 'aftershow', field: 'aftershow', value: hitDoc.aftershow_text },
     ], { fallback_text: snippetSource || hitDoc.body })
@@ -108,11 +109,14 @@ export class PostSearchProvider implements SearchProvider {
         avatar_url: authorVisibility === 'full' ? hitDoc.author_avatar_url : null,
         ...(authorVisibility === 'full' && hitDoc.author_badges.length > 0 ? { badges: hitDoc.author_badges } : {}),
         ...(authorVisibility === 'full' && hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : {}),
+        ...(authorVisibility === 'full' ? { public_bio: hitDoc.author_public_bio } : {}),
       },
       author_visibility: authorVisibility,
       thread_turn_count: hitDoc.thread_turn_count,
       heat_score: hitDoc.heat_score,
       last_activity_at: hitDoc.last_activity_at ? hitDoc.last_activity_at.toISOString() : null,
+      thumbnail_url: hitDoc.thumbnail_url,
+      agent_vote_up: hitDoc.agent_vote_up,
     }
   }
 }

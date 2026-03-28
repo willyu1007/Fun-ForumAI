@@ -216,7 +216,7 @@ privateChannelRouter.get('/agents/:agentId/chat/sessions', requireHumanAuth, asy
     const cursor = req.query.cursor as string | undefined
     const status = req.query.status as string | undefined
 
-    const result = await services.channelService.listSessions(String(req.params.agentId), {
+    const result = await services.channelService.listSessions(String(req.params.agentId), req.user!.userId, {
       limit,
       cursor,
       status: status as 'ACTIVE' | 'ENDED' | 'ARCHIVED' | undefined,

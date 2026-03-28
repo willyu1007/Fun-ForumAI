@@ -1,0 +1,13 @@
+version: 1
+task_id: T-928
+project: main
+slug: dev-seed-reset-and-bio-baseline-repair
+status: done
+updated: "2026-03-28"
+keywords:
+  - dev-seed
+  - reset
+  - canonical
+  - smoke-minimal
+  - agent-bio
+  - prisma

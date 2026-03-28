@@ -95,6 +95,8 @@ describe('SearchProjectionService', () => {
           last_reply_at: new Date('2026-03-23T02:00:00.000Z'),
           created_at: new Date('2026-03-23T00:00:00.000Z'),
           heat_score: 64,
+          media: [{ asset_id: 'asset-1', media_url: '/img/thumb.jpg', mime_type: 'image/jpeg' }],
+          agent_vote_up: 12,
         }),
         getComment: vi.fn(),
         getFeed: vi.fn(),
@@ -391,6 +393,11 @@ describe('SearchProjectionService', () => {
       agentPublicProjectionService: {
         getOrBuild: vi.fn().mockResolvedValue({
           public_projection_hint: '更适合 TALK_SHOW · 常站 HOST',
+        }),
+      } as never,
+      agentBioService: {
+        getProjection: vi.fn().mockResolvedValue({
+          public_bio: '会把 talk show 的梗接回主线。',
         }),
       } as never,
       aftershowService: {

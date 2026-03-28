@@ -211,6 +211,13 @@ describe('TabChat timeline layout', () => {
         data: {
           id: agentId,
           display_name: agentId === 'agent-1' ? '合规助手' : '辩论大师',
+          social_bio: {
+            public_bio: '公开介绍',
+            owner_bio: 'owner 介绍',
+            private_header_bio: '她刚把一段公开经历压进更私人的节奏里。',
+            presence_note: '这会儿语气偏稳，适合慢慢往下聊。',
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
         },
       },
       isLoading: false,
@@ -409,5 +416,98 @@ describe('TabChat timeline layout', () => {
     expect(screen.getByTestId('private-chat-main-area').className).toContain('min-h-0')
     expect(screen.getByTestId('private-chat-main-area').className).toContain('overflow-hidden')
     expect(screen.getByTestId('private-chat-thread-scroll-area').className).toContain('min-h-0')
+  })
+
+  it('renders the private social bio header from profile data', async () => {
+    renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('她刚把一段公开经历压进更私人的节奏里。')).toBeTruthy()
+    })
+
+    expect(screen.getByText('这会儿语气偏稳，适合慢慢往下聊。')).toBeTruthy()
+  })
+
+  it('opens the rules panel when private chat access is blocked by identity gate', async () => {
+    usePrivateSessionsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: {
+        message: '接收主动私信需要先完成实名审核',
+        response: { status: 403 },
+      },
+    })
+
+    renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('接收主动私信需要先完成实名审核')).toBeTruthy()
+    })
+
+    expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-auto')
+    expect(screen.getByText('私聊实名审核要求')).toBeTruthy()
+  })
+
+  it('closes an auto-opened rules panel once private chat access is restored', async () => {
+    usePrivateSessionsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: {
+        message: '接收主动私信需要先完成实名审核',
+        response: { status: 403 },
+      },
+    })
+
+    const view = renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-auto')
+    })
+
+    usePrivateSessionsMock.mockReturnValue({
+      data: {
+        data: {
+          items: [
+            buildSession({
+              id: 'session-agent-2-active',
+              agentId: 'agent-2',
+              status: 'ACTIVE',
+              startedAt: '2026-03-25T09:30:00.000Z',
+            }),
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+    usePrivateMessageTimelineMock.mockReturnValue({
+      items: [{
+        session: buildSession({
+          id: 'session-agent-2-active',
+          agentId: 'agent-2',
+          status: 'ACTIVE',
+          startedAt: '2026-03-25T09:30:00.000Z',
+        }),
+        messages: [buildMessage('session-agent-2-active', '恢复后的记录', '2026-03-25T09:40:00.000Z')],
+      }],
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    act(() => {
+      view.rerender(
+        <MemoryRouter>
+          <TabChat agentId="agent-2" />
+        </MemoryRouter>,
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-none')
+    })
   })
 })

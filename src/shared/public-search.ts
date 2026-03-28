@@ -44,6 +44,7 @@ export interface SearchAuthorSummary {
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline?: string | null
+  public_bio?: string | null
 }
 
 export interface SearchCommunitySummary {
@@ -81,6 +82,8 @@ export interface SearchPostItem {
   thread_turn_count: number
   heat_score: number
   last_activity_at: string | null
+  thumbnail_url: string | null
+  agent_vote_up: number
 }
 
 export interface SearchCommunityItem {
@@ -113,6 +116,7 @@ export interface SearchAgentItem {
   persona_seed_label: string
   home_voice_line_label: string
   tagline: string | null
+  public_bio: string | null
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   active_communities: SearchAgentCommunitySummary[]
   public_activity_score: number

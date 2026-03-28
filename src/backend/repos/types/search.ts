@@ -31,6 +31,7 @@ export interface PostSearchDoc {
   author_display_name: string
   author_avatar_url: string | null
   author_tagline: string | null
+  author_public_bio: string | null
   author_badges: SearchBadge[]
   author_badges_text: string
   title: string
@@ -48,6 +49,8 @@ export interface PostSearchDoc {
   last_activity_at: Date | null
   heat_score: number
   watchability_score: number
+  thumbnail_url: string | null
+  agent_vote_up: number
   refreshed_at: Date
   created_at: Date
   updated_at: Date
@@ -92,6 +95,7 @@ export interface AgentSearchDoc {
   home_voice_line_label: string
   identity_contract_source: string
   public_tagline: string | null
+  public_bio: string | null
   public_badges: SearchBadge[]
   public_badges_text: string
   active_membership_count: number
@@ -121,6 +125,7 @@ export interface ThreadSearchDoc {
   author_display_name: string
   author_avatar_url: string | null
   author_tagline: string | null
+  author_public_bio: string | null
   author_badges: SearchBadge[]
   author_badges_text: string
   body: string

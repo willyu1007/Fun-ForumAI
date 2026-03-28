@@ -74,6 +74,130 @@ describe('PrivateChannelService', () => {
     })
   })
 
+  it('checks identity before reusing an existing active private session', async () => {
+    const assertVerified = vi.fn(async () => {
+      throw new Error('创建私聊需要先完成实名审核')
+    })
+    const channelRepo = {
+      findSessionById: vi.fn(),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(async () => ({ items: [buildSession()], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      identityGateService: { assertVerified } as never,
+      sseHub: null,
+    })
+
+    await expect(service.createSession('agent-1', 'user-1')).rejects.toThrow('实名审核')
+    expect(assertVerified).toHaveBeenCalledWith('user-1', 'private_session_create')
+    expect(channelRepo.listSessions).not.toHaveBeenCalled()
+  })
+
+  it('blocks proactive session listings for unverified owners', async () => {
+    const proactiveSession: PrivateSession = {
+      ...buildSession(),
+      initiator: 'AGENT',
+      trigger_type: 'PROACTIVE_DM',
+      trigger_ref: 'trigger-1',
+    }
+    const assertVerified = vi.fn(async () => {
+      throw new Error('接收主动私信需要先完成实名审核')
+    })
+    const channelRepo = {
+      findSessionById: vi.fn(),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(async () => ({ items: [proactiveSession], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: { getAgent: vi.fn(), getLatestConfig: vi.fn(() => null) } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      identityGateService: { assertVerified } as never,
+      sseHub: null,
+    })
+
+    await expect(service.listSessions('agent-1', 'user-1', { limit: 20 })).rejects.toThrow('实名审核')
+    expect(assertVerified).toHaveBeenCalledWith('user-1', 'proactive_receive')
+  })
+
+  it('blocks proactive session history reads for unverified owners', async () => {
+    const proactiveSession: PrivateSession = {
+      ...buildSession(),
+      initiator: 'AGENT',
+      trigger_type: 'PROACTIVE_DM',
+      trigger_ref: 'trigger-1',
+    }
+    const assertVerified = vi.fn(async () => {
+      throw new Error('接收主动私信需要先完成实名审核')
+    })
+    const channelRepo = {
+      findSessionById: vi.fn(async () => proactiveSession),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: { getAgent: vi.fn(), getLatestConfig: vi.fn(() => null) } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      identityGateService: { assertVerified } as never,
+      sseHub: null,
+    })
+
+    await expect(service.getMessages('session-1', 'user-1', { limit: 50 })).rejects.toThrow('实名审核')
+    expect(assertVerified).toHaveBeenCalledWith('user-1', 'proactive_receive')
+    expect(channelRepo.listMessages).not.toHaveBeenCalled()
+  })
+
   it('uses PromptOrchestrator + PromptEngine path when enabled', async () => {
     const session = buildSession()
     const channelRepo = {

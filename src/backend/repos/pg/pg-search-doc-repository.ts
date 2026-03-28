@@ -158,6 +158,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
         authorTagline: input.author_tagline,
+        authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
         authorBadgesText: input.author_badges_text,
         title: input.title,
@@ -175,6 +176,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
         lastActivityAt: input.last_activity_at,
         heatScore: input.heat_score,
         watchabilityScore: input.watchability_score,
+        thumbnailUrl: input.thumbnail_url,
+        agentVoteUp: input.agent_vote_up,
         refreshedAt: new Date(),
       },
       update: {
@@ -185,6 +188,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
         authorTagline: input.author_tagline,
+        authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
         authorBadgesText: input.author_badges_text,
         title: input.title,
@@ -202,6 +206,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
         lastActivityAt: input.last_activity_at,
         heatScore: input.heat_score,
         watchabilityScore: input.watchability_score,
+        thumbnailUrl: input.thumbnail_url,
+        agentVoteUp: input.agent_vote_up,
         refreshedAt: new Date(),
       },
     })
@@ -357,6 +363,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         homeVoiceLineLabel: input.home_voice_line_label,
         identityContractSource: input.identity_contract_source,
         publicTagline: input.public_tagline,
+        publicBio: input.public_bio,
         publicBadgesJson: input.public_badges as unknown as Prisma.InputJsonValue,
         publicBadgesText: input.public_badges_text,
         activeMembershipCount: input.active_membership_count,
@@ -384,6 +391,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         homeVoiceLineLabel: input.home_voice_line_label,
         identityContractSource: input.identity_contract_source,
         publicTagline: input.public_tagline,
+        publicBio: input.public_bio,
         publicBadgesJson: input.public_badges as unknown as Prisma.InputJsonValue,
         publicBadgesText: input.public_badges_text,
         activeMembershipCount: input.active_membership_count,
@@ -456,6 +464,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
         authorTagline: input.author_tagline,
+        authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
         authorBadgesText: input.author_badges_text,
         body: input.body,
@@ -478,6 +487,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
         authorTagline: input.author_tagline,
+        authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
         authorBadgesText: input.author_badges_text,
         body: input.body,
@@ -537,6 +547,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       author_display_name: string
       author_avatar_url: string | null
       author_tagline: string | null
+      author_public_bio: string | null
       author_badges_json: unknown
       author_badges_text: string
       title: string
@@ -554,6 +565,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
       last_activity_at: Date | null
       heat_score: number
       watchability_score: number
+      thumbnail_url: string | null
+      agent_vote_up: number
       refreshed_at: Date
       created_at: Date
       updated_at: Date
@@ -569,6 +582,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
           author_display_name,
           author_avatar_url,
           author_tagline,
+          author_public_bio,
           author_badges_json,
           author_badges_text,
           title,
@@ -586,6 +600,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
           last_activity_at,
           heat_score,
           watchability_score,
+          thumbnail_url,
+          agent_vote_up,
           refreshed_at,
           created_at,
           updated_at,
@@ -598,6 +614,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(highlight_text), lower(${normalized})) * 1.04,
               similarity(lower(author_badges_text), lower(${normalized})) * 0.95,
               similarity(lower(COALESCE(author_tagline, '')), lower(${normalized})) * 0.92,
+              similarity(lower(COALESCE(author_public_bio, '')), lower(${normalized})) * 0.96,
               similarity(lower(body), lower(${normalized})),
               similarity(lower(community_name), lower(${normalized})) * 0.95,
               similarity(lower(author_display_name), lower(${normalized})) * 0.9,
@@ -639,6 +656,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       author_display_name: row.author_display_name,
       author_avatar_url: row.author_avatar_url,
       author_tagline: row.author_tagline,
+      author_public_bio: row.author_public_bio,
       author_badges: toSearchBadges(row.author_badges_json),
       author_badges_text: row.author_badges_text,
       title: row.title,
@@ -656,6 +674,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
       last_activity_at: row.last_activity_at,
       heat_score: row.heat_score,
       watchability_score: row.watchability_score,
+      thumbnail_url: row.thumbnail_url,
+      agent_vote_up: row.agent_vote_up,
       refreshed_at: row.refreshed_at,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -764,6 +784,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       home_voice_line_label: string
       identity_contract_source: string
       public_tagline: string | null
+      public_bio: string | null
       public_badges_json: unknown
       public_badges_text: string
       active_membership_count: number
@@ -796,6 +817,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
           home_voice_line_label,
           identity_contract_source,
           public_tagline,
+          public_bio,
           public_badges_json,
           public_badges_text,
           active_membership_count,
@@ -826,6 +848,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(public_badges_text), lower(${normalized})) * 1.08,
               similarity(lower(active_community_names_text), lower(${normalized})) * 1.02,
               similarity(lower(COALESCE(public_tagline, '')), lower(${normalized})),
+              similarity(lower(COALESCE(public_bio, '')), lower(${normalized})) * 1.04,
               similarity(lower(searchable_text), lower(${normalized})) * 0.9
             )
             + CASE WHEN display_name ILIKE ${likePattern} THEN 0.35 ELSE 0 END
@@ -863,6 +886,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       home_voice_line_label: row.home_voice_line_label,
       identity_contract_source: row.identity_contract_source,
       public_tagline: row.public_tagline,
+      public_bio: row.public_bio,
       public_badges: toSearchBadges(row.public_badges_json),
       public_badges_text: row.public_badges_text,
       active_membership_count: row.active_membership_count,
@@ -899,6 +923,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       author_display_name: string
       author_avatar_url: string | null
       author_tagline: string | null
+      author_public_bio: string | null
       author_badges_json: unknown
       author_badges_text: string
       body: string
@@ -926,6 +951,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
           csd.author_display_name,
           csd.author_avatar_url,
           csd.author_tagline,
+          csd.author_public_bio,
           csd.author_badges_json,
           csd.author_badges_text,
           csd.body,
@@ -947,6 +973,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(csd.scene_tags_text), lower(${normalized})) * 1.04,
               similarity(lower(csd.author_badges_text), lower(${normalized})) * 0.94,
               similarity(lower(COALESCE(csd.author_tagline, '')), lower(${normalized})) * 0.92,
+              similarity(lower(COALESCE(csd.author_public_bio, '')), lower(${normalized})) * 0.96,
               similarity(lower(csd.community_name), lower(${normalized})) * 0.95,
               similarity(lower(csd.author_display_name), lower(${normalized})) * 0.9,
               similarity(lower(csd.searchable_text), lower(${normalized})) * 0.85
@@ -988,6 +1015,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       author_display_name: row.author_display_name,
       author_avatar_url: row.author_avatar_url,
       author_tagline: row.author_tagline,
+      author_public_bio: row.author_public_bio,
       author_badges: toSearchBadges(row.author_badges_json),
       author_badges_text: row.author_badges_text,
       body: row.body,
@@ -1015,6 +1043,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     authorDisplayName: string
     authorAvatarUrl: string | null
     authorTagline: string | null
+    authorPublicBio: string | null
     authorBadgesJson: unknown
     authorBadgesText: string
     title: string
@@ -1032,6 +1061,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
     lastActivityAt: Date | null
     heatScore: number
     watchabilityScore: number
+    thumbnailUrl: string | null
+    agentVoteUp: number
     refreshedAt: Date
     createdAt: Date
     updatedAt: Date
@@ -1045,6 +1076,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       author_display_name: row.authorDisplayName,
       author_avatar_url: row.authorAvatarUrl,
       author_tagline: row.authorTagline,
+      author_public_bio: row.authorPublicBio,
       author_badges: toSearchBadges(row.authorBadgesJson),
       author_badges_text: row.authorBadgesText,
       title: row.title,
@@ -1062,6 +1094,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
       last_activity_at: row.lastActivityAt,
       heat_score: row.heatScore,
       watchability_score: row.watchabilityScore,
+      thumbnail_url: row.thumbnailUrl,
+      agent_vote_up: row.agentVoteUp,
       refreshed_at: row.refreshedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
@@ -1122,6 +1156,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     homeVoiceLineLabel: string
     identityContractSource: string
     publicTagline: string | null
+    publicBio: string | null
     publicBadgesJson: unknown
     publicBadgesText: string
     activeMembershipCount: number
@@ -1152,6 +1187,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       home_voice_line_label: row.homeVoiceLineLabel,
       identity_contract_source: row.identityContractSource,
       public_tagline: row.publicTagline,
+      public_bio: row.publicBio,
       public_badges: toSearchBadges(row.publicBadgesJson),
       public_badges_text: row.publicBadgesText,
       active_membership_count: row.activeMembershipCount,
@@ -1182,6 +1218,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     authorDisplayName: string
     authorAvatarUrl: string | null
     authorTagline: string | null
+    authorPublicBio: string | null
     authorBadgesJson: unknown
     authorBadgesText: string
     body: string
@@ -1207,6 +1244,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       author_display_name: row.authorDisplayName,
       author_avatar_url: row.authorAvatarUrl,
       author_tagline: row.authorTagline,
+      author_public_bio: row.authorPublicBio,
       author_badges: toSearchBadges(row.authorBadgesJson),
       author_badges_text: row.authorBadgesText,
       body: row.body,

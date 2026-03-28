@@ -64,6 +64,12 @@ const STATUS_LABELS: Record<string, string> = {
   QUARANTINED: '隔离中',
   BANNED: '已封禁',
 }
+
+function normalizeBio(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
 const STATS_UI_ENABLED = import.meta.env.VITE_FF_AGENT_STATS_UI === 'true'
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 const MULTIMODAL_MEDIA_ENABLED = import.meta.env.VITE_FF_MULTIMODAL_AGENT_MEDIA_V1 === 'true'
@@ -93,8 +99,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const canViewRuns = Boolean(
     agent && user && (user.role === 'admin' || user.id === agent.owner_id),
   )
-  const shouldLoadPublicHighlights =
-    guidanceEnabled && Boolean(agentId) && Boolean(agent) && !isOwner
+  const shouldLoadPublicHighlights = Boolean(agentId) && Boolean(agent) && !isOwner
   const highlightsData = useAgentHighlights(agentId, shouldLoadPublicHighlights)
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId, undefined, {
     enabled: canViewRuns,
@@ -176,16 +181,6 @@ export function TabIntro({ agentId }: { agentId: string }) {
       })
     : null
   const publicHighlights = highlightsData.data?.data
-  const topChronicle = publicHighlights?.top_chronicle[0] ?? null
-  const topChronicleVisual = topChronicle?.visual ?? null
-  const shouldShowPublicProof =
-    guidanceEnabled &&
-    !isOwner &&
-    Boolean(
-      publicHighlights?.tagline ||
-      publicHighlights?.badges.length ||
-      publicHighlights?.top_chronicle.length,
-    )
   const tabs = useMemo(() => {
     const baseTabs: Array<{
       id: TabId
@@ -252,6 +247,24 @@ export function TabIntro({ agentId }: { agentId: string }) {
   }
 
   const safeAgent = data.data
+  const publicBio =
+    normalizeBio(publicHighlights?.public_bio)
+    ?? normalizeBio(safeAgent.social_bio?.public_bio)
+    ?? normalizeBio(safeAgent.public_bio)
+    ?? normalizeBio(publicHighlights?.tagline)
+    ?? normalizeBio(safeAgent.tagline)
+    ?? null
+  const ownerBio = normalizeBio(safeAgent.social_bio?.owner_bio)
+  const presenceNote = normalizeBio(safeAgent.social_bio?.presence_note)
+  const topChronicle = publicHighlights?.top_chronicle[0] ?? null
+  const topChronicleVisual = topChronicle?.visual ?? null
+  const shouldShowPublicProof =
+    !isOwner &&
+    Boolean(
+      publicBio ||
+      publicHighlights?.badges.length ||
+      publicHighlights?.top_chronicle.length,
+    )
   const debugProfile = safeAgent.inference_profile_debug?.profile
   const shadowReview = safeAgent.inference_profile_debug?.shadowReview
   const isFollowed = !!safeAgent.is_followed
@@ -386,6 +399,21 @@ export function TabIntro({ agentId }: { agentId: string }) {
                         ))}
                       </div>
                     ) : null}
+                  </div>
+                )}
+                {(isOwner || isAdmin) && (
+                  <div className="rounded-md border bg-background/80 p-3">
+                    <p className="text-xs font-medium">当前自我介绍</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {ownerBio ?? '还没有生成稳定的 owner 版介绍。'}
+                    </p>
+                    <p className="mt-2 text-xs font-medium">最近状态附注</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {presenceNote ?? '暂时还没有稳定的阶段感附注。'}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      公域显示：{publicBio ?? '暂未形成公开版介绍'}
+                    </p>
                   </div>
                 )}
                 {(isOwner || isAdmin) && (
@@ -647,23 +675,23 @@ export function TabIntro({ agentId }: { agentId: string }) {
               />
             ) : null)}
 
-          {!isOwner && shouldShowPublicProof && publicHighlights && (
+          {!isOwner && shouldShowPublicProof && (
             <Card className={"border-primary/20 bg-primary/5"}>
               <CardHeader className={"pb-2"}>
                 <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {publicHighlights.badges.length > 0 && (
+                {(publicHighlights?.badges.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {publicHighlights.badges.map((badge) => (
+                    {publicHighlights?.badges.map((badge) => (
                       <Badge key={`${badge.code}-${badge.tier}`} variant="outline">
                         {badge.name} T{badge.tier}
                       </Badge>
                     ))}
                   </div>
                 )}
-                {publicHighlights.tagline && (
-                  <p className={"text-sm text-muted-foreground"}>{publicHighlights.tagline}</p>
+                {publicBio && (
+                  <p className={"text-sm text-muted-foreground"}>{publicBio}</p>
                 )}
                 {topChronicle && (
                   <div className={"overflow-hidden rounded-md border bg-background/80"}>

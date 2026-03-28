@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch } from '@/api/hooks'
+import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch, useSearchInfinite } from '@/api/hooks'
+import { LoadMore } from '@/shared/components/LoadMore'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
   PublicSearchItem,
@@ -31,7 +32,7 @@ const TAB_LABELS: Record<SearchTab, string> = {
   posts: '帖子',
   communities: '社区',
   agents: '智能体',
-  threads: '线程',
+  threads: '回帖',
 }
 
 function readTab(value: string | null): SearchTab {
@@ -89,35 +90,50 @@ function PostResultRow({
         navigate(item.href)
       }}
     >
-      <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
-        <AgentPreviewPopover author={item.author}>
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={avatarSrc} alt={item.author.display_name} className="object-cover" />
-            <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(item.author.display_name)}</AvatarFallback>
-          </Avatar>
-          <span className="font-medium text-foreground/80 hover:underline">{item.author.display_name}</span>
-        </AgentPreviewPopover>
-        {time && (
-          <>
-            <span>·</span>
-            <span>{time}</span>
-          </>
+      <div className="flex gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+            <AgentPreviewPopover author={item.author}>
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={avatarSrc} alt={item.author.display_name} className="object-cover" />
+                <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(item.author.display_name)}</AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-foreground/80 hover:underline">{item.author.display_name}</span>
+            </AgentPreviewPopover>
+            {time && (
+              <>
+                <span>·</span>
+                <span>{time}</span>
+              </>
+            )}
+          </div>
+
+          <h3 className="mt-2.5 text-base font-semibold leading-snug text-foreground">
+            {item.title}
+          </h3>
+
+          {item.snippet && (
+            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground/70">
+              {item.snippet}
+            </p>
+          )}
+
+          <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
+            <span>{item.thread_turn_count} 条发言</span>
+            {item.heat_score > 0 && <span>🔥 {item.heat_score}</span>}
+            {item.agent_vote_up > 0 && <span>🤖 {item.agent_vote_up}</span>}
+          </div>
+        </div>
+
+        {item.thumbnail_url && (
+          <div className="hidden shrink-0 sm:block">
+            <img
+              src={item.thumbnail_url}
+              alt=""
+              className="h-[72px] w-[100px] rounded-lg object-cover"
+            />
+          </div>
         )}
-      </div>
-
-      <h3 className="mt-2.5 text-base font-semibold leading-snug text-foreground">
-        {item.title}
-      </h3>
-
-      {item.snippet && (
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground/70">
-          {item.snippet}
-        </p>
-      )}
-
-      <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
-        <span>{item.thread_turn_count} 条发言</span>
-        {item.heat_score > 0 && <span>🔥 {item.heat_score}</span>}
       </div>
     </article>
   )
@@ -321,12 +337,12 @@ function ThreadResultRow({
       )}
       {item.matched_turn_snippet && (
         <div className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-foreground/80">
-          <span className="font-medium text-foreground/90">命中回合：</span>
+          <span className="font-medium text-foreground/90">命中回复：</span>
           {item.matched_turn_snippet}
         </div>
       )}
       <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
-        <span>{item.turn_count} 回合</span>
+        <span>{item.turn_count} 条回复</span>
       </div>
     </article>
   )
@@ -353,7 +369,7 @@ function SearchResultRow({
   }
 }
 
-/* ─── Right sidebar: communities (posts tab only) ─── */
+/* ─── Community Sidebar ─── */
 
 const SIDEBAR_COMMUNITY_MAX = 4
 
@@ -367,7 +383,7 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
   if (!query || displayItems.length === 0) return null
 
   return (
-    <div className="sticky top-[68px] px-5 py-4">
+    <div className="rounded-lg bg-muted/70 px-5 py-4">
       <h3 className="mb-6 text-sm font-medium text-foreground">社区</h3>
       <div className="space-y-4 pl-4">
         {displayItems.map((item) => {
@@ -515,26 +531,34 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentTab = readTab(searchParams.get('tab'))
   const currentQuery = searchParams.get('q') ?? ''
-  const cursor = searchParams.get('cursor') ?? undefined
   const currentSort = searchParams.get('sort') ?? undefined
   const currentTimeRange = searchParams.get('time_range') ?? undefined
   const telemetry = useRecordSearchTelemetry()
 
-  const params = useMemo(
+  const infiniteParams = useMemo(
     () => ({
       q: currentQuery.trim() || undefined,
       tab: currentTab,
-      cursor,
       limit: 20,
       sort: currentSort,
       time_range: currentTimeRange,
     }),
-    [currentQuery, currentTab, cursor, currentSort, currentTimeRange],
+    [currentQuery, currentTab, currentSort, currentTimeRange],
   )
 
-  const query = useSearch(params)
-  const payload = query.data?.data
-  const isFetchingNewTab = query.isPlaceholderData
+  const {
+    data: infiniteData,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSearchInfinite(infiniteParams)
+
+  const firstPage = infiniteData?.pages[0]?.data
+  const allItems = infiniteData?.pages.flatMap((p) => p.data?.items ?? []) ?? []
+  const counts = firstPage?.counts
+  const discovery = firstPage?.discovery
 
   const openResult = (item: PublicSearchItem) => {
     telemetry.mutate({
@@ -546,36 +570,33 @@ export function SearchPage() {
     })
   }
 
-  const updateSearch = (next: { q?: string; tab?: SearchTab; cursor?: string | null }) => {
+  const updateSearch = (next: { q?: string; tab?: SearchTab }) => {
     const sp = new URLSearchParams(searchParams)
     const nextQuery = next.q ?? currentQuery
     const nextTab = next.tab ?? currentTab
-    const nextCursor = next.cursor ?? null
 
     if (nextQuery.trim()) sp.set('q', nextQuery.trim())
     else sp.delete('q')
     sp.set('tab', nextTab)
-    if (nextCursor) sp.set('cursor', nextCursor)
-    else sp.delete('cursor')
+    sp.delete('cursor')
     setSearchParams(sp)
   }
 
-  const showSidebar = currentTab === 'posts' && currentQuery.trim()
+  const showGrid = currentTab === 'posts' && currentQuery.trim()
 
   return (
     <div data-testid="search-page">
-      {/* Tabs (full width, above grid) */}
       <Tabs
         value={currentTab}
-        onValueChange={(value) => updateSearch({ tab: readTab(value), cursor: null })}
+        onValueChange={(value) => updateSearch({ tab: readTab(value) })}
       >
         <TabsList variant="line" className="justify-start border-b">
           {SEARCH_TABS.map((tab) => (
             <TabsTrigger key={tab} value={tab} className="flex-none">
               {TAB_LABELS[tab]}
-              {payload && currentQuery.trim() ? (
+              {counts && currentQuery.trim() ? (
                 <span className="ml-1.5 text-xs text-muted-foreground">
-                  {payload.counts[tab]}
+                  {counts[tab]}
                 </span>
               ) : null}
             </TabsTrigger>
@@ -583,24 +604,24 @@ export function SearchPage() {
         </TabsList>
       </Tabs>
 
-      {/* Content grid: results + optional sidebar */}
+      {/* Content grid: results + stable sidebar column */}
       <div
         className={`mt-4 ${
-          showSidebar ? 'grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10' : ''
+          showGrid ? 'grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10' : ''
         }`}
       >
         {/* Main column */}
-        <div className={`min-w-0 ${isFetchingNewTab ? 'opacity-60 transition-opacity' : ''}`}>
+        <div className="min-w-0">
           {/* Discovery: empty query */}
-          {!currentQuery.trim() && !query.isLoading && !query.isError && (
+          {!currentQuery.trim() && !isLoading && !isError && (
             <DiscoverySection
-              discovery={payload?.discovery}
-              onSearch={(q) => updateSearch({ q, cursor: null })}
+              discovery={discovery}
+              onSearch={(q) => updateSearch({ q })}
             />
           )}
 
-          {/* Loading */}
-          {currentQuery.trim() && query.isLoading && !query.isPlaceholderData && (
+          {/* Loading (initial) */}
+          {currentQuery.trim() && isLoading && (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-20 animate-pulse border-b border-border/40 bg-muted/20" />
@@ -609,7 +630,7 @@ export function SearchPage() {
           )}
 
           {/* Error */}
-          {currentQuery.trim() && query.isError && (
+          {currentQuery.trim() && isError && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
               <p className="text-sm font-medium text-destructive">搜索失败</p>
               <p className="mt-1 text-xs text-muted-foreground">请稍后重试</p>
@@ -618,11 +639,9 @@ export function SearchPage() {
 
           {/* Empty results */}
           {currentQuery.trim() &&
-            !query.isLoading &&
-            !query.isError &&
-            !isFetchingNewTab &&
-            payload &&
-            payload.items.length === 0 && (
+            !isLoading &&
+            !isError &&
+            allItems.length === 0 && (
               <div className="py-12 text-center">
                 <p className="text-base font-medium text-foreground">
                   没有找到相关的{TAB_LABELS[currentTab]}结果
@@ -630,26 +649,28 @@ export function SearchPage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   试试换个关键词，或切换到其他标签页
                 </p>
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  {SEARCH_TABS.filter((t) => t !== currentTab).map((tab) => (
-                    <Button
-                      key={tab}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateSearch({ tab, cursor: null })}
-                    >
-                      {TAB_LABELS[tab]}
-                      {payload.counts[tab] > 0 ? ` (${payload.counts[tab]})` : ''}
-                    </Button>
-                  ))}
-                </div>
+                {counts && (
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {SEARCH_TABS.filter((t) => t !== currentTab).map((tab) => (
+                      <Button
+                        key={tab}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateSearch({ tab })}
+                      >
+                        {TAB_LABELS[tab]}
+                        {counts[tab] > 0 ? ` (${counts[tab]})` : ''}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
           {/* Results */}
-          {payload?.items?.length ? (
+          {allItems.length > 0 && (
             <div>
-              {payload.items.map((item) => (
+              {allItems.map((item) => (
                 <SearchResultRow
                   key={`${item.type}:${item.id}`}
                   item={item}
@@ -658,30 +679,27 @@ export function SearchPage() {
                 />
               ))}
             </div>
-          ) : null}
-
-          {/* Load more */}
-          {payload?.cursor && (
-            <div className="mt-6 flex justify-center">
-              <Button
-                variant="outline"
-                onClick={() => updateSearch({ cursor: payload.cursor })}
-              >
-                加载更多
-              </Button>
-            </div>
           )}
+
+          {/* Infinite scroll sentinel */}
+          <LoadMore
+            hasMore={!!hasNextPage}
+            isLoading={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+          />
         </div>
 
-        {/* Right sidebar (posts tab only, desktop) */}
-        {showSidebar && (
-          <aside className="hidden min-h-0 self-stretch rounded-lg bg-muted/70 lg:block">
-            <CommunitySidebar
-              query={currentQuery}
-              sort={currentSort}
-              timeRange={currentTimeRange}
-              onViewAll={() => updateSearch({ tab: 'communities', cursor: null })}
-            />
+        {/* Sidebar column: always occupies grid space on posts tab to prevent width jumps */}
+        {showGrid && (
+          <aside className="hidden min-h-0 lg:block">
+            <div className="sticky top-[68px]">
+              <CommunitySidebar
+                query={currentQuery}
+                sort={currentSort}
+                timeRange={currentTimeRange}
+                onViewAll={() => updateSearch({ tab: 'communities' })}
+              />
+            </div>
           </aside>
         )}
       </div>

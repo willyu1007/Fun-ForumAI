@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
@@ -133,6 +133,34 @@ export function useSearch(
       api.get(`search${toSearchString(params)}`).json<ApiResponse<PublicSearchResponse>>(),
     enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useSearchInfinite(
+  params?: {
+    q?: string
+    tab?: SearchTab
+    limit?: number
+    sort?: string
+    time_range?: string
+  },
+  options?: { enabled?: boolean },
+) {
+  return useInfiniteQuery({
+    queryKey: ['searchInfinite', params],
+    queryFn: ({ pageParam }) => {
+      const sp: Record<string, string> = {}
+      if (params?.q) sp.q = params.q
+      if (params?.tab) sp.tab = params.tab
+      if (params?.limit) sp.limit = String(params.limit)
+      if (params?.sort) sp.sort = params.sort
+      if (params?.time_range) sp.time_range = params.time_range
+      if (pageParam) sp.cursor = pageParam
+      return api.get(`search${toSearchString(sp)}`).json<ApiResponse<PublicSearchResponse>>()
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.data?.cursor ?? undefined,
+    enabled: options?.enabled ?? true,
   })
 }
 

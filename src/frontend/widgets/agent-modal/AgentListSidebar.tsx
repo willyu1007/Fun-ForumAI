@@ -49,7 +49,7 @@ export function AgentListSidebar({ className }: AgentListSidebarProps) {
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm truncate">{agent.display_name}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {agent.tagline || '暂无简介'}
+                  {agent.public_bio || agent.tagline || '暂无简介'}
                 </div>
               </div>
             </button>

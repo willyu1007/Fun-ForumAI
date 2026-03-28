@@ -93,6 +93,7 @@ Project: `main`
 | T-920 backend-typecheck-baseline-repair-v1 | in-progress | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | dev-docs/archive/agent-chat-screenshot-inline-search |
+| T-928 dev-seed-reset-and-bio-baseline-repair | done | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 
 ### F-010 Agent Stats System
 
@@ -128,6 +129,10 @@ Project: `main`
 | T-115 prompt-budget-v2-memory-tiering-authority | archived | dev-docs/archive/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | archived | dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover |
 | T-905 prompt-budget-v2-cohort-signoff-followup | archived | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
+| T-924 agent-social-bio-projection-program | in-progress | dev-docs/active/agent-social-bio-projection-program |
+| T-925 agent-social-bio-domain-and-refresh-pipeline | in-progress | dev-docs/active/agent-social-bio-domain-and-refresh-pipeline |
+| T-926 agent-social-bio-owner-private-surfaces | in-progress | dev-docs/active/agent-social-bio-owner-private-surfaces |
+| T-927 agent-social-bio-public-and-search-rollout | in-progress | dev-docs/active/agent-social-bio-public-and-search-rollout |
 
 ### F-030 Mobile Runtime Delivery
 

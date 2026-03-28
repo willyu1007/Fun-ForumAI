@@ -85,6 +85,20 @@ function getCurrentSession(sessions: PrivateSession[]) {
   return sessions.find((session) => session.status === 'ACTIVE') ?? getLastItem(sessions)
 }
 
+function hasHttpStatus(error: unknown, status: number): boolean {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return false
+  }
+  const response = (error as { response?: { status?: unknown } }).response
+  return response?.status === status
+}
+
+function isIdentityGateError(error: unknown): boolean {
+  if (!error) return false
+  if (hasHttpStatus(error, 403)) return true
+  return error instanceof Error && error.message.includes('实名审核')
+}
+
 export function TabChat({
   agentId,
   onCaptureScreenshot,
@@ -98,12 +112,21 @@ export function TabChat({
   const [sessionGovernanceMessage, setSessionGovernanceMessage] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const sessionAnchorRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const rulesAutoOpenedRef = useRef(false)
   const { data: agentData, isLoading: agentLoading } = useAgentProfile(agentId)
   const resolvedAgentAvatarSrc = agentData?.data ? resolveAgentAvatarSrc(agentData.data) : null
-  const { data: sessionsData, isLoading: sessionsLoading } = usePrivateSessions(agentId)
+  const {
+    data: sessionsData,
+    isLoading: sessionsLoading,
+    isError: sessionsError,
+    error: sessionsQueryError,
+  } = usePrivateSessions(agentId)
   const createSession = useCreatePrivateSession(agentId)
   const createReport = useCreateReport()
   const agent = agentData?.data
+  const privateHeaderBio = agent?.social_bio?.private_header_bio?.trim() || ''
+  const presenceNote = agent?.social_bio?.presence_note?.trim() || ''
+  const showBioHeader = privateHeaderBio.length > 0 || presenceNote.length > 0
   const sessionItems = sessionsData?.data?.items
   const sessions = useMemo(() => sortSessionsByStartTime(sessionItems ?? []), [sessionItems])
   const currentSession = useMemo(() => getCurrentSession(sessions), [sessions])
@@ -119,6 +142,17 @@ export function TabChat({
     [visibleTimelineItems],
   )
   const resolvedVisibleFocusSessionId = resolveFocusedSessionId(visibleSessions, focusedSessionId)
+  const sessionErrorMessage = sessionsError ? sessionsQueryError?.message ?? '私聊列表加载失败，请稍后重试。' : null
+
+  const openRules = (auto = false) => {
+    rulesAutoOpenedRef.current = auto
+    setRulesOpen(true)
+  }
+
+  const closeRules = () => {
+    rulesAutoOpenedRef.current = false
+    setRulesOpen(false)
+  }
 
   useEffect(() => {
     if (resolvedVisibleFocusSessionId !== focusedSessionId) {
@@ -131,8 +165,22 @@ export function TabChat({
   }, [agentId, currentSession?.id])
 
   useEffect(() => {
-    setRulesOpen(false)
+    closeRules()
   }, [agentId])
+
+  useEffect(() => {
+    const hasGateError =
+      isIdentityGateError(sessionsQueryError)
+      || isIdentityGateError(createSession.error)
+      || isIdentityGateError(timeline.error)
+    if (hasGateError) {
+      openRules(true)
+      return
+    }
+    if (rulesAutoOpenedRef.current) {
+      closeRules()
+    }
+  }, [createSession.error, sessionsQueryError, timeline.error])
 
   useEffect(() => {
     if (!resolvedVisibleFocusSessionId) return
@@ -188,6 +236,18 @@ export function TabChat({
   return (
     <div className="relative flex h-full min-h-0 w-full overflow-hidden" data-testid="private-chat-root">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-testid="private-chat-main-area">
+        {showBioHeader && (
+          <div className="border-b bg-background/90">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-1 px-6 py-4">
+              {privateHeaderBio ? (
+                <p className="text-sm leading-relaxed text-foreground">{privateHeaderBio}</p>
+              ) : null}
+              {presenceNote ? (
+                <p className="text-xs text-muted-foreground">{presenceNote}</p>
+              ) : null}
+            </div>
+          </div>
+        )}
         {currentSession ? (
           <ChatTimeline
             agentId={agentId}
@@ -211,19 +271,23 @@ export function TabChat({
             agentAvatarSrc={resolvedAgentAvatarSrc}
             onCaptureScreenshot={onCaptureScreenshot}
             captureErrorMessage={captureErrorMessage ?? null}
-            onOpenRules={() => setRulesOpen(true)}
+            onOpenRules={() => openRules(false)}
           />
         ) : (
           <ChatEmptyState
             agentName={agent.display_name}
             onNewSession={handleNewSession}
             isCreating={createSession.isPending}
-            errorMessage={createSession.isError ? createSession.error.message : null}
-            onOpenRules={() => setRulesOpen(true)}
+            errorMessage={
+              createSession.isError
+                ? createSession.error.message
+                : sessionErrorMessage
+            }
+            onOpenRules={() => openRules(false)}
           />
         )}
       </div>
-      <PrivateChatRulesPanel open={rulesOpen} onClose={() => setRulesOpen(false)} />
+      <PrivateChatRulesPanel open={rulesOpen} onClose={closeRules} />
     </div>
   )
 }

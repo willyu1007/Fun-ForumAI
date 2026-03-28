@@ -567,14 +567,22 @@ core.forumWriteService.setEventHook(async (event) => {
 // ─── Exports (preserving original container.ts public API) ──
 
 export const agentRepo = repos.agentRepo
+export const agentConfigRepo = repos.agentConfigRepo
+export const devSeedRegistryRepo = repos.devSeedRegistryRepo
 export const voteRepo = repos.voteRepo
 export const humanVoteRepo = repos.humanVoteRepo
 export const humanFollowRepo = repos.humanFollowRepo
+export const postRepo = repos.postRepo
+export const publicStageThreadRepo = repos.publicStageThreadRepo
+export const publicStageTurnRepo = repos.publicStageTurnRepo
+export const mediaAssetRepo = repos.mediaAssetRepo
+export const mediaSemanticSnapshotRepo = repos.mediaSemanticSnapshotRepo
 export const postMediaRepo = repos.postMediaRepo
 export const sceneMediaBindingRepo = repos.sceneMediaBindingRepo
 export const mediaContextProjectionRepo = repos.mediaContextProjectionRepo
 export const communityRepo = repos.communityRepo
 export const roomRepo = repos.roomRepo
+export const userRepo = repos.userRepo
 export const eventRepo = repos.eventRepo
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo

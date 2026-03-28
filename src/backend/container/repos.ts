@@ -10,6 +10,7 @@ import { InMemoryMediaSemanticSnapshotRepository } from '../repos/media-semantic
 import { InMemorySceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
 import { InMemoryMediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import { InMemoryPostMediaRepository } from '../repos/post-media-repository.js'
+import { InMemoryDevSeedRegistryRepository } from '../repos/dev-seed-registry-repository.js'
 import { InMemoryVisualDirectiveRepository } from '../repos/visual-directive-repository.js'
 import { InMemoryImagePlanRepository } from '../repos/image-plan-repository.js'
 import { InMemoryMediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
@@ -28,6 +29,7 @@ import { InMemoryRuntimeSceneStateRepository } from '../repos/runtime-scene-stat
 import { InMemoryRoomRepository } from '../repos/room-repository.js'
 import { InMemoryRoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import { InMemoryAgentPublicProjectionRepository } from '../repos/agent-public-projection-repository.js'
+import { InMemoryAgentBioRepository } from '../repos/agent-bio-repository.js'
 import { InMemoryMessageRepository } from '../repos/message-repository.js'
 import { InMemoryPublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import { InMemoryStatsRepository } from '../repos/stats-repository.js'
@@ -62,6 +64,7 @@ import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-sn
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
+import type { DevSeedRegistryRepository } from '../repos/dev-seed-registry-repository.js'
 import type { VisualDirectiveRepository } from '../repos/visual-directive-repository.js'
 import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
 import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
@@ -80,6 +83,7 @@ import type { RuntimeSceneStateRepository } from '../repos/runtime-scene-state-r
 import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { AgentPublicProjectionRepository } from '../repos/agent-public-projection-repository.js'
+import type { AgentBioRepository } from '../repos/agent-bio-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { PublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import type { RelationRepository } from '../repos/relation-repository.js'
@@ -116,6 +120,7 @@ export interface Repositories {
   sceneMediaBindingRepo: SceneMediaBindingRepository
   mediaContextProjectionRepo: MediaContextProjectionRepository
   postMediaRepo: PostMediaRepository
+  devSeedRegistryRepo: DevSeedRegistryRepository
   visualDirectiveRepo: VisualDirectiveRepository
   imagePlanRepo: ImagePlanRepository
   mediaReusePolicyRepo: MediaReusePolicyRepository
@@ -137,6 +142,7 @@ export interface Repositories {
   roomRepo: RoomRepository
   roomWatchabilityRepo: RoomWatchabilityRepository
   agentPublicProjectionRepo: AgentPublicProjectionRepository
+  agentBioRepo: AgentBioRepository
   messageRepo: MessageRepository
   relationRepo: RelationRepository | null
   userRepo: UserRepository | null
@@ -184,6 +190,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgSceneMediaBindingRepository } = await import('../repos/pg/pg-scene-media-binding-repository.js')
     const { PgMediaContextProjectionRepository } = await import('../repos/pg/pg-media-context-projection-repository.js')
     const { PgPostMediaRepository } = await import('../repos/pg/pg-post-media-repository.js')
+    const { PgDevSeedRegistryRepository } = await import('../repos/pg/pg-dev-seed-registry-repository.js')
     const { PgVisualDirectiveRepository } = await import('../repos/pg/pg-visual-directive-repository.js')
     const { PgImagePlanRepository } = await import('../repos/pg/pg-image-plan-repository.js')
     const { PgMediaReusePolicyRepository } = await import('../repos/pg/pg-media-reuse-policy-repository.js')
@@ -202,6 +209,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgRoomRepository } = await import('../repos/pg/pg-room-repository.js')
     const { PgRoomWatchabilityRepository } = await import('../repos/pg/pg-room-watchability-repository.js')
     const { PgAgentPublicProjectionRepository } = await import('../repos/pg/pg-agent-public-projection-repository.js')
+    const { PgAgentBioRepository } = await import('../repos/pg/pg-agent-bio-repository.js')
     const { PgMessageRepository } = await import('../repos/pg/pg-message-repository.js')
     const { PgUserRepository } = await import('../repos/pg/pg-user-repository.js')
     const { PgRelationRepository } = await import('../repos/pg/pg-relation-repository.js')
@@ -237,6 +245,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const sbr = new PgSceneMediaBindingRepository(prisma)
     const mpr = new PgMediaContextProjectionRepository(prisma)
     const pmr = new PgPostMediaRepository(prisma)
+    const dsrr = new PgDevSeedRegistryRepository(prisma)
     const vdr = new PgVisualDirectiveRepository(prisma)
     const ipr = new PgImagePlanRepository(prisma)
     const mrpr = new PgMediaReusePolicyRepository(prisma)
@@ -257,6 +266,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const rr = new PgRoomRepository(prisma)
     const rwr = new PgRoomWatchabilityRepository(prisma)
     const appr = new PgAgentPublicProjectionRepository(prisma)
+    const abr = new PgAgentBioRepository(prisma)
     const mr = new PgMessageRepository(prisma)
     const relr = new PgRelationRepository(prisma)
     const sr = new PgStatsRepository(prisma)
@@ -284,7 +294,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     })
 
     hydratables.push(
-      pr, publicStageThreadRepo, publicStageTurnRepo, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, mr,
+      pr, publicStageThreadRepo, publicStageTurnRepo, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, abr, mr,
       sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
     )
 
@@ -293,7 +303,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         postRepo: pr, publicStageThreadRepo, publicStageTurnRepo, voteRepo: vr, humanVoteRepo: hvr,
         humanFollowRepo: hfr, searchDocRepo, mediaAssetRepo: mar,
         mediaSemanticSnapshotRepo: msr, sceneMediaBindingRepo: sbr,
-        mediaContextProjectionRepo: mpr, postMediaRepo: pmr,
+        mediaContextProjectionRepo: mpr, postMediaRepo: pmr, devSeedRegistryRepo: dsrr,
         visualDirectiveRepo: vdr, imagePlanRepo: ipr,
         mediaReusePolicyRepo: mrpr, mediaGenerationJobRepo: mgjr,
         mediaObservabilityEventRepo: moer,
@@ -302,7 +312,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
-        roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, messageRepo: mr,
+        roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, agentBioRepo: abr, messageRepo: mr,
         relationRepo: relr, userRepo: new PgUserRepository(prisma),
         statsRepo: sr, personaStateRepo: psr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
@@ -341,6 +351,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       sceneMediaBindingRepo: new InMemorySceneMediaBindingRepository(),
       mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
       postMediaRepo: new InMemoryPostMediaRepository(),
+      devSeedRegistryRepo: new InMemoryDevSeedRegistryRepository(),
       visualDirectiveRepo: new InMemoryVisualDirectiveRepository(),
       imagePlanRepo: new InMemoryImagePlanRepository(),
       mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
@@ -369,6 +380,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       roomRepo: new InMemoryRoomRepository(),
       roomWatchabilityRepo: new InMemoryRoomWatchabilityRepository(),
       agentPublicProjectionRepo: new InMemoryAgentPublicProjectionRepository(),
+      agentBioRepo: new InMemoryAgentBioRepository(),
       messageRepo: new InMemoryMessageRepository(),
       relationRepo: null,
       userRepo: new InMemoryUserRepository(),

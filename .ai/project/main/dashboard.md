@@ -8,18 +8,23 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 143 (planned: 1, in-progress: 5, blocked: 1, done: 1, archived: 135)
+- Tasks: 148 (planned: 1, in-progress: 9, blocked: 1, done: 2, archived: 135)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 | T-127 agent-modal-redesign | archived | F-000 | dev-docs/archive/agent-modal-redesign |
 | T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | F-000 | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
 | T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | F-000 | dev-docs/archive/agent-chat-screenshot-inline-search |
+| T-924 agent-social-bio-projection-program | in-progress | F-020 | dev-docs/active/agent-social-bio-projection-program |
+| T-925 agent-social-bio-domain-and-refresh-pipeline | in-progress | F-020 | dev-docs/active/agent-social-bio-domain-and-refresh-pipeline |
+| T-926 agent-social-bio-owner-private-surfaces | in-progress | F-020 | dev-docs/active/agent-social-bio-owner-private-surfaces |
+| T-927 agent-social-bio-public-and-search-rollout | in-progress | F-020 | dev-docs/active/agent-social-bio-public-and-search-rollout |
 | T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
 | T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
@@ -29,9 +34,4 @@ Project: `main`
 | T-910 media-framework-audit-and-remediation | archived | F-080 | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | F-080 | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 | T-912 public-search-system-v1 | archived | F-000 | dev-docs/archive/public-search-system-v1 |
-| T-913 search-ecosystem-enrichment-v2 | archived | F-000 | dev-docs/archive/search-ecosystem-enrichment-v2 |
-| T-914 visual-media-framework-v1-closure | archived | F-080 | dev-docs/archive/visual-media-framework-v1-closure |
-| T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
-| T-916 forum-public-stage-thread-turn-cutover-v1 | archived | F-000 | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
-| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -76,6 +76,38 @@ describe('E2E: Read API (public)', () => {
     expect(res.status).toBe(404)
   })
 
+  it('GET /v1/agents/:id/profile exposes social_bio with owner-only private fields', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Bio Profile Agent ${Date.now()}` })
+    expect(createRes.status).toBe(201)
+    const agentId = createRes.body.data.id as string
+
+    const publicRes = await request(app).get(`/v1/agents/${agentId}/profile`)
+    expect(publicRes.status).toBe(200)
+    expect(publicRes.body.data.social_bio).toHaveProperty('public_bio')
+    expect(publicRes.body.data.social_bio.owner_bio).toBeNull()
+    expect(publicRes.body.data.social_bio.private_header_bio).toBeNull()
+    expect(publicRes.body.data.social_bio.presence_note).toBeNull()
+
+    const ownerRes = await request(app)
+      .get(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(ownerRes.status).toBe(200)
+    expect(ownerRes.body.data.social_bio).toHaveProperty('public_bio')
+    expect(typeof ownerRes.body.data.social_bio.owner_bio).toBe('string')
+    expect(typeof ownerRes.body.data.social_bio.private_header_bio).toBe('string')
+    expect(typeof ownerRes.body.data.social_bio.presence_note).toBe('string')
+    expect(typeof ownerRes.body.data.social_bio.updated_at).toBe('string')
+
+    const adminRes = await request(app)
+      .get(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(adminRes.status).toBe(200)
+    expect(adminRes.body.data.social_bio.owner_bio).toEqual(ownerRes.body.data.social_bio.owner_bio)
+  })
+
   it('GET /v1/highlights returns empty', async () => {
     const res = await request(app).get('/v1/highlights')
     expect(res.status).toBe(200)

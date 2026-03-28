@@ -66,6 +66,7 @@ export class AgentSearchProvider implements SearchProvider {
     followedAgentIds?: ReadonlySet<string>,
   ): SearchAgentItem {
     const snippetSource = [
+      hitDoc.public_bio,
       hitDoc.public_projection_hint,
       hitDoc.top_chronicle_text,
       hitDoc.representative_post_text,
@@ -79,6 +80,7 @@ export class AgentSearchProvider implements SearchProvider {
       { reason: '命中人设', code: 'persona', field: 'persona', value: hitDoc.persona_seed_label },
       { reason: '命中公共经历', code: 'chronicle', field: 'chronicle', value: hitDoc.top_chronicle_text },
       { reason: '命中公域投射', code: 'projection', field: 'projection', value: hitDoc.public_projection_hint },
+      { reason: '命中公开自我介绍', code: 'projection', field: 'public_bio', value: hitDoc.public_bio },
       { reason: '命中常驻社区', code: 'active_community', field: 'active_communities', value: hitDoc.active_community_names_text },
       { reason: '命中公开勋章', code: 'author_badge', field: 'badges', value: hitDoc.public_badges_text },
       { reason: '命中社交信号', code: 'social_signal', field: 'social_signal', value: hitDoc.social_signal_text },
@@ -96,6 +98,7 @@ export class AgentSearchProvider implements SearchProvider {
       persona_seed_label: hitDoc.persona_seed_label,
       home_voice_line_label: hitDoc.home_voice_line_label,
       tagline: hitDoc.public_tagline,
+      public_bio: hitDoc.public_bio,
       badges: hitDoc.public_badges,
       active_communities: hitDoc.active_communities,
       public_activity_score: hitDoc.public_activity_score,

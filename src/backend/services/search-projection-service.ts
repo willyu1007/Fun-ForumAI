@@ -20,6 +20,7 @@ import type { ForumReadService } from './forum-read-service.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { CommunityCultureDigestService } from './community-culture-digest-service.js'
 import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
+import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { AftershowService } from './aftershow-service.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { parsePublicScenePayload } from './public-scene-runtime.js'
@@ -147,6 +148,7 @@ export interface SearchProjectionServiceDeps {
   achievementChronicleService: AchievementChronicleService
   communityCultureDigestService: CommunityCultureDigestService
   agentPublicProjectionService: AgentPublicProjectionService
+  agentBioService: Pick<AgentBioRefreshService, 'getProjection'>
   aftershowService: AftershowService
   guard: SearchGuard
 }
@@ -217,6 +219,7 @@ export class SearchProjectionService {
       display_name: postMeta.author.display_name,
       avatar_url: postMeta.author.avatar_url,
       tagline: postMeta.author.tagline ?? null,
+      public_bio: postMeta.author.public_bio ?? null,
       badges: postMeta.author.badges ?? [],
     })
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
@@ -238,6 +241,7 @@ export class SearchProjectionService {
       author_display_name: projectedAuthor.display_name,
       author_avatar_url: projectedAuthor.avatar_url,
       author_tagline: projectedAuthor.tagline,
+      author_public_bio: projectedAuthor.public_bio,
       author_badges: projectedAuthor.badges,
       author_badges_text: authorBadgesText,
       title: postMeta.title,
@@ -255,6 +259,7 @@ export class SearchProjectionService {
         postMeta.community_slug,
         projectedAuthor.display_name,
         projectedAuthor.tagline,
+        projectedAuthor.public_bio,
         authorBadgesText,
         sceneFields.scene_tags_text,
         aftershowSignals.aftershow_text,
@@ -267,6 +272,8 @@ export class SearchProjectionService {
       last_activity_at: postMeta.last_reply_at ?? postMeta.created_at,
       heat_score: postMeta.heat_score,
       watchability_score: watchabilityScore,
+      thumbnail_url: (postMeta.media ?? []).find((m) => m.mime_type.startsWith('image/'))?.media_url ?? null,
+      agent_vote_up: postMeta.agent_vote_up ?? 0,
     })
     this.invalidateCountsCache()
   }
@@ -297,6 +304,7 @@ export class SearchProjectionService {
       display_name: threadMeta.author.display_name,
       avatar_url: threadMeta.author.avatar_url,
       tagline: threadMeta.author.tagline ?? null,
+      public_bio: threadMeta.author.public_bio ?? null,
       badges: threadMeta.author.badges ?? [],
     })
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
@@ -315,6 +323,7 @@ export class SearchProjectionService {
       author_display_name: projectedAuthor.display_name,
       author_avatar_url: projectedAuthor.avatar_url,
       author_tagline: projectedAuthor.tagline,
+      author_public_bio: projectedAuthor.public_bio,
       author_badges: projectedAuthor.badges,
       author_badges_text: authorBadgesText,
       body: threadMeta.body,
@@ -330,6 +339,7 @@ export class SearchProjectionService {
         community?.slug,
         projectedAuthor.display_name,
         projectedAuthor.tagline,
+        projectedAuthor.public_bio,
         authorBadgesText,
         sceneFields.scene_tags_text,
       ]),
@@ -423,9 +433,13 @@ export class SearchProjectionService {
 
     const latestConfig = this.deps.agentConfigRepo.findLatest(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
-    const [highlights, projection] = await Promise.all([
+    const [highlights, projection, bioProjection] = await Promise.all([
       this.deps.achievementChronicleService.getPublicHighlights(agentId),
       this.deps.agentPublicProjectionService.getOrBuild(agentId).catch(() => null),
+      this.deps.agentBioService.getProjection(agentId, {
+        build_if_missing: true,
+        allow_minor_refresh: false,
+      }).catch(() => null),
     ])
     const memberships = this.deps.membershipRepo.findActiveByAgent(agentId)
     const activeCommunities = memberships
@@ -486,6 +500,7 @@ export class SearchProjectionService {
       home_voice_line_label: identity.summary.home_voice_line_label,
       identity_contract_source: identity.source,
       public_tagline: highlights.tagline,
+      public_bio: bioProjection?.public_bio ?? null,
       public_badges: highlights.badges,
       public_badges_text: badgeText,
       active_membership_count: memberships.length,
@@ -504,6 +519,7 @@ export class SearchProjectionService {
         identity.summary.persona_seed_label,
         identity.summary.home_voice_line_label,
         highlights.tagline,
+        bioProjection?.public_bio,
         badgeText,
         activeCommunityNamesText,
         projection?.public_projection_hint,
@@ -889,12 +905,14 @@ export class SearchProjectionService {
       display_name: string
       avatar_url: string | null
       tagline: string | null
+      public_bio: string | null
       badges: SearchBadge[]
     },
   ): {
     display_name: string
     avatar_url: string | null
     tagline: string | null
+    public_bio: string | null
     badges: SearchBadge[]
     visibility: SearchAuthorVisibility
   } {
@@ -904,6 +922,7 @@ export class SearchProjectionService {
       display_name: input.display_name,
       avatar_url: visibility === 'full' ? input.avatar_url : null,
       tagline: visibility === 'full' ? input.tagline : null,
+      public_bio: visibility === 'full' ? input.public_bio : null,
       badges: visibility === 'full' ? input.badges : [],
       visibility,
     }

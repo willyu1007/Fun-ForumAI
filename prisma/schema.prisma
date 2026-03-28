@@ -51,6 +51,21 @@ model HumanUser {
   @@map("human_users")
 }
 
+model DevSeedRegistryEntry {
+  id         String   @id @default(cuid())
+  profile    String
+  seedKey    String   @map("seed_key")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([profile, seedKey], map: "dev_seed_registry_entries_profile_seed_key")
+  @@index([profile, entityType])
+  @@index([entityType, entityId])
+  @@map("dev_seed_registry_entries")
+}
+
 enum PlanTier {
   FREE
   PRO
@@ -65,7 +80,7 @@ enum UserStatus {
 model Agent {
   id              String      @id @default(cuid())
   ownerId         String      @map("owner_id")
-  displayName     String      @unique @map("display_name")
+  displayName     String      @map("display_name")
   avatarUrl       String?     @map("avatar_url")
   model           String      @default("gpt-4o")
   personaVersion  Int         @default(1) @map("persona_version")
@@ -111,6 +126,9 @@ model Agent {
   inferenceProfile          AgentInferenceProfile?
   inferenceShadowReviews    AgentInferenceShadowReview[]
   personaDeltaLogs          AgentPersonaDeltaLog[]
+  worldviewState            AgentWorldviewState?
+  bioProjection             AgentBioProjection?
+  bioRenderLogs             AgentBioRenderLog[]
   statEvents                AgentStatEvent[]
   outgoingRelations         AgentRelation[]              @relation("RelationFromAgent")
   incomingRelations         AgentRelation[]              @relation("RelationToAgent")
@@ -328,6 +346,7 @@ model PostSearchDoc {
   authorDisplayName String       @map("author_display_name")
   authorAvatarUrl   String?      @map("author_avatar_url")
   authorTagline     String?      @map("author_tagline")
+  authorPublicBio   String?      @map("author_public_bio")
   authorBadgesJson  Json         @default("[]") @map("author_badges_json")
   authorBadgesText  String       @default("") @map("author_badges_text")
   title             String
@@ -345,6 +364,8 @@ model PostSearchDoc {
   lastActivityAt    DateTime?    @map("last_activity_at")
   heatScore         Float        @default(0) @map("heat_score")
   watchabilityScore Float        @default(0) @map("watchability_score")
+  thumbnailUrl      String?      @map("thumbnail_url")
+  agentVoteUp       Int          @default(0) @map("agent_vote_up")
   refreshedAt       DateTime     @default(now()) @map("refreshed_at")
   createdAt         DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")
@@ -395,6 +416,7 @@ model AgentSearchDoc {
   homeVoiceLineLabel           String   @map("home_voice_line_label")
   identityContractSource       String   @map("identity_contract_source")
   publicTagline                String?  @map("public_tagline")
+  publicBio                    String?  @map("public_bio")
   publicBadgesJson             Json     @default("[]") @map("public_badges_json")
   publicBadgesText             String   @default("") @map("public_badges_text")
   activeMembershipCount        Int      @default(0) @map("active_membership_count")
@@ -430,6 +452,7 @@ model ThreadSearchDoc {
   authorDisplayName String       @map("author_display_name")
   authorAvatarUrl   String?      @map("author_avatar_url")
   authorTagline     String?      @map("author_tagline")
+  authorPublicBio   String?      @map("author_public_bio")
   authorBadgesJson  Json         @default("[]") @map("author_badges_json")
   authorBadgesText  String       @default("") @map("author_badges_text")
   body              String
@@ -2242,6 +2265,70 @@ model AgentPublicProjection {
 
   @@index([updatedAt])
   @@map("agent_public_projections")
+}
+
+model AgentWorldviewState {
+  agentId              String    @id @map("agent_id")
+  worldviewVersion     Int       @default(1) @map("worldview_version")
+  phaseRevision        Int       @default(1) @map("phase_revision")
+  sourceFingerprint    String    @default("") @map("source_fingerprint")
+  refreshReason        String    @default("bootstrap") @map("refresh_reason")
+  presenceBucket       String    @default("steady") @map("presence_bucket")
+  worldviewJson        Json      @default("{}") @map("worldview_json")
+  lastMajorRefreshedAt DateTime? @map("last_major_refreshed_at")
+  lastMinorRefreshedAt DateTime? @map("last_minor_refreshed_at")
+  lastCompiledAt       DateTime  @default(now()) @map("last_compiled_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([updatedAt])
+  @@index([lastMajorRefreshedAt])
+  @@map("agent_worldview_states")
+}
+
+model AgentBioProjection {
+  agentId           String   @id @map("agent_id")
+  worldviewVersion  Int      @default(1) @map("worldview_version")
+  phaseRevision     Int      @default(1) @map("phase_revision")
+  publicBio         String?  @map("public_bio")
+  ownerBio          String?  @map("owner_bio")
+  privateHeaderBio  String?  @map("private_header_bio")
+  presenceNote      String?  @map("presence_note")
+  renderFingerprint String   @default("") @map("render_fingerprint")
+  renderPolicyJson  Json     @default("{}") @map("render_policy_json")
+  refreshedAt       DateTime @default(now()) @map("refreshed_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([updatedAt])
+  @@index([refreshedAt])
+  @@map("agent_bio_projections")
+}
+
+model AgentBioRenderLog {
+  id                String   @id @default(cuid())
+  agentId           String   @map("agent_id")
+  refreshKind       String   @map("refresh_kind")
+  refreshReason     String   @map("refresh_reason")
+  dedupKey          String   @map("dedup_key")
+  worldviewVersion  Int      @map("worldview_version")
+  phaseRevision     Int      @map("phase_revision")
+  sourceFingerprint String   @default("") @map("source_fingerprint")
+  renderFingerprint String   @default("") @map("render_fingerprint")
+  status            String   @default("rendered")
+  publicPersisted   Boolean  @default(false) @map("public_persisted")
+  noteJson          Json?    @map("note_json")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, dedupKey], map: "agent_bio_render_logs_agent_dedup_key")
+  @@index([agentId, createdAt])
+  @@map("agent_bio_render_logs")
 }
 
 model RoomMessage {

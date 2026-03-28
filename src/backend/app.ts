@@ -9,7 +9,7 @@ import { healthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -231,6 +231,7 @@ if (config.allowDevTools) {
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
         community_config_scheduler_running: communityConfigScheduler?.isRunning ?? false,
+        agent_bio_refresh_scheduler_running: agentBioRefreshScheduler?.isRunning ?? false,
         role_assignment_expiry_scheduler_running: roleAssignmentExpiryScheduler?.isRunning ?? false,
         director_history_maintenance_scheduler_running: directorHistoryMaintenanceScheduler?.isRunning ?? false,
         media_generation_worker_running: mediaGenerationWorker?.isRunning ?? false,
@@ -477,6 +478,10 @@ export function startBackgroundServices(): void {
     communityConfigScheduler.start()
   }
 
+  if (agentBioRefreshScheduler) {
+    agentBioRefreshScheduler.start()
+  }
+
   if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
     roleAssignmentExpiryScheduler.start()
   }
@@ -513,6 +518,7 @@ export function stopBackgroundServices(): void {
   pprRefreshScheduler?.stop()
   cultureDigestScheduler?.stop()
   communityConfigScheduler?.stop()
+  agentBioRefreshScheduler?.stop()
   roleAssignmentExpiryScheduler?.stop()
   directorHistoryMaintenanceScheduler?.stop()
   guidanceRecallScheduler?.stop()

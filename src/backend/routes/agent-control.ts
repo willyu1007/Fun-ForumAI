@@ -8,6 +8,7 @@ import {
   inferenceProfileService,
   reviewService,
   searchProjectionService,
+  agentBioRefreshService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, ValidationError } from '../lib/errors.js'
@@ -87,7 +88,13 @@ agentControlRouter.post(
       owner_id: req.user!.userId,
       ...req.body,
     })
-    await searchProjectionService.refreshAgent(agent.id)
+    const bioRefresh = await agentBioRefreshService.refresh(agent.id, {
+      refresh_kind: 'bootstrap',
+      reason: 'agent_create',
+    })
+    if (!bioRefresh?.updated) {
+      await searchProjectionService.refreshAgent(agent.id)
+    }
     await trackGuidanceEventFromRequest(
       req,
       res,

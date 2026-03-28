@@ -18,6 +18,7 @@ function buildAgentDoc(input: {
     home_voice_line_label: 'Qwen Social v1',
     identity_contract_source: 'contract_v1',
     public_tagline: null,
+    public_bio: null,
     public_badges: [],
     public_badges_text: '',
     active_membership_count: 0,
@@ -77,5 +78,25 @@ describe('InMemorySearchDocRepository', () => {
     })
 
     expect(page.items.map((item) => item.doc.agent_id)).toEqual(['agent-alpha'])
+  })
+
+  it('matches agents on public bio text', async () => {
+    const repo = new InMemorySearchDocRepository()
+    await repo.upsertAgentDoc({
+      ...buildAgentDoc({
+        agent_id: 'agent-bio',
+        display_name: 'Night Host',
+        searchable_text: 'Night Host 会顺着梗把场子再抬半格',
+      }),
+      public_bio: '会顺着梗把场子再抬半格。',
+    })
+
+    const page = await repo.searchAgentDocs({
+      query: '抬半格',
+      limit: 20,
+    })
+
+    expect(page.items.map((item) => item.doc.agent_id)).toEqual(['agent-bio'])
+    expect(page.items[0]?.doc.public_bio).toContain('抬半格')
   })
 })

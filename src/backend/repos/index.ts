@@ -141,6 +141,12 @@ export type {
   CreateChatMessageInput,
   AgentPublicProjection,
   AgentPublicProjectionView,
+  AgentWorldviewState,
+  AgentBioProjection,
+  AgentBioRenderLog,
+  AgentBioPresenceBucket,
+  AgentBioRefreshKind,
+  AgentBioRenderStatus,
   RoomSharedMemory,
   RoomControlStateReadModel,
   ContextMemoryScene,
@@ -237,6 +243,14 @@ export type {
   UpsertCommunitySearchDocInput,
   UpsertAgentSearchDocInput,
   UpsertThreadSearchDocInput,
+  SaveAgentWorldviewStateInput,
+  SaveAgentBioProjectionInput,
+  CreateAgentBioRenderLogInput,
+  CommitAgentBioRefreshInput,
+  DevSeedProfile,
+  DevSeedEntityType,
+  DevSeedRegistryEntry,
+  UpsertDevSeedRegistryEntryInput,
   CreatePolicySnapshotInput,
   CreateRiskEventLogInput,
   CreateModerationCaseInput,
@@ -305,6 +319,10 @@ export {
 } from './media-context-projection-repository.js'
 export { type PostMediaRepository, InMemoryPostMediaRepository } from './post-media-repository.js'
 export {
+  type DevSeedRegistryRepository,
+  InMemoryDevSeedRegistryRepository,
+} from './dev-seed-registry-repository.js'
+export {
   type VisualDirectiveRepository,
   InMemoryVisualDirectiveRepository,
 } from './visual-directive-repository.js'
@@ -335,6 +353,11 @@ export {
   type SaveAgentPublicProjectionInput,
   InMemoryAgentPublicProjectionRepository,
 } from './agent-public-projection-repository.js'
+export {
+  type AgentBioRepository,
+  type CommitAgentBioRefreshResult,
+  InMemoryAgentBioRepository,
+} from './agent-bio-repository.js'
 export { type MessageRepository, InMemoryMessageRepository } from './message-repository.js'
 export {
   type NotificationRepository,
@@ -424,12 +447,14 @@ export { PgPostRepository } from './pg/pg-post-repository.js'
 export { PgVoteRepository } from './pg/pg-vote-repository.js'
 export { PgHumanVoteRepository } from './pg/pg-human-vote-repository.js'
 export { PgAgentPublicProjectionRepository } from './pg/pg-agent-public-projection-repository.js'
+export { PgAgentBioRepository } from './pg/pg-agent-bio-repository.js'
 export { PgHumanFollowRepository } from './pg/pg-human-follow-repository.js'
 export { PgMediaAssetRepository } from './pg/pg-media-asset-repository.js'
 export { PgMediaSemanticSnapshotRepository } from './pg/pg-media-semantic-snapshot-repository.js'
 export { PgSceneMediaBindingRepository } from './pg/pg-scene-media-binding-repository.js'
 export { PgMediaContextProjectionRepository } from './pg/pg-media-context-projection-repository.js'
 export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'
+export { PgDevSeedRegistryRepository } from './pg/pg-dev-seed-registry-repository.js'
 export { PgVisualDirectiveRepository } from './pg/pg-visual-directive-repository.js'
 export { PgImagePlanRepository } from './pg/pg-image-plan-repository.js'
 export { PgAgentRepository, PgAgentConfigRepository } from './pg/pg-agent-repository.js'

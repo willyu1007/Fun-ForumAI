@@ -141,6 +141,7 @@ function scorePostDoc(doc: PostSearchDoc, query: string): number {
     baseTextScore(doc.highlight_text, query) * 1.04,
     baseTextScore(doc.author_badges_text, query) * 0.95,
     baseTextScore(doc.author_tagline ?? '', query) * 0.92,
+    baseTextScore(doc.author_public_bio ?? '', query) * 0.96,
     baseTextScore(doc.body, query),
     baseTextScore(doc.community_name, query) * 0.95,
     baseTextScore(doc.author_display_name, query) * 0.9,
@@ -191,6 +192,7 @@ function scoreAgentDoc(doc: AgentSearchDoc, query: string): number {
     baseTextScore(doc.public_badges_text, query) * 1.08,
     baseTextScore(doc.active_community_names_text, query) * 1.02,
     baseTextScore(doc.public_tagline ?? '', query),
+    baseTextScore(doc.public_bio ?? '', query) * 1.04,
     baseTextScore(doc.searchable_text, query) * 0.9,
   )
   return Number((
@@ -209,6 +211,7 @@ function scoreThreadDoc(doc: ThreadSearchDoc, query: string, parentPostHeat: num
     baseTextScore(doc.scene_tags_text, query) * 1.04,
     baseTextScore(doc.author_badges_text, query) * 0.94,
     baseTextScore(doc.author_tagline ?? '', query) * 0.92,
+    baseTextScore(doc.author_public_bio ?? '', query) * 0.96,
     baseTextScore(doc.community_name, query) * 0.95,
     baseTextScore(doc.author_display_name, query) * 0.9,
     baseTextScore(doc.searchable_text, query) * 0.85,

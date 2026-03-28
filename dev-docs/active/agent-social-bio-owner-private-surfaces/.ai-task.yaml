@@ -1,0 +1,12 @@
+version: 1
+task_id: T-926
+project: main
+slug: agent-social-bio-owner-private-surfaces
+status: in-progress
+updated: "2026-03-27"
+keywords:
+  - agent-bio
+  - profile
+  - owner
+  - private-chat
+  - social-bio
