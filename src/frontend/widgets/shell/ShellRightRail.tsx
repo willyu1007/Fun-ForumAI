@@ -119,6 +119,11 @@ function buildRecentAgentSpotlights(posts: PostWithMeta[], myAgentIds: Set<strin
 const HOME_EXPLORE_PANEL_KEY = 'home-explore-panel'
 const HOME_RECENT_ACTIVITY_CLEARED_AT_KEY = 'home-recent-activity-cleared-at'
 
+/** 引导 rail 内卡片表面（与外层渐变协调的浅 primary tint + 细边） */
+const guidanceRailCardBase =
+  'rounded-sm border border-primary/20 bg-primary/5 transition-colors'
+const guidanceRailCardInteractive = `${guidanceRailCardBase} hover:border-primary/35 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background`
+
 function readHomeExplorePanelEnabled() {
   if (typeof localStorage === 'undefined') {
     return true
@@ -158,7 +163,7 @@ function CompactGuidanceItem({ item }: { item: GuidanceItemCardView }) {
   const isAgentCta = Boolean(ctaTarget && isAgentTargetString(ctaTarget))
 
   return (
-    <div className="rounded-lg bg-background/85 px-4 py-3">
+    <div className={`${guidanceRailCardBase} px-4 py-3`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Badge variant="outline">{item.module_type === 'RECEIPT' ? '回执' : '提示'}</Badge>
@@ -279,13 +284,13 @@ function HomeFeedRail() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {panelEnabled ? (
           <section
-            className="overflow-hidden rounded-xl bg-gradient-to-br from-accent/10 via-background to-primary/10 p-5"
+            className="overflow-hidden rounded-sm border border-border/45 bg-muted/35 p-5 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-muted/18"
             data-testid="home-onboarding-rail"
           >
-            <div className="-mx-5 -mt-5 mb-5 border-b bg-gradient-to-r from-accent/12 via-background/80 to-primary/12 px-5 pb-4 pt-5">
+            <div className="-mx-5 -mt-5 mb-5 border-b border-border/35 bg-muted/25 px-5 pb-4 pt-5 backdrop-blur-sm supports-[backdrop-filter]:bg-muted/12">
               <h2 className="text-xl font-semibold tracking-tight text-foreground">去探索！</h2>
             </div>
 
@@ -300,7 +305,7 @@ function HomeFeedRail() {
                     <button
                       type="button"
                       key={card.track}
-                      className="block w-full rounded-lg bg-background/85 px-4 py-3 text-left transition-colors hover:bg-background"
+                      className={`block w-full ${guidanceRailCardInteractive} px-4 py-3 text-left`}
                       onClick={() => {
                         if (card.entry_cta.event_name) {
                           guidanceEvent.mutate({
@@ -340,7 +345,7 @@ function HomeFeedRail() {
                 </div>
                 <div className="space-y-2">
                   {pendingChecklistItems.map((item) => (
-                    <div key={item.reason_code} className="rounded-lg bg-background/85 px-4 py-3">
+                    <div key={item.reason_code} className={`${guidanceRailCardBase} px-4 py-3`}>
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-medium text-foreground">{item.title}</p>
                         <Badge variant="outline">下一步</Badge>
@@ -402,7 +407,9 @@ function HomeFeedRail() {
             ) : null}
 
             {!hasExploreContent ? (
-              <div className="mt-5 rounded-lg bg-background/85 px-4 py-4 text-sm leading-6 text-muted-foreground">
+              <div
+                className={`mt-5 ${guidanceRailCardBase} px-4 py-4 text-sm leading-6 text-muted-foreground`}
+              >
                 这里会随着你的阶段变化，陆续出现新的入口、玩法提示和功能解锁。
               </div>
             ) : null}

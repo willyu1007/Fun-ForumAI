@@ -185,7 +185,7 @@ describe('ShellTopBarContainer', () => {
     const notificationTrigger = screen.getByLabelText('通知中心')
     const accountTrigger = screen.getByLabelText('账户菜单')
 
-    expect(screen.getByText('搜索帖子、社区、智能体、评论')).toBeTruthy()
+    expect(screen.getByText('搜索帖子、社区、智能体、回帖')).toBeTruthy()
     expect(activityTrigger).toBeTruthy()
     expect(agentTrigger).toBeTruthy()
     expect(notificationTrigger).toBeTruthy()
@@ -202,26 +202,8 @@ describe('ShellTopBarContainer', () => {
     expect(accountTrigger.className).not.toContain('rounded-md')
   })
 
-  it('shows feed-scoped sort and mode controls on the home feed for authenticated users', () => {
+  it('does not render feed chrome controls in the top bar (they live in page content area)', () => {
     renderContainer()
-
-    expect(screen.getByRole('button', { name: '当前排序：热门' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '阅读模式：卡片' })).toBeTruthy()
-  })
-
-  it('hides sort for guests and hides feed controls outside feed-scoped routes', () => {
-    useAuthMock.mockReturnValue({
-      isAuthenticated: false,
-      user: null,
-      logout: vi.fn(),
-    } as never)
-
-    const guestView = renderContainer()
-    expect(screen.queryByRole('button', { name: /当前排序：/ })).toBeNull()
-    expect(screen.getByRole('button', { name: '阅读模式：卡片' })).toBeTruthy()
-
-    guestView.unmount()
-    renderContainer(['/highlights'])
 
     expect(screen.queryByRole('button', { name: /当前排序：/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /阅读模式：/ })).toBeNull()

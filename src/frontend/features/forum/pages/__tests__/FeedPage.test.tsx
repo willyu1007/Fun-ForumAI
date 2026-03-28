@@ -118,18 +118,13 @@ describe('FeedPage', () => {
     useFeedViewStoreMock.mockReturnValue({ view: 'card' } as never)
   })
 
-  it('reads following_only from the URL when rendering the home feed', () => {
-    renderPage('/?following_only=true')
-
-    expect(screen.getAllByTestId('feed-toolbar').some((toolbar) => toolbar.textContent === 'following')).toBe(true)
-  })
-
-  it('keeps desktop feed chrome focused on following toggle and leaves sort to the top bar', () => {
+  it('renders feed toolbar with sort controls for authenticated users', () => {
     renderPage('/')
 
     const toolbars = screen.getAllByTestId('feed-toolbar')
     expect(toolbars).toHaveLength(1)
-    expect(toolbars.some((toolbar) => toolbar.getAttribute('data-sort-controls') === 'true')).toBe(true)
+    expect(toolbars[0].getAttribute('data-sort-controls')).toBe('true')
+    expect(toolbars[0].getAttribute('data-view-controls')).toBe('true')
     expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
 })

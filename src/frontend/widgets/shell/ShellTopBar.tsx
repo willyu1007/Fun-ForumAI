@@ -48,7 +48,7 @@ export function ShellTopBar({
   return (
     <>
       <div aria-hidden="true" className="h-[52px] shrink-0" />
-      <div className="fixed inset-x-0 top-0 z-40 border-b bg-background">
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-foreground/20 bg-background">
         <UiTopBar
           className="h-[52px] gap-3 px-3 md:px-4"
           mobileMenuTrigger={mobileMenuTrigger}

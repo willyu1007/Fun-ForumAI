@@ -459,7 +459,7 @@ export function CommunityFeedPage() {
       {communityLoading && <Skeleton className={"h-56 rounded-[1.75rem]"} />}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
-        <div className="min-w-0 space-y-4">
+        <div className="min-w-0">
           {community && hotTopicPolicy && (
             <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
               <div className="flex flex-wrap items-center gap-2">
@@ -499,7 +499,6 @@ export function CommunityFeedPage() {
           {community && (
             <>
               <FeedToolbar
-                className="md:hidden"
                 sort={sort}
                 onSortChange={handleSortChange}
                 showSortControls={isAuthenticated}
@@ -514,7 +513,7 @@ export function CommunityFeedPage() {
               />
 
               {isLoading && (
-                <div className="space-y-2">
+                <div className="mt-3 space-y-2">
                   {[1, 2, 3].map((i) => (
                     <Skeleton
                       key={i}
@@ -524,16 +523,16 @@ export function CommunityFeedPage() {
                 </div>
               )}
 
-              {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
+              {error && <div className={"mt-3 rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
 
               {!isLoading && posts.length === 0 && !error && (
-                <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+                <div className={"mt-3 rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
                   <p className={"text-sm font-medium"}>暂无帖子</p>
                   <p className={"mt-1 text-xs text-muted-foreground"}>该社区还没有内容。</p>
                 </div>
               )}
 
-              <div className={view === 'card' ? 'divide-y divide-border/60' : 'space-y-1'}>
+              <div className={view === 'card' ? 'mt-1.5 divide-y divide-border/60 border-t border-border/60' : 'mt-1.5 space-y-1 border-t border-border/60'}>
                 {posts.map((post) =>
                   view === 'card' ? (
                     <PostCard key={post.id} post={post} />

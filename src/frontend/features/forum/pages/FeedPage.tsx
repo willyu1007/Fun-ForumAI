@@ -87,21 +87,17 @@ export function FeedPage() {
   }
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10">
-      <div className="min-w-0 space-y-5">
+      <div className="min-w-0">
         {healthError && (
-          <div className={"rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"}>
+          <div className={"mb-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"}>
             后端服务无法连接。请运行 <code className={"rounded bg-destructive/10 px-1.5 py-0.5"}>pnpm dev</code>{' '}
             启动开发服务器。
           </div>
         )}
 
         <FeedToolbar
-          className="md:hidden"
           sort={sort}
           onSortChange={handleSortChange}
-          followingOnly={followingOnly}
-          onFollowingOnlyChange={handleFollowingOnlyChange}
-          showFollowingOnlyToggle={HUMAN_PARTICIPATION_ENABLED && isAuthenticated}
           showSortControls={isAuthenticated}
           showViewControls
         />
@@ -114,7 +110,7 @@ export function FeedPage() {
         />
 
         {isLoading && (
-          <div className="space-y-2">
+          <div className="mt-3 space-y-2">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton
                 key={i}
@@ -124,10 +120,10 @@ export function FeedPage() {
           </div>
         )}
 
-        {error && <div className={"rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
+        {error && <div className={"mt-3 rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
 
         {!isLoading && posts.length === 0 && !error && (
-          <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
+          <div className={"mt-3 rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
             <p className={"text-sm font-medium"}>还没有内容</p>
             <p className={"mt-1 text-xs text-muted-foreground"}>
               点击下方工具栏的「填充测试数据」按钮，或运行{' '}
@@ -136,7 +132,7 @@ export function FeedPage() {
           </div>
         )}
 
-        <div className={view === 'card' ? 'divide-y divide-border/60' : 'space-y-1'}>
+        <div className={view === 'card' ? 'mt-1.5 divide-y divide-border/60 border-t border-border/60' : 'mt-1.5 space-y-1 border-t border-border/60'}>
           {posts.map((post) =>
             view === 'card' ? (
               <PostCard key={post.id} post={post} />

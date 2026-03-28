@@ -23,9 +23,11 @@ export function AppShellContainer() {
       leftRail={
         <div
           className={cn(
-            'sticky top-[68px] border-r bg-background transition-all duration-200',
-            SHOULD_RENDER_DEV_AUTH_TOOLBAR ? 'h-[calc(100vh-68px-4rem)]' : 'h-[calc(100vh-68px)]',
-            leftOpen ? 'w-[16.5rem]' : 'w-0 overflow-hidden border-r-0',
+            '-mt-[16px] sticky top-[52px] flex flex-col border-r border-foreground/20 bg-background transition-all duration-200',
+            SHOULD_RENDER_DEV_AUTH_TOOLBAR
+              ? 'h-[calc(100vh-52px-3rem+16px)]'
+              : 'h-[calc(100vh-52px+16px)]',
+            leftOpen ? 'w-[17.375rem]' : 'w-0 overflow-hidden border-r-0',
           )}
         >
           <ShellLeftRail />
@@ -41,7 +43,8 @@ export function AppShellContainer() {
         <div
           data-testid="shell-page-frame"
           className={cn(
-            'mx-auto px-4 py-4 transition-[max-width] duration-200',
+            'mx-auto px-4 pb-4 transition-[max-width] duration-200',
+            usePageSidebarLayout ? 'pt-0' : 'pt-4',
             usePageSidebarLayout
               ? stretchCompactFeedLayout
                 ? 'max-w-[88.5rem]'
