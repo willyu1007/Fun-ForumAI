@@ -15,8 +15,16 @@ import type {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowRight } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ArrowRight, ChevronDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   getCommunityAvatarTheme,
   getCommunityAvatarToneClassName,
@@ -34,6 +42,28 @@ const TAB_LABELS: Record<SearchTab, string> = {
   communities: '社区',
   agents: '智能体',
   threads: '回帖',
+}
+
+const SEARCH_SORT_OPTIONS = [
+  { value: 'relevance', label: '相关性' },
+  { value: 'new', label: '最新' },
+  { value: 'hot', label: '热度' },
+] as const
+
+const SEARCH_TIME_RANGE_OPTIONS = [
+  { value: 'all', label: '所有时间' },
+  { value: 'year', label: '去年' },
+  { value: 'month', label: '上个月' },
+  { value: 'week', label: '上周' },
+  { value: 'day', label: '今天' },
+  { value: 'hour', label: '过去1小时' },
+] as const
+
+const TAB_FILTERS: Record<SearchTab, ('sort' | 'time_range')[]> = {
+  posts: ['sort', 'time_range'],
+  threads: ['sort'],
+  communities: [],
+  agents: [],
 }
 
 function readTab(value: string | null): SearchTab {
@@ -384,7 +414,7 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
   if (!query || displayItems.length === 0) return null
 
   return (
-    <div className="overflow-hidden rounded-xl bg-muted/20 px-5 py-4">
+    <div className="px-5 py-4">
       <h3 className="mb-6 text-sm font-medium text-foreground">社区</h3>
       <div className="space-y-4 pl-4">
         {displayItems.map((item) => {
@@ -397,7 +427,7 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
               className="flex items-start gap-5"
             >
               <Avatar className="h-10 w-10 shrink-0">
-                <AvatarImage src={avatarTheme.value} alt={item.name} />
+                <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
                 <AvatarFallback className={`text-sm font-semibold ${getCommunityAvatarToneClassName(category)}`}>
                   {getCommunityCategoryGlyph(category)}
                 </AvatarFallback>
@@ -580,30 +610,137 @@ export function SearchPage() {
     else sp.delete('q')
     sp.set('tab', nextTab)
     sp.delete('cursor')
+
+    const nextFilters = TAB_FILTERS[nextTab] ?? []
+    if (!nextFilters.includes('sort')) sp.delete('sort')
+    if (!nextFilters.includes('time_range')) sp.delete('time_range')
+
     setSearchParams(sp)
   }
+
+  const updateFilterParam = (key: string, value: string, defaultValue: string) => {
+    const sp = new URLSearchParams(searchParams)
+    if (value === defaultValue) sp.delete(key)
+    else sp.set(key, value)
+    sp.delete('cursor')
+    setSearchParams(sp, { replace: true })
+  }
+
+  const sortLabel = SEARCH_SORT_OPTIONS.find((o) => o.value === (currentSort ?? 'relevance'))?.label ?? '相关性'
+  const timeLabel = SEARCH_TIME_RANGE_OPTIONS.find((o) => o.value === (currentTimeRange ?? 'all'))?.label ?? '所有时间'
+  const activeFilters = TAB_FILTERS[currentTab] ?? []
 
   const showGrid = currentTab === 'posts' && currentQuery.trim()
 
   return (
     <div data-testid="search-page">
-      <Tabs
-        value={currentTab}
-        onValueChange={(value) => updateSearch({ tab: readTab(value) })}
+      {/* Row 1: Pill tabs */}
+      <div role="tablist" className="flex items-center gap-1.5"
+        onKeyDown={(e) => {
+          const keys = ['ArrowRight', 'ArrowLeft', 'Home', 'End'] as const
+          if (!keys.includes(e.key as (typeof keys)[number])) return
+          e.preventDefault()
+          const idx = SEARCH_TABS.indexOf(currentTab)
+          let next = idx
+          if (e.key === 'ArrowRight') next = (idx + 1) % SEARCH_TABS.length
+          else if (e.key === 'ArrowLeft') next = (idx - 1 + SEARCH_TABS.length) % SEARCH_TABS.length
+          else if (e.key === 'Home') next = 0
+          else if (e.key === 'End') next = SEARCH_TABS.length - 1
+          updateSearch({ tab: SEARCH_TABS[next] })
+          const btn = e.currentTarget.querySelector<HTMLButtonElement>(`[data-tab="${SEARCH_TABS[next]}"]`)
+          btn?.focus()
+        }}
       >
-        <TabsList variant="line" className="justify-start border-b">
-          {SEARCH_TABS.map((tab) => (
-            <TabsTrigger key={tab} value={tab} className="flex-none">
-              {TAB_LABELS[tab]}
-              {counts && currentQuery.trim() ? (
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  {counts[tab]}
-                </span>
-              ) : null}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+        {SEARCH_TABS.map((tab) => (
+          <button
+            key={tab}
+            role="tab"
+            type="button"
+            data-tab={tab}
+            tabIndex={currentTab === tab ? 0 : -1}
+            aria-selected={currentTab === tab}
+            onClick={() => updateSearch({ tab })}
+            className={cn(
+              'rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
+              currentTab === tab
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
+      </div>
+
+      {/* Row 2: Filters (left) + separator line (fills remaining) */}
+      <div className="mt-2.5 flex items-center gap-2">
+        {currentQuery.trim() && activeFilters.length > 0 && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            {activeFilters.includes('sort') && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`排序：${sortLabel}`}
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus-visible:outline-none data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
+                  >
+                    {sortLabel}
+                    <ChevronDown className="h-2.5 w-2.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-36">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">排序方式</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {SEARCH_SORT_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      className={cn(
+                        'text-sm',
+                        (currentSort ?? 'relevance') === option.value && 'font-semibold text-foreground',
+                      )}
+                      onClick={() => updateFilterParam('sort', option.value, 'relevance')}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {activeFilters.includes('time_range') && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`时间范围：${timeLabel}`}
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus-visible:outline-none data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
+                  >
+                    {timeLabel}
+                    <ChevronDown className="h-2.5 w-2.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-36">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">时间范围</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {SEARCH_TIME_RANGE_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      className={cn(
+                        'text-sm',
+                        (currentTimeRange ?? 'all') === option.value && 'font-semibold text-foreground',
+                      )}
+                      onClick={() => updateFilterParam('time_range', option.value, 'all')}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
+        <div className="h-px flex-1 bg-border/60" />
+      </div>
 
       {/* Content grid: results + stable sidebar column */}
       <div
@@ -692,7 +829,7 @@ export function SearchPage() {
 
         {/* Sidebar column: always occupies grid space on posts tab to prevent width jumps */}
         {showGrid && (
-          <aside className="hidden min-h-0 lg:block lg:self-stretch">
+          <aside className="hidden min-h-0 self-stretch bg-muted/70 lg:block">
             <div
               className={
                 SHOULD_RENDER_DEV_AUTH_TOOLBAR

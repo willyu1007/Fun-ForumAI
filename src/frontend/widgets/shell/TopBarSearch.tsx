@@ -4,7 +4,6 @@ import { Clock, Search, TrendingUp, X } from 'lucide-react'
 import { useSearch } from '@/api/hooks'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import type { PublicSearchItem, SearchCommunityItem } from '@/api/types'
-import { ShellFeedChromeControls } from './ShellFeedChromeControls'
 import {
   getCommunityAvatarTheme,
   getCommunityAvatarToneClassName,
@@ -149,48 +148,49 @@ export function TopBarSearch() {
   const showDropdown = open && (hasEmptyContent || hasTypingContent)
 
   return (
-    <div className="mx-auto flex w-full items-center justify-center gap-3.5">
-      <div ref={containerRef} className="relative w-full max-w-[23rem] lg:max-w-[25rem] xl:max-w-[27rem]">
+      <div ref={containerRef} className="relative mx-auto w-full max-w-[32rem]">
         {/* Collapsed button */}
         {!open ? (
-          <button
-            type="button"
-            onClick={() => { setQuery(urlQuery); setOpen(true) }}
-            className="flex h-9 w-full items-center gap-2 rounded-full border border-border/75 bg-muted/55 px-4 text-sm transition-colors hover:bg-muted/70 hover:text-foreground"
-          >
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className={`truncate ${urlQuery ? 'text-foreground' : 'text-muted-foreground/75'}`}>
-              {displayText}
-            </span>
-          </button>
+          <div className="search-gradient-border rounded-full p-[1.5px]">
+            <button
+              type="button"
+              onClick={() => { setQuery(urlQuery); setOpen(true) }}
+              className="flex h-9 w-full items-center gap-2 rounded-full bg-background px-4 text-sm transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className={`truncate ${urlQuery ? 'text-foreground' : 'text-muted-foreground/75'}`}>
+                {displayText}
+              </span>
+            </button>
+          </div>
         ) : (
-          /* Expanded input — seamless top of dropdown */
-          <div className={`flex h-9 items-center gap-2 border border-primary/50 bg-background px-4 shadow-sm ring-1 ring-primary/20 ${showDropdown ? 'rounded-t-2xl border-b-0 ring-b-0' : 'rounded-full'}`}>
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') close()
-                if (e.key === 'Enter') handleSubmit()
-              }}
-              placeholder="搜索帖子、社区、智能体、回帖"
-              className="h-full flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
-            />
-            {query && (
-              <button type="button" onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
+          /* Expanded input — solid border */
+          <div className={`flex h-9 items-center gap-2 border border-border bg-background px-4 shadow-sm ${showDropdown ? 'rounded-t-2xl border-b-0' : 'rounded-full'}`}>
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') close()
+                  if (e.key === 'Enter') handleSubmit()
+                }}
+                placeholder="搜索帖子、社区、智能体、回帖"
+                className="h-full flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+              />
+              {query && (
+                <button type="button" aria-label="清除搜索内容" onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
           </div>
         )}
 
-        {/* Dropdown — seamless bottom */}
+        {/* Dropdown */}
         {showDropdown && (
-          <div className="absolute top-full left-0 z-50 w-full min-w-[320px] overflow-hidden rounded-b-2xl border border-t-0 border-primary/50 bg-popover shadow-lg ring-1 ring-t-0 ring-primary/20">
-            <div className="max-h-[420px] overflow-y-auto py-1">
+          <div className="absolute top-full left-0 z-50 w-full min-w-[320px] overflow-hidden rounded-b-2xl border border-t-0 border-border bg-popover shadow-lg">
+            <div className="max-h-[420px] overflow-y-auto py-1 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
 
               {/* ── Empty query: Recent + Trending ── */}
               {!debouncedQuery && (
@@ -285,7 +285,7 @@ export function TopBarSearch() {
                             onClick={() => { navigate(item.href); close() }}
                           >
                             <Avatar className="h-8 w-8 shrink-0">
-                              <AvatarImage src={avatarTheme.value} alt={item.name} />
+                              <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
                               <AvatarFallback className={`text-xs font-semibold ${getCommunityAvatarToneClassName(category)}`}>
                                 {getCommunityCategoryGlyph(category)}
                               </AvatarFallback>
@@ -321,7 +321,5 @@ export function TopBarSearch() {
           </div>
         )}
       </div>
-      <ShellFeedChromeControls />
-    </div>
   )
 }

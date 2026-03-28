@@ -1,7 +1,8 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import { useRecordSearchTelemetry, useSearchInfinite } from '@/api/hooks'
+import { useRecordSearchTelemetry, useSearch, useSearchInfinite } from '@/api/hooks'
 import { buildAgentTarget } from '@/shared/utils/agent-target'
 import { SearchPage } from '../SearchPage'
 
@@ -17,7 +18,24 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(() => ({ isAuthenticated: true })),
 }))
 
+vi.mock('@/components/ui/avatar', () => ({
+  Avatar: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div data-testid="avatar" className={className}>
+      {children}
+    </div>
+  ),
+  AvatarImage: ({ className, alt, src }: { className?: string; alt?: string; src?: string }) => (
+    <img data-testid="avatar-image" className={className} alt={alt} src={src} />
+  ),
+  AvatarFallback: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <span data-testid="avatar-fallback" className={className}>
+      {children}
+    </span>
+  ),
+}))
+
 const useSearchInfiniteMock = vi.mocked(useSearchInfinite)
+const useSearchMock = vi.mocked(useSearch)
 const useRecordSearchTelemetryMock = vi.mocked(useRecordSearchTelemetry)
 
 function LocationProbe() {
@@ -74,7 +92,20 @@ describe('SearchPage', () => {
     } as never)
   }
 
+  function mockSidebarCommunities(items: Record<string, unknown>[] = []) {
+    useSearchMock.mockReturnValue({
+      data: {
+        data: {
+          items,
+        },
+      },
+      isLoading: false,
+      isError: false,
+    } as never)
+  }
+
   it('renders enriched agent results and tab counts without changing the route contract', () => {
+    mockSidebarCommunities()
     mockInfiniteSearch({
       query: 'talk show',
       normalized_query: 'talk show',
@@ -116,6 +147,7 @@ describe('SearchPage', () => {
   })
 
   it('reads tab and query from URL search params', () => {
+    mockSidebarCommunities()
     mockInfiniteSearch({
       query: 'talk show',
       normalized_query: 'talk show',
@@ -140,6 +172,7 @@ describe('SearchPage', () => {
   })
 
   it('renders blank-query discovery suggestions and featured sections', () => {
+    mockSidebarCommunities()
     mockInfiniteSearch({
       query: '',
       normalized_query: '',
@@ -177,5 +210,80 @@ describe('SearchPage', () => {
     expect(screen.getByRole('button', { name: 'talk show' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '精选帖子' })).toBeTruthy()
     expect(screen.getByText('精选帖子标题')).toBeTruthy()
+  })
+
+  it('renders community sidebar avatars with object-cover to avoid vertical stretching', () => {
+    mockInfiniteSearch({
+      query: 'rust',
+      normalized_query: 'rust',
+      current_tab: 'posts',
+      counts: { posts: 1, communities: 1, agents: 0, threads: 0 },
+      items: [],
+      discovery: null,
+      cursor: null,
+      took_ms: 10,
+    })
+    mockSidebarCommunities([
+      {
+        type: 'community',
+        id: 'community-1',
+        href: '/c/rust-lab',
+        name: 'Rust Lab',
+        slug: 'rust-lab',
+        description: '系统编程与编译器实践',
+        active_member_count: 42,
+        activity_7d: 18,
+        dominant_tags: ['rust'],
+        snippet: '系统编程与编译器实践',
+        score: 1.2,
+        highlights: [],
+        match_reasons: ['命中社区'],
+        match_reason_codes: ['community'],
+      },
+    ])
+
+    renderSearchPage('/search?q=rust&tab=posts')
+
+    const avatarImage = screen.getByAltText('Rust Lab')
+    expect(avatarImage.getAttribute('class') ?? '').toContain('object-cover')
+  })
+
+  it('renders the community sidebar as a full-height darker aside instead of a rounded card', () => {
+    mockInfiniteSearch({
+      query: 'rust',
+      normalized_query: 'rust',
+      current_tab: 'posts',
+      counts: { posts: 1, communities: 1, agents: 0, threads: 0 },
+      items: [],
+      discovery: null,
+      cursor: null,
+      took_ms: 10,
+    })
+    mockSidebarCommunities([
+      {
+        type: 'community',
+        id: 'community-1',
+        href: '/c/rust-lab',
+        name: 'Rust Lab',
+        slug: 'rust-lab',
+        description: '系统编程与编译器实践',
+        active_member_count: 42,
+        activity_7d: 18,
+        dominant_tags: ['rust'],
+        snippet: '系统编程与编译器实践',
+        score: 1.2,
+        highlights: [],
+        match_reasons: ['命中社区'],
+        match_reason_codes: ['community'],
+      },
+    ])
+
+    renderSearchPage('/search?q=rust&tab=posts')
+
+    const sidebarHeading = screen.getByRole('heading', { name: '社区' })
+    const aside = sidebarHeading.closest('aside')
+    expect(aside?.getAttribute('class') ?? '').toContain('bg-muted/70')
+    expect(aside?.getAttribute('class') ?? '').toContain('self-stretch')
+    expect(sidebarHeading.parentElement?.getAttribute('class') ?? '').not.toContain('rounded-xl')
   })
 })
