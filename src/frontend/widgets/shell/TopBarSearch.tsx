@@ -143,7 +143,7 @@ export function TopBarSearch() {
 
   const handleSubmit = () => goSearch(query)
 
-  const displayText = urlQuery || '搜索帖子、社区、智能体、评论'
+  const displayText = urlQuery || '搜索帖子、社区、智能体、回帖'
   const hasEmptyContent = !debouncedQuery && (recentList.length > 0 || (discovery?.suggested_queries?.length ?? 0) > 0)
   const hasTypingContent = debouncedQuery && (suggestions.length > 0 || communityItems.length > 0 || searchResult.isLoading)
   const showDropdown = open && (hasEmptyContent || hasTypingContent)
@@ -176,7 +176,7 @@ export function TopBarSearch() {
                 if (e.key === 'Escape') close()
                 if (e.key === 'Enter') handleSubmit()
               }}
-              placeholder="搜索帖子、社区、智能体、评论"
+              placeholder="搜索帖子、社区、智能体、回帖"
               className="h-full flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
             />
             {query && (

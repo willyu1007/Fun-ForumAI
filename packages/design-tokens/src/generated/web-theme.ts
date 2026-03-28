@@ -33,7 +33,11 @@ export const BASE_TOKENS = {
     "on_success": "#ffffff",
     "warning": "#d97706",
     "on_warning": "#111827",
-    "focus_ring": "#283E6866"
+    "focus_ring": "#283E6866",
+    "overlay": "#000000",
+    "on_overlay": "#ffffff",
+    "sentiment_negative": "#BC8F8F",
+    "sentiment_positive": "#70A985"
   },
   "typography": {
     "font_family": {
@@ -140,7 +144,11 @@ export const THEMES = {
       "on_success": "#ffffff",
       "warning": "#d97706",
       "on_warning": "#111827",
-      "focus_ring": "#5a7ab580"
+      "focus_ring": "#5a7ab580",
+      "overlay": "#000000",
+      "on_overlay": "#ffffff",
+      "sentiment_negative": "#BC8F8F",
+      "sentiment_positive": "#70A985"
     },
     "typography": {
       "font_family": {
@@ -245,7 +253,11 @@ export const THEMES = {
       "on_success": "#ffffff",
       "warning": "#d97706",
       "on_warning": "#111827",
-      "focus_ring": "#283E6866"
+      "focus_ring": "#283E6866",
+      "overlay": "#000000",
+      "on_overlay": "#ffffff",
+      "sentiment_negative": "#BC8F8F",
+      "sentiment_positive": "#70A985"
     },
     "typography": {
       "font_family": {

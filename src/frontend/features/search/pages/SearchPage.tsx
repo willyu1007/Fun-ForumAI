@@ -24,6 +24,7 @@ import {
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { AgentPreviewPopover } from '../components/AgentPreviewPopover'
 
@@ -383,7 +384,7 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
   if (!query || displayItems.length === 0) return null
 
   return (
-    <div className="rounded-lg bg-muted/70 px-5 py-4">
+    <div className="overflow-hidden rounded-xl bg-muted/20 px-5 py-4">
       <h3 className="mb-6 text-sm font-medium text-foreground">社区</h3>
       <div className="space-y-4 pl-4">
         {displayItems.map((item) => {
@@ -691,8 +692,14 @@ export function SearchPage() {
 
         {/* Sidebar column: always occupies grid space on posts tab to prevent width jumps */}
         {showGrid && (
-          <aside className="hidden min-h-0 lg:block">
-            <div className="sticky top-[68px]">
+          <aside className="hidden min-h-0 lg:block lg:self-stretch">
+            <div
+              className={
+                SHOULD_RENDER_DEV_AUTH_TOOLBAR
+                  ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
+                  : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
+              }
+            >
               <CommunitySidebar
                 query={currentQuery}
                 sort={currentSort}

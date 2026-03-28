@@ -58,6 +58,11 @@ const STATUS_OPTIONS: Array<{ value: FeedbackStatus; label: string }> = [
 
 const EMPTY_ITEMS: AdminFeedbackTicketSummary[] = []
 
+function normalizeDraftNote(value: string): string | null {
+  const normalized = value.trim()
+  return normalized ? normalized : null
+}
+
 function StatusBadge({ status }: { status: FeedbackStatus }) {
   return (
     <Badge className={cn('border-transparent', STATUS_BADGE_CLASS[status])}>
@@ -86,6 +91,18 @@ export function FeedbackInboxTab() {
 
   const items = feedbackList.data?.data ?? EMPTY_ITEMS
   const detail = detailQuery.data?.data ?? null
+  const nextPublicNote = normalizeDraftNote(draftPublicNote)
+  const nextInternalNote = normalizeDraftNote(draftInternalNote)
+  const currentPublicNote = detail?.public_resolution_note ?? null
+  const currentInternalNote = detail?.internal_note ?? null
+  const hasChanges = Boolean(
+    detail
+    && (
+      draftStatus !== detail.status
+      || nextPublicNote !== currentPublicNote
+      || nextInternalNote !== currentInternalNote
+    ),
+  )
 
   useEffect(() => {
     if (items.length === 0) {
@@ -109,14 +126,28 @@ export function FeedbackInboxTab() {
   }, [detail])
 
   async function handleSave() {
-    if (!selectedId) {
+    if (!selectedId || !detail || !hasChanges) {
       return
     }
-    await updateFeedback.mutateAsync({
+    const payload: {
+      feedback_id: string
+      status?: FeedbackStatus
+      public_resolution_note?: string | null
+      internal_note?: string | null
+    } = {
       feedback_id: selectedId,
-      status: draftStatus,
-      public_resolution_note: draftPublicNote,
-      internal_note: draftInternalNote,
+    }
+    if (draftStatus !== detail.status) {
+      payload.status = draftStatus
+    }
+    if (nextPublicNote !== currentPublicNote) {
+      payload.public_resolution_note = nextPublicNote
+    }
+    if (nextInternalNote !== currentInternalNote) {
+      payload.internal_note = nextInternalNote
+    }
+    await updateFeedback.mutateAsync({
+      ...payload,
     })
   }
 
@@ -346,7 +377,10 @@ export function FeedbackInboxTab() {
                     </div>
 
                     <div className="flex justify-end">
-                      <Button onClick={() => void handleSave()} disabled={updateFeedback.isPending}>
+                      <Button
+                        onClick={() => void handleSave()}
+                        disabled={updateFeedback.isPending || !hasChanges}
+                      >
                         {updateFeedback.isPending ? '保存中…' : '保存处理结果'}
                       </Button>
                     </div>

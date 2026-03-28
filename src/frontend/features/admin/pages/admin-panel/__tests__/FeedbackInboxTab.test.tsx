@@ -109,6 +109,7 @@ describe('FeedbackInboxTab', () => {
       expect(screen.getAllByText('开发用户').length).toBeGreaterThan(0)
       expect(screen.getByDisplayValue('已在 staging 复现。')).toBeTruthy()
       expect(screen.getByRole('button', { name: /首页接口偶发 500/i }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: '保存处理结果' }).hasAttribute('disabled')).toBe(true)
     })
 
     fireEvent.change(
@@ -120,16 +121,50 @@ describe('FeedbackInboxTab', () => {
       { target: { value: '修复后补一条回归用例。' } },
     )
 
+    expect(screen.getByRole('button', { name: '保存处理结果' }).hasAttribute('disabled')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: '保存处理结果' }))
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({
         feedback_id: 'feedback-1',
-        status: 'UNDER_REVIEW',
         public_resolution_note: '已纳入下个修复窗口。',
         internal_note: '修复后补一条回归用例。',
       })
     })
+  })
+
+  it('keeps save disabled when the normalized payload has no effective changes', async () => {
+    useAdminFeedbackListMock.mockReturnValue({
+      data: { data: [feedbackSummary] },
+      isLoading: false,
+    } as never)
+    useAdminFeedbackDetailMock.mockImplementation((feedbackId: string | null) => ({
+      data: feedbackId === 'feedback-1' ? { data: feedbackDetail } : undefined,
+      isLoading: false,
+    }) as never)
+    const mutateAsync = vi.fn()
+    useAdminUpdateFeedbackMock.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+
+    render(<FeedbackInboxTab />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '保存处理结果' }).hasAttribute('disabled')).toBe(true)
+    })
+
+    fireEvent.change(
+      screen.getByLabelText('公开处理结论'),
+      { target: { value: '   问题已确认，正在修复。   ' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText('内部备注'),
+      { target: { value: ' 已在 staging 复现。 ' } },
+    )
+
+    expect(screen.getByRole('button', { name: '保存处理结果' }).hasAttribute('disabled')).toBe(true)
+    expect(mutateAsync).not.toHaveBeenCalled()
   })
 
   it('applies source-route filtering and clears stale selection when the list becomes empty', async () => {

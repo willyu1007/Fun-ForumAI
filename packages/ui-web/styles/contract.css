@@ -227,6 +227,17 @@
   [data-ui="tab"][data-state="active"] { background: var(--ui-color-border-subtle); }
   [data-ui="tab"][data-state="disabled"] { opacity: 0.6; cursor: not-allowed; }
 
+  /* ---------- Sentiment ---------- */
+  .sentiment-bar {
+    background: linear-gradient(
+      to right,
+      var(--ui-color-sentiment-negative) 0%,
+      var(--ui-color-sentiment-negative) var(--sentiment-neg-pct, 50%),
+      var(--ui-color-sentiment-positive) var(--sentiment-neg-pct, 50%),
+      var(--ui-color-sentiment-positive) 100%
+    );
+  }
+
   /* ---------- Empty state ---------- */
   [data-ui="empty-state"] { border: var(--ui-border-width-sm) dashed var(--ui-color-border); border-radius: var(--ui-radius-lg); padding: var(--ui-space-5); text-align: center; }
   [data-ui="empty-state"] [data-slot="title"] { font-weight: var(--ui-typography-weight-semibold); margin-bottom: var(--ui-space-2); }
