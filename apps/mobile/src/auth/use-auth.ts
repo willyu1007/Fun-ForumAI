@@ -1,5 +1,6 @@
 import { useContext } from 'react'
-import { AuthContext, type AuthState } from './auth-state'
+import { AuthContext } from './auth-context.shared'
+import type { AuthState } from './auth-types'
 
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext)

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiPost, AuthError } from '../api/client'
 import type { AuthResult } from '../api/types'
-import { AuthContext, type AuthState } from './auth-state'
+import { AuthContext } from './auth-context.shared'
+import type { AuthState } from './auth-types'
 import { clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from './token-store'
 
 export function AuthProvider({ children }: { children: ReactNode }) {

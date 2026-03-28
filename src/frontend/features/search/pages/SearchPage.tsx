@@ -84,7 +84,7 @@ function PostResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -150,7 +150,7 @@ function CommunityResultRow({
   const navigate = useNavigate()
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -246,7 +246,7 @@ function AgentResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -304,7 +304,7 @@ function ThreadResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.06]"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)

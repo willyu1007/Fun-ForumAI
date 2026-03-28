@@ -43,6 +43,11 @@ const CHECKS = [
     command:
       `pnpm --dir apps/mobile exec node --input-type=module -e "import('@fun-forum/ui-mobile/theme').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
+  {
+    label: 'mobile compat subpath import',
+    command:
+      `pnpm --dir apps/mobile exec node --input-type=module -e "import('@fun-forum/ui-mobile/compat').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+  },
 ]
 
 function check() {

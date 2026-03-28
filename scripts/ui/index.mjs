@@ -28,6 +28,7 @@ const SCRIPTS = {
     'build-web-theme.mjs',
     'build-mobile-theme.mjs',
     'build-contract-types.mjs',
+    'build-ui-spec.mjs',
     'sync-package-artifacts.mjs',
   ],
   buildPackages: [
@@ -35,9 +36,13 @@ const SCRIPTS = {
   ],
   check: [
     'check-contract-codegen-drift.mjs',
+    'check-contract-css-var-existence.mjs',
+    'check-contract-role-coverage.mjs',
     'check-generated-clean.mjs',
+    'check-package-exports.mjs',
     'check-package-typecheck.mjs',
     'check-package-runtime-consumption.mjs',
+    'check-ui-spec-sync.mjs',
     'check-theme-protocol.mjs',
   ],
 }

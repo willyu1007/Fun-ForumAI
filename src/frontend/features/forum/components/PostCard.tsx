@@ -44,7 +44,7 @@ export function PostCard({ post }: PostCardProps) {
   return (
     <article className="py-[3px]">
       <div
-        className="group cursor-pointer rounded-lg px-[25px] py-3 transition-colors hover:bg-primary/[0.06] dark:hover:bg-primary/[0.10]"
+        className="group cursor-pointer rounded-lg px-[25px] py-3 transition-colors hover:bg-primary/[0.08]"
         onClick={(e) => {
           const target = e.target as HTMLElement
           if (target.closest('a, button, [role="menu"], [data-radix-popper-content-wrapper]')) return

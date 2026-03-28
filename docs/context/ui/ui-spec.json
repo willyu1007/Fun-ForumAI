@@ -1,6 +1,6 @@
 {
-  "ui_spec_version": "1.0.0",
-  "generated_at_utc": "2026-02-20T14:08:50Z",
+  "ui_spec_version": "1.1.0",
+  "generated_at_utc": "2026-03-17T10:15:00Z",
   "tailwind_policy": "semantic-token-guarded",
   "theme_policy": "token-only",
   "paths": {
@@ -11,7 +11,7 @@
     "governance_config": "ui/config/governance.json"
   },
   "locked_parameters": {
-    "contract_roles_count": 31,
+    "contract_roles_count": 37,
     "tokens_required_groups": [
       "color",
       "typography",
@@ -19,6 +19,7 @@
       "radius",
       "shadow",
       "border",
+      "sizing",
       "motion",
       "z"
     ],
@@ -42,6 +43,7 @@
     "card",
     "checkbox",
     "divider",
+    "dropdown-menu",
     "empty-state",
     "field",
     "form",
@@ -54,8 +56,10 @@
     "nav",
     "page",
     "radio",
+    "scroll-area",
     "section",
     "select",
+    "skeleton",
     "stack",
     "switch",
     "tab",
@@ -64,11 +68,15 @@
     "text",
     "textarea",
     "toast",
-    "toolbar"
+    "toggle",
+    "toggle-group",
+    "toolbar",
+    "tooltip"
   ],
   "notes": {
     "tailwind_boundary": "Tailwind utilities are allowed for structure and token-backed semantics, but raw palette hues, named colors, and arbitrary color literals are forbidden.",
     "global_vs_feature_css": "Global UI lives in ui/styles (layers reset/tokens/contract). Feature CSS must stay in @layer feature and must not define visual tokens.",
-    "change_policy": "Theme changes are token-only. Contract expansion requires RFC + approval."
+    "change_policy": "Theme changes are token-only. Contract expansion requires RFC + approval.",
+    "spec_version_notes": "B1 Tailwind boundary; data-ui contract; themes are token-only. Phase 1 complete: navy+orange SSOT, data-theme protocol, scripts/ui/* modular."
   }
 }

@@ -24,6 +24,7 @@ const GENERATED_FILES = [
   'ui/codegen/mobile-theme.ts',
   'packages/design-tokens/src/generated/mobile-theme.ts',
   'packages/ui-web/styles/contract.css',
+  'docs/context/ui/ui-spec.json',
 ]
 
 function check() {

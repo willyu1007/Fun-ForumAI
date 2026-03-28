@@ -29,7 +29,7 @@ export function PostMediaGallery({ media, className }: PostMediaGalleryProps) {
 
   return (
     <div className={className}>
-      <div className="group/carousel relative overflow-hidden rounded-xl border border-border/30 bg-overlay/90 dark:bg-overlay/95">
+      <div className="group/carousel relative overflow-hidden rounded-xl border border-border/30 bg-overlay/95">
         <button
           type="button"
           onClick={() => setLightboxIndex(slide)}

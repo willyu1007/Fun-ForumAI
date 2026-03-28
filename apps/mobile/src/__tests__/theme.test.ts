@@ -41,6 +41,57 @@ jest.mock(
   { virtual: true },
 )
 
+jest.mock(
+  '@fun-forum/ui-mobile/compat',
+  () => ({
+    colors: {
+      background: '#ffffff',
+      surface: '#f7f7f8',
+      surfaceBorder: '#d9d9dd',
+      headerBg: '#2563eb',
+      headerText: '#ffffff',
+      headerSubtext: '#5b6472',
+      headerBusy: '#60a5fa',
+      headerError: '#dc2626',
+      tabBg: '#f7f7f8',
+      tabDefault: '#5b6472',
+      tabActive: '#2563eb',
+      tabText: '#111827',
+      primary: '#2563eb',
+      primaryText: '#ffffff',
+      secondaryBg: '#ffffff',
+      selectedBg: '#ffffff',
+      selectedBorder: '#2563eb',
+      text: '#111827',
+      textSecondary: '#5b6472',
+      textMuted: '#6b7280',
+      textOnDark: '#ffffff',
+      inputBorder: '#d9d9dd',
+      divider: '#e5e7eb',
+      error: '#dc2626',
+      disabled: 0.5,
+    },
+    spacing: {
+      xs: 4,
+      sm: 8,
+      md: 12,
+      lg: 16,
+      xl: 24,
+    },
+    fontSize: {
+      xs: 12,
+      sm: 14,
+      md: 16,
+      lg: 20,
+    },
+    radius: {
+      sm: 8,
+      md: 12,
+    },
+  }),
+  { virtual: true },
+)
+
 let themeModule: typeof import('../theme')
 
 beforeAll(async () => {
