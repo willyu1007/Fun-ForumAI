@@ -48,3 +48,13 @@
   - 把 `prisma/` 复制到两个 stage 的 `pnpm install` 之前，并在 production stage 的 install 前先安装全局 `prisma` / `tsx`。
 - Prevention:
   - 以后只要根包 `postinstall` 会执行 `prisma generate`，Dockerfile 就必须保证 install 阶段已经具备 schema 和 CLI；不要把 `COPY prisma` 或 Prisma CLI 安装放到 `pnpm install` 之后。
+
+### 2026-03-29 - Alibaba Cloud CLI v3 output flag mismatch
+- Symptom:
+  - publish workflow 在 `Log in to ACR` 阶段失败，`aliyun cr GetAuthorizationToken` 报错 `bad flag format --output with field cols= required`。
+- What we tried:
+  - 初版脚本沿用了 `--output json` 的写法，假设 runner 上的 `aliyun` CLI 接受该参数。
+- Fix / workaround:
+  - 移除 `--output json`，直接依赖 CLI v3 的默认 JSON 输出给后续 Node 解析。
+- Prevention:
+  - 以后在 GitHub runner 上调用 `aliyun` CLI 时，不要假设旧版 CLI 的输出参数仍可用；优先先在 runner 实机上验证一遍目标版本的命令行语法。

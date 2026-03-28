@@ -138,7 +138,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          token_json="$(aliyun cr GetAuthorizationToken --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID" --output json)"
+          token_json="$(aliyun cr GetAuthorizationToken --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID")"
           username="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const username=body.TempUsername ?? body.tempUsername ?? body.data?.TempUsername ?? body.data?.tempUsername ?? 'cr_temp_user';process.stdout.write(username);});")"
           password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
           printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"
@@ -247,7 +247,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          token_json="$(aliyun cr GetAuthorizationToken --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID" --output json)"
+          token_json="$(aliyun cr GetAuthorizationToken --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID")"
           username="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const username=body.TempUsername ?? body.tempUsername ?? body.data?.TempUsername ?? body.data?.tempUsername ?? 'cr_temp_user';process.stdout.write(username);});")"
           password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
           printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"

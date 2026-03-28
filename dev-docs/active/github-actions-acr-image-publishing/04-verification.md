@@ -73,6 +73,10 @@
     - `gh run view 23696271210 --repo willyu1007/Fun-ForumAI --log-failed`
       - Result: preflight 在 `Verify self-hosted publish runner exists` 失败，错误为 `403 Resource not accessible by integration`
       - Note: 说明 workflow 内置的 `GITHUB_TOKEN` 无法调用仓库 self-hosted runners 列表接口，不能把该 API 能力当作 publish workflow 的硬前置
+  - Second remote publish attempt:
+    - `gh run view 23696321253 --repo willyu1007/Fun-ForumAI --log-failed`
+      - Result: `Log in to ACR` 失败，`aliyun cr GetAuthorizationToken` 报错 `bad flag format --output with field cols= required`
+      - Note: 说明 runner 上的 `aliyun` CLI v3 不接受 `--output json` 这种写法，登录脚本必须依赖默认 JSON 输出或改用正确的 CLI v3 输出语法
   - Packaging build:
     - `node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate-local`
       - Result: local Docker build 成功完成，镜像已生成 `llm-forum:ci-validate-local`
