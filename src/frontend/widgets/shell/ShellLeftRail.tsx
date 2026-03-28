@@ -33,7 +33,7 @@ import {
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 const LEFT_RAIL_SECTION_STATE_KEY = 'shell-left-rail-sections'
 const LEFT_RAIL_RECENT_VISITS_KEY = 'shell-left-rail-recent-visits'
-const RECENT_VISIT_LIMIT = 6
+const RECENT_VISIT_LIMIT = 5
 
 const HIGHLIGHT_LINKS = [
   { to: '/highlights', label: '全站高光', icon: Flame },
@@ -102,11 +102,16 @@ function readRecentVisits() {
       return [] as string[]
     }
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed)
+    const filtered = Array.isArray(parsed)
       ? parsed.filter(
           (value): value is string => typeof value === 'string' && value.startsWith('/c/'),
         )
       : []
+    const trimmed = filtered.slice(0, RECENT_VISIT_LIMIT)
+    if (trimmed.length !== filtered.length) {
+      writeRecentVisits(trimmed)
+    }
+    return trimmed
   } catch {
     return [] as string[]
   }
@@ -188,7 +193,7 @@ function SidebarLink({
     >
       <span
         className={cn(
-          'flex w-full items-center gap-3.5 rounded-lg transition-colors',
+          'mx-auto flex w-[95%] items-center gap-3.5 rounded-[10px] transition-colors',
           nested ? 'px-3 py-2.5 text-[13px]' : 'px-4 py-3',
           active
             ? 'bg-primary/12 font-medium text-foreground'
@@ -222,7 +227,7 @@ function SidebarSectionHeader({
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary/55 transition-colors hover:text-primary"
+      className="mx-auto flex w-[95%] min-w-0 items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary/55 transition-colors hover:text-primary"
       onClick={onToggle}
     >
       <span>{label}</span>
@@ -252,7 +257,7 @@ function RecentVisitLink({
     >
       <span
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition-colors',
+          'mx-auto flex w-[95%] items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] transition-colors',
           active
             ? 'bg-primary/12 font-medium text-foreground'
             : 'text-primary/70 group-hover:bg-primary/6 group-hover:text-primary',
@@ -319,9 +324,9 @@ export function ShellLeftRail() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <ScrollArea className="flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-1 px-3 pb-3 pt-1">
+    <div className="flex h-full flex-col overflow-hidden pt-[6.5px]">
+      <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-0.5 px-3 pb-3 pt-1">
           {/* Top-level navigation */}
           <SidebarLink to="/" label="主页" icon={Home} active={pathname === '/'} />
           <SidebarLink
@@ -371,7 +376,9 @@ export function ShellLeftRail() {
                     )
                   })
                 ) : (
-                  <p className="px-3 py-2 text-[12px] text-muted-foreground">还没有浏览记录</p>
+                  <p className="mx-auto w-[95%] px-3 py-2 text-[12px] text-muted-foreground">
+                    还没有浏览记录
+                  </p>
                 )}
               </div>
             ) : null}
@@ -436,22 +443,25 @@ export function ShellLeftRail() {
       </ScrollArea>
 
       {/* My Agents (Fixed at bottom) */}
-      <div className="shrink-0 px-3 pb-4 pt-1">
-        <SectionDivider />
-        <div className="pt-1">
+      <div className="flex shrink-0 flex-col transition-colors duration-200 hover:bg-muted/70">
+        <div className="-mt-1 border-t border-primary/22" aria-hidden />
+        <div className="flex min-h-[4.25rem] items-start px-3 pb-4 pt-2">
           <button
             type="button"
-            className="group block w-full text-left text-sm transition-colors"
+            className="group -mt-2 block w-full text-left text-base transition-colors"
             onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
           >
             <span
               className={cn(
-                'flex w-full items-center gap-3.5 rounded-lg px-4 py-3 transition-colors',
-                'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
+                'mx-auto flex w-[95%] items-center gap-4 rounded-[10px] px-4 py-3.5 transition-colors duration-200',
+                'text-foreground/80 group-hover:text-foreground',
               )}
             >
-              <Bot className="h-[18px] w-[18px] shrink-0 transition-all" />
-              <span className="truncate font-medium">我的智能体</span>
+              <Bot
+                className="gradient-icon-flow h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200"
+                strokeWidth={2}
+              />
+              <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">我的智能体</span>
             </span>
           </button>
         </div>
