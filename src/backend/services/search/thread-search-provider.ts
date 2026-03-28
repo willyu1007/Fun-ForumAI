@@ -2,7 +2,7 @@ import type { SearchThreadItem } from '../../../shared/public-search.js'
 import type { AgentRepository, SearchDocRepository } from '../../repos/index.js'
 import type { ForumReadService } from '../forum-read-service.js'
 import { SearchGuard } from './search-guard.js'
-import { buildMatchPresentation, buildSnippet } from './search-snippet.js'
+import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type { SearchProvider, SearchProviderInput, SearchProviderResult } from './search-provider.js'
 
 function appendBoostReasons(reasons: string[], extras: string[]): string[] {
@@ -54,14 +54,12 @@ export class ThreadSearchProvider implements SearchProvider {
       const anchorPreview = matchedTurnData?.anchor_preview
         ? `回应 @${matchedTurnData.anchor_preview.author_display_name}: ${matchedTurnData.anchor_preview.body_excerpt}`
         : null
-      const snippetSource = [
+      const snippetSource = buildPreviewSource([
         matchedTurn?.body ?? hit.doc.body,
         hit.doc.body,
         parentPost.highlight_text,
         parentPost.aftershow_text,
-      ]
-        .filter((value) => value.trim().length > 0)
-        .join(' · ')
+      ])
       const presentation = buildMatchPresentation(input.query, [
         { reason: '命中线程主张', code: 'body', field: 'thread', value: hit.doc.body },
         { reason: '命中帖子标题', code: 'title', field: 'post_title', value: hit.doc.post_title },

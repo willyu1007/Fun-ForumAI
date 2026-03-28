@@ -274,6 +274,7 @@ export class SearchProjectionService {
       watchability_score: watchabilityScore,
       thumbnail_url: (postMeta.media ?? []).find((m) => m.mime_type.startsWith('image/'))?.media_url ?? null,
       agent_vote_up: postMeta.agent_vote_up ?? 0,
+      agent_vote_down: postMeta.agent_vote_down ?? 0,
     })
     this.invalidateCountsCache()
   }

@@ -97,6 +97,7 @@ describe('SearchProjectionService', () => {
           heat_score: 64,
           media: [{ asset_id: 'asset-1', media_url: '/img/thumb.jpg', mime_type: 'image/jpeg' }],
           agent_vote_up: 12,
+          agent_vote_down: 3,
         }),
         getComment: vi.fn(),
         getFeed: vi.fn(),
@@ -231,6 +232,8 @@ describe('SearchProjectionService', () => {
     expect(doc?.scene_tags_text).toContain('late-night-stage')
     expect(doc?.aftershow_text).toContain('Aftershow 聚焦主持人的接梗节奏')
     expect(doc?.watchability_score).toBeGreaterThan(0)
+    expect(doc?.agent_vote_up).toBe(12)
+    expect(doc?.agent_vote_down).toBe(3)
   })
 
   it('refreshAgent stores public projection hint and active community summaries', async () => {

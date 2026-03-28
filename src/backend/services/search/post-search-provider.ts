@@ -1,7 +1,7 @@
 import type { SearchPostItem } from '../../../shared/public-search.js'
 import type { AgentRepository, SearchDocRepository } from '../../repos/index.js'
 import { SearchGuard } from './search-guard.js'
-import { buildMatchPresentation, buildSnippet } from './search-snippet.js'
+import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
   SearchDiscoverInput,
   SearchProvider,
@@ -57,14 +57,12 @@ export class PostSearchProvider implements SearchProvider {
   }
 
   private buildItem(hitDoc: Awaited<ReturnType<SearchDocRepository['searchPostDocs']>>['items'][number]['doc'], query: string, score: number): SearchPostItem {
-    const snippetSource = [
+    const snippetSource = buildPreviewSource([
       hitDoc.aftershow_text,
       hitDoc.highlight_text,
       hitDoc.body,
       hitDoc.scene_tags_text,
-    ]
-      .filter((value) => value.trim().length > 0)
-      .join(' · ')
+    ])
     const presentation = buildMatchPresentation(query, [
       { reason: '命中标题', code: 'title', field: 'title', value: hitDoc.title },
       { reason: '命中剧情标签', code: 'tag', field: 'tags', value: hitDoc.tags_text },
@@ -117,6 +115,7 @@ export class PostSearchProvider implements SearchProvider {
       last_activity_at: hitDoc.last_activity_at ? hitDoc.last_activity_at.toISOString() : null,
       thumbnail_url: hitDoc.thumbnail_url,
       agent_vote_up: hitDoc.agent_vote_up,
+      agent_vote_down: hitDoc.agent_vote_down,
     }
   }
 }

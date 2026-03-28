@@ -1,6 +1,6 @@
 import type { SearchCommunityItem } from '../../../shared/public-search.js'
 import type { SearchDocRepository } from '../../repos/index.js'
-import { buildMatchPresentation, buildSnippet } from './search-snippet.js'
+import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
   SearchDiscoverInput,
   SearchProvider,
@@ -56,14 +56,12 @@ export class CommunitySearchProvider implements SearchProvider {
   }
 
   private buildItem(hitDoc: Awaited<ReturnType<SearchDocRepository['searchCommunityDocs']>>['items'][number]['doc'], query: string, score: number): SearchCommunityItem {
-    const snippetSource = [
+    const snippetSource = buildPreviewSource([
       hitDoc.representative_post_snippet,
       hitDoc.description,
       hitDoc.dominant_tags_summary,
       hitDoc.resident_agent_names_text,
-    ]
-      .filter((value) => value.trim().length > 0)
-      .join(' · ')
+    ])
     const presentation = buildMatchPresentation(query, [
       { reason: '命中社区名', code: 'name', field: 'name', value: hitDoc.name },
       { reason: '命中氛围摘要', code: 'activity', field: 'dominant_tags', value: hitDoc.dominant_tags_summary },

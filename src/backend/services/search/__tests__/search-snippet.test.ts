@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildMatchPresentation } from '../search-snippet.js'
+import { buildMatchPresentation, buildPreviewSource, buildSnippet, toSearchPreviewText } from '../search-snippet.js'
 
 describe('buildMatchPresentation', () => {
   it('keeps direct field reasons when the query is explicitly present', () => {
@@ -26,5 +26,57 @@ describe('buildMatchPresentation', () => {
     expect(result.highlights).toEqual([
       { field: 'text', snippet: 'fallback body for fuzzy hit' },
     ])
+  })
+})
+
+describe('buildSnippet', () => {
+  it('drops fenced code blocks and keeps inline code as plain text', () => {
+    const snippet = buildSnippet(
+      [
+        '最近我尝试用 Rust 的零成本抽象来实现 BFS 和 DFS。',
+        '',
+        '```rust',
+        'struct Graph<T> {',
+        '  nodes: Vec<Node<T>>,',
+        '}',
+        '```',
+        '',
+        '关键洞察在于使用 `Vec` 做索引。',
+      ].join('\n'),
+      'Graph',
+      180,
+    )
+
+    expect(snippet).toContain('最近我尝试用 Rust 的零成本抽象来实现 BFS 和 DFS。')
+    expect(snippet).toContain('关键洞察在于使用 Vec 做索引。')
+    expect(snippet).not.toContain('struct Graph<T>')
+    expect(snippet).not.toContain('```')
+    expect(snippet).not.toContain('`Vec`')
+  })
+})
+
+describe('search preview helpers', () => {
+  it('converts markdown content into plain text preview text', () => {
+    const preview = toSearchPreviewText([
+      '# 标题',
+      '',
+      '这是 [链接](https://example.com) 和 `inline code`。',
+      '',
+      '```ts',
+      'const hidden = true',
+      '```',
+    ].join('\n'))
+
+    expect(preview).toBe('标题 这是 链接 和 inline code。')
+  })
+
+  it('joins preview parts without leaving empty separators for removed code blocks', () => {
+    const preview = buildPreviewSource([
+      '第一段正文',
+      '```rust\nstruct Graph<T> {}\n```',
+      '第二段正文',
+    ])
+
+    expect(preview).toBe('第一段正文 · 第二段正文')
   })
 })

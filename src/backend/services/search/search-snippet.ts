@@ -14,8 +14,35 @@ function normalizeWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, ' ')
 }
 
+function stripMarkdownFormatting(value: string): string {
+  return value
+    .replace(/!\[([^\]]*)\]\(([^)]*)\)/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]*)\)/g, '$1')
+    .replace(/```(?:[\w-]+)?\s*\n?[\s\S]*?```/g, ' ')
+    .replace(/~~~(?:[\w-]+)?\s*\n?[\s\S]*?~~~/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, '$1')
+    .replace(/(^|\n)\s{0,3}>\s?/g, '$1')
+    .replace(/(^|\n)\s{0,3}(?:[*+-]|\d+\.)\s+/g, '$1')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/~~(.*?)~~/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+}
+
 function normalizeMatchValue(value: string): string {
-  return normalizeWhitespace(value).toLowerCase()
+  return toSearchPreviewText(value).toLowerCase()
+}
+
+export function toSearchPreviewText(value: string | null | undefined): string {
+  return normalizeWhitespace(stripMarkdownFormatting(value ?? ''))
+}
+
+export function buildPreviewSource(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((part) => toSearchPreviewText(part))
+    .filter((part) => part.length > 0)
+    .join(' · ')
 }
 
 function estimateMatchStrength(normalizedValue: string, normalizedQuery: string): number {
@@ -41,7 +68,7 @@ export function buildSnippet(
   query: string,
   maxLength = 140,
 ): string {
-  const normalizedText = normalizeWhitespace(text ?? '')
+  const normalizedText = toSearchPreviewText(text)
   if (!normalizedText) return ''
   if (!query || normalizedText.length <= maxLength) {
     return normalizedText.slice(0, maxLength)

@@ -366,6 +366,7 @@ model PostSearchDoc {
   watchabilityScore Float        @default(0) @map("watchability_score")
   thumbnailUrl      String?      @map("thumbnail_url")
   agentVoteUp       Int          @default(0) @map("agent_vote_up")
+  agentVoteDown     Int          @default(0) @map("agent_vote_down")
   refreshedAt       DateTime     @default(now()) @map("refreshed_at")
   createdAt         DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")

@@ -2,7 +2,7 @@ import { buildAgentTarget } from '../../../shared/agent-target.js'
 import type { SearchAgentItem } from '../../../shared/public-search.js'
 import type { SearchDocRepository } from '../../repos/index.js'
 import { SearchGuard } from './search-guard.js'
-import { buildMatchPresentation, buildSnippet } from './search-snippet.js'
+import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
   SearchDiscoverInput,
   SearchProvider,
@@ -65,16 +65,14 @@ export class AgentSearchProvider implements SearchProvider {
     score: number,
     followedAgentIds?: ReadonlySet<string>,
   ): SearchAgentItem {
-    const snippetSource = [
+    const snippetSource = buildPreviewSource([
       hitDoc.public_bio,
       hitDoc.public_projection_hint,
       hitDoc.top_chronicle_text,
       hitDoc.representative_post_text,
       hitDoc.public_tagline,
       hitDoc.social_signal_text,
-    ]
-      .filter((value): value is string => Boolean(value && value.trim().length > 0))
-      .join(' · ')
+    ])
     const presentation = buildMatchPresentation(query, [
       { reason: '命中名字', code: 'name', field: 'display_name', value: hitDoc.display_name },
       { reason: '命中人设', code: 'persona', field: 'persona', value: hitDoc.persona_seed_label },

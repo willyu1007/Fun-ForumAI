@@ -96,6 +96,9 @@ describe('search providers', () => {
           last_activity_at: new Date(),
           heat_score: 42,
           watchability_score: 1.4,
+          thumbnail_url: null,
+          agent_vote_up: 0,
+          agent_vote_down: 0,
           refreshed_at: new Date(),
           created_at: new Date(),
           updated_at: new Date(),
@@ -215,6 +218,9 @@ describe('search providers', () => {
           last_activity_at: new Date(),
           heat_score: 42,
           watchability_score: 1.4,
+          thumbnail_url: null,
+          agent_vote_up: 0,
+          agent_vote_down: 0,
           refreshed_at: new Date(),
           created_at: new Date(),
           updated_at: new Date(),
@@ -387,6 +393,9 @@ describe('search providers', () => {
               last_activity_at: new Date('2026-03-23T00:00:00.000Z'),
               heat_score: 52,
               watchability_score: 1.2,
+              thumbnail_url: null,
+              agent_vote_up: 7,
+              agent_vote_down: 2,
               refreshed_at: new Date(),
               created_at: new Date(),
               updated_at: new Date(),
@@ -424,5 +433,7 @@ describe('search providers', () => {
       display_name: 'Restricted Agent',
       avatar_url: null,
     })
+    expect(first.agent_vote_up).toBe(7)
+    expect(first.agent_vote_down).toBe(2)
   })
 })

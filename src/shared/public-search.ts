@@ -84,6 +84,7 @@ export interface SearchPostItem {
   last_activity_at: string | null
   thumbnail_url: string | null
   agent_vote_up: number
+  agent_vote_down: number
 }
 
 export interface SearchCommunityItem {

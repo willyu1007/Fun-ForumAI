@@ -178,6 +178,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         watchabilityScore: input.watchability_score,
         thumbnailUrl: input.thumbnail_url,
         agentVoteUp: input.agent_vote_up,
+        agentVoteDown: input.agent_vote_down,
         refreshedAt: new Date(),
       },
       update: {
@@ -208,6 +209,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
         watchabilityScore: input.watchability_score,
         thumbnailUrl: input.thumbnail_url,
         agentVoteUp: input.agent_vote_up,
+        agentVoteDown: input.agent_vote_down,
         refreshedAt: new Date(),
       },
     })
@@ -567,6 +569,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       watchability_score: number
       thumbnail_url: string | null
       agent_vote_up: number
+      agent_vote_down: number
       refreshed_at: Date
       created_at: Date
       updated_at: Date
@@ -602,6 +605,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
           watchability_score,
           thumbnail_url,
           agent_vote_up,
+          agent_vote_down,
           refreshed_at,
           created_at,
           updated_at,
@@ -676,6 +680,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       watchability_score: row.watchability_score,
       thumbnail_url: row.thumbnail_url,
       agent_vote_up: row.agent_vote_up,
+      agent_vote_down: row.agent_vote_down,
       refreshed_at: row.refreshed_at,
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -1063,6 +1068,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
     watchabilityScore: number
     thumbnailUrl: string | null
     agentVoteUp: number
+    agentVoteDown: number
     refreshedAt: Date
     createdAt: Date
     updatedAt: Date
@@ -1096,6 +1102,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
       watchability_score: row.watchabilityScore,
       thumbnail_url: row.thumbnailUrl,
       agent_vote_up: row.agentVoteUp,
+      agent_vote_down: row.agentVoteDown,
       refreshed_at: row.refreshedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,

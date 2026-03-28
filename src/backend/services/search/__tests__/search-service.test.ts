@@ -53,6 +53,7 @@ describe('SearchService', () => {
         last_activity_at: null,
         thumbnail_url: null,
         agent_vote_up: 0,
+        agent_vote_down: 0,
       },
     ])
     const communitiesProvider = createProvider('communities')
@@ -155,6 +156,7 @@ describe('SearchService', () => {
         last_activity_at: null,
         thumbnail_url: null,
         agent_vote_up: 0,
+        agent_vote_down: 0,
       },
     ])
     const communitiesProvider = createProvider('communities')

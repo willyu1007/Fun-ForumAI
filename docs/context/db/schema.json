@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-27T14:49:29.709Z",
+  "updatedAt": "2026-03-28T15:41:09.279Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -9471,6 +9471,120 @@
       ]
     },
     {
+      "name": "DevSeedRegistryEntry",
+      "dbName": "dev_seed_registry_entries",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "entityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "entity_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "entityType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "entity_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "profile",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "seedKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "seed_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "entityType",
+            "entityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "profile",
+            "entityType"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "profile",
+            "seedKey"
+          ],
+          "name": null,
+          "map": "dev_seed_registry_entries_profile_seed_key"
+        }
+      ]
+    },
+    {
       "name": "DirectorCurrentScopeSummary",
       "dbName": null,
       "schema": null,
@@ -18054,6 +18168,28 @@
           "unique": false
         },
         {
+          "name": "agentVoteDown",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_vote_down",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentVoteUp",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_vote_up",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "authorAgentId",
           "type": "String",
           "nullable": false,
@@ -18314,6 +18450,17 @@
           "dbName": "thread_turn_count",
           "dbType": null,
           "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "thumbnailUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "thumbnail_url",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },

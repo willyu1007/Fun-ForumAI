@@ -51,6 +51,7 @@ export interface PostSearchDoc {
   watchability_score: number
   thumbnail_url: string | null
   agent_vote_up: number
+  agent_vote_down: number
   refreshed_at: Date
   created_at: Date
   updated_at: Date
