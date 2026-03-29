@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: in-progress
+- State: blocked
 - Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`
-- Current status: 已落地 `ci.yml` 的 `docker build validate`、独立 `publish-image.yml`、发布前置检查脚本与 CI handbook；GitHub 远端已完成 `staging` / `prod` environments、`main` branch protection、repo variables、GitHub OIDC / RAM Role、以及 `acr-publish` self-hosted runner 的接通。
-- Next step: 将 workflow 与脚本改动合入远端默认分支，执行首次 `main` publish 与 `workflow_dispatch` promotion 验证，并在 ACR 中核对 `sha-<commit>`、`main`、`staging`、`prod` 的 digest 一致性。
+- Current status: 已完成 `ci.yml` 的 `docker build validate`、独立 `publish-image.yml`、发布前置检查脚本与 CI handbook；GitHub 远端已完成 `staging` / `prod` environments、`main` branch protection、repo variables、GitHub OIDC / RAM Role、以及 `acr-publish` self-hosted runner 的接通；首次 `main -> ACR` publish 与首次 `workflow_dispatch -> prod` promotion 均已实跑成功。
+- Next step: 处理 ACR repository `app` 当前启用 `TagImmutability=true` 与 `main/staging/prod` mutable alias 策略之间的冲突。该配置会导致第二次及之后的 publish/promote 无法覆盖 `main` / `staging` / `prod`，因此 T-129 暂时停在 blocked，待云侧仓库策略或 tag 策略调整后再恢复完成态。
 
 ## Goal
 

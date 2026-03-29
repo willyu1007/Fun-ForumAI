@@ -95,3 +95,35 @@
     - `scripts/ci/publish-image-context.mjs --mode promote` with `SOURCE_SHA=latest RELEASE_TAG=prod`
       - Result: `[error] source_sha must be a full 40-character commit SHA...`
       - Note: 说明 promotion 输入已收紧，不接受非 commit SHA 或保留 alias。
+- 2026-03-29:
+  - Remote publish success:
+    - `gh run view 23698479750 --repo willyu1007/Fun-ForumAI --job 69037840167 --log`
+      - Result: `Build and Push Staging Candidate` 完整成功；`sha-9ce82d6354eba58cc6ae88183830693552266434`、`main`、`staging` 全部推送完成。
+      - Digest: `sha256:e37df9a430c8bbc25cc2ea31b9cdc9279a09975188e682cb38993601b3fc710e`
+      - Note: 实际运营落地采用 `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com` 公网 login server，并依赖 ACR Internet 白名单。
+  - Manual prod promotion success:
+    - `gh workflow run "Publish Image" --repo willyu1007/Fun-ForumAI --ref main -f source_sha=9ce82d6354eba58cc6ae88183830693552266434`
+      - Result: 成功触发 `workflow_dispatch` promotion run `23698793469`
+    - `gh api repos/willyu1007/Fun-ForumAI/actions/runs/23698793469/pending_deployments`
+      - Result: 返回 `prod` environment pending deployment，确认审批门正常生效。
+    - `jq -n '{environment_ids:[13518290472],state:\"approved\",comment:\"Approve prod promotion for validated sha-9ce82d6354eba58cc6ae88183830693552266434\"}' | gh api repos/willyu1007/Fun-ForumAI/actions/runs/23698793469/pending_deployments -X POST --input -`
+      - Result: `prod` environment approval 成功。
+    - `gh run view 23698793469 --repo willyu1007/Fun-ForumAI --job 69038689873 --log`
+      - Result: `Promote Existing Image to Prod` 成功完成，仅推送 `prod` tag，无 rebuild。
+      - Digest: `sha256:e37df9a430c8bbc25cc2ea31b9cdc9279a09975188e682cb38993601b3fc710e`
+      - Note: `prod` digest 与 `sha-*` / `main` / `staging` 完全一致。
+  - Action runtime cleanup:
+    - `gh run view 23698858284 --repo willyu1007/Fun-ForumAI`
+      - Result: 升级 `actions/checkout@v6` / `actions/setup-node@v6` 后，新 workflow run 已按新版本起跑；Node 20 deprecation 风险已从 repo 自维护 actions 中清出。
+    - `gh run view 23698858284 --repo willyu1007/Fun-ForumAI --log-failed`
+      - Result: 第二次 `main` publish 在 `Push mutable channel tags` 失败，ACR 返回 `unknown: The requested tag already exists and cannot be overwritten.`
+      - Note: 说明当前 ACR repository `app` 已启用 `TagImmutability=true`，与 `main` / `staging` / `prod` mutable alias 策略冲突；首次 publish/promote 能通过，仅因为 alias tags 当时还不存在。
+  - New fail-fast guard:
+    - `node --check scripts/ci/check-acr-tag-mutability.mjs`
+      - Result: 通过语法检查。
+    - `ruby -e 'require \"yaml\"; [\".github/workflows/ci.yml\", \".github/workflows/publish-image.yml\"].each { |f| YAML.load_file(f); puts \"ok #{f}\" }'`
+      - Result: 两个 workflow 均能解析。
+    - `tmpdir=$(mktemp -d) ... PATH=\"$tmpdir:$PATH\" ... node scripts/ci/acr-login.mjs`
+      - Result: mock 验证通过，脚本会把 `mock-user` / `mock-pass` 正确传给 `docker login --password-stdin`。
+    - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main && node .ai/scripts/ctl-project-governance.mjs query --project main --id T-129`
+      - Result: governance sync/lint/query 通过，`T-129` 当前状态已更新为 `blocked`。

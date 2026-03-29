@@ -8,14 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 152 (planned: 3, in-progress: 11, blocked: 1, done: 2, archived: 135)
+- Tasks: 152 (planned: 3, in-progress: 10, blocked: 2, done: 2, archived: 135)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-129 github-actions-acr-image-publishing | blocked | F-000 | dev-docs/active/github-actions-acr-image-publishing |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
-| T-129 github-actions-acr-image-publishing | in-progress | F-000 | dev-docs/active/github-actions-acr-image-publishing |
 | T-130 ecs-web-compose-delivery | planned | F-000 | dev-docs/active/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |

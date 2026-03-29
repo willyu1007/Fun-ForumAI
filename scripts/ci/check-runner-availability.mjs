@@ -18,6 +18,7 @@ function parseLabels(raw) {
   return raw
     .split(',')
     .map((value) => value.trim())
+    .map((value) => value.toLowerCase())
     .filter((value) => value.length > 0)
 }
 
@@ -58,7 +59,7 @@ async function main() {
 
   const matches = (body.runners ?? []).filter((runner) => {
     if (runner.status !== 'online' || runner.busy) return false
-    const runnerLabels = new Set((runner.labels ?? []).map((label) => label.name))
+    const runnerLabels = new Set((runner.labels ?? []).map((label) => String(label.name || '').toLowerCase()))
     return labels.every((label) => runnerLabels.has(label))
   })
 

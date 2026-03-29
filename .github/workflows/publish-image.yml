@@ -137,12 +137,20 @@ jobs:
           ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
         shell: bash
-        run: |
-          set -euo pipefail
-          token_json="$(aliyun cr GetAuthorizationToken --region "$ALICLOUD_REGION" --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID")"
-          username="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const username=body.TempUsername ?? body.tempUsername ?? body.data?.TempUsername ?? body.data?.tempUsername ?? 'cr_temp_user';process.stdout.write(username);});")"
-          password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
-          printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"
+        run: node scripts/ci/acr-login.mjs
+
+      - name: Check ACR tag mutability contract
+        env:
+          PUBLISH_MODE: publish
+          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
+          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
+          MAIN_REF: ${{ steps.context.outputs.main_ref }}
+          STAGING_REF: ${{ steps.context.outputs.staging_ref }}
+        shell: bash
+        run: node scripts/ci/check-acr-tag-mutability.mjs
 
       - name: Build staging image locally
         env:
@@ -273,12 +281,20 @@ jobs:
           ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
         shell: bash
-        run: |
-          set -euo pipefail
-          token_json="$(aliyun cr GetAuthorizationToken --region "$ALICLOUD_REGION" --endpoint "$ACR_API_ENDPOINT" --InstanceId "$ACR_INSTANCE_ID")"
-          username="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const username=body.TempUsername ?? body.tempUsername ?? body.data?.TempUsername ?? body.data?.tempUsername ?? 'cr_temp_user';process.stdout.write(username);});")"
-          password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
-          printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"
+        run: node scripts/ci/acr-login.mjs
+
+      - name: Check ACR tag mutability contract
+        env:
+          PUBLISH_MODE: promote
+          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
+          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
+          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
+          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
+          PROD_REF: ${{ steps.context.outputs.prod_ref }}
+          RELEASE_REF: ${{ steps.context.outputs.release_ref }}
+        shell: bash
+        run: node scripts/ci/check-acr-tag-mutability.mjs
 
       - name: Promote existing image tag
         id: promote

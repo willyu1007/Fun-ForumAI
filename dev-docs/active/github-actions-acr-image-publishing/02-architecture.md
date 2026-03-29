@@ -40,8 +40,8 @@
 - workflow 会先在 GitHub-hosted preflight job 中检查：
   - public repo 的 `main` 是否 branch-protected
   - 是否存在匹配标签的在线 runner
-- 这样可以避免 ACR Enterprise Edition 的 Internet ACL 与 GitHub-hosted runner egress IP 漂移带来的不稳定性。
-- GitHub-hosted runner 仅作为 bootstrap/临时降级方案；若采用该方案，必须单独处理 ACR Internet ACL。
+- publish v1 的实际运行形态为：self-hosted runner 仍部署在阿里云 VPC 内，但由于 ACR 当前 `VPC 绑定额度=1/1` 且已被业务 ECS 占用，镜像 login server 暂时采用公网域名 + ACR Internet 白名单。
+- GitHub-hosted runner 仅作为 preflight/质量门禁执行面；真实 publish 仍固定在 self-hosted runner 上，不依赖 GitHub-hosted runner 访问 ACR。
 
 ## Credential strategy
 
@@ -73,7 +73,7 @@
 
 - ACR login server、namespace 与 repository 如果没有统一命名，后续 ECS/ECI 文档会引用不同镜像地址。
 - 本仓库当前保留 packaging target `llm-forum` 与 Dockerfile 文件名，但发布到 ACR 时统一落到既有仓库 `app`。
-- 如果 publish 仍依赖 GitHub-hosted runner，但没有稳定 ACL 方案，ACR push 会成为不稳定点。
+- 如果 ACR 私网绑定额度不足，必须明确记录“公网 login server + 白名单”是临时运营落地，而不是默认误差状态。
 - 如果没有 preflight runner 检查，self-hosted publish job 会在没有 runner 时无限排队而不是快速失败。
 - 如果 public repo 没有 branch protection guard，新增 publish workflow 会把云侧身份暴露给未受保护的默认分支。
 - 如果 build-time 前端配置被环境化，单镜像晋升策略会失效。

@@ -2,8 +2,8 @@
 
 ## Status
 
-- Current status: `workflow-implemented-awaiting-first-publish`
-- Last updated: 2026-03-28
+- Current status: `verified-but-blocked-by-acr-tag-immutability`
+- Last updated: 2026-03-29
 
 ## What changed
 
@@ -34,10 +34,33 @@
 - 将 ACR 仓库名与本地 packaging target 解耦：workflow 继续构建 `llm-forum` target，但发布镜像统一推送到 ACR repository `app`。
 - 在阿里云侧创建了 GitHub Actions 专用 OIDC Provider 与 RAM Role，并为 RAM Role 附加 `AliyunContainerRegistryFullAccess`，用于首版 publish 链路验证。
 - 在独立杭州 ECS 上注册并启动了 `ecs-acr-publish-hz-01` self-hosted runner，标签固定为 `self-hosted, Linux, X64, aliyun-vpc, acr-publish`。
+- 将 publish workflow 中重复的 ACR 登录逻辑收敛为共享脚本 `scripts/ci/acr-login.mjs`，避免 publish / promote 两个 job 复制同一段易碎的 `aliyun` / `docker login` 解析逻辑。
+- 将 publish staging job 从单一 `Build and push image tags` 步骤拆成：
+  - `Build staging image locally`
+  - `Push immutable sha image`
+  - `Push mutable channel tags`
+  - `Resolve published digest`
+  - 目的：降低 runner 异常中断时的诊断成本，并把成功/失败定位到 build、sha push、channel push 或 digest 校验的具体阶段。
+- 将 `actions/checkout` / `actions/setup-node` 从 `@v4` 升级到 `@v6`，以消除 GitHub 对 Node 20 JavaScript actions runtime 的官方弃用告警。
+- 将 runner labels API 检查改为大小写无关比较，避免未来在管理员 token / 本地诊断场景下把 GitHub 内置 `Linux` / `X64` labels 误判为不匹配。
+- 首次真实 publish 验证过程中，由于 ACR `VPC 绑定额度=1/1` 已被业务 ECS 占用，最终将 `ACR_LOGIN_SERVER` 切到公网域名并配合 ACR Internet 白名单完成 v1 运营落地。
+- `main` push 已实跑成功，产物为：
+  - `sha-9ce82d6354eba58cc6ae88183830693552266434`
+  - `main`
+  - `staging`
+  - digest: `sha256:e37df9a430c8bbc25cc2ea31b9cdc9279a09975188e682cb38993601b3fc710e`
+- `workflow_dispatch` prod promotion 已实跑成功：
+  - source sha: `9ce82d6354eba58cc6ae88183830693552266434`
+  - pushed tags: `prod`
+  - digest 与 staging/main/sha tag 一致，无 rebuild
+- 在 action runtime 升级后重新触发 `main` publish 时，暴露出云侧真实约束：
+  - ACR repository `app` 当前 `TagImmutability=true`
+  - 第二次及之后的 `main` / `staging` alias push 会被 ACR 拒绝覆盖
+  - 实际报错：`unknown: The requested tag already exists and cannot be overwritten.`
+- 为避免下一次再次在 push 末尾才暴露同一问题，新增 `scripts/ci/check-acr-tag-mutability.mjs`，在 publish / promote job 登录 ACR 后先检查 repo 的 `TagImmutability` 与目标 alias tags 是否冲突，并显式 fail fast。
 
 ## Follow-ups
 
-- 仍需执行首次真实 `main` publish，并确认 ACR 中 `sha-<commit>`、`main`、`staging` 指向同一 digest。
-- 仍需执行一次 `workflow_dispatch` prod promotion，并确认 `prod` 与可选 release tag 只做 alias promotion、不 rebuild。
+- 必须先处理 ACR repository `app` 的 `TagImmutability=true` 与 mutable alias 策略冲突；否则第二次及之后的 `main` publish / `prod` promotion 都会失败。
 - 首次链路跑通后，建议把 RAM Role 从 `AliyunContainerRegistryFullAccess` 收紧到只覆盖 `GetAuthorizationToken` / `PullRepository` / `PushRepository` 的最小权限策略。
-- 若实际 ACR 账号不是 Enterprise Edition，需要在后续实施阶段单独记录差异，但不改动主叙事。
+- 如需恢复 ACR 私网 login server，需先解决 ACR `VPC 绑定额度=1/1` 与 runner 所在 VPC 不一致的问题；该项不阻塞首次验收，但属于后续云侧优化。

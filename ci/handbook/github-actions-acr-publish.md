@@ -43,6 +43,12 @@ Runner baseline:
 - Stable outbound access to GitHub and ACR
 - Must not co-locate business workloads from T-130 or T-131
 
+Current v1 operation note:
+
+- Publish runs on the dedicated self-hosted ECS runner.
+- If ACR VPC binding quota is exhausted by business ECS, `ACR_LOGIN_SERVER` may temporarily use the public registry domain together with an ACR Internet whitelist for the runner IP.
+- This does not change the build/promotion contract; it only changes the registry access path.
+
 ## Workflow behavior
 
 ### `CI`
@@ -55,13 +61,22 @@ Runner baseline:
 ### `Publish Image`
 
 - `push` to `main`:
-  - build once
+  - build locally on the publish runner first
+  - push immutable `sha-<commit>`
+  - push mutable `main` and `staging`
+  - resolve the published digest from ACR
   - push `sha-<commit>`, `main`, `staging`
 - `workflow_dispatch`:
   - require `source_sha`
   - optionally accept `release_tag`
   - pull existing `sha-<commit>` image
   - push `prod` and optional release tag without rebuild
+
+Implementation notes:
+
+- ACR login is centralized in `scripts/ci/acr-login.mjs`; do not duplicate inline `aliyun cr GetAuthorizationToken` parsing across workflow jobs.
+- Runner label checks are case-insensitive because GitHub built-in labels appear as `Linux` / `X64` in the API but are commonly written as `linux` / `x64` in workflow config.
+- If the repository keeps `main`, `staging`, and `prod` as mutable alias tags, the target ACR repository must have `TagImmutability=false`. An immutable repository can pass the first publish but will reject later attempts to overwrite those aliases.
 
 ## Audit contract
 
