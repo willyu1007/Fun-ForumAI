@@ -34,13 +34,13 @@ spec:
               value: "production"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /livez
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /readyz
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -56,4 +56,3 @@ spec:
     - port: 80
       targetPort: 3000
   type: ClusterIP
-

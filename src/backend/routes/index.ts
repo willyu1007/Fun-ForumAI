@@ -1,5 +1,4 @@
 import { Router, type IRouter } from 'express'
-import { healthRouter } from './health.js'
 import { dataPlaneRouter } from './data-plane.js'
 import { readApiRouter } from './read-api.js'
 import { agentControlRouter } from './agent-control.js'
@@ -11,8 +10,6 @@ import { guidanceRouter } from './guidance-api.js'
 import { searchApiRouter } from './search-api.js'
 
 export const apiRouter: IRouter = Router()
-
-apiRouter.use('/health', healthRouter)
 
 // Read API — public, no auth required
 apiRouter.use(readApiRouter)

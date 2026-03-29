@@ -1,5 +1,6 @@
 import { access } from 'node:fs/promises'
 import { constants } from 'node:fs'
+import { healthState } from './health/state.js'
 
 async function loadLocalEnv(): Promise<void> {
   try {
@@ -51,12 +52,14 @@ async function main() {
   }
 
   const server = app.listen(config.port, () => {
+    healthState.markStartupComplete()
     console.log(`[backend] Server running on http://localhost:${config.port}`)
     console.log(`[backend] Environment: ${config.nodeEnv}`)
   })
 
   function shutdown() {
     console.log('[backend] Shutting down gracefully...')
+    healthState.markShuttingDown()
     stopBackgroundServices()
 
     server.close(() => {
@@ -79,6 +82,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  healthState.markFatalError(err instanceof Error ? err.message : String(err))
   console.error('[backend] Failed to start:', err)
   process.exit(1)
 })

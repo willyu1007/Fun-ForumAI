@@ -36,6 +36,8 @@ import { SearchProjectionService } from '../services/search-projection-service.j
 import { SearchCountsCache } from '../services/search/search-counts-cache.js'
 import { SearchTelemetryService } from '../services/search/search-telemetry-service.js'
 import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
+import { createHealthService } from '../health/service.js'
+import { healthState } from '../health/state.js'
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -58,6 +60,58 @@ const { repos, hydratables } = await createRepositories(config.db.usePrisma)
 
 // ─── 2. Infrastructure (SSE, Moderation, Redis, Queues, Leaders) ──
 const infra = await createInfrastructure()
+
+export const healthService = createHealthService({
+  state: healthState,
+  getBuildInfo: getRuntimeBuildInfo,
+  probeDb: async () => {
+    if (!config.db.usePrisma) {
+      return { status: 'skipped' as const }
+    }
+
+    try {
+      const { getPrismaClient } = await import('../persistence/prisma-client.js')
+      await getPrismaClient().$queryRaw`SELECT 1`
+      return { status: 'ok' as const }
+    } catch (err) {
+      return {
+        status: 'fail' as const,
+        failure: err instanceof Error ? err.message : String(err),
+      }
+    }
+  },
+  probeRedis: async () => {
+    if (config.sse.broadcastBackend !== 'redis') {
+      return { status: 'skipped' as const }
+    }
+
+    if (infra.sseHub.getStats().broadcast_backend !== 'redis') {
+      return { status: 'fail' as const, failure: 'sse_broadcast_backend_fallback' }
+    }
+
+    if (!infra.sseRedisPublisher || !infra.sseRedisSubscriber) {
+      return { status: 'fail' as const, failure: 'sse_redis_client_unavailable' }
+    }
+
+    try {
+      await infra.sseRedisPublisher.ping()
+    } catch (err) {
+      return {
+        status: 'fail' as const,
+        failure: err instanceof Error ? err.message : String(err),
+      }
+    }
+
+    if (infra.sseRedisSubscriber.status !== 'ready') {
+      return {
+        status: 'fail' as const,
+        failure: `sse_subscriber_${infra.sseRedisSubscriber.status}`,
+      }
+    }
+
+    return { status: 'ok' as const }
+  },
+})
 
 // ─── 2b. Usage Ledger Repo (Pg-only) ──────────────────────────
 let pgUsageLedgerRepo: import('../llm/usage-ledger.js').UsageLedgerRepository | undefined

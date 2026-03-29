@@ -5,11 +5,11 @@ import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import { config } from './lib/config.js'
 import { apiRouter } from './routes/index.js'
-import { healthRouter } from './routes/health.js'
+import { createHealthRouter, createLegacyApiHealthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { devSeedRouter } from './routes/dev-seed.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService, healthService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -26,6 +26,8 @@ import { resolveCurrentVisiblePromptRef } from './llm/prompt-template-refs.js'
 import type { OwnerStylePins } from './identity/agent-identity.js'
 
 const app: Express = express()
+const healthRouter = createHealthRouter(healthService)
+const legacyApiHealthRouter = createLegacyApiHealthRouter(healthService)
 const DEV_AUTH_COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   path: '/',
@@ -130,7 +132,9 @@ app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
 app.use(requestLogger)
 
-app.use('/health', healthRouter)
+app.use(healthRouter)
+app.use('/v1', legacyApiHealthRouter)
+app.use('/v1', healthRouter)
 app.use('/v1', apiRouter)
 app.use('/v1', devSeedRouter)
 app.use('/v1', createSseRouter(sseHub))
