@@ -3,8 +3,11 @@
 ## Planned checks
 
 - governance `sync`、`lint` 与任务查询通过。
-- 文档已冻结 ECS 形态、Caddy 默认值、loopback upstream、目录规范和发布/回滚契约。
-- 文档已明确 staging/prod 的最小差异。
+- deploy planner 输出 cloud `vm/compose` 主线，不再依赖 `kubectl`。
+- shell / Node 脚本语法通过。
+- Compose 模板渲染结果满足 `web + migrate`、loopback 绑定、`.env` 运行时注入和健康检查约束。
+- mock rollout / rollback 能写入 release history，并能默认回退到上一条 immutable image。
+- `db_compat=incompatible` 时无 `--db-plan` 的 rollback 被显式阻断。
 
 ## Execution records
 
@@ -17,3 +20,54 @@
     - 文档已明确第一阶段由发布人手动执行 `deploy.sh` / `rollback.sh`，GitHub Actions 不直接部署 ECS。
     - 文档已明确 `prod` 多 ECS 必须启用 `SSE_BROADCAST_BACKEND=redis` / `SSE_REDIS_URL`，并要求 ALB/Caddy 支持 SSE 长连接。
     - 文档已明确 `db:migrate:deploy -> web health/smoke` 顺序，以及镜像回滚仅在 migration 向后兼容时成立。
+- 2026-03-29:
+  - Task status check:
+    - `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-129`
+      - Result: 返回 `status=archived`，说明 immutable-only 的 GitHub Actions -> ACR 发布链已归档完成。
+  - Node syntax:
+    - `node --check ops/deploy/scripts/_shared.mjs && node --check ops/deploy/scripts/deploy.mjs && node --check ops/deploy/scripts/rollback.mjs`
+    - Result: 通过。
+  - Shell syntax:
+    - `bash -n ops/deploy/vm-compose/fun-forum/deploy.sh && bash -n ops/deploy/vm-compose/fun-forum/rollback.sh && bash -n ops/deploy/vm-compose/fun-forum/smoke.sh`
+    - Result: 通过。
+  - Deploy planner:
+    - `node ops/deploy/scripts/deploy.mjs --env staging --service llm-forum --sha 1234567890abcdef1234567890abcdef12345678 --with-migrate --db-compat backwards --dry-run`
+      - Result: 输出 `vm (docker-compose)` host plan，显示 immutable `--sha` 输入、`ACR_PULL_USERNAME/ACR_PULL_PASSWORD` 和 `ACR_IMAGE_REPOSITORY` 依赖，不再包含 `kubectl`。
+    - `git rev-parse HEAD`
+      - Result: 当前候选提交为 `2b7ae8a97f264eb8676821d426b5078c0c2b35d5`。
+    - `node ops/deploy/scripts/deploy.mjs --env staging --service llm-forum --sha 2b7ae8a97f264eb8676821d426b5078c0c2b35d5 --with-migrate --db-compat backwards --dry-run`
+      - Result: 输出当前 staging 首发所需 host command，唯一待补项为主机 shell 中的 `ACR_IMAGE_REPOSITORY=<acr-login-server>/<namespace>/app`；其余 deploy sequence 与 host contract 均已 ready。
+    - `sed -n '1,260p' dev-docs/archive/github-actions-acr-image-publishing/04-verification.md`
+      - Result: 可从 `T-129` 最终执行记录直接读取实际 image repository 为 `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app`，并确认当前 `HEAD` 已经在 ACR 上发布为 `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-2b7ae8a97f264eb8676821d426b5078c0c2b35d5`。
+    - `ACR_IMAGE_REPOSITORY=talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app node ops/deploy/scripts/deploy.mjs --env staging --service llm-forum --sha 2b7ae8a97f264eb8676821d426b5078c0c2b35d5 --with-migrate --db-compat backwards --dry-run`
+      - Result: 输出的 staging host plan 已恢复到 `Ready to hand off to operator: YES`，说明 repo 侧对首次 staging rollout 已无剩余 blocker。
+    - `node ops/deploy/scripts/deploy.mjs --env prod --service llm-forum --image-ref registry.example.com/team/app:sha-1234567890abcdef1234567890abcdef12345678 --db-compat backwards --dry-run`
+      - Result: 输出 prod host plan，`Ready to hand off to operator: YES`，无 `kubectl` 依赖。
+  - Rollback planner:
+    - `node ops/deploy/scripts/rollback.mjs --env prod --service llm-forum --dry-run`
+      - Result: 输出默认“previous entry in releases/history.jsonl”回滚策略和 `db_compat=incompatible` guard。
+  - Compose template rendering:
+    - `tmpdir=$(mktemp -d) && cp -R ops/deploy/vm-compose/fun-forum/. "$tmpdir" && cat > "$tmpdir/.env" ... && cd "$tmpdir" && IMAGE_REF=registry.example.com/team/app:sha-1234567890abcdef1234567890abcdef12345678 docker compose config`
+      - Result: 成功渲染出 `web` + `migrate` 两个 service，`web` 绑定 `127.0.0.1:14000:4000`，`.env` 注入应用变量，`migrate` 复用同一镜像并执行 `pnpm db:migrate:deploy`。
+  - Mock deploy + rollback simulation:
+    - 在临时目录复制 canonical host files，并用 mock `docker` / `curl` 跑：
+      - `./deploy.sh --sha 1111111111111111111111111111111111111111 --with-migrate --db-compat backwards --notes "first deploy"`
+      - `./deploy.sh --sha 2222222222222222222222222222222222222222 --with-migrate --db-compat backwards --notes "second deploy"`
+      - `./rollback.sh --notes "rollback to previous"`
+    - Result:
+      - `deploy.sh` 两次都调用了 `docker compose pull web migrate`、`docker compose run --rm migrate`、`docker compose up -d --no-deps web`
+      - `smoke.sh` 命中 `/health`、`/v1/health`，并验证 `RUNTIME_ENABLED=false`
+      - `releases/history.jsonl` 最终为 3 行
+      - `releases/current.json` 最终回到第一版 immutable image ref
+  - Incompatible rollback guard:
+    - 在临时目录预置 `current.json` 为 `db_compat=incompatible` 后执行 `./rollback.sh`
+    - Result: 脚本按预期失败，报错 `Current release recorded db_compat=incompatible. Complete DB recovery first, then rerun rollback.sh with --db-plan <ticket-or-note>.`
+  - Governance:
+    - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+      - Result: `[ok] Lint passed.`
+    - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+      - Result: `[ok] Sync complete.`
+    - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+      - Result: `[ok] Lint passed.`
+    - `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-130`
+      - Result: 返回 `status=in-progress`、`updated=2026-03-29`

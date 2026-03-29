@@ -1,5 +1,9 @@
 # 阿里云 ACK 混合部署基线（ECS + ECI）
 
+> Note:
+> This document is retained as a K8s/ACK reference only.
+> The current cloud delivery mainline is `GitHub Actions -> ACR -> ECS(web, Docker Compose) + ECI(worker)`.
+
 ## 结论（先看这里）
 
 - 当前项目 SHOULD 使用 `ACK Pro + ECS 常驻节点池 + ECI 弹性池` 的混合模式。
@@ -205,7 +209,6 @@ Redis 侧 SHOULD：
 ### 10.1 部署前检查
 
 ```bash
-node ops/deploy/scripts/deploy.mjs --env staging --dry-run
 kubectl kustomize ops/deploy/k8s/overlays/cloud-generic
 ```
 

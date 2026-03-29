@@ -1,5 +1,10 @@
 # Kubernetes Deployment Layout
 
+Current status:
+
+- Cloud `staging/prod` delivery no longer uses the K8s rollout path in this folder.
+- This folder is retained for local/dev validation and historical K8s references only.
+
 This folder provides a portable deployment structure:
 
 - `base/`: environment-agnostic manifests

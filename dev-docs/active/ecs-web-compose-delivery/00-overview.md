@@ -2,9 +2,10 @@
 
 ## Status
 
-- State: planned
-- Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`, `T-129 github-actions-acr-image-publishing`
-- Next step: 冻结 ECS 标准宿主机、Compose stack、共享 Caddy 代理、loopback upstream、运行时配置来源与 staging/prod 发布差异。
+- State: in-progress
+- Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`, `T-129 github-actions-acr-image-publishing (done)`
+- Current status: repo-side ECS web delivery assets are implemented, `T-129` has been archived as done, and the staging planner has been re-run against current `HEAD` (`2b7ae8a97f264eb8676821d426b5078c0c2b35d5`) plus the real ACR repository path. `ops/deploy` cloud planning remains `vm + Docker Compose`, canonical host files live under `ops/deploy/vm-compose/fun-forum/`, cloud deploy/rollback require immutable `sha-<commit>` refs, local/dev K8s assets are retained only for local validation, and the repo-side staging plan is now `Ready to hand off to operator: YES`.
+- Next step: on the real staging ECS host, sync the canonical host files into `/srv/apps/fun-forum/`, export the real read-only ACR pull credentials plus `ACR_IMAGE_REPOSITORY=talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app`, and execute `./deploy.sh --sha 2b7ae8a97f264eb8676821d426b5078c0c2b35d5 --with-migrate --db-compat backwards`.
 
 ## Goal
 
@@ -18,12 +19,12 @@
 
 ## Acceptance Criteria
 
-- [ ] 明确 ECS 采用 `Docker Engine + Docker Compose` 宿主机形态。
-- [ ] 明确项目目录规范为 `/srv/apps/<project>/`。
-- [ ] 明确共享反向代理默认采用 `Caddy`，并定义其与项目 stack 的边界。
-- [ ] 明确 `staging` 与 `prod` 的主机规模、入口、环境变量来源与发布门禁差异。
-- [ ] 明确第一阶段由运维/发布人执行 `deploy.sh` / `rollback.sh`，GitHub Actions 不直接 SSH 或部署到 ECS。
-- [ ] 明确多 ECS `prod` 必须启用 `SSE_BROADCAST_BACKEND=redis` / `SSE_REDIS_URL`，并要求 ALB/Caddy 支持长连接。
-- [ ] 明确 ECS 运行时 ACR pull 认证、数据库迁移归属与健康检查/应用 smoke 顺序。
-- [ ] 明确镜像 tag 回滚的前提是 migration 向后兼容；否则必须带上显式 DB 回退方案。
-- [ ] 明确发布与回滚都只围绕镜像 tag 与 Compose 重启。
+- [x] 明确 ECS 采用 `Docker Engine + Docker Compose` 宿主机形态。
+- [x] 明确项目目录规范为 `/srv/apps/<project>/`。
+- [x] 明确共享反向代理默认采用 `Caddy`，并定义其与项目 stack 的边界。
+- [x] 明确 `staging` 与 `prod` 的主机规模、入口、环境变量来源与发布门禁差异。
+- [x] 明确第一阶段由运维/发布人执行 `deploy.sh` / `rollback.sh`，GitHub Actions 不直接 SSH 或部署到 ECS。
+- [x] 明确多 ECS `prod` 必须启用 `SSE_BROADCAST_BACKEND=redis` / `SSE_REDIS_URL`，并要求 ALB/Caddy 支持长连接。
+- [x] 明确 ECS 运行时 ACR pull 认证、数据库迁移归属与健康检查/应用 smoke 顺序。
+- [x] 明确镜像 tag 回滚的前提是 migration 向后兼容；否则必须带上显式 DB 回退方案。
+- [x] 明确发布与回滚都只围绕镜像 tag 与 Compose 重启。

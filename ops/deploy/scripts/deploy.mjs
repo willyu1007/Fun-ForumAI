@@ -1,126 +1,134 @@
 #!/usr/bin/env node
 /**
- * deploy.mjs — Provider-agnostic deployment entry.
+ * deploy.mjs — ECS host deployment planner.
  *
- * Reads ops/deploy/config.json + env/contract.yaml, validates environment
- * readiness, and either prints a dry-run plan or executes the deployment.
- *
- * Usage:
- *   node ops/deploy/scripts/deploy.mjs --env <env> [--dry-run] [--service <id>]
+ * This script validates repo-side deployment metadata and prints the exact
+ * host-side command that a human operator must execute on the target ECS host.
+ * It does not deploy remotely.
  */
 
 import {
   parseArgs,
   loadJSON,
+  loadEnvironmentConfig,
   validateEnvContract,
   validatePackagingTarget,
   resolveServices,
-  resolveK8sTarget,
-  buildImagePlan,
-  listMissingFields,
-  formatKubectlBaseArgs,
-  runCommand,
-  checkHealth,
+  resolveVmTarget,
+  listMissingVmFields,
+  quoteShell,
 } from './_shared.mjs';
 
-function printPlan(envId, envCfg, envChecks, servicePlans, deployConfig, pkgInfo) {
+function renderDeployCommand(target) {
+  const envPrefix = [
+    `${target.pullUsernameEnv}=<readonly-user>`,
+    `${target.pullPasswordEnv}=<readonly-password>`,
+  ];
+  if (target.imageMode === 'sha') {
+    envPrefix.push(`${target.imageRepositoryEnv}=<acr-login-server>/<namespace>/app`);
+  }
+
+  const args = [`./${target.deployScript}`];
+  if (target.imageMode === 'image-ref') {
+    args.push('--image-ref', quoteShell(target.imageRef));
+  } else if (target.imageMode === 'sha') {
+    args.push('--sha', quoteShell(target.commitSha));
+  } else {
+    args.push('--image-ref', quoteShell('<acr-login-server>/<namespace>/app:sha-<commit>'));
+  }
+  if (target.withMigrate) args.push('--with-migrate');
+  args.push('--db-compat', quoteShell(target.dbCompat ?? 'backwards'));
+  if (target.dbPlan) args.push('--db-plan', quoteShell(target.dbPlan));
+  if (target.notes) args.push('--notes', quoteShell(target.notes));
+
+  return `cd ${quoteShell(target.appDir)} && ${envPrefix.join(' ')} ${args.join(' ')}`;
+}
+
+function printPlan(envId, envCfg, envFile, envChecks, servicePlans, deployConfig) {
   console.log('\n╔══════════════════════════════════════════╗');
-  console.log('║        DEPLOYMENT DRY-RUN PLAN           ║');
+  console.log('║       ECS DEPLOYMENT PLAN (VM)           ║');
   console.log('╚══════════════════════════════════════════╝\n');
 
-  console.log(`Environment:  ${envId}`);
-  console.log(`Model:        ${deployConfig.model} (${deployConfig.k8s?.tool || 'N/A'})`);
-  console.log(`Approval:     ${envCfg?.requiresApproval ? 'REQUIRED' : 'not required'}`);
+  console.log(`Environment:   ${envId}`);
+  console.log(`Model:         ${deployConfig.model} (${deployConfig.vm?.runtime || 'docker-compose'})`);
+  console.log(`Approval:      ${envCfg?.requiresApproval ? 'REQUIRED' : 'not required'}`);
+  if (envFile?.current_topology) {
+    console.log(`Topology:      ${envFile.current_topology}`);
+  }
+  if (envFile?.entrypoint) {
+    console.log(`Entry:         ${envFile.entrypoint}`);
+  }
+  if (envFile?.rollout_strategy) {
+    console.log(`Rollout:       ${envFile.rollout_strategy}`);
+  }
 
-  console.log('\nEnvironment contract checks:');
+  console.log('\nRepo-side checks:');
   for (const check of envChecks) {
     console.log(`  ${check.ok ? '✓' : '✗'} ${check.name} — ${check.detail}`);
   }
 
-  console.log(`\nPackaging targets: ${pkgInfo.ok ? pkgInfo.detail : pkgInfo.detail}`);
-
-  console.log('\nDeployment steps (would execute):');
-  for (const { service, target, missingFields } of servicePlans) {
+  console.log('\nHost-side execution contract:');
+  for (const { service, target, issues } of servicePlans) {
     console.log(`\nService: ${service.id}`);
-    console.log(`  namespace:  ${target.namespace ?? '<missing>'}`);
-    console.log(`  deployment: ${target.deployment ?? '<missing>'}`);
-    console.log(`  container:  ${target.container ?? '<missing>'}`);
-    console.log(`  image:      ${buildImagePlan(target)}`);
-    console.log(`  health:     ${target.healthUrl ?? '[skipped] provide --health-url to execute health checks'}`);
-    console.log(`  1. kubectl ${formatKubectlBaseArgs(target).join(' ')} set image deployment/${target.deployment ?? '<deployment>'} ${target.container ?? '<container>'}=${buildImagePlan(target)}`);
-    console.log(`  2. kubectl ${formatKubectlBaseArgs(target).join(' ')} rollout status deployment/${target.deployment ?? '<deployment>'} --timeout=${target.timeoutSec}s`);
-    if (target.healthUrl) {
-      console.log(`  3. GET ${target.healthUrl}`);
+    console.log(`  app dir:         ${target.appDir ?? '<missing>'}`);
+    console.log(`  compose file:    ${target.composeFile ?? '<missing>'}`);
+    console.log(`  release state:   ${target.releaseStateDir ? `${target.appDir}/${target.releaseStateDir}` : '<missing>'}`);
+    console.log(`  shared proxy:    ${target.sharedProxyDir ?? '<missing>'}`);
+    console.log(`  loopback:        127.0.0.1:${target.loopbackPort} -> container:${target.containerPort}`);
+    console.log(`  health url:      ${target.healthUrl ?? '<missing>'}`);
+    console.log(`  image selector:  ${target.imageMode === 'image-ref'
+      ? target.imageRef
+      : target.imageMode === 'sha'
+        ? `sha-${target.commitSha}`
+        : '<missing>'}`);
+    console.log(`  db compat:       ${target.dbCompat ?? '<missing>'}`);
+    console.log(`  run migrate:     ${target.withMigrate ? 'yes' : 'no'}`);
+    console.log(`  pull creds env:  ${target.pullUsernameEnv}, ${target.pullPasswordEnv}`);
+    if (target.imageMode === 'sha') {
+      console.log(`  image repo env:  ${target.imageRepositoryEnv}`);
     }
-    if (missingFields.length > 0) {
-      console.log(`  missing:    ${missingFields.join(', ')}`);
+    console.log('  host command:');
+    console.log(`    ${renderDeployCommand(target)}`);
+    console.log('  fixed sequence:');
+    console.log('    1. validate files/env');
+    console.log('    2. docker login with read-only ACR credentials');
+    console.log('    3. docker compose pull web migrate');
+    console.log(`    4. ${target.withMigrate ? 'docker compose run --rm migrate' : 'skip migrate step'}`);
+    console.log('    5. docker compose up -d --no-deps web');
+    console.log(`    6. curl ${target.healthUrl ?? 'http://127.0.0.1:<loopback>/health'}`);
+    console.log(`    7. ./${target.smokeScript ?? 'smoke.sh'}`);
+    console.log('    8. write releases/current.json and releases/history.jsonl');
+    if (issues.length > 0) {
+      console.log(`  issues:          ${issues.join(', ')}`);
     }
   }
 
-  const allOk = envChecks.every((check) => check.ok) && servicePlans.every((plan) => plan.missingFields.length === 0);
-  console.log(`\nReady to deploy: ${allOk ? 'YES' : 'NO (fix issues above)'}`);
+  const allChecksPassed = envChecks.every((check) => check.ok);
+  const allPlansReady = servicePlans.every((plan) => plan.issues.length === 0);
+  console.log(`\nReady to hand off to operator: ${allChecksPassed && allPlansReady ? 'YES' : 'NO (fix issues above)'}`);
 }
 
-async function deployService(service, target) {
-  const kubectlBaseArgs = formatKubectlBaseArgs(target);
-
-  console.log(`[exec] ${service.id}: set image -> ${target.imageRef}`);
-  runCommand('kubectl', [
-    ...kubectlBaseArgs,
-    'set',
-    'image',
-    `deployment/${target.deployment}`,
-    `${target.container}=${target.imageRef}`,
-  ]);
-
-  console.log(`[exec] ${service.id}: waiting for rollout`);
-  runCommand('kubectl', [
-    ...kubectlBaseArgs,
-    'rollout',
-    'status',
-    `deployment/${target.deployment}`,
-    `--timeout=${target.timeoutSec}s`,
-  ]);
-
-  if (!target.healthUrl) {
-    console.log(`[warn] ${service.id}: health check skipped (no --health-url / DEPLOY_HEALTH_URL)`);
-    return;
-  }
-
-  console.log(`[exec] ${service.id}: checking health -> ${target.healthUrl}`);
-  const health = await checkHealth(target.healthUrl, target.healthTimeoutMs);
-  if (!health.ok) {
-    throw new Error(
-      `${service.id} health check failed: ${health.error || `status ${health.status}`}`,
-    );
-  }
-}
-
-async function main() {
+function main() {
   const opts = parseArgs(process.argv.slice(2));
 
   if (opts.help) {
     console.log(`
-deploy.mjs — Deployment pipeline
+deploy.mjs — ECS host deployment planner
 
 Usage:
   node ops/deploy/scripts/deploy.mjs --env <env> [options]
 
 Options:
-  --env <env>             Target environment (dev|staging|prod) (required)
-  --dry-run               Show deployment plan without executing
-  --service <id>          Deploy a specific service (default: all)
-  --context <name>        Optional kubectl context override
-  --namespace <name>      Optional k8s namespace override
-  --deployment <name>     Optional deployment name override
-  --container <name>      Optional container name override
-  --image-ref <repo:tag>  Full image reference to deploy
-  --image-repo <repo>     Image repository (combine with --tag)
-  --tag <tag>             Image tag (combine with --image-repo or service k8s.imageRepo)
-  --health-url <url>      Optional health endpoint for post-rollout verification
-  --timeout-sec <sec>     Rollout timeout in seconds (default: 120)
-  --health-timeout-ms <ms> Health check timeout in milliseconds (default: 5000)
-  --help                  Show this help
+  --env <env>              Target environment (staging|prod) (required)
+  --dry-run                Print the plan only (default behavior)
+  --service <id>           Limit planning to one service
+  --image-ref <repo:tag>   Immutable image reference (must use sha-<commit>)
+  --sha <commit-sha>       40-character commit SHA (host resolves via ACR_IMAGE_REPOSITORY)
+  --with-migrate           Include the one-shot migrate container in the plan
+  --db-compat <mode>       backwards | incompatible
+  --db-plan <ticket>       Required when --db-compat incompatible
+  --notes <text>           Optional release notes written into the release record
+  --help                   Show this help
 `);
     return 0;
   }
@@ -136,8 +144,8 @@ Options:
     return 1;
   }
 
-  if (deployConfig.model !== 'k8s') {
-    console.error(`[error] Actual deployment is only implemented for model="k8s" (found "${deployConfig.model}")`);
+  if (deployConfig.model !== 'vm') {
+    console.error(`[error] Expected ops/deploy/config.json model="vm" for ECS host planning (found "${deployConfig.model}")`);
     return 1;
   }
 
@@ -146,13 +154,13 @@ Options:
     console.error(`[error] Environment "${opts.env}" not configured in ops/deploy/config.json`);
     return 1;
   }
-
   if (!envCfg.canDeploy) {
-    console.error(`[error] Deployment to "${opts.env}" is disabled`);
+    console.error(`[error] Environment "${opts.env}" is not handled by the VM/Compose deploy planner.`);
     return 1;
   }
 
   const envChecks = validateEnvContract(opts.env);
+  const envFile = loadEnvironmentConfig(opts.env);
   const pkgInfo = validatePackagingTarget();
   const serviceInfo = resolveServices(deployConfig, pkgInfo, opts.service);
   if (serviceInfo.error) {
@@ -166,51 +174,31 @@ Options:
     return 1;
   }
 
-  const servicePlans = serviceInfo.services.map((service) => {
-    const target = resolveK8sTarget(service, opts);
-    const missingFields = listMissingFields(target, [
-      'namespace',
-      'deployment',
-      'container',
-      'imageRef',
-    ]);
-    return { service, target, missingFields };
-  });
-
-  if (opts['dry-run']) {
-    printPlan(opts.env, envCfg, envChecks, servicePlans, deployConfig, pkgInfo);
-    return 0;
-  }
-
-  const allChecksPassed = envChecks.every((check) => check.ok);
-  if (!allChecksPassed) {
-    console.error('[error] Pre-deployment checks failed. Run with --dry-run to see details.');
+  let servicePlans;
+  try {
+    servicePlans = serviceInfo.services.map((service) => {
+      const target = resolveVmTarget(service, opts);
+      const issues = listMissingVmFields(target);
+      if (opts.env === 'staging' && !target.withMigrate) {
+        issues.push('staging requires --with-migrate');
+      }
+      if (target.dbCompat === 'incompatible' && !target.dbPlan) {
+        issues.push('--db-plan (required when --db-compat incompatible)');
+      }
+      return { service, target, issues };
+    });
+  } catch (err) {
+    console.error(`[error] ${err instanceof Error ? err.message : String(err)}`);
     return 1;
   }
 
-  const missingForExecution = servicePlans.filter((plan) => plan.missingFields.length > 0);
-  if (missingForExecution.length > 0) {
-    for (const plan of missingForExecution) {
-      console.error(
-        `[error] Service "${plan.service.id}" is missing execution inputs: ${plan.missingFields.join(', ')}`,
-      );
-    }
-    console.error('[error] Provide the missing CLI flags or set them in ops/deploy/config.json / environment variables.');
-    return 1;
+  printPlan(opts.env, envCfg, envFile, envChecks, servicePlans, deployConfig);
+
+  if (!opts['dry-run']) {
+    console.log('\n[info] This script plans the rollout only. A human operator must execute deploy.sh on the target ECS host.');
   }
 
-  if (envCfg.requiresApproval) {
-    console.log(`[info] Deployment to "${opts.env}" requires human approval.`);
-    console.log('[info] Run with --dry-run to preview, then request approval before executing.');
-    return 0;
-  }
-
-  for (const { service, target } of servicePlans) {
-    await deployService(service, target);
-  }
-
-  console.log(`[ok] Deployment to "${opts.env}" completed successfully.`);
   return 0;
 }
 
-main().then((code) => process.exit(code));
+process.exit(main());

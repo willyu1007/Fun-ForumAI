@@ -2,9 +2,9 @@
 
 ## Conclusions (read first)
 
-- `ops/deploy/` contains all deployment configuration.
-- Use `ctl-deploy.mjs` to manage deployments.
-- AI plans deployments; humans execute and approve.
+- `ops/deploy/` contains the cloud deployment mainline plus retained local K8s validation assets.
+- Use `ctl-deploy.mjs` to manage repo-level deployment metadata.
+- AI plans deployments; humans execute host scripts on ECS.
 
 ## AI Workflow
 
@@ -17,15 +17,15 @@
 
 | Environment | AI Permissions |
 |-------------|---------------|
-| `dev` | Can propose direct deployment |
+| `dev` | Local K8s only; do not treat it as the cloud VM deploy path |
 | `staging` | Requires review |
 | `prod` | Requires formal approval |
 
 ## Deployment Models
 
-- `k8s` - Kubernetes (helm/kustomize/manifests)
+- `vm` - ECS hosts running Docker Compose
+- `k8s` - retained local/test overlays under `ops/deploy/k8s/`
 - `serverless` - Cloud functions
-- `vm` - Virtual machines
 - `paas` - Platform-as-a-Service
 
 ## Forbidden Actions

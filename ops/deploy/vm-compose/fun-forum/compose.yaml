@@ -1,0 +1,33 @@
+name: ${COMPOSE_PROJECT_NAME:-fun-forum}
+
+services:
+  web:
+    image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RUNTIME_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${LOOPBACK_PORT:-14000}:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  migrate:
+    image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      RUNTIME_ENABLED: "false"
+    command: ["pnpm", "db:migrate:deploy"]
