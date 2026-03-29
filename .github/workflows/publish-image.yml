@@ -121,6 +121,9 @@ jobs:
           docker --version
           aliyun version
 
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Configure Alibaba Cloud credentials
         uses: aliyun/configure-aliyun-credentials-action@b347e60e64028a4d567a8f31ca42e1b0706c3c99
         with:
@@ -147,7 +150,6 @@ jobs:
       - name: Build and push image tags
         id: publish
         env:
-          DOCKER_BUILDKIT: "1"
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
           MAIN_REF: ${{ steps.context.outputs.main_ref }}
           STAGING_REF: ${{ steps.context.outputs.staging_ref }}
@@ -158,15 +160,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker build \
+          docker buildx build \
             -f "$DOCKERFILE" \
             -t "$SHA_REF" \
             -t "$MAIN_REF" \
             -t "$STAGING_REF" \
+            --push \
             "$BUILD_CONTEXT"
-          docker push "$SHA_REF"
-          docker push "$MAIN_REF"
-          docker push "$STAGING_REF"
           docker pull "$SHA_REF"
           digest="$(docker image inspect "$SHA_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
           echo "image_ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
