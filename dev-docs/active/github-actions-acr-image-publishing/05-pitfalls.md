@@ -95,8 +95,11 @@
 - What we tried:
   - 先确认 publish workflow 的 build、sha tag push、digest resolve 都正常，再检查 ACR repository 配置和失败日志。
 - Fix / workaround:
-  - 在 workflow 中新增 `check-acr-tag-mutability.mjs` fail-fast guard；当前真正的根修复仍是云侧二选一：
-    - 关闭 repository `app` 的 `TagImmutability`
-    - 或者放弃 `main/staging/prod` mutable alias 策略，改成纯不可变 tag 消费模型
+  - 先用 `check-acr-tag-mutability.mjs` 做过渡期 fail-fast，确认冲突完全来自 mutable alias。
+  - 最终根修复不是关闭 ACR immutability，而是把 T-129 收敛为 immutable-only：
+    - `main` 只 push `sha-<commit>`
+    - `prod` promotion 只批准既有 immutable image
+    - 仅在显式传入 `release_tag` 时创建一次性 immutable release tag
 - Prevention:
-  - 以后如果交付链依赖 `main` / `staging` / `prod` 这类可移动 alias tag，必须先验证目标 ACR repository 的 `TagImmutability=false`；不要等首次成功后才发现后续发布不可持续。
+  - 以后如果下游运行时已经以 immutable `sha-*` 为唯一真值，不要为了“看起来方便”再引入 `main` / `staging` / `prod` 这类可移动 alias tag。
+  - 如果确实要使用可移动 alias，必须先验证目标 ACR repository 的 `TagImmutability=false`；不要等首次成功后才发现后续发布不可持续。

@@ -2,14 +2,14 @@
 
 ## Status
 
-- State: blocked
+- State: in-progress
 - Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`
-- Current status: 已完成 `ci.yml` 的 `docker build validate`、独立 `publish-image.yml`、发布前置检查脚本与 CI handbook；GitHub 远端已完成 `staging` / `prod` environments、`main` branch protection、repo variables、GitHub OIDC / RAM Role、以及 `acr-publish` self-hosted runner 的接通；首次 `main -> ACR` publish 与首次 `workflow_dispatch -> prod` promotion 均已实跑成功。
-- Next step: 处理 ACR repository `app` 当前启用 `TagImmutability=true` 与 `main/staging/prod` mutable alias 策略之间的冲突。该配置会导致第二次及之后的 publish/promote 无法覆盖 `main` / `staging` / `prod`，因此 T-129 暂时停在 blocked，待云侧仓库策略或 tag 策略调整后再恢复完成态。
+- Current status: 已完成 `ci.yml` 的 `docker build validate`、独立 `publish-image.yml`、发布前置检查脚本与 CI handbook；GitHub 远端已完成 `staging` / `prod` environments、`main` branch protection、repo variables、GitHub OIDC / RAM Role、以及 `acr-publish` self-hosted runner 的接通；首次 `main -> ACR` publish 与首次 `workflow_dispatch -> prod` promotion 均已实跑成功。本轮实现已将 T-129 从 mutable alias 收敛为 immutable-only：`main` 只发布 `sha-<commit>`，`prod` promotion 只批准既有 immutable image，并仅在显式传入 `release_tag` 时创建一次性 release tag。
+- Next step: 将 immutable-only 变更推入默认分支后，重新执行一次 `main` publish 与一次 `workflow_dispatch` prod approval，确认新的无 alias 模式可重复运行，然后把 T-129 收口为 done。
 
 ## Goal
 
-把 GitHub Actions -> ACR 镜像发布链路定义到可直接实施的程度，确保后续 ECS 与 ECI 只消费由 ACR 发布出来的同一镜像产物，并且镜像可以从 `staging` 无重建地晋升到 `prod`。
+把 GitHub Actions -> ACR 镜像发布链路定义到可直接实施的程度，确保后续 ECS 与 ECI 只消费由 ACR 发布出来的同一镜像产物，并且镜像通过 immutable `sha-<commit>` 引用完成从 `staging` 到 `prod` 的无重建晋升。
 
 ## Non-goals
 

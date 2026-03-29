@@ -5,6 +5,7 @@
 - governance `sync`、`lint` 与任务查询通过。
 - 文档已明确 PR、`main` publish 与 manual prod promotion 的不同职责。
 - 文档已明确 `image_ref`、tag、OIDC、runner 形态与 Variables / Secrets 清单。
+- immutable-only 改造后，workflow 与脚本不再依赖 `main/staging/prod` mutable alias。
 
 ## Execution records
 
@@ -24,7 +25,7 @@
   - Publish context scripts:
     - `scripts/ci/publish-image-context.mjs --mode publish`（with demo env）
     - `scripts/ci/publish-image-context.mjs --mode promote`（with demo env）
-    - Result: 均正确输出 `image_repo`、tag/ref、dockerfile/context 与 pushed tags。
+    - Result: 均正确输出 `image_repo`、tag/ref、dockerfile/context 与 tag summary 字段。
   - Negative checks:
     - `scripts/ci/check-runner-availability.mjs`
       - Result: `[error] No online self-hosted runner matches labels: self-hosted, linux, x64, aliyun-vpc, acr-publish.`
@@ -127,3 +128,17 @@
       - Result: mock 验证通过，脚本会把 `mock-user` / `mock-pass` 正确传给 `docker login --password-stdin`。
     - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main && node .ai/scripts/ctl-project-governance.mjs query --project main --id T-129`
       - Result: governance sync/lint/query 通过，`T-129` 当前状态已更新为 `blocked`。
+- 2026-03-29:
+  - Immutable-only refactor:
+    - `node --check scripts/ci/publish-image-context.mjs scripts/ci/acr-login.mjs`
+      - Result: 通过语法检查。
+    - `ruby -e 'require "yaml"; [".github/workflows/ci.yml", ".github/workflows/publish-image.yml"].each { |f| YAML.load_file(f); puts "ok #{f}" }'`
+      - Result: `ci.yml` / `publish-image.yml` 均能解析。
+    - `ALICLOUD_REGION=cn-hangzhou ACR_NAMESPACE=talkshow-ai ACR_REPOSITORY=app ACR_LOGIN_SERVER=talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com ACR_INSTANCE_ID=cri-ugivu28goberlerj ACR_API_ENDPOINT=cr-vpc.cn-hangzhou.aliyuncs.com ALICLOUD_OIDC_PROVIDER_ARN=acs:ram::1183869713036194:oidc-provider/github-actions ALICLOUD_ROLE_ARN=acs:ram::1183869713036194:role/github-actions-acr-publish GITHUB_SHA=1234567890abcdef1234567890abcdef12345678 node scripts/ci/publish-image-context.mjs --mode publish`
+      - Result: 只输出 `sha_ref` 与 `created_tags=sha-1234567890abcdef1234567890abcdef12345678`，不再生成 `main_ref` / `staging_ref`。
+    - `ALICLOUD_REGION=cn-hangzhou ACR_NAMESPACE=talkshow-ai ACR_REPOSITORY=app ACR_LOGIN_SERVER=talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com ACR_INSTANCE_ID=cri-ugivu28goberlerj ACR_API_ENDPOINT=cr-vpc.cn-hangzhou.aliyuncs.com ALICLOUD_OIDC_PROVIDER_ARN=acs:ram::1183869713036194:oidc-provider/github-actions ALICLOUD_ROLE_ARN=acs:ram::1183869713036194:role/github-actions-acr-publish SOURCE_SHA=1234567890abcdef1234567890abcdef12345678 RELEASE_TAG=v1.2.3 node scripts/ci/publish-image-context.mjs --mode promote`
+      - Result: 输出 `source_ref`、`release_ref`、`created_tags=v1.2.3`；默认不再生成 `prod_ref`。
+    - `rg -n "main_ref|staging_ref|prod_ref|Push mutable channel tags|check-acr-tag-mutability" .github/workflows/publish-image.yml scripts/ci dev-docs/active/github-actions-acr-image-publishing ci/handbook/github-actions-acr-publish.md`
+      - Result: workflow 与脚本内不再保留 mutable channel push；`check-acr-tag-mutability.mjs` 已移除，仅在 pitfalls / 历史记录中保留。
+  - Pending remote verification:
+    - Note: immutable-only 版本尚未在默认分支上重跑新的 `main` publish / `workflow_dispatch` promotion；完成该两次远端验收后，T-129 可从 `in-progress` 进入 `done`。

@@ -14,6 +14,7 @@
   - 先进入 `staging`
   - 验证通过后再晋升到 `prod`
 - 不为 `staging` 和 `prod` 分别重新 build。
+- `staging` / `prod` 状态由 GitHub Environments 审批记录与后续 T-130/T-131 的部署记录表达，而不是依赖可移动 channel tags。
 - 前端 build-time 配置必须保持环境中立；默认采用 `VITE_API_URL=/v1`，确保镜像可跨环境复用。
 
 ## Workflow boundary
@@ -25,12 +26,12 @@
   - 不部署
 - `main` push:
   - 构建镜像
-  - 推送 `sha-<commit>`、`main`、`staging` 到 ACR
+  - 只推送 `sha-<commit>` 到 ACR
   - 不触发 ECS/ECI 运行时动作
 - `workflow_dispatch`:
-  - 拉取既有 `sha-<commit>` 镜像
-  - 推送 `prod` 与可选 `vX.Y.Z` 到 ACR
-  - 不 rebuild
+  - 校验既有 `sha-<commit>` 镜像可用于 prod
+  - 仅在显式传入 `release_tag` 时创建一次性 immutable `vX.Y.Z`
+  - 默认不写入 `prod` 等 mutable alias
   - 不触发 ECS/ECI 运行时动作
 
 ## Runner and network path
@@ -78,3 +79,4 @@
 - 如果 public repo 没有 branch protection guard，新增 publish workflow 会把云侧身份暴露给未受保护的默认分支。
 - 如果 build-time 前端配置被环境化，单镜像晋升策略会失效。
 - 如果 `latest` 被当成唯一部署依据，回滚与问题定位都会变慢。
+- 如果重新引入 `main` / `staging` / `prod` 这类 mutable alias，而目标 ACR repository 仍保持 immutable tag 策略，交付链会再次回到不可持续状态。

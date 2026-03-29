@@ -76,7 +76,7 @@ Project: `main`
 | T-113 compatibility-cleanup-pr-review-followup | archived | dev-docs/archive/compatibility-cleanup-pr-review-followup |
 | T-127 agent-modal-redesign | archived | dev-docs/archive/agent-modal-redesign |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
-| T-129 github-actions-acr-image-publishing | blocked | dev-docs/active/github-actions-acr-image-publishing |
+| T-129 github-actions-acr-image-publishing | in-progress | dev-docs/active/github-actions-acr-image-publishing |
 | T-130 ecs-web-compose-delivery | planned | dev-docs/active/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | planned | dev-docs/active/eci-worker-runtime-delivery |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |

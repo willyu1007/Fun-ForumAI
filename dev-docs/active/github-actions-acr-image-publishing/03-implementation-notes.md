@@ -2,7 +2,7 @@
 
 ## Status
 
-- Current status: `verified-but-blocked-by-acr-tag-immutability`
+- Current status: `immutable-only-update-pending-mainline-verification`
 - Last updated: 2026-03-29
 
 ## What changed
@@ -25,7 +25,7 @@
   - `ALICLOUD_REGION=cn-hangzhou`
   - `ACR_NAMESPACE=talkshow-ai`
   - `ACR_REPOSITORY=app`
-  - `ACR_LOGIN_SERVER=talkshow-ai-acr-registry-vpc.cn-hangzhou.cr.aliyuncs.com`
+  - `ACR_LOGIN_SERVER=talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com`
   - `ACR_INSTANCE_ID=cri-ugivu28goberlerj`
   - `ACR_API_ENDPOINT=cr-vpc.cn-hangzhou.aliyuncs.com`
   - `ALICLOUD_OIDC_PROVIDER_ARN=acs:ram::1183869713036194:oidc-provider/github-actions`
@@ -46,21 +46,23 @@
 - 首次真实 publish 验证过程中，由于 ACR `VPC 绑定额度=1/1` 已被业务 ECS 占用，最终将 `ACR_LOGIN_SERVER` 切到公网域名并配合 ACR Internet 白名单完成 v1 运营落地。
 - `main` push 已实跑成功，产物为：
   - `sha-9ce82d6354eba58cc6ae88183830693552266434`
-  - `main`
-  - `staging`
   - digest: `sha256:e37df9a430c8bbc25cc2ea31b9cdc9279a09975188e682cb38993601b3fc710e`
 - `workflow_dispatch` prod promotion 已实跑成功：
   - source sha: `9ce82d6354eba58cc6ae88183830693552266434`
-  - pushed tags: `prod`
-  - digest 与 staging/main/sha tag 一致，无 rebuild
+  - digest 与首次 publish 的 immutable sha digest 一致，无 rebuild
 - 在 action runtime 升级后重新触发 `main` publish 时，暴露出云侧真实约束：
   - ACR repository `app` 当前 `TagImmutability=true`
   - 第二次及之后的 `main` / `staging` alias push 会被 ACR 拒绝覆盖
   - 实际报错：`unknown: The requested tag already exists and cannot be overwritten.`
-- 为避免下一次再次在 push 末尾才暴露同一问题，新增 `scripts/ci/check-acr-tag-mutability.mjs`，在 publish / promote job 登录 ACR 后先检查 repo 的 `TagImmutability` 与目标 alias tags 是否冲突，并显式 fail fast。
+- 对照 T-130/T-128 已冻结的运行时契约后，T-129 收敛为 immutable-only：
+  - `main` publish 只推送 `sha-<commit>`
+  - `workflow_dispatch` prod promotion 默认只审批既有 immutable image
+  - 仅在显式提供 `release_tag` 时创建一次性 immutable `vX.Y.Z`
+  - `main` / `staging` / `prod` mutable alias 已从 workflow 和上下文脚本中删除
+  - `scripts/ci/check-acr-tag-mutability.mjs` 随之删除，不再用“fail fast + 继续保留 alias”这种过渡方案维持契约
 
 ## Follow-ups
 
-- 必须先处理 ACR repository `app` 的 `TagImmutability=true` 与 mutable alias 策略冲突；否则第二次及之后的 `main` publish / `prod` promotion 都会失败。
+- 将 immutable-only 版本合入默认分支后，必须重新执行一次 `main` publish 与一次 `workflow_dispatch` prod approval，确认新的无 alias 模式可重复运行，然后把 T-129 标记为 done。
 - 首次链路跑通后，建议把 RAM Role 从 `AliyunContainerRegistryFullAccess` 收紧到只覆盖 `GetAuthorizationToken` / `PullRepository` / `PushRepository` 的最小权限策略。
 - 如需恢复 ACR 私网 login server，需先解决 ACR `VPC 绑定额度=1/1` 与 runner 所在 VPC 不一致的问题；该项不阻塞首次验收，但属于后续云侧优化。

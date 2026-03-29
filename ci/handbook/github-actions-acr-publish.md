@@ -63,27 +63,28 @@ Current v1 operation note:
 - `push` to `main`:
   - build locally on the publish runner first
   - push immutable `sha-<commit>`
-  - push mutable `main` and `staging`
   - resolve the published digest from ACR
-  - push `sha-<commit>`, `main`, `staging`
+  - record the immutable image ref and digest in the workflow summary
 - `workflow_dispatch`:
   - require `source_sha`
   - optionally accept `release_tag`
   - pull existing `sha-<commit>` image
-  - push `prod` and optional release tag without rebuild
+  - treat the `prod` environment approval as the promotion record
+  - optionally create a one-shot immutable release tag without rebuild
 
 Implementation notes:
 
 - ACR login is centralized in `scripts/ci/acr-login.mjs`; do not duplicate inline `aliyun cr GetAuthorizationToken` parsing across workflow jobs.
 - Runner label checks are case-insensitive because GitHub built-in labels appear as `Linux` / `X64` in the API but are commonly written as `linux` / `x64` in workflow config.
-- If the repository keeps `main`, `staging`, and `prod` as mutable alias tags, the target ACR repository must have `TagImmutability=false`. An immutable repository can pass the first publish but will reject later attempts to overwrite those aliases.
+- The delivery contract is immutable-only. Do not re-introduce `main`, `staging`, `prod`, or `latest` as deployment-truth tags.
+- If `release_tag` is provided, it must be a fresh immutable tag; reusing an existing release tag must fail.
 
 ## Audit contract
 
 - Image contract: `<ACR_LOGIN_SERVER>/<ACR_NAMESPACE>/app:<tag>`
 - Main publish and prod promotion write:
   - `image_ref`
-  - pushed tags
+  - created tags
   - final digest
   - commit SHA
   - workflow run URL

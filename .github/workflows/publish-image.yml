@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Commit SHA or sha-<commit> tag to promote to prod
+        description: Commit SHA or sha-<commit> tag to approve for prod
         required: true
         type: string
       release_tag:
-        description: Optional additional release tag (for example v1.2.3)
+        description: Optional one-shot immutable release tag (for example v1.2.3)
         required: false
         type: string
 
@@ -83,7 +83,7 @@ jobs:
         run: node scripts/ci/check-runner-availability.mjs
 
   publish-staging:
-    name: Build and Push Staging Candidate
+    name: Build and Push Immutable Candidate
     if: github.event_name == 'push'
     needs: [preflight]
     runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
@@ -139,25 +139,10 @@ jobs:
         shell: bash
         run: node scripts/ci/acr-login.mjs
 
-      - name: Check ACR tag mutability contract
-        env:
-          PUBLISH_MODE: publish
-          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
-          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
-          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
-          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
-          MAIN_REF: ${{ steps.context.outputs.main_ref }}
-          STAGING_REF: ${{ steps.context.outputs.staging_ref }}
-        shell: bash
-        run: node scripts/ci/check-acr-tag-mutability.mjs
-
-      - name: Build staging image locally
+      - name: Build immutable image locally
         env:
           DOCKER_BUILDKIT: "0"
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
-          MAIN_REF: ${{ steps.context.outputs.main_ref }}
-          STAGING_REF: ${{ steps.context.outputs.staging_ref }}
           DOCKERFILE: ${{ steps.context.outputs.dockerfile }}
           BUILD_CONTEXT: ${{ steps.context.outputs.context }}
         shell: bash
@@ -167,8 +152,6 @@ jobs:
           docker build \
             -f "$DOCKERFILE" \
             -t "$SHA_REF" \
-            -t "$MAIN_REF" \
-            -t "$STAGING_REF" \
             "$BUILD_CONTEXT"
 
       - name: Push immutable sha image
@@ -180,23 +163,12 @@ jobs:
           date -u
           docker push "$SHA_REF"
 
-      - name: Push mutable channel tags
-        env:
-          MAIN_REF: ${{ steps.context.outputs.main_ref }}
-          STAGING_REF: ${{ steps.context.outputs.staging_ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          date -u
-          docker push "$MAIN_REF"
-          docker push "$STAGING_REF"
-
       - name: Resolve published digest
         id: publish
         env:
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
           IMAGE_REF: ${{ steps.context.outputs.sha_ref }}
-          PUSHED_TAGS: ${{ steps.context.outputs.pushed_tags }}
+          CREATED_TAGS: ${{ steps.context.outputs.created_tags }}
         shell: bash
         run: |
           set -euo pipefail
@@ -205,13 +177,13 @@ jobs:
           digest="$(docker image inspect "$SHA_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
           echo "image_ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
           echo "final_digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "pushed_tags=$PUSHED_TAGS" >> "$GITHUB_OUTPUT"
+          echo "created_tags=$CREATED_TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Publish summary
         env:
           IMAGE_REF: ${{ steps.publish.outputs.image_ref }}
           FINAL_DIGEST: ${{ steps.publish.outputs.final_digest }}
-          PUSHED_TAGS: ${{ steps.publish.outputs.pushed_tags }}
+          CREATED_TAGS: ${{ steps.publish.outputs.created_tags }}
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -219,14 +191,14 @@ jobs:
             echo "## ACR publish result"
             echo ""
             echo "- image_ref: \`$IMAGE_REF\`"
-            echo "- pushed tags: \`$PUSHED_TAGS\`"
+            echo "- created tags: \`$CREATED_TAGS\`"
             echo "- final digest: \`$FINAL_DIGEST\`"
             echo "- commit sha: \`$COMMIT_SHA\`"
             echo "- workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
 
   promote-prod:
-    name: Promote Existing Image to Prod
+    name: Approve Existing Immutable Image for Prod
     if: github.event_name == 'workflow_dispatch'
     needs: [preflight]
     runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
@@ -283,42 +255,23 @@ jobs:
         shell: bash
         run: node scripts/ci/acr-login.mjs
 
-      - name: Check ACR tag mutability contract
-        env:
-          PUBLISH_MODE: promote
-          ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
-          ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
-          ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
-          ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
-          PROD_REF: ${{ steps.context.outputs.prod_ref }}
-          RELEASE_REF: ${{ steps.context.outputs.release_ref }}
-        shell: bash
-        run: node scripts/ci/check-acr-tag-mutability.mjs
-
-      - name: Promote existing image tag
+      - name: Verify source image and optionally create immutable release tag
         id: promote
         env:
           SOURCE_REF: ${{ steps.context.outputs.source_ref }}
-          PROD_REF: ${{ steps.context.outputs.prod_ref }}
           RELEASE_REF: ${{ steps.context.outputs.release_ref }}
-          PUSHED_TAGS: ${{ steps.context.outputs.pushed_tags }}
+          CREATED_TAGS: ${{ steps.context.outputs.created_tags }}
         shell: bash
         run: |
           set -euo pipefail
           docker pull "$SOURCE_REF"
           source_digest="$(docker image inspect "$SOURCE_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
 
-          docker tag "$SOURCE_REF" "$PROD_REF"
-          docker push "$PROD_REF"
-          docker pull "$PROD_REF"
-          prod_digest="$(docker image inspect "$PROD_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
-          if [ "$source_digest" != "$prod_digest" ]; then
-            echo "[error] prod digest $prod_digest does not match source digest $source_digest" >&2
-            exit 1
-          fi
-
           if [ -n "$RELEASE_REF" ]; then
+            if docker manifest inspect "$RELEASE_REF" >/dev/null 2>&1; then
+              echo "[error] release tag already exists: $RELEASE_REF" >&2
+              exit 1
+            fi
             docker tag "$SOURCE_REF" "$RELEASE_REF"
             docker push "$RELEASE_REF"
             docker pull "$RELEASE_REF"
@@ -331,13 +284,13 @@ jobs:
 
           echo "image_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
           echo "final_digest=$source_digest" >> "$GITHUB_OUTPUT"
-          echo "pushed_tags=$PUSHED_TAGS" >> "$GITHUB_OUTPUT"
+          echo "created_tags=$CREATED_TAGS" >> "$GITHUB_OUTPUT"
 
       - name: Promotion summary
         env:
           IMAGE_REF: ${{ steps.promote.outputs.image_ref }}
           FINAL_DIGEST: ${{ steps.promote.outputs.final_digest }}
-          PUSHED_TAGS: ${{ steps.promote.outputs.pushed_tags }}
+          CREATED_TAGS: ${{ steps.promote.outputs.created_tags }}
           COMMIT_SHA: ${{ steps.context.outputs.commit_sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -345,7 +298,7 @@ jobs:
             echo "## ACR prod promotion result"
             echo ""
             echo "- image_ref: \`$IMAGE_REF\`"
-            echo "- pushed tags: \`$PUSHED_TAGS\`"
+            echo "- created tags: \`$CREATED_TAGS\`"
             echo "- final digest: \`$FINAL_DIGEST\`"
             echo "- commit sha: \`$COMMIT_SHA\`"
             echo "- workflow run: $RUN_URL"

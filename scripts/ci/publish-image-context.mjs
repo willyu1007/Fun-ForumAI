@@ -39,7 +39,7 @@ function validateCommitSha(value, label) {
 function validateReleaseTag(tag) {
   const reserved = new Set(['main', 'staging', 'prod', 'latest'])
   if (reserved.has(tag)) {
-    console.error(`[error] release_tag "${tag}" is reserved for delivery aliases.`)
+    console.error(`[error] release_tag "${tag}" is reserved and must stay unavailable for immutable-only delivery.`)
     process.exit(1)
   }
   if (tag.startsWith('sha-')) {
@@ -130,9 +130,7 @@ function main() {
       commit_sha: commitSha,
       sha_tag: shaTag,
       sha_ref: `${imageRepo}:${shaTag}`,
-      main_ref: `${imageRepo}:main`,
-      staging_ref: `${imageRepo}:staging`,
-      pushed_tags: `${shaTag},main,staging`,
+      created_tags: shaTag,
     })
   } else {
     const rawSourceSha = required('SOURCE_SHA', process.env.SOURCE_SHA)
@@ -150,9 +148,9 @@ function main() {
       commit_sha: sourceTag.replace(/^sha-/, ''),
       sha_tag: sourceTag,
       source_ref: `${imageRepo}:${sourceTag}`,
-      prod_ref: `${imageRepo}:prod`,
+      release_tag: releaseTag,
       release_ref: releaseTag ? `${imageRepo}:${releaseTag}` : '',
-      pushed_tags: releaseTag ? `prod,${releaseTag}` : 'prod',
+      created_tags: releaseTag || 'none',
     })
   }
 
