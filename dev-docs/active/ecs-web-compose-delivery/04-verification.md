@@ -71,3 +71,6 @@
       - Result: `[ok] Lint passed.`
     - `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-130`
       - Result: 返回 `status=in-progress`、`updated=2026-03-29`
+  - Env contract/value alignment:
+    - `sed -n '1,120p' env/values/dev.yaml && sed -n '1,120p' env/values/staging.yaml && sed -n '1,120p' env/values/prod.yaml`
+      - Result: 修正前 3 个环境都错误地写成 `SERVICE_NAME=your-service` / `PORT=8000`；修正后已统一为 `SERVICE_NAME=llm-forum` / `PORT=4000`，与 compose contract 和应用默认监听端口保持一致。
