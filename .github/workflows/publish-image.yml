@@ -144,8 +144,7 @@ jobs:
           password="$(printf '%s' "$token_json" | node -e "let data='';process.stdin.on('data',chunk=>data+=chunk);process.stdin.on('end',()=>{const body=JSON.parse(data);const token=body.AuthorizationToken ?? body.authorizationToken ?? body.data?.AuthorizationToken ?? body.data?.authorizationToken; if(!token){console.error('AuthorizationToken missing in GetAuthorizationToken response.');process.exit(1);} process.stdout.write(token);});")"
           printf '%s' "$password" | docker login --username "$username" --password-stdin "$ACR_LOGIN_SERVER"
 
-      - name: Build and push image tags
-        id: publish
+      - name: Build staging image locally
         env:
           DOCKER_BUILDKIT: "0"
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
@@ -153,20 +152,47 @@ jobs:
           STAGING_REF: ${{ steps.context.outputs.staging_ref }}
           DOCKERFILE: ${{ steps.context.outputs.dockerfile }}
           BUILD_CONTEXT: ${{ steps.context.outputs.context }}
-          IMAGE_REF: ${{ steps.context.outputs.sha_ref }}
-          PUSHED_TAGS: ${{ steps.context.outputs.pushed_tags }}
         shell: bash
         run: |
           set -euo pipefail
+          date -u
           docker build \
             -f "$DOCKERFILE" \
             -t "$SHA_REF" \
             -t "$MAIN_REF" \
             -t "$STAGING_REF" \
             "$BUILD_CONTEXT"
+
+      - name: Push immutable sha image
+        env:
+          SHA_REF: ${{ steps.context.outputs.sha_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          date -u
           docker push "$SHA_REF"
+
+      - name: Push mutable channel tags
+        env:
+          MAIN_REF: ${{ steps.context.outputs.main_ref }}
+          STAGING_REF: ${{ steps.context.outputs.staging_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          date -u
           docker push "$MAIN_REF"
           docker push "$STAGING_REF"
+
+      - name: Resolve published digest
+        id: publish
+        env:
+          SHA_REF: ${{ steps.context.outputs.sha_ref }}
+          IMAGE_REF: ${{ steps.context.outputs.sha_ref }}
+          PUSHED_TAGS: ${{ steps.context.outputs.pushed_tags }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          date -u
           docker pull "$SHA_REF"
           digest="$(docker image inspect "$SHA_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
           echo "image_ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
