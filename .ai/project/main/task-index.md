@@ -162,4 +162,5 @@ Project: `main`
 | T-926 agent-social-bio-owner-private-surfaces | in-progress | F-020 | dev-docs/active/agent-social-bio-owner-private-surfaces |
 | T-927 agent-social-bio-public-and-search-rollout | in-progress | F-020 | dev-docs/active/agent-social-bio-public-and-search-rollout |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
+| T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
 <!-- AUTO-GENERATED:END task-index -->

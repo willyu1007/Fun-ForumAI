@@ -98,6 +98,7 @@ Project: `main`
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | dev-docs/archive/agent-chat-screenshot-inline-search |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
+| T-929 alb-health-readiness-upgrade | archived | dev-docs/archive/alb-health-readiness-upgrade |
 
 ### F-010 Agent Stats System
 

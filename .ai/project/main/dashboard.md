@@ -8,13 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 152 (planned: 3, in-progress: 11, blocked: 1, done: 2, archived: 135)
+- Tasks: 153 (planned: 3, in-progress: 11, blocked: 1, done: 2, archived: 136)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-129 github-actions-acr-image-publishing | in-progress | F-000 | dev-docs/active/github-actions-acr-image-publishing |
+| T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-130 ecs-web-compose-delivery | planned | F-000 | dev-docs/active/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
@@ -33,5 +34,4 @@ Project: `main`
 | T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
 | T-121 public-media-reuse-and-revocation-policy | archived | F-080 | dev-docs/archive/public-media-reuse-and-revocation-policy |
-| T-122 media-generation-broker-and-derivative-display | archived | F-080 | dev-docs/archive/media-generation-broker-and-derivative-display |
 <!-- AUTO-GENERATED:END dashboard -->
