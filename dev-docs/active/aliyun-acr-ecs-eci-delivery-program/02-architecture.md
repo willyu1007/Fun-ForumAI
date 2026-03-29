@@ -29,6 +29,7 @@
 - `main`、`staging`、`prod` 这类 mutable alias 不再作为交付契约的一部分。
 - 语义版本 tag 仅允许作为一次性 immutable release tag 使用，不作为唯一回滚依据。
 - 同一镜像必须先进入 `staging`，验证通过后再晋升到 `prod`，不允许为 `prod` 重新构建不同内容的镜像。
+- 在 `T-129` 解决 ACR `TagImmutability=true` 之前，`T-130/T-131` 的运行时消费统一只接受 `sha-<commit>` 或显式 immutable `image_ref`，不接受 mutable alias 作为部署输入。
 
 ### Runtime roles
 

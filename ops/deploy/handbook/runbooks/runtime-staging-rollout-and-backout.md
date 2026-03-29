@@ -3,6 +3,7 @@
 ## Scope
 - Task: `T-023 runtime-queue-and-lock-externalization`
 - Goal: verify shared runtime queue + leader election on `staging` before production rollout.
+- This runbook remains a retained K8s validation path. It does not govern the current cloud ECS + Compose deploy mainline.
 
 ## Preconditions
 - Staging is deployed with 2 replicas.
@@ -27,7 +28,7 @@
 
 ## 1) Deployment readiness dry-run
 ```bash
-node ops/deploy/scripts/deploy.mjs --env staging --dry-run
+kubectl kustomize ops/deploy/k8s/overlays/cloud-generic >/dev/null
 ```
 
 ## 2) Leader-only smoke check (auto node discovery, recommended)
@@ -98,7 +99,7 @@ Expected:
 
 ### Rollback dry-run
 ```bash
-node ops/deploy/scripts/rollback.mjs --env staging --dry-run
+kubectl rollout history deployment/backend -n app-staging
 ```
 
 ### Verification after rollback

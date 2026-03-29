@@ -1,12 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
-import { spawnSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import YAML from 'yaml';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(__dirname, '../../..');
+
+const RESERVED_DELIVERY_TAGS = new Set(['main', 'staging', 'prod', 'latest']);
 
 export function parseArgs(args) {
   const result = { _: [] };
@@ -35,17 +37,23 @@ export function loadJSON(relPath) {
   return JSON.parse(readFileSync(filePath, 'utf-8'));
 }
 
-function loadYAMLKeys(relPath) {
+export function loadYAML(relPath) {
   const filePath = resolve(ROOT, relPath);
   if (!existsSync(filePath)) return null;
+  return YAML.parse(readFileSync(filePath, 'utf-8'));
+}
 
-  const text = readFileSync(filePath, 'utf-8');
-  const keys = [];
-  for (const line of text.split('\n')) {
-    const match = line.match(/^\s{2}(\w+):\s*$/);
-    if (match) keys.push(match[1]);
-  }
-  return keys;
+function loadYAMLKeys(relPath) {
+  const parsed = loadYAML(relPath);
+  if (!parsed || typeof parsed !== 'object') return null;
+  const variables = parsed.variables && typeof parsed.variables === 'object'
+    ? Object.keys(parsed.variables)
+    : [];
+  return variables;
+}
+
+export function loadEnvironmentConfig(envId) {
+  return loadYAML(`ops/deploy/environments/${envId}.yaml`);
 }
 
 export function validateEnvContract(envId) {
@@ -131,7 +139,7 @@ export function resolveServices(deployConfig, pkgInfo, serviceId) {
       missingPackagingTargets.push(packagingTargetId);
     }
 
-    const serviceK8s = service.k8s && typeof service.k8s === 'object' ? service.k8s : {};
+    const serviceVm = service.vm && typeof service.vm === 'object' ? service.vm : {};
     return {
       ...service,
       packagingTargetId,
@@ -146,7 +154,7 @@ export function resolveServices(deployConfig, pkgInfo, serviceId) {
           : typeof packagingTarget?.port === 'number'
             ? packagingTarget.port
             : null,
-      k8s: serviceK8s,
+      vm: serviceVm,
     };
   });
 
@@ -177,83 +185,144 @@ function safePositiveInt(rawValue, fallback) {
   return fallback;
 }
 
-export function resolveK8sTarget(service, opts = {}) {
-  const serviceK8s = service.k8s && typeof service.k8s === 'object' ? service.k8s : {};
-  const imageRef = readString(
-    opts['image-ref'],
-    process.env.DEPLOY_IMAGE_REF,
-  );
-  const imageRepo = readString(
-    opts['image-repo'],
-    process.env.DEPLOY_IMAGE_REPO,
-    serviceK8s.imageRepo,
-  );
-  const tag = readString(opts.tag, process.env.DEPLOY_IMAGE_TAG);
+export function normalizeCommitSha(rawValue) {
+  const trimmed = typeof rawValue === 'string' ? rawValue.trim() : '';
+  if (!/^[a-f0-9]{40}$/i.test(trimmed)) {
+    throw new Error('commit sha must be a full 40-character hex sha.');
+  }
+  return trimmed.toLowerCase();
+}
+
+function validateImmutableTag(tag, label = 'image tag') {
+  const normalized = typeof tag === 'string' ? tag.trim().toLowerCase() : '';
+  if (!normalized) {
+    throw new Error(`${label} is required.`);
+  }
+  if (RESERVED_DELIVERY_TAGS.has(normalized)) {
+    throw new Error(`${label} must not use the mutable delivery aliases main/staging/prod/latest.`);
+  }
+  if (!/^sha-[a-f0-9]{40}$/i.test(normalized)) {
+    throw new Error(`${label} must use an immutable sha-<commit> tag.`);
+  }
+  return normalized;
+}
+
+export function validateImmutableImageRef(rawValue, label = 'image-ref') {
+  const trimmed = typeof rawValue === 'string' ? rawValue.trim() : '';
+  if (!trimmed) {
+    throw new Error(`${label} is required.`);
+  }
+
+  const lastSlash = trimmed.lastIndexOf('/');
+  const lastColon = trimmed.lastIndexOf(':');
+  if (lastColon <= lastSlash) {
+    throw new Error(`${label} must include an explicit image tag.`);
+  }
+
+  const repository = trimmed.slice(0, lastColon);
+  const tag = trimmed.slice(lastColon + 1);
+  if (!repository) {
+    throw new Error(`${label} must include a repository path.`);
+  }
+
+  validateImmutableTag(tag, `${label} tag`);
+  return trimmed;
+}
+
+export function buildImmutableImageRef(imageRepository, commitSha) {
+  const repository = readString(imageRepository);
+  if (!repository) {
+    throw new Error('image repository is required when resolving --sha to a full image reference.');
+  }
+  return `${repository}:sha-${normalizeCommitSha(commitSha)}`;
+}
+
+function normalizeDbCompat(rawValue) {
+  const value = readString(rawValue);
+  if (!value) return null;
+  if (value !== 'backwards' && value !== 'incompatible') {
+    throw new Error('--db-compat must be either backwards or incompatible.');
+  }
+  return value;
+}
+
+export function resolveVmTarget(service, opts = {}) {
+  const serviceVm = service.vm && typeof service.vm === 'object' ? service.vm : {};
+  const loopbackPort = safePositiveInt(serviceVm.loopbackPort, 14000);
+  const containerPort = safePositiveInt(serviceVm.containerPort, service.port ?? 4000);
+
+  const imageRefInput = readString(opts['image-ref'], process.env.DEPLOY_IMAGE_REF);
+  const shaInput = readString(opts.sha, process.env.DEPLOY_IMAGE_SHA);
+  if (imageRefInput && shaInput) {
+    throw new Error('Provide either --image-ref or --sha, not both.');
+  }
+
+  let imageMode = null;
+  let imageRef = null;
+  let commitSha = null;
+  const imageRepository = readString(serviceVm.imageRepository, process.env.ACR_IMAGE_REPOSITORY);
+
+  if (imageRefInput) {
+    imageMode = 'image-ref';
+    imageRef = validateImmutableImageRef(imageRefInput);
+    commitSha = imageRef.slice(imageRef.lastIndexOf(':') + 1).replace(/^sha-/, '');
+  } else if (shaInput) {
+    imageMode = 'sha';
+    commitSha = normalizeCommitSha(shaInput);
+    imageRef = imageRepository ? buildImmutableImageRef(imageRepository, commitSha) : null;
+  }
 
   return {
-    context: readString(opts.context, process.env.KUBECTL_CONTEXT),
-    namespace: readString(
-      opts.namespace,
-      process.env.DEPLOY_K8S_NAMESPACE,
-      serviceK8s.namespace,
+    appDir: readString(serviceVm.appDir),
+    composeFile: readString(serviceVm.composeFile, 'compose.yaml'),
+    deployScript: readString(serviceVm.deployScript, 'deploy.sh'),
+    rollbackScript: readString(serviceVm.rollbackScript, 'rollback.sh'),
+    smokeScript: readString(serviceVm.smokeScript, 'smoke.sh'),
+    releaseStateDir: readString(serviceVm.releaseStateDir, 'releases'),
+    composeProject: readString(serviceVm.composeProject, service.id),
+    loopbackPort,
+    containerPort,
+    healthUrl: readString(
+      opts['health-url'],
+      process.env.DEPLOY_HEALTH_URL,
+      serviceVm.healthUrl,
+      `http://127.0.0.1:${loopbackPort}/health`,
     ),
-    deployment: readString(
-      opts.deployment,
-      process.env.DEPLOY_K8S_DEPLOYMENT,
-      serviceK8s.deployment,
-    ),
-    container: readString(
-      opts.container,
-      process.env.DEPLOY_K8S_CONTAINER,
-      serviceK8s.container,
-    ),
-    imageRepo,
-    imageRef: imageRef ?? (imageRepo && tag ? `${imageRepo}:${tag}` : null),
-    healthUrl: readString(opts['health-url'], process.env.DEPLOY_HEALTH_URL),
-    timeoutSec: safePositiveInt(opts['timeout-sec'], 120),
-    healthTimeoutMs: safePositiveInt(opts['health-timeout-ms'], 5000),
+    sharedProxyDir: readString(serviceVm.sharedProxyDir),
+    imageRepositoryEnv: readString(serviceVm.imageRepositoryEnv, 'ACR_IMAGE_REPOSITORY'),
+    pullUsernameEnv: readString(serviceVm.pullUsernameEnv, 'ACR_PULL_USERNAME'),
+    pullPasswordEnv: readString(serviceVm.pullPasswordEnv, 'ACR_PULL_PASSWORD'),
+    imageRepository,
+    imageMode,
+    imageRef,
+    commitSha,
+    withMigrate: Boolean(opts['with-migrate'] || process.env.DEPLOY_WITH_MIGRATE === 'true'),
+    dbCompat: normalizeDbCompat(readString(opts['db-compat'], process.env.DEPLOY_DB_COMPAT)),
+    dbPlan: readString(opts['db-plan'], process.env.DEPLOY_DB_PLAN) ?? '',
+    notes: readString(opts.notes, process.env.DEPLOY_NOTES) ?? '',
   };
 }
 
-export function buildImagePlan(target) {
-  if (target.imageRef) return target.imageRef;
-  if (target.imageRepo) return `${target.imageRepo}:<tag required>`;
-  return '<image-ref required>';
+export function listMissingVmFields(target) {
+  const missing = [];
+  if (!target.appDir) missing.push('appDir');
+  if (!target.composeFile) missing.push('composeFile');
+  if (!target.deployScript) missing.push('deployScript');
+  if (!target.rollbackScript) missing.push('rollbackScript');
+  if (!target.smokeScript) missing.push('smokeScript');
+  if (!target.sharedProxyDir) missing.push('sharedProxyDir');
+  if (!target.healthUrl) missing.push('healthUrl');
+  if (!target.imageMode) missing.push('--image-ref or --sha');
+  if (target.imageMode === 'sha' && !target.imageRepository) {
+    missing.push(target.imageRepositoryEnv);
+  }
+  if (!target.dbCompat) missing.push('--db-compat');
+  return missing;
 }
 
-export function listMissingFields(target, fields) {
-  return fields.filter((field) => !target[field]);
-}
-
-export function formatKubectlBaseArgs(target) {
-  const args = [];
-  if (target.context) {
-    args.push('--context', target.context);
-  }
-  args.push('-n', target.namespace);
-  return args;
-}
-
-export function runCommand(command, args) {
-  const result = spawnSync(command, args, {
-    encoding: 'utf-8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    const stderr = (result.stderr || '').trim();
-    const stdout = (result.stdout || '').trim();
-    const details = stderr || stdout || `exit code ${result.status}`;
-    throw new Error(`${command} ${args.join(' ')} failed: ${details}`);
-  }
-
-  return {
-    stdout: (result.stdout || '').trim(),
-    stderr: (result.stderr || '').trim(),
-  };
+export function quoteShell(value) {
+  const stringValue = String(value ?? '');
+  return `'${stringValue.replace(/'/g, `'\\''`)}'`;
 }
 
 export function checkHealth(url, timeout = 5000) {

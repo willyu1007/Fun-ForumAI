@@ -1,26 +1,26 @@
 {
   "version": 1,
-  "updatedAt": "2026-02-20T14:08:50.401Z",
-  "model": "k8s",
-  "k8s": {
-    "tool": "helm"
+  "updatedAt": "2026-03-29T00:00:00Z",
+  "model": "vm",
+  "vm": {
+    "runtime": "docker-compose"
   },
   "environments": [
     {
       "id": "dev",
-      "description": "Development",
-      "canDeploy": true,
+      "description": "Local development remains on the retained k8s overlays only",
+      "canDeploy": false,
       "requiresApproval": false
     },
     {
       "id": "staging",
-      "description": "Staging",
+      "description": "Staging ECS host using Docker Compose",
       "canDeploy": true,
       "requiresApproval": true
     },
     {
       "id": "prod",
-      "description": "Production",
+      "description": "Production ECS host using Docker Compose",
       "canDeploy": true,
       "requiresApproval": true
     }
@@ -32,11 +32,21 @@
       "packagingTarget": "llm-forum",
       "healthPath": "/health",
       "port": 4000,
-      "k8s": {
-        "namespace": "funforum",
-        "deployment": "backend",
-        "container": "backend",
-        "imageRepo": "ghcr.io/example/fun-forum-api"
+      "vm": {
+        "appDir": "/srv/apps/fun-forum",
+        "composeFile": "compose.yaml",
+        "deployScript": "deploy.sh",
+        "rollbackScript": "rollback.sh",
+        "smokeScript": "smoke.sh",
+        "releaseStateDir": "releases",
+        "composeProject": "fun-forum",
+        "loopbackPort": 14000,
+        "containerPort": 4000,
+        "healthUrl": "http://127.0.0.1:14000/health",
+        "sharedProxyDir": "/srv/infra/caddy",
+        "imageRepositoryEnv": "ACR_IMAGE_REPOSITORY",
+        "pullUsernameEnv": "ACR_PULL_USERNAME",
+        "pullPasswordEnv": "ACR_PULL_PASSWORD"
       }
     }
   ],

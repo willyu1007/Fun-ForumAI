@@ -3,20 +3,10 @@
 ## Do-not-repeat summary (keep current)
 
 - 不要把 ACR 发布和 ECS/ECI 部署写在同一个任务里。
-- 不要把 `latest` 写成唯一部署基准。
+- 不要把 mutable alias 当作唯一部署基准；运行时只消费 immutable `sha-*`。
 - 不要在文档里放真实 secret、账号或实例地址。
 
 ## Pitfall log (append-only)
-
-### 2026-03-28 - Task bootstrap
-- Symptom:
-  - 现有仓库已经有 CI，但没有 ACR 发布边界，容易顺手把部署也绑进 CI。
-- What we tried:
-  - 单独拆出 `T-129`，只负责镜像发布。
-- Fix / workaround:
-  - 把部署职责明确下沉到 `T-130` 与 `T-131`。
-- Prevention:
-  - 后续实现评审时，若 workflow 包含 ECS/ECI 重启逻辑，默认视为超出本任务边界。
 
 ### 2026-03-28 - Publish runner queue trap
 - Symptom:
@@ -57,17 +47,7 @@
 - Fix / workaround:
   - 移除 `--output json`，直接依赖 CLI v3 的默认 JSON 输出给后续 Node 解析。
 - Prevention:
-  - 以后在 GitHub runner 上调用 `aliyun` CLI 时，不要假设旧版 CLI 的输出参数仍可用；优先先在 runner 实机上验证一遍目标版本的命令行语法。
-
-### 2026-03-29 - Alibaba Cloud CLI v3 requires explicit region
-- Symptom:
-  - 去掉 `--output json` 后，publish workflow 仍在 `Log in to ACR` 阶段失败，`aliyun cr GetAuthorizationToken` 报错 `region can't be empty`。
-- What we tried:
-  - 先确认 OIDC/RAM Role 临时凭证已注入成功，再对照 runner 上 CLI 返回错误收窄到 region 缺失。
-- Fix / workaround:
-  - 在两个 ACR 登录步骤里显式传入 `--region "$ALICLOUD_REGION"`。
-- Prevention:
-  - 以后在 GitHub runner 上调用阿里云 CLI，不要只假设凭证生效就足够；region 这类全局参数也必须显式传递或预配置。
+  - 以后在 GitHub runner 上调用 `aliyun` CLI 时，不要假设旧版 CLI 的输出参数仍可用；优先先在 runner 实机上验证一遍目标版本的命令行语法，并显式传递 `--region`。
 
 ### 2026-03-29 - ACR VPC binding quota forced public login server fallback
 - Symptom:
@@ -87,7 +67,7 @@
 - Fix / workaround:
   - 将 publish staging job 拆为 4 个明确步骤，并在每步前打印 `date -u`；这样最终能直接定位 `Push immutable sha image` 才是实际瓶颈，而不是重新怀疑 Dockerfile。
 - Prevention:
-  - 以后针对长时镜像发布 job，不要把 build、push 和 digest 校验全塞进一个 step；至少要把 build、不可变 tag push、可变 tag push、digest resolve 分开。
+  - 以后针对长时镜像发布 job，不要把 build、push 和 digest 校验全塞进一个 step；至少要把 build、不可变 tag push、digest resolve 分开。
 
 ### 2026-03-29 - Mutable alias strategy conflicts with immutable ACR tags
 - Symptom:

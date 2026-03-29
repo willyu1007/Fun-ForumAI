@@ -1,18 +1,17 @@
 # Staging environment configuration
 
 environment: staging
-
-# Common settings
-replicas: 2
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 200m
-    memory: 256Mi
-
-# Staging-specific settings
-debug: false
-logLevel: info
-
+deployment_model: vm-compose
+host_count: 1
+current_topology: 1 ECS web + 1 ECI worker
+entrypoint: shared Caddy on the ECS host
+requires_human_approval: true
+requires_with_migrate: true
+smoke_required: true
+rollout_strategy: single-host
+host_app_dir: /srv/apps/fun-forum
+shared_proxy_dir: /srv/infra/caddy
+loopback_upstream: 127.0.0.1:14000 -> container:4000
+notes:
+  - Deploy immutable sha images only.
+  - GitHub Actions publishes images but does not connect to the ECS host.

@@ -81,19 +81,21 @@
   },
   "deploy": {
     "enabled": true,
-    "model": "k8s",
+    "model": "vm",
     "environments": [
       "dev",
       "staging",
       "prod"
     ],
-    "k8s": {
-      "tool": "helm",
-      "namespaces": [
-        "app-dev",
-        "app-staging",
-        "app-prod"
-      ]
+    "vm": {
+      "runtime": "docker-compose",
+      "appDir": "/srv/apps/fun-forum",
+      "sharedProxyDir": "/srv/infra/caddy",
+      "healthUrl": "http://127.0.0.1:14000/health"
+    },
+    "localValidation": {
+      "model": "k8s",
+      "path": "ops/deploy/k8s/overlays/local-kind"
     }
   },
   "release": {

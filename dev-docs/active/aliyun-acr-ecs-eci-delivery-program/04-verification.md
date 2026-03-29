@@ -33,3 +33,15 @@
   - `gh api repos/willyu1007/Fun-ForumAI/actions/runners`
     - Result: 返回在线 runner `ecs-acr-publish-hz-01`
     - Note: 说明 `T-129` 的独立阿里云 VPC publish runner 已接通，后续 `T-130/T-131` 可复用同一“控制面与业务面隔离”的交付前提。
+  - `node --check ops/deploy/scripts/_shared.mjs && node --check ops/deploy/scripts/deploy.mjs && node --check ops/deploy/scripts/rollback.mjs`
+    - Result: 通过。
+    - Note: 说明 `T-130` 的 repo-side ECS host planner 已可解析。
+  - `node ops/deploy/scripts/deploy.mjs --env prod --service llm-forum --image-ref registry.example.com/team/app:sha-1234567890abcdef1234567890abcdef12345678 --db-compat backwards --dry-run`
+    - Result: 输出 `vm (docker-compose)` host-side deploy plan，无 `kubectl` 依赖。
+    - Note: 说明 `T-130` 已将 cloud 主线从 repo 的 `k8s` 规划切到 `ECS + Compose`。
+  - 临时目录 mock rollout / rollback 演练：
+    - `deploy.sh` 两次 + `rollback.sh` 一次
+    - Result: `releases/history.jsonl` 最终 3 条记录，`current.json` 回到上一条 immutable image ref。
+    - Note: 说明 `T-130` 已把 immutable image 消费、release history 和记忆化 rollback 目标落到 repo 资产中。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main && node .ai/scripts/ctl-project-governance.mjs query --project main --id T-130`
+    - Result: governance sync/lint/query 通过，`T-130` 当前状态为 `in-progress`。

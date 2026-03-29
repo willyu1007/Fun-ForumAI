@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Phase: Phase A — 文档与治理建包
-- Current status: 已锁定 `staging + prod`、`cn-hangzhou`、`ACR Enterprise Edition`、`Docker Compose on ECS`、`RUNTIME_ENABLED=false/true`，并补入第一阶段人工部署控制面、prod 多 ECS 下的 SSE 约束与数据库回滚前提。
+- Current status: 已锁定 `staging + prod`、`cn-hangzhou`、`ACR Enterprise Edition`、`Docker Compose on ECS`、`RUNTIME_ENABLED=false/true`，并补入第一阶段人工部署控制面、prod 多 ECS 下的 SSE 约束与数据库回滚前提。`T-130` 已完成 repo 侧 `vm/compose` 交付实现；`T-129` 仍因 ACR `TagImmutability=true` 与 mutable alias 冲突保持 `blocked`。
 - Current environment: 当前无 ACK；ECS 尚未搭建；ECI 预期承接 worker；ECS 预期承接 web/API/SSE。
 
 ## Goal

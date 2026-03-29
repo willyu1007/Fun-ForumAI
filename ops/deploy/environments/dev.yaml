@@ -1,18 +1,10 @@
 # Development environment configuration
 
 environment: dev
-
-# Common settings
-replicas: 1
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-# Dev-specific settings
-debug: true
-logLevel: debug
-
+deployment_model: local-k8s
+can_deploy_with_vm_scripts: false
+purpose: Local-only validation retains the k8s overlays under ops/deploy/k8s.
+entrypoint: kind ingress / loopback
+notes:
+  - Use ops/deploy/k8s/README.md for local validation.
+  - Cloud staging/prod delivery is defined separately in the VM/Compose assets.

@@ -132,8 +132,8 @@ Project: `main`
 | T-124 media-observability-lifecycle-and-rollout-control | archived | F-080 | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-127 agent-modal-redesign | archived | F-000 | dev-docs/archive/agent-modal-redesign |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
-| T-129 github-actions-acr-image-publishing | in-progress | F-000 | dev-docs/active/github-actions-acr-image-publishing |
-| T-130 ecs-web-compose-delivery | planned | F-000 | dev-docs/active/ecs-web-compose-delivery |
+| T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
+| T-130 ecs-web-compose-delivery | in-progress | F-000 | dev-docs/active/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |

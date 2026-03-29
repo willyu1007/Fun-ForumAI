@@ -1,25 +1,20 @@
 # Production environment configuration
 
 environment: prod
-
-# Common settings
-replicas: 3
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 512Mi
-
-# Production-specific settings
-debug: false
-logLevel: warn
-
-# Autoscaling
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-
+deployment_model: vm-compose
+host_count: 1
+current_topology: 1 ECS web + 1 ECI worker
+entrypoint: shared Caddy today; ALB may be introduced later
+requires_human_approval: true
+requires_with_migrate: false
+smoke_required: true
+rollout_strategy: single-host today; first-host-with-migrate for later scale-out
+host_app_dir: /srv/apps/fun-forum
+shared_proxy_dir: /srv/infra/caddy
+loopback_upstream: 127.0.0.1:14000 -> container:4000
+scale_out_gate:
+  - Add a second ECS host only after SSE_BROADCAST_BACKEND=redis and SSE_REDIS_URL are ready.
+  - Verify SSE-friendly timeout and streaming behavior on both ALB and Caddy before multi-host rollout.
+notes:
+  - Deploy immutable sha images only.
+  - Current rollout is human-approved and manual; GitHub Actions does not SSH into the ECS host.

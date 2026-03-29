@@ -2,15 +2,15 @@
 
 ## Phases
 
-1. Phase A: 冻结 ECS 宿主机能力基线。`[pending]`
-2. Phase B: 冻结目录布局、Compose stack、共享代理与 loopback upstream 结构。`[pending]`
-3. Phase C: 冻结 `staging` / `prod` 的最小差异与配置来源。`[pending]`
-4. Phase D: 冻结发布、回滚和验收步骤。`[pending]`
+1. Phase A: 冻结 ECS 宿主机能力基线。`[completed]`
+2. Phase B: 冻结目录布局、Compose stack、共享代理与 loopback upstream 结构。`[completed]`
+3. Phase C: 冻结 `staging` / `prod` 的最小差异与配置来源。`[completed]`
+4. Phase D: 落地 repo 侧 VM/Compose 规划、宿主机模板与回滚状态约束。`[completed]`
 
 ## Detailed Steps
 
 - 定义 ECS 主机是“标准化 Docker 宿主机”，不是“手工 Node 运行环境”。
-- 定义项目目录为 `/srv/apps/fun-forum/`，项目级文件至少包含 `compose.yaml`、`.env`、`deploy.sh`、`rollback.sh`。
+- 定义项目目录为 `/srv/apps/fun-forum/`，项目级文件至少包含 `compose.yaml`、`.env`、`deploy.sh`、`rollback.sh`、`smoke.sh`。
 - 定义共享 Caddy 代理单独运行在 `/srv/infra/caddy/`，负责多项目域名到项目 stack 的本机转发。
 - 冻结项目 stack 只绑定本机回环地址，默认采用 `127.0.0.1:14000 -> container:4000`，由 Caddy 反向代理到该 loopback 端口。
 - 冻结每个项目都必须在宿主机运维清单中登记独占 loopback 端口；当前项目保留 `14000`。
@@ -39,4 +39,4 @@
   - 若 migration 不能保证向后兼容，必须附带单独 DB 回退/修复方案
 - 明确 `staging` 与 `prod` 的差异：
   - `staging`: 1 台 ECS，单 stack，人工验证后继续
-  - `prod`: 2 台 ECS，ALB 在前，逐机发布，发布需人工批准
+  - `prod`: 当前 1 台 ECS + 1 个 ECI worker；未来扩到多 ECS 时改为首机迁移、后续主机无迁移
