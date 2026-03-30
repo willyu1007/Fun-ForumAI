@@ -89,6 +89,7 @@ export async function prepareVisualPage(page: Page) {
       window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'default.dark'
         : 'default.light'
+    window.localStorage.removeItem('agent-modal-state')
     document.documentElement.dataset.theme = theme
   }, { fixedNow: FIXED_TIME_ISO })
 }
@@ -201,6 +202,16 @@ export async function expectPageSnapshot(
     maxDiffPixels?: number
   } = {},
 ) {
+  await stabilizeVisualSnapshot(page)
+  await expect(page).toHaveScreenshot(name, {
+    animations: 'disabled',
+    caret: 'hide',
+    fullPage: options.fullPage ?? false,
+    maxDiffPixels: options.maxDiffPixels,
+  })
+}
+
+export async function stabilizeVisualSnapshot(page: Page) {
   await page.evaluate(async (stableStyle) => {
     window.scrollTo(0, 0)
     document.documentElement.scrollTop = 0
@@ -226,12 +237,6 @@ export async function expectPageSnapshot(
       await document.fonts.ready
     }
   }, STABLE_STYLE)
-  await expect(page).toHaveScreenshot(name, {
-    animations: 'disabled',
-    caret: 'hide',
-    fullPage: options.fullPage ?? false,
-    maxDiffPixels: options.maxDiffPixels,
-  })
 }
 
 export async function fulfillOk(

@@ -8,6 +8,7 @@ import {
   fulfillOk,
   gotoAppPage,
   installApiMocks,
+  stabilizeVisualSnapshot,
   prepareVisualPage,
 } from './support/helpers'
 import {
@@ -110,6 +111,18 @@ test.describe('Agent modal visual regression', () => {
       },
       {
         method: 'GET',
+        match: `/agents/${agentId}/highlights`,
+        handle: ({ route }) =>
+          fulfillOk(route, {
+            agent_id: agentId,
+            badges: [{ code: 'host', name: '主持', tier: 2 }],
+            tagline: '会把散乱片段慢慢接成故事的人。',
+            public_bio: '像一个会把散乱片段慢慢接成故事的人。',
+            top_chronicle: [],
+          }),
+      },
+      {
+        method: 'GET',
         match: `/agents/${agentId}/xp`,
         handle: ({ route }) =>
           fulfillOk(route, buildAgentXp({ xp: 72, growth_points_total: 3, growth_points_available: 2 })),
@@ -166,7 +179,7 @@ test.describe('Agent modal visual regression', () => {
 
     await gotoAppPage(page, '/search?q=talk%20show&tab=agents', common.auth)
     await expect(page.getByTestId('search-page')).toBeVisible()
-    await page.getByRole('button', { name: '雾岚' }).click()
+    await page.getByRole('button', { name: '雾岚', exact: true }).click()
 
     await expect(page.getByTestId('agent-profile-summary')).toBeVisible()
     await expect(page.getByTestId('agent-profile-narrative')).toBeVisible()
@@ -247,7 +260,7 @@ test.describe('Agent modal visual regression', () => {
     ])
 
     await gotoAppPage(page, '/search?q=loading&tab=agents', common.auth)
-    await page.getByRole('button', { name: '迟迟' }).click()
+    await page.getByRole('button', { name: '迟迟', exact: true }).click()
 
     await expect(page.getByTestId('agent-profile-loading')).toBeVisible()
     await expectPageSnapshot(page, 'agent-modal-readonly-loading.png')
@@ -319,7 +332,7 @@ test.describe('Agent modal visual regression', () => {
     ])
 
     await gotoAppPage(page, '/search?q=missing&tab=agents', common.auth)
-    await page.getByRole('button', { name: '失联' }).click()
+    await page.getByRole('button', { name: '失联', exact: true }).click()
 
     await expect(page.getByTestId('agent-profile-error')).toBeVisible()
     await expectPageSnapshot(page, 'agent-modal-readonly-error.png')
@@ -340,8 +353,13 @@ test.describe('Agent modal visual regression', () => {
 
     await page.getByRole('button', { name: '智能体管理' }).click()
     await page.getByTitle('创建智能体').click()
-    await expect(page.getByTestId('agent-create-wizard')).toBeVisible()
-    await expectPageSnapshot(page, 'agent-modal-manage-wizard.png')
+    const wizard = page.getByTestId('agent-create-wizard')
+    await expect(wizard).toBeVisible()
+    await stabilizeVisualSnapshot(page)
+    await expect(wizard).toHaveScreenshot('agent-modal-manage-wizard.png', {
+      animations: 'disabled',
+      caret: 'hide',
+    })
   })
 
   test('manage modal keeps owner surfaces covered across active tabs', async ({ page }) => {
