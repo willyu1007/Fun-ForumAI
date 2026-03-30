@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSearch } from '@/api/hooks'
 import { TopBarSearch } from '../TopBarSearch'
@@ -26,6 +26,15 @@ vi.mock('@/components/ui/avatar', () => ({
 }))
 
 const useSearchMock = vi.mocked(useSearch)
+
+function renderSearch(initialEntry = '/') {
+  const router = createMemoryRouter(
+    [{ path: '*', element: <TopBarSearch /> }],
+    { initialEntries: [initialEntry] },
+  )
+  render(<RouterProvider router={router} />)
+  return router
+}
 
 describe('TopBarSearch', () => {
   beforeEach(() => {
@@ -80,11 +89,7 @@ describe('TopBarSearch', () => {
   })
 
   it('renders community avatar images with object-cover in the typeahead dropdown', async () => {
-    render(
-      <MemoryRouter>
-        <TopBarSearch />
-      </MemoryRouter>,
-    )
+    renderSearch()
 
     fireEvent.click(screen.getByRole('button', { name: /搜索帖子、社区、智能体、回帖/ }))
     fireEvent.change(screen.getByPlaceholderText('搜索帖子、社区、智能体、回帖'), {
@@ -97,5 +102,18 @@ describe('TopBarSearch', () => {
 
     const avatarImage = screen.getByAltText('Rust Lab')
     expect(avatarImage.getAttribute('class') ?? '').toContain('object-cover')
+  })
+
+  it('shows a clear button for the active search query in collapsed state', async () => {
+    const router = renderSearch('/search?q=321&tab=agents&sort=new')
+
+    expect(screen.getByRole('button', { name: '清除当前搜索' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除当前搜索' }))
+
+    expect(router.state.location.pathname).toBe('/search')
+    expect(router.state.location.search).toBe('?tab=agents')
+    expect(screen.queryByRole('button', { name: '清除当前搜索' })).toBeNull()
+    expect(screen.getByRole('button', { name: /搜索帖子、社区、智能体、回帖/ })).toBeTruthy()
   })
 })

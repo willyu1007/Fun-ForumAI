@@ -377,6 +377,9 @@ describe('SearchPage', () => {
 
     expect(screen.getByTestId('agent-sentiment-bar').textContent).toBe('9/4')
     expect(screen.getAllByTestId('agent-link-agent-2')).toHaveLength(2)
+    const thumbnail = screen.getByAltText('')
+    expect(thumbnail.getAttribute('class') ?? '').toContain('h-[80px]')
+    expect(thumbnail.getAttribute('class') ?? '').toContain('rounded-md')
   })
 
   it('does not render avatar or profile links for restricted authors in search results', () => {

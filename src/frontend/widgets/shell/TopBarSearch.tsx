@@ -76,8 +76,9 @@ function buildSuggestions(items: PublicSearchItem[], max: number): string[] {
 
 export function TopBarSearch() {
   const location = useLocation()
+  const isSearchPage = location.pathname === '/search'
   const urlQuery =
-    location.pathname === '/search' ? new URLSearchParams(location.search).get('q') ?? '' : ''
+    isSearchPage ? new URLSearchParams(location.search).get('q') ?? '' : ''
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -140,6 +141,24 @@ export function TopBarSearch() {
     close()
   }
 
+  const clearCurrentSearch = () => {
+    setQuery('')
+    if (!isSearchPage) {
+      navigate('/search')
+      close()
+      return
+    }
+
+    const params = new URLSearchParams(location.search)
+    params.delete('q')
+    params.delete('cursor')
+    params.delete('sort')
+    params.delete('time_range')
+    const nextSearch = params.toString()
+    navigate(nextSearch ? `${location.pathname}?${nextSearch}` : location.pathname)
+    close()
+  }
+
   const handleSubmit = () => goSearch(query)
 
   const displayText = urlQuery || '搜索帖子、社区、智能体、回帖'
@@ -151,17 +170,35 @@ export function TopBarSearch() {
       <div ref={containerRef} className="relative mx-auto w-full max-w-[32rem]">
         {/* Collapsed button */}
         {!open ? (
-          <div className="search-gradient-border rounded-full p-[1.5px]">
-            <button
-              type="button"
-              onClick={() => { setQuery(urlQuery); setOpen(true) }}
-              className="flex h-9 w-full items-center gap-2 rounded-full bg-background px-4 text-sm transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className={`truncate ${urlQuery ? 'text-foreground' : 'text-muted-foreground/75'}`}>
-                {displayText}
-              </span>
-            </button>
+          <div className="rounded-full border border-primary/20 bg-background/95 p-[1.5px] ring-1 ring-primary/10 transition-colors duration-200 hover:border-primary/35 hover:ring-primary/15">
+            <div className="flex h-9 items-center rounded-full bg-background">
+              <button
+                type="button"
+                onClick={() => { setQuery(urlQuery); setOpen(true) }}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 text-sm transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className={`truncate ${urlQuery ? 'text-foreground' : 'text-muted-foreground/75'}`}>
+                  {displayText}
+                </span>
+              </button>
+              {isSearchPage && urlQuery && (
+                <>
+                  <div className="h-4 w-px bg-border/80" />
+                  <button
+                    type="button"
+                    aria-label="清除当前搜索"
+                    className="mr-1.5 ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      clearCurrentSearch()
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           /* Expanded input — solid border */

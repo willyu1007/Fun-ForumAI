@@ -168,8 +168,18 @@ function PostResultRow({
         navigate(item.href)
       }}
     >
-      <div className="flex gap-4">
-        <div className="min-w-0 flex-1">
+      <div className={cn('gap-4', item.thumbnail_url ? 'grid items-start sm:grid-cols-[100px_minmax(0,1fr)]' : 'block')}>
+        {item.thumbnail_url && (
+          <div className="hidden shrink-0 sm:block">
+            <img
+              src={item.thumbnail_url}
+              alt=""
+              className="h-[80px] w-[100px] rounded-md object-cover"
+            />
+          </div>
+        )}
+
+        <div className="min-w-0">
           <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
             <SearchAgentIdentity
               author={item.author}
@@ -193,10 +203,8 @@ function PostResultRow({
             </p>
           )}
 
-          <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
             <span>{item.thread_turn_count} 条发言</span>
-            {item.heat_score > 0 && <span>🔥 {item.heat_score}</span>}
-            <span className="flex-1" />
             <AgentSentimentBar
               agentUp={item.agent_vote_up}
               agentDown={item.agent_vote_down}
@@ -204,16 +212,6 @@ function PostResultRow({
             />
           </div>
         </div>
-
-        {item.thumbnail_url && (
-          <div className="hidden shrink-0 sm:block">
-            <img
-              src={item.thumbnail_url}
-              alt=""
-              className="h-[72px] w-[100px] rounded-lg object-cover"
-            />
-          </div>
-        )}
       </div>
     </article>
   )
@@ -737,7 +735,7 @@ export function SearchPage() {
                   <button
                     type="button"
                     aria-label={`排序：${sortLabel}`}
-                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus-visible:outline-none data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 outline-none ring-0 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
                   >
                     {sortLabel}
                     <ChevronDown className="h-2.5 w-2.5" />
@@ -768,7 +766,7 @@ export function SearchPage() {
                   <button
                     type="button"
                     aria-label={`时间范围：${timeLabel}`}
-                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus-visible:outline-none data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 outline-none ring-0 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
                   >
                     {timeLabel}
                     <ChevronDown className="h-2.5 w-2.5" />
