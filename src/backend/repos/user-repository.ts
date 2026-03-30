@@ -104,7 +104,7 @@ export class InMemoryUserRepository implements UserRepository {
     }
 
     this.store.set(user.id, user)
-    this.byEmail.set(user.email, user.id)
+    this.byEmail.set(email, user.id)
     return user
   }
 

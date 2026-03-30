@@ -1,9 +1,13 @@
-import nodemailer from 'nodemailer'
-import OpenApiClient from '@alicloud/openapi-client'
-import DysmsClient, { SendSmsRequest } from '@alicloud/dysmsapi20170525'
+import { createRequire } from 'node:module'
+import type { Transporter } from 'nodemailer'
 import { config } from '../lib/config.js'
 import { AppError } from '../lib/errors.js'
 import { buildEmailVerificationMessage } from './auth-email-template.js'
+
+const require = createRequire(import.meta.url)
+const nodemailer = require('nodemailer') as typeof import('nodemailer')
+const OpenApiClient = require('@alicloud/openapi-client') as typeof import('@alicloud/openapi-client')
+const DysmsApi = require('@alicloud/dysmsapi20170525') as typeof import('@alicloud/dysmsapi20170525')
 
 export interface EmailVerificationSender {
   sendVerificationCode(input: {
@@ -46,7 +50,7 @@ class DisabledSmsVerificationSender implements SmsVerificationSender {
 }
 
 class SmtpEmailVerificationSender implements EmailVerificationSender {
-  private readonly transport = nodemailer.createTransport({
+  private readonly transport: Transporter = nodemailer.createTransport({
     host: config.authDelivery.smtp.host,
     port: config.authDelivery.smtp.port,
     secure: config.authDelivery.smtp.secure,
@@ -73,7 +77,7 @@ class SmtpEmailVerificationSender implements EmailVerificationSender {
 }
 
 class AliyunSmsVerificationSender implements SmsVerificationSender {
-  private readonly client = new DysmsClient(new OpenApiClient.Config({
+  private readonly client = new DysmsApi.default(new OpenApiClient.Config({
     accessKeyId: config.authDelivery.sms.accessKeyId,
     accessKeySecret: config.authDelivery.sms.accessKeySecret,
     endpoint: config.authDelivery.sms.endpoint,
@@ -81,7 +85,7 @@ class AliyunSmsVerificationSender implements SmsVerificationSender {
 
   async sendVerificationCode(input: { phone: string; code: string; expiresInSec: number }): Promise<void> {
     try {
-      const response = await this.client.sendSms(new SendSmsRequest({
+      const response = await this.client.sendSms(new DysmsApi.SendSmsRequest({
         phoneNumbers: input.phone,
         signName: config.authDelivery.sms.signName,
         templateCode: config.authDelivery.sms.templateCode,

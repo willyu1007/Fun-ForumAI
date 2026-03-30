@@ -190,7 +190,7 @@ if (config.allowDevTools) {
 if (authService) {
   const ensuredAuthService = authService
   registerDevTokenSync(async (user) => {
-    if (!user._devToken) return
+    if (!user._devToken || !user.email) return
     await ensuredAuthService.ensureDevIdentity({
       userId: user.userId,
       email: user.email,

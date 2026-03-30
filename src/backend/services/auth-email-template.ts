@@ -1,14 +1,10 @@
+import type Mail from 'nodemailer/lib/mailer/index.js'
+
 const AUTH_PRODUCT_NAME = 'AI Talkshow'
 
 export interface AuthEmailMessage {
-  from: {
-    address: string
-    name?: string
-  }
-  sender: {
-    address: string
-    name?: string
-  }
+  from: Mail.Address
+  sender: Mail.Address
   envelope: {
     from: string
     to: string
@@ -32,13 +28,10 @@ function escapeHtml(value: string): string {
 function buildMailbox(input: {
   address: string
   name?: string
-}): {
-  address: string
-  name?: string
-} {
+}): Mail.Address {
   const address = input.address.trim()
-  const name = input.name?.trim()
-  return name ? { address, name } : { address }
+  const name = input.name?.trim() || AUTH_PRODUCT_NAME
+  return { address, name }
 }
 
 // Keep auth email composition isolated from transport wiring so future

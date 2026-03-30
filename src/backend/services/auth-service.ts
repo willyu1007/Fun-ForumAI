@@ -391,9 +391,9 @@ export class AuthService {
 
     const phone = normalizePhone(challenge.target)
     const existingBeforeConsume = await this.userRepo.findByPhone(phone)
-    const trimmedDisplayName = input.displayName?.trim()
+    const displayName = input.displayName?.trim()
 
-    if (!existingBeforeConsume && !trimmedDisplayName) {
+    if (!existingBeforeConsume && !displayName) {
       throw new AppError(400, '首次使用手机号注册时需要填写昵称', 'DISPLAY_NAME_REQUIRED')
     }
 
@@ -421,9 +421,13 @@ export class AuthService {
       return { ...result, isNewUser: false }
     }
 
+    if (!displayName) {
+      throw new AppError(400, '首次使用手机号注册时需要填写昵称', 'DISPLAY_NAME_REQUIRED')
+    }
+
     try {
       const user = await this.userRepo.create({
-        display_name: trimmedDisplayName,
+        display_name: displayName,
         phone,
         phone_verified: true,
       })
