@@ -1433,4 +1433,11 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/alb-health-readiness-upgrade
-    updated: 2026-03-29
+    updated: 2026-03-30
+  - id: T-930
+    slug: web-auth-email-and-sms-registration
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/web-auth-email-and-sms-registration
+    updated: 2026-03-30

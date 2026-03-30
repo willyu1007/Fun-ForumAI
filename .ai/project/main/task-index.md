@@ -163,4 +163,5 @@ Project: `main`
 | T-927 agent-social-bio-public-and-search-rollout | in-progress | F-020 | dev-docs/active/agent-social-bio-public-and-search-rollout |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 | T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
+| T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
 <!-- AUTO-GENERATED:END task-index -->

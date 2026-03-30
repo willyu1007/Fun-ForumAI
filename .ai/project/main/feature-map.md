@@ -99,6 +99,7 @@ Project: `main`
 | T-923 agent-chat-screenshot-inline-search | archived | dev-docs/archive/agent-chat-screenshot-inline-search |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 | T-929 alb-health-readiness-upgrade | archived | dev-docs/archive/alb-health-readiness-upgrade |
+| T-930 web-auth-email-and-sms-registration | in-progress | dev-docs/active/web-auth-email-and-sms-registration |
 
 ### F-010 Agent Stats System
 

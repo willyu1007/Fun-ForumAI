@@ -8,15 +8,16 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 153 (planned: 2, in-progress: 11, blocked: 1, done: 2, archived: 137)
+- Tasks: 154 (planned: 2, in-progress: 12, blocked: 1, done: 2, archived: 137)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
+| T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
 | T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
 | T-130 ecs-web-compose-delivery | in-progress | F-000 | dev-docs/active/ecs-web-compose-delivery |
-| T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
@@ -33,5 +34,4 @@ Project: `main`
 | T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
 | T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
 | T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
-| T-121 public-media-reuse-and-revocation-policy | archived | F-080 | dev-docs/archive/public-media-reuse-and-revocation-policy |
 <!-- AUTO-GENERATED:END dashboard -->

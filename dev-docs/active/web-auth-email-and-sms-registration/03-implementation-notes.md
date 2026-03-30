@@ -1,0 +1,42 @@
+# 03 Implementation Notes
+
+## 2026-03-30
+
+- 创建 `T-930` 任务 bundle，锁定范围为 Web 邮箱/短信注册补完。
+- 记录当前环境约束：`node` / `pnpm` 已安装于 `/opt/homebrew/bin`，但不在默认 PATH，需要用绝对路径执行治理与验证脚本。
+- DB apply 审批未执行；本次只会修改 SSOT、migration 文件、代码与测试。
+- 完成 Prisma SSOT 变更：
+  - `HumanUser.email` / `passwordHash` 改为可空，支持手机号-only、无密码账号。
+  - 新增 `AuthVerificationChallenge` 模型与配套 migration，用于邮箱/SMS 验证码存储、重发与限频。
+- 重写后端 auth 链路：
+  - 邮箱注册改为 `POST /auth/register -> /auth/register/verify -> session`
+  - 新增 `/auth/register/resend`
+  - 实现 `/auth/sms/send`、`/auth/sms/verify`、`/auth/sms/resend`
+  - `AuthService` 现在负责验证码签发、校验、重发冷却、每目标/IP 限频，以及短信注册登录合一逻辑。
+- 增加 provider 抽象：
+  - SMTP 发信走 `nodemailer`
+  - 阿里云短信走 `@alicloud/dysmsapi20170525`
+  - 本地 / test 环境回退为日志 sender，并通过 `debugCode` 支持测试与 smoke 脚本消费验证码。
+- 重写 Web auth 前端：
+  - `EmailRegisterForm` 改为两步验证码流程
+  - 登录/注册页统一直接复用 `PhoneAuthForm`
+  - `useAuth` 与 `src/frontend/api/auth.ts` 切换到新 challenge contract
+- 更新配套内容：
+  - `scripts/mobile-smoke-prepare.mjs` 改为 challenge + verify 形式
+  - `env/contract.yaml`、secret refs、`env/.env.example`、`docs/env.md`、`docs/context/env/contract.json` 已同步
+  - `docs/context/db/schema.json` 已刷新
+- 为了让全量 `eslint` 通过，顺手修复了两个仓内既有的轻量 lint 问题：
+  - `src/backend/domain/agent-bio/fingerprint.ts`
+  - `src/backend/services/agent-bio-worldview-service.ts`
+- review 轮额外修复的 auth 质量问题：
+  - 短信首次注册漏填昵称时，不再提前消费验证码
+  - PG challenge 核销在并发场景下改为返回稳定状态，不再依赖脆弱的单次 update
+  - 生产态未配置 SMTP / 阿里云短信时，不再在启动期直接抛错，而是在请求发送验证码时返回明确 provider unavailable 错误
+- 邮件品牌化与 anti-spam 收口：
+  - 新增 `src/backend/services/auth-email-template.ts`，把验证码邮件的主题、纯文本、HTML、headers 与 sender policy 从 transport 中拆出
+  - 邮件主题改为 `AI Talkshow 注册验证码`，正文补充品牌语境、忽略说明和“不要转发验证码”的安全提示
+  - SMTP 发件时显式设置 `from` / `sender` / `envelope`，并增加 `Auto-Submitted`、`X-Auto-Response-Suppress` 头，降低客户端回退到底层 sender identity 的概率
+  - 当前只收口验证码邮件；真正的“邀请函”模板需等邀请码/邀请链接链路落地后再接入，但边界已预留
+- 收尾清理：
+  - 删除仅用于传递 `mode` 的 `PhoneLoginForm` / `PhoneRegisterForm` 包装文件，页面直接依赖 `PhoneAuthForm`
+  - 删除已失效的本地 env doctor 产物 `artifacts/env-local/00-prereq-check.md`

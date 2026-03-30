@@ -1,0 +1,44 @@
+# 00 Overview — web-auth-email-and-sms-registration (T-930)
+
+## Status
+
+- State: in-progress
+- Depends on: none
+- Next step: 完成真实短信 provider 联调，并在邀请码系统落地前补齐“邀请函邮件 vs 验证码邮件”的模板边界。
+
+## Goal
+
+补完 Web 端邮箱与短信注册链路：
+
+- 邮箱注册改为“提交资料 -> 收取 6 位验证码 -> 验证成功后创建账号并登录”
+- 短信注册接入真实阿里云短信服务，完成验证码发送与校验
+- 手机号登录/注册走统一验证码入口，手机号不存在时新建账号，已存在时直接登录
+- 为短信账号支持“手机号-only、无密码”模型
+
+## Non-goals
+
+- 不补移动端注册 UI
+- 不做邮箱 magic link、微信登录或密码找回
+- 不做账号合并、手机号/邮箱后补绑定流程
+- 不把 DB migration 应用到真实环境数据库；真实 DB 写入须单独审批
+
+## Context
+
+任务推进后，当前仓库状态：
+
+- `/v1/auth/register` 已切换为 challenge 两步注册，SMTP 已完成真实接入
+- `/v1/auth/sms/send` 与 `/v1/auth/sms/verify` 已实现，但还缺真实阿里云联调
+- Web 的手机登录/注册表单已接到验证码流程
+- `HumanUser` 已支持手机号-only、无密码账号
+- 邮箱验证码邮件已从传输层中拆出独立模板，并补强 `from/sender/envelope`，为后续邀请函模板预留结构
+
+本任务将同时改动 Prisma schema、auth service/repository、配置、SMTP/阿里云短信 provider、Web auth 页面与测试脚本。
+
+## Acceptance Criteria
+
+- [ ] 邮箱注册必须经过 6 位验证码验证后才能创建会话
+- [ ] SMTP 发信能力完成接入，支持重发、过期与错误回显
+- [ ] 短信验证码通过阿里云发送，手机号存在时直接登录，不存在时要求昵称并创建账号
+- [ ] `HumanUser` 支持手机号-only、无密码账号，不破坏既有邮箱密码账号登录
+- [ ] Web 登录/注册页移除手机占位，接入真实短信流程
+- [ ] 现有 smoke/test 脚本更新到新的邮箱注册 contract
