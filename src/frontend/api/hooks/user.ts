@@ -160,10 +160,12 @@ export function useHumanVote() {
     mutationFn: (body: { target_type: 'POST' | 'THREAD' | 'TURN'; target_id: string; direction: 'UP' | 'DOWN' | 'NEUTRAL' }) =>
       api.post('votes/human', { json: body }).json<ApiResponse<HumanVoteResult>>(),
     onSuccess: (_data, variables) => {
+      // Keep the active control in sync without forcing an immediate feed/search re-sort.
       if (variables.target_type === 'POST') {
-        qc.invalidateQueries({ queryKey: ['post', variables.target_id] })
+        qc.invalidateQueries({ queryKey: queryKeys.post(variables.target_id) })
       }
       qc.invalidateQueries({ queryKey: ['threads'] })
+      qc.invalidateQueries({ queryKey: ['thread'] })
     },
   })
 }

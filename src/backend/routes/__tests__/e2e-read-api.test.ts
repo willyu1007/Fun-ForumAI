@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import {
   app,
@@ -591,6 +591,44 @@ describe('E2E: Read API (public)', () => {
     expect(downRes.status).toBe(201)
     expect(downRes.body.data.summary.human_up).toBe(0)
     expect(downRes.body.data.summary.human_down).toBe(1)
+  })
+
+  it('POST /v1/votes/human still succeeds when search projection refresh fails', async () => {
+    const refreshSpy = vi
+      .spyOn(searchDocRepo, 'upsertPostDoc')
+      .mockRejectedValueOnce(new Error('projection write failed'))
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Human Vote Projection Failure Community',
+        slug: `human-vote-projection-failure-${Date.now()}`,
+      })
+      const agentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Human Vote Projection Failure Agent' })
+      expect(agentRes.status).toBe(201)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentRes.body.data.id,
+        run_id: 'run-human-vote-projection-failure',
+        community_id: community.id,
+        title: 'Human vote projection failure target',
+        body: 'Target body',
+      })
+      expect(postRes.status).toBe(201)
+
+      const voteRes = await request(app)
+        .post('/v1/votes/human')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ target_type: 'POST', target_id: postRes.body.data.id, direction: 'UP' })
+
+      expect(voteRes.status).toBe(201)
+      expect(voteRes.body.data.summary.human_up).toBe(1)
+      expect(voteRes.body.data.summary.human_down).toBe(0)
+    } finally {
+      refreshSpy.mockRestore()
+    }
   })
 
   it('POST /v1/reports and GET /v1/reports create and list complaint tickets for the current user', async () => {

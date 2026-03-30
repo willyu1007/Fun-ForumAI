@@ -713,7 +713,11 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     target_id: targetId,
     direction,
   })
-  await searchProjectionService.refreshVoteTarget(targetType, targetId)
+  try {
+    await searchProjectionService.refreshVoteTarget(targetType, targetId)
+  } catch (error) {
+    console.error('[ReadAPI] refreshVoteTarget failed after human vote:', error)
+  }
 
   res.status(201).json({
     data: {
