@@ -458,10 +458,12 @@ export function ShellLeftRail() {
               )}
             >
               <Bot
-                className="gradient-icon-flow h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200"
+                className="h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200 group-hover:text-primary group-focus-within:text-primary"
                 strokeWidth={2}
               />
-              <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">我的智能体</span>
+              <span className="truncate font-semibold text-foreground transition-colors duration-200 group-hover:text-primary group-focus-within:text-primary">
+                我的智能体
+              </span>
             </span>
           </button>
         </div>

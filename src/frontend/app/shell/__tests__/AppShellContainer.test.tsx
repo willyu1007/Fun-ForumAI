@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { APP_SHELL_CONTENT_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { AppShellContainer } from '../AppShellContainer'
@@ -28,6 +29,10 @@ vi.mock('@/widgets/dev/DevAuthToolbar', () => ({
 
 vi.mock('@/widgets/shell/ShellLeftRail', () => ({
   ShellLeftRail: () => <div data-testid="left-rail" />,
+}))
+
+vi.mock('@/widgets/agent-modal/AgentInteractionModal', () => ({
+  AgentInteractionModal: () => <div data-testid="agent-interaction-modal" />,
 }))
 
 const useSidebarStoreMock = vi.mocked(useSidebarStore)
@@ -69,6 +74,9 @@ describe('AppShellContainer', () => {
     expect(screen.getByTestId('dev-auth-toolbar')).toBeTruthy()
     expect(screen.getByText('home')).toBeTruthy()
     expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-6xl')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('md:px-3')
+    expect(screen.getByTestId('shell-page-frame').parentElement?.className).toContain('md:pl-3')
+    expect(screen.getByTestId('shell-page-frame').parentElement?.className).toContain(APP_SHELL_CONTENT_SAFE_AREA_CLASS)
     expect(topBarContainerSpy).toHaveBeenCalledWith({
       leftOpen: true,
       onToggleLeft: toggleLeft,
@@ -134,6 +142,29 @@ describe('AppShellContainer', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[88.5rem]')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[96rem]')
+  })
+
+  it('stretches the page frame in compact mode even when the left rail remains open', () => {
+    useSidebarStoreMock.mockReturnValue({
+      leftOpen: true,
+      toggleLeft: vi.fn(),
+    } as never)
+    useFeedViewStoreMock.mockReturnValue({
+      view: 'compact',
+      setView: vi.fn(),
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route index element={<div>home</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[96rem]')
   })
 })

@@ -112,43 +112,4 @@
     animation-duration: 18s;
   }
 
-  .search-gradient-border {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  }
-
-  @keyframes gradient-text-flow {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-
-  .group:is(:hover, :focus-within) .gradient-text-flow {
-    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 30%, var(--color-accent) 50%, var(--color-primary) 70%, var(--color-primary) 100%);
-    background-size: 200% 200%;
-    animation: gradient-text-flow 3s ease-in-out infinite;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  @keyframes icon-color-flow {
-    0%, 100% { color: var(--color-primary); }
-    50% { color: var(--color-accent); }
-  }
-
-  .group:is(:hover, :focus-within) .gradient-icon-flow {
-    animation: icon-color-flow 3s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .gradient-text-flow { animation: none !important; }
-    .gradient-icon-flow { animation: none !important; }
-    .group:is(:hover, :focus-within) .gradient-text-flow {
-      background-size: 100% 100%;
-      animation: none !important;
-    }
-    .group:is(:hover, :focus-within) .gradient-icon-flow {
-      animation: none !important;
-      color: var(--color-primary);
-    }
-  }
 }

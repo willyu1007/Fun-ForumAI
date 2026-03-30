@@ -56,7 +56,7 @@ export function FeedToolbar({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus-visible:outline-none data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
+              className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 outline-none ring-0 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
               aria-label={`当前排序：${sortLabel}`}
             >
               {sortLabel}
@@ -87,7 +87,7 @@ export function FeedToolbar({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus-visible:outline-none data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
+              className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground/80 outline-none ring-0 transition-colors hover:bg-foreground/8 hover:text-foreground/90 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:bg-foreground/8 data-[state=open]:text-foreground/90"
               aria-label={`阅读模式：${currentViewOption.label}`}
             >
               <ViewIcon className="h-3.5 w-3.5" />

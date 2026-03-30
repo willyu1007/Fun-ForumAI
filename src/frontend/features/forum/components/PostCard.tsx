@@ -1,6 +1,6 @@
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { MessageCircle, MoreHorizontal, Bookmark, UserPlus, EyeOff, Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,7 @@ import { HumanVoteControls } from './HumanVoteControls'
 import { AgentSentimentBar } from './AgentSentimentBar'
 import { PostMediaGallery } from './PostMediaGallery'
 import { SharePopover } from './SharePopover'
+import { usePostSurfaceActions } from './usePostSurfaceActions'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -34,12 +35,43 @@ export function PostCard({ post }: PostCardProps) {
   const navigate = useNavigate()
   const author = post.author
   const hasMedia = post.media.length > 0
+  const {
+    feedback,
+    followAgentLabel,
+    followPostLabel,
+    isHidden,
+    reportLabel,
+    handleFollowAgent,
+    handleFollowPost,
+    handleHidePost,
+    handleReportPost,
+    handleUndoHide,
+  } = usePostSurfaceActions(post)
 
   const avatarSrc = resolveAgentAvatarSrc({
     id: author.id,
     display_name: author.display_name,
     avatar_url: author.avatar_url,
   })
+
+  if (isHidden) {
+    return (
+      <article className="py-[3px]">
+        <div className="rounded-lg border border-border/60 bg-muted/25 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-muted-foreground">已隐藏此帖</span>
+            <button
+              type="button"
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+              onClick={handleUndoHide}
+            >
+              撤销
+            </button>
+          </div>
+        </div>
+      </article>
+    )
+  }
 
   return (
     <article className="py-[3px]">
@@ -87,29 +119,45 @@ export function PostCard({ post }: PostCardProps) {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="shrink-0 rounded-full p-1.5 text-muted-foreground/50 transition-colors hover:bg-muted hover:text-foreground"
+                className="shrink-0 rounded-full p-1.5 text-primary/65 outline-none ring-0 transition-colors hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 aria-label="更多操作"
               >
                 <MoreHorizontal className="size-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem className="gap-2 text-xs">
+              <DropdownMenuItem
+                className="gap-2 text-xs focus:bg-primary/10 focus:text-primary"
+                onSelect={() => handleFollowPost()}
+              >
                 <Bookmark className="size-3.5" />
-                关注帖子
+                {followPostLabel}
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 text-xs">
+              <DropdownMenuItem
+                className="gap-2 text-xs focus:bg-primary/10 focus:text-primary"
+                onSelect={() => {
+                  void handleFollowAgent()
+                }}
+              >
                 <UserPlus className="size-3.5" />
-                关注 {author.display_name}
+                {followAgentLabel}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-xs">
+              <DropdownMenuItem
+                className="gap-2 text-xs focus:bg-primary/10 focus:text-primary"
+                onSelect={() => handleHidePost()}
+              >
                 <EyeOff className="size-3.5" />
                 隐藏
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 text-xs text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                className="gap-2 text-xs focus:bg-primary/10 focus:text-primary"
+                onSelect={() => {
+                  void handleReportPost()
+                }}
+              >
                 <Flag className="size-3.5" />
-                举报
+                {reportLabel}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -123,11 +171,11 @@ export function PostCard({ post }: PostCardProps) {
       {post.body && (
         <div
           className={cn(
-            'mt-2 overflow-hidden text-sm text-foreground/60 [&_hr]:hidden',
+            'mt-2 overflow-hidden text-sm text-foreground/75 [&_hr]:hidden',
             hasMedia ? 'max-h-[3.5rem]' : 'max-h-[13rem]',
           )}
         >
-          <RichTextLite text={post.body} className="text-sm text-foreground/60" />
+          <RichTextLite text={post.body} className="text-sm text-foreground/75" />
         </div>
       )}
 
@@ -142,10 +190,13 @@ export function PostCard({ post }: PostCardProps) {
           initialDirection={post.viewer_human_vote_direction}
         />
 
-        <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.08] px-2.5 py-1 text-xs tabular-nums text-muted-foreground">
+        <Link
+          to={`/posts/${post.id}`}
+          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs tabular-nums text-primary/80 transition-colors hover:bg-primary/15 hover:text-primary"
+        >
           <MessageCircle className="size-3.5" />
           {post.thread_turn_count}
-        </span>
+        </Link>
 
         <SharePopover postId={post.id} postTitle={post.title} />
 
@@ -153,6 +204,20 @@ export function PostCard({ post }: PostCardProps) {
 
         <AgentSentimentBar agentUp={post.agent_vote_up} agentDown={post.agent_vote_down} />
       </div>
+      {feedback && (
+        <p
+          className={cn(
+            'mt-2 text-xs',
+            feedback.tone === 'error'
+              ? 'text-destructive'
+              : feedback.tone === 'success'
+                ? 'text-primary/80'
+                : 'text-muted-foreground',
+          )}
+        >
+          {feedback.message}
+        </p>
+      )}
       </div>
     </article>
   )

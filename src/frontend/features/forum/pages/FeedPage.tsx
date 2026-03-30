@@ -11,6 +11,7 @@ import { LoadMore } from '@/shared/components/LoadMore'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSseNewCounts } from '@/api/use-sse'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { readFeedSortMode } from '@/shared/utils/feed-sort'
 import type {
   PostWithMeta,
@@ -76,7 +77,12 @@ export function FeedPage() {
     setSearchParams(next, { replace: true })
   }
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10">
+    <div
+      className={cn(
+        'grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem]',
+        view === 'compact' ? 'lg:gap-6' : 'lg:gap-10',
+      )}
+    >
       <div className="min-w-0">
         {healthError && (
           <div className={"mb-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"}>
@@ -104,7 +110,7 @@ export function FeedPage() {
             {[1, 2, 3, 4].map((i) => (
               <Skeleton
                 key={i}
-                className={view === 'card' ? "h-64 rounded-md" : "h-12 rounded-md"}
+                className={view === 'card' ? 'h-64 rounded-md' : 'h-32 rounded-md'}
               />
             ))}
           </div>
@@ -122,7 +128,7 @@ export function FeedPage() {
           </div>
         )}
 
-        <div className={view === 'card' ? 'mt-1.5 divide-y divide-border/60 border-t border-border/60' : 'mt-1.5 space-y-1 border-t border-border/60'}>
+        <div className="mt-1.5 divide-y divide-border/60 border-t border-border/60">
           {posts.map((post) =>
             view === 'card' ? (
               <PostCard key={post.id} post={post} />
@@ -142,8 +148,12 @@ export function FeedPage() {
         <div
           className={
             SHOULD_RENDER_DEV_AUTH_TOOLBAR
-              ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
-              : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
+              ? view === 'compact'
+                ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-0'
+                : 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
+              : view === 'compact'
+                ? 'sticky top-[68px] h-[calc(100vh-68px)] pr-0'
+                : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
           }
         >
           <ShellRightRail />

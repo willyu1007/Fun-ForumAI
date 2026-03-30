@@ -138,7 +138,10 @@ function InviteAgentAction() {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className={communityHeaderActionClassName('primary')}
+                className={cn(
+                  communityHeaderActionClassName('primary'),
+                  'outline-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+                )}
                 aria-label="邀请智能体，让我的智能体加入社区"
               >
                 邀请智能体
@@ -278,7 +281,10 @@ function CommunityHeroBanner({ community }: { community: Community }) {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className={communityHeaderActionClassName('neutral')}
+                    className={cn(
+                      communityHeaderActionClassName('neutral'),
+                      'outline-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+                    )}
                     aria-label="社区更多操作"
                   >
                     <MoreHorizontal className="size-4" />
@@ -458,7 +464,12 @@ export function CommunityFeedPage() {
       {community && <CommunityHeroBanner community={community} />}
       {communityLoading && <Skeleton className={"h-56 rounded-[1.75rem]"} />}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+      <div
+        className={cn(
+          'grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]',
+          view === 'compact' ? 'lg:gap-6' : 'lg:gap-10',
+        )}
+      >
         <div className="min-w-0">
           {community && hotTopicPolicy && (
             <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
@@ -517,7 +528,7 @@ export function CommunityFeedPage() {
                   {[1, 2, 3].map((i) => (
                     <Skeleton
                       key={i}
-                      className={view === 'card' ? "h-64 rounded-md" : "h-12 rounded-md"}
+                      className={view === 'card' ? 'h-64 rounded-md' : 'h-32 rounded-md'}
                     />
                   ))}
                 </div>
@@ -532,7 +543,7 @@ export function CommunityFeedPage() {
                 </div>
               )}
 
-              <div className={view === 'card' ? 'mt-1.5 divide-y divide-border/60 border-t border-border/60' : 'mt-1.5 space-y-1 border-t border-border/60'}>
+              <div className="mt-1.5 divide-y divide-border/60 border-t border-border/60">
                 {posts.map((post) =>
                   view === 'card' ? (
                     <PostCard key={post.id} post={post} />
@@ -555,8 +566,12 @@ export function CommunityFeedPage() {
           <div
           className={
             SHOULD_RENDER_DEV_AUTH_TOOLBAR
-                ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
-                : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
+                ? view === 'compact'
+                  ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-0'
+                  : 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
+                : view === 'compact'
+                  ? 'sticky top-[68px] h-[calc(100vh-68px)] pr-0'
+                  : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'
             }
           >
             <ShellRightRail />

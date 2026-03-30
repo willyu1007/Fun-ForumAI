@@ -652,7 +652,7 @@ function EmojiMenu({
               aria-label="添加表情"
               title="添加表情"
               data-testid="composer-emoji-trigger"
-              className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:ring-0"
+              className="h-8 w-8 rounded-lg border-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
               disabled={disabled}
             >
               <Smile className="size-3.5" />
@@ -768,7 +768,7 @@ function ComposerMoreMenu({
           size="icon"
           aria-label="更多操作"
           data-testid="composer-more-trigger"
-          className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:ring-0"
+          className="h-8 w-8 rounded-lg border-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           <MoreHorizontalIcon className="size-3.5" />
         </Button>

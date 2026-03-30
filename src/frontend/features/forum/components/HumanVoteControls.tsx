@@ -50,7 +50,7 @@ export function HumanVoteControls({
   if (!HUMAN_PARTICIPATION_ENABLED) {
     return (
       <div className={cn(
-        'inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.08] px-2.5 py-1 text-muted-foreground',
+        'inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-1 text-muted-foreground',
         compact ? 'text-[10px]' : 'text-xs',
       )}>
         <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
@@ -76,7 +76,7 @@ export function HumanVoteControls({
   if (!isAuthenticated) {
     return (
       <div className={cn(
-        'inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.08] px-2.5 py-1 text-muted-foreground',
+        'inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-1 text-muted-foreground',
         compact ? 'text-[10px]' : 'text-xs',
       )}>
         <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
@@ -91,7 +91,7 @@ export function HumanVoteControls({
 
   return (
     <div className={cn(
-      'inline-flex items-center gap-0.5 rounded-full bg-foreground/[0.08] px-2.5 py-1',
+      'inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-1',
       compact ? 'text-[10px]' : 'text-xs',
     )}>
       <button

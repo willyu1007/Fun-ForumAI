@@ -2,7 +2,10 @@ import { Outlet, useLocation } from 'react-router'
 import { AppShell } from '@fun-forum/ui-web/shell'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
-import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
+import {
+  APP_SHELL_CONTENT_SAFE_AREA_CLASS,
+  SHOULD_RENDER_DEV_AUTH_TOOLBAR,
+} from '@/shared/layout/dev-auth-toolbar'
 import { cn } from '@/lib/utils'
 import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
@@ -14,7 +17,7 @@ export function AppShellContainer() {
   const { view } = useFeedViewStore()
   const { pathname } = useLocation()
   const usePageSidebarLayout = pathname === '/' || pathname.startsWith('/c/') || pathname === '/search'
-  const stretchCompactFeedLayout = usePageSidebarLayout && view === 'compact' && !leftOpen
+  const stretchCompactFeedLayout = usePageSidebarLayout && view === 'compact'
 
   return (
     <AppShell
@@ -37,17 +40,18 @@ export function AppShellContainer() {
       footer={<DevAuthToolbar />}
     >
       <div className={cn(
-        'min-w-0 flex-1 pb-16 transition-[padding] duration-200',
-        leftOpen && 'md:pl-20',
+        'min-w-0 flex-1 transition-[padding] duration-200',
+        APP_SHELL_CONTENT_SAFE_AREA_CLASS,
+        leftOpen && 'md:pl-3',
       )}>
         <div
           data-testid="shell-page-frame"
           className={cn(
-            'mx-auto px-4 pb-4 transition-[max-width] duration-200',
+            'mx-auto px-4 pb-4 transition-[max-width] duration-200 md:px-3',
             usePageSidebarLayout ? 'pt-0' : 'pt-4',
             usePageSidebarLayout
               ? stretchCompactFeedLayout
-                ? 'max-w-[88.5rem]'
+                ? 'max-w-[96rem] 2xl:max-w-[108rem]'
                 : 'max-w-6xl'
               : 'max-w-3xl',
           )}

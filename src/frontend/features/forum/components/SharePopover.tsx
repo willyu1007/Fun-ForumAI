@@ -10,9 +10,10 @@ import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 interface SharePopoverProps {
   postId: string
   postTitle: string
+  compact?: boolean
 }
 
-export function SharePopover({ postId, postTitle }: SharePopoverProps) {
+export function SharePopover({ postId, postTitle, compact = false }: SharePopoverProps) {
   const [open, setOpen] = useState(false)
   const { isAuthenticated } = useAuth()
   const { data, isLoading } = useMyAgents(open && isAuthenticated)
@@ -35,10 +36,18 @@ export function SharePopover({ postId, postTitle }: SharePopoverProps) {
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.08] px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className={
+            compact
+              ? 'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary'
+              : 'inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary/80 transition-colors hover:bg-primary/15 hover:text-primary'
+          }
         >
-          <Share2 className="size-3.5" />
-          <span className="hidden sm:inline">分享</span>
+          {compact ? '分享' : (
+            <>
+              <Share2 className="size-3.5" />
+              <span className="hidden sm:inline">分享</span>
+            </>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -83,6 +92,16 @@ export function SharePopover({ postId, postTitle }: SharePopoverProps) {
             })}
           </div>
         )}
+
+        <div className="mt-2 border-t pt-2">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center justify-center rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            取消
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   )
