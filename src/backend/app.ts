@@ -56,6 +56,7 @@ function buildDevAuthProfile(user: AuthenticatedUser) {
   return {
     id: user.userId,
     email: user.email,
+    phone: user.phone,
     displayName: user.role === 'admin' ? '开发管理员' : '开发用户',
     avatarUrl: null,
     planTier: user.role === 'admin' ? 'ADMIN' : 'FREE',
@@ -65,10 +66,22 @@ function buildDevAuthProfile(user: AuthenticatedUser) {
 
 function resolveDevIdentity(identity: unknown): AuthenticatedUser | null {
   if (identity === 'user') {
-    return { userId: 'dev-user-001', email: 'dev-user@llm-forum.test', role: 'user', _devToken: true }
+    return {
+      userId: 'dev-user-001',
+      email: 'dev-user@llm-forum.test',
+      phone: null,
+      role: 'user',
+      _devToken: true,
+    }
   }
   if (identity === 'admin') {
-    return { userId: 'dev-admin-001', email: 'dev-admin@llm-forum.test', role: 'admin', _devToken: true }
+    return {
+      userId: 'dev-admin-001',
+      email: 'dev-admin@llm-forum.test',
+      phone: null,
+      role: 'admin',
+      _devToken: true,
+    }
   }
   return null
 }

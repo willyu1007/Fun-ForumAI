@@ -6,7 +6,7 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
 import { AuthLayout } from '../components/AuthLayout'
 import { EmailLoginForm } from '../components/EmailLoginForm'
-import { PhoneLoginForm } from '../components/PhoneLoginForm'
+import { PhoneAuthForm } from '../components/PhoneAuthForm'
 import { WechatLoginButton } from '../components/WechatLoginButton'
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -34,7 +34,7 @@ export function LoginPage() {
             </TabsContent>
 
             <TabsContent value="phone">
-              <PhoneLoginForm />
+              <PhoneAuthForm mode="login" />
             </TabsContent>
 
             <TabsContent value="wechat">

@@ -87,8 +87,8 @@ export interface StageTemplateManifestItem {
 
 export interface HumanUser {
   id: string
-  email: string
-  password_hash: string
+  email: string | null
+  password_hash: string | null
   display_name: string
   avatar_url: string | null
   phone: string | null
@@ -102,11 +102,34 @@ export interface HumanUser {
   updated_at: Date
 }
 
+export type AuthVerificationChannel = 'EMAIL' | 'SMS'
+export type AuthVerificationPurpose = 'EMAIL_SIGNUP' | 'SMS_AUTH'
+
+export interface AuthVerificationChallenge {
+  id: string
+  channel: AuthVerificationChannel
+  purpose: AuthVerificationPurpose
+  target: string
+  code_hash: string
+  payload_json: Record<string, unknown> | null
+  requested_from_ip: string | null
+  expires_at: Date
+  consumed_at: Date | null
+  attempt_count: number
+  resend_count: number
+  last_sent_at: Date
+  created_at: Date
+  updated_at: Date
+}
+
 export interface CreateHumanUserInput {
-  email: string
-  password_hash: string
+  email?: string | null
+  password_hash?: string | null
   display_name: string
   avatar_url?: string | null
+  phone?: string | null
+  email_verified?: boolean
+  phone_verified?: boolean
 }
 
 export interface UpsertDevHumanIdentityInput {

@@ -1,6 +1,11 @@
 import { useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authApi, type UserProfile } from '@/api/auth'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  authApi,
+  type AuthChallengeResult,
+  type SmsAuthResult,
+  type UserProfile,
+} from '@/api/auth'
 import { setDevAuth } from '../utils/dev-token'
 
 const AUTH_QUERY_KEY = ['auth', 'me'] as const
@@ -29,12 +34,36 @@ export function useAuth() {
     },
   })
 
-  const registerMutation = useMutation({
+  const emailRegisterStartMutation = useMutation({
     mutationFn: (data: { email: string; password: string; displayName: string }) =>
-      authApi.register(data),
+      authApi.startEmailRegistration(data),
+  })
+
+  const emailRegisterVerifyMutation = useMutation({
+    mutationFn: (data: { challengeId: string; code: string }) => authApi.verifyEmailRegistration(data),
     onSuccess: (res) => {
       queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
     },
+  })
+
+  const emailRegisterResendMutation = useMutation({
+    mutationFn: (data: { challengeId: string }) => authApi.resendEmailRegistration(data),
+  })
+
+  const smsSendMutation = useMutation({
+    mutationFn: (data: { phone: string }) => authApi.sendSmsCode(data),
+  })
+
+  const smsVerifyMutation = useMutation({
+    mutationFn: (data: { challengeId: string; code: string; displayName?: string }) =>
+      authApi.verifySmsCode(data),
+    onSuccess: (res) => {
+      queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
+    },
+  })
+
+  const smsResendMutation = useMutation({
+    mutationFn: (data: { challengeId: string }) => authApi.resendSmsCode(data),
   })
 
   const logoutMutation = useMutation({
@@ -50,15 +79,56 @@ export function useAuth() {
     [loginMutation],
   )
 
-  const register = useCallback(
-    (data: { email: string; password: string; displayName: string }) =>
-      registerMutation.mutateAsync(data),
-    [registerMutation],
+  const startEmailRegistration = useCallback(
+    async (data: { email: string; password: string; displayName: string }): Promise<AuthChallengeResult> => {
+      const res = await emailRegisterStartMutation.mutateAsync(data)
+      return res.data
+    },
+    [emailRegisterStartMutation],
+  )
+
+  const verifyEmailRegistration = useCallback(
+    async (data: { challengeId: string; code: string }) => {
+      const res = await emailRegisterVerifyMutation.mutateAsync(data)
+      return res.data
+    },
+    [emailRegisterVerifyMutation],
+  )
+
+  const resendEmailRegistration = useCallback(
+    async (data: { challengeId: string }): Promise<AuthChallengeResult> => {
+      const res = await emailRegisterResendMutation.mutateAsync(data)
+      return res.data
+    },
+    [emailRegisterResendMutation],
+  )
+
+  const sendSmsCode = useCallback(
+    async (data: { phone: string }): Promise<AuthChallengeResult> => {
+      const res = await smsSendMutation.mutateAsync(data)
+      return res.data
+    },
+    [smsSendMutation],
+  )
+
+  const verifySmsCode = useCallback(
+    async (data: { challengeId: string; code: string; displayName?: string }): Promise<SmsAuthResult> => {
+      const res = await smsVerifyMutation.mutateAsync(data)
+      return res.data
+    },
+    [smsVerifyMutation],
+  )
+
+  const resendSmsCode = useCallback(
+    async (data: { challengeId: string }): Promise<AuthChallengeResult> => {
+      const res = await smsResendMutation.mutateAsync(data)
+      return res.data
+    },
+    [smsResendMutation],
   )
 
   const logout = useCallback(() => logoutMutation.mutateAsync(), [logoutMutation])
 
-  // Dev-only identity switch (preserved for DevAuthToolbar)
   const switchIdentity = useCallback(
     async (identity: 'anonymous' | 'user' | 'admin') => {
       await setDevAuth(identity)
@@ -79,12 +149,28 @@ export function useAuth() {
     isAuthenticated: !!user,
     currentIdentity,
     login,
-    register,
+    startEmailRegistration,
+    verifyEmailRegistration,
+    resendEmailRegistration,
+    sendSmsCode,
+    verifySmsCode,
+    resendSmsCode,
     logout,
     switchIdentity,
     isLoginPending: loginMutation.isPending,
-    isRegisterPending: registerMutation.isPending,
+    isRegisterPending: emailRegisterStartMutation.isPending
+      || emailRegisterVerifyMutation.isPending
+      || emailRegisterResendMutation.isPending,
+    isEmailRegisterStartPending: emailRegisterStartMutation.isPending,
+    isEmailRegisterVerifyPending: emailRegisterVerifyMutation.isPending,
+    isEmailRegisterResendPending: emailRegisterResendMutation.isPending,
+    isSmsSendPending: smsSendMutation.isPending,
+    isSmsVerifyPending: smsVerifyMutation.isPending,
+    isSmsResendPending: smsResendMutation.isPending,
     loginError: loginMutation.error,
-    registerError: registerMutation.error,
+    registerError: emailRegisterStartMutation.error
+      ?? emailRegisterVerifyMutation.error
+      ?? emailRegisterResendMutation.error,
+    smsError: smsSendMutation.error ?? smsVerifyMutation.error ?? smsResendMutation.error,
   }
 }

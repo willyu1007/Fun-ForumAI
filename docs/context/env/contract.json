@@ -5,9 +5,94 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-25T02:52:54Z",
+  "generated_at_utc": "2026-03-30T06:50:05Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
+    "ALIYUN_SMS_ACCESS_KEY_ID": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Alibaba Cloud SMS access key id.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "aliyun_sms_access_key_id",
+      "state": "active",
+      "type": "string"
+    },
+    "ALIYUN_SMS_ACCESS_KEY_SECRET": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Alibaba Cloud SMS access key secret.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "aliyun_sms_access_key_secret",
+      "state": "active",
+      "type": "string"
+    },
+    "ALIYUN_SMS_ENDPOINT": {
+      "default": "dysmsapi.aliyuncs.com",
+      "deprecate_after": null,
+      "description": "Alibaba Cloud SMS API endpoint.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "ALIYUN_SMS_SIGN_NAME": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Approved Alibaba Cloud SMS sign name for verification code delivery.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "ALIYUN_SMS_TEMPLATE_CODE": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Approved Alibaba Cloud SMS template code for verification messages.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
     "APP_ENV": {
       "default": "dev",
       "deprecate_after": null,
@@ -56,6 +141,125 @@
       "scopes": null,
       "secret": true,
       "secret_ref": "ark_api_key_secondary",
+      "state": "active",
+      "type": "string"
+    },
+    "AUTH_EXPOSE_DEBUG_CODE": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Expose verification codes in API responses for local/debug workflows. Non-production only.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "AUTH_OTP_MAX_ATTEMPTS": {
+      "default": 5,
+      "deprecate_after": null,
+      "description": "Maximum number of invalid verification attempts per challenge before the code is invalidated.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "AUTH_OTP_RESEND_COOLDOWN_SECONDS": {
+      "default": 60,
+      "deprecate_after": null,
+      "description": "Cooldown in seconds before a verification code can be resent.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "AUTH_OTP_SENDS_PER_IP_HOUR": {
+      "default": 10,
+      "deprecate_after": null,
+      "description": "Maximum verification code sends per client IP within a rolling hour.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "AUTH_OTP_SENDS_PER_TARGET_HOUR": {
+      "default": 5,
+      "deprecate_after": null,
+      "description": "Maximum verification code sends per target (email or phone) within a rolling hour.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "AUTH_OTP_TTL_SECONDS": {
+      "default": 600,
+      "deprecate_after": null,
+      "description": "Verification code lifetime in seconds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "AUTH_VERIFICATION_SECRET": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Optional dedicated HMAC secret for hashing email/SMS verification codes. Falls back to JWT_SECRET when unset.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "auth_verification_secret",
       "state": "active",
       "type": "string"
     },
@@ -2198,6 +2402,125 @@
       "scopes": null,
       "secret": false,
       "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SMTP_FROM_EMAIL": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Sender email address for email verification messages.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SMTP_FROM_NAME": {
+      "default": "Fun Forum AI",
+      "deprecate_after": null,
+      "description": "Sender display name for email verification messages.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SMTP_HOST": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "SMTP server hostname used to send email verification codes.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "SMTP_PASS": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "SMTP password used for email verification delivery.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "smtp_pass",
+      "state": "active",
+      "type": "string"
+    },
+    "SMTP_PORT": {
+      "default": 587,
+      "deprecate_after": null,
+      "description": "SMTP server port used for email verification delivery.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
+    },
+    "SMTP_SECURE": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Whether SMTP connections should use TLS from connect time.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "SMTP_USER": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "SMTP username used for email verification delivery.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": true,
+      "secret_ref": "smtp_user",
       "state": "active",
       "type": "string"
     },

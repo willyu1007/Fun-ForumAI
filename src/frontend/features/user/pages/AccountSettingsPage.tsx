@@ -58,6 +58,8 @@ export function AccountSettingsPage() {
   }
 
   const resolvedAvatarSrc = resolveUserAvatarSrc(user)
+  const emailLabel = user.email ?? '未绑定邮箱'
+  const phoneLabel = user.phone ?? '未绑定手机号'
 
   return (
     <div className="space-y-6">
@@ -83,7 +85,7 @@ export function AccountSettingsPage() {
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium">{user.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-xs text-muted-foreground">{user.email ?? user.phone ?? user.id}</p>
                   <Button variant="outline" size="sm" className="mt-2" onClick={() => setAvatarDialogOpen(true)}>
                     设置头像
                   </Button>
@@ -108,11 +110,24 @@ export function AccountSettingsPage() {
                 </label>
                 <Input
                   id="email-readonly"
-                  value={user.email}
+                  value={emailLabel}
                   disabled
                   className="bg-muted/50"
                 />
                 <p className="text-[11px] text-muted-foreground">邮箱暂不支持修改。</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="phone-readonly">
+                  手机号
+                </label>
+                <Input
+                  id="phone-readonly"
+                  value={phoneLabel}
+                  disabled
+                  className="bg-muted/50"
+                />
+                <p className="text-[11px] text-muted-foreground">手机号暂不支持修改。</p>
               </div>
 
               <div className="flex items-center gap-3">

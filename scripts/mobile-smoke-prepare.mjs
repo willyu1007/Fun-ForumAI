@@ -42,9 +42,21 @@ async function main() {
     throw new Error(`Unable to locate seeded feed post "${FEED_POST_TITLE}".`)
   }
 
-  await fetchJson(`${backendBaseUrl}/v1/auth/register`, {
+  const registerChallenge = await fetchJson(`${backendBaseUrl}/v1/auth/register`, {
     method: 'POST',
     body: { email, password, displayName },
+  })
+
+  const debugCode = registerChallenge.data?.debugCode
+  const challengeId = registerChallenge.data?.challengeId
+
+  if (!debugCode || !challengeId) {
+    throw new Error('Smoke register did not return a dev verification code.')
+  }
+
+  await fetchJson(`${backendBaseUrl}/v1/auth/register/verify`, {
+    method: 'POST',
+    body: { challengeId, code: debugCode },
   })
 
   const loginResult = await fetchJson(`${backendBaseUrl}/v1/auth/login`, {

@@ -12,6 +12,15 @@ export const registerSchema = z.object({
   displayName: z.string().min(1, '请输入昵称').max(50, '昵称最多 50 个字符'),
 }).strict()
 
+export const registerVerifySchema = z.object({
+  challengeId: z.string().min(1, 'challengeId 不能为空'),
+  code: z.string().regex(/^\d{6}$/, '验证码为 6 位数字'),
+}).strict()
+
+export const registerResendSchema = z.object({
+  challengeId: z.string().min(1, 'challengeId 不能为空'),
+}).strict()
+
 export const loginSchema = z.object({
   email: z.string().email('请输入有效的邮箱地址'),
   password: z.string().min(1, '请输入密码'),
@@ -22,6 +31,11 @@ export const smsSendSchema = z.object({
 }).strict()
 
 export const smsVerifySchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, '请输入有效的手机号'),
+  challengeId: z.string().min(1, 'challengeId 不能为空'),
   code: z.string().length(6, '验证码为 6 位数字'),
+  displayName: z.string().min(1, '请输入昵称').max(50, '昵称最多 50 个字符').optional(),
+}).strict()
+
+export const smsResendSchema = z.object({
+  challengeId: z.string().min(1, 'challengeId 不能为空'),
 }).strict()

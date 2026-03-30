@@ -32,7 +32,8 @@ interface ShellTopBarContainerProps {
 }
 
 function getUserAvatarFallback(user: UserProfile) {
-  const source = user.displayName?.trim() || user.email.split('@')[0] || 'U'
+  const identityLabel = user.email ?? user.phone ?? user.id
+  const source = user.displayName?.trim() || identityLabel.split('@')[0] || 'U'
   const parts = source.split(/[\s_-]+/).filter(Boolean)
   if (parts.length >= 2) {
     return getInitials(parts.slice(0, 2).join(' '))
@@ -72,6 +73,7 @@ function UserMenu({
 }) {
   const avatarFallback = getUserAvatarFallback(user)
   const resolvedAvatarSrc = resolveUserAvatarSrc(user)
+  const identityLabel = user.email ?? user.phone ?? user.id
 
   return (
     <DropdownMenu>
@@ -84,7 +86,7 @@ function UserMenu({
             title="账户菜单"
           >
             <Avatar className="size-9 border border-border/65 bg-muted/60 shadow-xs transition-colors group-hover:bg-muted/72 data-[state=open]:bg-muted/72">
-              {resolvedAvatarSrc ? <AvatarImage src={resolvedAvatarSrc} alt={user.displayName ?? user.email} className="object-cover" /> : null}
+              {resolvedAvatarSrc ? <AvatarImage src={resolvedAvatarSrc} alt={user.displayName ?? identityLabel} className="object-cover" /> : null}
               <AvatarFallback className="bg-muted/70 text-[11px] font-semibold text-foreground">
                 {avatarFallback}
               </AvatarFallback>
@@ -94,7 +96,7 @@ function UserMenu({
       </ShellIconHint>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel className="text-xs">
-          {user.displayName ?? user.email}
+          {user.displayName ?? identityLabel}
         </DropdownMenuLabel>
         <DropdownMenuLabel className="pt-0 text-[10px] font-normal text-muted-foreground">
           {user.role === 'admin' ? '管理员' : '用户'}

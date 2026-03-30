@@ -6,7 +6,7 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
 import { AuthLayout } from '../components/AuthLayout'
 import { EmailRegisterForm } from '../components/EmailRegisterForm'
-import { PhoneRegisterForm } from '../components/PhoneRegisterForm'
+import { PhoneAuthForm } from '../components/PhoneAuthForm'
 export function RegisterPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
@@ -32,7 +32,7 @@ export function RegisterPage() {
             </TabsContent>
 
             <TabsContent value="phone">
-              <PhoneRegisterForm />
+              <PhoneAuthForm mode="register" />
             </TabsContent>
           </Tabs>
         </CardContent>

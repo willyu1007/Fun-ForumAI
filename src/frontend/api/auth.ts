@@ -3,7 +3,8 @@ import type { ApiResponse } from './types'
 
 export interface UserProfile {
   id: string
-  email: string
+  email: string | null
+  phone: string | null
   displayName: string
   avatarUrl: string | null
   planTier: string
@@ -15,13 +16,45 @@ export interface AuthResult {
   token: string
 }
 
+export interface SmsAuthResult extends AuthResult {
+  isNewUser: boolean
+}
+
+export interface AuthChallengeResult {
+  challengeId: string
+  maskedTarget: string
+  expiresInSec: number
+  resendAfterSec: number
+  debugCode?: string
+}
+
 export const authApi = {
-  register(data: { email: string; password: string; displayName: string }) {
-    return api.post('auth/register', { json: data }).json<ApiResponse<AuthResult>>()
+  startEmailRegistration(data: { email: string; password: string; displayName: string }) {
+    return api.post('auth/register', { json: data }).json<ApiResponse<AuthChallengeResult>>()
+  },
+
+  verifyEmailRegistration(data: { challengeId: string; code: string }) {
+    return api.post('auth/register/verify', { json: data }).json<ApiResponse<AuthResult>>()
+  },
+
+  resendEmailRegistration(data: { challengeId: string }) {
+    return api.post('auth/register/resend', { json: data }).json<ApiResponse<AuthChallengeResult>>()
   },
 
   login(data: { email: string; password: string }) {
     return api.post('auth/login', { json: data }).json<ApiResponse<AuthResult>>()
+  },
+
+  sendSmsCode(data: { phone: string }) {
+    return api.post('auth/sms/send', { json: data }).json<ApiResponse<AuthChallengeResult>>()
+  },
+
+  verifySmsCode(data: { challengeId: string; code: string; displayName?: string }) {
+    return api.post('auth/sms/verify', { json: data }).json<ApiResponse<SmsAuthResult>>()
+  },
+
+  resendSmsCode(data: { challengeId: string }) {
+    return api.post('auth/sms/resend', { json: data }).json<ApiResponse<AuthChallengeResult>>()
   },
 
   logout() {

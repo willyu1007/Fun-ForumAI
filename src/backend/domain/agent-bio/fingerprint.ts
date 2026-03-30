@@ -45,7 +45,7 @@ export function normalizeBioText(value: string | null | undefined): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '')
-    .replace(/[，。！？!?,；;、·\-—\[\](){}"'`]/g, '')
+    .replace(/[[\]，。！？!?,；;、·\-—(){}"'`]/g, '')
 }
 
 export function fingerprintBioText(value: string | null | undefined): string {

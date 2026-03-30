@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-25T02:52:54Z`
+Generated at (UTC): `2026-03-30T06:50:05Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -11,9 +11,21 @@ Generated at (UTC): `2026-03-25T02:52:54Z`
 
 | Name | State | Type | Required | Secret | Default | Secret Ref | Scopes | Deprecate After | Replacement | Rename From | Description |
 |---|---:|---:|:---:|:---:|---|---|---|---|---|---|---|
+| `ALIYUN_SMS_ACCESS_KEY_ID` | `active` | `string` | no | yes | `` | `aliyun_sms_access_key_id` | `*` | `` | `` | `` | Alibaba Cloud SMS access key id. |
+| `ALIYUN_SMS_ACCESS_KEY_SECRET` | `active` | `string` | no | yes | `` | `aliyun_sms_access_key_secret` | `*` | `` | `` | `` | Alibaba Cloud SMS access key secret. |
+| `ALIYUN_SMS_ENDPOINT` | `active` | `string` | no | no | `dysmsapi.aliyuncs.com` | `` | `*` | `` | `` | `` | Alibaba Cloud SMS API endpoint. |
+| `ALIYUN_SMS_SIGN_NAME` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Approved Alibaba Cloud SMS sign name for verification code delivery. |
+| `ALIYUN_SMS_TEMPLATE_CODE` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Approved Alibaba Cloud SMS template code for verification messages. |
 | `APP_ENV` | `active` | `enum` | yes | no | `dev` | `` | `*` | `` | `` | `` | Deployment environment profile. |
 | `ARK_API_KEY` | `active` | `string` | no | yes | `` | `ark_api_key` | `*` | `` | `` | `` | ByteDance Ark / Doubao provider API key. |
 | `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `*` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
+| `AUTH_EXPOSE_DEBUG_CODE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Expose verification codes in API responses for local/debug workflows. Non-production only. |
+| `AUTH_OTP_MAX_ATTEMPTS` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Maximum number of invalid verification attempts per challenge before the code is invalidated. |
+| `AUTH_OTP_RESEND_COOLDOWN_SECONDS` | `active` | `int` | no | no | `60` | `` | `*` | `` | `` | `` | Cooldown in seconds before a verification code can be resent. |
+| `AUTH_OTP_SENDS_PER_IP_HOUR` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Maximum verification code sends per client IP within a rolling hour. |
+| `AUTH_OTP_SENDS_PER_TARGET_HOUR` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Maximum verification code sends per target (email or phone) within a rolling hour. |
+| `AUTH_OTP_TTL_SECONDS` | `active` | `int` | no | no | `600` | `` | `*` | `` | `` | `` | Verification code lifetime in seconds. |
+| `AUTH_VERIFICATION_SECRET` | `active` | `string` | no | yes | `` | `auth_verification_secret` | `*` | `` | `` | `` | Optional dedicated HMAC secret for hashing email/SMS verification codes. Falls back to JWT_SECRET when unset. |
 | `CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Base exponential backoff delay in milliseconds for scheduler retries. |
 | `CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS` | `active` | `int` | no | no | `900000` | `` | `*` | `` | `` | `` | Max retry backoff delay in milliseconds for scheduler retries. |
 | `CONTROL_PLANE_SCHEDULER_BATCH_LIMIT` | `active` | `int` | no | no | `20` | `` | `*` | `` | `` | `` | Max scheduled config patches processed per scheduler tick. |
@@ -140,6 +152,13 @@ Generated at (UTC): `2026-03-25T02:52:54Z`
 | `RUNTIME_REDIS_URL` | `active` | `string` | no | yes | `` | `runtime_redis_url` | `*` | `` | `` | `` | Redis connection URL for runtime shared state. |
 | `SERVICE_AUTH_SECRET` | `active` | `string` | yes | yes | `` | `service_auth_secret` | `*` | `` | `` | `` | Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth. |
 | `SERVICE_NAME` | `active` | `string` | yes | no | `llm-forum` | `` | `*` | `` | `` | `` | Service name (logical). |
+| `SMTP_FROM_EMAIL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Sender email address for email verification messages. |
+| `SMTP_FROM_NAME` | `active` | `string` | no | no | `Fun Forum AI` | `` | `*` | `` | `` | `` | Sender display name for email verification messages. |
+| `SMTP_HOST` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | SMTP server hostname used to send email verification codes. |
+| `SMTP_PASS` | `active` | `string` | no | yes | `` | `smtp_pass` | `*` | `` | `` | `` | SMTP password used for email verification delivery. |
+| `SMTP_PORT` | `active` | `int` | no | no | `587` | `` | `*` | `` | `` | `` | SMTP server port used for email verification delivery. |
+| `SMTP_SECURE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Whether SMTP connections should use TLS from connect time. |
+| `SMTP_USER` | `active` | `string` | no | yes | `` | `smtp_user` | `*` | `` | `` | `` | SMTP username used for email verification delivery. |
 | `SSE_BROADCAST_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | SSE broadcast backend selection for cross-instance fanout. |
 | `SSE_REDIS_CHANNEL` | `active` | `string` | no | no | `llm-forum:sse:broadcast` | `` | `*` | `` | `` | `` | Redis Pub/Sub channel name for SSE broadcast envelopes. |
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |

@@ -3,6 +3,7 @@ import type { HumanUser, CreateHumanUserInput, UpsertDevHumanIdentityInput } fro
 export interface UserRepository {
   findById(id: string): Promise<HumanUser | null>
   findByEmail(email: string): Promise<HumanUser | null>
+  findByPhone(phone: string): Promise<HumanUser | null>
   create(input: CreateHumanUserInput): Promise<HumanUser>
   upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser>
   updateLastLogin(id: string): Promise<void>
@@ -17,6 +18,7 @@ function cuid(): string {
 export class InMemoryUserRepository implements UserRepository {
   private readonly store = new Map<string, HumanUser>()
   private readonly byEmail = new Map<string, string>()
+  private readonly byPhone = new Map<string, string>()
 
   async findById(id: string): Promise<HumanUser | null> {
     return this.store.get(id) ?? null
@@ -28,18 +30,24 @@ export class InMemoryUserRepository implements UserRepository {
     return this.store.get(id) ?? null
   }
 
+  async findByPhone(phone: string): Promise<HumanUser | null> {
+    const id = this.byPhone.get(phone)
+    if (!id) return null
+    return this.store.get(id) ?? null
+  }
+
   async create(input: CreateHumanUserInput): Promise<HumanUser> {
     const now = new Date()
     const user: HumanUser = {
       id: cuid(),
-      email: input.email,
-      password_hash: input.password_hash,
+      email: input.email ?? null,
+      password_hash: input.password_hash ?? null,
       display_name: input.display_name,
       avatar_url: input.avatar_url ?? null,
-      phone: null,
+      phone: input.phone ?? null,
       wechat_open_id: null,
-      email_verified: false,
-      phone_verified: false,
+      email_verified: input.email_verified ?? false,
+      phone_verified: input.phone_verified ?? false,
       last_login_at: null,
       plan_tier: 'FREE',
       status: 'ACTIVE',
@@ -48,7 +56,12 @@ export class InMemoryUserRepository implements UserRepository {
     }
 
     this.store.set(user.id, user)
-    this.byEmail.set(user.email, user.id)
+    if (user.email) {
+      this.byEmail.set(user.email, user.id)
+    }
+    if (user.phone) {
+      this.byPhone.set(user.phone, user.id)
+    }
     return user
   }
 
@@ -64,7 +77,9 @@ export class InMemoryUserRepository implements UserRepository {
         updated_at: new Date(),
       }
       this.store.set(updated.id, updated)
-      this.byEmail.set(updated.email, updated.id)
+      if (updated.email) {
+        this.byEmail.set(updated.email, updated.id)
+      }
       return updated
     }
 

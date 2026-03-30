@@ -8,6 +8,11 @@ import { GovernanceAdapter } from '../services/governance-adapter.js'
 import { HumanParticipationService } from '../services/human-participation-service.js'
 import { ChatService } from '../services/chat-service.js'
 import { AuthService } from '../services/auth-service.js'
+import {
+  InMemoryAuthVerificationChallengeRepository,
+} from '../repos/auth-verification-challenge-repository.js'
+import { PgAuthVerificationChallengeRepository } from '../repos/pg/pg-auth-verification-challenge-repository.js'
+import { createEmailVerificationSender, createSmsVerificationSender } from '../services/auth-delivery.js'
 import { StatsService } from '../services/stats-service.js'
 import { PersonaStateService } from '../services/persona-state-service.js'
 import { InferenceProfileService } from '../services/inference-profile-service.js'
@@ -66,6 +71,8 @@ import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type { Repositories } from './repos.js'
+import { config } from '../lib/config.js'
+import { getPrismaClient } from '../persistence/prisma-client.js'
 
 export function createCoreServices(deps: {
   repos: Repositories
@@ -434,7 +441,20 @@ export function createCoreServices(deps: {
     deps.roomLifecycleLeaderElector,
   )
 
-  const authService = repos.userRepo ? new AuthService(repos.userRepo) : null
+  const authVerificationChallengeRepo = repos.userRepo
+    ? config.db.usePrisma
+      ? new PgAuthVerificationChallengeRepository(getPrismaClient())
+      : new InMemoryAuthVerificationChallengeRepository()
+    : null
+
+  const authService = repos.userRepo && authVerificationChallengeRepo
+    ? new AuthService(
+      repos.userRepo,
+      authVerificationChallengeRepo,
+      createEmailVerificationSender(),
+      createSmsVerificationSender(),
+    )
+    : null
 
   const governanceAdapter = new GovernanceAdapter({
     postRepo: repos.postRepo,

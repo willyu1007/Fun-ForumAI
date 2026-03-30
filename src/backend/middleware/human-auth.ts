@@ -5,7 +5,8 @@ import { UnauthorizedError, ForbiddenError } from '../lib/errors.js'
 
 export interface AuthenticatedUser {
   userId: string
-  email: string
+  email: string | null
+  phone?: string | null
   role: 'user' | 'admin'
   /** True when the identity comes from a base64 dev token, not a real JWT */
   _devToken?: boolean
@@ -13,7 +14,8 @@ export interface AuthenticatedUser {
 
 interface JwtPayload {
   userId: string
-  email: string
+  email: string | null
+  phone: string | null
   role: 'user' | 'admin'
 }
 
@@ -37,10 +39,11 @@ function verifyJwt(token: string): JwtPayload {
 function tryDevToken(token: string): JwtPayload | null {
   try {
     const decoded = JSON.parse(Buffer.from(token, 'base64url').toString())
-    if (decoded.userId && decoded.email) {
+    if (decoded.userId && (decoded.email || decoded.phone)) {
       return {
         userId: decoded.userId,
-        email: decoded.email,
+        email: decoded.email ?? null,
+        phone: decoded.phone ?? null,
         role: decoded.role || 'user',
       }
     }
@@ -53,7 +56,12 @@ function tryDevToken(token: string): JwtPayload | null {
 function resolveUserFromToken(token: string): AuthenticatedUser | null {
   try {
     const payload = verifyJwt(token)
-    return { userId: payload.userId, email: payload.email, role: payload.role }
+    return {
+      userId: payload.userId,
+      email: payload.email ?? null,
+      phone: payload.phone ?? null,
+      role: payload.role,
+    }
   } catch {
     // JWT verification failed — fall through to dev token in non-production
   }

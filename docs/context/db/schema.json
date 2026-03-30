@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-28T15:41:09.279Z",
+  "updatedAt": "2026-03-30T06:50:11.017Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -102,6 +102,20 @@
       "values": [
         "OPEN",
         "CLOSED"
+      ]
+    },
+    {
+      "name": "AuthVerificationChannel",
+      "values": [
+        "EMAIL",
+        "SMS"
+      ]
+    },
+    {
+      "name": "AuthVerificationPurpose",
+      "values": [
+        "EMAIL_SIGNUP",
+        "SMS_AUTH"
       ]
     },
     {
@@ -7414,6 +7428,199 @@
       ]
     },
     {
+      "name": "AuthVerificationChallenge",
+      "dbName": "auth_verification_challenges",
+      "schema": null,
+      "columns": [
+        {
+          "name": "attemptCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "attempt_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "channel",
+          "type": "AuthVerificationChannel",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "codeHash",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "code_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "consumedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "consumed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "expiresAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "lastSentAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "last_sent_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "purpose",
+          "type": "AuthVerificationPurpose",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedFromIp",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "requested_from_ip",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resendCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "resend_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "target",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "purpose",
+            "consumedAt",
+            "expiresAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "requestedFromIp",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "target",
+            "purpose",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "ChronicleEntry",
       "dbName": "chronicle_entries",
       "schema": null,
@@ -12409,7 +12616,7 @@
         {
           "name": "email",
           "type": "String",
-          "nullable": false,
+          "nullable": true,
           "list": false,
           "dbName": null,
           "dbType": null,
@@ -12453,7 +12660,7 @@
         {
           "name": "passwordHash",
           "type": "String",
-          "nullable": false,
+          "nullable": true,
           "list": false,
           "dbName": "password_hash",
           "dbType": null,

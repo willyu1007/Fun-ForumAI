@@ -69,9 +69,20 @@ describe('auth redirect forms', () => {
   })
 
   it('redirects register to from when no returnTo is present', async () => {
-    const register = vi.fn().mockResolvedValue(undefined)
+    const startEmailRegistration = vi.fn().mockResolvedValue({
+      challengeId: 'challenge-1',
+      maskedTarget: 'us***@example.com',
+      expiresInSec: 600,
+      resendAfterSec: 60,
+    })
+    const verifyEmailRegistration = vi.fn().mockResolvedValue(undefined)
     useAuthMock.mockReturnValue({
-      register,
+      startEmailRegistration,
+      verifyEmailRegistration,
+      resendEmailRegistration: vi.fn(),
+      isEmailRegisterStartPending: false,
+      isEmailRegisterVerifyPending: false,
+      isEmailRegisterResendPending: false,
       isRegisterPending: false,
     } as never)
 
@@ -106,13 +117,24 @@ describe('auth redirect forms', () => {
     fireEvent.change(screen.getByLabelText('确认密码'), {
       target: { value: 'password123' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '注 册' }))
-
+    fireEvent.click(screen.getByRole('button', { name: '发送验证码' }))
     await waitFor(() => {
-      expect(register).toHaveBeenCalledWith({
+      expect(startEmailRegistration).toHaveBeenCalledWith({
         email: 'user@example.com',
         password: 'password123',
         displayName: 'Forum User',
+      })
+    })
+
+    fireEvent.change(screen.getByLabelText('邮箱验证码'), {
+      target: { value: '123456' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '验证并注册' }))
+
+    await waitFor(() => {
+      expect(verifyEmailRegistration).toHaveBeenCalledWith({
+        challengeId: 'challenge-1',
+        code: '123456',
       })
     })
 

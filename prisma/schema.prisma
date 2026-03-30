@@ -12,8 +12,8 @@ datasource db {
 
 model HumanUser {
   id            String     @id @default(cuid())
-  email         String     @unique
-  passwordHash  String     @map("password_hash")
+  email         String?    @unique
+  passwordHash  String?    @map("password_hash")
   displayName   String     @map("display_name")
   avatarUrl     String?    @map("avatar_url")
   phone         String?    @unique
@@ -51,6 +51,28 @@ model HumanUser {
   @@map("human_users")
 }
 
+model AuthVerificationChallenge {
+  id              String                    @id @default(cuid())
+  channel         AuthVerificationChannel
+  purpose         AuthVerificationPurpose
+  target          String
+  codeHash        String                    @map("code_hash")
+  payloadJson     Json?                     @map("payload_json")
+  requestedFromIp String?                   @map("requested_from_ip")
+  expiresAt       DateTime                  @map("expires_at")
+  consumedAt      DateTime?                 @map("consumed_at")
+  attemptCount    Int                       @default(0) @map("attempt_count")
+  resendCount     Int                       @default(0) @map("resend_count")
+  lastSentAt      DateTime                  @default(now()) @map("last_sent_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+
+  @@index([target, purpose, createdAt])
+  @@index([requestedFromIp, createdAt])
+  @@index([purpose, consumedAt, expiresAt])
+  @@map("auth_verification_challenges")
+}
+
 model DevSeedRegistryEntry {
   id         String   @id @default(cuid())
   profile    String
@@ -75,6 +97,16 @@ enum PlanTier {
 enum UserStatus {
   ACTIVE
   SUSPENDED
+}
+
+enum AuthVerificationChannel {
+  EMAIL
+  SMS
+}
+
+enum AuthVerificationPurpose {
+  EMAIL_SIGNUP
+  SMS_AUTH
 }
 
 model Agent {

@@ -52,6 +52,123 @@ variables:
     default: 7d
     description: JWT token expiration duration.
 
+  AUTH_VERIFICATION_SECRET:
+    type: string
+    required: false
+    description: Optional dedicated HMAC secret for hashing email/SMS verification codes. Falls back to JWT_SECRET when unset.
+    secret: true
+    secret_ref: auth_verification_secret
+
+  AUTH_OTP_TTL_SECONDS:
+    type: int
+    required: false
+    default: 600
+    description: Verification code lifetime in seconds.
+
+  AUTH_OTP_MAX_ATTEMPTS:
+    type: int
+    required: false
+    default: 5
+    description: Maximum number of invalid verification attempts per challenge before the code is invalidated.
+
+  AUTH_OTP_RESEND_COOLDOWN_SECONDS:
+    type: int
+    required: false
+    default: 60
+    description: Cooldown in seconds before a verification code can be resent.
+
+  AUTH_OTP_SENDS_PER_TARGET_HOUR:
+    type: int
+    required: false
+    default: 5
+    description: Maximum verification code sends per target (email or phone) within a rolling hour.
+
+  AUTH_OTP_SENDS_PER_IP_HOUR:
+    type: int
+    required: false
+    default: 10
+    description: Maximum verification code sends per client IP within a rolling hour.
+
+  AUTH_EXPOSE_DEBUG_CODE:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Expose verification codes in API responses for local/debug workflows. Non-production only.
+
+  SMTP_HOST:
+    type: string
+    required: false
+    description: SMTP server hostname used to send email verification codes.
+
+  SMTP_PORT:
+    type: int
+    required: false
+    default: 587
+    description: SMTP server port used for email verification delivery.
+
+  SMTP_SECURE:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Whether SMTP connections should use TLS from connect time.
+
+  SMTP_USER:
+    type: string
+    required: false
+    description: SMTP username used for email verification delivery.
+    secret: true
+    secret_ref: smtp_user
+
+  SMTP_PASS:
+    type: string
+    required: false
+    description: SMTP password used for email verification delivery.
+    secret: true
+    secret_ref: smtp_pass
+
+  SMTP_FROM_EMAIL:
+    type: string
+    required: false
+    description: Sender email address for email verification messages.
+
+  SMTP_FROM_NAME:
+    type: string
+    required: false
+    default: Fun Forum AI
+    description: Sender display name for email verification messages.
+
+  ALIYUN_SMS_ACCESS_KEY_ID:
+    type: string
+    required: false
+    description: Alibaba Cloud SMS access key id.
+    secret: true
+    secret_ref: aliyun_sms_access_key_id
+
+  ALIYUN_SMS_ACCESS_KEY_SECRET:
+    type: string
+    required: false
+    description: Alibaba Cloud SMS access key secret.
+    secret: true
+    secret_ref: aliyun_sms_access_key_secret
+
+  ALIYUN_SMS_SIGN_NAME:
+    type: string
+    required: false
+    description: Approved Alibaba Cloud SMS sign name for verification code delivery.
+
+  ALIYUN_SMS_TEMPLATE_CODE:
+    type: string
+    required: false
+    description: Approved Alibaba Cloud SMS template code for verification messages.
+
+  ALIYUN_SMS_ENDPOINT:
+    type: string
+    required: false
+    default: dysmsapi.aliyuncs.com
+    description: Alibaba Cloud SMS API endpoint.
+
   SERVICE_AUTH_SECRET:
     type: string
     required: true

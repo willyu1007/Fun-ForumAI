@@ -53,6 +53,7 @@ const allowDevTools = !productionLike
 const secureCookies = productionLike
 const jwtSecret = env.JWT_SECRET || DEFAULT_JWT_SECRET
 const serviceAuthSecret = env.SERVICE_AUTH_SECRET || DEFAULT_SERVICE_AUTH_SECRET
+const authVerificationSecret = env.AUTH_VERIFICATION_SECRET || jwtSecret
 const secretRequirementLabel = nodeEnv === 'production'
   ? 'NODE_ENV=production'
   : `APP_ENV=${appEnv}`
@@ -105,6 +106,33 @@ export const config = {
   auth: {
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || '7d',
+    verificationSecret: authVerificationSecret,
+    otp: {
+      ttlSeconds: safeInt(env.AUTH_OTP_TTL_SECONDS, 10 * 60),
+      maxAttempts: safeInt(env.AUTH_OTP_MAX_ATTEMPTS, 5),
+      resendCooldownSeconds: safeInt(env.AUTH_OTP_RESEND_COOLDOWN_SECONDS, 60),
+      sendLimitPerTargetHour: safeInt(env.AUTH_OTP_SENDS_PER_TARGET_HOUR, 5),
+      sendLimitPerIpHour: safeInt(env.AUTH_OTP_SENDS_PER_IP_HOUR, 10),
+      exposeDebugCode: env.AUTH_EXPOSE_DEBUG_CODE === 'true' || allowDevTools,
+    },
+  },
+  authDelivery: {
+    smtp: {
+      host: env.SMTP_HOST || '',
+      port: safeInt(env.SMTP_PORT, 587),
+      secure: env.SMTP_SECURE === 'true',
+      user: env.SMTP_USER || '',
+      pass: env.SMTP_PASS || '',
+      fromEmail: env.SMTP_FROM_EMAIL || '',
+      fromName: env.SMTP_FROM_NAME || 'Fun Forum AI',
+    },
+    sms: {
+      accessKeyId: env.ALIYUN_SMS_ACCESS_KEY_ID || '',
+      accessKeySecret: env.ALIYUN_SMS_ACCESS_KEY_SECRET || '',
+      signName: env.ALIYUN_SMS_SIGN_NAME || '',
+      templateCode: env.ALIYUN_SMS_TEMPLATE_CODE || '',
+      endpoint: env.ALIYUN_SMS_ENDPOINT || 'dysmsapi.aliyuncs.com',
+    },
   },
   serviceAuth: {
     secret: serviceAuthSecret,

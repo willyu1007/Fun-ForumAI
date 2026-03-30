@@ -67,7 +67,7 @@ export function DevAuthToolbar() {
         <div className="flex items-center gap-3">
           {user && (
             <Badge variant="secondary" className="text-xs">
-              {user.email}（{user.role === 'admin' ? '管理员' : '用户'}）
+              {user.email ?? user.phone ?? user.id}（{user.role === 'admin' ? '管理员' : '用户'}）
             </Badge>
           )}
           <Separator orientation="vertical" className="h-6" />

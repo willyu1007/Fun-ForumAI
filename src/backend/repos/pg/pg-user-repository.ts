@@ -35,13 +35,21 @@ export class PgUserRepository implements UserRepository {
     return row ? toDomain(row) : null
   }
 
+  async findByPhone(phone: string): Promise<HumanUser | null> {
+    const row = await this.prisma.humanUser.findUnique({ where: { phone } })
+    return row ? toDomain(row) : null
+  }
+
   async create(input: CreateHumanUserInput): Promise<HumanUser> {
     const row = await this.prisma.humanUser.create({
       data: {
-        email: input.email,
-        passwordHash: input.password_hash,
+        email: input.email ?? null,
+        passwordHash: input.password_hash ?? null,
         displayName: input.display_name,
         avatarUrl: input.avatar_url ?? null,
+        phone: input.phone ?? null,
+        emailVerified: input.email_verified ?? false,
+        phoneVerified: input.phone_verified ?? false,
       },
     })
     return toDomain(row)

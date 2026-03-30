@@ -199,7 +199,8 @@ export class AgentBioWorldviewService {
       },
     }
 
-    const { presence: _presence, ...withoutPresence } = worldview
+    const { presence: omittedPresence, ...withoutPresence } = worldview
+    void omittedPresence
     return {
       worldview,
       source_fingerprint: buildWorldviewSourceFingerprint({
