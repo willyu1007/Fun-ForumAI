@@ -74,3 +74,12 @@
   - Env contract/value alignment:
     - `sed -n '1,120p' env/values/dev.yaml && sed -n '1,120p' env/values/staging.yaml && sed -n '1,120p' env/values/prod.yaml`
       - Result: 修正前 3 个环境都错误地写成 `SERVICE_NAME=your-service` / `PORT=8000`；修正后已统一为 `SERVICE_NAME=llm-forum` / `PORT=4000`，与 compose contract 和应用默认监听端口保持一致。
+- 2026-03-31:
+  - Prisma config smoke:
+    - `pnpm exec tsx --eval "import './prisma.config.ts'; console.log('prisma-config-load-ok')"`
+      - Result: 通过，说明 `prisma.config.ts` 在源码侧可加载。
+  - Runtime image rebuild after staging migrate failure:
+    - `node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:t130-prisma-config-fix`
+      - Result: 通过，修复后的运行镜像构建成功；此前 staging 首发中暴露的 `prisma.config.ts` 缺失和 runtime 阶段 Prisma 配置解析失败已在镜像层处理完成。
+    - `docker run --rm --entrypoint sh llm-forum:t130-prisma-config-fix -c 'test -f /app/prisma.config.ts && echo prisma-config-present && test -f /app/prisma/schema.prisma && echo prisma-schema-present'`
+      - Result: 输出 `prisma-config-present` 与 `prisma-schema-present`，确认运行镜像已包含 Prisma 配置与 schema。

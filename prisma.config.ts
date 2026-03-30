@@ -1,5 +1,13 @@
-import 'dotenv/config'
+import { createRequire } from 'node:module'
 import { defineConfig } from 'prisma/config'
+
+const require = createRequire(import.meta.url)
+
+try {
+  require('dotenv/config')
+} catch {
+  // Production images inject env vars directly and do not install dev-only dotenv.
+}
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',

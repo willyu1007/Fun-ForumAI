@@ -9,6 +9,7 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY pnpm-lock.yaml package.json ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
 RUN pnpm install --frozen-lockfile
 RUN pnpm db:generate
 
@@ -24,8 +25,9 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY pnpm-lock.yaml package.json ./
 COPY prisma ./prisma
-RUN npm install -g prisma@7.4.1 tsx@4.21.0
-RUN pnpm install --frozen-lockfile --prod
+COPY prisma.config.ts ./prisma.config.ts
+RUN npm install -g tsx@4.21.0
+RUN pnpm install --frozen-lockfile
 RUN pnpm db:generate
 
 COPY --from=builder /app/dist/frontend ./dist/frontend
