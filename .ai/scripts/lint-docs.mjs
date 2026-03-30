@@ -257,7 +257,7 @@ function checkUtf8Encoding(filePath) {
     }
 
     // Multi-byte UTF-8 sequence validation
-    let expectedBytes = 0;
+    let expectedBytes;
     if ((byte & 0xe0) === 0xc0) expectedBytes = 2;      // 110xxxxx
     else if ((byte & 0xf0) === 0xe0) expectedBytes = 3; // 1110xxxx
     else if ((byte & 0xf8) === 0xf0) expectedBytes = 4; // 11110xxx

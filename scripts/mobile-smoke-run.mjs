@@ -246,7 +246,10 @@ async function normalizeAndroidRuntime() {
   try {
     exec('adb', ['shell', 'monkey', '-p', MOBILE_APP_ID, '-c', 'android.intent.category.LAUNCHER', '1'])
   } catch (error) {
-    throw new Error(`Unable to foreground Android dev build: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Unable to foreground Android dev build: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    )
   }
 
   await sleep(2_000)

@@ -162,7 +162,6 @@ function fixSkillFile(skillDir, skillsRoot) {
   const original = fs.readFileSync(skillMdPath, 'utf8');
   let content = original.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const actions = [];
-  let changed = false;
 
   const fm = extractFrontmatterBlock(content);
   if (fm) {
@@ -205,13 +204,11 @@ function fixSkillFile(skillDir, skillsRoot) {
 
     const rebuilt = `---\n${out.join('\n')}\n---\n`;
     content = rebuilt + (fm.rest.startsWith('\n') ? fm.rest.slice(1) : fm.rest);
-    changed = true;
   } else {
     const inferred = findFirstHeadingText(content) || dirName;
     const header = `---\nname: ${dirName}\ndescription: ${inferred}\n---\n\n`;
     content = header + content.replace(/^\n+/, '');
     actions.push('Inserted missing frontmatter');
-    changed = true;
   }
 
   const v = ensureSection(content, 'Verification', [
@@ -221,7 +218,6 @@ function fixSkillFile(skillDir, skillsRoot) {
   if (v.changed) {
     content = v.content;
     actions.push('Added missing ## Verification section');
-    changed = true;
   }
 
   const b = ensureSection(content, 'Boundaries', [
@@ -231,20 +227,19 @@ function fixSkillFile(skillDir, skillsRoot) {
   if (b.changed) {
     content = b.content;
     actions.push('Added missing ## Boundaries section');
-    changed = true;
   }
 
   if (!content.endsWith('\n')) {
     content += '\n';
     actions.push('Added final newline');
-    changed = true;
   }
 
-  if (changed && content !== original) {
+  const changed = content !== original;
+  if (changed) {
     fs.writeFileSync(skillMdPath, content, 'utf8');
     return { relPath, changed: true, actions };
   }
-  return { relPath, changed: false, actions: changed ? actions : [] };
+  return { relPath, changed: false, actions: [] };
 }
 
 function lintSkill(skillDir, skillsRoot) {

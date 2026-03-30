@@ -14,7 +14,7 @@
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,9 +29,14 @@ let failCount = 0;
 function run(id, name, cmd, { cwd = ROOT, allowFailure = false } = {}) {
   const start = Date.now();
   let ok = false;
-  let output = '';
+  let output;
   try {
-    output = execSync(cmd, { cwd, stdio: 'pipe', timeout: 120_000 }).toString().trim();
+    output = execSync(cmd, {
+      cwd,
+      stdio: 'pipe',
+      timeout: 120_000,
+      maxBuffer: 50 * 1024 * 1024,
+    }).toString().trim();
     ok = true;
   } catch (err) {
     output = (err.stdout?.toString() || '') + (err.stderr?.toString() || '');
@@ -60,6 +65,42 @@ function runFileCheck(id, name, filePath) {
   if (!ok) failCount++;
   if (!jsonMode) {
     console.log(`  ${ok ? '✓' : '✗'} P0-${String(id).padStart(2, '0')} ${name}`);
+  }
+}
+
+function loadDeployValidationPlan() {
+  const configPath = resolve(ROOT, 'ops/deploy/config.json');
+  if (!existsSync(configPath)) {
+    return {
+      deployEnvironments: ['staging'],
+      rollbackEnvironment: 'staging',
+    };
+  }
+
+  try {
+    const deployConfig = JSON.parse(readFileSync(configPath, 'utf8'));
+    const deployEnvironments = Array.isArray(deployConfig.environments)
+      ? deployConfig.environments
+          .filter((env) => env?.canDeploy && typeof env.id === 'string')
+          .map((env) => env.id)
+      : [];
+
+    const uniqueDeployEnvironments = [...new Set(deployEnvironments)];
+    const rollbackEnvironment = uniqueDeployEnvironments.includes('staging')
+      ? 'staging'
+      : uniqueDeployEnvironments[0] ?? 'staging';
+
+    return {
+      deployEnvironments: uniqueDeployEnvironments.length > 0
+        ? uniqueDeployEnvironments
+        : ['staging'],
+      rollbackEnvironment,
+    };
+  } catch {
+    return {
+      deployEnvironments: ['staging'],
+      rollbackEnvironment: 'staging',
+    };
   }
 }
 
@@ -95,18 +136,29 @@ runFileCheck(9, 'Dockerfile exists', 'ops/packaging/services/llm-forum.Dockerfil
 runFileCheck(10, '.dockerignore exists', '.dockerignore');
 
 // Deploy
-run(11, 'Deploy dry-run (dev)', 'node ops/deploy/scripts/deploy.mjs --dry-run --env dev');
-run(12, 'Deploy dry-run (staging)', 'node ops/deploy/scripts/deploy.mjs --dry-run --env staging');
-run(13, 'Rollback dry-run (dev)', 'node ops/deploy/scripts/rollback.mjs --dry-run --env dev');
+const deployValidationPlan = loadDeployValidationPlan();
+let nextDeployCheckId = 11;
+for (const envId of deployValidationPlan.deployEnvironments) {
+  run(
+    nextDeployCheckId++,
+    `Deploy dry-run (${envId})`,
+    `node ops/deploy/scripts/deploy.mjs --dry-run --env ${envId}`,
+  );
+}
+run(
+  nextDeployCheckId++,
+  `Rollback dry-run (${deployValidationPlan.rollbackEnvironment})`,
+  `node ops/deploy/scripts/rollback.mjs --dry-run --env ${deployValidationPlan.rollbackEnvironment}`,
+);
 
 // Env contract
-runFileCheck(14, 'Env contract exists', 'env/contract.yaml');
-runFileCheck(15, 'Env values (dev)', 'env/values/dev.yaml');
-runFileCheck(16, 'Env values (staging)', 'env/values/staging.yaml');
-runFileCheck(17, 'Env values (prod)', 'env/values/prod.yaml');
+runFileCheck(nextDeployCheckId++, 'Env contract exists', 'env/contract.yaml');
+runFileCheck(nextDeployCheckId++, 'Env values (dev)', 'env/values/dev.yaml');
+runFileCheck(nextDeployCheckId++, 'Env values (staging)', 'env/values/staging.yaml');
+runFileCheck(nextDeployCheckId++, 'Env values (prod)', 'env/values/prod.yaml');
 
 // Governance
-run(18, 'Governance lint', 'node .ai/scripts/ctl-project-governance.mjs lint --check --project main');
+run(nextDeployCheckId, 'Governance lint', 'node .ai/scripts/ctl-project-governance.mjs lint --check --project main');
 
 // ─── summary ───
 const passCount = results.length - failCount;

@@ -20,7 +20,10 @@ function readJsonYaml(filePath) {
   try {
     return parseYaml(raw)
   } catch (error) {
-    throw new Error(`Invalid YAML payload: ${filePath}: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Invalid YAML payload: ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    )
   }
 }
 

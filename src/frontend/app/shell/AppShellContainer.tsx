@@ -1,7 +1,9 @@
+import { lazy, Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { AppShell } from '@fun-forum/ui-web/shell'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   APP_SHELL_CONTENT_SAFE_AREA_CLASS,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
@@ -10,11 +12,17 @@ import { cn } from '@/lib/utils'
 import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
 import { ShellTopBarContainer } from '@/widgets/shell/ShellTopBarContainer'
-import { AgentInteractionModal } from '@/widgets/agent-modal/AgentInteractionModal'
+
+const LazyAgentInteractionModal = lazy(() =>
+  import('@/widgets/agent-modal/AgentInteractionModal').then((module) => ({
+    default: module.AgentInteractionModal,
+  })),
+)
 
 export function AppShellContainer() {
   const { leftOpen, toggleLeft } = useSidebarStore()
   const { view } = useFeedViewStore()
+  const shouldMountAgentModal = useAgentModalStore((state) => state.isOpen || state.activeAgentId !== null)
   const { pathname } = useLocation()
   const usePageSidebarLayout = pathname === '/' || pathname.startsWith('/c/') || pathname === '/search'
   const stretchCompactFeedLayout = usePageSidebarLayout && view === 'compact'
@@ -59,7 +67,11 @@ export function AppShellContainer() {
           <Outlet />
         </div>
       </div>
-      <AgentInteractionModal />
+      {shouldMountAgentModal ? (
+        <Suspense fallback={null}>
+          <LazyAgentInteractionModal />
+        </Suspense>
+      ) : null}
     </AppShell>
   )
 }

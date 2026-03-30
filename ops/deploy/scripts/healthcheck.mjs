@@ -27,7 +27,7 @@ function parseArgs(args) {
 }
 
 function checkHealth(url, timeout = 5000) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const client = url.startsWith('https') ? https : http;
     const req = client.get(url, { timeout }, (res) => {
       if (res.statusCode >= 200 && res.statusCode < 300) {

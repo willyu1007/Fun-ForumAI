@@ -246,7 +246,7 @@ function buildContractFromDbMirror({ repoRoot, mode }) {
   return { contract: normalized, warnings: [] };
 }
 
-function buildContractNone({ repoRoot }) {
+function buildContractNone() {
   return {
     contract: buildNormalizedDbSchema({
       mode: 'none',

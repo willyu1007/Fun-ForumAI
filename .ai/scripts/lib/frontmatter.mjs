@@ -106,7 +106,7 @@ export function generateFrontmatter(fields) {
   const lines = ['---'];
   for (const [key, value] of Object.entries(fields)) {
     // Quote values that contain special characters
-    const needsQuote = /[:#\[\]{}|>&*!]/.test(value) || value.includes('\n');
+    const needsQuote = /[:#{}[\]|>&*!]/.test(value) || value.includes('\n');
     const formatted = needsQuote ? `"${value.replace(/"/g, '\\"')}"` : value;
     lines.push(`${key}: ${formatted}`);
   }

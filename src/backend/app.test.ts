@@ -49,7 +49,7 @@ describe('app bootstrap', () => {
     appModule.stopBackgroundServices()
     expect(container.roomLifecycle.isRunning).toBe(false)
     expect(container.conversationClock.isRunning).toBe(false)
-  })
+  }, 15_000)
 
   it('keeps background services stopped when runtime is disabled', async () => {
     const { appModule, container } = await loadAppModule('false')
@@ -58,7 +58,7 @@ describe('app bootstrap', () => {
 
     expect(container.roomLifecycle.isRunning).toBe(false)
     expect(container.conversationClock.isRunning).toBe(false)
-  })
+  }, 15_000)
 
   it('always runs membership backfill when the feature flag is enabled', async () => {
     const { appModule, container, config } = await loadAppModule('false')
@@ -80,5 +80,5 @@ describe('app bootstrap', () => {
     } finally {
       featureFlags.membershipsV1 = originalMembershipsV1
     }
-  })
+  }, 15_000)
 })

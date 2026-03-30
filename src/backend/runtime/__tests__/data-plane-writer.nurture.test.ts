@@ -51,7 +51,7 @@ describe('DataPlaneWriter nurture routing', () => {
   it('falls back to growth engine when nurture orchestrator is unavailable', async () => {
     const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
-    const createThread = vi.fn().mockResolvedValue({ comment: { id: 'thread-1' } })
+    const createThread = vi.fn().mockResolvedValue({ entry: { id: 'thread-1' } })
     const onContentProduced = vi.fn().mockResolvedValue(undefined)
     const awardXP = vi.fn().mockResolvedValue(undefined)
 

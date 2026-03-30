@@ -1,115 +1,115 @@
 {
   "schemaVersion": 1,
-  "acceptedAt": "2026-03-18T23:41:26.607Z",
+  "acceptedAt": "2026-03-30T14:23:47.601Z",
   "sourceReport": "dist/frontend/bundle-report.json",
   "rootEntryChunk": {
     "name": "index",
-    "fileName": "assets/index-BsJhydfG.js",
-    "rawBytes": 51944,
-    "gzipBytes": 15721,
+    "fileName": "assets/index-BxNVfkQd.js",
+    "rawBytes": 148430,
+    "gzipBytes": 29520,
     "isEntry": true,
     "isDynamicEntry": false,
     "facadeModuleId": "index.html"
   },
   "largestJsChunk": {
-    "name": "framework",
-    "fileName": "assets/framework-gnV2YwS9.js",
-    "rawBytes": 192930,
-    "gzipBytes": 60472,
+    "name": "react-dom",
+    "fileName": "assets/react-dom-B2q9P9UF.js",
+    "rawBytes": 358833,
+    "gzipBytes": 107248,
     "isEntry": false,
     "isDynamicEntry": false,
     "facadeModuleId": null
   },
   "topJsChunks": [
     {
-      "name": "framework",
-      "fileName": "assets/framework-gnV2YwS9.js",
-      "rawBytes": 192930,
-      "gzipBytes": 60472,
+      "name": "react-dom",
+      "fileName": "assets/react-dom-B2q9P9UF.js",
+      "rawBytes": 358833,
+      "gzipBytes": 107248,
       "isEntry": false,
       "isDynamicEntry": false,
       "facadeModuleId": null
     },
     {
-      "name": "ui-radix",
-      "fileName": "assets/ui-radix-CpPJMfDZ.js",
-      "rawBytes": 101398,
-      "gzipBytes": 31089,
-      "isEntry": false,
-      "isDynamicEntry": false,
-      "facadeModuleId": null
-    },
-    {
-      "name": "router",
-      "fileName": "assets/router-GzdVsKkh.js",
-      "rawBytes": 85920,
-      "gzipBytes": 29187,
-      "isEntry": false,
-      "isDynamicEntry": false,
-      "facadeModuleId": null
-    },
-    {
-      "name": "AgentProfilePage",
-      "fileName": "assets/AgentProfilePage-ZcaXtcQo.js",
-      "rawBytes": 73332,
-      "gzipBytes": 19002,
+      "name": "AgentInteractionModal",
+      "fileName": "assets/AgentInteractionModal-RlCEXS0c.js",
+      "rawBytes": 309970,
+      "gzipBytes": 48846,
       "isEntry": false,
       "isDynamicEntry": true,
-      "facadeModuleId": "src/frontend/features/agents/pages/AgentProfilePage.tsx"
+      "facadeModuleId": "src/frontend/widgets/agent-modal/AgentInteractionModal.tsx"
+    },
+    {
+      "name": "math-rendering",
+      "fileName": "assets/math-rendering-Ba4H6HuF.js",
+      "rawBytes": 259243,
+      "gzipBytes": 76650,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
+    },
+    {
+      "name": "capture-utils",
+      "fileName": "assets/capture-utils-DXEQVQnt.js",
+      "rawBytes": 201041,
+      "gzipBytes": 47068,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": "node_modules/.pnpm/html2canvas@1.4.1/node_modules/html2canvas/dist/html2canvas.esm.js"
     },
     {
       "name": "AdminPanel",
-      "fileName": "assets/AdminPanel-CelRxeXn.js",
-      "rawBytes": 56092,
-      "gzipBytes": 14353,
+      "fileName": "assets/AdminPanel-BOu8Ue8S.js",
+      "rawBytes": 181330,
+      "gzipBytes": 25412,
       "isEntry": false,
       "isDynamicEntry": true,
       "facadeModuleId": "src/frontend/features/admin/pages/AdminPanel.tsx"
     },
     {
       "name": "index",
-      "fileName": "assets/index-BsJhydfG.js",
-      "rawBytes": 51944,
-      "gzipBytes": 15721,
+      "fileName": "assets/index-BxNVfkQd.js",
+      "rawBytes": 148430,
+      "gzipBytes": 29520,
       "isEntry": true,
       "isDynamicEntry": false,
       "facadeModuleId": "index.html"
     },
     {
-      "name": "vendor",
-      "fileName": "assets/vendor-_xKiYfxK.js",
-      "rawBytes": 51825,
-      "gzipBytes": 17855,
+      "name": "ui-radix",
+      "fileName": "assets/ui-radix-BZFNr82B.js",
+      "rawBytes": 129908,
+      "gzipBytes": 40758,
       "isEntry": false,
       "isDynamicEntry": false,
       "facadeModuleId": null
     },
     {
-      "name": "data-runtime",
-      "fileName": "assets/data-runtime-Bd4F9jQf.js",
-      "rawBytes": 51155,
-      "gzipBytes": 15685,
+      "name": "router",
+      "fileName": "assets/router-Cg1S8EVd.js",
+      "rawBytes": 85924,
+      "gzipBytes": 29189,
       "isEntry": false,
       "isDynamicEntry": false,
       "facadeModuleId": null
     },
     {
       "name": "ChatRoomPage",
-      "fileName": "assets/ChatRoomPage-CHMmaUIz.js",
-      "rawBytes": 32048,
-      "gzipBytes": 9227,
+      "fileName": "assets/ChatRoomPage-zuy7wkeA.js",
+      "rawBytes": 75999,
+      "gzipBytes": 11792,
       "isEntry": false,
       "isDynamicEntry": true,
       "facadeModuleId": "src/frontend/features/chat/pages/ChatRoomPage.tsx"
     },
     {
-      "name": "PostDetailPage",
-      "fileName": "assets/PostDetailPage-BzLGOnJn.js",
-      "rawBytes": 19042,
-      "gzipBytes": 6072,
+      "name": "ShellRightRail",
+      "fileName": "assets/ShellRightRail-BsDGYjE7.js",
+      "rawBytes": 75538,
+      "gzipBytes": 12185,
       "isEntry": false,
-      "isDynamicEntry": true,
-      "facadeModuleId": "src/frontend/features/forum/pages/PostDetailPage.tsx"
+      "isDynamicEntry": false,
+      "facadeModuleId": null
     }
   ]
 }

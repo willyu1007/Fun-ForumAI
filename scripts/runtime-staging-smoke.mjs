@@ -142,13 +142,16 @@ function ensureTrailingSlashTrimmed(url) {
 async function requestJson(url, opts = {}) {
   const res = await fetch(url, opts)
   const text = await res.text()
-  let json = null
-  try {
-    json = text ? JSON.parse(text) : null
-  } catch {
-    json = null
-  }
+  const json = parseJsonOrNull(text)
   return { status: res.status, ok: res.ok, json, text }
+}
+
+function parseJsonOrNull(text) {
+  try {
+    return text ? JSON.parse(text) : null
+  } catch {
+    return null
+  }
 }
 
 function createServiceToken(identity, bodyRaw, secret) {
@@ -266,7 +269,7 @@ async function listRunningPods(args) {
     throw new Error(`kubectl get pods failed: ${result.stderr || result.stdout || `exit=${result.code}`}`)
   }
 
-  let payload = null
+  let payload
   try {
     payload = JSON.parse(result.stdout)
   } catch {
@@ -324,7 +327,7 @@ async function isPortFree(port) {
 
 async function findFreePort(startPort, maxAttempts = 200) {
   for (let p = startPort; p < startPort + maxAttempts; p++) {
-    // eslint-disable-next-line no-await-in-loop
+     
     if (await isPortFree(p)) return p
   }
   throw new Error(`Unable to find a free local port starting from ${startPort}`)
@@ -709,7 +712,7 @@ async function main() {
     console.log(JSON.stringify(summary, null, 2))
   } finally {
     for (const child of managedChildren.reverse()) {
-      // eslint-disable-next-line no-await-in-loop
+       
       await stopChildProcess(child)
     }
   }

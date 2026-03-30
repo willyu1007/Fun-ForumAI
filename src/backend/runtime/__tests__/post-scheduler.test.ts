@@ -418,6 +418,10 @@ function createDeps(
           contains_owner_note: false,
           contains_private_text: false,
         },
+        decision: {
+          decision: 'allow',
+          reason_codes: [],
+        },
       })),
     } as unknown as NonNullable<PostSchedulerDeps['mediaProjectionService']>,
   }
@@ -731,6 +735,10 @@ describe('PostScheduler', () => {
         contains_asset_id: false,
         contains_owner_note: false,
         contains_private_text: false,
+      },
+      decision: {
+        decision: 'block',
+        reason_codes: ['contains_url'],
       },
     })
     const scheduler = new PostScheduler(deps, {

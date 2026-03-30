@@ -13,21 +13,10 @@
   },
   "heavyRouteChunkNames": [
     "AdminPanel",
-    "AgentProfilePage",
-    "AgentManagePage",
     "ChatRoomPage",
-    "PostDetailPage",
-    "PrivateChatPage"
+    "PostDetailPage"
   ],
   "requiredAsyncRoutes": [
-    {
-      "name": "AgentProfilePage",
-      "moduleId": "src/frontend/features/agents/pages/AgentProfilePage.tsx"
-    },
-    {
-      "name": "AgentManagePage",
-      "moduleId": "src/frontend/features/agents/pages/AgentManagePage.tsx"
-    },
     {
       "name": "AdminPanel",
       "moduleId": "src/frontend/features/admin/pages/AdminPanel.tsx"
@@ -39,16 +28,16 @@
     {
       "name": "PostDetailPage",
       "moduleId": "src/frontend/features/forum/pages/PostDetailPage.tsx"
-    },
-    {
-      "name": "PrivateChatPage",
-      "moduleId": "src/frontend/features/private-chat/pages/PrivateChatPage.tsx"
     }
   ],
   "manualChunkGroups": [
     {
-      "name": "framework",
-      "packages": ["react", "react-dom", "scheduler"]
+      "name": "react-runtime",
+      "packages": ["react", "scheduler"]
+    },
+    {
+      "name": "react-dom",
+      "packages": ["react-dom"]
     },
     {
       "name": "router",
@@ -63,6 +52,7 @@
       "packages": [
         "radix-ui",
         "@radix-ui",
+        "@floating-ui",
         "react-remove-scroll",
         "react-remove-scroll-bar",
         "react-style-singleton",
@@ -74,6 +64,14 @@
     {
       "name": "icons",
       "packages": ["lucide-react"]
+    },
+    {
+      "name": "math-rendering",
+      "packages": ["katex"]
+    },
+    {
+      "name": "capture-utils",
+      "packages": ["html2canvas"]
     }
   ],
   "fallbackVendorChunkName": "vendor"

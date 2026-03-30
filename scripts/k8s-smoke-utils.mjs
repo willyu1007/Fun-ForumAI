@@ -110,10 +110,10 @@ export async function waitForReadyPods({
 }) {
   const deadline = Date.now() + Number(timeoutMs)
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop
+     
     const pods = await listRunningPods({ context, namespace, labelSelector })
     if (pods.length >= Number(minReady)) return pods
-    // eslint-disable-next-line no-await-in-loop
+     
     await sleep(Number(intervalMs))
   }
 
@@ -193,12 +193,7 @@ export async function stopChildProcess(child) {
 export async function requestJson(url, options = {}) {
   const res = await fetch(url, options)
   const text = await res.text()
-  let json = null
-  try {
-    json = text ? JSON.parse(text) : null
-  } catch {
-    json = null
-  }
+  const json = parseJsonOrNull(text)
   return { ok: res.ok, status: res.status, text, json }
 }
 
@@ -212,10 +207,18 @@ export async function pollUntil(fn, { timeoutMs = 20_000, intervalMs = 1000 } = 
     } catch (err) {
       lastError = err
     }
-    // eslint-disable-next-line no-await-in-loop
+     
     await sleep(intervalMs)
   }
   throw lastError ?? new Error('poll timeout')
+}
+
+function parseJsonOrNull(text) {
+  try {
+    return text ? JSON.parse(text) : null
+  } catch {
+    return null
+  }
 }
 
 export function createServiceToken(bodyRaw, secret) {

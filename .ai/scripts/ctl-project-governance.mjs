@@ -15,13 +15,9 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { colors, die, header, info, ok, warn } from './lib/colors.mjs';
 import { parseSimpleList, parseSimpleMap, parseTopLevelVersion } from './lib/yaml-lite.mjs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const DEFAULT_PROJECT = 'main';
 
@@ -434,7 +430,7 @@ function parseYamlDoc(raw) {
       const t = line.slice(indent);
       if (!t.trimStart().startsWith('- ')) break;
 
-      const after = t.replace(/^\-\s*/, '');
+      const after = t.replace(/^-\s*/, '');
       if (!after.trim()) {
         const child = parseBlock(i + 1, indent + 2);
         out.push(child.value);
@@ -474,7 +470,7 @@ function parseYamlDoc(raw) {
 function needsQuote(s) {
   const t = String(s);
   if (t === '') return true;
-  if (/[\s:#\[\]{}]/.test(t)) return true;
+  if (/[\s:#{}[\]]/.test(t)) return true;
   if (t.startsWith('-')) return true;
   return false;
 }
@@ -665,7 +661,7 @@ function getBundleStatusFromOverview(overviewRaw) {
 
     if (!inStatus) continue;
 
-    const m = t.match(/^\-\s*State\s*:\s*(.+)\s*$/i);
+    const m = t.match(/^-\s*State\s*:\s*(.+)\s*$/i);
     if (!m) continue;
 
     const value = String(m[1] || '').trim();
@@ -703,7 +699,7 @@ function getAcceptanceCriteriaStats(overviewRaw) {
     }
     if (!inAc) continue;
 
-    const m = t.match(/^\-\s*\[(x|X|\s)\]\s+(.+)$/);
+    const m = t.match(/^-\s*\[(x|X|\s)\]\s+(.+)$/);
     if (!m) continue;
     total += 1;
     if (String(m[1]).toLowerCase() === 'x') checked += 1;
@@ -928,7 +924,7 @@ function cmdLint({ repoRoot, projectSlug, strict }) {
 
   const { registry, error: registryParseError } = loadRegistry(repoRoot, projectSlug);
 
-  let devDocsRoots = [];
+  let devDocsRoots;
   if (registryParseError) {
     errors.push(`Failed to parse registry.yaml: ${registryParseError}`);
   }
@@ -1377,8 +1373,8 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
   const warnings = [];
 
   const registryPath = getRegistryPath(repoRoot, projectSlug);
-  let reg = null;
-  let hubMissing = !exists(registryPath);
+  let reg;
+  const hubMissing = !exists(registryPath);
 
   if (!hubMissing) {
     const loaded = loadRegistry(repoRoot, projectSlug);
@@ -1425,7 +1421,6 @@ function cmdSync({ repoRoot, projectSlug, dryRun, apply, initIfMissing, changelo
       }
     } else {
       cmdInit({ repoRoot, projectSlug, dryRun: false, force: false });
-      hubMissing = false;
       const loaded = loadRegistry(repoRoot, projectSlug);
       if (!loaded.registry) {
         errors.push(`Cannot load registry after init: ${toPosix(path.relative(repoRoot, registryPath))}`);

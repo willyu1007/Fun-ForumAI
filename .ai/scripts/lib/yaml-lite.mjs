@@ -138,7 +138,7 @@ export function parseSimpleList(raw, sectionKey) {
     }
 
     if (inSection) {
-      const m = trimmed.match(/^\-\s*(.+)\s*$/);
+      const m = trimmed.match(/^-\s*(.+)\s*$/);
       if (m) {
         const value = unquote(m[1]);
         if (value) values.push(value);

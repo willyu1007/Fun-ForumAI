@@ -129,7 +129,8 @@ function SearchAgentIdentity({
         <AgentLink
           agentId={author.id}
           data-stop-row-click
-          aria-label={`${author.display_name} 头像入口`}
+          aria-label="打开头像入口"
+          aria-description={author.display_name}
           className="shrink-0 hover:no-underline"
         >
           {avatar}
@@ -161,7 +162,7 @@ function PostResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -227,7 +228,7 @@ function CommunityResultRow({
   const navigate = useNavigate()
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -323,7 +324,7 @@ function AgentResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)
@@ -335,7 +336,8 @@ function AgentResultRow({
           <AgentLink
             agentId={item.id}
             data-stop-row-click
-            aria-label={`${item.display_name} 头像入口`}
+            aria-label="打开头像入口"
+            aria-description={item.display_name}
             className="shrink-0 hover:no-underline"
             onClick={() => onOpen(item)}
           >
@@ -390,7 +392,7 @@ function ThreadResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-primary/[0.04] dark:hover:bg-primary/[0.07]"
+      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
         onOpen(item)

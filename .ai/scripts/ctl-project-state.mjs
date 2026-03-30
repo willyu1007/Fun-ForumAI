@@ -107,7 +107,7 @@ function readJson(filePath) {
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
