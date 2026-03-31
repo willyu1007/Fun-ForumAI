@@ -86,6 +86,7 @@ describe('Auth API', () => {
         email,
         password,
         displayName: 'Guidance Tester',
+        inviteCode: '100001',
       })
 
     expect(startRes.status).toBe(200)
@@ -133,6 +134,7 @@ describe('Auth API', () => {
         email,
         password: 'password123',
         displayName: 'Guidance Negative',
+        inviteCode: '100001',
       })
 
     await request(app)
@@ -170,6 +172,7 @@ describe('Auth API', () => {
           email,
           password: 'password123',
           displayName: 'Resend Tester',
+          inviteCode: '100001',
         })
 
       const resendRes = await request(app)
@@ -210,7 +213,7 @@ describe('Auth API', () => {
 
     const sendRes = await request(app)
       .post('/v1/auth/sms/send')
-      .send({ phone })
+      .send({ phone, inviteCode: '100001' })
 
     expect(sendRes.status).toBe(200)
     expect(sendRes.body.data).toMatchObject({
@@ -263,7 +266,7 @@ describe('Auth API', () => {
 
     const sendRes = await request(app)
       .post('/v1/auth/sms/send')
-      .send({ phone })
+      .send({ phone, inviteCode: '100001' })
 
     const missingNameRes = await request(app)
       .post('/v1/auth/sms/verify')
@@ -291,6 +294,31 @@ describe('Auth API', () => {
         displayName: 'Retry Phone Tester',
       },
     })
+  })
+
+  it('rejects email registration when the invite code does not exist', async () => {
+    const res = await request(app)
+      .post('/v1/auth/register')
+      .send({
+        email: `invalid-invite-${Date.now()}@example.com`,
+        password: 'password123',
+        displayName: 'Invite Missing',
+        inviteCode: '999999',
+      })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('INVALID_INVITE_CODE')
+  })
+
+  it('requires an invite code for first-time sms registration', async () => {
+    const phone = `13${(Date.now() + 2).toString().slice(-9)}`
+
+    const res = await request(app)
+      .post('/v1/auth/sms/send')
+      .send({ phone })
+
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('INVITE_CODE_REQUIRED')
   })
 
 })

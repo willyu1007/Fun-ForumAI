@@ -169,8 +169,9 @@ export function ThreadList({
   }, [targetThreadId, targetTurnId, threads])
 
   useEffect(() => {
+    const reportStateTimers = reportStateTimersRef.current
     return () => {
-      Object.values(reportStateTimersRef.current).forEach((timer) => {
+      Object.values(reportStateTimers).forEach((timer) => {
         window.clearTimeout(timer)
       })
     }

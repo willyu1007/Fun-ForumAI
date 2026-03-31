@@ -29,7 +29,7 @@ export interface AuthChallengeResult {
 }
 
 export const authApi = {
-  startEmailRegistration(data: { email: string; password: string; displayName: string }) {
+  startEmailRegistration(data: { email: string; password: string; displayName: string; inviteCode: string }) {
     return api.post('auth/register', { json: data }).json<ApiResponse<AuthChallengeResult>>()
   },
 
@@ -45,7 +45,7 @@ export const authApi = {
     return api.post('auth/login', { json: data }).json<ApiResponse<AuthResult>>()
   },
 
-  sendSmsCode(data: { phone: string }) {
+  sendSmsCode(data: { phone: string; inviteCode?: string }) {
     return api.post('auth/sms/send', { json: data }).json<ApiResponse<AuthChallengeResult>>()
   },
 

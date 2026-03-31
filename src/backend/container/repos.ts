@@ -47,6 +47,7 @@ import { InMemoryRoleAssignmentRepository } from '../repos/role-assignment-repos
 import { InMemoryNotificationRepository } from '../repos/notification-repository.js'
 import { InMemoryFeedbackRepository } from '../repos/feedback-repository.js'
 import { InMemoryUserRepository } from '../repos/user-repository.js'
+import { InMemoryInviteCodeRepository } from '../repos/invite-code-repository.js'
 import { InMemoryGuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import { InMemoryGuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
 import { InMemoryGuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
@@ -102,6 +103,7 @@ import type { RoleAssignmentRepository } from '../repos/role-assignment-reposito
 import type { NotificationRepository } from '../repos/notification-repository.js'
 import type { FeedbackRepository } from '../repos/feedback-repository.js'
 import type { UserRepository } from '../repos/user-repository.js'
+import type { InviteCodeRepository } from '../repos/invite-code-repository.js'
 import type { GuidanceActorStateRepository } from '../repos/guidance-state-repository.js'
 import type { GuidanceInboxRepository } from '../repos/guidance-inbox-repository.js'
 import type { GuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
@@ -146,6 +148,7 @@ export interface Repositories {
   messageRepo: MessageRepository
   relationRepo: RelationRepository | null
   userRepo: UserRepository | null
+  inviteCodeRepo: InviteCodeRepository | null
   statsRepo: StatsRepository
   personaStateRepo: PersonaStateRepository
   achievementRepo: AchievementRepository
@@ -227,6 +230,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgRoleAssignmentRepository } = await import('../repos/pg/pg-role-assignment-repository.js')
     const { PgNotificationRepository } = await import('../repos/pg/pg-notification-repository.js')
     const { PgFeedbackRepository } = await import('../repos/pg/pg-feedback-repository.js')
+    const { PgInviteCodeRepository } = await import('../repos/pg/pg-invite-code-repository.js')
     const { PgGuidanceActorStateRepository } = await import('../repos/pg/pg-guidance-state-repository.js')
     const { PgGuidanceInboxRepository } = await import('../repos/pg/pg-guidance-inbox-repository.js')
     const { PgGuidanceEventLogRepository } = await import('../repos/pg/pg-guidance-event-log-repository.js')
@@ -313,7 +317,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
         roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, agentBioRepo: abr, messageRepo: mr,
-        relationRepo: relr, userRepo: new PgUserRepository(prisma),
+        relationRepo: relr, userRepo: new PgUserRepository(prisma), inviteCodeRepo: new PgInviteCodeRepository(prisma),
         statsRepo: sr, personaStateRepo: psr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
         incubationRepo: incRepo, audienceRepo: audRepo, aftershowRunRepo: aftershowRepo,
@@ -336,6 +340,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
   const runtimeSceneStateRepo = new InMemoryRuntimeSceneStateRepository()
   const eventRepo = new InMemoryEventRepository()
   const agentRunRepo = new InMemoryAgentRunRepository()
+  const userRepo = new InMemoryUserRepository()
 
   return {
     repos: {
@@ -383,7 +388,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       agentBioRepo: new InMemoryAgentBioRepository(),
       messageRepo: new InMemoryMessageRepository(),
       relationRepo: null,
-      userRepo: new InMemoryUserRepository(),
+      userRepo,
+      inviteCodeRepo: new InMemoryInviteCodeRepository(userRepo),
       statsRepo: new InMemoryStatsRepository(),
       personaStateRepo: new InMemoryPersonaStateRepository(),
       achievementRepo: new InMemoryAchievementRepository(),

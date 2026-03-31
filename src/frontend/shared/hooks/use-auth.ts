@@ -35,7 +35,7 @@ export function useAuth() {
   })
 
   const emailRegisterStartMutation = useMutation({
-    mutationFn: (data: { email: string; password: string; displayName: string }) =>
+    mutationFn: (data: { email: string; password: string; displayName: string; inviteCode: string }) =>
       authApi.startEmailRegistration(data),
   })
 
@@ -51,7 +51,7 @@ export function useAuth() {
   })
 
   const smsSendMutation = useMutation({
-    mutationFn: (data: { phone: string }) => authApi.sendSmsCode(data),
+    mutationFn: (data: { phone: string; inviteCode?: string }) => authApi.sendSmsCode(data),
   })
 
   const smsVerifyMutation = useMutation({
@@ -80,7 +80,7 @@ export function useAuth() {
   )
 
   const startEmailRegistration = useCallback(
-    async (data: { email: string; password: string; displayName: string }): Promise<AuthChallengeResult> => {
+    async (data: { email: string; password: string; displayName: string; inviteCode: string }): Promise<AuthChallengeResult> => {
       const res = await emailRegisterStartMutation.mutateAsync(data)
       return res.data
     },
@@ -104,7 +104,7 @@ export function useAuth() {
   )
 
   const sendSmsCode = useCallback(
-    async (data: { phone: string }): Promise<AuthChallengeResult> => {
+    async (data: { phone: string; inviteCode?: string }): Promise<AuthChallengeResult> => {
       const res = await smsSendMutation.mutateAsync(data)
       return res.data
     },

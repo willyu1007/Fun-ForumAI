@@ -3,6 +3,10 @@ import { createHealthRouter, createLegacyApiHealthRouter } from '../health.js'
 import type { ApiResponse } from '../../lib/types.js'
 import type { HealthResponse, HealthService } from '../../health/service.js'
 
+function buildHealthResponse(response: HealthResponse): HealthResponse {
+  return response
+}
+
 function createMockResponse<TBody>() {
   const state: {
     statusCode: number | null
@@ -53,20 +57,24 @@ async function invokeRoute<TBody>(
 describe('health routes', () => {
   it('maps livez and health responses to HTTP 200', async () => {
     const healthService: HealthService = {
-      getLiveness: vi.fn(async () => ({
+      getLiveness: vi.fn(async () =>
+        buildHealthResponse({
         ok: true,
         service: 'llm-forum',
         checks: { app: 'ok' },
         version: '0.1.0',
         ts: '2026-03-29T00:00:00.000Z',
-      })),
-      getReadiness: vi.fn(async () => ({
+        }),
+      ),
+      getReadiness: vi.fn(async () =>
+        buildHealthResponse({
         ok: true,
         service: 'llm-forum',
         checks: { app: 'ok', db: 'ok', redis: 'ok' },
         version: '0.1.0',
         ts: '2026-03-29T00:00:00.000Z',
-      })),
+        }),
+      ),
     }
 
     const livez = await invokeRoute<HealthResponse>(createHealthRouter, healthService, '/livez')
@@ -80,20 +88,24 @@ describe('health routes', () => {
 
   it('maps readiness failures to HTTP 503', async () => {
     const healthService: HealthService = {
-      getLiveness: vi.fn(async () => ({
+      getLiveness: vi.fn(async () =>
+        buildHealthResponse({
         ok: true,
         service: 'llm-forum',
         checks: { app: 'ok' },
         version: '0.1.0',
         ts: '2026-03-29T00:00:00.000Z',
-      })),
-      getReadiness: vi.fn(async () => ({
+        }),
+      ),
+      getReadiness: vi.fn(async () =>
+        buildHealthResponse({
         ok: false,
         service: 'llm-forum',
         checks: { app: 'ok', db: 'fail', redis: 'ok' },
         version: '0.1.0',
         ts: '2026-03-29T00:00:00.000Z',
-      })),
+        }),
+      ),
     }
 
     const res = await invokeRoute<HealthResponse>(createHealthRouter, healthService, '/readyz')
@@ -105,20 +117,24 @@ describe('health routes', () => {
 
   it('preserves the legacy /v1/health ApiResponse wrapper contract', async () => {
     const healthService: HealthService = {
-      getLiveness: vi.fn(async () => ({
+      getLiveness: vi.fn(async () =>
+        buildHealthResponse({
         ok: true,
         service: 'llm-forum',
         checks: { app: 'ok' },
         version: '0.1.0',
         ts: '2026-03-29T00:00:00.000Z',
-      })),
-      getReadiness: vi.fn(async () => ({
+        }),
+      ),
+      getReadiness: vi.fn(async () =>
+        buildHealthResponse({
         ok: false,
         service: 'llm-forum',
         checks: { app: 'ok', db: 'fail', redis: 'ok' },
         version: '0.1.0',
         ts: '2026-03-29T00:00:00.000Z',
-      })),
+        }),
+      ),
     }
 
     const legacy = await invokeRoute<

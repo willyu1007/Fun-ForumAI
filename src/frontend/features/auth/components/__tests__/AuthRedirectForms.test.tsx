@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EmailLoginForm } from '../EmailLoginForm'
 import { EmailRegisterForm } from '../EmailRegisterForm'
+import { PhoneAuthForm } from '../PhoneAuthForm'
 import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -91,6 +92,7 @@ describe('auth redirect forms', () => {
         initialEntries={[
           {
             pathname: '/register',
+            search: '?invite=100001',
             state: {
               from: '/posts/post-1',
             },
@@ -123,6 +125,7 @@ describe('auth redirect forms', () => {
         email: 'user@example.com',
         password: 'password123',
         displayName: 'Forum User',
+        inviteCode: '100001',
       })
     })
 
@@ -140,6 +143,51 @@ describe('auth redirect forms', () => {
 
     await waitFor(() => {
       expect(screen.getByText('/posts/post-1')).toBeTruthy()
+    })
+  })
+
+  it('prefills the invite code from the register link for phone registration', async () => {
+    const sendSmsCode = vi.fn().mockResolvedValue({
+      challengeId: 'sms-challenge-1',
+      maskedTarget: '138****0000',
+      expiresInSec: 600,
+      resendAfterSec: 60,
+    })
+
+    useAuthMock.mockReturnValue({
+      sendSmsCode,
+      verifySmsCode: vi.fn(),
+      resendSmsCode: vi.fn(),
+      isSmsSendPending: false,
+      isSmsVerifyPending: false,
+      isSmsResendPending: false,
+    } as never)
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/register',
+            search: '?invite=100002',
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/register" element={<PhoneAuthForm mode="register" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.change(screen.getByLabelText('手机号'), {
+      target: { value: '13800138000' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '发送验证码' }))
+
+    await waitFor(() => {
+      expect(sendSmsCode).toHaveBeenCalledWith({
+        phone: '13800138000',
+        inviteCode: '100002',
+      })
     })
   })
 })

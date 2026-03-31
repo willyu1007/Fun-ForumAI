@@ -13,6 +13,7 @@ import {
 } from '../repos/auth-verification-challenge-repository.js'
 import { PgAuthVerificationChallengeRepository } from '../repos/pg/pg-auth-verification-challenge-repository.js'
 import { createEmailVerificationSender, createSmsVerificationSender } from '../services/auth-delivery.js'
+import { InviteCodeService } from '../services/invite-code-service.js'
 import { StatsService } from '../services/stats-service.js'
 import { PersonaStateService } from '../services/persona-state-service.js'
 import { InferenceProfileService } from '../services/inference-profile-service.js'
@@ -447,9 +448,14 @@ export function createCoreServices(deps: {
       : new InMemoryAuthVerificationChallengeRepository()
     : null
 
-  const authService = repos.userRepo && authVerificationChallengeRepo
+  const inviteCodeService = repos.inviteCodeRepo
+    ? new InviteCodeService(repos.inviteCodeRepo)
+    : null
+
+  const authService = repos.userRepo && repos.inviteCodeRepo && authVerificationChallengeRepo
     ? new AuthService(
       repos.userRepo,
+      repos.inviteCodeRepo,
       authVerificationChallengeRepo,
       createEmailVerificationSender(),
       createSmsVerificationSender(),
@@ -571,6 +577,7 @@ export function createCoreServices(deps: {
     chatroomRuntimeContextBuilder,
     roomLifecycle,
     authService,
+    inviteCodeService,
     governanceAdapter,
     hotTopicOpsService,
     notificationService,

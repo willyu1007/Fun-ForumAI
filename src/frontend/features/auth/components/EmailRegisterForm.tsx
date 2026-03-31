@@ -31,6 +31,9 @@ export function EmailRegisterForm() {
   } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [inviteCode, setInviteCode] = useState(
+    () => new URLSearchParams(location.search).get('invite')?.trim() ?? '',
+  )
   const redirectState = readAuthRedirectState(location.state)
 
   useEffect(() => {
@@ -48,6 +51,10 @@ export function EmailRegisterForm() {
     }
     if (!email.trim()) {
       setError('请输入邮箱')
+      return false
+    }
+    if (!CODE_PATTERN.test(inviteCode.trim())) {
+      setError('请输入 6 位邀请码')
       return false
     }
     if (password.length < 8) {
@@ -79,6 +86,7 @@ export function EmailRegisterForm() {
         email: email.trim(),
         password,
         displayName: displayName.trim(),
+        inviteCode: inviteCode.trim(),
       })
       setStep('verify')
       setChallengeId(result.challengeId)
@@ -162,6 +170,23 @@ export function EmailRegisterForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          disabled={step === 'verify'}
+          className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <label htmlFor="reg-invite-code" className="block text-sm font-medium leading-none">
+          邀请码
+        </label>
+        <Input
+          id="reg-invite-code"
+          type="text"
+          inputMode="numeric"
+          placeholder="6 位数字邀请码"
+          maxLength={6}
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
           disabled={step === 'verify'}
           className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
         />

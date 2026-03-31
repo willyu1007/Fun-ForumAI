@@ -36,6 +36,10 @@ vi.mock('../components/RuntimeDashboard', () => ({
   RuntimeDashboard: () => <div>Runtime dashboard stub</div>,
 }))
 
+vi.mock('../admin-panel/InviteCodesTab', () => ({
+  InviteCodesTab: () => <div>Invite codes tab stub</div>,
+}))
+
 vi.mock('@/api/hooks', () => ({
   useAdminAgentRiskProfile: vi.fn(),
   useAdminHotTopicAlerts: vi.fn(),

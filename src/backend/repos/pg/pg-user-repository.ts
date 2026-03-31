@@ -17,6 +17,7 @@ function toDomain(row: PrismaHumanUser): HumanUser {
     last_login_at: row.lastLoginAt,
     plan_tier: row.planTier,
     status: row.status,
+    invite_code_id: row.inviteCodeId,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -50,6 +51,7 @@ export class PgUserRepository implements UserRepository {
         phone: input.phone ?? null,
         emailVerified: input.email_verified ?? false,
         phoneVerified: input.phone_verified ?? false,
+        inviteCodeId: input.invite_code_id ?? null,
       },
     })
     return toDomain(row)

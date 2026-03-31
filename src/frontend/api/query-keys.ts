@@ -79,6 +79,7 @@ export const queryKeys = {
   adminDisclosureCaps: (scopeType: string, scopeId: string) => ['admin', 'disclosure-caps', scopeType, scopeId] as const,
   adminHotTopicDashboard: ['admin', 'hot-topic-dashboard'] as const,
   adminHotTopicAlerts: ['admin', 'hot-topic-alerts'] as const,
+  adminInviteCodes: ['admin', 'invite-codes'] as const,
   adminFeedbackList: (params?: { status?: string; category?: string; source_route?: string; cursor?: string; limit?: number }) =>
     ['admin', 'feedback-list', params] as const,
   adminFeedbackDetail: (feedbackId: string) => ['admin', 'feedback-detail', feedbackId] as const,

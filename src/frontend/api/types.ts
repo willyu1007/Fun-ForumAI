@@ -1508,6 +1508,18 @@ export interface AdminFeedbackTicketDetail extends FeedbackTicketDetail {
   submitter: FeedbackActor
 }
 
+export interface AdminInviteCodeSummary {
+  id: string
+  code: string
+  status: 'ACTIVE' | 'DISABLED'
+  usedCount: number
+  maxUses: number
+  remainingUses: number
+  note: string | null
+  lastUsedAt: string | null
+  sharePath: string
+}
+
 export interface HealthData {
   status: string
   timestamp: string

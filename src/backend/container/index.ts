@@ -692,6 +692,7 @@ export const chatroomCanonizationService = core.chatroomCanonizationService
 export const chatroomControlService = core.chatroomControlService
 export const roomLifecycle = core.roomLifecycle
 export const authService = core.authService
+export const inviteCodeService = core.inviteCodeService
 export const governanceAdapter = core.governanceAdapter
 export const hotTopicOpsService = core.hotTopicOpsService
 export const notificationService = core.notificationService

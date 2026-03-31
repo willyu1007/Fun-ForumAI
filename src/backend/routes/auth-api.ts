@@ -34,11 +34,12 @@ export function createAuthRouter(authService: AuthService): Router {
 
   router.post('/auth/register', validate(registerSchema), async (req, res, next) => {
     try {
-      const { email, password, displayName } = req.body
+      const { email, password, displayName, inviteCode } = req.body
       const result = await authService.startEmailRegistration({
         email,
         password,
         displayName,
+        inviteCode,
         ipAddress: getClientIp(req),
       })
       res.json({ data: result })
@@ -119,9 +120,10 @@ export function createAuthRouter(authService: AuthService): Router {
 
   router.post('/auth/sms/send', validate(smsSendSchema), async (req, res, next) => {
     try {
-      const { phone } = req.body
+      const { phone, inviteCode } = req.body
       const result = await authService.startSmsAuth({
         phone,
+        inviteCode,
         ipAddress: getClientIp(req),
       })
       res.json({ data: result })

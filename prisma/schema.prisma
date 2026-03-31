@@ -23,9 +23,11 @@ model HumanUser {
   lastLoginAt   DateTime?  @map("last_login_at")
   planTier      PlanTier   @default(FREE) @map("plan_tier")
   status        UserStatus @default(ACTIVE)
+  inviteCodeId  String?    @map("invite_code_id")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
+  inviteCode              InviteCode?                  @relation(fields: [inviteCodeId], references: [id])
   agents                 Agent[]
   agentConfigs           AgentConfig[]                @relation("ConfigUpdatedBy")
   privateSessions        PrivateSession[]
@@ -48,6 +50,7 @@ model HumanUser {
   updatedFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketUpdatedBy")
   feedbackHistoryEntries FeedbackTicketHistoryEntry[] @relation("FeedbackHistoryActor")
 
+  @@index([inviteCodeId])
   @@map("human_users")
 }
 
@@ -71,6 +74,22 @@ model AuthVerificationChallenge {
   @@index([requestedFromIp, createdAt])
   @@index([purpose, consumedAt, expiresAt])
   @@map("auth_verification_challenges")
+}
+
+model InviteCode {
+  id         String           @id @default(cuid())
+  code       String           @unique
+  status     InviteCodeStatus @default(ACTIVE)
+  maxUses    Int              @default(500) @map("max_uses")
+  usedCount  Int              @default(0) @map("used_count")
+  note       String?
+  lastUsedAt DateTime?        @map("last_used_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  invitedUsers HumanUser[]
+
+  @@map("invite_codes")
 }
 
 model DevSeedRegistryEntry {
@@ -107,6 +126,11 @@ enum AuthVerificationChannel {
 enum AuthVerificationPurpose {
   EMAIL_SIGNUP
   SMS_AUTH
+}
+
+enum InviteCodeStatus {
+  ACTIVE
+  DISABLED
 }
 
 model Agent {

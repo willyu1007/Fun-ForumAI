@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-30T06:50:11.017Z",
+  "updatedAt": "2026-03-31T02:52:49.480Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -396,6 +396,13 @@
         "REJECTED",
         "QUARANTINED",
         "EXPIRED"
+      ]
+    },
+    {
+      "name": "InviteCodeStatus",
+      "values": [
+        "ACTIVE",
+        "DISABLED"
       ]
     },
     {
@@ -12647,6 +12654,17 @@
           "unique": false
         },
         {
+          "name": "inviteCodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "invite_code_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "lastLoginAt",
           "type": "DateTime",
           "nullable": true,
@@ -12872,6 +12890,19 @@
           "references": []
         },
         {
+          "field": "inviteCode",
+          "to": "InviteCode",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "inviteCodeId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
           "field": "legacyMediaAssets",
           "to": "LegacyAgentMediaAsset",
           "optional": false,
@@ -12926,7 +12957,16 @@
           "references": []
         }
       ],
-      "indexes": []
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "inviteCodeId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
     },
     {
       "name": "HumanVote",
@@ -14108,6 +14148,124 @@
           "map": null
         }
       ]
+    },
+    {
+      "name": "InviteCode",
+      "dbName": "invite_codes",
+      "schema": null,
+      "columns": [
+        {
+          "name": "code",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "lastUsedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_used_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "maxUses",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "max_uses",
+          "dbType": null,
+          "default": "500",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "note",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "InviteCodeStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "ACTIVE",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "usedCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "used_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "invitedUsers",
+          "to": "HumanUser",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": []
     },
     {
       "name": "LegacyAgentMediaAsset",

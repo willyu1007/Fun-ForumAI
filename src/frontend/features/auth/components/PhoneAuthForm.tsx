@@ -32,6 +32,9 @@ export function PhoneAuthForm({ mode }: PhoneAuthFormProps) {
   } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [inviteCode, setInviteCode] = useState(
+    () => new URLSearchParams(location.search).get('invite')?.trim() ?? '',
+  )
   const redirectState = readAuthRedirectState(location.state)
 
   useEffect(() => {
@@ -51,9 +54,16 @@ export function PhoneAuthForm({ mode }: PhoneAuthFormProps) {
       setError('请输入有效的手机号')
       return
     }
+    if (mode === 'register' && !CODE_PATTERN.test(inviteCode.trim())) {
+      setError('请输入 6 位邀请码')
+      return
+    }
 
     try {
-      const result = await sendSmsCode({ phone: normalizedPhone })
+      const result = await sendSmsCode({
+        phone: normalizedPhone,
+        inviteCode: mode === 'register' ? inviteCode.trim() : undefined,
+      })
       setChallengeId(result.challengeId)
       setMaskedTarget(result.maskedTarget)
       setDebugCode(result.debugCode ?? null)
@@ -141,9 +151,29 @@ export function PhoneAuthForm({ mode }: PhoneAuthFormProps) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          首次注册时会创建账号；已有手机号会直接登录。
+          {mode === 'register'
+            ? '首次注册时需要邀请码；已有手机号再次验证会直接登录。'
+            : '已有手机号可直接登录；首次使用请前往注册页并输入邀请码。'}
         </p>
       </div>
+
+      {mode === 'register' ? (
+        <div className="space-y-3">
+          <label htmlFor={`invite-code-${mode}`} className="block text-sm font-medium leading-none">
+            邀请码
+          </label>
+          <Input
+            id={`invite-code-${mode}`}
+            type="text"
+            inputMode="numeric"
+            placeholder="6 位数字邀请码"
+            maxLength={6}
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value)}
+            className="placeholder:text-xs placeholder:text-muted-foreground/50 focus-visible:ring-2"
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         <label htmlFor={`code-${mode}`} className="block text-sm font-medium leading-none">

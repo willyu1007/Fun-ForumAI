@@ -18,6 +18,7 @@ import {
   privateChannelServices,
   hotTopicOpsService,
   feedbackService,
+  inviteCodeService,
   llmRegistryBundle,
   mediaReuseGovernanceService,
   mediaObservabilityService,
@@ -317,6 +318,21 @@ adminApiRouter.get('/admin/feedback/:feedbackId', requireHumanAuth, requireAdmin
   try {
     const detail = await feedbackService.getDetailForAdmin(String(req.params.feedbackId))
     res.json({ data: detail })
+  } catch (err) {
+    if (tryHandleAppError(res, err)) return
+    throw err
+  }
+})
+
+adminApiRouter.get('/admin/invite-codes', requireHumanAuth, requireAdmin, async (_req, res) => {
+  if (!inviteCodeService) {
+    res.status(503).json({ error: { code: 'SERVICE_UNAVAILABLE', message: '邀请码服务不可用' } })
+    return
+  }
+
+  try {
+    const inviteCodes = await inviteCodeService.listForAdmin()
+    res.json({ data: inviteCodes })
   } catch (err) {
     if (tryHandleAppError(res, err)) return
     throw err

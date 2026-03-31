@@ -3,6 +3,7 @@ import { createHmac, randomInt } from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import { config } from '../lib/config.js'
 import { AppError, UnauthorizedError } from '../lib/errors.js'
+import type { InviteCodeRepository } from '../repos/invite-code-repository.js'
 import type { AuthVerificationChallengeRepository } from '../repos/auth-verification-challenge-repository.js'
 import type { UserRepository } from '../repos/user-repository.js'
 import type {
@@ -10,6 +11,7 @@ import type {
   AuthVerificationChannel,
   AuthVerificationPurpose,
   HumanUser,
+  InviteCode,
 } from '../repos/types.js'
 import type { EmailVerificationSender, SmsVerificationSender } from './auth-delivery.js'
 
@@ -25,6 +27,11 @@ interface JwtPayload {
 interface EmailSignupChallengePayload {
   displayName: string
   passwordHash: string
+  inviteCodeId: string
+}
+
+interface InviteChallengePayload {
+  inviteCodeId: string
 }
 
 export interface AuthResult {
@@ -78,6 +85,10 @@ function normalizePhone(phone: string): string {
   return digits
 }
 
+function normalizeInviteCode(inviteCode: string): string {
+  return inviteCode.trim()
+}
+
 function maskEmail(email: string): string {
   const [localPart, domain = ''] = email.split('@')
   const visible = localPart.slice(0, 2)
@@ -117,16 +128,36 @@ function parseEmailSignupPayload(challenge: AuthVerificationChallenge): EmailSig
 
   const displayName = payload.displayName
   const passwordHash = payload.passwordHash
-  if (typeof displayName !== 'string' || typeof passwordHash !== 'string') {
+  const inviteCodeId = payload.inviteCodeId
+  if (
+    typeof displayName !== 'string'
+    || typeof passwordHash !== 'string'
+    || typeof inviteCodeId !== 'string'
+  ) {
     throw new Error('Invalid email signup payload')
   }
 
-  return { displayName, passwordHash }
+  return { displayName, passwordHash, inviteCodeId }
+}
+
+function parseInviteChallengePayload(
+  challenge: AuthVerificationChallenge,
+): InviteChallengePayload | null {
+  const payload = challenge.payload_json
+  if (!payload) {
+    return null
+  }
+  const inviteCodeId = payload.inviteCodeId
+  if (typeof inviteCodeId !== 'string' || inviteCodeId.length === 0) {
+    return null
+  }
+  return { inviteCodeId }
 }
 
 export class AuthService {
   constructor(
     private readonly userRepo: UserRepository,
+    private readonly inviteCodeRepo: InviteCodeRepository,
     private readonly challengeRepo: AuthVerificationChallengeRepository,
     private readonly emailSender: EmailVerificationSender,
     private readonly smsSender: SmsVerificationSender,
@@ -136,6 +167,7 @@ export class AuthService {
     email: string
     password: string
     displayName: string
+    inviteCode: string
     ipAddress?: string | null
   }): Promise<AuthChallengeResult> {
     const email = normalizeEmail(input.email)
@@ -143,6 +175,7 @@ export class AuthService {
     if (existing) {
       throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
     }
+    const inviteCode = await this.requireUsableInviteCodeByCode(input.inviteCode)
 
     const now = new Date()
     await this.ensureChallengeRateLimit({
@@ -168,6 +201,7 @@ export class AuthService {
       payload_json: {
         displayName: input.displayName.trim(),
         passwordHash,
+        inviteCodeId: inviteCode.id,
       },
       requested_from_ip: input.ipAddress ?? null,
       expires_at: this.getExpiry(now),
@@ -200,6 +234,8 @@ export class AuthService {
     if (await this.userRepo.findByEmail(email)) {
       throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
     }
+    const payload = parseEmailSignupPayload(existingChallenge)
+    await this.requireUsableInviteCodeById(payload.inviteCodeId)
 
     const now = new Date()
     this.assertResendCooldown(existingChallenge, now)
@@ -252,6 +288,7 @@ export class AuthService {
     if (await this.userRepo.findByEmail(email)) {
       throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
     }
+    await this.requireUsableInviteCodeById(payload.inviteCodeId)
 
     const consumed = await this.challengeRepo.consume({
       id: challenge.id,
@@ -268,14 +305,23 @@ export class AuthService {
     this.assertConsumeResult(consumed)
 
     try {
-      const user = await this.userRepo.create({
-        email,
-        password_hash: payload.passwordHash,
-        display_name: payload.displayName,
-        email_verified: true,
+      const result = await this.inviteCodeRepo.createInvitedUser({
+        invite_code_id: payload.inviteCodeId,
+        user: {
+          email,
+          password_hash: payload.passwordHash,
+          display_name: payload.displayName,
+          email_verified: true,
+        },
+        now: new Date(),
       })
-      await this.userRepo.updateLastLogin(user.id)
-      return this.issueAuthResult(user)
+
+      if (result.kind === 'invite_unavailable') {
+        throw new AppError(409, '邀请码已失效或已达上限，请更换邀请码后重试', 'INVITE_CODE_EXHAUSTED')
+      }
+
+      await this.userRepo.updateLastLogin(result.user.id)
+      return this.issueAuthResult(result.user)
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
@@ -286,6 +332,7 @@ export class AuthService {
 
   async startSmsAuth(input: {
     phone: string
+    inviteCode?: string
     ipAddress?: string | null
   }): Promise<AuthChallengeResult> {
     const phone = normalizePhone(input.phone)
@@ -302,6 +349,15 @@ export class AuthService {
       ipAddress: input.ipAddress ?? null,
       now,
     })
+    const invitePayload = existing
+      ? null
+      : {
+          inviteCodeId: (
+            await this.requireUsableInviteCodeByCode(
+              this.requireInviteCode(input.inviteCode),
+            )
+          ).id,
+        }
 
     const code = createVerificationCode()
     const challenge = await this.challengeRepo.createReplacingActive({
@@ -314,7 +370,7 @@ export class AuthService {
         target: phone,
         code,
       }),
-      payload_json: null,
+      payload_json: invitePayload,
       requested_from_ip: input.ipAddress ?? null,
       expires_at: this.getExpiry(now),
       last_sent_at: now,
@@ -342,6 +398,11 @@ export class AuthService {
       throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
     }
 
+    const invitePayload = parseInviteChallengePayload(existingChallenge)
+    if (invitePayload) {
+      await this.requireUsableInviteCodeById(invitePayload.inviteCodeId)
+    }
+
     const now = new Date()
     this.assertResendCooldown(existingChallenge, now)
     await this.ensureChallengeRateLimit({
@@ -363,7 +424,7 @@ export class AuthService {
         target: existingChallenge.target,
         code,
       }),
-      payload_json: null,
+      payload_json: existingChallenge.payload_json,
       requested_from_ip: input.ipAddress ?? null,
       expires_at: this.getExpiry(now),
       last_sent_at: now,
@@ -392,9 +453,16 @@ export class AuthService {
     const phone = normalizePhone(challenge.target)
     const existingBeforeConsume = await this.userRepo.findByPhone(phone)
     const displayName = input.displayName?.trim()
+    const invitePayload = parseInviteChallengePayload(challenge)
 
     if (!existingBeforeConsume && !displayName) {
       throw new AppError(400, '首次使用手机号注册时需要填写昵称', 'DISPLAY_NAME_REQUIRED')
+    }
+    if (!existingBeforeConsume) {
+      if (!invitePayload) {
+        throw new AppError(400, '请输入邀请码', 'INVITE_CODE_REQUIRED')
+      }
+      await this.requireUsableInviteCodeById(invitePayload.inviteCodeId)
     }
 
     const consumed = await this.challengeRepo.consume({
@@ -426,14 +494,23 @@ export class AuthService {
     }
 
     try {
-      const user = await this.userRepo.create({
-        display_name: displayName,
-        phone,
-        phone_verified: true,
+      const result = await this.inviteCodeRepo.createInvitedUser({
+        invite_code_id: invitePayload!.inviteCodeId,
+        user: {
+          display_name: displayName,
+          phone,
+          phone_verified: true,
+        },
+        now: new Date(),
       })
-      await this.userRepo.updateLastLogin(user.id)
-      const result = this.issueAuthResult(user)
-      return { ...result, isNewUser: true }
+
+      if (result.kind === 'invite_unavailable') {
+        throw new AppError(409, '邀请码已失效或已达上限，请更换邀请码后重试', 'INVITE_CODE_EXHAUSTED')
+      }
+
+      await this.userRepo.updateLastLogin(result.user.id)
+      const authResult = this.issueAuthResult(result.user)
+      return { ...authResult, isNewUser: true }
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         const concurrentUser = await this.userRepo.findByPhone(phone)
@@ -498,6 +575,34 @@ export class AuthService {
       throw new AppError(400, '验证码错误', 'INVALID_CODE')
     }
     throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+  }
+
+  private requireInviteCode(inviteCode?: string): string {
+    const normalized = inviteCode ? normalizeInviteCode(inviteCode) : ''
+    if (!normalized) {
+      throw new AppError(400, '请输入邀请码', 'INVITE_CODE_REQUIRED')
+    }
+    return normalized
+  }
+
+  private async requireUsableInviteCodeByCode(rawInviteCode: string): Promise<InviteCode> {
+    const inviteCode = await this.inviteCodeRepo.findByCode(normalizeInviteCode(rawInviteCode))
+    return this.assertUsableInviteCode(inviteCode)
+  }
+
+  private async requireUsableInviteCodeById(inviteCodeId: string): Promise<InviteCode> {
+    const inviteCode = await this.inviteCodeRepo.findById(inviteCodeId)
+    return this.assertUsableInviteCode(inviteCode)
+  }
+
+  private assertUsableInviteCode(inviteCode: InviteCode | null): InviteCode {
+    if (!inviteCode) {
+      throw new AppError(400, '邀请码不存在', 'INVALID_INVITE_CODE')
+    }
+    if (inviteCode.status !== 'ACTIVE' || inviteCode.used_count >= inviteCode.max_uses) {
+      throw new AppError(409, '邀请码已失效或已达上限，请更换邀请码后重试', 'INVITE_CODE_EXHAUSTED')
+    }
+    return inviteCode
   }
 
   private async ensureChallengeRateLimit(input: {

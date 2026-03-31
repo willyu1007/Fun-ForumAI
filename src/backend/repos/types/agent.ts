@@ -98,6 +98,7 @@ export interface HumanUser {
   last_login_at: Date | null
   plan_tier: 'FREE' | 'PRO' | 'ADMIN'
   status: 'ACTIVE' | 'SUSPENDED'
+  invite_code_id: string | null
   created_at: Date
   updated_at: Date
 }
@@ -130,6 +131,7 @@ export interface CreateHumanUserInput {
   phone?: string | null
   email_verified?: boolean
   phone_verified?: boolean
+  invite_code_id?: string | null
 }
 
 export interface UpsertDevHumanIdentityInput {

@@ -6,10 +6,13 @@ const passwordSchema = z
   .regex(/[a-zA-Z]/, '密码需包含字母')
   .regex(/[0-9]/, '密码需包含数字')
 
+const inviteCodeSchema = z.string().regex(/^\d{6}$/, '邀请码为 6 位数字')
+
 export const registerSchema = z.object({
   email: z.string().email('请输入有效的邮箱地址'),
   password: passwordSchema,
   displayName: z.string().min(1, '请输入昵称').max(50, '昵称最多 50 个字符'),
+  inviteCode: inviteCodeSchema,
 }).strict()
 
 export const registerVerifySchema = z.object({
@@ -28,6 +31,7 @@ export const loginSchema = z.object({
 
 export const smsSendSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, '请输入有效的手机号'),
+  inviteCode: inviteCodeSchema.optional(),
 }).strict()
 
 export const smsVerifySchema = z.object({

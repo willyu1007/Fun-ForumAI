@@ -51,6 +51,7 @@ export class InMemoryUserRepository implements UserRepository {
       last_login_at: null,
       plan_tier: 'FREE',
       status: 'ACTIVE',
+      invite_code_id: input.invite_code_id ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -99,6 +100,7 @@ export class InMemoryUserRepository implements UserRepository {
       last_login_at: null,
       plan_tier: input.role === 'admin' ? 'ADMIN' : 'FREE',
       status: 'ACTIVE',
+      invite_code_id: null,
       created_at: now,
       updated_at: now,
     }

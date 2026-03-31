@@ -7,6 +7,7 @@ import type {
   AdminMediaRolloutControllerData,
   AdminFeedbackTicketDetail,
   AdminFeedbackTicketSummary,
+  AdminInviteCodeSummary,
   AgentRiskProfile,
   ClaimedReviewTask,
   CommunityConfigApplyResult,
@@ -308,6 +309,13 @@ export function useAdminFeedbackList(params?: {
     queryKey: queryKeys.adminFeedbackList(params),
     queryFn: () =>
       api.get('admin/feedback', { searchParams: params }).json<ApiResponse<AdminFeedbackTicketSummary[]>>(),
+  })
+}
+
+export function useAdminInviteCodes() {
+  return useQuery({
+    queryKey: queryKeys.adminInviteCodes,
+    queryFn: () => api.get('admin/invite-codes').json<ApiResponse<AdminInviteCodeSummary[]>>(),
   })
 }
 
