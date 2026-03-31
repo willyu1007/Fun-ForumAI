@@ -79,3 +79,22 @@ This file exists to prevent repeating mistakes within this task.
   - `prisma/migrations/20260313164000_t095_forum_scene_metadata_sidecar/migration.sql`
   - `prisma/migrations/20260327111000_feedback_ticket_and_schema_reconciliation/migration.sql`
   - `ForumSceneMetadataTargetType_new`
+
+### 2026-03-31 - Reconciliation migration still assumed pre-cutover search table names
+- Symptom:
+  - 在真实 staging 空库首发时，`prisma migrate deploy` replay 到 `20260327111000_feedback_ticket_and_schema_reconciliation` 报 `P3018` / `42P01`，失败点是 `DROP TABLE "comment_search_docs"`。
+- Context:
+  - 更早的 `20260324130000_t919_search_doc_comment_to_thread_cutover` 已经把 `comment_search_docs` 改名为 `thread_search_docs`。因此正常的 fresh replay 路径上，进入 `20260327111000` 时旧表名已经不存在。
+- What we tried:
+  - 先确认 staging RDS 是 fresh DB，再对照 T-919 与 reconciliation migration 的 SQL，验证是否存在仅对“增量升级”有效、对“空库 replay”无效的硬编码表名。
+- Why it failed (or current hypothesis):
+  - `20260327111000` 仍假定旧投影表 `comment_search_docs` 还存在，并在后面重新 `CREATE TABLE "thread_search_docs"`；这与 T-919 之后的正常历史链不兼容。
+- Fix / workaround (if any):
+  - 把该 migration 改成同时兼容两种历史状态：先 `DROP TABLE IF EXISTS "comment_search_docs"`，再 `DROP TABLE IF EXISTS "thread_search_docs"`，最后重建最终形态的 `thread_search_docs`。
+- Prevention (how to avoid repeating it):
+  - 后续所有 reconciliation / cutover migration 在提交前都必须按“从空库 replay”视角检查 rename 链是否闭合，尤其是 projection/search-doc 这类可重建表，不要只验证现有开发库的增量升级。
+- References (paths/commands/log keywords):
+  - `prisma/migrations/20260324130000_t919_search_doc_comment_to_thread_cutover/migration.sql`
+  - `prisma/migrations/20260327111000_feedback_ticket_and_schema_reconciliation/migration.sql`
+  - `comment_search_docs`
+  - `thread_search_docs`

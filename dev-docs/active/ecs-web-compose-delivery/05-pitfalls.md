@@ -41,3 +41,14 @@
   - 必须重新构建并发布新的 immutable image 后，staging rollout 才能继续。
 - Prevention:
   - 以后凡是把运行时配置放在仓库根目录而不是 `prisma/`、`src/` 等目录里的，都必须显式检查生产镜像是否复制到了 `/app`；不要只验证本地源码树和 Compose env 就默认容器内配置完整。
+
+### 2026-03-31 - Historical reconciliation migration still broke on clean staging replay
+- Symptom:
+  - staging 在换用修复后的镜像后，`docker compose run --rm migrate` 继续失败，Prisma 报 `P3018`，具体是 `20260327111000_feedback_ticket_and_schema_reconciliation` 在 fresh DB replay 时执行 `DROP TABLE "comment_search_docs"` 触发 `42P01 table does not exist`。
+- What we tried:
+  - 先核对 staging RDS 是否为空库、前序 migration 是否已经把 `comment_search_docs` 改名为 `thread_search_docs`，随后逐条检查 `20260324130000_t919_search_doc_comment_to_thread_cutover` 与 `20260327111000_feedback_ticket_and_schema_reconciliation` 的 SQL。
+- Fix / workaround:
+  - 根因是 T-919 已经把 `comment_search_docs` 重命名成 `thread_search_docs`，但后面的 schema reconciliation migration 仍假定旧表名存在。修复方式是把该 migration 的搜索投影清理段改为：先 `DROP TABLE IF EXISTS "comment_search_docs"`，再 `DROP TABLE IF EXISTS "thread_search_docs"`，最后重建最终形态的 `thread_search_docs`。
+  - 修复后需要重新发布新的 immutable image，再在 staging 重新执行 `./deploy.sh --sha <new-sha> --with-migrate --db-compat backwards`。
+- Prevention:
+  - 以后凡是“schema reconciliation / cutover”类 migration，只要前面已有 rename/cutover 历史，就必须从空库 replay 视角再检查一次，不能只验证增量升级路径。

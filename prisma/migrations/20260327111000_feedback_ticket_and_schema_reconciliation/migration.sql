@@ -156,7 +156,13 @@ ALTER TABLE "room_programs" ALTER COLUMN "updated_at" DROP DEFAULT;
 ALTER TABLE "room_shared_memories" ALTER COLUMN "updated_at" DROP DEFAULT;
 
 -- DropTable
-DROP TABLE "comment_search_docs";
+-- T-919 already renamed comment_search_docs -> thread_search_docs on the
+-- normal replay path. Drop whichever legacy/derived search-doc table exists
+-- so this reconciliation migration can rebuild the final projection shape.
+DROP TABLE IF EXISTS "comment_search_docs";
+
+-- DropTable
+DROP TABLE IF EXISTS "thread_search_docs";
 
 -- DropTable
 DROP TABLE "comments";
