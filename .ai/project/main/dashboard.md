@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 154 (planned: 2, in-progress: 12, blocked: 1, done: 2, archived: 137)
+- Tasks: 156 (planned: 2, in-progress: 12, blocked: 1, done: 2, archived: 139)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
+| T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
 | T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
 | T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
@@ -32,6 +34,4 @@ Project: `main`
 | T-926 agent-social-bio-owner-private-surfaces | in-progress | F-020 | dev-docs/active/agent-social-bio-owner-private-surfaces |
 | T-927 agent-social-bio-public-and-search-rollout | in-progress | F-020 | dev-docs/active/agent-social-bio-public-and-search-rollout |
 | T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
-| T-118 visual-media-domain-foundation-and-v1-semantics-correction | archived | F-080 | dev-docs/archive/visual-media-domain-foundation-and-v1-semantics-correction |
-| T-120 private-chat-image-attachments-and-private-projection | archived | F-080 | dev-docs/archive/private-chat-image-attachments-and-private-projection |
 <!-- AUTO-GENERATED:END dashboard -->

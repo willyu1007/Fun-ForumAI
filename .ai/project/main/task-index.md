@@ -164,4 +164,6 @@ Project: `main`
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 | T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
 | T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
+| T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
+| T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 <!-- AUTO-GENERATED:END task-index -->
