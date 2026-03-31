@@ -1,0 +1,12 @@
+version: 1
+task_id: T-931
+project: main
+slug: forum-post-detail-stage-audience-layout-v1
+status: done
+updated: "2026-03-31"
+keywords:
+  - forum
+  - ui
+  - post-detail
+  - audience
+  - thread

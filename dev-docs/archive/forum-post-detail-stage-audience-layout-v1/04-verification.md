@@ -1,0 +1,75 @@
+# 04 Verification
+
+## Planned checks
+- `pnpm exec tsc -b --pretty false`
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+- `pnpm ui:check`
+- `pnpm exec playwright test tests/web/playwright/forum-p0.visual.spec.ts --grep "post detail"`
+
+## Results
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+  - PASS
+  - 覆盖桌面双栏、移动端 tab 切换、线程默认展开与收起、`更多` 菜单入口、aftershow 缺失降级与老消息 deep link 回显。
+- `pnpm exec playwright test tests/web/playwright/forum-p0.visual.spec.ts --grep "post detail"`
+  - PASS
+  - 详情页 aftershow 场景与无 audience rail 场景在 desktop/mobile/tablet、light/dark 下全部通过。
+- `pnpm exec vitest run src/frontend/app/shell/__tests__/AppShellContainer.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+  - PASS
+  - 覆盖帖子详情宽版 shell frame，以及“payload 无扩展字段但 audience API 有数据时仍展示观众区”的回归。
+- `pnpm ui:check`
+  - PASS
+  - UI codegen、contract、package exports、runtime consumption 与 theme protocol 全部通过。
+- `pnpm exec tsc -b --pretty false`
+  - PASS
+  - 需要在 UI package dist 刷新完成后顺序执行；顺序执行时根级 TypeScript 构建通过。
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - PASS
+  - 覆盖顶部简化 header：返回入口可访问、作者名保留、社区 `c/...` pill 已移除。
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - PASS
+  - 覆盖详情页底部交互已切到列表风格胶囊，右侧保留 `Agent 认可度：`，旧的“X 条舞台发言”文案不再出现。
+- `pnpm ui:check`
+  - PASS
+  - UI contract/codegen/runtime consumption 与 theme protocol 检查全部通过，确认本轮布局收口没有越过 UI 规范边界。
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+  - PASS
+  - 覆盖详情页已移除“主舞台”标题，并验证 `ThreadList` 会为根线程与 turn 调用 avatar resolver。
+- `pnpm exec vitest run src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+  - PASS
+  - 覆盖主舞台 `举报` 提交后的成功反馈会在短暂显示后自动消失。
+- `pnpm exec vitest run src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+  - PASS
+  - 覆盖主舞台控件重组后的 thread/turn 默认渲染、举报从 `更多` 菜单进入，以及 thread/turn deep link 会传给分享控件。
+- `pnpm exec vitest run src/frontend/features/forum/components/__tests__/SharePopover.test.tsx`
+  - PASS
+  - 覆盖分享弹层会把 thread/turn 级 deep link 草稿写入私聊 draft，并打开目标 agent 会话。
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - PASS
+  - 确认详情页继续稳定消费新的 `ThreadList`/`SharePopover` 结构，没有带回旧的主舞台说明或底部动作条。
+- `pnpm exec tsc -b --pretty false`
+  - PASS
+  - 本轮主舞台控件重组后的根级 TypeScript 构建通过。
+- `pnpm ui:check`
+  - PASS
+  - 新增的数字态认可度、深链分享与菜单收口未破坏 UI contract/theme protocol 规则。
+- `pnpm exec vitest run src/frontend/features/forum/components/__tests__/HumanVoteControls.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/components/__tests__/SharePopover.test.tsx`
+  - PASS
+  - 覆盖主舞台去胶囊化后的投票、分享、举报菜单和 deep-link 分享链路。
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - PASS
+  - 确认主舞台控件外观收口没有影响详情页的整体渲染与观众区逻辑。
+- `pnpm ui:check`
+  - PASS
+  - 去胶囊化后的主舞台控件仍满足 UI contract/theme protocol 约束。
+- `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`
+  - FAIL -> FIXED -> PASS
+  - 首次运行报出 3 个 `tailwind-policy-unparseable`，定位到 `HumanVoteControls` 把 className 包成变量；改回 JSX 内联静态字符串组合后，同一 gate 复跑 `0 error / 0 warning`。
+- `pnpm exec vitest run src/frontend/features/forum/components/__tests__/HumanVoteControls.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - PASS
+  - 覆盖 UI gate 修复后的投票控件、主舞台线程和详情页渲染。
+- `pnpm ui:check`
+  - PASS
+  - 在 UI governance gate 通过后再次确认 contract/codegen/runtime consumption/theme protocol 全绿。
+- `pnpm exec tsc -b --pretty false`
+  - FAIL
+  - 当前仍卡在仓库已有的 `@fun-forum/ui-web/*` workspace 包解析/构建时序问题，不是本轮论坛详情 UI 组件改动引入；中途尝试用 app tsconfig paths 直连 package 源码会扩大问题，已回退。
