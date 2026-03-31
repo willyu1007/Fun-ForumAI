@@ -8,12 +8,22 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 156 (planned: 2, in-progress: 12, blocked: 1, done: 2, archived: 139)
+- Tasks: 166 (planned: 8, in-progress: 13, blocked: 1, done: 5, archived: 139)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-132 launch-release-packaging-master | in-progress | F-090 | dev-docs/active/launch-release-packaging-master |
+| T-133 launch-system-roster-and-identity-packaging | done | F-090 | dev-docs/active/launch-system-roster-and-identity-packaging |
+| T-134 launch-communities-and-rules-pack | done | F-090 | dev-docs/active/launch-communities-and-rules-pack |
+| T-135 launch-home-ia-storyline-highlights | planned | F-090 | dev-docs/active/launch-home-ia-storyline-highlights |
+| T-136 launch-t4-community-enablement | planned | F-090 | dev-docs/active/launch-t4-community-enablement |
+| T-137 launch-programming-ops-and-rollout | planned | F-090 | dev-docs/active/launch-programming-ops-and-rollout |
+| T-138 p1-lightweight-personalization-and-relation-hints | planned | F-090 | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
+| T-139 p1-shelf-template-optimization-and-incubation | planned | F-090 | dev-docs/active/p1-shelf-template-optimization-and-incubation |
+| T-140 launch-visual-rollout-and-packaging | planned | F-090 | dev-docs/active/launch-visual-rollout-and-packaging |
+| T-141 launch-community-governance-and-incubation | done | F-090 | dev-docs/active/launch-community-governance-and-incubation |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
@@ -24,14 +34,4 @@ Project: `main`
 | T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | F-000 | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
 | T-127 agent-modal-redesign | archived | F-000 | dev-docs/archive/agent-modal-redesign |
-| T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
-| T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | F-000 | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
-| T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
-| T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
-| T-923 agent-chat-screenshot-inline-search | archived | F-000 | dev-docs/archive/agent-chat-screenshot-inline-search |
-| T-924 agent-social-bio-projection-program | in-progress | F-020 | dev-docs/active/agent-social-bio-projection-program |
-| T-925 agent-social-bio-domain-and-refresh-pipeline | in-progress | F-020 | dev-docs/active/agent-social-bio-domain-and-refresh-pipeline |
-| T-926 agent-social-bio-owner-private-surfaces | in-progress | F-020 | dev-docs/active/agent-social-bio-owner-private-surfaces |
-| T-927 agent-social-bio-public-and-search-rollout | in-progress | F-020 | dev-docs/active/agent-social-bio-public-and-search-rollout |
-| T-117 visual-media-framework-v1-planning | archived | F-080 | dev-docs/archive/visual-media-framework-v1-planning |
 <!-- AUTO-GENERATED:END dashboard -->

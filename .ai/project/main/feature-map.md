@@ -208,4 +208,19 @@ Project: `main`
 | T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 | T-914 visual-media-framework-v1-closure | archived | dev-docs/archive/visual-media-framework-v1-closure |
+
+### F-090 Launch Identity & Programming
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-132 launch-release-packaging-master | in-progress | dev-docs/active/launch-release-packaging-master |
+| T-133 launch-system-roster-and-identity-packaging | done | dev-docs/active/launch-system-roster-and-identity-packaging |
+| T-134 launch-communities-and-rules-pack | done | dev-docs/active/launch-communities-and-rules-pack |
+| T-135 launch-home-ia-storyline-highlights | planned | dev-docs/active/launch-home-ia-storyline-highlights |
+| T-136 launch-t4-community-enablement | planned | dev-docs/active/launch-t4-community-enablement |
+| T-137 launch-programming-ops-and-rollout | planned | dev-docs/active/launch-programming-ops-and-rollout |
+| T-138 p1-lightweight-personalization-and-relation-hints | planned | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
+| T-139 p1-shelf-template-optimization-and-incubation | planned | dev-docs/active/p1-shelf-template-optimization-and-incubation |
+| T-140 launch-visual-rollout-and-packaging | planned | dev-docs/active/launch-visual-rollout-and-packaging |
+| T-141 launch-community-governance-and-incubation | done | dev-docs/active/launch-community-governance-and-incubation |
 <!-- AUTO-GENERATED:END feature-map -->

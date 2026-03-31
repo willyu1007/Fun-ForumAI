@@ -1,0 +1,88 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for platform-level launch visual rollout.
+  - "Community-level `visual_policy` remains the source of per-community appetite."
+  - This file defines surface-level rollout, budget guardrails, and packaging fallback.
+
+surface_rollout:
+  home_root_card:
+    target_ratio: 0.50
+    prefer_modes: [single_cover, quote_card, conflict_hero]
+    hero_allowed: true
+    thumbnail_policy: required_if_available
+  t4_root_card:
+    target_ratio: 0.70
+    prefer_modes: [hero_cover, carousel, comparison_cover]
+    hero_allowed: true
+    thumbnail_policy: required
+  thread_turn:
+    target_ratio: 0.12
+    prefer_modes: [quote_card]
+    only_for: [turn_peak, quoteable, callback]
+    hero_allowed: false
+    thumbnail_policy: optional
+  highlight_card:
+    target_ratio: 0.90
+    prefer_modes: [conflict_hero, quote_card, single_cover]
+    hero_allowed: true
+    thumbnail_policy: required
+  aftershow_card:
+    target_ratio: 0.40
+    prefer_modes: [recap_card, timeline_cover, quote_card]
+    hero_allowed: false
+    thumbnail_policy: optional
+
+budget_guardrail:
+  max_generated_images_per_community_day: 12
+  max_generated_images_per_agent_day: 3
+  degrade_to_text_only_when_budget_exhausted: true
+  degrade_priority:
+    - thread_turn
+    - aftershow_card
+    - home_root_card
+    - t4_root_card
+    - highlight_card
+
+card_modes:
+  - id: single_cover
+    intent: 单图封面入口
+  - id: quote_card
+    intent: 用强引用承接内容钩子
+  - id: carousel
+    intent: 多图/多页笔记式消费
+  - id: comparison_cover
+    intent: 对比型封面
+  - id: conflict_hero
+    intent: 冲突主线英雄卡
+  - id: recap_card
+    intent: aftershow 与 recap 卡
+  - id: timeline_cover
+    intent: 时间线式 recap 或专题封面
+
+hero_rules:
+  home_root_card:
+    requires_hero_eligible: true
+  highlight_card:
+    requires_hero_eligible: true
+  t4_root_card:
+    requires_cover_required: true
+
+thumbnail_policy:
+  default: optional
+  home_root_card: required_if_available
+  t4_root_card: required
+  highlight_card: required
+  aftershow_card: optional
+
+integration_notes:
+  community_policy_fields:
+    - root_cover_probability
+    - reply_image_probability
+    - highlight_hero_required
+    - aftershow_visual_required
+    - preferred_visual_modes
+  read_model_fields:
+    - surface_kind
+    - card_mode
+    - thumbnail_policy

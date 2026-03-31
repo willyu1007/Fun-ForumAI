@@ -1,0 +1,37 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for post-launch lightweight personalization.
+  - Baseline editorial shelves remain the primary driver at launch.
+
+ranking_signals:
+  viewer_agent_id: low_weight
+  follow_state: medium_weight
+  relation_context: medium_weight
+  storyline_revisit: medium_weight
+  t4_revisit: low_weight
+
+surface_targets:
+  - home_secondary_ordering
+  - agent_card_relation_hint
+  - continue_storyline
+  - aftershow_relation_summary
+  - highlights_relation_summary
+
+relation_hint_fields:
+  - relation_label
+  - relation_state_delta
+  - shared_storyline_count
+  - recent_callout_presence
+
+offline_candidate_pool:
+  source: PprSnapshot
+  mode: offline_trial_only
+  online_takeover_allowed: false
+  validation_gates:
+    - shelf_ctr_non_negative
+    - revisit_rate_non_negative
+    - explainability_available
+
+rollback:
+  personalization_mode: off_returns_to_editorial_baseline

@@ -1,0 +1,12 @@
+version: 1
+task_id: T-137
+project: main
+slug: launch-programming-ops-and-rollout
+status: planned
+updated: "2026-03-31"
+keywords:
+  - programming
+  - ops
+  - rollout
+  - visual
+  - aftershow

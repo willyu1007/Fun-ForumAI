@@ -16,6 +16,10 @@ milestones:
     title: "Mainland Launch Safety"
     status: done
     description: "Mainland launch risk-control, review, identity gating, provenance, and topic-policy delivery."
+  - id: M-020
+    title: "Launch Release Packaging"
+    status: in-progress
+    description: "Release-prep packaging for launch identity, roster, communities, homepage storytelling, T4 enablement, and programming ops."
 
 features:
   - id: F-000
@@ -63,6 +67,11 @@ features:
     status: in-progress
     description: "Unified image/media asset domain, dual display/cognition projections, public scene image planning, private media cognition, reuse governance, generation broker delivery, multi-surface expansion, and lifecycle/observability control."
     milestone_id: M-000
+  - id: F-090
+    title: "Launch Identity & Programming"
+    status: in-progress
+    description: "Launch packaging for system roster identity, 12-community contracts, editorial home IA, T4 tracks, and programming operations."
+    milestone_id: M-020
 
 requirements:
   - id: R-010
@@ -221,6 +230,46 @@ requirements:
     title: "Media Observability, Lifecycle, and Rollout Control"
     status: planned
     feature_id: F-080
+  - id: R-090
+    title: "Launch Release Packaging Master"
+    status: in-progress
+    feature_id: F-090
+  - id: R-091
+    title: "System Roster and Identity Packaging"
+    status: done
+    feature_id: F-090
+  - id: R-092
+    title: "Launch Communities and Rules Pack"
+    status: done
+    feature_id: F-090
+  - id: R-093
+    title: "Home IA, Storyline, and Highlights Packaging"
+    status: planned
+    feature_id: F-090
+  - id: R-094
+    title: "T4 Community Enablement"
+    status: planned
+    feature_id: F-090
+  - id: R-095
+    title: "Programming Ops and Rollout"
+    status: planned
+    feature_id: F-090
+  - id: R-096
+    title: "Lightweight Personalization and Relation Hints"
+    status: planned
+    feature_id: F-090
+  - id: R-097
+    title: "Shelf Template Optimization and Incubation"
+    status: planned
+    feature_id: F-090
+  - id: R-098
+    title: "Launch Visual Rollout and Packaging"
+    status: planned
+    feature_id: F-090
+  - id: R-099
+    title: "Launch Community Governance and Incubation"
+    status: done
+    feature_id: F-090
 
 tasks:
   - id: T-003
@@ -1224,6 +1273,96 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/eci-worker-runtime-delivery
     updated: 2026-03-28
+  - id: T-132
+    slug: launch-release-packaging-master
+    status: in-progress
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-090
+    dev_docs_path: dev-docs/active/launch-release-packaging-master
+    updated: 2026-03-31
+  - id: T-133
+    slug: launch-system-roster-and-identity-packaging
+    status: done
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-091
+    dev_docs_path: dev-docs/active/launch-system-roster-and-identity-packaging
+    updated: 2026-03-31
+  - id: T-134
+    slug: launch-communities-and-rules-pack
+    status: done
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-092
+    dev_docs_path: dev-docs/active/launch-communities-and-rules-pack
+    updated: 2026-03-31
+  - id: T-135
+    slug: launch-home-ia-storyline-highlights
+    status: planned
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-093
+    dev_docs_path: dev-docs/active/launch-home-ia-storyline-highlights
+    updated: 2026-03-31
+  - id: T-136
+    slug: launch-t4-community-enablement
+    status: planned
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-094
+    dev_docs_path: dev-docs/active/launch-t4-community-enablement
+    updated: 2026-03-31
+  - id: T-137
+    slug: launch-programming-ops-and-rollout
+    status: planned
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-095
+    dev_docs_path: dev-docs/active/launch-programming-ops-and-rollout
+    updated: 2026-03-31
+  - id: T-138
+    slug: p1-lightweight-personalization-and-relation-hints
+    status: planned
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-096
+    dev_docs_path: dev-docs/active/p1-lightweight-personalization-and-relation-hints
+    updated: 2026-03-31
+  - id: T-139
+    slug: p1-shelf-template-optimization-and-incubation
+    status: planned
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-097
+    dev_docs_path: dev-docs/active/p1-shelf-template-optimization-and-incubation
+    updated: 2026-03-31
+  - id: T-140
+    slug: launch-visual-rollout-and-packaging
+    status: planned
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-098
+    dev_docs_path: dev-docs/active/launch-visual-rollout-and-packaging
+    updated: 2026-03-31
+  - id: T-141
+    slug: launch-community-governance-and-incubation
+    status: done
+    milestone_id: M-020
+    feature_id: F-090
+    requirement_ids:
+      - R-099
+    dev_docs_path: dev-docs/active/launch-community-governance-and-incubation
+    updated: 2026-03-31
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

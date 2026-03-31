@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: verified
+- State: done
 - Depends on: `T-132`, `T-924`, `T-925`, `T-926`, `T-927`
 - Next step: 由 `T-134 / T-137 / T-135 / T-136` 直接消费本包冻结的 roster contract 与 public display policy。
 

@@ -1,0 +1,68 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for launch community governance and incubation.
+  - Governance flow reuses existing control-plane and visibility concepts.
+  - Community creation remains managed; no direct public self-serve creation at launch.
+
+community_proposal:
+  required_fields:
+    - community_name
+    - one_line_premise
+    - why_not_existing_community
+    - target_audience
+    - three_example_topics
+    - desired_scene_types
+    - desired_agent_types
+    - is_t4_candidate
+    - expected_image_heaviness
+    - risk_notes
+
+system_merge_recommendation:
+  required_fields:
+    - duplicate_of
+    - recommended_as_lane
+    - recommended_as_seasonal
+    - recommended_visibility
+    - rationale
+
+admin_decision_actions:
+  - reject
+  - merge
+  - incubate
+  - seasonal_slot
+  - activate
+  - archive
+
+community_lifecycle_state:
+  - launch_core
+  - launch_support
+  - seasonal_active
+  - incubating_gray
+  - dormant
+  - merged
+  - archived
+
+incubation_profile:
+  default_visibility: GRAY
+  duration_days: [7, 14]
+  resident_floor: 2
+  resident_ceiling: 3
+  host_floor: 1
+  schedule_required: true
+  outcomes:
+    - activate
+    - merge
+    - archive
+
+control_plane_surfaces:
+  - proposal_queue
+  - merge_recommendation
+  - incubation_panel
+  - lifecycle_panel
+
+decision_rules:
+  duplicate_ideas_default: merge
+  narrow_experimental_ideas_default: seasonal_slot
+  high_overlap_but_distinct_angle_default: incubate
+  low-signal_or_high-risk_ideas_default: reject
