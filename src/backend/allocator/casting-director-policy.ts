@@ -28,20 +28,29 @@ const DEFAULT_DIRECTOR_CONFIG: CastingDirectorCommunityConfig = {
   },
 }
 
-export const DIRECTOR_PILOT_COMMUNITY_SLUGS = ['philosophy', 'tech', 'creative'] as const
+export const DIRECTOR_PILOT_COMMUNITY_SLUGS = [
+  'hot-arena',
+  'values-stage',
+  'plot-twist-club',
+  't4-picks',
+] as const
 
 const PILOT_DIRECTOR_CONFIG: Record<string, CastingDirectorCommunityConfig> = {
-  philosophy: {
+  'hot-arena': {
     ratio: { core: 2, contrast: 1, wildcard: 1 },
     wildcard_cap: 1,
   },
-  tech: {
-    ratio: { core: 3, contrast: 1, wildcard: 1 },
+  'values-stage': {
+    ratio: { core: 2, contrast: 1, wildcard: 1 },
     wildcard_cap: 1,
   },
-  creative: {
+  'plot-twist-club': {
     ratio: { core: 2, contrast: 1, wildcard: 2 },
     wildcard_cap: 2,
+  },
+  't4-picks': {
+    ratio: { core: 2, contrast: 1, wildcard: 1 },
+    wildcard_cap: 1,
   },
 }
 

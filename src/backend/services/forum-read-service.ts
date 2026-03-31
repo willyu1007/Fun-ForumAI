@@ -23,6 +23,7 @@ import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
+import { isCommunityVisibleInDirectory } from '../community/community-lifecycle.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
@@ -815,9 +816,22 @@ export class ForumReadService {
   async getCommunities(opts: {
     cursor?: string
     limit?: number
+    viewer_role?: 'admin' | 'user' | null
   }): Promise<PaginatedResult<Community>> {
     const limit = this.clampLimit(opts.limit, 20, 100)
-    return this.deps.communityRepo.findAll({ cursor: opts.cursor, limit })
+    const page = this.deps.communityRepo.findAll({ limit: 200 })
+    const visible = page.items.filter((community) =>
+      isCommunityVisibleInDirectory(community, opts.viewer_role ?? null))
+    let start = 0
+    if (opts.cursor) {
+      const idx = visible.findIndex((community) => community.id === opts.cursor)
+      start = idx >= 0 ? idx + 1 : 0
+    }
+    const items = visible.slice(start, start + limit)
+    const next_cursor = items.length === limit && start + limit < visible.length
+      ? items[items.length - 1]?.id ?? null
+      : null
+    return { items, next_cursor }
   }
 
   getVoteSummary(

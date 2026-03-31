@@ -46,6 +46,8 @@ model HumanUser {
   configPatchValidations CommunityConfigPatch[]       @relation("CommunityConfigPatchValidatedBy")
   configPatchApprovals   CommunityConfigPatch[]       @relation("CommunityConfigPatchApprovedBy")
   configApprovalEvents   CommunityConfigApproval[]    @relation("CommunityConfigApprovalActor")
+  submittedCommunityProposals CommunityProposal[]     @relation("CommunityProposalSubmittedBy")
+  reviewedCommunityProposals  CommunityProposal[]     @relation("CommunityProposalReviewedBy")
   createdFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketCreatedBy")
   updatedFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketUpdatedBy")
   feedbackHistoryEntries FeedbackTicketHistoryEntry[] @relation("FeedbackHistoryActor")
@@ -275,6 +277,11 @@ model Community {
   aftershowRuns      AftershowRun[]
   configVersions     CommunityConfigVersion[]
   configPatches      CommunityConfigPatch[]
+  sourceProposals    CommunityProposal[]         @relation("CommunityProposalSourceCommunity")
+  resultingProposals CommunityProposal[]         @relation("CommunityProposalResultingCommunity")
+  mergedProposals    CommunityProposal[]         @relation("CommunityProposalMergedIntoCommunity")
+  mergeDuplicateRecommendations CommunityMergeRecommendation[] @relation("CommunityMergeDuplicateOf")
+  mergeLaneRecommendations      CommunityMergeRecommendation[] @relation("CommunityMergeLaneCommunity")
   roleAssignments    RoleAssignment[]
   aftershowArtifacts AftershowArtifact[]
   forumSceneMetadata ForumSceneMetadata[]
@@ -1396,6 +1403,26 @@ enum ConfigApprovalDecision {
   REJECTED
 }
 
+enum CommunityProposalStatus {
+  SUBMITTED
+  REJECTED
+  INCUBATING
+  SEASONAL
+  ACTIVATED
+  MERGED
+  ARCHIVED
+}
+
+enum CommunityIncubationVisibilityMode {
+  GRAY
+  WHITELIST_ONLY
+}
+
+enum CommunityProposalActorType {
+  human
+  system
+}
+
 model CommunityConfigVersion {
   id                    String              @id @default(cuid())
   communityId           String              @map("community_id")
@@ -1473,6 +1500,81 @@ model CommunityConfigApproval {
   @@index([patchId, createdAt])
   @@index([actorUserId, createdAt])
   @@map("community_config_approvals")
+}
+
+model CommunityProposal {
+  id                       String                           @id @default(cuid())
+  submittedByUserId        String                           @map("submitted_by_user_id")
+  name                     String
+  slugCandidate            String                           @map("slug_candidate")
+  description              String
+  premiseText              String                           @map("premise_text")
+  targetAudience           String?                          @map("target_audience")
+  sceneTypes               String[]                         @default([]) @map("scene_types")
+  t4Candidate              Boolean                          @default(false) @map("t4_candidate")
+  sourceCommunityId        String?                          @map("source_community_id")
+  status                   CommunityProposalStatus         @default(SUBMITTED)
+  incubationVisibilityMode CommunityIncubationVisibilityMode? @map("incubation_visibility_mode")
+  resultingCommunityId     String?                          @map("resulting_community_id")
+  mergedIntoCommunityId    String?                          @map("merged_into_community_id")
+  reviewedByUserId         String?                          @map("reviewed_by_user_id")
+  reviewedAt               DateTime?                        @map("reviewed_at")
+  metaJson                 Json?                            @map("meta_json")
+  createdAt                DateTime                         @default(now()) @map("created_at")
+  updatedAt                DateTime                         @updatedAt @map("updated_at")
+
+  submittedByUser  HumanUser                  @relation("CommunityProposalSubmittedBy", fields: [submittedByUserId], references: [id])
+  reviewedByUser   HumanUser?                 @relation("CommunityProposalReviewedBy", fields: [reviewedByUserId], references: [id])
+  sourceCommunity  Community?                 @relation("CommunityProposalSourceCommunity", fields: [sourceCommunityId], references: [id])
+  resultingCommunity Community?               @relation("CommunityProposalResultingCommunity", fields: [resultingCommunityId], references: [id])
+  mergedIntoCommunity Community?              @relation("CommunityProposalMergedIntoCommunity", fields: [mergedIntoCommunityId], references: [id])
+  recommendation   CommunityMergeRecommendation?
+  events           CommunityProposalEvent[]
+
+  @@index([status, createdAt])
+  @@index([submittedByUserId, createdAt])
+  @@index([slugCandidate])
+  @@index([sourceCommunityId])
+  @@index([resultingCommunityId])
+  @@index([mergedIntoCommunityId])
+  @@map("community_proposals")
+}
+
+model CommunityMergeRecommendation {
+  id                          String                           @id @default(cuid())
+  proposalId                  String                           @unique @map("proposal_id")
+  duplicateOfCommunityId      String?                          @map("duplicate_of_community_id")
+  recommendedAsLaneCommunityId String?                         @map("recommended_as_lane_community_id")
+  recommendedAsSeasonal       Boolean                          @default(true) @map("recommended_as_seasonal")
+  recommendedVisibility       CommunityIncubationVisibilityMode @default(GRAY) @map("recommended_visibility")
+  overlapScore                Float                            @default(0) @map("overlap_score")
+  rationale                   String[]                         @default([])
+  metaJson                    Json?                            @map("meta_json")
+  createdAt                   DateTime                         @default(now()) @map("created_at")
+  updatedAt                   DateTime                         @updatedAt @map("updated_at")
+
+  proposal                   CommunityProposal @relation(fields: [proposalId], references: [id])
+  duplicateOfCommunity       Community?        @relation("CommunityMergeDuplicateOf", fields: [duplicateOfCommunityId], references: [id])
+  recommendedAsLaneCommunity Community?        @relation("CommunityMergeLaneCommunity", fields: [recommendedAsLaneCommunityId], references: [id])
+
+  @@index([duplicateOfCommunityId])
+  @@index([recommendedAsLaneCommunityId])
+  @@map("community_merge_recommendations")
+}
+
+model CommunityProposalEvent {
+  id         String                    @id @default(cuid())
+  proposalId String                    @map("proposal_id")
+  actorType  CommunityProposalActorType @map("actor_type")
+  actorId    String                    @map("actor_id")
+  eventType  String                    @map("event_type")
+  payloadJson Json?                    @map("payload_json")
+  createdAt  DateTime                  @default(now()) @map("created_at")
+
+  proposal CommunityProposal @relation(fields: [proposalId], references: [id])
+
+  @@index([proposalId, createdAt])
+  @@map("community_proposal_events")
 }
 
 enum RoleAssignmentScope {

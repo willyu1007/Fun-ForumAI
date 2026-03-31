@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import {
+  COMMUNITY_INCUBATION_VISIBILITY_MODES,
+  COMMUNITY_PROPOSAL_ACTIONS,
+} from '../repos/types/governance.js'
 
 const httpsUrlSchema = z
   .string()
@@ -97,6 +101,13 @@ export const createThreadTurnSchema = z
     route_handoff: routeHandoffSchema.optional(),
   })
   .strict()
+
+const communitySlugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'slug_candidate must be kebab-case')
 
 export const upsertVoteSchema = z
   .object({
@@ -310,6 +321,26 @@ export const patchCommunityStageSpecSchema = z
       .optional(),
   })
   .strict()
+
+export const createCommunityProposalSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  slug_candidate: communitySlugSchema,
+  description: z.string().trim().min(1).max(500),
+  premise_text: z.string().trim().min(1).max(2_000),
+  target_audience: z.string().trim().max(500).nullable().optional(),
+  scene_types: z.array(z.string().trim().min(1).max(64)).max(12).default([]),
+  t4_candidate: z.boolean().default(false),
+  source_community_id: z.string().trim().min(1).nullable().optional(),
+}).strict()
+
+export const refreshCommunityProposalRecommendationSchema = z.object({}).strict()
+
+export const communityProposalActionSchema = z.object({
+  action: z.enum(COMMUNITY_PROPOSAL_ACTIONS),
+  target_community_id: z.string().trim().min(1).nullable().optional(),
+  visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
+  reason: z.string().trim().max(1_000).nullable().optional(),
+}).strict()
 
 export const createAudienceMessageSchema = z
   .object({

@@ -1,4 +1,8 @@
 import type {
+  CommunityIncubationVisibilityMode,
+  CommunityLifecycleState,
+  CommunityProposalAction,
+  CommunityProposalStatus,
   DisclosureCapOverride,
   GovernanceActionType,
   HotTopicAlert,
@@ -55,6 +59,40 @@ export const VISIBILITY_LABELS: Record<string, string> = {
   PUBLIC: '公开',
   GRAY: '灰度',
   QUARANTINE: '隔离',
+}
+
+export const COMMUNITY_INCUBATION_VISIBILITY_LABELS: Record<CommunityIncubationVisibilityMode, string> = {
+  GRAY: '灰度公开',
+  WHITELIST_ONLY: '白名单',
+}
+
+export const COMMUNITY_PROPOSAL_STATUS_LABELS: Record<CommunityProposalStatus, string> = {
+  SUBMITTED: '已提交',
+  REJECTED: '已拒绝',
+  INCUBATING: '孵化中',
+  SEASONAL: '季节档',
+  ACTIVATED: '已激活',
+  MERGED: '已归并',
+  ARCHIVED: '已归档',
+}
+
+export const COMMUNITY_LIFECYCLE_LABELS: Record<CommunityLifecycleState, string> = {
+  launch_core: '首发核心',
+  launch_support: '首发支持',
+  seasonal_active: '季节活跃',
+  incubating_gray: '灰度孵化',
+  dormant: '休眠',
+  merged: '已归并',
+  archived: '已归档',
+}
+
+export const COMMUNITY_PROPOSAL_ACTION_LABELS: Record<CommunityProposalAction, string> = {
+  reject: '拒绝',
+  merge: '归并',
+  incubate: '孵化',
+  seasonal_slot: '季节档',
+  activate: '激活',
+  archive: '归档',
 }
 
 export const STATE_LABELS: Record<string, string> = {

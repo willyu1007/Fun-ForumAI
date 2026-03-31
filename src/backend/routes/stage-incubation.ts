@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { Router, type IRouter } from 'express'
-import { requireHumanAuth, requireAdmin } from '../middleware/human-auth.js'
+import { requireHumanAuth, requireAdmin, type AuthenticatedUser } from '../middleware/human-auth.js'
 import {
   agentService,
   communityRepo,
@@ -10,8 +10,10 @@ import {
   aftershowService,
   searchProjectionService,
   communityConfigService,
+  communityGovernanceService,
   roleAssignmentService,
 } from '../container.js'
+import type { CommunityProposal } from '../repos/index.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { validate } from '../validation/validate.js'
@@ -24,7 +26,10 @@ import {
   createIncubationReviewVerdictSchema,
   adminSeasonRotateSchema,
   createConfigProposalSchema,
+  createCommunityProposalSchema,
   validateConfigProposalSchema,
+  refreshCommunityProposalRecommendationSchema,
+  communityProposalActionSchema,
   approveConfigProposalSchema,
   rejectConfigProposalSchema,
   applyConfigProposalSchema,
@@ -34,6 +39,18 @@ import {
 } from '../validation/schemas.js'
 
 export const stageIncubationRouter: IRouter = Router()
+
+async function assertCommunityProposalReadable(
+  proposalId: string,
+  user: AuthenticatedUser,
+) {
+  const detail = await communityGovernanceService.getProposalDetail(proposalId)
+  const isAllowed = user.role === 'admin' || detail.proposal.submitted_by_user_id === user.userId
+  if (!isAllowed) {
+    throw new ForbiddenError('Only proposal owner or admin can access community proposal detail')
+  }
+  return detail
+}
 
 stageIncubationRouter.get('/communities/:communityId/stage-spec', requireHumanAuth, async (req, res) => {
   const communityId = String(req.params.communityId)
@@ -220,6 +237,92 @@ stageIncubationRouter.post(
 
 stageIncubationRouter.get('/communities/:communityId/config/history', requireHumanAuth, async (req, res) => {
   const data = await communityConfigService.getHistory(String(req.params.communityId))
+  res.json({ data })
+})
+
+stageIncubationRouter.post(
+  '/community-proposals',
+  requireHumanAuth,
+  validate(createCommunityProposalSchema),
+  async (req, res) => {
+    const detail = await communityGovernanceService.submitProposal({
+      submitted_by_user_id: req.user!.userId,
+      name: req.body.name,
+      slug_candidate: req.body.slug_candidate,
+      description: req.body.description,
+      premise_text: req.body.premise_text,
+      target_audience: req.body.target_audience ?? null,
+      scene_types: req.body.scene_types ?? [],
+      t4_candidate: req.body.t4_candidate ?? false,
+      source_community_id: req.body.source_community_id ?? null,
+    })
+    res.status(201).json({ data: detail })
+  },
+)
+
+stageIncubationRouter.get(
+  '/community-proposals',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const status = typeof req.query.status === 'string'
+      ? req.query.status as CommunityProposal['status']
+      : undefined
+    const data = await communityGovernanceService.listProposals({
+      status,
+    })
+    res.json({ data })
+  },
+)
+
+stageIncubationRouter.get('/community-proposals/:proposalId', requireHumanAuth, async (req, res) => {
+  const detail = await assertCommunityProposalReadable(String(req.params.proposalId), req.user!)
+  res.json({ data: detail })
+})
+
+stageIncubationRouter.post(
+  '/community-proposals/:proposalId/recommendation/refresh',
+  requireHumanAuth,
+  requireAdmin,
+  validate(refreshCommunityProposalRecommendationSchema),
+  async (req, res) => {
+    const data = await communityGovernanceService.refreshRecommendation({
+      proposal_id: String(req.params.proposalId),
+      actor_type: 'human',
+      actor_id: req.user!.userId,
+    })
+    res.json({ data })
+  },
+)
+
+stageIncubationRouter.get('/community-proposals/:proposalId/recommendation', requireHumanAuth, async (req, res) => {
+  await assertCommunityProposalReadable(String(req.params.proposalId), req.user!)
+  const data = await communityGovernanceService.getRecommendation(String(req.params.proposalId))
+  res.json({ data })
+})
+
+stageIncubationRouter.post(
+  '/community-proposals/:proposalId/actions',
+  requireHumanAuth,
+  requireAdmin,
+  validate(communityProposalActionSchema),
+  async (req, res) => {
+    const data = await communityGovernanceService.applyAction({
+      proposal_id: String(req.params.proposalId),
+      action: req.body.action,
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      target_community_id: req.body.target_community_id ?? null,
+      visibility_mode: req.body.visibility_mode ?? null,
+      reason: req.body.reason ?? null,
+    })
+    res.json({ data })
+  },
+)
+
+stageIncubationRouter.get('/community-proposals/:proposalId/events', requireHumanAuth, async (req, res) => {
+  await assertCommunityProposalReadable(String(req.params.proposalId), req.user!)
+  const data = await communityGovernanceService.listEvents(String(req.params.proposalId))
   res.json({ data })
 })
 

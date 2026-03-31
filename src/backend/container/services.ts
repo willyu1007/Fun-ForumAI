@@ -46,6 +46,7 @@ import { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
 import { AudienceService } from '../services/audience-service.js'
 import { AftershowService } from '../services/aftershow-service.js'
 import { CommunityConfigService } from '../services/community-config-service.js'
+import { CommunityGovernanceService } from '../services/community-governance-service.js'
 import { RoleAssignmentService } from '../services/role-assignment-service.js'
 import { SafeReplyService } from '../services/safe-reply-service.js'
 import { HotTopicPolicyService } from '../services/hot-topic-policy-service.js'
@@ -207,6 +208,12 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     configRepo: repos.communityConfigRepo,
     eventRepo: repos.eventRepo,
+  })
+
+  const communityGovernanceService = new CommunityGovernanceService({
+    communityRepo: repos.communityRepo,
+    communityProposalRepo: repos.communityProposalRepo,
+    communityConfigService,
   })
 
   const roleAssignmentService = new RoleAssignmentService({
@@ -550,6 +557,7 @@ export function createCoreServices(deps: {
     audienceService,
     aftershowService,
     communityConfigService,
+    communityGovernanceService,
     roleAssignmentService,
     forumWriteService,
     globalHighlightsService,

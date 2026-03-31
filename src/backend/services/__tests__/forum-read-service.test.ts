@@ -666,6 +666,38 @@ describe('ForumReadService', () => {
       const result = await ctx.svc.getCommunities({})
       expect(result.items).toHaveLength(1)
     })
+
+    it('filters merged and whitelist-only incubating communities for non-admin readers', async () => {
+      ctx.communityRepo.create({
+        name: 'Visible',
+        slug: 'visible',
+        rules_json: { community_lifecycle_state: 'launch_core' },
+      })
+      ctx.communityRepo.create({
+        name: 'Merged',
+        slug: 'merged-hidden',
+        rules_json: { community_lifecycle_state: 'merged' },
+      })
+      ctx.communityRepo.create({
+        name: 'Incubating',
+        slug: 'incubating-hidden',
+        rules_json: {
+          community_lifecycle_state: 'incubating_gray',
+          governance_policy: {
+            incubation_visibility_mode: 'WHITELIST_ONLY',
+          },
+        },
+      })
+
+      const userResult = await ctx.svc.getCommunities({ viewer_role: 'user' })
+      expect(userResult.items.map((community) => community.slug)).toEqual(['visible'])
+
+      const adminResult = await ctx.svc.getCommunities({ viewer_role: 'admin' })
+      expect(adminResult.items.map((community) => community.slug)).toEqual(
+        expect.arrayContaining(['visible', 'incubating-hidden']),
+      )
+      expect(adminResult.items.map((community) => community.slug)).not.toContain('merged-hidden')
+    })
   })
 
   describe('getVoteSummary', () => {

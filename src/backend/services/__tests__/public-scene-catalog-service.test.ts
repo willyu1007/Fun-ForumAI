@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { listLaunchCommunitySeeds } from '../../launch/community-rules.js'
 import { PublicSceneCatalogService } from '../public-scene-catalog-service.js'
 
 const tempDirs: string[] = []
@@ -39,5 +40,34 @@ describe('PublicSceneCatalogService', () => {
     expect((catalog?.stage_templates.length ?? 0)).toBeGreaterThan(0)
     expect(fs.existsSync(path.join(distDir, 'launch.json'))).toBe(true)
     expect(fs.existsSync(path.join(distDir, 'library.json'))).toBe(true)
+  })
+
+  it('keeps stage-show-01 launch bindings aligned with non-T4 launch communities', () => {
+    const service = new PublicSceneCatalogService()
+    const catalog = service.getLaunchCatalog()
+
+    expect(catalog).toBeTruthy()
+    const expectedSlugs = listLaunchCommunitySeeds()
+      .filter((community) => {
+        const t4Policy = community.rules_json.t4_policy as Record<string, unknown> | undefined
+        return t4Policy?.enabled !== true
+      })
+      .map((community) => community.slug)
+      .sort()
+
+    const actualSlugs = (catalog?.scene_bindings ?? [])
+      .flatMap((binding) => {
+        if (
+          binding.template_id !== 'stage-show-01'
+          || binding.target.surface !== 'forum'
+          || !('community_slug' in binding.target)
+        ) {
+          return []
+        }
+        return [binding.target.community_slug]
+      })
+      .sort()
+
+    expect(actualSlugs).toEqual(expectedSlugs)
   })
 })

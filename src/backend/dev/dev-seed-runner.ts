@@ -11,6 +11,7 @@ import {
   chatService,
   chatroomControlService,
   communityRepo,
+  communityConfigRepo,
   devSeedRegistryRepo,
   guidanceBellService,
   guidanceOrchestrator,
@@ -199,6 +200,45 @@ async function ensureSeedCommunity(
 
   await tracker.bind(spec.seed_key, 'community', community.id)
   return community
+}
+
+async function ensureCommunityBaselineConfigVersion(
+  community: Community,
+  spec: DevSeedFixtureSet['communities'][number],
+): Promise<void> {
+  const latest = await communityConfigRepo.findLatestVersionByCommunity(community.id)
+  if (
+    latest
+    && latest.status === 'ACTIVE'
+    && isDeepStrictEqual(latest.rules_json, spec.rules_json)
+  ) {
+    return
+  }
+
+  if (latest && (latest.status === 'ACTIVE' || latest.status === 'RETIRED')) {
+    await communityConfigRepo.updateVersion(latest.id, {
+      status: 'RETIRED',
+      meta: {
+        ...(latest.meta ?? {}),
+        retired_by: 'dev_seed_launch_baseline',
+      },
+    })
+  }
+
+  await communityConfigRepo.createVersion({
+    community_id: community.id,
+    version: (latest?.version ?? 0) + 1,
+    rules_json: spec.rules_json,
+    status: 'ACTIVE',
+    risk_level: 'LOW',
+    created_by_user_id: null,
+    effective_at: new Date(),
+    applied_at: new Date(),
+    meta: {
+      source: 'dev_seed_launch_baseline',
+      seed_key: spec.seed_key,
+    },
+  })
 }
 
 async function ensureSeedIdentity(
@@ -970,6 +1010,7 @@ export async function runDevSeed(input: {
   const communitiesBySeedKey = new Map<string, Community>()
   for (const communitySpec of fixtures.communities) {
     const community = await ensureSeedCommunity(communitySpec, tracker)
+    await ensureCommunityBaselineConfigVersion(community, communitySpec)
     communitiesBySeedKey.set(communitySpec.seed_key, community)
   }
 

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import {
   useAdminAgentRiskProfile,
+  useAdminCommunityProposals,
   useAdminHotTopicAlerts,
   useAdminHotTopicDashboard,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
+  useApplyCommunityProposalAction,
   useApplyCommunityHotTopicPolicy,
   useAssignModerationCase,
   useClaimModerationTask,
@@ -21,10 +23,14 @@ import {
   useReopenModerationCase,
   useResolveIdentityReview,
   useResolveModerationCase,
+  useRefreshCommunityProposalRecommendation,
   useTransferModerationCase,
+  useCommunities,
 } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
+  CommunityIncubationVisibilityMode,
+  CommunityProposalAction,
   GovernanceActionType,
   GovernanceResult,
   HotTopicDashboardItem,
@@ -36,9 +42,13 @@ export function useAdminPanelController() {
   const governanceMutation = useGovernanceAction()
   const { data: hotTopicDashboard } = useAdminHotTopicDashboard()
   const { data: hotTopicAlerts } = useAdminHotTopicAlerts()
+  const { data: communityProposals } = useAdminCommunityProposals()
+  const { data: communitiesData } = useCommunities()
   const setHotTopicPostDistribution = useAdminHotTopicPostDistribution()
   const setHotTopicRoomControl = useAdminHotTopicRoomControl()
   const applyCommunityHotTopicPolicy = useApplyCommunityHotTopicPolicy()
+  const applyCommunityProposalAction = useApplyCommunityProposalAction()
+  const refreshCommunityProposalRecommendation = useRefreshCommunityProposalRecommendation()
   const { data: healthData } = useHealth()
   const { data: queueData } = useModerationQueue()
   const { data: identityReviews } = useIdentityReviews({ limit: 20 })
@@ -73,6 +83,10 @@ export function useAdminPanelController() {
   const [hotTopicReason, setHotTopicReason] = useState('')
   const [transferUserId, setTransferUserId] = useState('')
   const [transferNote, setTransferNote] = useState('')
+  const [communityProposalReason, setCommunityProposalReason] = useState('')
+  const [communityProposalTargetId, setCommunityProposalTargetId] = useState('')
+  const [communityProposalVisibilityMode, setCommunityProposalVisibilityMode] =
+    useState<CommunityIncubationVisibilityMode>('GRAY')
   const [evidenceExportRedaction, setEvidenceExportRedaction] =
     useState<EvidenceExportRedaction>('operator')
   const [history, setHistory] = useState<GovernanceResult[]>([])
@@ -181,6 +195,24 @@ export function useAdminPanelController() {
     setHotTopicReason('')
   }
 
+  const handleCommunityProposalAction = async (
+    proposalId: string,
+    action: CommunityProposalAction,
+  ) => {
+    await applyCommunityProposalAction.mutateAsync({
+      proposalId,
+      action,
+      target_community_id: communityProposalTargetId.trim() || null,
+      visibility_mode: action === 'incubate' ? communityProposalVisibilityMode : null,
+      reason: communityProposalReason.trim() || null,
+    })
+    setCommunityProposalReason('')
+  }
+
+  const handleRefreshCommunityProposalRecommendation = async (proposalId: string) => {
+    await refreshCommunityProposalRecommendation.mutateAsync(proposalId)
+  }
+
   return {
     auth: {
       currentIdentity,
@@ -267,6 +299,20 @@ export function useAdminPanelController() {
       handleApplyCommunityPolicy,
       handleSetPostDistribution,
       handleSetRoomControl,
+    },
+    communityGovernance: {
+      proposals: communityProposals?.data ?? [],
+      communities: communitiesData?.data ?? [],
+      actionMutation: applyCommunityProposalAction,
+      refreshMutation: refreshCommunityProposalRecommendation,
+      reason: communityProposalReason,
+      setReason: setCommunityProposalReason,
+      targetCommunityId: communityProposalTargetId,
+      setTargetCommunityId: setCommunityProposalTargetId,
+      visibilityMode: communityProposalVisibilityMode,
+      setVisibilityMode: setCommunityProposalVisibilityMode,
+      handleAction: handleCommunityProposalAction,
+      handleRefreshRecommendation: handleRefreshCommunityProposalRecommendation,
     },
   }
 }

@@ -10,6 +10,10 @@ import type {
   AdminInviteCodeSummary,
   AgentRiskProfile,
   ClaimedReviewTask,
+  CommunityIncubationVisibilityMode,
+  CommunityProposalAction,
+  CommunityProposalActionResult,
+  CommunityProposalListItem,
   CommunityConfigApplyResult,
   CommunityConfigPatch,
   CommunityConfigValidationResult,
@@ -246,6 +250,53 @@ export function useAdminHotTopicAlerts() {
     queryKey: queryKeys.adminHotTopicAlerts,
     queryFn: () => api.get('admin/hot-topic/alerts').json<ApiResponse<HotTopicAlert[]>>(),
     refetchInterval: 15_000,
+  })
+}
+
+export function useAdminCommunityProposals() {
+  return useQuery({
+    queryKey: queryKeys.adminCommunityProposals,
+    queryFn: () =>
+      api.get('community-proposals').json<ApiResponse<CommunityProposalListItem[]>>(),
+    refetchInterval: 15_000,
+  })
+}
+
+export function useRefreshCommunityProposalRecommendation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (proposalId: string) =>
+      api.post(`community-proposals/${proposalId}/recommendation/refresh`, {
+        json: {},
+      }).json<ApiResponse<CommunityProposalListItem['recommendation']>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminCommunityProposals })
+    },
+  })
+}
+
+export function useApplyCommunityProposalAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      proposalId: string
+      action: CommunityProposalAction
+      target_community_id?: string | null
+      visibility_mode?: CommunityIncubationVisibilityMode | null
+      reason?: string | null
+    }) =>
+      api.post(`community-proposals/${input.proposalId}/actions`, {
+        json: {
+          action: input.action,
+          target_community_id: input.target_community_id ?? null,
+          visibility_mode: input.visibility_mode ?? null,
+          reason: input.reason ?? null,
+        },
+      }).json<ApiResponse<CommunityProposalActionResult>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminCommunityProposals })
+      qc.invalidateQueries({ queryKey: ['communities'] })
+    },
   })
 }
 

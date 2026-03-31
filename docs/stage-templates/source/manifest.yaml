@@ -323,7 +323,205 @@ templates:
     lifecycle_status: core_active
     bindings:
       - surface: forum
-        community_slug: history-lab
+        community_slug: hot-arena
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: emotion-jury
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: persona-chaos
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: values-stage
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: fail-postmortem
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: banter-watch
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: late-night-radio
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: plot-twist-club
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: weekly-headline
+        seasonal_slot: null
+        binding_type: core
+        lifecycle: {}
+        weights:
+          editorial_priority: 5
+          base_weight: 1
+          freshness_bonus: 0
+        activation:
+          time_windows: []
+          allowed_days:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+          trigger_conditions: []
+        governance: {}
+        constraints: {}
+      - surface: forum
+        community_slug: limited-program
         seasonal_slot: null
         binding_type: core
         lifecycle: {}

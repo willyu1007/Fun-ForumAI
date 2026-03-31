@@ -43,6 +43,7 @@ import { InMemoryAudienceRepository } from '../repos/audience-repository.js'
 import { InMemoryAftershowRunRepository } from '../repos/aftershow-run-repository.js'
 import { InMemoryAftershowArtifactRepository } from '../repos/aftershow-artifact-repository.js'
 import { InMemoryCommunityConfigRepository } from '../repos/community-config-repository.js'
+import { InMemoryCommunityProposalRepository } from '../repos/community-proposal-repository.js'
 import { InMemoryRoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import { InMemoryNotificationRepository } from '../repos/notification-repository.js'
 import { InMemoryFeedbackRepository } from '../repos/feedback-repository.js'
@@ -99,6 +100,7 @@ import type { AudienceRepository } from '../repos/audience-repository.js'
 import type { AftershowRunRepository } from '../repos/aftershow-run-repository.js'
 import type { AftershowArtifactRepository } from '../repos/aftershow-artifact-repository.js'
 import type { CommunityConfigRepository } from '../repos/community-config-repository.js'
+import type { CommunityProposalRepository } from '../repos/community-proposal-repository.js'
 import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { NotificationRepository } from '../repos/notification-repository.js'
 import type { FeedbackRepository } from '../repos/feedback-repository.js'
@@ -160,6 +162,7 @@ export interface Repositories {
   aftershowRunRepo: AftershowRunRepository
   aftershowArtifactRepo: AftershowArtifactRepository
   communityConfigRepo: CommunityConfigRepository
+  communityProposalRepo: CommunityProposalRepository
   roleAssignmentRepo: RoleAssignmentRepository
   notificationRepo: NotificationRepository | null
   feedbackRepo: FeedbackRepository
@@ -227,6 +230,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgAftershowRunRepository } = await import('../repos/pg/pg-aftershow-run-repository.js')
     const { PgAftershowArtifactRepository } = await import('../repos/pg/pg-aftershow-artifact-repository.js')
     const { PgCommunityConfigRepository } = await import('../repos/pg/pg-community-config-repository.js')
+    const { PgCommunityProposalRepository } = await import('../repos/pg/pg-community-proposal-repository.js')
     const { PgRoleAssignmentRepository } = await import('../repos/pg/pg-role-assignment-repository.js')
     const { PgNotificationRepository } = await import('../repos/pg/pg-notification-repository.js')
     const { PgFeedbackRepository } = await import('../repos/pg/pg-feedback-repository.js')
@@ -284,6 +288,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const aftershowRepo = new PgAftershowRunRepository(prisma)
     const aftershowArtifactRepo = new PgAftershowArtifactRepository(prisma)
     const communityConfigRepo = new PgCommunityConfigRepository(prisma)
+    const communityProposalRepo = new PgCommunityProposalRepository(prisma)
     const roleAssignmentRepo = new PgRoleAssignmentRepository(prisma)
     const notificationRepo = new PgNotificationRepository(prisma)
     const feedbackRepo = new PgFeedbackRepository(prisma)
@@ -321,7 +326,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         statsRepo: sr, personaStateRepo: psr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
         incubationRepo: incRepo, audienceRepo: audRepo, aftershowRunRepo: aftershowRepo,
-        aftershowArtifactRepo, communityConfigRepo, roleAssignmentRepo,
+        aftershowArtifactRepo, communityConfigRepo, communityProposalRepo, roleAssignmentRepo,
         notificationRepo,
         feedbackRepo,
         guidanceActorStateRepo,
@@ -401,6 +406,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       aftershowRunRepo: new InMemoryAftershowRunRepository(),
       aftershowArtifactRepo: new InMemoryAftershowArtifactRepository(),
       communityConfigRepo: new InMemoryCommunityConfigRepository(),
+      communityProposalRepo: new InMemoryCommunityProposalRepository(),
       roleAssignmentRepo: new InMemoryRoleAssignmentRepository(),
       notificationRepo: new InMemoryNotificationRepository(),
       feedbackRepo: new InMemoryFeedbackRepository(),

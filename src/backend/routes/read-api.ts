@@ -660,10 +660,12 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
 })
 
 readApiRouter.get('/communities', async (req, res) => {
+  const user = tryAuthenticateHuman(req)
   const { cursor, limit } = req.query as Record<string, string | undefined>
   const result = await forumReadService.getCommunities({
     cursor,
     limit: limit ? parseInt(limit, 10) : undefined,
+    viewer_role: user?.role ?? null,
   })
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })

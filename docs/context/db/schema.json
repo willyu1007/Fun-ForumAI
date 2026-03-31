@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-31T02:52:49.480Z",
+  "updatedAt": "2026-03-31T06:27:19.724Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -134,6 +134,32 @@
         "ACTIVE",
         "EXPIRED",
         "DISABLED"
+      ]
+    },
+    {
+      "name": "CommunityIncubationVisibilityMode",
+      "values": [
+        "GRAY",
+        "WHITELIST_ONLY"
+      ]
+    },
+    {
+      "name": "CommunityProposalActorType",
+      "values": [
+        "human",
+        "system"
+      ]
+    },
+    {
+      "name": "CommunityProposalStatus",
+      "values": [
+        "SUBMITTED",
+        "REJECTED",
+        "INCUBATING",
+        "SEASONAL",
+        "ACTIVATED",
+        "MERGED",
+        "ARCHIVED"
       ]
     },
     {
@@ -8051,6 +8077,33 @@
           "references": []
         },
         {
+          "field": "mergedProposals",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityProposalMergedIntoCommunity",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "mergeDuplicateRecommendations",
+          "to": "CommunityMergeRecommendation",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityMergeDuplicateOf",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "mergeLaneRecommendations",
+          "to": "CommunityMergeRecommendation",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityMergeLaneCommunity",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "posts",
           "to": "Post",
           "optional": false,
@@ -8069,11 +8122,29 @@
           "references": []
         },
         {
+          "field": "resultingProposals",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityProposalResultingCommunity",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "roleAssignments",
           "to": "RoleAssignment",
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "sourceProposals",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityProposalSourceCommunity",
           "fields": [],
           "references": []
         }
@@ -8926,6 +8997,656 @@
           "fields": [
             "communityId",
             "version"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "CommunityMergeRecommendation",
+      "dbName": "community_merge_recommendations",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "duplicateOfCommunityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "duplicate_of_community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "overlapScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "overlap_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "proposalId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "proposal_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "rationale",
+          "type": "String",
+          "nullable": false,
+          "list": true,
+          "dbName": null,
+          "dbType": null,
+          "default": "[]",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "recommendedAsLaneCommunityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "recommended_as_lane_community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "recommendedAsSeasonal",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "recommended_as_seasonal",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "recommendedVisibility",
+          "type": "CommunityIncubationVisibilityMode",
+          "nullable": false,
+          "list": false,
+          "dbName": "recommended_visibility",
+          "dbType": null,
+          "default": "GRAY",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "duplicateOfCommunity",
+          "to": "Community",
+          "optional": true,
+          "list": false,
+          "relationName": "CommunityMergeDuplicateOf",
+          "fields": [
+            "duplicateOfCommunityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "proposal",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "proposalId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "recommendedAsLaneCommunity",
+          "to": "Community",
+          "optional": true,
+          "list": false,
+          "relationName": "CommunityMergeLaneCommunity",
+          "fields": [
+            "recommendedAsLaneCommunityId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "duplicateOfCommunityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "recommendedAsLaneCommunityId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "CommunityProposal",
+      "dbName": "community_proposals",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "incubationVisibilityMode",
+          "type": "CommunityIncubationVisibilityMode",
+          "nullable": true,
+          "list": false,
+          "dbName": "incubation_visibility_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mergedIntoCommunityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "merged_into_community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "metaJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "premiseText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "premise_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resultingCommunityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "resulting_community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewed_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneTypes",
+          "type": "String",
+          "nullable": false,
+          "list": true,
+          "dbName": "scene_types",
+          "dbType": null,
+          "default": "[]",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "slugCandidate",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "slug_candidate",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceCommunityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "CommunityProposalStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "SUBMITTED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "submittedByUserId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "submitted_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "t4Candidate",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "t4_candidate",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetAudience",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_audience",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "events",
+          "to": "CommunityProposalEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "mergedIntoCommunity",
+          "to": "Community",
+          "optional": true,
+          "list": false,
+          "relationName": "CommunityProposalMergedIntoCommunity",
+          "fields": [
+            "mergedIntoCommunityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "recommendation",
+          "to": "CommunityMergeRecommendation",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "resultingCommunity",
+          "to": "Community",
+          "optional": true,
+          "list": false,
+          "relationName": "CommunityProposalResultingCommunity",
+          "fields": [
+            "resultingCommunityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "reviewedByUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "CommunityProposalReviewedBy",
+          "fields": [
+            "reviewedByUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "sourceCommunity",
+          "to": "Community",
+          "optional": true,
+          "list": false,
+          "relationName": "CommunityProposalSourceCommunity",
+          "fields": [
+            "sourceCommunityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "submittedByUser",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": "CommunityProposalSubmittedBy",
+          "fields": [
+            "submittedByUserId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "mergedIntoCommunityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "resultingCommunityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "slugCandidate"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sourceCommunityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "submittedByUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "CommunityProposalEvent",
+      "dbName": "community_proposal_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorType",
+          "type": "CommunityProposalActorType",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "proposalId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "proposal_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "proposal",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "proposalId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "proposalId",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -12944,6 +13665,24 @@
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "reviewedCommunityProposals",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityProposalReviewedBy",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "submittedCommunityProposals",
+          "to": "CommunityProposal",
+          "optional": false,
+          "list": true,
+          "relationName": "CommunityProposalSubmittedBy",
           "fields": [],
           "references": []
         },

@@ -58,6 +58,13 @@ export type {
   CommunityConfigVersion,
   CommunityConfigPatch,
   CommunityConfigApproval,
+  CommunityLifecycleState,
+  CommunityIncubationVisibilityMode,
+  CommunityProposalStatus,
+  CommunityProposalAction,
+  CommunityProposal,
+  CommunityMergeRecommendation,
+  CommunityProposalEvent,
   ConfigVersionStatus,
   ConfigRiskLevel,
   ConfigPatchStatus,
@@ -129,6 +136,10 @@ export type {
   CreateCommunityConfigPatchInput,
   UpdateCommunityConfigPatchInput,
   CreateCommunityConfigApprovalInput,
+  CreateCommunityProposalInput,
+  UpdateCommunityProposalInput,
+  UpsertCommunityMergeRecommendationInput,
+  CreateCommunityProposalEventInput,
   CreateRoleAssignmentInput,
   UpdateRoleAssignmentInput,
   CreateAgentSignalLogInput,
@@ -402,6 +413,10 @@ export {
   InMemoryCommunityConfigRepository,
 } from './community-config-repository.js'
 export {
+  type CommunityProposalRepository,
+  InMemoryCommunityProposalRepository,
+} from './community-proposal-repository.js'
+export {
   type RoleAssignmentRepository,
   InMemoryRoleAssignmentRepository,
 } from './role-assignment-repository.js'
@@ -476,6 +491,7 @@ export { PgAudienceRepository } from './pg/pg-audience-repository.js'
 export { PgAftershowRunRepository } from './pg/pg-aftershow-run-repository.js'
 export { PgAftershowArtifactRepository } from './pg/pg-aftershow-artifact-repository.js'
 export { PgCommunityConfigRepository } from './pg/pg-community-config-repository.js'
+export { PgCommunityProposalRepository } from './pg/pg-community-proposal-repository.js'
 export { PgRoleAssignmentRepository } from './pg/pg-role-assignment-repository.js'
 export { PgPprSnapshotRepository } from './pg/pg-ppr-snapshot-repository.js'
 export { PgCommunityCultureDigestRepository } from './pg/pg-community-culture-digest-repository.js'

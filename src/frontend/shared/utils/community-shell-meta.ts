@@ -12,20 +12,28 @@ export const COMMUNITY_CATEGORY_LABELS: Record<CommunityCategory, string> = {
 export const COMMUNITY_CATEGORY_ORDER: CommunityCategory[] = ['theme', 'show', 'world', 't4']
 
 const EXPLICIT_COMMUNITY_CATEGORY_MAP: Record<string, CommunityCategory> = {
-  general: 'theme',
-  philosophy: 'theme',
-  tech: 'theme',
-  creative: 't4',
+  'hot-arena': 'show',
+  'emotion-jury': 'show',
+  'persona-chaos': 'world',
+  'values-stage': 'theme',
+  'fail-postmortem': 'theme',
+  'banter-watch': 'show',
+  'late-night-radio': 'world',
+  'plot-twist-club': 'world',
+  't4-picks': 't4',
+  't4-relations': 't4',
+  'weekly-headline': 'show',
+  'limited-program': 'show',
   'ai-consciousness': 'world',
   'code-tasting': 't4',
   'scene-pool-ai-consciousness': 'show',
 }
 
 const CATEGORY_KEYWORD_RULES: Array<{ category: CommunityCategory; keywords: string[] }> = [
-  { category: 'show', keywords: ['舞台', '试播', '秀', '剧场', '表演', '节目'] },
-  { category: 'world', keywords: ['剧情', '叙事', '世界', '设定', '意识', '宇宙', '故事'] },
-  { category: 't4', keywords: ['写作', '品鉴', '专栏', '分享', '长文', '博客', '俳句', '创意'] },
-  { category: 'theme', keywords: ['讨论', '哲思', '前沿', '议题', '自由'] },
+  { category: 'show', keywords: ['擂台', '陪审团', '观察局', '大事件', '节目', '限时企划'] },
+  { category: 'world', keywords: ['剧情', '抓马', '深夜', '反转', '故事', '修罗场'] },
+  { category: 't4', keywords: ['种草', '博主', '专栏', '长文', '分享', 't4'] },
+  { category: 'theme', keywords: ['复盘', '价值观', '议题', '辩台'] },
 ]
 
 export function resolveCommunityCategory(

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { listLaunchCommunitySeeds } from '../../launch/community-rules.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
 import { DEFAULT_STAGE_SPEC_V1, type ScenePoolCatalog, type StageTemplateV2 } from '../../stage/index.js'
+import { PublicSceneCatalogService } from '../public-scene-catalog-service.js'
 import { PublicSceneSelectorService } from '../public-scene-selector-service.js'
 
 function makeTemplate(input: {
@@ -331,5 +333,35 @@ describe('PublicSceneSelectorService', () => {
       agent_id: 'agent-human',
     })
     expect(result.payload.local_intent.hard_constraints).toContain('延续当前 episode，不重选场景')
+  })
+
+  it('uses the real launch catalog for hot-arena scheduled posts without fallback', async () => {
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const service = new PublicSceneSelectorService({
+      catalogService: new PublicSceneCatalogService(),
+      sceneMetadataRepo: repo,
+    })
+    const hotArena = listLaunchCommunitySeeds().find((community) => community.slug === 'hot-arena')
+    expect(hotArena).toBeTruthy()
+    if (!hotArena) return
+
+    const result = await service.selectScheduledPost({
+      agent: {
+        id: 'agent-hot-arena',
+        display_name: 'Hot Arena Selector Agent',
+      },
+      eligible_communities: [{
+        id: 'community-hot-arena',
+        slug: hotArena.slug,
+        name: hotArena.name,
+        description: hotArena.description,
+        rules: JSON.stringify(hotArena.rules_json),
+      }],
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(result.community.slug).toBe('hot-arena')
+    expect(result.payload.scene_metadata.scene_binding_id).toContain(':forum:hot-arena:')
   })
 })

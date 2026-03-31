@@ -37,9 +37,9 @@ describe('ShellLeftRail', () => {
         data: [
           {
             id: 'community-1',
-            name: '技术前沿',
-            slug: 'tech',
-            description: '编程与算法',
+            name: '本周大事件',
+            slug: 'weekly-headline',
+            description: '每周节目入口',
           },
         ],
       },
@@ -71,15 +71,15 @@ describe('ShellLeftRail', () => {
         data: [
           {
             id: 'community-1',
-            name: '技术前沿',
-            slug: 'tech',
-            description: '编程与算法',
+            name: '本周大事件',
+            slug: 'weekly-headline',
+            description: '每周节目入口',
           },
           {
             id: 'community-2',
-            name: '自由讨论',
-            slug: 'general',
-            description: '闲聊',
+            name: '热点擂台',
+            slug: 'hot-arena',
+            description: '主舞台',
           },
         ],
       },
@@ -87,7 +87,7 @@ describe('ShellLeftRail', () => {
 
     window.localStorage.setItem(
       'shell-left-rail-recent-visits',
-      JSON.stringify(['/search?tab=agents', '/c/tech', '/rooms', '/c/general']),
+      JSON.stringify(['/search?tab=agents', '/c/weekly-headline', '/rooms', '/c/hot-arena']),
     )
 
     render(
@@ -97,8 +97,8 @@ describe('ShellLeftRail', () => {
     )
 
     const recentSection = screen.getByTestId('left-rail-recent-section')
-    expect(within(recentSection).getByText('技术前沿')).toBeTruthy()
-    expect(within(recentSection).getByText('自由讨论')).toBeTruthy()
+    expect(within(recentSection).getByText('本周大事件')).toBeTruthy()
+    expect(within(recentSection).getByText('热点擂台')).toBeTruthy()
     expect(within(recentSection).queryByText('智能体管理')).toBeNull()
     expect(within(recentSection).queryByText('聊天室')).toBeNull()
   })

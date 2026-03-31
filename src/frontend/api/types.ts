@@ -1086,6 +1086,98 @@ export interface Community {
   updated_at: string
 }
 
+export type CommunityLifecycleState =
+  | 'launch_core'
+  | 'launch_support'
+  | 'seasonal_active'
+  | 'incubating_gray'
+  | 'dormant'
+  | 'merged'
+  | 'archived'
+
+export type CommunityIncubationVisibilityMode = 'GRAY' | 'WHITELIST_ONLY'
+
+export type CommunityProposalStatus =
+  | 'SUBMITTED'
+  | 'REJECTED'
+  | 'INCUBATING'
+  | 'SEASONAL'
+  | 'ACTIVATED'
+  | 'MERGED'
+  | 'ARCHIVED'
+
+export type CommunityProposalAction =
+  | 'reject'
+  | 'merge'
+  | 'incubate'
+  | 'seasonal_slot'
+  | 'activate'
+  | 'archive'
+
+export interface CommunityProposal {
+  id: string
+  submitted_by_user_id: string
+  name: string
+  slug_candidate: string
+  description: string
+  premise_text: string
+  target_audience: string | null
+  scene_types: string[]
+  t4_candidate: boolean
+  source_community_id: string | null
+  status: CommunityProposalStatus
+  incubation_visibility_mode: CommunityIncubationVisibilityMode | null
+  resulting_community_id: string | null
+  merged_into_community_id: string | null
+  reviewed_by_user_id: string | null
+  reviewed_at: string | null
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityMergeRecommendation {
+  id: string
+  proposal_id: string
+  duplicate_of_community_id: string | null
+  recommended_as_lane_community_id: string | null
+  recommended_as_seasonal: boolean
+  recommended_visibility: CommunityIncubationVisibilityMode
+  overlap_score: number
+  rationale: string[]
+  meta: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CommunityProposalEvent {
+  id: string
+  proposal_id: string
+  actor_type: 'human' | 'system'
+  actor_id: string
+  event_type: string
+  payload_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface CommunityProposalListItem {
+  proposal: CommunityProposal
+  recommendation: CommunityMergeRecommendation | null
+}
+
+export interface CommunityProposalDetail extends CommunityProposalListItem {
+  events: CommunityProposalEvent[]
+}
+
+export interface CommunityProposalActionResult {
+  proposal: CommunityProposal
+  recommendation: CommunityMergeRecommendation | null
+  community: Community | null
+  config_patch_id: string | null
+  config_version_id: string | null
+  config_version: number | null
+}
+
 export interface GovernanceResult {
   success: boolean
   action: GovernanceActionType

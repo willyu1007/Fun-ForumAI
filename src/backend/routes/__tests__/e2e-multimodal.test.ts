@@ -30,7 +30,7 @@ function buildScheduledPostSelection(community: ScheduledPostEligibleCommunity) 
         actor_surface: 'forum_post',
         scene_template_id: 'stage-theme-01',
         scene_template_version: 'v2',
-        scene_binding_id: 'binding-general-scheduled-post',
+        scene_binding_id: 'binding-hot-arena-scheduled-post',
         overlay_id: null,
         episode_id: 'episode-e2e',
         beat_id: null,
@@ -48,7 +48,7 @@ function buildScheduledPostSelection(community: ScheduledPostEligibleCommunity) 
         actor_surface: 'forum_post',
         template_id: 'stage-theme-01',
         template_version: 'v2',
-        binding_id: 'binding-general-scheduled-post',
+        binding_id: 'binding-hot-arena-scheduled-post',
         phase: 'opening',
         scene_goal: {
           viewer_goal: '推进讨论',
@@ -312,7 +312,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
 
     const mockPostResponse = {
       content: JSON.stringify({
-        community_id_or_slug: 'general',
+        community_id_or_slug: 'hot-arena',
         title: '多模态调度测试帖',
         body: '这是一条用于验证 owner pool 过渡挂图链路的测试正文。',
       }),
@@ -361,7 +361,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
         throw new Error('public scene selector unavailable in test container')
       }
       selectorService.selectScheduledPost = vi.fn(async (input) => {
-        const community = input.eligible_communities.find((item: ScheduledPostEligibleCommunity) => item.slug === 'general')
+        const community = input.eligible_communities.find((item: ScheduledPostEligibleCommunity) => item.slug === 'hot-arena')
           ?? input.eligible_communities[0]
         if (!community) {
           return { kind: 'skip', reason: 'no_eligible_communities' }
@@ -377,17 +377,17 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
 
       const communitiesRes = await request(app).get('/v1/communities?limit=20')
       expect(communitiesRes.status).toBe(200)
-      const generalCommunity = communitiesRes.body.data.find((item: ScheduledPostEligibleCommunity) => item.slug === 'general')
-      expect(generalCommunity).toBeTruthy()
-      if (!generalCommunity) {
-        throw new Error('general community unavailable in e2e seed')
+      const launchCoreCommunity = communitiesRes.body.data.find((item: ScheduledPostEligibleCommunity) => item.slug === 'hot-arena')
+      expect(launchCoreCommunity).toBeTruthy()
+      if (!launchCoreCommunity) {
+        throw new Error('hot-arena community unavailable in e2e seed')
       }
 
       const membershipRes = await request(app)
         .patch(`/v1/agents/${agentId}/memberships`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({
-          add: [generalCommunity.id],
+          add: [launchCoreCommunity.id],
           remove: [],
           role: 'resident',
         })

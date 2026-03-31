@@ -8,10 +8,12 @@ import type {
 } from '@/api/types'
 import {
   useAdminAgentRiskProfile,
+  useAdminCommunityProposals,
   useAdminHotTopicAlerts,
   useAdminHotTopicDashboard,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
+  useApplyCommunityProposalAction,
   useApplyCommunityHotTopicPolicy,
   useAssignModerationCase,
   useClaimModerationTask,
@@ -28,7 +30,9 @@ import {
   useReopenModerationCase,
   useResolveIdentityReview,
   useResolveModerationCase,
+  useRefreshCommunityProposalRecommendation,
   useTransferModerationCase,
+  useCommunities,
 } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 
@@ -42,10 +46,12 @@ vi.mock('../admin-panel/InviteCodesTab', () => ({
 
 vi.mock('@/api/hooks', () => ({
   useAdminAgentRiskProfile: vi.fn(),
+  useAdminCommunityProposals: vi.fn(),
   useAdminHotTopicAlerts: vi.fn(),
   useAdminHotTopicDashboard: vi.fn(),
   useAdminHotTopicPostDistribution: vi.fn(),
   useAdminHotTopicRoomControl: vi.fn(),
+  useApplyCommunityProposalAction: vi.fn(),
   useApplyCommunityHotTopicPolicy: vi.fn(),
   useAssignModerationCase: vi.fn(),
   useClaimModerationTask: vi.fn(),
@@ -62,7 +68,9 @@ vi.mock('@/api/hooks', () => ({
   useReopenModerationCase: vi.fn(),
   useResolveIdentityReview: vi.fn(),
   useResolveModerationCase: vi.fn(),
+  useRefreshCommunityProposalRecommendation: vi.fn(),
   useTransferModerationCase: vi.fn(),
+  useCommunities: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -72,10 +80,12 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 const useAssignModerationCaseMock = vi.mocked(useAssignModerationCase)
 const useClaimModerationTaskMock = vi.mocked(useClaimModerationTask)
 const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
+const useAdminCommunityProposalsMock = vi.mocked(useAdminCommunityProposals)
 const useAdminHotTopicAlertsMock = vi.mocked(useAdminHotTopicAlerts)
 const useAdminHotTopicDashboardMock = vi.mocked(useAdminHotTopicDashboard)
 const useAdminHotTopicPostDistributionMock = vi.mocked(useAdminHotTopicPostDistribution)
 const useAdminHotTopicRoomControlMock = vi.mocked(useAdminHotTopicRoomControl)
+const useApplyCommunityProposalActionMock = vi.mocked(useApplyCommunityProposalAction)
 const useApplyCommunityHotTopicPolicyMock = vi.mocked(useApplyCommunityHotTopicPolicy)
 const useCreateDisclosureCapOverrideMock = vi.mocked(useCreateDisclosureCapOverride)
 const useDisclosureCapsMock = vi.mocked(useDisclosureCaps)
@@ -90,7 +100,9 @@ const useReleaseModerationCaseMock = vi.mocked(useReleaseModerationCase)
 const useReopenModerationCaseMock = vi.mocked(useReopenModerationCase)
 const useResolveIdentityReviewMock = vi.mocked(useResolveIdentityReview)
 const useResolveModerationCaseMock = vi.mocked(useResolveModerationCase)
+const useRefreshCommunityProposalRecommendationMock = vi.mocked(useRefreshCommunityProposalRecommendation)
 const useTransferModerationCaseMock = vi.mocked(useTransferModerationCase)
+const useCommunitiesMock = vi.mocked(useCommunities)
 const useAuthMock = vi.mocked(useAuth)
 
 const linkedComplaint: ComplaintTicket = {
@@ -310,6 +322,9 @@ describe('AdminPanel', () => {
     useAdminAgentRiskProfileMock.mockReturnValue({
       data: undefined,
     } as never)
+    useAdminCommunityProposalsMock.mockReturnValue({
+      data: { data: [] },
+    } as never)
     useAdminHotTopicDashboardMock.mockReturnValue({
       data: { data: [] },
     } as never)
@@ -323,6 +338,12 @@ describe('AdminPanel', () => {
       error: null,
     } as never)
     useAdminHotTopicRoomControlMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+    useApplyCommunityProposalActionMock.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
       isError: false,
@@ -382,6 +403,26 @@ describe('AdminPanel', () => {
     useResolveIdentityReviewMock.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
+    } as never)
+    useRefreshCommunityProposalRecommendationMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+    useCommunitiesMock.mockReturnValue({
+      data: {
+        data: [{
+          id: 'community-1',
+          name: '热点擂台',
+          slug: 'hot-arena',
+          description: '主舞台',
+          rules_json: { community_lifecycle_state: 'launch_core' },
+          visibility_default: 'PUBLIC',
+          created_at: '2026-03-12T10:00:00.000Z',
+          updated_at: '2026-03-12T10:00:00.000Z',
+        }],
+      },
     } as never)
     useModerationCaseMock.mockImplementation((caseId) => (
       caseId

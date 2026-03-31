@@ -76,6 +76,7 @@ export function AdminPanel() {
             riskProfile={controller.riskProfile}
             disclosureCaps={controller.disclosureCaps}
             review={controller.review}
+            communityGovernance={controller.communityGovernance}
           />
         </TabsContent>
       </Tabs>

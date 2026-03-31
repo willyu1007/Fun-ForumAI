@@ -12,7 +12,7 @@ function makeScored(agentId: string, score: number, reasons: string[] = []): Sco
 describe('resolveDirectorCommunityConfig', () => {
   it('uses pilot defaults when rules are missing', () => {
     const config = resolveDirectorCommunityConfig({
-      communitySlug: 'creative',
+      communitySlug: 'plot-twist-club',
       rulesJson: null,
     })
 
@@ -21,7 +21,7 @@ describe('resolveDirectorCommunityConfig', () => {
 
   it('allows rules_json override', () => {
     const config = resolveDirectorCommunityConfig({
-      communitySlug: 'tech',
+      communitySlug: 'hot-arena',
       rulesJson: {
         personality: {
           director_v1: {

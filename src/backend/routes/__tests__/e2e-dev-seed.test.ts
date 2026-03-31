@@ -34,8 +34,8 @@ describe('E2E: Dev seed route', () => {
     featureFlags.humanParticipationV1 = true
     try {
       await createTestCommunity({
-        name: '旧版自由讨论',
-        slug: 'general',
+        name: '旧版热点擂台',
+        slug: 'hot-arena',
         description: '缺少 stage spec 的历史社区',
         rules_json: {},
       })
@@ -60,9 +60,9 @@ describe('E2E: Dev seed route', () => {
       expect(firstRes.body.data.counts.guidance_inbox_items).toBe(4)
       expect(firstRes.body.data.counts.guidance_bell_items).toBe(4)
 
-      const seededGeneral = communityRepo.findBySlug('general')
-      expect(seededGeneral?.name).toBe('自由讨论')
-      expect(seededGeneral?.rules_json).toMatchObject({
+      const seededLaunchCore = communityRepo.findBySlug('hot-arena')
+      expect(seededLaunchCore?.name).toBe('热点擂台')
+      expect(seededLaunchCore?.rules_json).toMatchObject({
         stage_spec_v1: expect.objectContaining({ version: 'v1' }),
       })
       expect(humanFollowRepo.isFollowing('dev-user-001', firstAgentIds[4]!)).toBe(true)
@@ -72,7 +72,7 @@ describe('E2E: Dev seed route', () => {
       expect(firstBindings).toHaveLength(3)
       const firstProjections = await mediaContextProjectionRepo.findByBindingIds(firstBindings.map((item) => item.id))
       expect(firstProjections).toHaveLength(3)
-      expect(voteRepo.findByTarget('POST', 'seed-post-welcome-general')).toHaveLength(canonicalCounts.agents - 1)
+      expect(voteRepo.findByTarget('POST', 'seed-post-welcome-launch-core')).toHaveLength(canonicalCounts.agents - 1)
 
       const devUserToken = createDevToken({ userId: 'dev-user-001', email: 'dev-user-001@dev.local', role: 'user' })
       const devAdminToken = createDevToken({ userId: 'dev-admin-001', email: 'dev-admin-001@dev.local', role: 'admin' })
@@ -176,7 +176,7 @@ describe('E2E: Dev seed route', () => {
       expect(secondBindings).toHaveLength(3)
       const secondProjections = await mediaContextProjectionRepo.findByBindingIds(secondBindings.map((item) => item.id))
       expect(secondProjections).toHaveLength(3)
-      expect(voteRepo.findByTarget('POST', 'seed-post-welcome-general')).toHaveLength(canonicalCounts.agents - 1)
+      expect(voteRepo.findByTarget('POST', 'seed-post-welcome-launch-core')).toHaveLength(canonicalCounts.agents - 1)
 
       const afterSecondSeedBio = agentBioRefreshService.inspectObservability()
       expect(afterSecondSeedBio.counts.committed).toBe(afterFirstSeedBio.counts.committed)
@@ -210,7 +210,7 @@ describe('E2E: Dev seed route', () => {
     expect(firstRes.body.data.counts.guidance_inbox_items).toBe(0)
     expect(firstRes.body.data.counts.guidance_bell_items).toBe(0)
     expect(firstRes.body.data.ids.agents).toHaveLength(1)
-    expect(firstRes.body.data.ids.posts).toEqual(['seed-post-welcome-general'])
+    expect(firstRes.body.data.ids.posts).toEqual(['seed-post-welcome-launch-core'])
     expect(await roomRepo.findBySlug('code-tasting')).not.toBeNull()
 
     const secondRes = await request(app)
@@ -232,7 +232,7 @@ describe('E2E: Dev seed route', () => {
       .send({ profile: 'launch' })
     expect(res.status).toBe(200)
     expect(res.body.data.profile).toBe('launch')
-    expect(res.body.data.counts.communities).toBe(0)
+    expect(res.body.data.counts.communities).toBe(launchCounts.communities)
     expect(res.body.data.counts.agents).toBe(launchCounts.agents)
     expect(res.body.data.counts.posts).toBe(0)
     expect(res.body.data.counts.threads).toBe(0)
