@@ -15,6 +15,10 @@ function cuid(): string {
   return `human_${Date.now()}_${++counter}`
 }
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 export class InMemoryUserRepository implements UserRepository {
   private readonly store = new Map<string, HumanUser>()
   private readonly byEmail = new Map<string, string>()
@@ -25,7 +29,7 @@ export class InMemoryUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<HumanUser | null> {
-    const id = this.byEmail.get(email)
+    const id = this.byEmail.get(normalizeEmail(email))
     if (!id) return null
     return this.store.get(id) ?? null
   }
@@ -40,7 +44,7 @@ export class InMemoryUserRepository implements UserRepository {
     const now = new Date()
     const user: HumanUser = {
       id: cuid(),
-      email: input.email ?? null,
+      email: input.email ? normalizeEmail(input.email) : null,
       password_hash: input.password_hash ?? null,
       display_name: input.display_name,
       avatar_url: input.avatar_url ?? null,
@@ -58,7 +62,7 @@ export class InMemoryUserRepository implements UserRepository {
 
     this.store.set(user.id, user)
     if (user.email) {
-      this.byEmail.set(user.email, user.id)
+      this.byEmail.set(normalizeEmail(user.email), user.id)
     }
     if (user.phone) {
       this.byPhone.set(user.phone, user.id)
@@ -84,8 +88,9 @@ export class InMemoryUserRepository implements UserRepository {
       return updated
     }
 
-    const idConflict = this.byEmail.get(input.email)
-    const email = idConflict ? `dev+${input.id}@local.dev` : input.email
+    const normalizedEmail = normalizeEmail(input.email)
+    const idConflict = this.byEmail.get(normalizedEmail)
+    const email = idConflict ? `dev+${input.id}@local.dev` : normalizedEmail
     const now = new Date()
     const user: HumanUser = {
       id: input.id,
@@ -106,7 +111,7 @@ export class InMemoryUserRepository implements UserRepository {
     }
 
     this.store.set(user.id, user)
-    this.byEmail.set(email, user.id)
+    this.byEmail.set(normalizeEmail(email), user.id)
     return user
   }
 

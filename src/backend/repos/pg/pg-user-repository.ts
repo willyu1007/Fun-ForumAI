@@ -3,6 +3,10 @@ import type { PrismaClient, HumanUser as PrismaHumanUser } from '@prisma/client'
 import type { HumanUser, CreateHumanUserInput, UpsertDevHumanIdentityInput } from '../types.js'
 import type { UserRepository } from '../user-repository.js'
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 function toDomain(row: PrismaHumanUser): HumanUser {
   return {
     id: row.id,
@@ -32,7 +36,7 @@ export class PgUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<HumanUser | null> {
-    const row = await this.prisma.humanUser.findUnique({ where: { email } })
+    const row = await this.prisma.humanUser.findUnique({ where: { email: normalizeEmail(email) } })
     return row ? toDomain(row) : null
   }
 
@@ -44,7 +48,7 @@ export class PgUserRepository implements UserRepository {
   async create(input: CreateHumanUserInput): Promise<HumanUser> {
     const row = await this.prisma.humanUser.create({
       data: {
-        email: input.email ?? null,
+        email: input.email ? normalizeEmail(input.email) : null,
         passwordHash: input.password_hash ?? null,
         displayName: input.display_name,
         avatarUrl: input.avatar_url ?? null,
@@ -58,6 +62,7 @@ export class PgUserRepository implements UserRepository {
   }
 
   async upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser> {
+    const normalizedEmail = normalizeEmail(input.email)
     const existingById = await this.prisma.humanUser.findUnique({ where: { id: input.id } })
     if (existingById) {
       const row = await this.prisma.humanUser.update({
@@ -74,7 +79,7 @@ export class PgUserRepository implements UserRepository {
 
     const baseCreateData = {
       id: input.id,
-      email: input.email,
+      email: normalizedEmail,
       passwordHash: '__dev_token__',
       displayName: input.role === 'admin' ? '开发管理员' : '开发用户',
       avatarUrl: null,
@@ -107,7 +112,7 @@ export class PgUserRepository implements UserRepository {
       return toDomain(row)
     }
 
-    const existingByEmail = await this.prisma.humanUser.findUnique({ where: { email: input.email } })
+    const existingByEmail = await this.prisma.humanUser.findUnique({ where: { email: normalizedEmail } })
     if (existingByEmail) {
       if (existingByEmail.id === input.id) {
         return toDomain(existingByEmail)

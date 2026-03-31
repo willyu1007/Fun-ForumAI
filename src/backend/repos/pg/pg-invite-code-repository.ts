@@ -8,6 +8,10 @@ import type {
 } from '../types.js'
 import type { InviteCodeRepository } from '../invite-code-repository.js'
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 function toInviteCodeDomain(row: PrismaInviteCode): InviteCode {
   return {
     id: row.id,
@@ -98,7 +102,7 @@ export class PgInviteCodeRepository implements InviteCodeRepository {
 
         return tx.humanUser.create({
           data: {
-            email: input.user.email ?? null,
+            email: input.user.email ? normalizeEmail(input.user.email) : null,
             passwordHash: input.user.password_hash ?? null,
             displayName: input.user.display_name,
             avatarUrl: input.user.avatar_url ?? null,

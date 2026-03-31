@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs'
 import { describe, expect, it } from 'vitest'
 import { InMemoryInviteCodeRepository } from '../../repos/invite-code-repository.js'
 import { InMemoryAuthVerificationChallengeRepository } from '../../repos/auth-verification-challenge-repository.js'
@@ -51,6 +52,40 @@ describe('AuthService', () => {
 
     await expect(service.startSmsAuth({ phone: '13800138001' })).resolves.toMatchObject({
       challengeId: expect.any(String),
+    })
+  })
+
+  it('treats email login and registration checks case-insensitively', async () => {
+    const userRepo = new InMemoryUserRepository()
+    await userRepo.create({
+      email: 'casecheck@example.com',
+      password_hash: await bcrypt.hash('secret123', 4),
+      display_name: 'Case Check',
+      email_verified: true,
+    })
+
+    const service = new AuthService(
+      userRepo,
+      new InMemoryInviteCodeRepository(userRepo),
+      new InMemoryAuthVerificationChallengeRepository(),
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+    )
+
+    await expect(service.login('CaseCheck@Example.com', 'secret123')).resolves.toMatchObject({
+      user: { email: 'casecheck@example.com' },
+    })
+
+    await expect(
+      service.startEmailRegistration({
+        email: 'CaseCheck@Example.com',
+        password: 'secret123',
+        displayName: 'Another Case Check',
+        inviteCode: '100001',
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'EMAIL_ALREADY_REGISTERED',
     })
   })
 })
