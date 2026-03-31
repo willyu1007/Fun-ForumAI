@@ -550,10 +550,6 @@ export class ForumReadService {
 
   private async resolvePostMediaViews(postIds: string[]): Promise<Record<string, PostMediaSummary[]>> {
     if (postIds.length === 0) return {}
-    const rootPostAttachmentOnly = this.deps.mediaRolloutControllerService
-      ? (await this.deps.mediaRolloutControllerService.getEffectiveProfile())
-        .effective.root_post_attachment_only
-      : true
     const attachmentMap = await listSurfaceMediaAttachmentViews(
       {
         sceneMediaBindingRepo: this.deps.sceneMediaBindingRepo,
@@ -562,8 +558,13 @@ export class ForumReadService {
       'forum_post',
       postIds,
     )
-    const legacyMediaByPost = this.deps.postMediaRepo.findByPostIds(postIds)
-    const legacyAltTextByPost = await this.resolveLegacyPostMediaAltText(postIds)
+    const shouldCompareLegacyReadModel = Boolean(this.deps.mediaObservabilityService)
+    const legacyMediaByPost = shouldCompareLegacyReadModel
+      ? this.deps.postMediaRepo.findByPostIds(postIds)
+      : {}
+    const legacyAltTextByPost = shouldCompareLegacyReadModel
+      ? await this.resolveLegacyPostMediaAltText(postIds)
+      : {}
     const mediaByPost: Record<string, PostMediaSummary[]> = {}
 
     for (const postId of postIds) {
@@ -579,10 +580,8 @@ export class ForumReadService {
         mime_type: item.mime_type,
         alt_text: legacyAltTextByPost[postId]?.[item.asset_id] ?? null,
       }))
-      mediaByPost[postId] = attachmentMedia.length > 0 || rootPostAttachmentOnly
-        ? attachmentMedia
-        : legacyMedia
-      if (attachmentMedia.length > 0 || legacyMedia.length > 0) {
+      mediaByPost[postId] = attachmentMedia
+      if (shouldCompareLegacyReadModel && (attachmentMedia.length > 0 || legacyMedia.length > 0)) {
         this.recordRootPostReadModelParityAsync({
           post_id: postId,
           attachment_media: attachmentMedia,

@@ -16,6 +16,10 @@ interface PresetAvatarDialogProps {
   previewSrc: string | null
   presets: PresetAvatarOption[]
   uploadPlaceholderText?: string
+  footerNote?: string
+  saveLabel?: string
+  savePending?: boolean
+  onSave?: (selectedSrc: string | null) => void
 }
 
 export function PresetAvatarDialog({
@@ -28,6 +32,10 @@ export function PresetAvatarDialog({
   previewSrc,
   presets,
   uploadPlaceholderText = '上传图片接口预留中',
+  footerNote = '当前只做显示入口和上传占位，不做持久化保存。',
+  saveLabel = '保存选择',
+  savePending = false,
+  onSave,
 }: PresetAvatarDialogProps) {
   const [selectedSrc, setSelectedSrc] = useState<string | null>(previewSrc)
 
@@ -91,12 +99,22 @@ export function PresetAvatarDialog({
           </div>
 
           <div className="flex items-center justify-between border-t pt-3">
-            <p className="text-xs text-muted-foreground">
-              当前只做显示入口和上传占位，不做持久化保存。
-            </p>
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              关闭
-            </Button>
+            <p className="text-xs text-muted-foreground">{footerNote}</p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                关闭
+              </Button>
+              {onSave ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => onSave(selectedSrc)}
+                  disabled={savePending}
+                >
+                  {savePending ? '保存中…' : saveLabel}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       </DialogContent>

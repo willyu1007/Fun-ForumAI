@@ -30,6 +30,7 @@ function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): Ret
     verifySmsCode: vi.fn(),
     resendSmsCode: vi.fn(),
     logout: vi.fn(),
+    updateProfile: vi.fn(),
     switchIdentity: vi.fn(),
     isLoginPending: false,
     isRegisterPending: false,
@@ -39,9 +40,12 @@ function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): Ret
     isSmsSendPending: false,
     isSmsVerifyPending: false,
     isSmsResendPending: false,
+    isLogoutPending: false,
+    isUpdateProfilePending: false,
     loginError: null,
     registerError: null,
     smsError: null,
+    updateProfileError: null,
     ...overrides,
   }
 }

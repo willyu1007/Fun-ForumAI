@@ -63,7 +63,7 @@ import {
   revokeMediaReusePolicySchema,
 } from '../validation/schemas.js'
 import { resolveEffectiveDisclosureCap } from './admin-api-utils.js'
-import type { MediaLineageNodeType } from '../repos/types.js'
+import type { MediaLineageNodeType, MediaRolloutControllerOverride } from '../repos/types.js'
 import { resolvePostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
 import { getLightweightPersonalizationRuntime } from '../launch/lightweight-personalization.js'
 import { resolveEffectiveLaunchVisualRollout } from '../launch/visual-rollout.js'
@@ -100,6 +100,24 @@ function tryHandleAppError(res: Response, err: unknown): boolean {
     },
   })
   return true
+}
+
+function stripLegacyRootPostAttachmentField(
+  override: MediaRolloutControllerOverride | null,
+): Omit<MediaRolloutControllerOverride, 'root_post_attachment_only'> | null {
+  if (!override) return null
+  const rest = { ...override } as Partial<MediaRolloutControllerOverride>
+  delete rest.root_post_attachment_only
+  return rest as Omit<MediaRolloutControllerOverride, 'root_post_attachment_only'>
+}
+
+function serializeMediaRolloutControllerProfile(
+  profile: Awaited<ReturnType<typeof mediaRolloutControllerService.getEffectiveProfile>>,
+) {
+  return {
+    ...profile,
+    active_override: stripLegacyRootPostAttachmentField(profile.active_override),
+  }
 }
 
 adminApiRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin, async (req, res) => {
@@ -696,8 +714,8 @@ adminApiRouter.get(
     const profile = await mediaRolloutControllerService.getEffectiveProfile()
     res.json({
       data: {
-        active_override: profile.active_override,
-        effective_profile: profile,
+        active_override: stripLegacyRootPostAttachmentField(profile.active_override),
+        effective_profile: serializeMediaRolloutControllerProfile(profile),
       },
     })
   },
@@ -724,11 +742,10 @@ adminApiRouter.patch(
         semantic_v3_enforced: req.body.semantic_v3_enforced ?? null,
         strict_audit_enforced: req.body.strict_audit_enforced ?? null,
         lineage_required: req.body.lineage_required ?? null,
-        root_post_attachment_only: req.body.root_post_attachment_only ?? null,
         reason: req.body.reason ?? null,
         created_by_user_id: req.user!.userId,
       })
-      res.json({ data: override })
+      res.json({ data: stripLegacyRootPostAttachmentField(override) })
     } catch (err) {
       if (tryHandleAppError(res, err)) return
       next(err)

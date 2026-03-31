@@ -188,7 +188,6 @@ export function usePatchAdminMediaRolloutController() {
       semantic_v3_enforced?: boolean | null
       strict_audit_enforced?: boolean | null
       lineage_required?: boolean | null
-      root_post_attachment_only?: boolean | null
       reason?: string | null
     }) =>
       api.patch('admin/media/rollout-controller', {

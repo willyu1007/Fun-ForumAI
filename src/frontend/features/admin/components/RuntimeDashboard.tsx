@@ -148,7 +148,6 @@ export function RuntimeDashboard() {
   const [semanticV3Enforced, setSemanticV3Enforced] = useState(true)
   const [strictAuditEnforced, setStrictAuditEnforced] = useState(true)
   const [lineageRequired, setLineageRequired] = useState(true)
-  const [rootPostAttachmentOnly, setRootPostAttachmentOnly] = useState(true)
   const { data: adminStats } = useRuntimeStats()
   const { data: devStatus } = useDevRuntimeStatus()
   const { data: runtimeFeatures } = useRuntimeFeatures()
@@ -225,9 +224,6 @@ export function RuntimeDashboard() {
     setSemanticV3Enforced(override?.semantic_v3_enforced ?? effective.semantic_v3_enforced)
     setStrictAuditEnforced(override?.strict_audit_enforced ?? effective.strict_audit_enforced)
     setLineageRequired(override?.lineage_required ?? effective.lineage_required)
-    setRootPostAttachmentOnly(
-      override?.root_post_attachment_only ?? effective.root_post_attachment_only,
-    )
   }, [mediaRolloutData])
 
   return (
@@ -415,8 +411,6 @@ export function RuntimeDashboard() {
         onStrictAuditEnforcedChange={setStrictAuditEnforced}
         lineageRequired={lineageRequired}
         onLineageRequiredChange={setLineageRequired}
-        rootPostAttachmentOnly={rootPostAttachmentOnly}
-        onRootPostAttachmentOnlyChange={setRootPostAttachmentOnly}
         applyPending={patchMediaRolloutController.isPending}
         releasePending={releaseMediaRolloutController.isPending}
         lifecyclePending={runMediaLifecycle.isPending}
@@ -438,7 +432,6 @@ export function RuntimeDashboard() {
           semantic_v3_enforced: overrideMode === 'MANUAL' ? semanticV3Enforced : null,
           strict_audit_enforced: overrideMode === 'MANUAL' ? strictAuditEnforced : null,
           lineage_required: overrideMode === 'MANUAL' ? lineageRequired : null,
-          root_post_attachment_only: overrideMode === 'MANUAL' ? rootPostAttachmentOnly : null,
           reason: `runtime_dashboard_${overrideMode.toLowerCase()}`,
         })}
         onRelease={() => {
@@ -675,8 +668,6 @@ export function MediaOpsCard({
   onStrictAuditEnforcedChange,
   lineageRequired,
   onLineageRequiredChange,
-  rootPostAttachmentOnly,
-  onRootPostAttachmentOnlyChange,
   applyPending,
   releasePending,
   lifecyclePending,
@@ -717,8 +708,6 @@ export function MediaOpsCard({
   onStrictAuditEnforcedChange: (value: boolean) => void
   lineageRequired: boolean
   onLineageRequiredChange: (value: boolean) => void
-  rootPostAttachmentOnly: boolean
-  onRootPostAttachmentOnlyChange: (value: boolean) => void
   applyPending: boolean
   releasePending: boolean
   lifecyclePending: boolean
@@ -789,7 +778,6 @@ export function MediaOpsCard({
               <p>semantic v3: {String(controllerProfile?.effective.semantic_v3_enforced ?? false)}</p>
               <p>strict audit: {String(controllerProfile?.effective.strict_audit_enforced ?? false)}</p>
               <p>lineage required: {String(controllerProfile?.effective.lineage_required ?? false)}</p>
-              <p>root attachment only: {String(controllerProfile?.effective.root_post_attachment_only ?? false)}</p>
             </div>
 
             <div className={"flex flex-wrap gap-2 text-[11px]"}>
@@ -872,10 +860,6 @@ export function MediaOpsCard({
               <label className={"flex items-center gap-2"}>
                 <input type="checkbox" checked={lineageRequired} onChange={(event) => onLineageRequiredChange(event.target.checked)} />
                 lineage required
-              </label>
-              <label className={"flex items-center gap-2"}>
-                <input type="checkbox" checked={rootPostAttachmentOnly} onChange={(event) => onRootPostAttachmentOnlyChange(event.target.checked)} />
-                root post attachment only
               </label>
             </div>
 

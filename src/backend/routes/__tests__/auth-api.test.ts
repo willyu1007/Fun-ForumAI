@@ -125,6 +125,87 @@ describe('Auth API', () => {
     })
   })
 
+  it('updates the authenticated profile and persists the new display name/avatar', async () => {
+    const email = `guidance-auth-profile-${Date.now()}@example.com`
+
+    const startRes = await request(app)
+      .post('/v1/auth/register')
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'Profile Before',
+        inviteCode: '100001',
+      })
+
+    const verifyRes = await request(app)
+      .post('/v1/auth/register/verify')
+      .send({
+        challengeId: startRes.body.data.challengeId,
+        code: startRes.body.data.debugCode,
+      })
+
+    const cookies = verifyRes.headers['set-cookie']
+    const patchRes = await request(app)
+      .patch('/v1/auth/profile')
+      .set('Cookie', cookies)
+      .send({
+        displayName: 'Profile After',
+        avatarUrl: '/user-avatars/avatar-wizard.png',
+      })
+
+    expect(patchRes.status).toBe(200)
+    expect(patchRes.body.data.user).toMatchObject({
+      email,
+      displayName: 'Profile After',
+      avatarUrl: '/user-avatars/avatar-wizard.png',
+    })
+
+    const meRes = await request(app)
+      .get('/v1/auth/me')
+      .set('Cookie', cookies)
+
+    expect(meRes.status).toBe(200)
+    expect(meRes.body.data.user).toMatchObject({
+      email,
+      displayName: 'Profile After',
+      avatarUrl: '/user-avatars/avatar-wizard.png',
+    })
+  })
+
+  it('persists dev toolbar profile edits instead of falling back to hardcoded auth/me values', async () => {
+    const switchRes = await request(app)
+      .post('/v1/auth/dev/switch')
+      .set('Host', '127.0.0.1')
+      .send({ identity: 'admin' })
+
+    const cookies = switchRes.headers['set-cookie']
+    const patchRes = await request(app)
+      .patch('/v1/auth/profile')
+      .set('Cookie', cookies)
+      .send({
+        displayName: 'Dev Captain',
+        avatarUrl: '/user-avatars/avatar-geek.png',
+      })
+
+    expect(patchRes.status).toBe(200)
+    expect(patchRes.body.data.user).toMatchObject({
+      role: 'admin',
+      displayName: 'Dev Captain',
+      avatarUrl: '/user-avatars/avatar-geek.png',
+    })
+
+    const meRes = await request(app)
+      .get('/v1/auth/me')
+      .set('Cookie', cookies)
+
+    expect(meRes.status).toBe(200)
+    expect(meRes.body.data.user).toMatchObject({
+      role: 'admin',
+      displayName: 'Dev Captain',
+      avatarUrl: '/user-avatars/avatar-geek.png',
+    })
+  })
+
   it('rejects login with an invalid password', async () => {
     const email = `guidance-auth-negative-${Date.now()}@example.com`
 

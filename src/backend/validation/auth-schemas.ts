@@ -43,3 +43,21 @@ export const smsVerifySchema = z.object({
 export const smsResendSchema = z.object({
   challengeId: z.string().min(1, 'challengeId 不能为空'),
 }).strict()
+
+const profileAvatarUrlSchema = z
+  .string()
+  .trim()
+  .min(1, '请输入有效头像地址')
+  .refine((value) => value.startsWith('https://') || value.startsWith('/'), {
+    message: '头像地址必须为 https URL 或站内静态资源路径',
+  })
+
+export const updateProfileSchema = z
+  .object({
+    displayName: z.string().trim().min(1, '请输入昵称').max(50, '昵称最多 50 个字符').optional(),
+    avatarUrl: profileAvatarUrlSchema.nullable().optional(),
+  })
+  .strict()
+  .refine((body) => body.displayName !== undefined || body.avatarUrl !== undefined, {
+    message: 'displayName 或 avatarUrl 至少需要提供一个',
+  })

@@ -8,6 +8,7 @@ import {
   smsResendSchema,
   smsSendSchema,
   smsVerifySchema,
+  updateProfileSchema,
 } from '../validation/auth-schemas.js'
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import type { AuthService } from '../services/auth-service.js'
@@ -90,28 +91,56 @@ export function createAuthRouter(authService: AuthService): Router {
 
   router.get('/auth/me', requireHumanAuth, async (req, res, next) => {
     try {
-      if (req.user!._devToken) {
-        res.json({
-          data: {
-            user: {
-              id: req.user!.userId,
-              email: req.user!.email,
-              phone: req.user!.phone,
-              displayName: req.user!.role === 'admin' ? '开发管理员' : '开发用户',
-              avatarUrl: null,
-              planTier: req.user!.role === 'admin' ? 'ADMIN' : 'FREE',
-              role: req.user!.role,
-            },
-          },
+      if (req.user!._devToken && req.user!.email) {
+        await authService.ensureDevIdentity({
+          userId: req.user!.userId,
+          email: req.user!.email,
+          role: req.user!.role,
         })
-        return
       }
 
       const profile = await authService.getProfile(req.user!.userId)
       if (!profile) {
+        if (req.user!._devToken) {
+          res.json({
+            data: {
+              user: {
+                id: req.user!.userId,
+                email: req.user!.email,
+                phone: req.user!.phone ?? null,
+                displayName: req.user!.role === 'admin' ? '开发管理员' : '开发用户',
+                avatarUrl: null,
+                planTier: req.user!.role === 'admin' ? 'ADMIN' : 'FREE',
+                role: req.user!.role,
+              },
+            },
+          })
+          return
+        }
         res.status(404).json({ error: { code: 'NOT_FOUND', message: '用户不存在' } })
         return
       }
+      res.json({ data: { user: profile } })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.patch('/auth/profile', requireHumanAuth, validate(updateProfileSchema), async (req, res, next) => {
+    try {
+      if (req.user!._devToken && req.user!.email) {
+        await authService.ensureDevIdentity({
+          userId: req.user!.userId,
+          email: req.user!.email,
+          role: req.user!.role,
+        })
+      }
+
+      const profile = await authService.updateProfile({
+        userId: req.user!.userId,
+        displayName: req.body.displayName,
+        avatarUrl: req.body.avatarUrl,
+      })
       res.json({ data: { user: profile } })
     } catch (err) {
       next(err)

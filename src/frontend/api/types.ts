@@ -325,7 +325,6 @@ export interface MediaRolloutControllerOverrideData {
   semantic_v3_enforced: boolean
   strict_audit_enforced: boolean
   lineage_required: boolean
-  root_post_attachment_only: boolean
   reason: string | null
   created_by_user_id: string
   released_by_user_id: string | null
@@ -354,7 +353,6 @@ export interface MediaRolloutControllerProfileData {
     semantic_v3_enforced: boolean
     strict_audit_enforced: boolean
     lineage_required: boolean
-    root_post_attachment_only: boolean
   }
   reason: string
 }

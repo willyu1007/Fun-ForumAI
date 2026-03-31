@@ -92,53 +92,6 @@ function setupWithObservability(record: (input: CreateMediaObservabilityEventInp
   }
 }
 
-function setupWithRootPostFallbackEnabled() {
-  const base = setup()
-  const svc = new ForumReadService({
-    postRepo: base.postRepo,
-    publicStageThreadRepo: base.publicStageThreadRepo,
-    publicStageTurnRepo: base.publicStageTurnRepo,
-    voteRepo: base.voteRepo,
-    humanVoteRepo: base.humanVoteRepo,
-    postMediaRepo: base.postMediaRepo,
-    sceneMediaBindingRepo: base.sceneMediaBindingRepo,
-    mediaContextProjectionRepo: base.mediaContextProjectionRepo,
-    communityRepo: base.communityRepo,
-    agentRepo: base.agentRepo,
-    agentConfigRepo: base.agentConfigRepo,
-    riskRepo: base.riskRepo,
-    mediaRolloutControllerService: {
-      getEffectiveProfile: vi.fn(async (): Promise<MediaRolloutControllerProfile> => ({
-        mode: 'MANUAL',
-        active_override: null,
-        profile: 'manual',
-        metrics: {} as MediaRolloutControllerProfile['metrics'],
-        gates: [] as MediaRolloutControllerProfile['gates'],
-        effective: {
-          target_min_rate: 0,
-          target_max_rate: 1,
-          threshold_delta: 0,
-          allow_generation: true,
-          generation_tier: 'medium',
-          sync_generation_ms_budget: 0,
-          allow_private_runtime_projection: true,
-          allow_private_inspired_generation: true,
-          force_safe_mode: false,
-          semantic_v3_enforced: true,
-          strict_audit_enforced: true,
-          lineage_required: true,
-          root_post_attachment_only: false,
-        },
-        reason: 'test_override',
-      })),
-    },
-  })
-  return {
-    ...base,
-    svc,
-  }
-}
-
 describe('ForumReadService', () => {
   let ctx: ReturnType<typeof setup>
 
@@ -258,7 +211,6 @@ describe('ForumReadService', () => {
                 semantic_v3_enforced: true,
                 strict_audit_enforced: true,
                 lineage_required: true,
-                root_post_attachment_only: true,
               },
               reason: 'feature_flag_disabled',
             })),
@@ -413,9 +365,8 @@ describe('ForumReadService', () => {
       }])
     })
 
-    it('falls back to legacy post_media rows when root_post_attachment_only is disabled', async () => {
-      const fallbackCtx = setupWithRootPostFallbackEnabled()
-      const post = await fallbackCtx.postRepo.create({
+    it('does not serve legacy post_media rows when attachment projections are unavailable', async () => {
+      const post = await ctx.postRepo.create({
         community_id: 'c1',
         author_agent_id: 'a1',
         title: 'Hello',
@@ -423,21 +374,16 @@ describe('ForumReadService', () => {
         visibility: 'PUBLIC',
         state: 'APPROVED',
       })
-      fallbackCtx.postMediaRepo.create({
+      ctx.postMediaRepo.create({
         post_id: post.id,
         asset_id: 'asset-legacy-only',
         media_url: '/media/legacy-only.png',
         mime_type: 'image/png',
       })
 
-      const result = await fallbackCtx.svc.getFeed({})
+      const result = await ctx.svc.getFeed({})
 
-      expect(result.items[0]?.media).toEqual([{
-        asset_id: 'asset-legacy-only',
-        media_url: '/media/legacy-only.png',
-        mime_type: 'image/png',
-        alt_text: null,
-      }])
+      expect(result.items[0]?.media).toEqual([])
     })
 
     it('does not block feed reads on parity mismatch observability writes', async () => {

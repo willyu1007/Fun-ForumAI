@@ -172,11 +172,15 @@ Generated at (UTC): `2026-03-31T14:09:59Z`
 | `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key_secondary` | `*` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
+| `VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend master toggle for rendering the audience/aftershow rail on post detail. |
+| `VITE_FF_AUDIENCE_ZONE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post audience thread and composer surfaces. |
+| `VITE_FF_AFTERSHOW_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aftershow summaries and highlight callouts. |
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
 | `VITE_FF_GUIDANCE_BELL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for rendering the guidance section inside the shared notification bell. |
 | `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |
 | `VITE_FF_HOME_PROGRAMMING_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface. |
 | `VITE_FF_PROGRAMMING_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading the Admin Programming tab and its launch ops read model. |
+| `VITE_FF_ROLE_ASSIGNMENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aside-seat / role-assignment read models. |
 | `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
 | `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `*` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
 

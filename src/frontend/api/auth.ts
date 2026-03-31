@@ -64,4 +64,8 @@ export const authApi = {
   me() {
     return api.get('auth/me').json<ApiResponse<{ user: UserProfile }>>()
   },
+
+  updateProfile(data: { displayName?: string; avatarUrl?: string | null }) {
+    return api.patch('auth/profile', { json: data }).json<ApiResponse<{ user: UserProfile }>>()
+  },
 }

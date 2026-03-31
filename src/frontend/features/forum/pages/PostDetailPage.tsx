@@ -69,6 +69,22 @@ interface RailHighlightItem {
 
 const DESKTOP_BREAKPOINT = 1024
 
+function isAudienceAftershowWebEnabled() {
+  return import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 === 'true'
+}
+
+function isAudienceZoneEnabled(audienceAftershowWebEnabled: boolean) {
+  return audienceAftershowWebEnabled && import.meta.env.VITE_FF_AUDIENCE_ZONE_V1 === 'true'
+}
+
+function isAftershowEnabled(audienceAftershowWebEnabled: boolean) {
+  return audienceAftershowWebEnabled && import.meta.env.VITE_FF_AFTERSHOW_V1 === 'true'
+}
+
+function isAsideSeatsEnabled(audienceAftershowWebEnabled: boolean) {
+  return audienceAftershowWebEnabled && import.meta.env.VITE_FF_ROLE_ASSIGNMENT_V1 === 'true'
+}
+
 function toAftershowContentV1(
   value: Record<string, unknown> | null | undefined,
 ): AftershowContentV1 | null {
@@ -125,6 +141,10 @@ function useIsDesktopLayout() {
 export function PostDetailPage() {
   const { isAuthenticated, user } = useAuth()
   const { postId } = useParams()
+  const audienceAftershowWebEnabled = isAudienceAftershowWebEnabled()
+  const audienceZoneEnabled = isAudienceZoneEnabled(audienceAftershowWebEnabled)
+  const aftershowEnabled = isAftershowEnabled(audienceAftershowWebEnabled)
+  const asideSeatsEnabled = isAsideSeatsEnabled(audienceAftershowWebEnabled)
   const [searchParams] = useSearchParams()
   const parsedSourcePosition = (() => {
     const raw = searchParams.get('source_position')
@@ -176,34 +196,34 @@ export function PostDetailPage() {
     threadsQueryParams,
   )
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
-    enabled: postPayload !== null,
+    enabled: postPayload !== null && audienceZoneEnabled,
   })
   const { data: aftershowData } = useAftershow(
     postId ?? '',
     hasViewSourceParams
       ? {
-          enabled: postPayload !== null,
+          enabled: postPayload !== null && aftershowEnabled,
           params: viewSourceParams,
         }
       : {
-          enabled: postPayload !== null,
+          enabled: postPayload !== null && aftershowEnabled,
         },
   )
   const { data: asideSeatsData } = useAsideSeats(postId ?? '', {
-    enabled: postPayload !== null,
+    enabled: postPayload !== null && asideSeatsEnabled,
   })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
   const createReport = useCreateReport()
   const createAppeal = useCreateAppeal()
   const { newThreadTurnCounts, clearNewThreadTurns } = useSseNewCounts()
   const newThreadTurnCount = (postId && newThreadTurnCounts[postId]) || 0
-  const audienceThreadResult = audienceThreadData?.data
-  const audienceThread = audienceThreadData?.data ?? null
+  const audienceThreadResult = audienceZoneEnabled ? audienceThreadData?.data : null
+  const audienceThread = audienceZoneEnabled ? audienceThreadData?.data ?? null : null
   const audienceThreadMessages = audienceThread?.messages
-  const asideSeatsPayload = asideSeatsData?.data ?? null
+  const asideSeatsPayload = asideSeatsEnabled ? asideSeatsData?.data ?? null : null
   const asideSeatItems = asideSeatsPayload?.seats
   const postAudienceFallback = useMemo<AftershowSnapshot | null>(() => {
-    if (!postPayload || !hasAudiencePayloadFallback) return null
+    if (!audienceAftershowWebEnabled || !postPayload || !hasAudiencePayloadFallback) return null
     return {
       post_id: postPayload.id,
       aftershow_summary: postPayload.aftershow_summary ?? null,
@@ -225,11 +245,12 @@ export function PostDetailPage() {
       cover_mode: postPayload.cover_mode,
       relation_teaser: postPayload.relation_teaser ?? null,
     }
-  }, [hasAudiencePayloadFallback, postPayload])
+  }, [audienceAftershowWebEnabled, hasAudiencePayloadFallback, postPayload])
   const aftershow = useMemo(() => {
+    if (!audienceAftershowWebEnabled) return null
     if (aftershowData?.data) return aftershowData.data
     return postAudienceFallback
-  }, [aftershowData?.data, postAudienceFallback])
+  }, [aftershowData?.data, audienceAftershowWebEnabled, postAudienceFallback])
   const audienceMessages = useMemo(() => {
     return audienceThreadMessages ?? []
   }, [audienceThreadMessages])
@@ -354,8 +375,9 @@ export function PostDetailPage() {
   const isPostOwner = authorProfile.data?.data?.owner_id === user?.id
   const topicSignals = readTopicSignals(post.topic_signals)
   const topicTransparencyCopy = describeTopicSignals(topicSignals, post.distribution_state)
-  const hasAudienceRail = Boolean(audienceThread || aftershow || asideSeatsPayload)
-  const canUseAudienceComposer = Boolean(audienceThreadResult)
+  const hasAudienceRail =
+    audienceAftershowWebEnabled && Boolean(audienceThread || aftershow || asideSeatsPayload)
+  const canUseAudienceComposer = audienceZoneEnabled && Boolean(audienceThreadResult)
   const summaryTitle = aftershowContent?.title ?? null
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =

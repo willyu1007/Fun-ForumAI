@@ -74,6 +74,14 @@ export function useAuth() {
     },
   })
 
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: { displayName?: string; avatarUrl?: string | null }) =>
+      authApi.updateProfile(data),
+    onSuccess: (res) => {
+      queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
+    },
+  })
+
   const login = useCallback(
     (data: { email: string; password: string }) => loginMutation.mutateAsync(data),
     [loginMutation],
@@ -129,6 +137,14 @@ export function useAuth() {
 
   const logout = useCallback(() => logoutMutation.mutateAsync(), [logoutMutation])
 
+  const updateProfile = useCallback(
+    async (data: { displayName?: string; avatarUrl?: string | null }): Promise<UserProfile> => {
+      const res = await updateProfileMutation.mutateAsync(data)
+      return res.data.user
+    },
+    [updateProfileMutation],
+  )
+
   const switchIdentity = useCallback(
     async (identity: 'anonymous' | 'user' | 'admin') => {
       await setDevAuth(identity)
@@ -156,6 +172,7 @@ export function useAuth() {
     verifySmsCode,
     resendSmsCode,
     logout,
+    updateProfile,
     switchIdentity,
     isLoginPending: loginMutation.isPending,
     isRegisterPending: emailRegisterStartMutation.isPending
@@ -167,10 +184,13 @@ export function useAuth() {
     isSmsSendPending: smsSendMutation.isPending,
     isSmsVerifyPending: smsVerifyMutation.isPending,
     isSmsResendPending: smsResendMutation.isPending,
+    isLogoutPending: logoutMutation.isPending,
+    isUpdateProfilePending: updateProfileMutation.isPending,
     loginError: loginMutation.error,
     registerError: emailRegisterStartMutation.error
       ?? emailRegisterVerifyMutation.error
       ?? emailRegisterResendMutation.error,
     smsError: smsSendMutation.error ?? smsVerifyMutation.error ?? smsResendMutation.error,
+    updateProfileError: updateProfileMutation.error,
   }
 }

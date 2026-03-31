@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,11 +20,17 @@ function getInitials(name: string) {
 }
 
 export function AccountSettingsPage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, updateProfile, isUpdateProfilePending } = useAuth()
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
+  const [avatarDraftSrc, setAvatarDraftSrc] = useState<string | null>(user?.avatarUrl ?? null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
+
+  useEffect(() => {
+    setDisplayName(user?.displayName ?? '')
+    setAvatarDraftSrc(user?.avatarUrl ?? null)
+  }, [user?.avatarUrl, user?.displayName, user?.id])
 
   if (!isAuthenticated || !user) {
     return (
@@ -46,20 +52,35 @@ export function AccountSettingsPage() {
   }
 
   const handleSave = async () => {
+    const nextDisplayName = displayName.trim()
+    if (!nextDisplayName) return
     setIsSaving(true)
     setSaveMessage(null)
     try {
-      // TODO: integrate with PUT /auth/profile API when available
-      await new Promise((resolve) => setTimeout(resolve, 600))
-      setSaveMessage('保存成功（功能开发中，暂未持久化）')
+      await updateProfile({
+        displayName: nextDisplayName,
+        avatarUrl: avatarDraftSrc,
+      })
+      setSaveMessage('资料已保存。')
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : '保存失败，请稍后重试。')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const resolvedAvatarSrc = resolveUserAvatarSrc(user)
+  const resolvedAvatarSrc = user
+    ? resolveUserAvatarSrc({
+        ...user,
+        avatarUrl: avatarDraftSrc,
+      })
+    : null
   const emailLabel = user.email ?? '未绑定邮箱'
   const phoneLabel = user.phone ?? '未绑定手机号'
+  const hasUnsavedChanges = user
+    ? displayName.trim() !== user.displayName.trim()
+      || (avatarDraftSrc ?? null) !== (user.avatarUrl ?? null)
+    : false
 
   return (
     <div className="space-y-6">
@@ -78,13 +99,13 @@ export function AccountSettingsPage() {
             <CardContent className="space-y-5">
               <div className="flex items-center gap-4">
                 <Avatar className="size-16">
-                  {resolvedAvatarSrc && <AvatarImage src={resolvedAvatarSrc} alt={user.displayName} className="object-cover" />}
+                  {resolvedAvatarSrc && <AvatarImage src={resolvedAvatarSrc} alt={displayName || user.displayName} className="object-cover" />}
                   <AvatarFallback className="text-lg font-semibold">
-                    {getInitials(user.displayName)}
+                    {getInitials(displayName || user.displayName)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-medium">{user.displayName}</p>
+                  <p className="text-sm font-medium">{displayName || user.displayName}</p>
                   <p className="text-xs text-muted-foreground">{user.email ?? user.phone ?? user.id}</p>
                   <Button variant="outline" size="sm" className="mt-2" onClick={() => setAvatarDialogOpen(true)}>
                     设置头像
@@ -131,11 +152,17 @@ export function AccountSettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button size="sm" onClick={handleSave} disabled={isSaving || !displayName.trim()}>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving || isUpdateProfilePending || !displayName.trim() || !hasUnsavedChanges}
+                >
                   {isSaving ? '保存中…' : '保存修改'}
                 </Button>
                 {saveMessage && (
-                  <p className="text-xs text-muted-foreground">{saveMessage}</p>
+                  <p className={saveMessage === '资料已保存。' ? 'text-xs text-muted-foreground' : 'text-xs text-destructive'}>
+                    {saveMessage}
+                  </p>
                 )}
               </div>
             </CardContent>
@@ -204,11 +231,18 @@ export function AccountSettingsPage() {
         open={avatarDialogOpen}
         onOpenChange={setAvatarDialogOpen}
         title="设置用户头像"
-        description="可以先浏览预设头像。上传图片入口先留在这里，后续再接持久化。"
-        currentLabel={user.displayName}
-        fallbackLabel={getInitials(user.displayName)}
+        description="选择预设头像后会先写入当前资料草稿，点击“保存修改”后持久化到账户资料。"
+        currentLabel={displayName || user.displayName}
+        fallbackLabel={getInitials(displayName || user.displayName)}
         previewSrc={resolvedAvatarSrc}
         presets={USER_AVATAR_PRESETS}
+        footerNote="上传入口仍保留占位；预设头像会先进入当前表单草稿。"
+        saveLabel="使用此头像"
+        onSave={(selectedSrc) => {
+          setAvatarDraftSrc(selectedSrc)
+          setAvatarDialogOpen(false)
+          setSaveMessage('头像选择已暂存，点击“保存修改”后生效。')
+        }}
       />
     </div>
   )

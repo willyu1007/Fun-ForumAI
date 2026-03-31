@@ -553,6 +553,21 @@ export class AuthService {
     return user ? toProfile(user) : null
   }
 
+  async updateProfile(input: {
+    userId: string
+    displayName?: string
+    avatarUrl?: string | null
+  }): Promise<UserProfile> {
+    const user = await this.userRepo.updateProfile(input.userId, {
+      ...(input.displayName !== undefined ? { display_name: input.displayName.trim() } : {}),
+      ...(input.avatarUrl !== undefined ? { avatar_url: input.avatarUrl } : {}),
+    })
+    if (!user) {
+      throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
+    }
+    return toProfile(user)
+  }
+
   async ensureDevIdentity(input: {
     userId: string
     email: string

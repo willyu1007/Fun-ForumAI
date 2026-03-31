@@ -488,7 +488,6 @@ export const patchMediaRolloutControllerSchema = z
     semantic_v3_enforced: z.boolean().nullable().optional(),
     strict_audit_enforced: z.boolean().nullable().optional(),
     lineage_required: z.boolean().nullable().optional(),
-    root_post_attachment_only: z.boolean().nullable().optional(),
     reason: z.string().max(2000).optional(),
   })
   .strict()
@@ -518,7 +517,6 @@ export const patchMediaRolloutControllerSchema = z
         || value.semantic_v3_enforced !== undefined
         || value.strict_audit_enforced !== undefined
         || value.lineage_required !== undefined
-        || value.root_post_attachment_only !== undefined
       if (!hasManualField) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

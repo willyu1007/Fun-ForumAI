@@ -220,6 +220,34 @@ variables:
     default: "true"
     description: Frontend toggle for showing the global highlights entry/page.
 
+  VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend master toggle for rendering the audience/aftershow rail on post detail.
+
+  VITE_FF_AUDIENCE_ZONE_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for loading post audience thread and composer surfaces.
+
+  VITE_FF_AFTERSHOW_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for loading post aftershow summaries and highlight callouts.
+
+  VITE_FF_ROLE_ASSIGNMENT_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for loading post aside-seat / role-assignment read models.
+
   VITE_FF_HOME_PROGRAMMING_V1:
     type: enum
     enum: ["true", "false"]

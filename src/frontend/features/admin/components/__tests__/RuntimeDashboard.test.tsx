@@ -195,7 +195,6 @@ describe('MediaOpsCard', () => {
               semantic_v3_enforced: true,
               strict_audit_enforced: true,
               lineage_required: true,
-              root_post_attachment_only: true,
             },
             reason: 'within_target_band',
           },
@@ -257,7 +256,6 @@ describe('MediaOpsCard', () => {
             semantic_v3_enforced: true,
             strict_audit_enforced: true,
             lineage_required: true,
-            root_post_attachment_only: true,
           },
           reason: 'within_target_band',
         }}
@@ -288,8 +286,6 @@ describe('MediaOpsCard', () => {
         onStrictAuditEnforcedChange={() => {}}
         lineageRequired
         onLineageRequiredChange={() => {}}
-        rootPostAttachmentOnly
-        onRootPostAttachmentOnlyChange={() => {}}
         applyPending={false}
         releasePending={false}
         lifecyclePending={false}

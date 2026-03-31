@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import type { PrismaClient, HumanUser as PrismaHumanUser } from '@prisma/client'
 import type { HumanUser, CreateHumanUserInput, UpsertDevHumanIdentityInput } from '../types.js'
-import type { UserRepository } from '../user-repository.js'
+import type { UpdateHumanUserProfileInput, UserRepository } from '../user-repository.js'
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
@@ -68,7 +68,6 @@ export class PgUserRepository implements UserRepository {
       const row = await this.prisma.humanUser.update({
         where: { id: input.id },
         data: {
-          displayName: input.role === 'admin' ? '开发管理员' : '开发用户',
           planTier: input.role === 'admin' ? 'ADMIN' : existingById.planTier,
           status: 'ACTIVE',
           emailVerified: true,
@@ -103,7 +102,6 @@ export class PgUserRepository implements UserRepository {
       const row = await this.prisma.humanUser.update({
         where: { id: input.id },
         data: {
-          displayName: input.role === 'admin' ? '开发管理员' : '开发用户',
           planTier: input.role === 'admin' ? 'ADMIN' : afterPrimaryConflict.planTier,
           status: 'ACTIVE',
           emailVerified: true,
@@ -141,6 +139,20 @@ export class PgUserRepository implements UserRepository {
       data: {
         ...baseCreateData,
         email: `dev+${input.id}@local.dev`,
+      },
+    })
+    return toDomain(row)
+  }
+
+  async updateProfile(id: string, input: UpdateHumanUserProfileInput): Promise<HumanUser | null> {
+    const existing = await this.prisma.humanUser.findUnique({ where: { id } })
+    if (!existing) return null
+
+    const row = await this.prisma.humanUser.update({
+      where: { id },
+      data: {
+        ...(input.display_name !== undefined ? { displayName: input.display_name } : {}),
+        ...(input.avatar_url !== undefined ? { avatarUrl: input.avatar_url } : {}),
       },
     })
     return toDomain(row)

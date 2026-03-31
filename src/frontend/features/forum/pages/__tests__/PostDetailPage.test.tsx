@@ -298,6 +298,14 @@ async function renderPageAndFlush(path: string) {
 describe('PostDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1', 'true')
+    vi.stubEnv('VITE_FF_AUDIENCE_ZONE_V1', 'true')
+    vi.stubEnv('VITE_FF_AFTERSHOW_V1', 'true')
+    vi.stubEnv('VITE_FF_ROLE_ASSIGNMENT_V1', 'true')
+    import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 = 'true'
+    import.meta.env.VITE_FF_AUDIENCE_ZONE_V1 = 'true'
+    import.meta.env.VITE_FF_AFTERSHOW_V1 = 'true'
+    import.meta.env.VITE_FF_ROLE_ASSIGNMENT_V1 = 'true'
     setViewportWidth(1280)
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
@@ -387,6 +395,7 @@ describe('PostDetailPage', () => {
   })
 
   afterEach(() => {
+    vi.unstubAllEnvs()
     setViewportWidth(originalInnerWidth)
   })
 
@@ -445,6 +454,27 @@ describe('PostDetailPage', () => {
     expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: true })
     expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: true })
     expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: true })
+  })
+
+  it('disables audience rail requests when the audience web surface is turned off', () => {
+    vi.stubEnv('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1', 'false')
+    import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 = 'false'
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useAudienceThreadMock.mockReturnValue({ data: undefined } as never)
+    useAftershowMock.mockReturnValue({ data: undefined } as never)
+    useAsideSeatsMock.mockReturnValue({ data: undefined } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.queryByText('摘要与亮点')).toBeNull()
+    expect(screen.queryByText('观众讨论')).toBeNull()
+    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
+    expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: false })
+    expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: false })
   })
 
   it('opens the audience tab by default on mobile when a deep link targets aftershow content', async () => {

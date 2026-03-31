@@ -1,11 +1,17 @@
 import type { HumanUser, CreateHumanUserInput, UpsertDevHumanIdentityInput } from './types.js'
 
+export interface UpdateHumanUserProfileInput {
+  display_name?: string
+  avatar_url?: string | null
+}
+
 export interface UserRepository {
   findById(id: string): Promise<HumanUser | null>
   findByEmail(email: string): Promise<HumanUser | null>
   findByPhone(phone: string): Promise<HumanUser | null>
   create(input: CreateHumanUserInput): Promise<HumanUser>
   upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser>
+  updateProfile(id: string, input: UpdateHumanUserProfileInput): Promise<HumanUser | null>
   updateLastLogin(id: string): Promise<void>
 }
 
@@ -75,7 +81,6 @@ export class InMemoryUserRepository implements UserRepository {
     if (existingById) {
       const updated: HumanUser = {
         ...existingById,
-        display_name: input.role === 'admin' ? '开发管理员' : '开发用户',
         plan_tier: input.role === 'admin' ? 'ADMIN' : existingById.plan_tier,
         status: 'ACTIVE',
         email_verified: true,
@@ -113,6 +118,20 @@ export class InMemoryUserRepository implements UserRepository {
     this.store.set(user.id, user)
     this.byEmail.set(normalizeEmail(email), user.id)
     return user
+  }
+
+  async updateProfile(id: string, input: UpdateHumanUserProfileInput): Promise<HumanUser | null> {
+    const existing = this.store.get(id)
+    if (!existing) return null
+
+    const updated: HumanUser = {
+      ...existing,
+      display_name: input.display_name ?? existing.display_name,
+      avatar_url: input.avatar_url !== undefined ? input.avatar_url : existing.avatar_url,
+      updated_at: new Date(),
+    }
+    this.store.set(id, updated)
+    return updated
   }
 
   async updateLastLogin(id: string): Promise<void> {

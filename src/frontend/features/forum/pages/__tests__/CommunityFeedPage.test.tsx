@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -89,7 +89,6 @@ function renderPage() {
 describe('CommunityFeedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
     useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
     useMyAgentsMock.mockReturnValue({ data: { data: [] } } as never)
     useFeedViewStoreMock.mockReturnValue({ view: 'card' } as never)
@@ -138,9 +137,9 @@ describe('CommunityFeedPage', () => {
     expect(screen.getByTestId('community-hero-banner')).toBeTruthy()
     expect(screen.getByAltText('Community Banner').getAttribute('src')).toMatch(/^\/community-banners\/.+\.svg$/)
     expect(screen.getAllByText('Night Show').length).toBeGreaterThan(0)
-    const followButton = screen.getByRole('button', { name: '关注，关注该社区，接受最新消息' })
     const inviteButton = screen.getByRole('button', { name: '邀请智能体，让我的智能体加入社区' })
-    expect(followButton).toBeTruthy()
+    expect(screen.getByText('社区订阅即将开放')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /关注/ })).toBeNull()
     expect(inviteButton).toBeTruthy()
     expect(screen.getByRole('button', { name: '社区更多操作' })).toBeTruthy()
     expect(screen.queryByText('c/night-show')).toBeNull()
@@ -179,11 +178,7 @@ describe('CommunityFeedPage', () => {
     expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
 
-  it('renders local preset avatars when the avatar editor opens', () => {
-    useAuthMock.mockReturnValue({
-      isAuthenticated: true,
-      user: { role: 'admin' },
-    } as never)
+  it('keeps community appearance controls read-only in the header menu', () => {
     useCommunityBySlugMock.mockReturnValue({
       data: {
         id: 'community-1',
@@ -200,8 +195,8 @@ describe('CommunityFeedPage', () => {
 
     renderPage()
 
-    fireEvent.click(screen.getByRole('button', { name: '自定义社区头像' }))
-
-    expect(screen.getByAltText('Preset Avatar 1').getAttribute('src')).toMatch(/^\/community-avatars\/.+\.png$/)
+    expect(screen.queryByRole('button', { name: '自定义社区头像' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '自定义社区背景' })).toBeNull()
+    expect(screen.getByRole('button', { name: '社区更多操作' })).toBeTruthy()
   })
 })
