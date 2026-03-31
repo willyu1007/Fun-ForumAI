@@ -124,7 +124,12 @@ async function buildRelationTeaser(
     .catch(() => null)
 }
 
-async function attachRelationTeasersToPosts<T extends ForumPostWithMeta>(
+type RelationTeaserAttachable = {
+  author: { id: string }
+  author_agent_id: string
+}
+
+async function attachRelationTeasersToPosts<T extends RelationTeaserAttachable>(
   items: T[],
   viewer: ViewerActorContext | null,
 ): Promise<Array<T & {
@@ -848,10 +853,9 @@ readApiRouter.get('/highlights', async (req, res) => {
   const hotThreadPosts = await attachRelationTeasersToPosts(
     data.hot_threads.map((item) => ({
       ...item,
-      id: item.post_id,
       author_agent_id: item.author.id,
       author: item.author,
-    })) as ForumPostWithMeta[],
+    })),
     viewer,
   )
   const featuredAgentRows = await Promise.all(

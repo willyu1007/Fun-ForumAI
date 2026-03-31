@@ -92,16 +92,19 @@ vi.mock('@/components/ui/dropdown-menu', async () => {
       children,
       asChild,
       onClick,
-    }: {
-      children: ReactNode
-      asChild?: boolean
-      onClick?: () => void
-    }) => {
-      if (asChild && React.isValidElement(children)) {
-        return React.cloneElement(children, { role: 'menuitem', onClick })
-      }
-      return (
-        <div role="menuitem" onClick={onClick}>
+	    }: {
+	      children: ReactNode
+	      asChild?: boolean
+	      onClick?: () => void
+	    }) => {
+	      if (asChild && React.isValidElement(children)) {
+	        return React.cloneElement(
+	          children as React.ReactElement<{ role?: string; onClick?: () => void }>,
+	          { role: 'menuitem', onClick },
+	        )
+	      }
+	      return (
+	        <div role="menuitem" onClick={onClick}>
           {children}
         </div>
       )

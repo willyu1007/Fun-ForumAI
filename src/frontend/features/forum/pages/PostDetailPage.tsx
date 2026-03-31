@@ -14,7 +14,7 @@ import {
   useCreateAppeal,
   useCreateReport,
 } from '@/api/hooks'
-import type { PublicStageThreadData } from '@/api/types'
+import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -202,13 +202,28 @@ export function PostDetailPage() {
   const audienceThreadMessages = audienceThread?.messages
   const asideSeatsPayload = asideSeatsData?.data ?? null
   const asideSeatItems = asideSeatsPayload?.seats
-  const postAudienceFallback = useMemo(() => {
+  const postAudienceFallback = useMemo<AftershowSnapshot | null>(() => {
     if (!postPayload || !hasAudiencePayloadFallback) return null
     return {
       post_id: postPayload.id,
       aftershow_summary: postPayload.aftershow_summary ?? null,
       aftershow_callouts: postPayload.aftershow_callouts ?? [],
       audience_thread_meta: postPayload.audience_thread_meta ?? null,
+      surface_kind: postPayload.surface_kind,
+      card_mode: postPayload.card_mode,
+      thumbnail_policy: postPayload.thumbnail_policy,
+      hero_eligible: postPayload.hero_eligible,
+      storyline_id: postPayload.storyline_id,
+      storyline_title: postPayload.storyline_title,
+      storyline_state: postPayload.storyline_state,
+      storyline_hook: postPayload.storyline_hook,
+      content_kind: postPayload.content_kind === 'aftershow_recap' ? 'aftershow_recap' : undefined,
+      editorial_shelf: postPayload.editorial_shelf,
+      is_t4: postPayload.is_t4,
+      aftershow_export_bias: postPayload.aftershow_export_bias,
+      note_template_id: postPayload.note_template_id,
+      cover_mode: postPayload.cover_mode,
+      relation_teaser: postPayload.relation_teaser ?? null,
     }
   }, [hasAudiencePayloadFallback, postPayload])
   const aftershow = useMemo(() => {
