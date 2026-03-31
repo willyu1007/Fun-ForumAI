@@ -1,4 +1,5 @@
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import { readLaunchSystemIdentityConfig } from '../launch/system-roster.js'
 import {
   bucketizeAgentPresence,
   buildWorldviewSourceFingerprint,
@@ -86,6 +87,7 @@ export class AgentBioWorldviewService {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
+    const systemIdentity = readLaunchSystemIdentityConfig(latestConfig?.config_json)
 
     const [personaState, projection, publicHighlights, chroniclePage, privateMemories, relationSummary] =
       await Promise.all([
@@ -149,6 +151,23 @@ export class AgentBioWorldviewService {
         top_scene: pickTopScene(projection?.scene_affinity_json),
         signature_moves: projection?.signature_moves_json.slice(0, 3) ?? [],
       },
+      system_identity: {
+        agent_kind: systemIdentity ? 'system' : 'owner',
+        program_role: systemIdentity?.program_role ?? null,
+        visibility_role: systemIdentity?.visibility_role ?? null,
+        home_community: systemIdentity?.home_community ?? null,
+        stance_axis: systemIdentity?.identity_scaffold.stance_axis ?? null,
+        humor_axis: systemIdentity?.identity_scaffold.humor_axis ?? null,
+        empathy_axis: systemIdentity?.identity_scaffold.empathy_axis ?? null,
+        narrative_axis: systemIdentity?.identity_scaffold.narrative_axis ?? null,
+        signature_topics: systemIdentity?.identity_scaffold.signature_topics.slice(0, 4) ?? [],
+        signature_relationships:
+          systemIdentity?.identity_scaffold.signature_relationships.slice(0, 4) ?? [],
+        role_promise: systemIdentity?.identity_scaffold.role_promise ?? null,
+        viewer_hook_style: systemIdentity?.identity_scaffold.viewer_hook_style ?? null,
+        forbidden_tones: systemIdentity?.identity_scaffold.forbidden_tones.slice(0, 4) ?? [],
+        private_lane_policy: systemIdentity?.identity_scaffold.private_lane_policy ?? null,
+      },
       public_history: {
         badges: publicHighlights.badges,
         tagline: publicHighlights.tagline,
@@ -180,19 +199,29 @@ export class AgentBioWorldviewService {
           publicHighlights.tagline,
           ...publicHighlights.top_chronicle.map((entry) => entry.summary),
           projection?.public_projection_hint ?? null,
+          systemIdentity?.identity_scaffold.role_promise ?? null,
+          systemIdentity?.identity_scaffold.viewer_hook_style ?? null,
+          ...(systemIdentity?.identity_scaffold.signature_topics ?? []),
+          ...(systemIdentity?.identity_scaffold.signature_relationships ?? []),
           ...identity.visiblePersona.interests,
           ...projection?.signature_moves_json ?? [],
         ], 8),
         owner_only: uniqueStrings([
+          systemIdentity?.identity_scaffold.private_lane_policy === 'public_only'
+            ? 'public_only_private_lane'
+            : null,
+          ...(systemIdentity?.identity_scaffold.forbidden_tones ?? []),
           ...ownerChronicleSummaries,
           ...privateMemorySummaries,
         ], 8),
         private_header: uniqueStrings([
+          systemIdentity?.identity_scaffold.viewer_hook_style ?? null,
           ownerChronicleSummaries[0] ?? null,
           privateMemorySummaries[0] ?? null,
           publicHighlights.tagline,
         ], 4),
         private_guard: uniqueStrings([
+          ...(systemIdentity?.identity_scaffold.forbidden_tones ?? []),
           ...ownerChronicleSummaries,
           ...privateMemorySummaries,
         ], 8),

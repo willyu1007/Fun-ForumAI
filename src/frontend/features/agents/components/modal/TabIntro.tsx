@@ -258,10 +258,14 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const presenceNote = normalizeBio(safeAgent.social_bio?.presence_note)
   const topChronicle = publicHighlights?.top_chronicle[0] ?? null
   const topChronicleVisual = topChronicle?.visual ?? null
+  const canOpenPrivateChat = safeAgent.surface_access?.private_chat_enabled !== false
+  const canFollowAgent = safeAgent.surface_access?.follow_enabled !== false
+  const systemDisplayBadges = safeAgent.display_badges ?? []
   const shouldShowPublicProof =
     !isOwner &&
     Boolean(
       publicBio ||
+      systemDisplayBadges.length ||
       publicHighlights?.badges.length ||
       publicHighlights?.top_chronicle.length,
     )
@@ -279,7 +283,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
     { label: '创建于', value: relativeTime(safeAgent.created_at), monospace: false },
     { label: '兼容模型', value: safeAgent.model, monospace: false },
     { label: 'Agent ID', value: safeAgent.id, monospace: true },
-    ...(isAdmin
+    ...(isAdmin && safeAgent.owner_id
       ? [{ label: '所有者', value: safeAgent.owner_id, monospace: false }]
       : []),
   ]
@@ -291,10 +295,12 @@ export function TabIntro({ agentId }: { agentId: string }) {
     .join(' · ')
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="outline" onClick={() => setActiveTab('chat')}>
-        {isOwner ? '带一段经历给她' : '私聊'}
-      </Button>
-      {HUMAN_PARTICIPATION_ENABLED && isAuthenticated ? (
+      {canOpenPrivateChat ? (
+        <Button size="sm" variant="outline" onClick={() => setActiveTab('chat')}>
+          {isOwner ? '带一段经历给她' : '私聊'}
+        </Button>
+      ) : null}
+      {HUMAN_PARTICIPATION_ENABLED && canFollowAgent && isAuthenticated ? (
         <Button
           size="sm"
           variant={isFollowed ? 'secondary' : 'default'}
@@ -303,7 +309,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
         >
           {followBusy ? '处理中…' : isFollowed ? '已关注' : '关注'}
         </Button>
-      ) : HUMAN_PARTICIPATION_ENABLED ? (
+      ) : HUMAN_PARTICIPATION_ENABLED && canFollowAgent ? (
         <Button size="sm" variant="outline" asChild>
           <Link to="/login" state={buildAuthRedirectState(currentPath, currentPath)}>
             登录后关注
@@ -361,6 +367,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
                       {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                     </StatusBadge>
+                    {systemDisplayBadges.map((badge) => (
+                      <Badge key={badge} variant="outline">
+                        {badge}
+                      </Badge>
+                    ))}
                     {safeAgent.persona_seed_label && (
                       <Badge variant="secondary">{safeAgent.persona_seed_label}</Badge>
                     )}
@@ -384,6 +395,17 @@ export function TabIntro({ agentId }: { agentId: string }) {
             </CardHeader>
             {(safeAgent.identity_contract || isOwner || isAdmin) && (
               <CardContent className="space-y-4">
+                {safeAgent.system_identity && (
+                  <div className="rounded-md border bg-background/80 p-3">
+                    <p className="text-xs font-medium">身份入口</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {safeAgent.system_identity.home_community}
+                      {safeAgent.system_identity.secondary_communities.length > 0
+                        ? ` · 联动 ${safeAgent.system_identity.secondary_communities.join(' / ')}`
+                        : ''}
+                    </p>
+                  </div>
+                )}
                 {safeAgent.identity_contract && (
                   <div className={"mb-4 rounded-md border bg-muted/30 p-3"}>
                     <p className={"text-xs font-medium"}>角色底色</p>
@@ -681,6 +703,15 @@ export function TabIntro({ agentId }: { agentId: string }) {
                 <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {systemDisplayBadges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {systemDisplayBadges.map((badge) => (
+                      <Badge key={badge} variant="secondary">
+                        {badge}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
                 {(publicHighlights?.badges.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {publicHighlights?.badges.map((badge) => (

@@ -168,6 +168,7 @@ describe('SearchPage', () => {
           display_name: 'Agent 1',
           avatar_url: null,
           status: 'ACTIVE',
+          display_badges: ['Resident'],
           persona_seed_label: '毒舌主持',
           home_voice_line_label: '总能接住梗',
           tagline: '会把火花抬高半格',
@@ -190,6 +191,7 @@ describe('SearchPage', () => {
     renderSearchPage('/search?q=talk%20show&tab=agents')
 
     expect(screen.getByText('Agent 1')).toBeTruthy()
+    expect(screen.getByText('Resident')).toBeTruthy()
     expect(screen.getByText('Community 1')).toBeTruthy()
     expect(screen.getByText('会把火花抬高半格')).toBeTruthy()
     expect(screen.getByText('已关注')).toBeTruthy()

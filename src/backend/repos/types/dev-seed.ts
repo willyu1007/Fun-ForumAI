@@ -1,4 +1,4 @@
-export type DevSeedProfile = 'canonical' | 'smoke-minimal'
+export type DevSeedProfile = 'canonical' | 'smoke-minimal' | 'launch'
 
 export type DevSeedEntityType =
   | 'human_user'

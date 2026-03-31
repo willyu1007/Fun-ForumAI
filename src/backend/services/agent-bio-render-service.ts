@@ -2,6 +2,7 @@ import type { LLMGateway } from '../llm/llm-gateway.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import {
   computePreferredRhetoricFamilies,
+  buildForbiddenToneLexicon,
   evaluatePublicBioPrivacy,
   fingerprintJson,
   rejectBioCandidate,
@@ -237,11 +238,37 @@ function sanitizeCandidateText(surface: BioSurface, value: string): string {
   return ensureSentence(value, SURFACE_MAX_LENGTH[surface])
 }
 
+function sanitizeOpeningBias(value: string | null | undefined, maxLength: number): string {
+  const normalized = compactWhitespace(value ?? '')
+  if (!normalized) return ''
+  const firstClause = normalized.split(/[，。]/u)[0] ?? normalized
+  return clip(firstClause.replace(/^开场/u, '').replace(/^负责/u, '').trim(), maxLength)
+}
+
+function buildOpeningBias(
+  worldview: AgentBioWorldviewModel,
+  surface: Extract<BioSurface, 'public' | 'private_header'>,
+): string {
+  const systemIdentity = worldview.system_identity
+  if (systemIdentity?.agent_kind !== 'system') {
+    return ''
+  }
+  const candidates = surface === 'public'
+    ? [systemIdentity.viewer_hook_style, systemIdentity.role_promise]
+    : [systemIdentity.viewer_hook_style, systemIdentity.role_promise]
+
+  return candidates
+    .map((value) => sanitizeOpeningBias(value, surface === 'public' ? 18 : 16))
+    .find((value) => value.length > 0) ?? ''
+}
+
 function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioSurface, AgentBioCandidate[]> {
   const name = worldview.identity.display_name
   const nameLead = formatNameLead(name)
   const publicFocus = clipFocus(pickPublicFocus(worldview), 34)
   const ownerFocus = clipFocus(pickOwnerFocus(worldview), 38)
+  const publicOpeningBias = buildOpeningBias(worldview, 'public')
+  const privateOpeningBias = buildOpeningBias(worldview, 'private_header')
   const interestFocus = worldview.identity.interests
     .map((item) => sanitizeFocusSeed(item, 18))
     .filter(Boolean)
@@ -254,6 +281,17 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
 
   return {
     public: [
+      {
+        surface: 'public',
+        text: sanitizeCandidateText(
+          'public',
+          `${nameLead}${publicOpeningBias || '先把话头压实'}，聊到${publicFocus}时不太会绕弯`,
+        ),
+        score: 0.79,
+        reasons: ['opening_bias', 'public_focus'],
+        rhetoric_family: 'stance',
+        origin: 'fallback',
+      },
       {
         surface: 'public',
         text: sanitizeCandidateText(
@@ -346,6 +384,17 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
       },
     ],
     private_header: [
+      {
+        surface: 'private_header',
+        text: sanitizeCandidateText(
+          'private_header',
+          `${nameLead}${privateOpeningBias || '会先把话收住'}，心里还挂着${ownerFocus}`,
+        ),
+        score: 0.81,
+        reasons: ['opening_bias', 'owner_focus'],
+        rhetoric_family: 'phase_shadow',
+        origin: 'fallback',
+      },
       {
         surface: 'private_header',
         text: sanitizeCandidateText(
@@ -470,6 +519,7 @@ function buildRenderContext(input: {
   preferredFamilies: ReturnType<typeof computePreferredRhetoricFamilies>
   recentMajorFamilies: BioRhetoricFamily[]
 }): string {
+  const systemIdentity = input.worldview.system_identity
   return JSON.stringify({
     refresh_kind: input.refreshKind,
     preferred_rhetoric_families: input.preferredFamilies.preferred_families,
@@ -479,10 +529,21 @@ function buildRenderContext(input: {
     public_safe_clauses: input.worldview.source_clauses.public_safe,
     owner_clauses: input.worldview.source_clauses.owner_only,
     private_header_clauses: input.worldview.source_clauses.private_header,
+    opening_bias: {
+      public: [
+        systemIdentity?.role_promise,
+        systemIdentity?.viewer_hook_style,
+      ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+      private_header: [
+        systemIdentity?.viewer_hook_style,
+        systemIdentity?.role_promise,
+      ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+    },
     language_guard: {
       avoid_template_openers: true,
       avoid_meta_lexicon: true,
       keep_public_bio_private_safe: true,
+      forbidden_tones: systemIdentity?.forbidden_tones ?? [],
     },
   })
 }
@@ -523,6 +584,7 @@ export class AgentBioRenderService {
   }): Promise<AgentBioRenderSet> {
     const preferredFamilies = computePreferredRhetoricFamilies(input.worldview)
     const recentMajorFamilies = input.recentMajorFamilies ?? []
+    const forbiddenToneLexicon = buildForbiddenToneLexicon(input.worldview.system_identity?.forbidden_tones)
     const fallbackCandidates = buildFallbackCandidates(input.worldview)
     let candidatePools = fallbackCandidates
     let diagnostics = buildDiagnosticsBase({
@@ -602,6 +664,7 @@ export class AgentBioRenderService {
           disallowedFamilies,
           recentOpeningFingerprints: input.recentOpeningFingerprints ?? new Set<string>(),
           agentDisplayName: input.worldview.identity.display_name,
+          forbiddenLexicon: forbiddenToneLexicon,
         })
         if (verdict.rejected) {
           diagnostics.candidate_rejections.push({

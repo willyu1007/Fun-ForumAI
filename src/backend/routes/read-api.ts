@@ -30,7 +30,7 @@ import {
   feedbackCategorySchema,
   feedbackStatusSchema,
 } from '../validation/schemas.js'
-import { buildAgentReadPayload } from '../identity/agent-identity.js'
+import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
 import { guidanceOrchestrator } from '../container.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 
@@ -638,7 +638,7 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
 
   res.json({
     data: {
-      ...buildAgentReadPayload(agent, latestConfig),
+      ...buildPublicAgentReadPayload(agent, latestConfig),
       is_followed,
       social_bio: {
         public_bio: socialBio?.public_bio ?? null,

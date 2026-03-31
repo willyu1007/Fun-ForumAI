@@ -13,6 +13,7 @@ import {
   sanitizeIdentityConfig,
   type OwnerStylePins,
 } from '../identity/agent-identity.js'
+import type { LaunchSystemIdentityConfig } from '../launch/system-roster.js'
 import type { AgentConfigReview } from '../repos/types.js'
 
 export interface AgentServiceDeps {
@@ -55,6 +56,7 @@ export class AgentService {
     model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
+    launch_system_identity?: LaunchSystemIdentityConfig
   }): Agent {
     const normalized = this.normalizeCreateAgentInput(input)
     this.assertDisplayNameAvailable(normalized.display_name)
@@ -73,6 +75,7 @@ export class AgentService {
     model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
+    launch_system_identity?: LaunchSystemIdentityConfig
   }): Promise<Agent> {
     const normalized = this.normalizeCreateAgentInput(input)
     this.assertDisplayNameAvailable(normalized.display_name)
@@ -93,6 +96,7 @@ export class AgentService {
         personaSeedCode: normalized.persona_seed_code,
         ownerStylePins: normalized.owner_style_pins,
         selectedAt: agent.created_at,
+        launchSystemIdentity: normalized.launch_system_identity,
       }),
       updated_by: normalized.owner_id,
     }
@@ -265,6 +269,7 @@ export class AgentService {
     model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
+    launch_system_identity?: LaunchSystemIdentityConfig
   }): {
     owner_id: string
     display_name: string
@@ -272,6 +277,7 @@ export class AgentService {
     model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
+    launch_system_identity?: LaunchSystemIdentityConfig
   } {
     const displayName = input.display_name.trim()
     if (!displayName) {

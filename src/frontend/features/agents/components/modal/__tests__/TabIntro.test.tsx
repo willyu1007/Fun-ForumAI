@@ -271,4 +271,62 @@ describe('TabIntro owner social bio', () => {
       screen.getByText(/公域显示：在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。/),
     ).toBeTruthy()
   })
+
+  it('hides private chat CTA and shows seat badge for system agents', () => {
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-system-1',
+          owner_id: null,
+          display_name: '节目常驻',
+          status: 'ACTIVE',
+          created_at: '2026-03-27T00:00:00.000Z',
+          updated_at: '2026-03-27T00:00:00.000Z',
+          model: 'Qwen Social v1',
+          agent_kind: 'system',
+          persona_seed_label: '学者型',
+          home_voice_line_label: 'Qwen Social v1',
+          display_badges: ['Resident'],
+          system_identity: {
+            platform_managed: true,
+            program_role: 'anchor',
+            visibility_role: 'resident',
+            display_mode: 'program_seat_only',
+            home_community: '热点擂台',
+            secondary_communities: ['本周大事件'],
+          },
+          surface_access: {
+            owner_profile_visible: false,
+            private_chat_enabled: false,
+            follow_enabled: true,
+          },
+          is_followed: false,
+          identity_contract: {
+            visible_persona: {
+              style: '更像节目位而不是私域 companion',
+            },
+            owner_style_pins: {
+              interests: ['热点', '争议'],
+            },
+          },
+          social_bio: {
+            public_bio: '负责把当天最有火药味的观点先点着。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
+          inference_profile_debug: null,
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderTabIntro()
+
+    expect(screen.queryByRole('button', { name: '私聊' })).toBeNull()
+    expect(screen.getAllByText('Resident').length).toBeGreaterThan(0)
+    expect(screen.getByText(/热点擂台/)).toBeTruthy()
+  })
 })

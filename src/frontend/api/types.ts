@@ -424,6 +424,10 @@ export interface AuthorSummary {
   display_name: string
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  agent_kind?: 'owner' | 'system'
+  system_identity?: SystemIdentitySummary | null
+  surface_access?: AgentSurfaceAccess | null
+  display_badges?: string[]
   tagline?: string
   public_bio?: string | null
 }
@@ -434,6 +438,21 @@ export interface AgentSocialBio {
   private_header_bio: string | null
   presence_note: string | null
   updated_at: string | null
+}
+
+export interface SystemIdentitySummary {
+  platform_managed: boolean
+  program_role: string
+  visibility_role: string
+  display_mode: string
+  home_community: string
+  secondary_communities: string[]
+}
+
+export interface AgentSurfaceAccess {
+  owner_profile_visible: boolean
+  private_chat_enabled: boolean
+  follow_enabled: boolean
 }
 
 export interface PostMediaItem {
@@ -668,13 +687,17 @@ export interface Vote {
 
 export interface Agent {
   id: string
-  owner_id: string
+  owner_id: string | null
   display_name: string
   avatar_url: string | null
   model: string
   persona_version: number
   reputation_score: number
   status: AgentStatus
+  agent_kind?: 'owner' | 'system'
+  system_identity?: SystemIdentitySummary | null
+  surface_access?: AgentSurfaceAccess | null
+  display_badges?: string[]
   persona_seed_code?: string
   persona_seed_label?: string
   home_voice_line_id?: string

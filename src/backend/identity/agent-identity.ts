@@ -10,6 +10,13 @@ import {
   type PersonaSeedCode,
   type VoiceLineId,
 } from '../../shared/agent-persona-catalog.js'
+import {
+  LAUNCH_SYSTEM_IDENTITY_KEY,
+  buildAgentSystemDisplayFields,
+  readLaunchSystemIdentityConfig,
+  redactOwnerIdForPublicRead,
+  type LaunchSystemIdentityConfig,
+} from '../launch/system-roster.js'
 
 export type IdentityContractSource =
   | 'contract_v1'
@@ -87,6 +94,7 @@ export function buildInitialIdentityConfig(input: {
   personaSeedCode?: string
   ownerStylePins?: OwnerStylePins
   selectedAt?: Date
+  launchSystemIdentity?: LaunchSystemIdentityConfig | null
 }): Record<string, unknown> {
   const contract = buildInitialIdentityContract({
     personaSeedCode: input.personaSeedCode,
@@ -98,6 +106,9 @@ export function buildInitialIdentityConfig(input: {
     personaSeed: contract.personaSeed,
     voice: contract.voice,
     ownerStylePins: contract.ownerStylePins,
+    ...(input.launchSystemIdentity
+      ? { [LAUNCH_SYSTEM_IDENTITY_KEY]: input.launchSystemIdentity }
+      : {}),
   }
 }
 
@@ -142,6 +153,10 @@ export function sanitizeIdentityConfig(configJson: Record<string, unknown>): Rec
     },
   } satisfies AgentVoiceConfig
   next.ownerStylePins = normalizeOwnerStylePins(ownerStylePinsRecord ?? personaSeed.starterStyleProjection)
+  const launchSystemIdentity = readLaunchSystemIdentityConfig(next)
+  if (launchSystemIdentity) {
+    next[LAUNCH_SYSTEM_IDENTITY_KEY] = launchSystemIdentity
+  }
 
   return next
 }
@@ -171,6 +186,7 @@ export function applyStyleSettingsPatch(
 
 export function buildAgentReadPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
   const resolved = resolveAgentIdentity(agent, latestConfig)
+  const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
   return {
     ...agent,
     persona_seed_code: resolved.summary.persona_seed_code,
@@ -186,11 +202,16 @@ export function buildAgentReadPayload(agent: Agent, latestConfig: AgentConfig | 
       owner_style_pins: resolved.contract.ownerStylePins,
       visible_persona: resolved.visiblePersona,
     },
+    agent_kind: displayFields.agent_kind,
+    system_identity: displayFields.system_identity,
+    surface_access: displayFields.surface_access,
+    display_badges: displayFields.display_badges,
   }
 }
 
 export function buildAgentSearchPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
   const resolved = resolveAgentIdentity(agent, latestConfig)
+  const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
   return {
     id: agent.id,
     display_name: agent.display_name,
@@ -202,6 +223,19 @@ export function buildAgentSearchPayload(agent: Agent, latestConfig: AgentConfig 
     home_voice_line_id: resolved.summary.home_voice_line_id,
     home_voice_line_label: resolved.summary.home_voice_line_label,
     identity_contract_source: resolved.source,
+    agent_kind: displayFields.agent_kind,
+    system_identity: displayFields.system_identity,
+    surface_access: displayFields.surface_access,
+    display_badges: displayFields.display_badges,
+  }
+}
+
+export function buildPublicAgentReadPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
+  const fullPayload = buildAgentReadPayload(agent, latestConfig)
+  const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+  return {
+    ...fullPayload,
+    owner_id: redactOwnerIdForPublicRead(agent.owner_id, displayFields),
   }
 }
 

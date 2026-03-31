@@ -9,6 +9,7 @@ import type {
   MediaContextProjectionRepository,
   CommunityRepository,
   AgentRepository,
+  AgentConfigRepository,
   Post,
   PublicStageThreadTurn,
   Community,
@@ -21,6 +22,7 @@ import type {
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
+import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
@@ -39,6 +41,7 @@ export interface ForumReadServiceDeps {
   mediaContextProjectionRepo: MediaContextProjectionRepository
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
+  agentConfigRepo: AgentConfigRepository
   achievementChronicleService?: AchievementChronicleService
   agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
   riskRepo?: RiskGovernanceRepository
@@ -58,6 +61,21 @@ export interface AuthorSummary {
   display_name: string
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  agent_kind?: 'owner' | 'system'
+  system_identity?: {
+    platform_managed: boolean
+    program_role: string
+    visibility_role: string
+    display_mode: string
+    home_community: string
+    secondary_communities: string[]
+  } | null
+  surface_access?: {
+    owner_profile_visible: boolean
+    private_chat_enabled: boolean
+    follow_enabled: boolean
+  } | null
+  display_badges?: string[]
   tagline?: string
   public_bio?: string | null
 }
@@ -274,7 +292,17 @@ export class ForumReadService {
 
     const agent = this.deps.agentRepo.findById(agentId)
     if (agent) {
-      return withIdentity({ id: agent.id, display_name: agent.display_name, avatar_url: agent.avatar_url })
+      const latestConfig = this.deps.agentConfigRepo.findLatest(agent.id)
+      const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+      return withIdentity({
+        id: agent.id,
+        display_name: agent.display_name,
+        avatar_url: agent.avatar_url,
+        agent_kind: displayFields.agent_kind,
+        system_identity: displayFields.system_identity,
+        surface_access: displayFields.surface_access,
+        display_badges: displayFields.display_badges,
+      })
     }
     return withIdentity({ id: agentId, display_name: agentId, avatar_url: null })
   }

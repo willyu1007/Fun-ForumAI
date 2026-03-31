@@ -10,6 +10,7 @@ const GENERIC_PLACEHOLDER_PATTERN =
 const TEMPLATE_STYLE_PATTERNS = [
   /^(我是一个|我是个|我是一名|最近我|我的性格|我通常会|我喜欢把)/u,
 ]
+const FORBIDDEN_TONE_SUFFIXES = ['腔', '口吻', '风格'] as const
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -62,6 +63,21 @@ export function fingerprintJson(value: unknown): string {
   return createHash('sha1').update(JSON.stringify(value)).digest('hex')
 }
 
+export function buildForbiddenToneLexicon(values: string[] | null | undefined): string[] {
+  const variants = new Set<string>()
+  for (const raw of values ?? []) {
+    const normalized = raw.trim()
+    if (!normalized) continue
+    variants.add(normalized)
+    for (const suffix of FORBIDDEN_TONE_SUFFIXES) {
+      if (normalized.endsWith(suffix) && normalized.length > suffix.length + 1) {
+        variants.add(normalized.slice(0, -suffix.length).trim())
+      }
+    }
+  }
+  return [...variants].filter((value) => value.length > 0)
+}
+
 export function buildWorldviewSourceFingerprint(input: {
   worldview: Omit<AgentBioWorldviewModel, 'presence'>
 }): string {
@@ -82,9 +98,18 @@ export function evaluatePublicBioPrivacy(
     .filter((item) => item.length >= 8)
 
   const violations: string[] = []
+  const forbiddenToneLexicon = buildForbiddenToneLexicon(worldview.system_identity?.forbidden_tones)
+    .map((item) => normalizeBioText(item))
+    .filter((item) => item.length >= 4)
   for (const clause of privateClauses) {
     if (normalizedPublic.includes(clause)) {
       violations.push('private_clause_overlap')
+      break
+    }
+  }
+  for (const lexicon of forbiddenToneLexicon) {
+    if (normalizedPublic.includes(lexicon)) {
+      violations.push('forbidden_tone')
       break
     }
   }

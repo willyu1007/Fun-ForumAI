@@ -31,6 +31,22 @@ export interface AgentBioWorldviewModel {
     top_scene: string | null
     signature_moves: string[]
   }
+  system_identity?: {
+    agent_kind: 'owner' | 'system'
+    program_role: string | null
+    visibility_role: string | null
+    home_community: string | null
+    stance_axis: string | null
+    humor_axis: string | null
+    empathy_axis: string | null
+    narrative_axis: string | null
+    signature_topics: string[]
+    signature_relationships: string[]
+    role_promise: string | null
+    viewer_hook_style: string | null
+    forbidden_tones: string[]
+    private_lane_policy: string | null
+  }
   public_history: {
     badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
     tagline: string | null

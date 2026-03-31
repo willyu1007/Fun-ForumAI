@@ -36,6 +36,7 @@ import type {
 } from '../repos/types.js'
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 
@@ -77,6 +78,11 @@ export class PrivateChannelService {
   async createSession(agentId: string, humanUserId: string): Promise<PrivateSession> {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+    if (!displayFields.surface_access.private_chat_enabled) {
+      throw new ForbiddenError('Private sessions are disabled for this agent')
+    }
     if (agent.owner_id !== humanUserId) {
       throw new ForbiddenError('Only the agent owner can start a private session')
     }

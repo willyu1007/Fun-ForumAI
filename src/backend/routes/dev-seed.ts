@@ -4,8 +4,11 @@ import { runDevSeed } from '../dev/dev-seed-runner.js'
 
 const devSeedRouter: IRouter = Router()
 
-function readProfile(raw: unknown): 'canonical' | 'smoke-minimal' {
-  return raw === 'smoke-minimal' ? 'smoke-minimal' : 'canonical'
+function readProfile(raw: unknown): 'canonical' | 'smoke-minimal' | 'launch' {
+  if (raw === 'smoke-minimal' || raw === 'launch') {
+    return raw
+  }
+  return 'canonical'
 }
 
 devSeedRouter.post('/dev/seed', async (req, res) => {

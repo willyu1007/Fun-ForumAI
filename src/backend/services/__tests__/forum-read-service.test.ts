@@ -7,7 +7,7 @@ import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.j
 import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
-import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryAgentConfigRepository, InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
@@ -31,6 +31,7 @@ function setup() {
   const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
   const communityRepo = new InMemoryCommunityRepository()
   const agentRepo = new InMemoryAgentRepository()
+  const agentConfigRepo = new InMemoryAgentConfigRepository()
   const riskRepo = new InMemoryRiskGovernanceRepository()
   const svc = new ForumReadService({
     postRepo,
@@ -43,6 +44,7 @@ function setup() {
     mediaContextProjectionRepo,
     communityRepo,
     agentRepo,
+    agentConfigRepo,
     riskRepo,
   })
   return {
@@ -58,6 +60,7 @@ function setup() {
     mediaContextProjectionRepo,
     communityRepo,
     agentRepo,
+    agentConfigRepo,
     riskRepo,
   }
 }
@@ -75,6 +78,7 @@ function setupWithObservability(record: (input: CreateMediaObservabilityEventInp
     mediaContextProjectionRepo: base.mediaContextProjectionRepo,
     communityRepo: base.communityRepo,
     agentRepo: base.agentRepo,
+    agentConfigRepo: base.agentConfigRepo,
     riskRepo: base.riskRepo,
     mediaObservabilityService: {
       record,
@@ -99,6 +103,7 @@ function setupWithRootPostFallbackEnabled() {
     mediaContextProjectionRepo: base.mediaContextProjectionRepo,
     communityRepo: base.communityRepo,
     agentRepo: base.agentRepo,
+    agentConfigRepo: base.agentConfigRepo,
     riskRepo: base.riskRepo,
     mediaRolloutControllerService: {
       getEffectiveProfile: vi.fn(async (): Promise<MediaRolloutControllerProfile> => ({

@@ -9,8 +9,13 @@ import {
   setupFeatureFlagGuard,
   createTestCommunity,
 } from './e2e-helpers.js'
-import { roleAssignmentService, eventRepo, searchCountsCache, searchDocRepo } from '../../container.js'
+import { agentService, roleAssignmentService, eventRepo, searchCountsCache, searchDocRepo, userRepo } from '../../container.js'
 import { buildAgentTarget } from '../../../shared/agent-target.js'
+import {
+  buildLaunchSystemConfigSlice,
+  deriveLaunchSeedIdentity,
+  getLaunchSystemRoster,
+} from '../../launch/system-roster.js'
 
 setupFeatureFlagGuard()
 
@@ -106,6 +111,43 @@ describe('E2E: Read API (public)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
     expect(adminRes.status).toBe(200)
     expect(adminRes.body.data.social_bio.owner_bio).toEqual(ownerRes.body.data.social_bio.owner_bio)
+  })
+
+  it('GET /v1/agents/:id/profile redacts owner metadata and private chat for system agents', async () => {
+    const rosterEntry = getLaunchSystemRoster().roster[0]
+    if (!rosterEntry || !userRepo) {
+      throw new Error('expected launch system roster entry and user repo')
+    }
+    const seedIdentity = deriveLaunchSeedIdentity(rosterEntry)
+    await userRepo.upsertDevIdentity({
+      id: 'platform-system-owner',
+      email: 'platform-system-owner@dev.local',
+      role: 'admin',
+    })
+    const agent = await agentService.createAgentPersisted({
+      owner_id: 'platform-system-owner',
+      display_name: `系统席位-${Date.now()}`,
+      model: 'qwen-plus',
+      persona_seed_code: seedIdentity.persona_seed_code,
+      owner_style_pins: seedIdentity.owner_style_pins,
+      launch_system_identity: buildLaunchSystemConfigSlice(rosterEntry).launch_system_identity as never,
+    })
+
+    const res = await request(app).get(`/v1/agents/${agent.id}/profile`)
+    expect(res.status).toBe(200)
+    expect(res.body.data.owner_id).toBeNull()
+    expect(res.body.data.agent_kind).toBe('system')
+    expect(res.body.data.system_identity).toMatchObject({
+      platform_managed: true,
+      program_role: rosterEntry.program_role,
+      home_community: rosterEntry.home_community,
+    })
+    expect(res.body.data.surface_access).toMatchObject({
+      owner_profile_visible: false,
+      private_chat_enabled: false,
+      follow_enabled: true,
+    })
+    expect(res.body.data.display_badges).toEqual(expect.any(Array))
   })
 
   it('GET /v1/highlights returns empty', async () => {

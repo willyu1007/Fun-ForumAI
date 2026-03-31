@@ -60,6 +60,62 @@ export function computePreferredRhetoricFamilies(worldview: AgentBioWorldviewMod
     weights.phase_shadow += 0.04
   }
 
+  const systemIdentity = worldview.system_identity
+  if (systemIdentity?.agent_kind === 'system') {
+    switch (systemIdentity.stance_axis) {
+      case 'strong':
+        weights.stance += 0.24
+        weights.contrast += 0.08
+        weights.phase_shadow -= 0.04
+        break
+      case 'medium':
+        weights.stance += 0.12
+        break
+      case 'low':
+        weights.phase_shadow += 0.06
+        weights.side_profile += 0.04
+        break
+    }
+
+    switch (systemIdentity.humor_axis) {
+      case 'high':
+        weights.side_profile += 0.22
+        weights.contrast += 0.12
+        break
+      case 'medium':
+        weights.side_profile += 0.08
+        break
+      case 'low':
+        break
+    }
+
+    switch (systemIdentity.empathy_axis) {
+      case 'high':
+        weights.phase_shadow += 0.18
+        weights.side_profile += 0.08
+        break
+      case 'medium':
+        weights.phase_shadow += 0.08
+        break
+      case 'low':
+        weights.stance += 0.05
+        weights.contrast += 0.06
+        break
+    }
+
+    switch (systemIdentity.narrative_axis) {
+      case 'high':
+        weights.contrast += 0.16
+        weights.phase_shadow += 0.1
+        break
+      case 'medium':
+        weights.side_profile += 0.05
+        break
+      case 'low':
+        break
+    }
+  }
+
   const ordered = (Object.entries(weights) as Array<[BioRhetoricFamily, number]>)
     .map(([family, weight]) => [family, Number(clamp(weight, 0.1, 1).toFixed(3))] as const)
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))

@@ -1,5 +1,6 @@
 import type { SearchThreadItem } from '../../../shared/public-search.js'
-import type { AgentRepository, SearchDocRepository } from '../../repos/index.js'
+import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
+import { buildAgentSystemDisplayFields } from '../../launch/system-roster.js'
 import type { ForumReadService } from '../forum-read-service.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
@@ -16,6 +17,7 @@ export class ThreadSearchProvider implements SearchProvider {
     private readonly deps: {
       searchDocRepo: SearchDocRepository
       agentRepo: AgentRepository
+      agentConfigRepo: AgentConfigRepository
       forumReadService: ForumReadService
       guard: SearchGuard
     },
@@ -77,6 +79,8 @@ export class ThreadSearchProvider implements SearchProvider {
       )
       const author = this.deps.agentRepo.findById(hit.doc.author_agent_id)
       const authorVisibility = this.deps.guard.getAuthorVisibility(author)
+      const latestConfig = this.deps.agentConfigRepo.findLatest(hit.doc.author_agent_id)
+      const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
       const hrefSearch = new URLSearchParams({ threadId: thread.id })
       if (matchedTurn) {
         hrefSearch.set('turnId', matchedTurn.id)
@@ -109,6 +113,10 @@ export class ThreadSearchProvider implements SearchProvider {
           id: hit.doc.author_agent_id,
           display_name: hit.doc.author_display_name,
           avatar_url: authorVisibility === 'full' ? hit.doc.author_avatar_url : null,
+          ...(authorVisibility === 'full' ? { agent_kind: displayFields.agent_kind } : {}),
+          ...(authorVisibility === 'full' ? { system_identity: displayFields.system_identity } : {}),
+          ...(authorVisibility === 'full' ? { surface_access: displayFields.surface_access } : {}),
+          ...(authorVisibility === 'full' ? { display_badges: displayFields.display_badges } : {}),
           ...(authorVisibility === 'full' && hit.doc.author_badges.length > 0 ? { badges: hit.doc.author_badges } : {}),
           ...(authorVisibility === 'full' && hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : {}),
           ...(authorVisibility === 'full' ? { public_bio: hit.doc.author_public_bio } : {}),

@@ -197,6 +197,7 @@ export const searchProjectionService = new SearchProjectionService({
 const postsSearchProvider = new PostSearchProvider({
   searchDocRepo: repos.searchDocRepo,
   agentRepo: repos.agentRepo,
+  agentConfigRepo: repos.agentConfigRepo,
   guard: searchGuard,
 })
 
@@ -206,12 +207,14 @@ const communitiesSearchProvider = new CommunitySearchProvider({
 
 const agentsSearchProvider = new AgentSearchProvider({
   searchDocRepo: repos.searchDocRepo,
+  agentConfigRepo: repos.agentConfigRepo,
   guard: searchGuard,
 })
 
 const threadsSearchProvider = new ThreadSearchProvider({
   searchDocRepo: repos.searchDocRepo,
   agentRepo: repos.agentRepo,
+  agentConfigRepo: repos.agentConfigRepo,
   forumReadService: core.forumReadService,
   guard: searchGuard,
 })

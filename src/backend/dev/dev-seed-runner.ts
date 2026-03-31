@@ -47,6 +47,7 @@ import {
   type DevSeedRoomSpec,
 } from './dev-seed-fixtures.js'
 import { buildFallbackMediaSemanticSummary } from '../media/media-semantic-service.js'
+import type { LaunchSystemIdentityConfig } from '../launch/system-roster.js'
 
 type SeededAgentRef = {
   id: string
@@ -151,6 +152,14 @@ async function ensureSeedUsers(
     { seed_key: 'human.dev-user-001', id: 'dev-user-001', email: 'dev-user-001@dev.local', role: 'user' as const },
     { seed_key: 'human.dev-admin-001', id: 'dev-admin-001', email: 'dev-admin-001@dev.local', role: 'admin' as const },
     { seed_key: 'human.dev-seed', id: 'dev-seed', email: 'dev-seed@dev.local', role: 'admin' as const },
+    ...(profile === 'launch'
+      ? [{
+          seed_key: 'human.platform-system-owner',
+          id: 'platform-system-owner',
+          email: 'platform-system-owner@dev.local',
+          role: 'admin' as const,
+        }]
+      : []),
   ]
 
   for (const fixture of fixtures) {
@@ -161,7 +170,6 @@ async function ensureSeedUsers(
     })
     await tracker.bind(fixture.seed_key, 'human_user', user.id)
   }
-  void profile
 }
 
 async function ensureSeedCommunity(
@@ -195,21 +203,28 @@ async function ensureSeedCommunity(
 
 async function ensureSeedIdentity(
   agentId: string,
-  spec: Pick<DevSeedAgentSpec, 'persona_seed_code' | 'owner_style_pins'>,
+  spec: Pick<DevSeedAgentSpec, 'persona_seed_code' | 'owner_style_pins' | 'config_patch'>,
 ): Promise<boolean> {
   const latestConfig = agentConfigRepo.findLatest(agentId)
   const normalizedDesired = sanitizeIdentityConfig({
     personaSeed: { seedCode: spec.persona_seed_code },
     ownerStylePins: spec.owner_style_pins,
+    ...(spec.config_patch ?? {}),
   })
   const currentConfig = sanitizeIdentityConfig(latestConfig?.config_json ?? {})
   const currentIdentitySlice = {
     personaSeed: currentConfig.personaSeed ?? null,
     ownerStylePins: currentConfig.ownerStylePins ?? null,
+    config_patch: spec.config_patch
+      ? Object.fromEntries(Object.keys(spec.config_patch).map((key) => [key, currentConfig[key] ?? null]))
+      : null,
   }
   const desiredIdentitySlice = {
     personaSeed: normalizedDesired.personaSeed ?? null,
     ownerStylePins: normalizedDesired.ownerStylePins ?? null,
+    config_patch: spec.config_patch
+      ? Object.fromEntries(Object.keys(spec.config_patch).map((key) => [key, normalizedDesired[key] ?? null]))
+      : null,
   }
   if (isDeepStrictEqual(currentIdentitySlice, desiredIdentitySlice)) {
     return false
@@ -239,6 +254,7 @@ async function ensureSeedAgent(
       model: spec.model,
       persona_seed_code: spec.persona_seed_code,
       owner_style_pins: spec.owner_style_pins,
+      launch_system_identity: spec.config_patch?.launch_system_identity as LaunchSystemIdentityConfig | undefined,
     })
   }
   if (agent.display_name !== spec.display_name) {
@@ -892,7 +908,7 @@ async function refreshSeedReadModels(input: {
   }
 }
 
-async function refreshCanonicalAgentBios(entries: Array<{
+async function refreshSeedAgentBios(entries: Array<{
   agent: Agent
   identity_changed: boolean
 }>): Promise<void> {
@@ -958,7 +974,7 @@ export async function runDevSeed(input: {
   }
 
   const agentsBySeedKey = new Map<string, Agent>()
-  const canonicalBioTargets: Array<{
+  const seedBioTargets: Array<{
     agent: Agent
     identity_changed: boolean
   }> = []
@@ -966,7 +982,7 @@ export async function runDevSeed(input: {
   for (const agentSpec of fixtures.agents) {
     const ensured = await ensureSeedAgent(agentSpec, tracker)
     agentsBySeedKey.set(agentSpec.seed_key, ensured.agent)
-    canonicalBioTargets.push(ensured)
+    seedBioTargets.push(ensured)
     agentIds.push(ensured.agent.id)
   }
 
@@ -1043,8 +1059,8 @@ export async function runDevSeed(input: {
     : { follows: 0, inbox_items: 0, bell_items: 0 }
 
   const agents = Array.from(agentsBySeedKey.values())
-  if (profile === 'canonical' && input.refresh_bio !== false) {
-    await refreshCanonicalAgentBios(canonicalBioTargets)
+  if ((profile === 'canonical' || profile === 'launch') && input.refresh_bio !== false) {
+    await refreshSeedAgentBios(seedBioTargets)
   }
 
   await refreshSeedReadModels({

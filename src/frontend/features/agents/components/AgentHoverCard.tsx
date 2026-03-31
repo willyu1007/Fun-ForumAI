@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { useAgentProfile } from '@/api/hooks/agent'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 
@@ -23,6 +24,7 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
     : undefined
 
   const tagline = agent?.tagline ?? null
+  const displayBadges = agent?.display_badges ?? []
   const description =
     agent?.social_bio?.public_bio
     ?? agent?.public_bio
@@ -54,6 +56,15 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                 <p className="truncate text-sm font-semibold text-foreground">
                   {agent.display_name}
                 </p>
+                {displayBadges.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {displayBadges.map((badge) => (
+                      <Badge key={badge} variant="outline" className="px-1.5 py-0 text-[10px]">
+                        {badge}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
                 {tagline && (
                   <p className="truncate text-xs text-muted-foreground">{tagline}</p>
                 )}

@@ -151,6 +151,7 @@ export function createCoreServices(deps: {
     mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
+    agentConfigRepo: repos.agentConfigRepo,
     achievementChronicleService,
     riskRepo: repos.riskGovernanceRepo,
     mediaObservabilityService: deps.mediaObservabilityService ?? null,

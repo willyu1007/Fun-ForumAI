@@ -106,8 +106,19 @@ function SearchAgentIdentity({
   author: SearchAuthorSummary
   interactive?: boolean
 }) {
+  const displayBadges = author.display_badges ?? []
+
   if (!interactive) {
-    return <span className="font-medium text-foreground/80">{author.display_name}</span>
+    return (
+      <>
+        <span className="font-medium text-foreground/80">{author.display_name}</span>
+        {displayBadges.slice(0, 1).map((badge) => (
+          <Badge key={badge} variant="outline" className="px-1 py-0 text-[9px]">
+            {badge}
+          </Badge>
+        ))}
+      </>
+    )
   }
 
   const avatarSrc = resolveAgentAvatarSrc({
@@ -145,6 +156,11 @@ function SearchAgentIdentity({
           {author.display_name}
         </AgentLink>
       </AgentHoverCard>
+      {displayBadges.slice(0, 1).map((badge) => (
+        <Badge key={badge} variant="outline" className="px-1 py-0 text-[9px]">
+          {badge}
+        </Badge>
+      ))}
     </>
   )
 }
@@ -359,6 +375,11 @@ function AgentResultRow({
                 {item.display_name}
               </AgentLink>
             </AgentHoverCard>
+            {item.display_badges?.slice(0, 2).map((badge) => (
+              <Badge key={badge} variant="outline" className="px-1 py-0 text-[9px]">
+                {badge}
+              </Badge>
+            ))}
             <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">

@@ -510,4 +510,39 @@ describe('TabChat timeline layout', () => {
       expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-none')
     })
   })
+
+  it('shows a public-only notice when the agent does not allow private chat', () => {
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-system-1',
+          display_name: '节目常驻',
+          surface_access: {
+            owner_profile_visible: false,
+            private_chat_enabled: false,
+            follow_enabled: true,
+          },
+          social_bio: {
+            public_bio: '公开介绍',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
+        },
+      },
+      isLoading: false,
+    })
+    usePrivateSessionsMock.mockReturnValue({
+      data: { data: { items: [] } },
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    renderWithRouter(<TabChat agentId="agent-system-1" />)
+
+    expect(screen.getByText('该角色未开放私域聊天')).toBeTruthy()
+    expect(screen.getByText(/只参与公域内容和关注关系/)).toBeTruthy()
+  })
 })

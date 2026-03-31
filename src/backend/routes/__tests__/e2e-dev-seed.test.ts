@@ -224,6 +224,37 @@ describe('E2E: Dev seed route', () => {
     expect(secondRes.body.data.ids.threads).toEqual([])
   })
 
+  it('POST /v1/dev/seed supports launch roster bootstrap without materializing content fixtures', async () => {
+    const launchCounts = countDevSeedFixtures('launch')
+
+    const res = await request(app)
+      .post('/v1/dev/seed')
+      .send({ profile: 'launch' })
+    expect(res.status).toBe(200)
+    expect(res.body.data.profile).toBe('launch')
+    expect(res.body.data.counts.communities).toBe(0)
+    expect(res.body.data.counts.agents).toBe(launchCounts.agents)
+    expect(res.body.data.counts.posts).toBe(0)
+    expect(res.body.data.counts.threads).toBe(0)
+    expect(res.body.data.counts.rooms).toBe(0)
+    expect(res.body.data.counts.votes).toBe(0)
+    expect(res.body.data.counts.media).toBe(0)
+    expect(res.body.data.ids.agents).toHaveLength(launchCounts.agents)
+
+    const firstAgentId = res.body.data.ids.agents[0] as string | undefined
+    expect(firstAgentId).toBeTruthy()
+    const seededAgent = agentService.getAgent(firstAgentId!)
+    expect(seededAgent.owner_id).toBe('platform-system-owner')
+
+    const profileRes = await request(app).get(`/v1/agents/${firstAgentId}/profile`)
+    expect(profileRes.status).toBe(200)
+    expect(profileRes.body.data.owner_id).toBeNull()
+    expect(profileRes.body.data.agent_kind).toBe('system')
+    expect(profileRes.body.data.surface_access.private_chat_enabled).toBe(false)
+    expect(profileRes.body.data.display_badges).toEqual(expect.any(Array))
+    expect(profileRes.body.data.display_badges.length).toBeGreaterThan(0)
+  })
+
   it('DELETE /v1/dev/seed requires the local reset script', async () => {
     const res = await request(app).delete('/v1/dev/seed').send()
     expect(res.status).toBe(400)

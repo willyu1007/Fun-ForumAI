@@ -34,6 +34,7 @@ export interface RejectBioCandidateContext {
   disallowedFamilies?: ReadonlySet<BioRhetoricFamily>
   recentOpeningFingerprints?: ReadonlySet<string>
   agentDisplayName?: string | null
+  forbiddenLexicon?: string[]
 }
 
 export function rejectBioCandidate(
@@ -68,6 +69,12 @@ export function rejectBioCandidate(
   }
   if (containsGenericPlaceholderLexicon(candidate.text, context.agentDisplayName)) {
     reasons.push('generic_placeholder')
+  }
+  const normalizedForbiddenLexicon = (context.forbiddenLexicon ?? [])
+    .map((item) => normalizeBioText(item))
+    .filter((item) => item.length >= 4)
+  if (normalizedForbiddenLexicon.some((item) => normalized.includes(item))) {
+    reasons.push('forbidden_tone')
   }
   const parts = candidate.text
     .split(/[，。；、,.!?！？]/)

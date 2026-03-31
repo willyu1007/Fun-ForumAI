@@ -278,6 +278,7 @@ describe('Public observation real smoke', () => {
       mediaContextProjectionRepo,
       communityRepo,
       agentRepo,
+      agentConfigRepo,
       achievementChronicleService: new AchievementChronicleService({
         achievementRepo,
         chronicleRepo,

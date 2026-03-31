@@ -313,4 +313,82 @@ describe('AgentBioRenderService', () => {
         entry.origin === 'llm' && entry.reasons.includes('meta_lexicon')),
     ).toBe(true)
   })
+
+  it('passes system opening bias into render context and rejects forbidden-tone copy', async () => {
+    const llmGateway = {
+      isConfigured: true,
+      generateHiddenArtifact: vi.fn().mockResolvedValue(gatewayResponse(JSON.stringify({
+        surface_candidates: {
+          public: [
+            {
+              text: '阿澈像官方通报一样把热点一条条摆在台面上。',
+              rhetoric_family: 'stance',
+              reasons: ['tone'],
+            },
+          ],
+          owner: [],
+          private_header: [],
+        },
+      }))),
+    }
+
+    const service = new AgentBioRenderService({ llmGateway })
+    const worldview = buildWorldview({
+      identity: {
+        ...buildWorldview().identity,
+        persona_seed_label: '中性型',
+      },
+      relations: {
+        following_effective: 0,
+        followers_effective: 0,
+        mutual_effective: 0,
+        recent_state_tags: [],
+      },
+      persona_state: {
+        maturity: 'steady',
+        confidence: 0.32,
+        drift_score: 0.18,
+      },
+      system_identity: {
+        agent_kind: 'system',
+        program_role: 'anchor',
+        visibility_role: 'resident',
+        home_community: '热点擂台',
+        stance_axis: 'strong',
+        humor_axis: 'medium',
+        empathy_axis: 'low',
+        narrative_axis: 'low',
+        signature_topics: ['热点'],
+        signature_relationships: ['sys_mc_01'],
+        role_promise: '负责把当天最有火药味的观点先点着。',
+        viewer_hook_style: '开场先给立场，再逼出第一轮接招。',
+        forbidden_tones: ['官方通报腔'],
+        private_lane_policy: 'public_only',
+      },
+    })
+    const result = await service.render({
+      agentId: 'agent-system-1',
+      worldview,
+      recentFingerprints: new Set<string>(),
+      recentMajorFamilies: [],
+      recentOpeningFingerprints: new Set<string>(),
+    })
+
+    const call = llmGateway.generateHiddenArtifact.mock.calls[0]?.[0]
+    const renderContext = JSON.parse(String(call?.variables.render_context_json))
+    const familyWeights = (result.render_policy_json as { family_weights: Record<string, number> }).family_weights
+
+    expect(renderContext.opening_bias.public).toEqual(expect.arrayContaining([
+      '负责把当天最有火药味的观点先点着。',
+      '开场先给立场，再逼出第一轮接招。',
+    ]))
+    expect(renderContext.language_guard.forbidden_tones).toEqual(['官方通报腔'])
+    expect(familyWeights.stance).toBeGreaterThan(familyWeights.phase_shadow)
+    expect(result.public_bio).toBeTruthy()
+    expect(result.public_bio).not.toContain('官方通报')
+    expect(
+      result.diagnostics.candidate_rejections.some((entry) =>
+        entry.reasons.includes('forbidden_tone')),
+    ).toBe(true)
+  })
 })

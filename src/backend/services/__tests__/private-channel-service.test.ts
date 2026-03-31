@@ -117,6 +117,78 @@ describe('PrivateChannelService', () => {
     expect(channelRepo.listSessions).not.toHaveBeenCalled()
   })
 
+  it('blocks private sessions for system agents with public-only lane policy', async () => {
+    const channelRepo = {
+      findSessionById: vi.fn(),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'platform-system-owner',
+          display_name: '节目位',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => ({
+          config_json: {
+            launch_system_identity: {
+              contract: 'launch_system_roster_v1',
+              version: 1,
+              platform_managed: true,
+              platform_owner_key: 'platform-system-owner',
+              program_role: 'anchor',
+              visibility_role: 'resident',
+              home_community: '热点擂台',
+              secondary_communities: [],
+              resident_memberships: ['热点擂台'],
+              guest_memberships: [],
+              pairing_preferences: { prefers: [], avoids: [] },
+              image_affinity: 'medium',
+              t4_capable: false,
+              daily_budget: { root_posts: 2, replies: 8, image_posts: 1 },
+              cross_route_budget: 2,
+              identity_scaffold: {
+                role_promise: '负责把当天最有火药味的观点先点着。',
+                viewer_hook_style: '开场先给立场，再逼出第一轮接招。',
+                stance_axis: 'strong',
+                humor_axis: 'medium',
+                empathy_axis: 'low',
+                narrative_axis: 'low',
+                forbidden_tones: ['官方通报腔'],
+                signature_topics: ['热点'],
+                signature_relationships: [],
+                private_lane_policy: 'public_only',
+              },
+            },
+          },
+        })),
+      } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      sseHub: null,
+    })
+
+    await expect(service.createSession('agent-1', 'platform-system-owner')).rejects.toThrow(
+      'Private sessions are disabled for this agent',
+    )
+    expect(channelRepo.createSession).not.toHaveBeenCalled()
+  })
+
   it('blocks proactive session listings for unverified owners', async () => {
     const proactiveSession: PrivateSession = {
       ...buildSession(),

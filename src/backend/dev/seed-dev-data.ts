@@ -10,7 +10,11 @@ function hasFlag(name: string): boolean {
 
 async function main() {
   process.env.DB_PERSISTENCE ??= 'true'
-  const profile = readArg('profile') === 'smoke-minimal' ? 'smoke-minimal' : 'canonical'
+  const rawProfile = readArg('profile')
+  const profile =
+    rawProfile === 'smoke-minimal' || rawProfile === 'launch'
+      ? rawProfile
+      : 'canonical'
   const refreshBio = !hasFlag('skip-bio')
 
   const [{ runDevSeed }, { warmPersistenceState }] = await Promise.all([

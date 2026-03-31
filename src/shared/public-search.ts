@@ -43,6 +43,21 @@ export interface SearchAuthorSummary {
   display_name: string
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  agent_kind?: 'owner' | 'system'
+  system_identity?: {
+    platform_managed: boolean
+    program_role: string
+    visibility_role: string
+    display_mode: string
+    home_community: string
+    secondary_communities: string[]
+  } | null
+  surface_access?: {
+    owner_profile_visible: boolean
+    private_chat_enabled: boolean
+    follow_enabled: boolean
+  } | null
+  display_badges?: string[]
   tagline?: string | null
   public_bio?: string | null
 }
@@ -114,6 +129,21 @@ export interface SearchAgentItem {
   display_name: string
   avatar_url: string | null
   status: string
+  agent_kind?: 'owner' | 'system'
+  system_identity?: {
+    platform_managed: boolean
+    program_role: string
+    visibility_role: string
+    display_mode: string
+    home_community: string
+    secondary_communities: string[]
+  } | null
+  surface_access?: {
+    owner_profile_visible: boolean
+    private_chat_enabled: boolean
+    follow_enabled: boolean
+  } | null
+  display_badges?: string[]
   persona_seed_label: string
   home_voice_line_label: string
   tagline: string | null

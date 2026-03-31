@@ -115,6 +115,9 @@ describe('search providers', () => {
           status: 'ACTIVE',
         })),
       } as never,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => null),
+      } as never,
       forumReadService: {
         getThread: vi.fn()
           .mockResolvedValueOnce({
@@ -237,6 +240,9 @@ describe('search providers', () => {
           status: 'ACTIVE',
         })),
       } as never,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => null),
+      } as never,
       forumReadService: {
         getThread: vi.fn().mockResolvedValue({
           id: 'thread-1',
@@ -346,6 +352,9 @@ describe('search providers', () => {
 
     const provider = new AgentSearchProvider({
       searchDocRepo,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => null),
+      } as never,
       guard: new SearchGuard(),
     })
     const result = await provider.search({
@@ -360,6 +369,103 @@ describe('search providers', () => {
       is_followed: true,
     })
     expect(result.items).toHaveLength(1)
+  })
+
+  it('AgentSearchProvider derives system seat display badges from config', async () => {
+    const searchDocRepo = {
+      searchAgentDocs: vi.fn().mockResolvedValue({
+        items: [
+          {
+            doc: {
+              agent_id: 'agent-system-1',
+              display_name: 'Resident Seat',
+              avatar_url: null,
+              status: 'ACTIVE',
+              model: 'gpt-5',
+              persona_seed_code: 'seed',
+              persona_seed_label: '学者型',
+              home_voice_line_id: 'voice-1',
+              home_voice_line_label: 'Qwen Social v1',
+              identity_contract_source: 'contract',
+              public_tagline: null,
+              public_badges: [],
+              public_badges_text: '',
+              active_membership_count: 1,
+              active_community_ids: ['community-1'],
+              active_communities: [{ id: 'community-1', name: '热点擂台', slug: 'hot' }],
+              active_community_names_text: '热点擂台',
+              follower_count: 2,
+              public_activity_score: 1.5,
+              public_projection_hint: '更适合 FREE_CHAT · banter=balanced · 常站 REGULAR',
+              top_chronicle_text: '',
+              representative_post_text: '',
+              representative_thread_turn_text: '',
+              social_signal_text: 'Signal captured for forum_post',
+              searchable_text: 'Resident Seat',
+              refreshed_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            score: 1.1,
+          },
+        ],
+        next_cursor: null,
+      }),
+      countAgentDocs: vi.fn().mockResolvedValue(1),
+    } as unknown as SearchDocRepository
+
+    const provider = new AgentSearchProvider({
+      searchDocRepo,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => ({
+          config_json: {
+            launch_system_identity: {
+              contract: 'launch_system_roster_v1',
+              version: 1,
+              platform_managed: true,
+              platform_owner_key: 'platform-system-owner',
+              program_role: 'anchor',
+              visibility_role: 'resident',
+              home_community: '热点擂台',
+              secondary_communities: ['本周大事件'],
+              resident_memberships: ['热点擂台'],
+              guest_memberships: ['本周大事件'],
+              pairing_preferences: { prefers: [], avoids: [] },
+              image_affinity: 'medium',
+              t4_capable: false,
+              daily_budget: { root_posts: 2, replies: 8, image_posts: 1 },
+              cross_route_budget: 2,
+              identity_scaffold: {
+                role_promise: '负责把当天最有火药味的观点先点着。',
+                viewer_hook_style: '开场先给立场，再逼出第一轮接招。',
+                stance_axis: 'strong',
+                humor_axis: 'medium',
+                empathy_axis: 'low',
+                narrative_axis: 'low',
+                forbidden_tones: ['官方通报腔'],
+                signature_topics: ['热点'],
+                signature_relationships: [],
+                private_lane_policy: 'public_only',
+              },
+            },
+          },
+        })),
+      } as never,
+      guard: new SearchGuard(),
+    })
+
+    const result = await provider.search({
+      query: 'resident',
+      limit: 20,
+    })
+
+    expect(result.items[0]).toMatchObject({
+      id: 'agent-system-1',
+      agent_kind: 'system',
+      display_badges: ['Resident'],
+    })
+    expect(result.items[0]?.snippet).not.toContain('FREE_CHAT')
+    expect(result.items[0]?.snippet).not.toContain('banter=')
   })
 
   it('PostSearchProvider fails closed for missing authors while keeping public content searchable', async () => {
@@ -412,6 +518,9 @@ describe('search providers', () => {
       searchDocRepo,
       agentRepo: {
         findById: vi.fn().mockReturnValue(null),
+      } as never,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => null),
       } as never,
       guard: new SearchGuard(),
     })

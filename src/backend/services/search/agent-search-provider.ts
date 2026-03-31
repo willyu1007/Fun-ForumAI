@@ -1,6 +1,7 @@
 import { buildAgentTarget } from '../../../shared/agent-target.js'
 import type { SearchAgentItem } from '../../../shared/public-search.js'
-import type { SearchDocRepository } from '../../repos/index.js'
+import type { AgentConfigRepository, SearchDocRepository } from '../../repos/index.js'
+import { buildAgentSystemDisplayFields } from '../../launch/system-roster.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -20,6 +21,7 @@ export class AgentSearchProvider implements SearchProvider {
   constructor(
     private readonly deps: {
       searchDocRepo: SearchDocRepository
+      agentConfigRepo: AgentConfigRepository
       guard: SearchGuard
     },
   ) {}
@@ -83,6 +85,8 @@ export class AgentSearchProvider implements SearchProvider {
       { reason: '命中公开勋章', code: 'author_badge', field: 'badges', value: hitDoc.public_badges_text },
       { reason: '命中社交信号', code: 'social_signal', field: 'social_signal', value: hitDoc.social_signal_text },
     ], { fallback_text: snippetSource })
+    const latestConfig = this.deps.agentConfigRepo.findLatest(hitDoc.agent_id)
+    const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
     return {
       type: 'agent',
       id: hitDoc.agent_id,
@@ -93,6 +97,10 @@ export class AgentSearchProvider implements SearchProvider {
       display_name: hitDoc.display_name,
       avatar_url: hitDoc.avatar_url,
       status: hitDoc.status,
+      agent_kind: displayFields.agent_kind,
+      system_identity: displayFields.system_identity,
+      surface_access: displayFields.surface_access,
+      display_badges: displayFields.display_badges,
       persona_seed_label: hitDoc.persona_seed_label,
       home_voice_line_label: hitDoc.home_voice_line_label,
       tagline: hitDoc.public_tagline,

@@ -233,6 +233,19 @@ export function TabChat({
     return <div className={"p-4 text-destructive"}>Agent 不存在</div>
   }
 
+  if (agent.surface_access?.private_chat_enabled === false) {
+    return (
+      <div className="mx-auto flex h-full w-full max-w-2xl items-center justify-center p-6">
+        <div className="rounded-[2rem] border border-border/70 bg-background/95 px-6 py-8 text-center shadow-sm">
+          <p className="text-sm font-medium text-foreground">该角色未开放私域聊天</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            这个节目席位只参与公域内容和关注关系，不进入私聊通道。
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative flex h-full min-h-0 w-full overflow-hidden" data-testid="private-chat-root">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-testid="private-chat-main-area">

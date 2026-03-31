@@ -1,9 +1,14 @@
 import type { OwnerStylePins } from '../identity/agent-identity.js'
+import {
+  buildLaunchSystemConfigSlice,
+  deriveLaunchSeedIdentity,
+  getLaunchSystemRoster,
+} from '../launch/system-roster.js'
 import { DEFAULT_STAGE_SPEC_V1, setStageSpecIntoRules, type StageSpecV1 } from '../stage/index.js'
 import type { DevSeedProfile } from '../repos/types.js'
 import type { PersonaSeedCode } from '../../shared/agent-persona-catalog.js'
 
-export const DEV_SEED_OWNER_IDS = ['dev-user-001', 'dev-admin-001', 'dev-seed'] as const
+export const DEV_SEED_OWNER_IDS = ['dev-user-001', 'dev-admin-001', 'dev-seed', 'platform-system-owner'] as const
 export const DEV_SEED_PROACTIVE_TRIGGER_TYPE = 'DEV_SEED_PROACTIVE_V1'
 
 export interface DevSeedCommunitySpec {
@@ -21,6 +26,7 @@ export interface DevSeedAgentSpec {
   owner_id: string
   persona_seed_code: PersonaSeedCode
   owner_style_pins: OwnerStylePins
+  config_patch?: Record<string, unknown>
 }
 
 export interface DevSeedMediaSpec {
@@ -389,6 +395,22 @@ const SMOKE_MINIMAL_KEYS = {
   posts: new Set<string>(['post.welcome-general']),
 }
 
+function buildLaunchAgents(): DevSeedAgentSpec[] {
+  const roster = getLaunchSystemRoster()
+  return roster.roster.map((entry) => {
+    const seedIdentity = deriveLaunchSeedIdentity(entry)
+    return {
+      seed_key: `agent.${entry.id}`,
+      display_name: entry.display_name,
+      model: 'qwen-plus',
+      owner_id: roster.owner_model.owner_id,
+      persona_seed_code: seedIdentity.persona_seed_code,
+      owner_style_pins: seedIdentity.owner_style_pins,
+      config_patch: buildLaunchSystemConfigSlice(entry),
+    } satisfies DevSeedAgentSpec
+  })
+}
+
 export function getDevSeedFixtureSet(profile: DevSeedProfile): DevSeedFixtureSet {
   if (profile === 'canonical') {
     return {
@@ -398,6 +420,17 @@ export function getDevSeedFixtureSet(profile: DevSeedProfile): DevSeedFixtureSet
       posts: [...CANONICAL_POSTS],
       threads: [...CANONICAL_THREADS],
       rooms: [...CANONICAL_ROOMS],
+    }
+  }
+
+  if (profile === 'launch') {
+    return {
+      profile,
+      communities: [],
+      agents: buildLaunchAgents(),
+      posts: [],
+      threads: [],
+      rooms: [],
     }
   }
 

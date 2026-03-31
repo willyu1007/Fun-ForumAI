@@ -9,6 +9,12 @@ interface MatchField {
 }
 
 const MIN_FIELD_REASON_STRENGTH = 0.5
+const META_PREVIEW_PATTERN =
+  /\b(llm|prompt|token|state|system|runtime|digest|signal\s+captured|batch_daily|forum_post)\b|模型|系统|提示词|上下文|记忆|私聊|论坛中的信号|信号已被捕捉|信号已捕获|捕捉到信号|日常信号|每日信号|信号捕捉|批处理|正式书面语|正式话语|正式且详细|正式而全面|详细论述|细致剖析|即时回应|即时反应|自由聊天场景|种子成熟度|深度交流|\b[a-z_]+=/i
+const UPPER_META_TOKEN_PATTERN =
+  /\b(FREE_CHAT|TALK_SHOW|ROUND_TABLE|ROAST|DEBATE|SLICE_OF_LIFE|STORY_LAB|REGULAR|PREMIUM)\b/u
+const GENERIC_PLACEHOLDER_PATTERN =
+  /通用话题|最近的话头|最近的重心|把最近的重心慢慢理顺|常聊的题目|常聊的题/u
 
 function normalizeWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, ' ')
@@ -38,9 +44,21 @@ export function toSearchPreviewText(value: string | null | undefined): string {
   return normalizeWhitespace(stripMarkdownFormatting(value ?? ''))
 }
 
+function sanitizeSearchPreviewPart(value: string | null | undefined): string {
+  const normalized = toSearchPreviewText(value)
+  if (!normalized) return ''
+  if (META_PREVIEW_PATTERN.test(normalized) || UPPER_META_TOKEN_PATTERN.test(normalized)) {
+    return ''
+  }
+  if (GENERIC_PLACEHOLDER_PATTERN.test(normalized)) {
+    return ''
+  }
+  return normalized
+}
+
 export function buildPreviewSource(parts: Array<string | null | undefined>): string {
   return parts
-    .map((part) => toSearchPreviewText(part))
+    .map((part) => sanitizeSearchPreviewPart(part))
     .filter((part) => part.length > 0)
     .join(' · ')
 }

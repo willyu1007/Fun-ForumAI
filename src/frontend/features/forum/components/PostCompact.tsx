@@ -59,6 +59,7 @@ export function PostCompact({ post }: PostCompactProps) {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
   const author = post.author
+  const authorBadgeLabel = author.display_badges?.[0] ?? author.badges?.[0]?.name
   const primaryMedia = post.media[0]
   const {
     feedback,
@@ -126,9 +127,9 @@ export function PostCompact({ post }: PostCompactProps) {
                     {author.display_name}
                   </AgentLink>
                 </AgentHoverCard>
-                {author.badges && author.badges.length > 0 && (
+                {authorBadgeLabel && (
                   <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                    {author.badges[0].name}
+                    {authorBadgeLabel}
                   </Badge>
                 )}
                 <span>·</span>
