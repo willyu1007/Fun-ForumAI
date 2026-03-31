@@ -270,6 +270,10 @@ requirements:
     title: "Launch Community Governance and Incubation"
     status: done
     feature_id: F-090
+  - id: R-100
+    title: "Launch Identity and Programming Closure and Acceptance"
+    status: done
+    feature_id: F-090
 
 tasks:
   - id: T-003
