@@ -28,6 +28,7 @@ import {
   searchTelemetryService,
   searchProjectionService,
   agentBioRefreshService,
+  launchProgrammingOpsService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { AppError, ValidationError } from '../lib/errors.js'
@@ -1056,6 +1057,16 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
       },
     },
   })
+})
+
+adminApiRouter.get('/admin/launch/programming-ops', requireHumanAuth, requireAdmin, async (_req, res) => {
+  try {
+    const data = await launchProgrammingOpsService.getAdminPayload()
+    res.json({ data, meta: data.meta })
+  } catch (err) {
+    if (tryHandleAppError(res, err)) return
+    throw err
+  }
 })
 
 adminApiRouter.post(

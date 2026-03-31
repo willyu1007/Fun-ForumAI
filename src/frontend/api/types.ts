@@ -639,7 +639,34 @@ export interface HomeProgrammingCommunityItem {
   next_jump_target: string
 }
 
-export type HomeProgrammingItem = HomeProgrammingPostItem | HomeProgrammingCommunityItem
+export interface HomeProgrammingSlotLeadSeat {
+  agent_id: string
+  display_name: string
+  role: string
+}
+
+export interface HomeProgrammingSlotItem extends LaunchVisualPackagingFields {
+  id: string
+  item_kind: 'programming_slot'
+  content_kind: 'programming_slot'
+  slot_name: string
+  daypart_id: string
+  daypart_label: string
+  daypart_time_range: string
+  community_slug: string
+  community_name: string
+  objective: string
+  expected_output_summary: string
+  editorial_shelf: string | null
+  lead_seats: HomeProgrammingSlotLeadSeat[]
+  next_jump_target: string
+  assignment_source: 'recommended_contract'
+}
+
+export type HomeProgrammingItem =
+  | HomeProgrammingPostItem
+  | HomeProgrammingCommunityItem
+  | HomeProgrammingSlotItem
 
 export interface HomeShelf {
   id: string
@@ -657,6 +684,154 @@ export interface HomeProgrammingPayload {
     items: PostWithMeta[]
     next_cursor: string | null
   }
+  meta: {
+    generated_at: string
+    source: string
+  }
+}
+
+export interface ProgrammingAgentRecommendation {
+  agent_id: string
+  display_name: string
+  program_role: string
+  requested_role: string
+  community_affinity: string
+  t4_capable: boolean
+}
+
+export interface ProgrammingSlotRecommendation {
+  slot_name: string
+  daypart: string
+  daypart_label: string
+  community_name: string
+  community_slug: string
+  scene_types: string[]
+  required_roles: string[]
+  optional_roles: string[]
+  fallback_roles: string[]
+  assigned_agents: ProgrammingAgentRecommendation[]
+  assigned_agent_ids: string[]
+  fallback_agents: ProgrammingAgentRecommendation[]
+  fallback_agent_ids: string[]
+  role_mix: Record<string, number>
+  blocked_pairings: string[]
+  assignment_source: 'recommended_contract'
+  expected_outputs: {
+    root_posts?: number
+    t4_notes?: number
+    priority_threads?: number
+    highlight_candidate?: boolean
+    programming_entry?: boolean
+    shelf_eligible?: boolean
+    continuity_entry?: boolean
+    aftershow_candidate?: boolean
+    editorial_shelf?: string
+    surface_kind?: LaunchSurfaceKind
+  }
+  expected_output_summary: string
+  cross_handoff_communities: string[]
+  cross_handoff_community_slugs: string[]
+  unfilled_required_roles: string[]
+}
+
+export interface ProgrammingDaypart {
+  id: string
+  label: string
+  time_range: string
+  objective: string
+  target_communities: string[]
+  target_community_slugs: string[]
+  supply_floor: Record<string, number>
+  preferred_roles: string[]
+  metrics_focus: string[]
+}
+
+export interface ProgrammingWarning {
+  code: string
+  severity: 'warn' | 'critical'
+  message: string
+  affected_daypart?: string | null
+  affected_community_slug?: string | null
+}
+
+export interface ProgrammingHealthSnapshot {
+  required_daily_outcomes: Record<string, number>
+  observed_daily_outcomes: Record<string, number>
+  daypart_readiness: Array<{
+    daypart_id: string
+    label: string
+    ok: boolean
+    required: Record<string, number>
+    observed: Record<string, number>
+  }>
+  community_supply_floor: Array<{
+    community_name: string
+    community_slug: string
+    required: Record<string, number>
+    observed: Record<string, number>
+    ok: boolean
+    missed_slots: number
+  }>
+  visual_ratio_ok: boolean
+  aftershow_pipeline_ok: boolean
+  warning_count: number
+  warnings: ProgrammingWarning[]
+}
+
+export interface LaunchProgrammingOpsPayload {
+  enabled: boolean
+  timezone: string
+  active_daypart_id: string | null
+  dayparts: ProgrammingDaypart[]
+  slots: ProgrammingSlotRecommendation[]
+  health: ProgrammingHealthSnapshot
+  observations: {
+    visual_ratio: {
+      root_cover_ratio: number | null
+      t4_cover_ratio: number | null
+      highlight_visual_ratio: number | null
+      reject_reason_counts: Record<string, number>
+      budget_remaining_cny: number | null
+      cost_gate_active: boolean
+    }
+    highlight_candidates: Array<{
+      candidate_post_id: string
+      title: string
+      community_name: string
+      community_slug: string
+      shelf_target: string
+      hero_reason: string | null
+      rejected_reason: string | null
+    }>
+    aftershow: Array<{
+      candidate_post_id: string
+      title: string
+      community_name: string
+      community_slug: string
+      trigger_status: 'ready' | 'watch' | 'none'
+      published_status: 'published' | 'pending'
+      fallback_status: 'post_detail_only' | 'not_needed'
+    }>
+  }
+  governance_references: {
+    communities: Array<{
+      community_id: string | null
+      community_name: string
+      community_slug: string
+      community_lifecycle_state: string
+      launch_phase: string | null
+      headline_priority: number
+    }>
+    incubation: Array<{
+      proposal_id: string
+      community_name: string
+      incubation_status: string
+      merge_recommendation: string | null
+      last_admin_action: string | null
+    }>
+  }
+  rollback_order: string[]
+  drill_checklist: string[]
   meta: {
     generated_at: string
     source: string

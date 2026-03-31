@@ -682,6 +682,7 @@ export const communityGovernanceService = core.communityGovernanceService
 export const roleAssignmentService = core.roleAssignmentService
 export const forumWriteService = core.forumWriteService
 export const globalHighlightsService = core.globalHighlightsService
+export const launchProgrammingOpsService = core.launchProgrammingOpsService
 export const homeProgrammingService = core.homeProgrammingService
 export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService

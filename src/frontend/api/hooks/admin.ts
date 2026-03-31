@@ -9,6 +9,7 @@ import type {
   AdminFeedbackTicketSummary,
   AdminInviteCodeSummary,
   AgentRiskProfile,
+  LaunchProgrammingOpsPayload,
   ClaimedReviewTask,
   CommunityIncubationVisibilityMode,
   CommunityProposalAction,
@@ -66,6 +67,53 @@ function buildDisabledRuntimeFeaturesResponse(): ApiResponse<RuntimeFeaturesData
   }
 }
 
+function buildDisabledLaunchProgrammingOpsResponse(): ApiResponse<LaunchProgrammingOpsPayload> {
+  return {
+    data: {
+      enabled: false,
+      timezone: 'Asia/Shanghai',
+      active_daypart_id: null,
+      dayparts: [],
+      slots: [],
+      health: {
+        required_daily_outcomes: {},
+        observed_daily_outcomes: {},
+        daypart_readiness: [],
+        community_supply_floor: [],
+        visual_ratio_ok: true,
+        aftershow_pipeline_ok: true,
+        warning_count: 0,
+        warnings: [],
+      },
+      observations: {
+        visual_ratio: {
+          root_cover_ratio: null,
+          t4_cover_ratio: null,
+          highlight_visual_ratio: null,
+          reject_reason_counts: {},
+          budget_remaining_cny: null,
+          cost_gate_active: false,
+        },
+        highlight_candidates: [],
+        aftershow: [],
+      },
+      governance_references: {
+        communities: [],
+        incubation: [],
+      },
+      rollback_order: [],
+      drill_checklist: [],
+      meta: {
+        generated_at: new Date(0).toISOString(),
+        source: 'launch-programming-ops-v1',
+      },
+    },
+    meta: {
+      disabled: true,
+    },
+  }
+}
+
 function hasHttpStatus(error: unknown, status: number): boolean {
   if (typeof error !== 'object' || error === null || !('response' in error)) {
     return false
@@ -106,6 +154,20 @@ export function useAdminMediaRolloutController() {
     queryFn: () =>
       api.get('admin/media/rollout-controller').json<ApiResponse<AdminMediaRolloutControllerData>>(),
     refetchInterval: 15_000,
+  })
+}
+
+export function useAdminLaunchProgrammingOps(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.adminLaunchProgrammingOps(enabled),
+    queryFn: async () => {
+      if (!enabled) {
+        return buildDisabledLaunchProgrammingOpsResponse()
+      }
+      return api.get('admin/launch/programming-ops').json<ApiResponse<LaunchProgrammingOpsPayload>>()
+    },
+    refetchInterval: (query) => query.state.data?.data?.enabled === false ? false : 30_000,
+    retry: false,
   })
 }
 

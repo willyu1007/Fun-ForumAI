@@ -92,6 +92,29 @@ describe('E2E: Governance Control Plane', () => {
     }
   })
 
+  it('GET /v1/admin/launch/programming-ops returns the launch programming read model for admin', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalProgrammingOps = featureFlags.programmingOpsV1
+    featureFlags.programmingOpsV1 = true
+
+    try {
+      const res = await request(app)
+        .get('/v1/admin/launch/programming-ops')
+        .set('Authorization', `Bearer ${adminToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.enabled).toBe(true)
+      expect(res.body.data.dayparts).toHaveLength(4)
+      expect(res.body.data.slots.length).toBeGreaterThan(0)
+      expect(res.body.data.health).toHaveProperty('warnings')
+      expect(res.body.data.governance_references).toHaveProperty('communities')
+      expect(res.body.data).toHaveProperty('rollback_order')
+      expect(res.body.data).toHaveProperty('drill_checklist')
+    } finally {
+      featureFlags.programmingOpsV1 = originalProgrammingOps
+    }
+  })
+
   it('POST /v1/admin/stage/season-rotate requires admin role', async () => {
     const res = await request(app)
       .post('/v1/admin/stage/season-rotate')

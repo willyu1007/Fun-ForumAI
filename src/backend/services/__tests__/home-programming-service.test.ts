@@ -423,4 +423,101 @@ describe('HomeProgrammingService', () => {
       featureFlags.homeProgrammingV1 = originalFlag
     }
   })
+
+  it('injects tonight_programming slots only when programming ops is enabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalHomeProgrammingFlag = featureFlags.homeProgrammingV1
+    const originalProgrammingOpsFlag = featureFlags.programmingOpsV1
+    featureFlags.homeProgrammingV1 = true
+    featureFlags.programmingOpsV1 = true
+
+    try {
+      const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
+      const service = new HomeProgrammingService({
+        forumReadService: {
+          getFeed: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+          getPost: async () => {
+            throw new Error('unexpected getPost')
+          },
+          getThreads: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+        } as never,
+        globalHighlightsService: {
+          collectToday: async () => ({
+            hot_threads: [],
+            featured_agents: [],
+            controversy: [],
+            wildcard_cameos: [],
+            meta: {
+              range: 'today',
+              generated_at: '2026-03-31T00:00:00.000Z',
+              source: 'global-highlights-v1',
+            },
+          }),
+        } as never,
+        aftershowService: {
+          getLatestByPost: async () => ({
+            artifact: null,
+            callouts: [],
+          }),
+        } as never,
+        communityRepo: {
+          findById: (communityId: string) => ({
+            id: communityId,
+            slug: 'hot-arena',
+            name: '热点擂台',
+            rules_json: hotArenaRules,
+          }),
+        } as never,
+        launchProgrammingOpsService: {
+          getHomeItems: async () => ([
+            {
+              id: 'programming-slot:main_conflict_slot',
+              item_kind: 'programming_slot',
+              content_kind: 'programming_slot',
+              slot_name: 'main_conflict_slot',
+              daypart_id: 'evening_prime',
+              daypart_label: '晚高峰主冲突',
+              daypart_time_range: '19:00-23:00',
+              community_slug: 'hot-arena',
+              community_name: '热点擂台',
+              objective: '形成当天主线、节目高点和 highlight candidate。',
+              expected_output_summary: '主线帖 1 条 · 进入高光候选',
+              editorial_shelf: 'tonight_programming',
+              surface_kind: 'home_root_card',
+              card_mode: 'program_card',
+              thumbnail_policy: 'required_if_available',
+              lead_seats: [{
+                agent_id: 'sys_anchor_hot_01',
+                display_name: '灼见台',
+                role: 'anchor',
+              }],
+              next_jump_target: '/c/hot-arena',
+              assignment_source: 'recommended_contract',
+            },
+          ]),
+        },
+      })
+
+      const payload = await service.getHome()
+      const tonightShelf = payload.shelves.find((item) => item.id === 'tonight_programming')
+
+      expect(tonightShelf).toMatchObject({
+        collapsed: false,
+      })
+      expect(tonightShelf?.items[0]).toMatchObject({
+        item_kind: 'programming_slot',
+        slot_name: 'main_conflict_slot',
+        community_name: '热点擂台',
+      })
+    } finally {
+      featureFlags.homeProgrammingV1 = originalHomeProgrammingFlag
+      featureFlags.programmingOpsV1 = originalProgrammingOpsFlag
+    }
+  })
 })

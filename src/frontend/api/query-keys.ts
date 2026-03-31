@@ -85,6 +85,7 @@ export const queryKeys = {
   adminFeedbackList: (params?: { status?: string; category?: string; source_route?: string; cursor?: string; limit?: number }) =>
     ['admin', 'feedback-list', params] as const,
   adminFeedbackDetail: (feedbackId: string) => ['admin', 'feedback-detail', feedbackId] as const,
+  adminLaunchProgrammingOps: (enabled?: boolean) => ['admin', 'launch-programming-ops', enabled ?? true] as const,
   myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,
   myAppeals: (params?: { status?: string; cursor?: string; limit?: number }) => ['myAppeals', params] as const,
   agentMediaCurrent: (agentId: string) => ['agentMediaCurrent', agentId] as const,

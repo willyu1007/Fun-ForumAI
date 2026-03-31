@@ -11,6 +11,7 @@ import {
   useAdminCommunityProposals,
   useAdminHotTopicAlerts,
   useAdminHotTopicDashboard,
+  useAdminLaunchProgrammingOps,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
   useApplyCommunityProposalAction,
@@ -49,6 +50,7 @@ vi.mock('@/api/hooks', () => ({
   useAdminCommunityProposals: vi.fn(),
   useAdminHotTopicAlerts: vi.fn(),
   useAdminHotTopicDashboard: vi.fn(),
+  useAdminLaunchProgrammingOps: vi.fn(),
   useAdminHotTopicPostDistribution: vi.fn(),
   useAdminHotTopicRoomControl: vi.fn(),
   useApplyCommunityProposalAction: vi.fn(),
@@ -83,6 +85,7 @@ const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
 const useAdminCommunityProposalsMock = vi.mocked(useAdminCommunityProposals)
 const useAdminHotTopicAlertsMock = vi.mocked(useAdminHotTopicAlerts)
 const useAdminHotTopicDashboardMock = vi.mocked(useAdminHotTopicDashboard)
+const useAdminLaunchProgrammingOpsMock = vi.mocked(useAdminLaunchProgrammingOps)
 const useAdminHotTopicPostDistributionMock = vi.mocked(useAdminHotTopicPostDistribution)
 const useAdminHotTopicRoomControlMock = vi.mocked(useAdminHotTopicRoomControl)
 const useApplyCommunityProposalActionMock = vi.mocked(useApplyCommunityProposalAction)
@@ -248,6 +251,8 @@ const shareExport: ReviewEvidenceExport = {
 describe('AdminPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('VITE_FF_PROGRAMMING_OPS_V1', 'false')
+    import.meta.env.VITE_FF_PROGRAMMING_OPS_V1 = 'false'
 
     useAuthMock.mockReturnValue({
       currentIdentity: 'admin',
@@ -330,6 +335,51 @@ describe('AdminPanel', () => {
     } as never)
     useAdminHotTopicAlertsMock.mockReturnValue({
       data: { data: [] },
+    } as never)
+    useAdminLaunchProgrammingOpsMock.mockReturnValue({
+      data: {
+        data: {
+          enabled: false,
+          timezone: 'Asia/Shanghai',
+          active_daypart_id: null,
+          dayparts: [],
+          slots: [],
+          health: {
+            required_daily_outcomes: {},
+            observed_daily_outcomes: {},
+            daypart_readiness: [],
+            community_supply_floor: [],
+            visual_ratio_ok: true,
+            aftershow_pipeline_ok: true,
+            warning_count: 0,
+            warnings: [],
+          },
+          observations: {
+            visual_ratio: {
+              root_cover_ratio: null,
+              t4_cover_ratio: null,
+              highlight_visual_ratio: null,
+              reject_reason_counts: {},
+              budget_remaining_cny: null,
+              cost_gate_active: false,
+            },
+            highlight_candidates: [],
+            aftershow: [],
+          },
+          governance_references: {
+            communities: [],
+            incubation: [],
+          },
+          rollback_order: [],
+          drill_checklist: [],
+          meta: {
+            generated_at: '2026-03-12T10:00:00.000Z',
+            source: 'launch-programming-ops-v1',
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
     } as never)
     useAdminHotTopicPostDistributionMock.mockReturnValue({
       mutateAsync: vi.fn(),
@@ -485,6 +535,146 @@ describe('AdminPanel', () => {
 
     expect(screen.getByText('share export 已隐藏原文、prompt/memory 与用户标识。')).toBeTruthy()
     expect(screen.getByText((_, node) => node?.textContent === 'redaction share')).toBeTruthy()
+  })
+
+  it('renders the Programming tab with launch ops read data', async () => {
+    vi.stubEnv('VITE_FF_PROGRAMMING_OPS_V1', 'true')
+    import.meta.env.VITE_FF_PROGRAMMING_OPS_V1 = 'true'
+    useAdminLaunchProgrammingOpsMock.mockReturnValue({
+      data: {
+        data: {
+          enabled: true,
+          timezone: 'Asia/Shanghai',
+          active_daypart_id: 'evening_prime',
+          dayparts: [{
+            id: 'evening_prime',
+            label: '晚高峰主冲突',
+            time_range: '19:00-23:00',
+            objective: '形成当天主线、节目高点和 highlight candidate。',
+            target_communities: ['热点擂台'],
+            target_community_slugs: ['hot-arena'],
+            supply_floor: { root_posts: 2, highlight_candidates: 1 },
+            preferred_roles: ['anchor', 'challenger'],
+            metrics_focus: ['hero_candidate_count'],
+          }],
+          slots: [{
+            slot_name: 'main_conflict_slot',
+            daypart: 'evening_prime',
+            daypart_label: '晚高峰主冲突',
+            community_name: '热点擂台',
+            community_slug: 'hot-arena',
+            scene_types: ['DEBATE'],
+            required_roles: ['anchor', 'challenger'],
+            optional_roles: ['mc'],
+            fallback_roles: ['editor'],
+            assigned_agents: [{
+              agent_id: 'sys_anchor_hot_01',
+              display_name: '灼见台',
+              program_role: 'anchor',
+              requested_role: 'anchor',
+              community_affinity: 'home_community',
+              t4_capable: false,
+            }],
+            assigned_agent_ids: ['sys_anchor_hot_01'],
+            fallback_agents: [],
+            fallback_agent_ids: [],
+            role_mix: { anchor: 1 },
+            blocked_pairings: [],
+            assignment_source: 'recommended_contract',
+            expected_outputs: {
+              root_posts: 1,
+              highlight_candidate: true,
+              surface_kind: 'home_root_card',
+            },
+            expected_output_summary: '主线帖 1 条 · 进入高光候选',
+            cross_handoff_communities: ['吐槽观察局'],
+            cross_handoff_community_slugs: ['banter-room'],
+            unfilled_required_roles: [],
+          }],
+          health: {
+            required_daily_outcomes: {
+              mainline_roots: 3,
+            },
+            observed_daily_outcomes: {
+              mainline_roots: 2,
+            },
+            daypart_readiness: [{
+              daypart_id: 'evening_prime',
+              label: '晚高峰主冲突',
+              ok: true,
+              required: { root_posts: 2 },
+              observed: { root_posts: 2 },
+            }],
+            community_supply_floor: [],
+            visual_ratio_ok: true,
+            aftershow_pipeline_ok: true,
+            warning_count: 1,
+            warnings: [{
+              code: 'aftershow_publish_below_threshold',
+              severity: 'warn',
+              message: 'Aftershow 发布成功率低于 50%。',
+            }],
+          },
+          observations: {
+            visual_ratio: {
+              root_cover_ratio: 0.4,
+              t4_cover_ratio: 0.7,
+              highlight_visual_ratio: 1,
+              reject_reason_counts: {},
+              budget_remaining_cny: 12.5,
+              cost_gate_active: true,
+            },
+            highlight_candidates: [{
+              candidate_post_id: 'post-1',
+              title: '热点主线',
+              community_name: '热点擂台',
+              community_slug: 'hot-arena',
+              shelf_target: 'must_watch_today',
+              hero_reason: 'hero_candidate_ready',
+              rejected_reason: null,
+            }],
+            aftershow: [{
+              candidate_post_id: 'post-2',
+              title: '夜间回收',
+              community_name: '深夜电台',
+              community_slug: 'night-radio',
+              trigger_status: 'watch',
+              published_status: 'pending',
+              fallback_status: 'post_detail_only',
+            }],
+          },
+          governance_references: {
+            communities: [{
+              community_id: 'community-1',
+              community_name: '热点擂台',
+              community_slug: 'hot-arena',
+              community_lifecycle_state: 'launch_core',
+              launch_phase: 'launch_core',
+              headline_priority: 100,
+            }],
+            incubation: [],
+          },
+          rollback_order: ['Disable homepage programming surface and fall back to feed plus highlights.'],
+          drill_checklist: ['Simulate one full daypart schedule before release week.'],
+          meta: {
+            generated_at: '2026-03-12T10:00:00.000Z',
+            source: 'launch-programming-ops-v1',
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    render(<AdminPanel />)
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Programming' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Programming' }))
+
+    expect(screen.getByText('Daypart Baseline')).toBeTruthy()
+    expect(screen.getByText('Slot Recommendations')).toBeTruthy()
+    expect(screen.getByText('main_conflict_slot')).toBeTruthy()
+    expect(screen.getByText('Aftershow 发布成功率低于 50%。')).toBeTruthy()
   })
 
   it('renders agent risk profile and disclosure cap controls', async () => {

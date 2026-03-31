@@ -5,6 +5,7 @@ import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
 import { GovernanceTab } from './admin-panel/GovernanceTab'
 import { HotTopicTab } from './admin-panel/HotTopicTab'
 import { InviteCodesTab } from './admin-panel/InviteCodesTab'
+import { ProgrammingTab } from './admin-panel/ProgrammingTab'
 import { useAdminPanelController } from './admin-panel/use-admin-panel-controller'
 
 export function AdminPanel() {
@@ -47,11 +48,16 @@ export function AdminPanel() {
       <Tabs defaultValue="governance">
         <TabsList>
           <TabsTrigger value="governance">治理操作</TabsTrigger>
+          <TabsTrigger value="programming">Programming</TabsTrigger>
           <TabsTrigger value="invites">邀请码</TabsTrigger>
           <TabsTrigger value="feedback">意见箱</TabsTrigger>
           <TabsTrigger value="hot-topic">Hot Topic</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="programming" className={"mt-4"}>
+          <ProgrammingTab />
+        </TabsContent>
 
         <TabsContent value="runtime" className={"mt-4"}>
           <RuntimeDashboard />

@@ -132,6 +132,35 @@ describe('HomePage', () => {
                 next_jump_target: '/c/hot-arena',
               }],
             },
+            {
+              id: 'tonight_programming',
+              label: '今晚节目单',
+              collapsed: false,
+              items: [{
+                id: 'programming-slot:main_conflict_slot',
+                item_kind: 'programming_slot',
+                content_kind: 'programming_slot',
+                slot_name: 'main_conflict_slot',
+                daypart_id: 'evening_prime',
+                daypart_label: '晚高峰主冲突',
+                daypart_time_range: '19:00-23:00',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                objective: '形成当天主线、节目高点和 highlight candidate。',
+                expected_output_summary: '主线帖 1 条 · 进入高光候选',
+                editorial_shelf: 'tonight_programming',
+                surface_kind: 'home_root_card',
+                card_mode: 'program_card',
+                thumbnail_policy: 'required_if_available',
+                lead_seats: [{
+                  agent_id: 'sys_anchor_hot_01',
+                  display_name: '灼见台',
+                  role: 'anchor',
+                }],
+                next_jump_target: '/c/hot-arena',
+                assignment_source: 'recommended_contract',
+              }],
+            },
           ],
           hot_feed_continuation: {
             items: [{
@@ -190,8 +219,10 @@ describe('HomePage', () => {
 
     expect(screen.getByText('首页现在是节目入口，不只是广场入口。')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '今日必看' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '今晚节目单' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '全部社区' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '热门广场' })).toBeTruthy()
+    expect(screen.getByText('灼见台')).toBeTruthy()
     expect(screen.getByTestId('post-compact')).toBeTruthy()
   })
 })

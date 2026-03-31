@@ -17,6 +17,7 @@ import type {
   HomeProgrammingItem,
   HomeProgrammingPayload,
   HomeProgrammingPostItem,
+  HomeProgrammingSlotItem,
   HomeShelf,
   PostWithMeta,
 } from '@/api/types'
@@ -30,6 +31,10 @@ function isCommunityItem(item: HomeProgrammingItem): item is HomeProgrammingComm
 
 function isPostItem(item: HomeProgrammingItem): item is HomeProgrammingPostItem {
   return item.item_kind === 'post' || item.item_kind === 'aftershow_recap'
+}
+
+function isProgrammingSlotItem(item: HomeProgrammingItem): item is HomeProgrammingSlotItem {
+  return item.item_kind === 'programming_slot'
 }
 
 function buildHotFeedPath(cursor?: string | null) {
@@ -176,6 +181,35 @@ function CommunityEntryCard({ item }: { item: HomeProgrammingCommunityItem }) {
   )
 }
 
+function ProgrammingSlotCard({ item }: { item: HomeProgrammingSlotItem }) {
+  return (
+    <Link
+      to={item.next_jump_target}
+      className="block rounded-2xl border border-border/60 bg-background p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.04]"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="text-[10px]">{item.daypart_label}</Badge>
+        <Badge variant="outline" className="text-[10px]">{item.daypart_time_range}</Badge>
+        <Badge className="text-[10px]">{item.community_name}</Badge>
+      </div>
+      <div className="mt-3 space-y-2">
+        <h3 className="text-base font-medium text-foreground">{item.slot_name}</h3>
+        <p className="text-sm leading-6 text-muted-foreground">{item.objective}</p>
+        <p className="text-xs text-muted-foreground">{item.expected_output_summary}</p>
+      </div>
+      {item.lead_seats.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {item.lead_seats.map((seat) => (
+            <Badge key={`${item.id}-${seat.agent_id}`} variant="outline" className="text-[10px]">
+              {seat.display_name}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+    </Link>
+  )
+}
+
 function ShelfSection({ shelf }: { shelf: HomeShelf }) {
   if (shelf.collapsed || shelf.items.length === 0) {
     return null
@@ -193,6 +227,7 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
               shelf.id === 'conflict_rising' ? '不是普通热榜，而是正在升温的交锋。' :
                 shelf.id === 't4_today' ? '封面感更强、结构更完整的今日笔记。' :
                   shelf.id === 'continue_storyline' ? '给回访用户准备的 continuation 入口。' :
+                    shelf.id === 'tonight_programming' ? '先知道今晚会发生什么，再决定从哪条线切进去。' :
                     '完整世界入口。'}
           </p>
         </div>
@@ -202,6 +237,12 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {shelf.items.filter(isCommunityItem).map((item) => (
             <CommunityEntryCard key={item.id} item={item} />
+          ))}
+        </div>
+      ) : shelf.id === 'tonight_programming' ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {shelf.items.filter(isProgrammingSlotItem).map((item) => (
+            <ProgrammingSlotCard key={item.id} item={item} />
           ))}
         </div>
       ) : featured ? (
@@ -251,7 +292,7 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl border border-border/60 bg-[linear-gradient(135deg,rgba(255,229,180,0.18),rgba(255,255,255,0.92))] p-6 shadow-sm">
+      <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline" className="gap-1 text-[10px]">
             <Sparkles className="size-3" />

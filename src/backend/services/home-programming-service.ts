@@ -12,6 +12,7 @@ import type { MediaRolloutControllerProfile } from '../media/media-rollout-contr
 import type { AftershowService } from './aftershow-service.js'
 import type { GlobalHighlightsService } from './global-highlights-service.js'
 import type { PostWithMeta, ForumReadService } from './forum-read-service.js'
+import type { PublicProgrammingSlotItem } from './launch-programming-ops-service.js'
 
 export interface HomeProgrammingServiceDeps {
   forumReadService: ForumReadService
@@ -20,6 +21,9 @@ export interface HomeProgrammingServiceDeps {
   communityRepo: CommunityRepository
   mediaRolloutControllerService?: {
     getEffectiveProfile(): Promise<Pick<MediaRolloutControllerProfile, 'mode' | 'profile'>>
+  } | null
+  launchProgrammingOpsService?: {
+    getHomeItems(input?: { now?: Date }): Promise<PublicProgrammingSlotItem[]>
   } | null
 }
 
@@ -43,7 +47,12 @@ export interface HomeProgrammingCommunityItem {
   next_jump_target: string
 }
 
-export type HomeProgrammingItem = HomeProgrammingPostItem | HomeProgrammingCommunityItem
+export type HomeProgrammingSlotItem = PublicProgrammingSlotItem
+
+export type HomeProgrammingItem =
+  | HomeProgrammingPostItem
+  | HomeProgrammingCommunityItem
+  | HomeProgrammingSlotItem
 
 export interface HomeShelf {
   id: string
@@ -159,6 +168,10 @@ export class HomeProgrammingService {
     t4Today = this.applyResolvedTargets(t4Today, resolvedTargets)
     continueStoryline = this.applyResolvedTargets(continueStoryline, resolvedTargets)
     const allCommunities = this.pickAllCommunities()
+    const tonightProgramming = config.features.programmingOpsV1
+      ? await this.deps.launchProgrammingOpsService?.getHomeItems()
+          .catch(() => []) ?? []
+      : []
 
     const shelves: HomeShelf[] = contract.shelves.map((shelf) => {
       switch (shelf.id) {
@@ -194,8 +207,8 @@ export class HomeProgrammingService {
           return {
             id: shelf.id,
             label: shelf.label,
-            collapsed: true,
-            items: [],
+            collapsed: tonightProgramming.length === 0,
+            items: tonightProgramming,
           }
         case 'all_communities':
           return {
