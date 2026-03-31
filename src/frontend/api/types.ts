@@ -474,7 +474,39 @@ export interface SurfaceMediaAttachment {
   display_variant: 'original' | 'generated_derivative'
 }
 
-export interface PostWithMeta extends Post {
+export type LaunchSurfaceKind =
+  | 'home_root_card'
+  | 't4_root_card'
+  | 'thread_turn'
+  | 'highlight_card'
+  | 'aftershow_card'
+
+export type LaunchCardMode =
+  | 'single_cover'
+  | 'multi_panel_cover'
+  | 'quote_card'
+  | 'strip_card'
+  | 'comparison_cover'
+  | 'recap_card'
+  | 'timeline_cover'
+  | 'portrait_cover'
+  | 'relationship_map_card'
+  | 'program_card'
+
+export type LaunchThumbnailPolicy =
+  | 'required'
+  | 'required_if_available'
+  | 'optional'
+  | 'forbidden'
+
+export interface LaunchVisualPackagingFields {
+  surface_kind?: LaunchSurfaceKind
+  card_mode?: LaunchCardMode
+  thumbnail_policy?: LaunchThumbnailPolicy
+  hero_eligible?: boolean
+}
+
+export interface PostWithMeta extends Post, LaunchVisualPackagingFields {
   thread_turn_count: number
   vote_score: number
   vote_up: number
@@ -534,7 +566,7 @@ export interface AftershowCalloutItem {
   deep_link: string
 }
 
-export interface AftershowSnapshot {
+export interface AftershowSnapshot extends LaunchVisualPackagingFields {
   post_id: string
   aftershow_summary: AftershowSummary | null
   aftershow_callouts: AftershowCalloutItem[]
@@ -941,7 +973,7 @@ export interface GlobalHighlightsData {
       display_name: string
       avatar_url: string | null
     }
-  }>
+  } & LaunchVisualPackagingFields>
   featured_agents: Array<{
     agent_id: string
     display_name: string
@@ -965,7 +997,7 @@ export interface GlobalHighlightsData {
     vote_down: number
     participant_count: number
     community_name: string
-  }>
+  } & LaunchVisualPackagingFields>
   wildcard_cameos: Array<{
     chronicle_id: string
     agent_id: string

@@ -1,14 +1,29 @@
 import type { ForumReadService } from './forum-read-service.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
-import type { ChronicleRepository, SurfaceMediaAttachmentView } from '../repos/index.js'
+import type { ChronicleRepository, CommunityRepository, SurfaceMediaAttachmentView } from '../repos/index.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
+import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
+import { config } from '../lib/config.js'
+import {
+  resolveLaunchCommunityVisualConfig,
+  resolveLaunchVisualPackaging,
+  type LaunchVisualPackagingMetadata,
+} from '../launch/visual-rollout.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
   achievementChronicleService: AchievementChronicleService
   chronicleRepo: ChronicleRepository
+  communityRepo: CommunityRepository
+  mediaRolloutControllerService?: Pick<MediaRolloutControllerProfileService, 'getEffectiveProfile'> | null
   agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
 }
+
+type MediaRolloutControllerProfileService = {
+  getEffectiveProfile(): Promise<Pick<MediaRolloutControllerProfile, 'mode' | 'profile'>>
+}
+
+type FeedPostItem = Awaited<ReturnType<ForumReadService['getFeed']>>['items'][number]
 
 interface HighlightThreadItem {
   post_id: string
@@ -25,6 +40,10 @@ interface HighlightThreadItem {
     display_name: string
     avatar_url: string | null
   }
+  surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  card_mode?: LaunchVisualPackagingMetadata['card_mode']
+  thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
+  hero_eligible?: boolean
 }
 
 interface FeaturedAgentItem {
@@ -51,6 +70,10 @@ interface ControversyItem {
   vote_down: number
   participant_count: number
   community_name: string
+  surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  card_mode?: LaunchVisualPackagingMetadata['card_mode']
+  thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
+  hero_eligible?: boolean
 }
 
 interface WildcardCameoItem {
@@ -104,6 +127,13 @@ export class GlobalHighlightsService {
       sort: 'hot',
       limit: 30,
     })
+    const rolloutProfile = config.features.mediaRolloutControllerV1
+      ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
+        .catch(() => null) ?? null
+      : null
+    const packagingByPostId = new Map<string, LaunchVisualPackagingMetadata | null>(
+      hot.items.map((item) => [item.id, this.resolveHighlightPackaging(item, rolloutProfile)]),
+    )
 
     const hotThreads: HighlightThreadItem[] = hot.items.slice(0, 12).map((item) => ({
       post_id: item.id,
@@ -120,10 +150,11 @@ export class GlobalHighlightsService {
         display_name: item.author.display_name,
         avatar_url: item.author.avatar_url,
       },
+      ...(packagingByPostId.get(item.id) ?? {}),
     }))
 
     const featuredAgents = await this.collectFeaturedAgents(hotThreads)
-    const controversy = this.collectControversy(hot.items)
+    const controversy = this.collectControversy(hot.items, packagingByPostId)
     const wildcardCameos = await this.collectWildcardCameos(featuredAgents)
 
     const payload = buildEmptyGlobalHighlightsPayload()
@@ -132,6 +163,27 @@ export class GlobalHighlightsService {
     payload.controversy = controversy
     payload.wildcard_cameos = wildcardCameos
     return payload
+  }
+
+  private resolveHighlightPackaging(
+    item: FeedPostItem,
+    rolloutProfile: Pick<MediaRolloutControllerProfile, 'mode' | 'profile'> | null,
+  ): LaunchVisualPackagingMetadata | null {
+    const community = this.deps.communityRepo.findById(item.community_id)
+    const visualConfig = resolveLaunchCommunityVisualConfig({
+      community_rules_json: community?.rules_json ?? null,
+      launch_community_slug: item.community_slug,
+    })
+    return resolveLaunchVisualPackaging({
+      surface: 'highlight_card',
+      community_visual_policy: visualConfig.community_visual_policy,
+      has_thumbnail: item.media.length > 0,
+      rollout_profile: rolloutProfile,
+      content_context: {
+        is_t4: visualConfig.is_t4,
+        is_highlight_candidate: true,
+      },
+    })
   }
 
   private async collectFeaturedAgents(threads: HighlightThreadItem[]): Promise<FeaturedAgentItem[]> {
@@ -166,14 +218,8 @@ export class GlobalHighlightsService {
   }
 
   private collectControversy(
-    items: Array<{
-      id: string
-      title: string
-      vote_up: number
-      vote_down: number
-      participant_count: number
-      community_name: string
-    }>,
+    items: FeedPostItem[],
+    packagingByPostId: Map<string, LaunchVisualPackagingMetadata | null>,
   ): ControversyItem[] {
     return items
       .map((item) => {
@@ -189,6 +235,7 @@ export class GlobalHighlightsService {
           vote_down: item.vote_down,
           participant_count: item.participant_count,
           community_name: item.community_name,
+          ...(packagingByPostId.get(item.id) ?? {}),
         }
       })
       .filter((item) => item.controversy_score > 0)

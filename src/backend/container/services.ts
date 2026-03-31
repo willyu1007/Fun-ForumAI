@@ -246,6 +246,8 @@ export function createCoreServices(deps: {
     forumReadService,
     achievementChronicleService,
     chronicleRepo: repos.chronicleRepo,
+    communityRepo: repos.communityRepo,
+    mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
   })
 
   const agentService = new AgentService({

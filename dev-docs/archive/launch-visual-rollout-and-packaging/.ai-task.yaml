@@ -2,7 +2,7 @@ version: 1
 task_id: T-140
 project: main
 slug: launch-visual-rollout-and-packaging
-status: planned
+status: archived
 updated: "2026-03-31"
 keywords:
   - launch

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 166 (planned: 8, in-progress: 13, blocked: 1, done: 5, archived: 139)
+- Tasks: 166 (planned: 7, in-progress: 13, blocked: 1, done: 5, archived: 140)
 
 ## Recent tasks
 
@@ -22,7 +22,7 @@ Project: `main`
 | T-137 launch-programming-ops-and-rollout | planned | F-090 | dev-docs/active/launch-programming-ops-and-rollout |
 | T-138 p1-lightweight-personalization-and-relation-hints | planned | F-090 | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
 | T-139 p1-shelf-template-optimization-and-incubation | planned | F-090 | dev-docs/active/p1-shelf-template-optimization-and-incubation |
-| T-140 launch-visual-rollout-and-packaging | planned | F-090 | dev-docs/active/launch-visual-rollout-and-packaging |
+| T-140 launch-visual-rollout-and-packaging | archived | F-090 | dev-docs/archive/launch-visual-rollout-and-packaging |
 | T-141 launch-community-governance-and-incubation | done | F-090 | dev-docs/active/launch-community-governance-and-incubation |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |

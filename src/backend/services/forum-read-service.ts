@@ -23,13 +23,21 @@ import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
+import {
+  resolveLaunchCommunityVisualConfig,
+  resolveLaunchVisualPackaging,
+  type LaunchVisualPackagingMetadata,
+} from '../launch/visual-rollout.js'
 import { isCommunityVisibleInDirectory } from '../community/community-lifecycle.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
-import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
+import type {
+  MediaRolloutControllerProfile,
+  MediaRolloutControllerService,
+} from '../media/media-rollout-controller-service.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -105,6 +113,10 @@ export interface PostWithMeta extends Post {
   effective_moderation_label: string
   topic_signals: Record<string, unknown> | null
   distribution_state: string
+  surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  card_mode?: LaunchVisualPackagingMetadata['card_mode']
+  thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
+  hero_eligible?: boolean
 }
 
 export interface PublicStageThreadTurnWithAuthor extends PublicStageThreadTurn {
@@ -327,6 +339,33 @@ export class ForumReadService {
     return { slug: community.slug, name: community.name }
   }
 
+  private resolveRootPostLaunchPackaging(input: {
+    community_id: string
+    community_slug: string
+    media: PostMediaSummary[]
+    rolloutProfile?: MediaRolloutControllerProfile | null
+  }): LaunchVisualPackagingMetadata | null {
+    const community = this.deps.communityRepo.findById(input.community_id)
+    const visualConfig = resolveLaunchCommunityVisualConfig({
+      community_rules_json: community?.rules_json ?? null,
+      launch_community_slug: input.community_slug,
+    })
+    return resolveLaunchVisualPackaging({
+      surface: visualConfig.is_t4 ? 't4_root_card' : 'home_root_card',
+      community_visual_policy: visualConfig.community_visual_policy,
+      has_thumbnail: input.media.length > 0,
+      rollout_profile: input.rolloutProfile
+        ? {
+            mode: input.rolloutProfile.mode,
+            profile: input.rolloutProfile.profile,
+          }
+        : null,
+      content_context: {
+        is_t4: visualConfig.is_t4,
+      },
+    })
+  }
+
   private async listAllVisibleThreadTurns(postId: string): Promise<PublicStageThreadTurn[]> {
     return listPublicStageThreadTurnsByPost(this.deps, postId)
   }
@@ -539,6 +578,7 @@ export class ForumReadService {
     nowMs: number,
     viewerUserId?: string,
     media: PostMediaSummary[] = [],
+    rolloutProfile?: MediaRolloutControllerProfile | null,
   ): Promise<PostWithMeta> {
     const votes = this.getDetailedVoteSummary('POST', post.id, viewerUserId)
     const visibleThreadTurns = await this.listAllVisibleThreadTurns(post.id)
@@ -553,6 +593,12 @@ export class ForumReadService {
     const threadTurnCount = visibleThreadTurns.length
     const activityAt = lastReplyAt ?? post.created_at
     const topicPresentation = this.readTopicSignals(post.moderation_metadata)
+    const launchPackaging = this.resolveRootPostLaunchPackaging({
+      community_id: post.community_id,
+      community_slug: community.slug,
+      media,
+      rolloutProfile,
+    })
 
     return {
       ...post,
@@ -585,6 +631,7 @@ export class ForumReadService {
       effective_moderation_label: this.buildEffectiveModerationLabel(post.visibility, post.state),
       topic_signals: topicPresentation.topic_signals,
       distribution_state: topicPresentation.distribution_state,
+      ...(launchPackaging ?? {}),
     }
   }
 
@@ -605,6 +652,10 @@ export class ForumReadService {
       authorAgentIds: opts.authorAgentIds,
     })
     const nowMs = Date.now()
+    const rolloutProfile = config.features.mediaRolloutControllerV1
+      ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
+        .catch(() => null) ?? null
+      : null
 
     const mediaByPost = await this.resolvePostMediaViews(result.items.map((post) => post.id))
     const items: PostWithMeta[] = await Promise.all(
@@ -613,6 +664,7 @@ export class ForumReadService {
         nowMs,
         opts.viewerUserId,
         mediaByPost[post.id] ?? [],
+        rolloutProfile,
       )),
     )
     const rankedItems = opts.sort === 'hot' || opts.sort === 'top'
@@ -647,8 +699,12 @@ export class ForumReadService {
     if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
 
     const media = (await this.resolvePostMediaViews([post.id]))[post.id] ?? []
+    const rolloutProfile = config.features.mediaRolloutControllerV1
+      ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
+        .catch(() => null) ?? null
+      : null
 
-    return this.toPostWithMeta(post, Date.now(), viewerUserId, media)
+    return this.toPostWithMeta(post, Date.now(), viewerUserId, media, rolloutProfile)
   }
 
   private async toPublicStageTurnWithAuthor(

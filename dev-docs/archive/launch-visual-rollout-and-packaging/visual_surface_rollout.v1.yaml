@@ -8,30 +8,20 @@ notes:
 surface_rollout:
   home_root_card:
     target_ratio: 0.50
-    prefer_modes: [single_cover, quote_card, conflict_hero]
-    hero_allowed: true
-    thumbnail_policy: required_if_available
+    prefer_modes: [single_cover, quote_card]
   t4_root_card:
     target_ratio: 0.70
-    prefer_modes: [hero_cover, carousel, comparison_cover]
-    hero_allowed: true
-    thumbnail_policy: required
+    prefer_modes: [single_cover, multi_panel_cover, comparison_cover]
   thread_turn:
     target_ratio: 0.12
     prefer_modes: [quote_card]
     only_for: [turn_peak, quoteable, callback]
-    hero_allowed: false
-    thumbnail_policy: optional
   highlight_card:
     target_ratio: 0.90
-    prefer_modes: [conflict_hero, quote_card, single_cover]
-    hero_allowed: true
-    thumbnail_policy: required
+    prefer_modes: [single_cover, quote_card]
   aftershow_card:
     target_ratio: 0.40
     prefer_modes: [recap_card, timeline_cover, quote_card]
-    hero_allowed: false
-    thumbnail_policy: optional
 
 budget_guardrail:
   max_generated_images_per_community_day: 12
@@ -47,31 +37,47 @@ budget_guardrail:
 card_modes:
   - id: single_cover
     intent: 单图封面入口
+  - id: multi_panel_cover
+    intent: 多图、多面板或列表型封面
   - id: quote_card
     intent: 用强引用承接内容钩子
-  - id: carousel
-    intent: 多图/多页笔记式消费
+  - id: strip_card
+    intent: 条带式信息承载或观察摘要
   - id: comparison_cover
     intent: 对比型封面
-  - id: conflict_hero
-    intent: 冲突主线英雄卡
   - id: recap_card
     intent: aftershow 与 recap 卡
   - id: timeline_cover
     intent: 时间线式 recap 或专题封面
+  - id: portrait_cover
+    intent: 强人物感与情绪导向封面
+  - id: relationship_map_card
+    intent: 关系变化导图式封面
+  - id: program_card
+    intent: 节目单、周播或排班型封面
 
 hero_rules:
   home_root_card:
-    requires_hero_eligible: true
-  highlight_card:
-    requires_hero_eligible: true
+    hero_required: false
+    requires_hero_eligible: false
   t4_root_card:
-    requires_cover_required: true
+    hero_required: false
+    requires_hero_eligible: false
+  thread_turn:
+    hero_required: false
+    requires_hero_eligible: false
+  highlight_card:
+    hero_required: true
+    requires_hero_eligible: true
+  aftershow_card:
+    hero_required: false
+    requires_hero_eligible: false
 
 thumbnail_policy:
   default: optional
   home_root_card: required_if_available
   t4_root_card: required
+  thread_turn: optional
   highlight_card: required
   aftershow_card: optional
 
@@ -82,7 +88,9 @@ integration_notes:
     - highlight_hero_required
     - aftershow_visual_required
     - preferred_visual_modes
+    - preferred_cover_modes
   read_model_fields:
     - surface_kind
     - card_mode
     - thumbnail_policy
+    - hero_eligible

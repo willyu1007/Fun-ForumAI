@@ -14,6 +14,8 @@ import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn
 import type { CreateMediaObservabilityEventInput, MediaObservabilityEvent } from '../../repos/types.js'
 import type { MediaRolloutControllerProfile } from '../../media/media-rollout-controller-service.js'
 import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
+import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
+import { config } from '../../lib/config.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
@@ -186,6 +188,136 @@ describe('ForumReadService', () => {
       expect(Number.isFinite(result.items[0].heat_score)).toBe(true)
       expect(result.items[0].community_slug).toBe('c1')
       expect(result.items[0].community_name).toBe('c1')
+    })
+
+    it('projects launch visual packaging metadata for launch-configured root posts', async () => {
+      const launchCommunity = getLaunchCommunityBySlug('hot-arena')
+      const community = ctx.communityRepo.create({
+        name: 'Hot Arena Test',
+        slug: 'hot-arena-test',
+        rules_json: launchCommunity?.rules_json,
+      })
+
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: 'a1',
+        title: 'Packaging target',
+        body: 'Packaging body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = await ctx.svc.getFeed({})
+      const item = result.items.find((entry) => entry.id === post.id)
+
+      expect(item).toMatchObject({
+        surface_kind: 'home_root_card',
+        card_mode: 'single_cover',
+        thumbnail_policy: 'required_if_available',
+        hero_eligible: true,
+      })
+    })
+
+    it('ignores controller off-profiles when the rollout controller feature is disabled', async () => {
+      const originalFlag = config.features.mediaRolloutControllerV1
+      ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = false
+
+      try {
+        const launchCommunity = getLaunchCommunityBySlug('hot-arena')
+        const localCtx = setup()
+        localCtx.svc = new ForumReadService({
+          postRepo: localCtx.postRepo,
+          publicStageThreadRepo: localCtx.publicStageThreadRepo,
+          publicStageTurnRepo: localCtx.publicStageTurnRepo,
+          voteRepo: localCtx.voteRepo,
+          humanVoteRepo: localCtx.humanVoteRepo,
+          postMediaRepo: localCtx.postMediaRepo,
+          sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
+          mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
+          communityRepo: localCtx.communityRepo,
+          agentRepo: localCtx.agentRepo,
+          agentConfigRepo: localCtx.agentConfigRepo,
+          riskRepo: localCtx.riskRepo,
+          mediaRolloutControllerService: {
+            getEffectiveProfile: vi.fn(async (): Promise<MediaRolloutControllerProfile> => ({
+              mode: 'OFF',
+              active_override: null,
+              profile: 'off',
+              metrics: {} as MediaRolloutControllerProfile['metrics'],
+              gates: [] as MediaRolloutControllerProfile['gates'],
+              effective: {
+                target_min_rate: 0,
+                target_max_rate: 1,
+                threshold_delta: 0,
+                allow_generation: false,
+                generation_tier: 'none',
+                sync_generation_ms_budget: 0,
+                allow_private_runtime_projection: false,
+                allow_private_inspired_generation: false,
+                force_safe_mode: false,
+                semantic_v3_enforced: true,
+                strict_audit_enforced: true,
+                lineage_required: true,
+                root_post_attachment_only: true,
+              },
+              reason: 'feature_flag_disabled',
+            })),
+          },
+        })
+
+        const community = localCtx.communityRepo.create({
+          name: 'Hot Arena Controller Disabled',
+          slug: 'hot-arena-controller-disabled',
+          rules_json: launchCommunity?.rules_json,
+        })
+
+        const post = await localCtx.postRepo.create({
+          community_id: community.id,
+          author_agent_id: 'a1',
+          title: 'Controller disabled target',
+          body: 'Controller disabled body',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+        })
+
+        const result = await localCtx.svc.getFeed({})
+        const item = result.items.find((entry) => entry.id === post.id)
+
+        expect(item).toMatchObject({
+          surface_kind: 'home_root_card',
+          card_mode: 'single_cover',
+          thumbnail_policy: 'required_if_available',
+          hero_eligible: true,
+        })
+      } finally {
+        ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
+      }
+    })
+
+    it('keeps T4 root packaging optional when required thumbnails are unavailable', async () => {
+      const launchCommunity = getLaunchCommunityBySlug('t4-picks')
+      const community = ctx.communityRepo.create({
+        name: 'T4 Picks Test',
+        slug: 't4-picks-test',
+        rules_json: launchCommunity?.rules_json,
+      })
+
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: 'a1',
+        title: 'T4 packaging target',
+        body: 'T4 packaging body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = await ctx.svc.getFeed({})
+      const item = result.items.find((entry) => entry.id === post.id)
+
+      expect(item?.surface_kind).toBeUndefined()
+      expect(item?.card_mode).toBeUndefined()
+      expect(item?.thumbnail_policy).toBeUndefined()
+      expect(item?.hero_eligible).toBeUndefined()
     })
 
     it('hydrates alt_text from display attachment projections without changing post_media schema', async () => {

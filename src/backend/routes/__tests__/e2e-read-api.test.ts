@@ -9,13 +9,23 @@ import {
   setupFeatureFlagGuard,
   createTestCommunity,
 } from './e2e-helpers.js'
-import { agentService, roleAssignmentService, eventRepo, searchCountsCache, searchDocRepo, userRepo } from '../../container.js'
+import {
+  agentService,
+  roleAssignmentService,
+  eventRepo,
+  mediaContextProjectionRepo,
+  sceneMediaBindingRepo,
+  searchCountsCache,
+  searchDocRepo,
+  userRepo,
+} from '../../container.js'
 import { buildAgentTarget } from '../../../shared/agent-target.js'
 import {
   buildLaunchSystemConfigSlice,
   deriveLaunchSeedIdentity,
   getLaunchSystemRoster,
 } from '../../launch/system-roster.js'
+import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
 
 setupFeatureFlagGuard()
 
@@ -62,6 +72,49 @@ describe('E2E: Read API (public)', () => {
     expect(res.status).toBe(200)
     expect(res.body.data).toEqual([])
     expect(res.body.meta).toHaveProperty('cursor')
+  })
+
+  it('GET /v1/feed and GET /v1/posts/:id expose launch visual packaging metadata when community rules provide it', async () => {
+    const launchCommunity = getLaunchCommunityBySlug('hot-arena')
+    const community = await createTestCommunity({
+      name: 'Launch Packaging Read Community',
+      slug: `launch-packaging-read-${Date.now()}`,
+      rules_json: launchCommunity?.rules_json,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Launch Packaging Reader' })
+    expect(agentRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentRes.body.data.id,
+      run_id: `run-launch-packaging-${Date.now()}`,
+      community_id: community.id,
+      title: 'Launch packaging target',
+      body: 'Launch packaging body',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const feedRes = await request(app).get('/v1/feed')
+    expect(feedRes.status).toBe(200)
+    const feedItem = feedRes.body.data.find((item: { id: string }) => item.id === postId)
+    expect(feedItem).toMatchObject({
+      surface_kind: 'home_root_card',
+      card_mode: 'single_cover',
+      thumbnail_policy: 'required_if_available',
+      hero_eligible: true,
+    })
+
+    const postReadRes = await request(app).get(`/v1/posts/${postId}`)
+    expect(postReadRes.status).toBe(200)
+    expect(postReadRes.body.data).toMatchObject({
+      surface_kind: 'home_root_card',
+      card_mode: 'single_cover',
+      thumbnail_policy: 'required_if_available',
+      hero_eligible: true,
+    })
   })
 
   it('GET /v1/communities returns empty list', async () => {
@@ -208,6 +261,76 @@ describe('E2E: Read API (public)', () => {
       expect(Array.isArray(highlights.body.data.wildcard_cameos)).toBe(true)
     } finally {
       featureFlags.globalHighlightsV1 = originalHighlights
+    }
+  })
+
+  it('GET /v1/highlights exposes launch visual packaging metadata for posts with highlight attachments', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalHighlights = featureFlags.globalHighlightsV1
+    const originalRolloutController = featureFlags.mediaRolloutControllerV1
+    featureFlags.globalHighlightsV1 = true
+    featureFlags.mediaRolloutControllerV1 = false
+
+    try {
+      const launchCommunity = getLaunchCommunityBySlug('hot-arena')
+      const community = await createTestCommunity({
+        name: 'Highlights Packaging Community',
+        slug: `highlights-packaging-${Date.now()}`,
+        rules_json: launchCommunity?.rules_json,
+      })
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Highlights Packaging Author' })
+      expect(authorRes.status).toBe(201)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: authorRes.body.data.id,
+        run_id: `run-highlights-packaging-${Date.now()}`,
+        community_id: community.id,
+        title: 'Highlights packaging post',
+        body: 'highlights packaging body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const binding = await sceneMediaBindingRepo.create({
+        scene_type: 'forum_post',
+        scene_id: postId,
+        asset_id: `asset-highlight-${Date.now()}`,
+        semantic_snapshot_id: `snapshot-highlight-${Date.now()}`,
+        binding_role: 'primary',
+        relation_to_scene: 'selected_for_post',
+        display_policy: 'original_allowed',
+        created_by_type: 'system',
+        created_by_id: 'agent-1',
+      })
+      await mediaContextProjectionRepo.create({
+        binding_id: binding.id,
+        projection_surface: 'public_display',
+        projection_kind: 'display_attachment',
+        schema_version: 'display_attachment.v1',
+        payload_json: {
+          asset_id: binding.asset_id,
+          media_url: '/media/highlight-cover.png',
+          mime_type: 'image/png',
+          alt_text: 'Highlights packaging cover',
+          slot: 0,
+        },
+      })
+
+      const highlightsRes = await request(app).get('/v1/highlights')
+      expect(highlightsRes.status).toBe(200)
+      const hotThread = highlightsRes.body.data.hot_threads.find((item: { post_id: string }) => item.post_id === postId)
+      expect(hotThread).toMatchObject({
+        surface_kind: 'highlight_card',
+        card_mode: 'single_cover',
+        thumbnail_policy: 'required',
+        hero_eligible: true,
+      })
+    } finally {
+      featureFlags.globalHighlightsV1 = originalHighlights
+      featureFlags.mediaRolloutControllerV1 = originalRolloutController
     }
   })
 
@@ -893,9 +1016,11 @@ describe('E2E: Read API (public)', () => {
     featureFlags.aftershowEventPipelineV1 = true
 
     try {
+      const launchCommunity = getLaunchCommunityBySlug('postmortem-lab')
       const community = await createTestCommunity({
         name: 'Aftershow Read Community',
         slug: `aftershow-read-${Date.now()}`,
+        rules_json: launchCommunity?.rules_json,
       })
 
       const createAgentRes = await request(app)
@@ -932,6 +1057,12 @@ describe('E2E: Read API (public)', () => {
       expect(readRes.body.data.post_id).toBe(postId)
       expect(readRes.body.data.aftershow_summary).toBeTruthy()
       expect(Array.isArray(readRes.body.data.aftershow_callouts)).toBe(true)
+      expect(readRes.body.data).toMatchObject({
+        surface_kind: 'aftershow_card',
+        card_mode: 'recap_card',
+        thumbnail_policy: 'optional',
+        hero_eligible: false,
+      })
       if (readRes.body.data.aftershow_callouts.length > 0) {
         expect(readRes.body.data.aftershow_callouts[0].deep_link).toContain(
           `/posts/${postId}?aftershow_id=`,

@@ -221,6 +221,6 @@ Project: `main`
 | T-137 launch-programming-ops-and-rollout | planned | dev-docs/active/launch-programming-ops-and-rollout |
 | T-138 p1-lightweight-personalization-and-relation-hints | planned | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
 | T-139 p1-shelf-template-optimization-and-incubation | planned | dev-docs/active/p1-shelf-template-optimization-and-incubation |
-| T-140 launch-visual-rollout-and-packaging | planned | dev-docs/active/launch-visual-rollout-and-packaging |
+| T-140 launch-visual-rollout-and-packaging | archived | dev-docs/archive/launch-visual-rollout-and-packaging |
 | T-141 launch-community-governance-and-incubation | done | dev-docs/active/launch-community-governance-and-incubation |
 <!-- AUTO-GENERATED:END feature-map -->

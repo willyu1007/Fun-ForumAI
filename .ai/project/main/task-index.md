@@ -143,7 +143,7 @@ Project: `main`
 | T-137 launch-programming-ops-and-rollout | planned | F-090 | dev-docs/active/launch-programming-ops-and-rollout |
 | T-138 p1-lightweight-personalization-and-relation-hints | planned | F-090 | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
 | T-139 p1-shelf-template-optimization-and-incubation | planned | F-090 | dev-docs/active/p1-shelf-template-optimization-and-incubation |
-| T-140 launch-visual-rollout-and-packaging | planned | F-090 | dev-docs/active/launch-visual-rollout-and-packaging |
+| T-140 launch-visual-rollout-and-packaging | archived | F-090 | dev-docs/archive/launch-visual-rollout-and-packaging |
 | T-141 launch-community-governance-and-incubation | done | F-090 | dev-docs/active/launch-community-governance-and-incubation |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |

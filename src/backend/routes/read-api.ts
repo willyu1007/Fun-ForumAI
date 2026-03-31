@@ -15,6 +15,7 @@ import {
   complaintAppealService,
   feedbackService,
   inferenceProfileService,
+  mediaRolloutControllerService,
   searchProjectionService,
   agentBioRefreshService,
 } from '../container.js'
@@ -22,7 +23,13 @@ import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
+import type { PostWithMeta as ForumPostWithMeta } from '../services/forum-read-service.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
+import {
+  resolveLaunchCommunityVisualConfig,
+  resolveLaunchVisualPackaging,
+  type LaunchVisualPackagingMetadata,
+} from '../launch/visual-rollout.js'
 import { validate } from '../validation/validate.js'
 import {
   createAudienceMessageSchema,
@@ -46,7 +53,9 @@ function isAttachmentInput(item: unknown): item is { ref: string; type: string }
   return typeof record.ref === 'string' && typeof record.type === 'string'
 }
 
-async function buildAftershowSnapshot(postId: string): Promise<{
+async function buildAftershowSnapshot(postId: string, input: {
+  post?: ForumPostWithMeta
+} = {}): Promise<{
   post_id: string
   aftershow_summary: {
     id: string
@@ -76,11 +85,40 @@ async function buildAftershowSnapshot(postId: string): Promise<{
     message_count: number
     latest_message_at: Date | null
   } | null
+  surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  card_mode?: LaunchVisualPackagingMetadata['card_mode']
+  thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
+  hero_eligible?: boolean
 }> {
+  const post = input.post ?? await forumReadService.getPost(postId)
   const [aftershow, thread] = await Promise.all([
     aftershowService.getLatestByPost(postId),
     config.features.audienceZoneV1 ? audienceService.getThreadByPost(postId) : null,
   ])
+  const rolloutProfile = config.features.mediaRolloutControllerV1
+    ? await mediaRolloutControllerService.getEffectiveProfile()
+      .catch(() => null)
+    : null
+  const community = communityRepo.findById(post.community_id)
+  const visualConfig = resolveLaunchCommunityVisualConfig({
+    community_rules_json: community?.rules_json ?? null,
+    launch_community_slug: post.community_slug,
+  })
+  const launchPackaging = resolveLaunchVisualPackaging({
+    surface: 'aftershow_card',
+    community_visual_policy: visualConfig.community_visual_policy,
+    has_thumbnail: post.media.length > 0,
+    rollout_profile: rolloutProfile
+      ? {
+          mode: rolloutProfile.mode,
+          profile: rolloutProfile.profile,
+        }
+      : null,
+    content_context: {
+      is_t4: visualConfig.is_t4,
+      is_aftershow: true,
+    },
+  })
 
   const artifact = aftershow.artifact
   const callouts = aftershow.callouts.map((item, index) => ({
@@ -113,6 +151,7 @@ async function buildAftershowSnapshot(postId: string): Promise<{
               : null,
         }
       : null,
+    ...(launchPackaging ?? {}),
   }
 }
 
@@ -230,7 +269,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
   }
 
   const aftershow = config.features.aftershowV1
-    ? await buildAftershowSnapshot(post.id)
+    ? await buildAftershowSnapshot(post.id, { post })
     : {
         post_id: post.id,
         aftershow_summary: null,

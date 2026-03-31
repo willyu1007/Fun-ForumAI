@@ -1347,12 +1347,12 @@ tasks:
     updated: 2026-03-31
   - id: T-140
     slug: launch-visual-rollout-and-packaging
-    status: planned
+    status: archived
     milestone_id: M-020
     feature_id: F-090
     requirement_ids:
       - R-098
-    dev_docs_path: dev-docs/active/launch-visual-rollout-and-packaging
+    dev_docs_path: dev-docs/archive/launch-visual-rollout-and-packaging
     updated: 2026-03-31
   - id: T-141
     slug: launch-community-governance-and-incubation

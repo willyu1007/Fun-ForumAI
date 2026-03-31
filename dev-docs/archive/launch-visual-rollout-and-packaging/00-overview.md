@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: planned
+- State: done
 - Depends on: `T-132`, `T-134`
-- Next step: 冻结 `visual_surface_rollout.v1.yaml`，明确 surface rollout、budget guardrail、card modes 与 ownership split。
+- Next step: 无。下游包按 contract 消费 `surface_kind / card_mode / thumbnail_policy / hero_eligible`。
 
 ## Goal
 
@@ -22,7 +22,8 @@
 
 ## Acceptance Criteria
 
-- [ ] 明确 `home_root_card / t4_root_card / thread_turn / highlight_card / aftershow_card` 的 target ratio。
-- [ ] 明确 `budget_guardrail` 与降级策略。
-- [ ] 明确 `card_modes / hero_rules / thumbnail_policy`。
-- [ ] 明确社区级 policy 与 surface 级 policy 的 ownership split。
+- [x] 明确 `home_root_card / t4_root_card / thread_turn / highlight_card / aftershow_card` 的 target ratio。
+- [x] 明确 `budget_guardrail` 与降级策略。
+- [x] 明确 `card_modes / hero_rules / thumbnail_policy`。
+- [x] 明确社区级 policy 与 surface 级 policy 的 ownership split。
+- [x] 将 launch packaging metadata 接到 `feed/post/highlights/aftershow` 读侧与 API 类型。
