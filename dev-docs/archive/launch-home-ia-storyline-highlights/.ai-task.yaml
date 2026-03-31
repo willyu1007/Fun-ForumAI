@@ -2,7 +2,7 @@ version: 1
 task_id: T-135
 project: main
 slug: launch-home-ia-storyline-highlights
-status: planned
+status: archived
 updated: "2026-03-31"
 keywords:
   - home

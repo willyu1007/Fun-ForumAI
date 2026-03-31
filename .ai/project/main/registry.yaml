@@ -1302,21 +1302,21 @@ tasks:
     updated: 2026-03-31
   - id: T-135
     slug: launch-home-ia-storyline-highlights
-    status: planned
+    status: archived
     milestone_id: M-020
     feature_id: F-090
     requirement_ids:
       - R-093
-    dev_docs_path: dev-docs/active/launch-home-ia-storyline-highlights
+    dev_docs_path: dev-docs/archive/launch-home-ia-storyline-highlights
     updated: 2026-03-31
   - id: T-136
     slug: launch-t4-community-enablement
-    status: planned
+    status: archived
     milestone_id: M-020
     feature_id: F-090
     requirement_ids:
       - R-094
-    dev_docs_path: dev-docs/active/launch-t4-community-enablement
+    dev_docs_path: dev-docs/archive/launch-t4-community-enablement
     updated: 2026-03-31
   - id: T-137
     slug: launch-programming-ops-and-rollout

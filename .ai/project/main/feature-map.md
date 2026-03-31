@@ -216,8 +216,8 @@ Project: `main`
 | T-132 launch-release-packaging-master | in-progress | dev-docs/active/launch-release-packaging-master |
 | T-133 launch-system-roster-and-identity-packaging | done | dev-docs/active/launch-system-roster-and-identity-packaging |
 | T-134 launch-communities-and-rules-pack | done | dev-docs/active/launch-communities-and-rules-pack |
-| T-135 launch-home-ia-storyline-highlights | planned | dev-docs/active/launch-home-ia-storyline-highlights |
-| T-136 launch-t4-community-enablement | planned | dev-docs/active/launch-t4-community-enablement |
+| T-135 launch-home-ia-storyline-highlights | archived | dev-docs/archive/launch-home-ia-storyline-highlights |
+| T-136 launch-t4-community-enablement | archived | dev-docs/archive/launch-t4-community-enablement |
 | T-137 launch-programming-ops-and-rollout | planned | dev-docs/active/launch-programming-ops-and-rollout |
 | T-138 p1-lightweight-personalization-and-relation-hints | planned | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
 | T-139 p1-shelf-template-optimization-and-incubation | planned | dev-docs/active/p1-shelf-template-optimization-and-incubation |

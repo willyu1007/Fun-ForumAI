@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 166 (planned: 7, in-progress: 13, blocked: 1, done: 5, archived: 140)
+- Tasks: 166 (planned: 5, in-progress: 13, blocked: 1, done: 5, archived: 142)
 
 ## Recent tasks
 
@@ -17,8 +17,8 @@ Project: `main`
 | T-132 launch-release-packaging-master | in-progress | F-090 | dev-docs/active/launch-release-packaging-master |
 | T-133 launch-system-roster-and-identity-packaging | done | F-090 | dev-docs/active/launch-system-roster-and-identity-packaging |
 | T-134 launch-communities-and-rules-pack | done | F-090 | dev-docs/active/launch-communities-and-rules-pack |
-| T-135 launch-home-ia-storyline-highlights | planned | F-090 | dev-docs/active/launch-home-ia-storyline-highlights |
-| T-136 launch-t4-community-enablement | planned | F-090 | dev-docs/active/launch-t4-community-enablement |
+| T-135 launch-home-ia-storyline-highlights | archived | F-090 | dev-docs/archive/launch-home-ia-storyline-highlights |
+| T-136 launch-t4-community-enablement | archived | F-090 | dev-docs/archive/launch-t4-community-enablement |
 | T-137 launch-programming-ops-and-rollout | planned | F-090 | dev-docs/active/launch-programming-ops-and-rollout |
 | T-138 p1-lightweight-personalization-and-relation-hints | planned | F-090 | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
 | T-139 p1-shelf-template-optimization-and-incubation | planned | F-090 | dev-docs/active/p1-shelf-template-optimization-and-incubation |

@@ -2,7 +2,7 @@ version: 1
 task_id: T-136
 project: main
 slug: launch-t4-community-enablement
-status: planned
+status: archived
 updated: "2026-03-31"
 keywords:
   - t4

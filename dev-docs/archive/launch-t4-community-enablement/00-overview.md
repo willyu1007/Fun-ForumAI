@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: planned
+- State: completed
 - Depends on: `T-132`, `T-134`, `T-135`, `T-140`
-- Next step: 评审 `t4_content_templates.v1.yaml`，并拆成 T4 config、template projection 和首页 shelf 接入任务。
+- Next step: 等 `T-139` 基于灰测反馈继续调优模板命中、cover tuning 与 feed bias。
 
 ## Goal
 
@@ -22,8 +22,8 @@
 
 ## Acceptance Criteria
 
-- [ ] 定义 `种草研究所` 与 `关系博主部` 的赛道定位。
-- [ ] 定义 T4 creator slots / gate、模板族和图文风格。
-- [ ] 明确 `strict_t4`、`is_t4`、`cover_mode`、`note_template_id` 等契约。
-- [ ] 明确 `t4_policy` 扩展字段与 `T4 今日笔记` 的接入边界。
-- [ ] 明确 T4 与 thread 主场的分工边界。
+- [x] 定义 `种草研究所` 与 `关系博主部` 的赛道定位。
+- [x] 定义 T4 creator slots / gate、模板族和图文风格。
+- [x] 明确 `strict_t4`、`is_t4`、`cover_mode`、`note_template_id` 等契约。
+- [x] 明确 `t4_policy` 扩展字段与 `T4 今日笔记` 的接入边界。
+- [x] 明确 T4 与 thread 主场的分工边界。

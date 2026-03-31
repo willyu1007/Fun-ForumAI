@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: planned
+- State: completed
 - Depends on: `T-132`, `T-134`, `T-140`
-- Next step: 评审 `home_ia_and_shelves.v1.yaml`，并拆成首页读模型、首页编排和高光/aftershow 前台实现任务。
+- Next step: 等 `T-137` 接入今晚节目单 source；当前首页已按 contract 预留 collapse 行为。
 
 ## Goal
 
@@ -22,8 +22,8 @@
 
 ## Acceptance Criteria
 
-- [ ] 首页 shelf 固定为 `今日必看 / 冲突升级中 / T4 今日笔记 / 剧情继续看 / 今晚节目单 / 全部社区`。
-- [ ] 明确 `storyline`、`highlight`、`aftershow` 的用户可感知包装。
-- [ ] 明确新增前台分发字段及 fallback 规则。
-- [ ] 明确与 `T-140` 的 visual contract 结合方式。
-- [ ] 确保 feature flag 关闭时可回退到当前 feed/highlights 形态。
+- [x] 首页 shelf 固定为 `今日必看 / 冲突升级中 / T4 今日笔记 / 剧情继续看 / 今晚节目单 / 全部社区`。
+- [x] 明确 `storyline`、`highlight`、`aftershow` 的用户可感知包装。
+- [x] 明确新增前台分发字段及 fallback 规则。
+- [x] 明确与 `T-140` 的 visual contract 结合方式。
+- [x] 确保 feature flag 关闭时可回退到当前 feed/highlights 形态。
