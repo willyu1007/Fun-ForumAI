@@ -483,6 +483,11 @@ async function main() {
     namespace: args.k8sNamespace,
     secretName: args.secretName,
   })
+  const preservedSecretData = Object.fromEntries(
+    Object.entries(existingSecretData).filter(
+      ([key]) => key !== 'FF_HOME_PROGRAMMING_V1' && key !== 'FF_PROGRAMMING_OPS_V1',
+    ),
+  )
 
   const dashscopeApiKey = (
     process.env[String(args.dashscopeApiKeyEnv)] ||
@@ -537,7 +542,7 @@ async function main() {
   }
 
   const mergedSecretData = {
-    ...existingSecretData,
+    ...preservedSecretData,
     DATABASE_URL: existingSecretData.DATABASE_URL || defaultDatabaseUrl(String(args.k8sNamespace)),
     REDIS_URL: existingSecretData.REDIS_URL || defaultRedisUrl(String(args.k8sNamespace)),
     JWT_SECRET: process.env.JWT_SECRET || existingSecretData.JWT_SECRET || 'local-dev-jwt-secret',
@@ -566,10 +571,6 @@ async function main() {
     ARK_API_KEY_SECONDARY:
       process.env.ARK_API_KEY_SECONDARY || existingSecretData.ARK_API_KEY_SECONDARY || '',
     MEDIA_GENERATION_API_KEY: mediaGenerationApiKey,
-    FF_HOME_PROGRAMMING_V1:
-      process.env.FF_HOME_PROGRAMMING_V1 || existingSecretData.FF_HOME_PROGRAMMING_V1 || '',
-    FF_PROGRAMMING_OPS_V1:
-      process.env.FF_PROGRAMMING_OPS_V1 || existingSecretData.FF_PROGRAMMING_OPS_V1 || '',
   }
 
   const secretManifest = JSON.stringify(

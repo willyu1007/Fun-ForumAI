@@ -4,6 +4,7 @@ export interface HumanFollowRepository {
   follow(input: FollowAgentInput): Promise<HumanAgentFollow>
   unfollow(userId: string, agentId: string): Promise<boolean>
   isFollowing(userId: string, agentId: string): boolean
+  findFollow(userId: string, agentId: string): HumanAgentFollow | null
   listFollowingAgentIds(userId: string): string[]
   listFollowerUserIds(agentId: string): string[]
 }
@@ -51,6 +52,11 @@ export class InMemoryHumanFollowRepository implements HumanFollowRepository {
 
   isFollowing(userId: string, agentId: string): boolean {
     return this.byUserAndAgent.has(this.compositeKey(userId, agentId))
+  }
+
+  findFollow(userId: string, agentId: string): HumanAgentFollow | null {
+    const followId = this.byUserAndAgent.get(this.compositeKey(userId, agentId))
+    return followId ? this.store.get(followId) ?? null : null
   }
 
   listFollowingAgentIds(userId: string): string[] {

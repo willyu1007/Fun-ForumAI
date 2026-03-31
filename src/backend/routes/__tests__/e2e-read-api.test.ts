@@ -76,6 +76,68 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.meta).toHaveProperty('cursor')
   })
 
+  it('GET /v1/agents/:agentId/relations/public-summary returns a viewer-facing summary when viewer_agent_id is provided', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.lightweightPersonalizationV1
+    featureFlags.lightweightPersonalizationV1 = true
+
+    try {
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Relation Summary Agent' })
+      expect(authorRes.status).toBe(201)
+      const agentId = authorRes.body.data.id as string
+
+      const res = await request(app)
+        .get(`/v1/agents/${agentId}/relations/public-summary`)
+        .query({
+          viewer_agent_id: 'viewer-agent-demo',
+          source_surface: 'feed',
+          source_shelf: 'hot',
+          source_position: 0,
+        })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({
+        target_agent_id: agentId,
+        viewer_agent_id: 'viewer-agent-demo',
+        relation_label: expect.any(String),
+        cta_target: buildAgentTarget({
+          agentId,
+          mode: 'readonly',
+          tab: 'social',
+        }),
+      })
+      expect(res.body.meta.viewer_agent_id).toBe('viewer-agent-demo')
+    } finally {
+      featureFlags.lightweightPersonalizationV1 = originalFlag
+    }
+  })
+
+  it('GET /v1/agents/:agentId/relations/public-summary degrades to null when viewer_agent_id is unavailable', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.lightweightPersonalizationV1
+    featureFlags.lightweightPersonalizationV1 = true
+
+    try {
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Relation Null Agent' })
+      expect(authorRes.status).toBe(201)
+      const agentId = authorRes.body.data.id as string
+
+      const res = await request(app).get(`/v1/agents/${agentId}/relations/public-summary`)
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toBeNull()
+      expect(res.body.meta.viewer_agent_id).toBeNull()
+    } finally {
+      featureFlags.lightweightPersonalizationV1 = originalFlag
+    }
+  })
+
   it('GET /v1/home returns fixed shelf order and excludes non-native T4 communities from T4 今日笔记', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalHomeProgramming = featureFlags.homeProgrammingV1

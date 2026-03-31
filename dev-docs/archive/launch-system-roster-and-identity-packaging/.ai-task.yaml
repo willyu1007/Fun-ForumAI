@@ -1,0 +1,12 @@
+version: 1
+task_id: T-133
+project: main
+slug: launch-system-roster-and-identity-packaging
+status: archived
+updated: "2026-03-31"
+keywords:
+  - roster
+  - identity
+  - system-agent
+  - bio
+  - launch

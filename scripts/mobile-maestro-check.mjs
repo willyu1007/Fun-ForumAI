@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import YAML from 'yaml'
+import { locateDevDocsPath } from './lib/dev-docs-paths.mjs'
 import { getRepoRoot } from './mobile-env.mjs'
 
 const root = getRepoRoot()
@@ -51,11 +52,6 @@ const requiredTestIds = [
   'private-chat-input',
   'private-chat-send-button',
 ]
-const operatorGuideCandidates = [
-  'dev-docs/active/ios-android-runtime-smoke-kit/06-operator-guide.md',
-  'dev-docs/archive/ios-android-runtime-smoke-kit/06-operator-guide.md',
-]
-
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message)
@@ -117,8 +113,12 @@ try {
   assert(fs.existsSync(path.join(root, 'scripts/mobile-smoke-prepare.mjs')), 'Missing scripts/mobile-smoke-prepare.mjs')
   assert(fs.existsSync(path.join(root, 'scripts/mobile-smoke-run.mjs')), 'Missing scripts/mobile-smoke-run.mjs')
   assert(fs.existsSync(path.join(root, 'scripts/mobile-maestro-check.mjs')), 'Missing scripts/mobile-maestro-check.mjs')
+  const operatorGuidePath = locateDevDocsPath({
+    bundle_slug: 'ios-android-runtime-smoke-kit',
+    file_name: '06-operator-guide.md',
+  }).path
   assert(
-    operatorGuideCandidates.some((relativePath) => fs.existsSync(path.join(root, relativePath))),
+    fs.existsSync(operatorGuidePath),
     'Missing T-061 operator guide.',
   )
 

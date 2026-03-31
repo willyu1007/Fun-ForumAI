@@ -46,6 +46,7 @@ import {
   HOT_TOPIC_DISTRIBUTION_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
+import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -125,17 +126,34 @@ export function PostDetailPage() {
   const { isAuthenticated, user } = useAuth()
   const { postId } = useParams()
   const [searchParams] = useSearchParams()
+  const parsedSourcePosition = (() => {
+    const raw = searchParams.get('source_position')
+    if (!raw) return undefined
+    const parsed = Number.parseInt(raw, 10)
+    return Number.isFinite(parsed) ? parsed : undefined
+  })()
+  const viewSourceParams = useMemo(
+    () => ({
+      ...(searchParams.get('viewer_agent_id') ? { viewer_agent_id: searchParams.get('viewer_agent_id') ?? undefined } : {}),
+      ...(searchParams.get('source_surface') ? { source_surface: searchParams.get('source_surface') ?? undefined } : {}),
+      ...(searchParams.get('source_shelf') ? { source_shelf: searchParams.get('source_shelf') ?? undefined } : {}),
+      ...(typeof parsedSourcePosition === 'number' ? { source_position: parsedSourcePosition } : {}),
+    }),
+    [parsedSourcePosition, searchParams],
+  )
+  const hasViewSourceParams = Object.keys(viewSourceParams).length > 0
   const isDesktopLayout = useIsDesktopLayout()
   const [audienceDraft, setAudienceDraft] = useState('')
   const [audienceDraftError, setAudienceDraftError] = useState<string | null>(null)
   const [safetyActionMessage, setSafetyActionMessage] = useState<string | null>(null)
-  const [highlightedAudienceMessageId, setHighlightedAudienceMessageId] = useState<string | null>(
-    null,
-  )
   const [mobileTab, setMobileTab] = useState<'stage' | 'audience'>(() =>
-    searchParams.get('aftershow_id') || searchParams.get('audience_message_id') ? 'audience' : 'stage',
+    searchParams.get('aftershow_id') || searchParams.get('audience_message_id')
+      ? 'audience'
+      : searchParams.get('threadId') || searchParams.get('turnId')
+        ? 'stage'
+        : 'stage',
   )
-  const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '')
+  const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '', viewSourceParams)
   const postPayload = postData?.data ?? null
   const authorAgentId = postPayload?.author.id ?? ''
   const authorProfile = useAgentProfile(authorAgentId)
@@ -160,9 +178,17 @@ export function PostDetailPage() {
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
     enabled: postPayload !== null,
   })
-  const { data: aftershowData } = useAftershow(postId ?? '', {
-    enabled: postPayload !== null,
-  })
+  const { data: aftershowData } = useAftershow(
+    postId ?? '',
+    hasViewSourceParams
+      ? {
+          enabled: postPayload !== null,
+          params: viewSourceParams,
+        }
+      : {
+          enabled: postPayload !== null,
+        },
+  )
   const { data: asideSeatsData } = useAsideSeats(postId ?? '', {
     enabled: postPayload !== null,
   })
@@ -267,38 +293,23 @@ export function PostDetailPage() {
   }, [aftershow?.aftershow_callouts, aftershowContent])
 
   useEffect(() => {
-    if (!isDesktopLayout) {
-      if (focusedAudienceMessageId || focusedAftershowId) {
-        setMobileTab('audience')
-      } else if (stageFocus.threadId || stageFocus.turnId) {
-        setMobileTab('stage')
-      }
-    }
-  }, [
-    focusedAftershowId,
-    focusedAudienceMessageId,
-    isDesktopLayout,
-    stageFocus.threadId,
-    stageFocus.turnId,
-  ])
-
-  useEffect(() => {
     if (!focusedAudienceMessageId) {
-      setHighlightedAudienceMessageId(null)
       return
     }
     if (!renderedAudienceMessages.some((item) => item.id === focusedAudienceMessageId)) {
-      setHighlightedAudienceMessageId(null)
       return
     }
     const element = document.getElementById(`audience-message-${focusedAudienceMessageId}`)
     if (!element) return
+    element.classList.add('border-primary', 'bg-muted/30')
     element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setHighlightedAudienceMessageId(focusedAudienceMessageId)
     const timer = window.setTimeout(() => {
-      setHighlightedAudienceMessageId((prev) => (prev === focusedAudienceMessageId ? null : prev))
+      element.classList.remove('border-primary', 'bg-muted/30')
     }, 2500)
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.clearTimeout(timer)
+      element.classList.remove('border-primary', 'bg-muted/30')
+    }
   }, [focusedAudienceMessageId, renderedAudienceMessages, mobileTab])
 
   if (postLoading) {
@@ -491,9 +502,19 @@ export function PostDetailPage() {
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
         </div>
 
+        <div className="col-start-2 mt-2">
+          <RelationTeaserCard
+            agentId={post.author.id}
+            teaser={post.relation_teaser}
+            sourceSurface={viewSourceParams.source_surface ?? 'post_detail'}
+            sourceShelf={viewSourceParams.source_shelf ?? 'stage_header'}
+            sourcePosition={viewSourceParams.source_position ?? null}
+          />
+        </div>
+
         <RichTextLite
           text={post.body}
-          className="col-start-2 mt-2 max-w-3xl text-sm leading-7 text-foreground/82"
+          className="col-start-2 max-w-3xl text-sm leading-7 text-foreground/82"
         />
 
         {post.media.length > 0 && (
@@ -579,6 +600,13 @@ export function PostDetailPage() {
           <p className="text-sm text-muted-foreground">暂时还没有摘要，先看看观众区的讨论。</p>
         )}
 
+        <RelationTeaserCard
+          agentId={post.author.id}
+          teaser={aftershow?.relation_teaser ?? post.relation_teaser}
+          sourceSurface="aftershow"
+          sourceShelf="aftershow_panel"
+        />
+
         {audienceHighlights.length > 0 && (
           <div className="space-y-3">
             <p className="text-xs font-medium tracking-wide text-muted-foreground">亮点</p>
@@ -613,10 +641,7 @@ export function PostDetailPage() {
               <div
                 key={message.id}
                 id={`audience-message-${message.id}`}
-                className={cn(
-                  'border-l border-border pl-3 transition-colors',
-                  highlightedAudienceMessageId === message.id && 'border-primary bg-muted/30',
-                )}
+                className="border-l border-border pl-3 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-foreground">

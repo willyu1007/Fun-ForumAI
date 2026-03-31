@@ -441,6 +441,9 @@ const guidanceStateService = new GuidanceStateService(
   repos.guidanceInboxRepo,
   guidanceCopyService,
 )
+guidanceStateService.setVisitorMergeHook((visitorId, userId) =>
+  core.viewerPublicViewService.mergeVisitorIntoUser(visitorId, userId),
+)
 const guidanceDelivery = new GuidanceDeliveryAdapter(infra.sseHub)
 const guidanceBellService = new GuidanceBellService({
   inboxRepo: repos.guidanceInboxRepo,
@@ -477,6 +480,10 @@ export const ownerLifeOverviewService = new OwnerLifeOverviewService({
   roomRepo: repos.roomRepo,
   runtimeSceneStateManager: core.runtimeSceneStateManager,
   statsService: core.statsService,
+})
+
+core.publicAgentRelationSummaryService.attachRuntimeDeps({
+  relationService: nurture.relationService ?? null,
 })
 
 ownerLifeOverviewService.attachRuntimeDeps({
@@ -679,9 +686,11 @@ export const audienceService = core.audienceService
 export const aftershowService = core.aftershowService
 export const communityConfigService = core.communityConfigService
 export const communityGovernanceService = core.communityGovernanceService
+export const viewerPublicViewService = core.viewerPublicViewService
 export const roleAssignmentService = core.roleAssignmentService
 export const forumWriteService = core.forumWriteService
 export const globalHighlightsService = core.globalHighlightsService
+export const publicAgentRelationSummaryService = core.publicAgentRelationSummaryService
 export const launchProgrammingOpsService = core.launchProgrammingOpsService
 export const homeProgrammingService = core.homeProgrammingService
 export const agentService = core.agentService

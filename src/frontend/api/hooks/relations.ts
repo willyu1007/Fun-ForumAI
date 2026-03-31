@@ -2,7 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
-import type { ApiResponse, AgentMemoryInfo, AgentRelationItem, AgentRelationSummary, AgentRelationView, PrivacySettings, PaginatedList } from '../types'
+import type {
+  ApiResponse,
+  AgentMemoryInfo,
+  AgentRelationItem,
+  AgentRelationSummary,
+  AgentRelationView,
+  PrivacySettings,
+  PaginatedList,
+  PublicAgentRelationSummary,
+} from '../types'
 
 export function useAgentMemories(
   agentId: string,
@@ -40,6 +49,21 @@ export function useAgentRelationSummary(agentId: string, enabled = true) {
       api
         .get(`agents/${agentId}/relations/summary`)
         .json<ApiResponse<AgentRelationSummary>>(),
+    enabled: !!agentId && enabled,
+  })
+}
+
+export function useAgentPublicRelationSummary(
+  agentId: string,
+  params?: { source_surface?: string; source_shelf?: string; source_position?: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: queryKeys.agentPublicRelationSummary(agentId, params),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/relations/public-summary${toSearchString(params)}`)
+        .json<ApiResponse<PublicAgentRelationSummary | null>>(),
     enabled: !!agentId && enabled,
   })
 }

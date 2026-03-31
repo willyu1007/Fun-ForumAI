@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-31T06:27:19.724Z",
+  "updatedAt": "2026-03-31T14:04:12.657Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -26161,6 +26161,271 @@
           "fields": [
             "userId",
             "submittedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "ViewerPublicViewEvent",
+      "dbName": "viewer_public_view_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "actor_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "isT4",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_t4",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "noteTemplateId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "note_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "occurredAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "occurred_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourcePosition",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_position",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceShelf",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_shelf",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceSurface",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storylineId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "storyline_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "target_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "targetKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "target_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "viewerAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "viewer_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "viewerUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "viewer_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "actorType",
+            "actorId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "noteTemplateId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sourceSurface",
+            "sourceShelf",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "storylineId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "targetKind",
+            "targetId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "viewerAgentId",
+            "occurredAt"
           ],
           "name": null,
           "map": null

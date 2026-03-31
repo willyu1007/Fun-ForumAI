@@ -65,6 +65,8 @@ import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import { HomeProgrammingService } from '../services/home-programming-service.js'
 import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
+import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
+import { PublicAgentRelationSummaryService } from '../services/public-agent-relation-summary-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
@@ -218,6 +220,7 @@ export function createCoreServices(deps: {
     communityProposalRepo: repos.communityProposalRepo,
     communityConfigService,
   })
+  const viewerPublicViewService = new ViewerPublicViewService(repos.viewerPublicViewEventRepo)
 
   const roleAssignmentService = new RoleAssignmentService({
     roleAssignmentRepo: repos.roleAssignmentRepo,
@@ -252,6 +255,14 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
   })
+  const publicAgentRelationSummaryService = new PublicAgentRelationSummaryService({
+    viewerPublicViewService,
+    forumReadService,
+    achievementChronicleService,
+    humanFollowRepo: repos.humanFollowRepo,
+    relationService: null,
+    pprSnapshotRepo: repos.pprSnapshotRepo,
+  })
   const launchProgrammingOpsService = new LaunchProgrammingOpsService({
     forumReadService,
     globalHighlightsService,
@@ -268,6 +279,10 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
     launchProgrammingOpsService,
+    viewerPublicViewService,
+    publicAgentRelationSummaryService,
+    humanFollowRepo: repos.humanFollowRepo,
+    pprSnapshotRepo: repos.pprSnapshotRepo,
   })
 
   const agentService = new AgentService({
@@ -580,9 +595,11 @@ export function createCoreServices(deps: {
     aftershowService,
     communityConfigService,
     communityGovernanceService,
+    viewerPublicViewService,
     roleAssignmentService,
     forumWriteService,
     globalHighlightsService,
+    publicAgentRelationSummaryService,
     launchProgrammingOpsService,
     homeProgrammingService,
     agentService,

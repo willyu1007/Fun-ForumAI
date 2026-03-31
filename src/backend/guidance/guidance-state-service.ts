@@ -55,11 +55,17 @@ function pickTrack(...tracks: GuidanceTrack[]): GuidanceTrack {
 }
 
 export class GuidanceStateService {
+  private mergeHook: ((visitorId: string, userId: string) => Promise<void>) | null = null
+
   constructor(
     private readonly stateRepo: GuidanceActorStateRepository,
     private readonly inboxRepo: GuidanceInboxRepository,
     private readonly copyService: GuidanceCopyService,
   ) {}
+
+  setVisitorMergeHook(handler: ((visitorId: string, userId: string) => Promise<void>) | null): void {
+    this.mergeHook = handler
+  }
 
   async getOrCreateActorState(actor: GuidanceActorRef): Promise<GuidanceActorStateEntity> {
     const existing = await this.stateRepo.findByActor(actor.actor_type, actor.actor_id)
@@ -158,6 +164,10 @@ export class GuidanceStateService {
       this.stateRepo.deleteByActor('VISITOR', visitorId),
       this.inboxRepo.deleteByActor('VISITOR', visitorId),
     ])
+
+    if (this.mergeHook) {
+      await this.mergeHook(visitorId, userId)
+    }
   }
 
   async listInbox(actor: GuidanceActorRef): Promise<GuidanceInboxView> {

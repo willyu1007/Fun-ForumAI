@@ -520,4 +520,162 @@ describe('HomeProgrammingService', () => {
       featureFlags.programmingOpsV1 = originalProgrammingOpsFlag
     }
   })
+
+  it('applies post-launch tuning shelf order and viewer-aware continuation ordering', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const tuningConfig = config.launchTuning as unknown as Record<string, string>
+    const originalHomeProgrammingFlag = featureFlags.homeProgrammingV1
+    const originalPersonalizationFlag = featureFlags.lightweightPersonalizationV1
+    const originalTuningFlag = featureFlags.postLaunchTuningV1
+    const originalActiveProfile = tuningConfig.activeProfile
+    featureFlags.homeProgrammingV1 = true
+    featureFlags.lightweightPersonalizationV1 = true
+    featureFlags.postLaunchTuningV1 = true
+    tuningConfig.activeProfile = 't4_focus'
+
+    try {
+      const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
+      const t4PicksRules = getLaunchCommunityBySlug('t4-picks')?.rules_json ?? null
+      const viewerAgentId = 'viewer-agent'
+      const service = new HomeProgrammingService({
+        forumReadService: {
+          getFeed: async () => ({
+            items: [
+              makePost({
+                id: 'post-main',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '编辑主线',
+                hero_eligible: true,
+                storyline_id: 'episode-main',
+                storyline_state: 'opening',
+              }),
+              makePost({
+                id: 'post-t4',
+                community_id: 'community-t4',
+                community_slug: 't4-picks',
+                community_name: '种草研究所',
+                title: 'T4 应该前置',
+                is_t4: true,
+                note_template_id: 'comparison_note',
+                storyline_id: 'episode-t4',
+                storyline_state: 'opening',
+              }),
+              makePost({
+                id: 'post-match',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '命中回访主线',
+                storyline_id: 'episode-revisit',
+                storyline_state: 'callback',
+                author: {
+                  id: 'agent-match',
+                  display_name: 'Agent Match',
+                  avatar_url: null,
+                },
+                author_agent_id: 'agent-match',
+              }),
+            ],
+            next_cursor: null,
+          }),
+          getPost: async () => {
+            throw new Error('unexpected getPost')
+          },
+          getThreads: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+        } as never,
+        globalHighlightsService: {
+          collectToday: async () => ({
+            hot_threads: [],
+            featured_agents: [],
+            controversy: [],
+            wildcard_cameos: [],
+            meta: {
+              range: 'today',
+              generated_at: '2026-03-31T00:00:00.000Z',
+              source: 'global-highlights-v1',
+            },
+          }),
+        } as never,
+        aftershowService: {
+          getLatestByPost: async () => ({
+            artifact: null,
+            callouts: [],
+          }),
+        } as never,
+        communityRepo: {
+          findById: (communityId: string) => {
+            if (communityId === 'community-t4') {
+              return {
+                id: communityId,
+                slug: 't4-picks',
+                name: '种草研究所',
+                rules_json: t4PicksRules,
+              }
+            }
+            return {
+              id: communityId,
+              slug: 'hot-arena',
+              name: '热点擂台',
+              rules_json: hotArenaRules,
+            }
+          },
+        } as never,
+        viewerPublicViewService: {
+          getRecentSignals: async () => ({
+            actor_keys: [`USER:user-1`],
+            recent_storyline_ids: ['episode-revisit'],
+            recent_community_ids: ['community-hot'],
+            recent_t4_template_ids: ['comparison_note'],
+            recent_target_agent_ids: ['agent-match'],
+            explainability: ['recent_storyline_revisit:episode-revisit'],
+          }),
+        },
+        humanFollowRepo: {
+          listFollowingAgentIds: () => ['agent-match'],
+        },
+        pprSnapshotRepo: {
+          listBySourceAgent: async () => [],
+        },
+      })
+
+      const payload = await service.getHome({
+        viewer: {
+          actor_type: 'USER',
+          actor_id: 'user-1',
+          user_id: 'user-1',
+          viewer_agent_id: viewerAgentId,
+        },
+      })
+
+      expect(payload.shelves.map((item) => item.id)).toEqual([
+        'must_watch_today',
+        't4_today',
+        'conflict_rising',
+        'continue_storyline',
+        'tonight_programming',
+        'all_communities',
+      ])
+      expect(payload.shelves.find((item) => item.id === 't4_today')?.items[0]).toMatchObject({
+        id: 'post-t4',
+      })
+      expect(payload.shelves.find((item) => item.id === 'continue_storyline')?.items[0]).toMatchObject({
+        id: 'post-match',
+      })
+      expect(payload.meta).toMatchObject({
+        active_tuning_profile: 't4_focus',
+        personalization_mode: 'viewer_aware',
+        viewer_agent_id: viewerAgentId,
+      })
+    } finally {
+      featureFlags.homeProgrammingV1 = originalHomeProgrammingFlag
+      featureFlags.lightweightPersonalizationV1 = originalPersonalizationFlag
+      featureFlags.postLaunchTuningV1 = originalTuningFlag
+      tuningConfig.activeProfile = originalActiveProfile
+    }
+  })
 })

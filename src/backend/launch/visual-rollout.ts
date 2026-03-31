@@ -3,7 +3,9 @@ import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import { ValidationError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
 import { getLaunchCommunityBySlug } from './community-rules.js'
+import { resolvePostLaunchTuningProfile } from './post-launch-tuning.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
 const DEFAULT_LAUNCH_VISUAL_ROLLOUT_PATH = resolveLaunchContractPath({
@@ -268,6 +270,38 @@ export function getLaunchVisualRollout(
   return runtime
 }
 
+export function resolveEffectiveLaunchVisualRollout(): LaunchVisualRolloutRuntime {
+  const runtime = getLaunchVisualRollout()
+  const tuning = resolvePostLaunchTuningProfile({
+    enabled: config.features.postLaunchTuningV1,
+    profileId: config.launchTuning.activeProfile || null,
+  })
+  if (!tuning) {
+    return runtime
+  }
+
+  const activeVisual = tuning.active_profile.visual
+  return {
+    ...runtime,
+    surface_rollout: {
+      ...runtime.surface_rollout,
+      ...Object.fromEntries(
+        Object.entries(activeVisual.surface_ratio).map(([surface, target_ratio]) => [
+          surface,
+          {
+            ...runtime.surface_rollout[surface as LaunchSurfaceKind],
+            target_ratio,
+          },
+        ]),
+      ) as Record<LaunchSurfaceKind, LaunchSurfaceRolloutRule>,
+    },
+    budget_guardrail: {
+      ...runtime.budget_guardrail,
+      ...activeVisual.budget_threshold,
+    },
+  }
+}
+
 export function normalizeLaunchCardMode(inputMode: string | null | undefined): NormalizedLaunchCardMode | null {
   if (typeof inputMode !== 'string') return null
   const normalized = CARD_MODE_ALIASES[inputMode.trim()]
@@ -336,7 +370,7 @@ export function resolveLaunchCommunityVisualConfig(input: {
 export function resolveLaunchVisualPackaging(
   input: ResolveLaunchVisualPackagingInput,
 ): LaunchVisualPackagingMetadata | null {
-  const runtime = getLaunchVisualRollout()
+  const runtime = resolveEffectiveLaunchVisualRollout()
   const surfaceRule = runtime.surface_rollout[input.surface]
   if (!surfaceRule) return null
 
@@ -380,8 +414,14 @@ export function resolveLaunchVisualPackaging(
     normalizedByMode.set(item.card_mode, current)
   }
 
-  const chosenMode = surfaceRule.prefer_modes.find((mode) => normalizedByMode.has(mode))
-    ?? surfaceRule.prefer_modes[0]
+  const tuning = resolvePostLaunchTuningProfile({
+    enabled: config.features.postLaunchTuningV1,
+    profileId: config.launchTuning.activeProfile || null,
+  })
+  const preferredModes = tuning?.active_profile.visual.preferred_card_modes[input.surface]
+    ?? surfaceRule.prefer_modes
+  const chosenMode = preferredModes.find((mode) => normalizedByMode.has(mode))
+    ?? preferredModes[0]
   const matchedModes = normalizedByMode.get(chosenMode) ?? []
 
   let heroEligible = matchedModes.some((item) => item.hero_eligible)

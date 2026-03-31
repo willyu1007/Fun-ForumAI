@@ -11,6 +11,7 @@ import { LoadMore } from '@/shared/components/LoadMore'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import type {
   ApiResponse,
   HomeProgrammingCommunityItem,
@@ -59,6 +60,25 @@ function readPreviewText(item: HomeProgrammingPostItem) {
   return item.summary_text ?? item.storyline_hook ?? item.body
 }
 
+function appendSourceContext(target: string, input: {
+  sourceSurface: string
+  sourceShelf?: string | null
+  sourcePosition?: number | null
+}) {
+  if (!target.startsWith('/posts/')) {
+    return target
+  }
+  const url = new URL(target, 'https://fun-forum.local')
+  url.searchParams.set('source_surface', input.sourceSurface)
+  if (input.sourceShelf) {
+    url.searchParams.set('source_shelf', input.sourceShelf)
+  }
+  if (typeof input.sourcePosition === 'number') {
+    url.searchParams.set('source_position', String(input.sourcePosition))
+  }
+  return `${url.pathname}${url.search}${url.hash}`
+}
+
 function HomeTargetSurface({
   target,
   className,
@@ -100,59 +120,77 @@ function HomeTargetSurface({
 function HomeProgrammingCard({
   item,
   featured = false,
+  sourceShelf,
+  sourcePosition,
 }: {
   item: HomeProgrammingPostItem
   featured?: boolean
+  sourceShelf: string
+  sourcePosition: number
 }) {
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
+  const target = appendSourceContext(item.next_jump_target, {
+    sourceSurface: 'home',
+    sourceShelf,
+    sourcePosition,
+  })
   return (
-    <HomeTargetSurface
-      target={item.next_jump_target}
-      className={cn(
-        'group block overflow-hidden rounded-2xl border border-border/60 bg-background transition-colors hover:border-primary/30 hover:bg-primary/[0.04]',
-        featured ? 'min-h-[20rem]' : 'min-h-[13rem]',
-      )}
-    >
-      <div className={cn('grid h-full gap-0', featured && cover ? 'md:grid-cols-[1.2fr_1fr]' : '')}>
-        {cover ? (
-          <div className={cn('min-h-[12rem] overflow-hidden bg-muted/30', featured ? 'md:min-h-full' : '')}>
-            <img src={cover} alt={item.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
-          </div>
-        ) : null}
-        <div className="flex h-full flex-col gap-3 p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
-            {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
-            {item.note_template_id ? (
-              <Badge variant="outline" className="text-[10px]">{item.note_template_id}</Badge>
-            ) : null}
-            {item.storyline_title ? (
-              <span className="text-[11px] text-muted-foreground">{item.storyline_title}</span>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <h2 className={cn('font-semibold tracking-tight text-foreground', featured ? 'text-2xl leading-8' : 'text-lg leading-7')}>
-              {item.title}
-            </h2>
-            <p className={cn('line-clamp-3 text-sm leading-6 text-muted-foreground', featured && 'line-clamp-4')}>
-              {readPreviewText(item)}
-            </p>
-          </div>
-
-          <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-3">
-              <span>{item.community_name}</span>
-              <span>{item.thread_turn_count} 条讨论</span>
-              <span>{item.heat_score} 热度</span>
+    <div className="space-y-3">
+      <HomeTargetSurface
+        target={target}
+        className={cn(
+          'group block overflow-hidden rounded-2xl border border-border/60 bg-background transition-colors hover:border-primary/30 hover:bg-primary/[0.04]',
+          featured ? 'min-h-[20rem]' : 'min-h-[13rem]',
+        )}
+      >
+        <div className={cn('grid h-full gap-0', featured && cover ? 'md:grid-cols-[1.2fr_1fr]' : '')}>
+          {cover ? (
+            <div className={cn('min-h-[12rem] overflow-hidden bg-muted/30', featured ? 'md:min-h-full' : '')}>
+              <img src={cover} alt={item.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
             </div>
-            <span className="inline-flex items-center gap-1 text-foreground/80">
-              去看 <ArrowRight className="size-3.5" />
-            </span>
+          ) : null}
+          <div className="flex h-full flex-col gap-3 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
+              {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
+              {item.note_template_id ? (
+                <Badge variant="outline" className="text-[10px]">{item.note_template_id}</Badge>
+              ) : null}
+              {item.storyline_title ? (
+                <span className="text-[11px] text-muted-foreground">{item.storyline_title}</span>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <h2 className={cn('font-semibold tracking-tight text-foreground', featured ? 'text-2xl leading-8' : 'text-lg leading-7')}>
+                {item.title}
+              </h2>
+              <p className={cn('line-clamp-3 text-sm leading-6 text-muted-foreground', featured && 'line-clamp-4')}>
+                {readPreviewText(item)}
+              </p>
+            </div>
+
+            <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3">
+                <span>{item.community_name}</span>
+                <span>{item.thread_turn_count} 条讨论</span>
+                <span>{item.heat_score} 热度</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-foreground/80">
+                去看 <ArrowRight className="size-3.5" />
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </HomeTargetSurface>
+      </HomeTargetSurface>
+      <RelationTeaserCard
+        agentId={item.author.id}
+        teaser={item.relation_teaser}
+        sourceSurface="home"
+        sourceShelf={sourceShelf}
+        sourcePosition={sourcePosition}
+      />
+    </div>
   )
 }
 
@@ -247,12 +285,12 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
         </div>
       ) : featured ? (
         shelf.items.filter(isPostItem).slice(0, 1).map((item) => (
-          <HomeProgrammingCard key={item.id} item={item} featured />
+          <HomeProgrammingCard key={item.id} item={item} featured sourceShelf={shelf.id} sourcePosition={0} />
         ))
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {shelf.items.filter(isPostItem).map((item) => (
-            <HomeProgrammingCard key={item.id} item={item} />
+          {shelf.items.filter(isPostItem).map((item, index) => (
+            <HomeProgrammingCard key={item.id} item={item} sourceShelf={shelf.id} sourcePosition={index} />
           ))}
         </div>
       )}

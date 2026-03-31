@@ -9,11 +9,13 @@ import type {
   CommunityRepository,
 } from '../repos/index.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
 import type { CommunityConfigService } from './community-config-service.js'
 import {
   buildGovernedCommunityRulesSkeleton,
   listLaunchCommunitySeeds,
 } from '../launch/community-rules.js'
+import { resolvePostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
 
 interface RecommendationCatalogEntry {
   id: string | null
@@ -114,6 +116,11 @@ function buildProposalTokens(proposal: CommunityProposal): Set<string> {
 function computeRecommendation(
   proposal: CommunityProposal,
   catalog: RecommendationCatalogEntry[],
+  thresholds?: {
+    merge_threshold?: number
+    lane_threshold?: number
+    gray_visibility_threshold?: number
+  },
 ): {
   duplicate_of_community_id: string | null
   recommended_as_lane_community_id: string | null
@@ -152,6 +159,9 @@ function computeRecommendation(
   }
 
   const rationale: string[] = []
+  const mergeThreshold = thresholds?.merge_threshold ?? 4
+  const laneThreshold = thresholds?.lane_threshold ?? 2
+  const grayVisibilityThreshold = thresholds?.gray_visibility_threshold ?? 1.5
   if (!best) {
     rationale.push('No active community catalog was available, so recommendation falls back to seasonal incubation.')
     return {
@@ -178,10 +188,14 @@ function computeRecommendation(
     rationale.push(`Closest current launch lane is ${best.entry.name}, but overlap remains weak.`)
   }
 
-  const duplicateOf = best.overlap_score >= 4 ? best.entry.id : null
-  const recommendedLane = duplicateOf ? null : best.overlap_score >= 2 ? best.entry.id : null
+  const duplicateOf = best.overlap_score >= mergeThreshold ? best.entry.id : null
+  const recommendedLane = duplicateOf
+    ? null
+    : best.overlap_score >= laneThreshold
+      ? best.entry.id
+      : null
   const recommendedVisibility: CommunityIncubationVisibilityMode =
-    best.overlap_score >= 1.5 ? 'GRAY' : 'WHITELIST_ONLY'
+    best.overlap_score >= grayVisibilityThreshold ? 'GRAY' : 'WHITELIST_ONLY'
 
   return {
     duplicate_of_community_id: duplicateOf,
@@ -195,6 +209,11 @@ function computeRecommendation(
       text_overlap: best.text_overlap,
       scene_overlap: best.scene_overlap,
       t4_bonus: best.t4_bonus,
+      thresholds: {
+        merge_threshold: mergeThreshold,
+        lane_threshold: laneThreshold,
+        gray_visibility_threshold: grayVisibilityThreshold,
+      },
     },
   }
 }
@@ -312,7 +331,15 @@ export class CommunityGovernanceService {
         rules_json: seed.rules_json,
       }))
 
-    const recommendationInput = computeRecommendation(proposal, [...repoCatalog, ...fallbackCatalog])
+    const tuning = resolvePostLaunchTuningProfile({
+      enabled: config.features.postLaunchTuningV1,
+      profileId: config.launchTuning.activeProfile || null,
+    })
+    const recommendationInput = computeRecommendation(
+      proposal,
+      [...repoCatalog, ...fallbackCatalog],
+      tuning?.active_profile.incubation,
+    )
     const recommendation = await this.deps.communityProposalRepo.upsertRecommendation({
       proposal_id: proposal.id,
       ...recommendationInput,

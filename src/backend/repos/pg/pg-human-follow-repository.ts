@@ -85,6 +85,11 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     return this.byUserAndAgent.has(this.compositeKey(userId, agentId))
   }
 
+  findFollow(userId: string, agentId: string): HumanAgentFollow | null {
+    const followId = this.byUserAndAgent.get(this.compositeKey(userId, agentId))
+    return followId ? this.cache.get(followId) ?? null : null
+  }
+
   listFollowingAgentIds(userId: string): string[] {
     return Array.from(this.cache.values())
       .filter((item) => item.user_id === userId)

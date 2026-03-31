@@ -3,6 +3,7 @@ import type { CreatePprSnapshotInput, PprSnapshot } from './types.js'
 export interface PprSnapshotRepository {
   replaceSourceSnapshots(sourceAgentId: string, entries: CreatePprSnapshotInput[]): Promise<void>
   listUnexpired(opts?: { now?: Date; limit?: number }): Promise<PprSnapshot[]>
+  listBySourceAgent(sourceAgentId: string, opts?: { now?: Date; limit?: number }): Promise<PprSnapshot[]>
   findBySourceContext(
     sourceAgentId: string,
     communityId: string,
@@ -100,6 +101,22 @@ export class InMemoryPprSnapshotRepository implements PprSnapshotRepository {
       .filter((row) => row.source_agent_id === sourceAgentId)
       .filter((row) => row.community_id === communityId)
       .filter((row) => row.topic_key === topicKey)
+      .filter((row) => row.expires_at > now)
+      .sort(sortByRankAsc)
+      .slice(0, limit)
+  }
+
+  async listBySourceAgent(
+    sourceAgentId: string,
+    opts?: { now?: Date; limit?: number },
+  ): Promise<PprSnapshot[]> {
+    const now = opts?.now ?? new Date()
+    const limit = typeof opts?.limit === 'number' && opts.limit > 0
+      ? Math.trunc(opts.limit)
+      : Number.POSITIVE_INFINITY
+
+    return Array.from(this.store.values())
+      .filter((row) => row.source_agent_id === sourceAgentId)
       .filter((row) => row.expires_at > now)
       .sort(sortByRankAsc)
       .slice(0, limit)

@@ -64,6 +64,9 @@ import {
 } from '../validation/schemas.js'
 import { resolveEffectiveDisclosureCap } from './admin-api-utils.js'
 import type { MediaLineageNodeType } from '../repos/types.js'
+import { resolvePostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
+import { getLightweightPersonalizationRuntime } from '../launch/lightweight-personalization.js'
+import { resolveEffectiveLaunchVisualRollout } from '../launch/visual-rollout.js'
 
 export const adminApiRouter: IRouter = Router()
 
@@ -1019,6 +1022,14 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
   const build = getRuntimeBuildInfo()
   const providerAdmission = summarizeProviderAdmission(llmRegistryBundle)
+  const tuning = resolvePostLaunchTuningProfile({
+    enabled: config.features.postLaunchTuningV1,
+    profileId: config.launchTuning.activeProfile || null,
+  })
+  const lightweightPersonalization = config.features.lightweightPersonalizationV1
+    ? getLightweightPersonalizationRuntime()
+    : null
+  const effectiveVisualRollout = tuning ? resolveEffectiveLaunchVisualRollout() : null
 
   res.json({
     data: {
@@ -1034,6 +1045,28 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
           scenes: config.features.personaRuntimeScenes,
           writeback_enabled: config.features.personaWritebackV1,
         },
+        lightweight_personalization: lightweightPersonalization
+          ? {
+              enabled: true,
+              viewer_context: lightweightPersonalization.viewer_context,
+              rollback: lightweightPersonalization.rollback,
+              public_view_events: lightweightPersonalization.public_view_events,
+            }
+          : {
+              enabled: false,
+            },
+        post_launch_tuning: tuning
+          ? {
+              enabled: true,
+              active_profile_id: tuning.active_profile_id,
+              rollback_profile: tuning.runtime.activation.rollback_profile,
+              effective_overrides: tuning.active_profile,
+              effective_visual_rollout: effectiveVisualRollout,
+            }
+          : {
+              enabled: false,
+              rollback_profile: 'baseline',
+            },
       },
       counters,
       provider_admission: providerAdmission,

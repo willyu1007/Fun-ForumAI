@@ -8,22 +8,22 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 166 (planned: 5, in-progress: 13, blocked: 1, done: 5, archived: 142)
+- Tasks: 166 (planned: 2, in-progress: 12, blocked: 1, done: 2, archived: 149)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-132 launch-release-packaging-master | in-progress | F-090 | dev-docs/active/launch-release-packaging-master |
-| T-133 launch-system-roster-and-identity-packaging | done | F-090 | dev-docs/active/launch-system-roster-and-identity-packaging |
-| T-134 launch-communities-and-rules-pack | done | F-090 | dev-docs/active/launch-communities-and-rules-pack |
+| T-132 launch-release-packaging-master | archived | F-090 | dev-docs/archive/launch-release-packaging-master |
+| T-133 launch-system-roster-and-identity-packaging | archived | F-090 | dev-docs/archive/launch-system-roster-and-identity-packaging |
+| T-134 launch-communities-and-rules-pack | archived | F-090 | dev-docs/archive/launch-communities-and-rules-pack |
 | T-135 launch-home-ia-storyline-highlights | archived | F-090 | dev-docs/archive/launch-home-ia-storyline-highlights |
 | T-136 launch-t4-community-enablement | archived | F-090 | dev-docs/archive/launch-t4-community-enablement |
-| T-137 launch-programming-ops-and-rollout | planned | F-090 | dev-docs/active/launch-programming-ops-and-rollout |
-| T-138 p1-lightweight-personalization-and-relation-hints | planned | F-090 | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
-| T-139 p1-shelf-template-optimization-and-incubation | planned | F-090 | dev-docs/active/p1-shelf-template-optimization-and-incubation |
+| T-137 launch-programming-ops-and-rollout | archived | F-090 | dev-docs/archive/launch-programming-ops-and-rollout |
+| T-138 p1-lightweight-personalization-and-relation-hints | archived | F-090 | dev-docs/archive/p1-lightweight-personalization-and-relation-hints |
+| T-139 p1-shelf-template-optimization-and-incubation | archived | F-090 | dev-docs/archive/p1-shelf-template-optimization-and-incubation |
 | T-140 launch-visual-rollout-and-packaging | archived | F-090 | dev-docs/archive/launch-visual-rollout-and-packaging |
-| T-141 launch-community-governance-and-incubation | done | F-090 | dev-docs/active/launch-community-governance-and-incubation |
+| T-141 launch-community-governance-and-incubation | archived | F-090 | dev-docs/archive/launch-community-governance-and-incubation |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |

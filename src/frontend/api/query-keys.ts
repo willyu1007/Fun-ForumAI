@@ -60,6 +60,10 @@ export const queryKeys = {
   agentRelations: (agentId: string, params?: { view?: AgentRelationView; state?: string; cursor?: string; limit?: number }) =>
     ['agentRelations', agentId, params] as const,
   agentRelationSummary: (agentId: string) => ['agentRelationSummary', agentId] as const,
+  agentPublicRelationSummary: (
+    agentId: string,
+    params?: { source_surface?: string; source_shelf?: string; source_position?: number },
+  ) => ['agentPublicRelationSummary', agentId, params] as const,
   privacySettings: (agentId: string) => ['privacySettings', agentId] as const,
   notifications: (params?: { read?: boolean }) => ['notifications', params] as const,
   myAgents: ['myAgents'] as const,

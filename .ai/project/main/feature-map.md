@@ -213,14 +213,14 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-132 launch-release-packaging-master | in-progress | dev-docs/active/launch-release-packaging-master |
-| T-133 launch-system-roster-and-identity-packaging | done | dev-docs/active/launch-system-roster-and-identity-packaging |
-| T-134 launch-communities-and-rules-pack | done | dev-docs/active/launch-communities-and-rules-pack |
+| T-132 launch-release-packaging-master | archived | dev-docs/archive/launch-release-packaging-master |
+| T-133 launch-system-roster-and-identity-packaging | archived | dev-docs/archive/launch-system-roster-and-identity-packaging |
+| T-134 launch-communities-and-rules-pack | archived | dev-docs/archive/launch-communities-and-rules-pack |
 | T-135 launch-home-ia-storyline-highlights | archived | dev-docs/archive/launch-home-ia-storyline-highlights |
 | T-136 launch-t4-community-enablement | archived | dev-docs/archive/launch-t4-community-enablement |
-| T-137 launch-programming-ops-and-rollout | planned | dev-docs/active/launch-programming-ops-and-rollout |
-| T-138 p1-lightweight-personalization-and-relation-hints | planned | dev-docs/active/p1-lightweight-personalization-and-relation-hints |
-| T-139 p1-shelf-template-optimization-and-incubation | planned | dev-docs/active/p1-shelf-template-optimization-and-incubation |
+| T-137 launch-programming-ops-and-rollout | archived | dev-docs/archive/launch-programming-ops-and-rollout |
+| T-138 p1-lightweight-personalization-and-relation-hints | archived | dev-docs/archive/p1-lightweight-personalization-and-relation-hints |
+| T-139 p1-shelf-template-optimization-and-incubation | archived | dev-docs/archive/p1-shelf-template-optimization-and-incubation |
 | T-140 launch-visual-rollout-and-packaging | archived | dev-docs/archive/launch-visual-rollout-and-packaging |
-| T-141 launch-community-governance-and-incubation | done | dev-docs/active/launch-community-governance-and-incubation |
+| T-141 launch-community-governance-and-incubation | archived | dev-docs/archive/launch-community-governance-and-incubation |
 <!-- AUTO-GENERATED:END feature-map -->

@@ -171,6 +171,9 @@ export const config = {
     estimatedGenerationCostCnyPerImage: safeFloat(env.MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE, 0),
     estimatedGenerationDailyBudgetCny: safeFloat(env.MEDIA_GENERATION_ESTIMATED_DAILY_BUDGET_CNY, 0),
   },
+  launchTuning: {
+    activeProfile: env.FF_POST_LAUNCH_TUNING_PROFILE?.trim() || '',
+  },
   mediaLifecycle: {
     workerIntervalMs: safeInt(env.MEDIA_LIFECYCLE_WORKER_INTERVAL_MS, 60_000),
     workerStartupDelayMs: safeInt(env.MEDIA_LIFECYCLE_WORKER_STARTUP_DELAY_MS, 5_000),
@@ -231,6 +234,8 @@ export const config = {
     guidanceRecallV1: env.FF_GUIDANCE_RECALL_V1 === 'true',
     homeProgrammingV1: env.FF_HOME_PROGRAMMING_V1 === 'true',
     programmingOpsV1: env.FF_PROGRAMMING_OPS_V1 === 'true',
+    lightweightPersonalizationV1: env.FF_LIGHTWEIGHT_PERSONALIZATION_V1 === 'true',
+    postLaunchTuningV1: env.FF_POST_LAUNCH_TUNING_V1 === 'true',
     allocatorPprEnabled: env.FF_ALLOCATOR_PPR_ENABLED === 'true',
     membershipsV1: env.FF_MEMBERSHIPS_V1 === 'true',
     globalHighlightsV1: env.FF_GLOBAL_HIGHLIGHTS_V1 === 'true',

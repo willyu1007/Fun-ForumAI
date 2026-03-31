@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import { ValidationError } from '../lib/errors.js'
+import { config } from '../lib/config.js'
+import { resolvePostLaunchTuningProfile } from './post-launch-tuning.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
 export const LAUNCH_T4_COMMUNITY_SLUGS = ['t4-picks', 't4-relations'] as const
@@ -272,6 +274,28 @@ function resolveCoverMode(input: {
   return input.preferred_cover_modes[0]
 }
 
+function resolvePostLaunchT4Preferences(
+  communitySlug: LaunchT4CommunitySlug,
+): {
+  preferred_templates: LaunchT4TemplateId[]
+  preferred_cover_modes: LaunchT4CoverMode[]
+} | null {
+  const tuning = resolvePostLaunchTuningProfile({
+    enabled: config.features.postLaunchTuningV1,
+    profileId: config.launchTuning.activeProfile || null,
+  })
+  if (!tuning) return null
+
+  const preferredTemplates = tuning.active_profile.t4.preferred_templates_by_community[communitySlug]
+  const preferredCoverModes = tuning.active_profile.t4.preferred_cover_modes_by_community[communitySlug]
+  if (!preferredTemplates && !preferredCoverModes) return null
+
+  return {
+    preferred_templates: preferredTemplates ?? [],
+    preferred_cover_modes: preferredCoverModes ?? [],
+  }
+}
+
 export function resolveLaunchT4Projection(
   input: ResolveLaunchT4ProjectionInput,
 ): LaunchT4Projection {
@@ -280,17 +304,25 @@ export function resolveLaunchT4Projection(
   }
 
   const runtime = getLaunchT4TemplateRuntime()
-  const templateId = resolveTemplateFromPhase(input)
+  const tunedPreferences = resolvePostLaunchT4Preferences(input.community_slug)
+  const defaultTemplateId = resolveTemplateFromPhase(input)
+  const templateId = defaultTemplateId
+    && tunedPreferences?.preferred_templates.includes(defaultTemplateId)
+      ? defaultTemplateId
+      : tunedPreferences?.preferred_templates[0] ?? defaultTemplateId
   const template = templateId
     ? runtime.template_registry.find((item) => item.id === templateId)
     : null
+  const preferredCoverModes = tunedPreferences?.preferred_cover_modes.length
+    ? tunedPreferences.preferred_cover_modes
+    : template?.preferred_cover_modes ?? []
 
   return {
     is_t4: true,
     note_template_id: template?.id,
     cover_mode: template
       ? resolveCoverMode({
-          preferred_cover_modes: template.preferred_cover_modes,
+          preferred_cover_modes: preferredCoverModes,
           media_count: input.media_count ?? 0,
         })
       : undefined,

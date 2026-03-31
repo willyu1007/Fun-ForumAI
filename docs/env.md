@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-31T10:28:16Z`
+Generated at (UTC): `2026-03-31T14:09:59Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -67,6 +67,7 @@ Generated at (UTC): `2026-03-31T10:28:16Z`
 | `FF_HUMAN_PARTICIPATION_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable human participation routes and human vote/follow capabilities. |
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
 | `FF_INCUBATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T4 incubation pipeline APIs and persistence models. |
+| `FF_LIGHTWEIGHT_PERSONALIZATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T-138 viewer-aware public view events, revisit signals, relation teasers, and readonly social summaries. |
 | `FF_MEDIA_GENERATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the dedicated media generation broker, worker, and derivative display flow. |
 | `FF_MEDIA_LIFECYCLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enables media lifecycle sweep, orphan archive, projection cleanup, and snapshot backfill worker. |
 | `FF_MEDIA_OBSERVABILITY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enables media observability events, admin dashboards, and alert surfacing. |
@@ -77,6 +78,8 @@ Generated at (UTC): `2026-03-31T10:28:16Z`
 | `FF_PERSONA_RUNTIME_SCENES` | `active` | `string` | no | no | `forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post` | `` | `*` | `` | `` | `` | CSV whitelist of scenes where persona runtime state should participate. |
 | `FF_PERSONA_RUNTIME_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime projection, overlay lifecycle, and render-tier state handling. |
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
+| `FF_POST_LAUNCH_TUNING_PROFILE` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Active named post-launch tuning profile id. Empty falls back to the contract default profile. |
+| `FF_POST_LAUNCH_TUNING_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T-139 post-launch runtime profile overlays across home, T4, visual packaging, and incubation scoring. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
 | `FF_PROGRAMMING_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the launch programming ops runtime, Admin Programming API, and `今晚节目单` schedule injection. |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |

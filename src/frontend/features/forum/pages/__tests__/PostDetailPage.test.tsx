@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PostDetailPage } from '../PostDetailPage'
@@ -54,6 +54,125 @@ vi.mock('../../components/VoteColumn', () => ({
   VoteColumn: () => <div data-testid="vote-column" />,
 }))
 
+vi.mock('@/components/ui/avatar', () => ({
+  Avatar: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div data-testid="avatar" className={className}>
+      {children}
+    </div>
+  ),
+  AvatarImage: ({ className, alt, src }: { className?: string; alt?: string; src?: string }) => (
+    <img data-testid="avatar-image" className={className} alt={alt} src={src} />
+  ),
+  AvatarFallback: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <span data-testid="avatar-fallback" className={className}>
+      {children}
+    </span>
+  ),
+}))
+
+vi.mock('@/components/ui/dropdown-menu', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+
+  return {
+    DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DropdownMenuTrigger: ({
+      children,
+      asChild,
+    }: {
+      children: ReactNode
+      asChild?: boolean
+    }) => {
+      if (asChild && React.isValidElement(children)) {
+        return React.cloneElement(children)
+      }
+      return <button type="button">{children}</button>
+    },
+    DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DropdownMenuItem: ({
+      children,
+      asChild,
+      onClick,
+    }: {
+      children: ReactNode
+      asChild?: boolean
+      onClick?: () => void
+    }) => {
+      if (asChild && React.isValidElement(children)) {
+        return React.cloneElement(children, { role: 'menuitem', onClick })
+      }
+      return (
+        <div role="menuitem" onClick={onClick}>
+          {children}
+        </div>
+      )
+    },
+    DropdownMenuLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DropdownMenuSeparator: () => <div />,
+  }
+})
+
+vi.mock('@/components/ui/tabs', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+  const TabsContext = React.createContext<{
+    value: string
+    setValue: (value: string) => void
+  }>({
+    value: '',
+    setValue: () => undefined,
+  })
+
+  return {
+    Tabs: ({
+      children,
+      value,
+      defaultValue,
+      onValueChange,
+    }: {
+      children: ReactNode
+      value?: string
+      defaultValue?: string
+      onValueChange?: (value: string) => void
+    }) => {
+      const [internalValue, setInternalValue] = React.useState(defaultValue ?? '')
+
+      const currentValue = value ?? internalValue
+      const setValue = (nextValue: string) => {
+        if (value === undefined) {
+          setInternalValue(nextValue)
+        }
+        onValueChange?.(nextValue)
+      }
+
+      return (
+        <TabsContext.Provider value={{ value: currentValue, setValue }}>
+          <div>{children}</div>
+        </TabsContext.Provider>
+      )
+    },
+    TabsList: ({ children }: { children: ReactNode }) => <div role="tablist">{children}</div>,
+    TabsTrigger: ({ children, value }: { children: ReactNode; value: string }) => {
+      const context = React.useContext(TabsContext)
+      return (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={context.value === value}
+          onClick={() => context.setValue(value)}
+        >
+          {children}
+        </button>
+      )
+    },
+    TabsContent: ({ children, value }: { children: ReactNode; value: string }) => {
+      const context = React.useContext(TabsContext)
+      if (context.value !== value) {
+        return null
+      }
+      return <div role="tabpanel">{children}</div>
+    },
+  }
+})
+
 const threadListMock = vi.fn((_props: unknown) => <div data-testid="thread-list" />)
 
 vi.mock('../../components/ThreadList', () => ({
@@ -88,12 +207,14 @@ const scrollIntoViewMock = vi.fn()
 const originalInnerWidth = window.innerWidth
 
 function setViewportWidth(width: number) {
-  Object.defineProperty(window, 'innerWidth', {
-    configurable: true,
-    writable: true,
-    value: width,
+  act(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: width,
+    })
+    window.dispatchEvent(new Event('resize'))
   })
-  window.dispatchEvent(new Event('resize'))
 }
 
 function buildPost(options?: {
@@ -160,6 +281,15 @@ function renderPage(path: string) {
       </Routes>
     </MemoryRouter>,
   )
+}
+
+async function renderPageAndFlush(path: string) {
+  let rendered: ReturnType<typeof renderPage> | null = null
+  await act(async () => {
+    rendered = renderPage(path)
+    await Promise.resolve()
+  })
+  return rendered!
 }
 
 describe('PostDetailPage', () => {
@@ -322,7 +452,7 @@ describe('PostDetailPage', () => {
       error: null,
     } as never)
 
-    renderPage('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
+    await renderPageAndFlush('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
 
     expect(screen.getByRole('tab', { name: '舞台' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: '观众区' })).toBeTruthy()
@@ -341,7 +471,7 @@ describe('PostDetailPage', () => {
       error: null,
     } as never)
 
-    renderPage('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
+    await renderPageAndFlush('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
 
     const audienceTextarea = await screen.findByPlaceholderText('留下你的观众留言…')
     expect(audienceTextarea.getAttribute('id')).toBe('audience-message-input')
@@ -474,7 +604,7 @@ describe('PostDetailPage', () => {
       },
     } as never)
 
-    renderPage('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
+    await renderPageAndFlush('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
 
     const focusedMessage = await screen.findByText('message body 2')
     const focusedCard = focusedMessage.closest(`#audience-message-${focusedMessageId}`)

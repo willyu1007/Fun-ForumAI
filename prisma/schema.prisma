@@ -27,50 +27,50 @@ model HumanUser {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  inviteCode              InviteCode?                  @relation(fields: [inviteCodeId], references: [id])
-  agents                 Agent[]
-  agentConfigs           AgentConfig[]                @relation("ConfigUpdatedBy")
-  privateSessions        PrivateSession[]
-  privacyUpdates         AgentPrivacySettings[]       @relation("PrivacyUpdatedBy")
-  notifications          Notification[]
-  humanVotes             HumanVote[]
-  follows                HumanAgentFollow[]
-  legacyMediaAssets      LegacyAgentMediaAsset[]      @relation("LegacyMediaAssetOwner")
-  ownedMediaAssets       MediaAsset[]                 @relation("MediaAssetOwner")
-  audienceMessages       AudienceMessage[]            @relation("AudienceMessageAuthor")
-  aftershowCallouts      AftershowCallout[]           @relation("AftershowCalloutUser")
-  incubationGrants       IncubationGrant[]            @relation("IncubationReviewerUser")
-  incubationEvents       IncubationEvent[]            @relation("IncubationActorUser")
-  configVersions         CommunityConfigVersion[]     @relation("CommunityConfigVersionCreatedBy")
-  configPatchProposals   CommunityConfigPatch[]       @relation("CommunityConfigPatchProposedBy")
-  configPatchValidations CommunityConfigPatch[]       @relation("CommunityConfigPatchValidatedBy")
-  configPatchApprovals   CommunityConfigPatch[]       @relation("CommunityConfigPatchApprovedBy")
-  configApprovalEvents   CommunityConfigApproval[]    @relation("CommunityConfigApprovalActor")
-  submittedCommunityProposals CommunityProposal[]     @relation("CommunityProposalSubmittedBy")
-  reviewedCommunityProposals  CommunityProposal[]     @relation("CommunityProposalReviewedBy")
-  createdFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketCreatedBy")
-  updatedFeedbackTickets FeedbackTicket[]             @relation("FeedbackTicketUpdatedBy")
-  feedbackHistoryEntries FeedbackTicketHistoryEntry[] @relation("FeedbackHistoryActor")
+  inviteCode                  InviteCode?                  @relation(fields: [inviteCodeId], references: [id])
+  agents                      Agent[]
+  agentConfigs                AgentConfig[]                @relation("ConfigUpdatedBy")
+  privateSessions             PrivateSession[]
+  privacyUpdates              AgentPrivacySettings[]       @relation("PrivacyUpdatedBy")
+  notifications               Notification[]
+  humanVotes                  HumanVote[]
+  follows                     HumanAgentFollow[]
+  legacyMediaAssets           LegacyAgentMediaAsset[]      @relation("LegacyMediaAssetOwner")
+  ownedMediaAssets            MediaAsset[]                 @relation("MediaAssetOwner")
+  audienceMessages            AudienceMessage[]            @relation("AudienceMessageAuthor")
+  aftershowCallouts           AftershowCallout[]           @relation("AftershowCalloutUser")
+  incubationGrants            IncubationGrant[]            @relation("IncubationReviewerUser")
+  incubationEvents            IncubationEvent[]            @relation("IncubationActorUser")
+  configVersions              CommunityConfigVersion[]     @relation("CommunityConfigVersionCreatedBy")
+  configPatchProposals        CommunityConfigPatch[]       @relation("CommunityConfigPatchProposedBy")
+  configPatchValidations      CommunityConfigPatch[]       @relation("CommunityConfigPatchValidatedBy")
+  configPatchApprovals        CommunityConfigPatch[]       @relation("CommunityConfigPatchApprovedBy")
+  configApprovalEvents        CommunityConfigApproval[]    @relation("CommunityConfigApprovalActor")
+  submittedCommunityProposals CommunityProposal[]          @relation("CommunityProposalSubmittedBy")
+  reviewedCommunityProposals  CommunityProposal[]          @relation("CommunityProposalReviewedBy")
+  createdFeedbackTickets      FeedbackTicket[]             @relation("FeedbackTicketCreatedBy")
+  updatedFeedbackTickets      FeedbackTicket[]             @relation("FeedbackTicketUpdatedBy")
+  feedbackHistoryEntries      FeedbackTicketHistoryEntry[] @relation("FeedbackHistoryActor")
 
   @@index([inviteCodeId])
   @@map("human_users")
 }
 
 model AuthVerificationChallenge {
-  id              String                    @id @default(cuid())
+  id              String                  @id @default(cuid())
   channel         AuthVerificationChannel
   purpose         AuthVerificationPurpose
   target          String
-  codeHash        String                    @map("code_hash")
-  payloadJson     Json?                     @map("payload_json")
-  requestedFromIp String?                   @map("requested_from_ip")
-  expiresAt       DateTime                  @map("expires_at")
-  consumedAt      DateTime?                 @map("consumed_at")
-  attemptCount    Int                       @default(0) @map("attempt_count")
-  resendCount     Int                       @default(0) @map("resend_count")
-  lastSentAt      DateTime                  @default(now()) @map("last_sent_at")
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  codeHash        String                  @map("code_hash")
+  payloadJson     Json?                   @map("payload_json")
+  requestedFromIp String?                 @map("requested_from_ip")
+  expiresAt       DateTime                @map("expires_at")
+  consumedAt      DateTime?               @map("consumed_at")
+  attemptCount    Int                     @default(0) @map("attempt_count")
+  resendCount     Int                     @default(0) @map("resend_count")
+  lastSentAt      DateTime                @default(now()) @map("last_sent_at")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
 
   @@index([target, purpose, createdAt])
   @@index([requestedFromIp, createdAt])
@@ -268,24 +268,24 @@ model Community {
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
-  posts              Post[]
-  agentMemberships   AgentCommunityMembership[]
-  cultureDigests     CommunityCultureDigest[]
-  incubationJobs     IncubationJob[]
-  audienceThreads    AudienceThread[]
-  audienceSummaries  AudienceSummary[]
-  aftershowRuns      AftershowRun[]
-  configVersions     CommunityConfigVersion[]
-  configPatches      CommunityConfigPatch[]
-  sourceProposals    CommunityProposal[]         @relation("CommunityProposalSourceCommunity")
-  resultingProposals CommunityProposal[]         @relation("CommunityProposalResultingCommunity")
-  mergedProposals    CommunityProposal[]         @relation("CommunityProposalMergedIntoCommunity")
+  posts                         Post[]
+  agentMemberships              AgentCommunityMembership[]
+  cultureDigests                CommunityCultureDigest[]
+  incubationJobs                IncubationJob[]
+  audienceThreads               AudienceThread[]
+  audienceSummaries             AudienceSummary[]
+  aftershowRuns                 AftershowRun[]
+  configVersions                CommunityConfigVersion[]
+  configPatches                 CommunityConfigPatch[]
+  sourceProposals               CommunityProposal[]            @relation("CommunityProposalSourceCommunity")
+  resultingProposals            CommunityProposal[]            @relation("CommunityProposalResultingCommunity")
+  mergedProposals               CommunityProposal[]            @relation("CommunityProposalMergedIntoCommunity")
   mergeDuplicateRecommendations CommunityMergeRecommendation[] @relation("CommunityMergeDuplicateOf")
   mergeLaneRecommendations      CommunityMergeRecommendation[] @relation("CommunityMergeLaneCommunity")
-  roleAssignments    RoleAssignment[]
-  aftershowArtifacts AftershowArtifact[]
-  forumSceneMetadata ForumSceneMetadata[]
-  publicStageThreads PublicStageThread[]
+  roleAssignments               RoleAssignment[]
+  aftershowArtifacts            AftershowArtifact[]
+  forumSceneMetadata            ForumSceneMetadata[]
+  publicStageThreads            PublicStageThread[]
 
   @@map("communities")
 }
@@ -1065,6 +1065,35 @@ model PprSnapshot {
   @@map("ppr_snapshots")
 }
 
+model ViewerPublicViewEvent {
+  id             String   @id @default(cuid())
+  actorType      String   @map("actor_type")
+  actorId        String   @map("actor_id")
+  viewerUserId   String?  @map("viewer_user_id")
+  viewerAgentId  String?  @map("viewer_agent_id")
+  sourceSurface  String   @map("source_surface")
+  sourceShelf    String?  @map("source_shelf")
+  sourcePosition Int?     @map("source_position")
+  targetKind     String   @map("target_kind")
+  targetId       String   @map("target_id")
+  targetAgentId  String?  @map("target_agent_id")
+  communityId    String?  @map("community_id")
+  storylineId    String?  @map("storyline_id")
+  isT4           Boolean  @default(false) @map("is_t4")
+  noteTemplateId String?  @map("note_template_id")
+  occurredAt     DateTime @map("occurred_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([actorType, actorId, occurredAt])
+  @@index([viewerAgentId, occurredAt])
+  @@index([sourceSurface, sourceShelf, occurredAt])
+  @@index([targetKind, targetId, occurredAt])
+  @@index([storylineId, occurredAt])
+  @@index([noteTemplateId, occurredAt])
+  @@map("viewer_public_view_events")
+}
+
 model AgentCommunityMembership {
   id           String                         @id @default(cuid())
   agentId      String                         @map("agent_id")
@@ -1503,33 +1532,33 @@ model CommunityConfigApproval {
 }
 
 model CommunityProposal {
-  id                       String                           @id @default(cuid())
-  submittedByUserId        String                           @map("submitted_by_user_id")
+  id                       String                             @id @default(cuid())
+  submittedByUserId        String                             @map("submitted_by_user_id")
   name                     String
-  slugCandidate            String                           @map("slug_candidate")
+  slugCandidate            String                             @map("slug_candidate")
   description              String
-  premiseText              String                           @map("premise_text")
-  targetAudience           String?                          @map("target_audience")
-  sceneTypes               String[]                         @default([]) @map("scene_types")
-  t4Candidate              Boolean                          @default(false) @map("t4_candidate")
-  sourceCommunityId        String?                          @map("source_community_id")
-  status                   CommunityProposalStatus         @default(SUBMITTED)
+  premiseText              String                             @map("premise_text")
+  targetAudience           String?                            @map("target_audience")
+  sceneTypes               String[]                           @default([]) @map("scene_types")
+  t4Candidate              Boolean                            @default(false) @map("t4_candidate")
+  sourceCommunityId        String?                            @map("source_community_id")
+  status                   CommunityProposalStatus            @default(SUBMITTED)
   incubationVisibilityMode CommunityIncubationVisibilityMode? @map("incubation_visibility_mode")
-  resultingCommunityId     String?                          @map("resulting_community_id")
-  mergedIntoCommunityId    String?                          @map("merged_into_community_id")
-  reviewedByUserId         String?                          @map("reviewed_by_user_id")
-  reviewedAt               DateTime?                        @map("reviewed_at")
-  metaJson                 Json?                            @map("meta_json")
-  createdAt                DateTime                         @default(now()) @map("created_at")
-  updatedAt                DateTime                         @updatedAt @map("updated_at")
+  resultingCommunityId     String?                            @map("resulting_community_id")
+  mergedIntoCommunityId    String?                            @map("merged_into_community_id")
+  reviewedByUserId         String?                            @map("reviewed_by_user_id")
+  reviewedAt               DateTime?                          @map("reviewed_at")
+  metaJson                 Json?                              @map("meta_json")
+  createdAt                DateTime                           @default(now()) @map("created_at")
+  updatedAt                DateTime                           @updatedAt @map("updated_at")
 
-  submittedByUser  HumanUser                  @relation("CommunityProposalSubmittedBy", fields: [submittedByUserId], references: [id])
-  reviewedByUser   HumanUser?                 @relation("CommunityProposalReviewedBy", fields: [reviewedByUserId], references: [id])
-  sourceCommunity  Community?                 @relation("CommunityProposalSourceCommunity", fields: [sourceCommunityId], references: [id])
-  resultingCommunity Community?               @relation("CommunityProposalResultingCommunity", fields: [resultingCommunityId], references: [id])
-  mergedIntoCommunity Community?              @relation("CommunityProposalMergedIntoCommunity", fields: [mergedIntoCommunityId], references: [id])
-  recommendation   CommunityMergeRecommendation?
-  events           CommunityProposalEvent[]
+  submittedByUser     HumanUser                     @relation("CommunityProposalSubmittedBy", fields: [submittedByUserId], references: [id])
+  reviewedByUser      HumanUser?                    @relation("CommunityProposalReviewedBy", fields: [reviewedByUserId], references: [id])
+  sourceCommunity     Community?                    @relation("CommunityProposalSourceCommunity", fields: [sourceCommunityId], references: [id])
+  resultingCommunity  Community?                    @relation("CommunityProposalResultingCommunity", fields: [resultingCommunityId], references: [id])
+  mergedIntoCommunity Community?                    @relation("CommunityProposalMergedIntoCommunity", fields: [mergedIntoCommunityId], references: [id])
+  recommendation      CommunityMergeRecommendation?
+  events              CommunityProposalEvent[]
 
   @@index([status, createdAt])
   @@index([submittedByUserId, createdAt])
@@ -1541,17 +1570,17 @@ model CommunityProposal {
 }
 
 model CommunityMergeRecommendation {
-  id                          String                           @id @default(cuid())
-  proposalId                  String                           @unique @map("proposal_id")
-  duplicateOfCommunityId      String?                          @map("duplicate_of_community_id")
-  recommendedAsLaneCommunityId String?                         @map("recommended_as_lane_community_id")
-  recommendedAsSeasonal       Boolean                          @default(true) @map("recommended_as_seasonal")
-  recommendedVisibility       CommunityIncubationVisibilityMode @default(GRAY) @map("recommended_visibility")
-  overlapScore                Float                            @default(0) @map("overlap_score")
-  rationale                   String[]                         @default([])
-  metaJson                    Json?                            @map("meta_json")
-  createdAt                   DateTime                         @default(now()) @map("created_at")
-  updatedAt                   DateTime                         @updatedAt @map("updated_at")
+  id                           String                            @id @default(cuid())
+  proposalId                   String                            @unique @map("proposal_id")
+  duplicateOfCommunityId       String?                           @map("duplicate_of_community_id")
+  recommendedAsLaneCommunityId String?                           @map("recommended_as_lane_community_id")
+  recommendedAsSeasonal        Boolean                           @default(true) @map("recommended_as_seasonal")
+  recommendedVisibility        CommunityIncubationVisibilityMode @default(GRAY) @map("recommended_visibility")
+  overlapScore                 Float                             @default(0) @map("overlap_score")
+  rationale                    String[]                          @default([])
+  metaJson                     Json?                             @map("meta_json")
+  createdAt                    DateTime                          @default(now()) @map("created_at")
+  updatedAt                    DateTime                          @updatedAt @map("updated_at")
 
   proposal                   CommunityProposal @relation(fields: [proposalId], references: [id])
   duplicateOfCommunity       Community?        @relation("CommunityMergeDuplicateOf", fields: [duplicateOfCommunityId], references: [id])
@@ -1563,13 +1592,13 @@ model CommunityMergeRecommendation {
 }
 
 model CommunityProposalEvent {
-  id         String                    @id @default(cuid())
-  proposalId String                    @map("proposal_id")
-  actorType  CommunityProposalActorType @map("actor_type")
-  actorId    String                    @map("actor_id")
-  eventType  String                    @map("event_type")
-  payloadJson Json?                    @map("payload_json")
-  createdAt  DateTime                  @default(now()) @map("created_at")
+  id          String                     @id @default(cuid())
+  proposalId  String                     @map("proposal_id")
+  actorType   CommunityProposalActorType @map("actor_type")
+  actorId     String                     @map("actor_id")
+  eventType   String                     @map("event_type")
+  payloadJson Json?                      @map("payload_json")
+  createdAt   DateTime                   @default(now()) @map("created_at")
 
   proposal CommunityProposal @relation(fields: [proposalId], references: [id])
 

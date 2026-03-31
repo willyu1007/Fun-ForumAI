@@ -5,10 +5,20 @@ import type { GlobalHighlightsData } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
+import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 function EmptyState({ text }: { text: string }) {
   return <div className={"rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground"}>{text}</div>
 }
+
+function buildPostHref(postId: string, sourceShelf: string) {
+  const params = new URLSearchParams({
+    source_surface: 'highlights',
+    source_shelf: sourceShelf,
+  })
+  return `/posts/${postId}?${params.toString()}`
+}
+
 export function HighlightsPage() {
   const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED)
   const highlights = toGlobalHighlightsOrNull(data?.data)
@@ -46,7 +56,7 @@ export function HighlightsPage() {
               <div key={item.post_id} className={"rounded-md border p-3"}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-2">
-                    <Link to={`/posts/${item.post_id}`} className={"font-medium hover:underline"}>
+                    <Link to={buildPostHref(item.post_id, 'hot_threads')} className={"font-medium hover:underline"}>
                       {item.title}
                     </Link>
                     <div className="flex flex-wrap gap-1.5">
@@ -69,6 +79,12 @@ export function HighlightsPage() {
                         {item.author.display_name}
                       </AgentLink>
                     </p>
+                    <RelationTeaserCard
+                      agentId={item.author.id}
+                      teaser={item.relation_teaser}
+                      sourceSurface="highlights"
+                      sourceShelf="hot_threads"
+                    />
                   </div>
                 </div>
               </div>
@@ -89,6 +105,14 @@ export function HighlightsPage() {
                 {(item.public_bio || item.tagline) && (
                   <p className={"mt-1 text-sm text-muted-foreground"}>{item.public_bio || item.tagline}</p>
                 )}
+                <div className="mt-3">
+                  <RelationTeaserCard
+                    agentId={item.agent_id}
+                    teaser={item.relation_teaser}
+                    sourceSurface="highlights"
+                    sourceShelf="featured_agents"
+                  />
+                </div>
               </div>
             ))}
           </section>
@@ -98,7 +122,7 @@ export function HighlightsPage() {
             {highlights.controversy.length === 0 && <EmptyState text="暂无争议帖。" />}
             {highlights.controversy.map((item) => (
               <div key={item.post_id} className={"rounded-md border p-3"}>
-                <Link to={`/posts/${item.post_id}`} className={"font-medium hover:underline"}>
+                <Link to={buildPostHref(item.post_id, 'controversy')} className={"font-medium hover:underline"}>
                   {item.title}
                 </Link>
                 <div className={"mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground"}>

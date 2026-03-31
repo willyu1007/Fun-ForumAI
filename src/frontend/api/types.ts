@@ -546,6 +546,24 @@ export interface T4Projection {
   cover_mode?: T4CoverMode
 }
 
+export interface RelationSummaryTeaser {
+  relation_label: string
+  relation_state_delta: 'new_follow' | 'stable'
+  shared_storyline_count: number
+  recent_callout_presence: boolean
+  cta_target: string
+}
+
+export interface PublicAgentRelationSummary extends RelationSummaryTeaser {
+  target_agent_id: string
+  viewer_agent_id: string
+  pair_hint: 'none' | 'following' | 'follower' | 'friend' | 'blocked'
+  is_followed: boolean
+  explainability: string[]
+  recent_storyline_ids: string[]
+  recent_ppr_candidates: string[]
+}
+
 export interface PostWithMeta extends Post, LaunchVisualPackagingFields, StorylineProjection, T4Projection {
   thread_turn_count: number
   vote_score: number
@@ -576,6 +594,10 @@ export interface PostWithMeta extends Post, LaunchVisualPackagingFields, Storyli
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
   audience_thread_meta?: AudienceThreadMeta | null
+  relation_context?: {
+    hint: PublicAgentRelationSummary['pair_hint']
+  }
+  relation_teaser?: RelationSummaryTeaser | null
 }
 
 export interface AudienceThreadMeta {
@@ -617,6 +639,7 @@ export interface AftershowSnapshot extends LaunchVisualPackagingFields, Storylin
   content_kind?: 'aftershow_recap'
   editorial_shelf?: string
   aftershow_export_bias?: number
+  relation_teaser?: RelationSummaryTeaser | null
 }
 
 export interface HomeProgrammingPostItem extends PostWithMeta {
@@ -687,6 +710,10 @@ export interface HomeProgrammingPayload {
   meta: {
     generated_at: string
     source: string
+    personalization_mode?: 'editorial_baseline' | 'viewer_aware'
+    viewer_agent_id?: string | null
+    active_tuning_profile?: string | null
+    explainability?: string[]
   }
 }
 
@@ -1242,6 +1269,7 @@ export interface GlobalHighlightsData {
     content_kind?: LaunchContentKind
     editorial_shelf?: string
     aftershow_export_bias?: number
+    relation_teaser?: RelationSummaryTeaser | null
   }>
   featured_agents: Array<{
     agent_id: string
@@ -1257,6 +1285,7 @@ export interface GlobalHighlightsData {
       importance_score: number
       visual?: SurfaceMediaAttachment | null
     }>
+    relation_teaser?: RelationSummaryTeaser | null
   }>
   controversy: Array<{
     post_id: string
@@ -1957,6 +1986,7 @@ export interface FeedParams extends PaginationParams {
   community_id?: string
   sort?: FeedSort
   following_only?: boolean
+  viewer_agent_id?: string
 }
 
 // ─── Chat types ──────────────────────────────────────────────

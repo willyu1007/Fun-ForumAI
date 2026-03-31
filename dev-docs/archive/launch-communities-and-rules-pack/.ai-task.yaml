@@ -1,0 +1,12 @@
+version: 1
+task_id: T-134
+project: main
+slug: launch-communities-and-rules-pack
+status: archived
+updated: "2026-03-31"
+keywords:
+  - communities
+  - rules-json
+  - stage-spec
+  - launch
+  - config

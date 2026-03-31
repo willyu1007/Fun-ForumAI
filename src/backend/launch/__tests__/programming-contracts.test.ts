@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { resolveLaunchContractPath } from '../contract-paths.js'
+import { config } from '../../lib/config.js'
+import { locateLaunchContractPath } from '../contract-paths.js'
 import { getLaunchHomeProgramming } from '../home-programming.js'
 import { buildLaunchProgrammingProjection } from '../programming-projection.js'
 import {
@@ -7,6 +8,7 @@ import {
   normalizeLaunchT4TemplateId,
   resolveLaunchT4Projection,
 } from '../t4-content-templates.js'
+import { getLaunchVisualRollout, resolveEffectiveLaunchVisualRollout, resolveLaunchVisualPackaging } from '../visual-rollout.js'
 import { buildPublicScenePayloadJson, type PublicSceneWritePayload } from '../../services/public-scene-runtime.js'
 
 function makeSceneWritePayload(phase: 'opening' | 'escalation' | 'pivot' | 'closure'): PublicSceneWritePayload {
@@ -78,12 +80,12 @@ function makeScenePayload(phase: 'opening' | 'escalation' | 'pivot' | 'closure')
 
 describe('launch programming contracts', () => {
   it('resolves archived launch contracts before falling back to missing active paths', () => {
-    const visualRolloutPath = resolveLaunchContractPath({
+    const visualRollout = locateLaunchContractPath({
       bundle_slug: 'launch-visual-rollout-and-packaging',
       file_name: 'visual_surface_rollout.v1.yaml',
     })
 
-    expect(visualRolloutPath).toContain('dev-docs/archive/launch-visual-rollout-and-packaging')
+    expect(visualRollout.tier).toBe('archive')
   })
 
   it('loads the canonical home programming contract with fixed shelf order', () => {
@@ -137,6 +139,52 @@ describe('launch programming contracts', () => {
       note_template_id: 'mistake_recap_note',
       cover_mode: 'timeline_cover',
     })
+  })
+
+  it('applies the active post-launch tuning profile as a runtime overlay for T4 and visual packaging', () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const tuningConfig = config.launchTuning as unknown as Record<string, string>
+    const originalTuningFlag = featureFlags.postLaunchTuningV1
+    const originalActiveProfile = tuningConfig.activeProfile
+    featureFlags.postLaunchTuningV1 = true
+    tuningConfig.activeProfile = 't4_focus'
+
+    try {
+      const baseVisual = getLaunchVisualRollout()
+      const effectiveVisual = resolveEffectiveLaunchVisualRollout()
+      const tunedProjection = resolveLaunchT4Projection({
+        community_slug: 't4-picks',
+        phase: 'opening',
+        media_count: 2,
+      })
+
+      expect(baseVisual.surface_rollout.home_root_card.target_ratio).toBe(0.5)
+      expect(effectiveVisual.surface_rollout.home_root_card.target_ratio).toBe(0.38)
+      expect(baseVisual.surface_rollout.t4_root_card.target_ratio).toBe(0.7)
+      expect(effectiveVisual.surface_rollout.t4_root_card.target_ratio).toBe(0.62)
+      expect(tunedProjection).toEqual({
+        is_t4: true,
+        note_template_id: 'recommendation_note',
+        cover_mode: 'comparison_cover',
+      })
+
+      const packaging = resolveLaunchVisualPackaging({
+        surface: 'home_root_card',
+        community_visual_policy: {
+          preferred_cover_modes: ['quote_card', 'comparison_cover'],
+        },
+        has_thumbnail: true,
+      })
+
+      expect(packaging).toMatchObject({
+        surface_kind: 'home_root_card',
+        card_mode: 'comparison_cover',
+      })
+      expect(baseVisual.surface_rollout.highlight_card.target_ratio).toBe(0.9)
+    } finally {
+      featureFlags.postLaunchTuningV1 = originalTuningFlag
+      tuningConfig.activeProfile = originalActiveProfile
+    }
   })
 
   it('projects launch storyline and T4 fields from scene metadata without a schema migration', () => {

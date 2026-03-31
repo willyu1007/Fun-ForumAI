@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '../../..')
 
-export function resolveLaunchContractPath(input: {
+export function locateLaunchContractPath(input: {
   bundle_slug: string
   file_name: string
-}): string {
+}) {
   const activePath = resolve(
     REPO_ROOT,
     'dev-docs/active',
@@ -16,18 +16,34 @@ export function resolveLaunchContractPath(input: {
     input.file_name,
   )
   if (existsSync(activePath)) {
-    return activePath
+    return {
+      path: activePath,
+      tier: 'active' as const,
+    }
   }
 
-  const archivedPath = resolve(
+  const archivePath = resolve(
     REPO_ROOT,
     'dev-docs/archive',
     input.bundle_slug,
     input.file_name,
   )
-  if (existsSync(archivedPath)) {
-    return archivedPath
+  if (existsSync(archivePath)) {
+    return {
+      path: archivePath,
+      tier: 'archive' as const,
+    }
   }
 
-  return activePath
+  return {
+    path: activePath,
+    tier: 'missing_active_default' as const,
+  }
+}
+
+export function resolveLaunchContractPath(input: {
+  bundle_slug: string
+  file_name: string
+}): string {
+  return locateLaunchContractPath(input).path
 }

@@ -145,6 +145,11 @@ export type {
   CreateAgentSignalLogInput,
   CreateCommunityCultureDigestInput,
   PprSnapshot,
+  ViewerPublicViewEvent,
+  CreateViewerPublicViewEventInput,
+  ViewerPublicActorType,
+  ViewerPublicViewTargetKind,
+  ViewerRecentSignals,
   AgentSignalLog,
   CommunityCultureDigest,
   CommunityCultureDigestStatus,
@@ -424,6 +429,10 @@ export {
   type PprSnapshotRepository,
   InMemoryPprSnapshotRepository,
 } from './ppr-snapshot-repository.js'
+export {
+  type ViewerPublicViewEventRepository,
+  InMemoryViewerPublicViewEventRepository,
+} from './viewer-public-view-event-repository.js'
 export {
   type RawContextEventRepository,
   type EpisodicCardRepository,

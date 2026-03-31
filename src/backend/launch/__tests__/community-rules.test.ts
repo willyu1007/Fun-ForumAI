@@ -1,12 +1,12 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import {
   getLaunchCommunityRules,
 } from '../community-rules.js'
+import { resolveLaunchContractPath } from '../contract-paths.js'
 
 describe('launch community rules', () => {
   it('loads 12 launch communities and materializes final rules_json blocks', () => {
@@ -45,10 +45,12 @@ describe('launch community rules', () => {
   })
 
   it('rejects invalid handoff targets and out-of-range headline priority', () => {
-    const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
     const source = parseYaml(
       readFileSync(
-        resolve(repoRoot, 'dev-docs/active/launch-communities-and-rules-pack/launch_community_rules.v1.yaml'),
+        resolveLaunchContractPath({
+          bundle_slug: 'launch-communities-and-rules-pack',
+          file_name: 'launch_community_rules.v1.yaml',
+        }),
         'utf8',
       ),
     ) as Record<string, unknown> & {

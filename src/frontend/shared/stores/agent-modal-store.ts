@@ -23,6 +23,9 @@ export interface AgentModalState {
   activeTab: AgentModalTab
   introSection: AgentIntroSection | null
   sourceSessionId: string | null
+  sourceSurface: string | null
+  sourceShelf: string | null
+  sourcePosition: number | null
   prefillMessage: string | null
   lastModalRect: AgentModalRect | null
 
@@ -33,6 +36,9 @@ export interface AgentModalState {
     opts?: {
       introSection?: AgentIntroSection | null
       sourceSessionId?: string | null
+      sourceSurface?: string | null
+      sourceShelf?: string | null
+      sourcePosition?: number | null
       prefillMessage?: string | null
     },
   ) => void
@@ -54,6 +60,9 @@ export const useAgentModalStore = create<AgentModalState>()(
       activeTab: 'intro',
       introSection: null,
       sourceSessionId: null,
+      sourceSurface: null,
+      sourceShelf: null,
+      sourcePosition: null,
       prefillMessage: null,
       lastModalRect: null,
 
@@ -75,6 +84,9 @@ export const useAgentModalStore = create<AgentModalState>()(
             activeTab: canRestoreLastContext ? currentState.activeTab : tab,
             introSection: canRestoreLastContext ? currentState.introSection : (opts?.introSection ?? null),
             sourceSessionId: opts?.sourceSessionId ?? null,
+            sourceSurface: opts?.sourceSurface ?? null,
+            sourceShelf: opts?.sourceShelf ?? null,
+            sourcePosition: opts?.sourcePosition ?? null,
             prefillMessage: opts?.prefillMessage ?? null,
           }
         }),

@@ -87,3 +87,10 @@ Project: `main`
 - 2026-03-22 task_id=T-123 slug=multi-surface-media-expansion-and-shared-adapters event=status from=planned to=done
 - 2026-03-22 task_id=T-124 slug=media-observability-lifecycle-and-rollout-control event=status from=planned to=in-progress
 - 2026-03-22 task_id=T-124 slug=media-observability-lifecycle-and-rollout-control event=status from=in-progress to=archived
+- 2026-03-31 task_id=T-132 slug=launch-release-packaging-master event=status from=in-progress to=archived
+- 2026-03-31 task_id=T-133 slug=launch-system-roster-and-identity-packaging event=status from=done to=archived
+- 2026-03-31 task_id=T-134 slug=launch-communities-and-rules-pack event=status from=done to=archived
+- 2026-03-31 task_id=T-137 slug=launch-programming-ops-and-rollout event=status from=done to=archived
+- 2026-03-31 task_id=T-138 slug=p1-lightweight-personalization-and-relation-hints event=status from=in-progress to=archived
+- 2026-03-31 task_id=T-139 slug=p1-shelf-template-optimization-and-incubation event=status from=in-progress to=archived
+- 2026-03-31 task_id=T-141 slug=launch-community-governance-and-incubation event=status from=done to=archived

@@ -55,6 +55,27 @@ export class PgPprSnapshotRepository implements PprSnapshotRepository {
     return rows.map((row) => this.toDomain(row))
   }
 
+  async listBySourceAgent(
+    sourceAgentId: string,
+    opts?: { now?: Date; limit?: number },
+  ): Promise<PprSnapshot[]> {
+    const now = opts?.now ?? new Date()
+    const limit = typeof opts?.limit === 'number' && opts.limit > 0
+      ? Math.trunc(opts.limit)
+      : 100
+
+    const rows = await this.prisma.pprSnapshot.findMany({
+      where: {
+        sourceAgentId,
+        expiresAt: { gt: now },
+      },
+      orderBy: [{ rank: 'asc' }, { pprScore: 'desc' }, { candidateAgentId: 'asc' }],
+      take: limit,
+    })
+
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async findBySourceContext(
     sourceAgentId: string,
     communityId: string,

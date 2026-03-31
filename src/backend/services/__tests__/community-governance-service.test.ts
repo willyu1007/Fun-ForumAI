@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { config } from '../../lib/config.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryCommunityProposalRepository } from '../../repos/community-proposal-repository.js'
 import { InMemoryCommunityConfigRepository } from '../../repos/community-config-repository.js'
@@ -88,5 +89,47 @@ describe('community governance service', () => {
 
     const events = await ctx.communityGovernanceService.listEvents(detail.proposal.id)
     expect(events.at(-1)?.event_type).toBe('ACTION_APPLIED')
+  })
+
+  it('uses the active post-launch tuning profile for incubation recommendation thresholds', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const tuningConfig = config.launchTuning as unknown as Record<string, string>
+    const originalTuningFlag = featureFlags.postLaunchTuningV1
+    const originalActiveProfile = tuningConfig.activeProfile
+    featureFlags.postLaunchTuningV1 = true
+    tuningConfig.activeProfile = 't4_focus'
+
+    try {
+      const ctx = setup()
+      for (const seed of listLaunchCommunitySeeds().slice(0, 2)) {
+        ctx.communityRepo.create({
+          name: seed.name,
+          slug: seed.slug,
+          description: seed.description,
+          rules_json: seed.rules_json,
+        })
+      }
+
+      const detail = await ctx.communityGovernanceService.submitProposal({
+        submitted_by_user_id: 'user-1',
+        name: '灰度互动关系台',
+        slug_candidate: 'gray-relations-lab',
+        description: '给关系向节目做灰度 incubation。',
+        premise_text: '先在灰度观察期里验证关系线是否值得转正。',
+        scene_types: ['TALK_SHOW'],
+        t4_candidate: true,
+      })
+
+      expect(detail.recommendation?.meta).toMatchObject({
+        thresholds: {
+          merge_threshold: 4.2,
+          lane_threshold: 2.2,
+          gray_visibility_threshold: 1.7,
+        },
+      })
+    } finally {
+      featureFlags.postLaunchTuningV1 = originalTuningFlag
+      tuningConfig.activeProfile = originalActiveProfile
+    }
   })
 })

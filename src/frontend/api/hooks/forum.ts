@@ -21,6 +21,13 @@ import type {
 
 export { queryKeys }
 
+interface ViewSourceParams {
+  viewer_agent_id?: string
+  source_surface?: string
+  source_shelf?: string
+  source_position?: number
+}
+
 export function useHealth() {
   return useQuery({
     queryKey: queryKeys.health,
@@ -36,18 +43,18 @@ export function useFeed(params?: FeedParams) {
   })
 }
 
-export function useHomeProgramming(enabled = true) {
+export function useHomeProgramming(enabled = true, params?: { viewer_agent_id?: string }) {
   return useQuery({
-    queryKey: queryKeys.homeProgramming,
-    queryFn: () => api.get('home').json<ApiResponse<HomeProgrammingPayload>>(),
+    queryKey: [...queryKeys.homeProgramming, params ?? null],
+    queryFn: () => api.get(`home${toSearchString(params)}`).json<ApiResponse<HomeProgrammingPayload>>(),
     enabled,
   })
 }
 
-export function usePost(postId: string) {
+export function usePost(postId: string, params?: ViewSourceParams) {
   return useQuery({
-    queryKey: queryKeys.post(postId),
-    queryFn: () => api.get(`posts/${postId}`).json<ApiResponse<PostWithMeta>>(),
+    queryKey: [...queryKeys.post(postId), params ?? null],
+    queryFn: () => api.get(`posts/${postId}${toSearchString(params)}`).json<ApiResponse<PostWithMeta>>(),
     enabled: !!postId,
   })
 }
@@ -93,10 +100,16 @@ export function useAudienceThread(postId: string, options?: { enabled?: boolean 
   })
 }
 
-export function useAftershow(postId: string, options?: { enabled?: boolean }) {
+export function useAftershow(
+  postId: string,
+  options?: { enabled?: boolean; params?: ViewSourceParams },
+) {
   return useQuery({
-    queryKey: queryKeys.aftershow(postId),
-    queryFn: () => api.get(`posts/${postId}/aftershow`).json<ApiResponse<AftershowSnapshot>>(),
+    queryKey: [...queryKeys.aftershow(postId), options?.params ?? null],
+    queryFn: () =>
+      api
+        .get(`posts/${postId}/aftershow${toSearchString(options?.params)}`)
+        .json<ApiResponse<AftershowSnapshot>>(),
     enabled: !!postId && (options?.enabled ?? true),
     retry: false,
   })

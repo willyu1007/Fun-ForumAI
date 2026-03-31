@@ -16,15 +16,20 @@ import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import type { PostMediaItem, PostWithMeta } from '@/api/types'
+import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 
 interface PostCompactProps {
   post: PostWithMeta
 }
 
-function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined) {
+function buildDetailHref(postId: string) {
+  return `/posts/${postId}?source_surface=feed`
+}
+
+function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined, detailHref: string) {
   return (
     <Link
-      to={`/posts/${post.id}`}
+      to={detailHref}
       className="block w-[100px] min-w-[100px]"
       data-testid="post-compact-media-slot"
     >
@@ -84,6 +89,7 @@ export function PostCompact({ post }: PostCompactProps) {
     avatar_url: author.avatar_url,
   })
   const launchBadges = readLaunchBadges(post)
+  const detailHref = buildDetailHref(post.id)
 
   if (isHidden) {
     return (
@@ -113,7 +119,7 @@ export function PostCompact({ post }: PostCompactProps) {
             navigate(`/posts/${post.id}`)
           }}
         >
-          {renderMediaSlot(post, primaryMedia)}
+          {renderMediaSlot(post, primaryMedia, detailHref)}
 
           <div className="min-w-0">
             <div className="min-w-0">
@@ -148,7 +154,7 @@ export function PostCompact({ post }: PostCompactProps) {
                 </div>
               </div>
 
-              <Link to={`/posts/${post.id}`} className="mt-1 block">
+              <Link to={detailHref} className="mt-1 block">
                 <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground sm:text-[15px]">
                   {post.title}
                 </h3>
@@ -187,7 +193,7 @@ export function PostCompact({ post }: PostCompactProps) {
                 />
 
                 <Link
-                  to={`/posts/${post.id}`}
+                  to={detailHref}
                   className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                 >
                   {post.thread_turn_count} 条讨论
@@ -257,6 +263,16 @@ export function PostCompact({ post }: PostCompactProps) {
                   {feedback.message}
                 </p>
               )}
+
+              {post.relation_teaser ? (
+                <div className="mt-3">
+                  <RelationTeaserCard
+                    agentId={post.author.id}
+                    teaser={post.relation_teaser}
+                    sourceSurface="feed"
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { Router, type IRouter } from 'express'
+import { Router, type IRouter, type Request, type Response } from 'express'
 import multer from 'multer'
 import {
   forumReadService,
@@ -19,11 +19,16 @@ import {
   mediaRolloutControllerService,
   searchProjectionService,
   agentBioRefreshService,
+  viewerPublicViewService,
+  publicAgentRelationSummaryService,
+  guidanceOrchestrator,
+  guidanceStateService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
+import type { CreateViewerPublicViewEventInput } from '../repos/index.js'
 import type { PostWithMeta as ForumPostWithMeta } from '../services/forum-read-service.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
 import {
@@ -39,8 +44,11 @@ import {
   feedbackStatusSchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
-import { guidanceOrchestrator } from '../container.js'
-import { trackGuidanceEventFromRequest } from '../guidance/http.js'
+import {
+  resolveGuidanceActorContext,
+  trackGuidanceEventFromRequest,
+} from '../guidance/http.js'
+import type { ViewerActorContext } from '../services/viewer-public-view-service.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -54,8 +62,100 @@ function isAttachmentInput(item: unknown): item is { ref: string; type: string }
   return typeof record.ref === 'string' && typeof record.type === 'string'
 }
 
+function readQueryString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function readQueryNumber(value: unknown): number | null {
+  if (typeof value !== 'string' || value.trim().length === 0) return null
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function readSourceContext(req: Request): {
+  source_surface: string | null
+  source_shelf: string | null
+  source_position: number | null
+} {
+  return {
+    source_surface: readQueryString(req.query.source_surface),
+    source_shelf: readQueryString(req.query.source_shelf),
+    source_position: readQueryNumber(req.query.source_position),
+  }
+}
+
+async function resolveViewerContext(req: Request, res: Response): Promise<ViewerActorContext> {
+  const actor = resolveGuidanceActorContext(req, res)
+  const viewerAgentIdFromQuery = readQueryString(req.query.viewer_agent_id)
+  let viewerAgentId = viewerAgentIdFromQuery
+  if (!viewerAgentId) {
+    try {
+      const state = await guidanceStateService.getOrCreateActorState(actor)
+      viewerAgentId = state.latest_owner_agent_id
+    } catch {
+      viewerAgentId = null
+    }
+  }
+  return {
+    actor_type: actor.actor_type,
+    actor_id: actor.actor_id,
+    user_id: actor.user_id ?? null,
+    visitor_id: actor.visitor_id ?? null,
+    viewer_agent_id: viewerAgentId,
+  }
+}
+
+async function recordPublicViewEvents(entries: CreateViewerPublicViewEventInput[]): Promise<void> {
+  if (!config.features.lightweightPersonalizationV1 || entries.length === 0) {
+    return
+  }
+  await viewerPublicViewService.record(entries)
+}
+
+async function buildRelationTeaser(
+  targetAgentId: string,
+  viewer: ViewerActorContext | null,
+) {
+  if (!viewer?.viewer_agent_id || !config.features.lightweightPersonalizationV1) {
+    return null
+  }
+  return publicAgentRelationSummaryService
+    .buildPublicSummary({ target_agent_id: targetAgentId, viewer })
+    .catch(() => null)
+}
+
+async function attachRelationTeasersToPosts<T extends ForumPostWithMeta>(
+  items: T[],
+  viewer: ViewerActorContext | null,
+): Promise<Array<T & {
+  relation_context?: { hint: string }
+  relation_teaser?: Awaited<ReturnType<typeof buildRelationTeaser>>
+}>> {
+  if (!config.features.lightweightPersonalizationV1 || !viewer?.viewer_agent_id || items.length === 0) {
+    return items
+  }
+  const uniqueAgentIds = Array.from(new Set(items.map((item) => item.author.id)))
+  const teaserRows = await Promise.all(uniqueAgentIds.map(async (agentId) => {
+    const teaser = await buildRelationTeaser(agentId, viewer)
+    return [agentId, teaser] as const
+  }))
+  const teaserByAgentId = new Map(teaserRows)
+
+  return items.map((item) => {
+    const relation_context = viewer?.viewer_agent_id && relationService
+      ? { hint: relationService.getPairHintSync(viewer.viewer_agent_id, item.author_agent_id) }
+      : undefined
+    return {
+      ...item,
+      ...(relation_context ? { relation_context } : {}),
+      relation_teaser: teaserByAgentId.get(item.author.id) ?? null,
+    }
+  })
+}
+
 async function buildAftershowSnapshot(postId: string, input: {
   post?: ForumPostWithMeta
+  viewer?: ViewerActorContext | null
 } = {}): Promise<{
   post_id: string
   aftershow_summary: {
@@ -100,6 +200,7 @@ async function buildAftershowSnapshot(postId: string, input: {
   aftershow_export_bias?: number
   note_template_id?: ForumPostWithMeta['note_template_id']
   cover_mode?: ForumPostWithMeta['cover_mode']
+  relation_teaser?: Awaited<ReturnType<typeof buildRelationTeaser>>
 }> {
   const post = input.post ?? await forumReadService.getPost(postId)
   const [aftershow, thread] = await Promise.all([
@@ -175,6 +276,7 @@ async function buildAftershowSnapshot(postId: string, input: {
       : {}),
     ...(post.note_template_id ? { note_template_id: post.note_template_id } : {}),
     ...(post.cover_mode ? { cover_mode: post.cover_mode } : {}),
+    relation_teaser: await buildRelationTeaser(post.author.id, input.viewer ?? null),
   }
 }
 
@@ -206,7 +308,7 @@ readApiRouter.get('/media/local/*storageKey', async (req, res) => {
 
 readApiRouter.get('/feed', async (req, res) => {
   const user = tryAuthenticateHuman(req)
-  const { cursor, limit, community_id, sort, viewer_agent_id } = req.query as Record<
+  const { cursor, limit, community_id, sort } = req.query as Record<
     string,
     string | undefined
   >
@@ -238,29 +340,8 @@ readApiRouter.get('/feed', async (req, res) => {
     authorAgentIds: followingAgentIds,
     viewerUserId: user?.userId,
   })
-
-  const relationSvc = relationService
-  if (config.features.socialGraphEffective && viewer_agent_id && relationSvc) {
-    const enriched = result.items.map((item) => {
-      const hint = relationSvc.getPairHintSync(viewer_agent_id, item.author_agent_id)
-      return {
-        ...item,
-        relation_context: { hint },
-      }
-    })
-    await trackGuidanceEventFromRequest(
-      req,
-      res,
-      guidanceOrchestrator,
-      followingOnly ? 'FOLLOWING_FEED_VIEWED' : 'FEED_VIEWED',
-      { following_only: followingOnly },
-      {
-        dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}`,
-      },
-    )
-    res.json({ data: enriched, meta: { cursor: result.next_cursor } })
-    return
-  }
+  const viewer = await resolveViewerContext(req, res)
+  const enriched = await attachRelationTeasersToPosts(result.items, viewer)
 
   await trackGuidanceEventFromRequest(
     req,
@@ -272,21 +353,66 @@ readApiRouter.get('/feed', async (req, res) => {
       dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}`,
     },
   )
-  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+  res.json({ data: enriched, meta: { cursor: result.next_cursor } })
 })
 
 readApiRouter.get('/home', async (req, res) => {
   const user = tryAuthenticateHuman(req)
+  const viewer = await resolveViewerContext(req, res)
   const data = await homeProgrammingService.getHome({
     viewerUserId: user?.userId,
+    viewer,
   })
+  await recordPublicViewEvents(
+    data.shelves.flatMap((shelf) =>
+      shelf.items.flatMap((item, index) =>
+        item.item_kind === 'post' || item.item_kind === 'aftershow_recap'
+          ? [{
+              actor_type: viewer.actor_type,
+              actor_id: viewer.actor_id,
+              viewer_user_id: viewer.user_id ?? null,
+              viewer_agent_id: viewer.viewer_agent_id ?? null,
+              source_surface: 'home',
+              source_shelf: shelf.id,
+              source_position: index,
+              target_kind: 'home_post' as const,
+              target_id: item.id,
+              target_agent_id: item.author.id,
+              community_id: item.community_id,
+              storyline_id: item.storyline_id ?? null,
+              is_t4: item.is_t4 ?? false,
+              note_template_id: item.note_template_id ?? null,
+            }]
+          : [],
+      ),
+    ),
+  )
   res.json({ data, meta: data.meta })
 })
 
 readApiRouter.get('/posts/:postId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
+  const viewer = await resolveViewerContext(req, res)
+  const sourceContext = readSourceContext(req)
   const post = await forumReadService.getPost(req.params.postId, user?.userId)
+  const relationTeaser = await buildRelationTeaser(post.author.id, viewer)
   if (!config.features.audienceAftershowWebV1) {
+    await recordPublicViewEvents([{
+      actor_type: viewer.actor_type,
+      actor_id: viewer.actor_id,
+      viewer_user_id: viewer.user_id ?? null,
+      viewer_agent_id: viewer.viewer_agent_id ?? null,
+      source_surface: sourceContext.source_surface ?? 'post_detail',
+      source_shelf: sourceContext.source_shelf,
+      source_position: sourceContext.source_position,
+      target_kind: 'post_detail',
+      target_id: post.id,
+      target_agent_id: post.author.id,
+      community_id: post.community_id,
+      storyline_id: post.storyline_id ?? null,
+      is_t4: post.is_t4 ?? false,
+      note_template_id: post.note_template_id ?? null,
+    }])
     await trackGuidanceEventFromRequest(
       req,
       res,
@@ -295,12 +421,12 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
       { post_id: post.id, author_agent_id: post.author_agent_id },
       { dedup_key: `post_viewed:${post.id}` },
     )
-    res.json({ data: post })
+    res.json({ data: { ...post, relation_teaser: relationTeaser } })
     return
   }
 
   const aftershow = config.features.aftershowV1
-    ? await buildAftershowSnapshot(post.id, { post })
+    ? await buildAftershowSnapshot(post.id, { post, viewer })
     : {
         post_id: post.id,
         aftershow_summary: null,
@@ -316,9 +442,26 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
     { post_id: post.id, author_agent_id: post.author_agent_id },
     { dedup_key: `post_viewed:${post.id}` },
   )
+  await recordPublicViewEvents([{
+    actor_type: viewer.actor_type,
+    actor_id: viewer.actor_id,
+    viewer_user_id: viewer.user_id ?? null,
+    viewer_agent_id: viewer.viewer_agent_id ?? null,
+    source_surface: sourceContext.source_surface ?? 'post_detail',
+    source_shelf: sourceContext.source_shelf,
+    source_position: sourceContext.source_position,
+    target_kind: 'post_detail',
+    target_id: post.id,
+    target_agent_id: post.author.id,
+    community_id: post.community_id,
+    storyline_id: post.storyline_id ?? null,
+    is_t4: post.is_t4 ?? false,
+    note_template_id: post.note_template_id ?? null,
+  }])
   res.json({
     data: {
       ...post,
+      relation_teaser: relationTeaser,
       aftershow_summary: aftershow.aftershow_summary,
       aftershow_callouts: aftershow.aftershow_callouts,
       audience_thread_meta: aftershow.audience_thread_meta,
@@ -615,7 +758,55 @@ readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {
   }
 
   const postId = String(req.params.postId)
-  res.json({ data: await buildAftershowSnapshot(postId) })
+  const viewer = await resolveViewerContext(req, res)
+  const sourceContext = readSourceContext(req)
+  const snapshot = await buildAftershowSnapshot(postId, { viewer })
+  await recordPublicViewEvents([{
+    actor_type: viewer.actor_type,
+    actor_id: viewer.actor_id,
+    viewer_user_id: viewer.user_id ?? null,
+    viewer_agent_id: viewer.viewer_agent_id ?? null,
+    source_surface: sourceContext.source_surface ?? 'aftershow',
+    source_shelf: sourceContext.source_shelf,
+    source_position: sourceContext.source_position,
+    target_kind: 'aftershow_detail',
+    target_id: snapshot.post_id,
+    target_agent_id: null,
+    community_id: null,
+    storyline_id: snapshot.storyline_id ?? null,
+    is_t4: snapshot.is_t4 ?? false,
+    note_template_id: snapshot.note_template_id ?? null,
+  }])
+  res.json({ data: snapshot })
+})
+
+readApiRouter.get('/agents/:agentId/relations/public-summary', async (req, res) => {
+  const viewer = await resolveViewerContext(req, res)
+  const sourceContext = readSourceContext(req)
+  const agentId = String(req.params.agentId)
+  const data = await buildRelationTeaser(agentId, viewer)
+  await recordPublicViewEvents([{
+    actor_type: viewer.actor_type,
+    actor_id: viewer.actor_id,
+    viewer_user_id: viewer.user_id ?? null,
+    viewer_agent_id: viewer.viewer_agent_id ?? null,
+    source_surface: sourceContext.source_surface ?? 'agent_relation_summary',
+    source_shelf: sourceContext.source_shelf,
+    source_position: sourceContext.source_position,
+    target_kind: 'agent_relation_summary',
+    target_id: agentId,
+    target_agent_id: agentId,
+    community_id: null,
+    storyline_id: null,
+    is_t4: false,
+    note_template_id: null,
+  }])
+  res.json({
+    data,
+    meta: {
+      viewer_agent_id: viewer.viewer_agent_id ?? null,
+    },
+  })
 })
 
 readApiRouter.get('/posts/:postId/aside-seats', async (req, res) => {
@@ -652,7 +843,97 @@ readApiRouter.get('/highlights', async (req, res) => {
     return
   }
 
+  const viewer = await resolveViewerContext(req, res)
   const data = await globalHighlightsService.collectToday()
+  const hotThreadPosts = await attachRelationTeasersToPosts(
+    data.hot_threads.map((item) => ({
+      ...item,
+      id: item.post_id,
+      author_agent_id: item.author.id,
+      author: item.author,
+    })) as ForumPostWithMeta[],
+    viewer,
+  )
+  const featuredAgentRows = await Promise.all(
+    data.featured_agents.map(async (item) => ({
+      ...item,
+      relation_teaser: await buildRelationTeaser(item.agent_id, viewer),
+    })),
+  )
+  const payload = {
+    ...data,
+    hot_threads: data.hot_threads.map((item, index) => ({
+      ...item,
+      relation_teaser: hotThreadPosts[index]?.relation_teaser ?? null,
+    })),
+    featured_agents: featuredAgentRows,
+  }
+  await recordPublicViewEvents([
+    ...payload.hot_threads.map((item, index) => ({
+      actor_type: viewer.actor_type,
+      actor_id: viewer.actor_id,
+      viewer_user_id: viewer.user_id ?? null,
+      viewer_agent_id: viewer.viewer_agent_id ?? null,
+      source_surface: 'highlights',
+      source_shelf: 'hot_threads',
+      source_position: index,
+      target_kind: 'highlight_post' as const,
+      target_id: item.post_id,
+      target_agent_id: item.author.id,
+      community_id: item.community_id,
+      storyline_id: item.storyline_id ?? null,
+      is_t4: item.is_t4 ?? false,
+      note_template_id: item.note_template_id ?? null,
+    })),
+    ...payload.controversy.map((item, index) => ({
+      actor_type: viewer.actor_type,
+      actor_id: viewer.actor_id,
+      viewer_user_id: viewer.user_id ?? null,
+      viewer_agent_id: viewer.viewer_agent_id ?? null,
+      source_surface: 'highlights',
+      source_shelf: 'controversy',
+      source_position: index,
+      target_kind: 'controversy_post' as const,
+      target_id: item.post_id,
+      target_agent_id: null,
+      community_id: null,
+      storyline_id: item.storyline_id ?? null,
+      is_t4: item.is_t4 ?? false,
+      note_template_id: item.note_template_id ?? null,
+    })),
+    ...payload.featured_agents.map((item, index) => ({
+      actor_type: viewer.actor_type,
+      actor_id: viewer.actor_id,
+      viewer_user_id: viewer.user_id ?? null,
+      viewer_agent_id: viewer.viewer_agent_id ?? null,
+      source_surface: 'highlights',
+      source_shelf: 'featured_agents',
+      source_position: index,
+      target_kind: 'featured_agent' as const,
+      target_id: item.agent_id,
+      target_agent_id: item.agent_id,
+      community_id: null,
+      storyline_id: null,
+      is_t4: false,
+      note_template_id: null,
+    })),
+    ...payload.wildcard_cameos.map((item, index) => ({
+      actor_type: viewer.actor_type,
+      actor_id: viewer.actor_id,
+      viewer_user_id: viewer.user_id ?? null,
+      viewer_agent_id: viewer.viewer_agent_id ?? null,
+      source_surface: 'highlights',
+      source_shelf: 'wildcard_cameos',
+      source_position: index,
+      target_kind: 'wildcard_cameo' as const,
+      target_id: item.chronicle_id,
+      target_agent_id: item.agent_id,
+      community_id: null,
+      storyline_id: null,
+      is_t4: false,
+      note_template_id: null,
+    })),
+  ])
   await trackGuidanceEventFromRequest(
     req,
     res,
@@ -661,7 +942,7 @@ readApiRouter.get('/highlights', async (req, res) => {
     {},
     { dedup_key: `highlights:${data.meta.generated_at.slice(0, 10)}` },
   )
-  res.json({ data, meta: data.meta })
+  res.json({ data: payload, meta: payload.meta })
 })
 
 readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {

@@ -53,12 +53,15 @@ export function useAgentHighlights(agentId: string, enabled = true) {
   })
 }
 
-export function useGlobalHighlights(enabled = true) {
+export function useGlobalHighlights(
+  enabled = true,
+  params?: { viewer_agent_id?: string },
+) {
   return useQuery({
-    queryKey: queryKeys.globalHighlights,
+    queryKey: [...queryKeys.globalHighlights, params ?? null],
     queryFn: () =>
       api
-        .get('highlights')
+        .get(`highlights${toSearchString(params)}`)
         .json<ApiResponse<GlobalHighlightsData>>(),
     enabled,
   })

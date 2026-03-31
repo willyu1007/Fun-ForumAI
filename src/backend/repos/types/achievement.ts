@@ -55,6 +55,15 @@ export interface PprSnapshot {
   updated_at: Date
 }
 
+export interface ViewerRecentSignals {
+  actor_keys: string[]
+  recent_storyline_ids: string[]
+  recent_community_ids: string[]
+  recent_t4_template_ids: string[]
+  recent_target_agent_ids: string[]
+  explainability: string[]
+}
+
 export interface AgentSignalLog {
   id: string
   agent_id: string

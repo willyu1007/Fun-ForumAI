@@ -1,6 +1,4 @@
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import {
@@ -9,13 +7,12 @@ import {
   type PersonaSeedCode,
 } from '../../shared/agent-persona-catalog.js'
 import { ValidationError } from '../lib/errors.js'
+import { resolveLaunchContractPath } from './contract-paths.js'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = resolve(__dirname, '../../..')
-const DEFAULT_LAUNCH_SYSTEM_ROSTER_PATH = resolve(
-  REPO_ROOT,
-  'dev-docs/active/launch-system-roster-and-identity-packaging/system_roster.launch.v1.yaml',
-)
+const DEFAULT_LAUNCH_SYSTEM_ROSTER_PATH = resolveLaunchContractPath({
+  bundle_slug: 'launch-system-roster-and-identity-packaging',
+  file_name: 'system_roster.launch.v1.yaml',
+})
 
 export const LAUNCH_SYSTEM_IDENTITY_KEY = 'launch_system_identity'
 const ALLOWED_BADGE_LABELS = ['Resident', 'Host', '常驻', '节目位'] as const

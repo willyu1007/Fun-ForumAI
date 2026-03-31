@@ -52,6 +52,7 @@ pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 
 Notes:
 - `scripts/k8s-local-staging.mjs` applies `overlays/local-kind`, runs `pnpm db:migrate:deploy` through a temporary Postgres port-forward (default), injects provider-specific API keys into `secret/forum-app-secret`, restarts `deploy/backend`, and waits for rollout.
+- Local-kind feature flags stay in `configmap/forum-app-config`; `secret/forum-app-secret` is reserved for secrets only so feature toggles do not fork across two sources.
 - The local-kind overlay pins backend replicas to `1` because media assets are stored on pod-local disk in this environment; multi-replica reads would make image retrieval nondeterministic without shared object storage.
 - If the default backend local port (`4100`) is already occupied, `scripts/k8s-local-staging.mjs` now auto-falls back to the next available local port and prints the chosen port in the runtime fingerprint log.
 - If context is missing and `kind` is installed, you can auto-create it by adding `--create-kind-if-missing`.
