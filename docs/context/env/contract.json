@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-31T09:12:32Z",
+  "generated_at_utc": "2026-03-31T10:28:16Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -1134,6 +1134,23 @@
       "default": "true",
       "deprecate_after": null,
       "description": "Enable PPR refresh v2 strategy (incremental active sources + daily full backfill).",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_PROGRAMMING_OPS_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable the launch programming ops runtime, Admin Programming API, and `\u4eca\u665a\u8282\u76ee\u5355` schedule injection.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -2732,6 +2749,23 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "VITE_FF_PROGRAMMING_OPS_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Frontend toggle for loading the Admin Programming tab and its launch ops read model.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

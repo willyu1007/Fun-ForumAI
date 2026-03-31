@@ -227,6 +227,13 @@ variables:
     default: "false"
     description: Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface.
 
+  VITE_FF_PROGRAMMING_OPS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for loading the Admin Programming tab and its launch ops read model.
+
   LLM_PROVIDER:
     type: string
     required: false
@@ -685,6 +692,13 @@ variables:
     required: false
     default: "false"
     description: Enable the launch programming home API and read-model routing for `/v1/home`.
+
+  FF_PROGRAMMING_OPS_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable the launch programming ops runtime, Admin Programming API, and `今晚节目单` schedule injection.
 
   FF_SIGNAL_LOG_V1:
     type: enum

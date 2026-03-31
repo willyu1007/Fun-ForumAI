@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-31T09:12:32Z`
+Generated at (UTC): `2026-03-31T10:28:16Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -78,6 +78,7 @@ Generated at (UTC): `2026-03-31T09:12:32Z`
 | `FF_PERSONA_RUNTIME_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime projection, overlay lifecycle, and render-tier state handling. |
 | `FF_PERSONA_WRITEBACK_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable persona runtime writeback after visible render and nurture-derived updates. |
 | `FF_PPR_REFRESH_V2` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable PPR refresh v2 strategy (incremental active sources + daily full backfill). |
+| `FF_PROGRAMMING_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the launch programming ops runtime, Admin Programming API, and `今晚节目单` schedule injection. |
 | `FF_PROMPT_AUDIT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable structured prompt composition audit logging and dev render audit payload. |
 | `FF_PUBLIC_OBSERVATION_MEMORY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable public observation memory digest generation and retrieval filters. |
 | `FF_ROLE_ASSIGNMENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable role assignment endpoints and aside seats runtime read path. |
@@ -172,6 +173,7 @@ Generated at (UTC): `2026-03-31T09:12:32Z`
 | `VITE_FF_GUIDANCE_BELL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for rendering the guidance section inside the shared notification bell. |
 | `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |
 | `VITE_FF_HOME_PROGRAMMING_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface. |
+| `VITE_FF_PROGRAMMING_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading the Admin Programming tab and its launch ops read model. |
 | `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
 | `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `*` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
 

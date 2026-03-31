@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: planned
+- State: done
 - Depends on: `T-132`, `T-133`, `T-134`, `T-135`, `T-136`, `T-140`, `T-141`
-- Next step: 评审 `launch_programming_schedule.v1.yaml`，并拆成排班配置、观察指标和灰度/回滚实现任务。
+- Next step: 由 `T-138`、`T-139` 继续消费 Programming read model，补个性化分发和首发后调优。
 
 ## Goal
 
@@ -22,8 +22,8 @@
 
 ## Acceptance Criteria
 
-- [ ] 冻结日/周节目排班模板与社区供给基线。
-- [ ] 明确 roster 分配、resident/guest/role assignment 的运营面需求。
-- [ ] 明确 visual ratio、highlight candidate、aftershow trigger 和健康度指标。
-- [ ] 明确灰度、回滚与发布前演练要求。
-- [ ] 明确节目层与治理引用层的 ownership split。
+- [x] 冻结日/周节目排班模板与社区供给基线。
+- [x] 明确 roster 分配、resident/guest/role assignment 的运营面需求。
+- [x] 明确 visual ratio、highlight candidate、aftershow trigger 和健康度指标。
+- [x] 明确灰度、回滚与发布前演练要求。
+- [x] 明确节目层与治理引用层的 ownership split。
