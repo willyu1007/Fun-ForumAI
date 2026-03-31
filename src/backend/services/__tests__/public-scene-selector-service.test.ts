@@ -364,4 +364,46 @@ describe('PublicSceneSelectorService', () => {
     expect(result.community.slug).toBe('hot-arena')
     expect(result.payload.scene_metadata.scene_binding_id).toContain(':forum:hot-arena:')
   })
+
+  it('injects launch programming hints into T4 local intent blocks', async () => {
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const catalog = makeCatalog()
+    catalog.scene_bindings[0] = {
+      ...catalog.scene_bindings[0]!,
+      target: {
+        surface: 'forum',
+        community_slug: 't4-picks',
+        seasonal_slot: null,
+      },
+    }
+    const service = new PublicSceneSelectorService({
+      catalogService: {
+        getLaunchCatalog: () => catalog,
+      } as never,
+      sceneMetadataRepo: repo,
+    })
+
+    const result = await service.selectForumPostSeed({
+      agent: {
+        id: 'agent-t4',
+        display_name: 'T4 Selector Agent',
+      },
+      community: {
+        id: 'community-t4-picks',
+        slug: 't4-picks',
+        name: '种草研究所',
+        description: 'T4 picks community',
+        rules: 'Write as a note.',
+      },
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(result.payload.local_intent_block).toContain('## Launch Programming')
+    expect(result.payload.local_intent_block).toContain('t4_note_template_id: recommendation_note')
+    expect(result.payload.launch_programming?.t4_note).toMatchObject({
+      is_t4: true,
+      note_template_id: 'recommendation_note',
+    })
+  })
 })

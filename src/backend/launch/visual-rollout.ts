@@ -1,18 +1,15 @@
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import { ValidationError } from '../lib/errors.js'
 import { getLaunchCommunityBySlug } from './community-rules.js'
+import { resolveLaunchContractPath } from './contract-paths.js'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = resolve(__dirname, '../../..')
-const DEFAULT_LAUNCH_VISUAL_ROLLOUT_PATH = resolve(
-  REPO_ROOT,
-  'dev-docs/active/launch-visual-rollout-and-packaging/visual_surface_rollout.v1.yaml',
-)
+const DEFAULT_LAUNCH_VISUAL_ROLLOUT_PATH = resolveLaunchContractPath({
+  bundle_slug: 'launch-visual-rollout-and-packaging',
+  file_name: 'visual_surface_rollout.v1.yaml',
+})
 
 export const LAUNCH_VISUAL_SURFACES = [
   'home_root_card',

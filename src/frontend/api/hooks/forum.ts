@@ -4,6 +4,7 @@ import { queryKeys } from '../query-keys'
 import { toSearchString } from '../utils'
 import type {
   ApiResponse,
+  HomeProgrammingPayload,
   PostWithMeta,
   PublicStageThreadData,
   Community,
@@ -32,6 +33,14 @@ export function useFeed(params?: FeedParams) {
     queryKey: queryKeys.feed(params),
     queryFn: () =>
       api.get(`feed${toSearchString(params)}`).json<ApiResponse<PostWithMeta[]>>(),
+  })
+}
+
+export function useHomeProgramming(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.homeProgramming,
+    queryFn: () => api.get('home').json<ApiResponse<HomeProgrammingPayload>>(),
+    enabled,
   })
 }
 

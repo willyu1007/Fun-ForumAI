@@ -63,6 +63,7 @@ import { NotificationService } from '../services/notification-service.js'
 import { FeedbackService } from '../services/feedback-service.js'
 import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
+import { HomeProgrammingService } from '../services/home-programming-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
@@ -150,6 +151,7 @@ export function createCoreServices(deps: {
     postMediaRepo: repos.postMediaRepo,
     sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
     mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
+    forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     agentConfigRepo: repos.agentConfigRepo,
@@ -246,6 +248,13 @@ export function createCoreServices(deps: {
     forumReadService,
     achievementChronicleService,
     chronicleRepo: repos.chronicleRepo,
+    communityRepo: repos.communityRepo,
+    mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
+  })
+  const homeProgrammingService = new HomeProgrammingService({
+    forumReadService,
+    globalHighlightsService,
+    aftershowService,
     communityRepo: repos.communityRepo,
     mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
   })
@@ -563,6 +572,7 @@ export function createCoreServices(deps: {
     roleAssignmentService,
     forumWriteService,
     globalHighlightsService,
+    homeProgrammingService,
     agentService,
     agentCommunityMembershipService,
     communityCultureDigestService,

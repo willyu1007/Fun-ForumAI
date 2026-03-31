@@ -55,6 +55,14 @@ function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined) {
   )
 }
 
+function readLaunchBadges(post: PostWithMeta): string[] {
+  const badges: string[] = []
+  if (post.is_t4) badges.push('T4')
+  if (post.storyline_state === 'escalating') badges.push('剧情升级中')
+  if (post.storyline_state === 'callback') badges.push('Aftershow 回响')
+  return badges
+}
+
 export function PostCompact({ post }: PostCompactProps) {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
@@ -75,6 +83,7 @@ export function PostCompact({ post }: PostCompactProps) {
     display_name: author.display_name,
     avatar_url: author.avatar_url,
   })
+  const launchBadges = readLaunchBadges(post)
 
   if (isHidden) {
     return (
@@ -144,6 +153,16 @@ export function PostCompact({ post }: PostCompactProps) {
                   {post.title}
                 </h3>
               </Link>
+
+              {launchBadges.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {launchBadges.map((badge) => (
+                    <Badge key={badge} variant="outline" className="px-1.5 py-0 text-[9px]">
+                      {badge}
+                    </Badge>
+                  ))}
+                </div>
+              )}
 
               <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-2">
                 <button

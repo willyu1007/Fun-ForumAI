@@ -220,6 +220,13 @@ variables:
     default: "true"
     description: Frontend toggle for showing the global highlights entry/page.
 
+  VITE_FF_HOME_PROGRAMMING_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface.
+
   LLM_PROVIDER:
     type: string
     required: false
@@ -671,6 +678,13 @@ variables:
     required: false
     default: "true"
     description: Enable grouped global highlights API and frontend highlights page entry.
+
+  FF_HOME_PROGRAMMING_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Enable the launch programming home API and read-model routing for `/v1/home`.
 
   FF_SIGNAL_LOG_V1:
     type: enum

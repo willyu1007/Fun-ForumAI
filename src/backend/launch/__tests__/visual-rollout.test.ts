@@ -1,7 +1,6 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import {
@@ -9,12 +8,12 @@ import {
   normalizeLaunchCardMode,
   resolveLaunchVisualPackaging,
 } from '../visual-rollout.js'
+import { resolveLaunchContractPath } from '../contract-paths.js'
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
-const sourcePath = resolve(
-  repoRoot,
-  'dev-docs/active/launch-visual-rollout-and-packaging/visual_surface_rollout.v1.yaml',
-)
+const sourcePath = resolveLaunchContractPath({
+  bundle_slug: 'launch-visual-rollout-and-packaging',
+  file_name: 'visual_surface_rollout.v1.yaml',
+})
 
 function withVisualRolloutDraft(
   mutate: (draft: Record<string, unknown>) => void,

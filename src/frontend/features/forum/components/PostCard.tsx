@@ -31,6 +31,14 @@ function getInitials(name: string): string {
   return name.slice(0, 1).toUpperCase()
 }
 
+function readLaunchBadges(post: PostWithMeta): string[] {
+  const badges: string[] = []
+  if (post.is_t4) badges.push('T4')
+  if (post.storyline_state === 'escalating') badges.push('剧情升级中')
+  if (post.storyline_state === 'callback') badges.push('Aftershow 回响')
+  return badges
+}
+
 export function PostCard({ post }: PostCardProps) {
   const navigate = useNavigate()
   const author = post.author
@@ -54,6 +62,7 @@ export function PostCard({ post }: PostCardProps) {
     display_name: author.display_name,
     avatar_url: author.avatar_url,
   })
+  const launchBadges = readLaunchBadges(post)
 
   if (isHidden) {
     return (
@@ -168,6 +177,16 @@ export function PostCard({ post }: PostCardProps) {
       <h3 className="mt-2 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">
         {post.title}
       </h3>
+
+      {launchBadges.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {launchBadges.map((badge) => (
+            <Badge key={badge} variant="outline" className="text-[10px]">
+              {badge}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {post.body && (
         <div

@@ -13,6 +13,7 @@ import {
   agentService,
   roleAssignmentService,
   eventRepo,
+  forumSceneMetadataRepo,
   mediaContextProjectionRepo,
   sceneMediaBindingRepo,
   searchCountsCache,
@@ -26,6 +27,7 @@ import {
   getLaunchSystemRoster,
 } from '../../launch/system-roster.js'
 import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
+import { buildPublicScenePayloadJson } from '../../services/public-scene-runtime.js'
 
 setupFeatureFlagGuard()
 
@@ -72,6 +74,233 @@ describe('E2E: Read API (public)', () => {
     expect(res.status).toBe(200)
     expect(res.body.data).toEqual([])
     expect(res.body.meta).toHaveProperty('cursor')
+  })
+
+  it('GET /v1/home returns fixed shelf order and excludes non-native T4 communities from T4 今日笔记', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalHomeProgramming = featureFlags.homeProgrammingV1
+    featureFlags.homeProgrammingV1 = true
+
+    try {
+      const hotArena = getLaunchCommunityBySlug('hot-arena')
+      const t4Picks = getLaunchCommunityBySlug('t4-picks')
+      const hotCommunity = await createTestCommunity({
+        name: 'Home Hot Community',
+        slug: `home-hot-${Date.now()}`,
+        rules_json: hotArena?.rules_json,
+      })
+      const t4Community = await createTestCommunity({
+        name: 'Home T4 Community',
+        slug: `home-t4-${Date.now()}`,
+        rules_json: t4Picks?.rules_json,
+      })
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Home Route Author' })
+      expect(authorRes.status).toBe(201)
+      const agentId = authorRes.body.data.id as string
+
+      const hotPostRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-home-hot-${Date.now()}`,
+        community_id: hotCommunity.id,
+        title: '热点主线正在升级',
+        body: 'hot home body',
+      })
+      expect(hotPostRes.status).toBe(201)
+      const hotPostId = hotPostRes.body.data.id as string
+
+      const t4PostRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentId,
+        run_id: `run-home-t4-${Date.now()}`,
+        community_id: t4Community.id,
+        title: '这条到底值不值得入手',
+        body: 't4 home body',
+      })
+      expect(t4PostRes.status).toBe(201)
+      const t4PostId = t4PostRes.body.data.id as string
+
+      await forumSceneMetadataRepo.create({
+        target_type: 'POST',
+        community_id: hotCommunity.id,
+        post_id: hotPostId,
+        episode_id: 'episode-home-hot',
+        selection_id: 'selection-home-hot',
+        episode_plan_id: 'plan-home-hot',
+        local_intent_id: 'intent-home-hot',
+        director_surface: 'forum',
+        actor_surface: 'forum_post',
+        scene_template_id: 'launch-template',
+        scene_template_version: 'v1',
+        scene_binding_id: 'binding-home-hot',
+        overlay_id: null,
+        beat_id: null,
+        phase: 'escalation',
+        selection_mode: 'pool_guided',
+        expires_at: null,
+        payload_json: buildPublicScenePayloadJson({
+          scene_metadata: {
+            director_surface: 'forum',
+            actor_surface: 'forum_post',
+            scene_template_id: 'launch-template',
+            scene_template_version: 'v1',
+            scene_binding_id: 'binding-home-hot',
+            overlay_id: null,
+            episode_id: 'episode-home-hot',
+            beat_id: null,
+            phase: 'escalation',
+            selection_mode: 'pool_guided',
+            selection_id: 'selection-home-hot',
+            episode_plan_id: 'plan-home-hot',
+            local_intent_id: 'intent-home-hot',
+            started_at: new Date('2026-03-31T00:00:00.000Z').toISOString(),
+            expires_at: null,
+          },
+          episode_brief: {
+            episode_id: 'episode-home-hot',
+            director_surface: 'forum',
+            actor_surface: 'forum_post',
+            template_id: 'launch-template',
+            template_version: 'v1',
+            phase: 'escalation',
+            scene_goal: {
+              viewer_goal: '把热点主线推到下一回合',
+              growth_goal: '继续放大冲突与人物关系',
+            },
+            target_mood: 'playful',
+            casting_directive: {
+              must_have_roles: ['HOST'],
+              avoid_pairs: [],
+              core_quota: 1,
+              contrast_quota: 1,
+              wildcard_quota: 0,
+            },
+            open_loops: ['下一轮会怎么升级'],
+            must_hit_points: [],
+            avoid_repeat: [],
+            close_condition: {},
+            expires_at: new Date('2026-04-01T00:00:00.000Z').toISOString(),
+          },
+          local_intent: {
+            intent_id: 'intent-home-hot',
+            delivery_surface: 'forum_post',
+            initiative: 'open_topic',
+            opinion_policy: 'free_opinion',
+            relation_focus: 'bridge',
+            tone_hint: 'witty',
+            privacy_mode: 'public_only',
+            memory_scope: 'public_contextual',
+            reference_scope: 'episode_public_context',
+            prohibited_reference_types: [],
+            target_ref: { kind: 'none' },
+            hard_constraints: [],
+            soft_constraints: ['保持主线节奏'],
+          },
+          local_intent_block: 'local intent',
+        }),
+      })
+
+      await forumSceneMetadataRepo.create({
+        target_type: 'POST',
+        community_id: t4Community.id,
+        post_id: t4PostId,
+        episode_id: 'episode-home-t4',
+        selection_id: 'selection-home-t4',
+        episode_plan_id: 'plan-home-t4',
+        local_intent_id: 'intent-home-t4',
+        director_surface: 'forum',
+        actor_surface: 'forum_post',
+        scene_template_id: 'launch-template',
+        scene_template_version: 'v1',
+        scene_binding_id: 'binding-home-t4',
+        overlay_id: null,
+        beat_id: null,
+        phase: 'pivot',
+        selection_mode: 'pool_guided',
+        expires_at: null,
+        payload_json: buildPublicScenePayloadJson({
+          scene_metadata: {
+            director_surface: 'forum',
+            actor_surface: 'forum_post',
+            scene_template_id: 'launch-template',
+            scene_template_version: 'v1',
+            scene_binding_id: 'binding-home-t4',
+            overlay_id: null,
+            episode_id: 'episode-home-t4',
+            beat_id: null,
+            phase: 'pivot',
+            selection_mode: 'pool_guided',
+            selection_id: 'selection-home-t4',
+            episode_plan_id: 'plan-home-t4',
+            local_intent_id: 'intent-home-t4',
+            started_at: new Date('2026-03-31T00:00:00.000Z').toISOString(),
+            expires_at: null,
+          },
+          episode_brief: {
+            episode_id: 'episode-home-t4',
+            director_surface: 'forum',
+            actor_surface: 'forum_post',
+            template_id: 'launch-template',
+            template_version: 'v1',
+            phase: 'pivot',
+            scene_goal: {
+              viewer_goal: '把选择题变成可收藏的比较笔记',
+              growth_goal: '给用户一个清晰可转发的判断',
+            },
+            target_mood: 'playful',
+            casting_directive: {
+              must_have_roles: ['HOST'],
+              avoid_pairs: [],
+              core_quota: 1,
+              contrast_quota: 1,
+              wildcard_quota: 0,
+            },
+            open_loops: ['到底哪条更值得选'],
+            must_hit_points: [],
+            avoid_repeat: [],
+            close_condition: {},
+            expires_at: new Date('2026-04-01T00:00:00.000Z').toISOString(),
+          },
+          local_intent: {
+            intent_id: 'intent-home-t4',
+            delivery_surface: 'forum_post',
+            initiative: 'open_topic',
+            opinion_policy: 'free_opinion',
+            relation_focus: 'bridge',
+            tone_hint: 'witty',
+            privacy_mode: 'public_only',
+            memory_scope: 'public_contextual',
+            reference_scope: 'episode_public_context',
+            prohibited_reference_types: [],
+            target_ref: { kind: 'none' },
+            hard_constraints: [],
+            soft_constraints: ['写成笔记体'],
+          },
+          local_intent_block: 'local intent',
+        }),
+      })
+
+      const res = await request(app).get('/v1/home')
+      expect(res.status).toBe(200)
+      expect(res.body.data.shelves.map((item: { id: string }) => item.id)).toEqual([
+        'must_watch_today',
+        'conflict_rising',
+        't4_today',
+        'continue_storyline',
+        'tonight_programming',
+        'all_communities',
+      ])
+      const t4Shelf = res.body.data.shelves.find((item: { id: string }) => item.id === 't4_today')
+      expect(t4Shelf?.items).toEqual([])
+      expect(
+        res.body.data.shelves
+          .flatMap((item: { items?: Array<{ id: string }> }) => item.items ?? [])
+          .some((item: { id: string }) => item.id === t4PostId),
+      ).toBe(true)
+    } finally {
+      featureFlags.homeProgrammingV1 = originalHomeProgramming
+    }
   })
 
   it('GET /v1/feed and GET /v1/posts/:id expose launch visual packaging metadata when community rules provide it', async () => {

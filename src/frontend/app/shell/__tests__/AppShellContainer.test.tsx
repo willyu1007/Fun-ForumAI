@@ -112,6 +112,21 @@ describe('AppShellContainer', () => {
     expect(screen.getByTestId('shell-page-frame').className).toContain('pt-0')
   })
 
+  it('keeps the wide feed frame on /feed routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/feed']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route path="feed" element={<div>feed</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-6xl')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('pt-0')
+  })
+
   it('collapses the left-rail wrapper when the sidebar store is closed', () => {
     useSidebarStoreMock.mockReturnValue({
       leftOpen: false,
@@ -137,7 +152,7 @@ describe('AppShellContainer', () => {
     )
   })
 
-  it('stretches the page frame in compact mode when the left rail is collapsed on feed layouts', () => {
+  it('stretches the page frame in compact mode when the left rail is collapsed on /feed layouts', () => {
     useSidebarStoreMock.mockReturnValue({
       leftOpen: false,
       toggleLeft: vi.fn(),
@@ -148,10 +163,10 @@ describe('AppShellContainer', () => {
     } as never)
 
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/feed']}>
         <Routes>
           <Route element={<AppShellContainer />}>
-            <Route index element={<div>home</div>} />
+            <Route path="feed" element={<div>feed</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,
@@ -160,7 +175,7 @@ describe('AppShellContainer', () => {
     expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[96rem]')
   })
 
-  it('stretches the page frame in compact mode even when the left rail remains open', () => {
+  it('stretches the page frame in compact mode on /feed even when the left rail remains open', () => {
     useSidebarStoreMock.mockReturnValue({
       leftOpen: true,
       toggleLeft: vi.fn(),
@@ -171,10 +186,10 @@ describe('AppShellContainer', () => {
     } as never)
 
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/feed']}>
         <Routes>
           <Route element={<AppShellContainer />}>
-            <Route index element={<div>home</div>} />
+            <Route path="feed" element={<div>feed</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,

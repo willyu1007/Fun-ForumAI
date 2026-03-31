@@ -24,9 +24,9 @@ export function AppShellContainer() {
   const { view } = useFeedViewStore()
   const shouldMountAgentModal = useAgentModalStore((state) => state.isOpen || state.activeAgentId !== null)
   const { pathname } = useLocation()
-  const useFeedWidthLayout = pathname === '/' || pathname.startsWith('/c/') || pathname === '/search'
-  const useWidePageFrame = useFeedWidthLayout || pathname.startsWith('/posts/')
-  const stretchCompactFeedLayout = useFeedWidthLayout && view === 'compact'
+  const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search'
+  const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
+  const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
 
   return (
     <AppShell
@@ -59,7 +59,7 @@ export function AppShellContainer() {
             'mx-auto px-4 pb-4 transition-[max-width] duration-200 md:px-3',
             useWidePageFrame ? 'pt-0' : 'pt-4',
             useWidePageFrame
-              ? stretchCompactFeedLayout
+              ? useCompactStretchFrame
                 ? 'max-w-[96rem] 2xl:max-w-[108rem]'
                 : 'max-w-6xl'
               : 'max-w-3xl',

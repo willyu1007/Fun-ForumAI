@@ -120,6 +120,7 @@ function createKindCounters(): Record<AgentBioRefreshKind, {
 }
 
 export class AgentBioRefreshService {
+  private readonly pendingRefreshes = new Map<string, Promise<AgentBioRefreshResult | null>>()
   private onUpdated:
     | ((input: {
         agent_id: string
@@ -207,6 +208,27 @@ export class AgentBioRefreshService {
   }
 
   async refresh(agentId: string, input: {
+    refresh_kind?: AgentBioRefreshKind
+    reason: string
+    now?: Date
+  }): Promise<AgentBioRefreshResult | null> {
+    const pending = this.pendingRefreshes.get(agentId)
+    if (pending) {
+      return pending
+    }
+
+    const run = this.runRefresh(agentId, input)
+    this.pendingRefreshes.set(agentId, run)
+    try {
+      return await run
+    } finally {
+      if (this.pendingRefreshes.get(agentId) === run) {
+        this.pendingRefreshes.delete(agentId)
+      }
+    }
+  }
+
+  private async runRefresh(agentId: string, input: {
     refresh_kind?: AgentBioRefreshKind
     reason: string
     now?: Date

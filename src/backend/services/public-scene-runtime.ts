@@ -20,6 +20,11 @@ export interface PublicSceneWritePayload {
   selection_audit?: Record<string, unknown> | null
   planning_audit?: Record<string, unknown> | null
   visual_ref?: PublicSceneVisualRef | null
+  launch_programming?: {
+    storyline?: Record<string, unknown> | null
+    t4_note?: Record<string, unknown> | null
+    editorial_intent?: Record<string, unknown> | null
+  } | null
 }
 
 export function generateSceneId(prefix: string): string {
@@ -63,6 +68,7 @@ export function buildPublicScenePayloadJson(payload: PublicSceneWritePayload): R
     selection_audit: payload.selection_audit ?? null,
     planning_audit: payload.planning_audit ?? null,
     visual_ref: payload.visual_ref ?? null,
+    launch_programming: payload.launch_programming ?? null,
   }
 }
 
@@ -86,6 +92,7 @@ export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload
       selection_audit: toRecord(record.selection_audit),
       planning_audit: toRecord(record.planning_audit),
       visual_ref: parseVisualRef(record.visual_ref),
+      launch_programming: parseLaunchProgramming(record.launch_programming),
     }
   } catch {
     return null
@@ -157,5 +164,17 @@ function parseVisualRef(value: unknown): PublicSceneVisualRef | null {
     directive_id: record.directive_id,
     image_plan_id: typeof record.image_plan_id === 'string' ? record.image_plan_id : undefined,
     runtime_card_ids: runtimeCardIds,
+  }
+}
+
+function parseLaunchProgramming(
+  value: unknown,
+): PublicSceneWritePayload['launch_programming'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  return {
+    storyline: toRecord(record.storyline),
+    t4_note: toRecord(record.t4_note),
+    editorial_intent: toRecord(record.editorial_intent),
   }
 }

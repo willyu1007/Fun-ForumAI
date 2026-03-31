@@ -9,6 +9,14 @@ import {
   resolveLaunchVisualPackaging,
   type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
+import type {
+  LaunchContentKind,
+  LaunchStorylineState,
+} from '../launch/programming-projection.js'
+import type {
+  LaunchT4CoverMode,
+  LaunchT4TemplateId,
+} from '../launch/t4-content-templates.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -44,6 +52,16 @@ interface HighlightThreadItem {
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
+  storyline_id?: string
+  storyline_title?: string
+  storyline_state?: LaunchStorylineState
+  storyline_hook?: string
+  content_kind?: LaunchContentKind
+  editorial_shelf?: string
+  is_t4?: boolean
+  aftershow_export_bias?: number
+  note_template_id?: LaunchT4TemplateId
+  cover_mode?: LaunchT4CoverMode
 }
 
 interface FeaturedAgentItem {
@@ -74,6 +92,16 @@ interface ControversyItem {
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
+  storyline_id?: string
+  storyline_title?: string
+  storyline_state?: LaunchStorylineState
+  storyline_hook?: string
+  content_kind?: LaunchContentKind
+  editorial_shelf?: string
+  is_t4?: boolean
+  aftershow_export_bias?: number
+  note_template_id?: LaunchT4TemplateId
+  cover_mode?: LaunchT4CoverMode
 }
 
 interface WildcardCameoItem {
@@ -151,6 +179,16 @@ export class GlobalHighlightsService {
         avatar_url: item.author.avatar_url,
       },
       ...(packagingByPostId.get(item.id) ?? {}),
+      ...(item.storyline_id ? { storyline_id: item.storyline_id } : {}),
+      ...(item.storyline_title ? { storyline_title: item.storyline_title } : {}),
+      ...(item.storyline_state ? { storyline_state: item.storyline_state } : {}),
+      ...(item.storyline_hook ? { storyline_hook: item.storyline_hook } : {}),
+      ...(item.content_kind ? { content_kind: item.content_kind } : {}),
+      ...(item.editorial_shelf ? { editorial_shelf: item.editorial_shelf } : {}),
+      ...(typeof item.is_t4 === 'boolean' ? { is_t4: item.is_t4 } : {}),
+      ...(typeof item.aftershow_export_bias === 'number' ? { aftershow_export_bias: item.aftershow_export_bias } : {}),
+      ...(item.note_template_id ? { note_template_id: item.note_template_id } : {}),
+      ...(item.cover_mode ? { cover_mode: item.cover_mode } : {}),
     }))
 
     const featuredAgents = await this.collectFeaturedAgents(hotThreads)
@@ -236,6 +274,16 @@ export class GlobalHighlightsService {
           participant_count: item.participant_count,
           community_name: item.community_name,
           ...(packagingByPostId.get(item.id) ?? {}),
+          ...(item.storyline_id ? { storyline_id: item.storyline_id } : {}),
+          ...(item.storyline_title ? { storyline_title: item.storyline_title } : {}),
+          ...(item.storyline_state ? { storyline_state: item.storyline_state } : {}),
+          ...(item.storyline_hook ? { storyline_hook: item.storyline_hook } : {}),
+          ...(item.content_kind ? { content_kind: item.content_kind } : {}),
+          ...(item.editorial_shelf ? { editorial_shelf: item.editorial_shelf } : {}),
+          ...(typeof item.is_t4 === 'boolean' ? { is_t4: item.is_t4 } : {}),
+          ...(typeof item.aftershow_export_bias === 'number' ? { aftershow_export_bias: item.aftershow_export_bias } : {}),
+          ...(item.note_template_id ? { note_template_id: item.note_template_id } : {}),
+          ...(item.cover_mode ? { cover_mode: item.cover_mode } : {}),
         }
       })
       .filter((item) => item.controversy_score > 0)

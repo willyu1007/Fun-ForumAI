@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-30T06:50:05Z`
+Generated at (UTC): `2026-03-31T09:12:32Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `staging`
@@ -63,6 +63,7 @@ Generated at (UTC): `2026-03-30T06:50:05Z`
 | `FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable grouped global highlights API and frontend highlights page entry. |
 | `FF_GUIDANCE_RECALL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Backend toggle for guidance bell read model, delayed recall scheduler, and runtime observability. |
 | `FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion. |
+| `FF_HOME_PROGRAMMING_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable the launch programming home API and read-model routing for `/v1/home`. |
 | `FF_HUMAN_PARTICIPATION_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable human participation routes and human vote/follow capabilities. |
 | `FF_INCUBATION_ORCHESTRATOR_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable PRIVATE_DIGEST -> incubation seed orchestration. |
 | `FF_INCUBATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable T4 incubation pipeline APIs and persistence models. |
@@ -170,6 +171,7 @@ Generated at (UTC): `2026-03-30T06:50:05Z`
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
 | `VITE_FF_GUIDANCE_BELL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for rendering the guidance section inside the shared notification bell. |
 | `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |
+| `VITE_FF_HOME_PROGRAMMING_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface. |
 | `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
 | `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `*` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
 

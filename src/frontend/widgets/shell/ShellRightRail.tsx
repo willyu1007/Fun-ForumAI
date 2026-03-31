@@ -601,7 +601,7 @@ export function ShellRightRail({ className }: { className?: string } = {}) {
   const { data } = useCommunities()
   const communities = data?.data ?? []
   const isCommunityPage = pathname.startsWith('/c/') && params.slug
-  const isFeedPage = pathname === '/'
+  const isFeedPage = pathname === '/' || pathname === '/feed'
 
   if (!isFeedPage && !isCommunityPage) {
     return null

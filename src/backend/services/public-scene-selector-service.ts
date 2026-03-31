@@ -14,6 +14,10 @@ import {
   generateSceneId,
   type PublicSceneWritePayload,
 } from './public-scene-runtime.js'
+import {
+  getLaunchT4TemplateRuntime,
+  resolveLaunchT4Projection,
+} from '../launch/t4-content-templates.js'
 
 interface EligibleCommunity {
   id: string
@@ -345,9 +349,18 @@ export class PublicSceneSelectorService {
         scene_metadata: sceneMetadata,
         episode_brief: episodeBrief,
         local_intent: localIntent,
-        local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
+        local_intent_block: buildLaunchAwareLocalIntentBlock({
+          localIntent,
+          episodeBrief,
+          communitySlug: null,
+        }),
         selection_audit: selectionAudit,
         planning_audit: planningAudit,
+        launch_programming: buildLaunchProgrammingHints({
+          communitySlug: null,
+          episodeBrief,
+          phase,
+        }),
       },
     }
   }
@@ -502,9 +515,18 @@ export class PublicSceneSelectorService {
         scene_metadata: sceneMetadata,
         episode_brief: episodeBrief,
         local_intent: localIntent,
-        local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
+        local_intent_block: buildLaunchAwareLocalIntentBlock({
+          localIntent,
+          episodeBrief,
+          communitySlug: selected.target.community_slug,
+        }),
         selection_audit: selectionAudit,
         planning_audit: planningAudit,
+        launch_programming: buildLaunchProgrammingHints({
+          communitySlug: selected.target.community_slug,
+          episodeBrief,
+          phase: 'opening',
+        }),
       },
     }
   }
@@ -746,6 +768,120 @@ function buildThreadFollowupTargetRef(input: {
     }
   }
   return { kind: 'none' }
+}
+
+function buildLaunchAwareLocalIntentBlock(input: {
+  localIntent: LocalIntent
+  episodeBrief: EpisodeBrief
+  communitySlug: string | null
+}): string {
+  const baseBlock = buildLocalIntentBlock(input.localIntent, input.episodeBrief)
+  const launchHints = buildLaunchProgrammingHints({
+    communitySlug: input.communitySlug,
+    episodeBrief: input.episodeBrief,
+    phase: input.episodeBrief.phase,
+  })
+
+  const lines: string[] = []
+  const primaryShelf = typeof launchHints.editorial_intent?.primary_shelf === 'string'
+    ? launchHints.editorial_intent.primary_shelf
+    : null
+  if (primaryShelf) {
+    lines.push(`- primary_shelf: ${primaryShelf}`)
+  }
+  const storylineHook = typeof launchHints.storyline?.hook === 'string'
+    ? launchHints.storyline.hook
+    : null
+  if (storylineHook) {
+    lines.push(`- storyline_hook: ${storylineHook}`)
+  }
+  const noteTemplateId = typeof launchHints.t4_note?.note_template_id === 'string'
+    ? launchHints.t4_note.note_template_id
+    : null
+  if (noteTemplateId) {
+    lines.push(`- t4_note_template_id: ${noteTemplateId}`)
+  }
+  const coverMode = typeof launchHints.t4_note?.cover_mode === 'string'
+    ? launchHints.t4_note.cover_mode
+    : null
+  if (coverMode) {
+    lines.push(`- t4_cover_mode: ${coverMode}`)
+  }
+  const sectionTitles = Array.isArray(launchHints.t4_note?.sections)
+    ? launchHints.t4_note.sections.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : []
+  if (sectionTitles.length > 0) {
+    lines.push(`- t4_sections: ${sectionTitles.join(' / ')}`)
+  }
+
+  if (lines.length === 0) {
+    return baseBlock
+  }
+
+  return `${baseBlock}\n## Launch Programming\n${lines.join('\n')}`
+}
+
+function buildLaunchProgrammingHints(input: {
+  communitySlug: string | null
+  episodeBrief: EpisodeBrief
+  phase: SceneMetadata['phase']
+}): NonNullable<PublicSceneWritePayload['launch_programming']> {
+  const storyline = {
+    id: input.episodeBrief.episode_id,
+    phase: input.phase,
+    title: input.episodeBrief.scene_goal.viewer_goal,
+    hook: input.episodeBrief.open_loops[0] ?? input.episodeBrief.scene_goal.viewer_goal,
+  }
+
+  const t4Projection = resolveLaunchT4Projection({
+    community_slug: input.communitySlug ?? '',
+    phase: input.phase,
+    scene_goal: input.episodeBrief.scene_goal.viewer_goal,
+    open_loops: input.episodeBrief.open_loops,
+  })
+  const template = t4Projection.note_template_id
+    ? getLaunchT4TemplateRuntime().template_registry.find((item) => item.id === t4Projection.note_template_id)
+    : null
+
+  return {
+    storyline,
+    t4_note: t4Projection.is_t4
+      ? {
+          is_t4: true,
+          note_template_id: t4Projection.note_template_id ?? null,
+          cover_mode: t4Projection.cover_mode ?? null,
+          title_formula: template?.title_formula ?? null,
+          sections: template?.sections ?? [],
+        }
+      : {
+          is_t4: false,
+        },
+    editorial_intent: {
+      primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, t4Projection.is_t4),
+      content_kind: t4Projection.is_t4
+        ? 't4_note'
+        : input.phase === 'closure' || input.phase === 'aftershow'
+          ? 'continuity_callback'
+          : 'story_episode',
+    },
+  }
+}
+
+function resolvePrimaryShelf(
+  communitySlug: string | null,
+  phase: SceneMetadata['phase'],
+  isT4: boolean,
+): string {
+  if (isT4 || communitySlug === 't4-picks' || communitySlug === 't4-relations') {
+    return 'T4 今日笔记'
+  }
+  if (phase === 'closure' || phase === 'aftershow') {
+    return '剧情继续看'
+  }
+  if (phase === 'escalation' || phase === 'pivot') {
+    return '冲突升级中'
+  }
+  return '今日必看'
 }
 
 function isTemplateLaunchable(status: StageTemplateV2['lifecycle_status']): boolean {

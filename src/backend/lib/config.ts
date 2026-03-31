@@ -229,6 +229,7 @@ export const config = {
   features: {
     guidanceV1: env.FF_GUIDANCE_V1 === 'true',
     guidanceRecallV1: env.FF_GUIDANCE_RECALL_V1 === 'true',
+    homeProgrammingV1: env.FF_HOME_PROGRAMMING_V1 === 'true',
     allocatorPprEnabled: env.FF_ALLOCATOR_PPR_ENABLED === 'true',
     membershipsV1: env.FF_MEMBERSHIPS_V1 === 'true',
     globalHighlightsV1: env.FF_GLOBAL_HIGHLIGHTS_V1 === 'true',

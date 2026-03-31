@@ -5,7 +5,7 @@
     "prod",
     "staging"
   ],
-  "generated_at_utc": "2026-03-30T06:50:05Z",
+  "generated_at_utc": "2026-03-31T09:12:32Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -879,6 +879,23 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "FF_HOME_PROGRAMMING_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable the launch programming home API and read-model routing for `/v1/home`.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -2698,6 +2715,23 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "VITE_FF_HOME_PROGRAMMING_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

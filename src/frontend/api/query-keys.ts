@@ -4,6 +4,7 @@ const roomHighlightsRoot = (roomId: string) => ['roomHighlights', roomId] as con
 
 export const queryKeys = {
   health: ['health'] as const,
+  homeProgramming: ['homeProgramming'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,
   post: (postId: string) => ['post', postId] as const,
   threads: (postId: string, params?: PaginationParams) => ['threads', postId, params] as const,

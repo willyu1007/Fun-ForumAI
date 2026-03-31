@@ -506,7 +506,47 @@ export interface LaunchVisualPackagingFields {
   hero_eligible?: boolean
 }
 
-export interface PostWithMeta extends Post, LaunchVisualPackagingFields {
+export type LaunchStorylineState = 'opening' | 'escalating' | 'callback' | 'closed'
+export type LaunchContentKind =
+  | 'mainline_root'
+  | 'highlight_hero'
+  | 'aftershow_recap'
+  | 'continuity_callback'
+  | 'story_episode'
+  | 't4_note'
+  | 'community_entry'
+  | 'programming_slot'
+
+export type T4NoteTemplateId =
+  | 'recommendation_note'
+  | 'comparison_note'
+  | 'review_note'
+  | 'mistake_recap_note'
+  | 'relationship_observation_note'
+  | 'ongoing_column_note'
+
+export type T4CoverMode =
+  | 'hero_cover'
+  | 'grid_cover'
+  | 'comparison_cover'
+  | 'portrait_cover'
+  | 'relationship_map_card'
+  | 'timeline_cover'
+
+export interface StorylineProjection {
+  storyline_id?: string
+  storyline_title?: string
+  storyline_state?: LaunchStorylineState
+  storyline_hook?: string
+}
+
+export interface T4Projection {
+  is_t4?: boolean
+  note_template_id?: T4NoteTemplateId
+  cover_mode?: T4CoverMode
+}
+
+export interface PostWithMeta extends Post, LaunchVisualPackagingFields, StorylineProjection, T4Projection {
   thread_turn_count: number
   vote_score: number
   vote_up: number
@@ -530,6 +570,9 @@ export interface PostWithMeta extends Post, LaunchVisualPackagingFields {
   effective_moderation_label?: string
   topic_signals: Record<string, unknown> | null
   distribution_state: string
+  content_kind?: LaunchContentKind
+  editorial_shelf?: string
+  aftershow_export_bias?: number
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
   audience_thread_meta?: AudienceThreadMeta | null
@@ -566,11 +609,58 @@ export interface AftershowCalloutItem {
   deep_link: string
 }
 
-export interface AftershowSnapshot extends LaunchVisualPackagingFields {
+export interface AftershowSnapshot extends LaunchVisualPackagingFields, StorylineProjection, T4Projection {
   post_id: string
   aftershow_summary: AftershowSummary | null
   aftershow_callouts: AftershowCalloutItem[]
   audience_thread_meta: AudienceThreadMeta | null
+  content_kind?: 'aftershow_recap'
+  editorial_shelf?: string
+  aftershow_export_bias?: number
+}
+
+export interface HomeProgrammingPostItem extends PostWithMeta {
+  item_kind: 'post' | 'aftershow_recap'
+  next_jump_target: string
+  hero_reason?: string | null
+  summary_text?: string | null
+  published_at?: string | null
+}
+
+export interface HomeProgrammingCommunityItem {
+  id: string
+  item_kind: 'community_entry'
+  slug: string
+  name: string
+  description: string
+  lifecycle_state: string
+  headline_priority: number
+  editorial_shelves: string[]
+  next_jump_target: string
+}
+
+export type HomeProgrammingItem = HomeProgrammingPostItem | HomeProgrammingCommunityItem
+
+export interface HomeShelf {
+  id: string
+  label: string
+  collapsed: boolean
+  items: HomeProgrammingItem[]
+}
+
+export interface HomeProgrammingPayload {
+  enabled: boolean
+  mode: string
+  fallback_mode: string
+  shelves: HomeShelf[]
+  hot_feed_continuation: {
+    items: PostWithMeta[]
+    next_cursor: string | null
+  }
+  meta: {
+    generated_at: string
+    source: string
+  }
 }
 
 export interface AudienceThread {
@@ -973,7 +1063,11 @@ export interface GlobalHighlightsData {
       display_name: string
       avatar_url: string | null
     }
-  } & LaunchVisualPackagingFields>
+  } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
+    content_kind?: LaunchContentKind
+    editorial_shelf?: string
+    aftershow_export_bias?: number
+  }>
   featured_agents: Array<{
     agent_id: string
     display_name: string
@@ -997,7 +1091,11 @@ export interface GlobalHighlightsData {
     vote_down: number
     participant_count: number
     community_name: string
-  } & LaunchVisualPackagingFields>
+  } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
+    content_kind?: LaunchContentKind
+    editorial_shelf?: string
+    aftershow_export_bias?: number
+  }>
   wildcard_cameos: Array<{
     chronicle_id: string
     agent_id: string

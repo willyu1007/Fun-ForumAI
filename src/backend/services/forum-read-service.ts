@@ -18,6 +18,7 @@ import type {
   PublicStageTurn,
   RouteHandoff,
   SurfaceMediaAttachmentView,
+  ForumSceneMetadataRepository,
 } from '../repos/index.js'
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
@@ -28,6 +29,15 @@ import {
   resolveLaunchVisualPackaging,
   type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
+import type {
+  LaunchContentKind,
+  LaunchStorylineState,
+} from '../launch/programming-projection.js'
+import { buildLaunchProgrammingProjection } from '../launch/programming-projection.js'
+import type {
+  LaunchT4CoverMode,
+  LaunchT4TemplateId,
+} from '../launch/t4-content-templates.js'
 import { isCommunityVisibleInDirectory } from '../community/community-lifecycle.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
@@ -48,6 +58,7 @@ export interface ForumReadServiceDeps {
   postMediaRepo: PostMediaRepository
   sceneMediaBindingRepo: SceneMediaBindingRepository
   mediaContextProjectionRepo: MediaContextProjectionRepository
+  forumSceneMetadataRepo?: ForumSceneMetadataRepository | null
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
@@ -117,6 +128,16 @@ export interface PostWithMeta extends Post {
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
+  storyline_id?: string
+  storyline_title?: string
+  storyline_state?: LaunchStorylineState
+  storyline_hook?: string
+  content_kind?: LaunchContentKind
+  editorial_shelf?: string
+  is_t4?: boolean
+  aftershow_export_bias?: number
+  note_template_id?: LaunchT4TemplateId
+  cover_mode?: LaunchT4CoverMode
 }
 
 export interface PublicStageThreadTurnWithAuthor extends PublicStageThreadTurn {
@@ -589,7 +610,10 @@ export class ForumReadService {
     const lastReplyAt = visibleThreadTurns.length > 0
       ? visibleThreadTurns[visibleThreadTurns.length - 1].created_at
       : null
-    const community = this.resolveCommunityMeta(post.community_id)
+    const communityEntity = this.deps.communityRepo.findById(post.community_id)
+    const community = communityEntity
+      ? { slug: communityEntity.slug, name: communityEntity.name }
+      : this.resolveCommunityMeta(post.community_id)
     const threadTurnCount = visibleThreadTurns.length
     const activityAt = lastReplyAt ?? post.created_at
     const topicPresentation = this.readTopicSignals(post.moderation_metadata)
@@ -598,6 +622,15 @@ export class ForumReadService {
       community_slug: community.slug,
       media,
       rolloutProfile,
+    })
+    const sceneMetadata = this.deps.forumSceneMetadataRepo
+      ? await this.deps.forumSceneMetadataRepo.findByPostId(post.id)
+      : null
+    const launchProjection = buildLaunchProgrammingProjection({
+      community_slug: community.slug,
+      community_rules_json: communityEntity?.rules_json ?? null,
+      scene_metadata: sceneMetadata,
+      media_count: media.length,
     })
 
     return {
@@ -632,6 +665,7 @@ export class ForumReadService {
       topic_signals: topicPresentation.topic_signals,
       distribution_state: topicPresentation.distribution_state,
       ...(launchPackaging ?? {}),
+      ...launchProjection,
     }
   }
 

@@ -160,8 +160,8 @@ export class PgAgentBioRepository implements AgentBioRepository {
           },
         })
 
-        const renderLogRow = await tx.agentBioRenderLog.create({
-          data: {
+        const renderInsert = await tx.agentBioRenderLog.createMany({
+          data: [{
             agentId: input.render_log.agent_id,
             refreshKind: input.render_log.refresh_kind,
             refreshReason: input.render_log.refresh_reason,
@@ -173,11 +173,23 @@ export class PgAgentBioRepository implements AgentBioRepository {
             status: input.render_log.status,
             publicPersisted: input.render_log.public_persisted,
             noteJson: input.render_log.note_json ? toInputJson(input.render_log.note_json) : Prisma.JsonNull,
+          }],
+          skipDuplicates: true,
+        })
+        const renderLogRow = await tx.agentBioRenderLog.findUnique({
+          where: {
+            agentId_dedupKey: {
+              agentId: input.render_log.agent_id,
+              dedupKey: input.render_log.dedup_key,
+            },
           },
         })
+        if (!renderLogRow) {
+          throw new Error('Agent bio render log missing after commitRefresh')
+        }
 
         return {
-          kind: 'committed',
+          kind: renderInsert.count > 0 ? 'committed' : 'deduped',
           worldview: this.toWorldview(worldviewRow),
           projection: this.toProjection(projectionRow),
           render_log: this.toRenderLog(renderLogRow),

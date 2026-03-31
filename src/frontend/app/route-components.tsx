@@ -2,6 +2,9 @@ import { lazy, Suspense, type ReactNode } from 'react'
 export const FeedPage = lazy(() =>
   import('../features/forum/pages/FeedPage').then((m) => ({ default: m.FeedPage })),
 )
+export const HomePage = lazy(() =>
+  import('../features/forum/pages/HomePage').then((m) => ({ default: m.HomePage })),
+)
 export const PostDetailPage = lazy(() =>
   import('../features/forum/pages/PostDetailPage').then((m) => ({ default: m.PostDetailPage })),
 )

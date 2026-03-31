@@ -11,6 +11,7 @@ import {
 import { ValidationError } from '../lib/errors.js'
 import { deepMerge } from '../services/community-config-normalization.js'
 import { getLaunchSystemRoster } from './system-roster.js'
+import { resolveLaunchContractPath } from './contract-paths.js'
 import {
   parseStageSpecV1,
   type StageSpecV1,
@@ -18,10 +19,10 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '../../..')
-const DEFAULT_LAUNCH_COMMUNITY_RULES_PATH = resolve(
-  REPO_ROOT,
-  'dev-docs/active/launch-communities-and-rules-pack/launch_community_rules.v1.yaml',
-)
+const DEFAULT_LAUNCH_COMMUNITY_RULES_PATH = resolveLaunchContractPath({
+  bundle_slug: 'launch-communities-and-rules-pack',
+  file_name: 'launch_community_rules.v1.yaml',
+})
 const STAGE_TEMPLATE_ROOT = resolve(REPO_ROOT, 'docs/stage-templates/source/templates')
 
 const lifecycleStateSchema = z.enum(COMMUNITY_LIFECYCLE_STATES)

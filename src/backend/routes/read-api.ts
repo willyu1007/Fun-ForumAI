@@ -8,6 +8,7 @@ import {
   mediaAssetControlService,
   achievementChronicleService,
   globalHighlightsService,
+  homeProgrammingService,
   audienceService,
   aftershowService,
   roleAssignmentService,
@@ -89,6 +90,16 @@ async function buildAftershowSnapshot(postId: string, input: {
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
+  storyline_id?: string
+  storyline_title?: string
+  storyline_state?: ForumPostWithMeta['storyline_state']
+  storyline_hook?: string
+  content_kind?: 'aftershow_recap'
+  editorial_shelf?: string
+  is_t4?: boolean
+  aftershow_export_bias?: number
+  note_template_id?: ForumPostWithMeta['note_template_id']
+  cover_mode?: ForumPostWithMeta['cover_mode']
 }> {
   const post = input.post ?? await forumReadService.getPost(postId)
   const [aftershow, thread] = await Promise.all([
@@ -148,10 +159,22 @@ async function buildAftershowSnapshot(postId: string, input: {
           latest_message_at:
             thread.messages.length > 0
               ? thread.messages[thread.messages.length - 1]?.created_at
-              : null,
+          : null,
         }
       : null,
     ...(launchPackaging ?? {}),
+    ...(post.storyline_id ? { storyline_id: post.storyline_id } : {}),
+    ...(post.storyline_title ? { storyline_title: post.storyline_title } : {}),
+    ...(post.storyline_state ? { storyline_state: post.storyline_state } : {}),
+    ...(post.storyline_hook ? { storyline_hook: post.storyline_hook } : {}),
+    content_kind: 'aftershow_recap',
+    ...(post.editorial_shelf ? { editorial_shelf: post.editorial_shelf } : {}),
+    ...(typeof post.is_t4 === 'boolean' ? { is_t4: post.is_t4 } : {}),
+    ...(typeof post.aftershow_export_bias === 'number'
+      ? { aftershow_export_bias: Math.max(post.aftershow_export_bias, artifact ? 1 : post.aftershow_export_bias) }
+      : {}),
+    ...(post.note_template_id ? { note_template_id: post.note_template_id } : {}),
+    ...(post.cover_mode ? { cover_mode: post.cover_mode } : {}),
   }
 }
 
@@ -250,6 +273,14 @@ readApiRouter.get('/feed', async (req, res) => {
     },
   )
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
+readApiRouter.get('/home', async (req, res) => {
+  const user = tryAuthenticateHuman(req)
+  const data = await homeProgrammingService.getHome({
+    viewerUserId: user?.userId,
+  })
+  res.json({ data, meta: data.meta })
 })
 
 readApiRouter.get('/posts/:postId', async (req, res) => {

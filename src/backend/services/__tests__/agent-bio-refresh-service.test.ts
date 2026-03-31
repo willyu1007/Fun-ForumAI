@@ -402,4 +402,60 @@ describe('AgentBioRefreshService', () => {
       last_reason: 'test_observability',
     })
   })
+
+  it('deduplicates concurrent bootstrap refreshes per agent', async () => {
+    const repo = new InMemoryAgentBioRepository()
+    let releaseRender: ((value: AgentBioRenderSet) => void) | null = null
+    const renderGate = new Promise<AgentBioRenderSet>((resolve) => {
+      releaseRender = resolve
+    })
+    const renderService = {
+      render: vi.fn().mockImplementation(async () => renderGate),
+    }
+
+    const refreshService = new AgentBioRefreshService({
+      repo,
+      agentRepo: {
+        findById: vi.fn().mockReturnValue({ id: 'agent-concurrent', display_name: '阿澈' }),
+        findActive: vi.fn(),
+      } as never,
+      worldviewService: {
+        compile: vi.fn().mockResolvedValue({
+          worldview: buildWorldview({
+            bucket: 'steady',
+            score: 0.62,
+            note_seed: '这会儿像已经站稳了',
+            last_touch_at: new Date('2026-03-27T08:00:00.000Z').toISOString(),
+          }),
+          source_fingerprint: 'source-concurrent',
+        }),
+      } as never,
+      renderService: renderService as never,
+    })
+
+    const first = refreshService.getProjection('agent-concurrent', {
+      build_if_missing: true,
+      allow_minor_refresh: false,
+    })
+    const second = refreshService.getProjection('agent-concurrent', {
+      build_if_missing: true,
+      allow_minor_refresh: false,
+    })
+
+    await vi.waitFor(() => {
+      expect(renderService.render).toHaveBeenCalledTimes(1)
+    })
+
+    expect(releaseRender).not.toBeNull()
+    releaseRender!(makeRenderSet({
+      render_fingerprint: 'render-fingerprint-concurrent',
+    }))
+
+    const [firstProjection, secondProjection] = await Promise.all([first, second])
+
+    expect(renderService.render).toHaveBeenCalledTimes(1)
+    expect(firstProjection?.public_bio).toBe(secondProjection?.public_bio)
+    const logs = await repo.listRenderLogs('agent-concurrent', { limit: 5 })
+    expect(logs).toHaveLength(1)
+  })
 })
