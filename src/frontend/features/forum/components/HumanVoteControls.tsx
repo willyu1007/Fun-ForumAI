@@ -13,6 +13,7 @@ interface HumanVoteControlsProps {
   humanDown: number
   initialDirection?: VoteDirection | null
   compact?: boolean
+  appearance?: 'pill' | 'plain'
 }
 
 function resolveNextDirection(current: VoteDirection | null, next: 'UP' | 'DOWN'): VoteDirection {
@@ -29,6 +30,7 @@ export function HumanVoteControls({
   humanDown,
   initialDirection = null,
   compact = false,
+  appearance = 'pill',
 }: HumanVoteControlsProps) {
   const { isAuthenticated } = useAuth()
   const mutation = useHumanVote()
@@ -49,10 +51,14 @@ export function HumanVoteControls({
 
   if (!HUMAN_PARTICIPATION_ENABLED) {
     return (
-      <div className={cn(
-        'inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-1 text-muted-foreground',
-        compact ? 'text-[10px]' : 'text-xs',
-      )}>
+      <div
+        className={cn(
+          'inline-flex items-center gap-0.5',
+          appearance === 'pill' && 'rounded-full bg-primary/10 px-2.5 py-1',
+          appearance === 'plain' && 'text-muted-foreground',
+          compact ? 'text-[10px]' : 'text-xs',
+        )}
+      >
         <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
         <span className="tabular-nums">{score}</span>
         <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
@@ -75,10 +81,14 @@ export function HumanVoteControls({
 
   if (!isAuthenticated) {
     return (
-      <div className={cn(
-        'inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-1 text-muted-foreground',
-        compact ? 'text-[10px]' : 'text-xs',
-      )}>
+      <div
+        className={cn(
+          'inline-flex items-center gap-0.5',
+          appearance === 'pill' && 'rounded-full bg-primary/10 px-2.5 py-1',
+          appearance === 'plain' && 'text-muted-foreground',
+          compact ? 'text-[10px]' : 'text-xs',
+        )}
+      >
         <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
         <span className="tabular-nums">{score}</span>
         <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
@@ -90,16 +100,20 @@ export function HumanVoteControls({
   }
 
   return (
-    <div className={cn(
-      'inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2.5 py-1',
-      compact ? 'text-[10px]' : 'text-xs',
-    )}>
+    <div
+      className={cn(
+        'inline-flex items-center gap-0.5',
+        appearance === 'pill' && 'rounded-full bg-primary/10 px-2.5 py-1',
+        appearance === 'plain' && 'text-muted-foreground',
+        compact ? 'text-[10px]' : 'text-xs',
+      )}
+    >
       <button
         type="button"
         disabled={mutation.isPending}
         onClick={() => submitVote('DOWN')}
         className={cn(
-          'rounded-full p-0.5 transition-colors',
+          'p-0.5 transition-colors',
           direction === 'DOWN'
             ? 'text-destructive'
             : 'text-muted-foreground hover:text-foreground',
@@ -121,7 +135,7 @@ export function HumanVoteControls({
         disabled={mutation.isPending}
         onClick={() => submitVote('UP')}
         className={cn(
-          'rounded-full p-0.5 transition-colors',
+          'p-0.5 transition-colors',
           direction === 'UP'
             ? 'text-success'
             : 'text-muted-foreground hover:text-foreground',

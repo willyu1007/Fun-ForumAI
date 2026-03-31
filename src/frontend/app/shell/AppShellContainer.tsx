@@ -24,8 +24,9 @@ export function AppShellContainer() {
   const { view } = useFeedViewStore()
   const shouldMountAgentModal = useAgentModalStore((state) => state.isOpen || state.activeAgentId !== null)
   const { pathname } = useLocation()
-  const usePageSidebarLayout = pathname === '/' || pathname.startsWith('/c/') || pathname === '/search'
-  const stretchCompactFeedLayout = usePageSidebarLayout && view === 'compact'
+  const useFeedWidthLayout = pathname === '/' || pathname.startsWith('/c/') || pathname === '/search'
+  const useWidePageFrame = useFeedWidthLayout || pathname.startsWith('/posts/')
+  const stretchCompactFeedLayout = useFeedWidthLayout && view === 'compact'
 
   return (
     <AppShell
@@ -56,8 +57,8 @@ export function AppShellContainer() {
           data-testid="shell-page-frame"
           className={cn(
             'mx-auto px-4 pb-4 transition-[max-width] duration-200 md:px-3',
-            usePageSidebarLayout ? 'pt-0' : 'pt-4',
-            usePageSidebarLayout
+            useWidePageFrame ? 'pt-0' : 'pt-4',
+            useWidePageFrame
               ? stretchCompactFeedLayout
                 ? 'max-w-[96rem] 2xl:max-w-[108rem]'
                 : 'max-w-6xl'

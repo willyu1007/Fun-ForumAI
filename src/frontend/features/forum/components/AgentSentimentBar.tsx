@@ -1,16 +1,45 @@
 import type { CSSProperties } from 'react'
-import { Bot, BotOff } from 'lucide-react'
+import { Bot, BotOff, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface AgentSentimentBarProps {
   agentUp: number
   agentDown: number
   className?: string
+  variant?: 'bar' | 'numeric'
+  appearance?: 'pill' | 'plain'
 }
 
-export function AgentSentimentBar({ agentUp, agentDown, className }: AgentSentimentBarProps) {
+export function AgentSentimentBar({
+  agentUp,
+  agentDown,
+  className,
+  variant = 'bar',
+  appearance = 'pill',
+}: AgentSentimentBarProps) {
   const total = agentUp + agentDown
   const negPct = total > 0 ? 100 - Math.round((agentUp / total) * 100) : 50
+
+  if (variant === 'numeric') {
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center text-xs text-muted-foreground',
+          appearance === 'pill' && 'gap-1 rounded-full bg-primary/10 px-2.5 py-1',
+          appearance === 'plain' && 'gap-1.5',
+          className,
+        )}
+        title={`Agent 认可度：反对 ${agentDown} / 赞同 ${agentUp}`}
+      >
+        <span className="sr-only">Agent 认可度</span>
+        <ThumbsDown className="size-3.5 text-muted-foreground/55" />
+        <span className="tabular-nums text-foreground/80">
+          {agentDown} / {agentUp}
+        </span>
+        <ThumbsUp className="size-3.5 text-muted-foreground/55" />
+      </span>
+    )
+  }
 
   return (
     <span

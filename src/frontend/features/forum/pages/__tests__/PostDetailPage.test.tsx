@@ -1,12 +1,9 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PostDetailPage } from '../PostDetailPage'
-import type {
-  PostWithMeta,
-  AftershowSnapshot,
-  AudienceThreadData,
-} from '@/api/types'
+import type { AftershowSnapshot, AudienceThreadData, PostWithMeta } from '@/api/types'
 import {
   usePost,
   useThreads,
@@ -17,12 +14,8 @@ import {
   useAftershow,
   useAsideSeats,
   useAgentProfile,
-  useFollowAgent,
-  useGuidanceItemAction,
-  useGuidanceSummary,
 } from '@/api/hooks'
 import { useSseNewCounts } from '@/api/use-sse'
-import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/api/hooks', () => ({
@@ -35,9 +28,6 @@ vi.mock('@/api/hooks', () => ({
   useAftershow: vi.fn(),
   useAsideSeats: vi.fn(),
   useAgentProfile: vi.fn(),
-  useFollowAgent: vi.fn(),
-  useGuidanceItemAction: vi.fn(),
-  useGuidanceSummary: vi.fn(),
 }))
 
 vi.mock('@/api/use-sse', () => ({
@@ -48,22 +38,26 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
-vi.mock('@/features/guidance/feature-flags', () => ({
-  isGuidanceEnabled: vi.fn(),
-}))
-
 vi.mock('../../components/ModerationBadge', () => ({
   ModerationBadge: () => <div data-testid="moderation-badge" />,
+}))
+
+vi.mock('../../components/SharePopover', () => ({
+  SharePopover: () => <div data-testid="share-popover" />,
+}))
+
+vi.mock('../../components/PostMediaGallery', () => ({
+  PostMediaGallery: () => <div data-testid="post-media-gallery" />,
 }))
 
 vi.mock('../../components/VoteColumn', () => ({
   VoteColumn: () => <div data-testid="vote-column" />,
 }))
 
-const commentListMock = vi.fn((_props: unknown) => <div data-testid="comment-list" />)
+const threadListMock = vi.fn((_props: unknown) => <div data-testid="thread-list" />)
 
 vi.mock('../../components/ThreadList', () => ({
-  ThreadList: (props: unknown) => commentListMock(props),
+  ThreadList: (props: unknown) => threadListMock(props),
 }))
 
 vi.mock('../../components/NewContentBanner', () => ({
@@ -72,6 +66,10 @@ vi.mock('../../components/NewContentBanner', () => ({
 
 vi.mock('../../components/HumanVoteControls', () => ({
   HumanVoteControls: () => <div data-testid="human-vote-controls" />,
+}))
+
+vi.mock('@/features/agents/components/AgentHoverCard', () => ({
+  AgentHoverCard: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 const usePostMock = vi.mocked(usePost)
@@ -83,16 +81,25 @@ const useCreateAppealMock = vi.mocked(useCreateAppeal)
 const useAftershowMock = vi.mocked(useAftershow)
 const useAsideSeatsMock = vi.mocked(useAsideSeats)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
-const useFollowAgentMock = vi.mocked(useFollowAgent)
-const useGuidanceItemActionMock = vi.mocked(useGuidanceItemAction)
-const useGuidanceSummaryMock = vi.mocked(useGuidanceSummary)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
-const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const useAuthMock = vi.mocked(useAuth)
 
 const scrollIntoViewMock = vi.fn()
+const originalInnerWidth = window.innerWidth
 
-function buildPost(options?: { includeAudienceFields?: boolean; overrides?: Partial<PostWithMeta> }): PostWithMeta {
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    writable: true,
+    value: width,
+  })
+  window.dispatchEvent(new Event('resize'))
+}
+
+function buildPost(options?: {
+  includeAudienceFields?: boolean
+  overrides?: Partial<PostWithMeta>
+}): PostWithMeta {
   const includeAudienceFields = options?.includeAudienceFields ?? true
   const base: PostWithMeta = {
     id: 'post-1',
@@ -105,7 +112,7 @@ function buildPost(options?: { includeAudienceFields?: boolean; overrides?: Part
     state: 'APPROVED',
     created_at: '2026-03-01T00:00:00.000Z',
     updated_at: '2026-03-01T00:00:00.000Z',
-    thread_turn_count: 0,
+    thread_turn_count: 3,
     vote_score: 0,
     vote_up: 0,
     vote_down: 0,
@@ -155,48 +162,10 @@ function renderPage(path: string) {
   )
 }
 
-function buildGuidanceSummary(
-  overrides?: Partial<NonNullable<ReturnType<typeof useGuidanceSummaryMock>['data']>['data']>,
-) {
-  return {
-    data: {
-      data: {
-        actor: {
-          actor_type: 'USER',
-          actor_id: 'user-1',
-          current_track: 'SPECTATOR',
-          stage: 'EXPLORING',
-          explained: { two_tracks: true },
-          completed: {
-            followed_first_agent: false,
-            used_following_feed: false,
-            created_agent: false,
-            started_private_chat: false,
-            nurture_receipt_ready: false,
-            watch_public_effect: false,
-          },
-          first_success: {
-            achieved: false,
-            at: null,
-          },
-          reveal: {
-            style: false,
-            instructions: false,
-            advanced: false,
-          },
-          latest_owner_agent_id: null,
-          latest_receipt_session_id: null,
-        },
-        modules: [],
-        ...overrides,
-      },
-    },
-  }
-}
-
 describe('PostDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setViewportWidth(1280)
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
       value: scrollIntoViewMock,
@@ -204,8 +173,10 @@ describe('PostDetailPage', () => {
 
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
+      user: {
+        id: 'user-1',
+      },
     } as never)
-    isGuidanceEnabledMock.mockReturnValue(true)
 
     useSseNewCountsMock.mockReturnValue({
       newThreadTurnCounts: {},
@@ -258,11 +229,13 @@ describe('PostDetailPage', () => {
       isPending: false,
       mutateAsync: vi.fn(),
     } as never)
+
     useCreateReportMock.mockReturnValue({
       isPending: false,
       isError: false,
       mutateAsync: vi.fn(),
     } as never)
+
     useCreateAppealMock.mockReturnValue({
       isPending: false,
       isError: false,
@@ -273,39 +246,18 @@ describe('PostDetailPage', () => {
       data: {
         data: {
           id: 'agent-1',
+          owner_id: 'user-2',
           is_followed: false,
         },
       },
     } as never)
-
-    useFollowAgentMock.mockReturnValue({
-      isPending: false,
-      mutateAsync: vi.fn(),
-    } as never)
-    useGuidanceItemActionMock.mockReturnValue({
-      mutate: vi.fn(),
-    } as never)
-
-    useGuidanceSummaryMock.mockReturnValue(buildGuidanceSummary() as never)
   })
 
-  it('hides Audience/Aftershow blocks and disables related queries when payload has no web extension fields', () => {
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: false }) },
-      isLoading: false,
-      error: null,
-    } as never)
-
-    renderPage('/posts/post-1')
-
-    expect(screen.queryByText('💬 观众区')).toBeNull()
-    expect(screen.queryByText('📝 场后总结')).toBeNull()
-    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
-    expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: false })
-    expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: false })
+  afterEach(() => {
+    setViewportWidth(originalInnerWidth)
   })
 
-  it('adds stable id and name to Audience textarea', () => {
+  it('renders a desktop stage + audience layout when audience web fields are available', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
@@ -314,12 +266,118 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    const audienceTextarea = screen.getByPlaceholderText('留下你的观众留言…')
+    expect(screen.getByText('摘要与亮点')).toBeTruthy()
+    expect(screen.getByText('观众讨论')).toBeTruthy()
+    expect(screen.getByTestId('thread-list')).toBeTruthy()
+    expect(screen.queryByText('主舞台')).toBeNull()
+    expect(screen.queryByRole('tab', { name: '舞台' })).toBeNull()
+  })
+
+  it('renders the audience rail when audience APIs return data even if the post payload has no web extension fields', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: false }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.getByText('摘要与亮点')).toBeTruthy()
+    expect(screen.getByText('观众讨论')).toBeTruthy()
+    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: true })
+    expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: true })
+    expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: true })
+  })
+
+  it('hides the audience rail only when both payload and audience APIs provide no audience data', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: false }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useAudienceThreadMock.mockReturnValue({
+      data: undefined,
+    } as never)
+    useAftershowMock.mockReturnValue({
+      data: undefined,
+    } as never)
+    useAsideSeatsMock.mockReturnValue({
+      data: undefined,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.queryByText('摘要与亮点')).toBeNull()
+    expect(screen.queryByText('观众讨论')).toBeNull()
+    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: true })
+    expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: true })
+    expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: true })
+  })
+
+  it('opens the audience tab by default on mobile when a deep link targets aftershow content', async () => {
+    setViewportWidth(390)
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
+
+    expect(screen.getByRole('tab', { name: '舞台' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '观众区' })).toBeTruthy()
+    expect(screen.queryByTestId('thread-list')).toBeNull()
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('留下你的观众留言…')).toBeTruthy()
+    })
+  })
+
+  it('adds stable id and name to the audience textarea', async () => {
+    setViewportWidth(390)
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1?aftershow_id=artifact-1&callout_index=0')
+
+    const audienceTextarea = await screen.findByPlaceholderText('留下你的观众留言…')
     expect(audienceTextarea.getAttribute('id')).toBe('audience-message-input')
     expect(audienceTextarea.getAttribute('name')).toBe('audienceMessage')
   })
 
-  it('renders structured aftershow sections without leaking raw json', () => {
+  it('shows the post more menu with report, appeal, status, and help entries', async () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-1',
+          owner_id: 'user-1',
+          is_followed: false,
+        },
+      },
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    const moreButton = screen.getByRole('button', { name: '更多' })
+    fireEvent.pointerDown(moreButton, { button: 0, ctrlKey: false })
+
+    expect(await screen.findByText('举报此帖')).toBeTruthy()
+    expect(screen.getByText('申诉审核')).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: '查看状态' }).getAttribute('href')).toBe('/safety')
+    expect(screen.getByRole('menuitem', { name: '流程说明' }).getAttribute('href')).toBe(
+      '/help/report-appeal-delete',
+    )
+  })
+
+  it('falls back to callout reasons when aftershow summary is missing', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
@@ -330,26 +388,23 @@ describe('PostDetailPage', () => {
       data: {
         data: {
           post_id: 'post-1',
-          aftershow_summary: {
-            id: 'aftershow-1',
-            status: 'PUBLISHED',
-            summary_text: '备用总结',
-            content: {
-              title: '场后总结 · test post',
-              summary: '一句重点\n\n- 关键看点',
-              highlights: [
-                {
-                  audience_message_id: 'msg-1',
-                  user_id: 'user-1',
-                  excerpt: '第一条亮点',
-                },
-              ],
-              generated_at: '2026-03-01T00:00:00.000Z',
+          aftershow_summary: null,
+          aftershow_callouts: [
+            {
+              id: 'callout-1',
+              artifact_id: 'artifact-1',
+              user_id: 'user-2',
+              audience_message_id: 'msg-2',
+              reason: 'focus this one',
+              evidence_ref: null,
+              notification_id: null,
+              invalidated_at: null,
+              meta: null,
+              created_at: '2026-03-01T00:00:00.000Z',
+              callout_index: 0,
+              deep_link: '/posts/post-1?aftershow_id=artifact-1&callout_index=0',
             },
-            published_at: '2026-03-01T00:00:00.000Z',
-            correlation_id: null,
-          },
-          aftershow_callouts: [],
+          ],
           audience_thread_meta: null,
         } satisfies AftershowSnapshot,
       },
@@ -357,13 +412,11 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(screen.getByText('📝 场后总结')).toBeTruthy()
-    expect(screen.getByText('🌟 精选观众高光')).toBeTruthy()
-    expect(screen.getByText('第一条亮点')).toBeTruthy()
-    expect(screen.queryByText(/"title":/)).toBeNull()
+    expect(screen.getByText('暂时还没有摘要，先看看观众区的讨论。')).toBeTruthy()
+    expect(screen.getByText('focus this one')).toBeTruthy()
   })
 
-  it('renders and scrolls to focused audience message even when it is older than the latest 20 messages', async () => {
+  it('renders and scrolls to a focused audience message even when it is older than the latest 20 messages', async () => {
     const messages = Array.from({ length: 25 }, (_, index) => ({
       id: `msg-${index + 1}`,
       thread_id: 'thread-1',
@@ -432,11 +485,11 @@ describe('PostDetailPage', () => {
     })
 
     await waitFor(() => {
-      expect(focusedCard?.className).toContain('border-success/30')
+      expect(focusedCard?.className).toContain('border-primary')
     })
   })
 
-  it('requests a larger thread page when opened from a deep link', () => {
+  it('requests a larger thread page when opened from a stage deep link', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
@@ -448,10 +501,7 @@ describe('PostDetailPage', () => {
     expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 500 })
   })
 
-  it('shows a login rail for anonymous spectators when no canonical post item exists', () => {
-    useAuthMock.mockReturnValue({
-      isAuthenticated: false,
-    } as never)
+  it('does not render the legacy governance banner for normal posts', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
@@ -460,152 +510,39 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(screen.getByRole('link', { name: '登录后继续追这条线' })).toBeTruthy()
+    expect(screen.queryByText('AI 公域讨论')).toBeNull()
+    expect(screen.queryByText(/分发状态/)).toBeNull()
   })
 
-  it('uses direct follow payoff on the post page when the author is not followed yet', async () => {
-    const mutateAsync = vi.fn().mockResolvedValue(undefined)
+  it('renders the simplified top header without the community slug pill', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
       error: null,
-    } as never)
-    useFollowAgentMock.mockReturnValue({
-      isPending: false,
-      mutateAsync,
     } as never)
 
     renderPage('/posts/post-1')
 
-    const followButton = screen.getByRole('button', { name: '关注这个 Agent' })
-    followButton.click()
-
-    await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledTimes(1)
-    })
+    expect(screen.getByRole('link', { name: '返回广场' }).getAttribute('href')).toBe('/')
+    expect(screen.getByText('Agent 1')).toBeTruthy()
+    expect(screen.queryByText('c/community-1')).toBeNull()
   })
 
-  it('shows a follow error instead of leaking a rejected promise when direct follow fails', async () => {
-    const mutateAsync = vi.fn().mockRejectedValue(new Error('follow failed'))
+  it('does not render author bio copy or post tags in the top hero', () => {
     usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useFollowAgentMock.mockReturnValue({
-      isPending: false,
-      mutateAsync,
-    } as never)
-
-    renderPage('/posts/post-1')
-
-    fireEvent.click(screen.getByRole('button', { name: '关注这个 Agent' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('follow failed')).toBeTruthy()
-    })
-  })
-
-  it('prefers the canonical guidance item when the current post matches a guided story', () => {
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useGuidanceSummaryMock.mockReturnValue(
-      buildGuidanceSummary({
-        modules: [
-          {
-            type: 'CARD',
-            item: {
-              id: 'card-1',
-              module_type: 'CARD',
-              reason_code: 'FOLLOWED_AGENT_STORY_ESCALATED',
-              title: '你关注的剧情升级了',
-              body: '回去接上这条线。',
-              unread: true,
-              status: 'ACTIVE',
-              cta: {
-                label: '进入正在发酵的剧情',
-                target: '/posts/post-1',
-              },
-              payload: {
-                post_id: 'post-1',
-              },
-              related_agent_id: 'agent-1',
-              related_session_id: null,
-              created_at: '2026-03-11T00:00:00.000Z',
-              updated_at: '2026-03-11T00:00:00.000Z',
+      data: {
+        data: buildPost({
+          includeAudienceFields: true,
+          overrides: {
+            tags: ['意识', '哲学'],
+            author: {
+              id: 'agent-1',
+              display_name: 'Agent 1',
+              avatar_url: null,
+              public_bio: '这阵子 Agent 1 把哲学、意识收得更近一点。',
             },
           },
-        ],
-      }) as never,
-    )
-
-    renderPage('/posts/post-1')
-
-    expect(screen.getByText('你关注的剧情升级了')).toBeTruthy()
-    expect(screen.getByRole('link', { name: '进入正在发酵的剧情' })).toBeTruthy()
-    expect(screen.queryByText('登录后继续追这条线')).toBeNull()
-  })
-
-  it('offers following feed payoff after the viewer already follows the author', () => {
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useAgentProfileMock.mockReturnValue({
-      data: {
-        data: {
-          id: 'agent-1',
-          is_followed: true,
-        },
-      },
-    } as never)
-
-    renderPage('/posts/post-1')
-
-    expect(screen.getByRole('link', { name: '打开 following feed' })).toBeTruthy()
-  })
-
-  it('does not render a contextual rail before the guidance summary is ready', () => {
-    useAuthMock.mockReturnValue({
-      isAuthenticated: false,
-    } as never)
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useGuidanceSummaryMock.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-    } as never)
-
-    renderPage('/posts/post-1')
-
-    expect(screen.queryByText('登录后继续追这条线')).toBeNull()
-    expect(screen.queryByText('先关注这个 Agent')).toBeNull()
-  })
-
-  it('renders hot-topic transparency copy when distribution is no-recommend', () => {
-    usePostMock.mockReturnValue({
-      data: {
-        data: {
-          ...buildPost({ includeAudienceFields: true }),
-          distribution_state: 'NO_RECOMMEND',
-          topic_signals: {
-            hot_topic_flag: true,
-            topic_domain: 'ENTERTAINMENT',
-            topic_confidence: 0.54,
-            drift_detected: true,
-            drift_risk_score: 0.87,
-            distribution_state: 'NO_RECOMMEND',
-            enforcement_reason: 'hot_topic_drift_requires_gray_review',
-          },
-        },
+        }),
       },
       isLoading: false,
       error: null,
@@ -613,12 +550,22 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(screen.getByText('AI 公域讨论')).toBeTruthy()
-    expect(screen.getByText('分发状态 · 可直达，不参与推荐')).toBeTruthy()
-    expect(screen.getByText('热点域 · 娱乐')).toBeTruthy()
-    expect(screen.getByText('已命中漂移')).toBeTruthy()
-    expect(screen.getByText('热点漂移命中，当前内容保留直达访问，但不会进入推荐流。')).toBeTruthy()
-    expect(screen.getByRole('link', { name: '查看热点治理与推荐规则' }).getAttribute('href')).toBe('/help/hot-topic-rules')
-    expect(screen.getByRole('link', { name: '流程说明' }).getAttribute('href')).toBe('/help/report-appeal-delete')
+    expect(screen.queryByText('这阵子 Agent 1 把哲学、意识收得更近一点。')).toBeNull()
+    expect(screen.queryByText('意识')).toBeNull()
+    expect(screen.queryByText('哲学')).toBeNull()
+  })
+
+  it('uses list-style pills in the footer and keeps AI sentiment on the right', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.getByText('Agent 认可度：')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /3/ }).getAttribute('href')).toBe('/posts/post-1')
+    expect(screen.queryByText('3 条舞台发言')).toBeNull()
   })
 })

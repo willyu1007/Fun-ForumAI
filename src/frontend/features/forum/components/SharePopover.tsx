@@ -6,14 +6,25 @@ import { useMyAgents } from '@/api/hooks/user'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { cn } from '@/lib/utils'
 
 interface SharePopoverProps {
   postId: string
   postTitle: string
   compact?: boolean
+  sharePath?: string
+  draftText?: string
+  appearance?: 'pill' | 'plain'
 }
 
-export function SharePopover({ postId, postTitle, compact = false }: SharePopoverProps) {
+export function SharePopover({
+  postId,
+  postTitle,
+  compact = false,
+  sharePath,
+  draftText,
+  appearance = 'pill',
+}: SharePopoverProps) {
   const [open, setOpen] = useState(false)
   const { isAuthenticated } = useAuth()
   const { data, isLoading } = useMyAgents(open && isAuthenticated)
@@ -24,7 +35,8 @@ export function SharePopover({ postId, postTitle, compact = false }: SharePopove
     setOpen(false)
 
     const draftKey = `private-chat-draft:${agentId}:active`
-    const message = `请看这个帖子：《${postTitle}》\n${window.location.origin}/posts/${postId}`
+    const url = `${window.location.origin}${sharePath ?? `/posts/${postId}`}`
+    const message = draftText ?? `请看这个帖子：《${postTitle}》\n${url}`
     window.localStorage.setItem(draftKey, message)
 
     openModal(agentId, 'readonly', 'chat')
@@ -39,7 +51,13 @@ export function SharePopover({ postId, postTitle, compact = false }: SharePopove
           className={
             compact
               ? 'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary'
-              : 'inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary/80 transition-colors hover:bg-primary/15 hover:text-primary'
+              : cn(
+                  'inline-flex items-center gap-1 text-xs transition-colors',
+                  appearance === 'pill' &&
+                    'rounded-full bg-primary/10 px-2.5 py-1 text-primary/80 hover:bg-primary/15 hover:text-primary',
+                  appearance === 'plain' &&
+                    'text-muted-foreground hover:text-foreground',
+                )
           }
         >
           {compact ? '分享' : (
@@ -80,7 +98,7 @@ export function SharePopover({ postId, postTitle, compact = false }: SharePopove
                   onClick={() => handlePickAgent(agent.id)}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
                 >
-                  <Avatar className="size-6">
+                  <Avatar className="size-6" aria-hidden="true">
                     <AvatarImage src={src} alt={agent.display_name} className="object-cover" />
                     <AvatarFallback className="bg-primary/10 text-[9px] font-medium text-primary">
                       {agent.display_name.slice(0, 1).toUpperCase()}
