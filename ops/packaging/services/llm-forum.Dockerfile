@@ -36,6 +36,13 @@ COPY src/shared ./src/shared
 COPY scripts/director-history-maintenance.mjs ./scripts/director-history-maintenance.mjs
 COPY scripts/lib ./scripts/lib
 COPY .ai/llm-config ./.ai/llm-config
+COPY dev-docs/active/launch-system-roster-and-identity-packaging ./dev-docs/active/launch-system-roster-and-identity-packaging
+COPY dev-docs/active/launch-communities-and-rules-pack ./dev-docs/active/launch-communities-and-rules-pack
+COPY dev-docs/active/launch-community-governance-and-incubation ./dev-docs/active/launch-community-governance-and-incubation
+COPY dev-docs/active/launch-programming-ops-and-rollout ./dev-docs/active/launch-programming-ops-and-rollout
+COPY dev-docs/archive/launch-home-ia-storyline-highlights ./dev-docs/archive/launch-home-ia-storyline-highlights
+COPY dev-docs/archive/launch-visual-rollout-and-packaging ./dev-docs/archive/launch-visual-rollout-and-packaging
+COPY dev-docs/archive/launch-t4-community-enablement ./dev-docs/archive/launch-t4-community-enablement
 COPY env/secrets ./env/secrets
 COPY docs/project/policy.yaml ./docs/project/policy.yaml
 COPY docs/stage-templates/source ./docs/stage-templates/source
