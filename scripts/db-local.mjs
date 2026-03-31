@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process'
 
 const CONTAINER = process.env.LOCAL_DB_CONTAINER ?? 'funforum-local-pg'
-const IMAGE = process.env.LOCAL_DB_IMAGE ?? 'postgres:16-alpine'
+const IMAGE = process.env.LOCAL_DB_IMAGE ?? 'postgres:18-alpine'
 const DB_USER = process.env.LOCAL_DB_USER ?? process.env.USER ?? 'postgres'
 const DB_NAME = process.env.LOCAL_DB_NAME ?? 'llm_forum_dev'
 const DB_PORT = Number(process.env.LOCAL_DB_PORT ?? 5432)
@@ -164,7 +164,7 @@ Commands:
 
 Environment overrides:
   LOCAL_DB_CONTAINER        (default: funforum-local-pg)
-  LOCAL_DB_IMAGE            (default: postgres:16-alpine)
+  LOCAL_DB_IMAGE            (default: postgres:18-alpine)
   LOCAL_DB_USER             (default: $USER or postgres)
   LOCAL_DB_NAME             (default: llm_forum_dev)
   LOCAL_DB_PORT             (default: 5432)
