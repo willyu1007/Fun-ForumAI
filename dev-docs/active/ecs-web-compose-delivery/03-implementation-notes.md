@@ -61,6 +61,12 @@
   - 如果 runner 上 `docker buildx version` 可用，则写入 `DOCKER_BUILDKIT=1`
   - 如果不可用，则自动降级写入 `DOCKER_BUILDKIT=0`
   这样 repo 默认仍优先使用 BuildKit，但在当前 `ecs-acr-publish-hz-01` 这类未预装 buildx 的 self-hosted runner 上，会自动退回 legacy builder 继续发布，不再让构建在启动瞬间失败。
+- 2026-04-02 继续盯最新 self-hosted publish run `23874134550` 后，repo/workflow 侧的关键阻塞已基本清掉：
+  - `Fetch source archive` 成功，说明不再被 `actions/checkout` 的 git HTTPS fetch 卡死
+  - `Resolve docker builder mode` 成功，说明不再因 runner 缺少 `buildx` 而在构建启动瞬间失败
+  - `Log in to ACR` 成功，说明阿里云凭证和 ACR 登录链路正常
+  - `Build immutable image locally` 持续运行约 13 分钟后失败，表明问题已收敛到真实 Docker build 阶段
+  同一时间，阿里云控制台对 `ecs-acr-publish-hz-01` 报出严重告警：实例云盘读写受限，提示 `2026-04-02 07:13:00` 出现读写 IO 延迟过长或打满当前云盘类型 IOPS 上限。结合本次 publish 行为，当前更可信的根因是 runner 主机的云盘性能不足以支撑镜像构建阶段的持续高 I/O，而不是 workflow 本身再次配置错误。
 - 2026-04-01 增加了 repo-side desired release 层，专门解决“镜像已发布，但 ECS / ECI 不会立刻替换，之后容易忘记目标 sha”的问题：
   - 新增 `ops/deploy/scripts/release-intent.mjs`
   - 新增 `ops/deploy/release-intents/README.md`

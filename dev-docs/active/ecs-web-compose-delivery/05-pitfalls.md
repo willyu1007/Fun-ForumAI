@@ -111,3 +111,17 @@
   - 这样构建仍可在能力更完整的 runner 上使用 BuildKit，但不会在当前 `ecs-acr-publish-hz-01` 上因为缺插件而秒失败。
 - Prevention:
   - 以后 repo-side workflow 不要把“runner 预装某个 Docker 插件”当成隐含前提，除非该插件对构建语义是必需的；若只是性能增强项，应优先做 capability detection，再决定是否启用，而不是直接固定开启后让 self-hosted runner 硬失败。
+
+### 2026-04-02 - Publish runner host I/O became the next bottleneck after workflow fixes
+- Symptom:
+  - 在修复 self-hosted `checkout` 和 `buildx` 问题后，`Publish Image` run `23874134550` 已经能成功走到 `Build immutable image locally`，并持续运行十多分钟，但最终仍失败；与此同时阿里云 ECS 控制台对 `ecs-acr-publish-hz-01` 报出“实例云盘读写受限”严重告警，提示云盘读写 IO 延迟过长或触达盘型 IOPS 上限。
+- What we tried:
+  - 先连续把 repo/workflow 侧的已知 blocker 拆掉：把 self-hosted 源码获取改为 archive/tarball、把 `buildx` 从强依赖改为 capability detection + legacy fallback，然后重新盯 publish run 的真实执行轨迹。
+- Fix / workaround:
+  - 目前只确认了根因层级已经上升到 runner 基础设施：Docker build 本身是高 I/O 负载，当前 `ecs-acr-publish-hz-01` 的云盘性能不足。repo 侧暂不应继续通过盲目 rerun 施压。
+  - 后续修复方向应优先放在 runner 主机：
+    - 升级更高性能云盘 / 提升 IOPS 档位
+    - 将 `/var/lib/docker` 和必要的构建工作目录迁到独立高性能数据盘
+    - 在 runner 侧降低并发和非必要 I/O 压力后，再重新验证 immutable publish
+- Prevention:
+  - 以后当 publish run 已经成功越过源码获取、凭证配置和构建器选择，却仍在 Docker build 中途失败时，不要继续把问题默认为 workflow 或 Dockerfile 逻辑；应同步检查 runner 所在 ECS 的云盘、IOPS、磁盘时延和 Docker data path，避免在基础设施瓶颈上反复重跑同一构建。

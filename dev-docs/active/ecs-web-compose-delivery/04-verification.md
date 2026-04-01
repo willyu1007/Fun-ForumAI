@@ -174,3 +174,12 @@
       - Result: 新的 self-hosted `publish-staging` job 已成功越过 `Fetch source archive`、`Setup Node`、`Resolve publish context`、`Check runner prerequisites`、`Configure Alibaba Cloud credentials`、`Log in to ACR`，证明 archive checkout workaround 生效。
     - `gh run view 23874039128 --job 69612808025 --log-failed`
       - Result: `Build immutable image locally` 立即失败，明确报错 `BuildKit is enabled but the buildx component is missing or broken.`；这说明剩余 blocker 已收敛为 self-hosted runner 不具备 buildx，而不是源码获取或 ACR 登录。
+- 2026-04-02（publish build now reaches host I/O bottleneck）:
+  - Live run monitoring:
+    - `gh run view 23874134550 --json jobs,status,conclusion,headSha,url`
+      - Result: `publish-staging` 新 run 已成功越过 `Fetch source archive`、`Resolve docker builder mode`、`Configure Alibaba Cloud credentials`、`Log in to ACR`，并在 `Build immutable image locally` 中持续运行十多分钟后结束为 `failure`；说明 repo/workflow 侧的 `checkout` / `buildx` 秒失败链路已经清除。
+    - `gh run view 23874134550 --job 69613121682 --log | tail -n 220`
+      - Result: 远端 job 日志能确认构建前步骤全部成功，并看到 `docker buildx unavailable on runner; falling back to legacy docker build.`，但 GitHub 返回的尾日志没有把最终 Docker build 失败原因完整刷出。
+  - Operator observation:
+    - 阿里云 ECS 控制台告警截图（`ecs-acr-publish-hz-01`）
+      - Result: 控制台明确提示实例存在“云盘读写受限”严重异常，`2026-04-02 07:13:00` 读写 IO 延迟过长或达到当前云盘类型 IOPS 上限；这与 publish run 在真实 Docker 构建阶段失败的时间窗一致。
