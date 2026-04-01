@@ -98,3 +98,5 @@ Project: `main`
 - 2026-04-01 task_id=T-131 slug=eci-worker-runtime-delivery event=status from=planned to=archived
 - 2026-04-01 task_id=T-920 slug=backend-typecheck-baseline-repair-v1 event=status from=in-progress to=archived
 - 2026-04-01 task_id=T-933 slug=launch-gray-release-gap-closure event=status from=in-progress to=archived
+- 2026-04-01 task_id=T-934 slug=launch-gray-release-runtime-and-publish-hardening event=registered dev_docs_path=dev-docs/active/launch-gray-release-runtime-and-publish-hardening
+- 2026-04-01 task_id=T-934 slug=launch-gray-release-runtime-and-publish-hardening event=status from=in-progress to=archived

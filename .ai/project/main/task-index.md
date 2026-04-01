@@ -177,4 +177,5 @@ Project: `main`
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-933 launch-gray-release-gap-closure | archived | F-000 | dev-docs/archive/launch-gray-release-gap-closure |
+| T-934 launch-gray-release-runtime-and-publish-hardening | archived | F-000 | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
 <!-- AUTO-GENERATED:END task-index -->

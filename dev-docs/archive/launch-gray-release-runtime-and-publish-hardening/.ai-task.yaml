@@ -1,0 +1,13 @@
+version: 1
+task_id: T-934
+project: main
+slug: launch-gray-release-runtime-and-publish-hardening
+status: archived
+updated: "2026-04-01"
+keywords:
+  - launch
+  - gray-release
+  - publish
+  - runtime-config
+  - warm-start
+  - readiness

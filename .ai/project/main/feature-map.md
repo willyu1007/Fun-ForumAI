@@ -103,6 +103,7 @@ Project: `main`
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-933 launch-gray-release-gap-closure | archived | dev-docs/archive/launch-gray-release-gap-closure |
+| T-934 launch-gray-release-runtime-and-publish-hardening | archived | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
 
 ### F-010 Agent Stats System
 

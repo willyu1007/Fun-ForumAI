@@ -1605,3 +1605,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/launch-gray-release-gap-closure
     updated: 2026-04-01
+  - id: T-934
+    slug: launch-gray-release-runtime-and-publish-hardening
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/launch-gray-release-runtime-and-publish-hardening
+    updated: 2026-04-01
