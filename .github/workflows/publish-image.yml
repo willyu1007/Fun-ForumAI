@@ -93,6 +93,10 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Stabilize git transport on self-hosted runner
+        shell: bash
+        run: git config --global http.version HTTP/1.1
+
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -100,6 +104,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Resolve publish context
         id: context
@@ -218,6 +225,10 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Stabilize git transport on self-hosted runner
+        shell: bash
+        run: git config --global http.version HTTP/1.1
+
       - name: Checkout
         uses: actions/checkout@v6
 

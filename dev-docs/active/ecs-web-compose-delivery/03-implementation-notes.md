@@ -41,6 +41,13 @@
   - `publish-image.yml` 改回 `DOCKER_BUILDKIT=1`
   - `publish-staging` job timeout 从 `45` 分钟提高到 `90` 分钟，避免构建时间波动时被过早取消
   本地完整 Docker build 已验证该组合可以成功产出运行镜像，且运行镜像内仍然可直接执行 `pnpm exec prisma --version`。
+  - 2026-04-02 继续排查 self-hosted publish runner `ecs-acr-publish-hz-01` 时，先后命中了两类非源码问题：
+    - runner 到 `github.com` 的 git HTTPS checkout 在默认协商下会出现 `curl 16 Error in the HTTP2 framing layer` / `GnuTLS recv error (-110)` / 443 超时，重启 runner 后仍可能复现
+    - 在 workflow 恢复 `DOCKER_BUILDKIT=1` 之后，self-hosted runner 本机并没有可用的 `buildx` 组件，导致 `docker build` 直接报 `BuildKit is enabled but the buildx component is missing or broken`
+  已调整为：
+    - 在 `publish-staging` 和 `promote-prod` 两个 self-hosted job 中，在 checkout 前显式执行 `git config --global http.version HTTP/1.1`
+    - 在 `publish-staging` 中显式加入 `docker/setup-buildx-action@v3`
+  这样把 runner 上人工临时配置收回到 workflow 内，避免后续 runner 重建或重启后再次退回同样故障。
 - 2026-04-01 增加了 repo-side desired release 层，专门解决“镜像已发布，但 ECS / ECI 不会立刻替换，之后容易忘记目标 sha”的问题：
   - 新增 `ops/deploy/scripts/release-intent.mjs`
   - 新增 `ops/deploy/release-intents/README.md`

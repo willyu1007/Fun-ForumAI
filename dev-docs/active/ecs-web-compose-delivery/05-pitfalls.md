@@ -66,3 +66,21 @@
     - `publish-staging` job timeout 从 `45` 分钟提高到 `90` 分钟
 - Prevention:
   - 以后凡是为了运行时迁移而“临时恢复完整 install”的改动，都必须同时评估 publish pipeline 的依赖体积和 builder 模式；不要只验证功能正确就把构建成本留到 CI 上爆出来。
+
+### 2026-04-02 - Self-hosted publish runner failed before build for transport/buildx reasons
+- Symptom:
+  - `Publish Image` 的 self-hosted job 在修复 runtime install 后，先是 `actions/checkout` 失败，报 `curl 16 Error in the HTTP2 framing layer` / `GnuTLS recv error (-110)` / `Failed to connect to github.com port 443`；重跑后终于越过 checkout，又在 `Build immutable image locally` 立刻报 `BuildKit is enabled but the buildx component is missing or broken.`
+- What we tried:
+  - 先在 `ecs-acr-publish-hz-01` 上重启 runner service，确认它能重新接单；随后直接在 runner 机上做 `getent hosts github.com`、`curl -4I --http1.1 https://github.com`、`git ls-remote https://github.com/willyu1007/Fun-ForumAI`，并查看 workflow failed logs。
+- Fix / workaround:
+  - 根因分两层：
+    - self-hosted runner 对 GitHub 的 git HTTPS transport 在默认协商下不稳定，runner 本机手动 `git config --global http.version HTTP/1.1` 后，`curl` / `git ls-remote` 恢复正常
+    - workflow 打开 `DOCKER_BUILDKIT=1` 后，self-hosted runner 本机没有可用的 `buildx`
+  - 修复方式：
+    - 在 `publish-image.yml` 的 self-hosted jobs 中，把 `git config --global http.version HTTP/1.1` 固化为 checkout 前置步骤
+    - 在 `publish-staging` 中显式加入 `docker/setup-buildx-action@v3`
+- Prevention:
+  - 以后凡是修改 self-hosted publish runner 的 builder 模式或 runner 镜像，都要同时检查：
+    - checkout 是否依赖不稳定的默认 git transport
+    - runner 上是否已有 `buildx`
+    - 不要只在 runner 主机上做人工临时修复而不回写 workflow，否则 runner 一重建就会复发。

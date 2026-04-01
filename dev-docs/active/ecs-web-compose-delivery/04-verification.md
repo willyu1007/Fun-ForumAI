@@ -148,3 +148,13 @@
   - Workflow config review:
     - `git diff -- .github/workflows/publish-image.yml`
       - Result: `publish-staging` job timeout 从 `45` 分钟提高到 `90` 分钟，`Build immutable image locally` 恢复 `DOCKER_BUILDKIT=1`。
+- 2026-04-02（self-hosted runner transport/buildx hardening）:
+  - Workflow syntax:
+    - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/publish-image.yml"); puts "yaml_ok"'`
+      - Result: `yaml_ok`。
+  - Diff hygiene:
+    - `git diff --check`
+      - Result: 通过。
+  - Governance:
+    - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+      - Result: `[ok] Lint passed.`
