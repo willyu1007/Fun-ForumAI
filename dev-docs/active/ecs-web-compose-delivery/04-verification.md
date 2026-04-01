@@ -135,3 +135,16 @@
   - Governance:
     - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
       - Result: `[ok] Lint passed.`
+- 2026-04-01（publish build chain repair）:
+  - Lockfile refresh:
+    - `pnpm install --lockfile-only --ignore-scripts`
+      - Result: 成功刷新 `pnpm-lock.yaml`，把 `prisma` 的 importer 归类从 `devDependencies` 调整到 `dependencies`。
+  - Local full image build:
+    - `DOCKER_BUILDKIT=1 node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:buildchain-fix-local`
+      - Result: 完整构建成功；runtime stage 的 `pnpm install --prod --frozen-lockfile` 只安装 production graph（`devDependencies: skipped`），镜像最终成功导出为 `llm-forum:buildchain-fix-local`。
+  - Runtime image probe:
+    - `docker run --rm --entrypoint sh llm-forum:buildchain-fix-local -c 'test -f /app/prisma.config.ts && echo prisma-config-present && pnpm exec prisma --version | sed -n "1,8p"'`
+      - Result: 输出 `prisma-config-present`，并成功打印 Prisma CLI / client 版本，说明 runtime image 在 production install 下仍保留了 deploy-time migrate 所需的本地 Prisma 能力。
+  - Workflow config review:
+    - `git diff -- .github/workflows/publish-image.yml`
+      - Result: `publish-staging` job timeout 从 `45` 分钟提高到 `90` 分钟，`Build immutable image locally` 恢复 `DOCKER_BUILDKIT=1`。

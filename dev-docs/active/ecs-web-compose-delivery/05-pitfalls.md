@@ -52,3 +52,17 @@
   - 修复后需要重新发布新的 immutable image，再在 staging 重新执行 `./deploy.sh --sha <new-sha> --with-migrate --db-compat backwards`。
 - Prevention:
   - 以后凡是“schema reconciliation / cutover”类 migration，只要前面已有 rename/cutover 历史，就必须从空库 replay 视角再检查一次，不能只验证增量升级路径。
+
+### 2026-04-01 - Publish build kept timing out on runtime dependency install
+- Symptom:
+  - `Publish Image` 的 `Build immutable image locally` 长时间停在 Docker build 内的依赖安装阶段，最终 run 被取消/超时，无法产出新的 immutable image。
+- What we tried:
+  - 先追 workflow 日志，确认卡点位于 runtime stage 的 `pnpm install --frozen-lockfile`，再对比本地 build 和 repo 依赖图，拆分 builder/runtime 两个阶段到底分别装了什么。
+- Fix / workaround:
+  - 根因是 runtime stage 为了给 `prisma migrate deploy` 保留本地 Prisma CLI，临时恢复成了完整 install；与此同时 workflow 又仍然禁用了 BuildKit，导致运行镜像把整套 devDependencies 一起装进来。最终修复为：
+    - 把 `prisma` 从 `devDependencies` 挪到 `dependencies`
+    - 将 runtime stage 改回 `pnpm install --prod --frozen-lockfile`
+    - `publish-image.yml` 中恢复 `DOCKER_BUILDKIT=1`
+    - `publish-staging` job timeout 从 `45` 分钟提高到 `90` 分钟
+- Prevention:
+  - 以后凡是为了运行时迁移而“临时恢复完整 install”的改动，都必须同时评估 publish pipeline 的依赖体积和 builder 模式；不要只验证功能正确就把构建成本留到 CI 上爆出来。

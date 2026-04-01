@@ -46,7 +46,7 @@ COPY pnpm-lock.yaml package.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 RUN npm install -g tsx@4.21.0
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile
 RUN pnpm db:generate
 
 COPY --from=builder /app/dist/frontend ./dist/frontend

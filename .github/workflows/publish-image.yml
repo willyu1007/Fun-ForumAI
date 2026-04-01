@@ -87,7 +87,7 @@ jobs:
     if: github.event_name == 'push'
     needs: [preflight]
     runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
-    timeout-minutes: 45
+    timeout-minutes: 90
     environment: staging
     permissions:
       contents: read
@@ -141,7 +141,7 @@ jobs:
 
       - name: Build immutable image locally
         env:
-          DOCKER_BUILDKIT: "0"
+          DOCKER_BUILDKIT: "1"
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
           FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
         shell: bash

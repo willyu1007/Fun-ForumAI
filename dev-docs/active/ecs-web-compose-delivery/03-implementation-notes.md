@@ -29,8 +29,18 @@
   已调整为：
   - builder/runtime 两个镜像阶段都复制 `prisma.config.ts`
   - `prisma.config.ts` 改为“存在 dotenv 时再加载”
-  - runtime 阶段保留完整 `pnpm install --frozen-lockfile`，确保 deploy-time migrate 需要的本地 `prisma` 包和 workspace 依赖都存在，再显式执行 `pnpm db:generate`
+  - 先临时把 runtime 阶段恢复成完整 `pnpm install --frozen-lockfile`，确保 deploy-time migrate 需要的本地 `prisma` 包和 workspace 依赖都存在，再显式执行 `pnpm db:generate`
   后续 staging 必须先消费包含该修复的新 immutable image，再重试 `deploy.sh`。
+- 2026-04-01 在 `Publish Image` 真实链路中又发现：
+  - `publish-image.yml` 仍强制 `DOCKER_BUILDKIT=0`，发布构建回退到 legacy builder
+  - runtime 阶段的完整 `pnpm install --frozen-lockfile` 会把整套 dev graph 一起装进运行镜像，导致 `Build immutable image locally` 长时间卡在依赖安装并最终被取消/超时
+  - 根因不是 runtime 不能使用 `--prod`，而是 `prisma` 包还留在 `devDependencies`，导致 production install 后 `prisma/config` 不可用
+  已调整为：
+  - 将 `prisma` 从 `devDependencies` 挪到 `dependencies`
+  - runtime 阶段恢复为 `pnpm install --prod --frozen-lockfile`
+  - `publish-image.yml` 改回 `DOCKER_BUILDKIT=1`
+  - `publish-staging` job timeout 从 `45` 分钟提高到 `90` 分钟，避免构建时间波动时被过早取消
+  本地完整 Docker build 已验证该组合可以成功产出运行镜像，且运行镜像内仍然可直接执行 `pnpm exec prisma --version`。
 - 2026-04-01 增加了 repo-side desired release 层，专门解决“镜像已发布，但 ECS / ECI 不会立刻替换，之后容易忘记目标 sha”的问题：
   - 新增 `ops/deploy/scripts/release-intent.mjs`
   - 新增 `ops/deploy/release-intents/README.md`
