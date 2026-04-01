@@ -98,3 +98,16 @@
     - 将 self-hosted job 的外部依赖面收敛为单一 archive download，而不是 `git fetch + buildx asset download`
 - Prevention:
   - 以后只要 self-hosted runner 的公网链路出现抖动，就不要默认“调一调 git 配置就够了”；先确认 job 是否真的需要 `.git` 元数据和额外 action asset 下载。若脚本只需要源码树，优先使用 archive/tarball 获取源码，减少发布路径上的网络协议复杂度。
+
+### 2026-04-02 - BuildKit should not be mandatory on a runner that only has docker build
+- Symptom:
+  - 在 archive checkout workaround 生效后，`Publish Image` 已经可以走到 `Build immutable image locally`，但因为 workflow 仍固定 `DOCKER_BUILDKIT=1`，`docker build` 立刻报 `BuildKit is enabled but the buildx component is missing or broken.`。
+- What we tried:
+  - 先尝试让 self-hosted workflow 通过 `docker/setup-buildx-action@v3` 自动补齐 buildx，但这又把发布链重新绑定到新的 GitHub 资产下载；而当前 runner 本身的公网链路已经被证明并不稳定。
+- Fix / workaround:
+  - 把 self-hosted `publish-staging` 改成运行时探测 `docker buildx version`：
+    - 有 buildx 时使用 `DOCKER_BUILDKIT=1`
+    - 没有 buildx 时自动回退到 `DOCKER_BUILDKIT=0`
+  - 这样构建仍可在能力更完整的 runner 上使用 BuildKit，但不会在当前 `ecs-acr-publish-hz-01` 上因为缺插件而秒失败。
+- Prevention:
+  - 以后 repo-side workflow 不要把“runner 预装某个 Docker 插件”当成隐含前提，除非该插件对构建语义是必需的；若只是性能增强项，应优先做 capability detection，再决定是否启用，而不是直接固定开启后让 self-hosted runner 硬失败。

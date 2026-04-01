@@ -139,6 +139,18 @@ jobs:
           docker --version
           aliyun version
 
+      - name: Resolve docker builder mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          if docker buildx version >/dev/null 2>&1; then
+            echo "DOCKER_BUILDKIT=1" >> "$GITHUB_ENV"
+            echo "Using Docker BuildKit via buildx."
+          else
+            echo "DOCKER_BUILDKIT=0" >> "$GITHUB_ENV"
+            echo "docker buildx unavailable on runner; falling back to legacy docker build."
+          fi
+
       - name: Configure Alibaba Cloud credentials
         uses: aliyun/configure-aliyun-credentials-action@b347e60e64028a4d567a8f31ca42e1b0706c3c99
         with:
@@ -159,7 +171,6 @@ jobs:
 
       - name: Build immutable image locally
         env:
-          DOCKER_BUILDKIT: "1"
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
           FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
         shell: bash

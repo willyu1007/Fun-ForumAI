@@ -56,6 +56,11 @@
   - 继续保留 `git config --global http.version HTTP/1.1`，但仅作为 runner transport 稳定化，而不再把成功与否绑定到 `git fetch`
   - 移除 `docker/setup-buildx-action@v3`，把 self-hosted job 里的 GitHub 外部下载依赖缩减到单一源码归档链路
   这样 self-hosted runner 只需要一次归档下载即可拿到发布所需脚本和打包定义，避免在不稳定出网条件下同时依赖 git smart HTTP 和 buildx 资产下载。
+- 2026-04-02 在归档下载 workaround 生效后，self-hosted run 已经可以稳定进入 `Build immutable image locally`，但 runner 本机仍然没有 `docker buildx`，而 workflow 继续固定 `DOCKER_BUILDKIT=1` 会让 `docker build` 立即失败。为避免把发布成功与 runner 人工装插件绑定死，进一步调整为：
+  - 在 `publish-staging` 中新增 `Resolve docker builder mode` 步骤
+  - 如果 runner 上 `docker buildx version` 可用，则写入 `DOCKER_BUILDKIT=1`
+  - 如果不可用，则自动降级写入 `DOCKER_BUILDKIT=0`
+  这样 repo 默认仍优先使用 BuildKit，但在当前 `ecs-acr-publish-hz-01` 这类未预装 buildx 的 self-hosted runner 上，会自动退回 legacy builder 继续发布，不再让构建在启动瞬间失败。
 - 2026-04-01 增加了 repo-side desired release 层，专门解决“镜像已发布，但 ECS / ECI 不会立刻替换，之后容易忘记目标 sha”的问题：
   - 新增 `ops/deploy/scripts/release-intent.mjs`
   - 新增 `ops/deploy/release-intents/README.md`

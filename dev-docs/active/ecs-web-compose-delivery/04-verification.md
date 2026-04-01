@@ -168,3 +168,9 @@
   - Diff hygiene:
     - `git diff --check`
       - Result: 通过。
+- 2026-04-02（archive checkout validated, builder fallback needed）:
+  - Live run monitoring:
+    - `gh run view 23874039128 --json jobs,status,conclusion,headSha,url`
+      - Result: 新的 self-hosted `publish-staging` job 已成功越过 `Fetch source archive`、`Setup Node`、`Resolve publish context`、`Check runner prerequisites`、`Configure Alibaba Cloud credentials`、`Log in to ACR`，证明 archive checkout workaround 生效。
+    - `gh run view 23874039128 --job 69612808025 --log-failed`
+      - Result: `Build immutable image locally` 立即失败，明确报错 `BuildKit is enabled but the buildx component is missing or broken.`；这说明剩余 blocker 已收敛为 self-hosted runner 不具备 buildx，而不是源码获取或 ACR 登录。
