@@ -1,0 +1,45 @@
+apiVersion: delivery.fun-forum/v1
+kind: ContainerGroupTemplate
+metadata:
+  name: fun-forum-worker-prod
+  environment: prod
+spec:
+  provider: aliyun-eci
+  workload_id: eci-worker
+  replacement_strategy: recreate
+  image_ref: <acr-login-server>/<namespace>/app:sha-<commit>
+  cpu: 2
+  memory_gib: 4
+  restart_policy: Always
+  networking:
+    public_ip: false
+    egress_only: true
+  command:
+    - tsx
+    - src/backend/server.ts
+  env_files:
+    - env/values/prod.yaml
+    - env/values/prod-launch.yaml
+  env:
+    SERVICE_ROLE: worker
+    RUNTIME_ENABLED: "true"
+    PORT: "4000"
+  secret_refs:
+    - DATABASE_URL
+    - JWT_SECRET
+    - SERVICE_AUTH_SECRET
+    - DASHSCOPE_API_KEY
+    - RUNTIME_REDIS_URL
+    - SSE_REDIS_URL
+  health_probe:
+    type: http
+    path: /health
+    port: 4000
+    expect:
+      runtime.enabled: true
+  replace_and_backout:
+    success_gate:
+      - health_probe_passes
+      - queue_backend_matches_contract
+      - leader_backend_matches_contract
+    backout_to_image_ref: <previous-immutable-image-ref>

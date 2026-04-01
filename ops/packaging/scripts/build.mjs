@@ -13,6 +13,10 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import {
+  loadFrontendBuildProfile,
+  toDockerBuildArgs,
+} from './frontend-build-profile.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../../..');
@@ -24,6 +28,7 @@ function parseArgs(args) {
     if (a === '--dry-run') { result.dryRun = true; continue; }
     if (a === '--target' && args[i + 1]) { result.target = args[++i]; continue; }
     if (a === '--tag' && args[i + 1]) { result.tag = args[++i]; continue; }
+    if (a === '--build-profile' && args[i + 1]) { result.buildProfile = args[++i]; continue; }
     if (a === '--help') { result.help = true; continue; }
   }
   return result;
@@ -70,7 +75,7 @@ function checkPrerequisites() {
   return checks;
 }
 
-function printPlan(target, tag, prereqs) {
+function printPlan(target, tag, prereqs, buildProfile) {
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║        PACKAGING DRY-RUN PLAN            ║');
   console.log('╚══════════════════════════════════════════╝\n');
@@ -82,6 +87,14 @@ function printPlan(target, tag, prereqs) {
   console.log(`Tag:         ${tag}`);
   console.log(`Port:        ${target.port}`);
   console.log(`Health:      ${target.healthPath || 'N/A'}`);
+  console.log(`Build flags: ${buildProfile ? buildProfile.profile : 'default'}`);
+
+  if (buildProfile) {
+    console.log('\nFrontend build profile flags:');
+    for (const [key, value] of Object.entries(buildProfile.frontend_flags)) {
+      console.log(`  - ${key}=${value}`);
+    }
+  }
 
   console.log('\nPrerequisites:');
   for (const c of prereqs) {
@@ -111,6 +124,7 @@ Options:
   --dry-run         Show build plan without executing
   --target <id>     Build a specific target (default: all)
   --tag <tag>       Override image tag
+  --build-profile <id>  Apply a frontend build profile (for launch builds)
   --help            Show this help
 `);
     return 0;
@@ -145,14 +159,35 @@ Options:
     }
 
     const tag = opts.tag || `${t.id}:local-dev`;
+    let buildProfile = null;
+    let dockerBuildArgs = [];
+
+    if (opts.buildProfile) {
+      try {
+        buildProfile = loadFrontendBuildProfile(opts.buildProfile);
+      } catch (error) {
+        console.error(`[error] Unable to load build profile "${opts.buildProfile}": ${error.message}`);
+        exitCode = 1;
+        continue;
+      }
+      if (buildProfile.target !== t.id) {
+        console.error(
+          `[error] Build profile "${opts.buildProfile}" targets "${buildProfile.target}", expected "${t.id}"`,
+        );
+        exitCode = 1;
+        continue;
+      }
+      dockerBuildArgs = toDockerBuildArgs(buildProfile)
+        .map(([key, value]) => `--build-arg ${key}=${value}`);
+    }
 
     if (opts.dryRun) {
-      printPlan(t, tag, prereqs);
+      printPlan(t, tag, prereqs, buildProfile);
     } else {
       console.log(`\n[build] ${t.id} → ${tag}`);
       try {
         execSync(
-          `node ops/packaging/scripts/docker-build.mjs --dockerfile ${t.dockerfile} --tag ${tag} --context ${t.context || '.'}`,
+          `node ops/packaging/scripts/docker-build.mjs --dockerfile ${t.dockerfile} --tag ${tag} --context ${t.context || '.'} ${dockerBuildArgs.join(' ')}`.trim(),
           { stdio: 'inherit', cwd: ROOT }
         );
         console.log(`[ok] ${t.id} built successfully`);

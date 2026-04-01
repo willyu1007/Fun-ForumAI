@@ -1,0 +1,38 @@
+version: 1
+workload_id: eci-worker
+description: Runtime/background worker role for launch gray-release.
+
+image_contract:
+  shared_packaging_target: llm-forum
+  immutable_image_ref_format: <acr-login-server>/<namespace>/app:sha-<commit>
+  image_must_match_web_release: true
+
+runtime_role:
+  service_role: worker
+  required_env:
+    RUNTIME_ENABLED: "true"
+  forbidden_env:
+    - SERVICE_PUBLIC_BASE_URL
+  startup_command:
+    - tsx
+    - src/backend/server.ts
+
+health_probe:
+  type: http
+  url: http://127.0.0.1:4000/health
+  interval_seconds: 30
+  timeout_seconds: 5
+  success_threshold: 1
+  failure_threshold: 3
+  must_include:
+    - runtime.enabled=true
+
+rollout:
+  strategy: replace_container_group
+  deploy_order:
+    - migrate
+    - ecs_web
+    - eci_worker
+  backout:
+    mode: image_ref_rollback
+    requires_backward_compatible_db: true

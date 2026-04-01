@@ -114,6 +114,8 @@ describe('HomePage', () => {
                 distribution_state: 'NORMAL',
                 hero_reason: '今日高光',
                 storyline_title: '热点主线',
+                is_t4: true,
+                note_template_id: 'review_note',
               }],
             },
             {
@@ -223,6 +225,9 @@ describe('HomePage', () => {
     expect(screen.getByRole('heading', { name: '全部社区' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '热门广场' })).toBeTruthy()
     expect(screen.getByText('灼见台')).toBeTruthy()
+    expect(screen.getAllByText('T4 今日笔记').length).toBeGreaterThan(0)
+    expect(screen.getByText('评测笔记')).toBeTruthy()
+    expect(screen.queryByText('review_note')).toBeNull()
     expect(screen.getByTestId('post-compact')).toBeTruthy()
   })
 })

@@ -66,6 +66,93 @@ describe('AgentCommunityMembershipService', () => {
     expect(service.listActive(agent.id)).toHaveLength(1)
   })
 
+  it('reconciles authoritative membership targets without reviving banned memberships', async () => {
+    const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
+    const agentRepo = new InMemoryAgentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const postRepo = new InMemoryPostRepository()
+    const { publicStageThreadRepo, publicStageTurnRepo } = createStageStore(postRepo)
+
+    const agent = agentRepo.create({ owner_id: 'platform-system-owner', display_name: 'Launch System Agent' })
+    const residentCommunity = communityRepo.create({ name: 'Resident', slug: 'resident' })
+    const guestCommunity = communityRepo.create({ name: 'Guest', slug: 'guest' })
+    const blockedCommunity = communityRepo.create({ name: 'Blocked', slug: 'blocked' })
+    const staleCommunity = communityRepo.create({ name: 'Stale', slug: 'stale' })
+
+    await membershipRepo.upsertActive({
+      agent_id: agent.id,
+      community_id: residentCommunity.id,
+      role: 'RESIDENT',
+      source: 'MANUAL',
+    })
+    await membershipRepo.upsertActive({
+      agent_id: agent.id,
+      community_id: blockedCommunity.id,
+      role: 'RESIDENT',
+      source: 'MANUAL',
+    })
+    await membershipRepo.updateStatus({
+      agent_id: agent.id,
+      community_id: blockedCommunity.id,
+      status: 'BANNED',
+      reason: 'policy',
+      set_by: 'admin-1',
+    })
+    await membershipRepo.upsertActive({
+      agent_id: agent.id,
+      community_id: staleCommunity.id,
+      role: 'GUEST',
+      source: 'MANUAL',
+    })
+
+    const service = new AgentCommunityMembershipService({
+      membershipRepo,
+      agentRepo,
+      communityRepo,
+      postRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
+      eventRepo: new InMemoryEventRepository(),
+    })
+
+    const result = await service.reconcileMemberships({
+      agent_id: agent.id,
+      targets: [
+        { community_id: residentCommunity.id, role: 'guest' },
+        { community_id: guestCommunity.id, role: 'resident' },
+        { community_id: blockedCommunity.id, role: 'resident' },
+      ],
+      actor_id: 'launch-membership-bootstrap',
+      actor_type: 'system',
+      source: 'DERIVED',
+      remove_missing: true,
+      reason: 'launch_roster:sys_agent',
+    })
+
+    expect(result.updated.added).toEqual([guestCommunity.id])
+    expect(result.updated.role_changed).toEqual([residentCommunity.id])
+    expect(result.updated.removed).toEqual([staleCommunity.id])
+    expect(result.updated.blocked).toEqual([blockedCommunity.id])
+    expect(result.active_memberships.map((item) => ({
+      community_id: item.community_id,
+      role: item.role,
+      source: item.source,
+    }))).toEqual(expect.arrayContaining([
+      {
+        community_id: residentCommunity.id,
+        role: 'GUEST',
+        source: 'DERIVED',
+      },
+      {
+        community_id: guestCommunity.id,
+        role: 'RESIDENT',
+        source: 'DERIVED',
+      },
+    ]))
+    expect(result.active_memberships.some((item) => item.community_id === blockedCommunity.id)).toBe(false)
+    expect(membershipRepo.findCurrent(agent.id, blockedCommunity.id)?.status).toBe('BANNED')
+  })
+
   it('backfills derived memberships from 30-day activity', async () => {
     const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
     const agentRepo = new InMemoryAgentRepository()

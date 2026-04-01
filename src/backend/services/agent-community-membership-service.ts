@@ -1,9 +1,11 @@
 import type {
   AgentCommunityMembership,
+  AgentCommunityMembershipSource,
   AgentCommunityMembershipStatus,
   AgentCommunityMembershipRepository,
   AgentRepository,
   CommunityRepository,
+  EventActorType,
   PostRepository,
   EventRepository,
   PublicStageThreadRepository,
@@ -45,6 +47,33 @@ export interface UpdateMembershipStatusInput {
   actor_role: 'admin' | 'user'
 }
 
+export interface ReconcileMembershipTarget {
+  community_id: string
+  role: 'resident' | 'guest'
+}
+
+export interface ReconcileMembershipsInput {
+  agent_id: string
+  targets: ReconcileMembershipTarget[]
+  actor_id: string
+  actor_type?: EventActorType
+  source?: AgentCommunityMembershipSource
+  remove_missing?: boolean
+  reason?: string
+}
+
+export interface ReconcileMembershipsResult {
+  agent_id: string
+  active_memberships: AgentCommunityMembership[]
+  updated: {
+    added: string[]
+    removed: string[]
+    role_changed: string[]
+    blocked: string[]
+    source: AgentCommunityMembershipSource
+  }
+}
+
 const DEFAULT_BACKFILL_DAYS = 30
 const DEFAULT_POST_THRESHOLD = 2
 const DEFAULT_THREAD_TURN_THRESHOLD = 6
@@ -57,6 +86,10 @@ function splitCompositeKey(key: string): [string, string] | null {
   const idx = key.indexOf(COMPOSITE_KEY_SEP)
   if (idx < 1 || idx >= key.length - 1) return null
   return [key.slice(0, idx), key.slice(idx + 1)]
+}
+
+function membershipRoleToStored(role: 'resident' | 'guest'): 'RESIDENT' | 'GUEST' {
+  return role === 'guest' ? 'GUEST' : 'RESIDENT'
 }
 
 export class AgentCommunityMembershipService {
@@ -163,6 +196,122 @@ export class AgentCommunityMembershipService {
 
   getCurrent(agentId: string, communityId: string): AgentCommunityMembership | null {
     return this.deps.membershipRepo.findCurrent(agentId, communityId)
+  }
+
+  async reconcileMemberships(input: ReconcileMembershipsInput): Promise<ReconcileMembershipsResult> {
+    const agent = this.deps.agentRepo.findById(input.agent_id)
+    if (!agent) throw new NotFoundError('Agent', input.agent_id)
+
+    const normalizedTargets = new Map<string, 'RESIDENT' | 'GUEST'>()
+    for (const target of input.targets) {
+      const communityId = target.community_id.trim()
+      if (!communityId) continue
+      const community = this.deps.communityRepo.findById(communityId)
+      if (!community) {
+        throw new NotFoundError('Community', communityId)
+      }
+
+      const nextRole = membershipRoleToStored(target.role)
+      const previous = normalizedTargets.get(communityId)
+      if (!previous || previous === 'GUEST') {
+        normalizedTargets.set(communityId, nextRole)
+      }
+    }
+
+    const actorType = input.actor_type ?? 'system'
+    const source = input.source ?? 'DERIVED'
+    const reason = input.reason?.trim() || null
+    const activeMemberships = this.deps.membershipRepo.findActiveByAgent(input.agent_id)
+
+    const added: string[] = []
+    const removed: string[] = []
+    const roleChanged: string[] = []
+    const blocked: string[] = []
+
+    for (const [communityId, role] of normalizedTargets.entries()) {
+      const current = this.deps.membershipRepo.findCurrent(input.agent_id, communityId)
+      if (current && current.status !== 'ACTIVE') {
+        blocked.push(communityId)
+        continue
+      }
+
+      if (current && current.role === role && current.source === source) {
+        continue
+      }
+
+      await this.deps.membershipRepo.upsertActive({
+        agent_id: input.agent_id,
+        community_id: communityId,
+        role,
+        source,
+        created_by: input.actor_id,
+      })
+
+      if (current) {
+        roleChanged.push(communityId)
+      } else {
+        added.push(communityId)
+      }
+
+      this.deps.eventRepo.create({
+        event_type: 'COMMUNITY_MEMBER_ADDED',
+        plane: 'CONTROL',
+        schema_version: 'v1',
+        community_id: communityId,
+        actor_type: actorType,
+        actor_id: input.actor_id,
+        correlation_id: `membership:${input.agent_id}:${communityId}`,
+        payload_json: {
+          agent_id: input.agent_id,
+          community_id: communityId,
+          role,
+          source,
+          ...(reason ? { reason } : {}),
+          ...(current ? { replaced_role: current.role } : {}),
+        },
+      })
+    }
+
+    if (input.remove_missing !== false) {
+      for (const membership of activeMemberships) {
+        if (normalizedTargets.has(membership.community_id)) continue
+
+        const removedMembership = await this.deps.membershipRepo.leave(
+          input.agent_id,
+          membership.community_id,
+        )
+        if (!removedMembership) continue
+
+        removed.push(membership.community_id)
+        this.deps.eventRepo.create({
+          event_type: 'COMMUNITY_MEMBER_LEFT',
+          plane: 'CONTROL',
+          schema_version: 'v1',
+          community_id: membership.community_id,
+          actor_type: actorType,
+          actor_id: input.actor_id,
+          correlation_id: `membership:${input.agent_id}:${membership.community_id}`,
+          payload_json: {
+            agent_id: input.agent_id,
+            community_id: membership.community_id,
+            source,
+            ...(reason ? { reason } : {}),
+          },
+        })
+      }
+    }
+
+    return {
+      agent_id: input.agent_id,
+      active_memberships: this.deps.membershipRepo.findActiveByAgent(input.agent_id),
+      updated: {
+        added,
+        removed,
+        role_changed: roleChanged,
+        blocked,
+        source,
+      },
+    }
   }
 
   async updateMembershipStatus(input: UpdateMembershipStatusInput): Promise<AgentCommunityMembership> {

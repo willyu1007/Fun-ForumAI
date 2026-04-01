@@ -10,12 +10,17 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
 function parseArgs(args) {
-  const result = { flags: {} };
+  const result = { flags: {}, buildArgs: [] };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg.startsWith('--')) {
       const key = arg.slice(2);
       const nextArg = args[i + 1];
+      if (key === 'build-arg' && nextArg && !nextArg.startsWith('--')) {
+        result.buildArgs.push(nextArg);
+        i++;
+        continue;
+      }
       if (nextArg && !nextArg.startsWith('--')) {
         result.flags[key] = nextArg;
         i++;
@@ -27,9 +32,13 @@ function parseArgs(args) {
   return result;
 }
 
-function dockerBuild(dockerfile, tag, context = '.') {
+function dockerBuild(dockerfile, tag, context = '.', buildArgs = []) {
   return new Promise((resolve, reject) => {
-    const args = ['build', '-f', dockerfile, '-t', tag, context];
+    const args = ['build', '-f', dockerfile, '-t', tag];
+    for (const buildArg of buildArgs) {
+      args.push('--build-arg', buildArg);
+    }
+    args.push(context);
     console.log(`Running: docker ${args.join(' ')}`);
     
     const child = spawn('docker', args, {
@@ -68,7 +77,7 @@ async function main() {
   }
   
   try {
-    await dockerBuild(dockerfile, tag, context || '.');
+    await dockerBuild(dockerfile, tag, context || '.', parsed.buildArgs);
     console.log(`\n[ok] Built: ${tag}`);
     return 0;
   } catch (err) {

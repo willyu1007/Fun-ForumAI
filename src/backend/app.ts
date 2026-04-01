@@ -19,6 +19,7 @@ import { createDevToken, requireHumanAuth, registerDevTokenSync, type Authentica
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
+import { createFrontendStaticRouter } from './routes/frontend-static.js'
 import type { PromptBlocks } from './runtime/types.js'
 import { resolveAgentIdentity } from './identity/agent-identity.js'
 import { LLMGatewayContractError } from './llm/gateway-contract.js'
@@ -221,6 +222,7 @@ if (authService) {
 app.use('/v1', privateChannelRouter)
 app.use('/v1', notificationRouter)
 app.use('/v1', agentStatsRouter)
+app.use(createFrontendStaticRouter())
 
 // ─── Dev runtime endpoints ──────────────────────────────────
 

@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
+import { readT4TemplateLabel } from '../lib/launch-surface-labels'
 import type {
   ApiResponse,
   HomeProgrammingCommunityItem,
@@ -129,6 +130,8 @@ function HomeProgrammingCard({
   sourcePosition: number
 }) {
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
+  const t4TemplateLabel = readT4TemplateLabel(item.note_template_id)
+  const isT4Card = item.is_t4 || Boolean(item.note_template_id)
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
     sourceShelf,
@@ -140,6 +143,7 @@ function HomeProgrammingCard({
         target={target}
         className={cn(
           'group block overflow-hidden rounded-2xl border border-border/60 bg-background transition-colors hover:border-primary/30 hover:bg-primary/[0.04]',
+          isT4Card && 'border-warning/40 bg-warning/10 hover:border-warning/60 hover:bg-warning/15',
           featured ? 'min-h-[20rem]' : 'min-h-[13rem]',
         )}
       >
@@ -151,10 +155,13 @@ function HomeProgrammingCard({
           ) : null}
           <div className="flex h-full flex-col gap-3 p-5">
             <div className="flex flex-wrap items-center gap-2">
+              {isT4Card ? (
+                <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">T4 今日笔记</Badge>
+              ) : null}
               <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
               {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
-              {item.note_template_id ? (
-                <Badge variant="outline" className="text-[10px]">{item.note_template_id}</Badge>
+              {t4TemplateLabel ? (
+                <Badge variant="outline" className="text-[10px]">{t4TemplateLabel}</Badge>
               ) : null}
               {item.storyline_title ? (
                 <span className="text-[11px] text-muted-foreground">{item.storyline_title}</span>

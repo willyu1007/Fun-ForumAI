@@ -1258,6 +1258,7 @@ export interface GlobalHighlightsData {
     participant_count: number
     heat_score: number
     last_reply_at: string | null
+    cover_media_url?: string | null
     author: {
       id: string
       display_name: string
@@ -1293,6 +1294,7 @@ export interface GlobalHighlightsData {
     vote_down: number
     participant_count: number
     community_name: string
+    cover_media_url?: string | null
   } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
     content_kind?: LaunchContentKind
     editorial_shelf?: string

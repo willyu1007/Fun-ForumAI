@@ -1,12 +1,21 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import {
+  agentConfigRepo,
+  agentRepo,
+  agentCommunityMembershipService,
   agentBioRefreshService,
   agentService,
   chatService,
   communityRepo,
+  forumWriteService,
+  homeProgrammingService,
   humanFollowRepo,
+  launchProgrammingOpsService,
   mediaContextProjectionRepo,
+  postRepo,
+  postScheduler,
+  runtimeLoop,
   postMediaRepo,
   roomRepo,
   sceneMediaBindingRepo,
@@ -15,6 +24,7 @@ import {
 import { config } from '../../lib/config.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import { countDevSeedFixtures, getDevSeedFixtureSet } from '../../dev/dev-seed-fixtures.js'
+import { runLaunchWarmStart, CURATED_LAUNCH_WARM_START_POSTS } from '../../launch/launch-warm-start.js'
 import { app, createTestCommunity } from './e2e-helpers.js'
 
 describe('E2E: Dev seed route', () => {
@@ -226,33 +236,118 @@ describe('E2E: Dev seed route', () => {
 
   it('POST /v1/dev/seed supports launch roster bootstrap without materializing content fixtures', async () => {
     const launchCounts = countDevSeedFixtures('launch')
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalMemberships = featureFlags.membershipsV1
 
-    const res = await request(app)
-      .post('/v1/dev/seed')
-      .send({ profile: 'launch' })
-    expect(res.status).toBe(200)
-    expect(res.body.data.profile).toBe('launch')
-    expect(res.body.data.counts.communities).toBe(launchCounts.communities)
-    expect(res.body.data.counts.agents).toBe(launchCounts.agents)
-    expect(res.body.data.counts.posts).toBe(0)
-    expect(res.body.data.counts.threads).toBe(0)
-    expect(res.body.data.counts.rooms).toBe(0)
-    expect(res.body.data.counts.votes).toBe(0)
-    expect(res.body.data.counts.media).toBe(0)
-    expect(res.body.data.ids.agents).toHaveLength(launchCounts.agents)
+    try {
+      const res = await request(app)
+        .post('/v1/dev/seed')
+        .send({ profile: 'launch' })
+      expect(res.status).toBe(200)
+      expect(res.body.data.profile).toBe('launch')
+      expect(res.body.data.counts.communities).toBe(launchCounts.communities)
+      expect(res.body.data.counts.agents).toBe(launchCounts.agents)
+      expect(res.body.data.counts.posts).toBe(0)
+      expect(res.body.data.counts.threads).toBe(0)
+      expect(res.body.data.counts.rooms).toBe(0)
+      expect(res.body.data.counts.votes).toBe(0)
+      expect(res.body.data.counts.media).toBe(0)
+      expect(res.body.data.ids.agents).toHaveLength(launchCounts.agents)
 
-    const firstAgentId = res.body.data.ids.agents[0] as string | undefined
-    expect(firstAgentId).toBeTruthy()
-    const seededAgent = agentService.getAgent(firstAgentId!)
-    expect(seededAgent.owner_id).toBe('platform-system-owner')
+      const firstAgentId = res.body.data.ids.agents[0] as string | undefined
+      expect(firstAgentId).toBeTruthy()
+      const seededAgent = agentService.getAgent(firstAgentId!)
+      expect(seededAgent.owner_id).toBe('platform-system-owner')
 
-    const profileRes = await request(app).get(`/v1/agents/${firstAgentId}/profile`)
-    expect(profileRes.status).toBe(200)
-    expect(profileRes.body.data.owner_id).toBeNull()
-    expect(profileRes.body.data.agent_kind).toBe('system')
-    expect(profileRes.body.data.surface_access.private_chat_enabled).toBe(false)
-    expect(profileRes.body.data.display_badges).toEqual(expect.any(Array))
-    expect(profileRes.body.data.display_badges.length).toBeGreaterThan(0)
+      const profileRes = await request(app).get(`/v1/agents/${firstAgentId}/profile`)
+      expect(profileRes.status).toBe(200)
+      expect(profileRes.body.data.owner_id).toBeNull()
+      expect(profileRes.body.data.agent_kind).toBe('system')
+      expect(profileRes.body.data.surface_access.private_chat_enabled).toBe(false)
+      expect(profileRes.body.data.display_badges).toEqual(expect.any(Array))
+      expect(profileRes.body.data.display_badges.length).toBeGreaterThan(0)
+
+      const activeMemberships = agentCommunityMembershipService.listActive(firstAgentId!)
+      expect(activeMemberships.length).toBeGreaterThan(0)
+      expect(activeMemberships.every((membership) => membership.status === 'ACTIVE')).toBe(true)
+
+      featureFlags.membershipsV1 = true
+      const writeResult = await forumWriteService.createPost({
+        actor_agent_id: firstAgentId!,
+        run_id: 'launch-membership-bootstrap-e2e',
+        community_id: activeMemberships[0]!.community_id,
+        title: '灰测启动前的节目位校准',
+        body: '先确认 membership 已落表，再放行 launch runtime 写入。',
+        tags: ['launch', 'bootstrap'],
+      })
+      expect(writeResult.post.author_agent_id).toBe(firstAgentId!)
+      expect(writeResult.post.community_id).toBe(activeMemberships[0]!.community_id)
+    } finally {
+      featureFlags.membershipsV1 = originalMemberships
+    }
+  })
+
+  it('launch warm-start materializes the minimum launch shelves without duplicating curated posts', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalMemberships = featureFlags.membershipsV1
+    const originalHomeProgramming = featureFlags.homeProgrammingV1
+    const originalProgrammingOps = featureFlags.programmingOpsV1
+
+    try {
+      featureFlags.membershipsV1 = true
+      featureFlags.homeProgrammingV1 = true
+      featureFlags.programmingOpsV1 = true
+
+      const seedRes = await request(app)
+        .post('/v1/dev/seed')
+        .send({ profile: 'launch' })
+      expect(seedRes.status).toBe(200)
+
+      const first = await runLaunchWarmStart({
+        agentRepo,
+        agentConfigRepo,
+        communityRepo,
+        postRepo,
+        membershipService: agentCommunityMembershipService,
+        forumWriteService,
+        homeProgrammingService,
+        launchProgrammingOpsService,
+        runtimeLoop,
+        postScheduler,
+      })
+
+      expect(first.verification.ok).toBe(true)
+      expect(first.created_posts.length + first.skipped_posts.length).toBe(CURATED_LAUNCH_WARM_START_POSTS.length)
+      expect(first.verification.shelf_counts.must_watch_today).toBeGreaterThanOrEqual(1)
+      expect(first.verification.shelf_counts.conflict_rising).toBeGreaterThanOrEqual(1)
+      expect(first.verification.shelf_counts.t4_today).toBeGreaterThanOrEqual(2)
+      expect(first.verification.shelf_counts.continue_storyline).toBeGreaterThanOrEqual(2)
+      expect(first.verification.shelf_counts.tonight_programming).toBeGreaterThanOrEqual(1)
+      expect(first.verification.observed_daily_outcomes.mainline_roots).toBeGreaterThanOrEqual(2)
+      expect(first.verification.observed_daily_outcomes.t4_notes).toBeGreaterThanOrEqual(2)
+      expect(first.verification.observed_daily_outcomes.continuity_callbacks).toBeGreaterThanOrEqual(2)
+
+      const second = await runLaunchWarmStart({
+        agentRepo,
+        agentConfigRepo,
+        communityRepo,
+        postRepo,
+        membershipService: agentCommunityMembershipService,
+        forumWriteService,
+        homeProgrammingService,
+        launchProgrammingOpsService,
+        runtimeLoop,
+        postScheduler,
+      })
+
+      expect(second.created_posts).toHaveLength(0)
+      expect(second.skipped_posts).toHaveLength(CURATED_LAUNCH_WARM_START_POSTS.length)
+      expect(second.verification.ok).toBe(true)
+    } finally {
+      featureFlags.membershipsV1 = originalMemberships
+      featureFlags.homeProgrammingV1 = originalHomeProgramming
+      featureFlags.programmingOpsV1 = originalProgrammingOps
+    }
   })
 
   it('DELETE /v1/dev/seed requires the local reset script', async () => {

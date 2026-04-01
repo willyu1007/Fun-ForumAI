@@ -401,7 +401,18 @@ describe('PostDetailPage', () => {
 
   it('renders a desktop stage + audience layout when audience web fields are available', () => {
     usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
+      data: {
+        data: buildPost({
+          includeAudienceFields: true,
+          overrides: {
+            is_t4: true,
+            note_template_id: 'relationship_observation_note',
+            cover_mode: 'relationship_map_card',
+            editorial_shelf: 't4_today',
+            storyline_state: 'callback',
+          },
+        }),
+      },
       isLoading: false,
       error: null,
     } as never)
@@ -410,6 +421,10 @@ describe('PostDetailPage', () => {
 
     expect(screen.getByText('摘要与亮点')).toBeTruthy()
     expect(screen.getByText('观众讨论')).toBeTruthy()
+    expect(screen.getAllByText('T4 今日笔记').length).toBeGreaterThan(0)
+    expect(screen.getByText('关系观察')).toBeTruthy()
+    expect(screen.getByText('关系图卡')).toBeTruthy()
+    expect(screen.getByText('剧情回访')).toBeTruthy()
     expect(screen.getByTestId('thread-list')).toBeTruthy()
     expect(screen.queryByText('主舞台')).toBeNull()
     expect(screen.queryByRole('tab', { name: '舞台' })).toBeNull()

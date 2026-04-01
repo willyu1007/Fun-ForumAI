@@ -49,6 +49,7 @@ import {
 } from './dev-seed-fixtures.js'
 import { buildFallbackMediaSemanticSummary } from '../media/media-semantic-service.js'
 import type { LaunchSystemIdentityConfig } from '../launch/system-roster.js'
+import { bootstrapLaunchRosterMemberships } from '../launch/launch-membership-bootstrap.js'
 
 type SeededAgentRef = {
   id: string
@@ -1027,31 +1028,40 @@ export async function runDevSeed(input: {
     agentIds.push(ensured.agent.id)
   }
 
-  const membershipsByAgent = new Map<string, Set<string>>()
-  const rememberMembership = (agentId: string, communityId: string) => {
-    const set = membershipsByAgent.get(agentId) ?? new Set<string>()
-    set.add(communityId)
-    membershipsByAgent.set(agentId, set)
-  }
+  if (profile === 'launch') {
+    await bootstrapLaunchRosterMemberships({
+      agentRepo,
+      agentConfigRepo,
+      communityRepo,
+      membershipService: agentCommunityMembershipService,
+    })
+  } else {
+    const membershipsByAgent = new Map<string, Set<string>>()
+    const rememberMembership = (agentId: string, communityId: string) => {
+      const set = membershipsByAgent.get(agentId) ?? new Set<string>()
+      set.add(communityId)
+      membershipsByAgent.set(agentId, set)
+    }
 
-  for (const postSpec of fixtures.posts) {
-    const community = communitiesBySeedKey.get(postSpec.community_seed_key)
-    const agent = agentsBySeedKey.get(postSpec.agent_seed_key)
-    if (community && agent) rememberMembership(agent.id, community.id)
-  }
-  for (const threadSpec of fixtures.threads) {
-    const postSpec = fixtures.posts.find((item) => item.seed_key === threadSpec.post_seed_key)
-    const community = postSpec ? communitiesBySeedKey.get(postSpec.community_seed_key) : null
-    const agent = agentsBySeedKey.get(threadSpec.agent_seed_key)
-    if (community && agent) rememberMembership(agent.id, community.id)
-  }
-  for (const [agentId, communityIds] of membershipsByAgent.entries()) {
-    await agentCommunityMembershipService.patchMemberships({
-      agent_id: agentId,
-      add: [...communityIds],
-      remove: [],
-      actor_user_id: 'dev-seed',
-    }).catch(() => undefined)
+    for (const postSpec of fixtures.posts) {
+      const community = communitiesBySeedKey.get(postSpec.community_seed_key)
+      const agent = agentsBySeedKey.get(postSpec.agent_seed_key)
+      if (community && agent) rememberMembership(agent.id, community.id)
+    }
+    for (const threadSpec of fixtures.threads) {
+      const postSpec = fixtures.posts.find((item) => item.seed_key === threadSpec.post_seed_key)
+      const community = postSpec ? communitiesBySeedKey.get(postSpec.community_seed_key) : null
+      const agent = agentsBySeedKey.get(threadSpec.agent_seed_key)
+      if (community && agent) rememberMembership(agent.id, community.id)
+    }
+    for (const [agentId, communityIds] of membershipsByAgent.entries()) {
+      await agentCommunityMembershipService.patchMemberships({
+        agent_id: agentId,
+        add: [...communityIds],
+        remove: [],
+        actor_user_id: 'dev-seed',
+      }).catch(() => undefined)
+    }
   }
 
   const postsBySeedKey = new Map<string, Post>()

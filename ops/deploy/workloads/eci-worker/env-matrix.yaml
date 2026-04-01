@@ -1,0 +1,49 @@
+version: 1
+workload_id: eci-worker
+
+shared_env_files:
+  staging:
+    - env/values/staging.yaml
+    - env/values/staging-launch.yaml
+  prod:
+    - env/values/prod.yaml
+    - env/values/prod-launch.yaml
+
+required_env:
+  common:
+    - APP_ENV
+    - SERVICE_NAME
+    - PORT
+    - DATABASE_URL
+    - JWT_SECRET
+    - SERVICE_AUTH_SECRET
+    - LLM_PROVIDER
+    - LLM_MODEL
+    - LLM_BASE_URL
+    - DASHSCOPE_API_KEY
+    - RUNTIME_QUEUE_BACKEND
+    - RUNTIME_LEADER_BACKEND
+    - RUNTIME_REDIS_URL
+    - SSE_BROADCAST_BACKEND
+    - SSE_REDIS_URL
+    - FF_RUNTIME_FEATURES_V1
+    - FF_HOME_PROGRAMMING_V1
+    - FF_PROGRAMMING_OPS_V1
+    - FF_MEMBERSHIPS_V1
+    - FF_STAGE_ROLE_RUNTIME_V1
+    - FF_AFTERSHOW_EVENT_PIPELINE_V1
+  role_overrides:
+    RUNTIME_ENABLED: "true"
+    PORT: "4000"
+
+secret_refs:
+  - DATABASE_URL
+  - JWT_SECRET
+  - SERVICE_AUTH_SECRET
+  - DASHSCOPE_API_KEY
+  - RUNTIME_REDIS_URL
+  - SSE_REDIS_URL
+
+notes:
+  - Worker and web consume the same immutable image ref.
+  - Worker does not expose a public listener even though `/health` remains available inside the container group.

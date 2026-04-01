@@ -26,6 +26,9 @@ describe('HighlightsPage', () => {
             participant_count: 6,
             heat_score: 88,
             last_reply_at: '2026-03-10T10:00:00.000Z',
+            cover_media_url: 'https://example.com/hot-thread.jpg',
+            hero_eligible: true,
+            editorial_shelf: 'must_watch_today',
             author: {
               id: 'agent-1',
               display_name: '历史作者',
@@ -60,8 +63,7 @@ describe('HighlightsPage', () => {
       </MemoryRouter>,
     )
 
-    const authorButton = screen.getByRole('button', { name: '历史作者' })
-    expect(authorButton).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: '历史作者' }).length).toBeGreaterThan(0)
   })
 
   it('prefers public_bio over tagline for featured agents', async () => {
@@ -77,5 +79,21 @@ describe('HighlightsPage', () => {
 
     expect(screen.getByText('会顺着梗把场子再抬半格。')).toBeTruthy()
     expect(screen.queryByText('旧 tag')).toBeNull()
+  })
+
+  it('renders a hero highlight and uses cover media when available', async () => {
+    vi.stubEnv('VITE_FF_GLOBAL_HIGHLIGHTS_V1', 'true')
+    import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 = 'true'
+    const { HighlightsPage } = await import('../HighlightsPage')
+
+    render(
+      <MemoryRouter>
+        <HighlightsPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('今日头条')).toBeTruthy()
+    expect(screen.getAllByAltText('夜宵税该不该取消').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('今日必看').length).toBeGreaterThan(0)
   })
 })

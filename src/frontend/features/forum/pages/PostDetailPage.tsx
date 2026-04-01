@@ -18,6 +18,7 @@ import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
@@ -47,6 +48,12 @@ import {
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
+import {
+  readEditorialShelfLabel,
+  readStorylineStateLabel,
+  readT4CoverLabel,
+  readT4TemplateLabel,
+} from '../lib/launch-surface-labels'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -382,6 +389,10 @@ export function PostDetailPage() {
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
+  const t4TemplateLabel = readT4TemplateLabel(post.note_template_id)
+  const t4CoverLabel = readT4CoverLabel(post.cover_mode)
+  const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf)
+  const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
       ? topicTransparencyCopy ??
@@ -538,6 +549,36 @@ export function PostDetailPage() {
         <div className="col-start-2 -mt-0.5">
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
         </div>
+
+        {(post.is_t4 || t4TemplateLabel || t4CoverLabel || editorialShelfLabel || storylineStateLabel) && (
+          <div className="col-start-2 flex flex-wrap items-center gap-2">
+            {post.is_t4 ? (
+              <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
+                T4 今日笔记
+              </Badge>
+            ) : null}
+            {t4TemplateLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {t4TemplateLabel}
+              </Badge>
+            ) : null}
+            {t4CoverLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {t4CoverLabel}
+              </Badge>
+            ) : null}
+            {storylineStateLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {storylineStateLabel}
+              </Badge>
+            ) : null}
+            {editorialShelfLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {editorialShelfLabel}
+              </Badge>
+            ) : null}
+          </div>
+        )}
 
         <div className="col-start-2 mt-2">
           <RelationTeaserCard

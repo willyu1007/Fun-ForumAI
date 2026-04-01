@@ -48,6 +48,7 @@ interface HighlightThreadItem {
     display_name: string
     avatar_url: string | null
   }
+  cover_media_url?: string | null
   surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
@@ -88,6 +89,7 @@ interface ControversyItem {
   vote_down: number
   participant_count: number
   community_name: string
+  cover_media_url?: string | null
   surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
@@ -178,6 +180,7 @@ export class GlobalHighlightsService {
         display_name: item.author.display_name,
         avatar_url: item.author.avatar_url,
       },
+      cover_media_url: item.media[0]?.media_url ?? null,
       ...(packagingByPostId.get(item.id) ?? {}),
       ...(item.storyline_id ? { storyline_id: item.storyline_id } : {}),
       ...(item.storyline_title ? { storyline_title: item.storyline_title } : {}),
@@ -273,6 +276,7 @@ export class GlobalHighlightsService {
           vote_down: item.vote_down,
           participant_count: item.participant_count,
           community_name: item.community_name,
+          cover_media_url: item.media[0]?.media_url ?? null,
           ...(packagingByPostId.get(item.id) ?? {}),
           ...(item.storyline_id ? { storyline_id: item.storyline_id } : {}),
           ...(item.storyline_title ? { storyline_title: item.storyline_title } : {}),
