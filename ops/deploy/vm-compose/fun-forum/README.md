@@ -7,6 +7,9 @@ Canonical host layout for the current cloud deployment mainline:
 - Current release state:
   - `releases/current.json`
   - `releases/history.jsonl`
+- Repo-side desired release intent:
+  - `ops/deploy/release-intents/<env>/desired.json`
+  - `ops/deploy/release-intents/<env>/history.jsonl`
 
 Files in this directory are the repo-side source of truth for the host copies:
 
@@ -26,6 +29,14 @@ Files in this directory are the repo-side source of truth for the host copies:
 - Runtime application env written to `/srv/apps/fun-forum/.env`
 
 ## Deployment examples
+
+Before deploying later than the image publish event, resolve the desired release from the repo:
+
+```bash
+node ops/deploy/scripts/release-intent.mjs show --env staging
+# or replace the current desired release after an interrupted rollout:
+node ops/deploy/scripts/release-intent.mjs set --env staging --sha <40-char-commit> --db-compat backwards --approved-by <operator> --force-supersede
+```
 
 Staging requires the migrate step:
 
@@ -75,4 +86,6 @@ cd /srv/apps/fun-forum
 
 - Mutable delivery aliases (`main`, `staging`, `prod`, `latest`) are rejected on purpose.
 - `deploy.sh` never auto-rolls back on a smoke failure.
+- The repo-side desired release does not replace host-side `releases/current.json`; it only answers which immutable image ref should be applied next.
+- `mark-target --status applied` must include `--image-ref "$(node ops/deploy/scripts/release-intent.mjs resolve --env <env>)"` so repo-side progress cannot drift away from the approved immutable image.
 - Future multi-ECS rollout requires Redis-backed SSE fanout and verified ALB/Caddy streaming timeouts before a second host is introduced.

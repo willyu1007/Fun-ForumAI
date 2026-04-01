@@ -56,6 +56,29 @@ export function loadEnvironmentConfig(envId) {
   return loadYAML(`ops/deploy/environments/${envId}.yaml`);
 }
 
+export function resolveReleaseIntentPaths(envId) {
+  const relDir = `ops/deploy/release-intents/${envId}`;
+  const relDesired = `${relDir}/desired.json`;
+  const relHistory = `${relDir}/history.jsonl`;
+  return {
+    relDir,
+    relDesired,
+    relHistory,
+    absDir: resolve(ROOT, relDir),
+    absDesired: resolve(ROOT, relDesired),
+    absHistory: resolve(ROOT, relHistory),
+  };
+}
+
+export function loadReleaseIntent(envId) {
+  const paths = resolveReleaseIntentPaths(envId);
+  const intent = loadJSON(paths.relDesired);
+  if (!intent || typeof intent !== 'object') {
+    return null;
+  }
+  return intent;
+}
+
 export function validateEnvContract(envId) {
   const checks = [];
 

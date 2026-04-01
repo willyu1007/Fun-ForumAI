@@ -25,6 +25,7 @@
 Canonical repo-side source:
 
 - `ops/deploy/vm-compose/fun-forum/`
+- `ops/deploy/release-intents/`
 
 ## Operator prerequisites
 
@@ -37,6 +38,16 @@ Canonical repo-side source:
   - `ACR_IMAGE_REPOSITORY=<acr-login-server>/<namespace>/app` when using `--sha`
 
 ## Staging rollout
+
+Record or inspect the repo-side desired release first:
+
+```bash
+node ops/deploy/scripts/release-intent.mjs show --env staging
+# or:
+node ops/deploy/scripts/release-intent.mjs set --env staging --sha <40-char-commit> --db-compat backwards --approved-by <operator>
+# if replacing a partially applied / attention_required desired release:
+node ops/deploy/scripts/release-intent.mjs set --env staging --sha <40-char-commit> --db-compat backwards --approved-by <operator> --force-supersede
+```
 
 Staging always runs the migrate step:
 
@@ -55,6 +66,10 @@ cd /srv/apps/fun-forum
 ## Prod rollout
 
 Current prod is still a single ECS web host, so the rollout remains a single-host operation after human approval:
+
+```bash
+node ops/deploy/scripts/release-intent.mjs show --env prod
+```
 
 ```bash
 cd /srv/apps/fun-forum
@@ -78,6 +93,12 @@ cd /srv/apps/fun-forum
 6. Loopback health check on `http://127.0.0.1:14000/health`
 7. `./smoke.sh`
 8. Write `releases/current.json` and append to `releases/history.jsonl`
+9. Mark repo-side rollout progress:
+
+```bash
+IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env <staging|prod>)"
+node ops/deploy/scripts/release-intent.mjs mark-target --env <staging|prod> --target ecs_web --status applied --image-ref "$IMAGE_REF"
+```
 
 ## Rollback
 

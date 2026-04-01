@@ -3,7 +3,7 @@
 ## Status
 
 - Current status: `repo-implemented`
-- Last updated: 2026-03-29
+- Last updated: 2026-04-01
 
 ## What changed
 
@@ -31,5 +31,14 @@
   - `prisma.config.ts` 改为“存在 dotenv 时再加载”
   - runtime 阶段保留完整 `pnpm install --frozen-lockfile`，确保 deploy-time migrate 需要的本地 `prisma` 包和 workspace 依赖都存在，再显式执行 `pnpm db:generate`
   后续 staging 必须先消费包含该修复的新 immutable image，再重试 `deploy.sh`。
+- 2026-04-01 增加了 repo-side desired release 层，专门解决“镜像已发布，但 ECS / ECI 不会立刻替换，之后容易忘记目标 sha”的问题：
+  - 新增 `ops/deploy/scripts/release-intent.mjs`
+  - 新增 `ops/deploy/release-intents/README.md`
+  - 新约定为 `ops/deploy/release-intents/<env>/desired.json` + `history.jsonl`
+  - `deploy.mjs` 在未显式传 `--sha/--image-ref` 时，会自动消费当前环境的 desired release
+  - 该层只记录“下一次该部署谁”，不替代宿主机 `/srv/apps/fun-forum/releases/current.json`
+  - 2026-04-01 晚些时候又补上两个 guardrail，避免 repo-side rollout 状态被误写：
+    - `set` 如果要替换一个 `partially_applied` / `attention_required` 的 desired release，必须显式传 `--force-supersede`
+    - `mark-target --status applied` 必须显式传 `--image-ref`，且该值必须和当前 desired release 的 `image_ref` 一致；脚本会把它写入 target-level `applied_image_ref`
 - 需要把 canonical host files 同步到真实 ECS 主机，并在真实 ACR / staging 环境完成首次人工 rollout。
 - 未来如果扩展到 2 台及以上 ECS，需要单开执行面工作，把 ALB/Caddy 长连接配置和 Redis SSE 广播一并纳入落地验证。

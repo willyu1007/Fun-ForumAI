@@ -11,6 +11,7 @@ import {
   parseArgs,
   loadJSON,
   loadEnvironmentConfig,
+  loadReleaseIntent,
   validateEnvContract,
   validatePackagingTarget,
   resolveServices,
@@ -44,7 +45,7 @@ function renderDeployCommand(target) {
   return `cd ${quoteShell(target.appDir)} && ${envPrefix.join(' ')} ${args.join(' ')}`;
 }
 
-function printPlan(envId, envCfg, envFile, envChecks, servicePlans, deployConfig) {
+function printPlan(envId, envCfg, envFile, envChecks, servicePlans, deployConfig, releaseIntent) {
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║       ECS DEPLOYMENT PLAN (VM)           ║');
   console.log('╚══════════════════════════════════════════╝\n');
@@ -60,6 +61,18 @@ function printPlan(envId, envCfg, envFile, envChecks, servicePlans, deployConfig
   }
   if (envFile?.rollout_strategy) {
     console.log(`Rollout:       ${envFile.rollout_strategy}`);
+  }
+
+  if (releaseIntent) {
+    console.log('\nDesired release intent:');
+    console.log(`  image ref:    ${releaseIntent.image_ref}`);
+    console.log(`  git sha:      ${releaseIntent.git_sha}`);
+    console.log(`  status:       ${releaseIntent.status}`);
+    console.log(`  approved at:  ${releaseIntent.approved_at ?? '<missing>'}`);
+    console.log(`  approved by:  ${releaseIntent.approved_by ?? '<missing>'}`);
+    const targetSummaries = Object.entries(releaseIntent.targets ?? {})
+      .map(([targetId, targetState]) => `${targetId}=${targetState?.status ?? 'pending'}`);
+    console.log(`  targets:      ${targetSummaries.length > 0 ? targetSummaries.join(', ') : '<missing>'}`);
   }
 
   console.log('\nRepo-side checks:');
@@ -112,7 +125,7 @@ function main() {
   const opts = parseArgs(process.argv.slice(2));
 
   if (opts.help) {
-    console.log(`
+  console.log(`
 deploy.mjs — ECS host deployment planner
 
 Usage:
@@ -128,6 +141,7 @@ Options:
   --db-compat <mode>       backwards | incompatible
   --db-plan <ticket>       Required when --db-compat incompatible
   --notes <text>           Optional release notes written into the release record
+  (no image args)          If ops/deploy/release-intents/<env>/desired.json exists, use its image_ref
   --help                   Show this help
 `);
     return 0;
@@ -161,6 +175,7 @@ Options:
 
   const envChecks = validateEnvContract(opts.env);
   const envFile = loadEnvironmentConfig(opts.env);
+  const releaseIntent = !opts['image-ref'] && !opts.sha ? loadReleaseIntent(opts.env) : null;
   const pkgInfo = validatePackagingTarget();
   const serviceInfo = resolveServices(deployConfig, pkgInfo, opts.service);
   if (serviceInfo.error) {
@@ -176,8 +191,17 @@ Options:
 
   let servicePlans;
   try {
+    const effectiveOpts = releaseIntent
+      ? {
+          ...opts,
+          'image-ref': releaseIntent.image_ref,
+          'db-compat': opts['db-compat'] ?? releaseIntent.db_compat,
+          'db-plan': opts['db-plan'] ?? releaseIntent.db_plan,
+          notes: opts.notes ?? releaseIntent.notes,
+        }
+      : opts;
     servicePlans = serviceInfo.services.map((service) => {
-      const target = resolveVmTarget(service, opts);
+      const target = resolveVmTarget(service, effectiveOpts);
       const issues = listMissingVmFields(target);
       if (opts.env === 'staging' && !target.withMigrate) {
         issues.push('staging requires --with-migrate');
@@ -192,7 +216,7 @@ Options:
     return 1;
   }
 
-  printPlan(opts.env, envCfg, envFile, envChecks, servicePlans, deployConfig);
+  printPlan(opts.env, envCfg, envFile, envChecks, servicePlans, deployConfig, releaseIntent);
 
   if (!opts['dry-run']) {
     console.log('\n[info] This script plans the rollout only. A human operator must execute deploy.sh on the target ECS host.');

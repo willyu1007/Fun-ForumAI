@@ -83,3 +83,55 @@
       - Result: 通过，修复后的运行镜像构建成功；此前 staging 首发中暴露的 `prisma.config.ts` 缺失和 runtime 阶段 Prisma 配置解析失败已在镜像层处理完成。
     - `docker run --rm --entrypoint sh llm-forum:t130-prisma-config-fix -c 'test -f /app/prisma.config.ts && echo prisma-config-present && test -f /app/prisma/schema.prisma && echo prisma-schema-present'`
       - Result: 输出 `prisma-config-present` 与 `prisma-schema-present`，确认运行镜像已包含 Prisma 配置与 schema。
+- 2026-04-01:
+  - Node syntax:
+    - `node --check ops/deploy/scripts/_shared.mjs && node --check ops/deploy/scripts/deploy.mjs && node --check ops/deploy/scripts/release-intent.mjs`
+      - Result: 通过。
+  - Release intent CLI:
+    - `ACR_IMAGE_REPOSITORY=registry.example.com/team/app node ops/deploy/scripts/release-intent.mjs set --env staging --sha 1111111111111111111111111111111111111111 --db-compat backwards --approved-by verifier --notes 'verify release intent' --targets ecs_web,eci_worker`
+      - Result: 生成 `ops/deploy/release-intents/staging/desired.json`，记录 immutable image ref、`db_compat` 和两个 target 的初始 `pending` 状态。
+    - `node ops/deploy/scripts/release-intent.mjs show --env staging`
+      - Result: 正常输出当前 desired release 的 `image_ref / git_sha / approved_at / approved_by / targets`。
+    - `node ops/deploy/scripts/release-intent.mjs resolve --env staging`
+      - Result: 仅输出 immutable `image_ref`，可直接供 shell / planner 消费。
+    - `node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target ecs_web --status applied --notes 'web ok'`
+      - Result: 修复前允许在未声明实际部署镜像的情况下直接标记 `applied`；该行为后续被收紧。
+    - `node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target eci_worker --status applied --notes 'worker ok'`
+      - Result: 修复前允许直接把 desired release 标成 `fulfilled`；该行为后续被收紧，必须显式带上与 desired release 一致的 `--image-ref`。
+  - Deploy planner intent fallback:
+    - `node ops/deploy/scripts/deploy.mjs --env staging --service llm-forum --with-migrate --dry-run`
+      - Result: 在未显式传 `--sha/--image-ref` 的情况下，planner 自动读取当前环境 `ops/deploy/release-intents/staging/desired.json`，并输出基于该 immutable image ref 的 ECS host command。
+  - Cleanup:
+    - `rm -rf ops/deploy/release-intents/staging`
+      - Result: 删除本地验证使用的 dummy staging intent，避免把假的运营状态留在 repo 中。
+  - Governance:
+    - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+      - Result: `[ok] Lint passed.`
+- 2026-04-01（release intent guardrails hardening）:
+  - Node syntax:
+    - `node --check ops/deploy/scripts/_shared.mjs ops/deploy/scripts/deploy.mjs ops/deploy/scripts/release-intent.mjs`
+      - Result: 通过。
+  - Release intent negative cases:
+    - `ACR_IMAGE_REPOSITORY=registry.example.com/team/app node ops/deploy/scripts/release-intent.mjs set --env staging --sha 1111111111111111111111111111111111111111 --db-compat backwards --approved-by verifier --targets ecs_web,eci_worker`
+      - Result: 成功创建 dummy desired release。
+    - `node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target ecs_web --status applied`
+      - Result: 按预期失败，报错 `--image-ref is required when --status applied.`。
+    - `node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target ecs_web --status applied --image-ref registry.example.com/team/app:sha-2222222222222222222222222222222222222222`
+      - Result: 按预期失败，报错 `--image-ref ... does not match current desired release ...`。
+  - Release intent positive path:
+    - `IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env staging)" && node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target ecs_web --status applied --image-ref "$IMAGE_REF" --notes 'web ok'`
+      - Result: 成功写入 `targets.ecs_web.applied_image_ref`，top-level status 变为 `partially_applied`。
+  - In-flight supersede guard:
+    - `ACR_IMAGE_REPOSITORY=registry.example.com/team/app node ops/deploy/scripts/release-intent.mjs set --env staging --sha 2222222222222222222222222222222222222222 --db-compat backwards --approved-by verifier`
+      - Result: 按预期失败，报错当前 desired release 已经 `partially_applied`，需要 `--force-supersede`。
+    - `ACR_IMAGE_REPOSITORY=registry.example.com/team/app node ops/deploy/scripts/release-intent.mjs set --env staging --sha 2222222222222222222222222222222222222222 --db-compat backwards --approved-by verifier --force-supersede`
+      - Result: 成功 supersede 旧 desired release，并把新 immutable image ref 记录为当前 desired release。
+  - Deploy planner intent fallback:
+    - `node ops/deploy/scripts/deploy.mjs --env staging --service llm-forum --with-migrate --dry-run`
+      - Result: 仍然可以在未显式传 `--sha/--image-ref` 时自动读取当前 desired release，并输出基于该 immutable image ref 的 ECS host command。
+  - Cleanup:
+    - `rm -rf ops/deploy/release-intents/staging`
+      - Result: 清理 dummy release intent，避免把测试运营状态留在 repo 中。
+  - Governance:
+    - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+      - Result: `[ok] Lint passed.`

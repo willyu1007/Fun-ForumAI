@@ -35,6 +35,32 @@
   - `db_plan`
   - `notes`
 
+## Repo-side desired release intent
+
+- 为避免“镜像已发布，但 ECS / ECI 延后替换时忘记该用哪个 immutable image ref”，repo 侧增加独立的 desired release 记录层：
+  - `ops/deploy/release-intents/<env>/desired.json`
+  - `ops/deploy/release-intents/<env>/history.jsonl`
+- 该层回答的是：
+  - `desired.json`：这个环境下一次应该部署哪个 immutable image ref
+  - `history.jsonl`：这个 desired release 如何被批准、刷新、替换、完成
+- 它不替代宿主机 `/srv/apps/fun-forum/releases/current.json`：
+  - repo-side desired release = 下一次该部署谁
+  - host-side current release = 这台 ECS 现在实际跑谁
+- desired release record 最小 schema 固定为：
+  - `image_ref`
+  - `git_sha`
+  - `published_at`
+  - `approved_at`
+  - `approved_by`
+  - `db_compat`
+  - `db_plan`
+  - `notes`
+  - `targets.ecs_web.status`
+  - `targets.eci_worker.status`
+  - `status`
+- `set` 若要替换一个已处于 `partially_applied` / `attention_required` 的 desired release，必须显式传 `--force-supersede`；否则拒绝覆盖当前 in-flight rollout。
+- `mark-target --status applied` 必须同时提供 `--image-ref`，并且该值必须与当前 desired release 的 `image_ref` 完全一致，避免 repo-side 记录把错误镜像误标为已部署。
+
 ## Reverse proxy and loopback contract
 
 - 共享反向代理默认选 `Caddy`
@@ -78,20 +104,24 @@
   - `--sha <40-char-commit>`
 - `main`、`staging`、`prod`、`latest` 这些 mutable alias 一律拒绝。
 - 之所以冻结为 immutable-only，是因为 `T-129` 当前仍被 ACR `TagImmutability=true` 阻塞，mutable alias 不能作为可靠的运行时真值。
+- repo-side desired release 也只记录 immutable image ref；如果需要人类可读的辅助 tag，只能作为旁路 metadata，不能替代 canonical `sha-<commit>`。
 
 ## Release sequence
 
 ECS web 的发布顺序冻结为：
 
-1. 发布人手动在目标宿主机执行发布脚本；GitHub Actions 不直接连接 ECS。
-2. 宿主机校验 `.env` 与所需文件存在。
-3. 使用只读 ACR 凭据执行 `docker login`。
-4. `docker compose pull web migrate`
-5. 按需执行 `docker compose run --rm migrate`
-6. `docker compose up -d --no-deps web`
-7. `curl http://127.0.0.1:14000/health` 通过。
-8. 执行 `./smoke.sh`
-9. 将发布结果写入 `releases/current.json` 与 `releases/history.jsonl`
+1. `Publish Image` 产出 immutable `sha-<commit>` 镜像。
+2. 人工将目标环境的 desired release 写入 `ops/deploy/release-intents/<env>/desired.json`。
+3. 发布人手动在目标宿主机执行发布脚本；GitHub Actions 不直接连接 ECS。
+4. 宿主机校验 `.env` 与所需文件存在。
+5. 使用只读 ACR 凭据执行 `docker login`。
+6. `docker compose pull web migrate`
+7. 按需执行 `docker compose run --rm migrate`
+8. `docker compose up -d --no-deps web`
+9. `curl http://127.0.0.1:14000/health` 通过。
+10. 执行 `./smoke.sh`
+11. 将发布结果写入 `releases/current.json` 与 `releases/history.jsonl`
+12. 在 repo-side desired release 中把 `ecs_web` 标为 `applied`；后续 worker 消费同一个 `image_ref`
 
 ## Rollback contract
 
