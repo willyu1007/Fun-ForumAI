@@ -1,8 +1,8 @@
-# 00 Overview
+# 00 Overview — backend-typecheck-baseline-repair-v1 (T-920)
 
 ## Status
-- State: in-progress
-- Next step: decide whether to commit the now-green backend typecheck/lint/test repair and keep `T-920` open only if follow-up cleanup is requested.
+- State: done
+- Next step: 已归档；后续若再次出现 backend type drift，单独开新任务包而不是复用本任务。
 
 ## Goal
 Restore a clean repository-wide `pnpm typecheck` by fixing the current backend thread/route/type-contract drift without changing product behavior beyond what the types already require.
@@ -13,14 +13,7 @@ Restore a clean repository-wide `pnpm typecheck` by fixing the current backend t
 - Reintroduce legacy `comment` semantics where thread/turn contracts have already replaced them.
 
 ## Context
-The latest `main` passes targeted frontend verification, but CI still fails in the `TypeScript typecheck` step before ESLint runs. Current diagnostics cluster around:
-
-- legacy `comment`-shaped test fixtures that no longer match thread/turn contracts
-- strict JSON typing for `RouteHandoff`
-- `string | string[]` request input handling in `data-plane`
-- null/undefined and dependency contract mismatches in runtime/relation services
-
-These failures block the `check` job in GitHub Actions and therefore prevent CI from reaching the `ESLint` step.
+本任务修复了 backend thread/route/type-contract drift，并恢复了仓库级 `pnpm typecheck` 基线。后续首发灰测闭环也已在此基线上重新跑通 `lint/typecheck/test/build` 与 launch readiness gate。
 
 ## Acceptance criteria (high level)
 - [x] `pnpm typecheck` completes with zero errors.

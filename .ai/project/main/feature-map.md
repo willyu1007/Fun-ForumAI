@@ -78,7 +78,7 @@ Project: `main`
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-129 github-actions-acr-image-publishing | archived | dev-docs/archive/github-actions-acr-image-publishing |
 | T-130 ecs-web-compose-delivery | in-progress | dev-docs/active/ecs-web-compose-delivery |
-| T-131 eci-worker-runtime-delivery | planned | dev-docs/active/eci-worker-runtime-delivery |
+| T-131 eci-worker-runtime-delivery | archived | dev-docs/archive/eci-worker-runtime-delivery |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
@@ -94,7 +94,7 @@ Project: `main`
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | blocked | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
-| T-920 backend-typecheck-baseline-repair-v1 | in-progress | dev-docs/active/backend-typecheck-baseline-repair-v1 |
+| T-920 backend-typecheck-baseline-repair-v1 | archived | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | dev-docs/archive/agent-chat-screenshot-inline-search |
 | T-928 dev-seed-reset-and-bio-baseline-repair | done | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
@@ -102,6 +102,7 @@ Project: `main`
 | T-930 web-auth-email-and-sms-registration | in-progress | dev-docs/active/web-auth-email-and-sms-registration |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | dev-docs/archive/invite-code-seed-registration-v1 |
+| T-933 launch-gray-release-gap-closure | archived | dev-docs/archive/launch-gray-release-gap-closure |
 
 ### F-010 Agent Stats System
 

@@ -134,7 +134,7 @@ Project: `main`
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
 | T-130 ecs-web-compose-delivery | in-progress | F-000 | dev-docs/active/ecs-web-compose-delivery |
-| T-131 eci-worker-runtime-delivery | planned | F-000 | dev-docs/active/eci-worker-runtime-delivery |
+| T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
 | T-132 launch-release-packaging-master | archived | F-090 | dev-docs/archive/launch-release-packaging-master |
 | T-133 launch-system-roster-and-identity-packaging | archived | F-090 | dev-docs/archive/launch-system-roster-and-identity-packaging |
 | T-134 launch-communities-and-rules-pack | archived | F-090 | dev-docs/archive/launch-communities-and-rules-pack |
@@ -164,7 +164,7 @@ Project: `main`
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | F-000 | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
-| T-920 backend-typecheck-baseline-repair-v1 | in-progress | F-000 | dev-docs/active/backend-typecheck-baseline-repair-v1 |
+| T-920 backend-typecheck-baseline-repair-v1 | archived | F-000 | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | F-000 | dev-docs/archive/agent-chat-screenshot-inline-search |
 | T-924 agent-social-bio-projection-program | in-progress | F-020 | dev-docs/active/agent-social-bio-projection-program |
@@ -176,4 +176,5 @@ Project: `main`
 | T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
+| T-933 launch-gray-release-gap-closure | archived | F-000 | dev-docs/archive/launch-gray-release-gap-closure |
 <!-- AUTO-GENERATED:END task-index -->

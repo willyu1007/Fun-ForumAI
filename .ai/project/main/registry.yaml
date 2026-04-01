@@ -1272,11 +1272,11 @@ tasks:
     updated: 2026-03-29
   - id: T-131
     slug: eci-worker-runtime-delivery
-    status: planned
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/eci-worker-runtime-delivery
-    updated: 2026-03-28
+    dev_docs_path: dev-docs/archive/eci-worker-runtime-delivery
+    updated: 2026-04-01
   - id: T-132
     slug: launch-release-packaging-master
     status: archived
@@ -1508,11 +1508,11 @@ tasks:
     updated: 2026-03-27
   - id: T-920
     slug: backend-typecheck-baseline-repair-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/backend-typecheck-baseline-repair-v1
-    updated: 2026-03-27
+    dev_docs_path: dev-docs/archive/backend-typecheck-baseline-repair-v1
+    updated: 2026-04-01
   - id: T-922
     slug: vote-target-migration-and-semantic-convergence-v1
     status: archived
@@ -1598,3 +1598,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/invite-code-seed-registration-v1
     updated: 2026-03-31
+  - id: T-933
+    slug: launch-gray-release-gap-closure
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/launch-gray-release-gap-closure
+    updated: 2026-04-01

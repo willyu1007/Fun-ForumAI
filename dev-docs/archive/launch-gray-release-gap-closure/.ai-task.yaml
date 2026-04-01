@@ -1,0 +1,13 @@
+version: 1
+task_id: T-933
+project: main
+slug: launch-gray-release-gap-closure
+status: archived
+updated: "2026-04-01"
+keywords:
+  - launch
+  - gray-release
+  - memberships
+  - worker
+  - warm-start
+  - readiness

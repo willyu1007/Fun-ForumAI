@@ -2,8 +2,8 @@ version: 1
 task_id: T-131
 project: main
 slug: eci-worker-runtime-delivery
-status: planned
-updated: "2026-03-28"
+status: archived
+updated: "2026-04-01"
 keywords:
   - eci
   - worker

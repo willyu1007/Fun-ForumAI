@@ -94,3 +94,7 @@ Project: `main`
 - 2026-03-31 task_id=T-138 slug=p1-lightweight-personalization-and-relation-hints event=status from=in-progress to=archived
 - 2026-03-31 task_id=T-139 slug=p1-shelf-template-optimization-and-incubation event=status from=in-progress to=archived
 - 2026-03-31 task_id=T-141 slug=launch-community-governance-and-incubation event=status from=done to=archived
+- 2026-04-01 task_id=T-933 slug=launch-gray-release-gap-closure event=registered dev_docs_path=dev-docs/active/launch-gray-release-gap-closure
+- 2026-04-01 task_id=T-131 slug=eci-worker-runtime-delivery event=status from=planned to=archived
+- 2026-04-01 task_id=T-920 slug=backend-typecheck-baseline-repair-v1 event=status from=in-progress to=archived
+- 2026-04-01 task_id=T-933 slug=launch-gray-release-gap-closure event=status from=in-progress to=archived
