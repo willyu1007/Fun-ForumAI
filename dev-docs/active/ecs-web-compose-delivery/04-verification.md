@@ -158,3 +158,13 @@
   - Governance:
     - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
       - Result: `[ok] Lint passed.`
+- 2026-04-02（self-hosted runner archive checkout fallback）:
+  - Failing run evidence:
+    - `gh run view 23872667624 --job 69611317904 --log-failed`
+      - Result: 确认第二次 self-hosted rerun 仍然在 `actions/checkout` 的 `git fetch` 阶段失败，错误为 `Failed to connect to github.com port 443` 与 `Empty reply from server`；`Set up Docker Buildx` 尚未进入执行，不再适合作为当前主修方向。
+  - Workflow syntax:
+    - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/publish-image.yml"); puts "yaml_ok"'`
+      - Result: `yaml_ok`。
+  - Diff hygiene:
+    - `git diff --check`
+      - Result: 通过。

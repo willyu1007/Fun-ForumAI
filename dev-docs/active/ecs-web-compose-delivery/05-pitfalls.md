@@ -84,3 +84,17 @@
     - checkout 是否依赖不稳定的默认 git transport
     - runner 上是否已有 `buildx`
     - 不要只在 runner 主机上做人工临时修复而不回写 workflow，否则 runner 一重建就会复发。
+
+### 2026-04-02 - HTTP/1.1 alone did not stabilize self-hosted checkout
+- Symptom:
+  - 即使已经在 self-hosted job 前置 `git config --global http.version HTTP/1.1`，`Publish Image` rerun 仍然可能卡在 `actions/checkout@v6`，最终报 `git fetch` 连接 `github.com:443` 超时或 `Empty reply from server`。
+- What we tried:
+  - 先保留标准 `actions/checkout`，只降低 git transport 风险；同时把 `docker/setup-buildx-action@v3` 放回 workflow，试图让 runner 自动补齐 BuildKit 组件。
+- Fix / workaround:
+  - 根因是 self-hosted runner 的不稳定点不只是 HTTP/2，而是整个 `git fetch` 路径本身；另外 `docker/setup-buildx-action` 也会引入额外的 GitHub 资产下载依赖，而当前发布脚本并不需要 `buildx`。
+  - 最终修复为：
+    - self-hosted `publish-staging` / `promote-prod` 直接通过 GitHub tarball API 下载指定 `sha` / `source_sha` 的源码归档并解压到 `$GITHUB_WORKSPACE`
+    - 移除 `docker/setup-buildx-action@v3`
+    - 将 self-hosted job 的外部依赖面收敛为单一 archive download，而不是 `git fetch + buildx asset download`
+- Prevention:
+  - 以后只要 self-hosted runner 的公网链路出现抖动，就不要默认“调一调 git 配置就够了”；先确认 job 是否真的需要 `.git` 元数据和额外 action asset 下载。若脚本只需要源码树，优先使用 archive/tarball 获取源码，减少发布路径上的网络协议复杂度。

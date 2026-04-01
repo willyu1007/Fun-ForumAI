@@ -3,7 +3,7 @@
 ## Status
 
 - Current status: `repo-implemented`
-- Last updated: 2026-04-01
+- Last updated: 2026-04-02
 
 ## What changed
 
@@ -48,6 +48,14 @@
     - 在 `publish-staging` 和 `promote-prod` 两个 self-hosted job 中，在 checkout 前显式执行 `git config --global http.version HTTP/1.1`
     - 在 `publish-staging` 中显式加入 `docker/setup-buildx-action@v3`
   这样把 runner 上人工临时配置收回到 workflow 内，避免后续 runner 重建或重启后再次退回同样故障。
+- 2026-04-02 继续对 `ecs-acr-publish-hz-01` 进行真实 run 盯跑后确认，上述修复仍然不够稳定：
+  - `actions/checkout@v6` 在 self-hosted runner 上最终还是会回到 `git fetch https://github.com/...`，即使前置了 `git config --global http.version HTTP/1.1`，仍可能报 `Failed to connect to github.com port 443` / `Empty reply from server`
+  - `docker/setup-buildx-action@v3` 会额外引入新的 GitHub 资产下载依赖，而当前发布脚本实际只调用普通 `docker build`，并不需要 `buildx`
+  已调整为：
+  - 把 `publish-staging` 和 `promote-prod` 两个 self-hosted job 的源码获取从 `actions/checkout@v6` 改为 `curl` GitHub tarball API 后在 `$GITHUB_WORKSPACE` 解压
+  - 继续保留 `git config --global http.version HTTP/1.1`，但仅作为 runner transport 稳定化，而不再把成功与否绑定到 `git fetch`
+  - 移除 `docker/setup-buildx-action@v3`，把 self-hosted job 里的 GitHub 外部下载依赖缩减到单一源码归档链路
+  这样 self-hosted runner 只需要一次归档下载即可拿到发布所需脚本和打包定义，避免在不稳定出网条件下同时依赖 git smart HTTP 和 buildx 资产下载。
 - 2026-04-01 增加了 repo-side desired release 层，专门解决“镜像已发布，但 ECS / ECI 不会立刻替换，之后容易忘记目标 sha”的问题：
   - 新增 `ops/deploy/scripts/release-intent.mjs`
   - 新增 `ops/deploy/release-intents/README.md`

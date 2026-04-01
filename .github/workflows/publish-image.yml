@@ -97,16 +97,27 @@ jobs:
         shell: bash
         run: git config --global http.version HTTP/1.1
 
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Fetch source archive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_path="$RUNNER_TEMP/publish-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
+          find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          curl --http1.1 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            --output "$archive_path"
+          tar -xzf "$archive_path" --strip-components=1 -C "$GITHUB_WORKSPACE"
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: "20"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Resolve publish context
         id: context
@@ -229,8 +240,22 @@ jobs:
         shell: bash
         run: git config --global http.version HTTP/1.1
 
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Fetch source archive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARCHIVE_REF: ${{ inputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_path="$RUNNER_TEMP/publish-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
+          find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          curl --http1.1 --fail --silent --show-error --location \
+            --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            --output "$archive_path"
+          tar -xzf "$archive_path" --strip-components=1 -C "$GITHUB_WORKSPACE"
 
       - name: Setup Node
         uses: actions/setup-node@v6
