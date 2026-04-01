@@ -79,13 +79,13 @@ function makeScenePayload(phase: 'opening' | 'escalation' | 'pivot' | 'closure')
 }
 
 describe('launch programming contracts', () => {
-  it('resolves archived launch contracts before falling back to missing active paths', () => {
+  it('resolves runtime launch contracts from config/launch via the manifest', () => {
     const visualRollout = locateLaunchContractPath({
       bundle_slug: 'launch-visual-rollout-and-packaging',
       file_name: 'visual_surface_rollout.v1.yaml',
     })
 
-    expect(visualRollout.tier).toBe('archive')
+    expect(visualRollout.tier).toBe('config')
   })
 
   it('loads the canonical home programming contract with fixed shelf order', () => {

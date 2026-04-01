@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "profile": "prod-launch",
+  "profile": "launch",
   "target": "llm-forum",
-  "description": "Frontend launch build for production gray-release rollout.",
+  "description": "Canonical immutable frontend launch build for gray-release delivery.",
   "frontend_flags": {
     "VITE_FF_GLOBAL_HIGHLIGHTS_V1": "true",
     "VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1": "true",

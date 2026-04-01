@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { execFileSync, execSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { parse as parseYaml } from 'yaml';
 import {
+  validateCanonicalLaunchBuildProfile,
+  validateDevOnlyStartupHardening,
   validateFrontendDeliveryAssets,
   REQUIRED_HOME_SHELF_ORDER,
   ROOT,
-  validateFrontendBuildProfile,
   validateLaunchMembershipBootstrapAssets,
+  validateLaunchRuntimeContracts,
   validateLaunchWarmStartAssets,
   validateLaunchRuntimeOverlay,
   validatePackagingWireup,
+  validatePublishWorkflowWireup,
   validateWorkerAssets,
 } from './lib/launch-readiness.mjs';
 
@@ -80,8 +84,24 @@ function normalizeBaseUrl(value) {
   return value ? value.replace(/\/+$/, '') : '';
 }
 
+function readLaunchCommunitySlugs() {
+  const manifest = parseYaml(readFileSync(`${ROOT}/config/launch/manifest.v1.yaml`, 'utf8'));
+  const communityRulesEntry = manifest?.contracts?.find?.((item) => item.id === 'community_rules');
+  if (!communityRulesEntry?.path) {
+    throw new Error('config/launch/manifest.v1.yaml is missing the community_rules contract');
+  }
+  const communityRules = parseYaml(readFileSync(`${ROOT}/${communityRulesEntry.path}`, 'utf8'));
+  const communities = Array.isArray(communityRules?.communities) ? communityRules.communities : [];
+  return communities
+    .map((community) => community?.slug)
+    .filter((slug) => typeof slug === 'string' && slug.length > 0);
+}
+
 function runRepoChecks() {
   const launchRegressionTests = [
+    'scripts/ci/__tests__/check-image-launch-proof.test.ts',
+    'src/backend/app.test.ts',
+    'src/backend/launch/__tests__/programming-contracts.test.ts',
     'src/backend/services/__tests__/agent-community-membership-service.test.ts',
     'src/backend/routes/__tests__/e2e-dev-seed.test.ts',
     'ops/packaging/scripts/__tests__/frontend-build-profile.test.ts',
@@ -100,23 +120,29 @@ function runRepoChecks() {
   const workerCheck = validateWorkerAssets();
   pushResult('Worker workload assets', workerCheck.ok, workerCheck.detail);
 
+  const runtimeContractsCheck = validateLaunchRuntimeContracts();
+  pushResult('Runtime launch contracts', runtimeContractsCheck.ok, runtimeContractsCheck.detail);
+
   const stagingOverlayCheck = validateLaunchRuntimeOverlay('env/values/staging-launch.yaml', 'staging');
   pushResult('Staging launch runtime overlay', stagingOverlayCheck.ok, stagingOverlayCheck.detail);
 
   const prodOverlayCheck = validateLaunchRuntimeOverlay('env/values/prod-launch.yaml', 'prod');
   pushResult('Prod launch runtime overlay', prodOverlayCheck.ok, prodOverlayCheck.detail);
 
-  const stagingProfileCheck = validateFrontendBuildProfile('staging-launch');
-  pushResult('Staging launch frontend build profile', stagingProfileCheck.ok, stagingProfileCheck.detail);
-
-  const prodProfileCheck = validateFrontendBuildProfile('prod-launch');
-  pushResult('Prod launch frontend build profile', prodProfileCheck.ok, prodProfileCheck.detail);
+  const canonicalProfileCheck = validateCanonicalLaunchBuildProfile();
+  pushResult('Canonical launch frontend build profile', canonicalProfileCheck.ok, canonicalProfileCheck.detail);
 
   const frontendDeliveryCheck = validateFrontendDeliveryAssets();
   pushResult('Frontend dist delivery', frontendDeliveryCheck.ok, frontendDeliveryCheck.detail);
 
   const packagingCheck = validatePackagingWireup();
   pushResult('Packaging launch wireup', packagingCheck.ok, packagingCheck.detail);
+
+  const publishWorkflowCheck = validatePublishWorkflowWireup();
+  pushResult('Publish workflow launch wireup', publishWorkflowCheck.ok, publishWorkflowCheck.detail);
+
+  const startupHardeningCheck = validateDevOnlyStartupHardening();
+  pushResult('Dev-only startup hardening', startupHardeningCheck.ok, startupHardeningCheck.detail);
 
   runCommand(
     'Typecheck',
@@ -131,12 +157,8 @@ function runRepoChecks() {
     'pnpm build',
   );
   runCommand(
-    'Packaging dry-run (staging launch profile)',
-    'node ops/packaging/scripts/build.mjs --dry-run --target llm-forum --build-profile staging-launch',
-  );
-  runCommand(
-    'Packaging dry-run (prod launch profile)',
-    'node ops/packaging/scripts/build.mjs --dry-run --target llm-forum --build-profile prod-launch',
+    'Packaging dry-run (canonical launch profile)',
+    'node ops/packaging/scripts/build.mjs --dry-run --target llm-forum --build-profile launch',
   );
 
   if (launchRegressionTests.length > 0) {
@@ -201,13 +223,14 @@ async function runStagingChecks() {
   );
 
   const frontendFlags = await fetchJson(`${webBaseUrl}/frontend-build-flags.json`);
+  const proofProfile = frontendFlags.body?.profile === 'launch';
   const homeFlag = frontendFlags.body?.frontend_flags?.VITE_FF_HOME_PROGRAMMING_V1 === 'true';
   const opsFlag = frontendFlags.body?.frontend_flags?.VITE_FF_PROGRAMMING_OPS_V1 === 'true';
   pushResult(
     'Launch frontend build proof',
-    frontendFlags.status === 200 && homeFlag && opsFlag,
+    frontendFlags.status === 200 && proofProfile && homeFlag && opsFlag,
     frontendFlags.status === 200
-      ? `home=${String(homeFlag)} programming_ops=${String(opsFlag)}`
+      ? `profile=${String(frontendFlags.body?.profile)} home=${String(homeFlag)} programming_ops=${String(opsFlag)}`
       : `status=${frontendFlags.status}`,
   );
 
@@ -253,6 +276,64 @@ async function runStagingChecks() {
     (shelvesById.get('tonight_programming')?.items?.length ?? 0) > 0,
     `count=${shelvesById.get('tonight_programming')?.items?.length ?? 0}`,
   );
+
+  const launchCommunitySlugs = readLaunchCommunitySlugs();
+  const communitiesResponse = await fetchJson(`${webBaseUrl}/v1/communities?limit=100`);
+  const communities = Array.isArray(communitiesResponse.body?.data) ? communitiesResponse.body.data : [];
+  const visibleCommunitySlugs = new Set(communities.map((community) => community?.slug).filter(Boolean));
+  const missingLaunchCommunities = launchCommunitySlugs.filter((slug) => !visibleCommunitySlugs.has(slug));
+  pushResult(
+    'Launch community catalog completeness',
+    communitiesResponse.status === 200 && missingLaunchCommunities.length === 0,
+    communitiesResponse.status === 200
+      ? `missing=${missingLaunchCommunities.join(', ') || 'none'}`
+      : `status=${communitiesResponse.status}`,
+  );
+
+  const occupancyFailures = [];
+  for (const slug of launchCommunitySlugs) {
+    const community = communities.find((item) => item?.slug === slug);
+    if (!community?.id) {
+      occupancyFailures.push(`${slug}:missing-community`);
+      continue;
+    }
+    const feedResponse = await fetchJson(`${webBaseUrl}/v1/feed?community_id=${encodeURIComponent(community.id)}&limit=1`);
+    const itemCount = Array.isArray(feedResponse.body?.data?.items) ? feedResponse.body.data.items.length : 0;
+    if (feedResponse.status !== 200 || itemCount < 1) {
+      occupancyFailures.push(`${slug}:${feedResponse.status}:${itemCount}`);
+    }
+  }
+  pushResult(
+    'Launch community occupancy',
+    occupancyFailures.length === 0,
+    occupancyFailures.length === 0
+      ? `${launchCommunitySlugs.length}/${launchCommunitySlugs.length} communities have visible root posts`
+      : occupancyFailures.join(', '),
+  );
+
+  try {
+    execFileSync(process.execPath, [
+      'scripts/launch-home-playwright-smoke.mjs',
+      '--url',
+      webBaseUrl,
+    ], {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    pushResult(
+      'Launch home browser smoke',
+      true,
+      `${webBaseUrl}/ renders Home Programming`,
+    );
+  } catch (error) {
+    const stdout = error?.stdout?.toString?.() ?? '';
+    const stderr = error?.stderr?.toString?.() ?? '';
+    pushResult(
+      'Launch home browser smoke',
+      false,
+      `${stdout}${stderr}`.trim() || 'browser smoke failed',
+    );
+  }
 }
 
 async function main() {

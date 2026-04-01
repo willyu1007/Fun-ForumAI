@@ -1,0 +1,128 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for post-launch optimization and tuning.
+  - Base governance and lifecycle semantics are inherited from T-141.
+  - Runtime now resolves named profiles through a single active-profile overlay path.
+
+activation:
+  default_profile: baseline
+  config_env: FF_POST_LAUNCH_TUNING_PROFILE
+  rollback_profile: baseline
+
+profiles:
+  baseline:
+    description: 保持首发 contract 基线，仅暴露 profile 读面。
+    home:
+      shelf_order: [must_watch_today, conflict_rising, t4_today, continue_storyline, tonight_programming, all_communities]
+      default_mode: storyline_first
+      hero_slot_copy:
+        must_watch_today: 今日最值得先点开的主线。
+    t4:
+      preferred_templates_by_community:
+        t4-picks: [recommendation_note, comparison_note, review_note]
+        t4-relations: [relationship_observation_note, ongoing_column_note, comparison_note]
+      preferred_cover_modes_by_community:
+        t4-picks: [hero_cover, comparison_cover, grid_cover]
+        t4-relations: [relationship_map_card, timeline_cover, portrait_cover]
+      caption_structure_variant: launch_default
+    visual:
+      surface_ratio:
+        home_root_card: 0.35
+        t4_root_card: 0.55
+        highlight_card: 0.4
+      preferred_card_modes:
+        home_root_card: [single_cover, multi_panel_cover]
+        highlight_card: [single_cover, quote_card]
+        aftershow_card: [recap_card, quote_card]
+      budget_threshold:
+        max_generated_images_per_community_day: 12
+        max_generated_images_per_agent_day: 4
+    incubation:
+      incubation_duration_days: 7
+      resident_floor: 2
+      merge_threshold: 4
+      lane_threshold: 2
+      gray_visibility_threshold: 1.5
+  t4_focus:
+    description: 首发后优先放大 T4 进入率与封面命中。
+    home:
+      shelf_order: [must_watch_today, t4_today, conflict_rising, continue_storyline, tonight_programming, all_communities]
+      default_mode: storyline_first
+      hero_slot_copy:
+        must_watch_today: 先看主线，再切进今天最有封面感的内容。
+    t4:
+      preferred_templates_by_community:
+        t4-picks: [comparison_note, recommendation_note, review_note]
+        t4-relations: [relationship_observation_note, ongoing_column_note, comparison_note]
+      preferred_cover_modes_by_community:
+        t4-picks: [comparison_cover, hero_cover, grid_cover]
+        t4-relations: [relationship_map_card, portrait_cover, timeline_cover]
+      caption_structure_variant: contrast_first
+    visual:
+      surface_ratio:
+        home_root_card: 0.38
+        t4_root_card: 0.62
+        highlight_card: 0.42
+      preferred_card_modes:
+        home_root_card: [single_cover, comparison_cover]
+        highlight_card: [comparison_cover, quote_card]
+        aftershow_card: [recap_card, timeline_cover]
+      budget_threshold:
+        max_generated_images_per_community_day: 14
+        max_generated_images_per_agent_day: 5
+    incubation:
+      incubation_duration_days: 7
+      resident_floor: 2
+      merge_threshold: 4.2
+      lane_threshold: 2.2
+      gray_visibility_threshold: 1.7
+  conservative_visual:
+    description: 灰测出现视觉成本或供给压力时的保守回退档。
+    home:
+      shelf_order: [must_watch_today, conflict_rising, continue_storyline, t4_today, tonight_programming, all_communities]
+      default_mode: editorial_first
+      hero_slot_copy:
+        must_watch_today: 优先保证主线命中，减少高成本封面依赖。
+    t4:
+      preferred_templates_by_community:
+        t4-picks: [recommendation_note, review_note, comparison_note]
+        t4-relations: [ongoing_column_note, relationship_observation_note, comparison_note]
+      preferred_cover_modes_by_community:
+        t4-picks: [grid_cover, hero_cover, comparison_cover]
+        t4-relations: [timeline_cover, portrait_cover, relationship_map_card]
+      caption_structure_variant: concise
+    visual:
+      surface_ratio:
+        home_root_card: 0.3
+        t4_root_card: 0.45
+        highlight_card: 0.35
+      preferred_card_modes:
+        home_root_card: [single_cover, quote_card]
+        highlight_card: [quote_card, single_cover]
+        aftershow_card: [quote_card, recap_card]
+      budget_threshold:
+        max_generated_images_per_community_day: 8
+        max_generated_images_per_agent_day: 3
+    incubation:
+      incubation_duration_days: 10
+      resident_floor: 2
+      merge_threshold: 3.8
+      lane_threshold: 1.9
+      gray_visibility_threshold: 1.3
+
+config_writeback_targets:
+  - home_ia_and_shelves
+  - t4_content_templates
+  - visual_surface_rollout
+  - launch_community_rules
+
+metrics:
+  primary:
+    - shelf_ctr_delta
+    - t4_entry_rate_delta
+    - revisit_rate_delta
+  secondary:
+    - visual_cost_efficiency
+    - incubation_conversion_rate
+    - template_repeat_penalty

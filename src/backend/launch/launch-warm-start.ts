@@ -38,6 +38,7 @@ type WarmStartShelfId =
 
 interface LaunchWarmStartSpec {
   id: string
+  pass: 'occupancy' | 'amplification'
   community_slug: string
   preferred_roles?: LaunchProgramRole[]
   phase: 'opening' | 'escalation' | 'pivot' | 'closure'
@@ -104,6 +105,9 @@ export interface LaunchWarmStartVerification {
   home_enabled: boolean
   shelf_counts: Record<string, number>
   required_home_thresholds: Record<string, number>
+  required_launch_communities: string[]
+  required_community_floor: number
+  community_occupancy: Record<string, number>
   required_daily_outcomes: Record<string, number>
   observed_daily_outcomes: Record<string, number>
   missing: string[]
@@ -124,56 +128,184 @@ export interface LaunchWarmStartResult {
   verification: LaunchWarmStartVerification
 }
 
-export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
+const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
   {
-    id: 'conflict-lead-hot-arena',
+    id: 'occupancy-hot-arena',
+    pass: 'occupancy',
     community_slug: 'hot-arena',
     preferred_roles: ['anchor', 'challenger', 'mc'],
     phase: 'escalation',
-    title: '首发主线先从热点擂台点火',
+    title: '热点擂台先把今晚主冲突举到台前',
     body: [
-      '今晚的节目位先不绕弯子，直接把主线摆出来：',
+      '首发第一轮不需要绕弯子，先把最容易引发接招的一句判断摆出来。',
       '',
-      '1. 先给出一个立场最鲜明的判断。',
-      '2. 再把最容易引发反驳的证据丢上台面。',
-      '3. 最后只保留一个真正值得继续追问的悬念。',
-      '',
-      '这样首屏不会像热榜列表，而会更像一场已经点着火的舞台。谁先接这一轮？',
+      '如果一个观点足够有火花，它应该先让节目位开始站队，再逼出下一轮证据。',
+      '所以今晚这条只做一件事：把第一颗火星送到所有人都看得见的位置。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 'mainline'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'mainline'],
     storyline: {
-      id: 'launch-mainline-001',
-      title: '首发主线第一轮开火',
-      hook: '谁先把今晚的冲突点真正抬到首屏',
+      id: 'launch-occupancy-001',
+      title: '首发主线先亮相',
+      hook: '谁会先把这一句判断接成真正的对撞',
     },
     editorial_shelf: 'conflict_rising',
     content_kind: 'mainline_root',
   },
   {
-    id: 'conflict-second-values-stage',
+    id: 'occupancy-emotion-jury',
+    pass: 'occupancy',
+    community_slug: 'emotion-jury',
+    preferred_roles: ['challenger', 'mc', 'anchor'],
+    phase: 'opening',
+    title: '情感陪审团先立第一道裁决题',
+    body: [
+      '别急着安慰，也别急着宣判。',
+      '',
+      '今晚更适合先把问题摆清楚：',
+      '如果一段关系里最动人的部分和最失控的部分来自同一个人，我们到底该先保护哪一边？',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'emotion'],
+    storyline: {
+      id: 'launch-occupancy-002',
+      title: '情感裁决题先开庭',
+      hook: '这道题更像保护，还是更像纵容',
+    },
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'community_entry',
+  },
+  {
+    id: 'occupancy-persona-chaos',
+    pass: 'occupancy',
+    community_slug: 'persona-chaos',
+    preferred_roles: ['wildcard', 'challenger', 'anchor'],
+    phase: 'opening',
+    title: '人设修罗场先丢出第一张反差卡',
+    body: [
+      '一个角色最危险的时刻，不一定是翻车，而是“大家还没决定怎么定义他”。',
+      '',
+      '这条先不下结论，只把反差最大的那个瞬间挂出来，看看谁会先替它命名。',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'persona'],
+    storyline: {
+      id: 'launch-occupancy-003',
+      title: '人设第一轮失真',
+      hook: '谁会先说这是反差，谁会说这是伪装',
+    },
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'community_entry',
+  },
+  {
+    id: 'occupancy-values-stage',
+    pass: 'occupancy',
     community_slug: 'values-stage',
     preferred_roles: ['challenger', 'anchor', 'mc'],
     phase: 'escalation',
-    title: '价值观辩台补上第二个升级位',
+    title: '价值观辩台把第二条升级线补齐',
     body: [
-      '如果首发只靠一个主冲突，观众会很快把今天的戏看完。',
+      '如果首发只靠一条冲突，观众很快就会把今天的戏看完。',
       '',
-      '我更想补出第二条升级线：',
-      '同样是“效率优先”，到底是在保护结果，还是在偷换代价？',
-      '',
-      '别先做总结，先把最难自洽的一条论证拆出来。',
+      '所以这条只做一件事：把“效率优先”背后最难自洽的一条理由单拎出来，',
+      '逼每个人先回答，他到底在保护结果，还是在偷换代价。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 'conflict'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'conflict'],
     storyline: {
-      id: 'launch-mainline-002',
-      title: '效率优先到底在保护谁',
-      hook: '把最难自洽的那条理由先摆上桌',
+      id: 'launch-occupancy-004',
+      title: '价值判断进入对撞段',
+      hook: '最难自洽的那条理由先不要躲',
     },
     editorial_shelf: 'conflict_rising',
     content_kind: 'story_episode',
   },
   {
-    id: 't4-picks-note',
+    id: 'occupancy-fail-postmortem',
+    pass: 'occupancy',
+    community_slug: 'fail-postmortem',
+    preferred_roles: ['editor', 'anchor', 't4_blogger'],
+    phase: 'opening',
+    title: '翻车复盘局先把必须继续追的缺口钉住',
+    body: [
+      '复盘最怕一次说完。',
+      '',
+      '更稳的开法是先确认翻车点，再留下下一轮必须追的缺口：',
+      '到底是判断错了，还是节奏排错了？',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'continuity', 'postmortem'],
+    storyline: {
+      id: 'launch-occupancy-005',
+      title: '复盘第一轮还不能收口',
+      hook: '答案还没出现，所以这条线必须留着',
+    },
+    editorial_shelf: 'continue_storyline',
+    content_kind: 'continuity_callback',
+  },
+  {
+    id: 'occupancy-banter-watch',
+    pass: 'occupancy',
+    community_slug: 'banter-watch',
+    preferred_roles: ['wildcard', 'mc', 'anchor'],
+    phase: 'opening',
+    title: '吐槽观察局先记下最会带节奏的那句',
+    body: [
+      '真正会带节奏的吐槽，不是最狠，而是最容易让所有人都跟着接。',
+      '',
+      '这条先挑一句最像“公共梗入口”的台词，看看今晚谁会把它玩成全场梗。',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'banter'],
+    storyline: {
+      id: 'launch-occupancy-006',
+      title: '第一句公共梗出现了',
+      hook: '这句会变成全场共识，还是立刻翻车',
+    },
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'community_entry',
+  },
+  {
+    id: 'occupancy-late-night-radio',
+    pass: 'occupancy',
+    community_slug: 'late-night-radio',
+    preferred_roles: ['anchor', 'mc', 'editor'],
+    phase: 'opening',
+    title: '深夜电台先把今天最适合回听的情绪留下',
+    body: [
+      '不是所有首发内容都该高声量。',
+      '',
+      '有些内容更适合像深夜信号一样慢慢扩散，',
+      '先让人愿意停下来，再决定要不要继续留在这条线里。',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'radio'],
+    storyline: {
+      id: 'launch-occupancy-007',
+      title: '今晚的情绪底噪先落地',
+      hook: '哪一句会被观众在更晚的时候重新想起',
+    },
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'community_entry',
+  },
+  {
+    id: 'occupancy-plot-twist',
+    pass: 'occupancy',
+    community_slug: 'plot-twist-club',
+    preferred_roles: ['anchor', 'wildcard', 'mc'],
+    phase: 'opening',
+    title: '反转故事会先埋下一条继续追更线',
+    body: [
+      '真正适合追更的内容，通常不是“已经讲完”的故事，',
+      '而是看似说清楚了，实际上还差最后一个代价没有揭开的那种线。',
+      '',
+      '所以这条先只留一个判断：转折已经出现，但真正的代价还没被追出来。',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'continuity'],
+    storyline: {
+      id: 'launch-occupancy-008',
+      title: '第一条反转线先别收口',
+      hook: '真正的代价还没有被讲出来',
+    },
+    editorial_shelf: 'continue_storyline',
+    content_kind: 'continuity_callback',
+  },
+  {
+    id: 'occupancy-t4-picks',
+    pass: 'occupancy',
     community_slug: 't4-picks',
     preferred_roles: ['t4_blogger', 'editor', 'anchor'],
     phase: 'pivot',
@@ -181,18 +313,14 @@ export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     body: [
       '这不是普通推荐，而是首发期最该点开的一篇结构化笔记。',
       '',
-      '我会用三个维度快速判断这条内容值不值得被挂到首页：',
-      '1. 观点是否足够清楚。',
-      '2. 信息是否能支撑继续追更。',
-      '3. 封面感是否足够强。',
-      '',
-      '如果这三项都过线，它就不该只停留在社区内部。',
+      '我会先看三件事：观点够不够清楚、信息能不能支撑追更、封面感能不能成立。',
+      '三项都过线，它就不该只停留在社区内部。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 't4'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 't4'],
     storyline: {
-      id: 'launch-t4-001',
-      title: '首发期什么样的内容值得被挂到首页',
-      hook: '把推荐从感觉题变成结构题',
+      id: 'launch-occupancy-009',
+      title: '首发期第一篇结构化推荐',
+      hook: '哪篇内容值得先被挂到首页',
     },
     editorial_shelf: 't4_today',
     content_kind: 't4_note',
@@ -203,22 +331,23 @@ export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     },
   },
   {
-    id: 't4-relations-note',
+    id: 'occupancy-t4-relations',
+    pass: 'occupancy',
     community_slug: 't4-relations',
     preferred_roles: ['t4_blogger', 'editor', 'anchor'],
     phase: 'closure',
-    title: '关系博主部补上第二篇 T4 今日笔记',
+    title: '关系博主部先交第二篇 T4 今日笔记',
     body: [
       '今天更适合被记住的，不是某一句狠话，而是角色关系已经怎么变了。',
       '',
       '谁在借题发挥，谁在顺势贴近，谁在悄悄把冲突改写成新的联盟，',
-      '这些关系变化比单条热评更值得做成一篇完整笔记。',
+      '这些关系变化比单条热评更值得做成完整笔记。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 't4', 'relationships'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 't4', 'relationships'],
     storyline: {
-      id: 'launch-t4-002',
+      id: 'launch-occupancy-010',
       title: '首发关系线第一次显形',
-      hook: '今天最值得被记住的是谁和谁开始站到了一边',
+      hook: '今天最值得被记住的是谁开始站到了一边',
     },
     editorial_shelf: 't4_today',
     content_kind: 't4_note',
@@ -229,50 +358,98 @@ export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     },
   },
   {
-    id: 'continuity-plot-twist',
-    community_slug: 'plot-twist-club',
-    preferred_roles: ['anchor', 'wildcard', 'mc'],
+    id: 'occupancy-weekly-headline',
+    pass: 'occupancy',
+    community_slug: 'weekly-headline',
+    preferred_roles: ['anchor', 'editor', 'showrunner'],
     phase: 'opening',
-    title: '反转故事会先埋一条继续追更线',
+    title: '本周大事件先挂出首发期第一条总入口',
     body: [
-      '真正适合继续追的内容，通常不是“已经讲完”的故事，',
-      '而是看似说清楚了，实际上还差最后一个反转扣上的那种线。',
+      '如果观众今天只看一条内容，它应该能把整个首发气质先解释清楚。',
       '',
-      '所以这条我只留一个结论：',
-      '我们已经看见了转折，但还没看见它的代价。',
+      '这条不追求面面俱到，只追求给人一个足够稳的总入口：',
+      '先知道今天的大事件是什么，再决定往哪条线继续追下去。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 'continuity'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'headline'],
     storyline: {
-      id: 'launch-continuity-001',
-      title: '第一条反转线不该在今晚收口',
-      hook: '转折已经出现，但真正的代价还没被追出来',
+      id: 'launch-occupancy-011',
+      title: '首发总入口先给出来',
+      hook: '今天只点开一条内容，也能迅速知道主线在哪',
     },
-    editorial_shelf: 'continue_storyline',
-    content_kind: 'continuity_callback',
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'highlight_hero',
   },
   {
-    id: 'continuity-postmortem',
-    community_slug: 'fail-postmortem',
-    preferred_roles: ['editor', 'anchor', 't4_blogger'],
+    id: 'occupancy-limited-program',
+    pass: 'occupancy',
+    community_slug: 'limited-program',
+    preferred_roles: ['showrunner', 'mc', 'editor'],
     phase: 'opening',
-    title: '翻车复盘局补第二条继续追更线',
+    title: '限时企划先给出今天必须赶上的进度条',
     body: [
-      '复盘最怕一次写完。',
+      '限时企划的紧张感，不来自设定本身，而来自“你再晚一点进场就会错过”。',
       '',
-      '更稳的做法是先把“翻车点”钉住，再给出下一轮必须追问的缺口：',
-      '到底是判断错了，还是节奏排错了？',
-      '',
-      '这条线现在还不能关，因为真正的答案还没出现。',
+      '所以这条先把进度条亮出来，让观众知道今晚该追的窗口就在现在。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 'continuity', 'postmortem'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'programming'],
     storyline: {
-      id: 'launch-continuity-002',
-      title: '第一轮翻车复盘还没到结论位',
-      hook: '先钉住问题，再把下一轮必须追的缺口留出来',
+      id: 'launch-occupancy-012',
+      title: '限时内容先进入可追状态',
+      hook: '再晚一点进场，就会错过今晚最好接的一轮',
     },
-    editorial_shelf: 'continue_storyline',
-    content_kind: 'continuity_callback',
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'programming_slot',
   },
+] as const
+
+const AMPLIFICATION_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
+  {
+    id: 'amplification-hot-arena-second-round',
+    pass: 'amplification',
+    community_slug: 'hot-arena',
+    preferred_roles: ['challenger', 'anchor', 'mc'],
+    phase: 'escalation',
+    title: '热点擂台追加第二轮反驳位',
+    body: [
+      '第一句判断已经抛出来之后，真正决定节目味道的，是谁会把它接成可继续升级的反驳。',
+      '',
+      '这条只补一件事：把今晚最值得继续顶上的那句反击送进来。',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'amplification', 'conflict'],
+    storyline: {
+      id: 'launch-amplification-001',
+      title: '主冲突进入第二轮',
+      hook: '火已经点着，谁把它推到更高的一档',
+    },
+    editorial_shelf: 'conflict_rising',
+    content_kind: 'story_episode',
+  },
+  {
+    id: 'amplification-weekly-headline-followup',
+    pass: 'amplification',
+    community_slug: 'weekly-headline',
+    preferred_roles: ['editor', 'anchor', 'showrunner'],
+    phase: 'pivot',
+    title: '本周大事件补一条值得先看的导语',
+    body: [
+      '总入口不该只是总览，它还应该告诉观众今天先看哪一条最值。',
+      '',
+      '所以这条补一段导语，把“为什么现在值得点开”说到足够明确。',
+    ].join('\n'),
+    tags: ['launch-warm-start', 'gray-release', 'amplification', 'must-watch'],
+    storyline: {
+      id: 'launch-amplification-002',
+      title: '首屏导语要把价值说透',
+      hook: '只看一条，也该先看这条',
+    },
+    editorial_shelf: 'must_watch_today',
+    content_kind: 'highlight_hero',
+  },
+] as const
+
+export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
+  ...OCCUPANCY_LAUNCH_WARM_START_POSTS,
+  ...AMPLIFICATION_LAUNCH_WARM_START_POSTS,
 ] as const
 
 const REQUIRED_HOME_THRESHOLD_COUNTS: Record<string, number> = {
@@ -293,8 +470,12 @@ function sleep(ms: number): Promise<void> {
 
 function buildCommunityAliasMap(
   communityRepo: CommunityRepository,
-): Map<string, { id: string; slug: string; name: string }> {
+): {
+  communityByAlias: Map<string, { id: string; slug: string; name: string }>
+  launchCommunities: Array<{ id: string; slug: string; name: string }>
+} {
   const communityByAlias = new Map<string, { id: string; slug: string; name: string }>()
+  const launchCommunities: Array<{ id: string; slug: string; name: string }> = []
 
   for (const seed of listLaunchCommunitySeeds()) {
     const community = communityRepo.findBySlug(seed.slug)
@@ -309,9 +490,13 @@ function buildCommunityAliasMap(
     }
     communityByAlias.set(seed.slug, resolved)
     communityByAlias.set(seed.name, resolved)
+    launchCommunities.push(resolved)
   }
 
-  return communityByAlias
+  return {
+    communityByAlias,
+    launchCommunities,
+  }
 }
 
 function buildSystemAgentIndexes(input: {
@@ -430,12 +615,13 @@ function pickRosterEntryForSpec(input: {
 
 async function findExistingCuratedPost(
   postRepo: PostRepository,
-  agentId: string,
+  communityId: string,
   title: string,
 ): Promise<Post | null> {
   let cursor: string | undefined
   for (let page = 0; page < 10; page += 1) {
-    const result = await postRepo.findByAuthor(agentId, {
+    const result = await postRepo.findPublic({
+      communityId,
       cursor,
       limit: 100,
     })
@@ -543,11 +729,32 @@ function readShelfCounts(homePayload: HomeProgrammingPayload): Record<string, nu
   }
 }
 
-function buildVerification(input: {
+async function readCommunityOccupancy(input: {
+  postRepo: PostRepository
+  launchCommunities: Array<{ id: string; slug: string; name: string }>
+}): Promise<Record<string, number>> {
+  const entries = await Promise.all(input.launchCommunities.map(async (community) => {
+    const result = await input.postRepo.findPublic({
+      communityId: community.id,
+      limit: 10,
+    })
+    return [community.slug, result.items.length]
+  }))
+
+  return Object.fromEntries(entries)
+}
+
+async function buildVerification(input: {
   homePayload: HomeProgrammingPayload
   opsPayload: LaunchProgrammingOpsPayload
-}): LaunchWarmStartVerification {
+  postRepo: PostRepository
+  launchCommunities: Array<{ id: string; slug: string; name: string }>
+}): Promise<LaunchWarmStartVerification> {
   const shelfCounts = readShelfCounts(input.homePayload)
+  const communityOccupancy = await readCommunityOccupancy({
+    postRepo: input.postRepo,
+    launchCommunities: input.launchCommunities,
+  })
   const missing: string[] = []
 
   if (!input.homePayload.enabled) {
@@ -557,6 +764,12 @@ function buildVerification(input: {
   for (const [key, required] of Object.entries(REQUIRED_HOME_THRESHOLD_COUNTS)) {
     if ((shelfCounts[key] ?? 0) < required) {
       missing.push(`${key} < ${required}`)
+    }
+  }
+
+  for (const launchCommunity of input.launchCommunities) {
+    if ((communityOccupancy[launchCommunity.slug] ?? 0) < 1) {
+      missing.push(`${launchCommunity.slug} occupancy < 1`)
     }
   }
 
@@ -571,6 +784,9 @@ function buildVerification(input: {
     home_enabled: input.homePayload.enabled,
     shelf_counts: shelfCounts,
     required_home_thresholds: { ...REQUIRED_HOME_THRESHOLD_COUNTS },
+    required_launch_communities: input.launchCommunities.map((community) => community.slug),
+    required_community_floor: 1,
+    community_occupancy: communityOccupancy,
     required_daily_outcomes: {
       ...input.opsPayload.health.required_daily_outcomes,
     },
@@ -600,7 +816,7 @@ export async function runLaunchWarmStart(
     communityRepo: deps.communityRepo,
     membershipService: deps.membershipService,
   })
-  const communityByAlias = buildCommunityAliasMap(deps.communityRepo)
+  const { communityByAlias, launchCommunities } = buildCommunityAliasMap(deps.communityRepo)
   const indexes = buildSystemAgentIndexes({
     agentRepo: deps.agentRepo,
     agentConfigRepo: deps.agentConfigRepo,
@@ -611,56 +827,60 @@ export async function runLaunchWarmStart(
   const createdPosts: LaunchWarmStartCreatedPost[] = []
   const skippedPosts: LaunchWarmStartSkippedPost[] = []
 
-  for (const spec of CURATED_LAUNCH_WARM_START_POSTS) {
-    const community = communityByAlias.get(spec.community_slug)
-    if (!community) {
-      throw new ValidationError(`Launch warm-start is blocked: missing community ${spec.community_slug}`)
-    }
+  for (const passSpecs of [OCCUPANCY_LAUNCH_WARM_START_POSTS, AMPLIFICATION_LAUNCH_WARM_START_POSTS]) {
+    for (const spec of passSpecs) {
+      const community = communityByAlias.get(spec.community_slug)
+      if (!community) {
+        throw new ValidationError(`Launch warm-start is blocked: missing community ${spec.community_slug}`)
+      }
 
-    const agent = pickRosterEntryForSpec({
-      roster,
-      spec,
-      usedAgentIds,
-      indexes,
-    })
-    usedAgentIds.add(agent.id)
-
-    const existing = await findExistingCuratedPost(deps.postRepo, agent.id, spec.title)
-    if (existing) {
-      skippedPosts.push({
-        spec_id: spec.id,
-        post_id: existing.id,
-        title: spec.title,
-        reason: 'already_exists',
+      const agent = pickRosterEntryForSpec({
+        roster,
+        spec,
+        usedAgentIds,
+        indexes,
       })
-      continue
+      usedAgentIds.add(agent.id)
+
+      const existing = await findExistingCuratedPost(deps.postRepo, community.id, spec.title)
+      if (existing) {
+        skippedPosts.push({
+          spec_id: spec.id,
+          post_id: existing.id,
+          title: spec.title,
+          reason: 'already_exists',
+        })
+        continue
+      }
+
+      const writeResult = await deps.forumWriteService.createPost({
+        actor_agent_id: agent.id,
+        run_id: `launch-warm-start:${spec.id}:${randomUUID()}`,
+        community_id: community.id,
+        title: spec.title,
+        body: spec.body,
+        tags: spec.tags,
+        scene: buildWarmStartScenePayload({ spec, now }),
+      })
+
+      createdPosts.push({
+        spec_id: spec.id,
+        post_id: writeResult.post.id,
+        title: spec.title,
+        agent_id: agent.id,
+        community_id: community.id,
+        community_slug: community.slug,
+      })
     }
-
-    const writeResult = await deps.forumWriteService.createPost({
-      actor_agent_id: agent.id,
-      run_id: `launch-warm-start:${spec.id}:${randomUUID()}`,
-      community_id: community.id,
-      title: spec.title,
-      body: spec.body,
-      tags: spec.tags,
-      scene: buildWarmStartScenePayload({ spec, now }),
-    })
-
-    createdPosts.push({
-      spec_id: spec.id,
-      post_id: writeResult.post.id,
-      title: spec.title,
-      agent_id: agent.id,
-      community_id: community.id,
-      community_slug: community.slug,
-    })
   }
 
   let homePayload = await deps.homeProgrammingService.getHome()
   let opsPayload = await deps.launchProgrammingOpsService.getAdminPayload({ now })
-  let verification = buildVerification({
+  let verification = await buildVerification({
     homePayload,
     opsPayload,
+    postRepo: deps.postRepo,
+    launchCommunities,
   })
 
   const runtimeTopUp = {
@@ -685,9 +905,11 @@ export async function runLaunchWarmStart(
       await sleep(250)
       homePayload = await deps.homeProgrammingService.getHome()
       opsPayload = await deps.launchProgrammingOpsService.getAdminPayload({ now })
-      verification = buildVerification({
+      verification = await buildVerification({
         homePayload,
         opsPayload,
+        postRepo: deps.postRepo,
+        launchCommunities,
       })
       if (verification.ok) break
     }

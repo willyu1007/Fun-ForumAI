@@ -10,11 +10,11 @@ import {
 } from '../frontend-build-profile.mjs'
 
 describe('frontend build profile', () => {
-  it('loads the staging launch profile with the required launch flags', () => {
-    const profile = loadFrontendBuildProfile('staging-launch')
+  it('loads the canonical launch profile with the required launch flags', () => {
+    const profile = loadFrontendBuildProfile('launch')
 
     expect(profile.target).toBe('llm-forum')
-    expect(profile.profile).toBe('staging-launch')
+    expect(profile.profile).toBe('launch')
     expect(Object.keys(profile.frontend_flags).sort()).toEqual(
       [...REQUIRED_LAUNCH_FRONTEND_FLAGS].sort(),
     )
@@ -27,14 +27,14 @@ describe('frontend build profile', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'frontend-build-profile-'))
     const outPath = join(tempDir, 'frontend-build-flags.json')
 
-    const proof = writeFrontendFlagProof('staging-launch', outPath)
+    const proof = writeFrontendFlagProof('launch', outPath)
     const written = JSON.parse(readFileSync(outPath, 'utf8'))
-    const dockerBuildArgs = toDockerBuildArgs(loadFrontendBuildProfile('staging-launch'))
+    const dockerBuildArgs = toDockerBuildArgs(loadFrontendBuildProfile('launch'))
 
     expect(written).toEqual(proof)
     expect(written.frontend_flags.VITE_FF_HOME_PROGRAMMING_V1).toBe('true')
     expect(dockerBuildArgs).toEqual(expect.arrayContaining([
-      ['FRONTEND_BUILD_PROFILE', 'staging-launch'],
+      ['FRONTEND_BUILD_PROFILE', 'launch'],
       ['VITE_FF_HOME_PROGRAMMING_V1', 'true'],
       ['VITE_FF_PROGRAMMING_OPS_V1', 'true'],
     ]))

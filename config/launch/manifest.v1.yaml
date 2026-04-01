@@ -1,0 +1,38 @@
+version: 1
+contracts:
+  - id: system_roster
+    bundle_slug: launch-system-roster-and-identity-packaging
+    file_name: system_roster.launch.v1.yaml
+    path: config/launch/system_roster.launch.v1.yaml
+  - id: community_rules
+    bundle_slug: launch-communities-and-rules-pack
+    file_name: launch_community_rules.v1.yaml
+    path: config/launch/launch_community_rules.v1.yaml
+  - id: home_programming
+    bundle_slug: launch-home-ia-storyline-highlights
+    file_name: home_ia_and_shelves.v1.yaml
+    path: config/launch/home_ia_and_shelves.v1.yaml
+  - id: t4_templates
+    bundle_slug: launch-t4-community-enablement
+    file_name: t4_content_templates.v1.yaml
+    path: config/launch/t4_content_templates.v1.yaml
+  - id: visual_rollout
+    bundle_slug: launch-visual-rollout-and-packaging
+    file_name: visual_surface_rollout.v1.yaml
+    path: config/launch/visual_surface_rollout.v1.yaml
+  - id: lightweight_personalization
+    bundle_slug: p1-lightweight-personalization-and-relation-hints
+    file_name: lightweight_personalization_and_relation_hints.v1.yaml
+    path: config/launch/lightweight_personalization_and_relation_hints.v1.yaml
+  - id: programming_schedule
+    bundle_slug: launch-programming-ops-and-rollout
+    file_name: launch_programming_schedule.v1.yaml
+    path: config/launch/launch_programming_schedule.v1.yaml
+  - id: community_governance
+    bundle_slug: launch-community-governance-and-incubation
+    file_name: community_governance_and_incubation.v1.yaml
+    path: config/launch/community_governance_and_incubation.v1.yaml
+  - id: post_launch_tuning
+    bundle_slug: p1-shelf-template-optimization-and-incubation
+    file_name: post_launch_optimization_and_tuning.v1.yaml
+    path: config/launch/post_launch_optimization_and_tuning.v1.yaml

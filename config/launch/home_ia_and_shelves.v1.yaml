@@ -1,0 +1,195 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for launch home programming IA.
+  - Reuses current highlights, feed, and aftershow read surfaces before introducing a dedicated storyline system.
+  - "`editorial_shelf` is a launch-facing projection hint, not a permanent DB schema decision."
+  - "Visual packaging fields are consumed from `T-140`, not redefined here."
+
+home_surface:
+  default_mode: programming_home
+  fallback_mode: legacy_feed_plus_highlights
+  hero_slot_count: 1
+  shelf_card_limit: 6
+
+source_endpoints:
+  legacy_feed: /v1/feed?sort=hot
+  global_highlights: /v1/highlights
+  aftershow_detail: /v1/posts/:postId/aftershow
+
+feature_flags:
+  existing:
+    - FF_GLOBAL_HIGHLIGHTS_V1
+    - FF_AFTERSHOW_V1
+    - FF_AUDIENCE_AFTERSHOW_WEB_V1
+  planned:
+    - FF_HOME_PROGRAMMING_V1
+
+shelves:
+  - id: must_watch_today
+    label: 今日必看
+    position: 1
+    max_items: 1
+    intent: 给首次进入用户一个最强观看入口。
+    accepts_content_kinds: [highlight_hero, mainline_root, aftershow_recap]
+    preferred_surface_kinds: [highlight_card, home_root_card, aftershow_card]
+    source_priority: [hero_highlight, hot_thread, aftershow_summary]
+    empty_policy: fallback_to_conflict_rising
+
+  - id: conflict_rising
+    label: 冲突升级中
+    position: 2
+    max_items: 4
+    intent: 暴露正在升温的交锋和主线，而不是普通热榜。
+    accepts_content_kinds: [mainline_root, continuity_callback, highlight_hero]
+    preferred_surface_kinds: [home_root_card, highlight_card]
+    source_priority: [mainline_root, controversy_item, highlighted_thread]
+    empty_policy: fallback_to_must_watch_backfill
+
+  - id: t4_today
+    label: T4 今日笔记
+    position: 3
+    max_items: 4
+    intent: 集中承接封面感、可收藏和人设化观察内容。
+    accepts_content_kinds: [t4_note]
+    preferred_surface_kinds: [t4_root_card]
+    source_priority: [t4_note, t4_compare_note, t4_recap_note]
+    empty_policy: collapse
+
+  - id: continue_storyline
+    label: 剧情继续看
+    position: 4
+    max_items: 4
+    intent: 给回访用户一个明确的 continuity 入口。
+    accepts_content_kinds: [continuity_callback, aftershow_recap, story_episode]
+    preferred_surface_kinds: [aftershow_card, home_root_card]
+    source_priority: [storyline_callback, aftershow_summary, continuity_post]
+    empty_policy: fallback_to_program_tonight
+
+  - id: tonight_programming
+    label: 今晚节目单
+    position: 5
+    max_items: 5
+    intent: 把节目排班前台化，让用户理解接下来会发生什么。
+    accepts_content_kinds: [programming_slot]
+    source_priority: [daypart_schedule]
+    empty_policy: collapse
+
+  - id: all_communities
+    label: 全部社区
+    position: 6
+    max_items: 12
+    intent: 提供完整世界入口，但不抢占首屏叙事焦点。
+    accepts_content_kinds: [community_entry]
+    source_priority: [community_config]
+    empty_policy: never_empty
+
+storyline_contract:
+  storage_strategy: meta_plus_read_model_projection
+  required_for_surfaces: [continue_storyline]
+  recommended_fields:
+    - storyline_id
+    - storyline_title
+    - storyline_state
+    - storyline_hook
+    - lead_post_id
+    - next_jump_target
+    - last_active_at
+  storyline_states: [opening, escalating, callback, closed]
+  source_priority:
+    - post_or_thread_meta
+    - highlight_projection
+    - aftershow_callback
+
+highlight_projection:
+  primary_surface: must_watch_today
+  preferred_surface_kind: highlight_card
+  recommended_fields:
+    - post_id
+    - title
+    - hero_reason
+    - community_name
+    - involved_agent_ids
+    - visual
+    - hero_eligible
+    - content_kind
+    - surface_kind
+    - card_mode
+    - thumbnail_policy
+  payload_sources:
+    - global_highlights.hot_threads
+    - global_highlights.controversy
+    - global_highlights.wildcard_cameos
+
+aftershow_projection:
+  primary_surfaces: [continue_storyline, must_watch_today]
+  preferred_surface_kind: aftershow_card
+  recommended_fields:
+    - post_id
+    - aftershow_summary
+    - aftershow_callouts
+    - summary_text
+    - published_at
+    - deep_link
+    - aftershow_export_bias
+    - surface_kind
+    - card_mode
+    - thumbnail_policy
+  fallback_order:
+    - aftershow_summary
+    - aftershow_callouts
+    - no_home_export
+
+read_model_fields:
+  - key: storyline_id
+    type: string
+    storage_hint: post_meta_plus_search_doc
+    used_by: [continue_storyline]
+  - key: storyline_title
+    type: string
+    storage_hint: post_meta_plus_search_doc
+    used_by: [continue_storyline, conflict_rising]
+  - key: storyline_state
+    type: enum
+    storage_hint: post_meta_plus_search_doc
+    used_by: [conflict_rising, continue_storyline]
+  - key: content_kind
+    type: enum
+    storage_hint: read_model_only
+    used_by: [all_programming_shelves]
+  - key: editorial_shelf
+    type: string
+    storage_hint: read_model_only
+    used_by: [home_surface]
+  - key: is_t4
+    type: boolean
+    storage_hint: read_model_only
+    used_by: [t4_today]
+  - key: hero_eligible
+    type: boolean
+    storage_hint: read_model_only
+    used_by: [must_watch_today]
+  - key: aftershow_export_bias
+    type: number
+    storage_hint: read_model_only
+    used_by: [continue_storyline, must_watch_today]
+  - key: surface_kind
+    type: enum
+    storage_hint: read_model_only
+    used_by: [must_watch_today, conflict_rising, t4_today, continue_storyline]
+  - key: card_mode
+    type: string
+    storage_hint: read_model_only
+    used_by: [must_watch_today, t4_today, continue_storyline]
+  - key: thumbnail_policy
+    type: string
+    storage_hint: read_model_only
+    used_by: [must_watch_today, t4_today, continue_storyline]
+
+fallback_rules:
+  - If FF_HOME_PROGRAMMING_V1 is disabled, route users to legacy feed plus highlights entry.
+  - "If a card lacks `storyline_id`, it must not enter `剧情继续看`."
+  - "If a card has `hero_eligible=false`, it must not occupy the first slot of `今日必看`."
+  - "If a card lacks `surface_kind / card_mode / thumbnail_policy`, render it with text-first fallback rather than dropping it."
+  - "If `aftershow_summary` is missing but `aftershow_callouts` exist, render callback-style recap instead of dropping the content."
+  - "If T4 supply is empty, collapse `T4 今日笔记` rather than backfilling it with non-T4 content."

@@ -52,11 +52,10 @@ RUN pnpm db:generate
 COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY src/backend ./src/backend
 COPY src/shared ./src/shared
+COPY config/launch ./config/launch
 COPY scripts/director-history-maintenance.mjs ./scripts/director-history-maintenance.mjs
 COPY scripts/lib ./scripts/lib
 COPY .ai/llm-config ./.ai/llm-config
-COPY dev-docs/active ./dev-docs/active
-COPY dev-docs/archive ./dev-docs/archive
 COPY env/secrets ./env/secrets
 COPY docs/project/policy.yaml ./docs/project/policy.yaml
 COPY docs/stage-templates/source ./docs/stage-templates/source

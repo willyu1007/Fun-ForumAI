@@ -143,16 +143,26 @@ jobs:
         env:
           DOCKER_BUILDKIT: "0"
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
-          DOCKERFILE: ${{ steps.context.outputs.dockerfile }}
-          BUILD_CONTEXT: ${{ steps.context.outputs.context }}
+          FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
         shell: bash
         run: |
           set -euo pipefail
           date -u
-          docker build \
-            -f "$DOCKERFILE" \
-            -t "$SHA_REF" \
-            "$BUILD_CONTEXT"
+          node ops/packaging/scripts/build.mjs \
+            --target llm-forum \
+            --tag "$SHA_REF" \
+            --build-profile "$FRONTEND_BUILD_PROFILE"
+
+      - name: Verify candidate launch image proof
+        env:
+          SHA_REF: ${{ steps.context.outputs.sha_ref }}
+          FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ci/check-image-launch-proof.mjs \
+            --image-ref "$SHA_REF" \
+            --expected-profile "$FRONTEND_BUILD_PROFILE"
 
       - name: Push immutable sha image
         env:
@@ -261,10 +271,14 @@ jobs:
           SOURCE_REF: ${{ steps.context.outputs.source_ref }}
           RELEASE_REF: ${{ steps.context.outputs.release_ref }}
           CREATED_TAGS: ${{ steps.context.outputs.created_tags }}
+          FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
         shell: bash
         run: |
           set -euo pipefail
           docker pull "$SOURCE_REF"
+          node scripts/ci/check-image-launch-proof.mjs \
+            --image-ref "$SOURCE_REF" \
+            --expected-profile "$FRONTEND_BUILD_PROFILE"
           source_digest="$(docker image inspect "$SOURCE_REF" --format='{{index .RepoDigests 0}}' | sed 's/.*@//')"
 
           if [ -n "$RELEASE_REF" ]; then

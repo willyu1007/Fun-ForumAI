@@ -43,6 +43,49 @@ export const REQUIRED_WARM_START_ASSETS = [
 
 export const REQUIRED_FRONTEND_DELIVERY_ASSETS = [
   'src/backend/routes/frontend-static.ts',
+  'scripts/ci/check-image-launch-proof.mjs',
+  'scripts/launch-home-playwright-smoke.mjs',
+];
+
+export const REQUIRED_LAUNCH_RUNTIME_CONTRACTS = [
+  'config/launch/manifest.v1.yaml',
+  'config/launch/system_roster.launch.v1.yaml',
+  'config/launch/launch_community_rules.v1.yaml',
+  'config/launch/home_ia_and_shelves.v1.yaml',
+  'config/launch/t4_content_templates.v1.yaml',
+  'config/launch/visual_surface_rollout.v1.yaml',
+  'config/launch/lightweight_personalization_and_relation_hints.v1.yaml',
+  'config/launch/launch_programming_schedule.v1.yaml',
+  'config/launch/community_governance_and_incubation.v1.yaml',
+  'config/launch/post_launch_optimization_and_tuning.v1.yaml',
+];
+
+const LEGACY_FRONTEND_PROFILE_FILES = [
+  'ops/packaging/build-profiles/staging-launch.json',
+  'ops/packaging/build-profiles/prod-launch.json',
+];
+
+const FILES_THAT_MUST_NOT_REFERENCE_LEGACY_FRONTEND_PROFILES = [
+  '.github/workflows/ci.yml',
+  '.github/workflows/publish-image.yml',
+  'scripts/verify-launch-readiness.mjs',
+  'ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md',
+  'ops/packaging/scripts/__tests__/frontend-build-profile.test.ts',
+];
+
+const LEGACY_FRONTEND_PROFILE_PATTERNS = [
+  'ops/packaging/build-profiles/staging-launch.json',
+  'ops/packaging/build-profiles/prod-launch.json',
+  '--build-profile staging-launch',
+  '--build-profile prod-launch',
+  "loadFrontendBuildProfile('staging-launch')",
+  "loadFrontendBuildProfile('prod-launch')",
+  "writeFrontendFlagProof('staging-launch'",
+  "writeFrontendFlagProof('prod-launch'",
+  "profile: 'staging-launch'",
+  "profile: 'prod-launch'",
+  "['FRONTEND_BUILD_PROFILE', 'staging-launch']",
+  "['FRONTEND_BUILD_PROFILE', 'prod-launch']",
 ];
 
 export const REQUIRED_HOME_SHELF_ORDER = [
@@ -60,6 +103,50 @@ function readText(relativePath) {
 
 function readYaml(relativePath) {
   return parseYaml(readText(relativePath));
+}
+
+function validateLaunchContractManifestShape(manifest) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    return { ok: false, detail: 'config/launch/manifest.v1.yaml is not a YAML object' };
+  }
+  if (manifest.version !== 1) {
+    return { ok: false, detail: 'config/launch/manifest.v1.yaml must have version=1' };
+  }
+  if (!Array.isArray(manifest.contracts) || manifest.contracts.length === 0) {
+    return { ok: false, detail: 'config/launch/manifest.v1.yaml must declare contracts[]' };
+  }
+
+  const missing = [];
+  const seenIds = new Set();
+  const seenLegacyKeys = new Set();
+  for (const contract of manifest.contracts) {
+    if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
+      return { ok: false, detail: 'launch manifest contracts[] must contain objects' };
+    }
+    const { id, bundle_slug: bundleSlug, file_name: fileName, path } = contract;
+    if (!id || !bundleSlug || !fileName || !path) {
+      return { ok: false, detail: 'each launch manifest contract requires id, bundle_slug, file_name, and path' };
+    }
+    if (seenIds.has(id)) {
+      return { ok: false, detail: `duplicate launch manifest contract id: ${id}` };
+    }
+    const legacyKey = `${bundleSlug}::${fileName}`;
+    if (seenLegacyKeys.has(legacyKey)) {
+      return { ok: false, detail: `duplicate launch manifest legacy mapping: ${legacyKey}` };
+    }
+    seenIds.add(id);
+    seenLegacyKeys.add(legacyKey);
+    if (!existsSync(resolve(ROOT, path))) {
+      missing.push(path);
+    }
+  }
+
+  return {
+    ok: missing.length === 0,
+    detail: missing.length === 0
+      ? `${manifest.contracts.length} runtime launch contracts resolved from config/launch`
+      : `manifest references missing runtime contracts: ${missing.join(', ')}`,
+  };
 }
 
 export function validateLaunchRuntimeOverlay(relativePath, expectedAppEnv) {
@@ -108,6 +195,38 @@ export function validateFrontendBuildProfile(profileId, target = 'llm-forum') {
   }
 }
 
+export function validateCanonicalLaunchBuildProfile() {
+  const profileCheck = validateFrontendBuildProfile('launch');
+  if (!profileCheck.ok) {
+    return profileCheck;
+  }
+
+  const existingLegacyProfiles = LEGACY_FRONTEND_PROFILE_FILES.filter((relativePath) =>
+    existsSync(resolve(ROOT, relativePath)));
+  if (existingLegacyProfiles.length > 0) {
+    return {
+      ok: false,
+      detail: `legacy frontend build profiles must be removed: ${existingLegacyProfiles.join(', ')}`,
+    };
+  }
+
+  const legacyReferences = FILES_THAT_MUST_NOT_REFERENCE_LEGACY_FRONTEND_PROFILES.filter((relativePath) => {
+    const text = readText(relativePath);
+    return LEGACY_FRONTEND_PROFILE_PATTERNS.some((pattern) => text.includes(pattern));
+  });
+  if (legacyReferences.length > 0) {
+    return {
+      ok: false,
+      detail: `legacy frontend build profile references remain in: ${legacyReferences.join(', ')}`,
+    };
+  }
+
+  return {
+    ok: true,
+    detail: 'canonical launch frontend build profile is the only remaining frontend build profile',
+  };
+}
+
 export function validatePackagingWireup() {
   const dockerfilePath = 'ops/packaging/services/llm-forum.Dockerfile';
   if (!existsSync(resolve(ROOT, dockerfilePath))) {
@@ -119,13 +238,19 @@ export function validatePackagingWireup() {
     'ARG VITE_FF_HOME_PROGRAMMING_V1=false',
     'ARG VITE_FF_PROGRAMMING_OPS_V1=false',
     'node ops/packaging/scripts/frontend-build-profile.mjs --profile "$FRONTEND_BUILD_PROFILE" --out dist/frontend/frontend-build-flags.json',
+    'COPY config/launch ./config/launch',
   ];
   const missing = requiredSnippets.filter((snippet) => !dockerfile.includes(snippet));
+  const hasLegacyDevDocsCopy =
+    dockerfile.includes('COPY dev-docs/active ./dev-docs/active')
+    || dockerfile.includes('COPY dev-docs/archive ./dev-docs/archive');
   return {
-    ok: missing.length === 0,
-    detail: missing.length === 0
+    ok: missing.length === 0 && !hasLegacyDevDocsCopy,
+    detail: missing.length === 0 && !hasLegacyDevDocsCopy
       ? 'Dockerfile wires launch build args and proof artifact'
-      : `missing Dockerfile snippets: ${missing.join(' | ')}`,
+      : hasLegacyDevDocsCopy
+        ? 'Dockerfile still copies runtime launch contracts from dev-docs'
+        : `missing Dockerfile snippets: ${missing.join(' | ')}`,
   };
 }
 
@@ -210,6 +335,8 @@ export function validateLaunchWarmStartAssets() {
   const ok =
     warmStartModule.includes('runLaunchWarmStart') &&
     warmStartModule.includes('CURATED_LAUNCH_WARM_START_POSTS') &&
+    warmStartModule.includes('community_occupancy') &&
+    warmStartModule.includes('required_community_floor') &&
     warmStartCli.includes('runLaunchWarmStart');
 
   return {
@@ -217,6 +344,101 @@ export function validateLaunchWarmStartAssets() {
     detail: ok
       ? 'launch warm-start command and curated bootstrap module exist'
       : 'launch warm-start wiring or curated bootstrap assets are incomplete',
+  };
+}
+
+export function validateLaunchRuntimeContracts() {
+  const missing = REQUIRED_LAUNCH_RUNTIME_CONTRACTS.filter((relativePath) => !existsSync(resolve(ROOT, relativePath)));
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      detail: `missing launch runtime contracts: ${missing.join(', ')}`,
+    };
+  }
+
+  const manifestValidation = validateLaunchContractManifestShape(
+    readYaml('config/launch/manifest.v1.yaml'),
+  );
+  if (!manifestValidation.ok) {
+    return manifestValidation;
+  }
+
+  const contractResolver = readText('src/backend/launch/contract-paths.ts');
+  const launchModules = [
+    'src/backend/launch/community-rules.ts',
+    'src/backend/launch/system-roster.ts',
+    'src/backend/launch/home-programming.ts',
+    'src/backend/launch/t4-content-templates.ts',
+    'src/backend/launch/visual-rollout.ts',
+    'src/backend/launch/lightweight-personalization.ts',
+    'src/backend/launch/programming-schedule.ts',
+    'src/backend/launch/post-launch-tuning.ts',
+  ].map((relativePath) => readText(relativePath));
+  const runtimeReadsDevDocs =
+    contractResolver.includes('dev-docs/')
+    || launchModules.some((source) => source.includes('dev-docs/'));
+
+  return {
+    ok: manifestValidation.ok && !runtimeReadsDevDocs,
+    detail: manifestValidation.ok && !runtimeReadsDevDocs
+      ? manifestValidation.detail
+      : 'runtime launch contract loading still references dev-docs',
+  };
+}
+
+export function validateDevOnlyStartupHardening() {
+  const appModule = readText('src/backend/app.ts');
+  const fixtureModule = readText('src/backend/dev/dev-seed-fixtures.ts');
+  const ok =
+    !appModule.includes("import { devSeedRouter } from './routes/dev-seed.js'") &&
+    appModule.includes("await import('./routes/dev-seed.js')") &&
+    fixtureModule.includes('function getCanonicalCommunities()') &&
+    !fixtureModule.includes('const CANONICAL_COMMUNITIES: DevSeedCommunitySpec[] = listLaunchCommunitySeeds()');
+
+  return {
+    ok,
+    detail: ok
+      ? 'production startup no longer statically imports dev-seed launch fixtures'
+      : 'dev-only startup hardening is incomplete',
+  };
+}
+
+export function validatePublishWorkflowWireup() {
+  const workflow = readText('.github/workflows/publish-image.yml');
+  const publishContext = readText('scripts/ci/publish-image-context.mjs');
+  const workflowChecks = [
+    {
+      snippet: 'node ops/packaging/scripts/build.mjs \\',
+      minCount: 1,
+    },
+    {
+      snippet: '--build-profile "$FRONTEND_BUILD_PROFILE"',
+      minCount: 1,
+    },
+    {
+      snippet: 'node scripts/ci/check-image-launch-proof.mjs \\',
+      minCount: 2,
+    },
+    {
+      snippet: '--expected-profile "$FRONTEND_BUILD_PROFILE"',
+      minCount: 2,
+    },
+  ];
+  const workflowMissing = workflowChecks
+    .filter(({ snippet, minCount }) => workflow.split(snippet).length - 1 < minCount)
+    .map(({ snippet }) => snippet);
+  const contextOk =
+    publishContext.includes("frontend_build_profile: 'launch'") &&
+    publishContext.includes("runtime_overlay: 'env/values/staging-launch.yaml'") &&
+    publishContext.includes("runtime_overlay: 'env/values/prod-launch.yaml'");
+
+  return {
+    ok: workflowMissing.length === 0 && contextOk,
+    detail: workflowMissing.length === 0 && contextOk
+      ? 'publish workflow builds and promotes the canonical launch image with proof checks'
+      : workflowMissing.length > 0
+        ? `publish workflow is missing launch wireup: ${workflowMissing.join(' | ')}`
+        : 'publish-image-context.mjs is missing canonical launch outputs',
   };
 }
 

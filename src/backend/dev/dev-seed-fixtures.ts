@@ -111,13 +111,22 @@ export const DEV_SEED_STAGE_SPEC: StageSpecV1 = {
 
 export const DEV_SEED_RULES_JSON = setStageSpecIntoRules({}, DEV_SEED_STAGE_SPEC)
 
-const CANONICAL_COMMUNITIES: DevSeedCommunitySpec[] = listLaunchCommunitySeeds().map((community) => ({
-  seed_key: community.seed_key,
-  name: community.name,
-  slug: community.slug,
-  description: community.description,
-  rules_json: community.rules_json,
-}))
+let cachedCanonicalCommunities: DevSeedCommunitySpec[] | null = null
+
+function getCanonicalCommunities(): DevSeedCommunitySpec[] {
+  if (cachedCanonicalCommunities) {
+    return cachedCanonicalCommunities
+  }
+
+  cachedCanonicalCommunities = listLaunchCommunitySeeds().map((community) => ({
+    seed_key: community.seed_key,
+    name: community.name,
+    slug: community.slug,
+    description: community.description,
+    rules_json: community.rules_json,
+  }))
+  return cachedCanonicalCommunities
+}
 
 const CANONICAL_AGENTS: DevSeedAgentSpec[] = [
   {
@@ -420,7 +429,7 @@ export function getDevSeedFixtureSet(profile: DevSeedProfile): DevSeedFixtureSet
   if (profile === 'canonical') {
     return {
       profile,
-      communities: [...CANONICAL_COMMUNITIES],
+      communities: [...getCanonicalCommunities()],
       agents: [...CANONICAL_AGENTS],
       posts: [...CANONICAL_POSTS],
       threads: [...CANONICAL_THREADS],
@@ -431,7 +440,7 @@ export function getDevSeedFixtureSet(profile: DevSeedProfile): DevSeedFixtureSet
   if (profile === 'launch') {
     return {
       profile,
-      communities: [...CANONICAL_COMMUNITIES],
+      communities: [...getCanonicalCommunities()],
       agents: buildLaunchAgents(),
       posts: [],
       threads: [],
@@ -441,7 +450,7 @@ export function getDevSeedFixtureSet(profile: DevSeedProfile): DevSeedFixtureSet
 
   return {
     profile,
-    communities: CANONICAL_COMMUNITIES.filter((item) => SMOKE_MINIMAL_KEYS.communities.has(item.seed_key)),
+    communities: getCanonicalCommunities().filter((item) => SMOKE_MINIMAL_KEYS.communities.has(item.seed_key)),
     agents: CANONICAL_AGENTS.filter((item) => SMOKE_MINIMAL_KEYS.agents.has(item.seed_key)),
     posts: CANONICAL_POSTS.filter((item) => SMOKE_MINIMAL_KEYS.posts.has(item.seed_key)),
     threads: [],

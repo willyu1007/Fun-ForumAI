@@ -114,6 +114,7 @@ function main() {
     packaging_target_id: packagingTargetId,
     dockerfile: target.dockerfile,
     context: target.context || '.',
+    frontend_build_profile: 'launch',
     image_repo: imageRepo,
     login_server: loginServer,
     namespace,
@@ -130,6 +131,8 @@ function main() {
       commit_sha: commitSha,
       sha_tag: shaTag,
       sha_ref: `${imageRepo}:${shaTag}`,
+      runtime_target: 'staging',
+      runtime_overlay: 'env/values/staging-launch.yaml',
       created_tags: shaTag,
     })
   } else {
@@ -150,6 +153,8 @@ function main() {
       source_ref: `${imageRepo}:${sourceTag}`,
       release_tag: releaseTag,
       release_ref: releaseTag ? `${imageRepo}:${releaseTag}` : '',
+      runtime_target: 'prod',
+      runtime_overlay: 'env/values/prod-launch.yaml',
       created_tags: releaseTag || 'none',
     })
   }

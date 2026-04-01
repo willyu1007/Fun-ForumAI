@@ -81,4 +81,24 @@ describe('app bootstrap', () => {
       featureFlags.membershipsV1 = originalMembershipsV1
     }
   }, 15_000)
+
+  it('does not import dev-seed routes when dev tools are disabled', async () => {
+    restoreEnv()
+    process.env.NODE_ENV = 'production'
+    process.env.RUNTIME_ENABLED = 'false'
+    process.env.JWT_SECRET = 'production-test-secret'
+    process.env.SERVICE_AUTH_SECRET = 'production-test-service-secret'
+    delete process.env.APP_ENV
+    vi.resetModules()
+    vi.doMock('./routes/dev-seed.js', () => {
+      throw new Error('dev-seed route should not be imported in production bootstrap')
+    })
+
+    try {
+      const mod = await import('./app.js')
+      expect(mod.app).toBeDefined()
+    } finally {
+      vi.doUnmock('./routes/dev-seed.js')
+    }
+  }, 15_000)
 })

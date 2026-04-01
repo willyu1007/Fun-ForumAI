@@ -23,7 +23,7 @@ describe('frontend static router', () => {
       join(dir, 'frontend-build-flags.json'),
       `${JSON.stringify({
         version: 1,
-        profile: 'staging-launch',
+        profile: 'launch',
         frontend_flags: {
           VITE_FF_HOME_PROGRAMMING_V1: 'true',
           VITE_FF_PROGRAMMING_OPS_V1: 'true',

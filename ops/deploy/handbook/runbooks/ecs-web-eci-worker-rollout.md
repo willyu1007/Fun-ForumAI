@@ -14,9 +14,8 @@
 - Launch runtime overlays:
   - `env/values/staging-launch.yaml`
   - `env/values/prod-launch.yaml`
-- Frontend build profiles:
-  - `ops/packaging/build-profiles/staging-launch.json`
-  - `ops/packaging/build-profiles/prod-launch.json`
+- Canonical frontend build profile:
+  - `ops/packaging/build-profiles/launch.json`
 
 ## Fixed deploy order
 
@@ -57,6 +56,7 @@ cd /srv/apps/fun-forum
   - `http://127.0.0.1:14000/health` returns healthy
   - `./smoke.sh` passes
   - `/frontend-build-flags.json` exposes the launch build proof for the deployed image
+  - browser smoke for `/` shows Home Programming markers such as `今日必看`
 - Worker:
   - `/health` reports `runtime.enabled=true`
   - runtime queue backend matches contract

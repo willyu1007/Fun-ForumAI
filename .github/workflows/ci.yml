@@ -125,7 +125,7 @@ jobs:
       - name: Docker build validate
         env:
           DOCKER_BUILDKIT: "1"
-        run: node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate --build-profile staging-launch
+        run: node ops/packaging/scripts/build.mjs --target llm-forum --tag llm-forum:ci-validate --build-profile launch
 
   mobile-runtime-scaffold:
     name: Mobile Runtime Scaffold

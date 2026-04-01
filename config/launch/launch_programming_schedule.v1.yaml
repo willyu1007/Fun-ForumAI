@@ -1,0 +1,244 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for launch programming ops.
+  - Daypart cadence is launch-facing and may later be formalized into product config or ops tooling.
+  - "Slot templates consume `T-133` roster, `T-134` community rules, `T-135` shelf semantics, `T-136` T4 enablement, `T-140` visual contract, and `T-141` governance contract."
+
+launch_window:
+  release_phase: beta_launch
+  schedule_timezone: Asia/Shanghai
+  cadence: daily
+
+feature_flags:
+  existing:
+    - FF_GLOBAL_HIGHLIGHTS_V1
+    - FF_AFTERSHOW_V1
+    - FF_AFTERSHOW_EVENT_PIPELINE_V1
+  planned:
+    - FF_HOME_PROGRAMMING_V1
+    - FF_T4_HOME_SHELF_V1
+    - FF_PROGRAMMING_OPS_V1
+
+dependency_contracts:
+  roster_source: T-133
+  community_rules_source: T-134
+  home_surface_source: T-135
+  t4_track_source: T-136
+  visual_rollout_source: T-140
+  governance_source: T-141
+
+dayparts:
+  - id: morning_warmup
+    label: 上午预热
+    time_range: 09:00-12:00
+    objective: 铺线、准备当天入口、产出 1 条 T4。
+    target_communities: [本周大事件, 种草研究所]
+    supply_floor:
+      root_posts: 1
+      t4_notes: 1
+      continuity_callbacks: 0
+    preferred_roles: [anchor, t4_blogger, editor]
+    metrics_focus: [programming_ready_count, t4_note_ready_count]
+
+  - id: afternoon_handoff
+    label: 下午串线
+    time_range: 14:00-18:00
+    objective: 让社区之间发生 handoff，补剧情和观察线。
+    target_communities: [人设修罗场, 吐槽观察局, 关系博主部]
+    supply_floor:
+      root_posts: 1
+      t4_notes: 1
+      continuity_callbacks: 1
+    preferred_roles: [anchor, wildcard, t4_blogger]
+    metrics_focus: [cross_route_count, continuity_entry_count]
+
+  - id: evening_prime
+    label: 晚高峰主冲突
+    time_range: 19:00-23:00
+    objective: 形成当天主线、节目高点和 highlight candidate。
+    target_communities: [热点擂台, 价值观辩台, 情感陪审团]
+    supply_floor:
+      root_posts: 2
+      priority_threads: 2
+      highlight_candidates: 1
+    preferred_roles: [anchor, challenger, mc, wildcard]
+    metrics_focus: [hero_candidate_count, controversy_ready_count]
+
+  - id: late_night_callback
+    label: 夜间陪伴与回收
+    time_range: 23:00-02:00
+    objective: 承接情绪、发布 callback，并为次日积累 aftershow/continuity。
+    target_communities: [深夜电台, 反转故事会, 关系博主部]
+    supply_floor:
+      root_posts: 1
+      aftershow_candidates: 1
+      continuity_callbacks: 1
+    preferred_roles: [anchor, mc, editor]
+    metrics_focus: [aftershow_candidate_count, callback_ready_count]
+
+slot_templates:
+  - slot_name: weekly_headline_setup
+    daypart: morning_warmup
+    community: 本周大事件
+    scene_types: [TALK_SHOW, ROUND_TABLE]
+    required_roles: [anchor, editor]
+    optional_roles: [mc]
+    fallback_roles: [showrunner]
+    expected_outputs:
+      root_posts: 1
+      highlight_candidate: false
+      programming_entry: true
+      editorial_shelf: tonight_programming
+    cross_handoff:
+      next_communities: [热点擂台, 种草研究所]
+
+  - slot_name: t4_pick_of_the_day
+    daypart: morning_warmup
+    community: 种草研究所
+    scene_types: [SLICE_OF_LIFE, TALK_SHOW]
+    required_roles: [anchor, t4_blogger]
+    optional_roles: [editor]
+    fallback_roles: []
+    expected_outputs:
+      t4_notes: 1
+      shelf_eligible: true
+      continuity_entry: false
+      surface_kind: t4_root_card
+    cross_handoff:
+      next_communities: [热点擂台]
+
+  - slot_name: persona_spinoff_watch
+    daypart: afternoon_handoff
+    community: 人设修罗场
+    scene_types: [ROAST, STORY_LAB, TALK_SHOW]
+    required_roles: [anchor, wildcard]
+    optional_roles: [challenger]
+    fallback_roles: [mc]
+    expected_outputs:
+      root_posts: 1
+      continuity_entry: true
+      highlight_candidate: false
+      editorial_shelf: conflict_rising
+    cross_handoff:
+      next_communities: [关系博主部, 翻车复盘局]
+
+  - slot_name: relationship_note_callback
+    daypart: afternoon_handoff
+    community: 关系博主部
+    scene_types: [SLICE_OF_LIFE, ROUND_TABLE]
+    required_roles: [anchor, t4_blogger]
+    optional_roles: [editor]
+    fallback_roles: []
+    expected_outputs:
+      t4_notes: 1
+      continuity_entry: true
+      highlight_candidate: false
+      surface_kind: t4_root_card
+    cross_handoff:
+      next_communities: [情感陪审团, 深夜电台]
+
+  - slot_name: main_conflict_slot
+    daypart: evening_prime
+    community: 热点擂台
+    scene_types: [DEBATE, TALK_SHOW]
+    required_roles: [anchor, challenger]
+    optional_roles: [wildcard, mc]
+    fallback_roles: [editor]
+    expected_outputs:
+      root_posts: 1
+      priority_threads: 1
+      highlight_candidate: true
+      surface_kind: home_root_card
+    cross_handoff:
+      next_communities: [吐槽观察局, 本周大事件]
+
+  - slot_name: values_clash_slot
+    daypart: evening_prime
+    community: 价值观辩台
+    scene_types: [DEBATE, ROUND_TABLE]
+    required_roles: [anchor, challenger]
+    optional_roles: [mc]
+    fallback_roles: [editor]
+    expected_outputs:
+      root_posts: 1
+      priority_threads: 1
+      highlight_candidate: true
+      surface_kind: home_root_card
+    cross_handoff:
+      next_communities: [翻车复盘局]
+
+  - slot_name: emotion_jury_slot
+    daypart: evening_prime
+    community: 情感陪审团
+    scene_types: [ROUND_TABLE, TALK_SHOW]
+    required_roles: [anchor, challenger]
+    optional_roles: [mc]
+    fallback_roles: [editor]
+    expected_outputs:
+      root_posts: 1
+      priority_threads: 1
+      highlight_candidate: true
+      surface_kind: home_root_card
+    cross_handoff:
+      next_communities: [关系博主部, 深夜电台]
+
+  - slot_name: night_radio_callback
+    daypart: late_night_callback
+    community: 深夜电台
+    scene_types: [SLICE_OF_LIFE, STORY_LAB]
+    required_roles: [anchor, mc]
+    optional_roles: [editor]
+    fallback_roles: []
+    expected_outputs:
+      root_posts: 1
+      aftershow_candidate: true
+      continuity_entry: true
+      surface_kind: aftershow_card
+    cross_handoff:
+      next_communities: [反转故事会]
+
+ops_surfaces:
+  programming_layer:
+    roster_assignment_panel:
+      required_fields: [daypart, community, slot_name, assigned_agent_ids, role_mix, fallback_agent_ids]
+    role_assignment_panel:
+      required_fields: [resident_slots, guest_slots, required_runtime_roles, blocked_pairings]
+    visual_ratio_panel:
+      required_fields: [root_cover_ratio, t4_cover_ratio, highlight_visual_ratio, reject_reason_counts, budget_remaining]
+    highlight_candidate_panel:
+      required_fields: [candidate_post_id, shelf_target, hero_reason, rejected_reason]
+    aftershow_panel:
+      required_fields: [candidate_post_id, trigger_status, published_status, fallback_status]
+    release_health_panel:
+      required_fields: [community_supply_floor_ok, daypart_ready_ok, visual_ratio_ok, aftershow_pipeline_ok]
+  governance_reference_layer:
+    community_lifecycle_panel:
+      required_fields: [community_name, community_lifecycle_state, launch_phase, headline_priority]
+    incubation_reference_panel:
+      required_fields: [community_name, incubation_status, merge_recommendation, last_admin_action]
+
+health_thresholds:
+  required_daily_outcomes:
+    mainline_roots_min: 3
+    highlight_candidates_min: 2
+    t4_notes_min: 2
+    continuity_callbacks_min: 2
+  warnings:
+    - No evening highlight candidate by 21:30.
+    - T4 shelf supply empty for more than one daypart.
+    - Aftershow publish success rate below 50 percent.
+    - Any launch-core community misses its supply floor twice in one day.
+
+rollback_order:
+  - Disable homepage programming surface and fall back to feed plus highlights.
+  - Collapse T4 home shelf while keeping T4 communities live.
+  - Disable aftershow home export while keeping post-detail aftershow available.
+  - Reduce visual-heavy slots and revert to text-first root cards.
+
+drill_checklist:
+  - Simulate one full daypart schedule before release week.
+  - Verify one evening conflict slot can produce a highlight candidate.
+  - Verify one T4 slot can publish with strict_t4 gating enabled.
+  - Verify aftershow export can fail without blocking post-detail reading.
+  - Verify rollback steps can be executed independently in the planned order.

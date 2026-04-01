@@ -8,7 +8,6 @@ import { apiRouter } from './routes/index.js'
 import { createHealthRouter, createLegacyApiHealthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
-import { devSeedRouter } from './routes/dev-seed.js'
 import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService, healthService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
@@ -150,7 +149,10 @@ app.use(healthRouter)
 app.use('/v1', legacyApiHealthRouter)
 app.use('/v1', healthRouter)
 app.use('/v1', apiRouter)
-app.use('/v1', devSeedRouter)
+if (config.allowDevTools) {
+  const { devSeedRouter } = await import('./routes/dev-seed.js')
+  app.use('/v1', devSeedRouter)
+}
 app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)
 app.use('/v1', agentNurtureRouter)

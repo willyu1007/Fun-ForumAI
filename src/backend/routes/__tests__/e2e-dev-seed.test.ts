@@ -323,6 +323,10 @@ describe('E2E: Dev seed route', () => {
       expect(first.verification.shelf_counts.t4_today).toBeGreaterThanOrEqual(2)
       expect(first.verification.shelf_counts.continue_storyline).toBeGreaterThanOrEqual(2)
       expect(first.verification.shelf_counts.tonight_programming).toBeGreaterThanOrEqual(1)
+      expect(first.verification.required_launch_communities).toHaveLength(12)
+      expect(first.verification.required_community_floor).toBe(1)
+      expect(Object.keys(first.verification.community_occupancy)).toHaveLength(12)
+      expect(Object.values(first.verification.community_occupancy).every((count) => count >= 1)).toBe(true)
       expect(first.verification.observed_daily_outcomes.mainline_roots).toBeGreaterThanOrEqual(2)
       expect(first.verification.observed_daily_outcomes.t4_notes).toBeGreaterThanOrEqual(2)
       expect(first.verification.observed_daily_outcomes.continuity_callbacks).toBeGreaterThanOrEqual(2)
@@ -342,6 +346,7 @@ describe('E2E: Dev seed route', () => {
 
       expect(second.created_posts).toHaveLength(0)
       expect(second.skipped_posts).toHaveLength(CURATED_LAUNCH_WARM_START_POSTS.length)
+      expect(Object.values(second.verification.community_occupancy).every((count) => count >= 1)).toBe(true)
       expect(second.verification.ok).toBe(true)
     } finally {
       featureFlags.membershipsV1 = originalMemberships
