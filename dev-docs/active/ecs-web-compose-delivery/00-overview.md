@@ -12,6 +12,13 @@
 - Repo-side publish hardening now also includes explicit self-hosted cleanup before and after each publish job, `if: always()` cleanup on failure paths, job-level self-hosted publish concurrency, and a corrected Docker context allowlist so the build no longer depends on stale runner state or missing `ops/packaging` files.
 - Next operator step is a single new `Publish Image` rerun after these repo-side fixes land. If the job still fails in `Build immutable image locally`, treat `ecs-acr-publish-hz-01` disk / IOPS remediation as the blocking host-side fix before any further reruns.
 
+## 2026-04-02 GitHub-hosted Pivot
+
+- ACR public access is now enabled with an empty public whitelist, so the active remediation path has shifted from repairing `ecs-acr-publish-hz-01` to removing that host from the publish critical path.
+- The `Publish Image` workflow is being migrated to GitHub-hosted `ubuntu-24.04` runners.
+- The workflow now computes the public ACR API endpoint internally as `cr.${ALICLOUD_REGION}.aliyuncs.com`, so publish/promotion no longer depend on the old VPC-only `ACR_API_ENDPOINT` repository variable.
+- The self-hosted publish runner is intentionally retained for now as an emergency fallback until the first GitHub-hosted immutable publish succeeds.
+
 ## Goal
 
 把 ECS web 交付链写成标准化宿主机方案，使后续不仅当前项目可接入，未来其他项目也能共用同一套主机组织与发布/回滚模型。

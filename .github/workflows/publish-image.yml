@@ -17,6 +17,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PUBLIC_ACR_API_ENDPOINT: ${{ format('cr.{0}.aliyuncs.com', vars.ALICLOUD_REGION) }}
+
 concurrency:
   group: publish-image-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.ref_name }}
   cancel-in-progress: false
@@ -24,11 +27,10 @@ concurrency:
 jobs:
   preflight:
     name: Publish Preflight
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
-      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -53,7 +55,7 @@ jobs:
           ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
           ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_API_ENDPOINT: ${{ env.PUBLIC_ACR_API_ENDPOINT }}
           ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
           ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
           GITHUB_SHA: ${{ github.sha }}
@@ -67,112 +69,76 @@ jobs:
           ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
           ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_API_ENDPOINT: ${{ env.PUBLIC_ACR_API_ENDPOINT }}
           ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
           ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
           SOURCE_SHA: ${{ inputs.source_sha }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: node scripts/ci/publish-image-context.mjs --mode promote
 
-      - name: Verify self-hosted publish runner exists
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          REQUIRED_RUNNER_LABELS: self-hosted,linux,x64,aliyun-vpc,acr-publish
-          ALLOW_RUNNER_API_FORBIDDEN: "true"
-        run: node scripts/ci/check-runner-availability.mjs
-
   publish-staging:
     name: Build and Push Immutable Candidate
     if: github.event_name == 'push'
     needs: [preflight]
-    runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
+    runs-on: ubuntu-24.04
     concurrency:
-      group: acr-publish-self-hosted
+      group: acr-publish-jobs
       cancel-in-progress: false
     timeout-minutes: 90
     environment: staging
     permissions:
       contents: read
       id-token: write
+    env:
+      ALIBABA_CLOUD_CLI_PLUGIN_AUTO_INSTALL: "true"
     steps:
-      - name: Stabilize git transport on self-hosted runner
-        shell: bash
-        run: git config --global http.version HTTP/1.1
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Pre-clean self-hosted runner state
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Alibaba Cloud CLI
         shell: bash
         run: |
           set -euo pipefail
-          workspace="${GITHUB_WORKSPACE:-}"
-          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
-            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-          fi
-          docker container prune -f || true
-          docker image prune -af || true
-          docker builder prune -af || true
-          df -h || true
-          docker system df || true
-
-      - name: Fetch source archive
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          ARCHIVE_REF: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive_path="$RUNNER_TEMP/publish-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
-          echo "PUBLISH_SOURCE_ARCHIVE=$archive_path" >> "$GITHUB_ENV"
-          find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-          curl --http1.1 --fail --silent --show-error --location \
-            --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
-            --output "$archive_path"
-          tar -xzf "$archive_path" --strip-components=1 -C "$GITHUB_WORKSPACE"
+          curl -fsSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz -o aliyun-cli-linux-latest.tgz
+          tar -xzf aliyun-cli-linux-latest.tgz
+          sudo install -m 0755 aliyun /usr/local/bin/aliyun
+          rm -f aliyun aliyun-cli-linux-latest.tgz
+          aliyun version
+          aliyun plugin install --names cr
 
       - name: Resolve publish context
         id: context
-        uses: actions/github-script@v7
         env:
           ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
           ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
           ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
           ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_API_ENDPOINT: ${{ env.PUBLIC_ACR_API_ENDPOINT }}
           ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
           ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
           GITHUB_SHA: ${{ github.sha }}
-        with:
-          script: |
-            const { execFileSync } = await import('node:child_process')
-            execFileSync(process.execPath, ['scripts/ci/publish-image-context.mjs', '--mode', 'publish'], {
-              cwd: process.env.GITHUB_WORKSPACE,
-              env: process.env,
-              stdio: 'inherit',
-            })
+        run: node scripts/ci/publish-image-context.mjs --mode publish
 
       - name: Check runner prerequisites
         run: |
           set -euo pipefail
           docker --version
+          docker buildx version
           aliyun version
           df -h
           docker system df || true
 
-      - name: Resolve docker builder mode
-        shell: bash
-        run: |
-          set -euo pipefail
-          if docker buildx version >/dev/null 2>&1; then
-            echo "DOCKER_BUILDKIT=1" >> "$GITHUB_ENV"
-            echo "Using Docker BuildKit via buildx."
-          else
-            echo "DOCKER_BUILDKIT=0" >> "$GITHUB_ENV"
-            echo "docker buildx unavailable on runner; falling back to legacy docker build."
-          fi
+      - name: Enable Docker BuildKit
+        run: echo "DOCKER_BUILDKIT=1" >> "$GITHUB_ENV"
 
       - name: Configure Alibaba Cloud credentials
         uses: aliyun/configure-aliyun-credentials-action@b347e60e64028a4d567a8f31ca42e1b0706c3c99
@@ -184,58 +150,34 @@ jobs:
           audience: sts.aliyuncs.com
 
       - name: Log in to ACR
-        uses: actions/github-script@v7
         env:
           ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
           ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_API_ENDPOINT: ${{ env.PUBLIC_ACR_API_ENDPOINT }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
-        with:
-          script: |
-            const { execFileSync } = await import('node:child_process')
-            execFileSync(process.execPath, ['scripts/ci/acr-login.mjs'], {
-              cwd: process.env.GITHUB_WORKSPACE,
-              env: process.env,
-              stdio: 'inherit',
-            })
+        run: node scripts/ci/acr-login.mjs
 
       - name: Build immutable image locally
-        uses: actions/github-script@v7
         env:
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
           FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
-        with:
-          script: |
-            const { execFileSync } = await import('node:child_process')
-            execFileSync('date', ['-u'], { stdio: 'inherit' })
-            execFileSync(process.execPath, [
-              'ops/packaging/scripts/build.mjs',
-              '--target', 'llm-forum',
-              '--tag', process.env.SHA_REF,
-              '--build-profile', process.env.FRONTEND_BUILD_PROFILE,
-            ], {
-              cwd: process.env.GITHUB_WORKSPACE,
-              env: process.env,
-              stdio: 'inherit',
-            })
+        run: |
+          set -euo pipefail
+          date -u
+          node ops/packaging/scripts/build.mjs \
+            --target llm-forum \
+            --tag "$SHA_REF" \
+            --build-profile "$FRONTEND_BUILD_PROFILE"
 
       - name: Verify candidate launch image proof
-        uses: actions/github-script@v7
         env:
           SHA_REF: ${{ steps.context.outputs.sha_ref }}
           FRONTEND_BUILD_PROFILE: ${{ steps.context.outputs.frontend_build_profile }}
-        with:
-          script: |
-            const { execFileSync } = await import('node:child_process')
-            execFileSync(process.execPath, [
-              'scripts/ci/check-image-launch-proof.mjs',
-              '--image-ref', process.env.SHA_REF,
-              '--expected-profile', process.env.FRONTEND_BUILD_PROFILE,
-            ], {
-              cwd: process.env.GITHUB_WORKSPACE,
-              env: process.env,
-              stdio: 'inherit',
-            })
+        run: |
+          set -euo pipefail
+          node scripts/ci/check-image-launch-proof.mjs \
+            --image-ref "$SHA_REF" \
+            --expected-profile "$FRONTEND_BUILD_PROFILE"
 
       - name: Push immutable sha image
         env:
@@ -280,101 +222,55 @@ jobs:
             echo "- workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Cleanup self-hosted runner artifacts
-        if: always()
-        env:
-          SHA_REF: ${{ steps.context.outputs.sha_ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -n "${SHA_REF:-}" ]; then
-            docker image rm -f "${SHA_REF}" || true
-          fi
-          docker container prune -f || true
-          docker image prune -af || true
-          docker builder prune -af || true
-          if [ -n "${PUBLISH_SOURCE_ARCHIVE:-}" ]; then
-            rm -f "${PUBLISH_SOURCE_ARCHIVE}" || true
-          fi
-          workspace="${GITHUB_WORKSPACE:-}"
-          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
-            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-          fi
-          df -h || true
-          docker system df || true
-
   promote-prod:
     name: Approve Existing Immutable Image for Prod
     if: github.event_name == 'workflow_dispatch'
     needs: [preflight]
-    runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
+    runs-on: ubuntu-24.04
     concurrency:
-      group: acr-publish-self-hosted
+      group: acr-publish-jobs
       cancel-in-progress: false
     timeout-minutes: 30
     environment: prod
     permissions:
       contents: read
       id-token: write
+    env:
+      ALIBABA_CLOUD_CLI_PLUGIN_AUTO_INSTALL: "true"
     steps:
-      - name: Stabilize git transport on self-hosted runner
-        shell: bash
-        run: git config --global http.version HTTP/1.1
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Pre-clean self-hosted runner state
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install Alibaba Cloud CLI
         shell: bash
         run: |
           set -euo pipefail
-          workspace="${GITHUB_WORKSPACE:-}"
-          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
-            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-          fi
-          docker container prune -f || true
-          docker image prune -af || true
-          docker builder prune -af || true
-          df -h || true
-          docker system df || true
-
-      - name: Fetch source archive
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          ARCHIVE_REF: ${{ inputs.source_sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive_path="$RUNNER_TEMP/publish-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
-          echo "PUBLISH_SOURCE_ARCHIVE=$archive_path" >> "$GITHUB_ENV"
-          find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-          curl --http1.1 --fail --silent --show-error --location \
-            --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
-            --output "$archive_path"
-          tar -xzf "$archive_path" --strip-components=1 -C "$GITHUB_WORKSPACE"
+          curl -fsSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz -o aliyun-cli-linux-latest.tgz
+          tar -xzf aliyun-cli-linux-latest.tgz
+          sudo install -m 0755 aliyun /usr/local/bin/aliyun
+          rm -f aliyun aliyun-cli-linux-latest.tgz
+          aliyun version
+          aliyun plugin install --names cr
 
       - name: Resolve promotion context
         id: context
-        uses: actions/github-script@v7
         env:
           ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
           ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE }}
           ACR_REPOSITORY: ${{ vars.ACR_REPOSITORY }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
           ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_API_ENDPOINT: ${{ env.PUBLIC_ACR_API_ENDPOINT }}
           ALICLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALICLOUD_OIDC_PROVIDER_ARN }}
           ALICLOUD_ROLE_ARN: ${{ vars.ALICLOUD_ROLE_ARN }}
           SOURCE_SHA: ${{ inputs.source_sha }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        with:
-          script: |
-            const { execFileSync } = await import('node:child_process')
-            execFileSync(process.execPath, ['scripts/ci/publish-image-context.mjs', '--mode', 'promote'], {
-              cwd: process.env.GITHUB_WORKSPACE,
-              env: process.env,
-              stdio: 'inherit',
-            })
+        run: node scripts/ci/publish-image-context.mjs --mode promote
 
       - name: Check runner prerequisites
         run: |
@@ -394,20 +290,12 @@ jobs:
           audience: sts.aliyuncs.com
 
       - name: Log in to ACR
-        uses: actions/github-script@v7
         env:
           ALICLOUD_REGION: ${{ vars.ALICLOUD_REGION }}
           ACR_INSTANCE_ID: ${{ vars.ACR_INSTANCE_ID }}
-          ACR_API_ENDPOINT: ${{ vars.ACR_API_ENDPOINT }}
+          ACR_API_ENDPOINT: ${{ env.PUBLIC_ACR_API_ENDPOINT }}
           ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
-        with:
-          script: |
-            const { execFileSync } = await import('node:child_process')
-            execFileSync(process.execPath, ['scripts/ci/acr-login.mjs'], {
-              cwd: process.env.GITHUB_WORKSPACE,
-              env: process.env,
-              stdio: 'inherit',
-            })
+        run: node scripts/ci/acr-login.mjs
 
       - name: Verify source image and optionally create immutable release tag
         id: promote
@@ -461,30 +349,3 @@ jobs:
             echo "- commit sha: \`$COMMIT_SHA\`"
             echo "- workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Cleanup self-hosted runner artifacts
-        if: always()
-        env:
-          SOURCE_REF: ${{ steps.context.outputs.source_ref }}
-          RELEASE_REF: ${{ steps.context.outputs.release_ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -n "${SOURCE_REF:-}" ]; then
-            docker image rm -f "${SOURCE_REF}" || true
-          fi
-          if [ -n "${RELEASE_REF:-}" ]; then
-            docker image rm -f "${RELEASE_REF}" || true
-          fi
-          docker container prune -f || true
-          docker image prune -af || true
-          docker builder prune -af || true
-          if [ -n "${PUBLISH_SOURCE_ARCHIVE:-}" ]; then
-            rm -f "${PUBLISH_SOURCE_ARCHIVE}" || true
-          fi
-          workspace="${GITHUB_WORKSPACE:-}"
-          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
-            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-          fi
-          df -h || true
-          docker system df || true

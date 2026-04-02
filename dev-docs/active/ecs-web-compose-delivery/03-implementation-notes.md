@@ -33,6 +33,23 @@
 - 2026-04-02 live rerun follow-up: the first implementation incorrectly used a repo `node` script for cleanup before `actions/setup-node`, but the self-hosted runner does not have global `node`. The cleanup path was revised to pure bash best-effort cleanup inside the workflow itself, and the dead `scripts/ci/cleanup-publish-runner.mjs` helper was removed.
 - 2026-04-02 second live rerun follow-up: after cleanup was fixed, the self-hosted publish job hung in `actions/setup-node` for several minutes and never advanced to Docker build. To remove that external dependency entirely, the self-hosted jobs were refactored to execute repo `.mjs` helpers through `actions/github-script` and the action runtime's embedded Node, rather than downloading a separate Node toolcache onto the runner.
 - 2026-04-02 third live rerun follow-up: after removing `actions/setup-node`, the publish chain advanced into `Build immutable image locally` and exposed one last nested Node assumption inside `ops/packaging/scripts/build.mjs`. That helper was still shelling out with `node ops/packaging/scripts/docker-build.mjs ...`, which fails on the self-hosted runner because there is no global `node` binary on the host. The helper now invokes `docker-build.mjs` via `execFileSync(process.execPath, [...])`, so the same embedded Node runtime that launched `build.mjs` is reused for the nested packaging step as well.
+- 2026-04-02 fourth live rerun follow-up: the next `Publish Image` rerun (`23887131556`) confirmed the nested Node fix worked. `publish-staging` cleared source archive fetch, publish-context resolution, credential setup, ACR login, and then stayed inside `Build immutable image locally` for about 16 minutes before failing. This means the repo-side Node/bootstrap blockers are now removed; the remaining blocker has converged back to the runner host / Docker build layer rather than the workflow's JS helper chain.
+
+## 2026-04-02 - GitHub-hosted publish migration
+
+- Switched `publish-staging` and `promote-prod` from the self-hosted ECS publish runner to GitHub-hosted `ubuntu-24.04`.
+- Removed the self-hosted-only workflow branches:
+  - git transport stabilization
+  - archive fetch workaround
+  - pre/post runner cleanup
+  - self-hosted-only concurrency naming
+- Restored the standard GitHub-hosted toolchain bootstrap:
+  - `actions/checkout@v6`
+  - `actions/setup-node@v6`
+  - `docker/setup-buildx-action@v3` for the build job
+- Added an explicit Alibaba Cloud CLI install step on GitHub-hosted runners and kept `acr-login.mjs` as the single ACR login path.
+- Unified ACR API endpoint handling behind workflow-level `PUBLIC_ACR_API_ENDPOINT = cr.${ALICLOUD_REGION}.aliyuncs.com`, so preflight, publish context, and ACR login all consume the same public endpoint instead of a mix of public/VPC values.
+- Kept the self-hosted runner asset in GitHub settings for now; retirement is deferred until the first GitHub-hosted immutable publish succeeds.
 
 ## Follow-ups
 

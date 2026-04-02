@@ -218,3 +218,22 @@
   - Repo-side fix validation:
     - `git diff -- ops/packaging/scripts/build.mjs`
       - Result: `build.mjs` no longer shells out with `node ops/packaging/scripts/docker-build.mjs ...`; it now uses `execFileSync(process.execPath, [...])` and passes `--build-arg` values as an argument array, removing both the global-`node` assumption and the shell-quoting split in the nested packaging step.
+- 2026-04-02（post-fix live rerun after nested node removal）:
+  - Commit and publish trigger:
+    - `git push origin main`
+      - Result: pushed `5b4f784b7b7c86b2199da66d824a6d7cd8360f1f` to `main`, triggering a new `Publish Image` run.
+  - Live run monitoring:
+    - `gh run view 23887131556 --json jobs,status,conclusion,url`
+      - Result: `publish-staging` successfully cleared `Stabilize git transport on self-hosted runner`, `Pre-clean self-hosted runner state`, `Fetch source archive`, `Resolve publish context`, `Check runner prerequisites`, `Resolve docker builder mode`, `Configure Alibaba Cloud credentials`, and `Log in to ACR`; then it remained in `Build immutable image locally` until the job failed at `2026-04-02T06:41:40Z`.
+    - `gh run view 23887131556 --job 69652227323 --log`
+      - Result: the latest run no longer shows `/bin/sh: 1: node: not found`, confirming the nested `process.execPath` fix worked; the observable failure has moved back to the long-running Docker build itself.
+- 2026-04-02锛圙itHub-hosted publish workflow migration锛?
+  - Workflow syntax:
+    - `node --input-type=module -e "import fs from 'node:fs'; import YAML from 'yaml'; YAML.parse(fs.readFileSync('.github/workflows/publish-image.yml', 'utf8')); console.log('yaml_ok')"`
+      - Result: `yaml_ok`
+  - Diff hygiene:
+    - `git diff --check`
+      - Result: passed
+  - Workflow invariants:
+    - `rg -n "vars\\.ACR_API_ENDPOINT|PUBLIC_ACR_API_ENDPOINT|plugin install --names cr" .github/workflows/publish-image.yml`
+      - Result: confirmed that preflight, publish, and promotion now all consume the single workflow-level `PUBLIC_ACR_API_ENDPOINT`, and that Alibaba Cloud CLI plugin bootstrap remains explicit in both GitHub-hosted jobs.
