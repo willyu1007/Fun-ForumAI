@@ -33,6 +33,16 @@
 - Prevention:
   - For self-hosted workflow steps that run before checkout or `actions/setup-node`, do not assume repo scripts or global Node exist. Pre-checkout/pre-setup cleanup must be implemented in shell only, or moved after the toolchain bootstrap step.
 
+### 2026-04-02 - Self-hosted publish should not depend on `actions/setup-node` when the runner has no global Node
+- Symptom:
+  - After fixing cleanup, the next self-hosted rerun cleared pre-clean and source fetch but then sat in `Setup Node` for several minutes without ever reaching `Resolve publish context` or Docker build.
+- What we tried:
+  - Observed the live run after the cleanup fix instead of assuming the publish chain had returned to the earlier disk-I/O bottleneck. Compared the stalled step with the fact that the same job only needs Node to execute repo helper scripts.
+- Fix / workaround:
+  - Removed `actions/setup-node` from the self-hosted publish jobs and switched those Node-script steps (`publish-image-context.mjs`, `acr-login.mjs`, `build.mjs`, `check-image-launch-proof.mjs`) to run through `actions/github-script`, which uses the action runtime's embedded Node instead of downloading a separate Node toolcache onto the runner.
+- Prevention:
+  - On self-hosted runners, do not assume the repo can afford a fresh language-runtime bootstrap on every heavy delivery job. If the runner only needs Node to execute a few repo-owned helpers, prefer the action runtime's embedded Node or a preinstalled host toolchain over `actions/setup-node` downloads in the hot path.
+
 ### 2026-03-28 - Task bootstrap
 - Symptom:
   - ECS 还没有建，最容易走向“先手工跑起来再说”，后续很难收口。

@@ -30,6 +30,12 @@
   - Cleanup correction:
     - `node --input-type=module -e "import fs from 'node:fs'; import YAML from 'yaml'; YAML.parse(fs.readFileSync('.github/workflows/publish-image.yml', 'utf8')); console.log('yaml_ok')"`
       - Result: `yaml_ok` after converting cleanup to pure bash inline steps and removing the dead repo `node` helper.
+  - Live publish rerun #2:
+    - `gh run view 23886466270 --json jobs,status,conclusion,url`
+      - Result: `publish-staging` cleared `Pre-clean self-hosted runner state` and `Fetch source archive`, but then remained stuck in self-hosted `Setup Node` for multiple polling intervals instead of reaching Docker build.
+  - Setup-node removal:
+    - `node --input-type=module -e "import fs from 'node:fs'; import YAML from 'yaml'; YAML.parse(fs.readFileSync('.github/workflows/publish-image.yml', 'utf8')); console.log('yaml_ok')"`
+      - Result: `yaml_ok` after replacing self-hosted `actions/setup-node` usage with `actions/github-script` steps that execute the existing repo `.mjs` helpers through the action runtime's embedded Node.
 
 - 2026-03-28:
   - governance:

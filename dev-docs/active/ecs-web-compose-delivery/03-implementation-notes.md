@@ -31,6 +31,7 @@
   - `ops/packaging/**`
 - This removes a latent semantic split where local builds could appear healthy only because stale runner state masked the fact that the Docker context was excluding repo-owned packaging files.
 - 2026-04-02 live rerun follow-up: the first implementation incorrectly used a repo `node` script for cleanup before `actions/setup-node`, but the self-hosted runner does not have global `node`. The cleanup path was revised to pure bash best-effort cleanup inside the workflow itself, and the dead `scripts/ci/cleanup-publish-runner.mjs` helper was removed.
+- 2026-04-02 second live rerun follow-up: after cleanup was fixed, the self-hosted publish job hung in `actions/setup-node` for several minutes and never advanced to Docker build. To remove that external dependency entirely, the self-hosted jobs were refactored to execute repo `.mjs` helpers through `actions/github-script` and the action runtime's embedded Node, rather than downloading a separate Node toolcache onto the runner.
 
 ## Follow-ups
 
