@@ -209,3 +209,12 @@
   - Operator observation:
     - 阿里云 ECS 控制台告警截图（`ecs-acr-publish-hz-01`）
       - Result: 控制台明确提示实例存在“云盘读写受限”严重异常，`2026-04-02 07:13:00` 读写 IO 延迟过长或达到当前云盘类型 IOPS 上限；这与 publish run 在真实 Docker 构建阶段失败的时间窗一致。
+- 2026-04-02（nested node assumption in packaging helper）:
+  - Live run failure evidence:
+    - `gh run view 23886880926 --json jobs,status,conclusion,url`
+      - Result: `publish-staging` successfully cleared self-hosted cleanup, source archive fetch, publish-context resolution, Aliyun credential setup, and ACR login before failing in `Build immutable image locally`.
+    - `gh run view 23886880926 --job 69651470511 --log-failed`
+      - Result: the failed build log showed `/bin/sh: 1: node: not found` after `ops/packaging/scripts/build.mjs` started, confirming that one nested packaging hop still depended on a global `node` binary on the self-hosted host.
+  - Repo-side fix validation:
+    - `git diff -- ops/packaging/scripts/build.mjs`
+      - Result: `build.mjs` no longer shells out with `node ops/packaging/scripts/docker-build.mjs ...`; it now uses `execFileSync(process.execPath, [...])` and passes `--build-arg` values as an argument array, removing both the global-`node` assumption and the shell-quoting split in the nested packaging step.

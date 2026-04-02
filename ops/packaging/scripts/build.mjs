@@ -12,7 +12,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import {
   loadFrontendBuildProfile,
   toDockerBuildArgs,
@@ -178,7 +178,7 @@ Options:
         continue;
       }
       dockerBuildArgs = toDockerBuildArgs(buildProfile)
-        .map(([key, value]) => `--build-arg ${key}=${value}`);
+        .flatMap(([key, value]) => ['--build-arg', `${key}=${value}`]);
     }
 
     if (opts.dryRun) {
@@ -186,8 +186,15 @@ Options:
     } else {
       console.log(`\n[build] ${t.id} → ${tag}`);
       try {
-        execSync(
-          `node ops/packaging/scripts/docker-build.mjs --dockerfile ${t.dockerfile} --tag ${tag} --context ${t.context || '.'} ${dockerBuildArgs.join(' ')}`.trim(),
+        execFileSync(
+          process.execPath,
+          [
+            'ops/packaging/scripts/docker-build.mjs',
+            '--dockerfile', t.dockerfile,
+            '--tag', tag,
+            '--context', t.context || '.',
+            ...dockerBuildArgs,
+          ],
           { stdio: 'inherit', cwd: ROOT }
         );
         console.log(`[ok] ${t.id} built successfully`);

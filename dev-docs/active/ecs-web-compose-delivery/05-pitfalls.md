@@ -160,3 +160,13 @@
     - 在 runner 侧降低并发和非必要 I/O 压力后，再重新验证 immutable publish
 - Prevention:
   - 以后当 publish run 已经成功越过源码获取、凭证配置和构建器选择，却仍在 Docker build 中途失败时，不要继续把问题默认为 workflow 或 Dockerfile 逻辑；应同步检查 runner 所在 ECS 的云盘、IOPS、磁盘时延和 Docker data path，避免在基础设施瓶颈上反复重跑同一构建。
+
+### 2026-04-02 - Removing top-level setup-node was not enough because the packaging helper still spawned `node`
+- Symptom:
+  - After the workflow stopped depending on `actions/setup-node`, the next self-hosted rerun finally reached `Build immutable image locally`, but failed with `/bin/sh: 1: node: not found` even though the top-level job was already using `actions/github-script` and the embedded action runtime Node.
+- What we tried:
+  - First verified the failing run instead of assuming the problem had regressed to cleanup or source-fetch. The failed log for run `23886880926` showed that the `node` failure occurred only after `ops/packaging/scripts/build.mjs` started.
+- Fix / workaround:
+  - Root cause was a nested process hop inside `ops/packaging/scripts/build.mjs`: it still used a shell string with `node ops/packaging/scripts/docker-build.mjs ...`. That assumption is invalid on the self-hosted publish runner because there is no global `node` binary on the host. The helper was rewritten to use `execFileSync(process.execPath, [...])` and pass build args as an array, so the same Node runtime that launched `build.mjs` also launches `docker-build.mjs`.
+- Prevention:
+  - When removing a runtime/bootstrap dependency from the top-level workflow, trace every nested repo helper it invokes. A self-hosted job is only truly free of global `node` assumptions when each downstream `.mjs` hop also reuses `process.execPath` or otherwise guarantees its own runtime.
