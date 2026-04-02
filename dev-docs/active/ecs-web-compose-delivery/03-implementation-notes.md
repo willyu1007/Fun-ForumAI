@@ -18,6 +18,20 @@
   - current release 为 `incompatible` 时阻止 image-only rollback
 - 更新 `ops/deploy/README.md`、`ops/deploy/AGENTS.md`、deployment handbook、K8s retained docs 和 `docs/project/overview/project-blueprint.json`，明确 cloud 主线已切到 ECS + Compose，而 `ops/deploy/k8s/**` 只保留给 local/dev。
 
+## 2026-04-02 - publish runner cleanup and Docker context hardening
+
+- Added `scripts/ci/cleanup-publish-runner.mjs` so self-hosted publish jobs clean their workspace, archive tarball, named image refs, stopped containers, dangling images, and builder cache from one repo-owned entrypoint instead of ad-hoc shell fragments.
+- Updated `.github/workflows/publish-image.yml` so both `publish-staging` and `promote-prod`:
+  - serialize on the same self-hosted publish concurrency group
+  - run a pre-clean step before fetching source
+  - run an `if: always()` cleanup step after success or failure
+  - emit `df -h` and `docker system df` in prerequisites for runner-side storage evidence
+- Corrected root `.dockerignore` so the Docker build context explicitly re-includes the files that the Dockerfile and runtime actually consume:
+  - `docs/project/policy.yaml`
+  - `docs/stage-templates/**`
+  - `ops/packaging/**`
+- This removes a latent semantic split where local builds could appear healthy only because stale runner state masked the fact that the Docker context was excluding repo-owned packaging files.
+
 ## Follow-ups
 
 - `T-129` 已于 2026-03-29 归档为 done，因此 `T-130` 的上游镜像产物前提已经满足；当前 staging 候选镜像可直接使用 repo `HEAD` `2b7ae8a97f264eb8676821d426b5078c0c2b35d5` 对应的 immutable `sha-<commit>` tag。

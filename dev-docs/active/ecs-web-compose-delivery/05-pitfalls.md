@@ -8,6 +8,21 @@
 
 ## Pitfall log (append-only)
 
+### 2026-04-02 - Broad `.dockerignore` and missing job cleanup created runner-state drift
+- Symptom:
+  - The repo had a root `.dockerignore`, but it still excluded directories that the Dockerfile consumes at build and runtime time, especially `ops/packaging/**`. At the same time, self-hosted publish jobs had no guaranteed cleanup, so stale images, cache, and workspace state could mask context problems on one run and amplify disk pressure on the next.
+- What we tried:
+  - Re-read the Dockerfile and packaging scripts against the actual Docker context rules instead of assuming the existing `.dockerignore` was safe. Separately reviewed the self-hosted workflow for `always()` cleanup and host serialization.
+- Fix / workaround:
+  - Corrected `.dockerignore` to explicitly re-include the Dockerfile/runtime inputs that must exist in the context:
+    - `docs/project/policy.yaml`
+    - `docs/stage-templates/**`
+    - `ops/packaging/**`
+  - Added a repo-owned cleanup entrypoint (`scripts/ci/cleanup-publish-runner.mjs`) and wired it into `publish-image.yml` as both a pre-clean step and an `if: always()` post-job cleanup step.
+  - Serialized both self-hosted publish jobs on the same concurrency group so cleanup and Docker operations cannot overlap on the publish host.
+- Prevention:
+  - Do not treat the existence of a `.dockerignore` file as proof that the Docker context is correct. Whenever a Dockerfile adds a `COPY` source or runs a repo script during build, verify that the root `.dockerignore` still allows that subtree. On self-hosted runners, pair every heavy Docker job with explicit pre/post cleanup and `if: always()` cleanup so failures do not leave the next run in a different state.
+
 ### 2026-03-28 - Task bootstrap
 - Symptom:
   - ECS 还没有建，最容易走向“先手工跑起来再说”，后续很难收口。

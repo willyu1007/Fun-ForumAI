@@ -87,6 +87,9 @@ jobs:
     if: github.event_name == 'push'
     needs: [preflight]
     runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
+    concurrency:
+      group: acr-publish-self-hosted
+      cancel-in-progress: false
     timeout-minutes: 90
     environment: staging
     permissions:
@@ -97,6 +100,12 @@ jobs:
         shell: bash
         run: git config --global http.version HTTP/1.1
 
+      - name: Pre-clean self-hosted runner state
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ci/cleanup-publish-runner.mjs --workspace "$GITHUB_WORKSPACE"
+
       - name: Fetch source archive
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -105,6 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           archive_path="$RUNNER_TEMP/publish-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
+          echo "PUBLISH_SOURCE_ARCHIVE=$archive_path" >> "$GITHUB_ENV"
           find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           curl --http1.1 --fail --silent --show-error --location \
             --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
@@ -138,6 +148,8 @@ jobs:
           set -euo pipefail
           docker --version
           aliyun version
+          df -h
+          docker system df || true
 
       - name: Resolve docker builder mode
         shell: bash
@@ -236,11 +248,26 @@ jobs:
             echo "- workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Cleanup self-hosted runner artifacts
+        if: always()
+        env:
+          SHA_REF: ${{ steps.context.outputs.sha_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ci/cleanup-publish-runner.mjs \
+            --workspace "$GITHUB_WORKSPACE" \
+            --archive-path "${PUBLISH_SOURCE_ARCHIVE:-}" \
+            --image-ref "${SHA_REF:-}"
+
   promote-prod:
     name: Approve Existing Immutable Image for Prod
     if: github.event_name == 'workflow_dispatch'
     needs: [preflight]
     runs-on: [self-hosted, linux, x64, aliyun-vpc, acr-publish]
+    concurrency:
+      group: acr-publish-self-hosted
+      cancel-in-progress: false
     timeout-minutes: 30
     environment: prod
     permissions:
@@ -251,6 +278,12 @@ jobs:
         shell: bash
         run: git config --global http.version HTTP/1.1
 
+      - name: Pre-clean self-hosted runner state
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ci/cleanup-publish-runner.mjs --workspace "$GITHUB_WORKSPACE"
+
       - name: Fetch source archive
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -259,6 +292,7 @@ jobs:
         run: |
           set -euo pipefail
           archive_path="$RUNNER_TEMP/publish-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
+          echo "PUBLISH_SOURCE_ARCHIVE=$archive_path" >> "$GITHUB_ENV"
           find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
           curl --http1.1 --fail --silent --show-error --location \
             --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
@@ -293,6 +327,8 @@ jobs:
           set -euo pipefail
           docker --version
           aliyun version
+          df -h
+          docker system df || true
 
       - name: Configure Alibaba Cloud credentials
         uses: aliyun/configure-aliyun-credentials-action@b347e60e64028a4d567a8f31ca42e1b0706c3c99
@@ -364,3 +400,20 @@ jobs:
             echo "- commit sha: \`$COMMIT_SHA\`"
             echo "- workflow run: $RUN_URL"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cleanup self-hosted runner artifacts
+        if: always()
+        env:
+          SOURCE_REF: ${{ steps.context.outputs.source_ref }}
+          RELEASE_REF: ${{ steps.context.outputs.release_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--workspace "$GITHUB_WORKSPACE" --archive-path "${PUBLISH_SOURCE_ARCHIVE:-}")
+          if [ -n "${SOURCE_REF:-}" ]; then
+            args+=(--image-ref "$SOURCE_REF")
+          fi
+          if [ -n "${RELEASE_REF:-}" ]; then
+            args+=(--image-ref "$RELEASE_REF")
+          fi
+          node scripts/ci/cleanup-publish-runner.mjs "${args[@]}"
