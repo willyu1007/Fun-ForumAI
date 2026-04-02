@@ -32,6 +32,11 @@ Canonical repo-side source:
 - Human approval for the target environment
 - Docker Engine + Compose plugin on the ECS host
 - Runtime application variables written to `/srv/apps/fun-forum/.env`
+  - Recommended source-of-truth chain:
+    1. Bitwarden Secrets Manager
+    2. `env_localctl.py compile --env <env> --runtime-target ecs --workload api --env-file ops/deploy/env-files/<env>.env`
+    3. `env_cloudctl.py plan/apply --env <env> --runtime-target ecs --workload api`
+    4. Host target file: `/srv/apps/fun-forum/.env`
 - Operator shell exports:
   - `ACR_PULL_USERNAME`
   - `ACR_PULL_PASSWORD`
@@ -85,15 +90,17 @@ cd /srv/apps/fun-forum
 
 ## Fixed deploy order
 
-1. Validate host files and `.env`
-2. `docker login` with the read-only ACR pull identity
-3. `docker compose pull web migrate`
-4. Optionally `docker compose run --rm migrate`
-5. `docker compose up -d --no-deps web`
-6. Loopback health check on `http://127.0.0.1:14000/health`
-7. `./smoke.sh`
-8. Write `releases/current.json` and append to `releases/history.jsonl`
-9. Mark repo-side rollout progress:
+1. Render the target env file from Bitwarden into `ops/deploy/env-files/<env>.env`
+2. Inject that env file to `/srv/apps/fun-forum/.env`
+3. Validate host files and `.env`
+4. `docker login` with the read-only ACR pull identity
+5. `docker compose pull web migrate`
+6. Optionally `docker compose run --rm migrate`
+7. `docker compose up -d --no-deps web`
+8. Loopback health check on `http://127.0.0.1:14000/health`
+9. `./smoke.sh`
+10. Write `releases/current.json` and append to `releases/history.jsonl`
+11. Mark repo-side rollout progress:
 
 ```bash
 IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env <staging|prod>)"

@@ -14,7 +14,7 @@ function buildGatewayResponse(content: string) {
       tier: 'base',
       profileId: 'deepseek-director-vision-summary-base',
       providerId: 'dashscope-openai',
-      modelId: 'qwen-flash-character',
+      modelId: 'qwen-vl-plus',
       region: 'cn-beijing',
       endpointId: 'dashscope-cn-beijing',
       fallbackLevel: 'none',

@@ -59,11 +59,17 @@ export async function createInfrastructure(): Promise<InfraResult> {
   let runtimeRedis: Redis | null = null
   let sseRedisPublisher: Redis | null = null
   let sseRedisSubscriber: Redis | null = null
+  const strictRedisInfra = config.appEnv === 'staging' || config.appEnv === 'prod'
 
   const needsRuntimeRedis = config.runtime.queueBackend === 'redis' || config.runtime.leaderBackend === 'redis'
   if (needsRuntimeRedis) {
     if (!config.runtime.redisUrl) {
-      console.warn('[RuntimeInfra] Redis backend requested but RUNTIME_REDIS_URL/REDIS_URL is empty. Falling back to in-memory runtime infra.')
+      const message =
+        '[RuntimeInfra] Redis backend requested but RUNTIME_REDIS_URL/REDIS_URL is empty.'
+      if (strictRedisInfra) {
+        throw new Error(`${message} Non-dev environments require Redis-backed runtime infra when redis mode is enabled.`)
+      }
+      console.warn(`${message} Falling back to in-memory runtime infra.`)
     } else {
       const redis = new Redis(config.runtime.redisUrl, {
         lazyConnect: true,
@@ -76,8 +82,13 @@ export async function createInfrastructure(): Promise<InfraResult> {
         runtimeRedis = redis
         console.log('[RuntimeInfra] Connected to Redis runtime backend')
       } catch (err) {
-        console.warn('[RuntimeInfra] Failed to connect Redis runtime backend, fallback to in-memory:', err)
         await redis.quit().catch(() => undefined)
+        if (strictRedisInfra) {
+          throw new Error(
+            `[RuntimeInfra] Failed to connect Redis runtime backend in ${config.appEnv}: ${formatInfraError(err)}`,
+          )
+        }
+        console.warn('[RuntimeInfra] Failed to connect Redis runtime backend, fallback to in-memory:', err)
       }
     }
   }
@@ -85,7 +96,12 @@ export async function createInfrastructure(): Promise<InfraResult> {
   const needsSseRedis = config.sse.broadcastBackend === 'redis'
   if (needsSseRedis) {
     if (!config.sse.redisUrl) {
-      console.warn('[SSE] Redis broadcast requested but SSE_REDIS_URL/RUNTIME_REDIS_URL/REDIS_URL is empty. Falling back to local broadcast.')
+      const message =
+        '[SSE] Redis broadcast requested but SSE_REDIS_URL/RUNTIME_REDIS_URL/REDIS_URL is empty.'
+      if (strictRedisInfra) {
+        throw new Error(`${message} Non-dev environments require Redis-backed SSE fanout when redis mode is enabled.`)
+      }
+      console.warn(`${message} Falling back to local broadcast.`)
     } else {
       const publisher = new Redis(config.sse.redisUrl, {
         lazyConnect: true,
@@ -104,8 +120,13 @@ export async function createInfrastructure(): Promise<InfraResult> {
         sseRedisSubscriber = subscriber
         console.log('[SSE] Connected to Redis broadcast backend')
       } catch (err) {
-        console.warn('[SSE] Failed to connect Redis broadcast backend, falling back to local:', err)
         await Promise.allSettled([publisher.quit(), subscriber.quit()])
+        if (strictRedisInfra) {
+          throw new Error(
+            `[SSE] Failed to connect Redis broadcast backend in ${config.appEnv}: ${formatInfraError(err)}`,
+          )
+        }
+        console.warn('[SSE] Failed to connect Redis broadcast backend, falling back to local:', err)
       }
     }
   }
@@ -175,4 +196,8 @@ export async function createInfrastructure(): Promise<InfraResult> {
       mediaLifecycleWorker: createLeaderElector('media-lifecycle-worker'),
     },
   }
+}
+
+function formatInfraError(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown infrastructure error'
 }

@@ -632,23 +632,17 @@ profiles:
     intent: vision_summary
     visibility: hidden
     candidates:
-      - provider_id: deepseek-openai
-        model_id: deepseek-chat
-        region: cn
-        endpoint_id: deepseek-cn
-        weight: 100
-        quality_class: balanced
       - provider_id: dashscope-openai
         model_id: qwen-vl-plus
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 95
+        weight: 100
         quality_class: balanced
       - provider_id: dashscope-openai
         model_id: qwen-vl-max
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 85
+        weight: 92
         quality_class: premium
     fallback: []
 

@@ -3,9 +3,11 @@
     "dev",
     "dev.local",
     "prod",
-    "staging"
+    "prod-launch",
+    "staging",
+    "staging-launch"
   ],
-  "generated_at_utc": "2026-03-31T14:09:59Z",
+  "generated_at_utc": "2026-04-02T01:49:55Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -19,7 +21,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "aliyun_sms_access_key_id",
       "state": "active",
@@ -36,7 +41,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "aliyun_sms_access_key_secret",
       "state": "active",
@@ -53,7 +61,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -70,7 +81,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -87,7 +101,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -121,7 +138,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "ark_api_key",
       "state": "active",
@@ -138,7 +158,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "ark_api_key_secondary",
       "state": "active",
@@ -257,7 +279,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "auth_verification_secret",
       "state": "active",
@@ -395,7 +420,7 @@
       "required": false,
       "scopes": null,
       "secret": true,
-      "secret_ref": "dashscope_api_key",
+      "secret_ref": "llm_api_default",
       "state": "active",
       "type": "string"
     },
@@ -410,7 +435,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "dashscope_api_key_secondary",
       "state": "active",
@@ -433,6 +460,25 @@
       "state": "active",
       "type": "string"
     },
+    "DB_PERSISTENCE": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Enable Prisma-backed persistence for staging when rehearsing production-like runtime behavior.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": [
+        "staging"
+      ],
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "DEEPSEEK_API_KEY": {
       "default": null,
       "deprecate_after": null,
@@ -444,7 +490,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "deepseek_api_key",
       "state": "active",
@@ -461,7 +510,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "deepseek_api_key_secondary",
       "state": "active",
@@ -1572,6 +1623,25 @@
       "state": "active",
       "type": "int"
     },
+    "LLM_VISION_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": [
+        "staging"
+      ],
+      "secret": true,
+      "secret_ref": "llm_api_vision",
+      "state": "active",
+      "type": "string"
+    },
     "MEDIA_GENERATION_API_KEY": {
       "default": null,
       "deprecate_after": null,
@@ -1583,9 +1653,14 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "dev",
+        "dev.local",
+        "staging",
+        "prod"
+      ],
       "secret": true,
-      "secret_ref": "media_generation_api_key",
+      "secret_ref": "llm_api_pics",
       "state": "active",
       "type": "string"
     },
@@ -1957,7 +2032,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "media_s3_access_key_id",
       "state": "active",
@@ -1974,7 +2052,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -1991,7 +2072,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2008,7 +2092,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2025,7 +2112,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2042,7 +2132,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "media_s3_secret_access_key",
       "state": "active",
@@ -2129,7 +2222,7 @@
       "required": false,
       "scopes": null,
       "secret": true,
-      "secret_ref": "minimax_api_key",
+      "secret_ref": "llm_api_lowcost",
       "state": "active",
       "type": "string"
     },
@@ -2144,7 +2237,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "minimax_api_key_secondary",
       "state": "active",
@@ -2161,7 +2256,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "moonshot_api_key",
       "state": "active",
@@ -2178,7 +2276,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "moonshot_api_key_secondary",
       "state": "active",
@@ -2450,7 +2550,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "runtime_redis_url",
       "state": "active",
@@ -2501,7 +2604,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2518,7 +2624,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2535,7 +2644,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2552,7 +2664,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "smtp_pass",
       "state": "active",
@@ -2569,7 +2684,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2586,7 +2704,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
@@ -2603,7 +2724,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "smtp_user",
       "state": "active",
@@ -2671,7 +2795,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "sse_redis_url",
       "state": "active",
@@ -2688,7 +2815,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "tencent_hunyuan_api_key",
       "state": "active",
@@ -2705,7 +2835,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "tencent_hunyuan_api_key_secondary",
       "state": "active",
@@ -2727,6 +2859,23 @@
       "secret_ref": null,
       "state": "active",
       "type": "string"
+    },
+    "VITE_FF_AFTERSHOW_V1": {
+      "default": "false",
+      "deprecate_after": null,
+      "description": "Frontend toggle for loading post aftershow summaries and highlight callouts.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
     },
     "VITE_FF_AGENT_STATS_UI": {
       "default": "false",
@@ -2766,23 +2915,6 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Frontend toggle for loading post audience thread and composer surfaces.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "enum"
-    },
-    "VITE_FF_AFTERSHOW_V1": {
-      "default": "false",
-      "deprecate_after": null,
-      "description": "Frontend toggle for loading post aftershow summaries and highlight callouts.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -2909,7 +3041,10 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "zai_api_key",
       "state": "active",
@@ -2926,7 +3061,9 @@
       "migration": null,
       "replacement": null,
       "required": false,
-      "scopes": null,
+      "scopes": [
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "zai_api_key_secondary",
       "state": "active",

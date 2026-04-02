@@ -1,5 +1,12 @@
 version: 1
 env: prod
-provider: mockcloud
-runtime: mock
-region: local
+provider: envfile
+runtime: remote
+region: cn-hangzhou
+injection:
+  env_file: ops/deploy/env-files/prod.env
+  target: /srv/apps/fun-forum/.env
+  transport: local
+  mode: copy
+  write:
+    chmod: "600"

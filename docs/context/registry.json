@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-31T14:04:12.710Z",
+  "updatedAt": "2026-04-02T01:49:12.877Z",
   "artifacts": [
     {
       "id": "api-openapi",
@@ -64,8 +64,8 @@
         "architecture",
         "llm"
       ],
-      "checksumSha256": "6cc617057c651f0bfbd1eb8e4b8e224c38d5b1bc1a302266bc5d0b0d3f120f9e",
-      "lastUpdated": "2026-02-20T14:08:49.749Z",
+      "checksumSha256": "7159cec4fed284315ca63843d4dc304d53a5253d8167445a21c66f83e8d61195",
+      "lastUpdated": "2026-04-01T04:40:25.433Z",
       "source": {
         "kind": "manual",
         "notes": "Edit the Markdown file directly; then run ctl-context touch."
@@ -81,7 +81,7 @@
         "db"
       ],
       "checksumSha256": "c6c87729016d2d49ca431d366f201c702b3d19dd65e6607202f288358c1fbc4e",
-      "lastUpdated": "2026-03-31T14:04:12.708Z",
+      "lastUpdated": "2026-04-02T01:49:12.871Z",
       "source": {
         "kind": "command",
         "command": "node .ai/scripts/ctl-db-ssot.mjs sync-to-context",
@@ -115,6 +115,25 @@
       ],
       "checksumSha256": "5bac4fbecac8f67d8255034509f8a9d1147989377e21bf0bc1817d5610c4d962",
       "lastUpdated": "2026-02-20T14:08:50.246Z",
+      "source": {
+        "kind": "command",
+        "command": "ctl-context add-artifact",
+        "cwd": "."
+      }
+    },
+    {
+      "id": "secret-design-matrix",
+      "type": "markdown",
+      "path": "docs/context/config/secret-design-matrix.md",
+      "mode": "contract",
+      "format": "secret-design-matrix-v1",
+      "tags": [
+        "config",
+        "secrets",
+        "llm"
+      ],
+      "checksumSha256": "50c80103a4a455444f1b07ee4178b7f08d9fa8f06a40b14b2efcbb1448c7a4cf",
+      "lastUpdated": "2026-04-02T01:49:12.877Z",
       "source": {
         "kind": "command",
         "command": "ctl-context add-artifact",

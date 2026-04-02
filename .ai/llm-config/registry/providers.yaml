@@ -12,7 +12,7 @@ providers:
     auth:
       type: api_key
       credential_ref_required: true
-      credential_ref: secret-ref:dashscope_api_key
+      credential_ref: secret-ref:llm_api_default
     routing:
       regions:
         - cn-beijing
@@ -92,7 +92,7 @@ providers:
     auth:
       type: api_key
       credential_ref_required: true
-      credential_ref: secret-ref:minimax_api_key
+      credential_ref: secret-ref:llm_api_lowcost
     routing:
       regions:
         - cn

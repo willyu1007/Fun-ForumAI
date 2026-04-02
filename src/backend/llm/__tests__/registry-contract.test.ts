@@ -109,8 +109,15 @@ describe('LLM registry contract', () => {
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
     )
     const visionProfile = profilesById.get('deepseek-director-vision-summary-base')
+    const dashscopeVisionPrimary = bundle.credentialPools.pools.find(
+      (entry) => entry.credential_id === 'dashscope-vision-primary',
+    )
     const dashscopePrimary = bundle.credentialPools.pools.find((entry) => entry.credential_id === 'dashscope-primary')
 
+    expect(visionProfile?.candidates[0]).toMatchObject({
+      provider_id: 'dashscope-openai',
+      model_id: 'qwen-vl-plus',
+    })
     expect(
       visionProfile?.candidates.some((candidate) =>
         candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen-vl-plus'),
@@ -119,6 +126,12 @@ describe('LLM registry contract', () => {
       visionProfile?.candidates.some((candidate) =>
         candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen-vl-max'),
     ).toBe(true)
+    expect(
+      visionProfile?.candidates.every((candidate) => candidate.provider_id === 'dashscope-openai'),
+    ).toBe(true)
+    expect(dashscopeVisionPrimary?.credential_ref).toBe('secret-ref:llm_api_vision')
+    expect(dashscopeVisionPrimary?.scope_tags).toContain('hidden_multimodal')
+    expect(dashscopeVisionPrimary?.priority).toBeLessThan(dashscopePrimary?.priority ?? Number.MAX_SAFE_INTEGER)
     expect(dashscopePrimary?.scope_tags).toContain('hidden_multimodal')
   })
 

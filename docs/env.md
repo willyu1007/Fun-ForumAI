@@ -2,30 +2,30 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-03-31T14:09:59Z`
+Generated at (UTC): `2026-04-02T01:49:55Z`
 
 ## Environments
-- `dev`, `dev.local`, `prod`, `staging`
+- `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
 
 ## Variables
 
 | Name | State | Type | Required | Secret | Default | Secret Ref | Scopes | Deprecate After | Replacement | Rename From | Description |
 |---|---:|---:|:---:|:---:|---|---|---|---|---|---|---|
-| `ALIYUN_SMS_ACCESS_KEY_ID` | `active` | `string` | no | yes | `` | `aliyun_sms_access_key_id` | `*` | `` | `` | `` | Alibaba Cloud SMS access key id. |
-| `ALIYUN_SMS_ACCESS_KEY_SECRET` | `active` | `string` | no | yes | `` | `aliyun_sms_access_key_secret` | `*` | `` | `` | `` | Alibaba Cloud SMS access key secret. |
-| `ALIYUN_SMS_ENDPOINT` | `active` | `string` | no | no | `dysmsapi.aliyuncs.com` | `` | `*` | `` | `` | `` | Alibaba Cloud SMS API endpoint. |
-| `ALIYUN_SMS_SIGN_NAME` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Approved Alibaba Cloud SMS sign name for verification code delivery. |
-| `ALIYUN_SMS_TEMPLATE_CODE` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Approved Alibaba Cloud SMS template code for verification messages. |
+| `ALIYUN_SMS_ACCESS_KEY_ID` | `active` | `string` | no | yes | `` | `aliyun_sms_access_key_id` | `staging,prod` | `` | `` | `` | Alibaba Cloud SMS access key id. |
+| `ALIYUN_SMS_ACCESS_KEY_SECRET` | `active` | `string` | no | yes | `` | `aliyun_sms_access_key_secret` | `staging,prod` | `` | `` | `` | Alibaba Cloud SMS access key secret. |
+| `ALIYUN_SMS_ENDPOINT` | `active` | `string` | no | no | `dysmsapi.aliyuncs.com` | `` | `staging,prod` | `` | `` | `` | Alibaba Cloud SMS API endpoint. |
+| `ALIYUN_SMS_SIGN_NAME` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | Approved Alibaba Cloud SMS sign name for verification code delivery. |
+| `ALIYUN_SMS_TEMPLATE_CODE` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | Approved Alibaba Cloud SMS template code for verification messages. |
 | `APP_ENV` | `active` | `enum` | yes | no | `dev` | `` | `*` | `` | `` | `` | Deployment environment profile. |
-| `ARK_API_KEY` | `active` | `string` | no | yes | `` | `ark_api_key` | `*` | `` | `` | `` | ByteDance Ark / Doubao provider API key. |
-| `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `*` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
+| `ARK_API_KEY` | `active` | `string` | no | yes | `` | `ark_api_key` | `staging,prod` | `` | `` | `` | ByteDance Ark / Doubao provider API key. |
+| `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `prod` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
 | `AUTH_EXPOSE_DEBUG_CODE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Expose verification codes in API responses for local/debug workflows. Non-production only. |
 | `AUTH_OTP_MAX_ATTEMPTS` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Maximum number of invalid verification attempts per challenge before the code is invalidated. |
 | `AUTH_OTP_RESEND_COOLDOWN_SECONDS` | `active` | `int` | no | no | `60` | `` | `*` | `` | `` | `` | Cooldown in seconds before a verification code can be resent. |
 | `AUTH_OTP_SENDS_PER_IP_HOUR` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Maximum verification code sends per client IP within a rolling hour. |
 | `AUTH_OTP_SENDS_PER_TARGET_HOUR` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Maximum verification code sends per target (email or phone) within a rolling hour. |
 | `AUTH_OTP_TTL_SECONDS` | `active` | `int` | no | no | `600` | `` | `*` | `` | `` | `` | Verification code lifetime in seconds. |
-| `AUTH_VERIFICATION_SECRET` | `active` | `string` | no | yes | `` | `auth_verification_secret` | `*` | `` | `` | `` | Optional dedicated HMAC secret for hashing email/SMS verification codes. Falls back to JWT_SECRET when unset. |
+| `AUTH_VERIFICATION_SECRET` | `active` | `string` | no | yes | `` | `auth_verification_secret` | `staging,prod` | `` | `` | `` | Optional dedicated HMAC secret for hashing email/SMS verification codes. Falls back to JWT_SECRET when unset. |
 | `CONTROL_PLANE_SCHEDULER_BACKOFF_BASE_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Base exponential backoff delay in milliseconds for scheduler retries. |
 | `CONTROL_PLANE_SCHEDULER_BACKOFF_MAX_MS` | `active` | `int` | no | no | `900000` | `` | `*` | `` | `` | `` | Max retry backoff delay in milliseconds for scheduler retries. |
 | `CONTROL_PLANE_SCHEDULER_BATCH_LIMIT` | `active` | `int` | no | no | `20` | `` | `*` | `` | `` | `` | Max scheduled config patches processed per scheduler tick. |
@@ -33,11 +33,12 @@ Generated at (UTC): `2026-03-31T14:09:59Z`
 | `CONTROL_PLANE_SCHEDULER_MAX_RETRIES` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Max retry attempts for failed scheduled config applications. |
 | `CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay in milliseconds before the first community config scheduler scan. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
-| `DASHSCOPE_API_KEY` | `active` | `string` | no | yes | `` | `dashscope_api_key` | `*` | `` | `` | `` | DashScope / Qwen provider API key. |
-| `DASHSCOPE_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `dashscope_api_key_secondary` | `*` | `` | `` | `` | Secondary DashScope / Qwen provider API key for ordered failover. |
+| `DASHSCOPE_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_default` | `*` | `` | `` | `` | DashScope / Qwen provider API key. |
+| `DASHSCOPE_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `dashscope_api_key_secondary` | `prod` | `` | `` | `` | Secondary DashScope / Qwen provider API key for ordered failover. |
 | `DATABASE_URL` | `active` | `string` | yes | yes | `` | `database_url` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
-| `DEEPSEEK_API_KEY` | `active` | `string` | no | yes | `` | `deepseek_api_key` | `*` | `` | `` | `` | DeepSeek provider API key. |
-| `DEEPSEEK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `deepseek_api_key_secondary` | `*` | `` | `` | `` | Secondary DeepSeek provider API key for ordered failover. |
+| `DB_PERSISTENCE` | `active` | `enum` | no | no | `false` | `` | `staging` | `` | `` | `` | Enable Prisma-backed persistence for staging when rehearsing production-like runtime behavior. |
+| `DEEPSEEK_API_KEY` | `active` | `string` | no | yes | `` | `deepseek_api_key` | `staging,prod` | `` | `` | `` | DeepSeek provider API key. |
+| `DEEPSEEK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `deepseek_api_key_secondary` | `prod` | `` | `` | `` | Secondary DeepSeek provider API key for ordered failover. |
 | `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
 | `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
@@ -103,7 +104,8 @@ Generated at (UTC): `2026-03-31T14:09:59Z`
 | `LLM_PROVIDER` | `active` | `string` | no | no | `dashscope-openai` | `` | `*` | `` | `` | `` | LLM provider identifier. |
 | `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
 | `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
-| `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `media_generation_api_key` | `*` | `` | `` | `` | API key for the dedicated image generation gateway. |
+| `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable. |
+| `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_pics` | `dev,dev.local,staging,prod` | `` | `` | `` | API key for the dedicated image generation gateway. |
 | `MEDIA_GENERATION_BASE_URL` | `active` | `string` | no | no | `https://ark.cn-beijing.volces.com` | `` | `*` | `` | `` | `` | Base URL for the dedicated image generation API. |
 | `MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout for downloading provider-hosted generated image bytes. |
 | `MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE` | `active` | `float` | no | no | `0` | `` | `*` | `` | `` | `` | Estimated cost in CNY charged to each media generation request when provider billing details are unavailable. |
@@ -125,20 +127,20 @@ Generated at (UTC): `2026-03-31T14:09:59Z`
 | `MEDIA_PUBLIC_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Public base URL prefix for media assets served from object or local storage. |
 | `MEDIA_ROOT_POST_TARGET_MAX_RATE` | `active` | `float` | no | no | `0.45` | `` | `*` | `` | `` | `` | Upper bound of the desired 7d root-post display attach rate. |
 | `MEDIA_ROOT_POST_TARGET_MIN_RATE` | `active` | `float` | no | no | `0.35` | `` | `*` | `` | `` | `` | Lower bound of the desired 7d root-post display attach rate. |
-| `MEDIA_S3_ACCESS_KEY_ID` | `active` | `string` | no | yes | `` | `media_s3_access_key_id` | `*` | `` | `` | `` | Access key id for media asset S3 storage. |
-| `MEDIA_S3_BUCKET` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | S3 bucket for persisted media assets. |
-| `MEDIA_S3_ENDPOINT` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Optional custom S3-compatible endpoint for media asset storage. |
-| `MEDIA_S3_FORCE_PATH_STYLE` | `active` | `bool` | no | no | `False` | `` | `*` | `` | `` | `` | Whether media asset S3 access should force path-style URLs. |
-| `MEDIA_S3_REGION` | `active` | `string` | no | no | `us-east-1` | `` | `*` | `` | `` | `` | S3 region for persisted media assets. |
-| `MEDIA_S3_SECRET_ACCESS_KEY` | `active` | `string` | no | yes | `` | `media_s3_secret_access_key` | `*` | `` | `` | `` | Secret access key for media asset S3 storage. |
+| `MEDIA_S3_ACCESS_KEY_ID` | `active` | `string` | no | yes | `` | `media_s3_access_key_id` | `staging,prod` | `` | `` | `` | Access key id for media asset S3 storage. |
+| `MEDIA_S3_BUCKET` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | S3 bucket for persisted media assets. |
+| `MEDIA_S3_ENDPOINT` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | Optional custom S3-compatible endpoint for media asset storage. |
+| `MEDIA_S3_FORCE_PATH_STYLE` | `active` | `bool` | no | no | `False` | `` | `staging,prod` | `` | `` | `` | Whether media asset S3 access should force path-style URLs. |
+| `MEDIA_S3_REGION` | `active` | `string` | no | no | `us-east-1` | `` | `staging,prod` | `` | `` | `` | S3 region for persisted media assets. |
+| `MEDIA_S3_SECRET_ACCESS_KEY` | `active` | `string` | no | yes | `` | `media_s3_secret_access_key` | `staging,prod` | `` | `` | `` | Secret access key for media asset S3 storage. |
 | `MEDIA_SNAPSHOT_BACKFILL_BATCH_SIZE` | `active` | `int` | no | no | `20` | `` | `*` | `` | `` | `` | Max active assets to re-extract in one lifecycle sweep. |
 | `MEDIA_SNAPSHOT_TARGET_MODEL_VERSION` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Target semantic snapshot model version for lifecycle backfill. Empty string disables model-version drift gating. |
 | `MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION` | `active` | `string` | no | no | `media_semantic_summary.v1` | `` | `*` | `` | `` | `` | Target semantic snapshot schema version for lifecycle backfill. |
 | `MEDIA_STORAGE_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | Storage backend for persisted media assets. |
-| `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `minimax_api_key` | `*` | `` | `` | `` | MiniMax provider API key. |
-| `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `*` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
-| `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `*` | `` | `` | `` | Moonshot / Kimi provider API key. |
-| `MOONSHOT_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `moonshot_api_key_secondary` | `*` | `` | `` | `` | Secondary Moonshot / Kimi provider API key for ordered failover. |
+| `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_lowcost` | `*` | `` | `` | `` | MiniMax provider API key. |
+| `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `prod` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
+| `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `staging,prod` | `` | `` | `` | Moonshot / Kimi provider API key. |
+| `MOONSHOT_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `moonshot_api_key_secondary` | `prod` | `` | `` | `` | Secondary Moonshot / Kimi provider API key for ordered failover. |
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |
@@ -154,35 +156,35 @@ Generated at (UTC): `2026-03-31T14:09:59Z`
 | `RUNTIME_QUEUE_VISIBILITY_TIMEOUT_MS` | `active` | `int` | no | no | `60000` | `` | `*` | `` | `` | `` | Pending message visibility timeout for runtime queue consumers. |
 | `RUNTIME_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for runtime infra. |
 | `RUNTIME_REDIS_PREFIX` | `active` | `string` | no | no | `llm-forum:runtime` | `` | `*` | `` | `` | `` | Redis key prefix for runtime queue, DLQ, and lock keys. |
-| `RUNTIME_REDIS_URL` | `active` | `string` | no | yes | `` | `runtime_redis_url` | `*` | `` | `` | `` | Redis connection URL for runtime shared state. |
+| `RUNTIME_REDIS_URL` | `active` | `string` | no | yes | `` | `runtime_redis_url` | `staging,prod` | `` | `` | `` | Redis connection URL for runtime shared state. |
 | `SERVICE_AUTH_SECRET` | `active` | `string` | yes | yes | `` | `service_auth_secret` | `*` | `` | `` | `` | Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth. |
 | `SERVICE_NAME` | `active` | `string` | yes | no | `llm-forum` | `` | `*` | `` | `` | `` | Service name (logical). |
-| `SMTP_FROM_EMAIL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Sender email address for email verification messages. |
-| `SMTP_FROM_NAME` | `active` | `string` | no | no | `Fun Forum AI` | `` | `*` | `` | `` | `` | Sender display name for email verification messages. |
-| `SMTP_HOST` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | SMTP server hostname used to send email verification codes. |
-| `SMTP_PASS` | `active` | `string` | no | yes | `` | `smtp_pass` | `*` | `` | `` | `` | SMTP password used for email verification delivery. |
-| `SMTP_PORT` | `active` | `int` | no | no | `587` | `` | `*` | `` | `` | `` | SMTP server port used for email verification delivery. |
-| `SMTP_SECURE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Whether SMTP connections should use TLS from connect time. |
-| `SMTP_USER` | `active` | `string` | no | yes | `` | `smtp_user` | `*` | `` | `` | `` | SMTP username used for email verification delivery. |
+| `SMTP_FROM_EMAIL` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | Sender email address for email verification messages. |
+| `SMTP_FROM_NAME` | `active` | `string` | no | no | `Fun Forum AI` | `` | `staging,prod` | `` | `` | `` | Sender display name for email verification messages. |
+| `SMTP_HOST` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | SMTP server hostname used to send email verification codes. |
+| `SMTP_PASS` | `active` | `string` | no | yes | `` | `smtp_pass` | `staging,prod` | `` | `` | `` | SMTP password used for email verification delivery. |
+| `SMTP_PORT` | `active` | `int` | no | no | `587` | `` | `staging,prod` | `` | `` | `` | SMTP server port used for email verification delivery. |
+| `SMTP_SECURE` | `active` | `enum` | no | no | `false` | `` | `staging,prod` | `` | `` | `` | Whether SMTP connections should use TLS from connect time. |
+| `SMTP_USER` | `active` | `string` | no | yes | `` | `smtp_user` | `staging,prod` | `` | `` | `` | SMTP username used for email verification delivery. |
 | `SSE_BROADCAST_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | SSE broadcast backend selection for cross-instance fanout. |
 | `SSE_REDIS_CHANNEL` | `active` | `string` | no | no | `llm-forum:sse:broadcast` | `` | `*` | `` | `` | `` | Redis Pub/Sub channel name for SSE broadcast envelopes. |
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |
-| `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `*` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
-| `TENCENT_HUNYUAN_API_KEY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key` | `*` | `` | `` | `` | Tencent Hunyuan provider API key. |
-| `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key_secondary` | `*` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. |
+| `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `staging,prod` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
+| `TENCENT_HUNYUAN_API_KEY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key` | `staging,prod` | `` | `` | `` | Tencent Hunyuan provider API key. |
+| `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key_secondary` | `prod` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
+| `VITE_FF_AFTERSHOW_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aftershow summaries and highlight callouts. |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
 | `VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend master toggle for rendering the audience/aftershow rail on post detail. |
 | `VITE_FF_AUDIENCE_ZONE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post audience thread and composer surfaces. |
-| `VITE_FF_AFTERSHOW_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aftershow summaries and highlight callouts. |
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
 | `VITE_FF_GUIDANCE_BELL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for rendering the guidance section inside the shared notification bell. |
 | `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |
 | `VITE_FF_HOME_PROGRAMMING_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for switching `/` from the legacy feed entry to the launch programming home surface. |
 | `VITE_FF_PROGRAMMING_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading the Admin Programming tab and its launch ops read model. |
 | `VITE_FF_ROLE_ASSIGNMENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aside-seat / role-assignment read models. |
-| `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `*` | `` | `` | `` | ZAI / GLM provider API key. |
-| `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `*` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
+| `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `staging,prod` | `` | `` | `` | ZAI / GLM provider API key. |
+| `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `prod` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
 
 ## Loading model (recommended)
 

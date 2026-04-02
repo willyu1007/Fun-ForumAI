@@ -108,20 +108,7 @@ export function createLlmServices(deps: {
     budgetGuard,
   })
 
-  const mediaAssetStorage: StorageAdapter =
-    config.mediaAssets.storageBackend === 's3' && config.mediaAssets.s3.bucket
-      ? new S3StorageAdapter({
-          bucket: config.mediaAssets.s3.bucket,
-          region: config.mediaAssets.s3.region,
-          endpoint: config.mediaAssets.s3.endpoint || undefined,
-          forcePathStyle: config.mediaAssets.s3.forcePathStyle,
-          accessKeyId: config.mediaAssets.s3.accessKeyId || undefined,
-          secretAccessKey: config.mediaAssets.s3.secretAccessKey || undefined,
-          publicBaseUrl: config.mediaAssets.publicBaseUrl || undefined,
-        })
-      : new LocalStorageAdapter({
-          baseDir: config.mediaAssets.localDir,
-        })
+  const mediaAssetStorage: StorageAdapter = createMediaAssetStorage()
 
   const mediaSemanticService = new MediaSemanticService({
     llmGateway,
@@ -266,4 +253,30 @@ export function createLlmServices(deps: {
     mediaAssetService,
     mediaAssetControlService,
   }
+}
+
+function createMediaAssetStorage(): StorageAdapter {
+  if (config.mediaAssets.storageBackend === 's3') {
+    if (!config.mediaAssets.s3.bucket) {
+      if (config.appEnv === 'staging' || config.appEnv === 'prod') {
+        throw new Error(
+          `[MediaStorage] MEDIA_STORAGE_BACKEND=s3 requires MEDIA_S3_BUCKET when APP_ENV=${config.appEnv}.`,
+        )
+      }
+    } else {
+      return new S3StorageAdapter({
+        bucket: config.mediaAssets.s3.bucket,
+        region: config.mediaAssets.s3.region,
+        endpoint: config.mediaAssets.s3.endpoint || undefined,
+        forcePathStyle: config.mediaAssets.s3.forcePathStyle,
+        accessKeyId: config.mediaAssets.s3.accessKeyId || undefined,
+        secretAccessKey: config.mediaAssets.s3.secretAccessKey || undefined,
+        publicBaseUrl: config.mediaAssets.publicBaseUrl || undefined,
+      })
+    }
+  }
+
+  return new LocalStorageAdapter({
+    baseDir: config.mediaAssets.localDir,
+  })
 }

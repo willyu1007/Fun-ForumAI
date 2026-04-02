@@ -13,7 +13,7 @@ describe('SecretResolver', () => {
     writeFileSync(secretsFilePath, [
       'version: 1',
       'secrets:',
-      '  dashscope_api_key:',
+      '  llm_api_default:',
       '    backend: env',
       '    ref: env://DASHSCOPE_API_KEY',
       '',
@@ -29,7 +29,7 @@ describe('SecretResolver', () => {
       policyPath,
     })
 
-    expect(resolver.resolve('secret-ref:dashscope_api_key')).toBe('secret-token')
+    expect(resolver.resolve('secret-ref:llm_api_default')).toBe('secret-token')
   })
 
   it('throws when a provider-specific env key is absent', () => {
@@ -40,7 +40,7 @@ describe('SecretResolver', () => {
     writeFileSync(secretsFilePath, [
       'version: 1',
       'secrets:',
-      '  dashscope_api_key:',
+      '  llm_api_default:',
       '    backend: env',
       '    ref: env://DASHSCOPE_API_KEY',
       '',
@@ -54,7 +54,7 @@ describe('SecretResolver', () => {
       policyPath,
     })
 
-    expect(() => resolver.resolve('secret-ref:dashscope_api_key')).toThrow(
+    expect(() => resolver.resolve('secret-ref:llm_api_default')).toThrow(
       'Environment secret is missing: DASHSCOPE_API_KEY',
     )
   })

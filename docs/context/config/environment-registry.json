@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-25T14:14:14Z",
+  "updatedAt": "2026-04-01T03:10:00Z",
   "environments": [
     {
       "id": "dev",
@@ -12,7 +12,7 @@
       },
       "secrets": {
         "source": ".env.local",
-        "notes": "Use local .env file for development"
+        "notes": "Generate .env.local from Bitwarden Secrets Manager via env_localctl.py compile. Dev naming is function-oriented and intentionally narrowed to the minimal local startup set plus feature-test additions."
       },
       "deployment": {
         "allowed": false
@@ -27,8 +27,8 @@
         "seedData": false
       },
       "secrets": {
-        "source": "vault://staging/*",
-        "notes": "Secrets managed via vault or CI secrets"
+        "source": "bitwarden://mr-common-staging -> ops/deploy/env-files/staging.env",
+        "notes": "Compile-first Bitwarden flow. Staging naming is provider-oriented and should map to the real upstream credential or infrastructure secret in use."
       },
       "deployment": {
         "allowed": true,
@@ -44,14 +44,37 @@
         "seedData": false
       },
       "secrets": {
-        "source": "vault://prod/*",
-        "notes": "Production secrets require elevated access"
+        "source": "bitwarden://mr-common-staging -> ops/deploy/env-files/prod.env",
+        "notes": "Compile-first Bitwarden flow with elevated access controls. Production naming should remain provider-oriented and operationally precise."
       },
       "deployment": {
         "allowed": true,
         "approval": "required"
       }
     }
-  ]
+  ],
+  "secretDesignPrinciples": {
+    "namingByEnvironmentRole": {
+      "dev": "Function-oriented naming is allowed. Keys may describe the capability under test, such as default/lowcost/pics.",
+      "staging": "Provider-oriented naming is preferred. Keys should identify the concrete provider or infrastructure secret in use.",
+      "prod": "Provider-oriented naming is required for operational clarity, failover control, and rotation ownership."
+    },
+    "layers": [
+      {
+        "id": "core-startup",
+        "description": "Minimum secrets required to boot the application and authenticate safely.",
+        "examples": ["database_url", "jwt_secret", "service_auth_secret"]
+      },
+      {
+        "id": "feature-gated-capabilities",
+        "description": "Secrets only required when a specific capability is enabled, such as verification delivery, image generation, object storage, or Redis-backed runtime features.",
+        "examples": ["auth_verification_secret", "smtp_user", "smtp_pass", "llm_api_pics", "media_s3_access_key_id", "runtime_redis_url", "sse_redis_url"]
+      },
+      {
+        "id": "provider-and-routing",
+        "description": "Credentials used to control LLM routing and failover. Dev may use capability-oriented logical refs, while staging and prod should still map those refs to concrete provider credentials.",
+        "examples": ["llm_api_default", "llm_api_lowcost", "dashscope_api_key_secondary", "zai_api_key", "ark_api_key"]
+      }
+    ]
+  }
 }
-

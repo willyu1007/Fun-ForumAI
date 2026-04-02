@@ -33,6 +33,14 @@ variables:
     secret: true
     secret_ref: database_url
 
+  DB_PERSISTENCE:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    scopes: [staging]
+    default: "false"
+    description: Enable Prisma-backed persistence for staging when rehearsing production-like runtime behavior.
+
   CORS_ORIGINS:
     type: string
     required: false
@@ -55,6 +63,7 @@ variables:
   AUTH_VERIFICATION_SECRET:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Optional dedicated HMAC secret for hashing email/SMS verification codes. Falls back to JWT_SECRET when unset.
     secret: true
     secret_ref: auth_verification_secret
@@ -99,11 +108,13 @@ variables:
   SMTP_HOST:
     type: string
     required: false
+    scopes: [staging, prod]
     description: SMTP server hostname used to send email verification codes.
 
   SMTP_PORT:
     type: int
     required: false
+    scopes: [staging, prod]
     default: 587
     description: SMTP server port used for email verification delivery.
 
@@ -111,12 +122,14 @@ variables:
     type: enum
     enum: ["true", "false"]
     required: false
+    scopes: [staging, prod]
     default: "false"
     description: Whether SMTP connections should use TLS from connect time.
 
   SMTP_USER:
     type: string
     required: false
+    scopes: [staging, prod]
     description: SMTP username used for email verification delivery.
     secret: true
     secret_ref: smtp_user
@@ -124,6 +137,7 @@ variables:
   SMTP_PASS:
     type: string
     required: false
+    scopes: [staging, prod]
     description: SMTP password used for email verification delivery.
     secret: true
     secret_ref: smtp_pass
@@ -131,17 +145,20 @@ variables:
   SMTP_FROM_EMAIL:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Sender email address for email verification messages.
 
   SMTP_FROM_NAME:
     type: string
     required: false
+    scopes: [staging, prod]
     default: Fun Forum AI
     description: Sender display name for email verification messages.
 
   ALIYUN_SMS_ACCESS_KEY_ID:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Alibaba Cloud SMS access key id.
     secret: true
     secret_ref: aliyun_sms_access_key_id
@@ -149,6 +166,7 @@ variables:
   ALIYUN_SMS_ACCESS_KEY_SECRET:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Alibaba Cloud SMS access key secret.
     secret: true
     secret_ref: aliyun_sms_access_key_secret
@@ -156,16 +174,19 @@ variables:
   ALIYUN_SMS_SIGN_NAME:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Approved Alibaba Cloud SMS sign name for verification code delivery.
 
   ALIYUN_SMS_TEMPLATE_CODE:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Approved Alibaba Cloud SMS template code for verification messages.
 
   ALIYUN_SMS_ENDPOINT:
     type: string
     required: false
+    scopes: [staging, prod]
     default: dysmsapi.aliyuncs.com
     description: Alibaba Cloud SMS API endpoint.
 
@@ -279,11 +300,12 @@ variables:
     required: false
     description: DashScope / Qwen provider API key.
     secret: true
-    secret_ref: dashscope_api_key
+    secret_ref: llm_api_default
 
   DASHSCOPE_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary DashScope / Qwen provider API key for ordered failover.
     secret: true
     secret_ref: dashscope_api_key_secondary
@@ -291,6 +313,7 @@ variables:
   ZAI_API_KEY:
     type: string
     required: false
+    scopes: [staging, prod]
     description: ZAI / GLM provider API key.
     secret: true
     secret_ref: zai_api_key
@@ -298,6 +321,7 @@ variables:
   ZAI_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary ZAI / GLM provider API key for ordered failover.
     secret: true
     secret_ref: zai_api_key_secondary
@@ -305,6 +329,7 @@ variables:
   DEEPSEEK_API_KEY:
     type: string
     required: false
+    scopes: [staging, prod]
     description: DeepSeek provider API key.
     secret: true
     secret_ref: deepseek_api_key
@@ -312,6 +337,7 @@ variables:
   DEEPSEEK_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary DeepSeek provider API key for ordered failover.
     secret: true
     secret_ref: deepseek_api_key_secondary
@@ -319,6 +345,7 @@ variables:
   MOONSHOT_API_KEY:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Moonshot / Kimi provider API key.
     secret: true
     secret_ref: moonshot_api_key
@@ -326,6 +353,7 @@ variables:
   MOONSHOT_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary Moonshot / Kimi provider API key for ordered failover.
     secret: true
     secret_ref: moonshot_api_key_secondary
@@ -335,11 +363,12 @@ variables:
     required: false
     description: MiniMax provider API key.
     secret: true
-    secret_ref: minimax_api_key
+    secret_ref: llm_api_lowcost
 
   MINIMAX_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary MiniMax provider API key for ordered failover.
     secret: true
     secret_ref: minimax_api_key_secondary
@@ -347,6 +376,7 @@ variables:
   TENCENT_HUNYUAN_API_KEY:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Tencent Hunyuan provider API key.
     secret: true
     secret_ref: tencent_hunyuan_api_key
@@ -354,6 +384,7 @@ variables:
   TENCENT_HUNYUAN_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary Tencent Hunyuan provider API key for ordered failover.
     secret: true
     secret_ref: tencent_hunyuan_api_key_secondary
@@ -361,6 +392,7 @@ variables:
   ARK_API_KEY:
     type: string
     required: false
+    scopes: [staging, prod]
     description: ByteDance Ark / Doubao provider API key.
     secret: true
     secret_ref: ark_api_key
@@ -368,6 +400,7 @@ variables:
   ARK_API_KEY_SECONDARY:
     type: string
     required: false
+    scopes: [prod]
     description: Secondary ByteDance Ark / Doubao provider API key for ordered failover.
     secret: true
     secret_ref: ark_api_key_secondary
@@ -375,9 +408,18 @@ variables:
   MEDIA_GENERATION_API_KEY:
     type: string
     required: false
+    scopes: [dev, dev.local, staging, prod]
     description: API key for the dedicated image generation gateway.
     secret: true
-    secret_ref: media_generation_api_key
+    secret_ref: llm_api_pics
+
+  LLM_VISION_API_KEY:
+    type: string
+    required: false
+    scopes: [staging]
+    description: Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable.
+    secret: true
+    secret_ref: llm_api_vision
 
   MEDIA_GENERATION_PROVIDER:
     type: string
@@ -436,28 +478,33 @@ variables:
   MEDIA_S3_BUCKET:
     type: string
     required: false
+    scopes: [staging, prod]
     description: S3 bucket for persisted media assets.
 
   MEDIA_S3_REGION:
     type: string
     required: false
+    scopes: [staging, prod]
     default: us-east-1
     description: S3 region for persisted media assets.
 
   MEDIA_S3_ENDPOINT:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Optional custom S3-compatible endpoint for media asset storage.
 
   MEDIA_S3_FORCE_PATH_STYLE:
     type: bool
     required: false
+    scopes: [staging, prod]
     default: false
     description: Whether media asset S3 access should force path-style URLs.
 
   MEDIA_S3_ACCESS_KEY_ID:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Access key id for media asset S3 storage.
     secret: true
     secret_ref: media_s3_access_key_id
@@ -465,6 +512,7 @@ variables:
   MEDIA_S3_SECRET_ACCESS_KEY:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Secret access key for media asset S3 storage.
     secret: true
     secret_ref: media_s3_secret_access_key
@@ -577,6 +625,7 @@ variables:
   RUNTIME_REDIS_URL:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Redis connection URL for runtime shared state.
     secret: true
     secret_ref: runtime_redis_url
@@ -677,6 +726,7 @@ variables:
   SSE_REDIS_URL:
     type: string
     required: false
+    scopes: [staging, prod]
     description: Redis connection URL for SSE cluster broadcast backend.
     secret: true
     secret_ref: sse_redis_url

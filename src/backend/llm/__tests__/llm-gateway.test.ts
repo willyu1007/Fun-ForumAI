@@ -18,7 +18,7 @@ function buildBundle(): LlmRegistryBundle {
           auth: {
             type: 'api_key',
             credential_ref_required: true,
-            credential_ref: 'secret-ref:dashscope_api_key',
+            credential_ref: 'secret-ref:llm_api_default',
           },
           routing: {
             regions: ['cn-beijing'],
@@ -157,7 +157,7 @@ function buildBundle(): LlmRegistryBundle {
           region: 'cn-beijing',
           endpoint_id: 'dashscope-cn-beijing',
           endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-          credential_ref: 'secret-ref:dashscope_api_key',
+          credential_ref: 'secret-ref:llm_api_default',
           priority: 10,
           health: 'healthy',
           enabled: true,
@@ -669,7 +669,7 @@ describe('LLMGateway', () => {
       region: 'cn-beijing',
       endpoint_id: 'dashscope-cn-beijing',
       endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      credential_ref: 'secret-ref:dashscope_api_key',
+      credential_ref: 'secret-ref:llm_api_default',
       priority: 10,
       health: 'healthy',
       enabled: true,
@@ -732,6 +732,116 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()).toHaveLength(2)
     expect(usageLedger.list()[0]?.success).toBe(false)
     expect(usageLedger.list()[1]?.success).toBe(true)
+  })
+
+  it('falls back from llm_api_vision to llm_api_default for hidden multimodal routing', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'deepseek-director-vision-summary-base',
+      voice_line_id: 'deepseek-director-v1',
+      tier: 'base',
+      intent: 'vision_summary',
+      visibility: 'hidden',
+      candidates: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-vl-plus',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          weight: 100,
+          quality_class: 'balanced',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.credentialPools.pools = [
+      {
+        credential_id: 'dashscope-vision-primary',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:llm_api_vision',
+        priority: 5,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['hidden_multimodal'],
+        allowed_model_ids: ['qwen-vl-plus'],
+      },
+      {
+        credential_id: 'dashscope-hidden-default',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:llm_api_default',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['hidden', 'hidden_multimodal'],
+        allowed_model_ids: ['qwen-vl-plus'],
+      },
+    ]
+    bundle.routingPolicies.policies.push({
+      profile_id: 'deepseek-director-vision-summary-base',
+      route_order: ['profile_candidates', 'health'],
+      allow_fallback_within_line: false,
+      allow_cross_family: false,
+      allowed_fallback_levels: ['none'],
+    })
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: '{"summary_text":"ok"}',
+      usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+      model: 'qwen-vl-plus',
+      finish_reason: 'stop',
+    })
+    const resolveMock = vi.fn((ref: string) => {
+      if (ref === 'secret-ref:llm_api_vision') {
+        throw new Error('Secret ref is not declared: llm_api_vision')
+      }
+      return 'default-secret'
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: resolveMock,
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateHiddenArtifact({
+      intent: 'vision_summary',
+      scene: 'background_hidden',
+      agentId: 'agent-1',
+      homeVoiceLineId: 'deepseek-director-v1',
+      promptRef: { id: 'internal-vision-summary', version: 2 },
+      variables: {},
+      promptMessages: [{ role: 'user', content: 'summarize image' }],
+      budgetClass: 'hidden_multimodal',
+      traceId: 'trace-vision-fallback',
+      requestedTier: 'base',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
+    })
+
+    expect(resolveMock).toHaveBeenNthCalledWith(1, 'secret-ref:llm_api_vision')
+    expect(resolveMock).toHaveBeenNthCalledWith(2, 'secret-ref:llm_api_default')
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'qwen-vl-plus',
+      }),
+    )
+    expect(response.renderDecision.profileId).toBe('deepseek-director-vision-summary-base')
+    expect(response.renderDecision.modelId).toBe('qwen-vl-plus')
   })
 
   it('emits passive window warnings from prompt budget summary without blocking the request', async () => {
