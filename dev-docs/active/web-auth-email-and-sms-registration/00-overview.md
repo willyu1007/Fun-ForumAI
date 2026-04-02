@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Depends on: none
-- Next step: 完成真实短信 provider 联调，并在邀请码系统落地前补齐“邀请函邮件 vs 验证码邮件”的模板边界。
+- Next step: 在 staging / prod 配置 bootstrap admin 环境变量，并联调后台的管理员授予/撤销链路。
 
 ## Goal
 
@@ -31,6 +31,8 @@
 - Web 的手机登录/注册表单已接到验证码流程
 - `HumanUser` 已支持手机号-only、无密码账号
 - 邮箱验证码邮件已从传输层中拆出独立模板，并补强 `from/sender/envelope`，为后续邀请函模板预留结构
+- 管控台已有邀请码页与反馈/治理入口，但还缺“管理员管理管理员”的最小操作面板
+- 现已补上 bootstrap admin 配置、管理员列表与授予/撤销入口，继续沿用 `plan_tier = ADMIN` 权限模型
 
 本任务将同时改动 Prisma schema、auth service/repository、配置、SMTP/阿里云短信 provider、Web auth 页面与测试脚本。
 
@@ -42,3 +44,5 @@
 - [ ] `HumanUser` 支持手机号-only、无密码账号，不破坏既有邮箱密码账号登录
 - [ ] Web 登录/注册页移除手机占位，接入真实短信流程
 - [ ] 现有 smoke/test 脚本更新到新的邮箱注册 contract
+- [ ] 支持通过环境配置指定 bootstrap admin，匹配账号在注册/登录后自动获得 `ADMIN`
+- [ ] 现有 `ADMIN` 可以在后台查看管理员列表，并授予/撤销其他账号的管理员权限

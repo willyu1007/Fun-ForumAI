@@ -54,6 +54,32 @@
   - `/opt/homebrew/bin/node .ai/tests/run.mjs --suite environment`
     - 结果：`PASS`
 
+- Bootstrap admin / admin access rollout
+  - `PATH=/opt/homebrew/bin:$PATH pnpm exec tsc --noEmit --pretty false`
+    - 结果：通过
+  - `PATH=/opt/homebrew/bin:$PATH pnpm exec vitest run src/backend/services/__tests__/auth-service.test.ts src/backend/services/__tests__/admin-user-access-service.test.ts src/backend/routes/__tests__/admin-user-access-api.test.ts src/frontend/features/admin/pages/admin-panel/__tests__/AdminUsersTab.test.tsx src/frontend/features/admin/pages/__tests__/AdminPanel.test.tsx`
+    - 结果：`5` 个 test files，`17` 个 tests 全部通过
+    - 覆盖：
+      - bootstrap admin 在邮箱登录后自动升级为 `ADMIN`
+      - bootstrap 配置命中 `PRO` 账号时不会静默降级
+      - bootstrap admin 撤销保护与 self-revoke 限制
+      - `PRO` 账号不会被静默提成 `ADMIN` 并丢失原套餐等级
+      - `/admin/admin-users` 列表、授予、撤销路由
+      - 管控台管理员页的授予与撤销交互
+      - `AdminPanel` 新页签集成
+  - `PATH=/opt/homebrew/bin:$PATH pnpm lint`
+    - 结果：通过
+  - `/opt/homebrew/bin/node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+    - 结果：`[ok] Sync complete.`
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root .`
+    - 结果：通过
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root .`
+    - 结果：通过，刷新 `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json`
+  - `/opt/homebrew/bin/node .ai/tests/run.mjs --suite environment`
+    - 结果：`PASS`
+  - `git diff --check`
+    - 结果：通过，无空白或冲突标记问题
+
 ## Not Run
 
 - `pnpm test` 全量测试未跑；本轮只跑了 auth / redirect / environment 相关验证

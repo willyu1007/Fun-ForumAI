@@ -68,6 +68,18 @@ variables:
     secret: true
     secret_ref: auth_verification_secret
 
+  AUTH_BOOTSTRAP_ADMIN_EMAILS:
+    type: string
+    required: false
+    default: ""
+    description: Comma-separated bootstrap admin email list. Matching accounts are promoted to ADMIN after successful login or registration.
+
+  AUTH_BOOTSTRAP_ADMIN_PHONES:
+    type: string
+    required: false
+    default: ""
+    description: Comma-separated bootstrap admin phone list. Matching accounts are promoted to ADMIN after successful SMS auth.
+
   AUTH_OTP_TTL_SECONDS:
     type: int
     required: false

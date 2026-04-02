@@ -45,6 +45,10 @@ vi.mock('../admin-panel/InviteCodesTab', () => ({
   InviteCodesTab: () => <div>Invite codes tab stub</div>,
 }))
 
+vi.mock('../admin-panel/AdminUsersTab', () => ({
+  AdminUsersTab: () => <div>Admin users tab stub</div>,
+}))
+
 vi.mock('@/api/hooks', () => ({
   useAdminAgentRiskProfile: vi.fn(),
   useAdminCommunityProposals: vi.fn(),

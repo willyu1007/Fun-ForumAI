@@ -45,6 +45,14 @@ export class PgUserRepository implements UserRepository {
     return row ? toDomain(row) : null
   }
 
+  async listAdmins(): Promise<HumanUser[]> {
+    const rows = await this.prisma.humanUser.findMany({
+      where: { planTier: 'ADMIN' },
+      orderBy: { createdAt: 'desc' },
+    })
+    return rows.map(toDomain)
+  }
+
   async create(input: CreateHumanUserInput): Promise<HumanUser> {
     const row = await this.prisma.humanUser.create({
       data: {
@@ -156,6 +164,21 @@ export class PgUserRepository implements UserRepository {
       },
     })
     return toDomain(row)
+  }
+
+  async updatePlanTier(id: string, planTier: HumanUser['plan_tier']): Promise<HumanUser | null> {
+    try {
+      const row = await this.prisma.humanUser.update({
+        where: { id },
+        data: { planTier },
+      })
+      return toDomain(row)
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null
+      }
+      throw error
+    }
   }
 
   async updateLastLogin(id: string): Promise<void> {

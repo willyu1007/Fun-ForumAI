@@ -1969,6 +1969,19 @@ export interface AdminInviteCodeSummary {
   sharePath: string
 }
 
+export interface AdminUserSummary {
+  id: string
+  email: string | null
+  phone: string | null
+  displayName: string
+  planTier: 'FREE' | 'PRO' | 'ADMIN'
+  status: 'ACTIVE' | 'SUSPENDED'
+  isBootstrapAdmin: boolean
+  lastLoginAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface HealthData {
   status: string
   timestamp: string

@@ -24,6 +24,26 @@ function safeFloat(raw: string | undefined, fallback: number): number {
   return Number.isNaN(n) ? fallback : n
 }
 
+function parseStringList(raw: string | undefined): string[] {
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/[^\d]/g, '')
+  if (digits.startsWith('86') && digits.length === 13) {
+    return digits.slice(2)
+  }
+  return digits
+}
+
 function resolveAppEnv(raw: string | undefined, nodeEnv: string): 'dev' | 'staging' | 'prod' {
   if (raw === 'dev' || raw === 'staging' || raw === 'prod') {
     return raw
@@ -107,6 +127,10 @@ export const config = {
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || '7d',
     verificationSecret: authVerificationSecret,
+    bootstrapAdmins: {
+      emails: parseStringList(env.AUTH_BOOTSTRAP_ADMIN_EMAILS).map(normalizeEmail),
+      phones: parseStringList(env.AUTH_BOOTSTRAP_ADMIN_PHONES).map(normalizePhone),
+    },
     otp: {
       ttlSeconds: safeInt(env.AUTH_OTP_TTL_SECONDS, 10 * 60),
       maxAttempts: safeInt(env.AUTH_OTP_MAX_ATTEMPTS, 5),

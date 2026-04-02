@@ -2,11 +2,13 @@
 
 ## Phases
 
-1. Phase A: 建立任务包并同步项目治理。`[in-progress]`
-2. Phase B: 新增 auth verification challenge schema、repo 与 provider 抽象。`[pending]`
-3. Phase C: 改造邮箱注册、短信验证码认证、用户模型与配置。`[pending]`
-4. Phase D: 更新 Web 登录/注册页面与客户端 auth hook。`[pending]`
-5. Phase E: 更新测试、smoke 脚本与验证记录。`[pending]`
+1. Phase A: 建立任务包并同步项目治理。`[completed]`
+2. Phase B: 新增 auth verification challenge schema、repo 与 provider 抽象。`[completed]`
+3. Phase C: 改造邮箱注册、短信验证码认证、用户模型与配置。`[completed]`
+4. Phase D: 更新 Web 登录/注册页面与客户端 auth hook。`[completed]`
+5. Phase E: 更新测试、smoke 脚本与验证记录。`[completed]`
+6. Phase F: 增加 bootstrap admin 与管理员授权链路。`[completed]`
+7. Phase G: staging / prod 环境联调与上线验证。`[pending]`
 
 ## Detailed Steps
 
@@ -17,6 +19,9 @@
 - 实现 `/v1/auth/sms/send` 与 `/v1/auth/sms/verify`，支持手机号注册/登录合一。
 - 更新 Web 邮箱注册页为两步流，并把手机登录/注册占位替换为真实交互。
 - 更新 auth 测试、Web 表单测试与 smoke 脚本，记录结果与残余风险。
+- 增加 bootstrap admin 配置项，在邮箱注册、短信注册/登录、邮箱密码登录成功后自动提权匹配账号。
+- 新增管理员授权 service / API / 管控台页签，支持查看管理员列表、授予管理员、撤销管理员。
+- 对 bootstrap admin 账号禁止通过后台撤销，避免“撤掉后下次登录又自动恢复”的歧义。
 
 ## Acceptance Scenarios
 
@@ -24,3 +29,5 @@
 - 同一手机号首次通过验证码登录时创建新账号，再次通过验证码登录时直接进入已有账号。
 - 现有邮箱密码用户仍可通过旧登录页正常登录。
 - Web 手机 tab 不再显示 “Coming soon”，而是可以发送验证码并完成认证。
+- bootstrap admin 对应账号首次完成注册或登录后，返回 profile 中的 `role` 为 `admin`。
+- 已有管理员可以在后台看到管理员列表，并通过邮箱/手机号为其他用户授予管理员权限。

@@ -14,6 +14,7 @@ import type {
   InviteCode,
 } from '../repos/types.js'
 import type { EmailVerificationSender, SmsVerificationSender } from './auth-delivery.js'
+import type { AdminUserAccessService } from './admin-user-access-service.js'
 
 const BCRYPT_ROUNDS = 12
 
@@ -161,6 +162,7 @@ export class AuthService {
     private readonly challengeRepo: AuthVerificationChallengeRepository,
     private readonly emailSender: EmailVerificationSender,
     private readonly smsSender: SmsVerificationSender,
+    private readonly adminUserAccessService?: AdminUserAccessService | null,
   ) {}
 
   async startEmailRegistration(input: {
@@ -320,8 +322,8 @@ export class AuthService {
         throw new AppError(409, '邀请码已失效或已达上限，请更换邀请码后重试', 'INVITE_CODE_EXHAUSTED')
       }
 
-      await this.userRepo.updateLastLogin(result.user.id)
-      return this.issueAuthResult(result.user)
+      const user = await this.finalizeAuthUser(result.user)
+      return this.issueAuthResult(user)
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
@@ -484,8 +486,8 @@ export class AuthService {
       if (existing.status === 'SUSPENDED') {
         throw new UnauthorizedError('账号已被停用')
       }
-      await this.userRepo.updateLastLogin(existing.id)
-      const result = this.issueAuthResult(existing)
+      const user = await this.finalizeAuthUser(existing)
+      const result = this.issueAuthResult(user)
       return { ...result, isNewUser: false }
     }
 
@@ -508,15 +510,15 @@ export class AuthService {
         throw new AppError(409, '邀请码已失效或已达上限，请更换邀请码后重试', 'INVITE_CODE_EXHAUSTED')
       }
 
-      await this.userRepo.updateLastLogin(result.user.id)
-      const authResult = this.issueAuthResult(result.user)
+      const user = await this.finalizeAuthUser(result.user)
+      const authResult = this.issueAuthResult(user)
       return { ...authResult, isNewUser: true }
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         const concurrentUser = await this.userRepo.findByPhone(phone)
         if (concurrentUser) {
-          await this.userRepo.updateLastLogin(concurrentUser.id)
-          const result = this.issueAuthResult(concurrentUser)
+          const user = await this.finalizeAuthUser(concurrentUser)
+          const result = this.issueAuthResult(user)
           return { ...result, isNewUser: false }
         }
       }
@@ -544,8 +546,8 @@ export class AuthService {
       throw new UnauthorizedError('邮箱或密码错误')
     }
 
-    await this.userRepo.updateLastLogin(user.id)
-    return this.issueAuthResult(user)
+    const authenticatedUser = await this.finalizeAuthUser(user)
+    return this.issueAuthResult(authenticatedUser)
   }
 
   async getProfile(userId: string): Promise<UserProfile | null> {
@@ -578,6 +580,14 @@ export class AuthService {
       email: input.email,
       role: input.role,
     })
+  }
+
+  private async finalizeAuthUser(user: HumanUser): Promise<HumanUser> {
+    const resolvedUser = this.adminUserAccessService
+      ? await this.adminUserAccessService.promoteBootstrapAdmin(user)
+      : user
+    await this.userRepo.updateLastLogin(resolvedUser.id)
+    return resolvedUser
   }
 
   private assertConsumeResult(

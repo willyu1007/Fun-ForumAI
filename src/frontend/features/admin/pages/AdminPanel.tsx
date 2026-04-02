@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RuntimeDashboard } from '../components/RuntimeDashboard'
+import { AdminUsersTab } from './admin-panel/AdminUsersTab'
 import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
 import { GovernanceTab } from './admin-panel/GovernanceTab'
 import { HotTopicTab } from './admin-panel/HotTopicTab'
@@ -49,6 +50,7 @@ export function AdminPanel() {
         <TabsList>
           <TabsTrigger value="governance">治理操作</TabsTrigger>
           <TabsTrigger value="programming">Programming</TabsTrigger>
+          <TabsTrigger value="admins">管理员</TabsTrigger>
           <TabsTrigger value="invites">邀请码</TabsTrigger>
           <TabsTrigger value="feedback">意见箱</TabsTrigger>
           <TabsTrigger value="hot-topic">Hot Topic</TabsTrigger>
@@ -69,6 +71,10 @@ export function AdminPanel() {
 
         <TabsContent value="feedback" className={"mt-4"}>
           <FeedbackInboxTab />
+        </TabsContent>
+
+        <TabsContent value="admins" className={"mt-4"}>
+          <AdminUsersTab />
         </TabsContent>
 
         <TabsContent value="invites" className={"mt-4"}>

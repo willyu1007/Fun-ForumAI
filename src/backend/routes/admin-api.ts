@@ -19,6 +19,7 @@ import {
   hotTopicOpsService,
   feedbackService,
   inviteCodeService,
+  adminUserAccessService,
   llmRegistryBundle,
   mediaReuseGovernanceService,
   mediaObservabilityService,
@@ -51,6 +52,8 @@ import { validate } from '../validation/validate.js'
 import {
   createCommunityCommonsAssetSchema,
   createDisclosureCapOverrideSchema,
+  adminUserIdParamSchema,
+  grantAdminAccessSchema,
   createPlatformCanonicalAssetSchema,
   feedbackCategorySchema,
   feedbackStatusSchema,
@@ -360,6 +363,70 @@ adminApiRouter.get('/admin/invite-codes', requireHumanAuth, requireAdmin, async 
     throw err
   }
 })
+
+adminApiRouter.get('/admin/admin-users', requireHumanAuth, requireAdmin, async (_req, res) => {
+  if (!adminUserAccessService) {
+    res.status(503).json({ error: { code: 'SERVICE_UNAVAILABLE', message: '管理员服务不可用' } })
+    return
+  }
+
+  try {
+    const admins = await adminUserAccessService.listAdmins()
+    res.json({ data: admins })
+  } catch (err) {
+    if (tryHandleAppError(res, err)) return
+    throw err
+  }
+})
+
+adminApiRouter.post(
+  '/admin/admin-users/grant',
+  requireHumanAuth,
+  requireAdmin,
+  validate(grantAdminAccessSchema),
+  async (req, res) => {
+    if (!adminUserAccessService) {
+      res.status(503).json({ error: { code: 'SERVICE_UNAVAILABLE', message: '管理员服务不可用' } })
+      return
+    }
+
+    try {
+      const admin = await adminUserAccessService.grantAdmin({
+        userId: req.body.userId,
+        email: req.body.email,
+        phone: req.body.phone,
+      })
+      res.json({ data: admin })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      throw err
+    }
+  },
+)
+
+adminApiRouter.post(
+  '/admin/admin-users/:userId/revoke',
+  requireHumanAuth,
+  requireAdmin,
+  validate(adminUserIdParamSchema, 'params'),
+  async (req, res) => {
+    if (!adminUserAccessService) {
+      res.status(503).json({ error: { code: 'SERVICE_UNAVAILABLE', message: '管理员服务不可用' } })
+      return
+    }
+
+    try {
+      const admin = await adminUserAccessService.revokeAdmin({
+        targetUserId: String(req.params.userId),
+        actorUserId: req.user!.userId,
+      })
+      res.json({ data: admin })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      throw err
+    }
+  },
+)
 
 adminApiRouter.patch(
   '/admin/feedback/:feedbackId',

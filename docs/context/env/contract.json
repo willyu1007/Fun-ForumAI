@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-02T01:49:55Z",
+  "generated_at_utc": "2026-04-02T08:24:00Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -163,6 +163,40 @@
       ],
       "secret": true,
       "secret_ref": "ark_api_key_secondary",
+      "state": "active",
+      "type": "string"
+    },
+    "AUTH_BOOTSTRAP_ADMIN_EMAILS": {
+      "default": "",
+      "deprecate_after": null,
+      "description": "Comma-separated bootstrap admin email list. Matching accounts are promoted to ADMIN after successful login or registration.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "AUTH_BOOTSTRAP_ADMIN_PHONES": {
+      "default": "",
+      "deprecate_after": null,
+      "description": "Comma-separated bootstrap admin phone list. Matching accounts are promoted to ADMIN after successful SMS auth.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
       "state": "active",
       "type": "string"
     },

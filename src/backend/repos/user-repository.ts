@@ -9,8 +9,10 @@ export interface UserRepository {
   findById(id: string): Promise<HumanUser | null>
   findByEmail(email: string): Promise<HumanUser | null>
   findByPhone(phone: string): Promise<HumanUser | null>
+  listAdmins(): Promise<HumanUser[]>
   create(input: CreateHumanUserInput): Promise<HumanUser>
   upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser>
+  updatePlanTier(id: string, planTier: HumanUser['plan_tier']): Promise<HumanUser | null>
   updateProfile(id: string, input: UpdateHumanUserProfileInput): Promise<HumanUser | null>
   updateLastLogin(id: string): Promise<void>
 }
@@ -44,6 +46,12 @@ export class InMemoryUserRepository implements UserRepository {
     const id = this.byPhone.get(phone)
     if (!id) return null
     return this.store.get(id) ?? null
+  }
+
+  async listAdmins(): Promise<HumanUser[]> {
+    return Array.from(this.store.values())
+      .filter((user) => user.plan_tier === 'ADMIN')
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
   async create(input: CreateHumanUserInput): Promise<HumanUser> {
@@ -128,6 +136,19 @@ export class InMemoryUserRepository implements UserRepository {
       ...existing,
       display_name: input.display_name ?? existing.display_name,
       avatar_url: input.avatar_url !== undefined ? input.avatar_url : existing.avatar_url,
+      updated_at: new Date(),
+    }
+    this.store.set(id, updated)
+    return updated
+  }
+
+  async updatePlanTier(id: string, planTier: HumanUser['plan_tier']): Promise<HumanUser | null> {
+    const existing = this.store.get(id)
+    if (!existing) return null
+
+    const updated: HumanUser = {
+      ...existing,
+      plan_tier: planTier,
       updated_at: new Date(),
     }
     this.store.set(id, updated)

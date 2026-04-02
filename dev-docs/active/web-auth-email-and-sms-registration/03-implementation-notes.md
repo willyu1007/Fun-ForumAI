@@ -40,3 +40,23 @@
 - 收尾清理：
   - 删除仅用于传递 `mode` 的 `PhoneLoginForm` / `PhoneRegisterForm` 包装文件，页面直接依赖 `PhoneAuthForm`
   - 删除已失效的本地 env doctor 产物 `artifacts/env-local/00-prereq-check.md`
+
+## 2026-04-02
+
+- 将 bootstrap admin / admin 授权能力并入 `T-930`，不新开任务包：
+  - 继续沿用现有 `plan_tier = ADMIN` 权限模型，不引入新的 RBAC schema
+  - bootstrap admin 不做永久硬编码白名单，而是改为环境配置驱动，避免把真实管理员标识写死在业务代码中
+- 设计约束确认：
+  - bootstrap admin 配置匹配邮箱/手机号，账号在登录或注册成功后自动提权为 `ADMIN`
+  - 现有管理员通过管控台查看管理员列表，并授予/撤销其他账号管理员权限
+  - bootstrap admin 账号禁止在后台被撤销，避免撤销后下次登录自动恢复造成困惑
+- 已完成的代码落地：
+  - `config.auth.bootstrapAdmins` 新增邮箱/手机号列表配置，`AuthService` 在邮箱登录、邮箱注册完成、短信注册/登录完成后统一调用 `finalizeAuthUser` 做 bootstrap 提权
+  - `UserRepository` / `PgUserRepository` 新增 `listAdmins` 与 `updatePlanTier`，提供最小管理员管理能力
+  - 新增 `AdminUserAccessService`，集中处理 bootstrap admin 判断、管理员列表、授予管理员、撤销管理员与保护规则
+  - `admin-api` 新增 `/admin/admin-users`、`/admin/admin-users/grant`、`/admin/admin-users/:userId/revoke`
+  - 管控台新增 `AdminUsersTab`，支持通过邮箱/手机号授予管理员，并在列表中区分 bootstrap admin
+  - 为避免现有 `plan_tier` 模型吞掉付费等级，对 `PRO` 账号授予管理员时改为显式报错 `ADMIN_PLAN_TIER_CONFLICT`
+  - bootstrap 自动提权也收紧为仅对 `FREE` 账号生效；如果配置命中了 `PRO` 账号，登录会保持原套餐等级，不再发生静默降级
+- 额外顺手修复：
+  - `env-contractctl` 之前被 `staging-launch` / `prod-launch` 缺失 secret ref 文件阻塞，这轮补齐了两个 launch 环境的 secret refs，让 env contract 重新可生成

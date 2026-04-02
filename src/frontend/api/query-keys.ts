@@ -85,6 +85,7 @@ export const queryKeys = {
   adminHotTopicDashboard: ['admin', 'hot-topic-dashboard'] as const,
   adminHotTopicAlerts: ['admin', 'hot-topic-alerts'] as const,
   adminCommunityProposals: ['admin', 'community-proposals'] as const,
+  adminUsers: ['admin', 'admin-users'] as const,
   adminInviteCodes: ['admin', 'invite-codes'] as const,
   adminFeedbackList: (params?: { status?: string; category?: string; source_route?: string; cursor?: string; limit?: number }) =>
     ['admin', 'feedback-list', params] as const,

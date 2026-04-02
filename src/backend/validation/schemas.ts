@@ -154,6 +154,26 @@ export const patchAdminFeedbackSchema = z
       message: 'status, public_resolution_note, or internal_note is required',
     })
 
+export const grantAdminAccessSchema = z
+  .object({
+    userId: z.string().trim().min(1).optional(),
+    email: z.string().trim().email().optional(),
+    phone: z.string().trim().min(6).max(32).optional(),
+  })
+  .strict()
+  .refine((body) => {
+    const provided = [body.userId, body.email, body.phone].filter((value) => value !== undefined)
+    return provided.length === 1
+  }, {
+    message: 'exactly one of userId, email, or phone is required',
+  })
+
+export const adminUserIdParamSchema = z
+  .object({
+    userId: z.string().trim().min(1),
+  })
+  .strict()
+
 export const updateAgentProfileSchema = z
   .object({
     display_name: z.string().min(1).max(100).optional(),

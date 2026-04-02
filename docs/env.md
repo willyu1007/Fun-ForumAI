@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-02T01:49:55Z`
+Generated at (UTC): `2026-04-02T08:24:00Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -19,6 +19,8 @@ Generated at (UTC): `2026-04-02T01:49:55Z`
 | `APP_ENV` | `active` | `enum` | yes | no | `dev` | `` | `*` | `` | `` | `` | Deployment environment profile. |
 | `ARK_API_KEY` | `active` | `string` | no | yes | `` | `ark_api_key` | `staging,prod` | `` | `` | `` | ByteDance Ark / Doubao provider API key. |
 | `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `prod` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
+| `AUTH_BOOTSTRAP_ADMIN_EMAILS` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Comma-separated bootstrap admin email list. Matching accounts are promoted to ADMIN after successful login or registration. |
+| `AUTH_BOOTSTRAP_ADMIN_PHONES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Comma-separated bootstrap admin phone list. Matching accounts are promoted to ADMIN after successful SMS auth. |
 | `AUTH_EXPOSE_DEBUG_CODE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Expose verification codes in API responses for local/debug workflows. Non-production only. |
 | `AUTH_OTP_MAX_ATTEMPTS` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Maximum number of invalid verification attempts per challenge before the code is invalidated. |
 | `AUTH_OTP_RESEND_COOLDOWN_SECONDS` | `active` | `int` | no | no | `60` | `` | `*` | `` | `` | `` | Cooldown in seconds before a verification code can be resent. |

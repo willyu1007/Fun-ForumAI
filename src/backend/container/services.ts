@@ -8,6 +8,7 @@ import { GovernanceAdapter } from '../services/governance-adapter.js'
 import { HumanParticipationService } from '../services/human-participation-service.js'
 import { ChatService } from '../services/chat-service.js'
 import { AuthService } from '../services/auth-service.js'
+import { AdminUserAccessService } from '../services/admin-user-access-service.js'
 import {
   InMemoryAuthVerificationChallengeRepository,
 } from '../repos/auth-verification-challenge-repository.js'
@@ -497,6 +498,10 @@ export function createCoreServices(deps: {
     ? new InviteCodeService(repos.inviteCodeRepo)
     : null
 
+  const adminUserAccessService = repos.userRepo
+    ? new AdminUserAccessService(repos.userRepo)
+    : null
+
   const authService = repos.userRepo && repos.inviteCodeRepo && authVerificationChallengeRepo
     ? new AuthService(
       repos.userRepo,
@@ -504,6 +509,7 @@ export function createCoreServices(deps: {
       authVerificationChallengeRepo,
       createEmailVerificationSender(),
       createSmsVerificationSender(),
+      adminUserAccessService,
     )
     : null
 
@@ -627,6 +633,7 @@ export function createCoreServices(deps: {
     chatroomRuntimeContextBuilder,
     roomLifecycle,
     authService,
+    adminUserAccessService,
     inviteCodeService,
     governanceAdapter,
     hotTopicOpsService,

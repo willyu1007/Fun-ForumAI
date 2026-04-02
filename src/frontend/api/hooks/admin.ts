@@ -8,6 +8,7 @@ import type {
   AdminFeedbackTicketDetail,
   AdminFeedbackTicketSummary,
   AdminInviteCodeSummary,
+  AdminUserSummary,
   AgentRiskProfile,
   LaunchProgrammingOpsPayload,
   ClaimedReviewTask,
@@ -428,6 +429,35 @@ export function useAdminInviteCodes() {
   return useQuery({
     queryKey: queryKeys.adminInviteCodes,
     queryFn: () => api.get('admin/invite-codes').json<ApiResponse<AdminInviteCodeSummary[]>>(),
+  })
+}
+
+export function useAdminUsers() {
+  return useQuery({
+    queryKey: queryKeys.adminUsers,
+    queryFn: () => api.get('admin/admin-users').json<ApiResponse<AdminUserSummary[]>>(),
+  })
+}
+
+export function useGrantAdminAccess() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { userId?: string; email?: string; phone?: string }) =>
+      api.post('admin/admin-users/grant', { json: body }).json<ApiResponse<AdminUserSummary>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminUsers })
+    },
+  })
+}
+
+export function useRevokeAdminAccess() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { userId: string }) =>
+      api.post(`admin/admin-users/${body.userId}/revoke`).json<ApiResponse<AdminUserSummary>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminUsers })
+    },
   })
 }
 
