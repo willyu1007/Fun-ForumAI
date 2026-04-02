@@ -15,18 +15,21 @@
   - Workflow syntax:
     - `node --input-type=module -e "import fs from 'node:fs'; import YAML from 'yaml'; YAML.parse(fs.readFileSync('.github/workflows/publish-image.yml', 'utf8')); console.log('yaml_ok')"`
       - Result: `yaml_ok`
-  - Cleanup script syntax:
-    - `node --check scripts/ci/cleanup-publish-runner.mjs`
-      - Result: passed
   - Diff hygiene:
     - `git diff --check`
       - Result: passed
   - Workflow structure review:
-    - `rg -n "Pre-clean self-hosted runner state|Cleanup self-hosted runner artifacts|cleanup-publish-runner|group: acr-publish-self-hosted" .github/workflows/publish-image.yml`
+    - `rg -n "Pre-clean self-hosted runner state|Cleanup self-hosted runner artifacts|group: acr-publish-self-hosted" .github/workflows/publish-image.yml`
       - Result: both self-hosted jobs now serialize on the same concurrency group and have explicit pre-clean plus `if: always()` cleanup hooks.
   - Docker context review:
     - `rg -n "!docs/project/|!docs/stage-templates/|!ops/packaging/|!ops/packaging/\\*\\*|dev-docs$|\\*\\.md$" .dockerignore`
       - Result: root Docker context now keeps `docs/project/policy.yaml`, `docs/stage-templates/**`, and `ops/packaging/**` while still excluding broad docs/dev-docs noise.
+  - Live publish rerun:
+    - `gh run view 23886350296 --job 69649891445 --log-failed`
+      - Result: the first cleanup implementation failed immediately with `node: command not found` on the self-hosted runner because pre-clean runs before `Setup Node`.
+  - Cleanup correction:
+    - `node --input-type=module -e "import fs from 'node:fs'; import YAML from 'yaml'; YAML.parse(fs.readFileSync('.github/workflows/publish-image.yml', 'utf8')); console.log('yaml_ok')"`
+      - Result: `yaml_ok` after converting cleanup to pure bash inline steps and removing the dead repo `node` helper.
 
 - 2026-03-28:
   - governance:

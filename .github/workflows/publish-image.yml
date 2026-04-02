@@ -104,7 +104,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ci/cleanup-publish-runner.mjs --workspace "$GITHUB_WORKSPACE"
+          workspace="${GITHUB_WORKSPACE:-}"
+          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
+            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+          fi
+          docker container prune -f || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          df -h || true
+          docker system df || true
 
       - name: Fetch source archive
         env:
@@ -255,10 +263,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ci/cleanup-publish-runner.mjs \
-            --workspace "$GITHUB_WORKSPACE" \
-            --archive-path "${PUBLISH_SOURCE_ARCHIVE:-}" \
-            --image-ref "${SHA_REF:-}"
+          if [ -n "${SHA_REF:-}" ]; then
+            docker image rm -f "${SHA_REF}" || true
+          fi
+          docker container prune -f || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          if [ -n "${PUBLISH_SOURCE_ARCHIVE:-}" ]; then
+            rm -f "${PUBLISH_SOURCE_ARCHIVE}" || true
+          fi
+          workspace="${GITHUB_WORKSPACE:-}"
+          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
+            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+          fi
+          df -h || true
+          docker system df || true
 
   promote-prod:
     name: Approve Existing Immutable Image for Prod
@@ -282,7 +301,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ci/cleanup-publish-runner.mjs --workspace "$GITHUB_WORKSPACE"
+          workspace="${GITHUB_WORKSPACE:-}"
+          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
+            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+          fi
+          docker container prune -f || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          df -h || true
+          docker system df || true
 
       - name: Fetch source archive
         env:
@@ -409,11 +436,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          args=(--workspace "$GITHUB_WORKSPACE" --archive-path "${PUBLISH_SOURCE_ARCHIVE:-}")
           if [ -n "${SOURCE_REF:-}" ]; then
-            args+=(--image-ref "$SOURCE_REF")
+            docker image rm -f "${SOURCE_REF}" || true
           fi
           if [ -n "${RELEASE_REF:-}" ]; then
-            args+=(--image-ref "$RELEASE_REF")
+            docker image rm -f "${RELEASE_REF}" || true
           fi
-          node scripts/ci/cleanup-publish-runner.mjs "${args[@]}"
+          docker container prune -f || true
+          docker image prune -af || true
+          docker builder prune -af || true
+          if [ -n "${PUBLISH_SOURCE_ARCHIVE:-}" ]; then
+            rm -f "${PUBLISH_SOURCE_ARCHIVE}" || true
+          fi
+          workspace="${GITHUB_WORKSPACE:-}"
+          if [ -n "$workspace" ] && [ -d "$workspace" ] && [ "$workspace" != "/" ]; then
+            find "$workspace" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+          fi
+          df -h || true
+          docker system df || true

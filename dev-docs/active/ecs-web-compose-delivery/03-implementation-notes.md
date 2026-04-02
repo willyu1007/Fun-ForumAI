@@ -20,7 +20,6 @@
 
 ## 2026-04-02 - publish runner cleanup and Docker context hardening
 
-- Added `scripts/ci/cleanup-publish-runner.mjs` so self-hosted publish jobs clean their workspace, archive tarball, named image refs, stopped containers, dangling images, and builder cache from one repo-owned entrypoint instead of ad-hoc shell fragments.
 - Updated `.github/workflows/publish-image.yml` so both `publish-staging` and `promote-prod`:
   - serialize on the same self-hosted publish concurrency group
   - run a pre-clean step before fetching source
@@ -31,6 +30,7 @@
   - `docs/stage-templates/**`
   - `ops/packaging/**`
 - This removes a latent semantic split where local builds could appear healthy only because stale runner state masked the fact that the Docker context was excluding repo-owned packaging files.
+- 2026-04-02 live rerun follow-up: the first implementation incorrectly used a repo `node` script for cleanup before `actions/setup-node`, but the self-hosted runner does not have global `node`. The cleanup path was revised to pure bash best-effort cleanup inside the workflow itself, and the dead `scripts/ci/cleanup-publish-runner.mjs` helper was removed.
 
 ## Follow-ups
 

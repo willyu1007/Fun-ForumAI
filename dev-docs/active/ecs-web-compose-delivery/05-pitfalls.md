@@ -18,10 +18,20 @@
     - `docs/project/policy.yaml`
     - `docs/stage-templates/**`
     - `ops/packaging/**`
-  - Added a repo-owned cleanup entrypoint (`scripts/ci/cleanup-publish-runner.mjs`) and wired it into `publish-image.yml` as both a pre-clean step and an `if: always()` post-job cleanup step.
+  - Added explicit cleanup hooks to `publish-image.yml` as both a pre-clean step and an `if: always()` post-job cleanup step. The first implementation used a repo-owned Node helper, but that was later replaced by pure bash cleanup because the self-hosted runner does not have global Node before `actions/setup-node`.
   - Serialized both self-hosted publish jobs on the same concurrency group so cleanup and Docker operations cannot overlap on the publish host.
 - Prevention:
   - Do not treat the existence of a `.dockerignore` file as proof that the Docker context is correct. Whenever a Dockerfile adds a `COPY` source or runs a repo script during build, verify that the root `.dockerignore` still allows that subtree. On self-hosted runners, pair every heavy Docker job with explicit pre/post cleanup and `if: always()` cleanup so failures do not leave the next run in a different state.
+
+### 2026-04-02 - Self-hosted cleanup cannot assume global Node before `Setup Node`
+- Symptom:
+  - The first rerun after adding cleanup failed immediately in `Pre-clean self-hosted runner state` with `node: command not found`, and the `if: always()` cleanup step failed for the same reason.
+- What we tried:
+  - Initially packaged cleanup logic as a repo `node` script so the workflow could call one shared helper before and after the publish job.
+- Fix / workaround:
+  - Root cause is ordering: on this self-hosted runner, `node` is not globally installed before `actions/setup-node`, and the pre-clean step necessarily runs before source fetch and Node setup. Cleanup was rewritten as pure bash best-effort commands directly in `publish-image.yml`, and the now-unreachable repo helper was deleted.
+- Prevention:
+  - For self-hosted workflow steps that run before checkout or `actions/setup-node`, do not assume repo scripts or global Node exist. Pre-checkout/pre-setup cleanup must be implemented in shell only, or moved after the toolchain bootstrap step.
 
 ### 2026-03-28 - Task bootstrap
 - Symptom:
