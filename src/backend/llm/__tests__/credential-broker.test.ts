@@ -13,8 +13,8 @@ function buildBundle() : LlmRegistryBundle {
           gateway_kind: 'openai_compatible',
           auth: {
             type: 'api_key',
-            credential_ref_required: true,
-            credential_ref: 'secret-ref:moonshot_api_key',
+            source: 'credential_pool',
+            auth_strategy: 'bearer_api_key',
           },
           routing: {
             regions: ['cn'],
@@ -73,6 +73,10 @@ function buildBundle() : LlmRegistryBundle {
       ],
     },
     routingPolicies: {
+      version: 1,
+      policies: [],
+    },
+    executionPolicies: {
       version: 1,
       policies: [],
     },

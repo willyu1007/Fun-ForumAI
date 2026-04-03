@@ -88,7 +88,6 @@ export function createCoreServices(deps: {
   llmGateway: LLMGateway
   mediaWriteBridge: MediaWriteBridge
   surfaceMediaPlanningService: SurfaceMediaPlanningService
-  visibleModelPin?: string | null
   mediaObservabilityService?: MediaObservabilityService | null
   mediaRolloutControllerService?: MediaRolloutControllerService | null
   usageLedgerRepo?: UsageLedgerRepository | null
@@ -328,7 +327,6 @@ export function createCoreServices(deps: {
     statsRepo: repos.statsRepo,
     personaStateService,
     personaStateRepo: repos.personaStateRepo,
-    visibleModelPin: deps.visibleModelPin ?? null,
     usageLedgerRepo: deps.usageLedgerRepo ?? null,
     reviewService,
     xpService: null,

@@ -36,6 +36,7 @@ export class LlmClient {
         max_tokens: opts.max_tokens ?? this.cfg.defaults.max_tokens,
         temperature: opts.temperature ?? this.cfg.defaults.temperature,
         stop: opts.stop,
+        response_mode: opts.response_mode,
       },
       providerConfig,
     )

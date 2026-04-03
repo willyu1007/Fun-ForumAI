@@ -65,24 +65,14 @@ export class CredentialBroker {
       )
     }
 
-    const scopeTags = buildScopeTags(input.visibility, input.budgetClass, input.tags)
-    const pools = this.options.bundle.credentialPools.pools
-      .filter((pool) => pool.provider_id === input.candidate.provider_id)
-      .filter((pool) => pool.region === input.candidate.region)
-      .filter((pool) => pool.endpoint_id === input.candidate.endpoint_id)
-      .filter((pool) => pool.enabled !== false)
-      .filter((pool) => pool.health !== 'blocked')
-      .filter((pool) => {
-        if (pool.allowed_model_ids?.length) {
-          return pool.allowed_model_ids.includes(input.candidate.model_id)
-        }
-        return true
-      })
-      .filter((pool) => {
-        if (!pool.scope_tags?.length) return true
-        return pool.scope_tags.some((tag) => scopeTags.has(tag))
-      })
-      .sort(comparePools)
+    const scopeTags = buildCredentialScopeTags(input.visibility, input.budgetClass, input.tags)
+    const pools = findUsableCredentialPoolsForCandidate({
+      candidate: input.candidate,
+      credentialPools: this.options.bundle.credentialPools.pools,
+      visibility: input.visibility,
+      budgetClass: input.budgetClass,
+      tags: input.tags,
+    }).sort(comparePools)
 
     if (pools.length === 0) {
       throw new LLMGatewayContractError(
@@ -136,7 +126,37 @@ export class CredentialBroker {
   }
 }
 
-function buildScopeTags(visibility: LLMVisibility, budgetClass: string, extraTags: string[] = []): Set<string> {
+export function findUsableCredentialPoolsForCandidate(input: {
+  candidate: ModelProfileCandidate
+  credentialPools: CredentialPoolEntry[]
+  visibility: LLMVisibility
+  budgetClass: string
+  tags?: string[]
+}): CredentialPoolEntry[] {
+  const scopeTags = buildCredentialScopeTags(input.visibility, input.budgetClass, input.tags)
+  return input.credentialPools
+    .filter((pool) => pool.provider_id === input.candidate.provider_id)
+    .filter((pool) => pool.region === input.candidate.region)
+    .filter((pool) => pool.endpoint_id === input.candidate.endpoint_id)
+    .filter((pool) => pool.enabled !== false)
+    .filter((pool) => pool.health !== 'blocked')
+    .filter((pool) => {
+      if (pool.allowed_model_ids?.length) {
+        return pool.allowed_model_ids.includes(input.candidate.model_id)
+      }
+      return true
+    })
+    .filter((pool) => {
+      if (!pool.scope_tags?.length) return true
+      return pool.scope_tags.some((tag) => scopeTags.has(tag))
+    })
+}
+
+export function buildCredentialScopeTags(
+  visibility: LLMVisibility,
+  budgetClass: string,
+  extraTags: string[] = [],
+): Set<string> {
   const tags = new Set<string>(extraTags)
   tags.add(visibility)
   if (budgetClass === 'hidden_multimodal') {

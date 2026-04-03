@@ -12,27 +12,37 @@ capabilities:
     input_window_tokens: 32768
     max_output_tokens: 8192
     recommended_operating_input_tokens: 24000
+    modalities: [text]
+    response_modes: [text, json_object]
 
   - provider_id: dashscope-openai
     model_id: qwen-plus-character
     input_window_tokens: 32768
     max_output_tokens: 8192
     recommended_operating_input_tokens: 24000
+    modalities: [text]
+    response_modes: [text, json_object]
 
   - provider_id: dashscope-openai
     model_id: qwen-max
     input_window_tokens: 32768
     max_output_tokens: 8192
     recommended_operating_input_tokens: 20000
+    modalities: [text]
+    response_modes: [text, json_object]
 
   - provider_id: dashscope-openai
     model_id: qwen-vl-plus
     input_window_tokens: 32768
     max_output_tokens: 8192
     recommended_operating_input_tokens: 20000
+    modalities: [text, vision]
+    response_modes: [text, json_object]
 
   - provider_id: dashscope-openai
     model_id: qwen-vl-max
     input_window_tokens: 32768
     max_output_tokens: 8192
     recommended_operating_input_tokens: 20000
+    modalities: [text, vision]
+    response_modes: [text, json_object]

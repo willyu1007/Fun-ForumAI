@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-02T08:24:00Z",
+  "generated_at_utc": "2026-04-03T11:47:00Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -1541,7 +1541,7 @@
     "LLM_BASE_URL": {
       "default": "https://dashscope.aliyuncs.com/compatible-mode/v1",
       "deprecate_after": null,
-      "description": "Base URL for the LLM API (OpenAI-compatible endpoint).",
+      "description": "Bootstrap or emergency-only base URL for legacy/default LLM client initialization. Runtime routing in staging/prod must not treat this as normal lane authority.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -1592,7 +1592,7 @@
     "LLM_MODEL": {
       "default": "qwen-plus-character",
       "deprecate_after": null,
-      "description": "Default LLM model name.",
+      "description": "Bootstrap or emergency-only default LLM model for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -1609,7 +1609,7 @@
     "LLM_PROVIDER": {
       "default": "dashscope-openai",
       "deprecate_after": null,
-      "description": "LLM provider identifier.",
+      "description": "Bootstrap or emergency-only provider identifier for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

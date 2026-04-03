@@ -29,6 +29,18 @@ export interface LlmCallsiteInventoryEntry {
   expected_profile_refs: Partial<Record<VoiceLineId, string>> | null
   raw_model_notes: string | null
   target_gateway_surface: string
+  target_policy_id: string | null
+  migration_status: 'migrated' | 'dual-track' | 'intentionally-retained'
+  local_override_fields: Array<
+    'temperature' |
+    'maxTokens' |
+    'stop' |
+    'executionPolicyId' |
+    'timeoutMs' |
+    'maxRetries' |
+    'regionHint'
+  >
+  local_override_notes: string | null
   migration_blocker: string
 }
 
@@ -71,6 +83,10 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     },
     raw_model_notes: 'Raw inline overrides remain removed; agent.model now only biases candidate selection inside the resolved profile.',
     target_gateway_surface: 'LLMGateway.generateVisibleText',
+    target_policy_id: 'visible-forum_reply-base',
+    migration_status: 'migrated',
+    local_override_fields: [],
+    local_override_notes: null,
     migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
   },
   {
@@ -95,6 +111,10 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     },
     raw_model_notes: 'Raw inline overrides remain removed; agent.model now only biases candidate selection inside the resolved profile.',
     target_gateway_surface: 'LLMGateway.generateVisibleText',
+    target_policy_id: 'visible-forum_reply-base',
+    migration_status: 'migrated',
+    local_override_fields: [],
+    local_override_notes: null,
     migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
   },
   {
@@ -118,6 +138,10 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     },
     raw_model_notes: 'Removed; chat room replies now route through the gateway.',
     target_gateway_surface: 'LLMGateway.generateVisibleText',
+    target_policy_id: 'visible-chat_reply-lite',
+    migration_status: 'migrated',
+    local_override_fields: [],
+    local_override_notes: null,
     migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
   },
   {
@@ -141,6 +165,10 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     },
     raw_model_notes: 'Raw inline overrides remain removed; agent.model now only biases candidate selection inside the resolved profile.',
     target_gateway_surface: 'LLMGateway.generateVisibleText',
+    target_policy_id: 'visible-scheduled_post-base',
+    migration_status: 'migrated',
+    local_override_fields: [],
+    local_override_notes: null,
     migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
   },
   {
@@ -162,9 +190,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
       'qwen-social-v1': 'qwen-social-private-reply-base',
       'glm-deep-v1': 'glm-deep-private-reply-base',
     },
-    raw_model_notes: 'Raw inline overrides remain removed; agent.model now only biases candidate selection inside the resolved profile.',
+    raw_model_notes: 'Temperature remains as a temporary local override while private reply policy defaults are being frozen for T-936 cutover.',
     target_gateway_surface: 'LLMGateway.generateVisibleText',
-    migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
+    target_policy_id: 'visible-private_reply-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains private-chat temperature tuning until visible private reply policy defaults are finalized in T-936.',
+    migration_blocker: 'Gateway routing is live, but private reply still carries a callsite temperature override that must migrate into execution policy ownership.',
   },
   {
     source_id: 'proactive-orchestrated-opening',
@@ -185,9 +217,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
       'qwen-social-v1': 'qwen-social-proactive-opening-base',
       'glm-deep-v1': 'glm-deep-proactive-opening-base',
     },
-    raw_model_notes: 'Raw inline overrides remain removed; agent.model now only biases candidate selection inside the resolved profile.',
+    raw_model_notes: 'Temperature remains as a temporary local override while proactive opening policy defaults are being frozen for T-936 cutover.',
     target_gateway_surface: 'LLMGateway.generateVisibleText',
-    migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
+    target_policy_id: 'visible-proactive_opening-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains proactive opening temperature tuning until visible proactive policy defaults are frozen in T-936.',
+    migration_blocker: 'Gateway routing is live, but proactive opening still carries a callsite temperature override that must migrate into execution policy ownership.',
   },
   {
     source_id: 'public-observation-digest',
@@ -207,9 +243,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: {
       'deepseek-director-v1': 'deepseek-director-public-observation-base',
     },
-    raw_model_notes: 'Removed; observation digest no longer uses global config.llm bootstrap.',
+    raw_model_notes: 'Digest generation still carries a local temperature override while hidden public observation policy defaults remain in dual-track mode.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
+    target_policy_id: 'hidden-public_observation_digest-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains digest temperature tuning until hidden public-observation defaults move fully into registry-owned execution policy.',
+    migration_blocker: 'Hidden digest routing is live, but this callsite still carries a local temperature override that T-936 must migrate.',
   },
   {
     source_id: 'agent-social-bio-render',
@@ -232,9 +272,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
       'minimax-her-v1': 'minimax-her-public-observation-base',
       'kimi-deep-v1': 'kimi-deep-public-observation-base',
     },
-    raw_model_notes: 'No raw model override; routing follows the home voice line and falls back only inside the hidden digest profile family.',
+    raw_model_notes: 'Bio render no longer pins provider/model, but still carries local temperature/maxTokens tuning pending T-936 policy cutover.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'This callsite closes the plan drift from deterministic string assembly to prompt-versioned LLM rendering with structured fallback.',
+    target_policy_id: 'hidden-public_observation_digest-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature', 'maxTokens'],
+    local_override_notes: 'Retains social bio render temperature and maxTokens tuning until hidden digest policy defaults absorb them in T-936.',
+    migration_blocker: 'This callsite now routes through the gateway, but still carries local generation controls that must migrate into execution policy ownership.',
   },
   {
     source_id: 'public-context-summary-extract',
@@ -254,9 +298,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: {
       'deepseek-director-v1': 'deepseek-director-public-observation-base',
     },
-    raw_model_notes: 'Removed; typed public extract no longer relies on raw model defaults.',
+    raw_model_notes: 'Public extract no longer pins model selection, but still retains a local temperature override pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Keep public extract registered so forum/chat-room context ingestion stays auditable under the hidden lane.',
+    target_policy_id: 'hidden-public_observation_digest-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains public extract temperature tuning until hidden public observation policy defaults absorb it in T-936.',
+    migration_blocker: 'Keep public extract registered so forum/chat-room context ingestion stays auditable under the hidden lane while local overrides are still being migrated.',
   },
   {
     source_id: 'public-context-summary-distill',
@@ -276,9 +324,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: {
       'deepseek-director-v1': 'deepseek-director-public-observation-base',
     },
-    raw_model_notes: 'Removed; typed public distill replaces prose-only observation shaping.',
+    raw_model_notes: 'Public distill no longer pins model selection, but still retains a local temperature override pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Keep public distill registered so typed forum/chat-room state generation remains policy-governed.',
+    target_policy_id: 'hidden-public_observation_digest-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains public distill temperature tuning until hidden public observation policy defaults absorb it in T-936.',
+    migration_blocker: 'Keep public distill registered so typed forum/chat-room state generation remains policy-governed while local overrides are still being migrated.',
   },
   {
     source_id: 'public-context-identity-finalize',
@@ -299,9 +351,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
       'qwen-social-v1': 'qwen-social-identity-write-base',
       'glm-deep-v1': 'glm-deep-identity-write-premium',
     },
-    raw_model_notes: 'Removed; config-affecting public finalize no longer uses hidden director or raw model defaults.',
+    raw_model_notes: 'Public identity finalize no longer pins raw model defaults, but still retains a local temperature override pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateIdentityWrite',
-    migration_blocker: 'Keep public finalize on the identity-write surface so forum/chat-room adaptations remain auditable.',
+    target_policy_id: 'identity_write-identity_write-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains public identity finalize temperature tuning until identity-write defaults are fully absorbed into execution policy ownership.',
+    migration_blocker: 'Keep public finalize on the identity-write surface so forum/chat-room adaptations remain auditable while local overrides are still being migrated.',
   },
   {
     source_id: 'private-context-summary-extract',
@@ -317,13 +373,17 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     visibility: 'hidden',
     prompt_ref: { id: 'internal-private-chat-summary-extract', version: 1 },
     voice_line_authority: 'Private context extraction stays on the hidden director line and reuses the private_digest routing family.',
-    tier_floor: 'identityWriteTier',
+    tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-private-digest-premium',
+      'deepseek-director-v1': 'deepseek-director-private-digest-base',
     },
-    raw_model_notes: 'Removed; typed extract no longer relies on direct llmClient prompts.',
+    raw_model_notes: 'Private extract no longer uses direct llmClient prompts, but still retains a local temperature override pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Keep extract on the registered hidden lane so later public/nightly phases cannot bypass routing policy.',
+    target_policy_id: 'hidden-private_digest-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains private extract temperature tuning until hidden private-digest defaults are fully absorbed into execution policy ownership.',
+    migration_blocker: 'Keep extract on the registered hidden lane so later public/nightly phases cannot bypass routing policy while local overrides are still being migrated.',
   },
   {
     source_id: 'private-context-summary-distill',
@@ -339,13 +399,17 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     visibility: 'hidden',
     prompt_ref: { id: 'internal-private-chat-summary-distill', version: 1 },
     voice_line_authority: 'Private context distill also stays on the hidden director line and must not route through visible home voice.',
-    tier_floor: 'identityWriteTier',
+    tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-private-digest-premium',
+      'deepseek-director-v1': 'deepseek-director-private-digest-base',
     },
-    raw_model_notes: 'Removed; typed distill replaces prose-only digest shaping.',
+    raw_model_notes: 'Private distill no longer uses direct llmClient prompts, but still retains a local temperature override pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Keep distill registered so typed state generation remains auditable under the same hidden routing family.',
+    target_policy_id: 'hidden-private_digest-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains private distill temperature tuning until hidden private-digest defaults are fully absorbed into execution policy ownership.',
+    migration_blocker: 'Keep distill registered so typed state generation remains auditable under the same hidden routing family while local overrides are still being migrated.',
   },
   {
     source_id: 'private-context-identity-finalize',
@@ -366,9 +430,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
       'qwen-social-v1': 'qwen-social-identity-write-premium',
       'glm-deep-v1': 'glm-deep-identity-write-premium',
     },
-    raw_model_notes: 'Removed; config-affecting finalize no longer uses hidden director or raw model defaults.',
+    raw_model_notes: 'Private identity finalize no longer pins raw model defaults, but still retains a local temperature override pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateIdentityWrite',
-    migration_blocker: 'Keep finalize on the identity-write surface so style patches remain tied to the voice contract.',
+    target_policy_id: 'identity_write-identity_write-premium',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature'],
+    local_override_notes: 'Retains private identity finalize temperature tuning until identity-write defaults are fully absorbed into execution policy ownership.',
+    migration_blocker: 'Keep finalize on the identity-write surface so style patches remain tied to the voice contract while local overrides are still being migrated.',
   },
   {
     source_id: 'vision-summary',
@@ -389,9 +457,13 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: {
       'deepseek-director-v1': 'deepseek-director-vision-summary-base',
     },
-    raw_model_notes: 'Removed; vision summary no longer uses direct multimodal llmClient access.',
+    raw_model_notes: 'Vision summary no longer uses direct multimodal llmClient access, but still retains local temperature/maxTokens tuning pending policy cutover.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
-    migration_blocker: 'Migrated to gateway envelope; keep this inventory entry to prevent regressions.',
+    target_policy_id: 'hidden-vision_summary-base',
+    migration_status: 'dual-track',
+    local_override_fields: ['temperature', 'maxTokens'],
+    local_override_notes: 'Retains vision summary temperature and maxTokens tuning until the hidden multimodal execution policy fully absorbs them in T-936.',
+    migration_blocker: 'Vision routing is live, but this callsite still carries local generation controls that must migrate into execution policy ownership.',
   },
   {
     source_id: 'dev-prompt-render',
@@ -410,6 +482,10 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: null,
     raw_model_notes: null,
     target_gateway_surface: 'PromptEngine.renderPromptRef',
+    target_policy_id: null,
+    migration_status: 'intentionally-retained',
+    local_override_fields: [],
+    local_override_notes: 'Dev-only prompt rendering intentionally bypasses runtime routing and remains a prompt contract inspection surface.',
     migration_blocker: 'Dev route intentionally renders selected templates directly for contract inspection.',
   },
 ]

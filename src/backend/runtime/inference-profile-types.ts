@@ -116,8 +116,6 @@ export interface AgentInferenceProfile {
   consecutiveLeadWindows: number
   challengerScoreDelta: number | null
   manualVoiceLineLock: boolean
-  visibleProviderPin: string | null
-  visibleModelPin: string | null
   candidateSince: string | null
   shadowStartedAt: string | null
   effectiveAt: string | null

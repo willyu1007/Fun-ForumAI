@@ -16,7 +16,9 @@ import { PersonaStateService } from '../persona-state-service.js'
 import { ReviewService } from '../review-service.js'
 import { StatsService } from '../stats-service.js'
 
-async function createContext(opts: { growthPointsTotal?: number; visibleModelPin?: string | null } = {}) {
+async function createContext(
+  opts: { growthPointsTotal?: number; agentModel?: string | null } = {},
+) {
   personaObservability.reset()
   const agentRepo = new InMemoryAgentRepository()
   const agentConfigRepo = new InMemoryAgentConfigRepository()
@@ -46,6 +48,7 @@ async function createContext(opts: { growthPointsTotal?: number; visibleModelPin
     owner_id: 'owner-1',
     display_name: 'Compiler Bot',
     persona_seed_code: 'philosopher',
+    model: opts.agentModel ?? 'qwen-flash',
   })
 
   const service = new InferenceProfileService({
@@ -54,7 +57,6 @@ async function createContext(opts: { growthPointsTotal?: number; visibleModelPin
     statsRepo,
     personaStateService,
     personaStateRepo,
-    visibleModelPin: opts.visibleModelPin ?? null,
     usageLedgerRepo,
     reviewService,
     xpService: {
@@ -237,9 +239,9 @@ describe('InferenceProfileService', () => {
     expect(unlocked.blockedReason).toBeNull()
   })
 
-  it('prefers the environment-level visible model pin when resolving visible routes', async () => {
+  it('derives a compatibility model hint from the agent model when resolving visible routes', async () => {
     const { agent, service } = await createContext({
-      visibleModelPin: 'qwen-flash-character',
+      agentModel: 'qwen-flash',
     })
 
     const route = await service.resolveVisibleRoute({
@@ -248,6 +250,41 @@ describe('InferenceProfileService', () => {
     })
 
     expect(route.preferredModelId).toBe('qwen-flash-character')
+  })
+
+  it('clears deprecated visible pin persistence when recompiling inference profiles', async () => {
+    const { agent, personaStateRepo, service } = await createContext()
+
+    await personaStateRepo.saveInferenceProfile({
+      agent_id: agent.id,
+      profile_version: 1,
+      incumbent_family: 'social',
+      challenger_family: null,
+      challenger_voice_line_id: null,
+      migration_state: 'stable',
+      consecutive_lead_windows: 0,
+      challenger_score_delta: null,
+      manual_voice_line_lock: false,
+      visible_provider_pin: 'dashscope-openai',
+      visible_model_pin: 'qwen-flash-character',
+      candidate_since: null,
+      shadow_started_at: null,
+      effective_at: null,
+      blocked_at: null,
+      blocked_reason: null,
+      freeze_until: null,
+      last_compiled_at: new Date('2026-04-01T00:00:00.000Z'),
+      last_snapshot_json: {},
+    })
+
+    await service.resolveVisibleRoute({
+      agentId: agent.id,
+      requestedTier: 'base',
+    })
+
+    const persisted = await personaStateRepo.findInferenceProfile(agent.id)
+    expect(persisted?.visible_provider_pin).toBeNull()
+    expect(persisted?.visible_model_pin).toBeNull()
   })
 
   it('creates and collects shadow review evidence before allowing rare reanchor', async () => {

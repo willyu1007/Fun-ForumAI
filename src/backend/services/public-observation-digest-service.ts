@@ -280,6 +280,8 @@ export class PublicObservationDigestService {
       const llmResp = await this.deps.llmGateway.generateHiddenArtifact({
         intent: 'public_observation_digest',
         scene: 'background_hidden',
+        modality: 'text',
+        responseMode: 'json_object',
         agentId,
         homeVoiceLineId: 'deepseek-director-v1',
         promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationDigest,
@@ -291,7 +293,9 @@ export class PublicObservationDigestService {
         requestedTier: 'base',
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
-        temperature: 0.3,
+        localOverrides: {
+          temperature: 0.3,
+        },
       })
 
       const parsed = this.parseDigestResponse(llmResp.content)

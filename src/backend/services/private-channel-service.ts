@@ -245,6 +245,8 @@ export class PrivateChannelService {
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: 'private_reply',
         scene: 'private_chat',
+        modality: 'text',
+        responseMode: 'text',
         agentId: session.agent_id,
         homeVoiceLineId: routing.homeVoiceLineId,
         preferredModelId: routing.preferredModelId,
@@ -256,7 +258,9 @@ export class PrivateChannelService {
         requestedTier: routing.requestedTier,
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
-        temperature: 0.8,
+        localOverrides: {
+          temperature: 0.8,
+        },
       })
       const latencyMs = Date.now() - startMs
       const identity = this.resolveObservationIdentity(session.agent_id)

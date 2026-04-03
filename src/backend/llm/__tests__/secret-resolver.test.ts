@@ -85,4 +85,84 @@ describe('SecretResolver', () => {
 
     expect(resolver.resolve('secret-ref:local_secret')).toBe('file-secret')
   })
+
+  it('prefers deploy-time env injection over Bitwarden refs when contract maps the secret_ref', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'secret-resolver-env-first-'))
+    const secretsFilePath = join(tempDir, 'staging.ref.yaml')
+    const policyPath = join(tempDir, 'policy.yaml')
+    const contractPath = join(tempDir, 'contract.yaml')
+
+    writeFileSync(secretsFilePath, [
+      'version: 1',
+      'secrets:',
+      '  llm_api_default:',
+      '    backend: bws',
+      '    project_name: test-project',
+      '    key: llm_api_default',
+      '',
+    ].join('\n'))
+    writeFileSync(policyPath, 'policy: {}\n')
+    writeFileSync(contractPath, [
+      'version: 1',
+      'variables:',
+      '  DASHSCOPE_API_KEY:',
+      '    type: string',
+      '    required: false',
+      '    secret: true',
+      '    secret_ref: llm_api_default',
+      '',
+    ].join('\n'))
+
+    const resolver = new SecretResolver({
+      appEnv: 'staging',
+      env: {
+        DASHSCOPE_API_KEY: 'deploy-time-token',
+      },
+      secretsFilePath,
+      policyPath,
+      contractPath,
+    })
+
+    expect(resolver.resolve('secret-ref:llm_api_default')).toBe('deploy-time-token')
+  })
+
+  it('disables Bitwarden fallback by default for staging runtime', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'secret-resolver-bws-disabled-'))
+    const secretsFilePath = join(tempDir, 'staging.ref.yaml')
+    const policyPath = join(tempDir, 'policy.yaml')
+    const contractPath = join(tempDir, 'contract.yaml')
+
+    writeFileSync(secretsFilePath, [
+      'version: 1',
+      'secrets:',
+      '  llm_api_default:',
+      '    backend: bws',
+      '    project_name: test-project',
+      '    key: llm_api_default',
+      '',
+    ].join('\n'))
+    writeFileSync(policyPath, 'policy: {}\n')
+    writeFileSync(contractPath, [
+      'version: 1',
+      'variables:',
+      '  DASHSCOPE_API_KEY:',
+      '    type: string',
+      '    required: false',
+      '    secret: true',
+      '    secret_ref: llm_api_default',
+      '',
+    ].join('\n'))
+
+    const resolver = new SecretResolver({
+      appEnv: 'staging',
+      env: {},
+      secretsFilePath,
+      policyPath,
+      contractPath,
+    })
+
+    expect(() => resolver.resolve('secret-ref:llm_api_default')).toThrow(
+      'Bitwarden fallback is disabled for runtime in this environment',
+    )
+  })
 })

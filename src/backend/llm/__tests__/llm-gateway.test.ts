@@ -17,8 +17,8 @@ function buildBundle(): LlmRegistryBundle {
           gateway_kind: 'openai_compatible',
           auth: {
             type: 'api_key',
-            credential_ref_required: true,
-            credential_ref: 'secret-ref:llm_api_default',
+            source: 'credential_pool',
+            auth_strategy: 'bearer_api_key',
           },
           routing: {
             regions: ['cn-beijing'],
@@ -171,31 +171,198 @@ function buildBundle(): LlmRegistryBundle {
       policies: [
         {
           profile_id: 'qwen-social-proactive-opening-base',
-          route_order: ['profile_candidates', 'health'],
-          allow_fallback_within_line: true,
-          allow_cross_family: false,
-          allowed_fallback_levels: ['none', 'same-line'],
+          route_order: [
+            'intent_scene_fit',
+            'voice_line_tier',
+            'profile_candidates',
+            'region_policy',
+            'headroom',
+            'health',
+          ],
         },
         {
           profile_id: 'qwen-social-proactive-opening-premium',
-          route_order: ['profile_candidates', 'health'],
-          allow_fallback_within_line: true,
-          allow_cross_family: false,
-          allowed_fallback_levels: ['none'],
+          route_order: [
+            'intent_scene_fit',
+            'voice_line_tier',
+            'profile_candidates',
+            'region_policy',
+            'headroom',
+            'health',
+          ],
         },
         {
           profile_id: 'qwen-social-identity-write-base',
-          route_order: ['voice_line_tier', 'profile_candidates', 'health'],
-          allow_fallback_within_line: false,
-          allow_cross_family: false,
-          allowed_fallback_levels: ['none'],
+          route_order: [
+            'intent_scene_fit',
+            'voice_line_tier',
+            'profile_candidates',
+            'region_policy',
+            'headroom',
+            'health',
+          ],
         },
         {
           profile_id: 'qwen-social-identity-write-premium',
-          route_order: ['voice_line_tier', 'profile_candidates', 'health'],
-          allow_fallback_within_line: false,
-          allow_cross_family: false,
-          allowed_fallback_levels: ['none'],
+          route_order: [
+            'intent_scene_fit',
+            'voice_line_tier',
+            'profile_candidates',
+            'region_policy',
+            'headroom',
+            'health',
+          ],
+        },
+      ],
+    },
+    executionPolicies: {
+      version: 1,
+      policies: [
+        {
+          policy_id: 'visible-proactive_opening-base',
+          lane: 'visible_proactive_opening',
+          modality: 'text',
+          response_mode: 'text',
+          defaults: {
+            temperature: 0.8,
+            max_tokens: 320,
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+          fallback: {
+            allow_fallback_within_line: true,
+            allow_cross_family: false,
+            allowed_fallback_levels: ['none', 'same-line'],
+          },
+          merge: {
+            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
+            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+          },
+        },
+        {
+          policy_id: 'visible-proactive_opening-premium',
+          lane: 'visible_proactive_opening',
+          modality: 'text',
+          response_mode: 'text',
+          defaults: {
+            temperature: 0.78,
+            max_tokens: 420,
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+          fallback: {
+            allow_fallback_within_line: true,
+            allow_cross_family: false,
+            allowed_fallback_levels: ['none'],
+          },
+          merge: {
+            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
+            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+          },
+        },
+        {
+          policy_id: 'identity_write-identity_write-base',
+          lane: 'identity_write',
+          modality: 'text',
+          response_mode: 'json_object',
+          defaults: {
+            temperature: 0.35,
+            max_tokens: 600,
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+          fallback: {
+            allow_fallback_within_line: false,
+            allow_cross_family: false,
+            allowed_fallback_levels: ['none'],
+          },
+          merge: {
+            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
+            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+          },
+        },
+        {
+          policy_id: 'identity_write-identity_write-premium',
+          lane: 'identity_write',
+          modality: 'text',
+          response_mode: 'json_object',
+          defaults: {
+            temperature: 0.3,
+            max_tokens: 900,
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+          fallback: {
+            allow_fallback_within_line: false,
+            allow_cross_family: false,
+            allowed_fallback_levels: ['none'],
+          },
+          merge: {
+            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
+            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+          },
+        },
+        {
+          policy_id: 'hidden-private_digest-premium',
+          lane: 'hidden_private_digest',
+          modality: 'text',
+          response_mode: 'json_object',
+          defaults: {
+            temperature: 0.22,
+            max_tokens: 1200,
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+          fallback: {
+            allow_fallback_within_line: false,
+            allow_cross_family: false,
+            allowed_fallback_levels: ['none'],
+          },
+          merge: {
+            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
+            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+          },
+        },
+        {
+          policy_id: 'hidden-vision_summary-base',
+          lane: 'hidden_vision_summary',
+          modality: 'vision',
+          response_mode: 'json_object',
+          defaults: {
+            temperature: 0.2,
+            max_tokens: 700,
+            timeout_ms: 30_000,
+            max_retries: 2,
+          },
+          fallback: {
+            allow_fallback_within_line: false,
+            allow_cross_family: false,
+            allowed_fallback_levels: ['none'],
+          },
+          merge: {
+            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
+            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+          },
+        },
+      ],
+    },
+    adapterBindings: {
+      version: 1,
+      bindings: [
+        {
+          adapterId: 'openai-chat-completions-v1',
+          requestShape: 'chat',
+          transport: 'chat_completions',
+          providerGatewayKinds: ['openai_compatible', 'native'],
+          supports: {
+            chat: true,
+            vision: true,
+            jsonMode: true,
+            structuredOutput: false,
+            toolCalling: false,
+            streaming: false,
+          },
+          authStrategy: 'bearer_api_key',
         },
       ],
     },
@@ -244,6 +411,8 @@ function buildBundle(): LlmRegistryBundle {
           input_window_tokens: 32_768,
           max_output_tokens: 8_192,
           recommended_operating_input_tokens: 24_576,
+          modalities: ['text'],
+          response_modes: ['text', 'json_object'],
         },
         {
           provider_id: 'dashscope-openai',
@@ -251,6 +420,8 @@ function buildBundle(): LlmRegistryBundle {
           input_window_tokens: 32_768,
           max_output_tokens: 8_192,
           recommended_operating_input_tokens: 24_576,
+          modalities: ['text'],
+          response_modes: ['text', 'json_object'],
         },
         {
           provider_id: 'dashscope-openai',
@@ -258,6 +429,17 @@ function buildBundle(): LlmRegistryBundle {
           input_window_tokens: 32_768,
           max_output_tokens: 8_192,
           recommended_operating_input_tokens: 24_576,
+          modalities: ['text'],
+          response_modes: ['text', 'json_object'],
+        },
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-vl-plus',
+          input_window_tokens: 32_768,
+          max_output_tokens: 8_192,
+          recommended_operating_input_tokens: 24_576,
+          modalities: ['text', 'vision'],
+          response_modes: ['text', 'json_object'],
         },
       ],
     },
@@ -279,6 +461,124 @@ function buildLlmClient(): LlmClient {
       temperature: 0.7,
     },
   })
+}
+
+function buildVisibleTextRequest(overrides: Record<string, unknown> = {}) {
+  return {
+    intent: 'proactive_opening',
+    scene: 'proactive_dm',
+    modality: 'text',
+    responseMode: 'text',
+    agentId: 'agent-1',
+    homeVoiceLineId: 'qwen-social-v1',
+    promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
+    variables: {},
+    promptMessages: [{ role: 'user', content: 'open' }],
+    budgetClass: 'visible_standard',
+    traceId: 'trace-visible',
+    requestedTier: 'base',
+    allowFallbackWithinLine: true,
+    allowCrossFamily: false,
+    ...overrides,
+  }
+}
+
+function buildIdentityWriteRequest(overrides: Record<string, unknown> = {}) {
+  return {
+    intent: 'identity_write',
+    scene: 'background_hidden',
+    modality: 'text',
+    responseMode: 'json_object',
+    agentId: 'agent-1',
+    homeVoiceLineId: 'qwen-social-v1',
+    promptRef: { id: 'internal-public-observation-identity-finalize', version: 1 },
+    variables: {},
+    promptMessages: [{ role: 'user', content: 'finalize' }],
+    budgetClass: 'identity_write',
+    traceId: 'trace-identity',
+    requestedTier: 'base',
+    allowFallbackWithinLine: false,
+    allowCrossFamily: false,
+    ...overrides,
+  }
+}
+
+function buildHiddenJsonRequest(overrides: Record<string, unknown> = {}) {
+  return {
+    intent: 'private_digest',
+    scene: 'background_hidden',
+    modality: 'text',
+    responseMode: 'json_object',
+    agentId: 'agent-1',
+    homeVoiceLineId: 'deepseek-director-v1',
+    promptRef: { id: 'internal-private-chat-summary-extract', version: 1 },
+    variables: {},
+    promptMessages: [{ role: 'user', content: 'summarize' }],
+    budgetClass: 'hidden_background',
+    traceId: 'trace-hidden',
+    requestedTier: 'premium',
+    allowFallbackWithinLine: false,
+    allowCrossFamily: false,
+    ...overrides,
+  }
+}
+
+function buildVisionRequest(overrides: Record<string, unknown> = {}) {
+  return {
+    intent: 'vision_summary',
+    scene: 'background_hidden',
+    modality: 'vision',
+    responseMode: 'json_object',
+    agentId: 'agent-1',
+    homeVoiceLineId: 'deepseek-director-v1',
+    promptRef: { id: 'internal-vision-summary', version: 2 },
+    variables: {},
+    promptMessages: [{ role: 'user', content: 'summarize image' }],
+    budgetClass: 'hidden_multimodal',
+    traceId: 'trace-vision',
+    requestedTier: 'base',
+    allowFallbackWithinLine: false,
+    allowCrossFamily: false,
+    ...overrides,
+  }
+}
+
+function buildGatewayHarness(input?: {
+  bundle?: LlmRegistryBundle
+  response?: {
+    content: string
+    usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+    model: string
+    finish_reason: string | null
+    meta?: { attempts: number }
+  }
+  resolveSecret?: (ref: string) => string
+  budgetGuard?: BudgetGuard
+}) {
+  const bundle = input?.bundle ?? buildBundle()
+  const usageLedger = new UsageLedgerWriter()
+  const llmClient = buildLlmClient()
+  const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue(
+    input?.response ?? {
+      content: 'ok',
+      usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    },
+  )
+  const gateway = new LLMGateway({
+    bundle,
+    promptEngine: { render: vi.fn() } as never,
+    llmClient,
+    credentialBroker: new CredentialBroker({
+      bundle,
+      secretResolver: { resolve: vi.fn(input?.resolveSecret ?? (() => 'secret')) } as never,
+    }),
+    usageLedger,
+    budgetGuard: input?.budgetGuard ?? new BudgetGuard(),
+  })
+
+  return { bundle, usageLedger, llmClient, chatSpy, gateway }
 }
 
 describe('LLMGateway', () => {
@@ -332,20 +632,9 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateVisibleText({
-      intent: 'proactive_opening',
-      scene: 'proactive_dm',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'open' }],
-      budgetClass: 'visible_standard',
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
       traceId: 'trace-1',
-      requestedTier: 'base',
-      allowFallbackWithinLine: true,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(response.renderDecision.profileId).toBe('qwen-social-proactive-opening-premium')
     expect(response.renderDecision.modelId).toBe('qwen-max')
@@ -375,20 +664,9 @@ describe('LLMGateway', () => {
     })
 
     await expect(
-      gateway.generateVisibleText({
-        intent: 'proactive_opening',
-        scene: 'proactive_dm',
-        agentId: 'agent-1',
-        homeVoiceLineId: 'qwen-social-v1',
-        promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
-        variables: {},
-        promptMessages: [{ role: 'user', content: 'open' }],
-        budgetClass: 'visible_standard',
+      gateway.generateVisibleText(buildVisibleTextRequest({
         traceId: 'trace-budget',
-        requestedTier: 'base',
-        allowFallbackWithinLine: true,
-        allowCrossFamily: false,
-      }),
+      })),
     ).rejects.toMatchObject({ code: 'BudgetExceededError' })
 
     expect(chatSpy).not.toHaveBeenCalled()
@@ -419,23 +697,605 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateVisibleText({
-      intent: 'proactive_opening',
-      scene: 'proactive_dm',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'open' }],
-      budgetClass: 'visible_standard',
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
       traceId: 'trace-retry',
-      requestedTier: 'base',
-      allowFallbackWithinLine: true,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(response.platformRetryCount).toBe(2)
     expect(usageLedger.list()[0]?.platform_retry_count).toBe(2)
+  })
+
+  it('applies execution policy defaults when the request omits generation params', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'policy defaults',
+      usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger: new UsageLedgerWriter(),
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      traceId: 'trace-policy-defaults',
+    }))
+
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        temperature: 0.8,
+        max_tokens: 320,
+      }),
+    )
+    expect(response.executionPlan.policy.policy_id).toBe('visible-proactive_opening-base')
+    expect(response.renderDecision.policyId).toBe('visible-proactive_opening-base')
+  })
+
+  it('filters incompatible candidates before ordering when intent_scene_fit requires vision json output', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'deepseek-director-vision-summary-base',
+      voice_line_id: 'deepseek-director-v1',
+      tier: 'base',
+      intent: 'vision_summary',
+      visibility: 'hidden',
+      candidates: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-plus-character',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          weight: 120,
+          quality_class: 'balanced',
+        },
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-vl-plus',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          weight: 80,
+          quality_class: 'balanced',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'deepseek-director-vision-summary-base',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-vl-plus']
+    bundle.credentialPools.pools[0]!.scope_tags = ['hidden_multimodal']
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: '{"summary":"ok"}',
+        usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+        model: 'qwen-vl-plus',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateHiddenArtifact(buildVisionRequest())
+
+    expect(response.renderDecision.modelId).toBe('qwen-vl-plus')
+    expect(response.executionPlan.orderedCandidates).toHaveLength(1)
+    expect(response.executionPlan.orderedCandidates[0]?.modelId).toBe('qwen-vl-plus')
+  })
+
+  it('uses voice_line_tier ordering before profile weight when requested tier is base', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = [
+      'qwen-plus-character',
+      'qwen-flash-character',
+    ]
+    bundle.modelProfiles.profiles[0]!.candidates[0]!.weight = 100
+    bundle.modelProfiles.profiles[0]!.candidates[1]!.weight = 100
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'balanced wins',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest())
+
+    expect(response.executionPlan.orderedCandidates[0]?.modelId).toBe('qwen-plus-character')
+    expect(response.executionPlan.orderedCandidates[0]?.qualityClass).toBe('balanced')
+  })
+
+  it('uses region_policy ordering from the merged region hint', async () => {
+    const bundle = buildBundle()
+    bundle.providers.providers[0]!.routing.regions = ['cn-beijing', 'cn-shanghai']
+    bundle.providers.providers[0]!.routing.default_region = 'cn-beijing'
+    bundle.modelProfiles.profiles[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-shanghai',
+        endpoint_id: 'dashscope-cn-shanghai',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+    ]
+    bundle.credentialPools.pools = [
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-beijing',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        allowed_model_ids: ['qwen-plus-character'],
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-shanghai',
+        region: 'cn-shanghai',
+        endpoint_id: 'dashscope-cn-shanghai',
+        allowed_model_ids: ['qwen-plus-character'],
+      },
+    ]
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'regional winner',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      localOverrides: {
+        regionHint: 'cn-shanghai',
+      },
+    }))
+
+    expect(response.renderDecision.region).toBe('cn-shanghai')
+    expect(response.executionPlan.resolvedParams.regionHint).toBe('cn-shanghai')
+  })
+
+  it('uses profile_candidates weight ordering when earlier route steps tie', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-a',
+        weight: 120,
+        quality_class: 'balanced',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-b',
+        weight: 80,
+        quality_class: 'balanced',
+      },
+    ]
+    bundle.credentialPools.pools = [
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-a',
+        endpoint_id: 'dashscope-cn-a',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 50,
+        tpm_headroom: 50,
+        health: 'healthy',
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-b',
+        endpoint_id: 'dashscope-cn-b',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 50,
+        tpm_headroom: 50,
+        health: 'healthy',
+      },
+    ]
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'weight winner',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest())
+
+    expect(response.renderDecision.endpointId).toBe('dashscope-cn-a')
+    expect(response.executionPlan.orderedCandidates[0]?.endpointId).toBe('dashscope-cn-a')
+  })
+
+  it('uses headroom ordering when candidates are otherwise tied', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-a',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-b',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+    ]
+    bundle.credentialPools.pools = [
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-a',
+        endpoint_id: 'dashscope-cn-a',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 5,
+        tpm_headroom: 5,
+        health: 'healthy',
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-b',
+        endpoint_id: 'dashscope-cn-b',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 50,
+        tpm_headroom: 50,
+        health: 'healthy',
+      },
+    ]
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'headroom winner',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest())
+
+    expect(response.renderDecision.endpointId).toBe('dashscope-cn-b')
+    expect(response.executionPlan.orderedCandidates[0]?.endpointId).toBe('dashscope-cn-b')
+  })
+
+  it('ignores credential pools that cannot serve the candidate when ranking headroom', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-a',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-b',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+    ]
+    bundle.credentialPools.pools = [
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-a',
+        endpoint_id: 'dashscope-cn-a',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 10,
+        tpm_headroom: 10,
+        health: 'healthy',
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-b-mismatched-model',
+        endpoint_id: 'dashscope-cn-b',
+        allowed_model_ids: ['qwen-max'],
+        rpm_headroom: 500,
+        tpm_headroom: 500,
+        health: 'healthy',
+      },
+    ]
+
+    const { gateway, usageLedger } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'usable headroom winner',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest())
+
+    expect(response.renderDecision.endpointId).toBe('dashscope-cn-a')
+    expect(response.executionPlan.orderedCandidates[0]?.endpointId).toBe('dashscope-cn-a')
+    expect(usageLedger.list()).toHaveLength(1)
+  })
+
+  it('uses health ordering when headroom ties', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-a',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-b',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+    ]
+    bundle.credentialPools.pools = [
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-a',
+        endpoint_id: 'dashscope-cn-a',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 25,
+        tpm_headroom: 25,
+        health: 'degraded',
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-b',
+        endpoint_id: 'dashscope-cn-b',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 25,
+        tpm_headroom: 25,
+        health: 'healthy',
+      },
+    ]
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'health winner',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest())
+
+    expect(response.renderDecision.endpointId).toBe('dashscope-cn-b')
+    expect(response.executionPlan.orderedCandidates[0]?.endpointId).toBe('dashscope-cn-b')
+  })
+
+  it('ignores non-matching scope pools when ranking health', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles[0]!.candidates = [
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-a',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-b',
+        weight: 100,
+        quality_class: 'balanced',
+      },
+    ]
+    bundle.credentialPools.pools = [
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-a',
+        endpoint_id: 'dashscope-cn-a',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 25,
+        tpm_headroom: 25,
+        health: 'degraded',
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-b-visible',
+        endpoint_id: 'dashscope-cn-b',
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 25,
+        tpm_headroom: 25,
+        health: 'degraded',
+      },
+      {
+        ...bundle.credentialPools.pools[0]!,
+        credential_id: 'dashscope-b-hidden-only',
+        endpoint_id: 'dashscope-cn-b',
+        scope_tags: ['hidden'],
+        allowed_model_ids: ['qwen-plus-character'],
+        rpm_headroom: 25,
+        tpm_headroom: 25,
+        health: 'healthy',
+      },
+    ]
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'usable health winner',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest())
+
+    expect(response.renderDecision.endpointId).toBe('dashscope-cn-a')
+    expect(response.executionPlan.orderedCandidates[0]?.endpointId).toBe('dashscope-cn-a')
+  })
+
+  it('merges policy defaults, local overrides, debug overrides, and hard caps with trace output', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: 'merge trace',
+        usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+        model: 'qwen-plus-character',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      localOverrides: {
+        temperature: 0.4,
+        maxTokens: 200,
+        regionHint: 'cn-beijing',
+      },
+      debug: {
+        temperature: 1.2,
+        maxTokens: 300,
+        timeoutMs: 50_000,
+        maxRetries: 9,
+        regionHint: 'cn-shanghai',
+      },
+    }))
+
+    expect(response.executionPlan.selectedAdapter?.adapterId).toBe('openai-chat-completions-v1')
+    expect(response.executionPlan.selectedCredential?.secretRef).toBe('secret-ref:llm_api_default')
+    expect(response.executionPlan.resolvedParams).toMatchObject({
+      modality: 'text',
+      responseMode: 'text',
+      temperature: 1.2,
+      maxTokens: 300,
+      timeoutMs: 30_000,
+      maxRetries: 2,
+      regionHint: 'cn-shanghai',
+    })
+    expect(response.executionPlan.mergeTrace.callsiteOverrides).toMatchObject({
+      temperature: 0.4,
+      maxTokens: 200,
+      regionHint: 'cn-beijing',
+    })
+    expect(response.executionPlan.mergeTrace.debugOverrides).toMatchObject({
+      temperature: 1.2,
+      maxTokens: 300,
+      timeoutMs: 50_000,
+      maxRetries: 9,
+      regionHint: 'cn-shanghai',
+    })
+    expect(response.executionPlan.mergeTrace.appliedOverrideFields).toEqual(
+      expect.arrayContaining(['temperature', 'maxTokens', 'regionHint', 'timeoutMs', 'maxRetries']),
+    )
+    expect(response.warnings).toEqual(
+      expect.arrayContaining(['timeout_ms_capped_to_provider_default', 'max_retries_capped_to_provider_default']),
+    )
+  })
+
+  it('supports direct provider/model fallback steps inside a fallback profile', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles[0]!.fallback = [
+      {
+        level: 'same-line',
+        profile_id: 'qwen-social-proactive-opening-premium',
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-max',
+        reason: 'degrade to a known premium fallback candidate',
+      },
+    ]
+    bundle.modelProfiles.profiles[1]!.candidates.push({
+      provider_id: 'dashscope-openai',
+      model_id: 'qwen-plus-character',
+      region: 'cn-beijing',
+      endpoint_id: 'dashscope-cn-beijing',
+      weight: 120,
+      quality_class: 'balanced',
+    })
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-max']
+
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'direct fallback',
+      usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+      model: 'qwen-max',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger: new UsageLedgerWriter(),
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      traceId: 'trace-direct-fallback',
+    }))
+
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'qwen-max',
+      }),
+    )
+    expect(response.executionPlan.orderedCandidates).toEqual([
+      expect.objectContaining({
+        modelId: 'qwen-max',
+      }),
+    ])
+    expect(response.renderDecision.reasons).toContain('direct_fallback_candidate')
   })
 
   it('prioritizes a preferred model inside the resolved profile before falling back by weight', async () => {
@@ -465,21 +1325,10 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateVisibleText({
-      intent: 'proactive_opening',
-      scene: 'proactive_dm',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
       preferredModelId: 'qwen-flash-character',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'open' }],
-      budgetClass: 'visible_standard',
       traceId: 'trace-preferred',
-      requestedTier: 'base',
-      allowFallbackWithinLine: true,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(chatSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -516,20 +1365,9 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateIdentityWrite({
-      intent: 'identity_write',
-      scene: 'background_hidden',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'internal-public-observation-identity-finalize', version: 1 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'finalize' }],
-      budgetClass: 'identity_write',
+    const response = await gateway.generateIdentityWrite(buildIdentityWriteRequest({
       traceId: 'trace-identity-base',
-      requestedTier: 'base',
-      allowFallbackWithinLine: false,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(chatSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -585,21 +1423,10 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateVisibleText({
-      intent: 'proactive_opening',
-      scene: 'proactive_dm',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
       preferredModelId: 'qwen-flash-character',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'open' }],
-      budgetClass: 'visible_standard',
       traceId: 'trace-admission',
-      requestedTier: 'base',
-      allowFallbackWithinLine: true,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(chatSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -619,8 +1446,8 @@ describe('LLMGateway', () => {
       gateway_kind: 'openai_compatible',
       auth: {
         type: 'api_key',
-        credential_ref_required: true,
-        credential_ref: 'secret-ref:deepseek_api_key',
+        source: 'credential_pool',
+        auth_strategy: 'bearer_api_key',
       },
       routing: {
         regions: ['cn'],
@@ -663,6 +1490,15 @@ describe('LLMGateway', () => {
       ],
       fallback: [],
     })
+    bundle.modelCapabilities.capabilities.push({
+      provider_id: 'deepseek-openai',
+      model_id: 'deepseek-reasoner',
+      input_window_tokens: 64_000,
+      max_output_tokens: 8_192,
+      recommended_operating_input_tokens: 32_000,
+      modalities: ['text'],
+      response_modes: ['text', 'json_object'],
+    })
     bundle.credentialPools.pools.push({
       credential_id: 'dashscope-hidden-default',
       provider_id: 'dashscope-openai',
@@ -678,10 +1514,14 @@ describe('LLMGateway', () => {
     })
     bundle.routingPolicies.policies.push({
       profile_id: 'deepseek-director-private-digest-premium',
-      route_order: ['profile_candidates', 'health'],
-      allow_fallback_within_line: false,
-      allow_cross_family: false,
-      allowed_fallback_levels: ['none'],
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
     })
 
     const usageLedger = new UsageLedgerWriter()
@@ -711,20 +1551,9 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateHiddenArtifact({
-      intent: 'private_digest',
-      scene: 'background_hidden',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'deepseek-director-v1',
-      promptRef: { id: 'internal-private-chat-summary-extract', version: 1 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'summarize' }],
-      budgetClass: 'hidden_background',
+    const response = await gateway.generateHiddenArtifact(buildHiddenJsonRequest({
       traceId: 'trace-hidden-fallback',
-      requestedTier: 'premium',
-      allowFallbackWithinLine: false,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(response.renderDecision.profileId).toBe('deepseek-director-private-digest-premium')
     expect(response.renderDecision.modelId).toBe('qwen-max')
@@ -784,10 +1613,14 @@ describe('LLMGateway', () => {
     ]
     bundle.routingPolicies.policies.push({
       profile_id: 'deepseek-director-vision-summary-base',
-      route_order: ['profile_candidates', 'health'],
-      allow_fallback_within_line: false,
-      allow_cross_family: false,
-      allowed_fallback_levels: ['none'],
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
     })
 
     const usageLedger = new UsageLedgerWriter()
@@ -818,20 +1651,9 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateHiddenArtifact({
-      intent: 'vision_summary',
-      scene: 'background_hidden',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'deepseek-director-v1',
-      promptRef: { id: 'internal-vision-summary', version: 2 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'summarize image' }],
-      budgetClass: 'hidden_multimodal',
+    const response = await gateway.generateHiddenArtifact(buildVisionRequest({
       traceId: 'trace-vision-fallback',
-      requestedTier: 'base',
-      allowFallbackWithinLine: false,
-      allowCrossFamily: false,
-    })
+    }))
 
     expect(resolveMock).toHaveBeenNthCalledWith(1, 'secret-ref:llm_api_vision')
     expect(resolveMock).toHaveBeenNthCalledWith(2, 'secret-ref:llm_api_default')
@@ -868,20 +1690,11 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateVisibleText({
-      intent: 'proactive_opening',
-      scene: 'proactive_dm',
-      agentId: 'agent-1',
-      homeVoiceLineId: 'qwen-social-v1',
-      promptRef: { id: 'agent-proactive-dm-opening', version: 2 },
-      variables: {},
-      promptMessages: [{ role: 'user', content: 'open' }],
-      budgetClass: 'visible_standard',
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
       traceId: 'trace-budget-summary',
-      requestedTier: 'base',
-      allowFallbackWithinLine: true,
-      allowCrossFamily: false,
-      maxTokens: 9_000,
+      localOverrides: {
+        maxTokens: 9_000,
+      },
       promptBudgetSummary: {
         scene: 'proactive_dm',
         prompt_template_id: 'agent-proactive-dm-opening',
@@ -929,10 +1742,10 @@ describe('LLMGateway', () => {
           warnings: [],
         },
       },
-    })
+    }))
 
-    expect(response.warnings).toEqual(['requested_output_exceeds_model_capability'])
-    expect(usageLedger.list()[0]?.gateway_warnings).toEqual(['requested_output_exceeds_model_capability'])
+    expect(response.warnings).toEqual(['max_tokens_capped_to_model_capability'])
+    expect(usageLedger.list()[0]?.gateway_warnings).toEqual(['max_tokens_capped_to_model_capability'])
     expect(usageLedger.list()[0]?.prompt_budget_summary).toMatchObject({
       measurement_method: 'rendered_messages_json_v1',
       rendered_prompt_tokens_estimate: 9,

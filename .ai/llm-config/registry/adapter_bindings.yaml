@@ -1,0 +1,22 @@
+# Adapter bindings registry
+#
+# Adapter bindings describe the runtime request shape, transport, and capability
+# envelope independently from provider/model identifiers.
+
+version: 1
+
+bindings:
+  - adapterId: openai-chat-completions-v1
+    requestShape: chat
+    transport: chat_completions
+    providerGatewayKinds:
+      - openai_compatible
+      - native
+    supports:
+      chat: true
+      vision: true
+      jsonMode: true
+      structuredOutput: false
+      toolCalling: false
+      streaming: false
+    authStrategy: bearer_api_key

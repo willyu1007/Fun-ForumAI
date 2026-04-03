@@ -77,6 +77,8 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
     const response = await this.deps.llmGateway.generateHiddenArtifact({
       intent: resolveHiddenIntent(event),
       scene: 'background_hidden',
+      modality: 'text',
+      responseMode: 'json_object',
       agentId: event.agent_id,
       homeVoiceLineId: this.resolveVoiceLineId(event.agent_id),
       promptRef: resolveExtractPromptRef(event),
@@ -90,7 +92,9 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       requestedTier: 'base',
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
-      temperature: 0.2,
+      localOverrides: {
+        temperature: 0.2,
+      },
     })
 
     const parsed = parseJsonRecord(response.content)
@@ -111,6 +115,8 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
     const response = await this.deps.llmGateway.generateHiddenArtifact({
       intent: resolveHiddenIntent(event),
       scene: 'background_hidden',
+      modality: 'text',
+      responseMode: 'json_object',
       agentId: event.agent_id,
       homeVoiceLineId: this.resolveVoiceLineId(event.agent_id),
       promptRef: resolveDistillPromptRef(event),
@@ -125,7 +131,9 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       requestedTier: 'base',
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
-      temperature: 0.2,
+      localOverrides: {
+        temperature: 0.2,
+      },
     })
 
     const parsed = parseJsonRecord(response.content)
@@ -167,6 +175,8 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
       const response = await this.deps.llmGateway.generateIdentityWrite({
         intent: 'identity_write',
         scene: 'background_hidden',
+        modality: 'text',
+        responseMode: 'json_object',
         agentId,
         homeVoiceLineId: resolved.summary.home_voice_line_id,
         promptRef: resolveIdentityFinalizePromptRef(input.origin.sourceType),
@@ -184,7 +194,9 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
         requestedTier: resolveIdentityWriteTier(input.origin.sourceType),
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
-        temperature: 0.2,
+        localOverrides: {
+          temperature: 0.2,
+        },
       })
 
       const parsed = parseJsonRecord(response.content)

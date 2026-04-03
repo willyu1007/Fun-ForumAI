@@ -11,8 +11,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:llm_api_default
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn-beijing
@@ -31,8 +31,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:zai_api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn
@@ -51,8 +51,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:deepseek_api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn
@@ -71,8 +71,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:moonshot_api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn
@@ -91,8 +91,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:llm_api_lowcost
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn
@@ -111,8 +111,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:tencent_hunyuan_api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn
@@ -131,8 +131,8 @@ providers:
     gateway_kind: openai_compatible
     auth:
       type: api_key
-      credential_ref_required: true
-      credential_ref: secret-ref:ark_api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
     routing:
       regions:
         - cn

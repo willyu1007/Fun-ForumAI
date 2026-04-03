@@ -42,8 +42,6 @@ export function toRuntimeProfile(entity: {
   consecutive_lead_windows: number
   challenger_score_delta: number | null
   manual_voice_line_lock: boolean
-  visible_provider_pin: string | null
-  visible_model_pin: string | null
   candidate_since: Date | null
   shadow_started_at: Date | null
   effective_at: Date | null
@@ -65,8 +63,6 @@ export function toRuntimeProfile(entity: {
     consecutiveLeadWindows: entity.consecutive_lead_windows,
     challengerScoreDelta: entity.challenger_score_delta,
     manualVoiceLineLock: entity.manual_voice_line_lock,
-    visibleProviderPin: entity.visible_provider_pin,
-    visibleModelPin: entity.visible_model_pin,
     candidateSince: entity.candidate_since?.toISOString() ?? null,
     shadowStartedAt: entity.shadow_started_at?.toISOString() ?? null,
     effectiveAt: entity.effective_at?.toISOString() ?? null,

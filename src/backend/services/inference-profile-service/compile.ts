@@ -307,8 +307,6 @@ export function buildRuntimeProfile(input: {
   consecutiveLeadWindows: number
   challengerScoreDelta: number | null
   manualVoiceLineLock: boolean
-  visibleProviderPin: string | null
-  visibleModelPin: string | null
   candidateSince: Date | null
   shadowStartedAt: Date | null
   effectiveAt: Date | null
@@ -329,8 +327,6 @@ export function buildRuntimeProfile(input: {
     consecutiveLeadWindows: input.consecutiveLeadWindows,
     challengerScoreDelta: input.challengerScoreDelta,
     manualVoiceLineLock: input.manualVoiceLineLock,
-    visibleProviderPin: input.visibleProviderPin,
-    visibleModelPin: input.visibleModelPin,
     candidateSince: input.candidateSince?.toISOString() ?? null,
     shadowStartedAt: input.shadowStartedAt?.toISOString() ?? null,
     effectiveAt: input.effectiveAt?.toISOString() ?? null,

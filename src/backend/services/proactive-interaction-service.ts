@@ -411,6 +411,8 @@ export class ProactiveInteractionService {
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'proactive_opening',
       scene: 'proactive_dm',
+      modality: 'text',
+      responseMode: 'text',
       agentId,
       homeVoiceLineId: routing.homeVoiceLineId,
       preferredModelId: routing.preferredModelId,
@@ -422,7 +424,9 @@ export class ProactiveInteractionService {
       requestedTier: routing.requestedTier,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
-      temperature: 0.8,
+      localOverrides: {
+        temperature: 0.8,
+      },
     })
 
     return {

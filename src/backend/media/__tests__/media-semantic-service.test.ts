@@ -35,7 +35,7 @@ describe('MediaSemanticService', () => {
     ]),
   } as never
 
-  it('passes the preferred gateway model id into hidden semantic extraction', async () => {
+  it('lets hidden semantic extraction resolve the vision model through gateway routing', async () => {
     const generateHiddenArtifact = vi.fn(async () => buildGatewayResponse(JSON.stringify({
       theme: 'theme',
       scene: 'scene',
@@ -58,7 +58,6 @@ describe('MediaSemanticService', () => {
       agentConfigRepo: {} as never,
       eventRepo: {} as never,
       agentRunRepo: {} as never,
-      preferredModelId: 'qwen-vl-plus',
     })
 
     await service.extract({
@@ -66,8 +65,8 @@ describe('MediaSemanticService', () => {
       uploadBuffer: Buffer.from([1, 2, 3]),
     })
 
-    expect(generateHiddenArtifact).toHaveBeenCalledWith(expect.objectContaining({
-      preferredModelId: 'qwen-vl-plus',
+    expect(generateHiddenArtifact).toHaveBeenCalledWith(expect.not.objectContaining({
+      preferredModelId: expect.anything(),
     }))
   })
 
@@ -94,7 +93,6 @@ describe('MediaSemanticService', () => {
       agentConfigRepo: {} as never,
       eventRepo: {} as never,
       agentRunRepo: {} as never,
-      preferredModelId: 'qwen-vl-plus',
     })
 
     await service.extract({
@@ -156,7 +154,6 @@ describe('MediaSemanticService', () => {
       agentConfigRepo: {} as never,
       eventRepo: {} as never,
       agentRunRepo: {} as never,
-      preferredModelId: 'qwen-vl-plus',
     })
 
     const result = await service.extract({
@@ -184,7 +181,6 @@ describe('MediaSemanticService', () => {
       agentConfigRepo: {} as never,
       eventRepo: {} as never,
       agentRunRepo: {} as never,
-      preferredModelId: 'qwen-vl-plus',
     })
 
     const result = await service.extract({

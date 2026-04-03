@@ -32,7 +32,6 @@ import {
   type StorageAdapter,
 } from '../services/storage-adapter.js'
 import { config } from '../lib/config.js'
-import { resolvePreferredMultimodalModelId } from '../llm/model-preference.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentConfigRepository } from '../repos/agent-repository.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
@@ -117,7 +116,6 @@ export function createLlmServices(deps: {
     agentConfigRepo: deps.agentConfigRepo,
     eventRepo: deps.eventRepo,
     agentRunRepo: deps.agentRunRepo,
-    preferredModelId: resolvePreferredMultimodalModelId(config.llm.model),
   })
   const mediaLineageService = new MediaLineageService({
     mediaLineageEdgeRepo: deps.mediaLineageEdgeRepo,

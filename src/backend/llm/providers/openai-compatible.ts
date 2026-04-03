@@ -32,6 +32,9 @@ export class OpenAICompatibleProvider implements LlmProvider {
       max_tokens: request.max_tokens,
       temperature: request.temperature,
       ...(request.stop?.length ? { stop: request.stop } : {}),
+      ...(request.response_mode === 'json_object'
+        ? { response_format: { type: 'json_object' } }
+        : {}),
     }
 
     let lastError: Error | null = null
@@ -48,10 +51,7 @@ export class OpenAICompatibleProvider implements LlmProvider {
 
         const res = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(config.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-          },
+          headers: buildHeaders(config),
           body: JSON.stringify(body),
           signal: controller.signal,
         })
@@ -103,6 +103,28 @@ export class OpenAICompatibleProvider implements LlmProvider {
 
     throw lastError ?? new Error('LLM API call failed after retries')
   }
+}
+
+function buildHeaders(config: LlmProviderConfig): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (!config.api_key) {
+    return headers
+  }
+  switch (config.auth_strategy) {
+    case 'x_api_key':
+      headers['x-api-key'] = config.api_key
+      break
+    case 'custom':
+      headers.Authorization = config.api_key
+      break
+    case 'bearer_api_key':
+    default:
+      headers.Authorization = `Bearer ${config.api_key}`
+      break
+  }
+  return headers
 }
 
 function sleep(ms: number): Promise<void> {

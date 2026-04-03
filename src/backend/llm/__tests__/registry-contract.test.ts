@@ -19,6 +19,7 @@ describe('LLM registry contract', () => {
     expect(bundle.promptTemplates.templates.length).toBeGreaterThan(0)
     expect(bundle.credentialPools.pools.length).toBeGreaterThan(0)
     expect(bundle.routingPolicies.policies.length).toBeGreaterThan(0)
+    expect(bundle.executionPolicies.policies.length).toBeGreaterThan(0)
     expect(bundle.providerAdmission.pools.length).toBeGreaterThan(0)
   })
 
@@ -85,10 +86,18 @@ describe('LLM registry contract', () => {
     expect(profilesById.get('qwen-social-identity-write-base')?.candidates[0]?.model_id).toBe(
       'qwen-plus-character',
     )
+    expect(profilesById.get('qwen-social-identity-write-base')?.policy_id).toBe(
+      'identity_write-identity_write-base',
+    )
     expect(
       profilesById
         .get('qwen-social-identity-write-premium')
         ?.candidates.some((candidate) => candidate.model_id === 'qwen-plus-character'),
+    ).toBe(true)
+    expect(
+      profilesById
+        .get('qwen-social-identity-write-premium')
+        ?.candidates.every((candidate) => candidate.adapter_id === 'openai-chat-completions-v1'),
     ).toBe(true)
   })
 

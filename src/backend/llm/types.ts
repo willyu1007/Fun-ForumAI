@@ -15,6 +15,7 @@ export interface LlmRequest {
   max_tokens?: number
   temperature?: number
   stop?: string[]
+  response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
 }
 
 export interface LlmTokenUsage {
@@ -39,6 +40,7 @@ export interface LlmResponse {
 export interface LlmProviderConfig {
   provider_id: string
   gateway_kind?: 'openai_compatible' | 'native'
+  auth_strategy?: 'bearer_api_key' | 'x_api_key' | 'custom'
   base_url: string
   api_key: string
   timeout_ms: number
@@ -67,6 +69,7 @@ export interface LlmChatOptions {
   max_tokens?: number
   temperature?: number
   stop?: string[]
+  response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
   provider?: Partial<LlmProviderConfig> & {
     provider_id: string
   }

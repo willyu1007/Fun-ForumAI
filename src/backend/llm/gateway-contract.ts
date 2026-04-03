@@ -10,6 +10,10 @@ export type LLMVisibility = 'visible' | 'hidden' | 'identity_write' | 'dev_only'
 
 export type LLMGenerationIntent = VoiceLineRoutingIntent | 'dev_prompt_render'
 
+export type RuntimeModality = 'text' | 'vision'
+
+export type ResponseMode = 'text' | 'json_object' | 'json_schema' | 'tool'
+
 export type LLMBudgetClass =
   | 'bootstrap'
   | 'visible_standard'
@@ -53,14 +57,41 @@ export type RoutingFallbackLevel =
   | 'cross-family-hidden'
   | 'rare-reanchor'
 
+export type RoutingOrderStep =
+  | 'intent_scene_fit'
+  | 'voice_line_tier'
+  | 'profile_candidates'
+  | 'region_policy'
+  | 'headroom'
+  | 'health'
+
+export type AdapterRequestShape =
+  | 'chat'
+  | 'responses'
+  | 'messages'
+  | 'native_multimodal'
+
+export type AdapterTransport = 'chat_completions'
+
+export type AdapterAuthStrategy = 'bearer_api_key' | 'x_api_key' | 'custom'
+
+export type LLMGatewayOverrideField =
+  | 'temperature'
+  | 'maxTokens'
+  | 'stop'
+  | 'timeoutMs'
+  | 'maxRetries'
+  | 'executionPolicyId'
+  | 'regionHint'
+
 export interface ProviderRegistryEntry {
   provider_id: string
   display_name: string
   gateway_kind: 'openai_compatible' | 'native'
   auth: {
     type: 'api_key'
-    credential_ref_required: boolean
-    credential_ref: string
+    source: 'credential_pool'
+    auth_strategy: AdapterAuthStrategy
   }
   routing: {
     regions: string[]
@@ -76,6 +107,46 @@ export interface ProviderRegistryEntry {
     timeout_ms: number
     max_retries: number
   }
+}
+
+export interface RouteContext {
+  intent: LLMGenerationIntent
+  visibility: LLMVisibility
+  scene: PromptScene | 'background_hidden' | 'dev_prompt_render'
+  modality: RuntimeModality
+  responseMode: ResponseMode
+  agentId: string
+  homeVoiceLineId: VoiceLineId
+  requestedTier?: RenderTier
+  budgetClass: LLMBudgetClass
+  traceId: string
+  providerTags?: string[]
+  policyTags?: string[]
+  preferredModelId?: string
+  regionHint?: string
+  debug?: LLMGatewayDebugOverrides
+}
+
+export interface LLMGatewayLocalOverrides {
+  executionPolicyId?: string
+  temperature?: number
+  maxTokens?: number
+  stop?: string[]
+  timeoutMs?: number
+  maxRetries?: number
+  regionHint?: string
+}
+
+export interface LLMGatewayDebugOverrides {
+  providerPin?: string | null
+  modelPin?: string | null
+  adapterPin?: string | null
+  temperature?: number
+  maxTokens?: number
+  stop?: string[]
+  timeoutMs?: number
+  maxRetries?: number
+  regionHint?: string
 }
 
 export interface CredentialPoolEntry {
@@ -96,10 +167,61 @@ export interface CredentialPoolEntry {
 
 export interface RoutingPolicyEntry {
   profile_id: string
-  route_order: Array<'intent_scene_fit' | 'voice_line_tier' | 'profile_candidates' | 'region_policy' | 'headroom' | 'health'>
-  allow_fallback_within_line: boolean
-  allow_cross_family: boolean
-  allowed_fallback_levels: RoutingFallbackLevel[]
+  route_order: RoutingOrderStep[]
+}
+
+export interface ExecutionPolicyEntry {
+  policy_id: string
+  lane: string
+  modality: RuntimeModality
+  response_mode: ResponseMode
+  defaults: {
+    temperature?: number
+    max_tokens?: number
+    stop?: string[]
+    timeout_ms?: number
+    max_retries?: number
+  }
+  fallback: {
+    allow_fallback_within_line: boolean
+    allow_cross_family: boolean
+    allowed_fallback_levels: RoutingFallbackLevel[]
+  }
+  merge: {
+    allow_callsite_override_fields: LLMGatewayOverrideField[]
+    allow_debug_override_fields: LLMGatewayOverrideField[]
+  }
+}
+
+export interface AdapterBinding {
+  adapterId: string
+  requestShape: AdapterRequestShape
+  transport: AdapterTransport
+  providerGatewayKinds: Array<ProviderRegistryEntry['gateway_kind']>
+  supports: {
+    chat: boolean
+    vision: boolean
+    jsonMode: boolean
+    structuredOutput: boolean
+    toolCalling: boolean
+    streaming: boolean
+  }
+  authStrategy: AdapterAuthStrategy
+}
+
+export interface CredentialBinding {
+  credentialId: string
+  providerId: string
+  region: string
+  endpointId: string
+  endpoint: string
+  secretRef: string
+  priority: number
+  health: CredentialPoolEntry['health']
+  scopeTags?: string[]
+  allowedModelIds?: string[]
+  rpmHeadroom?: number
+  tpmHeadroom?: number
 }
 
 export interface UsageLedgerEntry {
@@ -134,6 +256,7 @@ export interface ModelProfileCandidate {
   model_id: string
   region: string
   endpoint_id: string
+  adapter_id?: string
   weight: number
   quality_class: 'fast' | 'balanced' | 'premium'
 }
@@ -164,8 +287,10 @@ export interface RenderDecision {
   voiceLineId: VoiceLineId
   tier: RenderTier
   profileId: string
+  policyId?: string
   providerId: string
   modelId: string
+  adapterId?: string
   region: string
   endpointId?: string
   credentialId?: string
@@ -175,21 +300,92 @@ export interface RenderDecision {
   promptVersion: number
 }
 
+export interface ExecutionPlanCandidate {
+  candidateId: string
+  providerId: string
+  modelId: string
+  adapterId: string
+  region: string
+  endpointId: string
+  weight: number
+  qualityClass: ModelProfileCandidate['quality_class']
+}
+
+export interface FallbackStep {
+  level: Exclude<RoutingFallbackLevel, 'none'>
+  targetProfileId?: string
+  targetProviderId?: string
+  targetModelId?: string
+  reason: string
+}
+
+export interface FallbackHistoryEntry {
+  profileId: string
+  providerId: string
+  modelId: string
+  adapterId: string
+  fallbackLevel: RoutingFallbackLevel
+  errorCode: LLMGatewayErrorCode
+  reason: string
+}
+
+export interface ResolvedExecutionParams {
+  modality: RuntimeModality
+  responseMode: ResponseMode
+  temperature?: number
+  maxTokens?: number
+  stop?: string[]
+  timeoutMs: number
+  maxRetries: number
+  regionHint?: string
+}
+
+export interface ExecutionParamMergeTrace {
+  hardCaps: Partial<ResolvedExecutionParams>
+  policyDefaults: Partial<ResolvedExecutionParams>
+  callsiteOverrides: Partial<ResolvedExecutionParams>
+  debugOverrides: Partial<ResolvedExecutionParams>
+  appliedOverrideFields: LLMGatewayOverrideField[]
+}
+
+export interface InferenceExecutionPlan {
+  planId: string
+  context: RouteContext
+  profileId: string
+  policy: ExecutionPolicyEntry
+  orderedCandidates: ExecutionPlanCandidate[]
+  selectedCandidate?: ExecutionPlanCandidate
+  selectedAdapter?: AdapterBinding
+  selectedCredential?: CredentialBinding
+  routeOrder: RoutingOrderStep[]
+  fallbackLevel: RoutingFallbackLevel
+  fallbackChain: FallbackStep[]
+  fallbackHistory: FallbackHistoryEntry[]
+  resolvedParams: ResolvedExecutionParams
+  mergeTrace: ExecutionParamMergeTrace
+  warnings: string[]
+}
+
 export interface ModelCapabilityEntry {
   provider_id: string
   model_id: string
   input_window_tokens: number
   max_output_tokens: number
   recommended_operating_input_tokens?: number
+  modalities?: RuntimeModality[]
+  response_modes?: ResponseMode[]
 }
 
 export interface LLMGatewayRequest {
   intent: LLMGenerationIntent
   visibility: LLMVisibility
   scene: PromptScene | 'background_hidden' | 'dev_prompt_render'
+  modality: RuntimeModality
+  responseMode: ResponseMode
   agentId: string
   homeVoiceLineId: VoiceLineId
   preferredModelId?: string
+  policyTags?: string[]
   promptRef: PromptTemplateRef
   variables: Record<string, string>
   budgetClass: LLMBudgetClass
@@ -197,12 +393,11 @@ export interface LLMGatewayRequest {
   requestedTier?: RenderTier
   allowFallbackWithinLine: boolean
   allowCrossFamily: boolean
-  temperature?: number
-  maxTokens?: number
-  stop?: string[]
   providerTags?: string[]
   promptMessages?: LlmMessage[]
   promptBudgetSummary?: PromptBudgetSummary
+  localOverrides?: LLMGatewayLocalOverrides
+  debug?: LLMGatewayDebugOverrides
 }
 
 export interface LLMGatewayResponse {
@@ -213,6 +408,7 @@ export interface LLMGatewayResponse {
   latencyMs: number
   platformRetryCount: number
   renderDecision: RenderDecision
+  executionPlan: InferenceExecutionPlan
   promptRef: PromptTemplateRef
   warnings?: string[]
 }

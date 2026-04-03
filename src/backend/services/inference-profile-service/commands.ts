@@ -28,8 +28,6 @@ export async function resolveInferenceVisibleRoute(
     requestedTierFloor: compiled.snapshot.requestedTierFloor,
     homeVoiceLineId,
     agentModel: agent.model,
-    envVisibleModelPin: deps.visibleModelPin ?? null,
-    visibleModelPin: compiled.profile.visibleModelPin,
     profile: compiled.profile,
     snapshot: compiled.snapshot,
   })
@@ -259,8 +257,6 @@ function buildPersistedProfileInput(
     consecutive_lead_windows: compiled.profile.consecutiveLeadWindows,
     challenger_score_delta: compiled.profile.challengerScoreDelta,
     manual_voice_line_lock: compiled.profile.manualVoiceLineLock,
-    visible_provider_pin: compiled.profile.visibleProviderPin,
-    visible_model_pin: compiled.profile.visibleModelPin,
     candidate_since: toDate(compiled.profile.candidateSince),
     shadow_started_at: toDate(compiled.profile.shadowStartedAt),
     effective_at: toDate(compiled.profile.effectiveAt),

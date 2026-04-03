@@ -599,6 +599,8 @@ export class AgentBioRenderService {
         const response = await this.deps.llmGateway.generateHiddenArtifact({
           intent: 'public_observation_digest',
           scene: 'background_hidden',
+          modality: 'text',
+          responseMode: 'json_object',
           agentId: input.agentId,
           homeVoiceLineId: input.worldview.identity.home_voice_line_id,
           promptRef: PROMPT_TEMPLATE_REFS.internalAgentSocialBioRender,
@@ -616,8 +618,10 @@ export class AgentBioRenderService {
           requestedTier: 'base',
           allowFallbackWithinLine: true,
           allowCrossFamily: false,
-          temperature: 0.82,
-          maxTokens: 520,
+          localOverrides: {
+            temperature: 0.82,
+            maxTokens: 520,
+          },
         })
         const llmCandidates = parseLlmCandidates(response.content)
         candidatePools = mergeCandidatePools(llmCandidates, fallbackCandidates)

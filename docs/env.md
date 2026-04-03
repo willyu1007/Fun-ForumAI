@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-02T08:24:00Z`
+Generated at (UTC): `2026-04-03T11:47:00Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -99,11 +99,11 @@ Generated at (UTC): `2026-04-02T08:24:00Z`
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
-| `LLM_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `` | `*` | `` | `` | `` | Base URL for the LLM API (OpenAI-compatible endpoint). |
+| `LLM_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `` | `*` | `` | `` | `` | Bootstrap or emergency-only base URL for legacy/default LLM client initialization. Runtime routing in staging/prod must not treat this as normal lane authority. |
 | `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |
 | `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |
-| `LLM_MODEL` | `active` | `string` | no | no | `qwen-plus-character` | `` | `*` | `` | `` | `` | Default LLM model name. |
-| `LLM_PROVIDER` | `active` | `string` | no | no | `dashscope-openai` | `` | `*` | `` | `` | `` | LLM provider identifier. |
+| `LLM_MODEL` | `active` | `string` | no | no | `qwen-plus-character` | `` | `*` | `` | `` | `` | Bootstrap or emergency-only default LLM model for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority. |
+| `LLM_PROVIDER` | `active` | `string` | no | no | `dashscope-openai` | `` | `*` | `` | `` | `` | Bootstrap or emergency-only provider identifier for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority. |
 | `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
 | `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
 | `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable. |

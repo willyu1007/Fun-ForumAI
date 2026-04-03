@@ -160,7 +160,6 @@ const core = createCoreServices({
   llmGateway: llm.llmGateway,
   mediaWriteBridge: llm.mediaWriteBridge,
   surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
-  visibleModelPin: config.llm.visibleModelPin,
   mediaObservabilityService: llm.mediaObservabilityService,
   mediaRolloutControllerService: llm.mediaRolloutControllerService,
   usageLedgerRepo: llm.usageLedgerRepo,

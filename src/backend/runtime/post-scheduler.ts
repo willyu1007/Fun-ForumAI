@@ -352,6 +352,8 @@ export class PostScheduler {
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: 'scheduled_post',
         scene: 'scheduled_post',
+        modality: 'text',
+        responseMode: 'text',
         agentId: selected.id,
         homeVoiceLineId: routing.homeVoiceLineId,
         preferredModelId: routing.preferredModelId,

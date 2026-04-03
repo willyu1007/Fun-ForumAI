@@ -197,6 +197,8 @@ export async function generateMessage(
   const response = await context.deps.llmGateway.generateVisibleText({
     intent: 'chat_reply',
     scene: 'chat_room',
+    modality: 'text',
+    responseMode: 'text',
     agentId,
     homeVoiceLineId: routing.homeVoiceLineId,
     preferredModelId: routing.preferredModelId,

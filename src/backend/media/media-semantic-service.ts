@@ -44,7 +44,6 @@ export interface MediaSemanticServiceDeps {
   agentConfigRepo: AgentConfigRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
-  preferredModelId?: string
 }
 
 const MIN_VISION_DIMENSION_PX = 11
@@ -144,9 +143,10 @@ export class MediaSemanticService {
           const response = await this.deps.llmGateway.generateHiddenArtifact({
             intent: 'vision_summary',
             scene: 'background_hidden',
+            modality: 'vision',
+            responseMode: 'json_object',
             agentId: input.agentId ?? 'media-semantic',
             homeVoiceLineId: 'deepseek-director-v1',
-            preferredModelId: this.deps.preferredModelId,
             promptRef: PROMPT_TEMPLATE_REFS.internalVisionSummary,
             variables: {
               mime_type: input.mimeType,
@@ -157,8 +157,10 @@ export class MediaSemanticService {
             requestedTier: 'base',
             allowFallbackWithinLine: false,
             allowCrossFamily: false,
-            temperature: 0.1,
-            maxTokens: 500,
+            localOverrides: {
+              temperature: 0.1,
+              maxTokens: 500,
+            },
           })
           latencyMs = Date.now() - startMs
           usage = response.usage

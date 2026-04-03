@@ -37,24 +37,34 @@ interface SecretResolverOptions {
   env?: NodeJS.ProcessEnv
   secretsFilePath?: string
   policyPath?: string
+  contractPath?: string
   bwsExecutable?: string
+  allowBwsFallback?: boolean
 }
 
 export class SecretResolver {
+  private readonly appEnv: 'dev' | 'staging' | 'prod'
   private readonly env: NodeJS.ProcessEnv
   private readonly secretsFilePath: string
   private readonly policyPath: string
+  private readonly contractPath: string
   private readonly bwsExecutable: string
+  private readonly allowBwsFallback: boolean
   private readonly cache = new Map<string, string>()
   private readonly bwsProjectIdCache = new Map<string, string>()
   private readonly bwsSecretsCache = new Map<string, Record<string, string>>()
+  private readonly secretRefEnvVars: Map<string, string[]>
   private readonly secrets: z.infer<typeof secretFileSchema>
 
   constructor(options: SecretResolverOptions = {}) {
+    this.appEnv = options.appEnv ?? config.appEnv
     this.env = options.env ?? process.env
-    this.secretsFilePath = options.secretsFilePath ?? defaultSecretsFilePath(options.appEnv ?? config.appEnv)
+    this.secretsFilePath = options.secretsFilePath ?? defaultSecretsFilePath(this.appEnv)
     this.policyPath = options.policyPath ?? defaultPolicyPath()
+    this.contractPath = options.contractPath ?? defaultContractPath()
     this.bwsExecutable = options.bwsExecutable ?? 'bws'
+    this.allowBwsFallback = options.allowBwsFallback ?? (this.appEnv === 'dev')
+    this.secretRefEnvVars = loadContractSecretEnvVarMap(this.contractPath)
     this.secrets = this.loadSecrets()
   }
 
@@ -82,6 +92,12 @@ export class SecretResolver {
     const cached = this.cache.get(normalized)
     if (cached !== undefined) {
       return cached
+    }
+
+    const envValue = this.resolveEnvAlias(normalized)
+    if (envValue !== null) {
+      this.cache.set(normalized, envValue)
+      return envValue
     }
 
     const entry = this.secrets.secrets[normalized]
@@ -142,7 +158,30 @@ export class SecretResolver {
     }
   }
 
+  private resolveEnvAlias(secretName: string): string | null {
+    const envVars = this.secretRefEnvVars.get(secretName)
+    if (!envVars?.length) {
+      return null
+    }
+
+    for (const envVar of envVars) {
+      const value = this.env[envVar]
+      if (typeof value === 'string' && value.trim()) {
+        return value
+      }
+    }
+
+    return null
+  }
+
   private resolveBwsRef(entry: Extract<SecretEntry, { backend: 'bws' }>): string {
+    if (!this.allowBwsFallback) {
+      throw new LLMGatewayContractError(
+        'AuthError',
+        'Bitwarden fallback is disabled for runtime in this environment; inject the secret via env at deploy time',
+        { app_env: this.appEnv },
+      )
+    }
     const resolved = normalizeBwsEntry(entry, this.policyPath)
     const projectId = resolved.projectId ?? this.resolveBwsProjectIdByName(resolved.projectName)
     const projectSecrets = this.listBwsSecrets(projectId)
@@ -368,6 +407,37 @@ function defaultSecretsFilePath(appEnv: 'dev' | 'staging' | 'prod'): string {
 
 function defaultPolicyPath(): string {
   return resolve(repoRoot(), 'docs', 'project', 'policy.yaml')
+}
+
+function defaultContractPath(): string {
+  return resolve(repoRoot(), 'env', 'contract.yaml')
+}
+
+function loadContractSecretEnvVarMap(contractPath: string): Map<string, string[]> {
+  try {
+    const raw = parseYaml(readFileSync(contractPath, 'utf-8')) as Record<string, unknown> | null
+    const variables = raw?.variables
+    if (!variables || typeof variables !== 'object') {
+      return new Map()
+    }
+
+    const mapping = new Map<string, string[]>()
+    for (const [envVar, value] of Object.entries(variables as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') continue
+      const secretRef = (value as { secret_ref?: unknown }).secret_ref
+      if (typeof secretRef !== 'string' || !secretRef.trim()) continue
+      const normalized = secretRef.trim()
+      const existing = mapping.get(normalized) ?? []
+      if (!existing.includes(envVar)) {
+        existing.push(envVar)
+        mapping.set(normalized, existing)
+      }
+    }
+
+    return mapping
+  } catch {
+    return new Map()
+  }
 }
 
 function repoRoot(): string {

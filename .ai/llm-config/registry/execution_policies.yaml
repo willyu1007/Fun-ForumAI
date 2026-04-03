@@ -1,0 +1,262 @@
+# Execution policy registry
+#
+# Policies define lane-level generation defaults. Runtime resolves:
+#   intent + visibility + tier -> profile -> policy -> candidate -> credential
+
+version: 1
+
+policies:
+  - policy_id: visible-chat_reply-lite
+    lane: visible_chat_reply
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.9
+      max_tokens: 280
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-forum_reply-base
+    lane: visible_forum_reply
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.75
+      max_tokens: 720
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-scheduled_post-base
+    lane: visible_scheduled_post
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.85
+      max_tokens: 900
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-scheduled_post-premium
+    lane: visible_scheduled_post
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.8
+      max_tokens: 1200
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-private_reply-base
+    lane: visible_private_reply
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.8
+      max_tokens: 720
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-proactive_opening-base
+    lane: visible_proactive_opening
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.8
+      max_tokens: 320
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-proactive_opening-premium
+    lane: visible_proactive_opening
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.78
+      max_tokens: 420
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: identity_write-identity_write-base
+    lane: identity_write
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.35
+      max_tokens: 600
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: identity_write-identity_write-premium
+    lane: identity_write
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.3
+      max_tokens: 900
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-public_observation_digest-base
+    lane: hidden_public_observation_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.25
+      max_tokens: 700
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-private_digest-base
+    lane: hidden_private_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.25
+      max_tokens: 900
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-private_digest-premium
+    lane: hidden_private_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.22
+      max_tokens: 1200
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-vision_summary-base
+    lane: hidden_vision_summary
+    modality: vision
+    response_mode: json_object
+    defaults:
+      temperature: 0.2
+      max_tokens: 700
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-director_plan-base
+    lane: hidden_director_plan
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.2
+      max_tokens: 1200
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-director_plan-premium
+    lane: hidden_director_plan
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.18
+      max_tokens: 1600
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]

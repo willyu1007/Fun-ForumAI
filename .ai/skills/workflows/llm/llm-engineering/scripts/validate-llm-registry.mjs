@@ -39,6 +39,16 @@ const VALID_FALLBACK_LEVELS = new Set([
   'cross-family-hidden',
   'rare-reanchor',
 ])
+const VALID_MODALITIES = new Set(['text', 'vision'])
+const VALID_RESPONSE_MODES = new Set(['text', 'json_object', 'json_schema', 'tool'])
+const VALID_ROUTE_ORDER_STEPS = new Set([
+  'intent_scene_fit',
+  'voice_line_tier',
+  'profile_candidates',
+  'region_policy',
+  'headroom',
+  'health',
+])
 const VALID_QUALITY_CLASSES = new Set(['fast', 'balanced', 'premium'])
 const VALID_ADMISSION_STATES = new Set(['admitted', 'shadow', 'blocked'])
 const VALID_COMPARE_DIMENSIONS = new Set([
@@ -48,6 +58,18 @@ const VALID_COMPARE_DIMENSIONS = new Set([
   'callback_fidelity',
 ])
 const VALID_CORE_FAMILIES = new Set(['hearth', 'blade', 'spark', 'sage', 'anchor'])
+const VALID_ADAPTER_REQUEST_SHAPES = new Set(['chat', 'responses', 'messages', 'native_multimodal'])
+const VALID_ADAPTER_TRANSPORTS = new Set(['chat_completions'])
+const VALID_ADAPTER_AUTH_STRATEGIES = new Set(['bearer_api_key', 'x_api_key', 'custom'])
+const VALID_OVERRIDE_FIELDS = new Set([
+  'temperature',
+  'maxTokens',
+  'stop',
+  'executionPolicyId',
+  'timeoutMs',
+  'maxRetries',
+  'regionHint',
+])
 
 const colors = {
   red: (s) => `\x1b[31m${s}\x1b[0m`,
@@ -89,6 +111,10 @@ function main() {
   const files = {
     providers: path.join(registryDir, 'providers.yaml'),
     profiles: path.join(registryDir, 'model_profiles.yaml'),
+    routingPolicies: path.join(registryDir, 'routing_policies.yaml'),
+    executionPolicies: path.join(registryDir, 'execution_policies.yaml'),
+    adapterBindings: path.join(registryDir, 'adapter_bindings.yaml'),
+    modelCapabilities: path.join(registryDir, 'model_capabilities.yaml'),
     providerAdmission: path.join(registryDir, 'provider_admission.yaml'),
     prompts: path.join(registryDir, 'prompt_templates.yaml'),
     configKeys: path.join(registryDir, 'config_keys.yaml'),
@@ -102,6 +128,10 @@ function main() {
 
   const rawProviders = readYamlFile(files.providers, 'providers.yaml')
   const rawProfiles = readYamlFile(files.profiles, 'model_profiles.yaml')
+  const rawRoutingPolicies = readYamlFile(files.routingPolicies, 'routing_policies.yaml')
+  const rawExecutionPolicies = readYamlFile(files.executionPolicies, 'execution_policies.yaml')
+  const rawAdapterBindings = readYamlFile(files.adapterBindings, 'adapter_bindings.yaml')
+  const rawModelCapabilities = readYamlFile(files.modelCapabilities, 'model_capabilities.yaml')
   const rawProviderAdmission = readYamlFile(files.providerAdmission, 'provider_admission.yaml')
   const rawPrompts = readYamlFile(files.prompts, 'prompt_templates.yaml')
   const rawConfig = readFileSafe(files.configKeys)
@@ -112,23 +142,41 @@ function main() {
 
   const providers = parseRegistry(rawProviders, 'providers.yaml')
   const profiles = parseRegistry(rawProfiles, 'model_profiles.yaml')
+  const routingPolicies = parseRegistry(rawRoutingPolicies, 'routing_policies.yaml')
+  const executionPolicies = parseRegistry(rawExecutionPolicies, 'execution_policies.yaml')
+  const adapterBindings = parseRegistry(rawAdapterBindings, 'adapter_bindings.yaml')
+  const modelCapabilities = parseRegistry(rawModelCapabilities, 'model_capabilities.yaml')
   const providerAdmission = parseRegistry(rawProviderAdmission, 'provider_admission.yaml')
   const prompts = parseRegistry(rawPrompts, 'prompt_templates.yaml')
 
   validateVersion(providers, 'providers.yaml')
   validateVersion(profiles, 'model_profiles.yaml')
+  validateVersion(routingPolicies, 'routing_policies.yaml')
+  validateVersion(executionPolicies, 'execution_policies.yaml')
+  validateVersion(adapterBindings, 'adapter_bindings.yaml')
+  validateVersion(modelCapabilities, 'model_capabilities.yaml')
   validateVersion(providerAdmission, 'provider_admission.yaml')
   validateVersion(prompts, 'prompt_templates.yaml')
   validateConfigVersion(rawConfig)
 
   validateProviders(providers)
   validateProfiles(profiles, providers, validVoiceLineIds)
+  validateRoutingPolicies(routingPolicies, profiles)
+  validateExecutionPolicies(executionPolicies, profiles)
+  validateAdapterBindings(adapterBindings, providers)
+  validateModelCapabilities(modelCapabilities, providers)
   validateProviderAdmission(providerAdmission, providers, profiles, validVoiceLineIds)
   validatePromptTemplates(prompts)
   validateTemplateMode(strict, rawProviders, rawProfiles, rawPrompts, rawConfig)
 
   const providerIds = providers.providers.map((entry) => entry.provider_id)
   const profileIds = profiles.profiles.map((entry) => entry.profile_id)
+  const routingPolicyIds = routingPolicies.policies.map((entry) => entry.profile_id)
+  const executionPolicyIds = executionPolicies.policies.map((entry) => entry.policy_id)
+  const adapterIds = adapterBindings.bindings.map((entry) => entry.adapterId)
+  const capabilityKeys = modelCapabilities.capabilities.map(
+    (entry) => `${entry.provider_id}/${entry.model_id}`,
+  )
   const providerAdmissionPools = providerAdmission.pools.map((entry) => entry.voice_line_id)
   const promptPairs = prompts.templates.map(
     (entry) => `${entry.prompt_template_id}@${entry.version}`,
@@ -138,6 +186,10 @@ function main() {
   console.log(colors.gray(`Registry dir: ${path.relative(repoRoot, registryDir)}`))
   console.log(colors.gray(`Providers: ${providerIds.length}`))
   console.log(colors.gray(`Profiles: ${profileIds.length}`))
+  console.log(colors.gray(`Routing policies: ${routingPolicyIds.length}`))
+  console.log(colors.gray(`Execution policies: ${executionPolicyIds.length}`))
+  console.log(colors.gray(`Adapter bindings: ${adapterIds.length}`))
+  console.log(colors.gray(`Model capabilities: ${capabilityKeys.length}`))
   console.log(colors.gray(`Provider admission pools: ${providerAdmissionPools.length}`))
   console.log(colors.gray(`Prompt templates: ${promptPairs.length}`))
   console.log(colors.gray(`Config keys: ${configKeys.length}`))
@@ -162,14 +214,21 @@ function validateProviders(doc) {
 
     assertObject(provider.auth, `providers.${providerId}.auth`)
     requireOneOf(provider.auth.type, ['api_key'], `providers.${providerId}.auth.type`)
-    requireBoolean(
-      provider.auth.credential_ref_required,
-      `providers.${providerId}.auth.credential_ref_required`,
+    requireOneOf(
+      provider.auth.source,
+      ['credential_pool'],
+      `providers.${providerId}.auth.source`,
     )
-    requireNonEmptyString(
-      provider.auth.credential_ref,
-      `providers.${providerId}.auth.credential_ref`,
+    requireOneOf(
+      provider.auth.auth_strategy,
+      Array.from(VALID_ADAPTER_AUTH_STRATEGIES),
+      `providers.${providerId}.auth.auth_strategy`,
     )
+    if ('credential_ref_required' in provider.auth || 'credential_ref' in provider.auth) {
+      die(
+        `providers.${providerId}.auth must be metadata-only; provider-level credential_ref fields are no longer allowed`,
+      )
+    }
 
     assertObject(provider.routing, `providers.${providerId}.routing`)
     assertArray(provider.routing.regions, `providers.${providerId}.routing.regions`)
@@ -345,6 +404,262 @@ function validateProfiles(doc, providersDoc, validVoiceLineIds) {
       }
     }
   }
+}
+
+function validateRoutingPolicies(doc, profilesDoc) {
+  assertArray(doc.policies, 'routing_policies.yaml policies')
+  const policyProfileIds = []
+  const profileIds = new Set((profilesDoc.profiles ?? []).map((entry) => entry.profile_id))
+
+  for (const policy of doc.policies) {
+    assertObject(policy, 'routing policy entry')
+    const keys = Object.keys(policy).sort()
+    if (keys.join(',') !== 'profile_id,route_order') {
+      die(
+        `routing_policies.${policy.profile_id ?? '<unknown>'} must only contain profile_id and route_order`,
+      )
+    }
+
+    const profileId = requireNonEmptyString(policy.profile_id, 'routing_policies.profile_id')
+    policyProfileIds.push(profileId)
+    if (!profileIds.has(profileId)) {
+      die(`routing_policies.${profileId} references unknown profile_id`)
+    }
+
+    assertArray(policy.route_order, `routing_policies.${profileId}.route_order`)
+    if (policy.route_order.length === 0) {
+      die(`routing_policies.${profileId}.route_order must contain at least one entry`)
+    }
+    for (const [index, step] of policy.route_order.entries()) {
+      if (!VALID_ROUTE_ORDER_STEPS.has(step)) {
+        die(
+          `routing_policies.${profileId}.route_order[${index}] must be one of: ${Array.from(VALID_ROUTE_ORDER_STEPS).join(', ')}`,
+        )
+      }
+    }
+  }
+
+  assertUnique(policyProfileIds, 'routing policy profile_id')
+  for (const profileId of profileIds) {
+    if (!policyProfileIds.includes(profileId)) {
+      die(`model profile ${profileId} is missing a routing policy`)
+    }
+  }
+}
+
+function validateExecutionPolicies(doc, profilesDoc) {
+  assertArray(doc.policies, 'execution_policies.yaml policies')
+  const policyIds = []
+  const seenLanes = new Set()
+
+  for (const policy of doc.policies) {
+    assertObject(policy, 'execution policy entry')
+    const policyId = requireNonEmptyString(policy.policy_id, 'execution_policies.policy_id')
+    policyIds.push(policyId)
+    requireNonEmptyString(policy.lane, `execution_policies.${policyId}.lane`)
+    seenLanes.add(policy.lane)
+
+    requireOneOf(
+      policy.modality,
+      Array.from(VALID_MODALITIES),
+      `execution_policies.${policyId}.modality`,
+    )
+    requireOneOf(
+      policy.response_mode,
+      Array.from(VALID_RESPONSE_MODES),
+      `execution_policies.${policyId}.response_mode`,
+    )
+
+    assertObject(policy.defaults, `execution_policies.${policyId}.defaults`)
+    if (policy.defaults.temperature !== undefined) {
+      requireNumber(policy.defaults.temperature, `execution_policies.${policyId}.defaults.temperature`)
+    }
+    if (policy.defaults.max_tokens !== undefined) {
+      requirePositiveInteger(
+        policy.defaults.max_tokens,
+        `execution_policies.${policyId}.defaults.max_tokens`,
+      )
+    }
+    if (policy.defaults.stop !== undefined) {
+      assertArray(policy.defaults.stop, `execution_policies.${policyId}.defaults.stop`)
+      if (policy.defaults.stop.length === 0) {
+        die(`execution_policies.${policyId}.defaults.stop must contain at least one string`)
+      }
+      for (const [index, stopToken] of policy.defaults.stop.entries()) {
+        requireNonEmptyString(
+          stopToken,
+          `execution_policies.${policyId}.defaults.stop[${index}]`,
+        )
+      }
+    }
+    requirePositiveInteger(
+      policy.defaults.timeout_ms,
+      `execution_policies.${policyId}.defaults.timeout_ms`,
+    )
+    requireNonNegativeInteger(
+      policy.defaults.max_retries,
+      `execution_policies.${policyId}.defaults.max_retries`,
+    )
+
+    assertObject(policy.fallback, `execution_policies.${policyId}.fallback`)
+    requireBoolean(
+      policy.fallback.allow_fallback_within_line,
+      `execution_policies.${policyId}.fallback.allow_fallback_within_line`,
+    )
+    requireBoolean(
+      policy.fallback.allow_cross_family,
+      `execution_policies.${policyId}.fallback.allow_cross_family`,
+    )
+    assertArray(
+      policy.fallback.allowed_fallback_levels,
+      `execution_policies.${policyId}.fallback.allowed_fallback_levels`,
+    )
+    if (policy.fallback.allowed_fallback_levels.length === 0) {
+      die(`execution_policies.${policyId}.fallback.allowed_fallback_levels must not be empty`)
+    }
+    for (const [index, level] of policy.fallback.allowed_fallback_levels.entries()) {
+      requireOneOf(
+        level,
+        ['none', ...Array.from(VALID_FALLBACK_LEVELS)],
+        `execution_policies.${policyId}.fallback.allowed_fallback_levels[${index}]`,
+      )
+    }
+
+    assertObject(policy.merge, `execution_policies.${policyId}.merge`)
+    validateOverrideFields(
+      policy.merge.allow_callsite_override_fields,
+      `execution_policies.${policyId}.merge.allow_callsite_override_fields`,
+    )
+    validateOverrideFields(
+      policy.merge.allow_debug_override_fields,
+      `execution_policies.${policyId}.merge.allow_debug_override_fields`,
+    )
+  }
+
+  assertUnique(policyIds, 'execution policy policy_id')
+  for (const profile of profilesDoc.profiles ?? []) {
+    const expectedPolicyId = profile.policy_id ?? defaultExecutionPolicyIdForProfile(profile)
+    if (!policyIds.includes(expectedPolicyId)) {
+      die(`model profile ${profile.profile_id} is missing execution policy ${expectedPolicyId}`)
+    }
+    const expectedLane = defaultExecutionLaneForProfile(profile)
+    if (!seenLanes.has(expectedLane)) {
+      die(`model profile ${profile.profile_id} requires execution lane ${expectedLane}, but it is missing`)
+    }
+  }
+}
+
+function validateAdapterBindings(doc, providersDoc) {
+  assertArray(doc.bindings, 'adapter_bindings.yaml bindings')
+  const adapterIds = []
+  const providerGatewayKinds = new Set(['openai_compatible', 'native'])
+
+  for (const binding of doc.bindings) {
+    assertObject(binding, 'adapter binding entry')
+    const adapterId = requireNonEmptyString(binding.adapterId, 'adapter_bindings.adapterId')
+    adapterIds.push(adapterId)
+    requireOneOf(
+      binding.requestShape,
+      Array.from(VALID_ADAPTER_REQUEST_SHAPES),
+      `adapter_bindings.${adapterId}.requestShape`,
+    )
+    requireOneOf(
+      binding.transport,
+      Array.from(VALID_ADAPTER_TRANSPORTS),
+      `adapter_bindings.${adapterId}.transport`,
+    )
+    assertArray(binding.providerGatewayKinds, `adapter_bindings.${adapterId}.providerGatewayKinds`)
+    if (binding.providerGatewayKinds.length === 0) {
+      die(`adapter_bindings.${adapterId}.providerGatewayKinds must contain at least one entry`)
+    }
+    for (const [index, gatewayKind] of binding.providerGatewayKinds.entries()) {
+      if (!providerGatewayKinds.has(gatewayKind)) {
+        die(`adapter_bindings.${adapterId}.providerGatewayKinds[${index}] references unknown gateway kind ${gatewayKind}`)
+      }
+    }
+    assertObject(binding.supports, `adapter_bindings.${adapterId}.supports`)
+    requireBoolean(binding.supports.chat, `adapter_bindings.${adapterId}.supports.chat`)
+    requireBoolean(binding.supports.vision, `adapter_bindings.${adapterId}.supports.vision`)
+    requireBoolean(binding.supports.jsonMode, `adapter_bindings.${adapterId}.supports.jsonMode`)
+    requireBoolean(
+      binding.supports.structuredOutput,
+      `adapter_bindings.${adapterId}.supports.structuredOutput`,
+    )
+    requireBoolean(
+      binding.supports.toolCalling,
+      `adapter_bindings.${adapterId}.supports.toolCalling`,
+    )
+    requireBoolean(binding.supports.streaming, `adapter_bindings.${adapterId}.supports.streaming`)
+    requireOneOf(
+      binding.authStrategy,
+      Array.from(VALID_ADAPTER_AUTH_STRATEGIES),
+      `adapter_bindings.${adapterId}.authStrategy`,
+    )
+  }
+
+  assertUnique(adapterIds, 'adapter binding adapterId')
+}
+
+function validateModelCapabilities(doc, providersDoc) {
+  assertArray(doc.capabilities, 'model_capabilities.yaml capabilities')
+  const capabilityKeys = []
+  const providerIds = new Set((providersDoc.providers ?? []).map((entry) => entry.provider_id))
+
+  for (const capability of doc.capabilities) {
+    assertObject(capability, 'model capability entry')
+    const providerId = requireNonEmptyString(
+      capability.provider_id,
+      'model_capabilities.provider_id',
+    )
+    const modelId = requireNonEmptyString(capability.model_id, 'model_capabilities.model_id')
+    const capabilityKey = `${providerId}/${modelId}`
+    capabilityKeys.push(capabilityKey)
+    if (!providerIds.has(providerId)) {
+      die(`model_capabilities.${capabilityKey} references unknown provider_id`)
+    }
+    requirePositiveInteger(
+      capability.input_window_tokens,
+      `model_capabilities.${capabilityKey}.input_window_tokens`,
+    )
+    requirePositiveInteger(
+      capability.max_output_tokens,
+      `model_capabilities.${capabilityKey}.max_output_tokens`,
+    )
+    if (capability.recommended_operating_input_tokens !== undefined) {
+      requirePositiveInteger(
+        capability.recommended_operating_input_tokens,
+        `model_capabilities.${capabilityKey}.recommended_operating_input_tokens`,
+      )
+    }
+    if (capability.modalities !== undefined) {
+      assertArray(capability.modalities, `model_capabilities.${capabilityKey}.modalities`)
+      if (capability.modalities.length === 0) {
+        die(`model_capabilities.${capabilityKey}.modalities must not be empty when present`)
+      }
+      for (const [index, modality] of capability.modalities.entries()) {
+        requireOneOf(
+          modality,
+          Array.from(VALID_MODALITIES),
+          `model_capabilities.${capabilityKey}.modalities[${index}]`,
+        )
+      }
+    }
+    if (capability.response_modes !== undefined) {
+      assertArray(capability.response_modes, `model_capabilities.${capabilityKey}.response_modes`)
+      if (capability.response_modes.length === 0) {
+        die(`model_capabilities.${capabilityKey}.response_modes must not be empty when present`)
+      }
+      for (const [index, responseMode] of capability.response_modes.entries()) {
+        requireOneOf(
+          responseMode,
+          Array.from(VALID_RESPONSE_MODES),
+          `model_capabilities.${capabilityKey}.response_modes[${index}]`,
+        )
+      }
+    }
+  }
+
+  assertUnique(capabilityKeys, 'model capability provider_id/model_id')
 }
 
 function validateProviderAdmission(doc, providersDoc, profilesDoc, validVoiceLineIds) {
@@ -658,6 +973,32 @@ function assertUnique(values, label) {
   if (duplicates.length > 0) {
     die(`Duplicate ${label}(s): ${Array.from(new Set(duplicates)).join(', ')}`)
   }
+}
+
+function validateOverrideFields(values, label) {
+  assertArray(values, label)
+  for (const [index, field] of values.entries()) {
+    requireOneOf(field, Array.from(VALID_OVERRIDE_FIELDS), `${label}[${index}]`)
+  }
+  assertUnique(values, label)
+}
+
+function defaultExecutionPolicyIdForProfile(profile) {
+  return `${profile.visibility}-${profile.intent}-${profile.tier}`
+}
+
+function defaultExecutionLaneForProfile(profile) {
+  if (profile.visibility === 'identity_write' && profile.intent === 'identity_write') {
+    return 'identity_write'
+  }
+  return `${profile.visibility}_${profile.intent}`
+}
+
+function requireNumber(value, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    die(`${label} must be a finite number`)
+  }
+  return value
 }
 
 function requirePositiveInteger(value, label) {

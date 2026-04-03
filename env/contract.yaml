@@ -299,13 +299,13 @@ variables:
     type: string
     required: false
     default: dashscope-openai
-    description: LLM provider identifier.
+    description: Bootstrap or emergency-only provider identifier for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.
 
   LLM_MODEL:
     type: string
     required: false
     default: qwen-plus-character
-    description: Default LLM model name.
+    description: Bootstrap or emergency-only default LLM model for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.
 
   DASHSCOPE_API_KEY:
     type: string
@@ -563,7 +563,7 @@ variables:
     type: string
     required: false
     default: https://dashscope.aliyuncs.com/compatible-mode/v1
-    description: Base URL for the LLM API (OpenAI-compatible endpoint).
+    description: Bootstrap or emergency-only base URL for legacy/default LLM client initialization. Runtime routing in staging/prod must not treat this as normal lane authority.
 
   LLM_MAX_TOKENS:
     type: int

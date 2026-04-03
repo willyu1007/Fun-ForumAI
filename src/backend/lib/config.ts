@@ -168,7 +168,6 @@ export const config = {
   llm: {
     provider: env.LLM_PROVIDER || 'dashscope-openai',
     model: env.LLM_MODEL || 'qwen-plus-character',
-    visibleModelPin: env.LLM_VISIBLE_MODEL_PIN?.trim() || null,
     baseUrl: env.LLM_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     maxTokens: safeInt(env.LLM_MAX_TOKENS, 512),
     temperature: safeFloat(env.LLM_TEMPERATURE, 0.8),

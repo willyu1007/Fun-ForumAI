@@ -178,6 +178,8 @@ export class AgentExecutor {
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: promptIntent,
         scene: promptScene,
+        modality: 'text',
+        responseMode: 'text',
         agentId: agent.agent_id,
         homeVoiceLineId: routing.homeVoiceLineId,
         preferredModelId: routing.preferredModelId,

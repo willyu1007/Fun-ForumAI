@@ -13,13 +13,19 @@ import {
   type VoiceLineRoutingIntent,
 } from '../../shared/agent-persona-catalog.js'
 import type {
+  AdapterBinding,
+  AdapterAuthStrategy,
+  AdapterRequestShape,
   CredentialPoolEntry,
+  ExecutionPolicyEntry,
   LLMVisibility,
   ModelCapabilityEntry,
   ModelProfileCandidate,
   ModelProfileFallback,
   ProviderRegistryEntry,
+  ResponseMode,
   RoutingPolicyEntry,
+  RuntimeModality,
 } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
 
@@ -53,6 +59,7 @@ export interface ModelProfileEntry {
   tier: RenderTier
   intent: VoiceLineRoutingIntent
   visibility: LLMVisibility
+  policy_id?: string
   candidates: ModelProfileCandidate[]
   fallback: ModelProfileFallback[]
 }
@@ -75,6 +82,16 @@ export interface CredentialPoolsRegistryFile {
 export interface RoutingPoliciesRegistryFile {
   version: number
   policies: RoutingPolicyEntry[]
+}
+
+export interface ExecutionPoliciesRegistryFile {
+  version: number
+  policies: ExecutionPolicyEntry[]
+}
+
+export interface AdapterBindingsRegistryFile {
+  version: number
+  bindings: AdapterBinding[]
 }
 
 export interface ProviderAdmissionCandidateEntry {
@@ -122,6 +139,8 @@ export interface LlmRegistryBundle {
   promptTemplates: PromptTemplatesRegistryFile
   credentialPools: CredentialPoolsRegistryFile
   routingPolicies: RoutingPoliciesRegistryFile
+  executionPolicies: ExecutionPoliciesRegistryFile
+  adapterBindings: AdapterBindingsRegistryFile
   providerAdmission: ProviderAdmissionRegistryFile
   modelPricing: ModelPricingRegistryFile
   modelCapabilities: ModelCapabilitiesRegistryFile
@@ -133,12 +152,19 @@ export interface LlmRegistryPaths {
   promptTemplates?: string
   credentialPools?: string
   routingPolicies?: string
+  executionPolicies?: string
+  adapterBindings?: string
   providerAdmission?: string
   modelPricing?: string
   modelCapabilities?: string
 }
 
 const lLMVisibilityEnum = z.enum(['visible', 'hidden', 'identity_write', 'dev_only'])
+const runtimeModalitySchema = z.enum(['text', 'vision'])
+const responseModeSchema = z.enum(['text', 'json_object', 'json_schema', 'tool'])
+const adapterRequestShapeSchema = z.enum(['chat', 'responses', 'messages', 'native_multimodal'])
+const adapterTransportSchema = z.enum(['chat_completions'])
+const adapterAuthStrategySchema = z.enum(['bearer_api_key', 'x_api_key', 'custom'])
 const renderTierSchema = z.enum(RENDER_TIERS)
 const voiceLineIdSchema = z.enum(VOICE_LINE_IDS)
 const routingIntentSchema = z.enum(VOICE_LINE_ROUTING_INTENTS)
@@ -165,6 +191,15 @@ const routeOrderSchema = z.enum([
   'headroom',
   'health',
 ])
+const overrideFieldSchema = z.enum([
+  'temperature',
+  'maxTokens',
+  'stop',
+  'timeoutMs',
+  'maxRetries',
+  'executionPolicyId',
+  'regionHint',
+])
 const coreFamilySchema = z.enum(['hearth', 'blade', 'spark', 'sage', 'anchor'])
 const admissionStateSchema = z.enum(['admitted', 'shadow', 'blocked'])
 const admissionCompareDimensionSchema = z.enum([
@@ -186,8 +221,8 @@ const providerRegistrySchema = z
           auth: z
             .object({
               type: z.literal('api_key'),
-              credential_ref_required: z.boolean(),
-              credential_ref: z.string().min(1),
+              source: z.literal('credential_pool'),
+              auth_strategy: adapterAuthStrategySchema,
             })
             .strict(),
           routing: z
@@ -235,12 +270,14 @@ const modelProfileSchema = z
                   model_id: z.string().min(1),
                   region: z.string().min(1),
                   endpoint_id: z.string().min(1),
+                  adapter_id: z.string().min(1).optional(),
                   weight: z.number().positive(),
                   quality_class: qualityClassSchema,
                 })
                 .strict(),
             )
             .min(1),
+          policy_id: z.string().min(1).optional(),
           fallback: z.array(
             z
               .object({
@@ -321,9 +358,71 @@ const routingPoliciesSchema = z
         .object({
           profile_id: z.string().min(1),
           route_order: z.array(routeOrderSchema).min(1),
-          allow_fallback_within_line: z.boolean(),
-          allow_cross_family: z.boolean(),
-          allowed_fallback_levels: z.array(routingFallbackLevelSchema).min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const executionPoliciesSchema = z
+  .object({
+    version: z.number().int().positive(),
+    policies: z.array(
+      z
+        .object({
+          policy_id: z.string().min(1),
+          lane: z.string().min(1),
+          modality: runtimeModalitySchema,
+          response_mode: responseModeSchema,
+          defaults: z
+            .object({
+              temperature: z.number().min(0).max(2).optional(),
+              max_tokens: z.number().int().positive().optional(),
+              stop: z.array(z.string().min(1)).min(1).optional(),
+              timeout_ms: z.number().int().positive().optional(),
+              max_retries: z.number().int().min(0).optional(),
+            })
+            .strict(),
+          fallback: z
+            .object({
+              allow_fallback_within_line: z.boolean(),
+              allow_cross_family: z.boolean(),
+              allowed_fallback_levels: z.array(routingFallbackLevelSchema).min(1),
+            })
+            .strict(),
+          merge: z
+            .object({
+              allow_callsite_override_fields: z.array(overrideFieldSchema),
+              allow_debug_override_fields: z.array(overrideFieldSchema),
+            })
+            .strict(),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const adapterBindingsSchema = z
+  .object({
+    version: z.number().int().positive(),
+    bindings: z.array(
+      z
+        .object({
+          adapterId: z.string().min(1),
+          requestShape: adapterRequestShapeSchema,
+          transport: adapterTransportSchema,
+          providerGatewayKinds: z.array(z.enum(['openai_compatible', 'native'])).min(1),
+          supports: z
+            .object({
+              chat: z.boolean(),
+              vision: z.boolean(),
+              jsonMode: z.boolean(),
+              structuredOutput: z.boolean(),
+              toolCalling: z.boolean(),
+              streaming: z.boolean(),
+            })
+            .strict(),
+          authStrategy: adapterAuthStrategySchema,
         })
         .strict(),
     ),
@@ -388,6 +487,18 @@ export function loadRoutingPoliciesRegistry(
   return parseYamlFile(registryPath, routingPoliciesSchema, 'routing policies registry')
 }
 
+export function loadExecutionPoliciesRegistry(
+  registryPath = defaultRegistryPath('execution_policies.yaml'),
+): ExecutionPoliciesRegistryFile {
+  return parseYamlFile(registryPath, executionPoliciesSchema, 'execution policies registry')
+}
+
+export function loadAdapterBindingsRegistry(
+  registryPath = defaultRegistryPath('adapter_bindings.yaml'),
+): AdapterBindingsRegistryFile {
+  return parseYamlFile(registryPath, adapterBindingsSchema, 'adapter bindings registry')
+}
+
 export function loadProviderAdmissionRegistry(
   registryPath = defaultRegistryPath('provider_admission.yaml'),
 ): ProviderAdmissionRegistryFile {
@@ -418,6 +529,8 @@ const modelCapabilitiesSchema = z.object({
         input_window_tokens: z.number().int().positive(),
         max_output_tokens: z.number().int().positive(),
         recommended_operating_input_tokens: z.number().int().positive().optional(),
+        modalities: z.array(runtimeModalitySchema).min(1).optional(),
+        response_modes: z.array(responseModeSchema).min(1).optional(),
       })
       .strict(),
   ),
@@ -438,10 +551,12 @@ export function loadModelCapabilitiesRegistry(
 export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistryBundle {
   const bundle: LlmRegistryBundle = {
     providers: loadProvidersRegistry(paths.providers),
-    modelProfiles: loadModelProfilesRegistry(paths.modelProfiles),
+    modelProfiles: normalizeModelProfilesRegistry(loadModelProfilesRegistry(paths.modelProfiles)),
     promptTemplates: loadPromptTemplatesRegistry(paths.promptTemplates),
     credentialPools: loadCredentialPoolsRegistry(paths.credentialPools),
     routingPolicies: loadRoutingPoliciesRegistry(paths.routingPolicies),
+    executionPolicies: loadExecutionPoliciesRegistry(paths.executionPolicies),
+    adapterBindings: loadAdapterBindingsRegistry(paths.adapterBindings),
     providerAdmission: loadProviderAdmissionRegistry(paths.providerAdmission),
     modelPricing: loadModelPricingRegistry(paths.modelPricing),
     modelCapabilities: loadModelCapabilitiesRegistry(paths.modelCapabilities),
@@ -459,6 +574,8 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   )
   const credentialIds = bundle.credentialPools.pools.map((entry) => entry.credential_id)
   const policyProfileIds = bundle.routingPolicies.policies.map((entry) => entry.profile_id)
+  const executionPolicyIds = bundle.executionPolicies.policies.map((entry) => entry.policy_id)
+  const adapterIds = bundle.adapterBindings.bindings.map((entry) => entry.adapterId)
   const admissionPoolVoiceLines = bundle.providerAdmission.pools.map((entry) => entry.voice_line_id)
   const modelCapabilityKeys = bundle.modelCapabilities.capabilities.map(
     (entry) => `${entry.provider_id}/${entry.model_id}`,
@@ -469,6 +586,8 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   assertUnique(promptKeys, 'prompt_template_id@version')
   assertUnique(credentialIds, 'credential_id')
   assertUnique(policyProfileIds, 'routing policy profile_id')
+  assertUnique(executionPolicyIds, 'execution policy policy_id')
+  assertUnique(adapterIds, 'adapter binding adapterId')
   assertUnique(admissionPoolVoiceLines, 'provider admission voice_line_id')
   assertUnique(modelCapabilityKeys, 'model capability provider_id/model_id')
 
@@ -480,6 +599,12 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   )
   const policyByProfileId = new Map(
     bundle.routingPolicies.policies.map((entry) => [entry.profile_id, entry] as const),
+  )
+  const executionPolicyById = new Map(
+    bundle.executionPolicies.policies.map((entry) => [entry.policy_id, entry] as const),
+  )
+  const adapterBindingById = new Map(
+    bundle.adapterBindings.bindings.map((entry) => [entry.adapterId, entry] as const),
   )
   const admissionPoolByVoiceLineId = new Map(
     bundle.providerAdmission.pools.map((entry) => [entry.voice_line_id, entry] as const),
@@ -519,6 +644,23 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
       throw registryError(`Profile ${profile.profile_id} is missing a routing policy`, {
         profile_id: profile.profile_id,
       })
+    }
+    if (!profile.policy_id || !executionPolicyById.has(profile.policy_id)) {
+      throw registryError(`Profile ${profile.profile_id} references unknown execution policy`, {
+        profile_id: profile.profile_id,
+        policy_id: profile.policy_id,
+      })
+    }
+    const executionPolicy = executionPolicyById.get(profile.policy_id)
+    if (executionPolicy && executionPolicy.lane !== defaultExecutionLane(profile)) {
+      throw registryError(
+        `Execution policy ${executionPolicy.policy_id} lane must match ${defaultExecutionLane(profile)}`,
+        {
+          profile_id: profile.profile_id,
+          policy_id: executionPolicy.policy_id,
+          lane: executionPolicy.lane,
+        },
+      )
     }
 
     const line = VOICE_LINE_CATALOG[profile.voice_line_id]
@@ -567,6 +709,31 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         throw registryError(
           `Profile ${profile.profile_id} references unknown provider ${candidate.provider_id}`,
           { profile_id: profile.profile_id, provider_id: candidate.provider_id },
+        )
+      }
+
+      const adapterBinding = adapterBindingById.get(candidate.adapter_id ?? defaultAdapterId(candidate))
+      if (!adapterBinding) {
+        throw registryError(
+          `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} references unknown adapter`,
+          {
+            profile_id: profile.profile_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+            adapter_id: candidate.adapter_id ?? defaultAdapterId(candidate),
+          },
+        )
+      }
+      if (!adapterBinding.providerGatewayKinds.includes(provider.gateway_kind)) {
+        throw registryError(
+          `Adapter ${adapterBinding.adapterId} does not support provider gateway kind ${provider.gateway_kind}`,
+          {
+            profile_id: profile.profile_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+            adapter_id: adapterBinding.adapterId,
+            gateway_kind: provider.gateway_kind,
+          },
         )
       }
       if (!provider.routing.regions.includes(candidate.region)) {
@@ -643,12 +810,17 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         profile_id: policy.profile_id,
       })
     }
-    if (!policy.allowed_fallback_levels.includes('none')) {
+  }
+
+  for (const policy of bundle.executionPolicies.policies) {
+    if (!policy.fallback.allowed_fallback_levels.includes('none')) {
       throw registryError(
-        `Routing policy ${policy.profile_id} must include none in allowed_fallback_levels`,
-        { profile_id: policy.profile_id },
+        `Execution policy ${policy.policy_id} must include none in allowed_fallback_levels`,
+        { policy_id: policy.policy_id },
       )
     }
+    assertUnique(policy.merge.allow_callsite_override_fields, `execution policy ${policy.policy_id} callsite override fields`)
+    assertUnique(policy.merge.allow_debug_override_fields, `execution policy ${policy.policy_id} debug override fields`)
   }
 
   for (const pool of bundle.providerAdmission.pools) {
@@ -707,6 +879,12 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     if (capability.max_output_tokens > capability.input_window_tokens) {
       throw registryError(
         `Model capability max output exceeds input window for ${capability.provider_id}/${capability.model_id}`,
+        { ...capability },
+      )
+    }
+    if (capability.modalities && capability.modalities.includes('vision') && !providersById.get(capability.provider_id)?.capabilities.chat) {
+      throw registryError(
+        `Model capability cannot advertise vision without chat transport on ${capability.provider_id}/${capability.model_id}`,
         { ...capability },
       )
     }
@@ -884,4 +1062,37 @@ function registryError(
 function defaultRegistryPath(fileName: string): string {
   const here = dirname(fileURLToPath(import.meta.url))
   return resolve(here, '../../../.ai/llm-config/registry', fileName)
+}
+
+function normalizeModelProfilesRegistry(
+  registry: ModelProfilesRegistryFile,
+): ModelProfilesRegistryFile {
+  return {
+    ...registry,
+    profiles: registry.profiles.map((profile) => ({
+      ...profile,
+      policy_id: profile.policy_id ?? defaultExecutionPolicyId(profile),
+      candidates: profile.candidates.map((candidate) => ({
+        ...candidate,
+        adapter_id: candidate.adapter_id ?? defaultAdapterId(candidate),
+      })),
+    })),
+  }
+}
+
+export function defaultExecutionPolicyId(profile: Pick<ModelProfileEntry, 'intent' | 'visibility' | 'tier'>): string {
+  return `${profile.visibility}-${profile.intent}-${profile.tier}`
+}
+
+export function defaultExecutionLane(
+  profile: Pick<ModelProfileEntry, 'intent' | 'visibility'>,
+): string {
+  if (profile.visibility === 'identity_write' && profile.intent === 'identity_write') {
+    return 'identity_write'
+  }
+  return `${profile.visibility}_${profile.intent}`
+}
+
+export function defaultAdapterId(_candidate: Pick<ModelProfileCandidate, 'provider_id' | 'model_id'>): string {
+  return 'openai-chat-completions-v1'
 }
