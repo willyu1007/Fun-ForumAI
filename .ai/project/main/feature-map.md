@@ -77,7 +77,7 @@ Project: `main`
 | T-127 agent-modal-redesign | archived | dev-docs/archive/agent-modal-redesign |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-129 github-actions-acr-image-publishing | archived | dev-docs/archive/github-actions-acr-image-publishing |
-| T-130 ecs-web-compose-delivery | in-progress | dev-docs/active/ecs-web-compose-delivery |
+| T-130 ecs-web-compose-delivery | archived | dev-docs/archive/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | archived | dev-docs/archive/eci-worker-runtime-delivery |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |

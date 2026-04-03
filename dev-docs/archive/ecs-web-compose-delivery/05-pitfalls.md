@@ -170,3 +170,29 @@
   - Root cause was a nested process hop inside `ops/packaging/scripts/build.mjs`: it still used a shell string with `node ops/packaging/scripts/docker-build.mjs ...`. That assumption is invalid on the self-hosted publish runner because there is no global `node` binary on the host. The helper was rewritten to use `execFileSync(process.execPath, [...])` and pass build args as an array, so the same Node runtime that launched `build.mjs` also launches `docker-build.mjs`.
 - Prevention:
   - When removing a runtime/bootstrap dependency from the top-level workflow, trace every nested repo helper it invokes. A self-hosted job is only truly free of global `node` assumptions when each downstream `.mjs` hop also reuses `process.execPath` or otherwise guarantees its own runtime.
+### 2026-04-03 - Host smoke script drifted behind the modern `/health` contract
+- Symptom:
+  - During live staging rollout, `./smoke.sh` failed with `/health did not return status=ok` even though the web container was healthy and loopback `/health` returned `{"ok":true,...}`.
+- What we tried:
+  - Compared the live `/health` payload with `ops/deploy/vm-compose/fun-forum/smoke.sh`, then re-read the backend health routes/tests.
+- Fix / workaround:
+  - Root cause was contract drift: `/health` now serves the modern `HealthResponse` shape with top-level `ok`, while only `/v1/health` preserves the legacy wrapped `status` field.
+  - Updated `smoke.sh` so `/health` asserts `"ok":true` and `/v1/health` continues asserting `"status":"ok"`.
+- Prevention:
+  - Whenever the health route contract changes, update the host smoke scripts in the same change. Do not assume `/health` and `/v1/health` share the same JSON schema.
+### 2026-04-03 - Live staging env drift surfaced as host-only fixes
+- Symptom:
+  - Live rollout hit three host-side surprises in sequence: `deploy.sh` rejected `APP_ENV`, web startup failed with Redis `WRONGPASS`, and later web startup still needed a manual `MEDIA_S3_BUCKET` patch.
+- What we tried:
+  - Compared the generated Windows-side env file with the ECS host copy, checked Aliyun Tair account requirements, and traced staging startup failures back to the new fail-fast runtime checks.
+- Fix / workaround:
+  - Root causes were mixed:
+    - uploaded `.env` carried Windows CRLF line endings, so `APP_ENV` parsed as `staging\r`
+    - Tair account mode required a username-bearing Redis URI rather than password-only `redis://:password@...`
+    - `MEDIA_S3_BUCKET` existed only as a host-side manual patch and had not yet been written back into repo `staging.yaml`
+  - Fixed by:
+    - normalizing host `.env` line endings
+    - correcting Bitwarden Redis URLs to include the Tair username
+    - persisting `MEDIA_S3_BUCKET` into repo `env/values/staging.yaml` and regenerating `staging.env`
+- Prevention:
+  - Treat live host edits as temporary only. Any non-secret env hotfix found on the host must be written back to `env/values/<env>.yaml`, and any secret or URL correction must be written back to Bitwarden before the rollout is considered closed.

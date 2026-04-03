@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 168 (planned: 1, in-progress: 11, blocked: 1, done: 2, archived: 153)
+- Tasks: 168 (planned: 1, in-progress: 10, blocked: 1, done: 2, archived: 154)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
 | T-920 backend-typecheck-baseline-repair-v1 | archived | F-000 | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 | T-933 launch-gray-release-gap-closure | archived | F-000 | dev-docs/archive/launch-gray-release-gap-closure |
@@ -33,5 +34,4 @@ Project: `main`
 | T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
 | T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
 | T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
-| T-130 ecs-web-compose-delivery | in-progress | F-000 | dev-docs/active/ecs-web-compose-delivery |
 <!-- AUTO-GENERATED:END dashboard -->

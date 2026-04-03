@@ -1265,11 +1265,11 @@ tasks:
     updated: 2026-03-29
   - id: T-130
     slug: ecs-web-compose-delivery
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/ecs-web-compose-delivery
-    updated: 2026-03-29
+    dev_docs_path: dev-docs/archive/ecs-web-compose-delivery
+    updated: 2026-04-03
   - id: T-131
     slug: eci-worker-runtime-delivery
     status: archived

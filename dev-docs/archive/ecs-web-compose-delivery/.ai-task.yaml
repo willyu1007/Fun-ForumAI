@@ -2,8 +2,8 @@ version: 1
 task_id: T-130
 project: main
 slug: ecs-web-compose-delivery
-status: in-progress
-updated: "2026-03-29"
+status: archived
+updated: "2026-04-03"
 keywords:
   - ecs
   - docker-compose

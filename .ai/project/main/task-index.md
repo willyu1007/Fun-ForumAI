@@ -133,7 +133,7 @@ Project: `main`
 | T-127 agent-modal-redesign | archived | F-000 | dev-docs/archive/agent-modal-redesign |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | F-000 | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
-| T-130 ecs-web-compose-delivery | in-progress | F-000 | dev-docs/active/ecs-web-compose-delivery |
+| T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
 | T-132 launch-release-packaging-master | archived | F-090 | dev-docs/archive/launch-release-packaging-master |
 | T-133 launch-system-roster-and-identity-packaging | archived | F-090 | dev-docs/archive/launch-system-roster-and-identity-packaging |
