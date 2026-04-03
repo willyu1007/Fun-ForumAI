@@ -26,13 +26,12 @@ const authCardCss = `
 }
 .auth-card-tabs {
   background: color-mix(in srgb, var(--ui-color-surface) 62%, var(--ui-color-surface-elevated) 38%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-color-border) 11%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-color-border) 11%, transparent);
 }
 .auth-card-tabs [data-slot="tabs-trigger"] {
   border-color: transparent;
   background: transparent;
   color: color-mix(in srgb, var(--ui-color-text-secondary) 95%, var(--ui-color-text-primary) 5%);
-  box-shadow: none;
   transform: translateY(0);
 }
 .auth-card-tabs [data-slot="tabs-trigger"]::after {
@@ -51,36 +50,24 @@ const authCardCss = `
   border-color: color-mix(in srgb, var(--ui-color-border) 8%, transparent);
   background: color-mix(in srgb, var(--ui-color-surface) 94%, var(--ui-color-surface-elevated) 6%);
   color: var(--ui-color-text-primary);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--ui-color-surface) 76%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--ui-color-border) 5%, transparent),
-    0 3px 8px color-mix(in srgb, var(--ui-color-overlay) 5%, transparent),
-    0 1px 2px color-mix(in srgb, var(--ui-color-overlay) 3%, transparent);
 }
 .auth-card-tabs [data-slot="tabs-trigger"][data-state="active"]:active {
   background: color-mix(in srgb, var(--ui-color-surface) 88%, var(--ui-color-surface-elevated) 12%);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--ui-color-surface) 72%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--ui-color-border) 6%, transparent),
-    0 1px 3px color-mix(in srgb, var(--ui-color-overlay) 3%, transparent);
   transform: translateY(0.5px);
 }
 .auth-card-tabs [data-slot="tabs-trigger"]:focus-visible {
-  outline: none;
+  outline: 1px solid color-mix(in srgb, var(--ui-color-border) 10%, transparent);
   outline-offset: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-color-border) 10%, transparent);
 }
 .auth-card-input {
   border-color: color-mix(in srgb, var(--ui-color-border) 78%, var(--ui-color-surface) 22%);
   background: color-mix(in srgb, var(--ui-color-surface) 56%, var(--ui-color-surface-elevated) 44%);
-  box-shadow: none;
 }
 .auth-card-input:focus-visible {
   border-color: color-mix(in srgb, var(--ui-color-border) 64%, var(--ui-color-primary) 36%);
   background: color-mix(in srgb, var(--ui-color-surface) 62%, var(--ui-color-surface-elevated) 38%);
-  outline: none;
+  outline: 1px solid color-mix(in srgb, var(--ui-color-primary) 10%, transparent);
   outline-offset: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-color-primary) 10%, transparent);
 }
 .auth-card-input::placeholder {
   color: color-mix(in srgb, var(--ui-color-text-muted) 74%, transparent);
@@ -93,7 +80,6 @@ const authCardCss = `
   border-color: color-mix(in srgb, var(--ui-color-border) 54%, transparent);
   background: color-mix(in srgb, var(--ui-color-surface-elevated) 68%, var(--ui-color-border) 32%);
   color: color-mix(in srgb, var(--ui-color-text-primary) 78%, var(--ui-color-text-secondary) 22%);
-  box-shadow: none;
 }
 .auth-card-aux-button:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--ui-color-border) 62%, transparent);
@@ -101,10 +87,9 @@ const authCardCss = `
   color: var(--ui-color-text-primary);
 }
 .auth-card-aux-button:focus-visible {
-  outline: none;
+  outline: 1px solid color-mix(in srgb, var(--ui-color-border) 10%, transparent);
   outline-offset: 0;
   border-color: color-mix(in srgb, var(--ui-color-border) 62%, var(--ui-color-primary) 18%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-color-border) 10%, transparent);
 }
 .auth-card-aux-button:disabled {
   color: color-mix(in srgb, var(--ui-color-text-muted) 78%, transparent);

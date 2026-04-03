@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useHumanVote } from '@/api/hooks'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import type { VoteDirection } from '@/api/types'
@@ -58,6 +58,8 @@ export function HumanVoteControls({
           appearance === 'plain' && 'text-muted-foreground',
           compact ? 'text-[10px]' : 'text-xs',
         )}
+        role="group"
+        aria-label="人类投票"
       >
         <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
         <span className="tabular-nums">{score}</span>
@@ -81,21 +83,54 @@ export function HumanVoteControls({
 
   if (!isAuthenticated) {
     return (
-      <div
-        className={cn(
-          'inline-flex items-center gap-0.5',
-          appearance === 'pill' && 'rounded-full bg-primary/10 px-2.5 py-1',
-          appearance === 'plain' && 'text-muted-foreground',
-          compact ? 'text-[10px]' : 'text-xs',
-        )}
-      >
-        <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
-        <span className="tabular-nums">{score}</span>
-        <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
-        <Link to="/login" className="ml-1 text-xs text-primary hover:underline">
-          登录投票
-        </Link>
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={cn(
+              'inline-flex items-center gap-0.5',
+              appearance === 'pill' && 'rounded-full bg-primary/10 px-2.5 py-1',
+              appearance === 'plain' && 'text-muted-foreground',
+              compact ? 'text-[10px]' : 'text-xs',
+            )}
+            role="group"
+            aria-label="人类投票"
+          >
+            <button
+              type="button"
+              aria-label="反对"
+              aria-disabled="true"
+              className={cn(
+                'p-0.5 transition-colors cursor-not-allowed text-muted-foreground/70',
+                compact ? 'size-4' : 'size-[1.125rem]',
+              )}
+            >
+              <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
+            </button>
+            <span
+              className={cn(
+                'min-w-[1.25rem] text-center tabular-nums',
+                direction === 'UP' && 'text-success',
+                direction === 'DOWN' && 'text-destructive',
+                !direction && 'text-muted-foreground',
+              )}
+            >
+              {score}
+            </span>
+            <button
+              type="button"
+              aria-label="赞同"
+              aria-disabled="true"
+              className={cn(
+                'p-0.5 transition-colors cursor-not-allowed text-muted-foreground/70',
+                compact ? 'size-4' : 'size-[1.125rem]',
+              )}
+            >
+              <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
+            </button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent sideOffset={6}>投票请登录</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -107,6 +142,8 @@ export function HumanVoteControls({
         appearance === 'plain' && 'text-muted-foreground',
         compact ? 'text-[10px]' : 'text-xs',
       )}
+      role="group"
+      aria-label="人类投票"
     >
       <button
         type="button"
@@ -117,17 +154,20 @@ export function HumanVoteControls({
           direction === 'DOWN'
             ? 'text-destructive'
             : 'text-muted-foreground hover:text-foreground',
+          compact ? 'size-4' : 'size-[1.125rem]',
         )}
         aria-label="反对"
       >
         <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
       </button>
-      <span className={cn(
-        'min-w-[1.25rem] text-center tabular-nums',
-        direction === 'UP' && 'text-success',
-        direction === 'DOWN' && 'text-destructive',
-        !direction && 'text-muted-foreground',
-      )}>
+      <span
+        className={cn(
+          'min-w-[1.25rem] text-center tabular-nums',
+          direction === 'UP' && 'text-success',
+          direction === 'DOWN' && 'text-destructive',
+          !direction && 'text-muted-foreground',
+        )}
+      >
         {score}
       </span>
       <button
@@ -139,6 +179,7 @@ export function HumanVoteControls({
           direction === 'UP'
             ? 'text-success'
             : 'text-muted-foreground hover:text-foreground',
+          compact ? 'size-4' : 'size-[1.125rem]',
         )}
         aria-label="赞同"
       >

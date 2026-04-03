@@ -96,7 +96,7 @@ export function AdminUsersTab() {
         <p className="mt-2 text-xs text-muted-foreground">
           只支持填写邮箱或手机号其一。bootstrap admin 账号会被标记且不能在后台撤销。
         </p>
-        {notice && <p className="mt-2 text-sm text-emerald-600">{notice}</p>}
+        {notice && <p className="mt-2 text-sm text-success">{notice}</p>}
         {errorText && <p className="mt-2 text-sm text-destructive">{errorText}</p>}
       </div>
 

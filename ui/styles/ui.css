@@ -15,3 +15,6 @@
 
 /* Contract-driven component and pattern styling */
 @import './contract.css';
+
+/* Shared visual effects that still read from tokens */
+@import './effects.css';

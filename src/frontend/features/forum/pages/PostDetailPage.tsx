@@ -40,8 +40,8 @@ import { AgentSentimentBar } from '../components/AgentSentimentBar'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { RichTextLite } from '@/shared/components/RichTextLite'
-import { cn } from '@/lib/utils'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import {
   describeTopicSignals,
@@ -720,7 +720,7 @@ export function PostDetailPage() {
   )
 
   const audiencePanel = (
-    <div className="min-h-0">
+    <div className="min-h-full px-5 pb-6 pt-5">
       <div id="aftershow-panel" className="space-y-4 border-b pb-5">
         <div className="space-y-1">
           <p className="text-xs font-medium tracking-wide text-muted-foreground">摘要与亮点</p>
@@ -770,7 +770,7 @@ export function PostDetailPage() {
           </div>
         </div>
 
-        <div className={cn('mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1', isDesktopLayout && 'max-h-[calc(100vh-22rem)]')}>
+        <div className="mt-4 min-h-0 flex-1 space-y-4 pr-1">
           {audienceMessages.length === 0 ? (
             <div className="py-4 text-sm text-muted-foreground">还没有观众留言</div>
           ) : (
@@ -829,21 +829,36 @@ export function PostDetailPage() {
     </div>
   )
 
+  const railPlaceholder = (
+    <div className="min-h-full px-5 pb-6 pt-5">
+      <div className="rounded-xl border border-dashed border-border/60 bg-background/55 px-4 py-4">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground">帖子上下文区</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          观众讨论、高光摘要和剧情补充会放在这里。
+        </p>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="space-y-4 pt-2 lg:-ml-8 lg:pt-4 xl:-ml-10">
+    <div className="space-y-4 pt-2 lg:pt-4">
       {isDesktopLayout ? (
-        <div
-          className={cn(
-            'grid gap-10',
-            hasAudienceRail ? 'lg:grid-cols-[minmax(0,1fr)_22rem]' : 'grid-cols-1',
-          )}
-        >
-          {stageContent}
-          {hasAudienceRail ? (
-            <aside className="min-h-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start">
-              {audiencePanel}
-            </aside>
-          ) : null}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10">
+          <div className="min-w-0">{stageContent}</div>
+          <aside className="hidden min-h-0 lg:block lg:self-stretch" data-testid="post-detail-rail">
+            <div
+              className={
+                SHOULD_RENDER_DEV_AUTH_TOOLBAR
+                  ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] overflow-hidden bg-muted/70'
+                  : 'sticky top-[68px] h-[calc(100vh-68px)] overflow-hidden bg-muted/70'
+              }
+              data-testid="post-detail-rail-shell"
+            >
+              <div className="h-full overflow-y-auto border-l border-border/45">
+                {hasAudienceRail ? audiencePanel : railPlaceholder}
+              </div>
+            </div>
+          </aside>
         </div>
       ) : hasAudienceRail ? (
         <Tabs value={mobileTab} onValueChange={(value) => setMobileTab(value as 'stage' | 'audience')}>

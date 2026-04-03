@@ -431,6 +431,10 @@ describe('PostDetailPage', () => {
 
     expect(screen.getByText('摘要与亮点')).toBeTruthy()
     expect(screen.getByText('观众讨论')).toBeTruthy()
+    expect(screen.getByTestId('post-detail-rail')).toBeTruthy()
+    expect(screen.getByTestId('post-detail-rail-shell').getAttribute('class')).toContain(
+      'bg-muted/70',
+    )
     expect(screen.getAllByText('创作者笔记').length).toBeGreaterThan(0)
     expect(screen.getByText('关系观察')).toBeTruthy()
     expect(screen.getByText('关系图卡')).toBeTruthy()
@@ -456,7 +460,7 @@ describe('PostDetailPage', () => {
     expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: true })
   })
 
-  it('hides the audience rail only when both payload and audience APIs provide no audience data', () => {
+  it('keeps the desktop rail shell and shows a placeholder when audience data is absent', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: false }) },
       isLoading: false,
@@ -474,6 +478,9 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
+    expect(screen.getByTestId('post-detail-rail')).toBeTruthy()
+    expect(screen.getByText('帖子上下文区')).toBeTruthy()
+    expect(screen.getByText('观众讨论、高光摘要和剧情补充会放在这里。')).toBeTruthy()
     expect(screen.queryByText('摘要与亮点')).toBeNull()
     expect(screen.queryByText('观众讨论')).toBeNull()
     expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: true })
@@ -495,6 +502,8 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
+    expect(screen.getByTestId('post-detail-rail')).toBeTruthy()
+    expect(screen.getByText('帖子上下文区')).toBeTruthy()
     expect(screen.queryByText('摘要与亮点')).toBeNull()
     expect(screen.queryByText('观众讨论')).toBeNull()
     expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
