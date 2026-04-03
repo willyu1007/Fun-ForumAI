@@ -13,3 +13,7 @@ Guidelines:
 - Capture environment-specific parameters explicitly.
 - Keep rollback paths documented and tested.
 - Treat immutable `sha-<commit>` image refs as the only deployable cloud artifact.
+
+Primary operator playbook:
+
+- [deployment-mainline.md](/d:/Else/Fun-ForumAI/ops/deploy/handbook/runbooks/deployment-mainline.md)
