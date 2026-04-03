@@ -4,15 +4,17 @@
 
 - State: in-progress
 - Depends on: `T-103 personality-compiler-inference-profile-v1`
-- Next step: 等待 Bitwarden / provider API keys 配齐后，执行 live provider connectivity 与主备回退验收。
+- Next step: 执行真实 provider connectivity / ordered failover 验收，并把剩余 callsite cutover / staging live close-out 交给 `T-936`。
 
 ## Goal
 
 把现有 “人格管理 -> LLM 选择” 主线从“registry 部分声明、runtime 部分实现”收口为一条真正可运行、可验证、可扩展的 provider/runtime contract：
 
 - 所有已注册 provider 都能经由统一 gateway surface 真正可调用；
+- runtime 先生成 execution plan，再决定 provider/model/adapter/credential；
 - visible line 的 provider/model 选择使用官方 upstream `model_id`；
 - secret/env/credential pool 明确支持 provider-specific 主备 key；
+- staging/prod secret resolution 采用 env-first，默认不允许 runtime Bitwarden fallback；
 - shadow review evidence 改为 agent-scoped，避免 compare 证据串线。
 
 ## Non-goals
@@ -27,6 +29,8 @@
 - `LlmClient` 按 `gateway_kind` 而不是 provider id 硬编码分发 adapter。
 - `LLM_API_KEY` 从 env contract / secret refs / runtime fallback 中彻底移除。
 - `credential_pools` 支持 `priority` 并按固定主备顺序解析主备 key。
+- execution-plan / execution-policy contract 为 visible/hidden/identity/vision lanes 提供统一入口。
+- `visibleProviderPin` / `visibleModelPin` 从 runtime 主路径中移除。
 - `moonshot-openai`、`minimax-openai`、`tencent-openai`、`ark-openai` 在 registry + runtime + credential contract 中完全对齐。
 - `glm/kimi/minimax/tencent/ark` 使用官方 upstream `model_id` 收口到现有 voice line/profile。
 - visible profiles 的 admitted candidate 与 credential pools、provider admission metadata 完整对齐。

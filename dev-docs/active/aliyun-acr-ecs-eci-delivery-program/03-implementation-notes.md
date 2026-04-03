@@ -19,3 +19,16 @@
 
 - 需要通过 governance `sync` 把新任务收录进 project hub。
 - 后续如需把本组任务从 `F-000` 提升到正式 Feature/Requirement，再单独做语义映射。
+
+## 2026-04-03
+
+- 按新的 Runtime Routing 与云上线全链路方案重排任务结构：
+  - `T-131` 保持归档语义，不 re-open。
+  - 新增 `T-935 cloud-environment-go-live-chain-v1` 承接云环境、ALB/DNS/SSL/ICP、IaC skeleton 与 env injection contract。
+  - 新增 `T-936 runtime-cutover-observability-and-live-staging-closeout-v1` 承接 runtime cutover / observability / staging live close-out。
+- `T-128` 的角色被收口为总编排入口，不再自行承载云环境细节或 runtime cutover 细节。
+- `T-901` 当前已完成一轮 contract closeout，可作为 `T-128` review gate 的阶段性输入：
+  - runtime 已冻结到 `InferenceExecutionPlan + ExecutionPolicy + AdapterBinding + CredentialBinding + merge trace` 的目标合同。
+  - `routing_policies.yaml` 已退回 ordering-only；fallback allowlist 与 merge allowlist 均收口到 execution policy。
+  - callsite dual-track inventory 已扩展到 `target_policy_id / migration_status / local_override_fields`，可以直接 hand off 给 `T-936` 做后续 cutover。
+  - 2026-04-03 代码复核已补齐 runtime credential-ranking drift 与 inventory policy drift；`T-901` 代码层 review gate 现可视为关闭，只剩 live provider connectivity 作为非代码验收项继续保留。

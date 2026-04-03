@@ -40,6 +40,27 @@
 
 ## Pending
 
+- 2026-04-03:
+  - `pnpm exec vitest run src/backend/llm/__tests__/secret-resolver.test.ts`
+    - pass
+    - 新增覆盖 deploy-time env alias 优先级，以及 staging runtime 禁止 Bitwarden fallback。
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
+    - pass
+    - providers=7, profiles=41, provider admission pools=4, prompt templates=17。
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/check-llm-config-keys.mjs`
+    - pass
+    - 发现 repo 内 22 个 in-scope `LLM_` / `RUNTIME_` key 引用，均已注册。
+  - `pnpm exec tsc --noEmit`
+    - pass
+  - `pnpm exec vitest run src/backend/llm/__tests__/credential-broker.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/secret-resolver.test.ts src/backend/services/__tests__/inference-profile-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts`
+    - pass
+    - 38 tests passed。
+  - `pnpm exec vitest run src/backend/services/__tests__/inference-profile-service.test.ts`
+    - pass
+    - 7 tests passed；新增覆盖 inference profile recompilation 会清空遗留 visible pin 持久化字段。
+  - `git diff --check`
+    - pass
+
 - live provider connectivity:
   - `glm-5`
   - `kimi-k2-0905-preview`
@@ -50,3 +71,38 @@
   - `doubao-seed-2-0-lite-260215`
   - `doubao-seed-2-0-pro-260215`
 - ordered primary/secondary failover against real provider credentials after Bitwarden provisioning
+
+## 2026-04-03 Runtime Contract Closeout
+
+- `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
+  - pass
+  - providers=7, profiles=41, routing policies=41, execution policies=15, adapter bindings=1, model capabilities=5。
+- `pnpm exec vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/services/__tests__/inference-profile-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts`
+  - pass
+  - 37 tests passed。
+  - `llm-gateway.test.ts` 现额外覆盖 `intent_scene_fit / voice_line_tier / profile_candidates / region_policy / headroom / health` 六个 route-order step，以及 merge precedence / merge trace / selected adapter+credential。
+  - 追加覆盖 `headroom / health` 不再受不可用 credential pool 影响，`callsite-inventory.test.ts` 现会逐 callsite 校验 `local_override_fields` 与源码中的真实 override 字段一致。
+- `pnpm exec tsc --noEmit`
+  - pass
+
+## 2026-04-03 Review Gate Closeout
+
+- 代码复核后补修两类闭环问题：
+  - runtime `headroom / health` 排序此前只看 provider/region/endpoint，未对齐 broker 的 `allowed_model_ids / scope_tags / blocked` 过滤；现已收口到共享 helper，route-order 真消费与实际 credential resolve 保持一致。
+  - `callsite-inventory.ts` 中 private context extract/distill 之前错误指向 `hidden-private_digest-premium`；现已校正为 `hidden-private_digest-base`，并补上字段级 inventory guard。
+- 结论：
+  - `T-901` 的代码层 review gate 已满足：execution plan / route context / render trace 字段齐备，route_order / direct fallback / provider+model pricing 已被 runtime 真消费，visible pins 已不在主路径，callsite 双轨参数已有可交接 inventory。
+  - 仍未关闭的仅剩非代码项：真实 provider connectivity / ordered failover live 验收，继续保留在 Pending。
+
+## 2026-04-03 Deep Cleanup
+
+- `pnpm exec vitest run src/backend/llm/__tests__/credential-broker.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/services/__tests__/inference-profile-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts`
+  - pass
+  - 39 tests passed。
+  - 覆盖 cleanup 后的 metadata-only provider auth fixture、route-order usable-pool guard、以及 inventory 字段级 handoff guard。
+- `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
+  - pass
+- `pnpm exec tsc --noEmit`
+  - pass
+- `git diff --check`
+  - pass
