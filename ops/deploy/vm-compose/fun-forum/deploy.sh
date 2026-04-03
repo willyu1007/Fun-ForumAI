@@ -59,7 +59,7 @@ extract_env_value() {
   local key="$1"
   local value
   value="$(sed -n "s/^${key}=//p" "$APP_DIR/.env" | tail -n 1)"
-  printf '%s' "$value"
+  printf '%s' "$value" | tr -d '\r'
 }
 
 load_host_env() {
