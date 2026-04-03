@@ -236,6 +236,81 @@ describe('Auth API', () => {
     expect(loginRes.body.error.code).toBe('UNAUTHORIZED')
   })
 
+  it('returns USER_NOT_FOUND when logging into an unknown email address', async () => {
+    const loginRes = await request(app)
+      .post('/v1/auth/login')
+      .send({
+        email: `missing-${Date.now()}@example.com`,
+        password: 'password123',
+      })
+
+    expect(loginRes.status).toBe(404)
+    expect(loginRes.body.error.code).toBe('USER_NOT_FOUND')
+  })
+
+  it('resets an email password through verification code flow and issues a fresh auth cookie', async () => {
+    const email = `guidance-auth-reset-${Date.now()}@example.com`
+
+    const startRegisterRes = await request(app)
+      .post('/v1/auth/register')
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'Password Reset Tester',
+        inviteCode: '100001',
+      })
+
+    await request(app)
+      .post('/v1/auth/register/verify')
+      .send({
+        challengeId: startRegisterRes.body.data.challengeId,
+        code: startRegisterRes.body.data.debugCode,
+      })
+
+    const startResetRes = await request(app)
+      .post('/v1/auth/password/reset')
+      .send({ email })
+
+    expect(startResetRes.status).toBe(200)
+    expect(startResetRes.body.data).toMatchObject({
+      challengeId: expect.any(String),
+      debugCode: expect.any(String),
+    })
+
+    const verifyResetRes = await request(app)
+      .post('/v1/auth/password/reset/verify')
+      .send({
+        challengeId: startResetRes.body.data.challengeId,
+        code: startResetRes.body.data.debugCode,
+        password: 'newpassword123',
+      })
+
+    expect(verifyResetRes.status).toBe(200)
+    expect(verifyResetRes.body.data.user).toMatchObject({ email })
+    expect(verifyResetRes.headers['set-cookie']).toEqual(
+      expect.arrayContaining([expect.stringContaining('auth_token=')]),
+    )
+
+    const oldLoginRes = await request(app)
+      .post('/v1/auth/login')
+      .send({
+        email,
+        password: 'password123',
+      })
+
+    expect(oldLoginRes.status).toBe(401)
+
+    const newLoginRes = await request(app)
+      .post('/v1/auth/login')
+      .send({
+        email,
+        password: 'newpassword123',
+      })
+
+    expect(newLoginRes.status).toBe(200)
+    expect(newLoginRes.body.data.user.email).toBe(email)
+  })
+
   it('replaces an email challenge on resend and only accepts the latest code', async () => {
     const { config } = await import('../../lib/config.js')
     const otpConfig = config.auth.otp as {
@@ -391,15 +466,53 @@ describe('Auth API', () => {
     expect(res.body.error.code).toBe('INVALID_INVITE_CODE')
   })
 
-  it('requires an invite code for first-time sms registration', async () => {
+  it('allows sms code send without an invite but requires one before first-time account creation', async () => {
     const phone = `13${(Date.now() + 2).toString().slice(-9)}`
 
-    const res = await request(app)
+    const sendRes = await request(app)
       .post('/v1/auth/sms/send')
       .send({ phone })
 
-    expect(res.status).toBe(400)
-    expect(res.body.error.code).toBe('INVITE_CODE_REQUIRED')
+    expect(sendRes.status).toBe(200)
+
+    const missingNameRes = await request(app)
+      .post('/v1/auth/sms/verify')
+      .send({
+        challengeId: sendRes.body.data.challengeId,
+        code: sendRes.body.data.debugCode,
+      })
+
+    expect(missingNameRes.status).toBe(400)
+    expect(missingNameRes.body.error.code).toBe('DISPLAY_NAME_REQUIRED')
+
+    const missingInviteRes = await request(app)
+      .post('/v1/auth/sms/verify')
+      .send({
+        challengeId: sendRes.body.data.challengeId,
+        code: sendRes.body.data.debugCode,
+        displayName: 'Invite Missing',
+      })
+
+    expect(missingInviteRes.status).toBe(400)
+    expect(missingInviteRes.body.error.code).toBe('INVITE_CODE_REQUIRED')
+
+    const finalVerifyRes = await request(app)
+      .post('/v1/auth/sms/verify')
+      .send({
+        challengeId: sendRes.body.data.challengeId,
+        code: sendRes.body.data.debugCode,
+        displayName: 'Invite Present',
+        inviteCode: '100001',
+      })
+
+    expect(finalVerifyRes.status).toBe(200)
+    expect(finalVerifyRes.body.data).toMatchObject({
+      isNewUser: true,
+      user: {
+        phone,
+        displayName: 'Invite Present',
+      },
+    })
   })
 
 })

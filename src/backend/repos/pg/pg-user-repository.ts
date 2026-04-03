@@ -181,6 +181,20 @@ export class PgUserRepository implements UserRepository {
     }
   }
 
+  async updatePassword(id: string, password_hash: string): Promise<HumanUser | null> {
+    const existing = await this.prisma.humanUser.findUnique({ where: { id } })
+    if (!existing) return null
+
+    const row = await this.prisma.humanUser.update({
+      where: { id },
+      data: {
+        passwordHash: password_hash,
+        emailVerified: true,
+      },
+    })
+    return toDomain(row)
+  }
+
   async updateLastLogin(id: string): Promise<void> {
     await this.prisma.humanUser.update({
       where: { id },

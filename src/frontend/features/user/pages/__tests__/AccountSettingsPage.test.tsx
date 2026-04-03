@@ -46,6 +46,9 @@ function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): Ret
     startEmailRegistration: vi.fn(),
     verifyEmailRegistration: vi.fn(),
     resendEmailRegistration: vi.fn(),
+    startEmailPasswordReset: vi.fn(),
+    verifyEmailPasswordReset: vi.fn(),
+    resendEmailPasswordReset: vi.fn(),
     sendSmsCode: vi.fn(),
     verifySmsCode: vi.fn(),
     resendSmsCode: vi.fn(),
@@ -53,19 +56,17 @@ function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): Ret
     updateProfile: vi.fn(),
     switchIdentity: vi.fn(),
     isLoginPending: false,
-    isRegisterPending: false,
     isEmailRegisterStartPending: false,
     isEmailRegisterVerifyPending: false,
     isEmailRegisterResendPending: false,
+    isPasswordResetStartPending: false,
+    isPasswordResetVerifyPending: false,
+    isPasswordResetResendPending: false,
     isSmsSendPending: false,
     isSmsVerifyPending: false,
     isSmsResendPending: false,
     isLogoutPending: false,
     isUpdateProfilePending: false,
-    loginError: null,
-    registerError: null,
-    smsError: null,
-    updateProfileError: null,
     ...overrides,
   }
 }
@@ -126,5 +127,54 @@ describe('AccountSettingsPage', () => {
       })
     })
     expect(screen.getByText('资料已保存。')).toBeTruthy()
+  })
+
+  it('resets the password through the account settings email verification flow', async () => {
+    const startEmailPasswordReset = vi.fn().mockResolvedValue({
+      challengeId: 'reset-challenge-1',
+      maskedTarget: 'us***@example.com',
+      expiresInSec: 600,
+      resendAfterSec: 60,
+    })
+    const verifyEmailPasswordReset = vi.fn().mockResolvedValue({
+      user: buildUser(),
+      token: 'token-1',
+    })
+
+    useAuthMock.mockReturnValue(buildAuthMock({
+      startEmailPasswordReset,
+      verifyEmailPasswordReset,
+    }))
+
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: '发送邮箱验证码' }))
+
+    await waitFor(() => {
+      expect(startEmailPasswordReset).toHaveBeenCalledWith({
+        email: 'user@example.com',
+      })
+    })
+
+    fireEvent.change(screen.getByLabelText('验证码'), {
+      target: { value: '123456' },
+    })
+    fireEvent.change(screen.getByLabelText('新密码'), {
+      target: { value: 'newpassword123' },
+    })
+    fireEvent.change(screen.getByLabelText('确认新密码'), {
+      target: { value: 'newpassword123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '验证并更新密码' }))
+
+    await waitFor(() => {
+      expect(verifyEmailPasswordReset).toHaveBeenCalledWith({
+        challengeId: 'reset-challenge-1',
+        code: '123456',
+        password: 'newpassword123',
+      })
+    })
+
+    expect(screen.getByText('密码已更新。')).toBeTruthy()
   })
 })

@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { validate } from '../validation/validate.js'
 import {
   loginSchema,
+  passwordResetStartSchema,
+  passwordResetVerifySchema,
   registerResendSchema,
   registerSchema,
   registerVerifySchema,
@@ -77,6 +79,43 @@ export function createAuthRouter(authService: AuthService): Router {
     try {
       const { email, password } = req.body
       const result = await authService.login(email, password)
+      res.cookie('auth_token', result.token, COOKIE_OPTIONS)
+      res.json({ data: result })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/password/reset', validate(passwordResetStartSchema), async (req, res, next) => {
+    try {
+      const { email } = req.body
+      const result = await authService.startEmailPasswordReset({
+        email,
+        ipAddress: getClientIp(req),
+      })
+      res.json({ data: result })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/password/reset/resend', validate(registerResendSchema), async (req, res, next) => {
+    try {
+      const { challengeId } = req.body
+      const result = await authService.resendEmailPasswordReset({
+        challengeId,
+        ipAddress: getClientIp(req),
+      })
+      res.json({ data: result })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/password/reset/verify', validate(passwordResetVerifySchema), async (req, res, next) => {
+    try {
+      const { challengeId, code, password } = req.body
+      const result = await authService.verifyEmailPasswordReset({ challengeId, code, password })
       res.cookie('auth_token', result.token, COOKIE_OPTIONS)
       res.json({ data: result })
     } catch (err) {
@@ -163,8 +202,8 @@ export function createAuthRouter(authService: AuthService): Router {
 
   router.post('/auth/sms/verify', validate(smsVerifySchema), async (req, res, next) => {
     try {
-      const { challengeId, code, displayName } = req.body
-      const result = await authService.verifySmsAuth({ challengeId, code, displayName })
+      const { challengeId, code, displayName, inviteCode } = req.body
+      const result = await authService.verifySmsAuth({ challengeId, code, displayName, inviteCode })
       res.cookie('auth_token', result.token, COOKIE_OPTIONS)
       res.json({ data: result })
     } catch (err) {

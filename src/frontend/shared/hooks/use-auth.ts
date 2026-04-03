@@ -50,12 +50,28 @@ export function useAuth() {
     mutationFn: (data: { challengeId: string }) => authApi.resendEmailRegistration(data),
   })
 
+  const passwordResetStartMutation = useMutation({
+    mutationFn: (data: { email: string }) => authApi.startEmailPasswordReset(data),
+  })
+
+  const passwordResetVerifyMutation = useMutation({
+    mutationFn: (data: { challengeId: string; code: string; password: string }) =>
+      authApi.verifyEmailPasswordReset(data),
+    onSuccess: (res) => {
+      queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
+    },
+  })
+
+  const passwordResetResendMutation = useMutation({
+    mutationFn: (data: { challengeId: string }) => authApi.resendEmailPasswordReset(data),
+  })
+
   const smsSendMutation = useMutation({
     mutationFn: (data: { phone: string; inviteCode?: string }) => authApi.sendSmsCode(data),
   })
 
   const smsVerifyMutation = useMutation({
-    mutationFn: (data: { challengeId: string; code: string; displayName?: string }) =>
+    mutationFn: (data: { challengeId: string; code: string; displayName?: string; inviteCode?: string }) =>
       authApi.verifySmsCode(data),
     onSuccess: (res) => {
       queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
@@ -111,6 +127,30 @@ export function useAuth() {
     [emailRegisterResendMutation],
   )
 
+  const startEmailPasswordReset = useCallback(
+    async (data: { email: string }): Promise<AuthChallengeResult> => {
+      const res = await passwordResetStartMutation.mutateAsync(data)
+      return res.data
+    },
+    [passwordResetStartMutation],
+  )
+
+  const verifyEmailPasswordReset = useCallback(
+    async (data: { challengeId: string; code: string; password: string }) => {
+      const res = await passwordResetVerifyMutation.mutateAsync(data)
+      return res.data
+    },
+    [passwordResetVerifyMutation],
+  )
+
+  const resendEmailPasswordReset = useCallback(
+    async (data: { challengeId: string }): Promise<AuthChallengeResult> => {
+      const res = await passwordResetResendMutation.mutateAsync(data)
+      return res.data
+    },
+    [passwordResetResendMutation],
+  )
+
   const sendSmsCode = useCallback(
     async (data: { phone: string; inviteCode?: string }): Promise<AuthChallengeResult> => {
       const res = await smsSendMutation.mutateAsync(data)
@@ -120,7 +160,12 @@ export function useAuth() {
   )
 
   const verifySmsCode = useCallback(
-    async (data: { challengeId: string; code: string; displayName?: string }): Promise<SmsAuthResult> => {
+    async (data: {
+      challengeId: string
+      code: string
+      displayName?: string
+      inviteCode?: string
+    }): Promise<SmsAuthResult> => {
       const res = await smsVerifyMutation.mutateAsync(data)
       return res.data
     },
@@ -168,6 +213,9 @@ export function useAuth() {
     startEmailRegistration,
     verifyEmailRegistration,
     resendEmailRegistration,
+    startEmailPasswordReset,
+    verifyEmailPasswordReset,
+    resendEmailPasswordReset,
     sendSmsCode,
     verifySmsCode,
     resendSmsCode,
@@ -175,22 +223,16 @@ export function useAuth() {
     updateProfile,
     switchIdentity,
     isLoginPending: loginMutation.isPending,
-    isRegisterPending: emailRegisterStartMutation.isPending
-      || emailRegisterVerifyMutation.isPending
-      || emailRegisterResendMutation.isPending,
     isEmailRegisterStartPending: emailRegisterStartMutation.isPending,
     isEmailRegisterVerifyPending: emailRegisterVerifyMutation.isPending,
     isEmailRegisterResendPending: emailRegisterResendMutation.isPending,
+    isPasswordResetStartPending: passwordResetStartMutation.isPending,
+    isPasswordResetVerifyPending: passwordResetVerifyMutation.isPending,
+    isPasswordResetResendPending: passwordResetResendMutation.isPending,
     isSmsSendPending: smsSendMutation.isPending,
     isSmsVerifyPending: smsVerifyMutation.isPending,
     isSmsResendPending: smsResendMutation.isPending,
     isLogoutPending: logoutMutation.isPending,
     isUpdateProfilePending: updateProfileMutation.isPending,
-    loginError: loginMutation.error,
-    registerError: emailRegisterStartMutation.error
-      ?? emailRegisterVerifyMutation.error
-      ?? emailRegisterResendMutation.error,
-    smsError: smsSendMutation.error ?? smsVerifyMutation.error ?? smsResendMutation.error,
-    updateProfileError: updateProfileMutation.error,
   }
 }

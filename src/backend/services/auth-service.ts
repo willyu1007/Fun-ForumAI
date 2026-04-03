@@ -26,9 +26,15 @@ interface JwtPayload {
 }
 
 interface EmailSignupChallengePayload {
+  kind: 'signup'
   displayName: string
   passwordHash: string
   inviteCodeId: string
+}
+
+interface EmailPasswordResetChallengePayload {
+  kind: 'password_reset'
+  userId: string
 }
 
 interface InviteChallengePayload {
@@ -127,18 +133,59 @@ function parseEmailSignupPayload(challenge: AuthVerificationChallenge): EmailSig
     throw new Error('Missing email signup payload')
   }
 
+  const kind = payload.kind
   const displayName = payload.displayName
   const passwordHash = payload.passwordHash
   const inviteCodeId = payload.inviteCodeId
   if (
-    typeof displayName !== 'string'
+    (kind !== undefined && kind !== 'signup')
+    || typeof displayName !== 'string'
     || typeof passwordHash !== 'string'
     || typeof inviteCodeId !== 'string'
   ) {
     throw new Error('Invalid email signup payload')
   }
 
-  return { displayName, passwordHash, inviteCodeId }
+  return { kind: 'signup', displayName, passwordHash, inviteCodeId }
+}
+
+function parseEmailPasswordResetPayload(
+  challenge: AuthVerificationChallenge,
+): EmailPasswordResetChallengePayload {
+  const payload = challenge.payload_json
+  if (!payload) {
+    throw new Error('Missing email password reset payload')
+  }
+
+  const kind = payload.kind
+  const userId = payload.userId
+  if (kind !== 'password_reset' || typeof userId !== 'string' || userId.length === 0) {
+    throw new Error('Invalid email password reset payload')
+  }
+
+  return { kind: 'password_reset', userId }
+}
+
+function createEmailSignupPayload(input: {
+  displayName: string
+  passwordHash: string
+  inviteCodeId: string
+}): EmailSignupChallengePayload {
+  return {
+    kind: 'signup',
+    displayName: input.displayName,
+    passwordHash: input.passwordHash,
+    inviteCodeId: input.inviteCodeId,
+  }
+}
+
+function createEmailPasswordResetPayload(input: {
+  userId: string
+}): EmailPasswordResetChallengePayload {
+  return {
+    kind: 'password_reset',
+    userId: input.userId,
+  }
 }
 
 function parseInviteChallengePayload(
@@ -200,11 +247,60 @@ export class AuthService {
         target: email,
         code,
       }),
-      payload_json: {
+      payload_json: createEmailSignupPayload({
         displayName: input.displayName.trim(),
         passwordHash,
         inviteCodeId: inviteCode.id,
-      },
+      }),
+      requested_from_ip: input.ipAddress ?? null,
+      expires_at: this.getExpiry(now),
+      last_sent_at: now,
+      resend_count: 0,
+    })
+
+    await this.emailSender.sendVerificationCode({
+      to: email,
+      code,
+      expiresInSec: config.auth.otp.ttlSeconds,
+    })
+
+    return this.toChallengeResult(challenge, maskEmail(email), code)
+  }
+
+  async startEmailPasswordReset(input: {
+    email: string
+    ipAddress?: string | null
+  }): Promise<AuthChallengeResult> {
+    const email = normalizeEmail(input.email)
+    const user = await this.userRepo.findByEmail(email)
+    if (!user) {
+      throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
+    }
+    if (user.status === 'SUSPENDED') {
+      throw new UnauthorizedError('账号已被停用')
+    }
+
+    const now = new Date()
+    await this.ensureChallengeRateLimit({
+      channel: 'EMAIL',
+      purpose: 'EMAIL_SIGNUP',
+      target: email,
+      ipAddress: input.ipAddress ?? null,
+      now,
+    })
+
+    const code = createVerificationCode()
+    const challenge = await this.challengeRepo.createReplacingActive({
+      channel: 'EMAIL',
+      purpose: 'EMAIL_SIGNUP',
+      target: email,
+      code_hash: hashVerificationCode({
+        channel: 'EMAIL',
+        purpose: 'EMAIL_SIGNUP',
+        target: email,
+        code,
+      }),
+      payload_json: createEmailPasswordResetPayload({ userId: user.id }),
       requested_from_ip: input.ipAddress ?? null,
       expires_at: this.getExpiry(now),
       last_sent_at: now,
@@ -236,7 +332,12 @@ export class AuthService {
     if (await this.userRepo.findByEmail(email)) {
       throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
     }
-    const payload = parseEmailSignupPayload(existingChallenge)
+    let payload: EmailSignupChallengePayload
+    try {
+      payload = parseEmailSignupPayload(existingChallenge)
+    } catch {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
     await this.requireUsableInviteCodeById(payload.inviteCodeId)
 
     const now = new Date()
@@ -276,6 +377,70 @@ export class AuthService {
     return this.toChallengeResult(challenge, maskEmail(email), code)
   }
 
+  async resendEmailPasswordReset(input: {
+    challengeId: string
+    ipAddress?: string | null
+  }): Promise<AuthChallengeResult> {
+    const existingChallenge = await this.challengeRepo.findById(input.challengeId)
+    if (!existingChallenge || existingChallenge.purpose !== 'EMAIL_SIGNUP') {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+    if (existingChallenge.consumed_at) {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    let payload: EmailPasswordResetChallengePayload
+    try {
+      payload = parseEmailPasswordResetPayload(existingChallenge)
+    } catch {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+    const user = await this.userRepo.findById(payload.userId)
+    if (!user || !user.email) {
+      throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
+    }
+    if (user.status === 'SUSPENDED') {
+      throw new UnauthorizedError('账号已被停用')
+    }
+
+    const email = normalizeEmail(user.email)
+    const now = new Date()
+    this.assertResendCooldown(existingChallenge, now)
+    await this.ensureChallengeRateLimit({
+      channel: 'EMAIL',
+      purpose: 'EMAIL_SIGNUP',
+      target: email,
+      ipAddress: input.ipAddress ?? null,
+      now,
+    })
+
+    const code = createVerificationCode()
+    const challenge = await this.challengeRepo.createReplacingActive({
+      channel: 'EMAIL',
+      purpose: 'EMAIL_SIGNUP',
+      target: email,
+      code_hash: hashVerificationCode({
+        channel: 'EMAIL',
+        purpose: 'EMAIL_SIGNUP',
+        target: email,
+        code,
+      }),
+      payload_json: createEmailPasswordResetPayload({ userId: user.id }),
+      requested_from_ip: input.ipAddress ?? null,
+      expires_at: this.getExpiry(now),
+      last_sent_at: now,
+      resend_count: existingChallenge.resend_count + 1,
+    })
+
+    await this.emailSender.sendVerificationCode({
+      to: email,
+      code,
+      expiresInSec: config.auth.otp.ttlSeconds,
+    })
+
+    return this.toChallengeResult(challenge, maskEmail(email), code)
+  }
+
   async verifyEmailRegistration(input: {
     challengeId: string
     code: string
@@ -285,7 +450,12 @@ export class AuthService {
       throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
     }
 
-    const payload = parseEmailSignupPayload(challenge)
+    let payload: EmailSignupChallengePayload
+    try {
+      payload = parseEmailSignupPayload(challenge)
+    } catch {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
     const email = normalizeEmail(challenge.target)
     if (await this.userRepo.findByEmail(email)) {
       throw new AppError(409, '该邮箱已被注册', 'EMAIL_ALREADY_REGISTERED')
@@ -332,6 +502,54 @@ export class AuthService {
     }
   }
 
+  async verifyEmailPasswordReset(input: {
+    challengeId: string
+    code: string
+    password: string
+  }): Promise<AuthResult> {
+    const challenge = await this.challengeRepo.findById(input.challengeId)
+    if (!challenge || challenge.purpose !== 'EMAIL_SIGNUP') {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    let payload: EmailPasswordResetChallengePayload
+    try {
+      payload = parseEmailPasswordResetPayload(challenge)
+    } catch {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+    const user = await this.userRepo.findById(payload.userId)
+    if (!user || !user.email) {
+      throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
+    }
+    if (user.status === 'SUSPENDED') {
+      throw new UnauthorizedError('账号已被停用')
+    }
+
+    const consumed = await this.challengeRepo.consume({
+      id: challenge.id,
+      code_hash: hashVerificationCode({
+        channel: challenge.channel,
+        purpose: challenge.purpose,
+        target: challenge.target,
+        code: input.code.trim(),
+      }),
+      now: new Date(),
+      max_attempts: config.auth.otp.maxAttempts,
+    })
+
+    this.assertConsumeResult(consumed)
+
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS)
+    const updated = await this.userRepo.updatePassword(user.id, passwordHash)
+    if (!updated) {
+      throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
+    }
+
+    await this.userRepo.updateLastLogin(updated.id)
+    return this.issueAuthResult(updated)
+  }
+
   async startSmsAuth(input: {
     phone: string
     inviteCode?: string
@@ -351,14 +569,10 @@ export class AuthService {
       ipAddress: input.ipAddress ?? null,
       now,
     })
-    const invitePayload = existing
+    const invitePayload = existing || !input.inviteCode?.trim()
       ? null
       : {
-          inviteCodeId: (
-            await this.requireUsableInviteCodeByCode(
-              this.requireInviteCode(input.inviteCode),
-            )
-          ).id,
+          inviteCodeId: (await this.requireUsableInviteCodeByCode(input.inviteCode)).id,
         }
 
     const code = createVerificationCode()
@@ -446,6 +660,7 @@ export class AuthService {
     challengeId: string
     code: string
     displayName?: string
+    inviteCode?: string
   }): Promise<SmsAuthResult> {
     const challenge = await this.challengeRepo.findById(input.challengeId)
     if (!challenge || challenge.purpose !== 'SMS_AUTH') {
@@ -460,11 +675,15 @@ export class AuthService {
     if (!existingBeforeConsume && !displayName) {
       throw new AppError(400, '首次使用手机号注册时需要填写昵称', 'DISPLAY_NAME_REQUIRED')
     }
+    let inviteCodeId: string | null = invitePayload?.inviteCodeId ?? null
     if (!existingBeforeConsume) {
-      if (!invitePayload) {
+      if (!inviteCodeId && input.inviteCode?.trim()) {
+        inviteCodeId = (await this.requireUsableInviteCodeByCode(input.inviteCode)).id
+      }
+      if (!inviteCodeId) {
         throw new AppError(400, '请输入邀请码', 'INVITE_CODE_REQUIRED')
       }
-      await this.requireUsableInviteCodeById(invitePayload.inviteCodeId)
+      await this.requireUsableInviteCodeById(inviteCodeId)
     }
 
     const consumed = await this.challengeRepo.consume({
@@ -497,7 +716,7 @@ export class AuthService {
 
     try {
       const result = await this.inviteCodeRepo.createInvitedUser({
-        invite_code_id: invitePayload!.inviteCodeId,
+        invite_code_id: inviteCodeId!,
         user: {
           display_name: displayName,
           phone,
@@ -530,7 +749,7 @@ export class AuthService {
     const normalizedEmail = normalizeEmail(email)
     const user = await this.userRepo.findByEmail(normalizedEmail)
     if (!user) {
-      throw new UnauthorizedError('邮箱或密码错误')
+      throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
     }
 
     if (user.status === 'SUSPENDED') {

@@ -14,6 +14,7 @@ export interface UserRepository {
   upsertDevIdentity(input: UpsertDevHumanIdentityInput): Promise<HumanUser>
   updatePlanTier(id: string, planTier: HumanUser['plan_tier']): Promise<HumanUser | null>
   updateProfile(id: string, input: UpdateHumanUserProfileInput): Promise<HumanUser | null>
+  updatePassword(id: string, password_hash: string): Promise<HumanUser | null>
   updateLastLogin(id: string): Promise<void>
 }
 
@@ -149,6 +150,20 @@ export class InMemoryUserRepository implements UserRepository {
     const updated: HumanUser = {
       ...existing,
       plan_tier: planTier,
+      updated_at: new Date(),
+    }
+    this.store.set(id, updated)
+    return updated
+  }
+
+  async updatePassword(id: string, password_hash: string): Promise<HumanUser | null> {
+    const existing = this.store.get(id)
+    if (!existing) return null
+
+    const updated: HumanUser = {
+      ...existing,
+      password_hash,
+      email_verified: true,
       updated_at: new Date(),
     }
     this.store.set(id, updated)

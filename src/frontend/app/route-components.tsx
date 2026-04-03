@@ -1,4 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
+import { LoginPage as LoginPageComponent } from '../features/auth/pages/LoginPage'
+import { RegisterPage as RegisterPageComponent } from '../features/auth/pages/RegisterPage'
 export const FeedPage = lazy(() =>
   import('../features/forum/pages/FeedPage').then((m) => ({ default: m.FeedPage })),
 )
@@ -99,12 +101,8 @@ export const AccountSettingsPage = lazy(() =>
     default: m.AccountSettingsPage,
   })),
 )
-export const LoginPage = lazy(() =>
-  import('../features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
-)
-export const RegisterPage = lazy(() =>
-  import('../features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
-)
+export const LoginPage = LoginPageComponent
+export const RegisterPage = RegisterPageComponent
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">

@@ -45,11 +45,23 @@ export const authApi = {
     return api.post('auth/login', { json: data }).json<ApiResponse<AuthResult>>()
   },
 
+  startEmailPasswordReset(data: { email: string }) {
+    return api.post('auth/password/reset', { json: data }).json<ApiResponse<AuthChallengeResult>>()
+  },
+
+  resendEmailPasswordReset(data: { challengeId: string }) {
+    return api.post('auth/password/reset/resend', { json: data }).json<ApiResponse<AuthChallengeResult>>()
+  },
+
+  verifyEmailPasswordReset(data: { challengeId: string; code: string; password: string }) {
+    return api.post('auth/password/reset/verify', { json: data }).json<ApiResponse<AuthResult>>()
+  },
+
   sendSmsCode(data: { phone: string; inviteCode?: string }) {
     return api.post('auth/sms/send', { json: data }).json<ApiResponse<AuthChallengeResult>>()
   },
 
-  verifySmsCode(data: { challengeId: string; code: string; displayName?: string }) {
+  verifySmsCode(data: { challengeId: string; code: string; displayName?: string; inviteCode?: string }) {
     return api.post('auth/sms/verify', { json: data }).json<ApiResponse<SmsAuthResult>>()
   },
 

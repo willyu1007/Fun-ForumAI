@@ -35,7 +35,7 @@ describe('AuthService', () => {
     })
   })
 
-  it('requires an invite code for first-time sms registration but not for existing phone login', async () => {
+  it('allows first-time sms code send without an invite code but still skips invite checks for existing phones', async () => {
     const userRepo = new InMemoryUserRepository()
     const inviteCodeRepo = new InMemoryInviteCodeRepository(userRepo)
     const service = new AuthService(
@@ -46,9 +46,8 @@ describe('AuthService', () => {
       { sendVerificationCode: async () => {} },
     )
 
-    await expect(service.startSmsAuth({ phone: '13800138000' })).rejects.toMatchObject({
-      statusCode: 400,
-      code: 'INVITE_CODE_REQUIRED',
+    await expect(service.startSmsAuth({ phone: '13800138000' })).resolves.toMatchObject({
+      challengeId: expect.any(String),
     })
 
     await userRepo.create({
@@ -59,6 +58,21 @@ describe('AuthService', () => {
 
     await expect(service.startSmsAuth({ phone: '13800138001' })).resolves.toMatchObject({
       challengeId: expect.any(String),
+    })
+  })
+
+  it('returns USER_NOT_FOUND for unknown email logins', async () => {
+    const service = new AuthService(
+      new InMemoryUserRepository(),
+      new InMemoryInviteCodeRepository(new InMemoryUserRepository()),
+      new InMemoryAuthVerificationChallengeRepository(),
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+    )
+
+    await expect(service.login('missing@example.com', 'password123')).rejects.toMatchObject({
+      statusCode: 404,
+      code: 'USER_NOT_FOUND',
     })
   })
 
@@ -152,6 +166,42 @@ describe('AuthService', () => {
         role: 'user',
         planTier: 'PRO',
       },
+    })
+  })
+
+  it('resets an existing email password through the email verification flow', async () => {
+    const userRepo = new InMemoryUserRepository()
+    const user = await userRepo.create({
+      email: 'reset@example.com',
+      password_hash: await bcrypt.hash('oldpassword1', 4),
+      display_name: 'Reset User',
+      email_verified: true,
+    })
+
+    const service = new AuthService(
+      userRepo,
+      new InMemoryInviteCodeRepository(userRepo),
+      new InMemoryAuthVerificationChallengeRepository(),
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+    )
+
+    const start = await service.startEmailPasswordReset({ email: 'reset@example.com' })
+    await expect(service.login('reset@example.com', 'oldpassword1')).resolves.toMatchObject({
+      user: { id: user.id },
+    })
+
+    await service.verifyEmailPasswordReset({
+      challengeId: start.challengeId,
+      code: start.debugCode!,
+      password: 'newpassword1',
+    })
+
+    await expect(service.login('reset@example.com', 'oldpassword1')).rejects.toMatchObject({
+      statusCode: 401,
+    })
+    await expect(service.login('reset@example.com', 'newpassword1')).resolves.toMatchObject({
+      user: { id: user.id },
     })
   })
 })

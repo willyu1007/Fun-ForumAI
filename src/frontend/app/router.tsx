@@ -31,11 +31,11 @@ import {
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <SuspenseWrap><LoginPage /></SuspenseWrap>,
+    element: <LoginPage />,
   },
   {
     path: '/register',
-    element: <SuspenseWrap><RegisterPage /></SuspenseWrap>,
+    element: <RegisterPage />,
   },
   {
     path: '/',
