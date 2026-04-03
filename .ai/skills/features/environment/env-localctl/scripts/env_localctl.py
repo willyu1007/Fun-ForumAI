@@ -59,6 +59,18 @@ def utc_now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def context_artifact_path(root: Path, *, env: str, workload: str) -> Path:
+    return root / "docs" / "context" / "env" / f"effective-{env}-{workload}.json"
+
+
+def cleanup_legacy_context_artifact(root: Path, *, env: str, workload: str, out_path: Path) -> None:
+    if not workload:
+        return
+    legacy_path = root / "docs" / "context" / "env" / f"effective-{env}.json"
+    if legacy_path != out_path and legacy_path.exists():
+        legacy_path.unlink()
+
+
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -1623,7 +1635,7 @@ def cmd_compile(
     if env_file_path and not env_file_path.is_absolute():
         env_file_path = (root / env_file_path).resolve()
 
-    ctx_path = None if no_context else root / "docs" / "context" / "env" / f"effective-{env}.json"
+    ctx_path = None if no_context else context_artifact_path(root, env=env, workload=workload)
 
     keys_summary: Dict[str, Any] = {}
     for k in sorted(effective.keys()):
@@ -1657,9 +1669,12 @@ def cmd_compile(
             redacted = {
                 "generated_at_utc": ts,
                 "env": env,
+                "runtime_target": runtime_target,
+                "workload": workload,
                 "values": redact_effective(vars_def, effective),
             }
             ctx_path.write_text(json.dumps(redacted, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+            cleanup_legacy_context_artifact(root, env=env, workload=workload, out_path=ctx_path)
 
     md = render_markdown_compile(report)
     if out:
@@ -1837,7 +1852,7 @@ def main() -> int:
     p_comp.add_argument("--policy", default="docs/project/policy.yaml", help="Policy file path")
     p_comp.add_argument("--no-preflight", action="store_true", help="Disable policy preflight checks")
     p_comp.add_argument("--env-file", default=None, help="Override output env file path")
-    p_comp.add_argument("--no-context", action="store_true", help="Do not write docs/context/env/effective-<env>.json")
+    p_comp.add_argument("--no-context", action="store_true", help="Do not write docs/context/env/effective-<env>-<workload>.json")
     p_comp.add_argument("--out", default=None, help="Write markdown report to file")
     p_comp.add_argument("--no-write", action="store_true", help="Do not write env file (still writes redacted context on PASS)")
 

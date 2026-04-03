@@ -16,4 +16,4 @@ Guidelines:
 
 Primary operator playbook:
 
-- [deployment-mainline.md](/d:/Else/Fun-ForumAI/ops/deploy/handbook/runbooks/deployment-mainline.md)
+- `ops/deploy/handbook/runbooks/deployment-mainline.md`

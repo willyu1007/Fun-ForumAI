@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-03T11:47:00Z",
+  "generated_at_utc": "2026-04-03T14:13:43Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -159,6 +159,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,
@@ -470,6 +471,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,
@@ -497,7 +499,7 @@
     "DB_PERSISTENCE": {
       "default": "false",
       "deprecate_after": null,
-      "description": "Enable Prisma-backed persistence for staging when rehearsing production-like runtime behavior.",
+      "description": "Enable Prisma-backed persistence for staging/prod cloud environments.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -506,7 +508,8 @@
       "replacement": null,
       "required": false,
       "scopes": [
-        "staging"
+        "staging",
+        "prod"
       ],
       "secret": false,
       "secret_ref": null,
@@ -545,6 +548,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,
@@ -1538,23 +1542,6 @@
       "state": "active",
       "type": "string"
     },
-    "LLM_BASE_URL": {
-      "default": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      "deprecate_after": null,
-      "description": "Bootstrap or emergency-only base URL for legacy/default LLM client initialization. Runtime routing in staging/prod must not treat this as normal lane authority.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "string"
-    },
     "LLM_MAX_RETRIES": {
       "default": 2,
       "deprecate_after": null,
@@ -1588,40 +1575,6 @@
       "secret_ref": null,
       "state": "active",
       "type": "int"
-    },
-    "LLM_MODEL": {
-      "default": "qwen-plus-character",
-      "deprecate_after": null,
-      "description": "Bootstrap or emergency-only default LLM model for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "string"
-    },
-    "LLM_PROVIDER": {
-      "default": "dashscope-openai",
-      "deprecate_after": null,
-      "description": "Bootstrap or emergency-only provider identifier for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": false,
-      "scopes": null,
-      "secret": false,
-      "secret_ref": null,
-      "state": "active",
-      "type": "string"
     },
     "LLM_TEMPERATURE": {
       "default": "0.8",
@@ -2272,6 +2225,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,
@@ -2311,6 +2265,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,
@@ -2870,6 +2825,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,
@@ -3096,6 +3052,7 @@
       "replacement": null,
       "required": false,
       "scopes": [
+        "staging",
         "prod"
       ],
       "secret": true,

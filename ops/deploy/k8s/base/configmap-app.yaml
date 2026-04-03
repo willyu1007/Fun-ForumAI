@@ -12,9 +12,6 @@ data:
   RUNTIME_QUEUE_BACKEND: redis
   RUNTIME_LEADER_BACKEND: redis
   SSE_BROADCAST_BACKEND: redis
-  LLM_PROVIDER: dashscope-openai
-  LLM_MODEL: qwen-plus-character
-  LLM_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
   FF_MEMBERSHIPS_V1: "true"
   FF_GLOBAL_HIGHLIGHTS_V1: "true"
   FF_SIGNAL_LOG_V1: "true"

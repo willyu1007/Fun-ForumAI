@@ -52,25 +52,33 @@ export interface LlmProvider {
   chat(request: LlmRequest, config: LlmProviderConfig): Promise<LlmResponse>
 }
 
+export interface LlmChatProviderInput {
+  provider_id: string
+  gateway_kind?: 'openai_compatible' | 'native'
+  auth_strategy?: 'bearer_api_key' | 'x_api_key' | 'custom'
+  base_url: string
+  api_key: string
+  timeout_ms?: number
+  max_retries?: number
+}
+
 // ─── Client-level config ────────────────────────────────────
 
 export interface LlmClientConfig {
-  provider: LlmProviderConfig
   defaults: {
-    model: string
     max_tokens: number
     temperature: number
+    timeout_ms: number
+    max_retries: number
   }
 }
 
 export interface LlmChatOptions {
   messages: LlmMessage[]
-  model?: string
+  model: string
   max_tokens?: number
   temperature?: number
   stop?: string[]
   response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
-  provider?: Partial<LlmProviderConfig> & {
-    provider_id: string
-  }
+  provider: LlmChatProviderInput
 }

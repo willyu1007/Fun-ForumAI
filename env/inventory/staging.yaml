@@ -1,3 +1,4 @@
+# Legacy reference only. Staging cloud routing must resolve from docs/project/policy.yaml targets.
 version: 1
 env: staging
 provider: envfile

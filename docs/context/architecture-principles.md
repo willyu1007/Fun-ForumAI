@@ -17,8 +17,8 @@
 - Secret design MUST be split into `core-startup`, `feature-gated-capabilities`, and `provider-and-routing`.
 - `dev` MAY use function-oriented Bitwarden key names when they simplify local feature testing.
 - `staging` and `prod` SHOULD keep provider-oriented or infrastructure-oriented key names so credential ownership, routing, and failover remain explicit.
-- The stable application contract is the logical `secret_ref` defined in [env/contract.yaml](/d:/Else/Fun-ForumAI/env/contract.yaml). Environment-specific Bitwarden naming belongs in `env/secrets/*.ref.yaml`.
-- The detailed environment matrix lives in [secret-design-matrix.md](/d:/Else/Fun-ForumAI/docs/context/config/secret-design-matrix.md).
+- The stable application contract is the logical `secret_ref` defined in `env/contract.yaml`. Environment-specific Bitwarden naming belongs in `env/secrets/*.ref.yaml`.
+- The detailed environment matrix lives in `docs/context/config/secret-design-matrix.md`.
 
 ## Rejected Approaches
 

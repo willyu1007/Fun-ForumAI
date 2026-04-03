@@ -1,3 +1,4 @@
+# Legacy reference only. Prod cloud routing must resolve from docs/project/policy.yaml targets.
 version: 1
 env: prod
 provider: envfile

@@ -74,17 +74,11 @@ export function createLlmServices(deps: {
   const registryBundle = loadLlmRegistryBundle()
 
   const llmClient = new LlmClient({
-    provider: {
-      provider_id: config.llm.provider,
-      base_url: config.llm.baseUrl,
-      api_key: '',
-      timeout_ms: config.llm.timeoutMs,
-      max_retries: config.llm.maxRetries,
-    },
     defaults: {
-      model: config.llm.model,
       max_tokens: config.llm.maxTokens,
       temperature: config.llm.temperature,
+      timeout_ms: config.llm.timeoutMs,
+      max_retries: config.llm.maxRetries,
     },
   })
 

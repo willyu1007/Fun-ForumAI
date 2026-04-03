@@ -32,3 +32,12 @@
   - `routing_policies.yaml` 已退回 ordering-only；fallback allowlist 与 merge allowlist 均收口到 execution policy。
   - callsite dual-track inventory 已扩展到 `target_policy_id / migration_status / local_override_fields`，可以直接 hand off 给 `T-936` 做后续 cutover。
   - 2026-04-03 代码复核已补齐 runtime credential-ranking drift 与 inventory policy drift；`T-901` 代码层 review gate 现可视为关闭，只剩 live provider connectivity 作为非代码验收项继续保留。
+- 根据 `T-935` closeout 方案，`LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL` 已被确定为 superseded cloud contract，不再保留为 staging/prod 的环境级紧急开关。
+- `T-128` 的父叙事同步冻结新的主线顺序：
+  - `T-901` 稳定 runtime contract
+  - `T-935` 稳定 cloud injection / go-live contract
+  - `T-936` 完成 callsite cutover、observability 收口与 staging live 放行
+- `T-935` 深度 cleanup 后又补齐了三个原本会影响 handoff 的 drift：
+  - cloud/local context artifact 改为 workload-aware 命名，旧的 env-only cloud context 已删除；
+  - `RUNTIME_ENABLED` 不再出现在 shared staging values 中，重新回到 `api compose=false / worker role=true` 的单一 authority split；
+  - `prod` cloud baseline 已被正式写回 contract + values，不再依赖 dev-like defaults 或 staging-only scope 假设。

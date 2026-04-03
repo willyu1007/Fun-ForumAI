@@ -15,7 +15,7 @@ The `env-localctl` skill:
 - checks that non-secret values and secret references exist for a chosen env
 - resolves secrets via approved mechanisms (never via chat)
 - generates a local env file (`.env.local` or `.env.<env>.local`)
-- produces redacted LLM context (`docs/context/env/effective-<env>.json`)
+- produces redacted LLM context (`docs/context/env/effective-<env>-<workload>.json`)
 - applies policy preflight checks from `docs/project/policy.yaml` (auth_mode/preflight rules)
 
 ## Hard precondition (SSOT mode gate)
@@ -88,7 +88,7 @@ Evidence files (templates available in `./templates/`):
 ### Generated artifacts
 
 - `.env.local` (default for `dev`) or `.env.<env>.local`
-- `docs/context/env/effective-<env>.json` (redacted; safe for LLM)
+- `docs/context/env/effective-<env>-<workload>.json` (redacted; safe for LLM)
 
 ### Deployment-oriented usage (cloud injection)
 
@@ -175,7 +175,7 @@ python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.
 - [ ] Doctor passes (no missing required keys)
 - [ ] `.env.local` generated and gitignored
 - [ ] No secret values written to evidence
-- [ ] `docs/context/env/effective-<env>.json` generated (redacted)
+- [ ] `docs/context/env/effective-<env>-<workload>.json` generated (redacted)
 - [ ] Central test suite passes: `node .ai/tests/run.mjs --suite environment`
 
 ## Boundaries

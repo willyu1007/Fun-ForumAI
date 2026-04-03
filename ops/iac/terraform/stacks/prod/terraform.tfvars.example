@@ -1,0 +1,13 @@
+region                       = "cn-hangzhou"
+vpc_cidr                     = "10.30.0.0/16"
+domain_name                  = "forum.example.com"
+zone_name                    = "example.com"
+certificate_id               = "cert-prod-placeholder"
+ecs_instance_type            = "ecs.c7.xlarge"
+postgres_engine_version      = "15"
+postgres_storage_gib         = 200
+runtime_redis_instance_class = "redis.master.mid.default"
+sse_redis_instance_class     = "redis.master.mid.default"
+media_bucket_name            = "bucket-forum-prod"
+media_endpoint               = "oss-cn-hangzhou.aliyuncs.com"
+worker_template_path         = "../../../../ops/deploy/workloads/eci-worker/prod.container-group.yaml"

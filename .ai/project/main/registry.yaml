@@ -1371,9 +1371,11 @@ tasks:
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
     milestone_id: M-000
-    feature_id: F-000
+    feature_id: F-020
+    requirement_ids:
+      - R-027
     dev_docs_path: dev-docs/active/provider-runtime-alignment-and-model-activation-v1
-    updated: 2026-03-17
+    updated: 2026-04-03
   - id: T-902
     slug: chronicle-chapter-summary-alignment
     status: archived
@@ -1612,3 +1614,19 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/launch-gray-release-runtime-and-publish-hardening
     updated: 2026-04-01
+  - id: T-935
+    slug: cloud-environment-go-live-chain-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/cloud-environment-go-live-chain-v1
+    updated: 2026-04-03
+  - id: T-936
+    slug: runtime-cutover-observability-and-live-staging-closeout-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-027
+    dev_docs_path: dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1
+    updated: 2026-04-03

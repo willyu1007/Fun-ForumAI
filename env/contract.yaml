@@ -37,9 +37,9 @@ variables:
     type: enum
     enum: ["true", "false"]
     required: false
-    scopes: [staging]
+    scopes: [staging, prod]
     default: "false"
-    description: Enable Prisma-backed persistence for staging when rehearsing production-like runtime behavior.
+    description: Enable Prisma-backed persistence for staging/prod cloud environments.
 
   CORS_ORIGINS:
     type: string
@@ -295,18 +295,6 @@ variables:
     default: "false"
     description: Frontend toggle for loading the Admin Programming tab and its launch ops read model.
 
-  LLM_PROVIDER:
-    type: string
-    required: false
-    default: dashscope-openai
-    description: Bootstrap or emergency-only provider identifier for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.
-
-  LLM_MODEL:
-    type: string
-    required: false
-    default: qwen-plus-character
-    description: Bootstrap or emergency-only default LLM model for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority.
-
   DASHSCOPE_API_KEY:
     type: string
     required: false
@@ -317,7 +305,7 @@ variables:
   DASHSCOPE_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary DashScope / Qwen provider API key for ordered failover.
     secret: true
     secret_ref: dashscope_api_key_secondary
@@ -333,7 +321,7 @@ variables:
   ZAI_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary ZAI / GLM provider API key for ordered failover.
     secret: true
     secret_ref: zai_api_key_secondary
@@ -349,7 +337,7 @@ variables:
   DEEPSEEK_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary DeepSeek provider API key for ordered failover.
     secret: true
     secret_ref: deepseek_api_key_secondary
@@ -365,7 +353,7 @@ variables:
   MOONSHOT_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary Moonshot / Kimi provider API key for ordered failover.
     secret: true
     secret_ref: moonshot_api_key_secondary
@@ -380,7 +368,7 @@ variables:
   MINIMAX_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary MiniMax provider API key for ordered failover.
     secret: true
     secret_ref: minimax_api_key_secondary
@@ -396,7 +384,7 @@ variables:
   TENCENT_HUNYUAN_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary Tencent Hunyuan provider API key for ordered failover.
     secret: true
     secret_ref: tencent_hunyuan_api_key_secondary
@@ -412,7 +400,7 @@ variables:
   ARK_API_KEY_SECONDARY:
     type: string
     required: false
-    scopes: [prod]
+    scopes: [staging, prod]
     description: Secondary ByteDance Ark / Doubao provider API key for ordered failover.
     secret: true
     secret_ref: ark_api_key_secondary
@@ -558,12 +546,6 @@ variables:
     required: false
     default: 1
     description: Per-provider concurrent media generation job cap.
-
-  LLM_BASE_URL:
-    type: string
-    required: false
-    default: https://dashscope.aliyuncs.com/compatible-mode/v1
-    description: Bootstrap or emergency-only base URL for legacy/default LLM client initialization. Runtime routing in staging/prod must not treat this as normal lane authority.
 
   LLM_MAX_TOKENS:
     type: int

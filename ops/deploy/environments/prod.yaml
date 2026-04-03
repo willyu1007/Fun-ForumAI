@@ -4,7 +4,7 @@ environment: prod
 deployment_model: vm-compose
 host_count: 1
 current_topology: 1 ECS web + 1 ECI worker
-entrypoint: shared Caddy today; ALB may be introduced later
+entrypoint: ALB -> shared Caddy on the ECS host
 requires_human_approval: true
 requires_with_migrate: false
 smoke_required: true
@@ -18,3 +18,4 @@ scale_out_gate:
 notes:
   - Deploy immutable sha images only.
   - Current rollout is human-approved and manual; GitHub Actions does not SSH into the ECS host.
+  - Formal go-live readiness also depends on ALB HTTPS, DNS, certificate binding, and ICP preparation.

@@ -76,7 +76,7 @@ policy:
 
     cloud:
       # Set to true to disallow inventory fallback and enforce policy-only routing.
-      require_target: false
+      require_target: true
       defaults:
         provider: envfile
         env_file_source: "ops/deploy/env-files/{env}.env"
@@ -85,13 +85,55 @@ policy:
         write:
           chmod: "600"
           remote_tmp_dir: "/tmp"
-      targets: []
+      targets:
+        - id: staging-api
+          match: { env: staging, runtime_target: ecs, workload: api }
+          set:
+            provider: envfile
+            runtime: remote
+            region: cn-hangzhou
+            env_file_source: ops/deploy/env-files/staging.env
+            target: /srv/apps/fun-forum/.env
+            transport: local
+        - id: prod-api
+          match: { env: prod, runtime_target: ecs, workload: api }
+          set:
+            provider: envfile
+            runtime: remote
+            region: cn-hangzhou
+            env_file_source: ops/deploy/env-files/prod.env
+            target: /srv/apps/fun-forum/.env
+            transport: local
+        - id: staging-worker
+          match: { env: staging, runtime_target: ecs, workload: worker }
+          set:
+            provider: aliyun-eci-container-group
+            runtime: remote
+            region: cn-hangzhou
+            container_group:
+              workload_id: eci-worker
+              template: ops/deploy/workloads/eci-worker/staging.container-group.yaml
+              rendered_output: .ai/.tmp/env-cloud/staging/eci-worker.rendered.yaml
+              env_matrix: ops/deploy/workloads/eci-worker/env-matrix.yaml
+              role_contract: ops/deploy/workloads/eci-worker/role-contract.yaml
+        - id: prod-worker
+          match: { env: prod, runtime_target: ecs, workload: worker }
+          set:
+            provider: aliyun-eci-container-group
+            runtime: remote
+            region: cn-hangzhou
+            container_group:
+              workload_id: eci-worker
+              template: ops/deploy/workloads/eci-worker/prod.container-group.yaml
+              rendered_output: .ai/.tmp/env-cloud/prod/eci-worker.rendered.yaml
+              env_matrix: ops/deploy/workloads/eci-worker/env-matrix.yaml
+              role_contract: ops/deploy/workloads/eci-worker/role-contract.yaml
 
   iac:
     # cloud_scope: aliyun-only | multi-cloud
-    cloud_scope: multi-cloud
+    cloud_scope: aliyun-only
     # tool: none | ros | terraform | opentofu (none = IaC feature not enabled)
-    tool: none
+    tool: terraform
     evidence_dir: ops/iac/handbook
     identity:
       allow_ak: true

@@ -6,6 +6,7 @@
 - 运行 `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`。
 - 运行 `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`。
 - 运行 `node .ai/scripts/ctl-project-governance.mjs query --project main --text "acr"`。
+- 复核 `T-935` 产出的 policy-only cloud routing、worker secret parity、IaC stack wiring 与 runbook 顺序是否一致。
 
 ## Execution records
 
@@ -45,3 +46,28 @@
     - Note: 说明 `T-130` 已把 immutable image 消费、release history 和记忆化 rollback 目标落到 repo 资产中。
   - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main && node .ai/scripts/ctl-project-governance.mjs query --project main --id T-130`
     - Result: governance sync/lint/query 通过，`T-130` 当前状态为 `in-progress`。
+- 2026-04-03:
+  - `find dev-docs/active/cloud-environment-go-live-chain-v1 -maxdepth 1 -type f | wc -l`
+    - Result: 8 files。
+  - `find dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 -maxdepth 1 -type f | wc -l`
+    - Result: 8 files。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+    - Result: `[ok] Sync complete.`
+  - `node .ai/scripts/ctl-project-governance.mjs map --task T-901 --feature F-020 --requirement R-027 --apply`
+    - Result: 通过。
+  - `node .ai/scripts/ctl-project-governance.mjs map --task T-936 --feature F-020 --requirement R-027 --apply`
+    - Result: 通过。
+- 2026-04-03:
+  - Manual review:
+    - `T-935` 已冻结 `policy.env.cloud.require_target=true`，并把 `api -> envfile`、`worker -> aliyun-eci-container-group` 固化为 staging/prod 唯一正常路径。
+    - worker env matrix / container-group 模板已扩展到 admitted provider primary+secondary parity。
+    - Terraform `stacks/staging|prod` 已补齐 wiring skeleton、backend/state example 与 runbook handoff 输出。
+    - `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL` 已从 repo cloud contract、generated env docs 和 retained deploy docs 中移除。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+    - Result: 通过。
+- 2026-04-03:
+  - Manual review:
+    - `T-935` 已进一步消除会影响 `T-936` handoff 的双轨歧义：cloud context artifacts 现在是 workload-aware，`RUNTIME_ENABLED` 不再由 shared values 与 role assets 共同维护，`prod` cloud baseline 也已被 contract 正式接纳。
+    - `docs/context/env/` 现在同时保留 `staging|prod x api|worker` 四份 cloud context 快照，避免同名文件跨 workload 覆盖。
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . && python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload api && python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload worker`
+    - Result: 通过。

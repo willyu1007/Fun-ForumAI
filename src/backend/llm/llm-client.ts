@@ -1,4 +1,10 @@
-import type { LlmChatOptions, LlmClientConfig, LlmProvider, LlmResponse } from './types.js'
+import type {
+  LlmChatOptions,
+  LlmClientConfig,
+  LlmProvider,
+  LlmProviderConfig,
+  LlmResponse,
+} from './types.js'
 import { OpenAICompatibleProvider } from './providers/openai-compatible.js'
 
 const providers = new Map<string, LlmProvider>()
@@ -9,14 +15,14 @@ export class LlmClient {
 
   /**
    * Send a chat completion request.
-   * Falls back to configured defaults for model / max_tokens / temperature.
-   * These defaults only apply to direct llmClient callers; gateway-routed
-   * visible generations resolve through routing profiles instead.
+   * Provider identity and endpoint are request-owned so runtime routing stays
+   * with the execution plan instead of process env.
    */
   async chat(opts: LlmChatOptions): Promise<LlmResponse> {
-    const providerConfig = {
-      ...this.cfg.provider,
+    const providerConfig: LlmProviderConfig = {
       ...opts.provider,
+      timeout_ms: opts.provider.timeout_ms ?? this.cfg.defaults.timeout_ms,
+      max_retries: opts.provider.max_retries ?? this.cfg.defaults.max_retries,
     }
 
     const providerKey = resolveProviderKey(providerConfig)
@@ -31,7 +37,7 @@ export class LlmClient {
 
     const response = await provider.chat(
       {
-        model: opts.model ?? this.cfg.defaults.model,
+        model: opts.model,
         messages: opts.messages,
         max_tokens: opts.max_tokens ?? this.cfg.defaults.max_tokens,
         temperature: opts.temperature ?? this.cfg.defaults.temperature,
@@ -53,11 +59,11 @@ export class LlmClient {
   }
 
   get isConfigured(): boolean {
-    return !!this.cfg.provider.api_key
+    return providers.size > 0
   }
 }
 
-function resolveProviderKey(config: LlmClientConfig['provider']): string {
+function resolveProviderKey(config: LlmProviderConfig): string {
   if (config.gateway_kind) {
     return config.gateway_kind
   }

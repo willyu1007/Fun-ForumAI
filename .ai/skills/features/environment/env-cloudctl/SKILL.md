@@ -52,6 +52,7 @@ Use when the user asks to:
 - preview changes (plan/diff) before a release
 - check configuration drift
 - inject a prebuilt env-file on a deploy machine (cloud host / CI)
+- render or verify an ECI/container-group runtime injection artifact for worker workloads
 - rotate or revoke secrets
 - decommission an environment
 
@@ -83,6 +84,7 @@ Avoid when:
   - If both exist, policy targets take precedence
   - Use `--runtime-target` / `--workload` to select policy targets (`runtime_target`: `local | ecs`; `remote` is an alias for `ecs`)
   - For `envfile` (or legacy `ecs-envfile`), inventory must include `injection.env_file` (see references)
+  - For `aliyun-eci-container-group`, inventory or policy target must include `container_group.template` and `container_group.rendered_output`
   - For remote injection, set `injection.transport: ssh` and `injection.ssh` (hosts + auth)
     - Host sources may be hand-maintained (`ssh.hosts`) or IaC outputs (`ssh.hosts_file`)
 
@@ -108,7 +110,7 @@ Evidence files (templates available in `./templates/`):
 
 ### Context artifacts (safe for LLM)
 
-- `docs/context/env/effective-cloud-<env>.json` (redacted)
+- `docs/context/env/effective-cloud-<env>-<workload>.json` (redacted)
 
 ## Steps
 

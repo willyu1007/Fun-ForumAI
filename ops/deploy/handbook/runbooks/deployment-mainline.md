@@ -9,8 +9,13 @@ Canonical operator playbook for the current cloud delivery mainline:
 - web deploy target: ECS host running `Docker Compose`
 - worker deploy target: ECI container group
 - release contract: immutable `sha-<commit>` image refs only
+- routing authority: registry/policy driven, not env-level model pins
 
 Use this document as the end-to-end sequence. Keep the specialized runbooks for host-only rollback or ECI replacement as supporting references.
+
+Environment readiness and public-entry prerequisites live in:
+
+- `ops/deploy/handbook/runbooks/cloud-go-live-chain.md`
 
 ## Current topology
 
@@ -23,12 +28,14 @@ Use this document as the end-to-end sequence. Keep the specialized runbooks for 
 
 Canonical repo-side assets:
 
-- publish workflow: [publish-image.yml](/d:/Else/Fun-ForumAI/.github/workflows/publish-image.yml)
-- env contract: [contract.yaml](/d:/Else/Fun-ForumAI/env/contract.yaml)
-- staging values: [staging.yaml](/d:/Else/Fun-ForumAI/env/values/staging.yaml)
-- ECS host files: [fun-forum](/d:/Else/Fun-ForumAI/ops/deploy/vm-compose/fun-forum)
-- ECI worker template: [eci-worker](/d:/Else/Fun-ForumAI/ops/deploy/workloads/eci-worker)
-- desired release records: [release-intents](/d:/Else/Fun-ForumAI/ops/deploy/release-intents)
+- publish workflow: `.github/workflows/publish-image.yml`
+- env contract: `env/contract.yaml`
+- staging values: `env/values/staging.yaml`
+- prod values: `env/values/prod.yaml`
+- ECS host files: `ops/deploy/vm-compose/fun-forum`
+- ECI worker template: `ops/deploy/workloads/eci-worker`
+- desired release records: `ops/deploy/release-intents`
+- cloud readiness chain: `ops/deploy/handbook/runbooks/cloud-go-live-chain.md`
 
 ## Inputs
 
@@ -74,10 +81,10 @@ Notes:
 
 ## Phase 2: Render environment from Bitwarden
 
-On the operator workstation:
+On the operator workstation or deploy machine:
 
 ```powershell
-cd D:\Else\Fun-ForumAI
+cd <repo-root>
 $env:BWS_ACCESS_TOKEN = "<token>"
 
 python -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile `
@@ -92,13 +99,24 @@ python -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.p
 
 Repeat with `--env prod` for prod.
 
-Key staging requirements already encoded in repo values:
+Compile expectations:
+
+- Always pass `--runtime-target ecs --workload api` for web/API env-file generation.
+- The compiled staging/prod env file must not contain `LLM_PROVIDER`, `LLM_MODEL`, or `LLM_BASE_URL`.
+- If the compile step runs off-host, transfer the rendered env file to the deploy machine while preserving the same relative artifact path or update `env_file_source` through policy before apply.
+
+Key cloud baseline requirements already encoded in repo values:
 
 - `MEDIA_STORAGE_BACKEND=s3`
-- `MEDIA_S3_BUCKET=bucket-forum-stag`
 - `RUNTIME_QUEUE_BACKEND=redis`
 - `RUNTIME_LEADER_BACKEND=redis`
 - `SSE_BROADCAST_BACKEND=redis`
+- `RUNTIME_ENABLED` is intentionally not owned by shared staging/prod env values
+
+Environment-specific non-secret values:
+
+- `staging`: `MEDIA_S3_BUCKET=bucket-forum-stag`
+- `prod`: `MEDIA_S3_BUCKET=bucket-forum-prod`
 
 Operational notes:
 
@@ -108,19 +126,30 @@ Operational notes:
 
 ## Phase 3: Inject `.env` onto ECS
 
-Upload the rendered env file to the ECS host, for example:
-
-- local file: `ops/deploy/env-files/staging.env`
-- remote temp file: `/tmp/fun-forum-staging.env`
-
-Then on ECS:
+Canonical injection path:
 
 ```bash
-cd /srv/apps/fun-forum
-cp .env ".env.bak.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
-install -m 600 /tmp/fun-forum-staging.env /srv/apps/fun-forum/.env
-sed -i 's/\r$//' /srv/apps/fun-forum/.env
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan \
+  --root . \
+  --env staging \
+  --runtime-target ecs \
+  --workload api
+
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py apply \
+  --root . \
+  --env staging \
+  --runtime-target ecs \
+  --workload api \
+  --approve
 ```
+
+Repeat with `--env prod` for prod.
+
+Notes:
+
+- `policy.env.cloud.require_target=true` means omitting `--runtime-target ecs --workload api` is now a contract error.
+- Current `api` target uses `provider=envfile` with local transport, so apply should run from the deploy machine or equivalent release workspace that owns `/srv/apps/fun-forum/.env`.
+- Manual `cp/install` remains a break-glass recovery step only; normal rollout should stay on the `env-localctl compile -> env-cloudctl plan/apply` chain.
 
 Minimal presence check without revealing values:
 
@@ -215,10 +244,22 @@ node ops/deploy/scripts/release-intent.mjs mark-target \
 
 After ECS web is healthy, replace the worker container group with the same immutable image ref and `RUNTIME_ENABLED=true`.
 
+Canonical worker planning path:
+
+```bash
+python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan \
+  --root . \
+  --env staging \
+  --runtime-target ecs \
+  --workload worker
+```
+
+The rendered manifest must expose the full admitted provider primary + secondary secret surface required by runtime fallback.
+
 Supporting assets:
 
-- [ecs-web-eci-worker-rollout.md](/d:/Else/Fun-ForumAI/ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md)
-- [eci-worker](/d:/Else/Fun-ForumAI/ops/deploy/workloads/eci-worker)
+- `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md`
+- `ops/deploy/workloads/eci-worker`
 
 Then mark worker applied:
 
@@ -268,6 +309,6 @@ Do not perform image-only rollback when the current release recorded `db_compat=
 
 ## Canonical references
 
-- web deploy details: [ecs-compose-web-deploy.md](/d:/Else/Fun-ForumAI/ops/deploy/handbook/runbooks/ecs-compose-web-deploy.md)
-- ECS + ECI rollout order: [ecs-web-eci-worker-rollout.md](/d:/Else/Fun-ForumAI/ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md)
-- rollback details: [rollback-procedure.md](/d:/Else/Fun-ForumAI/ops/deploy/handbook/runbooks/rollback-procedure.md)
+- web deploy details: `ops/deploy/handbook/runbooks/ecs-compose-web-deploy.md`
+- ECS + ECI rollout order: `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md`
+- rollback details: `ops/deploy/handbook/runbooks/rollback-procedure.md`

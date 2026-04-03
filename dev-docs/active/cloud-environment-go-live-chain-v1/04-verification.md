@@ -1,0 +1,73 @@
+# 04 Verification
+
+## Planned checks
+
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+- `node .ai/scripts/ctl-project-governance.mjs map --task T-935 --feature F-000 --apply`
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+- `node .ai/tests/run.mjs --suite environment`
+- `python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile --root . --env <staging|prod> --runtime-target ecs --workload api --env-file ops/deploy/env-files/<env>.env --no-context --no-preflight`
+- `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env <staging|prod> --runtime-target ecs --workload <api|worker>`
+- `pnpm exec vitest run src/backend/llm/__tests__/llm-client.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+
+## Execution records
+
+- 2026-04-03:
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root .`
+    - Result: 通过。
+    - Note: `DB_PERSISTENCE` scope 扩到 `prod` 后，prod cloud baseline 已被 contract 接受。
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root .`
+    - Result: 通过。
+    - Note: `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json` 已刷新到最新 scope / contract。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target ecs --workload api`
+    - Result: 通过。
+    - Note: 生成 `docs/context/env/effective-cloud-staging-api.json`，并记录 api workload 的 compose-owned `RUNTIME_ENABLED` 说明。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target ecs --workload worker`
+    - Result: 通过。
+    - Note: 生成 `docs/context/env/effective-cloud-staging-worker.json`；top-level `config` 已体现 worker `RUNTIME_ENABLED=true` override，同时 `base_config` 保留共享 env 值。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload api`
+    - Result: 通过。
+    - Note: `env/values/prod.yaml` 现已提供 production/redis/s3 baseline，不再退回 dev-like defaults。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload worker`
+    - Result: 通过。
+    - Note: 生成 `docs/context/env/effective-cloud-prod-worker.json`，worker secret parity 与 role override 一致。
+  - `find docs/context/env -maxdepth 1 -type f | sort`
+    - Result: `contract.json`、`effective-cloud-staging-api.json`、`effective-cloud-staging-worker.json`、`effective-cloud-prod-api.json`、`effective-cloud-prod-worker.json`。
+    - Note: 旧的 env-only cloud context 文件已移除。
+  - `node .ai/tests/run.mjs --suite environment`
+    - Result: 通过。
+    - Note: system suite 已覆盖 workload-aware context artifact 命名与 legacy file cleanup。
+  - `pnpm exec vitest run src/backend/llm/__tests__/llm-client.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+    - Result: 通过，31 tests passed。
+    - Note: `/admin/runtime/features` 已断言 `routing_mode=policy_driven`。
+  - `pnpm exec tsc --noEmit`
+    - Result: 通过。
+  - `tmp_root=/tmp/codex-env-compile-check ... env_localctl.py compile --env staging|prod --runtime-target ecs --workload api --env-file \"$tmp_root/out/<env>.env\" --no-context --no-preflight`
+    - Result: 通过（mock-backed compile gate）。
+    - Note: 使用临时 mock `bws` 仅验证 staging/prod API env-file 的键集合与 omission，并在命令结束后删除临时文件。
+  - `rg -n "^(LLM_PROVIDER|LLM_MODEL|LLM_BASE_URL)=" \"$tmp_root/out/staging.env\" \"$tmp_root/out/prod.env\" -S`
+    - Result: 无输出。
+    - Note: staging/prod API env-file 继续保持无旧 routing pin。
+- 2026-04-03:
+  - `python3 -m py_compile .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py .ai/skills/features/environment/env-cloudctl/scripts/yaml_min.py`
+    - Result: 通过。
+  - `node .ai/tests/run.mjs --suite environment`
+    - Result: 通过。
+    - Note: fixture 已覆盖 `aliyun-eci-container-group` worker target 的 plan/apply/verify。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+    - Result: `[ok] Sync complete.`
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+    - Result: `[ok] Lint passed.`
+  - `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-935`
+    - Result: `T-935` 当前挂在 `F-000`。
+    - Note: 保持为跨包云交付依赖任务，不直接挂入 `R-027`。
+- 2026-04-03:
+  - `python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile --root . --env staging --runtime-target ecs --workload api --env-file /tmp/<env>.env --no-context --no-preflight`
+    - Result: 失败。
+    - Note: 本机缺少 `bws` CLI，真实 secret resolution 无法执行。
+  - `python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile --root . --env prod --runtime-target ecs --workload api --env-file /tmp/<env>.env --no-context --no-preflight`
+    - Result: 失败。
+    - Note: 同上，阻塞原因为 `bws CLI not found in PATH`。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target local`
+    - Result: 按预期失败。
+    - Note: 错误信息为 `policy.env.cloud.require_target is true but no target matched...`，确认 inventory fallback 已关闭。

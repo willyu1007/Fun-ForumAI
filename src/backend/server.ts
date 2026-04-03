@@ -45,8 +45,7 @@ async function main() {
       runtime: {
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
-        bootstrap_llm_provider: config.llm.provider,
-        bootstrap_llm_model: config.llm.model,
+        routing_mode: config.llm.routingMode,
       },
     }))
   }

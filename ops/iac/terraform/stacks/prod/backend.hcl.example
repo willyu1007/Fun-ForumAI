@@ -1,0 +1,11 @@
+# Copy to backend.hcl before `terraform init -backend-config=backend.hcl`.
+# Prod state should live in an operator-owned remote backend that is separate
+# from staging and from application env/secret delivery.
+bucket = "REPLACE_ME"
+key    = "fun-forum/prod/terraform.tfstate"
+region = "cn-hangzhou"
+
+# Optional remote locking metadata:
+# tablestore_endpoint      = "https://REPLACE_ME.cn-hangzhou.ots.aliyuncs.com"
+# tablestore_instance_name = "REPLACE_ME"
+# tablestore_table         = "terraform_locks"

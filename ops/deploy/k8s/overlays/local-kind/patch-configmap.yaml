@@ -7,7 +7,6 @@ data:
   NODE_ENV: development
   NODE_OPTIONS: "--max-old-space-size=1536"
   CORS_ORIGINS: http://localhost:3000,http://localhost:3001
-  LLM_MODEL: qwen-flash-character
   RUNTIME_LEADER_TTL_MS: "120000"
   FF_MEMBERSHIPS_V1: "true"
   FF_GLOBAL_HIGHLIGHTS_V1: "true"

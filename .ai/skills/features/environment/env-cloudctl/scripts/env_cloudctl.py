@@ -12,6 +12,7 @@ It is intentionally conservative:
 Supported providers:
   - mockcloud: uses local filesystem state for offline tests/demos.
   - ecs-envfile/envfile: injects a prebuilt env file via local copy or ssh/scp (deploy machine).
+  - aliyun-eci-container-group: renders a redacted container group manifest for worker replacement flows.
 
 Exit codes:
   - 0: success
@@ -96,6 +97,51 @@ def file_meta(path: Path) -> Dict[str, Any]:
         "size": int(st.st_size),
         "mtime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(st.st_mtime)),
     }
+
+
+def yaml_scalar(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def dump_yaml_lines(value: Any, *, indent: int = 0) -> List[str]:
+    prefix = " " * indent
+    if isinstance(value, dict):
+        if not value:
+            return [f"{prefix}{{}}"]
+        lines: List[str] = []
+        for key, item in value.items():
+            if isinstance(item, (dict, list)):
+                if not item:
+                    empty = "{}" if isinstance(item, dict) else "[]"
+                    lines.append(f"{prefix}{key}: {empty}")
+                else:
+                    lines.append(f"{prefix}{key}:")
+                    lines.extend(dump_yaml_lines(item, indent=indent + 2))
+            else:
+                lines.append(f"{prefix}{key}: {yaml_scalar(item)}")
+        return lines
+    if isinstance(value, list):
+        if not value:
+            return [f"{prefix}[]"]
+        lines = []
+        for item in value:
+            if isinstance(item, (dict, list)):
+                if not item:
+                    empty = "{}" if isinstance(item, dict) else "[]"
+                    lines.append(f"{prefix}- {empty}")
+                else:
+                    lines.append(f"{prefix}-")
+                    lines.extend(dump_yaml_lines(item, indent=indent + 2))
+            else:
+                lines.append(f"{prefix}- {yaml_scalar(item)}")
+        return lines
+    return [f"{prefix}{yaml_scalar(value)}"]
 
 
 def sha256_text(text: str) -> str:
@@ -911,6 +957,176 @@ def build_envfile_meta(root: Path, inv: Mapping[str, Any], require_exists: bool)
     return {**envfile_meta, **meta}, warnings
 
 
+def parse_env_matrix_summary(path: Path) -> Dict[str, Any]:
+    try:
+        raw = load_yaml(path)
+    except Exception as exc:  # noqa: BLE001
+        die(f"Failed to load env matrix {path}: {exc}")
+
+    if not isinstance(raw, dict):
+        die(f"Env matrix must be a mapping: {path}")
+
+    required_env = raw.get("required_env") if isinstance(raw.get("required_env"), dict) else {}
+    common = required_env.get("common") if isinstance(required_env.get("common"), list) else []
+    role_overrides = required_env.get("role_overrides") if isinstance(required_env.get("role_overrides"), dict) else {}
+    secret_refs = raw.get("secret_refs") if isinstance(raw.get("secret_refs"), list) else []
+    return {
+        "required_env": [str(item) for item in common if isinstance(item, str)],
+        "role_overrides": {str(k): v for k, v in role_overrides.items() if isinstance(k, str)},
+        "secret_refs": [str(item) for item in secret_refs if isinstance(item, str)],
+    }
+
+
+def parse_eci_container_group_config(root: Path, inv: Mapping[str, Any]) -> Dict[str, Any]:
+    block = inv.get("container_group")
+    if not isinstance(block, dict):
+        die("Inventory 'container_group' mapping is required for aliyun-eci-container-group provider.")
+
+    template = block.get("template")
+    if not isinstance(template, str) or not template.strip():
+        die("container_group.template is required for aliyun-eci-container-group provider.")
+
+    rendered_output = block.get("rendered_output")
+    if not isinstance(rendered_output, str) or not rendered_output.strip():
+        die("container_group.rendered_output is required for aliyun-eci-container-group provider.")
+
+    workload_id = block.get("workload_id")
+    if workload_id is not None and (not isinstance(workload_id, str) or not workload_id.strip()):
+        die("container_group.workload_id must be a non-empty string if provided.")
+
+    role_contract = block.get("role_contract")
+    if role_contract is not None and (not isinstance(role_contract, str) or not role_contract.strip()):
+        die("container_group.role_contract must be a non-empty string if provided.")
+
+    env_matrix = block.get("env_matrix")
+    if env_matrix is not None and (not isinstance(env_matrix, str) or not env_matrix.strip()):
+        die("container_group.env_matrix must be a non-empty string if provided.")
+
+    mode = str(block.get("mode") or "render").strip()
+    if mode not in {"render"}:
+        die("container_group.mode must be 'render' in this reference implementation.")
+
+    return {
+        "mode": mode,
+        "template": str(resolve_path(root, template.strip())),
+        "rendered_output": str(resolve_path(root, rendered_output.strip())),
+        "workload_id": workload_id.strip() if isinstance(workload_id, str) else "eci-worker",
+        "role_contract": str(resolve_path(root, role_contract.strip())) if isinstance(role_contract, str) else None,
+        "env_matrix": str(resolve_path(root, env_matrix.strip())) if isinstance(env_matrix, str) else None,
+        "region": str(inv.get("region") or block.get("region") or ""),
+    }
+
+
+def build_eci_container_group_meta(root: Path, inv: Mapping[str, Any], require_exists: bool) -> Tuple[Dict[str, Any], List[str]]:
+    warnings: List[str] = []
+    cfg = parse_eci_container_group_config(root, inv)
+    template_path = Path(cfg["template"])
+    if not template_path.exists():
+        if require_exists:
+            die(f"Container group template missing: {template_path}")
+        warnings.append(f"Container group template missing: {template_path}")
+        return {**cfg, "missing": True}, warnings
+
+    meta = {
+        "mode": cfg["mode"],
+        "workload_id": cfg["workload_id"],
+        "template": str(template_path),
+        "template_meta": file_meta(template_path),
+        "rendered_output": cfg["rendered_output"],
+        "region": cfg["region"],
+    }
+
+    role_contract_path = Path(cfg["role_contract"]) if cfg.get("role_contract") else None
+    if role_contract_path:
+        meta["role_contract"] = str(role_contract_path)
+        if role_contract_path.exists():
+            meta["role_contract_meta"] = file_meta(role_contract_path)
+        else:
+            warnings.append(f"Role contract missing: {role_contract_path}")
+
+    env_matrix_path = Path(cfg["env_matrix"]) if cfg.get("env_matrix") else None
+    if env_matrix_path:
+        meta["env_matrix"] = str(env_matrix_path)
+        if env_matrix_path.exists():
+            meta["env_matrix_meta"] = file_meta(env_matrix_path)
+            meta["env_matrix_summary"] = parse_env_matrix_summary(env_matrix_path)
+        else:
+            warnings.append(f"Env matrix missing: {env_matrix_path}")
+
+    return meta, warnings
+
+
+def unique_strings(items: Sequence[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for item in items:
+        value = str(item).strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+    return out
+
+
+def render_eci_container_group_manifest(root: Path, desired: "DesiredState", inv: Mapping[str, Any]) -> Dict[str, Any]:
+    cfg = parse_eci_container_group_config(root, inv)
+    template_path = Path(cfg["template"])
+    template = load_yaml(template_path)
+    if not isinstance(template, dict):
+        die(f"Container group template must parse to a mapping: {template_path}")
+
+    rendered = json.loads(json.dumps(template))
+    metadata = rendered.setdefault("metadata", {})
+    spec = rendered.setdefault("spec", {})
+
+    env_matrix_summary = {}
+    env_matrix_path = Path(cfg["env_matrix"]) if cfg.get("env_matrix") else None
+    if env_matrix_path and env_matrix_path.exists():
+        env_matrix_summary = parse_env_matrix_summary(env_matrix_path)
+
+    declared_env = env_matrix_summary.get("required_env") if isinstance(env_matrix_summary, dict) else []
+    role_overrides = env_matrix_summary.get("role_overrides") if isinstance(env_matrix_summary, dict) else {}
+    declared_secret_refs = env_matrix_summary.get("secret_refs") if isinstance(env_matrix_summary, dict) else []
+
+    resolved_env = {}
+    for name in declared_env or []:
+        if name in desired.config:
+            resolved_env[name] = desired.config[name]
+    if isinstance(role_overrides, dict):
+        resolved_env.update(role_overrides)
+
+    resolved_secret_refs = {}
+    for env_var in declared_secret_refs or []:
+        secret_ref = desired.var_to_secret_ref.get(env_var)
+        if not secret_ref:
+            continue
+        entry = desired.secrets.get(secret_ref) or {}
+        resolved_secret_refs[env_var] = {
+            "secret_ref": secret_ref,
+            "backend": entry.get("backend"),
+        }
+
+    existing_secret_refs = spec.get("secret_refs") if isinstance(spec.get("secret_refs"), list) else []
+    spec["secret_refs"] = unique_strings(
+        [str(item) for item in existing_secret_refs if isinstance(item, str)] +
+        [str(item) for item in declared_secret_refs if isinstance(item, str)]
+    )
+    spec["resolved_non_secret_env"] = resolved_env
+    spec["resolved_secret_refs"] = resolved_secret_refs
+    spec["env_contract_preview"] = {
+        "env": desired.env,
+        "runtime_target": desired.runtime_target,
+        "workload": desired.workload,
+        "provider": desired.provider,
+    }
+
+    if isinstance(metadata, dict):
+        metadata["rendered_at"] = utc_now_iso()
+        metadata["rendered_by"] = "env-cloudctl"
+
+    return rendered
+
+
 @dataclass
 class DesiredState:
     env: str
@@ -922,6 +1138,7 @@ class DesiredState:
     secrets: Dict[str, Dict[str, Any]]  # secret refs only
     var_to_secret_ref: Dict[str, str]  # variable name -> secret_ref
     env_file: Optional[Dict[str, Any]]  # env file metadata (redacted)
+    provider_meta: Optional[Dict[str, Any]]  # provider-specific metadata (redacted)
     warnings: List[str]  # non-fatal issues (e.g., deprecated/legacy keys)
     notes: List[str]  # informational notes (e.g., routing source)
 
@@ -954,10 +1171,14 @@ def build_desired_state(
     var_to_secret: Dict[str, str] = {}
     warnings: List[str] = []
     env_file: Optional[Dict[str, Any]] = None
+    provider_meta: Optional[Dict[str, Any]] = None
 
     if provider in {"ecs-envfile", "envfile"}:
         env_file, env_warns = build_envfile_meta(root, inv, require_exists=False)
         warnings.extend(env_warns)
+    elif provider == "aliyun-eci-container-group":
+        provider_meta, provider_warns = build_eci_container_group_meta(root, inv, require_exists=False)
+        warnings.extend(provider_warns)
 
     # Compute non-secret config with defaults + values.
     for var in contract_vars:
@@ -1063,6 +1284,7 @@ def build_desired_state(
         secrets=secrets,
         var_to_secret_ref=var_to_secret,
         env_file=env_file,
+        provider_meta=provider_meta,
         warnings=warnings,
         notes=notes,
     )
@@ -1122,6 +1344,22 @@ def diff_env_file(old_meta: Optional[Mapping[str, Any]], new_meta: Optional[Mapp
     return {"status": status, "deployed": old_norm, "desired": new_norm}
 
 
+def normalize_provider_meta(meta: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
+    if not isinstance(meta, dict):
+        return {}
+    drop = {"rendered_output_meta", "warnings"}
+    return {k: v for k, v in meta.items() if k not in drop}
+
+
+def diff_provider_meta(old_meta: Optional[Mapping[str, Any]], new_meta: Optional[Mapping[str, Any]]) -> Optional[Dict[str, Any]]:
+    old_norm = normalize_provider_meta(old_meta)
+    new_norm = normalize_provider_meta(new_meta)
+    if not old_norm and not new_norm:
+        return None
+    status = "NOOP" if old_norm == new_norm else "UPDATE"
+    return {"status": status, "deployed": old_norm, "desired": new_norm}
+
+
 def diff_state(desired: DesiredState, deployed: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     if deployed is None:
         return {
@@ -1131,6 +1369,7 @@ def diff_state(desired: DesiredState, deployed: Optional[Dict[str, Any]]) -> Dic
             "config": {"added": desired.config, "removed": {}, "changed": {}},
             "secrets": {"added": desired.secrets, "removed": {}, "changed": {}},
             "env_file": diff_env_file(None, desired.env_file),
+            "provider_meta": diff_provider_meta(None, desired.provider_meta),
         }
 
     old_cfg = deployed.get("config") or {}
@@ -1153,12 +1392,18 @@ def diff_state(desired: DesiredState, deployed: Optional[Dict[str, Any]]) -> Dic
     cfg_diff = diff_maps(old_cfg, desired.config)
     sec_diff = diff_maps(normalized_old_sec, desired.secrets)
     envfile_diff = diff_env_file(deployed.get("env_file") if isinstance(deployed, dict) else None, desired.env_file)
+    provider_meta_diff = diff_provider_meta(
+        deployed.get("provider_meta") if isinstance(deployed, dict) else None,
+        desired.provider_meta,
+    )
     last_apply_status = deployed.get("status") if isinstance(deployed, dict) else None
 
     status = "NOOP"
     if cfg_diff["added"] or cfg_diff["removed"] or cfg_diff["changed"] or sec_diff["added"] or sec_diff["removed"] or sec_diff["changed"]:
         status = "UPDATE"
     if envfile_diff and envfile_diff.get("status") == "UPDATE":
+        status = "UPDATE"
+    if provider_meta_diff and provider_meta_diff.get("status") == "UPDATE":
         status = "UPDATE"
     if last_apply_status == "FAIL":
         status = "UPDATE"
@@ -1170,6 +1415,7 @@ def diff_state(desired: DesiredState, deployed: Optional[Dict[str, Any]]) -> Dic
         "config": cfg_diff,
         "secrets": sec_diff,
         "env_file": envfile_diff,
+        "provider_meta": provider_meta_diff,
         "last_apply_status": last_apply_status,
         "deployed_at": deployed.get("applied_at"),
     }
@@ -1224,6 +1470,12 @@ def render_plan_md(desired: DesiredState, deployed: Optional[Dict[str, Any]], pl
         lines.append(json.dumps(plan["env_file"], indent=2, sort_keys=True))
         lines.append("```")
         lines.append("")
+    if plan.get("provider_meta"):
+        lines.append("## Provider-specific changes (redacted)")
+        lines.append("```json")
+        lines.append(json.dumps(plan["provider_meta"], indent=2, sort_keys=True))
+        lines.append("```")
+        lines.append("")
 
     lines.append("## Plan JSON (redacted)")
     lines.append("```json")
@@ -1236,9 +1488,45 @@ def render_plan_md(desired: DesiredState, deployed: Optional[Dict[str, Any]], pl
     return "\n".join(lines) + "\n"
 
 
+def _context_filename(*, prefix: str, env: str, workload: Optional[str]) -> str:
+    if workload:
+        return f"{prefix}-{env}-{workload}.json"
+    return f"{prefix}-{env}.json"
+
+
+def _context_path(root: Path, *, prefix: str, env: str, workload: Optional[str]) -> Path:
+    return root / "docs" / "context" / "env" / _context_filename(prefix=prefix, env=env, workload=workload)
+
+
+def _write_legacy_cleanup(root: Path, *, prefix: str, env: str, workload: Optional[str], out_path: Path) -> None:
+    if not workload:
+        return
+    legacy_path = _context_path(root, prefix=prefix, env=env, workload=None)
+    if legacy_path != out_path and legacy_path.exists():
+        legacy_path.unlink()
+
+
+def _effective_cloud_config(desired: DesiredState) -> Dict[str, Any]:
+    config = dict(desired.config)
+    provider_meta = desired.provider_meta if isinstance(desired.provider_meta, dict) else {}
+    env_matrix_summary = (
+        provider_meta.get("env_matrix_summary") if isinstance(provider_meta.get("env_matrix_summary"), dict) else {}
+    )
+    role_overrides = env_matrix_summary.get("role_overrides")
+    if isinstance(role_overrides, dict):
+        for key, value in role_overrides.items():
+            if isinstance(key, str):
+                config[key] = value
+    return config
+
+
 def write_cloud_context(root: Path, desired: DesiredState) -> Path:
-    out_path = root / "docs" / "context" / "env" / f"effective-cloud-{desired.env}.json"
+    out_path = _context_path(root, prefix="effective-cloud", env=desired.env, workload=desired.workload)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    effective_config = _effective_cloud_config(desired)
+    notes = list(desired.notes)
+    if desired.workload == "api" and desired.provider in {"envfile", "ecs-envfile"}:
+        notes.append("api workload keeps final RUNTIME_ENABLED ownership in compose.yaml; env-file/defaults must not raise it")
     payload = {
         "generated_at": utc_now_iso(),
         "env": desired.env,
@@ -1246,14 +1534,19 @@ def write_cloud_context(root: Path, desired: DesiredState) -> Path:
         "runtime": desired.runtime,
         "runtime_target": desired.runtime_target,
         "workload": desired.workload,
-        "config": desired.config,
+        "config": effective_config,
         "secrets": desired.secrets,
         "var_to_secret_ref": desired.var_to_secret_ref,
         "env_file": desired.env_file,
-        "notes": desired.notes,
+        "provider_meta": desired.provider_meta,
+        "notes": notes,
         "redaction": {"secrets": "values omitted"},
     }
+    if effective_config != desired.config:
+        payload["base_config"] = desired.config
+        payload["notes"] = [*notes, "config includes workload role_overrides; base_config preserves shared env values"]
     out_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _write_legacy_cleanup(root, prefix="effective-cloud", env=desired.env, workload=desired.workload, out_path=out_path)
     return out_path
 
 
@@ -1466,11 +1759,56 @@ def apply_envfile_state(
     return state
 
 
+def apply_eci_container_group_state(
+    root: Path,
+    env: str,
+    desired: DesiredState,
+    *,
+    approve: bool,
+) -> Dict[str, Any]:
+    if not approve:
+        die("Apply requires --approve")
+
+    inv, _notes = resolve_cloud_inventory(
+        root,
+        env=env,
+        runtime_target=desired.runtime_target,
+        workload=desired.workload,
+    )
+    cfg = parse_eci_container_group_config(root, inv)
+    provider_meta, warnings = build_eci_container_group_meta(root, inv, require_exists=True)
+    rendered = render_eci_container_group_manifest(root, desired, inv)
+    rendered_output = Path(cfg["rendered_output"])
+    rendered_output.parent.mkdir(parents=True, exist_ok=True)
+    rendered_output.write_text("\n".join(dump_yaml_lines(rendered)) + "\n", encoding="utf-8")
+
+    state: Dict[str, Any] = {
+        "env": env,
+        "provider": desired.provider,
+        "runtime": desired.runtime,
+        "applied_at": utc_now_iso(),
+        "status": "PASS",
+        "config": desired.config,
+        "secrets": desired.secrets,
+        "var_to_secret_ref": desired.var_to_secret_ref,
+        "provider_meta": {
+            **provider_meta,
+            "rendered_output_meta": file_meta(rendered_output),
+            "warnings": warnings,
+        },
+    }
+    write_deployed_state(root, env, state)
+    write_cloud_context(root, desired)
+    return state
+
+
 def apply_state(root: Path, env: str, desired: DesiredState, *, approve: bool, approve_remote: bool) -> Dict[str, Any]:
     if not approve:
         die("Apply requires --approve")
     if desired.provider in {"ecs-envfile", "envfile"}:
         return apply_envfile_state(root, env, desired, approve=approve, approve_remote=approve_remote)
+    if desired.provider == "aliyun-eci-container-group":
+        return apply_eci_container_group_state(root, env, desired, approve=approve)
     if desired.provider != "mockcloud":
         die(f"Provider '{desired.provider}' is not supported by this reference implementation. Implement an adapter for your provider.")
 
@@ -1505,6 +1843,7 @@ def apply_state(root: Path, env: str, desired: DesiredState, *, approve: bool, a
         "config": desired.config,
         "secrets": secrets_with_meta,
         "var_to_secret_ref": desired.var_to_secret_ref,
+        "provider_meta": desired.provider_meta,
     }
     write_deployed_state(root, env, state)
     write_cloud_context(root, desired)
@@ -1584,6 +1923,8 @@ def rotate_secret(
     desired = build_desired_state(root, env, runtime_target=runtime_target, workload=workload)
     if desired.provider in {"ecs-envfile", "envfile"}:
         die("Secret rotation is not supported for envfile-based providers. Regenerate the env file and re-apply.")
+    if desired.provider == "aliyun-eci-container-group":
+        die("Secret rotation is not supported for aliyun-eci-container-group. Update secret refs and re-render the container group manifest.")
     if desired.provider != "mockcloud":
         die(f"Provider '{desired.provider}' is not supported by this reference implementation. Implement an adapter for your provider.")
 
@@ -1635,6 +1976,8 @@ def decommission_env(root: Path, env: str, approve: bool) -> None:
     provider = str(inv.get("provider") or "").strip()
     if provider in {"ecs-envfile", "envfile"}:
         die("Decommission is not supported for envfile-based providers. Remove injected files manually if needed.")
+    if provider == "aliyun-eci-container-group":
+        die("Decommission is not supported for aliyun-eci-container-group in this reference implementation. Remove the rendered manifest or container group manually if needed.")
 
     # Only decommission mock state in this reference implementation.
     sdir = state_dir(root, env, provider=provider)
@@ -1711,7 +2054,7 @@ def write_output(path: Optional[str], content: str) -> None:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Cloud environment controller (mockcloud + envfile reference).")
+    parser = argparse.ArgumentParser(description="Cloud environment controller (mockcloud + envfile + aliyun-eci-container-group reference).")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     def add_common(p: argparse.ArgumentParser) -> None:

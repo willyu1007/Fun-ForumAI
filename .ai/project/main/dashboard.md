@@ -8,13 +8,16 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 168 (planned: 1, in-progress: 10, blocked: 1, done: 2, archived: 154)
+- Tasks: 170 (planned: 1, in-progress: 12, blocked: 1, done: 2, archived: 154)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
+| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
 | T-920 backend-typecheck-baseline-repair-v1 | archived | F-000 | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 | T-933 launch-gray-release-gap-closure | archived | F-000 | dev-docs/archive/launch-gray-release-gap-closure |
@@ -31,7 +34,4 @@ Project: `main`
 | T-141 launch-community-governance-and-incubation | archived | F-090 | dev-docs/archive/launch-community-governance-and-incubation |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
-| T-929 alb-health-readiness-upgrade | archived | F-000 | dev-docs/archive/alb-health-readiness-upgrade |
-| T-930 web-auth-email-and-sms-registration | in-progress | F-000 | dev-docs/active/web-auth-email-and-sms-registration |
-| T-129 github-actions-acr-image-publishing | archived | F-000 | dev-docs/archive/github-actions-acr-image-publishing |
 <!-- AUTO-GENERATED:END dashboard -->

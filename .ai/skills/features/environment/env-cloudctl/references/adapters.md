@@ -25,3 +25,7 @@ The bundled scripts ship:
 - `envfile` adapter (legacy alias: `ecs-envfile`) (copy a prebuilt env file on the deploy machine)
   - `transport: local` (default) or `transport: ssh` for remote hosts
   - remote execution requires `env-cloudctl apply --approve --approve-remote`
+- `aliyun-eci-container-group` adapter
+  - renders a redacted worker container-group manifest from env contract + secret refs + workload template
+  - tracks rendered manifest state under `.ai/.tmp/env-cloud/<env>/`
+  - keeps actual cloud-side create/replace execution in operator runbooks rather than automatic apply

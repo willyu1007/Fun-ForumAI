@@ -37,6 +37,7 @@ Canonical repo-side source:
     2. `env_localctl.py compile --env <env> --runtime-target ecs --workload api --env-file ops/deploy/env-files/<env>.env`
     3. `env_cloudctl.py plan/apply --env <env> --runtime-target ecs --workload api`
     4. Host target file: `/srv/apps/fun-forum/.env`
+  - Normal staging/prod env files must not contain `LLM_PROVIDER`, `LLM_MODEL`, or `LLM_BASE_URL`
 - Operator shell exports:
   - `ACR_PULL_USERNAME`
   - `ACR_PULL_PASSWORD`
@@ -91,7 +92,7 @@ cd /srv/apps/fun-forum
 ## Fixed deploy order
 
 1. Render the target env file from Bitwarden into `ops/deploy/env-files/<env>.env`
-2. Inject that env file to `/srv/apps/fun-forum/.env`
+2. Run `env_cloudctl.py plan/apply --runtime-target ecs --workload api` to inject `/srv/apps/fun-forum/.env`
 3. Validate host files and `.env`
 4. `docker login` with the read-only ACR pull identity
 5. `docker compose pull web migrate`
@@ -106,6 +107,11 @@ cd /srv/apps/fun-forum
 IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env <staging|prod>)"
 node ops/deploy/scripts/release-intent.mjs mark-target --env <staging|prod> --target ecs_web --status applied --image-ref "$IMAGE_REF"
 ```
+
+Compose ownership note:
+
+- `RUNTIME_ENABLED=false` is owned by `compose.yaml`, not by the injected env-file.
+- Provider/model routing stays in registry/policy. Do not restore cloud env pins as a web deploy shortcut.
 
 ## Rollback
 

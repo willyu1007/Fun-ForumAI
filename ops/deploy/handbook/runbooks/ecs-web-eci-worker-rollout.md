@@ -20,13 +20,16 @@
 ## Fixed deploy order
 
 1. Record the desired release in `ops/deploy/release-intents/<env>/desired.json`.
-2. Run database migration against the target image ref.
-3. Roll ECS web to the same immutable image ref with `RUNTIME_ENABLED=false`.
-4. Verify ECS web loopback health and smoke checks.
-5. Mark `ecs_web` as applied in the desired release record.
-6. Replace the ECI worker container group with the same immutable image ref and `RUNTIME_ENABLED=true`.
-7. Verify worker `/health`, queue backend, and leader backend.
-8. Mark `eci_worker` as applied in the desired release record; when both targets are applied, the desired release becomes fulfilled.
+2. Compile the API env-file with `env_localctl.py compile --runtime-target ecs --workload api`.
+3. Inject the API env-file with `env_cloudctl.py plan/apply --runtime-target ecs --workload api`.
+4. Run database migration against the target image ref.
+5. Roll ECS web to the same immutable image ref with `RUNTIME_ENABLED=false`.
+6. Verify ECS web loopback health and smoke checks.
+7. Mark `ecs_web` as applied in the desired release record.
+8. Render/verify the ECI worker contract with `env_cloudctl.py plan/apply --runtime-target ecs --workload worker`.
+9. Replace the ECI worker container group with the same immutable image ref and `RUNTIME_ENABLED=true`.
+10. Verify worker `/health`, queue backend, leader backend, and the admitted provider secret surface.
+11. Mark `eci_worker` as applied in the desired release record; when both targets are applied, the desired release becomes fulfilled.
 
 ## Staging example
 
@@ -44,6 +47,8 @@ cd /srv/apps/fun-forum
 node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target ecs_web --status applied --image-ref "$IMAGE_REF"
 # then replace the ECI worker container group using:
 # ops/deploy/workloads/eci-worker/staging.container-group.yaml
+# after:
+# python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target ecs --workload worker
 node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target eci_worker --status applied --image-ref "$IMAGE_REF"
 ```
 
@@ -63,6 +68,8 @@ cd /srv/apps/fun-forum
 node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target ecs_web --status applied --image-ref "$IMAGE_REF"
 # then replace the ECI worker container group using:
 # ops/deploy/workloads/eci-worker/prod.container-group.yaml
+# after:
+# python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload worker
 node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target eci_worker --status applied --image-ref "$IMAGE_REF"
 ```
 
@@ -84,6 +91,7 @@ node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target eci_w
   - `/health` reports `runtime.enabled=true`
   - runtime queue backend matches contract
   - leader backend matches contract
+  - rendered worker manifest includes admitted provider primary + secondary secret refs
 
 ## Launch gray-release close-out
 

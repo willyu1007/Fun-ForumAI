@@ -4,7 +4,7 @@ environment: staging
 deployment_model: vm-compose
 host_count: 1
 current_topology: 1 ECS web + 1 ECI worker
-entrypoint: shared Caddy on the ECS host
+entrypoint: ALB -> shared Caddy on the ECS host
 requires_human_approval: true
 requires_with_migrate: true
 smoke_required: true
@@ -15,3 +15,4 @@ loopback_upstream: 127.0.0.1:14000 -> container:4000
 notes:
   - Deploy immutable sha images only.
   - GitHub Actions publishes images but does not connect to the ECS host.
+  - Staging public ingress is expected to terminate at ALB before proxying into the ECS host.

@@ -145,7 +145,7 @@ Project: `main`
 | T-139 p1-shelf-template-optimization-and-incubation | archived | F-090 | dev-docs/archive/p1-shelf-template-optimization-and-incubation |
 | T-140 launch-visual-rollout-and-packaging | archived | F-090 | dev-docs/archive/launch-visual-rollout-and-packaging |
 | T-141 launch-community-governance-and-incubation | archived | F-090 | dev-docs/archive/launch-community-governance-and-incubation |
-| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-000 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | F-000 | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-904 code-review-audit-remediation | archived | F-000 | dev-docs/archive/code-review-audit-remediation |
@@ -178,4 +178,6 @@ Project: `main`
 | T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-933 launch-gray-release-gap-closure | archived | F-000 | dev-docs/archive/launch-gray-release-gap-closure |
 | T-934 launch-gray-release-runtime-and-publish-hardening | archived | F-000 | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
+| T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
+| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
 <!-- AUTO-GENERATED:END task-index -->

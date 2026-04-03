@@ -448,17 +448,11 @@ function buildBundle(): LlmRegistryBundle {
 
 function buildLlmClient(): LlmClient {
   return new LlmClient({
-    provider: {
-      provider_id: 'dashscope-openai',
-      base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      api_key: 'bootstrap-key',
-      timeout_ms: 30_000,
-      max_retries: 2,
-    },
     defaults: {
-      model: 'qwen-plus-character',
       max_tokens: 512,
       temperature: 0.7,
+      timeout_ms: 30_000,
+      max_retries: 2,
     },
   })
 }

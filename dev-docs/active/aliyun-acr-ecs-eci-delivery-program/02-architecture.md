@@ -66,6 +66,7 @@
 - 运行时配置必须来自 repo 的 `env/contract.yaml` / `env/secrets/*.ref.yaml` 所定义契约，但真实值保存在仓库外。
 - ECS 使用宿主机上的 `.env` 文件承载运行时值。
 - ECI 使用 container group 环境变量或对应的 registry/secret 配置承载运行时值。
+- staging/prod 的 provider/model/base_url 选择权不再来自 env；云上正常路径只能消费 registry/policy 决策。
 
 ### Bootstrap prerequisites
 
@@ -80,7 +81,10 @@
 
 - `T-129` 只负责产出镜像，不负责部署。
 - `T-130` 负责 ECS web 如何消费镜像、如何重启、如何回滚。
-- `T-131` 负责 ECI worker 如何消费镜像、如何替换、如何回滚。
+- `T-131` 保留为 ECI worker repo 侧交付基线，不再扩成云环境总包。
+- `T-935` 负责云环境全链路、IaC skeleton、workload-aware env injection 与 go-live runbook。
+- `T-901` 负责 execution-plan / provider-runtime contract 主线。
+- `T-936` 负责 runtime cutover、observability 与 staging live close-out。
 - `T-128` 只做全链路编排、依赖顺序、验收与交接，不再承载实现细节。
 
 ## Primary Risks

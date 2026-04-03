@@ -1,0 +1,13 @@
+region                     = "cn-hangzhou"
+vpc_cidr                   = "10.20.0.0/16"
+domain_name                = "staging.example.com"
+zone_name                  = "example.com"
+certificate_id             = "cert-staging-placeholder"
+ecs_instance_type          = "ecs.c7.large"
+postgres_engine_version    = "15"
+postgres_storage_gib       = 100
+runtime_redis_instance_class = "redis.master.small.default"
+sse_redis_instance_class   = "redis.master.small.default"
+media_bucket_name          = "bucket-forum-stag"
+media_endpoint             = "oss-cn-hangzhou.aliyuncs.com"
+worker_template_path       = "../../../../ops/deploy/workloads/eci-worker/staging.container-group.yaml"

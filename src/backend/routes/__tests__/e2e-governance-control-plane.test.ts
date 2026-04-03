@@ -39,6 +39,7 @@ describe('E2E: Governance Control Plane', () => {
       expect(typeof res.body.data.runtime.build).toBe('object')
       expect(typeof res.body.data.runtime.build.code_fingerprint).toBe('string')
       expect(Array.isArray(res.body.data.runtime.build.fingerprint_basis)).toBe(true)
+      expect(res.body.data.runtime.routing_mode).toBe('policy_driven')
       expect(res.body.data.runtime.persona_runtime).toEqual(
         expect.objectContaining({
           enabled: expect.any(Boolean),

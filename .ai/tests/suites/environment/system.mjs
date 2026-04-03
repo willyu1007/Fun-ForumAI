@@ -289,11 +289,15 @@ export function run(ctx) {
     }
   }
 
-  const effectiveDev = path.join(rootDir, 'docs', 'context', 'env', 'effective-dev.json');
+  const effectiveDev = path.join(rootDir, 'docs', 'context', 'env', 'effective-dev-api.json');
   if (!fs.existsSync(effectiveDev)) {
-    return { name, status: 'FAIL', error: 'missing docs/context/env/effective-dev.json' };
+    return { name, status: 'FAIL', error: 'missing docs/context/env/effective-dev-api.json' };
   }
   assertNotIncludes(readUtf8(effectiveDev), 'dev-secret', 'Effective dev context leaked secret');
+  const legacyEffectiveDev = path.join(rootDir, 'docs', 'context', 'env', 'effective-dev.json');
+  if (fs.existsSync(legacyEffectiveDev)) {
+    return { name, status: 'FAIL', error: 'legacy docs/context/env/effective-dev.json should not be written for workload-aware compile output' };
+  }
 
   const connectivityMd = path.join(rootDir, 'connectivity.md');
   const connectivity = runCommand({
@@ -405,6 +409,156 @@ export function run(ctx) {
   const mockCloudDir = path.join(rootDir, '.ai', 'mock-cloud', 'staging');
   if (fs.existsSync(mockCloudDir)) {
     return { name, status: 'FAIL', error: `expected mock cloud env removed: ${mockCloudDir}` };
+  }
+
+  // 7) Cloud worker policy target: aliyun-eci-container-group render/apply/verify
+  fs.mkdirSync(path.join(rootDir, 'ops', 'deploy', 'workloads', 'eci-worker'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'docs', 'project', 'policy.yaml'),
+    [
+      'version: 1',
+      'policy:',
+      '  env:',
+      '    cloud:',
+      '      require_target: true',
+      '      targets:',
+        '        - id: staging-worker',
+      '          match:',
+      '            env: staging',
+      '            runtime_target: ecs',
+      '            workload: worker',
+      '          set:',
+      '            provider: aliyun-eci-container-group',
+      '            runtime: remote',
+      '            region: cn-hangzhou',
+      '            container_group:',
+      '              workload_id: eci-worker',
+      '              template: ops/deploy/workloads/eci-worker/staging.container-group.yaml',
+      '              rendered_output: .ai/.tmp/env-cloud/staging/eci-worker.rendered.yaml',
+      '              env_matrix: ops/deploy/workloads/eci-worker/env-matrix.yaml',
+      '              role_contract: ops/deploy/workloads/eci-worker/role-contract.yaml',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'ops', 'deploy', 'workloads', 'eci-worker', 'staging.container-group.yaml'),
+    [
+      'apiVersion: delivery.fun-forum/v1',
+      'kind: ContainerGroupTemplate',
+      'metadata:',
+      '  name: fixture-worker-staging',
+      'spec:',
+      '  provider: aliyun-eci',
+      '  secret_refs:',
+      '    - DATABASE_URL',
+      '  env:',
+      '    SERVICE_ROLE: worker',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'ops', 'deploy', 'workloads', 'eci-worker', 'env-matrix.yaml'),
+    [
+      'version: 1',
+      'workload_id: eci-worker',
+      'required_env:',
+      '  common:',
+      '    - APP_ENV',
+      '    - SERVICE_NAME',
+      '    - PORT',
+      '    - API_BASE_URL',
+      '    - DATABASE_URL',
+      '    - API_KEY',
+      '  role_overrides:',
+      '    RUNTIME_ENABLED: "true"',
+      'secret_refs:',
+      '  - DATABASE_URL',
+      '  - API_KEY',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'ops', 'deploy', 'workloads', 'eci-worker', 'role-contract.yaml'),
+    [
+      'version: 1',
+      'workload_id: eci-worker',
+      'description: fixture worker contract',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+
+  const workerPlanMissingTarget = runCommand({
+    cmd: python.cmd,
+    args: [...python.argsPrefix, '-B', '-S', cloudctl, 'plan', '--root', rootDir, '--env', 'staging'],
+    evidenceDir: testDir,
+    label: `${name}.cloudctl.worker.plan.missing_target`,
+  });
+  if (workerPlanMissingTarget.error || workerPlanMissingTarget.code === 0) {
+    return { name, status: 'FAIL', error: 'expected env-cloudctl plan without policy target selectors to fail when require_target=true' };
+  }
+  const missingTargetDetail = `${workerPlanMissingTarget.stdout}\n${workerPlanMissingTarget.stderr}`;
+  assertIncludes(missingTargetDetail, 'require_target', 'Expected require_target failure detail when workload selector is omitted');
+
+  const workerPlanMd = path.join(rootDir, 'worker-plan.md');
+  const workerPlan = runCommand({
+    cmd: python.cmd,
+    args: [...python.argsPrefix, '-B', '-S', cloudctl, 'plan', '--root', rootDir, '--env', 'staging', '--runtime-target', 'ecs', '--workload', 'worker', '--out', workerPlanMd],
+    evidenceDir: testDir,
+    label: `${name}.cloudctl.worker.plan`,
+  });
+  if (workerPlan.error || workerPlan.code !== 0) {
+    const detail = workerPlan.error ? String(workerPlan.error) : workerPlan.stderr || workerPlan.stdout;
+    return { name, status: 'FAIL', error: `env-cloudctl worker plan failed: ${detail}` };
+  }
+  assertIncludes(readUtf8(workerPlanMd), 'aliyun-eci-container-group', 'Expected worker plan to resolve ECI provider');
+
+  const workerApplyMd = path.join(rootDir, 'worker-apply.md');
+  const workerApply = runCommand({
+    cmd: python.cmd,
+    args: [...python.argsPrefix, '-B', '-S', cloudctl, 'apply', '--root', rootDir, '--env', 'staging', '--runtime-target', 'ecs', '--workload', 'worker', '--approve', '--out', workerApplyMd],
+    evidenceDir: testDir,
+    label: `${name}.cloudctl.worker.apply`,
+  });
+  if (workerApply.error || workerApply.code !== 0) {
+    const detail = workerApply.error ? String(workerApply.error) : workerApply.stderr || workerApply.stdout;
+    return { name, status: 'FAIL', error: `env-cloudctl worker apply failed: ${detail}` };
+  }
+
+  const renderedWorkerPath = path.join(rootDir, '.ai', '.tmp', 'env-cloud', 'staging', 'eci-worker.rendered.yaml');
+  if (!fs.existsSync(renderedWorkerPath)) {
+    return { name, status: 'FAIL', error: `missing rendered worker manifest: ${renderedWorkerPath}` };
+  }
+  const renderedWorkerText = readUtf8(renderedWorkerPath);
+  assertIncludes(renderedWorkerText, 'resolved_secret_refs', 'Expected resolved secret refs in rendered worker manifest');
+  assertIncludes(renderedWorkerText, 'API_KEY', 'Expected API_KEY contract preview in rendered worker manifest');
+
+  const workerVerifyMd = path.join(rootDir, 'worker-verify.md');
+  const workerVerify = runCommand({
+    cmd: python.cmd,
+    args: [...python.argsPrefix, '-B', '-S', cloudctl, 'verify', '--root', rootDir, '--env', 'staging', '--runtime-target', 'ecs', '--workload', 'worker', '--out', workerVerifyMd],
+    evidenceDir: testDir,
+    label: `${name}.cloudctl.worker.verify`,
+  });
+  if (workerVerify.error || workerVerify.code !== 0) {
+    const detail = workerVerify.error ? String(workerVerify.error) : workerVerify.stderr || workerVerify.stdout;
+    return { name, status: 'FAIL', error: `env-cloudctl worker verify failed: ${detail}` };
+  }
+  assertIncludes(readUtf8(workerVerifyMd), 'Status: **PASS**', 'Expected PASS in worker-verify.md');
+
+  const effectiveCloudWorker = path.join(rootDir, 'docs', 'context', 'env', 'effective-cloud-staging-worker.json');
+  if (!fs.existsSync(effectiveCloudWorker)) {
+    return { name, status: 'FAIL', error: 'missing docs/context/env/effective-cloud-staging-worker.json' };
+  }
+  const workerContextText = readUtf8(effectiveCloudWorker);
+  assertIncludes(workerContextText, '"workload": "worker"', 'Expected worker workload in effective cloud context');
+  assertIncludes(workerContextText, '"RUNTIME_ENABLED": "true"', 'Expected worker role override in effective cloud context');
+  const legacyEffectiveCloud = path.join(rootDir, 'docs', 'context', 'env', 'effective-cloud-staging.json');
+  if (fs.existsSync(legacyEffectiveCloud)) {
+    return { name, status: 'FAIL', error: 'legacy docs/context/env/effective-cloud-staging.json should not be written for workload-aware cloud output' };
   }
 
   ctx.log(`[${name}] PASS`);

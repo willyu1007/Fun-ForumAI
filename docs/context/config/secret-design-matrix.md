@@ -10,15 +10,15 @@ This document defines how application secrets are grouped, named, and expected t
   - `provider-and-routing`
 - `dev` MAY use function-oriented Bitwarden key names when that makes feature testing simpler.
 - `staging` and `prod` SHOULD use provider-oriented or infrastructure-oriented Bitwarden key names so routing, failover, and ownership stay explicit.
-- Application-facing env keys and `secret_ref` names in [env/contract.yaml](/d:/Else/Fun-ForumAI/env/contract.yaml) remain the stable contract. Environment-specific Bitwarden naming is translated by `env/secrets/*.ref.yaml`.
+- Application-facing env keys and `secret_ref` names in `env/contract.yaml` remain the stable contract. Environment-specific Bitwarden naming is translated by `env/secrets/*.ref.yaml`.
 
 ## Layer Model
 
 | Layer | Purpose | Typical examples | Primary consumers |
 | --- | --- | --- | --- |
-| `core-startup` | Minimum secrets required to boot the service and authenticate safely. | `database_url`, `jwt_secret`, `service_auth_secret` | [config.ts](/d:/Else/Fun-ForumAI/src/backend/lib/config.ts) |
-| `feature-gated-capabilities` | Secrets that are only required when a feature is enabled. | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `llm_api_pics`, `media_s3_access_key_id`, `runtime_redis_url`, `sse_redis_url` | [config.ts](/d:/Else/Fun-ForumAI/src/backend/lib/config.ts) |
-| `provider-and-routing` | Secrets used by the LLM gateway and routing/failover policy. In `dev` they may be capability-oriented; in `staging` and `prod` they should still map to concrete provider credentials. | `llm_api_default`, `llm_api_lowcost`, `llm_api_vision`, `dashscope_api_key_secondary`, `zai_api_key`, `ark_api_key` | [credential_pools.yaml](/d:/Else/Fun-ForumAI/.ai/llm-config/registry/credential_pools.yaml), [config_keys.yaml](/d:/Else/Fun-ForumAI/.ai/llm-config/registry/config_keys.yaml) |
+| `core-startup` | Minimum secrets required to boot the service and authenticate safely. | `database_url`, `jwt_secret`, `service_auth_secret` | `src/backend/lib/config.ts` |
+| `feature-gated-capabilities` | Secrets that are only required when a feature is enabled. | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `llm_api_pics`, `media_s3_access_key_id`, `runtime_redis_url`, `sse_redis_url` | `src/backend/lib/config.ts` |
+| `provider-and-routing` | Secrets used by the LLM gateway and routing/failover policy. In `dev` they may be capability-oriented; in `staging` and `prod` they map to concrete provider credentials and ordered failover refs. | `llm_api_default`, `llm_api_lowcost`, `llm_api_vision`, `dashscope_api_key_secondary`, `zai_api_key`, `ark_api_key` | `.ai/llm-config/registry/credential_pools.yaml`, `.ai/llm-config/registry/config_keys.yaml` |
 
 ## Environment Rules
 
@@ -27,7 +27,7 @@ This document defines how application secrets are grouped, named, and expected t
 - Goal: local startup and feature testing.
 - Bitwarden project: `mr-common-dev`.
 - Naming mode: function-oriented naming is allowed.
-- Current Bitwarden mapping is defined in [dev.ref.yaml](/d:/Else/Fun-ForumAI/env/secrets/dev.ref.yaml).
+- Current Bitwarden mapping is defined in `env/secrets/dev.ref.yaml`.
 - `dev` SHOULD include only the fixed local feature-test baseline. Secrets outside that baseline should not remain declared in `dev`, to avoid semantic drift.
 
 Current `dev` matrix:
@@ -44,7 +44,7 @@ Current `dev` matrix:
 Notes:
 
 - `dev` intentionally does not require SMTP, SMS, Redis, S3, or provider secondary keys.
-- `AUTH_VERIFICATION_SECRET` is not part of the `dev` secret set because runtime falls back to `JWT_SECRET` in [config.ts](/d:/Else/Fun-ForumAI/src/backend/lib/config.ts).
+- `AUTH_VERIFICATION_SECRET` is not part of the `dev` secret set because runtime falls back to `JWT_SECRET` in `src/backend/lib/config.ts`.
 - Function-oriented keys such as `talkshow-dev/llm_api_default`, `talkshow-dev/llm_api_lowcost`, and `talkshow-dev/llm_api_pics` are part of the fixed `dev` baseline because local development is expected to cover default text generation, low-cost generation, and image-generation feature paths.
 
 ### `staging`
@@ -52,7 +52,7 @@ Notes:
 - Goal: full-function pre-production environment that can rehearse `prod` behavior end-to-end.
 - Bitwarden project: `mr-common-staging`.
 - Naming mode: provider-oriented and infrastructure-oriented.
-- Current Bitwarden mapping is defined in [staging.ref.yaml](/d:/Else/Fun-ForumAI/env/secrets/staging.ref.yaml).
+- Current Bitwarden mapping is defined in `env/secrets/staging.ref.yaml`.
 - `staging` SHOULD include:
   - all `core-startup` secrets
   - the full `feature-gated-capabilities` layer required to exercise production features
@@ -64,23 +64,25 @@ Current `staging` checklist:
 | --- | --- | --- |
 | `core-startup` | `database_url`, `jwt_secret`, `service_auth_secret` | `talkshow-stag/<secret_ref>` |
 | `feature-gated-capabilities` | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `aliyun_sms_access_key_id`, `aliyun_sms_access_key_secret`, `llm_api_pics`, `media_s3_access_key_id`, `media_s3_secret_access_key`, `runtime_redis_url`, `sse_redis_url` | infrastructure-oriented and provider-oriented Bitwarden keys such as `talkshow-stag/smtp_user`, `llm_api_pics_generation`, and `talkshow-stag/redis_url_runtime` |
-| `provider-and-routing` | `llm_api_default`, `llm_api_vision`, `zai_api_key`, `deepseek_api_key`, `moonshot_api_key`, `llm_api_lowcost`, `tencent_hunyuan_api_key`, `ark_api_key` | shared Bitwarden keys such as `llm_api_default`, `llm_api_pics_vision`, `llm_api_glm_1`, and `llm_api_minimax_1` |
+| `provider-and-routing` | `llm_api_default`, `dashscope_api_key_secondary`, `llm_api_vision`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `deepseek_api_key_secondary`, `moonshot_api_key`, `moonshot_api_key_secondary`, `llm_api_lowcost`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `tencent_hunyuan_api_key_secondary`, `ark_api_key`, `ark_api_key_secondary` | shared primary Bitwarden keys such as `llm_api_default`, `llm_api_pics_vision`, `llm_api_glm_1`, and provider-oriented staging secondary keys such as `talkshow-stag/zai_api_key_secondary` |
 
 Notes:
 
-- `staging` keeps `llm_api_pics` because posting-time image generation is an expected staging capability. Actual generation is explicitly enabled in [staging.yaml](/d:/Else/Fun-ForumAI/env/values/staging.yaml) with `FF_MEDIA_GENERATION_V1=true`.
+- `staging` keeps `llm_api_pics` because posting-time image generation is an expected staging capability. Actual generation is explicitly enabled in `env/values/staging.yaml` with `FF_MEDIA_GENERATION_V1=true`.
 - `staging` now has a dedicated `llm_api_vision` secret for image understanding and semantic snapshot ingestion. The `vision_summary` route prefers `llm_api_vision` first and falls back to `llm_api_default` if the dedicated vision credential is absent or unusable.
-- `staging` consumes the current shared LLM Bitwarden keys (`llm_api_default`, `llm_api_pics_vision`, `llm_api_glm_1`, `llm_api_deepseek_1`, `llm_api_kimi_1`, `llm_api_minimax_1`, `llm_api_tecent_1`, `llm_api_ark_1`) rather than environment-prefixed provider keys.
-- Provider secondary keys are now `prod`-only. `staging` no longer requires `*_secondary` secrets at compile time.
-- `staging` now enables the prod-like non-secret baseline in [staging.yaml](/d:/Else/Fun-ForumAI/env/values/staging.yaml): `NODE_ENV=production`, `DB_PERSISTENCE=true`, Redis-backed runtime/SSE, `MEDIA_STORAGE_BACKEND=s3`, and the media generation/observability/lifecycle flags required for the image pipeline.
-- Non-dev environments no longer silently degrade when Redis or S3 is requested. In [infra.ts](/d:/Else/Fun-ForumAI/src/backend/container/infra.ts) and [llm.ts](/d:/Else/Fun-ForumAI/src/backend/container/llm.ts), missing staging/prod Redis or S3 requirements now fail fast instead of falling back to local or in-memory behavior.
+- `staging` consumes the current shared LLM primary Bitwarden keys (`llm_api_default`, `llm_api_pics_vision`, `llm_api_glm_1`, `llm_api_deepseek_1`, `llm_api_kimi_1`, `llm_api_minimax_1`, `llm_api_tecent_1`, `llm_api_ark_1`) together with provider-oriented secondary keys (`talkshow-stag/*_secondary`) so ordered failover can rehearse prod behavior.
+- Provider secondary keys now require staging/prod parity at compile time for admitted providers.
+- `staging` now enables the prod-like non-secret baseline in `env/values/staging.yaml`: `NODE_ENV=production`, `DB_PERSISTENCE=true`, Redis-backed runtime/SSE, `MEDIA_STORAGE_BACKEND=s3`, and the media generation/observability/lifecycle flags required for the image pipeline.
+- Non-dev environments no longer silently degrade when Redis or S3 is requested. In `src/backend/container/infra.ts` and `src/backend/container/llm.ts`, missing staging/prod Redis or S3 requirements now fail fast instead of falling back to local or in-memory behavior.
 
 ### `prod`
 
 - Goal: production delivery with operationally precise routing and rotation ownership.
-- Current Bitwarden refs are defined in [prod.ref.yaml](/d:/Else/Fun-ForumAI/env/secrets/prod.ref.yaml).
+- Current Bitwarden refs are defined in `env/secrets/prod.ref.yaml`.
 - Current implementation still resolves through Bitwarden project `mr-common-staging`, but with `talkshow-prod/...` keys.
 - `prod` MUST preserve provider-oriented naming and MUST keep primary/secondary routing credentials explicit.
+- `prod` now carries the same cloud baseline in `env/values/prod.yaml` for `NODE_ENV=production`, `DB_PERSISTENCE=true`, Redis-backed runtime/SSE, and `MEDIA_STORAGE_BACKEND=s3`.
+- `RUNTIME_ENABLED` is intentionally absent from shared staging/prod env values. API keeps `RUNTIME_ENABLED=false` in `compose.yaml`, and worker raises `RUNTIME_ENABLED=true` only through the workload contract.
 
 Current `prod` checklist:
 
@@ -88,19 +90,19 @@ Current `prod` checklist:
 | --- | --- | --- |
 | `core-startup` | `database_url`, `jwt_secret`, `service_auth_secret` | `talkshow-prod/<secret_ref>` |
 | `feature-gated-capabilities` | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `aliyun_sms_access_key_id`, `aliyun_sms_access_key_secret`, `llm_api_pics`, `media_s3_access_key_id`, `media_s3_secret_access_key`, `runtime_redis_url`, `sse_redis_url` | provider-oriented Bitwarden keys such as `talkshow-prod/media_generation_api_key` |
-| `provider-and-routing` | `llm_api_default`, `dashscope_api_key_secondary`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `deepseek_api_key_secondary`, `moonshot_api_key`, `moonshot_api_key_secondary`, `llm_api_lowcost`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `tencent_hunyuan_api_key_secondary`, `ark_api_key`, `ark_api_key_secondary` | provider-oriented Bitwarden keys such as `talkshow-prod/dashscope_api_key` and `talkshow-prod/minimax_api_key` |
+| `provider-and-routing` | `llm_api_default`, `dashscope_api_key_secondary`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `deepseek_api_key_secondary`, `moonshot_api_key`, `moonshot_api_key_secondary`, `llm_api_lowcost`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `tencent_hunyuan_api_key_secondary`, `ark_api_key`, `ark_api_key_secondary` | provider-oriented Bitwarden keys such as `talkshow-prod/dashscope_api_key` and `talkshow-prod/minimax_api_key_secondary` |
 
 ## Contract and Runtime Mapping
 
-- The env contract is authoritative for logical secret names: [contract.yaml](/d:/Else/Fun-ForumAI/env/contract.yaml).
+- The env contract is authoritative for logical secret names: `env/contract.yaml`.
 - Bitwarden lookup is environment-specific and lives in:
-  - [dev.ref.yaml](/d:/Else/Fun-ForumAI/env/secrets/dev.ref.yaml)
-  - [staging.ref.yaml](/d:/Else/Fun-ForumAI/env/secrets/staging.ref.yaml)
-  - [prod.ref.yaml](/d:/Else/Fun-ForumAI/env/secrets/prod.ref.yaml)
-- Backend runtime consumption of startup, delivery, media, and Redis secrets is centralized in [config.ts](/d:/Else/Fun-ForumAI/src/backend/lib/config.ts).
+  - `env/secrets/dev.ref.yaml`
+  - `env/secrets/staging.ref.yaml`
+  - `env/secrets/prod.ref.yaml`
+- Backend runtime consumption of startup, delivery, media, and Redis secrets is centralized in `src/backend/lib/config.ts`.
 - LLM provider and failover credentials are consumed through:
-  - [credential_pools.yaml](/d:/Else/Fun-ForumAI/.ai/llm-config/registry/credential_pools.yaml)
-  - [config_keys.yaml](/d:/Else/Fun-ForumAI/.ai/llm-config/registry/config_keys.yaml)
+  - `.ai/llm-config/registry/credential_pools.yaml`
+  - `.ai/llm-config/registry/config_keys.yaml`
 
 ## Review Checklist
 
@@ -108,4 +110,4 @@ Current `prod` checklist:
 - Add a new secret to `feature-gated-capabilities` when a feature can be disabled or has a fallback.
 - Add a new secret to `provider-and-routing` only when it directly participates in routing, failover, or provider admission.
 - Keep `dev` minimal. Do not copy the full staging/provider topology into local development by default.
-- Keep `staging` and `prod` provider names explicit enough that on-call rotation and failover decisions remain obvious.
+- Keep `staging` and `prod` provider names explicit enough that on-call rotation and failover decisions remain obvious, including primary/secondary parity for admitted providers.

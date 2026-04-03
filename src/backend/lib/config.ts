@@ -162,13 +162,8 @@ export const config = {
     secret: serviceAuthSecret,
     timestampToleranceMs: 5 * 60 * 1000,
   },
-  // Bootstrap-only defaults until the versioned gateway/router becomes the
-  // single calling surface. Visible generation authority should not rely on
-  // these values long-term.
   llm: {
-    provider: env.LLM_PROVIDER || 'dashscope-openai',
-    model: env.LLM_MODEL || 'qwen-plus-character',
-    baseUrl: env.LLM_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    routingMode: 'policy_driven' as const,
     maxTokens: safeInt(env.LLM_MAX_TOKENS, 512),
     temperature: safeFloat(env.LLM_TEMPERATURE, 0.8),
     maxRetries: safeInt(env.LLM_MAX_RETRIES, 2),

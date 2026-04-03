@@ -39,18 +39,11 @@ describe('LlmClient', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const client = new LlmClient({
-      provider: {
-        provider_id: 'dashscope-openai',
-        gateway_kind: 'openai_compatible',
-        base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-        api_key: '',
-        timeout_ms: 30_000,
-        max_retries: 0,
-      },
       defaults: {
-        model: 'qwen-plus-character',
         max_tokens: 512,
         temperature: 0.7,
+        timeout_ms: 30_000,
+        max_retries: 0,
       },
     })
 

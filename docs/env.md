@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-03T11:47:00Z`
+Generated at (UTC): `2026-04-03T14:13:43Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -18,7 +18,7 @@ Generated at (UTC): `2026-04-03T11:47:00Z`
 | `ALIYUN_SMS_TEMPLATE_CODE` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | Approved Alibaba Cloud SMS template code for verification messages. |
 | `APP_ENV` | `active` | `enum` | yes | no | `dev` | `` | `*` | `` | `` | `` | Deployment environment profile. |
 | `ARK_API_KEY` | `active` | `string` | no | yes | `` | `ark_api_key` | `staging,prod` | `` | `` | `` | ByteDance Ark / Doubao provider API key. |
-| `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `prod` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
+| `ARK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `ark_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary ByteDance Ark / Doubao provider API key for ordered failover. |
 | `AUTH_BOOTSTRAP_ADMIN_EMAILS` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Comma-separated bootstrap admin email list. Matching accounts are promoted to ADMIN after successful login or registration. |
 | `AUTH_BOOTSTRAP_ADMIN_PHONES` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Comma-separated bootstrap admin phone list. Matching accounts are promoted to ADMIN after successful SMS auth. |
 | `AUTH_EXPOSE_DEBUG_CODE` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Expose verification codes in API responses for local/debug workflows. Non-production only. |
@@ -36,11 +36,11 @@ Generated at (UTC): `2026-04-03T11:47:00Z`
 | `CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay in milliseconds before the first community config scheduler scan. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
 | `DASHSCOPE_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_default` | `*` | `` | `` | `` | DashScope / Qwen provider API key. |
-| `DASHSCOPE_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `dashscope_api_key_secondary` | `prod` | `` | `` | `` | Secondary DashScope / Qwen provider API key for ordered failover. |
+| `DASHSCOPE_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `dashscope_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary DashScope / Qwen provider API key for ordered failover. |
 | `DATABASE_URL` | `active` | `string` | yes | yes | `` | `database_url` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
-| `DB_PERSISTENCE` | `active` | `enum` | no | no | `false` | `` | `staging` | `` | `` | `` | Enable Prisma-backed persistence for staging when rehearsing production-like runtime behavior. |
+| `DB_PERSISTENCE` | `active` | `enum` | no | no | `false` | `` | `staging,prod` | `` | `` | `` | Enable Prisma-backed persistence for staging/prod cloud environments. |
 | `DEEPSEEK_API_KEY` | `active` | `string` | no | yes | `` | `deepseek_api_key` | `staging,prod` | `` | `` | `` | DeepSeek provider API key. |
-| `DEEPSEEK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `deepseek_api_key_secondary` | `prod` | `` | `` | `` | Secondary DeepSeek provider API key for ordered failover. |
+| `DEEPSEEK_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `deepseek_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary DeepSeek provider API key for ordered failover. |
 | `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
 | `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
@@ -99,11 +99,8 @@ Generated at (UTC): `2026-04-03T11:47:00Z`
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
-| `LLM_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `` | `*` | `` | `` | `` | Bootstrap or emergency-only base URL for legacy/default LLM client initialization. Runtime routing in staging/prod must not treat this as normal lane authority. |
 | `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |
 | `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |
-| `LLM_MODEL` | `active` | `string` | no | no | `qwen-plus-character` | `` | `*` | `` | `` | `` | Bootstrap or emergency-only default LLM model for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority. |
-| `LLM_PROVIDER` | `active` | `string` | no | no | `dashscope-openai` | `` | `*` | `` | `` | `` | Bootstrap or emergency-only provider identifier for legacy/default local paths. Runtime routing in staging/prod must not treat this as normal lane authority. |
 | `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
 | `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
 | `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable. |
@@ -140,9 +137,9 @@ Generated at (UTC): `2026-04-03T11:47:00Z`
 | `MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION` | `active` | `string` | no | no | `media_semantic_summary.v1` | `` | `*` | `` | `` | `` | Target semantic snapshot schema version for lifecycle backfill. |
 | `MEDIA_STORAGE_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | Storage backend for persisted media assets. |
 | `MINIMAX_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_lowcost` | `*` | `` | `` | `` | MiniMax provider API key. |
-| `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `prod` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
+| `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `minimax_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. |
 | `MOONSHOT_API_KEY` | `active` | `string` | no | yes | `` | `moonshot_api_key` | `staging,prod` | `` | `` | `` | Moonshot / Kimi provider API key. |
-| `MOONSHOT_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `moonshot_api_key_secondary` | `prod` | `` | `` | `` | Secondary Moonshot / Kimi provider API key for ordered failover. |
+| `MOONSHOT_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `moonshot_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary Moonshot / Kimi provider API key for ordered failover. |
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |
@@ -173,7 +170,7 @@ Generated at (UTC): `2026-04-03T11:47:00Z`
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |
 | `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `staging,prod` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
 | `TENCENT_HUNYUAN_API_KEY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key` | `staging,prod` | `` | `` | `` | Tencent Hunyuan provider API key. |
-| `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key_secondary` | `prod` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. |
+| `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `tencent_hunyuan_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AFTERSHOW_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aftershow summaries and highlight callouts. |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
@@ -186,7 +183,7 @@ Generated at (UTC): `2026-04-03T11:47:00Z`
 | `VITE_FF_PROGRAMMING_OPS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading the Admin Programming tab and its launch ops read model. |
 | `VITE_FF_ROLE_ASSIGNMENT_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aside-seat / role-assignment read models. |
 | `ZAI_API_KEY` | `active` | `string` | no | yes | `` | `zai_api_key` | `staging,prod` | `` | `` | `` | ZAI / GLM provider API key. |
-| `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `prod` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
+| `ZAI_API_KEY_SECONDARY` | `active` | `string` | no | yes | `` | `zai_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary ZAI / GLM provider API key for ordered failover. |
 
 ## Loading model (recommended)
 

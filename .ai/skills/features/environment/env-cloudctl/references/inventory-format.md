@@ -143,3 +143,30 @@ Fields (ssh):
 - `region`
 - `cluster` / `namespace`
 - `...` (provider-specific)
+
+## aliyun-eci-container-group adapter
+
+Use this adapter when the cloud runtime role is delivered by replacing an ECI
+container group rather than copying an env-file onto a host.
+
+```yaml
+version: 1
+env: staging
+provider: aliyun-eci-container-group
+runtime: remote
+region: cn-hangzhou
+container_group:
+  workload_id: eci-worker
+  template: ops/deploy/workloads/eci-worker/staging.container-group.yaml
+  rendered_output: .ai/.tmp/env-cloud/staging/eci-worker.rendered.yaml
+  env_matrix: ops/deploy/workloads/eci-worker/env-matrix.yaml
+  role_contract: ops/deploy/workloads/eci-worker/role-contract.yaml
+```
+
+Fields:
+
+- `container_group.template` (required): repo-tracked worker template.
+- `container_group.rendered_output` (required): redacted rendered manifest path produced by `apply`.
+- `container_group.env_matrix` (optional but recommended): source of required env keys and secret refs.
+- `container_group.role_contract` (optional): workload role contract for evidence and handoff.
+- `container_group.workload_id` (optional): stable workload identifier, defaults to `eci-worker`.
