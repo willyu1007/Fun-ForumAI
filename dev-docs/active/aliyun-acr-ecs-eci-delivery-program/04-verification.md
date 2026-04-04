@@ -130,3 +130,6 @@
   - Manual review:
     - 根据当前 operator 维护的 Bitwarden inventory，repo 已把 staging cloud routing secret surface 收敛为：DashScope/ZAI/MiniMax/Ark 保留 primary+secondary，DeepSeek/Moonshot/Tencent 仅保留 primary。
     - generic `llm_api_default` / `llm_api_lowcost` 已退出正常 staging/prod provider routing surface；provider-specific secret refs 与 runtime credential pools 已重新对齐，避免后续双轨开发继续围绕历史别名扩散。
+  - `grep -n '^AUTH_BOOTSTRAP_ADMIN_EMAILS=' env/values/staging.yaml && grep -n '^AUTH_BOOTSTRAP_ADMIN_PHONES=' env/values/staging.yaml`
+    - Result: 通过；`staging` values 已显式声明 `18186223485@163.com` 与 `18186223485,15527462569`。
+    - Note: staging live 验证不再依赖 ECS 侧临时手改 `.env` 才能拿到 bootstrap admin token；repo authority 已与 operator 口径对齐。

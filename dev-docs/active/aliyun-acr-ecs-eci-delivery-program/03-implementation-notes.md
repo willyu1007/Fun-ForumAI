@@ -81,3 +81,6 @@
   - bootstrap admin tests 不再直接改写 readonly config；
   - auth verification challenge payload 明确对齐 `Record<string, unknown>` 合同；
   - 未使用的 invite-code helper 已移除。
+- 2026-04-04 staging live 验证进一步收口时，发现当前 repo values 没有声明任何 bootstrap admin，导致 `/v1/admin/runtime/*` 无法通过真实 admin token 进入。
+  - 现已把 `18186223485@163.com` 与 `18186223485,15527462569` 写回 `env/values/staging.yaml`，作为 staging operator bootstrap admin authority。
+  - 密码没有进入 repo；如需邮箱密码登录，后续必须通过真实注册/重置流程设置，而不是把账号凭据写入 env values 或任务文档。

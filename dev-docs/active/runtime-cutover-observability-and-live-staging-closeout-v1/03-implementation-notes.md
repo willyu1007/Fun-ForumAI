@@ -66,3 +66,6 @@
 - `verify-launch-readiness.mjs` 由单纯的 platform/readiness gate 收紧为 cloud-boundary gate：
   - 除 worker health/running 以外，还会显式检查 `api` 与 `worker` 两侧的 `routing_mode=policy_driven`；
   - 同时检查两侧都不存在 deprecated env pin 与未批准 debug override。
+- 2026-04-04 staging live 验证补充了一个 operator-facing prerequisite：
+  - `/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 需要真实 admin token；单靠 bootstrap allow-list 但未把邮箱/手机号治理进 `staging` values，会让 live gate 卡在认证前置。
+  - 现已把 staging bootstrap admins 写回 repo values；后续 compile 出来的 `staging.env` 应直接包含 bootstrap admin email/phone，不再需要 ECS 侧长期保留手工 hotfix。
