@@ -128,5 +128,5 @@
       - 在正式 deploy workspace 尚未落位前，`staging api` 被明确允许一次 `local compile + manual ECS import` 的 bootstrap 例外；`prod` 与 `worker` 不适用。
 - 2026-04-04:
   - Manual review:
-    - 真实 staging bootstrap 验证显示，`bws` 安装后 `staging api` env compile 仍会因为 `talkshow-stag/*_secondary` 七个 secret 缺失而失败；当前 blocker 已从 operator 工具链转为 Bitwarden secret inventory 不完整。
-    - 为消除双轨歧义，`env/contract.yaml` 已把 staging/prod 的 provider primary + secondary routing secrets 明确收紧为 required，避免后续 operator 误以为这些键仍可按 optional 省略。
+    - 根据当前 operator 维护的 Bitwarden inventory，repo 已把 staging cloud routing secret surface 收敛为：DashScope/ZAI/MiniMax/Ark 保留 primary+secondary，DeepSeek/Moonshot/Tencent 仅保留 primary。
+    - generic `llm_api_default` / `llm_api_lowcost` 已退出正常 staging/prod provider routing surface；provider-specific secret refs 与 runtime credential pools 已重新对齐，避免后续双轨开发继续围绕历史别名扩散。

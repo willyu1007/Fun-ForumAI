@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-04T08:01:29Z`
+Generated at (UTC): `2026-04-04T08:21:47Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -35,12 +35,11 @@ Generated at (UTC): `2026-04-04T08:01:29Z`
 | `CONTROL_PLANE_SCHEDULER_MAX_RETRIES` | `active` | `int` | no | no | `5` | `` | `*` | `` | `` | `` | Max retry attempts for failed scheduled config applications. |
 | `CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Startup delay in milliseconds before the first community config scheduler scan. |
 | `CORS_ORIGINS` | `active` | `string` | no | no | `http://localhost:3000` | `` | `*` | `` | `` | `` | Comma-separated list of allowed CORS origins. |
-| `DASHSCOPE_API_KEY` | `active` | `string` | yes | yes | `` | `llm_api_default` | `staging,prod` | `` | `` | `` | Primary DashScope / Qwen provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
+| `DASHSCOPE_API_KEY` | `active` | `string` | yes | yes | `` | `dashscope_api_key` | `staging,prod` | `` | `` | `` | Primary DashScope / Qwen provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
 | `DASHSCOPE_API_KEY_SECONDARY` | `active` | `string` | yes | yes | `` | `dashscope_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary DashScope / Qwen provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact. |
 | `DATABASE_URL` | `active` | `string` | yes | yes | `` | `database_url` | `*` | `` | `` | `` | PostgreSQL connection URL (Prisma datasource). |
 | `DB_PERSISTENCE` | `active` | `enum` | no | no | `false` | `` | `staging,prod` | `` | `` | `` | Enable Prisma-backed persistence for staging/prod cloud environments. |
 | `DEEPSEEK_API_KEY` | `active` | `string` | yes | yes | `` | `deepseek_api_key` | `staging,prod` | `` | `` | `` | Primary DeepSeek provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
-| `DEEPSEEK_API_KEY_SECONDARY` | `active` | `string` | yes | yes | `` | `deepseek_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary DeepSeek provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact. |
 | `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
 | `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
@@ -103,7 +102,7 @@ Generated at (UTC): `2026-04-04T08:01:29Z`
 | `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |
 | `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
 | `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
-| `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable. |
+| `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to the primary DashScope credential when unavailable. |
 | `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_pics` | `dev,dev.local,staging,prod` | `` | `` | `` | API key for the dedicated image generation gateway. |
 | `MEDIA_GENERATION_BASE_URL` | `active` | `string` | no | no | `https://ark.cn-beijing.volces.com` | `` | `*` | `` | `` | `` | Base URL for the dedicated image generation API. |
 | `MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout for downloading provider-hosted generated image bytes. |
@@ -136,10 +135,9 @@ Generated at (UTC): `2026-04-04T08:01:29Z`
 | `MEDIA_SNAPSHOT_TARGET_MODEL_VERSION` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Target semantic snapshot model version for lifecycle backfill. Empty string disables model-version drift gating. |
 | `MEDIA_SNAPSHOT_TARGET_SCHEMA_VERSION` | `active` | `string` | no | no | `media_semantic_summary.v1` | `` | `*` | `` | `` | `` | Target semantic snapshot schema version for lifecycle backfill. |
 | `MEDIA_STORAGE_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | Storage backend for persisted media assets. |
-| `MINIMAX_API_KEY` | `active` | `string` | yes | yes | `` | `llm_api_lowcost` | `staging,prod` | `` | `` | `` | Primary MiniMax provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
+| `MINIMAX_API_KEY` | `active` | `string` | yes | yes | `` | `minimax_api_key` | `staging,prod` | `` | `` | `` | Primary MiniMax provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
 | `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | yes | yes | `` | `minimax_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact. |
 | `MOONSHOT_API_KEY` | `active` | `string` | yes | yes | `` | `moonshot_api_key` | `staging,prod` | `` | `` | `` | Primary Moonshot / Kimi provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
-| `MOONSHOT_API_KEY_SECONDARY` | `active` | `string` | yes | yes | `` | `moonshot_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary Moonshot / Kimi provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact. |
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |
@@ -170,7 +168,6 @@ Generated at (UTC): `2026-04-04T08:01:29Z`
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |
 | `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `staging,prod` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
 | `TENCENT_HUNYUAN_API_KEY` | `active` | `string` | yes | yes | `` | `tencent_hunyuan_api_key` | `staging,prod` | `` | `` | `` | Primary Tencent Hunyuan provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
-| `TENCENT_HUNYUAN_API_KEY_SECONDARY` | `active` | `string` | yes | yes | `` | `tencent_hunyuan_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary Tencent Hunyuan provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AFTERSHOW_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aftershow summaries and highlight callouts. |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |

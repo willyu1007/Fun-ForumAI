@@ -72,8 +72,8 @@
       },
       {
         "id": "provider-and-routing",
-        "description": "Credentials used to control LLM routing and failover. Dev may use capability-oriented logical refs, while staging and prod should still map those refs to concrete provider credentials.",
-        "examples": ["llm_api_default", "llm_api_lowcost", "dashscope_api_key_secondary", "zai_api_key", "ark_api_key"]
+        "description": "Credentials used to control LLM routing and failover. Dev may use capability-oriented logical refs, while staging and prod should still map those refs to concrete provider credentials and only include the admitted runtime surface.",
+        "examples": ["dashscope_api_key", "dashscope_api_key_secondary", "zai_api_key", "minimax_api_key", "ark_api_key"]
       }
     ]
   }

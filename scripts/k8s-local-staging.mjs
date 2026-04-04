@@ -555,18 +555,12 @@ async function main() {
     ZAI_API_KEY_SECONDARY:
       process.env.ZAI_API_KEY_SECONDARY || existingSecretData.ZAI_API_KEY_SECONDARY || '',
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || existingSecretData.DEEPSEEK_API_KEY || '',
-    DEEPSEEK_API_KEY_SECONDARY:
-      process.env.DEEPSEEK_API_KEY_SECONDARY || existingSecretData.DEEPSEEK_API_KEY_SECONDARY || '',
     MOONSHOT_API_KEY: process.env.MOONSHOT_API_KEY || existingSecretData.MOONSHOT_API_KEY || '',
-    MOONSHOT_API_KEY_SECONDARY:
-      process.env.MOONSHOT_API_KEY_SECONDARY || existingSecretData.MOONSHOT_API_KEY_SECONDARY || '',
     MINIMAX_API_KEY: process.env.MINIMAX_API_KEY || existingSecretData.MINIMAX_API_KEY || '',
     MINIMAX_API_KEY_SECONDARY:
       process.env.MINIMAX_API_KEY_SECONDARY || existingSecretData.MINIMAX_API_KEY_SECONDARY || '',
     TENCENT_HUNYUAN_API_KEY:
       process.env.TENCENT_HUNYUAN_API_KEY || existingSecretData.TENCENT_HUNYUAN_API_KEY || '',
-    TENCENT_HUNYUAN_API_KEY_SECONDARY:
-      process.env.TENCENT_HUNYUAN_API_KEY_SECONDARY || existingSecretData.TENCENT_HUNYUAN_API_KEY_SECONDARY || '',
     ARK_API_KEY: process.env.ARK_API_KEY || existingSecretData.ARK_API_KEY || '',
     ARK_API_KEY_SECONDARY:
       process.env.ARK_API_KEY_SECONDARY || existingSecretData.ARK_API_KEY_SECONDARY || '',

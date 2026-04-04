@@ -301,7 +301,7 @@ variables:
     scopes: [staging, prod]
     description: Primary DashScope / Qwen provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
-    secret_ref: llm_api_default
+    secret_ref: dashscope_api_key
 
   DASHSCOPE_API_KEY_SECONDARY:
     type: string
@@ -335,14 +335,6 @@ variables:
     secret: true
     secret_ref: deepseek_api_key
 
-  DEEPSEEK_API_KEY_SECONDARY:
-    type: string
-    required: true
-    scopes: [staging, prod]
-    description: Secondary DeepSeek provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
-    secret: true
-    secret_ref: deepseek_api_key_secondary
-
   MOONSHOT_API_KEY:
     type: string
     required: true
@@ -351,21 +343,13 @@ variables:
     secret: true
     secret_ref: moonshot_api_key
 
-  MOONSHOT_API_KEY_SECONDARY:
-    type: string
-    required: true
-    scopes: [staging, prod]
-    description: Secondary Moonshot / Kimi provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
-    secret: true
-    secret_ref: moonshot_api_key_secondary
-
   MINIMAX_API_KEY:
     type: string
     required: true
     scopes: [staging, prod]
     description: Primary MiniMax provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
-    secret_ref: llm_api_lowcost
+    secret_ref: minimax_api_key
 
   MINIMAX_API_KEY_SECONDARY:
     type: string
@@ -382,14 +366,6 @@ variables:
     description: Primary Tencent Hunyuan provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: tencent_hunyuan_api_key
-
-  TENCENT_HUNYUAN_API_KEY_SECONDARY:
-    type: string
-    required: true
-    scopes: [staging, prod]
-    description: Secondary Tencent Hunyuan provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
-    secret: true
-    secret_ref: tencent_hunyuan_api_key_secondary
 
   ARK_API_KEY:
     type: string
@@ -419,7 +395,7 @@ variables:
     type: string
     required: false
     scopes: [staging]
-    description: Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable.
+    description: Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to the primary DashScope credential when unavailable.
     secret: true
     secret_ref: llm_api_vision
 

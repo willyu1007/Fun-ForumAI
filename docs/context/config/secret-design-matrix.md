@@ -18,7 +18,7 @@ This document defines how application secrets are grouped, named, and expected t
 | --- | --- | --- | --- |
 | `core-startup` | Minimum secrets required to boot the service and authenticate safely. | `database_url`, `jwt_secret`, `service_auth_secret` | `src/backend/lib/config.ts` |
 | `feature-gated-capabilities` | Secrets that are only required when a feature is enabled. | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `llm_api_pics`, `media_s3_access_key_id`, `runtime_redis_url`, `sse_redis_url` | `src/backend/lib/config.ts` |
-| `provider-and-routing` | Secrets used by the LLM gateway and routing/failover policy. In `dev` they may be capability-oriented; in `staging` and `prod` they map to concrete provider credentials and ordered failover refs. | `llm_api_default`, `llm_api_lowcost`, `llm_api_vision`, `dashscope_api_key_secondary`, `zai_api_key`, `ark_api_key` | `.ai/llm-config/registry/credential_pools.yaml`, `.ai/llm-config/registry/config_keys.yaml` |
+| `provider-and-routing` | Secrets used by the LLM gateway and routing/failover policy. In `dev` they may be capability-oriented; in `staging` and `prod` they map to concrete provider credentials and only expose the credential pools actually admitted by runtime. | `dashscope_api_key`, `dashscope_api_key_secondary`, `llm_api_vision`, `zai_api_key`, `zai_api_key_secondary`, `ark_api_key` | `.ai/llm-config/registry/credential_pools.yaml`, `.ai/llm-config/registry/config_keys.yaml` |
 
 ## Environment Rules
 
@@ -64,14 +64,15 @@ Current `staging` checklist:
 | --- | --- | --- |
 | `core-startup` | `database_url`, `jwt_secret`, `service_auth_secret` | `talkshow-stag/<secret_ref>` |
 | `feature-gated-capabilities` | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `aliyun_sms_access_key_id`, `aliyun_sms_access_key_secret`, `llm_api_pics`, `media_s3_access_key_id`, `media_s3_secret_access_key`, `runtime_redis_url`, `sse_redis_url` | infrastructure-oriented and provider-oriented Bitwarden keys such as `talkshow-stag/smtp_user`, `llm_api_pics_generation`, and `talkshow-stag/redis_url_runtime` |
-| `provider-and-routing` | `llm_api_default`, `dashscope_api_key_secondary`, `llm_api_vision`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `deepseek_api_key_secondary`, `moonshot_api_key`, `moonshot_api_key_secondary`, `llm_api_lowcost`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `tencent_hunyuan_api_key_secondary`, `ark_api_key`, `ark_api_key_secondary` | shared primary Bitwarden keys such as `llm_api_default`, `llm_api_pics_vision`, `llm_api_glm_1`, and provider-oriented staging secondary keys such as `talkshow-stag/zai_api_key_secondary` |
+| `provider-and-routing` | `dashscope_api_key`, `dashscope_api_key_secondary`, `llm_api_vision`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `moonshot_api_key`, `minimax_api_key`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `ark_api_key`, `ark_api_key_secondary` | provider-oriented staging Bitwarden keys such as `llm_api_qwen_1`, `llm_api_qwen_2`, `llm_api_glm_1`, `llm_api_glm_2`, `llm_api_deepseek_1`, `llm_api_kimi_1`, `llm_api_minimax_1`, `llm_api_minimax_2`, `llm_api_tecent_1`, `llm_api_ark_1`, and `llm_api_ark_2` |
 
 Notes:
 
 - `staging` keeps `llm_api_pics` because posting-time image generation is an expected staging capability. Actual generation is explicitly enabled in `env/values/staging.yaml` with `FF_MEDIA_GENERATION_V1=true`.
-- `staging` now has a dedicated `llm_api_vision` secret for image understanding and semantic snapshot ingestion. The `vision_summary` route prefers `llm_api_vision` first and falls back to `llm_api_default` if the dedicated vision credential is absent or unusable.
-- `staging` consumes the current shared LLM primary Bitwarden keys (`llm_api_default`, `llm_api_pics_vision`, `llm_api_glm_1`, `llm_api_deepseek_1`, `llm_api_kimi_1`, `llm_api_minimax_1`, `llm_api_tecent_1`, `llm_api_ark_1`) together with provider-oriented secondary keys (`talkshow-stag/*_secondary`) so ordered failover can rehearse prod behavior.
-- Provider secondary keys now require staging/prod parity at compile time for admitted providers.
+- `staging` now has a dedicated `llm_api_vision` secret for image understanding and semantic snapshot ingestion. The `vision_summary` route prefers `llm_api_vision` first and falls back to the primary DashScope credential if the dedicated vision credential is absent or unusable.
+- `staging` consumes the current operator-owned provider keys `llm_api_qwen_1/2`, `llm_api_glm_1/2`, `llm_api_deepseek_1`, `llm_api_kimi_1`, `llm_api_minimax_1/2`, `llm_api_tecent_1`, and `llm_api_ark_1/2`.
+- Only providers that actually have a second credential in Bitwarden keep a `*-secondary` credential pool in runtime. `deepseek`, `moonshot`, and `tencent` currently use a single staging credential and rely on cross-provider fallback instead of duplicate-key retry.
+- `llm_api_default` and `llm_api_openai` may still exist in Bitwarden for legacy/manual operator use, but they are not part of the normal staging cloud routing surface unless explicitly admitted by the runtime registry.
 - `staging` now enables the prod-like non-secret baseline in `env/values/staging.yaml`: `NODE_ENV=production`, `DB_PERSISTENCE=true`, Redis-backed runtime/SSE, `MEDIA_STORAGE_BACKEND=s3`, and the media generation/observability/lifecycle flags required for the image pipeline.
 - Non-dev environments no longer silently degrade when Redis or S3 is requested. In `src/backend/container/infra.ts` and `src/backend/container/llm.ts`, missing staging/prod Redis or S3 requirements now fail fast instead of falling back to local or in-memory behavior.
 
@@ -80,7 +81,7 @@ Notes:
 - Goal: production delivery with operationally precise routing and rotation ownership.
 - Current Bitwarden refs are defined in `env/secrets/prod.ref.yaml`.
 - Current implementation still resolves through Bitwarden project `mr-common-staging`, but with `talkshow-prod/...` keys.
-- `prod` MUST preserve provider-oriented naming and MUST keep primary/secondary routing credentials explicit.
+- `prod` MUST preserve provider-oriented naming and MUST keep the admitted credential surface explicit. Secondary credentials should exist only where the operator actually maintains a distinct second key.
 - `prod` now carries the same cloud baseline in `env/values/prod.yaml` for `NODE_ENV=production`, `DB_PERSISTENCE=true`, Redis-backed runtime/SSE, and `MEDIA_STORAGE_BACKEND=s3`.
 - `RUNTIME_ENABLED` is intentionally absent from shared staging/prod env values. API keeps `RUNTIME_ENABLED=false` in `compose.yaml`, and worker raises `RUNTIME_ENABLED=true` only through the workload contract.
 
@@ -90,7 +91,7 @@ Current `prod` checklist:
 | --- | --- | --- |
 | `core-startup` | `database_url`, `jwt_secret`, `service_auth_secret` | `talkshow-prod/<secret_ref>` |
 | `feature-gated-capabilities` | `auth_verification_secret`, `smtp_user`, `smtp_pass`, `aliyun_sms_access_key_id`, `aliyun_sms_access_key_secret`, `llm_api_pics`, `media_s3_access_key_id`, `media_s3_secret_access_key`, `runtime_redis_url`, `sse_redis_url` | provider-oriented Bitwarden keys such as `talkshow-prod/media_generation_api_key` |
-| `provider-and-routing` | `llm_api_default`, `dashscope_api_key_secondary`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `deepseek_api_key_secondary`, `moonshot_api_key`, `moonshot_api_key_secondary`, `llm_api_lowcost`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `tencent_hunyuan_api_key_secondary`, `ark_api_key`, `ark_api_key_secondary` | provider-oriented Bitwarden keys such as `talkshow-prod/dashscope_api_key` and `talkshow-prod/minimax_api_key_secondary` |
+| `provider-and-routing` | `dashscope_api_key`, `dashscope_api_key_secondary`, `zai_api_key`, `zai_api_key_secondary`, `deepseek_api_key`, `moonshot_api_key`, `minimax_api_key`, `minimax_api_key_secondary`, `tencent_hunyuan_api_key`, `ark_api_key`, `ark_api_key_secondary` | provider-oriented Bitwarden keys such as `talkshow-prod/dashscope_api_key`, `talkshow-prod/zai_api_key_secondary`, and `talkshow-prod/minimax_api_key_secondary` |
 
 ## Contract and Runtime Mapping
 
@@ -110,4 +111,4 @@ Current `prod` checklist:
 - Add a new secret to `feature-gated-capabilities` when a feature can be disabled or has a fallback.
 - Add a new secret to `provider-and-routing` only when it directly participates in routing, failover, or provider admission.
 - Keep `dev` minimal. Do not copy the full staging/provider topology into local development by default.
-- Keep `staging` and `prod` provider names explicit enough that on-call rotation and failover decisions remain obvious, including primary/secondary parity for admitted providers.
+- Keep `staging` and `prod` provider names explicit enough that on-call rotation and failover decisions remain obvious, including clarity about which providers actually have a second credential and which rely on cross-provider fallback.

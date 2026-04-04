@@ -127,6 +127,7 @@
 ## 2026-04-04 Review Gate Re-check
 
 - 重新核对后，`T-901` 的 repo 侧 hard gap 已从“execution plan 主路径已成型，但 capability/pricing coverage 仍可能漂移”收口为“candidate capability/pricing coverage 已由 validator + loader + gateway 三层共同加硬”。
+- staging/prod 的 credential surface 也已与当前 operator-owned Bitwarden inventory 对齐：DashScope/ZAI/MiniMax/Ark 保留 dual-key failover，DeepSeek/Moonshot/Tencent 走 single-key + cross-provider fallback；后续 live ordered-failover 验收必须按这条真实 contract 执行。
 - 当前仍未关闭的只剩外部验收项：
   - 真实 provider connectivity / ordered failover；
   - `T-936` staging live closeout；

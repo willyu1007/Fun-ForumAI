@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-04T08:01:29Z",
+  "generated_at_utc": "2026-04-04T08:21:47Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -458,7 +458,7 @@
         "prod"
       ],
       "secret": true,
-      "secret_ref": "llm_api_default",
+      "secret_ref": "dashscope_api_key",
       "state": "active",
       "type": "string"
     },
@@ -536,26 +536,6 @@
       ],
       "secret": true,
       "secret_ref": "deepseek_api_key",
-      "state": "active",
-      "type": "string"
-    },
-    "DEEPSEEK_API_KEY_SECONDARY": {
-      "default": null,
-      "deprecate_after": null,
-      "description": "Secondary DeepSeek provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": true,
-      "scopes": [
-        "staging",
-        "prod"
-      ],
-      "secret": true,
-      "secret_ref": "deepseek_api_key_secondary",
       "state": "active",
       "type": "string"
     },
@@ -1616,7 +1596,7 @@
     "LLM_VISION_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to llm_api_default when unavailable.",
+      "description": "Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to the primary DashScope credential when unavailable.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -2215,7 +2195,7 @@
         "prod"
       ],
       "secret": true,
-      "secret_ref": "llm_api_lowcost",
+      "secret_ref": "minimax_api_key",
       "state": "active",
       "type": "string"
     },
@@ -2256,26 +2236,6 @@
       ],
       "secret": true,
       "secret_ref": "moonshot_api_key",
-      "state": "active",
-      "type": "string"
-    },
-    "MOONSHOT_API_KEY_SECONDARY": {
-      "default": null,
-      "deprecate_after": null,
-      "description": "Secondary Moonshot / Kimi provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": true,
-      "scopes": [
-        "staging",
-        "prod"
-      ],
-      "secret": true,
-      "secret_ref": "moonshot_api_key_secondary",
       "state": "active",
       "type": "string"
     },
@@ -2816,26 +2776,6 @@
       ],
       "secret": true,
       "secret_ref": "tencent_hunyuan_api_key",
-      "state": "active",
-      "type": "string"
-    },
-    "TENCENT_HUNYUAN_API_KEY_SECONDARY": {
-      "default": null,
-      "deprecate_after": null,
-      "description": "Secondary Tencent Hunyuan provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
-      "legacy": {
-        "deprecated": false,
-        "replaced_by": null
-      },
-      "migration": null,
-      "replacement": null,
-      "required": true,
-      "scopes": [
-        "staging",
-        "prod"
-      ],
-      "secret": true,
-      "secret_ref": "tencent_hunyuan_api_key_secondary",
       "state": "active",
       "type": "string"
     },

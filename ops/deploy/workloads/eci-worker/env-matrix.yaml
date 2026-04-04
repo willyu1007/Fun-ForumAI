@@ -22,13 +22,10 @@ required_env:
     - ZAI_API_KEY
     - ZAI_API_KEY_SECONDARY
     - DEEPSEEK_API_KEY
-    - DEEPSEEK_API_KEY_SECONDARY
     - MOONSHOT_API_KEY
-    - MOONSHOT_API_KEY_SECONDARY
     - MINIMAX_API_KEY
     - MINIMAX_API_KEY_SECONDARY
     - TENCENT_HUNYUAN_API_KEY
-    - TENCENT_HUNYUAN_API_KEY_SECONDARY
     - ARK_API_KEY
     - ARK_API_KEY_SECONDARY
     - MEDIA_GENERATION_API_KEY
@@ -56,13 +53,10 @@ secret_refs:
   - ZAI_API_KEY
   - ZAI_API_KEY_SECONDARY
   - DEEPSEEK_API_KEY
-  - DEEPSEEK_API_KEY_SECONDARY
   - MOONSHOT_API_KEY
-  - MOONSHOT_API_KEY_SECONDARY
   - MINIMAX_API_KEY
   - MINIMAX_API_KEY_SECONDARY
   - TENCENT_HUNYUAN_API_KEY
-  - TENCENT_HUNYUAN_API_KEY_SECONDARY
   - ARK_API_KEY
   - ARK_API_KEY_SECONDARY
   - MEDIA_GENERATION_API_KEY
@@ -72,5 +66,5 @@ secret_refs:
 notes:
   - Worker and web consume the same immutable image ref.
   - Worker does not expose a public listener even though `/health` remains available inside the container group.
-  - Multi-provider runtime traffic in staging/prod must inject the full admitted provider secret surface, not only DashScope.
+  - Multi-provider runtime traffic in staging/prod must inject the full admitted provider secret surface actually maintained in Bitwarden, not only DashScope.
   - Registry + execution policy decide provider/model selection; do not reintroduce env-level routing pins for cloud worker rollout.
