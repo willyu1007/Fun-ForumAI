@@ -22,6 +22,7 @@
 1. Record the desired release in `ops/deploy/release-intents/<env>/desired.json`.
 2. Compile the API env-file with `env_localctl.py compile --runtime-target ecs --workload api`.
 3. Inject the API env-file with `env_cloudctl.py plan/apply --runtime-target ecs --workload api`.
+   - temporary staging exception: local compile + manual ECS import is allowed only for `staging api`
 4. Run database migration against the target image ref.
 5. Roll ECS web to the same immutable image ref with `RUNTIME_ENABLED=false`.
 6. Verify ECS web loopback health and smoke checks.

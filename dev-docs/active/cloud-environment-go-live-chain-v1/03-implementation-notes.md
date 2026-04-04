@@ -31,3 +31,7 @@
   - 删除旧的 `docs/context/env/effective-cloud-prod.json`
   - 删除临时 `.ai/.tmp/env-cloud/manual-staging-worker-plan.md`
 - 文档层同步去除了本轮范围内的机器私有绝对路径引用，避免 handoff 后链接语义漂移。
+- 2026-04-04 对 operator 现实路径再做一轮收口：
+  - 保持正式 contract 不变：`api -> envfile`、`worker -> aliyun-eci-container-group`。
+  - 但在正式 deploy workspace 尚未落位前，允许 `staging api` 临时走 “operator 本机 compile -> 手工导入 ECS `.env`” 的 bootstrap 路径。
+  - 该例外已明确限制为 staging-only，不得外溢到 `prod` 或 `worker`。

@@ -348,12 +348,21 @@ export interface ResolvedExecutionParams {
   regionHint?: string
 }
 
+export interface DebugRoutingOverrideTrace {
+  providerPin?: string
+  modelPin?: string
+  adapterPin?: string
+}
+
 export interface ExecutionParamMergeTrace {
   hardCaps: Partial<ResolvedExecutionParams>
   policyDefaults: Partial<ResolvedExecutionParams>
   callsiteOverrides: Partial<ResolvedExecutionParams>
   debugOverrides: Partial<ResolvedExecutionParams>
   appliedOverrideFields: LLMGatewayOverrideField[]
+  appliedCallsiteOverrideFields?: LLMGatewayOverrideField[]
+  appliedDebugOverrideFields?: LLMGatewayOverrideField[]
+  debugRoutingOverrides?: DebugRoutingOverrideTrace
 }
 
 export interface InferenceExecutionPlan {
@@ -380,8 +389,8 @@ export interface ModelCapabilityEntry {
   input_window_tokens: number
   max_output_tokens: number
   recommended_operating_input_tokens?: number
-  modalities?: RuntimeModality[]
-  response_modes?: ResponseMode[]
+  modalities: RuntimeModality[]
+  response_modes: ResponseMode[]
 }
 
 export interface LLMGatewayRequest {

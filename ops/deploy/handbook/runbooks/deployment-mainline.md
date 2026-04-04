@@ -21,10 +21,10 @@ Environment readiness and public-entry prerequisites live in:
 
 - `staging`
   - `1 ECS web`
-  - `1 ECI worker`
+  - `ECI worker target defined, live rollout pending`
 - `prod`
   - `1 ECS web`
-  - `1 ECI worker`
+  - `ECI worker target defined, live rollout pending`
 
 Canonical repo-side assets:
 
@@ -45,6 +45,7 @@ Required operator inputs:
 - immutable image ref:
   - `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-<40-char-commit>`
 - Bitwarden token that can read the target project secrets
+- STS-backed operator session when using the formal deploy workspace path
 - ECS shell access
 - ACR pull credential for the ECS host
 
@@ -81,7 +82,7 @@ Notes:
 
 ## Phase 2: Render environment from Bitwarden
 
-On the operator workstation or deploy machine:
+Formal path on the operator deploy workspace:
 
 ```powershell
 cd <repo-root>
@@ -93,11 +94,17 @@ python -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.p
   --runtime-target ecs `
   --workload api `
   --env-file ops/deploy/env-files/staging.env `
-  --no-context `
-  --no-preflight
+  --no-context
 ```
 
 Repeat with `--env prod` for prod.
+
+Temporary staging bootstrap exception:
+
+- If the formal deploy workspace is not ready yet, operator MAY run the same compile on a local machine that has `bws` access.
+- In that temporary path, `--no-preflight` is allowed only for `staging api`.
+- After compile, operator MAY manually install the resulting `.env` onto the ECS host.
+- This exception MUST NOT be used for `prod` or `worker`.
 
 Compile expectations:
 
@@ -149,7 +156,7 @@ Notes:
 
 - `policy.env.cloud.require_target=true` means omitting `--runtime-target ecs --workload api` is now a contract error.
 - Current `api` target uses `provider=envfile` with local transport, so apply should run from the deploy machine or equivalent release workspace that owns `/srv/apps/fun-forum/.env`.
-- Manual `cp/install` remains a break-glass recovery step only; normal rollout should stay on the `env-localctl compile -> env-cloudctl plan/apply` chain.
+- Manual `cp/install` remains a break-glass recovery step only, except for the temporary `staging api` bootstrap path described above.
 
 Minimal presence check without revealing values:
 

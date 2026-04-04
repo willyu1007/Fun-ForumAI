@@ -71,3 +71,16 @@
   - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target local`
     - Result: 按预期失败。
     - Note: 错误信息为 `policy.env.cloud.require_target is true but no target matched...`，确认 inventory fallback 已关闭。
+- 2026-04-04:
+  - `python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile --root . --env staging --runtime-target ecs --workload api --env-file ops/deploy/env-files/staging.env --out .ai/.tmp/env-localctl/staging-api-compile.md`
+    - Result: 失败。
+    - Note: preflight 明确报出 `No STS env signals detected (role chain not verified)` 与 `bws CLI not found in PATH`；说明 staging API env-file compile 仍受真实 operator 前提阻塞。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target ecs --workload worker`
+    - Result: 通过。
+    - Note: worker target 解析到 `staging-worker -> aliyun-eci-container-group`，`env_matrix_summary.secret_refs` 已覆盖完整 admitted provider secret surface。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py apply --root . --env staging --runtime-target ecs --workload worker --approve --out .ai/.tmp/env-cloud/staging-worker-apply.md`
+    - Result: 通过。
+    - Note: `.ai/.tmp/env-cloud/staging/eci-worker.rendered.yaml` 已生成，且经 `rg` 复核不含 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL`。
+  - Manual review:
+    - 在正式 deploy workspace 尚未落位前，`T-935` 已允许 `staging api` 先走 operator 本机 compile + 手工导入 ECS `.env` 的 bootstrap 例外，以便先跑通 staging 发布链路。
+    - 该例外不改变正式 cloud contract，也不适用于 `worker` 或 `prod`。

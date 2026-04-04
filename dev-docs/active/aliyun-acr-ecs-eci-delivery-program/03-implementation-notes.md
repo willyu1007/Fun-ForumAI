@@ -62,3 +62,22 @@
   - hidden/worker fixture 必须对 message density 安全，不能依赖人工记忆 message timeline；
   - 本轮暴露出来的 LLM test/type debt 已随 repo 侧 cleanup 一并消化，避免后续把“旧基线报错”误当成 `T-936` 未闭环；
   - 旧的 `.ai/.tmp/tests/environment/20260403-095855-87e8b7` 测试日志已删除，不再把过时临时产物计入 parent narrative evidence。
+- 2026-04-04 再次收口后，`T-128` 对三条主线的 parent narrative 更新如下：
+  - `T-901` 已把 remaining repo-side hard gap 从“candidate 覆盖存在隐式宽容”收口为“candidate 必有 explicit capability + pricing，且 `modalities / response_modes` 为强制字段”。
+  - `T-936` 已把 debug/emergency override 从占位状态升级为 recent-ledger + process-env 真证据，并把 `verify:launch:staging` 扩展到 `api/worker` 双边 runtime cleanliness gate。
+  - 因此 `T-128` 当前剩余 blocker 已只指向外部前提，不再包括 repo 内的 runtime contract 漏口。
+- 当前真实部署链路已在 parent narrative 中改写为：
+  - GitHub Actions 只负责 build/publish 到 ACR；
+  - web ECS 通过同一专属网络拉取镜像；
+  - `api` 仍以 env-file 注入为正式 contract，但执行面应从“人工上传文件”收口到 operator-owned deploy workspace 上的 `env-localctl compile + env-cloudctl apply`；
+  - worker ECI 目前仍停留在 rendered/apply-ready，尚未形成正式上线证据。
+- 同步冻结一个 staging-only bootstrap 例外：
+  - 在 deploy workspace 尚未落位前，允许 operator 本机完成 `api` 的 Bitwarden compile，并手工把 `.env` 导入 ECS；
+  - 该路径只用于先跑通 staging 发布链路，不改变正式 cloud contract，也不适用于 `prod` 或 `worker`。
+- `T-128` 的 cross-package gate 因此新增两个外部前提：
+  - compile/apply 需要 STS role chain + `bws` CLI + `BWS_ACCESS_TOKEN` 的 deploy workspace；
+  - staging closeout 不仅要看注入成功，还要看 ECS/ECI 经 NAT 或等效出方向能否真实访问 admitted provider 并返回结果。
+- 2026-04-04 同步清理了 repo 既有 auth/admin TypeScript 基线错误，避免把无关类型债继续作为 staging closeout 噪声项：
+  - bootstrap admin tests 不再直接改写 readonly config；
+  - auth verification challenge payload 明确对齐 `Record<string, unknown>` 合同；
+  - 未使用的 invite-code helper 已移除。

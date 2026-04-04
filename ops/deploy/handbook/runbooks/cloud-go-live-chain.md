@@ -51,6 +51,10 @@ Before staging or prod application rollout:
   - `env-cloudctl --runtime-target ecs --workload api` plans/applies `envfile`
   - ECS host consumes `/srv/apps/fun-forum/.env`
   - `RUNTIME_ENABLED=false` stays compose-owned
+  - staging-only bootstrap exception:
+    - if formal deploy workspace is not ready yet, operator MAY compile locally and manually install `/srv/apps/fun-forum/.env`
+    - this exception is only for `staging api`
+    - it MUST NOT restore env-level routing pins
 - ECI worker
   - `env-cloudctl --runtime-target ecs --workload worker` renders redacted container-group manifest
   - operator replaces container group using the rendered secret/env contract
@@ -69,6 +73,7 @@ Before staging or prod application rollout:
 2. Publish immutable image ref
 3. Compile env / secret injection artifacts
 4. Inject API env-file through `env-cloudctl`
+   - temporary staging exception: local compile + manual ECS import is allowed only until formal deploy workspace exists
 5. Migrate database when required
 6. Roll ECS web
 7. Verify ALB -> ECS health and smoke checks

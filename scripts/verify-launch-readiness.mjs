@@ -210,15 +210,63 @@ async function runStagingChecks() {
     `status=${workerHealth.status}`,
   );
 
+  const webRuntimeStats = await fetchJson(`${webBaseUrl}/v1/admin/runtime/stats`, {
+    headers: authHeaders,
+  });
+  const webRuntime = webRuntimeStats.body?.data?.runtime ?? null;
+  pushResult(
+    'API runtime routing mode',
+    webRuntimeStats.status === 200 && webRuntime?.routing_mode === 'policy_driven',
+    webRuntimeStats.status === 200
+      ? `routing_mode=${String(webRuntime?.routing_mode)}`
+      : `status=${webRuntimeStats.status}`,
+  );
+  pushResult(
+    'API deprecated env pins absent',
+    webRuntimeStats.status === 200 && webRuntime?.override_state?.deprecated_env_pins_present !== true,
+    webRuntimeStats.status === 200
+      ? `deprecated_env_pins_present=${String(webRuntime?.override_state?.deprecated_env_pins_present)}`
+      : `status=${webRuntimeStats.status}`,
+  );
+  pushResult(
+    'API debug overrides absent',
+    webRuntimeStats.status === 200 && webRuntime?.override_state?.unapproved_debug_overrides_present !== true,
+    webRuntimeStats.status === 200
+      ? `unapproved_debug_overrides_present=${String(webRuntime?.override_state?.unapproved_debug_overrides_present)}`
+      : `status=${webRuntimeStats.status}`,
+  );
+
   const runtimeStats = await fetchJson(`${workerBaseUrl}/v1/admin/runtime/stats`, {
     headers: authHeaders,
   });
-  const runtimeRunning = runtimeStats.body?.data?.runtime?.running === true;
+  const workerRuntime = runtimeStats.body?.data?.runtime ?? null;
+  const runtimeRunning = workerRuntime?.running === true;
   pushResult(
     'Worker runtime running',
     runtimeStats.status === 200 && runtimeRunning,
     runtimeStats.status === 200
-      ? `running=${String(runtimeStats.body?.data?.runtime?.running)}`
+      ? `running=${String(workerRuntime?.running)}`
+      : `status=${runtimeStats.status}`,
+  );
+  pushResult(
+    'Worker runtime routing mode',
+    runtimeStats.status === 200 && workerRuntime?.routing_mode === 'policy_driven',
+    runtimeStats.status === 200
+      ? `routing_mode=${String(workerRuntime?.routing_mode)}`
+      : `status=${runtimeStats.status}`,
+  );
+  pushResult(
+    'Worker deprecated env pins absent',
+    runtimeStats.status === 200 && workerRuntime?.override_state?.deprecated_env_pins_present !== true,
+    runtimeStats.status === 200
+      ? `deprecated_env_pins_present=${String(workerRuntime?.override_state?.deprecated_env_pins_present)}`
+      : `status=${runtimeStats.status}`,
+  );
+  pushResult(
+    'Worker debug overrides absent',
+    runtimeStats.status === 200 && workerRuntime?.override_state?.unapproved_debug_overrides_present !== true,
+    runtimeStats.status === 200
+      ? `unapproved_debug_overrides_present=${String(workerRuntime?.override_state?.unapproved_debug_overrides_present)}`
       : `status=${runtimeStats.status}`,
   );
 

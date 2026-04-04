@@ -7,10 +7,20 @@ import { InMemoryUserRepository } from '../../repos/user-repository.js'
 import { AdminUserAccessService } from '../admin-user-access-service.js'
 import { AuthService } from '../auth-service.js'
 
+type MutableBootstrapAdmins = {
+  emails: string[]
+  phones: string[]
+}
+
+function setBootstrapAdmins(input: Partial<MutableBootstrapAdmins> = {}): void {
+  const bootstrapAdmins = config.auth.bootstrapAdmins as MutableBootstrapAdmins
+  bootstrapAdmins.emails = [...(input.emails ?? [])]
+  bootstrapAdmins.phones = [...(input.phones ?? [])]
+}
+
 describe('AuthService', () => {
   afterEach(() => {
-    config.auth.bootstrapAdmins.emails = []
-    config.auth.bootstrapAdmins.phones = []
+    setBootstrapAdmins()
   })
 
   it('returns PASSWORD_LOGIN_UNAVAILABLE when an email account has no password hash', async () => {
@@ -111,7 +121,7 @@ describe('AuthService', () => {
   })
 
   it('promotes a configured bootstrap admin during email login', async () => {
-    config.auth.bootstrapAdmins.emails = ['bootstrap@example.com']
+    setBootstrapAdmins({ emails: ['bootstrap@example.com'] })
 
     const userRepo = new InMemoryUserRepository()
     await userRepo.create({
@@ -140,7 +150,7 @@ describe('AuthService', () => {
   })
 
   it('does not downgrade a bootstrap-configured PRO account during login', async () => {
-    config.auth.bootstrapAdmins.emails = ['pro-bootstrap@example.com']
+    setBootstrapAdmins({ emails: ['pro-bootstrap@example.com'] })
 
     const userRepo = new InMemoryUserRepository()
     const user = await userRepo.create({

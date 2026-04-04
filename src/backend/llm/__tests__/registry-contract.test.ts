@@ -3,7 +3,12 @@ import {
   VOICE_LINE_CATALOG,
   type VoiceLineRoutingIntent,
 } from '../../../shared/agent-persona-catalog.js'
-import { loadLlmRegistryBundle, loadPromptTemplatesRegistry } from '../registry-loader.js'
+import {
+  defaultAdapterId,
+  defaultExecutionPolicyId,
+  loadLlmRegistryBundle,
+  loadPromptTemplatesRegistry,
+} from '../registry-loader.js'
 import {
   resolveIdentityWriteProfileRef,
   resolveVoiceLineTierProfileRef,
@@ -152,6 +157,58 @@ describe('LLM registry contract', () => {
 
     for (const line of Object.values(VOICE_LINE_CATALOG).filter((entry) => entry.visible)) {
       expect(poolVoiceLines.has(line.id)).toBe(true)
+    }
+  })
+
+  it('requires every profile candidate to declare capability coverage compatible with its execution policy', () => {
+    const bundle = loadLlmRegistryBundle()
+    const policiesById = new Map(
+      bundle.executionPolicies.policies.map((entry) => [entry.policy_id, entry] as const),
+    )
+    const pricingByKey = new Map(
+      bundle.modelPricing.pricing.map((entry) => [
+        `${entry.provider_id}/${entry.model_id}`,
+        entry,
+      ] as const),
+    )
+    const providersById = new Map(
+      bundle.providers.providers.map((entry) => [entry.provider_id, entry] as const),
+    )
+    const adaptersById = new Map(
+      bundle.adapterBindings.bindings.map((entry) => [entry.adapterId, entry] as const),
+    )
+    const capabilitiesByKey = new Map(
+      bundle.modelCapabilities.capabilities.map((entry) => [
+        `${entry.provider_id}/${entry.model_id}`,
+        entry,
+      ] as const),
+    )
+
+    for (const profile of bundle.modelProfiles.profiles) {
+      const policy = policiesById.get(profile.policy_id ?? defaultExecutionPolicyId(profile))
+      expect(policy).toBeDefined()
+      if (!policy) continue
+
+      for (const candidate of profile.candidates) {
+        const capability = capabilitiesByKey.get(`${candidate.provider_id}/${candidate.model_id}`)
+        const pricing = pricingByKey.get(`${candidate.provider_id}/${candidate.model_id}`)
+        const provider = providersById.get(candidate.provider_id)
+        const adapter = adaptersById.get(candidate.adapter_id ?? defaultAdapterId(candidate))
+
+        expect(capability, `${profile.profile_id}:${candidate.provider_id}/${candidate.model_id}`).toBeDefined()
+        expect(pricing, `${profile.profile_id}:${candidate.provider_id}/${candidate.model_id}:pricing`).toBeDefined()
+        expect(provider).toBeDefined()
+        expect(adapter).toBeDefined()
+        expect(capability?.modalities.length).toBeGreaterThan(0)
+        expect(capability?.response_modes.length).toBeGreaterThan(0)
+        expect(capability?.modalities).toContain(policy?.modality)
+        expect(capability?.response_modes).toContain(policy?.response_mode)
+
+        if (policy?.response_mode === 'json_object') {
+          expect(provider?.capabilities.json_mode).toBe(true)
+          expect(adapter?.supports.jsonMode).toBe(true)
+        }
+      }
     }
   })
 

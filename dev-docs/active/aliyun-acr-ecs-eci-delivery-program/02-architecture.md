@@ -6,6 +6,13 @@
 
 `GitHub Actions -> ACR -> ECS(web, RUNTIME_ENABLED=false) + ECI(worker, RUNTIME_ENABLED=true)`
 
+当前实际推进状态：
+
+- GitHub Actions 已承担 build/publish 到 ACR。
+- web ECS 已在与 ACR 同一专属网络的形态上消费镜像。
+- worker ECI 仍处于 contract / render / apply 已具备、但尚未正式上线的阶段。
+- staging API 仍依赖 env-file 注入；当前 operator 现实做法是先生成 `staging.env` 再落到 ECS host。短期允许把这条链路作为 staging bootstrap 例外保留，但长期目标执行面仍应收口到 deploy workspace 上的 `env-localctl compile + env-cloudctl apply`，而不是继续依赖手工上传文件。
+
 核心原则：
 
 - ACR 是唯一镜像源。
@@ -43,10 +50,12 @@
 1. GitHub Actions 产出并推送 `sha-<commit>` 镜像到 ACR。
 2. 运维侧准备目标环境配置，并校验其与 `env/contract.yaml` 对齐。
 3. 发布人手动触发该环境的部署动作；第一阶段不由 GitHub Actions 直接部署到 ECS/ECI。
-4. 对目标环境执行一次 `pnpm db:migrate:deploy`。
-5. 先部署 ECS web，并以 `/health` 与应用 smoke 验证其可用。
-6. 再部署 ECI worker，并验证容器健康、启动日志与 runtime 侧证据。
-7. `staging` 全部通过后，才能人工晋升到 `prod`。
+4. 在 operator-owned deploy workspace 上完成 `api -> envfile` compile/apply，并在同一 boundary 上完成 `worker -> aliyun-eci-container-group` apply。
+5. 对目标环境执行一次 `pnpm db:migrate:deploy`。
+6. 先部署 ECS web，并以 `/health` 与应用 smoke 验证其可用。
+7. 验证 ECS/ECI 出方向网络，确认通过 NAT 或等效 egress 至少能连通一个 admitted provider 并取得真实响应。
+8. 再部署 ECI worker，并验证容器健康、启动日志与 runtime 侧证据。
+9. `staging` 全部通过后，才能人工晋升到 `prod`。
 
 ### Multi-instance web contract
 
@@ -67,6 +76,23 @@
 - ECS 使用宿主机上的 `.env` 文件承载运行时值。
 - ECI 使用 container group 环境变量或对应的 registry/secret 配置承载运行时值。
 - staging/prod 的 provider/model/base_url 选择权不再来自 env；云上正常路径只能消费 registry/policy 决策。
+- `env-cloudctl apply` 不要求 ECS 暴露公网入口；当前 contract 假设 apply 在能够写入宿主机目标文件的 deploy workspace 上执行。
+- ECS/ECI 是否需要公网出方向取决于 provider 访问路径；在当前形态下，web/worker 只要通过 NAT 或等效出口可以访问 admitted provider 即可，不要求实例本身具备公网入方向。
+
+### Deploy workspace and STS boundary
+
+- GitHub Actions 取代了原先“打包用 ECS”的职责，但没有承接运行时 secret compile/apply 职责。
+- 因此 `staging/prod` 仍需要一条 operator-owned deploy workspace：
+  - 具备 STS role chain；
+  - 具备 `bws` CLI 与 `BWS_ACCESS_TOKEN`；
+  - 能执行 `env-localctl compile` 与 `env-cloudctl apply`；
+  - 对 API env-file target 与 worker apply target 具备相应写入权限。
+- 若缺少该 deploy workspace，`policy.env.cloud.auth_mode=role-only` 的 compile 预检会失败，不能把普通开发机或 GitHub build runner 视作等价替代。
+- staging-only bootstrap 例外：
+  - 在正式 deploy workspace 尚未落位前，允许 operator 在本机完成 `api` 的 Bitwarden compile，并手工把 `.env` 导入 ECS。
+  - 该例外不改变 policy authority，也不允许恢复 env-level model pins。
+  - `worker` 仍必须走 container-group template 渲染 / apply，不能改成手工 `.env`。
+  - `prod` 不得复用该例外。
 
 ### Bootstrap prerequisites
 
@@ -94,5 +120,7 @@
 - 如果数据库迁移时序未被冻结，web 与 worker 可能在 schema 不一致时滚动上线。
 - 如果数据库迁移不满足向后兼容，单纯回切旧镜像 tag 无法构成完整回滚。
 - 如果 CI 配置、运行时配置与 ACR pull 认证混在一起，后续密钥轮换会非常混乱。
+- 如果继续依赖“手工上传 `staging.env`”而不冻结 deploy workspace/STS/BWS ownership，`api -> envfile` 会再次退回不可审计的人肉控制面。
+- 如果只验证 ACR 拉取成功，而不验证 ECS/ECI 经 NAT 的 provider 连通性，secret 注入完成后仍可能在真实模型调用时失败。
 - 如果 prod 多 ECS 没有显式 SSE Redis 广播与长连接入口约束，普通接口看似正常时实时链路也会失败。
 - 如果不先冻结多项目 ECS 宿主机形态，后续第二个项目接入时会直接碰到端口、域名和运维脚本冲突。

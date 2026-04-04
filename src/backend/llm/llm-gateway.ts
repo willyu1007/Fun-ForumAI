@@ -887,6 +887,7 @@ export class LLMGateway {
       maxRetries: request.debug?.maxRetries,
       regionHint: request.debug?.regionHint,
     })
+    const debugRoutingOverrides = sanitizeDebugRoutingOverrides(request.debug)
     const hardCaps: Partial<ResolvedExecutionParams> = {
       modality: request.modality,
       responseMode: request.responseMode,
@@ -948,10 +949,13 @@ export class LLMGateway {
         policyDefaults,
         callsiteOverrides,
         debugOverrides,
+        appliedCallsiteOverrideFields: dedupeOverrideFields(callsiteFields),
+        appliedDebugOverrideFields: dedupeOverrideFields(debugFields),
         appliedOverrideFields: dedupeOverrideFields([
           ...callsiteFields,
           ...debugFields,
         ]),
+        debugRoutingOverrides,
       },
       warnings,
     }
@@ -1466,10 +1470,7 @@ function supportsModality(
   capability: ModelCapabilityEntry | undefined,
   modality: LLMGatewayRequest['modality'],
 ): boolean {
-  if (!capability?.modalities?.length) {
-    return modality === 'text'
-  }
-  return capability.modalities.includes(modality)
+  return Boolean(capability?.modalities.includes(modality))
 }
 
 function supportsResponseMode(
@@ -1478,9 +1479,7 @@ function supportsResponseMode(
   capability: ModelCapabilityEntry | undefined,
   responseMode: LLMGatewayRequest['responseMode'],
 ): boolean {
-  const capabilitySupports = capability?.response_modes?.length
-    ? capability.response_modes.includes(responseMode)
-    : responseMode === 'text'
+  const capabilitySupports = capability?.response_modes.includes(responseMode) ?? false
 
   switch (responseMode) {
     case 'json_object':
@@ -1523,6 +1522,26 @@ function sanitizeResolvedOverrides(
   if (overrides.maxRetries !== undefined) output.maxRetries = overrides.maxRetries
   if (overrides.regionHint !== undefined) output.regionHint = overrides.regionHint
   return output
+}
+
+function sanitizeDebugRoutingOverrides(
+  overrides: LLMGatewayRequest['debug'] | undefined,
+) {
+  const output: {
+    providerPin?: string
+    modelPin?: string
+    adapterPin?: string
+  } = {}
+  if (typeof overrides?.providerPin === 'string' && overrides.providerPin.trim()) {
+    output.providerPin = overrides.providerPin.trim()
+  }
+  if (typeof overrides?.modelPin === 'string' && overrides.modelPin.trim()) {
+    output.modelPin = overrides.modelPin.trim()
+  }
+  if (typeof overrides?.adapterPin === 'string' && overrides.adapterPin.trim()) {
+    output.adapterPin = overrides.adapterPin.trim()
+  }
+  return Object.keys(output).length > 0 ? output : undefined
 }
 
 function dedupeWarnings(warnings: string[]): string[] {

@@ -106,3 +106,28 @@
   - pass
 - `git diff --check`
   - pass
+
+## 2026-04-04 Runtime Contract Hardening
+
+- `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
+  - pass
+  - providers=7, profiles=41, execution policies=17, adapter bindings=1, model pricing=18, model capabilities=18。
+- `pnpm exec vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/runtime-override-state.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts scripts/lib/__tests__/launch-readiness.test.ts`
+  - pass
+  - 46 tests passed。
+  - 追加断言所有 profile candidate 都具备 capability + pricing coverage，且 capability entry 显式包含 `modalities / response_modes`。
+- `node --check scripts/verify-launch-readiness.mjs`
+  - pass
+- `node --check scripts/runtime-staging-closeout.mjs`
+  - pass
+- `pnpm exec tsc -b --pretty false`
+  - pass
+  - 之前暴露的 repo 既有基线问题（readonly config tests、auth challenge payload typing、未使用 helper）已一并清理。
+
+## 2026-04-04 Review Gate Re-check
+
+- 重新核对后，`T-901` 的 repo 侧 hard gap 已从“execution plan 主路径已成型，但 capability/pricing coverage 仍可能漂移”收口为“candidate capability/pricing coverage 已由 validator + loader + gateway 三层共同加硬”。
+- 当前仍未关闭的只剩外部验收项：
+  - 真实 provider connectivity / ordered failover；
+  - `T-936` staging live closeout；
+  - `T-935` staging API env-file compile 的真实 secret/STS 前提。

@@ -21,6 +21,8 @@ import type {
   ModelProfileCandidate,
   ModelProfileFallback,
   ProviderRegistryEntry,
+  ResponseMode,
+  RuntimeModality,
   RoutingPolicyEntry,
 } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
@@ -525,8 +527,8 @@ const modelCapabilitiesSchema = z.object({
         input_window_tokens: z.number().int().positive(),
         max_output_tokens: z.number().int().positive(),
         recommended_operating_input_tokens: z.number().int().positive().optional(),
-        modalities: z.array(runtimeModalitySchema).min(1).optional(),
-        response_modes: z.array(responseModeSchema).min(1).optional(),
+        modalities: z.array(runtimeModalitySchema).min(1),
+        response_modes: z.array(responseModeSchema).min(1),
       })
       .strict(),
   ),
@@ -602,6 +604,12 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
   const adapterBindingById = new Map(
     bundle.adapterBindings.bindings.map((entry) => [entry.adapterId, entry] as const),
   )
+  const modelCapabilityByKey = new Map(
+    bundle.modelCapabilities.capabilities.map((entry) => [
+      `${entry.provider_id}/${entry.model_id}`,
+      entry,
+    ] as const),
+  )
   const admissionPoolByVoiceLineId = new Map(
     bundle.providerAdmission.pools.map((entry) => [entry.voice_line_id, entry] as const),
   )
@@ -641,14 +649,15 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         profile_id: profile.profile_id,
       })
     }
-    if (!profile.policy_id || !executionPolicyById.has(profile.policy_id)) {
+    const executionPolicyId = profile.policy_id ?? defaultExecutionPolicyId(profile)
+    const executionPolicy = executionPolicyById.get(executionPolicyId)
+    if (!executionPolicy) {
       throw registryError(`Profile ${profile.profile_id} references unknown execution policy`, {
         profile_id: profile.profile_id,
-        policy_id: profile.policy_id,
+        policy_id: executionPolicyId,
       })
     }
-    const executionPolicy = executionPolicyById.get(profile.policy_id)
-    if (executionPolicy && executionPolicy.lane !== defaultExecutionLane(profile)) {
+    if (executionPolicy.lane !== defaultExecutionLane(profile)) {
       throw registryError(
         `Execution policy ${executionPolicy.policy_id} lane must match ${defaultExecutionLane(profile)}`,
         {
@@ -739,6 +748,67 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
             profile_id: profile.profile_id,
             provider_id: candidate.provider_id,
             region: candidate.region,
+          },
+        )
+      }
+      const modelCapability = modelCapabilityByKey.get(
+        `${candidate.provider_id}/${candidate.model_id}`,
+      )
+      if (!modelCapability) {
+        throw registryError(
+          `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} is missing model capability metadata`,
+          {
+            profile_id: profile.profile_id,
+            policy_id: executionPolicy.policy_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+          },
+        )
+      }
+      if (!supportsRegistryModality(modelCapability, executionPolicy.modality)) {
+        throw registryError(
+          `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} does not support modality ${executionPolicy.modality}`,
+          {
+            profile_id: profile.profile_id,
+            policy_id: executionPolicy.policy_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+            modality: executionPolicy.modality,
+          },
+        )
+      }
+      if (
+        !supportsRegistryResponseMode(
+          provider,
+          adapterBinding,
+          modelCapability,
+          executionPolicy.response_mode,
+        )
+      ) {
+        throw registryError(
+          `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} does not support response_mode ${executionPolicy.response_mode}`,
+          {
+            profile_id: profile.profile_id,
+            policy_id: executionPolicy.policy_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
+            response_mode: executionPolicy.response_mode,
+          },
+        )
+      }
+      if (
+        !bundle.modelPricing.pricing.some(
+          (entry) =>
+            entry.provider_id === candidate.provider_id
+            && entry.model_id === candidate.model_id,
+        )
+      ) {
+        throw registryError(
+          `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} is missing model pricing metadata`,
+          {
+            profile_id: profile.profile_id,
+            provider_id: candidate.provider_id,
+            model_id: candidate.model_id,
           },
         )
       }
@@ -1091,4 +1161,40 @@ export function defaultExecutionLane(
 
 export function defaultAdapterId(_candidate: Pick<ModelProfileCandidate, 'provider_id' | 'model_id'>): string {
   return 'openai-chat-completions-v1'
+}
+
+function supportsRegistryModality(
+  capability: ModelCapabilityEntry,
+  modality: RuntimeModality,
+): boolean {
+  return capability.modalities.includes(modality)
+}
+
+function supportsRegistryResponseMode(
+  provider: ProviderRegistryEntry,
+  adapterBinding: AdapterBinding,
+  capability: ModelCapabilityEntry,
+  responseMode: ResponseMode,
+): boolean {
+  const capabilitySupports = capability.response_modes.includes(responseMode)
+
+  switch (responseMode) {
+    case 'json_object':
+      return Boolean(
+        provider.capabilities.json_mode
+          && adapterBinding.supports.jsonMode
+          && capabilitySupports,
+      )
+    case 'json_schema':
+      return Boolean(adapterBinding.supports.structuredOutput && capabilitySupports)
+    case 'tool':
+      return Boolean(
+        provider.capabilities.tool_calling
+          && adapterBinding.supports.toolCalling
+          && capabilitySupports,
+      )
+    case 'text':
+    default:
+      return capabilitySupports
+  }
 }

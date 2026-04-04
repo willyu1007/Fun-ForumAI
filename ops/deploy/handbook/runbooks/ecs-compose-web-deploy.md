@@ -5,8 +5,8 @@
 - Current cloud deployment mainline for `T-130`
 - Web/API/SSE role only (`RUNTIME_ENABLED=false`)
 - Current topology:
-  - `staging`: `1 ECS web + 1 ECI worker`
-  - `prod`: `1 ECS web + 1 ECI worker`
+  - `staging`: `1 ECS web`; `ECI worker` remains target topology and may still be pending first live rollout
+  - `prod`: `1 ECS web`; `ECI worker` remains target topology and may still be pending first live rollout
 
 ## Host contract
 
@@ -37,6 +37,10 @@ Canonical repo-side source:
     2. `env_localctl.py compile --env <env> --runtime-target ecs --workload api --env-file ops/deploy/env-files/<env>.env`
     3. `env_cloudctl.py plan/apply --env <env> --runtime-target ecs --workload api`
     4. Host target file: `/srv/apps/fun-forum/.env`
+  - Temporary staging bootstrap exception:
+    - operator MAY compile locally and manually install `/srv/apps/fun-forum/.env`
+    - only for `staging api`
+    - MUST NOT be reused for `prod` or for `worker`
   - Normal staging/prod env files must not contain `LLM_PROVIDER`, `LLM_MODEL`, or `LLM_BASE_URL`
 - Operator shell exports:
   - `ACR_PULL_USERNAME`
@@ -93,6 +97,7 @@ cd /srv/apps/fun-forum
 
 1. Render the target env file from Bitwarden into `ops/deploy/env-files/<env>.env`
 2. Run `env_cloudctl.py plan/apply --runtime-target ecs --workload api` to inject `/srv/apps/fun-forum/.env`
+   - temporary staging exception: local compile + manual install is allowed until formal deploy workspace exists
 3. Validate host files and `.env`
 4. `docker login` with the read-only ACR pull identity
 5. `docker compose pull web migrate`

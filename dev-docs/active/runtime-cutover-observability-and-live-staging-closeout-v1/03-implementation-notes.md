@@ -51,3 +51,18 @@
   - 新增 proactive closeout unit test，确保 closeout 走的是和业务 proactive opening 相同的 visible gateway contract。
   - 扩展 closeout e2e 覆盖，验证 dense hidden-worker fixture 会自动拉高 stale window。
   - 删除旧的 `.ai/.tmp/tests/environment/20260403-095855-87e8b7` 临时环境测试日志目录，避免把过时日志误判为 `T-936` 验收证据。
+
+## 2026-04-04 — override evidence / launch gate hardening
+
+- 把 debug/emergency override 从“文档口径”收口成真实运行时证据：
+  - `gateway-contract.ts` 的 `ExecutionParamMergeTrace` 新增 `appliedCallsiteOverrideFields`、`appliedDebugOverrideFields`、`debugRoutingOverrides`。
+  - `llm-gateway.ts` 现在会把真正被应用的 local override 字段、debug override 字段，以及 `providerPin / modelPin / adapterPin` 写回 merge trace，并随 usage ledger 持久化。
+- 新增 `src/backend/llm/runtime-override-state.ts`：
+  - 统一聚合 process env 中的 deprecated env pin 与 recent ledger 中的 debug override/pin 证据；
+  - `unapproved_debug_overrides_present` 现在由真实 evidence 推导，不再是占位常量。
+- `admin-api.ts` 的 `/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 不再返回静态 override 占位数据：
+  - 两个接口都会读取 recent ledger，再结合当前进程 env 构造 `override_state`；
+  - execution-plan preview / attribution summary / override_state 现在共享同一份 ledger 窗口。
+- `verify-launch-readiness.mjs` 由单纯的 platform/readiness gate 收紧为 cloud-boundary gate：
+  - 除 worker health/running 以外，还会显式检查 `api` 与 `worker` 两侧的 `routing_mode=policy_driven`；
+  - 同时检查两侧都不存在 deprecated env pin 与未批准 debug override。

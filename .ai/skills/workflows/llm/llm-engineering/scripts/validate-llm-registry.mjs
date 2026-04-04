@@ -114,6 +114,7 @@ function main() {
     routingPolicies: path.join(registryDir, 'routing_policies.yaml'),
     executionPolicies: path.join(registryDir, 'execution_policies.yaml'),
     adapterBindings: path.join(registryDir, 'adapter_bindings.yaml'),
+    modelPricing: path.join(registryDir, 'model_pricing.yaml'),
     modelCapabilities: path.join(registryDir, 'model_capabilities.yaml'),
     providerAdmission: path.join(registryDir, 'provider_admission.yaml'),
     prompts: path.join(registryDir, 'prompt_templates.yaml'),
@@ -131,6 +132,7 @@ function main() {
   const rawRoutingPolicies = readYamlFile(files.routingPolicies, 'routing_policies.yaml')
   const rawExecutionPolicies = readYamlFile(files.executionPolicies, 'execution_policies.yaml')
   const rawAdapterBindings = readYamlFile(files.adapterBindings, 'adapter_bindings.yaml')
+  const rawModelPricing = readYamlFile(files.modelPricing, 'model_pricing.yaml')
   const rawModelCapabilities = readYamlFile(files.modelCapabilities, 'model_capabilities.yaml')
   const rawProviderAdmission = readYamlFile(files.providerAdmission, 'provider_admission.yaml')
   const rawPrompts = readYamlFile(files.prompts, 'prompt_templates.yaml')
@@ -145,6 +147,7 @@ function main() {
   const routingPolicies = parseRegistry(rawRoutingPolicies, 'routing_policies.yaml')
   const executionPolicies = parseRegistry(rawExecutionPolicies, 'execution_policies.yaml')
   const adapterBindings = parseRegistry(rawAdapterBindings, 'adapter_bindings.yaml')
+  const modelPricing = parseRegistry(rawModelPricing, 'model_pricing.yaml')
   const modelCapabilities = parseRegistry(rawModelCapabilities, 'model_capabilities.yaml')
   const providerAdmission = parseRegistry(rawProviderAdmission, 'provider_admission.yaml')
   const prompts = parseRegistry(rawPrompts, 'prompt_templates.yaml')
@@ -154,6 +157,7 @@ function main() {
   validateVersion(routingPolicies, 'routing_policies.yaml')
   validateVersion(executionPolicies, 'execution_policies.yaml')
   validateVersion(adapterBindings, 'adapter_bindings.yaml')
+  validateVersion(modelPricing, 'model_pricing.yaml')
   validateVersion(modelCapabilities, 'model_capabilities.yaml')
   validateVersion(providerAdmission, 'provider_admission.yaml')
   validateVersion(prompts, 'prompt_templates.yaml')
@@ -164,7 +168,16 @@ function main() {
   validateRoutingPolicies(routingPolicies, profiles)
   validateExecutionPolicies(executionPolicies, profiles)
   validateAdapterBindings(adapterBindings, providers)
+  validateModelPricing(modelPricing, providers)
   validateModelCapabilities(modelCapabilities, providers)
+  validateProfileCapabilityCoverage(
+    profiles,
+    executionPolicies,
+    modelPricing,
+    modelCapabilities,
+    providers,
+    adapterBindings,
+  )
   validateProviderAdmission(providerAdmission, providers, profiles, validVoiceLineIds)
   validatePromptTemplates(prompts)
   validateTemplateMode(strict, rawProviders, rawProfiles, rawPrompts, rawConfig)
@@ -174,6 +187,9 @@ function main() {
   const routingPolicyIds = routingPolicies.policies.map((entry) => entry.profile_id)
   const executionPolicyIds = executionPolicies.policies.map((entry) => entry.policy_id)
   const adapterIds = adapterBindings.bindings.map((entry) => entry.adapterId)
+  const pricingKeys = modelPricing.pricing.map(
+    (entry) => `${entry.provider_id}/${entry.model_id}`,
+  )
   const capabilityKeys = modelCapabilities.capabilities.map(
     (entry) => `${entry.provider_id}/${entry.model_id}`,
   )
@@ -189,6 +205,7 @@ function main() {
   console.log(colors.gray(`Routing policies: ${routingPolicyIds.length}`))
   console.log(colors.gray(`Execution policies: ${executionPolicyIds.length}`))
   console.log(colors.gray(`Adapter bindings: ${adapterIds.length}`))
+  console.log(colors.gray(`Model pricing: ${pricingKeys.length}`))
   console.log(colors.gray(`Model capabilities: ${capabilityKeys.length}`))
   console.log(colors.gray(`Provider admission pools: ${providerAdmissionPools.length}`))
   console.log(colors.gray(`Prompt templates: ${promptPairs.length}`))
@@ -631,35 +648,129 @@ function validateModelCapabilities(doc, providersDoc) {
         `model_capabilities.${capabilityKey}.recommended_operating_input_tokens`,
       )
     }
-    if (capability.modalities !== undefined) {
-      assertArray(capability.modalities, `model_capabilities.${capabilityKey}.modalities`)
-      if (capability.modalities.length === 0) {
-        die(`model_capabilities.${capabilityKey}.modalities must not be empty when present`)
-      }
-      for (const [index, modality] of capability.modalities.entries()) {
-        requireOneOf(
-          modality,
-          Array.from(VALID_MODALITIES),
-          `model_capabilities.${capabilityKey}.modalities[${index}]`,
-        )
-      }
+    assertArray(capability.modalities, `model_capabilities.${capabilityKey}.modalities`)
+    if (capability.modalities.length === 0) {
+      die(`model_capabilities.${capabilityKey}.modalities must not be empty`)
     }
-    if (capability.response_modes !== undefined) {
-      assertArray(capability.response_modes, `model_capabilities.${capabilityKey}.response_modes`)
-      if (capability.response_modes.length === 0) {
-        die(`model_capabilities.${capabilityKey}.response_modes must not be empty when present`)
-      }
-      for (const [index, responseMode] of capability.response_modes.entries()) {
-        requireOneOf(
-          responseMode,
-          Array.from(VALID_RESPONSE_MODES),
-          `model_capabilities.${capabilityKey}.response_modes[${index}]`,
-        )
-      }
+    for (const [index, modality] of capability.modalities.entries()) {
+      requireOneOf(
+        modality,
+        Array.from(VALID_MODALITIES),
+        `model_capabilities.${capabilityKey}.modalities[${index}]`,
+      )
+    }
+    assertArray(capability.response_modes, `model_capabilities.${capabilityKey}.response_modes`)
+    if (capability.response_modes.length === 0) {
+      die(`model_capabilities.${capabilityKey}.response_modes must not be empty`)
+    }
+    for (const [index, responseMode] of capability.response_modes.entries()) {
+      requireOneOf(
+        responseMode,
+        Array.from(VALID_RESPONSE_MODES),
+        `model_capabilities.${capabilityKey}.response_modes[${index}]`,
+      )
     }
   }
 
   assertUnique(capabilityKeys, 'model capability provider_id/model_id')
+}
+
+function validateModelPricing(doc, providersDoc) {
+  assertArray(doc.pricing, 'model_pricing.yaml pricing')
+  const pricingKeys = []
+  const providerIds = new Set((providersDoc.providers ?? []).map((entry) => entry.provider_id))
+
+  for (const entry of doc.pricing) {
+    assertObject(entry, 'model pricing entry')
+    const providerId = requireNonEmptyString(entry.provider_id, 'model_pricing.provider_id')
+    const modelId = requireNonEmptyString(entry.model_id, 'model_pricing.model_id')
+    const pricingKey = `${providerId}/${modelId}`
+    pricingKeys.push(pricingKey)
+    if (!providerIds.has(providerId)) {
+      die(`model_pricing.${pricingKey} references unknown provider_id`)
+    }
+    requireNonNegativeNumber(
+      entry.prompt_per_1k_cny,
+      `model_pricing.${pricingKey}.prompt_per_1k_cny`,
+    )
+    requireNonNegativeNumber(
+      entry.completion_per_1k_cny,
+      `model_pricing.${pricingKey}.completion_per_1k_cny`,
+    )
+  }
+
+  assertUnique(pricingKeys, 'model pricing provider_id/model_id')
+}
+
+function validateProfileCapabilityCoverage(
+  profilesDoc,
+  executionPoliciesDoc,
+  modelPricingDoc,
+  modelCapabilitiesDoc,
+  providersDoc,
+  adapterBindingsDoc,
+) {
+  const pricingByKey = new Map(
+    (modelPricingDoc.pricing ?? []).map((entry) => [
+      `${entry.provider_id}/${entry.model_id}`,
+      entry,
+    ]),
+  )
+  const capabilitiesByKey = new Map(
+    (modelCapabilitiesDoc.capabilities ?? []).map((entry) => [
+      `${entry.provider_id}/${entry.model_id}`,
+      entry,
+    ]),
+  )
+  const executionPoliciesById = new Map(
+    (executionPoliciesDoc.policies ?? []).map((entry) => [entry.policy_id, entry]),
+  )
+  const providersById = new Map(
+    (providersDoc.providers ?? []).map((entry) => [entry.provider_id, entry]),
+  )
+  const adaptersById = new Map(
+    (adapterBindingsDoc.bindings ?? []).map((entry) => [entry.adapterId, entry]),
+  )
+
+  for (const profile of profilesDoc.profiles ?? []) {
+    const policyId = profile.policy_id ?? defaultExecutionPolicyIdForProfile(profile)
+    const policy = executionPoliciesById.get(policyId)
+    if (!policy) {
+      die(`model profile ${profile.profile_id} is missing execution policy ${policyId}`)
+    }
+
+    for (const candidate of profile.candidates ?? []) {
+      const candidateKey = `${candidate.provider_id}/${candidate.model_id}`
+      const capability = capabilitiesByKey.get(candidateKey)
+      if (!capability) {
+        die(`profiles.${profile.profile_id} candidate ${candidateKey} is missing model_capabilities metadata`)
+      }
+      if (!pricingByKey.has(candidateKey)) {
+        die(`profiles.${profile.profile_id} candidate ${candidateKey} is missing model_pricing metadata`)
+      }
+
+      const provider = providersById.get(candidate.provider_id)
+      const adapterId = candidate.adapter_id ?? defaultAdapterIdForCandidate(candidate)
+      const adapter = adaptersById.get(adapterId)
+      if (!provider) {
+        die(`profiles.${profile.profile_id} candidate ${candidateKey} references unknown provider ${candidate.provider_id}`)
+      }
+      if (!adapter) {
+        die(`profiles.${profile.profile_id} candidate ${candidateKey} references unknown adapter ${adapterId}`)
+      }
+
+      if (!supportsCapabilityModality(capability, policy.modality)) {
+        die(
+          `profiles.${profile.profile_id} candidate ${candidateKey} does not satisfy modality ${policy.modality} for policy ${policyId}`,
+        )
+      }
+      if (!supportsCapabilityResponseMode(provider, adapter, capability, policy.response_mode)) {
+        die(
+          `profiles.${profile.profile_id} candidate ${candidateKey} does not satisfy response_mode ${policy.response_mode} for policy ${policyId}`,
+        )
+      }
+    }
+  }
 }
 
 function validateProviderAdmission(doc, providersDoc, profilesDoc, validVoiceLineIds) {
@@ -994,6 +1105,30 @@ function defaultExecutionLaneForProfile(profile) {
   return `${profile.visibility}_${profile.intent}`
 }
 
+function defaultAdapterIdForCandidate(_candidate) {
+  return 'openai-chat-completions-v1'
+}
+
+function supportsCapabilityModality(capability, modality) {
+  return capability.modalities.includes(modality)
+}
+
+function supportsCapabilityResponseMode(provider, adapter, capability, responseMode) {
+  const capabilitySupports = capability.response_modes.includes(responseMode)
+
+  switch (responseMode) {
+    case 'json_object':
+      return Boolean(provider.capabilities.json_mode && adapter.supports.jsonMode && capabilitySupports)
+    case 'json_schema':
+      return Boolean(adapter.supports.structuredOutput && capabilitySupports)
+    case 'tool':
+      return Boolean(provider.capabilities.tool_calling && adapter.supports.toolCalling && capabilitySupports)
+    case 'text':
+    default:
+      return capabilitySupports
+  }
+}
+
 function requireNumber(value, label) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     die(`${label} must be a finite number`)
@@ -1018,6 +1153,12 @@ function requireNonNegativeInteger(value, label) {
 function requirePositiveNumber(value, label) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     die(`${label} must be a positive number`)
+  }
+}
+
+function requireNonNegativeNumber(value, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    die(`${label} must be a non-negative number`)
   }
 }
 

@@ -30,6 +30,8 @@
 - `LLM_API_KEY` 从 env contract / secret refs / runtime fallback 中彻底移除。
 - `credential_pools` 支持 `priority` 并按固定主备顺序解析主备 key。
 - execution-plan / execution-policy contract 为 visible/hidden/identity/vision lanes 提供统一入口。
+- 所有 profile candidate 都必须具备显式 `model_capabilities` 与 `model_pricing` 覆盖；runtime 不再对缺失 capability/pricing 做隐式宽容或默认定价回退。
+- `ModelCapabilityEntry` 必须显式声明 `modalities` 与 `response_modes`，不能再依赖“缺字段即默认 text”的隐式语义。
 - `visibleProviderPin` / `visibleModelPin` 从 runtime 主路径中移除。
 - `moonshot-openai`、`minimax-openai`、`tencent-openai`、`ark-openai` 在 registry + runtime + credential contract 中完全对齐。
 - `glm/kimi/minimax/tencent/ark` 使用官方 upstream `model_id` 收口到现有 voice line/profile。

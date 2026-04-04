@@ -25,19 +25,19 @@ interface JwtPayload {
   role: 'user' | 'admin'
 }
 
-interface EmailSignupChallengePayload {
+interface EmailSignupChallengePayload extends Record<string, unknown> {
   kind: 'signup'
   displayName: string
   passwordHash: string
   inviteCodeId: string
 }
 
-interface EmailPasswordResetChallengePayload {
+interface EmailPasswordResetChallengePayload extends Record<string, unknown> {
   kind: 'password_reset'
   userId: string
 }
 
-interface InviteChallengePayload {
+interface InviteChallengePayload extends Record<string, unknown> {
   inviteCodeId: string
 }
 
@@ -819,14 +819,6 @@ export class AuthService {
       throw new AppError(400, '验证码错误', 'INVALID_CODE')
     }
     throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
-  }
-
-  private requireInviteCode(inviteCode?: string): string {
-    const normalized = inviteCode ? normalizeInviteCode(inviteCode) : ''
-    if (!normalized) {
-      throw new AppError(400, '请输入邀请码', 'INVITE_CODE_REQUIRED')
-    }
-    return normalized
   }
 
   private async requireUsableInviteCodeByCode(rawInviteCode: string): Promise<InviteCode> {

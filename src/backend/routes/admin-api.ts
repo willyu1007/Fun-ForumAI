@@ -41,6 +41,7 @@ import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import { personaObservability } from '../runtime/persona-observability.js'
 import { readPersonaObservation } from '../runtime/persona-observation.js'
 import { summarizeProviderAdmission } from '../llm/provider-admission.js'
+import { buildRuntimeOverrideState } from '../llm/runtime-override-state.js'
 import {
   startRolloutEvidenceWindow,
   getActiveRolloutWindow,
@@ -148,18 +149,6 @@ function buildExecutionPlanPreview(entries: Awaited<ReturnType<typeof usageLedge
     error_code: entry.error_code ?? null,
     created_at: entry.created_at,
   }))
-}
-
-function buildRuntimeOverrideState() {
-  const deprecatedEnvPins = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
-    .filter((key) => Boolean(process.env[key]?.trim()))
-  return {
-    routing_mode: config.llm.routingMode,
-    deprecated_env_pins: deprecatedEnvPins,
-    deprecated_env_pins_present: deprecatedEnvPins.length > 0,
-    debug_override_sources: [],
-    unapproved_debug_overrides_present: false,
-  }
 }
 
 function buildPrivateSessionCloseoutTraceIds(sessionId: string, agentId: string) {
@@ -1097,7 +1086,11 @@ adminApiRouter.post(
 adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async (_req, res) => {
   const queueSize = await runtimeLoop.getQueueSize()
   const eventQueueSize = await eventQueue.size()
-  const overrideState = buildRuntimeOverrideState()
+  const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
+  const overrideState = buildRuntimeOverrideState({
+    routingMode: config.llm.routingMode,
+    recentLedgerEntries,
+  })
   res.json({
     data: {
       runtime: {
@@ -1170,7 +1163,10 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   const providerAdmission = summarizeProviderAdmission(llmRegistryBundle)
   const attributionSummary = summarizeLedgerAttribution(recentLedgerEntries)
   const fallbackEntries = collectFallbackOrDegradedEntries(recentLedgerEntries)
-  const overrideState = buildRuntimeOverrideState()
+  const overrideState = buildRuntimeOverrideState({
+    routingMode: config.llm.routingMode,
+    recentLedgerEntries,
+  })
   const tuning = resolvePostLaunchTuningProfile({
     enabled: config.features.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,

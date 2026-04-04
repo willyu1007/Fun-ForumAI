@@ -1223,6 +1223,9 @@ describe('LLMGateway', () => {
       maxTokens: 200,
       regionHint: 'cn-beijing',
     })
+    expect(response.executionPlan.mergeTrace.appliedCallsiteOverrideFields).toEqual(
+      expect.arrayContaining(['temperature', 'maxTokens', 'regionHint']),
+    )
     expect(response.executionPlan.mergeTrace.debugOverrides).toMatchObject({
       temperature: 1.2,
       maxTokens: 300,
@@ -1230,12 +1233,60 @@ describe('LLMGateway', () => {
       maxRetries: 9,
       regionHint: 'cn-shanghai',
     })
+    expect(response.executionPlan.mergeTrace.appliedDebugOverrideFields).toEqual(
+      expect.arrayContaining(['temperature', 'maxTokens', 'timeoutMs', 'maxRetries', 'regionHint']),
+    )
     expect(response.executionPlan.mergeTrace.appliedOverrideFields).toEqual(
       expect.arrayContaining(['temperature', 'maxTokens', 'regionHint', 'timeoutMs', 'maxRetries']),
     )
     expect(response.warnings).toEqual(
       expect.arrayContaining(['timeout_ms_capped_to_provider_default', 'max_retries_capped_to_provider_default']),
     )
+  })
+
+  it('persists debug routing pins into merge trace evidence without new schema fields', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'debug-pinned',
+      usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      traceId: 'trace-debug-pins',
+      debug: {
+        providerPin: 'dashscope-openai',
+        modelPin: 'qwen-plus-character',
+        adapterPin: 'openai-chat-completions-v1',
+      },
+    }))
+
+    expect(response.executionPlan.mergeTrace.debugRoutingOverrides).toEqual({
+      providerPin: 'dashscope-openai',
+      modelPin: 'qwen-plus-character',
+      adapterPin: 'openai-chat-completions-v1',
+    })
+    expect(usageLedger.list()[0]?.merge_trace?.debugRoutingOverrides).toEqual({
+      providerPin: 'dashscope-openai',
+      modelPin: 'qwen-plus-character',
+      adapterPin: 'openai-chat-completions-v1',
+    })
   })
 
   it('supports direct provider/model fallback steps inside a fallback profile', async () => {

@@ -4,13 +4,12 @@
 
 - State: in-progress
 - Phase: Phase B — 子任务重排与全链路交接
-- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧已经具备 `T-901 -> T-935 -> T-936` 的主线落地：`T-901` 稳定 execution-plan contract，`T-935` 稳定 cloud injection contract，`T-936` 则在第二轮 audit/cleanup 后补齐了 visible closeout fallback、hidden fixture stale guard、LLM test/type debt 与临时测试产物清理。剩余待收口项只剩真实 staging live evidence 与最终 promote/rollback matrix。
+- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧主线已推进到：`T-901` 把 execution-plan contract、candidate capability/pricing coverage、以及 explicit modality/response-mode contract 一并加硬；`T-935` 把 `api -> envfile`、`worker -> aliyun-eci-container-group` 固化为唯一云注入边界；`T-936` 则把 override evidence 收口到 recent ledger + process env，并把 launch gate 扩展到同时检查 `api/worker` 两侧的 `routing_mode` 与 override cleanliness。剩余待收口项已经缩到外部前提：staging live gate 仍缺 URL/admin token 与最终 promote/rollback matrix；正式 deploy workspace 仍待落位，但 staging 允许一次 `local compile + manual ECS import` 的 bootstrap 例外来先跑通发布链路。
 - Current environment: 当前 repo 已明确 `ECS web + ECI worker` 目标拓扑，但真实云环境 readiness、ALB / DNS / SSL / ICP / Redis / RDS / 对象存储闭环由 `T-935` 承接。
-- Coverage review: 对照 `/Users/phoenix/Downloads/llm_runtime_routing_and_injection_design.md` 后，当前三包可以覆盖目标，但需显式补入四个缺口：
-  - `T-901` 补 modality / response mode / adapter capability / provider.auth metadata-only / policy merge precedence
-  - `T-935` 补 staging/prod policy-only cloud routing、workload secret coverage review gate、以及 stack handoff
-  - `T-936` 补 callsite parameter migration inventory、execution trace persistence、promote gate review
-  - 需求文档中 “接入 visibleProviderPin” 已被当前方案替换为“移除 visible pins 主路径语义”，必须在任务合同中显式标记为 superseded 决策
+- Coverage review: 对照 `/Users/phoenix/Downloads/llm_runtime_routing_and_injection_design.md` 后，repo 侧已无未承接的高信号设计缺口；当前剩余的是外部验证与输入缺口：
+  - `T-935` 仍需落位正式 deploy workspace；在此之前，staging 允许由 operator 本机完成 `bws` compile 并手工导入 ECS `.env`，但该路径不得升级为长期正式控制面。
+  - `T-936` 仍需真实执行 `verify:launch:staging` 与 `verify:runtime:closeout:staging`，当前 shell 缺少 staging URL/admin token。
+  - 需求文档中 “接入 visibleProviderPin” 已被当前方案替换为“移除 visible pins 主路径语义”，并已在现行任务合同中作为 superseded 决策保留。
 
 ## Goal
 

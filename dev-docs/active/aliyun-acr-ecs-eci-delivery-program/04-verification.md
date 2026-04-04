@@ -78,8 +78,8 @@
   - `pnpm exec vitest run src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
     - Result: 通过；`T-936` 的 inventory、ledger、admin observability、runtime closeout admin surface 已有 repo 侧回归覆盖。
   - `pnpm exec tsc -b --pretty false`
-    - Result: 仍失败，但当前失败项属于 repo 既有基线（auth/admin readonly payload 赋值、`auth-service.ts` payload typing 等）。
-    - Note: `credential broker fixture` 与 `llm gateway test intent typing` 已在 `T-936` audit/cleanup 中修复；针对本轮修改文件做过滤后编译检查，不再出现 TypeScript diagnostics。
+    - Result: 历史失败记录。
+    - Note: 当时只剩 repo 既有 auth/admin 基线问题；该项已被本文件后续的 `pnpm exec tsc -b --pretty false -> 通过` 记录覆盖。
   - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
     - Result: 通过。
     - Note: `T-128` / `T-936` 的最新状态、verification 记录与 parent narrative 已回写 project hub。
@@ -96,3 +96,33 @@
   - staging live closeout
     - Result: 尚未执行。
     - Note: `T-128` 现在等待 `pnpm verify:launch:staging` + `pnpm verify:runtime:closeout:staging` 的真实环境结果，之后才能最终冻结 promote/backout matrix。
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
+    - Result: 通过；`model pricing=18`、`model capabilities=18`。
+    - Note: `T-901` 的 candidate capability/pricing coverage 已从“主要靠人为 review”收口到 validator hard gate。
+  - `pnpm exec vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/runtime-override-state.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts scripts/lib/__tests__/launch-readiness.test.ts`
+    - Result: 通过；46 tests passed。
+    - Note: 覆盖 runtime contract、override evidence、以及 launch readiness repo checks。
+  - `python3 -B -S .ai/skills/features/environment/env-localctl/scripts/env_localctl.py compile --root . --env staging --runtime-target ecs --workload api --env-file ops/deploy/env-files/staging.env --out .ai/.tmp/env-localctl/staging-api-compile.md`
+    - Result: 失败。
+    - Note: 真实 blocker 为 `No STS env signals detected (role chain not verified)` 与 `bws CLI not found in PATH`；`ops/deploy/env-files/staging.env` 尚未生成。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target ecs --workload worker`
+    - Result: 通过。
+    - Note: staging worker target 解析到 `aliyun-eci-container-group`，secret matrix 覆盖完整 admitted provider primary/secondary surface。
+  - `python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py apply --root . --env staging --runtime-target ecs --workload worker --approve --out .ai/.tmp/env-cloud/staging-worker-apply.md`
+    - Result: 通过。
+    - Note: 已生成 `.ai/.tmp/env-cloud/staging/eci-worker.rendered.yaml`；渲染结果不含 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL`。
+  - `pnpm verify:launch:staging`
+    - Result: 尚未通过。
+    - Note: 当前 shell 中缺少 `LAUNCH_WEB_BASE_URL`、`LAUNCH_WORKER_BASE_URL`、`LAUNCH_ADMIN_TOKEN`，因此 live gate 仍停在 staging 输入阶段。
+  - `pnpm exec tsc -b --pretty false`
+    - Result: 通过。
+    - Note: 之前阻塞总编译的 repo 既有 auth/admin readonly config 与 challenge payload typing 已清理，不再把无关 TypeScript 债务混入 `T-128` / `T-936` 的 staging closeout 噪声。
+  - `pnpm exec vitest run src/backend/services/__tests__/admin-user-access-service.test.ts src/backend/services/__tests__/auth-service.test.ts src/backend/llm/__tests__/runtime-override-state.test.ts`
+    - Result: 通过；11 tests passed。
+    - Note: bootstrap admin tests、auth verification flow 与 runtime override evidence 的回归覆盖均保持通过。
+  - Manual review:
+    - `T-128` parent narrative 已按当前实际部署链路更新：
+      - GitHub Actions 只负责 build/publish 到 ACR；
+      - `api -> envfile` 的 compile/apply 应在具备 STS role chain + `bws` 的 deploy workspace 上执行，而不是继续依赖人工上传 `staging.env`；
+      - staging 放行前新增 NAT/provider reachability gate，要求 ECS/ECI 至少一条 admitted provider 调用能真实返回结果。
+      - 在正式 deploy workspace 尚未落位前，`staging api` 被明确允许一次 `local compile + manual ECS import` 的 bootstrap 例外；`prod` 与 `worker` 不适用。

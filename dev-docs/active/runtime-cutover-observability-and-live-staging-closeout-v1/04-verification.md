@@ -41,7 +41,8 @@
   - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
     - Result: 通过。
   - `pnpm exec tsc -b --pretty false`
-    - Result: 仍失败，但当前失败项为 repo 既有基线问题（若干 auth/admin tests 的 readonly payload 赋值、`auth-service.ts` payload typing 等）；`credential-broker.test.ts` bundle fixture 与 `llm-gateway.test.ts` intent typing 已在本轮 audit/cleanup 中修复。
+    - Result: 历史失败记录。
+    - Note: 当时仅剩 repo 既有 auth/admin 基线问题；该项已被本文件后续的 `pnpm exec tsc -b --pretty false -> 通过` 记录覆盖。
   - staging live gate
     - Result: 尚未执行。
     - Note: 需要在真实 staging 环境先跑 `pnpm verify:launch:staging`，再跑 `pnpm verify:runtime:closeout:staging` 收集 visible / hidden-worker / identity 证据。
@@ -58,3 +59,17 @@
   - `find . -path '*/node_modules' -prune -o \( -name '*runtime-closeout*' -o -name '*t936*' -o -name '*.tmp' -o -name '*.log' -o -name '*.snap.new' \) -print | sed -n '1,120p'`
     - Result: 清理后只剩 `prisma/migrations/20260404093000_t936_execution_plan_ledger` 与目录级 `.ai/.tmp`。
     - Note: 旧的 `.ai/.tmp/tests/environment/20260403-095855-87e8b7` 已删除，不再保留过时环境测试日志。
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
+    - Result: 通过；`model pricing=18`、`model capabilities=18`。
+    - Note: 说明 vision lane 的 provider+model pricing 已纳入显式合同，candidate coverage 不再依赖 runtime 默认值。
+  - `pnpm exec vitest run src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/runtime-override-state.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts scripts/lib/__tests__/launch-readiness.test.ts`
+    - Result: 通过；46 tests passed。
+    - Note: 新增覆盖 recent-ledger override aggregation、candidate pricing/capability coverage、以及 launch readiness repo checks。
+  - `node --check scripts/verify-launch-readiness.mjs`
+    - Result: 通过。
+  - `pnpm verify:launch:staging`
+    - Result: 尚未通过。
+    - Note: 当前 shell 中缺少 `LAUNCH_WEB_BASE_URL`、`LAUNCH_WORKER_BASE_URL`、`LAUNCH_ADMIN_TOKEN`，staging live gate 仍停在外部输入阶段。
+  - `pnpm exec tsc -b --pretty false`
+    - Result: 通过。
+    - Note: 之前阻塞 `T-936` 验证读数的 repo 既有 auth/admin TypeScript 基线问题已清理，不再作为 live gate 噪声项。

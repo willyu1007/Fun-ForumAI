@@ -3,14 +3,24 @@ import { config } from '../../lib/config.js'
 import { InMemoryUserRepository } from '../../repos/user-repository.js'
 import { AdminUserAccessService } from '../admin-user-access-service.js'
 
+type MutableBootstrapAdmins = {
+  emails: string[]
+  phones: string[]
+}
+
+function setBootstrapAdmins(input: Partial<MutableBootstrapAdmins> = {}): void {
+  const bootstrapAdmins = config.auth.bootstrapAdmins as MutableBootstrapAdmins
+  bootstrapAdmins.emails = [...(input.emails ?? [])]
+  bootstrapAdmins.phones = [...(input.phones ?? [])]
+}
+
 describe('AdminUserAccessService', () => {
   afterEach(() => {
-    config.auth.bootstrapAdmins.emails = []
-    config.auth.bootstrapAdmins.phones = []
+    setBootstrapAdmins()
   })
 
   it('lists admins and marks bootstrap admins', async () => {
-    config.auth.bootstrapAdmins.emails = ['root@example.com']
+    setBootstrapAdmins({ emails: ['root@example.com'] })
 
     const userRepo = new InMemoryUserRepository()
     const root = await userRepo.create({
@@ -45,7 +55,7 @@ describe('AdminUserAccessService', () => {
   })
 
   it('prevents revoking bootstrap admins and self revoke', async () => {
-    config.auth.bootstrapAdmins.emails = ['root@example.com']
+    setBootstrapAdmins({ emails: ['root@example.com'] })
 
     const userRepo = new InMemoryUserRepository()
     const root = await userRepo.create({

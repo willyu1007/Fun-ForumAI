@@ -73,7 +73,15 @@ describe('E2E: Governance Control Plane', () => {
       expect(Array.isArray(res.body.data.observability.execution_plan_preview)).toBe(true)
       expect(res.body.data.observability).toHaveProperty('fallback_or_degraded_preview.total')
       expect(res.body.data.observability).toHaveProperty('attribution_summary.by_callsite')
-      expect(res.body.data.observability).toHaveProperty('override_state.routing_mode')
+      expect(res.body.data.observability.override_state).toEqual(
+        expect.objectContaining({
+          routing_mode: 'policy_driven',
+          deprecated_env_pins: expect.any(Array),
+          deprecated_env_pins_present: expect.any(Boolean),
+          debug_override_sources: expect.any(Array),
+          unapproved_debug_overrides_present: expect.any(Boolean),
+        }),
+      )
       expect(res.body.data.agent_bio).toEqual(
         expect.objectContaining({
           counts: expect.objectContaining({

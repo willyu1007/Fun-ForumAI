@@ -4,6 +4,7 @@
 
 - secret authority 统一为 deploy-time compile / resolve；runtime 只读取 env，不直连 Bitwarden。
 - ECS web 继续使用 env-file 注入；ECI worker 使用 container-group replacement 时的 secret/env 注入。
+- 在正式 deploy workspace 未落位前，仅 `staging api` 允许 operator 本机 compile + 手工导入 ECS `.env` 作为 bootstrap 例外；`worker` 与 `prod` 不适用。
 - Terraform skeleton 只定义模块接口与状态边界；真实 apply 仍由 operator/CI 控制。
 - staging/prod 的 env contract 只注入 API 能力、endpoint 与 secret authority，不注入业务级模型选择；云上不存在 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL` 回退控制面。
 

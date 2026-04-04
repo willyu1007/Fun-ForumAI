@@ -22,4 +22,7 @@
   - `api -> envfile`、`worker -> aliyun-eci-container-group` 目标路由与 operator 手册一致
   - IaC skeleton 的 state / ownership / handoff 边界冻结
   - staging/prod 的云上路由只通过 registry/policy 或 provider admission/secret change + redeploy 调整
+- 在 handoff 中显式标注 staging-only bootstrap 例外：
+  - `staging api` 可临时允许 operator 本机 compile + 手工导入 ECS `.env`
+  - `worker` 与 `prod` 不允许沿用该例外，仍需按正式 target / runbook 执行
 - 用 governance `sync` / `map` / `lint` 注册任务，并在 `04-verification.md` 记录命令结果。

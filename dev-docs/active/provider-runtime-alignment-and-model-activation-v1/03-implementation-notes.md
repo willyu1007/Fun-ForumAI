@@ -73,3 +73,18 @@
   - 修正 `credential-broker.test.ts` 与 llm-engineering 示例中仍残留的 `credential_ref_required` / provider-level credential truth，避免后续开发继续沿用已废弃 contract。
   - 删除未被任务文档引用的临时 artifact `artifacts/env/2026-04-03-contract-refresh.md`，避免 active bundle 混入一次性生成产物。
   - 更新 `00-overview.md` / `01-plan.md`，把 `T-901` 的代码层 review gate 状态与剩余 live 验收边界对齐，减少对 `T-935/T-936` 的 handoff 歧义。
+
+## 2026-04-04 Runtime Contract Hardening
+
+- 补齐并加硬了此前仍会影响 runtime 真消费的两个合同面：
+  - `model_capabilities.yaml` 现覆盖全部 18 个实际 profile candidate，并要求每个 entry 显式声明 `modalities` 与 `response_modes`。
+  - `model_pricing.yaml` 现也覆盖全部 18 个实际 profile candidate，vision lane 的 `qwen-vl-plus / qwen-vl-max` 不再退回 `DEFAULT_PRICING`。
+- `validate-llm-registry.mjs` 不再只校验 capability 存在性：
+  - 现在会显式读取并校验 `model_pricing.yaml`；
+  - 若任一 profile candidate 缺 capability / pricing 元数据，或 capability 与 execution policy 的 `modality / response_mode` 不匹配，会直接失败。
+- `registry-loader.ts` 的 boot-time consistency check 也同步收紧：
+  - profile candidate 缺 `model_capabilities` 或 `model_pricing` 元数据时直接阻断启动；
+  - runtime 不再把“缺 `modalities / response_modes`”解释成 text 默认能力。
+- `llm-gateway.ts` 的 capability fit 判定改为依赖显式声明：
+  - `supportsModality / supportsResponseMode` 不再对缺 capability 字段做 text 宽容；
+  - 这样 registry validator、boot-time loader、request-time routing 三层都使用同一套严格语义。

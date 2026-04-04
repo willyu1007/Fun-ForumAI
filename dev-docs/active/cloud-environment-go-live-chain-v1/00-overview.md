@@ -5,8 +5,8 @@
 - State: in-progress
 - Governance mapping: 保持挂在 `F-000 Inbox / Untriaged`，作为跨包云交付依赖；不直接映射到 `R-027`。
 - Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`, `T-130 ecs-compose-web-delivery`
-- Current status: `T-935` 代码层 closeout 已闭环：`policy.env.cloud.require_target=true` 已冻结 policy-only cloud routing；`api -> envfile`、`worker -> aliyun-eci-container-group` 已收口为唯一正常路径；worker secret surface、prod cloud baseline、Terraform stack wiring、workload-aware context artifacts 和 runbook 顺序已对齐。
-- Next step: 将 frozen cloud contract handoff 给 `T-936`，由其承接 staging live gate、rollback/promote prerequisite 与业务 cutover 验收。
+- Current status: `T-935` 代码层 closeout 已闭环：`policy.env.cloud.require_target=true` 已冻结 policy-only cloud routing；`api -> envfile`、`worker -> aliyun-eci-container-group` 已收口为唯一正常路径；worker secret surface、prod cloud baseline、Terraform stack wiring、workload-aware context artifacts 和 runbook 顺序已对齐。当前额外明确一个 staging-only bootstrap 例外：在正式 deploy workspace 未落位前，允许 operator 本机完成 `api` 的 env compile 并手工导入 ECS，但该路径不得推广到 `prod` 或 `worker`。
+- Next step: 先用上述 bootstrap 例外把 staging API 发布链路跑通，再将 frozen cloud contract handoff 给 `T-936` 承接 live gate、rollback/promote prerequisite 与业务 cutover 验收；与此同时继续收口正式 deploy workspace。
 
 ## Goal
 
