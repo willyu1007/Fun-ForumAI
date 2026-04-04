@@ -619,8 +619,7 @@ export class AgentBioRenderService {
           allowFallbackWithinLine: true,
           allowCrossFamily: false,
           localOverrides: {
-            temperature: 0.82,
-            maxTokens: 520,
+            executionPolicyId: 'hidden-public_observation_digest-agent-bio-base',
           },
         })
         const llmCandidates = parseLlmCandidates(response.content)

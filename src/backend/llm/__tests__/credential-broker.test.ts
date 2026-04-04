@@ -80,6 +80,26 @@ function buildBundle() : LlmRegistryBundle {
       version: 1,
       policies: [],
     },
+    adapterBindings: {
+      version: 1,
+      bindings: [
+        {
+          adapterId: 'openai-chat-completions-v1',
+          requestShape: 'chat',
+          transport: 'chat_completions',
+          providerGatewayKinds: ['openai_compatible'],
+          supports: {
+            chat: true,
+            vision: false,
+            jsonMode: true,
+            structuredOutput: false,
+            toolCalling: true,
+            streaming: true,
+          },
+          authStrategy: 'bearer_api_key',
+        },
+      ],
+    },
     providerAdmission: {
       version: 1,
       pools: [],

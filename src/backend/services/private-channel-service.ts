@@ -40,7 +40,7 @@ import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000
+export const PRIVATE_SESSION_TIMEOUT_MS = 30 * 60 * 1000
 
 interface CurrentPrivateMediaCardInput {
   source_id: string
@@ -258,9 +258,6 @@ export class PrivateChannelService {
         requestedTier: routing.requestedTier,
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
-        localOverrides: {
-          temperature: 0.8,
-        },
       })
       const latencyMs = Date.now() - startMs
       const identity = this.resolveObservationIdentity(session.agent_id)
@@ -588,7 +585,7 @@ export class PrivateChannelService {
   }
 
   async checkTimeouts(): Promise<PrivateSession[]> {
-    const timedOut = await this.deps.channelRepo.findTimedOutSessions(SESSION_TIMEOUT_MS)
+    const timedOut = await this.deps.channelRepo.findTimedOutSessions(PRIVATE_SESSION_TIMEOUT_MS)
     const ended: PrivateSession[] = []
     for (const session of timedOut) {
       const updated = await this.deps.channelRepo.updateSessionStatus(session.id, 'ENDED', new Date())
@@ -601,6 +598,58 @@ export class PrivateChannelService {
 
   async getMessageCount(sessionId: string): Promise<number> {
     return this.deps.channelRepo.countMessages(sessionId)
+  }
+
+  async createCloseoutFixtureSession(input: {
+    agentId: string
+    humanUserId: string
+    startedAt: Date
+    messages: Array<{
+      authorType: 'HUMAN' | 'AGENT'
+      content: string
+      createdAt: Date
+    }>
+    triggerType?: string | null
+    triggerRef?: string | null
+  }): Promise<{ session: PrivateSession; messages: PrivateMessage[] }> {
+    const session = await this.deps.channelRepo.createSession({
+      agent_id: input.agentId,
+      human_user_id: input.humanUserId,
+      initiator: 'HUMAN',
+      trigger_type: input.triggerType ?? 'RUNTIME_CLOSEOUT_FIXTURE',
+      trigger_ref: input.triggerRef ?? null,
+      started_at: input.startedAt,
+    })
+    const messages: PrivateMessage[] = []
+    for (const message of input.messages) {
+      messages.push(await this.deps.channelRepo.createMessage({
+        session_id: session.id,
+        author_type: message.authorType,
+        content: message.content,
+        created_at: message.createdAt,
+      }))
+    }
+    return { session, messages }
+  }
+
+  async runCloseoutVisibleReply(input: {
+    agentId: string
+    humanUserId: string
+    content: string
+  }): Promise<{
+    session: PrivateSession
+    human_message: PrivateMessage
+    agent_reply: PrivateMessage
+    token_cost: number
+  }> {
+    const session = await this.createSession(input.agentId, input.humanUserId)
+    const result = await this.sendMessage(session.id, input.humanUserId, {
+      content: input.content,
+    })
+    return {
+      session,
+      ...result,
+    }
   }
 
   private async buildRequestForReply(

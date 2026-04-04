@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-02T01:49:12.877Z",
+  "updatedAt": "2026-04-03T23:47:00.846Z",
   "artifacts": [
     {
       "id": "api-openapi",
@@ -64,8 +64,8 @@
         "architecture",
         "llm"
       ],
-      "checksumSha256": "7159cec4fed284315ca63843d4dc304d53a5253d8167445a21c66f83e8d61195",
-      "lastUpdated": "2026-04-01T04:40:25.433Z",
+      "checksumSha256": "dbfedf745d66b42b8103b486c82d13ff1ea9419409d232312c83ee2fca9d4131",
+      "lastUpdated": "2026-04-03T23:47:00.845Z",
       "source": {
         "kind": "manual",
         "notes": "Edit the Markdown file directly; then run ctl-context touch."
@@ -80,8 +80,8 @@
       "tags": [
         "db"
       ],
-      "checksumSha256": "c6c87729016d2d49ca431d366f201c702b3d19dd65e6607202f288358c1fbc4e",
-      "lastUpdated": "2026-04-02T01:49:12.871Z",
+      "checksumSha256": "fe188c8a486259ad50ad33168109095f27d3ba98eda14f00e19ab5d8413bf197",
+      "lastUpdated": "2026-04-03T23:47:00.846Z",
       "source": {
         "kind": "command",
         "command": "node .ai/scripts/ctl-db-ssot.mjs sync-to-context",
@@ -132,8 +132,8 @@
         "secrets",
         "llm"
       ],
-      "checksumSha256": "50c80103a4a455444f1b07ee4178b7f08d9fa8f06a40b14b2efcbb1448c7a4cf",
-      "lastUpdated": "2026-04-02T01:49:12.877Z",
+      "checksumSha256": "1f1a8a4099a962f54f966088bf3498fa6e98cb529b1199a3cb3a35b6dc10cd23",
+      "lastUpdated": "2026-04-03T23:47:00.846Z",
       "source": {
         "kind": "command",
         "command": "ctl-context add-artifact",

@@ -74,28 +74,36 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
   }
 
   async extract(event: RawContextEvent): Promise<SummaryExtractResult> {
-    const response = await this.deps.llmGateway.generateHiddenArtifact({
+    const commonRequest = {
       intent: resolveHiddenIntent(event),
-      scene: 'background_hidden',
-      modality: 'text',
-      responseMode: 'json_object',
+      scene: 'background_hidden' as const,
+      modality: 'text' as const,
+      responseMode: 'json_object' as const,
       agentId: event.agent_id,
       homeVoiceLineId: this.resolveVoiceLineId(event.agent_id),
-      promptRef: resolveExtractPromptRef(event),
       variables: {
         transcript: event.transcript,
         scene: event.scene,
         counterpart_kind: resolveCounterpartKind(event),
       },
-      budgetClass: 'hidden_background',
+      budgetClass: 'hidden_background' as const,
       traceId: `context-extract:${event.id}`,
-      requestedTier: 'base',
+      requestedTier: 'base' as const,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
-      localOverrides: {
-        temperature: 0.2,
-      },
-    })
+    }
+    const response = event.source_type === 'private_session'
+      ? await this.deps.llmGateway.generateHiddenArtifact({
+          ...commonRequest,
+          promptRef: PROMPT_TEMPLATE_REFS.internalPrivateChatSummaryExtract,
+        })
+      : await this.deps.llmGateway.generateHiddenArtifact({
+          ...commonRequest,
+          promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationSummaryExtract,
+          localOverrides: {
+            executionPolicyId: 'hidden-public_observation_digest-agent-owned-base',
+          },
+        })
 
     const parsed = parseJsonRecord(response.content)
     return {
@@ -112,29 +120,37 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
   }
 
   async distill(event: RawContextEvent, extracted: SummaryExtractResult): Promise<SummaryDistillResult> {
-    const response = await this.deps.llmGateway.generateHiddenArtifact({
+    const commonRequest = {
       intent: resolveHiddenIntent(event),
-      scene: 'background_hidden',
-      modality: 'text',
-      responseMode: 'json_object',
+      scene: 'background_hidden' as const,
+      modality: 'text' as const,
+      responseMode: 'json_object' as const,
       agentId: event.agent_id,
       homeVoiceLineId: this.resolveVoiceLineId(event.agent_id),
-      promptRef: resolveDistillPromptRef(event),
       variables: {
         extracted_json: JSON.stringify(extracted, null, 2),
         transcript: event.transcript,
         scene: event.scene,
         counterpart_kind: resolveCounterpartKind(event),
       },
-      budgetClass: 'hidden_background',
+      budgetClass: 'hidden_background' as const,
       traceId: `context-distill:${event.id}`,
-      requestedTier: 'base',
+      requestedTier: 'base' as const,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
-      localOverrides: {
-        temperature: 0.2,
-      },
-    })
+    }
+    const response = event.source_type === 'private_session'
+      ? await this.deps.llmGateway.generateHiddenArtifact({
+          ...commonRequest,
+          promptRef: PROMPT_TEMPLATE_REFS.internalPrivateChatSummaryDistill,
+        })
+      : await this.deps.llmGateway.generateHiddenArtifact({
+          ...commonRequest,
+          promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationSummaryDistill,
+          localOverrides: {
+            executionPolicyId: 'hidden-public_observation_digest-agent-owned-base',
+          },
+        })
 
     const parsed = parseJsonRecord(response.content)
     const episodicCards = episodicCardsFromDistill(event, arrayField(parsed.episodic_cards))
@@ -194,9 +210,6 @@ export class LlmIdentityFinalizer implements IdentityFinalizer {
         requestedTier: resolveIdentityWriteTier(input.origin.sourceType),
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
-        localOverrides: {
-          temperature: 0.2,
-        },
       })
 
       const parsed = parseJsonRecord(response.content)
@@ -317,18 +330,6 @@ export function buildChatRoomWindowRawEventId(sourceEventId: string): string {
 
 function resolveHiddenIntent(event: RawContextEvent): 'private_digest' | 'public_observation_digest' {
   return event.source_type === 'private_session' ? 'private_digest' : 'public_observation_digest'
-}
-
-function resolveExtractPromptRef(event: RawContextEvent): typeof PROMPT_TEMPLATE_REFS[keyof typeof PROMPT_TEMPLATE_REFS] {
-  return event.source_type === 'private_session'
-    ? PROMPT_TEMPLATE_REFS.internalPrivateChatSummaryExtract
-    : PROMPT_TEMPLATE_REFS.internalPublicObservationSummaryExtract
-}
-
-function resolveDistillPromptRef(event: RawContextEvent): typeof PROMPT_TEMPLATE_REFS[keyof typeof PROMPT_TEMPLATE_REFS] {
-  return event.source_type === 'private_session'
-    ? PROMPT_TEMPLATE_REFS.internalPrivateChatSummaryDistill
-    : PROMPT_TEMPLATE_REFS.internalPublicObservationSummaryDistill
 }
 
 function resolveIdentityFinalizePromptRef(sourceType: RawContextEvent['source_type']): typeof PROMPT_TEMPLATE_REFS[keyof typeof PROMPT_TEMPLATE_REFS] {

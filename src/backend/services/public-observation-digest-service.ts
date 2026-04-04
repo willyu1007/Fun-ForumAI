@@ -293,9 +293,6 @@ export class PublicObservationDigestService {
         requestedTier: 'base',
         allowFallbackWithinLine: false,
         allowCrossFamily: false,
-        localOverrides: {
-          temperature: 0.3,
-        },
       })
 
       const parsed = this.parseDigestResponse(llmResp.content)

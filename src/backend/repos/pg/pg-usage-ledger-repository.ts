@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
+import { Prisma, type PrismaClient } from '@prisma/client'
 import type { UsageLedgerEntry } from '../../llm/gateway-contract.js'
 import type { UsageLedgerRepository } from '../../llm/usage-ledger.js'
 
@@ -18,8 +18,16 @@ export class PgUsageLedgerRepository implements UsageLedgerRepository {
         providerId: entry.provider_id,
         modelId: entry.model_id,
         profileId: entry.profile_id,
+        policyId: entry.policy_id,
+        adapterId: entry.adapter_id,
         poolId: entry.pool_id,
         credentialId: entry.credential_id,
+        routeOrderJson: toNullableJson(entry.route_order),
+        orderedCandidatesJson: toNullableJson(entry.ordered_candidates),
+        fallbackChainJson: toNullableJson(entry.fallback_chain),
+        fallbackHistoryJson: toNullableJson(entry.fallback_history),
+        mergeTraceJson: toNullableJson(entry.merge_trace),
+        resolvedParamsJson: toNullableJson(entry.resolved_params),
         voiceLineId: entry.render_decision?.voiceLineId,
         tier: entry.render_decision?.tier,
         fallbackLevel: entry.render_decision?.fallbackLevel,
@@ -55,6 +63,19 @@ export class PgUsageLedgerRepository implements UsageLedgerRepository {
     return rows.map(toEntry)
   }
 
+  async listByTracePrefix(tracePrefix: string, limit = 100): Promise<UsageLedgerEntry[]> {
+    const rows = await this.prisma.llmUsageLedger.findMany({
+      where: {
+        traceId: {
+          startsWith: tracePrefix,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    })
+    return rows.map(toEntry)
+  }
+
   async sumCostByAgent(agentId: string, since: Date): Promise<number> {
     const result = await this.prisma.llmUsageLedger.aggregate({
       _sum: { actualCostCny: true },
@@ -83,8 +104,16 @@ function toEntry(row: {
   providerId: string | null
   modelId: string | null
   profileId: string | null
+  policyId: string | null
+  adapterId: string | null
   poolId: string | null
   credentialId: string | null
+  routeOrderJson: Prisma.JsonValue | null
+  orderedCandidatesJson: Prisma.JsonValue | null
+  fallbackChainJson: Prisma.JsonValue | null
+  fallbackHistoryJson: Prisma.JsonValue | null
+  mergeTraceJson: Prisma.JsonValue | null
+  resolvedParamsJson: Prisma.JsonValue | null
   voiceLineId: string | null
   tier: string | null
   fallbackLevel: string | null
@@ -127,8 +156,16 @@ function toEntry(row: {
     provider_id: row.providerId ?? undefined,
     model_id: row.modelId ?? undefined,
     profile_id: row.profileId ?? undefined,
+    policy_id: row.policyId ?? undefined,
+    adapter_id: row.adapterId ?? undefined,
     pool_id: row.poolId ?? undefined,
     credential_id: row.credentialId ?? undefined,
+    route_order: parseJsonArray<UsageLedgerEntry['route_order']>(row.routeOrderJson),
+    ordered_candidates: parseJsonArray<UsageLedgerEntry['ordered_candidates']>(row.orderedCandidatesJson),
+    fallback_chain: parseJsonArray<UsageLedgerEntry['fallback_chain']>(row.fallbackChainJson),
+    fallback_history: parseJsonArray<UsageLedgerEntry['fallback_history']>(row.fallbackHistoryJson),
+    merge_trace: parseJsonValue<UsageLedgerEntry['merge_trace']>(row.mergeTraceJson),
+    resolved_params: parseJsonValue<UsageLedgerEntry['resolved_params']>(row.resolvedParamsJson),
     billing_class: row.billingClass as UsageLedgerEntry['billing_class'],
     estimated_cost_cny: row.estimatedCostCny ?? undefined,
     reserved_cost_cny: row.reservedCostCny ?? undefined,
@@ -138,4 +175,19 @@ function toEntry(row: {
     latency_ms: row.latencyMs,
     created_at: row.createdAt.toISOString(),
   }
+}
+
+function toNullableJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined {
+  if (value == null) return undefined
+  return value as Prisma.InputJsonValue
+}
+
+function parseJsonArray<T>(value: Prisma.JsonValue | null): T | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value as T
+}
+
+function parseJsonValue<T>(value: Prisma.JsonValue | null): T | undefined {
+  if (value == null) return undefined
+  return value as T
 }

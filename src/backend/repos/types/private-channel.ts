@@ -109,6 +109,7 @@ export interface CreatePrivateSessionInput {
   initiator?: SessionInitiator
   trigger_type?: string | null
   trigger_ref?: string | null
+  started_at?: Date
 }
 
 export interface CreatePrivateMessageInput {
@@ -117,6 +118,7 @@ export interface CreatePrivateMessageInput {
   content: string
   delivery_status?: MessageDeliveryStatus
   moderation_metadata?: Record<string, unknown> | null
+  created_at?: Date
 }
 
 export interface CreateAgentMemoryInput {

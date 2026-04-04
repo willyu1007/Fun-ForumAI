@@ -4,6 +4,7 @@ export interface UsageLedgerRepository {
   insert(entry: UsageLedgerEntry): Promise<void>
   listRecent(limit?: number): Promise<UsageLedgerEntry[]>
   listByAgent(agentId: string, limit?: number): Promise<UsageLedgerEntry[]>
+  listByTracePrefix(tracePrefix: string, limit?: number): Promise<UsageLedgerEntry[]>
   sumCostByAgent(agentId: string, since: Date): Promise<number>
   sumCostByBillingClass(billingClass: string, since: Date): Promise<number>
 }
@@ -51,6 +52,13 @@ export class InMemoryUsageLedgerRepository implements UsageLedgerRepository {
   async listByAgent(agentId: string, limit = 100): Promise<UsageLedgerEntry[]> {
     return this.entries
       .filter((e) => e.agent_id === agentId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, limit)
+  }
+
+  async listByTracePrefix(tracePrefix: string, limit = 100): Promise<UsageLedgerEntry[]> {
+    return this.entries
+      .filter((e) => e.trace_id.startsWith(tracePrefix))
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .slice(0, limit)
   }

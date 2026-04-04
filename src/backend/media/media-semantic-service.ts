@@ -157,10 +157,6 @@ export class MediaSemanticService {
             requestedTier: 'base',
             allowFallbackWithinLine: false,
             allowCrossFamily: false,
-            localOverrides: {
-              temperature: 0.1,
-              maxTokens: 500,
-            },
           })
           latencyMs = Date.now() - startMs
           usage = response.usage

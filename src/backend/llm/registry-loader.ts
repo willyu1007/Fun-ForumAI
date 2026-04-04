@@ -14,8 +14,6 @@ import {
 } from '../../shared/agent-persona-catalog.js'
 import type {
   AdapterBinding,
-  AdapterAuthStrategy,
-  AdapterRequestShape,
   CredentialPoolEntry,
   ExecutionPolicyEntry,
   LLMVisibility,
@@ -23,9 +21,7 @@ import type {
   ModelProfileCandidate,
   ModelProfileFallback,
   ProviderRegistryEntry,
-  ResponseMode,
   RoutingPolicyEntry,
-  RuntimeModality,
 } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
 

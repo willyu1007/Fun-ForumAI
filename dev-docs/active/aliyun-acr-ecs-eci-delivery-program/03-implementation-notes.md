@@ -41,3 +41,24 @@
   - cloud/local context artifact 改为 workload-aware 命名，旧的 env-only cloud context 已删除；
   - `RUNTIME_ENABLED` 不再出现在 shared staging values 中，重新回到 `api compose=false / worker role=true` 的单一 authority split；
   - `prod` cloud baseline 已被正式写回 contract + values，不再依赖 dev-like defaults 或 staging-only scope 假设。
+
+## 2026-04-04
+
+- `T-936` 已完成 repo 侧主实现，`T-128` 因此更新 parent narrative：
+  - visible / hidden / identity / vision_summary 的 callsite cutover 已从“inventory 设计中”推进到“代码已切换，等待 live closeout”；
+  - execution-plan observability 已扩展到 usage ledger、admin runtime features、rollout evidence collector；
+  - staging live gate 已从单一 `verify:launch:staging` 拆分为“两层门”：
+    - `verify:launch:staging` 负责 platform/readiness；
+    - `verify:runtime:closeout:staging` 负责 visible / hidden-worker / identity lane-level closeout。
+- `T-128` 对 `T-936` 的 handoff/acceptance 口径同步收紧：
+  - hidden/worker 证据必须来自真实 `PrivateChannelScheduler -> checkTimeouts -> generateDigest` 路径；
+  - identity gate 证据必须带 `identity_write-*` policy attribution，不能只看 typed write 成功；
+  - deprecated `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL` env pin 现在被视为 closeout blocker，除非 operator 显式 emergency 放行。
+- follow-on 范围明确化：
+  - 图片生成治理继续遵循 provider/model/credential/prompt/trace 同一治理方向；
+  - 但该项仍停留在 `T-128` follow-on，不进入本轮 `T-936` staging blocker。
+- `T-936` audit/cleanup 之后，`T-128` 的 handoff 口径进一步收紧：
+  - visible closeout 不再接受“只有 private-reply 能跑通”的半闭环状态，repo 现已补齐 `proactive-opening` fallback；
+  - hidden/worker fixture 必须对 message density 安全，不能依赖人工记忆 message timeline；
+  - 本轮暴露出来的 LLM test/type debt 已随 repo 侧 cleanup 一并消化，避免后续把“旧基线报错”误当成 `T-936` 未闭环；
+  - 旧的 `.ai/.tmp/tests/environment/20260403-095855-87e8b7` 测试日志已删除，不再把过时临时产物计入 parent narrative evidence。

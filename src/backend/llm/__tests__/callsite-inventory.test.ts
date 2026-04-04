@@ -33,7 +33,7 @@ describe('LLM callsite inventory guard', () => {
 
   it('tracks every gateway local override callsite in the inventory handoff set', () => {
     const actualLocalOverrideCounts = Object.fromEntries(
-      Object.entries(collectDirectCallCounts(BACKEND_ROOT, /localOverrides\s*:/g))
+      Object.entries(collectRawOverrideCounts(BACKEND_ROOT))
         .filter(([file]) => !file.startsWith('src/backend/llm/')),
     )
     const uniqueInventoryCallsites = new Set<string>()
@@ -61,6 +61,18 @@ describe('LLM callsite inventory guard', () => {
     }
   })
 
+  it('records explicit execution policy bindings for migrated callsites that need them', () => {
+    for (const entry of LLM_CALLSITE_INVENTORY) {
+      if (entry.policy_binding_mode === 'callsite-execution-policy') {
+        expect(extractExecutionPolicyId(entry)).toBe(entry.target_policy_id)
+        continue
+      }
+      if (entry.policy_binding_mode === 'profile-default') {
+        expect(extractExecutionPolicyId(entry)).toBeNull()
+      }
+    }
+  })
+
   it('records semantic evidence for every inventory entry', () => {
     for (const entry of LLM_CALLSITE_INVENTORY) {
       const content = readFileSync(join(process.cwd(), entry.source_file), 'utf-8')
@@ -83,6 +95,11 @@ describe('LLM callsite inventory guard', () => {
         expect(entry.target_policy_id).toBeNull()
       } else {
         expect(entry.target_policy_id).toBeTruthy()
+      }
+      if (entry.migration_status === 'intentionally-retained') {
+        expect(entry.policy_binding_mode).toBe('not-applicable')
+      } else {
+        expect(entry.policy_binding_mode).not.toBe('not-applicable')
       }
       if (entry.local_override_fields.length > 0) {
         expect(entry.migration_status).toBe('dual-track')
@@ -138,12 +155,29 @@ function collectDirectCallCounts(rootDir: string, pattern: RegExp): Record<strin
   return counts
 }
 
+function collectRawOverrideCounts(rootDir: string): Record<string, number> {
+  const counts: Record<string, number> = {}
+
+  for (const file of walkBackendSourceFiles(rootDir)) {
+    if (file === INVENTORY_IMPLEMENTATION_PATH) continue
+    const content = readFileSync(file, 'utf-8')
+    const matches = Array.from(content.matchAll(/localOverrides\s*:\s*\{([\s\S]*?)\n\s*}/g))
+      .filter(([, block]) =>
+        /\b(temperature|maxTokens|stop|timeoutMs|maxRetries|regionHint)\s*:/.test(block))
+    if (matches.length === 0) continue
+    const relative = file.slice(process.cwd().length + 1).replace(/\\/g, '/')
+    counts[relative] = matches.length
+  }
+
+  return counts
+}
+
 function extractLocalOverrideFields(entry: LlmCallsiteInventoryEntry): string[] {
   const content = readFileSync(join(process.cwd(), entry.source_file), 'utf-8')
-  const anchor = entry.evidence_patterns.find((pattern) => pattern.startsWith('traceId:'))
+  const anchor = entry.evidence_patterns.find((pattern) => pattern.startsWith('PROMPT_TEMPLATE_REFS.'))
+    ?? entry.evidence_patterns.find((pattern) => pattern.startsWith('traceId:'))
     ?? entry.evidence_patterns.find((pattern) => pattern.includes('generate'))
     ?? entry.evidence_patterns.find((pattern) => pattern.startsWith('intent:'))
-    ?? entry.evidence_patterns.find((pattern) => pattern.startsWith('PROMPT_TEMPLATE_REFS.'))
     ?? entry.evidence_patterns[0]
 
   if (!anchor) {
@@ -155,7 +189,7 @@ function extractLocalOverrideFields(entry: LlmCallsiteInventoryEntry): string[] 
     return []
   }
 
-  const snippet = content.slice(anchorIndex, anchorIndex + 1_200)
+  const snippet = extractGatewayInvocationSnippet(content, anchorIndex)
   const localOverrideMatch = snippet.match(/localOverrides\s*:\s*\{([\s\S]*?)\n\s*}/)
   if (!localOverrideMatch) {
     return []
@@ -164,7 +198,82 @@ function extractLocalOverrideFields(entry: LlmCallsiteInventoryEntry): string[] 
   return Array.from(localOverrideMatch[1].matchAll(/^\s*([A-Za-z][A-Za-z0-9]*)\s*:/gm))
     .map(([, field]) => field)
     .filter((field, index, fields) => fields.indexOf(field) === index)
+    .filter((field) => field !== 'executionPolicyId')
     .sort()
+}
+
+function extractExecutionPolicyId(entry: LlmCallsiteInventoryEntry): string | null {
+  const content = readFileSync(join(process.cwd(), entry.source_file), 'utf-8')
+  const anchor = entry.evidence_patterns.find((pattern) => pattern.startsWith('PROMPT_TEMPLATE_REFS.'))
+    ?? entry.evidence_patterns.find((pattern) => pattern.startsWith('traceId:'))
+    ?? entry.evidence_patterns.find((pattern) => pattern.includes('generate'))
+    ?? entry.evidence_patterns.find((pattern) => pattern.startsWith('intent:'))
+    ?? entry.evidence_patterns[0]
+
+  if (!anchor) {
+    return null
+  }
+
+  const anchorIndex = content.indexOf(anchor)
+  if (anchorIndex < 0) {
+    return null
+  }
+
+  const snippet = extractGatewayInvocationSnippet(content, anchorIndex)
+  const localOverrideMatch = snippet.match(/localOverrides\s*:\s*\{([\s\S]*?)\n\s*}/)
+  if (localOverrideMatch) {
+    const policyIdMatch = localOverrideMatch[1].match(/executionPolicyId\s*:\s*['"`]([^'"`]+)['"`]/)
+    if (policyIdMatch?.[1]) {
+      return policyIdMatch[1]
+    }
+  }
+
+  const helperMatch = snippet.match(/localOverrides\s*:\s*([A-Za-z][A-Za-z0-9_]*)\s*\(/)
+  if (!helperMatch?.[1]) {
+    return null
+  }
+
+  const helperDefinition = content.match(
+    new RegExp(`function\\s+${helperMatch[1]}\\s*\\([\\s\\S]*?executionPolicyId\\s*:\\s*['"\`]([^'"\\\`]+)['"\`]`, 'm'),
+  )
+  return helperDefinition?.[1] ?? null
+}
+
+function extractGatewayInvocationSnippet(content: string, anchorIndex: number): string {
+  const callAnchors = [
+    'this.deps.llmGateway.generateVisibleText({',
+    'this.deps.llmGateway.generateHiddenArtifact({',
+    'this.deps.llmGateway.generateIdentityWrite({',
+    'this.deps.llmGateway.chat({',
+    'llmGateway.generateVisibleText({',
+    'llmGateway.generateHiddenArtifact({',
+    'llmGateway.generateIdentityWrite({',
+    'llmGateway.chat({',
+  ]
+  const start = callAnchors.reduce((best, pattern) => {
+    const index = content.lastIndexOf(pattern, anchorIndex)
+    return index > best ? index : best
+  }, -1)
+  if (start < 0) {
+    return content.slice(anchorIndex, anchorIndex + 1_200)
+  }
+
+  const braceStart = content.indexOf('{', start)
+  if (braceStart < 0) {
+    return content.slice(start, start + 1_200)
+  }
+
+  let depth = 0
+  for (let index = braceStart; index < content.length; index += 1) {
+    const char = content[index]
+    if (char === '{') depth += 1
+    if (char === '}') depth -= 1
+    if (depth === 0) {
+      return content.slice(start, index + 1)
+    }
+  }
+
+  return content.slice(start, start + 1_200)
 }
 
 function walkBackendSourceFiles(rootDir: string): string[] {

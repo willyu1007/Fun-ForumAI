@@ -28,6 +28,7 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
         initiator: input.initiator ?? 'HUMAN',
         triggerType: input.trigger_type ?? null,
         triggerRef: input.trigger_ref ?? null,
+        startedAt: input.started_at,
       },
     })
     return this.sessionToDomain(row)
@@ -121,6 +122,7 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
         deliveryStatus: input.delivery_status ?? 'DELIVERED',
         moderationMetadataJson:
           (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        createdAt: input.created_at,
       },
     })
     return this.messageToDomain(row)

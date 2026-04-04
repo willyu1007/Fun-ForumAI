@@ -3,8 +3,11 @@ import { BudgetGuard } from '../budget-guard.js'
 import { CredentialBroker } from '../credential-broker.js'
 import { LLMGateway } from '../llm-gateway.js'
 import { LlmClient } from '../llm-client.js'
+import type { LLMGatewayRequest } from '../gateway-contract.js'
 import type { LlmRegistryBundle } from '../registry-loader.js'
 import { UsageLedgerWriter } from '../usage-ledger.js'
+
+type GatewayRequestInput = Omit<LLMGatewayRequest, 'visibility'>
 
 function buildBundle(): LlmRegistryBundle {
   return {
@@ -457,7 +460,7 @@ function buildLlmClient(): LlmClient {
   })
 }
 
-function buildVisibleTextRequest(overrides: Record<string, unknown> = {}) {
+function buildVisibleTextRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'proactive_opening',
     scene: 'proactive_dm',
@@ -477,7 +480,7 @@ function buildVisibleTextRequest(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function buildIdentityWriteRequest(overrides: Record<string, unknown> = {}) {
+function buildIdentityWriteRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'identity_write',
     scene: 'background_hidden',
@@ -497,7 +500,7 @@ function buildIdentityWriteRequest(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function buildHiddenJsonRequest(overrides: Record<string, unknown> = {}) {
+function buildHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'private_digest',
     scene: 'background_hidden',
@@ -517,7 +520,7 @@ function buildHiddenJsonRequest(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function buildVisionRequest(overrides: Record<string, unknown> = {}) {
+function buildVisionRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'vision_summary',
     scene: 'background_hidden',

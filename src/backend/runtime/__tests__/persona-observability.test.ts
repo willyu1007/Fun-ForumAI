@@ -100,4 +100,15 @@ describe('persona observability rollout gates', () => {
     expect(snapshot.context_memory.retrieval.public_typed_hits).toBe(2)
     expect(snapshot.rollout_gates.find((gate) => gate.id === 'public_typed_read_path')?.status).toBe('pass')
   })
+
+  it('advertises execution-plan trace fields as required render-log evidence', () => {
+    const snapshot = personaObservability.snapshot()
+    expect(snapshot.render_log.required_fields).toContain('policy_id')
+    expect(snapshot.render_log.required_fields).toContain('adapter_id')
+    expect(snapshot.render_log.required_fields).toContain('credential_id')
+    expect(snapshot.render_log.required_fields).toContain('route_order')
+    expect(snapshot.render_log.required_fields).toContain('ordered_candidates')
+    expect(snapshot.render_log.required_fields).toContain('fallback_history')
+    expect(snapshot.render_log.required_fields).toContain('merge_trace')
+  })
 })

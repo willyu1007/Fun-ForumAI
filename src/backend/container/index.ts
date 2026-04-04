@@ -742,6 +742,7 @@ export const achievementsScheduler = nurture.achievementsScheduler
 export const cultureDigestScheduler = nurture.cultureDigestScheduler
 export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
+export const proactiveInteractionService = nurture.proactiveInteractionService
 export {
   communityConfigScheduler,
   agentBioRefreshScheduler,

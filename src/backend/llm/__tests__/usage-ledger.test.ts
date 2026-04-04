@@ -55,4 +55,15 @@ describe('InMemoryUsageLedgerRepository', () => {
     const recent = await repo.listRecent(2)
     expect(recent.map((entry) => entry.trace_id)).toEqual(['c', 'b'])
   })
+
+  it('lists entries by trace prefix newest-first', async () => {
+    const repo = new InMemoryUsageLedgerRepository()
+
+    await repo.insert(makeEntry({ trace_id: 'prefix:older', created_at: '2026-03-09T10:00:00.000Z' }))
+    await repo.insert(makeEntry({ trace_id: 'prefix:newer', created_at: '2026-03-09T10:02:00.000Z' }))
+    await repo.insert(makeEntry({ trace_id: 'other:trace', created_at: '2026-03-09T10:03:00.000Z' }))
+
+    const recent = await repo.listByTracePrefix('prefix:', 10)
+    expect(recent.map((entry) => entry.trace_id)).toEqual(['prefix:newer', 'prefix:older'])
+  })
 })

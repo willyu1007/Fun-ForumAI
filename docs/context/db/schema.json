@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-31T14:04:12.657Z",
+  "updatedAt": "2026-04-03T23:47:00.814Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -15375,6 +15375,17 @@
           "unique": false
         },
         {
+          "name": "adapterId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "adapter_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "agentId",
           "type": "String",
           "nullable": false,
@@ -15452,6 +15463,28 @@
           "unique": false
         },
         {
+          "name": "fallbackChainJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "fallback_chain_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fallbackHistoryJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "fallback_history_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "fallbackLevel",
           "type": "String",
           "nullable": true,
@@ -15496,11 +15529,33 @@
           "unique": false
         },
         {
+          "name": "mergeTraceJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "merge_trace_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "modelId",
           "type": "String",
           "nullable": true,
           "list": false,
           "dbName": "model_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "orderedCandidatesJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "ordered_candidates_json",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -15514,6 +15569,17 @@
           "dbName": "platform_retry_count",
           "dbType": null,
           "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "policyId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "policy_id",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -15589,6 +15655,28 @@
           "nullable": true,
           "list": false,
           "dbName": "reserved_cost_cny",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolvedParamsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolved_params_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "routeOrderJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "route_order_json",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -15687,6 +15775,15 @@
           "type": "index",
           "fields": [
             "billingClass",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "policyId",
             "createdAt"
           ],
           "name": null,

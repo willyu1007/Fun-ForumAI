@@ -130,7 +130,7 @@ policies:
     modality: text
     response_mode: json_object
     defaults:
-      temperature: 0.35
+      temperature: 0.2
       max_tokens: 600
       timeout_ms: 30000
       max_retries: 2
@@ -147,7 +147,7 @@ policies:
     modality: text
     response_mode: json_object
     defaults:
-      temperature: 0.3
+      temperature: 0.2
       max_tokens: 900
       timeout_ms: 30000
       max_retries: 2
@@ -164,8 +164,42 @@ policies:
     modality: text
     response_mode: json_object
     defaults:
-      temperature: 0.25
+      temperature: 0.3
       max_tokens: 700
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-public_observation_digest-agent-owned-base
+    lane: hidden_public_observation_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.2
+      max_tokens: 700
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-public_observation_digest-agent-bio-base
+    lane: hidden_public_observation_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.82
+      max_tokens: 520
       timeout_ms: 30000
       max_retries: 2
     fallback:
@@ -181,7 +215,7 @@ policies:
     modality: text
     response_mode: json_object
     defaults:
-      temperature: 0.25
+      temperature: 0.2
       max_tokens: 900
       timeout_ms: 30000
       max_retries: 2
@@ -198,7 +232,7 @@ policies:
     modality: text
     response_mode: json_object
     defaults:
-      temperature: 0.22
+      temperature: 0.2
       max_tokens: 1200
       timeout_ms: 30000
       max_retries: 2
@@ -215,8 +249,8 @@ policies:
     modality: vision
     response_mode: json_object
     defaults:
-      temperature: 0.2
-      max_tokens: 700
+      temperature: 0.1
+      max_tokens: 500
       timeout_ms: 30000
       max_retries: 2
     fallback:

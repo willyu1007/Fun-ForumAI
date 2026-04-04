@@ -201,4 +201,124 @@ describe('ProactiveInteractionService', () => {
     })).rejects.toThrow('compose failed')
     expect(gatewayGenerate).not.toHaveBeenCalled()
   })
+
+  it('runs closeout proactive opening through the same visible gateway contract', async () => {
+    const createSession = vi.fn(async () => ({
+      id: 'session-closeout',
+      agent_id: 'agent-1',
+      human_user_id: 'owner-1',
+      status: 'ACTIVE',
+      initiator: 'AGENT',
+      trigger_type: 'RUNTIME_CLOSEOUT_PROACTIVE',
+      trigger_ref: 'runtime-closeout:test',
+      started_at: new Date(),
+      ended_at: null,
+      digest_status: 'PENDING',
+    }))
+    const createMessage = vi.fn(async () => ({
+      id: 'msg-closeout',
+      session_id: 'session-closeout',
+      author_type: 'AGENT',
+      content: 'opening',
+      created_at: new Date(),
+    }))
+    const gatewayGenerate = vi.fn(async (input: Record<string, unknown>) => ({
+      content: 'opening',
+      usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+      messages: [],
+      latencyMs: 12,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'agent-proactive-dm-opening',
+        promptVersion: 2,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+      _input: input,
+    }))
+    const service = new ProactiveInteractionService({
+      channelRepo: {
+        listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+        createSession,
+        createMessage,
+        listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+        findSessionById: vi.fn(),
+        updateSessionStatus: vi.fn(),
+        updateDigestStatus: vi.fn(),
+        findTimedOutSessions: vi.fn(),
+        countMessages: vi.fn(),
+      } as never,
+      agentService: {
+        getAgent: vi.fn((agentId: string) => ({
+          id: agentId,
+          owner_id: 'owner-1',
+          display_name: 'Main Agent',
+          model: 'mock-model',
+        })),
+        getLatestConfig: vi.fn(() => ({
+          config_json: {
+            persona: { name: 'Main Agent', style: 'warm', interests: ['ai'], language: 'zh-CN' },
+          },
+        })),
+      } as never,
+      llmGateway: { generateVisibleText: gatewayGenerate } as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => true),
+        compose: vi.fn(async () => ({
+          persona: { name: 'Main Agent', style: 'warm', interests: ['ai'], language: 'zh-CN' },
+          blocks: {
+            hard_control_block: 'hard',
+            compact_control_block: 'compact',
+            current_context_block: 'context',
+            memory_block: 'memory',
+            soft_expression_block: 'soft',
+          },
+          audit: {
+            version: 'v2',
+            scene: 'proactive_dm',
+            includedBlockIds: ['hard_control_block', 'current_context_block'],
+            promptContract: 'compiled_blocks_v2',
+            tokenEstimates: { hard_control_block: 10, current_context_block: 10 },
+            lintWarnings: [],
+            trimReasons: [],
+          },
+        })),
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      notificationService: { create: vi.fn(async () => ({ id: 'notif-1' })) } as never,
+    })
+
+    const result = await service.runCloseoutProactiveOpening({
+      agentId: 'agent-1',
+      triggerRef: 'runtime-closeout:test',
+    })
+
+    expect(result.trace_id).toMatch(/^proactive-dm:agent-1:/)
+    expect(result.token_cost).toBe(16)
+    expect(createSession).toHaveBeenCalledWith(expect.objectContaining({
+      trigger_type: 'RUNTIME_CLOSEOUT_PROACTIVE',
+      trigger_ref: 'runtime-closeout:test',
+      human_user_id: 'owner-1',
+    }))
+    expect(createMessage).toHaveBeenCalledWith(expect.objectContaining({
+      session_id: 'session-closeout',
+      author_type: 'AGENT',
+      content: 'opening',
+    }))
+    expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      intent: 'proactive_opening',
+      traceId: result.trace_id,
+      promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
+    }))
+  })
 })

@@ -71,3 +71,28 @@
     - `docs/context/env/` 现在同时保留 `staging|prod x api|worker` 四份 cloud context 快照，避免同名文件跨 workload 覆盖。
   - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . && python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload api && python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload worker`
     - Result: 通过。
+- 2026-04-04:
+  - `pnpm prisma validate && node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs && node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+    - Result: 通过。
+    - Note: `T-936` 的 execution-plan ledger 字段、registry policy 扩展与 DB context contract 已同步到 repo。
+  - `pnpm exec vitest run src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+    - Result: 通过；`T-936` 的 inventory、ledger、admin observability、runtime closeout admin surface 已有 repo 侧回归覆盖。
+  - `pnpm exec tsc -b --pretty false`
+    - Result: 仍失败，但当前失败项属于 repo 既有基线（auth/admin readonly payload 赋值、`auth-service.ts` payload typing 等）。
+    - Note: `credential broker fixture` 与 `llm gateway test intent typing` 已在 `T-936` audit/cleanup 中修复；针对本轮修改文件做过滤后编译检查，不再出现 TypeScript diagnostics。
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main && node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+    - Result: 通过。
+    - Note: `T-128` / `T-936` 的最新状态、verification 记录与 parent narrative 已回写 project hub。
+  - `pnpm exec vitest run src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/llm/__tests__/credential-broker.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/runtime/__tests__/persona-observability.test.ts`
+    - Result: 通过；61 tests passed。
+    - Note: 说明 `T-936` repo 侧第二轮 audit/cleanup 已覆盖 proactive fallback、dense fixture stale guard、ledger/admin observability 与 LLM typing。
+  - `pnpm exec eslint src/backend/services/proactive-interaction-service.ts src/backend/routes/admin-api.ts src/backend/container/nurture.ts src/backend/container/index.ts src/backend/llm/__tests__/credential-broker.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/llm/registry-loader.ts scripts/runtime-staging-closeout.mjs`
+    - Result: 通过。
+  - `git diff --check`
+    - Result: 通过。
+  - `find . -path '*/node_modules' -prune -o \( -name '*runtime-closeout*' -o -name '*t936*' -o -name '*.tmp' -o -name '*.log' -o -name '*.snap.new' \) -print | sed -n '1,120p'`
+    - Result: 清理后只剩 `prisma/migrations/20260404093000_t936_execution_plan_ledger` 与目录级 `.ai/.tmp`。
+    - Note: 旧的 `.ai/.tmp/tests/environment/20260403-095855-87e8b7` 已删除，不再作为 `T-128` handoff 证据的一部分。
+  - staging live closeout
+    - Result: 尚未执行。
+    - Note: `T-128` 现在等待 `pnpm verify:launch:staging` + `pnpm verify:runtime:closeout:staging` 的真实环境结果，之后才能最终冻结 promote/backout matrix。

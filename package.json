@@ -84,6 +84,7 @@
     "verify:launch": "node scripts/verify-launch-readiness.mjs",
     "verify:launch:ci": "node scripts/verify-launch-readiness.mjs --ci",
     "verify:launch:staging": "node scripts/verify-launch-readiness.mjs --staging --ci",
+    "verify:runtime:closeout:staging": "node scripts/runtime-staging-closeout.mjs",
     "ui:build": "node scripts/ui/index.mjs build",
     "preui:check": "pnpm ui:packages:build",
     "ui:check": "node scripts/ui/index.mjs check",

@@ -35,6 +35,9 @@ function makeLedgerEntry(overrides: Partial<UsageLedgerEntry> = {}): UsageLedger
     success: true,
     provider_id: 'dashscope-openai',
     model_id: 'qwen-flash-character',
+    policy_id: 'visible-forum_reply-base',
+    adapter_id: 'openai-chat-completions-v1',
+    credential_id: 'cred-1',
     latency_ms: 1200,
     created_at: new Date().toISOString(),
     ...overrides,
@@ -113,6 +116,10 @@ describe('rollout-evidence-collector', () => {
       expect(attribution.hidden_runs_total).toBe(1)
       expect(attribution.observed_runs_total).toBe(2)
       expect(attribution.by_provider?.['dashscope-openai']).toBe(2)
+      expect(attribution.by_policy?.['visible-forum_reply-base']).toBe(2)
+      expect(attribution.by_adapter?.['openai-chat-completions-v1']).toBe(2)
+      expect(attribution.by_credential?.['cred-1']).toBe(2)
+      expect(attribution.by_provider_model?.['dashscope-openai/qwen-flash-character']).toBe(2)
       expect(gate.version).toBe('persona-gate-snapshot-v1')
       expect(gate.results.length).toBe(2)
     })
@@ -146,6 +153,29 @@ describe('rollout-evidence-collector', () => {
       const result = collectFallbackOrDegradedEntries(entries)
       expect(result).toHaveLength(1)
       expect(result[0].trace_id).toBe('b')
+    })
+
+    it('includes entries with fallback history even when final fallback level is none', () => {
+      const entries = [
+        makeLedgerEntry({
+          trace_id: 'fallback-history',
+          fallback_history: [
+            {
+              profileId: 'prof-1',
+              providerId: 'dashscope-openai',
+              modelId: 'qwen-flash-character',
+              adapterId: 'openai-chat-completions-v1',
+              fallbackLevel: 'same-line',
+              errorCode: 'TimeoutError',
+              reason: 'timed out once',
+            },
+          ],
+        }),
+      ]
+
+      const result = collectFallbackOrDegradedEntries(entries)
+      expect(result).toHaveLength(1)
+      expect(result[0].trace_id).toBe('fallback-history')
     })
 
     it('includes failed entries with error codes', () => {

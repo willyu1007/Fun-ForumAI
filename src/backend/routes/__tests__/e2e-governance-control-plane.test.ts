@@ -70,6 +70,10 @@ describe('E2E: Governance Control Plane', () => {
       expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
       expect(res.body.data.observability).toHaveProperty('rollout_gates')
       expect(Array.isArray(res.body.data.observability.render_log_preview)).toBe(true)
+      expect(Array.isArray(res.body.data.observability.execution_plan_preview)).toBe(true)
+      expect(res.body.data.observability).toHaveProperty('fallback_or_degraded_preview.total')
+      expect(res.body.data.observability).toHaveProperty('attribution_summary.by_callsite')
+      expect(res.body.data.observability).toHaveProperty('override_state.routing_mode')
       expect(res.body.data.agent_bio).toEqual(
         expect.objectContaining({
           counts: expect.objectContaining({
@@ -91,6 +95,80 @@ describe('E2E: Governance Control Plane', () => {
       featureFlags.runtimeFeaturesV1 = originalRuntimeFeatures
       featureFlags.guidanceRecallV1 = originalGuidanceRecall
     }
+  })
+
+  it('POST/GET runtime closeout hidden-worker fixture create and inspect a stale private session', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Runtime Closeout Fixture Agent' })
+    expect(createAgentRes.status).toBe(201)
+    const agentId = createAgentRes.body.data.id as string
+
+    const createFixtureRes = await request(app)
+      .post('/v1/admin/runtime/closeout/hidden-worker/private-session-fixture')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ agent_id: agentId, message_count: 4, stale_minutes: 35 })
+
+    if (!config.db.usePrisma) {
+      expect(createFixtureRes.status).toBe(503)
+      expect(createFixtureRes.body.error.code).toBe('SERVICE_UNAVAILABLE')
+      return
+    }
+
+    expect(createFixtureRes.status).toBe(201)
+    expect(createFixtureRes.body.data.agent_id).toBe(agentId)
+    expect(createFixtureRes.body.data.digest_status).toBe('PENDING')
+    expect(createFixtureRes.body.data.message_count).toBe(4)
+    expect(createFixtureRes.body.data.trace_ids).toEqual(
+      expect.objectContaining({
+        extract_trace_id: expect.any(String),
+        distill_trace_id: expect.any(String),
+        identity_trace_id: expect.any(String),
+      }),
+    )
+
+    const inspectRes = await request(app)
+      .get(`/v1/admin/runtime/closeout/hidden-worker/private-session-fixture/${createFixtureRes.body.data.session_id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(inspectRes.status).toBe(200)
+    expect(inspectRes.body.data.session_id).toBe(createFixtureRes.body.data.session_id)
+    expect(inspectRes.body.data.message_count).toBe(4)
+    expect(inspectRes.body.data.ledger.extract).toEqual([])
+    expect(inspectRes.body.data.ledger.distill).toEqual([])
+    expect(inspectRes.body.data.ledger.identity).toEqual([])
+  })
+
+  it('runtime closeout hidden-worker fixture backdates dense sessions beyond the timeout threshold', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${user2Token}`)
+      .send({ display_name: 'Runtime Closeout Dense Fixture Agent' })
+    expect(createAgentRes.status).toBe(201)
+    const agentId = createAgentRes.body.data.id as string
+
+    const createFixtureRes = await request(app)
+      .post('/v1/admin/runtime/closeout/hidden-worker/private-session-fixture')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ agent_id: agentId, message_count: 10, stale_minutes: 35 })
+
+    if (!config.db.usePrisma) {
+      expect(createFixtureRes.status).toBe(503)
+      expect(createFixtureRes.body.error.code).toBe('SERVICE_UNAVAILABLE')
+      return
+    }
+
+    expect(createFixtureRes.status).toBe(201)
+    expect(createFixtureRes.body.data.minimum_stale_minutes).toBeGreaterThan(35)
+    const timeoutThresholdMs = createFixtureRes.body.data.timeout_threshold_ms as number
+    const startedAtMs = Date.parse(createFixtureRes.body.data.started_at as string)
+    const lastMessageCreatedAtMs = Date.parse(
+      createFixtureRes.body.data.messages.at(-1).created_at as string,
+    )
+
+    expect(Date.now() - startedAtMs).toBeGreaterThan(timeoutThresholdMs)
+    expect(Date.now() - lastMessageCreatedAtMs).toBeGreaterThanOrEqual(timeoutThresholdMs)
   })
 
   it('GET /v1/admin/launch/programming-ops returns the launch programming read model for admin', async () => {

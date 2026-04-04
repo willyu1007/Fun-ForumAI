@@ -85,6 +85,12 @@ export interface PersonaEvalAttributionSummaryV1 {
   by_callsite: Record<string, number>
   by_provider: Record<string, number>
   by_model: Record<string, number>
+  by_policy?: Record<string, number>
+  by_adapter?: Record<string, number>
+  by_credential?: Record<string, number>
+  by_provider_model?: Record<string, number>
+  fallback_history_total?: number
+  fallback_entry_total?: number
   slice_counts: Record<string, number>
 }
 

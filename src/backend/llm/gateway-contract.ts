@@ -237,8 +237,16 @@ export interface UsageLedgerEntry {
   provider_id?: string
   model_id?: string
   profile_id?: string
+  policy_id?: string
+  adapter_id?: string
   pool_id?: string
   credential_id?: string
+  route_order?: RoutingOrderStep[]
+  ordered_candidates?: ExecutionPlanCandidate[]
+  fallback_chain?: FallbackStep[]
+  fallback_history?: FallbackHistoryEntry[]
+  merge_trace?: ExecutionParamMergeTrace
+  resolved_params?: ResolvedExecutionParams
   billing_class?: LLMBudgetClass
   estimated_cost_cny?: number
   reserved_cost_cny?: number

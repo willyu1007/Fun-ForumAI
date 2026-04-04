@@ -30,6 +30,7 @@ import {
   searchProjectionService,
   agentBioRefreshService,
   launchProgrammingOpsService,
+  proactiveInteractionService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { AppError, ValidationError } from '../lib/errors.js'
@@ -47,6 +48,7 @@ import {
   collectIdentityWriteDelta,
   collectCostBaselineFromLedger,
   collectFallbackOrDegradedEntries,
+  summarizeLedgerAttribution,
 } from '../runtime/rollout-evidence-collector.js'
 import { validate } from '../validation/validate.js'
 import {
@@ -70,6 +72,8 @@ import type { MediaLineageNodeType, MediaRolloutControllerOverride } from '../re
 import { resolvePostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
 import { getLightweightPersonalizationRuntime } from '../launch/lightweight-personalization.js'
 import { resolveEffectiveLaunchVisualRollout } from '../launch/visual-rollout.js'
+import { buildPrivateSessionRawEventId } from '../context-memory/runtime.js'
+import { PRIVATE_SESSION_TIMEOUT_MS } from '../services/private-channel-service.js'
 
 export const adminApiRouter: IRouter = Router()
 
@@ -121,6 +125,61 @@ function serializeMediaRolloutControllerProfile(
     ...profile,
     active_override: stripLegacyRootPostAttachmentField(profile.active_override),
   }
+}
+
+function buildExecutionPlanPreview(entries: Awaited<ReturnType<typeof usageLedgerRepo.listRecent>>) {
+  return entries.slice(0, 20).map((entry) => ({
+    trace_id: entry.trace_id,
+    intent: entry.intent,
+    visibility: entry.visibility,
+    agent_id: entry.agent_id,
+    provider_id: entry.provider_id ?? null,
+    model_id: entry.model_id ?? null,
+    policy_id: entry.policy_id ?? null,
+    adapter_id: entry.adapter_id ?? null,
+    credential_id: entry.credential_id ?? null,
+    route_order: entry.route_order ?? [],
+    ordered_candidates: entry.ordered_candidates ?? [],
+    fallback_chain: entry.fallback_chain ?? [],
+    fallback_history: entry.fallback_history ?? [],
+    merge_trace: entry.merge_trace ?? null,
+    resolved_params: entry.resolved_params ?? null,
+    success: entry.success,
+    error_code: entry.error_code ?? null,
+    created_at: entry.created_at,
+  }))
+}
+
+function buildRuntimeOverrideState() {
+  const deprecatedEnvPins = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
+    .filter((key) => Boolean(process.env[key]?.trim()))
+  return {
+    routing_mode: config.llm.routingMode,
+    deprecated_env_pins: deprecatedEnvPins,
+    deprecated_env_pins_present: deprecatedEnvPins.length > 0,
+    debug_override_sources: [],
+    unapproved_debug_overrides_present: false,
+  }
+}
+
+function buildPrivateSessionCloseoutTraceIds(sessionId: string, agentId: string) {
+  const rawEventId = buildPrivateSessionRawEventId(sessionId)
+  return {
+    raw_event_id: rawEventId,
+    extract_trace_id: `context-extract:${rawEventId}`,
+    distill_trace_id: `context-distill:${rawEventId}`,
+    identity_trace_id: `identity-finalize:${agentId}:${rawEventId}`,
+  }
+}
+
+function resolveRuntimeCloseoutCandidateIds(agentId: string): string[] {
+  if (agentId) return [agentId]
+  return agentService.listActiveAgents({ limit: 50 }).items.map((agent) => agent.id)
+}
+
+function resolveMinimumCloseoutStaleMinutes(messageCount: number): number {
+  const timeoutMinutes = Math.ceil(PRIVATE_SESSION_TIMEOUT_MS / 60_000)
+  return timeoutMinutes + messageCount + 5
 }
 
 adminApiRouter.get('/admin/moderation/queue', requireHumanAuth, requireAdmin, async (req, res) => {
@@ -1038,6 +1097,7 @@ adminApiRouter.post(
 adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async (_req, res) => {
   const queueSize = await runtimeLoop.getQueueSize()
   const eventQueueSize = await eventQueue.size()
+  const overrideState = buildRuntimeOverrideState()
   res.json({
     data: {
       runtime: {
@@ -1049,6 +1109,8 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
         node_env: config.nodeEnv,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
+        routing_mode: config.llm.routingMode,
+        override_state: overrideState,
       },
       scheduler: postScheduler.stats,
       sse: sseHub.getStats(),
@@ -1106,6 +1168,9 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
   const build = getRuntimeBuildInfo()
   const providerAdmission = summarizeProviderAdmission(llmRegistryBundle)
+  const attributionSummary = summarizeLedgerAttribution(recentLedgerEntries)
+  const fallbackEntries = collectFallbackOrDegradedEntries(recentLedgerEntries)
+  const overrideState = buildRuntimeOverrideState()
   const tuning = resolvePostLaunchTuningProfile({
     enabled: config.features.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,
@@ -1170,10 +1235,289 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
       observability: {
         ...observability,
         render_log_preview: personaObservability.latestRenderLog(recentLedgerEntries, 20),
+        execution_plan_preview: buildExecutionPlanPreview(recentLedgerEntries),
+        fallback_or_degraded_preview: {
+          total: fallbackEntries.length,
+          entries: fallbackEntries.slice(0, 20),
+        },
+        attribution_summary: attributionSummary,
+        override_state: overrideState,
       },
     },
   })
 })
+
+adminApiRouter.post(
+  '/admin/runtime/closeout/visible/private-reply',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    if (!privateChannelServices) {
+      res.status(503).json({
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Private channel closeout is unavailable.' },
+      })
+      return
+    }
+
+    const agentId = typeof req.body?.agent_id === 'string' ? req.body.agent_id.trim() : ''
+    const humanUserId = typeof req.body?.human_user_id === 'string' ? req.body.human_user_id.trim() : ''
+    const content = typeof req.body?.content === 'string' && req.body.content.trim()
+      ? req.body.content.trim()
+      : '请用一句简短的话回应，确认你已准备好继续这段私聊。'
+
+    const candidateIds = resolveRuntimeCloseoutCandidateIds(agentId)
+
+    if (candidateIds.length === 0) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'No active agents are available for runtime closeout.' },
+      })
+      return
+    }
+
+    const failures: Array<Record<string, string>> = []
+    for (const candidateAgentId of candidateIds) {
+      try {
+        const agent = agentService.getAgent(candidateAgentId)
+        const selectedHumanUserId = humanUserId || agent.owner_id
+        const result = await privateChannelServices.channelService.runCloseoutVisibleReply({
+          agentId: agent.id,
+          humanUserId: selectedHumanUserId,
+          content,
+        })
+        const traceId = `private-chat:${result.session.id}:${result.human_message.id}`
+        const ledgerEntries = await usageLedgerRepo.listByTracePrefix(traceId, 10)
+
+        res.json({
+          data: {
+            mode: 'private_reply',
+            agent_id: agent.id,
+            human_user_id: selectedHumanUserId,
+            session_id: result.session.id,
+            trace_id: traceId,
+            human_message_id: result.human_message.id,
+            agent_reply_id: result.agent_reply.id,
+            token_cost: result.token_cost,
+            ledger_entries: ledgerEntries,
+          },
+        })
+        return
+      } catch (err) {
+        failures.push({
+          agent_id: candidateAgentId,
+          human_user_id: humanUserId || '',
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
+    res.status(422).json({
+      error: {
+        code: 'CLOSEOUT_VISIBLE_PRIVATE_REPLY_UNAVAILABLE',
+        message: 'No eligible visible private-reply path succeeded for runtime closeout.',
+        details: { attempts: failures.slice(0, 20) },
+      },
+    })
+  },
+)
+
+adminApiRouter.post(
+  '/admin/runtime/closeout/visible/proactive-opening',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    if (!proactiveInteractionService) {
+      res.status(503).json({
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Proactive closeout is unavailable.' },
+      })
+      return
+    }
+
+    const agentId = typeof req.body?.agent_id === 'string' ? req.body.agent_id.trim() : ''
+    const humanUserId = typeof req.body?.human_user_id === 'string' ? req.body.human_user_id.trim() : ''
+    const context = typeof req.body?.context === 'string' && req.body.context.trim()
+      ? req.body.context.trim()
+      : '请主动打个招呼，确认你已准备好继续这段交流，并保持一句话内完成。'
+    const candidateIds = resolveRuntimeCloseoutCandidateIds(agentId)
+
+    if (candidateIds.length === 0) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'No active agents are available for runtime closeout.' },
+      })
+      return
+    }
+
+    const failures: Array<Record<string, string>> = []
+    for (const candidateAgentId of candidateIds) {
+      try {
+        const agent = agentService.getAgent(candidateAgentId)
+        const selectedHumanUserId = humanUserId || agent.owner_id
+        const result = await proactiveInteractionService.runCloseoutProactiveOpening({
+          agentId: agent.id,
+          humanUserId: selectedHumanUserId,
+          context,
+        })
+        const ledgerEntries = await usageLedgerRepo.listByTracePrefix(result.trace_id, 10)
+
+        res.json({
+          data: {
+            mode: 'proactive_opening',
+            agent_id: agent.id,
+            human_user_id: selectedHumanUserId,
+            session_id: result.session.id,
+            trace_id: result.trace_id,
+            opening_message_id: result.opening_message.id,
+            token_cost: result.token_cost,
+            ledger_entries: ledgerEntries,
+          },
+        })
+        return
+      } catch (err) {
+        failures.push({
+          agent_id: candidateAgentId,
+          human_user_id: humanUserId || '',
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
+    res.status(422).json({
+      error: {
+        code: 'CLOSEOUT_VISIBLE_PROACTIVE_OPENING_UNAVAILABLE',
+        message: 'No eligible visible proactive-opening path succeeded for runtime closeout.',
+        details: { attempts: failures.slice(0, 20) },
+      },
+    })
+  },
+)
+
+adminApiRouter.post(
+  '/admin/runtime/closeout/hidden-worker/private-session-fixture',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    if (!privateChannelServices) {
+      res.status(503).json({
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Private channel closeout is unavailable.' },
+      })
+      return
+    }
+
+    try {
+      const agentId = typeof req.body?.agent_id === 'string' ? req.body.agent_id.trim() : ''
+      const humanUserId = typeof req.body?.human_user_id === 'string' ? req.body.human_user_id.trim() : ''
+      const messageCountRaw = typeof req.body?.message_count === 'number'
+        ? req.body.message_count
+        : Number.parseInt(String(req.body?.message_count ?? ''), 10)
+      const staleMinutesRaw = typeof req.body?.stale_minutes === 'number'
+        ? req.body.stale_minutes
+        : Number.parseInt(String(req.body?.stale_minutes ?? ''), 10)
+      const selectedAgent = agentId
+        ? agentService.getAgent(agentId)
+        : agentService.listActiveAgents({ limit: 1 }).items[0]
+
+      if (!selectedAgent) {
+        res.status(404).json({
+          error: { code: 'NOT_FOUND', message: 'No active agents are available for runtime closeout.' },
+        })
+        return
+      }
+
+      const selectedHumanUserId = humanUserId || selectedAgent.owner_id
+      const messageCount = Number.isFinite(messageCountRaw)
+        ? Math.max(4, Math.min(messageCountRaw, 10))
+        : 4
+      const minimumStaleMinutes = resolveMinimumCloseoutStaleMinutes(messageCount)
+      const staleMinutes = Number.isFinite(staleMinutesRaw)
+        ? Math.max(staleMinutesRaw, minimumStaleMinutes)
+        : minimumStaleMinutes
+      const startedAt = new Date(Date.now() - staleMinutes * 60_000)
+      const fixtureMessages = Array.from({ length: messageCount }, (_, index) => ({
+        authorType: index % 2 === 0 ? 'HUMAN' as const : 'AGENT' as const,
+        content: index % 2 === 0
+          ? `Runtime closeout fixture owner message ${index + 1}.`
+          : `Runtime closeout fixture agent reply ${index + 1}.`,
+        createdAt: new Date(startedAt.getTime() + (index + 1) * 60_000),
+      }))
+      const result = await privateChannelServices.channelService.createCloseoutFixtureSession({
+        agentId: selectedAgent.id,
+        humanUserId: selectedHumanUserId,
+        startedAt,
+        messages: fixtureMessages,
+      })
+      const traceIds = buildPrivateSessionCloseoutTraceIds(result.session.id, selectedAgent.id)
+
+      res.status(201).json({
+        data: {
+          agent_id: selectedAgent.id,
+          human_user_id: selectedHumanUserId,
+          session_id: result.session.id,
+          started_at: result.session.started_at.toISOString(),
+          digest_status: result.session.digest_status,
+          trace_ids: traceIds,
+          message_count: result.messages.length,
+          messages: result.messages.map((message) => ({
+            id: message.id,
+            author_type: message.author_type,
+            created_at: message.created_at.toISOString(),
+          })),
+          minimum_stale_minutes: minimumStaleMinutes,
+          scheduler_wait_hint_ms: 5 * 60 * 1000,
+          timeout_threshold_ms: PRIVATE_SESSION_TIMEOUT_MS,
+        },
+      })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      throw err
+    }
+  },
+)
+
+adminApiRouter.get(
+  '/admin/runtime/closeout/hidden-worker/private-session-fixture/:sessionId',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    if (!privateChannelServices) {
+      res.status(503).json({
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Private channel closeout is unavailable.' },
+      })
+      return
+    }
+
+    try {
+      const session = await privateChannelServices.channelService.getSession(String(req.params.sessionId))
+      const messageCount = await privateChannelServices.channelService.getMessageCount(session.id)
+      const traceIds = buildPrivateSessionCloseoutTraceIds(session.id, session.agent_id)
+      const [extractEntries, distillEntries, identityEntries] = await Promise.all([
+        usageLedgerRepo.listByTracePrefix(traceIds.extract_trace_id, 10),
+        usageLedgerRepo.listByTracePrefix(traceIds.distill_trace_id, 10),
+        usageLedgerRepo.listByTracePrefix(traceIds.identity_trace_id, 10),
+      ])
+
+      res.json({
+        data: {
+          session_id: session.id,
+          agent_id: session.agent_id,
+          human_user_id: session.human_user_id,
+          status: session.status,
+          digest_status: session.digest_status,
+          started_at: session.started_at.toISOString(),
+          ended_at: session.ended_at?.toISOString() ?? null,
+          message_count: messageCount,
+          trace_ids: traceIds,
+          ledger: {
+            extract: extractEntries,
+            distill: distillEntries,
+            identity: identityEntries,
+          },
+        },
+      })
+    } catch (err) {
+      if (tryHandleAppError(res, err)) return
+      throw err
+    }
+  },
+)
 
 adminApiRouter.get('/admin/launch/programming-ops', requireHumanAuth, requireAdmin, async (_req, res) => {
   try {

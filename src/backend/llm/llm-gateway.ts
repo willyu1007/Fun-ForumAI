@@ -11,7 +11,6 @@ import type {
   LLMGatewayRequest,
   LLMGatewayResponse,
   LLMGatewayOverrideField,
-  LLMVisibility,
   ModelCapabilityEntry,
   ProviderRegistryEntry,
   RenderDecision,
@@ -19,6 +18,7 @@ import type {
   RouteContext,
   RoutingFallbackLevel,
   RoutingOrderStep,
+  ModelProfileCandidate,
 } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
 import { CredentialBroker, findUsableCredentialPoolsForCandidate } from './credential-broker.js'
@@ -29,7 +29,6 @@ import type { LlmMessage, LlmTokenUsage } from './types.js'
 import type {
   LlmRegistryBundle,
   ModelPricingEntry,
-  ModelProfileCandidate,
   ModelProfileEntry,
   RoutingPoliciesRegistryFile,
 } from './registry-loader.js'
@@ -229,6 +228,7 @@ export class LLMGateway {
         const adapterBinding = this.resolveAdapterBinding(adapterId)
         const provider = this.resolveProvider(candidate.provider_id)
         const modelCapability = this.resolveModelCapability(candidate.provider_id, candidate.model_id)
+        const selectedCandidate = mapExecutionPlanCandidate(candidate)
         const { resolvedParams, mergeTrace, warnings: mergeWarnings } = this.resolveExecutionParams({
           request,
           executionPolicy: route.executionPolicy,
@@ -280,7 +280,6 @@ export class LLMGateway {
             )
           }
 
-          const selectedCandidate = mapExecutionPlanCandidate(candidate)
           const selectedCredential = buildCredentialBinding(credential.pool)
 
           renderDecision = {
@@ -352,8 +351,16 @@ export class LLMGateway {
             provider_id: candidate.provider_id,
             model_id: candidate.model_id,
             profile_id: route.profile.profile_id,
+            policy_id: route.executionPolicy.policy_id,
+            adapter_id: adapterBinding.adapterId,
             pool_id: credential.pool.credential_id,
             credential_id: credential.pool.credential_id,
+            route_order: executionPlan.routeOrder,
+            ordered_candidates: executionPlan.orderedCandidates,
+            fallback_chain: executionPlan.fallbackChain,
+            fallback_history: executionPlan.fallbackHistory,
+            merge_trace: executionPlan.mergeTrace,
+            resolved_params: executionPlan.resolvedParams,
             billing_class: request.budgetClass,
             estimated_cost_cny: estimatedCost,
             reserved_cost_cny: estimatedCost,
@@ -419,6 +426,14 @@ export class LLMGateway {
             provider_id: candidate.provider_id,
             model_id: candidate.model_id,
             profile_id: route.profile.profile_id,
+            policy_id: route.executionPolicy.policy_id,
+            adapter_id: adapterBinding.adapterId,
+            route_order: route.routingPolicy.route_order,
+            ordered_candidates: orderedCandidates.map(mapExecutionPlanCandidate),
+            fallback_chain: fallbackChain,
+            fallback_history: [...fallbackHistory],
+            merge_trace: mergeTrace,
+            resolved_params: resolvedParams,
             billing_class: request.budgetClass,
             estimated_cost_cny: estimatedCost,
             reserved_cost_cny: estimatedCost,

@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Phase: Phase B — 子任务重排与全链路交接
-- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。`T-130` 的 repo 侧 `vm/compose` 交付已存在；`T-129` 仍因 ACR `TagImmutability=true` 与 mutable alias 冲突保持 `blocked`。
+- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧已经具备 `T-901 -> T-935 -> T-936` 的主线落地：`T-901` 稳定 execution-plan contract，`T-935` 稳定 cloud injection contract，`T-936` 则在第二轮 audit/cleanup 后补齐了 visible closeout fallback、hidden fixture stale guard、LLM test/type debt 与临时测试产物清理。剩余待收口项只剩真实 staging live evidence 与最终 promote/rollback matrix。
 - Current environment: 当前 repo 已明确 `ECS web + ECI worker` 目标拓扑，但真实云环境 readiness、ALB / DNS / SSL / ICP / Redis / RDS / 对象存储闭环由 `T-935` 承接。
 - Coverage review: 对照 `/Users/phoenix/Downloads/llm_runtime_routing_and_injection_design.md` 后，当前三包可以覆盖目标，但需显式补入四个缺口：
   - `T-901` 补 modality / response mode / adapter capability / provider.auth metadata-only / policy merge precedence
@@ -50,4 +50,5 @@
 - [ ] 文档明确 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL` 已从 repo cloud contract 中移除，不能再作为 staging/prod 的环境级路由控制面。
 - [ ] 文档明确需求文档中的核心章节已映射到 `T-901/T-935/T-936`，且不存在无人承接的 high-signal gap。
 - [ ] 每个任务包在进入下一包前都有显式 review gate 和收口条件。
+- [ ] `T-936` 的 staging closeout evidence 已回写到 `T-128`，包括 visible / hidden-worker / identity 三条 lane 的通过记录或阻塞项。
 - [ ] 文档内不存在影响后续实施的高影响未决决策。

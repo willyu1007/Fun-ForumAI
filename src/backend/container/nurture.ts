@@ -50,6 +50,7 @@ export interface NurtureResult {
     memoryService: import('../services/memory-service.js').MemoryService
   } | null
   privateChannelScheduler: import('../runtime/private-channel-scheduler.js').PrivateChannelScheduler | null
+  proactiveInteractionService: import('../services/proactive-interaction-service.js').ProactiveInteractionService | null
   proactiveEventHandler: import('../runtime/proactive-event-handler.js').ProactiveEventHandler | null
   publicObservationEventHandler: import('../runtime/public-observation-event-handler.js').PublicObservationEventHandler | null
 }
@@ -103,6 +104,7 @@ export async function createNurtureEngines(deps: {
   let cultureDigestScheduler: CultureDigestScheduler | null = null
   let privateChannelServices: NurtureResult['privateChannelServices'] = null
   let privateChannelScheduler: NurtureResult['privateChannelScheduler'] = null
+  let proactiveInteractionService: NurtureResult['proactiveInteractionService'] = null
   let proactiveEventHandler: NurtureResult['proactiveEventHandler'] = null
   let publicObservationEventHandler: NurtureResult['publicObservationEventHandler'] = null
 
@@ -250,7 +252,7 @@ export async function createNurtureEngines(deps: {
       digestService: publicObservationDigestService,
     })
 
-    const proactiveInteractionService = new ProactiveInteractionService({
+    proactiveInteractionService = new ProactiveInteractionService({
       channelRepo,
       agentService,
       llmGateway,
@@ -385,6 +387,7 @@ export async function createNurtureEngines(deps: {
       cultureDigestScheduler,
       privateChannelServices,
       privateChannelScheduler,
+      proactiveInteractionService,
       proactiveEventHandler,
       publicObservationEventHandler,
     }
@@ -444,6 +447,7 @@ export async function createNurtureEngines(deps: {
     cultureDigestScheduler,
     privateChannelServices,
     privateChannelScheduler,
+    proactiveInteractionService,
     proactiveEventHandler,
     publicObservationEventHandler,
   }

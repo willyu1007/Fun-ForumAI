@@ -24,6 +24,7 @@ import {
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 import type { MediaAssetService } from '../media/media-asset-service.js'
+import type { PrivateMessage, PrivateSession } from '../repos/types/private-channel.js'
 import { config } from '../lib/config.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
@@ -80,72 +81,19 @@ export class ProactiveInteractionService {
       trigger: 'vote_received',
       context: `${voterName}给你的${targetLabel}点了赞。`,
     })
-    const policyDecision = this.deps.policyGatewayService
-      ? await this.deps.policyGatewayService.evaluate({
-          channel: 'proactive_dm',
-          text: openingMessage.content,
-          author_agent_id: agentId,
-          user_id: agent.owner_id,
-          target_type: 'notification',
-          target_id: vote.target_id,
-          scene: 'proactive_dm',
-        })
-      : null
-    if (policyDecision?.action === 'block') return false
-    const effectiveOpeningContent = policyDecision?.final_text ?? openingMessage.content
-
-    const session = await this.deps.channelRepo.createSession({
-      agent_id: agentId,
-      human_user_id: agent.owner_id,
-      initiator: 'AGENT',
-      trigger_type: 'VOTE_RECEIVED',
-      trigger_ref: vote.target_id,
-    })
-
-    const openingRecord = await this.deps.channelRepo.createMessage({
-      session_id: session.id,
-      author_type: 'AGENT',
-      content: effectiveOpeningContent,
-      delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
-      moderation_metadata: policyDecision?.metadata ?? null,
-    })
-    await this.maybeAttachOpeningMedia({
+    const delivery = await this.deliverOpeningMessage({
       agentId,
-      ownerUserId: agent.owner_id,
-      sessionId: session.id,
-      messageId: openingRecord.id,
-      why_relevant_hint: '作为这次主动私聊开场的视觉锚点，帮助 owner 在进入会话时快速识别当前触发语境。',
-    })
-
-    this.recordOpeningRun({
-      agentId,
-      sessionId: session.id,
-      triggerType: 'vote_received',
+      humanUserId: agent.owner_id,
+      sessionTriggerType: 'VOTE_RECEIVED',
+      observationTriggerType: 'vote_received',
       triggerRef: vote.target_id,
-      openingMessage: { ...openingMessage, content: effectiveOpeningContent },
+      openingMessage,
+      notificationTitle: `${agent.display_name} 想和你聊聊`,
+      policyTargetId: vote.target_id,
+      whyRelevantHint: '作为这次主动私聊开场的视觉锚点，帮助 owner 在进入会话时快速识别当前触发语境。',
     })
 
-    if (openingMessage.renderDecision && this.deps.personaStateService) {
-      await this.deps.personaStateService.recordVisibleRender({
-        agentId,
-        scene: 'proactive_dm',
-        renderDecision: openingMessage.renderDecision,
-        outputText: effectiveOpeningContent,
-      }).catch((err) => {
-        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
-      })
-    }
-
-    await this.deps.notificationService.create({
-      userId: agent.owner_id,
-      type: 'AGENT_PROACTIVE',
-      title: `${agent.display_name} 想和你聊聊`,
-      body: effectiveOpeningContent,
-      targetType: 'agent',
-      targetId: agentId,
-    })
-
-    return true
+    return delivery !== null
   }
 
   async onOpinionChallenged(agentId: string, challenge: {
@@ -173,76 +121,23 @@ export class ProactiveInteractionService {
         `质疑内容："${challenge.challenge_content.slice(0, 200)}"`,
       ].join('\n'),
     })
-    const policyDecision = this.deps.policyGatewayService
-      ? await this.deps.policyGatewayService.evaluate({
-          channel: 'proactive_dm',
-          text: openingMessage.content,
-          topic_context_text: [
-            challenge.original_content,
-            challenge.challenge_content,
-          ].join('\n\n'),
-          author_agent_id: agentId,
-          user_id: agent.owner_id,
-          target_type: 'notification',
-          target_id: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
-          scene: 'proactive_dm',
-        })
-      : null
-    if (policyDecision?.action === 'block') return false
-    const effectiveOpeningContent = policyDecision?.final_text ?? openingMessage.content
-
-    const session = await this.deps.channelRepo.createSession({
-      agent_id: agentId,
-      human_user_id: agent.owner_id,
-      initiator: 'AGENT',
-      trigger_type: 'OPINION_CHALLENGED',
-      trigger_ref: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
-    })
-
-    const openingRecord = await this.deps.channelRepo.createMessage({
-      session_id: session.id,
-      author_type: 'AGENT',
-      content: effectiveOpeningContent,
-      delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
-      moderation_metadata: policyDecision?.metadata ?? null,
-    })
-    await this.maybeAttachOpeningMedia({
+    const delivery = await this.deliverOpeningMessage({
       agentId,
-      ownerUserId: agent.owner_id,
-      sessionId: session.id,
-      messageId: openingRecord.id,
-      why_relevant_hint: '作为这次主动私聊开场的视觉锚点，帮助 owner 在进入会话时快速识别当前争议或回访的上下文。',
-    })
-
-    this.recordOpeningRun({
-      agentId,
-      sessionId: session.id,
-      triggerType: 'opinion_challenged',
+      humanUserId: agent.owner_id,
+      sessionTriggerType: 'OPINION_CHALLENGED',
+      observationTriggerType: 'opinion_challenged',
       triggerRef: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
-      openingMessage: { ...openingMessage, content: effectiveOpeningContent },
+      openingMessage,
+      notificationTitle: `${agent.display_name} 的观点被质疑了`,
+      policyTargetId: challenge.turn_id ?? challenge.thread_id ?? challenge.post_id,
+      topicContextText: [
+        challenge.original_content,
+        challenge.challenge_content,
+      ].join('\n\n'),
+      whyRelevantHint: '作为这次主动私聊开场的视觉锚点，帮助 owner 在进入会话时快速识别当前争议或回访的上下文。',
     })
 
-    if (openingMessage.renderDecision && this.deps.personaStateService) {
-      await this.deps.personaStateService.recordVisibleRender({
-        agentId,
-        scene: 'proactive_dm',
-        renderDecision: openingMessage.renderDecision,
-        outputText: effectiveOpeningContent,
-      }).catch((err) => {
-        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
-      })
-    }
-
-    await this.deps.notificationService.create({
-      userId: agent.owner_id,
-      type: 'AGENT_PROACTIVE',
-      title: `${agent.display_name} 的观点被质疑了`,
-      body: effectiveOpeningContent,
-      targetType: 'agent',
-      targetId: agentId,
-    })
-
-    return true
+    return delivery !== null
   }
 
   async onAgentFirstPost(agentId: string, postId: string): Promise<void> {
@@ -257,6 +152,47 @@ export class ProactiveInteractionService {
       targetType: 'post',
       targetId: postId,
     })
+  }
+
+  async runCloseoutProactiveOpening(input: {
+    agentId: string
+    humanUserId?: string
+    context?: string
+    triggerRef?: string | null
+  }): Promise<{
+    session: PrivateSession
+    opening_message: PrivateMessage
+    token_cost: number
+    trace_id: string
+  }> {
+    const agent = this.deps.agentService.getAgent(input.agentId)
+    const selectedHumanUserId = input.humanUserId?.trim() || agent.owner_id
+    const triggerRef = input.triggerRef ?? `runtime-closeout:${Date.now()}`
+    const openingMessage = await this.generateOpeningMessage(input.agentId, {
+      trigger: 'runtime_closeout',
+      context:
+        input.context?.trim() || '请主动打个招呼，确认你已准备好继续这段交流，并保持一句话内完成。',
+    })
+    const delivery = await this.deliverOpeningMessage({
+      agentId: input.agentId,
+      humanUserId: selectedHumanUserId,
+      sessionTriggerType: 'RUNTIME_CLOSEOUT_PROACTIVE',
+      observationTriggerType: 'runtime_closeout',
+      triggerRef,
+      openingMessage,
+      notificationTitle: `${agent.display_name} 想和你聊聊`,
+      policyTargetId: triggerRef,
+      whyRelevantHint: '作为 runtime closeout 主动开场的视觉锚点，帮助 operator 验证 proactive opening lane 已回到统一 execution-plan contract。',
+    })
+    if (!delivery) {
+      throw new Error('Proactive closeout opening was blocked by policy.')
+    }
+    return {
+      session: delivery.session,
+      opening_message: delivery.openingMessage,
+      token_cost: openingMessage.usage.total_tokens,
+      trace_id: openingMessage.traceId,
+    }
   }
 
   private async canTriggerProactive(agentId: string): Promise<boolean> {
@@ -329,11 +265,102 @@ export class ProactiveInteractionService {
     }
   }
 
+  private async deliverOpeningMessage(input: {
+    agentId: string
+    humanUserId: string
+    sessionTriggerType: string
+    observationTriggerType: string
+    triggerRef: string
+    openingMessage: Awaited<ReturnType<ProactiveInteractionService['generateOpeningMessage']>>
+    notificationTitle: string
+    policyTargetId: string
+    topicContextText?: string
+    whyRelevantHint: string
+  }): Promise<{
+    session: PrivateSession
+    openingMessage: PrivateMessage
+    effectiveOpeningContent: string
+  } | null> {
+    const agent = this.deps.agentService.getAgent(input.agentId)
+    const policyDecision = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'proactive_dm',
+          text: input.openingMessage.content,
+          ...(input.topicContextText ? { topic_context_text: input.topicContextText } : {}),
+          author_agent_id: input.agentId,
+          user_id: input.humanUserId,
+          target_type: 'notification',
+          target_id: input.policyTargetId,
+          scene: 'proactive_dm',
+        })
+      : null
+    if (policyDecision?.action === 'block') return null
+
+    const effectiveOpeningContent = policyDecision?.final_text ?? input.openingMessage.content
+    const session = await this.deps.channelRepo.createSession({
+      agent_id: input.agentId,
+      human_user_id: input.humanUserId,
+      initiator: 'AGENT',
+      trigger_type: input.sessionTriggerType,
+      trigger_ref: input.triggerRef,
+    })
+    const openingRecord = await this.deps.channelRepo.createMessage({
+      session_id: session.id,
+      author_type: 'AGENT',
+      content: effectiveOpeningContent,
+      delivery_status: policyDecision?.delivery_status ?? 'DELIVERED',
+      moderation_metadata: policyDecision?.metadata ?? null,
+    })
+
+    await this.maybeAttachOpeningMedia({
+      agentId: input.agentId,
+      ownerUserId: input.humanUserId,
+      sessionId: session.id,
+      messageId: openingRecord.id,
+      why_relevant_hint: input.whyRelevantHint,
+    })
+
+    this.recordOpeningRun({
+      agentId: input.agentId,
+      sessionId: session.id,
+      triggerType: input.observationTriggerType,
+      triggerRef: input.triggerRef,
+      openingMessage: { ...input.openingMessage, content: effectiveOpeningContent },
+    })
+
+    if (input.openingMessage.renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId: input.agentId,
+        scene: 'proactive_dm',
+        renderDecision: input.openingMessage.renderDecision,
+        outputText: effectiveOpeningContent,
+      }).catch((err) => {
+        console.error('[ProactiveInteraction] persona runtime render record failed:', err)
+      })
+    }
+
+    await this.deps.notificationService.create({
+      userId: input.humanUserId,
+      type: 'AGENT_PROACTIVE',
+      title: input.notificationTitle,
+      body: effectiveOpeningContent,
+      targetType: 'agent',
+      targetId: agent.id,
+    })
+
+    return {
+      session,
+      openingMessage: openingRecord,
+      effectiveOpeningContent,
+    }
+  }
+
   private async generateOpeningMessage(
     agentId: string,
     trigger: { trigger: string; context: string },
   ): Promise<{
     content: string
+    traceId: string
     renderDecision: RenderTierDecisionResult | null
     usage: LlmTokenUsage
     latencyMs: number
@@ -408,6 +435,7 @@ export class ProactiveInteractionService {
           requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
         }
     const startMs = Date.now()
+    const traceId = `proactive-dm:${agentId}:${Date.now()}`
     const response = await this.deps.llmGateway.generateVisibleText({
       intent: 'proactive_opening',
       scene: 'proactive_dm',
@@ -419,18 +447,16 @@ export class ProactiveInteractionService {
       promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
       variables,
       budgetClass: 'visible_standard',
-      traceId: `proactive-dm:${agentId}:${Date.now()}`,
+      traceId,
       promptBudgetSummary: buildPromptBudgetSummary('proactive_dm', PROMPT_TEMPLATE_REFS.agentProactiveDmOpening, composed.audit),
       requestedTier: routing.requestedTier,
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
-      localOverrides: {
-        temperature: 0.8,
-      },
     })
 
     return {
       content: response.content,
+      traceId,
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       usage: response.usage,
       latencyMs: Date.now() - startMs,

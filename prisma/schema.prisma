@@ -3649,37 +3649,46 @@ model PublicDisclosureCapOverride {
 // ──────────────────────────────────────────────
 
 model LlmUsageLedger {
-  id                 String   @id @default(cuid())
-  traceId            String   @map("trace_id")
-  agentId            String   @map("agent_id")
-  intent             String
-  visibility         String
-  scene              String
-  promptRefId        String   @map("prompt_ref_id")
-  promptRefVersion   Int      @map("prompt_ref_version")
-  providerId         String?  @map("provider_id")
-  modelId            String?  @map("model_id")
-  profileId          String?  @map("profile_id")
-  poolId             String?  @map("pool_id")
-  credentialId       String?  @map("credential_id")
-  voiceLineId        String?  @map("voice_line_id")
-  tier               String?
-  fallbackLevel      String?  @map("fallback_level")
-  billingClass       String?  @map("billing_class")
-  promptTokens       Int?     @map("prompt_tokens")
-  completionTokens   Int?     @map("completion_tokens")
-  totalTokens        Int?     @map("total_tokens")
-  estimatedCostCny   Float?   @map("estimated_cost_cny")
-  reservedCostCny    Float?   @map("reserved_cost_cny")
-  actualCostCny      Float?   @map("actual_cost_cny")
-  success            Boolean
-  errorCode          String?  @map("error_code")
-  latencyMs          Int      @map("latency_ms")
-  platformRetryCount Int      @default(0) @map("platform_retry_count")
-  createdAt          DateTime @default(now()) @map("created_at")
+  id                    String   @id @default(cuid())
+  traceId               String   @map("trace_id")
+  agentId               String   @map("agent_id")
+  intent                String
+  visibility            String
+  scene                 String
+  promptRefId           String   @map("prompt_ref_id")
+  promptRefVersion      Int      @map("prompt_ref_version")
+  providerId            String?  @map("provider_id")
+  modelId               String?  @map("model_id")
+  profileId             String?  @map("profile_id")
+  policyId              String?  @map("policy_id")
+  adapterId             String?  @map("adapter_id")
+  poolId                String?  @map("pool_id")
+  credentialId          String?  @map("credential_id")
+  routeOrderJson        Json?    @map("route_order_json")
+  orderedCandidatesJson Json?    @map("ordered_candidates_json")
+  fallbackChainJson     Json?    @map("fallback_chain_json")
+  fallbackHistoryJson   Json?    @map("fallback_history_json")
+  mergeTraceJson        Json?    @map("merge_trace_json")
+  resolvedParamsJson    Json?    @map("resolved_params_json")
+  voiceLineId           String?  @map("voice_line_id")
+  tier                  String?
+  fallbackLevel         String?  @map("fallback_level")
+  billingClass          String?  @map("billing_class")
+  promptTokens          Int?     @map("prompt_tokens")
+  completionTokens      Int?     @map("completion_tokens")
+  totalTokens           Int?     @map("total_tokens")
+  estimatedCostCny      Float?   @map("estimated_cost_cny")
+  reservedCostCny       Float?   @map("reserved_cost_cny")
+  actualCostCny         Float?   @map("actual_cost_cny")
+  success               Boolean
+  errorCode             String?  @map("error_code")
+  latencyMs             Int      @map("latency_ms")
+  platformRetryCount    Int      @default(0) @map("platform_retry_count")
+  createdAt             DateTime @default(now()) @map("created_at")
 
   @@index([agentId, createdAt])
   @@index([providerId, createdAt])
+  @@index([policyId, createdAt])
   @@index([billingClass, createdAt])
   @@index([traceId])
   @@map("llm_usage_ledger")
