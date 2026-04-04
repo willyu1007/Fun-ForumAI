@@ -133,3 +133,9 @@
   - `grep -n '^AUTH_BOOTSTRAP_ADMIN_EMAILS=' env/values/staging.yaml && grep -n '^AUTH_BOOTSTRAP_ADMIN_PHONES=' env/values/staging.yaml`
     - Result: 通过；`staging` values 已显式声明 `18186223485@163.com` 与 `18186223485,15527462569`。
     - Note: staging live 验证不再依赖 ECS 侧临时手改 `.env` 才能拿到 bootstrap admin token；repo authority 已与 operator 口径对齐。
+  - `pnpm exec vitest run src/backend/services/__tests__/identity-gate-service.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+    - Result: 通过；17 tests passed。
+    - Note: staging-only identity gate bypass 已收口为“只放开 ACTIVE admin users、并在 admin runtime surface 可见”的 operator workaround，而不是更改 formal verification 定义。
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . && python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root .`
+    - Result: 通过。
+    - Note: `IDENTITY_GATE_STAGING_MODE` 已进入 env contract，并同步刷新示例 env 与 context 文档。

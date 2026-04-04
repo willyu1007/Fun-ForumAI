@@ -69,3 +69,8 @@
 - 2026-04-04 staging live 验证补充了一个 operator-facing prerequisite：
   - `/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 需要真实 admin token；单靠 bootstrap allow-list 但未把邮箱/手机号治理进 `staging` values，会让 live gate 卡在认证前置。
   - 现已把 staging bootstrap admins 写回 repo values；后续 compile 出来的 `staging.env` 应直接包含 bootstrap admin email/phone，不再需要 ECS 侧长期保留手工 hotfix。
+- 2026-04-04 再补一个 staging-only identity gate workaround，专门解决当前实名审核链路尚未闭环、但 closeout 仍需要 visible/private 路径证据的问题：
+  - 新增 `IDENTITY_GATE_STAGING_MODE`，当前只接受 `enforced | admin_bypass`；`admin_bypass` 只在 `APP_ENV=staging` 且存在 `userRepo` 时生效。
+  - bypass 范围被硬限制为 `ACTIVE + ADMIN` 用户，formal verification status 仍保持原值；也就是说，这只是 staging operator workaround，不是“把实名审核改成通过”。
+  - `/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 现在都会暴露 `identity_gate` runtime state，前端 Runtime Dashboard 也同步展示“当前是否临时放开、作用范围、受控操作”。
+  - `private_session_create / private_message_send / proactive_receive` 继续走同一套门禁服务，只是 staging admin users 在开关打开时允许通过；`prod` 与非 admin 用户不受影响。

@@ -19,6 +19,38 @@ import {
 setupFeatureFlagGuard()
 
 describe('E2E: Governance Control Plane', () => {
+  it('GET /v1/admin/runtime/stats returns runtime override and identity gate state for admin', async () => {
+    const res = await request(app)
+      .get('/v1/admin/runtime/stats')
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.runtime.routing_mode).toBe('policy_driven')
+    expect(res.body.data.runtime.override_state).toEqual(
+      expect.objectContaining({
+        routing_mode: 'policy_driven',
+        deprecated_env_pins: expect.any(Array),
+        deprecated_env_pins_present: expect.any(Boolean),
+        debug_override_sources: expect.any(Array),
+        unapproved_debug_overrides_present: expect.any(Boolean),
+      }),
+    )
+    expect(res.body.data.runtime.identity_gate).toEqual(
+      expect.objectContaining({
+        app_env: expect.any(String),
+        configured_staging_mode: expect.stringMatching(/^(enforced|admin_bypass)$/),
+        effective_mode: expect.stringMatching(/^(enforced|staging_admin_bypass)$/),
+        bypass_scope: expect.stringMatching(/^(none|admin_users)$/),
+        bypass_active: expect.any(Boolean),
+        gated_operations: [
+          'private_session_create',
+          'private_message_send',
+          'proactive_receive',
+        ],
+      }),
+    )
+  })
+
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalRuntimeFeatures = featureFlags.runtimeFeaturesV1
@@ -40,6 +72,20 @@ describe('E2E: Governance Control Plane', () => {
       expect(typeof res.body.data.runtime.build.code_fingerprint).toBe('string')
       expect(Array.isArray(res.body.data.runtime.build.fingerprint_basis)).toBe(true)
       expect(res.body.data.runtime.routing_mode).toBe('policy_driven')
+      expect(res.body.data.runtime.identity_gate).toEqual(
+        expect.objectContaining({
+          app_env: expect.any(String),
+          configured_staging_mode: expect.stringMatching(/^(enforced|admin_bypass)$/),
+          effective_mode: expect.stringMatching(/^(enforced|staging_admin_bypass)$/),
+          bypass_scope: expect.stringMatching(/^(none|admin_users)$/),
+          bypass_active: expect.any(Boolean),
+          gated_operations: [
+            'private_session_create',
+            'private_message_send',
+            'proactive_receive',
+          ],
+        }),
+      )
       expect(res.body.data.runtime.persona_runtime).toEqual(
         expect.objectContaining({
           enabled: expect.any(Boolean),

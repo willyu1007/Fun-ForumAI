@@ -20,6 +20,7 @@ import {
   feedbackService,
   inviteCodeService,
   adminUserAccessService,
+  identityGateService,
   llmRegistryBundle,
   mediaReuseGovernanceService,
   mediaObservabilityService,
@@ -1091,6 +1092,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
     routingMode: config.llm.routingMode,
     recentLedgerEntries,
   })
+  const identityGate = identityGateService.getRuntimeState()
   res.json({
     data: {
       runtime: {
@@ -1104,6 +1106,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
         leader_backend: config.runtime.leaderBackend,
         routing_mode: config.llm.routingMode,
         override_state: overrideState,
+        identity_gate: identityGate,
       },
       scheduler: postScheduler.stats,
       sse: sseHub.getStats(),
@@ -1167,6 +1170,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
     routingMode: config.llm.routingMode,
     recentLedgerEntries,
   })
+  const identityGate = identityGateService.getRuntimeState()
   const tuning = resolvePostLaunchTuningProfile({
     enabled: config.features.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,
@@ -1183,6 +1187,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
         routing_mode: config.llm.routingMode,
+        identity_gate: identityGate,
         build,
         persona_runtime: {
           enabled: config.features.personaRuntimeV1,

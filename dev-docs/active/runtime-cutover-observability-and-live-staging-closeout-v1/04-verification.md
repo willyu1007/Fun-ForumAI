@@ -73,3 +73,15 @@
   - `pnpm exec tsc -b --pretty false`
     - Result: 通过。
     - Note: 之前阻塞 `T-936` 验证读数的 repo 既有 auth/admin TypeScript 基线问题已清理，不再作为 live gate 噪声项。
+  - `pnpm exec vitest run src/backend/services/__tests__/identity-gate-service.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+    - Result: 通过；17 tests passed。
+    - Note: 覆盖 staging admin bypass 只对 `ACTIVE + ADMIN` 生效、prod 忽略 bypass 配置、以及 admin runtime stats/features 会暴露 `identity_gate` state。
+  - `pnpm exec tsc -b --pretty false`
+    - Result: 通过。
+    - Note: staging identity gate config/service/admin panel 变更未引入新的 TypeScript 诊断。
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root .`
+    - Result: 通过。
+    - Note: `IDENTITY_GATE_STAGING_MODE` 已进入 env contract，`staging` values coverage 完整。
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root .`
+    - Result: 通过。
+    - Note: `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json` 已刷新。

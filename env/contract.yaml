@@ -80,6 +80,14 @@ variables:
     default: ""
     description: Comma-separated bootstrap admin phone list. Matching accounts are promoted to ADMIN after successful SMS auth.
 
+  IDENTITY_GATE_STAGING_MODE:
+    type: enum
+    enum: [enforced, admin_bypass]
+    required: false
+    scopes: [staging]
+    default: enforced
+    description: Staging-only identity gate mode. `admin_bypass` temporarily allows ACTIVE admin users through private/proactive identity checks without changing formal verification status.
+
   AUTH_OTP_TTL_SECONDS:
     type: int
     required: false

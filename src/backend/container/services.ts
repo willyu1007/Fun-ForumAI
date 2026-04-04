@@ -115,7 +115,12 @@ export function createCoreServices(deps: {
     : null
   const reviewService = new ReviewService(repos.riskGovernanceRepo, notificationService)
   const riskEventService = new RiskEventService(repos.riskGovernanceRepo, reviewService)
-  const identityGateService = new IdentityGateService(repos.riskGovernanceRepo)
+  const identityGateService = new IdentityGateService({
+    riskRepo: repos.riskGovernanceRepo,
+    userRepo: repos.userRepo,
+    appEnv: config.appEnv,
+    stagingMode: config.identityGate.stagingMode,
+  })
   const policyGatewayService = new PolicyGatewayService({
     moderator,
     safeReplyService,

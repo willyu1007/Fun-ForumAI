@@ -26,6 +26,14 @@ interface RuntimeStats {
     queue_size: number
     llm_configured: boolean
     node_env: string
+    identity_gate?: {
+      app_env: 'dev' | 'staging' | 'prod'
+      configured_staging_mode: 'enforced' | 'admin_bypass'
+      effective_mode: 'enforced' | 'staging_admin_bypass'
+      bypass_scope: 'none' | 'admin_users'
+      bypass_active: boolean
+      gated_operations: string[]
+    }
   }
   scheduler: {
     lastPostAt: number
@@ -228,7 +236,7 @@ export function RuntimeDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Runtime"
           value={status?.running ? '运行中' : '已停止'}
@@ -256,6 +264,12 @@ export function RuntimeDashboard() {
           value={String(stats?.sse.connected_clients ?? 0)}
           variant={sseConnected ? 'success' : 'muted'}
           detail={`客户端状态: ${formatSsePhase(sseStatus.phase)}`}
+        />
+        <StatCard
+          title="实名门禁"
+          value={formatIdentityGateValue(stats?.runtime.identity_gate)}
+          variant={stats?.runtime.identity_gate?.bypass_active ? 'default' : 'success'}
+          detail={formatIdentityGateDetail(stats?.runtime.identity_gate)}
         />
       </div>
 
@@ -350,6 +364,24 @@ export function RuntimeDashboard() {
             <p className={"text-xs text-warning"}>
               LLM 未配置 — 设置 credential pool 对应的 provider API key 环境变量以启用 Runtime
             </p>
+          )}
+
+          {stats?.runtime.identity_gate && (
+            <div className={"rounded border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground"}>
+              <p>
+                identity gate: {stats.runtime.identity_gate.effective_mode} · scope:{' '}
+                {stats.runtime.identity_gate.bypass_scope} · app_env:{' '}
+                {stats.runtime.identity_gate.app_env}
+              </p>
+              <p>
+                gated ops: {stats.runtime.identity_gate.gated_operations.join(', ')}
+              </p>
+              {stats.runtime.identity_gate.bypass_active && (
+                <p className={"text-warning"}>
+                  staging 临时豁免已开启，仅 ACTIVE admin 用户可跳过私聊/主动私信实名门禁。
+                </p>
+              )}
+            </div>
           )}
 
           {startMutation.isError && (
@@ -972,6 +1004,20 @@ function parseOptionalNumber(value: string): number | null {
 function parseOptionalInteger(value: string): number | null {
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? parsed : null
+}
+function formatIdentityGateValue(
+  identityGate: RuntimeStats['runtime']['identity_gate'] | undefined,
+): string {
+  if (!identityGate) return '-'
+  return identityGate.bypass_active ? '临时放开' : '强制'
+}
+function formatIdentityGateDetail(
+  identityGate: RuntimeStats['runtime']['identity_gate'] | undefined,
+): string {
+  if (!identityGate) return '未上报'
+  return identityGate.bypass_active
+    ? 'staging admin users only'
+    : '需实名审核'
 }
 function variantFromGate(
   gates: AdminMediaObservabilityData['gates'] | undefined,
