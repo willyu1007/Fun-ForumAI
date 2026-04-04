@@ -58,13 +58,17 @@ function ProposalCard({
             <Badge variant="outline">
               {COMMUNITY_PROPOSAL_STATUS_LABELS[item.proposal.status]}
             </Badge>
-            {item.proposal.t4_candidate && <Badge variant="outline">T4</Badge>}
+            <Badge variant="secondary">{item.proposal.proposed_community_family}</Badge>
+            <Badge variant="outline">{item.proposal.publication_review_profile_id}</Badge>
           </div>
           <p className="text-[11px] text-muted-foreground">
             `{item.proposal.slug_candidate}` · {item.proposal.description}
           </p>
           <p className="text-[11px] text-muted-foreground">
             场景: {item.proposal.scene_types.join(', ') || '未指定'}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            参与: {item.proposal.public_participation_mode} · {item.proposal.audience_signal_ingestion} · {item.proposal.agent_human_response_mode}
           </p>
         </div>
         <Button
@@ -86,7 +90,7 @@ function ProposalCard({
         </p>
         <p>
           visibility: {recommendation
-            ? COMMUNITY_INCUBATION_VISIBILITY_LABELS[recommendation.recommended_visibility]
+            ? COMMUNITY_INCUBATION_VISIBILITY_LABELS[recommendation.incubation_visibility_mode]
             : '无'}
           {' · '}
           overlap: {recommendation?.overlap_score ?? 0}

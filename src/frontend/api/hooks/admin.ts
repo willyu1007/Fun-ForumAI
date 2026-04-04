@@ -344,14 +344,14 @@ export function useApplyCommunityProposalAction() {
       proposalId: string
       action: CommunityProposalAction
       target_community_id?: string | null
-      visibility_mode?: CommunityIncubationVisibilityMode | null
+      incubation_visibility_mode?: CommunityIncubationVisibilityMode | null
       reason?: string | null
     }) =>
       api.post(`community-proposals/${input.proposalId}/actions`, {
         json: {
           action: input.action,
           target_community_id: input.target_community_id ?? null,
-          visibility_mode: input.visibility_mode ?? null,
+          incubation_visibility_mode: input.incubation_visibility_mode ?? null,
           reason: input.reason ?? null,
         },
       }).json<ApiResponse<CommunityProposalActionResult>>(),

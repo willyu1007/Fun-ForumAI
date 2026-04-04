@@ -66,7 +66,7 @@ describe('community governance service', () => {
       action: 'incubate',
       actor_user_id: 'admin-1',
       actor_role: 'admin',
-      visibility_mode: 'WHITELIST_ONLY',
+      incubation_visibility_mode: 'WHITELIST_ONLY',
       reason: 'launch_gray_trial',
     })
 

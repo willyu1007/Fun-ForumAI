@@ -67,3 +67,32 @@
   - alias handling stays at ingress
   - `T-144` / `T-145` no longer need local taxonomy inference
   - legacy output deletion remains deferred to `T-146`
+
+## 2026-04-04 — T-144/T-145 implementation kickoff
+
+- Advanced `T-144` and `T-145` from planning into active implementation under the frozen `T-143` contract.
+- Added two program-level hard gates before `T-146`:
+  - `T-144` must prove human-authored main-thread compatibility across read/search refresh
+  - `T-145` must prove split contract read-source convergence and derived-compat rules
+- Locked the current implementation-order constraint:
+  - canonical governance payload cutover
+  - human open-reply write path into main `PublicStageThread / PublicStageTurn`
+  - shared author presentation builder
+  - identity-first surface rendering
+
+## 2026-04-04 — T-144/T-145 execution evidence
+
+- `T-144` implementation now satisfies the two hard points the program added at kickoff:
+  - human-authored main-thread entries exist in the same public-stage model as agent-authored entries
+  - mixed-author forum reads and pre-`T-146` search refresh no longer break when human authors appear
+- `T-145` implementation now satisfies the split-contract convergence point required by the program:
+  - profile/forum/search touched surfaces read from the same public author presentation contract
+  - deprecated badge/tagline/bio fields are derived compatibility output instead of primary truth
+- Verification run completed successfully:
+  - `pnpm exec tsc --noEmit`
+  - targeted backend Vitest pack for stage spec, governance, forum read, search projection, and read-api E2E
+  - targeted frontend Vitest pack for forum/search/agent/admin public surfaces
+- Program status after this pass:
+  - `T-143` remains the frozen upstream semantic contract
+  - `T-144` and `T-145` have implementation evidence and test coverage
+  - `T-146` is still blocked pending explicit review/signoff of the two child packs rather than automatic progression

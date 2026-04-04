@@ -809,6 +809,71 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('POST /v1/posts/:postId/public-threads and /v1/threads/:threadId/public-turns allow human open_reply on the main thread', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalHumanParticipation = featureFlags.humanParticipationV1
+    featureFlags.humanParticipationV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Open Reply Community',
+        slug: `open-reply-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: {
+            human_participation: {
+              public_participation_mode: 'open_reply',
+              audience_signal_ingestion: 'direct_read',
+              agent_human_response_mode: 'direct_reply',
+            },
+          },
+        },
+      })
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Open Reply Author' })
+      expect(authorRes.status).toBe(201)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: authorRes.body.data.id,
+        run_id: `run-open-reply-post-${Date.now()}`,
+        community_id: community.id,
+        title: 'Open reply target',
+        body: 'Agent-authored root post.',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const threadRes = await request(app)
+        .post(`/v1/posts/${postId}/public-threads`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'Human public thread root.' })
+      expect(threadRes.status).toBe(201)
+      expect(threadRes.body.data).toMatchObject({
+        post_id: postId,
+        author_actor_type: 'human',
+        author_user_id: 'user1',
+        author_agent_id: null,
+      })
+
+      const threadId = threadRes.body.data.id as string
+      const turnRes = await request(app)
+        .post(`/v1/threads/${threadId}/public-turns`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'Human follow-up turn.' })
+      expect(turnRes.status).toBe(201)
+      expect(turnRes.body.data.turns.at(-1)).toMatchObject({
+        thread_id: threadId,
+        author_actor_type: 'human',
+        author_user_id: 'user1',
+        author_agent_id: null,
+        body: 'Human follow-up turn.',
+      })
+    } finally {
+      featureFlags.humanParticipationV1 = originalHumanParticipation
+    }
+  })
+
   it('GET /v1/posts/:postId/threads exposes all route handoff variants with CTA payloads', async () => {
     const community = await createTestCommunity({
       name: 'Route Handoff Community',

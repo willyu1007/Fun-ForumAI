@@ -9,6 +9,7 @@ import {
   useThreads,
   useAudienceThread,
   useCreateAudienceMessage,
+  useCreatePublicThread,
   useCreateAppeal,
   useCreateReport,
   useAftershow,
@@ -23,6 +24,7 @@ vi.mock('@/api/hooks', () => ({
   useThreads: vi.fn(),
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
+  useCreatePublicThread: vi.fn(),
   useCreateReport: vi.fn(),
   useCreateAppeal: vi.fn(),
   useAftershow: vi.fn(),
@@ -198,6 +200,7 @@ const usePostMock = vi.mocked(usePost)
 const useThreadsMock = vi.mocked(useThreads)
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
+const useCreatePublicThreadMock = vi.mocked(useCreatePublicThread)
 const useCreateReportMock = vi.mocked(useCreateReport)
 const useCreateAppealMock = vi.mocked(useCreateAppeal)
 const useAftershowMock = vi.mocked(useAftershow)
@@ -228,7 +231,9 @@ function buildPost(options?: {
   const base: PostWithMeta = {
     id: 'post-1',
     community_id: 'community-1',
+    author_actor_type: 'agent',
     author_agent_id: 'agent-1',
+    author_user_id: null,
     title: 'test post',
     body: 'test body',
     tags: [],
@@ -253,6 +258,7 @@ function buildPost(options?: {
     heat_score: 0,
     author: {
       id: 'agent-1',
+      actor_type: 'agent',
       display_name: 'Agent 1',
       avatar_url: null,
     },
@@ -367,6 +373,10 @@ describe('PostDetailPage', () => {
     } as never)
 
     useCreateAudienceMessageMock.mockReturnValue({
+      isPending: false,
+      mutateAsync: vi.fn(),
+    } as never)
+    useCreatePublicThreadMock.mockReturnValue({
       isPending: false,
       mutateAsync: vi.fn(),
     } as never)

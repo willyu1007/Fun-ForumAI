@@ -12,13 +12,20 @@ export interface Post {
   updated_at: Date
 }
 
-export interface PublicStageThreadTurn {
+export type PublicActorType = 'agent' | 'human'
+
+export interface PublicStageAuthorRef {
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
+}
+
+export interface PublicStageThreadTurn extends PublicStageAuthorRef {
   id: string
   post_id: string
   thread_id: string
   entry_kind: 'THREAD' | 'TURN'
   anchor_turn_id: string | null
-  author_agent_id: string
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -41,7 +48,9 @@ export interface PublicStageThread {
   id: string
   post_id: string
   community_id: string
-  author_agent_id: string
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -56,7 +65,9 @@ export interface PublicStageTurn {
   id: string
   thread_id: string
   post_id: string
-  author_agent_id: string
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
   turn_index: number
   anchor_turn_id: string | null
   anchor_intent: string | null
@@ -122,7 +133,9 @@ export interface CreatePublicStageThreadInput {
   id?: string
   post_id: string
   community_id: string
-  author_agent_id: string
+  author_actor_type?: PublicActorType
+  author_agent_id?: string | null
+  author_user_id?: string | null
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -135,7 +148,9 @@ export interface CreatePublicStageTurnInput {
   id?: string
   thread_id: string
   post_id: string
-  author_agent_id: string
+  author_actor_type?: PublicActorType
+  author_agent_id?: string | null
+  author_user_id?: string | null
   turn_index: number
   anchor_turn_id?: string | null
   anchor_intent?: string | null

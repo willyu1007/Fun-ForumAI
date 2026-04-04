@@ -7,6 +7,10 @@ import type {
   UpdateCommunityProposalInput,
   UpsertCommunityMergeRecommendationInput,
 } from './types.js'
+import {
+  derivePublicationReviewProfileId,
+  resolveCommunityInteractionContract,
+} from '../../shared/semantic-taxonomy.js'
 
 export interface CommunityProposalRepository {
   createProposal(input: CreateCommunityProposalInput): Promise<CommunityProposal>
@@ -36,6 +40,11 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
 
   async createProposal(input: CreateCommunityProposalInput): Promise<CommunityProposal> {
     const now = new Date()
+    const interaction = resolveCommunityInteractionContract({
+      public_participation_mode: input.public_participation_mode,
+      audience_signal_ingestion: input.audience_signal_ingestion,
+      agent_human_response_mode: input.agent_human_response_mode,
+    })
     const proposal: CommunityProposal = {
       id: cuid('community_proposal'),
       submitted_by_user_id: input.submitted_by_user_id,
@@ -45,6 +54,12 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
       premise_text: input.premise_text,
       target_audience: input.target_audience ?? null,
       scene_types: input.scene_types ?? [],
+      proposed_community_family: input.proposed_community_family,
+      publication_review_profile_id: input.publication_review_profile_id,
+      launch_wave: input.launch_wave ?? null,
+      public_participation_mode: interaction.public_participation_mode,
+      audience_signal_ingestion: interaction.audience_signal_ingestion,
+      agent_human_response_mode: interaction.agent_human_response_mode,
       t4_candidate: input.t4_candidate ?? false,
       source_community_id: input.source_community_id ?? null,
       status: input.status ?? 'SUBMITTED',
@@ -65,6 +80,29 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
     const proposal = this.proposals.get(id)
     if (!proposal) return null
     if (input.status !== undefined) proposal.status = input.status
+    if (input.proposed_community_family !== undefined) {
+      proposal.proposed_community_family = input.proposed_community_family
+    }
+    if (input.publication_review_profile_id !== undefined) {
+      proposal.publication_review_profile_id = input.publication_review_profile_id
+    }
+    if (input.launch_wave !== undefined) {
+      proposal.launch_wave = input.launch_wave
+    }
+    if (
+      input.public_participation_mode !== undefined
+      || input.audience_signal_ingestion !== undefined
+      || input.agent_human_response_mode !== undefined
+    ) {
+      const interaction = resolveCommunityInteractionContract({
+        public_participation_mode: input.public_participation_mode ?? proposal.public_participation_mode,
+        audience_signal_ingestion: input.audience_signal_ingestion ?? proposal.audience_signal_ingestion,
+        agent_human_response_mode: input.agent_human_response_mode ?? proposal.agent_human_response_mode,
+      })
+      proposal.public_participation_mode = interaction.public_participation_mode
+      proposal.audience_signal_ingestion = interaction.audience_signal_ingestion
+      proposal.agent_human_response_mode = interaction.agent_human_response_mode
+    }
     if (input.incubation_visibility_mode !== undefined) {
       proposal.incubation_visibility_mode = input.incubation_visibility_mode
     }
@@ -109,7 +147,8 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
       duplicate_of_community_id: input.duplicate_of_community_id ?? null,
       recommended_as_lane_community_id: input.recommended_as_lane_community_id ?? null,
       recommended_as_seasonal: input.recommended_as_seasonal ?? true,
-      recommended_visibility: input.recommended_visibility ?? 'GRAY',
+      incubation_visibility_mode: input.incubation_visibility_mode ?? input.recommended_visibility ?? 'GRAY',
+      recommended_visibility: input.recommended_visibility ?? input.incubation_visibility_mode ?? 'GRAY',
       overlap_score: input.overlap_score ?? 0,
       rationale: input.rationale ?? [],
       meta: input.meta ?? null,

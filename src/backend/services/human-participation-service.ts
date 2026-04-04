@@ -38,6 +38,143 @@ export interface HumanVoteSummary {
 export class HumanParticipationService {
   constructor(private readonly deps: HumanParticipationServiceDeps) {}
 
+  async createPublicThread(input: {
+    actor_user_id: string
+    post_id: string
+    body: string
+  }): Promise<{
+    thread: Awaited<ReturnType<PublicStageThreadRepository['create']>>
+    event: Awaited<ReturnType<EventRepository['create']>>
+  }> {
+    const body = input.body.trim()
+    if (!input.actor_user_id) throw new ValidationError('actor_user_id is required')
+    if (!input.post_id) throw new ValidationError('post_id is required')
+    if (!body) throw new ValidationError('body is required')
+
+    const post = await this.deps.postRepo.findById(input.post_id)
+    if (!post) throw new NotFoundError('Post', input.post_id)
+
+    const thread = await this.deps.publicStageThreadRepo.create({
+      post_id: post.id,
+      community_id: post.community_id,
+      author_actor_type: 'human',
+      author_agent_id: null,
+      author_user_id: input.actor_user_id,
+      body,
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+    })
+
+    const event = await this.deps.eventRepo.create({
+      event_type: 'THREAD_OPENED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: post.community_id,
+      post_id: post.id,
+      actor_type: 'human',
+      actor_id: input.actor_user_id,
+      correlation_id: `post:${post.id}`,
+      payload_json: {
+        post_id: post.id,
+        community_id: post.community_id,
+        author_actor_type: 'human',
+        author_agent_id: null,
+        author_user_id: input.actor_user_id,
+        thread_id: thread.id,
+        turn_id: null,
+        entry_kind: 'THREAD',
+        visibility: thread.visibility,
+        state: thread.state,
+        channel: 'STAGE',
+        chain_depth: 0,
+      },
+    })
+
+    return { thread, event }
+  }
+
+  async createPublicTurn(input: {
+    actor_user_id: string
+    thread_id: string
+    body: string
+    anchor_turn_id?: string | null
+  }): Promise<{
+    turn: Awaited<ReturnType<PublicStageTurnRepository['create']>>
+    event: Awaited<ReturnType<EventRepository['create']>>
+  }> {
+    const body = input.body.trim()
+    if (!input.actor_user_id) throw new ValidationError('actor_user_id is required')
+    if (!input.thread_id) throw new ValidationError('thread_id is required')
+    if (!body) throw new ValidationError('body is required')
+
+    const thread = await this.deps.publicStageThreadRepo.findById(input.thread_id)
+    if (!thread) {
+      throw new NotFoundError('Thread', input.thread_id)
+    }
+    if (thread.thread_state === 'CLOSED' || thread.thread_state === 'SPINOFF') {
+      throw new ValidationError(`Thread ${thread.thread_state.toLowerCase()} and cannot accept more turns`)
+    }
+
+    const [post, currentTurnCount] = await Promise.all([
+      this.deps.postRepo.findById(thread.post_id),
+      this.deps.publicStageTurnRepo.countByThread(thread.id),
+    ])
+    if (!post) throw new NotFoundError('Post', thread.post_id)
+    if (currentTurnCount >= thread.reply_budget) {
+      throw new ValidationError('Thread reply budget exhausted')
+    }
+
+    const anchorTurn = input.anchor_turn_id
+      ? await this.deps.publicStageTurnRepo.findById(input.anchor_turn_id)
+      : null
+    if (input.anchor_turn_id && !anchorTurn) {
+      throw new NotFoundError('Turn', input.anchor_turn_id)
+    }
+    if (anchorTurn && anchorTurn.thread_id !== thread.id) {
+      throw new ValidationError('anchor_turn_id must belong to the target thread')
+    }
+
+    const turn = await this.deps.publicStageTurnRepo.create({
+      thread_id: thread.id,
+      post_id: thread.post_id,
+      author_actor_type: 'human',
+      author_agent_id: null,
+      author_user_id: input.actor_user_id,
+      turn_index: currentTurnCount + 1,
+      anchor_turn_id: anchorTurn?.id ?? null,
+      body,
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+    })
+
+    const event = await this.deps.eventRepo.create({
+      event_type: 'THREAD_TURN_ADDED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: post.community_id,
+      post_id: post.id,
+      actor_type: 'human',
+      actor_id: input.actor_user_id,
+      correlation_id: `post:${post.id}`,
+      payload_json: {
+        post_id: post.id,
+        community_id: post.community_id,
+        author_actor_type: 'human',
+        author_agent_id: null,
+        author_user_id: input.actor_user_id,
+        thread_id: thread.id,
+        turn_id: turn.id,
+        entry_kind: 'TURN',
+        visibility: turn.visibility,
+        state: turn.state,
+        channel: 'STAGE',
+        chain_depth: 0,
+      },
+    })
+
+    return { turn, event }
+  }
+
   async upsertHumanVote(input: {
     voter_user_id: string
     target_type: 'POST' | 'THREAD' | 'TURN'

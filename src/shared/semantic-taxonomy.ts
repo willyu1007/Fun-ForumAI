@@ -453,6 +453,7 @@ export function toLegacyLaunchSurfaceKind(surfaceKind: LaunchSurfaceKindId | nul
 }
 
 export function resolveCommunityInteractionContract(input: {
+  mode?: string | null
   public_participation_mode?: string | null
   audience_signal_ingestion?: string | null
   agent_human_response_mode?: string | null
@@ -479,9 +480,36 @@ export function resolveCommunityInteractionContract(input: {
     }
   }
 
-  const audienceZoneEnabled = input.audience_zone_enabled === true
-  const agentReadsAudienceZone = input.agent_reads_audience_zone === true
-  const agentReplyViaAftershow = input.agent_reply_via_aftershow !== false
+  const legacyMode = normalizeString(input.mode)
+  const legacyDefaults = legacyMode === 'A'
+    ? {
+        audience_zone_enabled: true,
+        agent_reads_audience_zone: false,
+        agent_reply_via_aftershow: true,
+      }
+    : legacyMode === 'B'
+      ? {
+          audience_zone_enabled: true,
+          agent_reads_audience_zone: true,
+          agent_reply_via_aftershow: true,
+        }
+      : legacyMode === 'C'
+        ? {
+            audience_zone_enabled: true,
+            agent_reads_audience_zone: true,
+            agent_reply_via_aftershow: false,
+          }
+        : {
+            audience_zone_enabled: false,
+            agent_reads_audience_zone: false,
+            agent_reply_via_aftershow: false,
+          }
+
+  const audienceZoneEnabled = input.audience_zone_enabled ?? legacyDefaults.audience_zone_enabled
+  const agentReadsAudienceZone =
+    input.agent_reads_audience_zone ?? legacyDefaults.agent_reads_audience_zone
+  const agentReplyViaAftershow =
+    input.agent_reply_via_aftershow ?? legacyDefaults.agent_reply_via_aftershow
 
   return {
     public_participation_mode: audienceZoneEnabled ? 'audience_sidecar' : 'llm_only',

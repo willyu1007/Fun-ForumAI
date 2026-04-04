@@ -25,12 +25,13 @@ import {
   guidanceStateService,
 } from '../container.js'
 import { config } from '../lib/config.js'
-import { ValidationError } from '../lib/errors.js'
+import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
 import type { CreateViewerPublicViewEventInput } from '../repos/index.js'
 import type { PostWithMeta as ForumPostWithMeta } from '../services/forum-read-service.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
+import { resolveLaunchCommunityInteractionContract } from '../launch/community-rules.js'
 import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
@@ -39,11 +40,14 @@ import {
 import { validate } from '../validation/validate.js'
 import {
   createAudienceMessageSchema,
+  createPublicThreadSchema,
+  createPublicTurnSchema,
   createFeedbackSchema,
   feedbackCategorySchema,
   feedbackStatusSchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
+import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
 import {
   resolveGuidanceActorContext,
   trackGuidanceEventFromRequest,
@@ -110,6 +114,34 @@ async function recordPublicViewEvents(entries: CreateViewerPublicViewEventInput[
     return
   }
   await viewerPublicViewService.record(entries)
+}
+
+async function assertOpenReplyEnabled(input: {
+  post_id?: string
+  thread_id?: string
+}) {
+  if (!config.features.humanParticipationV1) {
+    throw new ForbiddenError('Human participation is disabled by feature flag')
+  }
+
+  const postId = input.post_id ?? (input.thread_id
+    ? (await forumReadService.getThread(input.thread_id).catch(() => null))?.post_id ?? null
+    : null)
+  if (!postId) {
+    throw new NotFoundError('Post', input.post_id ?? input.thread_id ?? '')
+  }
+
+  const post = await forumReadService.getPost(postId).catch(() => null)
+  if (!post) {
+    throw new NotFoundError('Post', postId)
+  }
+  const community = communityRepo.findById(post.community_id)
+  const interactionContract = resolveLaunchCommunityInteractionContract(community?.rules_json ?? null)
+  if (!interactionContract || interactionContract.public_participation_mode !== 'open_reply') {
+    throw new ForbiddenError('Community does not allow public human replies on the main thread')
+  }
+
+  return { post, interactionContract }
 }
 
 async function buildRelationTeaser(
@@ -526,6 +558,47 @@ readApiRouter.get('/threads/:threadId', async (req, res) => {
   const data = await forumReadService.getThread(req.params.threadId, user?.userId)
   res.json({ data })
 })
+
+readApiRouter.post(
+  '/posts/:postId/public-threads',
+  requireHumanAuth,
+  validate(createPublicThreadSchema),
+  async (req, res) => {
+    await assertOpenReplyEnabled({ post_id: String(req.params.postId) })
+    const result = await humanParticipationService.createPublicThread({
+      actor_user_id: req.user!.userId,
+      post_id: String(req.params.postId),
+      body: req.body.body,
+    })
+    await Promise.all([
+      searchProjectionService.refreshThread(result.thread.id),
+      searchProjectionService.refreshPost(String(req.params.postId)),
+    ])
+    const data = await forumReadService.getThread(result.thread.id, req.user!.userId)
+    res.status(201).json({ data })
+  },
+)
+
+readApiRouter.post(
+  '/threads/:threadId/public-turns',
+  requireHumanAuth,
+  validate(createPublicTurnSchema),
+  async (req, res) => {
+    await assertOpenReplyEnabled({ thread_id: String(req.params.threadId) })
+    const result = await humanParticipationService.createPublicTurn({
+      actor_user_id: req.user!.userId,
+      thread_id: String(req.params.threadId),
+      body: req.body.body,
+      anchor_turn_id: req.body.anchor_turn_id ?? null,
+    })
+    await Promise.all([
+      searchProjectionService.refreshThread(String(req.params.threadId)),
+      searchProjectionService.refreshPost(result.turn.post_id),
+    ])
+    const data = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
+    res.status(201).json({ data })
+  },
+)
 
 readApiRouter.post('/feedback', requireHumanAuth, async (req, res, next) => {
   feedbackUpload.fields([
@@ -1012,14 +1085,34 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
     : isOwner
       ? await inferenceProfileService.getNarrative(agent.id)
       : null
-  const socialBio = await agentBioRefreshService.getProjection(agent.id, {
-    build_if_missing: true,
-    allow_minor_refresh: canViewPrivateBio,
-  }).catch(() => null)
+  const [socialBio, highlights] = await Promise.all([
+    agentBioRefreshService.getProjection(agent.id, {
+      build_if_missing: true,
+      allow_minor_refresh: canViewPrivateBio,
+    }).catch(() => null),
+    achievementChronicleService.getPublicHighlights(agent.id).catch(() => ({
+      badges: [],
+      tagline: null,
+      top_chronicle: [],
+    })),
+  ])
+  const publicPresentation = buildAgentPublicAuthorPresentation({
+    agent,
+    latest_config: latestConfig,
+    tagline: highlights.tagline,
+    public_bio: socialBio?.public_bio ?? null,
+    badges: highlights.badges,
+  })
 
   res.json({
     data: {
       ...buildPublicAgentReadPayload(agent, latestConfig),
+      public_identity: publicPresentation.public_identity,
+      public_projection: publicPresentation.public_projection,
+      public_proof: publicPresentation.public_proof,
+      display_badges: publicPresentation.display_badges,
+      tagline: publicPresentation.tagline ?? null,
+      public_bio: publicPresentation.public_bio ?? null,
       is_followed,
       social_bio: {
         public_bio: socialBio?.public_bio ?? null,

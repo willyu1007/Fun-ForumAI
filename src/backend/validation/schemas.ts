@@ -3,6 +3,13 @@ import {
   COMMUNITY_INCUBATION_VISIBILITY_MODES,
   COMMUNITY_PROPOSAL_ACTIONS,
 } from '../repos/types/governance.js'
+import {
+  AGENT_HUMAN_RESPONSE_MODE_IDS,
+  AUDIENCE_SIGNAL_INGESTION_IDS,
+  COMMUNITY_FAMILY_IDS,
+  PUBLIC_PARTICIPATION_MODE_IDS,
+  PUBLICATION_REVIEW_PROFILE_IDS,
+} from '../../shared/semantic-taxonomy.js'
 
 const httpsUrlSchema = z
   .string()
@@ -108,6 +115,18 @@ const communitySlugSchema = z
   .min(1)
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'slug_candidate must be kebab-case')
+
+const humanParticipationInputSchema = z
+  .object({
+    mode: z.enum(['A', 'B', 'C']).optional(),
+    public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
+    audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
+    agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
+    audience_zone_enabled: z.boolean().optional(),
+    agent_reads_audience_zone: z.boolean().optional(),
+    agent_reply_via_aftershow: z.boolean().optional(),
+  })
+  .strict()
 
 export const upsertVoteSchema = z
   .object({
@@ -299,6 +318,9 @@ export const patchCommunityStageSpecSchema = z
     human_participation: z
       .object({
         mode: z.enum(['A', 'B', 'C']).optional(),
+        public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
+        audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
+        agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
         audience_zone_enabled: z.boolean().optional(),
         agent_reads_audience_zone: z.boolean().optional(),
         agent_reply_via_aftershow: z.boolean().optional(),
@@ -349,7 +371,11 @@ export const createCommunityProposalSchema = z.object({
   premise_text: z.string().trim().min(1).max(2_000),
   target_audience: z.string().trim().max(500).nullable().optional(),
   scene_types: z.array(z.string().trim().min(1).max(64)).max(12).default([]),
-  t4_candidate: z.boolean().default(false),
+  proposed_community_family: z.enum(COMMUNITY_FAMILY_IDS),
+  publication_review_profile_id: z.enum(PUBLICATION_REVIEW_PROFILE_IDS).optional(),
+  launch_wave: z.string().trim().min(1).max(120).nullable().optional(),
+  human_participation: humanParticipationInputSchema.optional(),
+  t4_candidate: z.boolean().optional(),
   source_community_id: z.string().trim().min(1).nullable().optional(),
 }).strict()
 
@@ -358,6 +384,7 @@ export const refreshCommunityProposalRecommendationSchema = z.object({}).strict(
 export const communityProposalActionSchema = z.object({
   action: z.enum(COMMUNITY_PROPOSAL_ACTIONS),
   target_community_id: z.string().trim().min(1).nullable().optional(),
+  incubation_visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
   visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
   reason: z.string().trim().max(1_000).nullable().optional(),
 }).strict()
@@ -365,6 +392,19 @@ export const communityProposalActionSchema = z.object({
 export const createAudienceMessageSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
+  })
+  .strict()
+
+export const createPublicThreadSchema = z
+  .object({
+    body: z.string().trim().min(1).max(20_000),
+  })
+  .strict()
+
+export const createPublicTurnSchema = z
+  .object({
+    body: z.string().trim().min(1).max(20_000),
+    anchor_turn_id: z.string().trim().min(1).nullable().optional(),
   })
   .strict()
 

@@ -29,7 +29,9 @@ export class InMemoryPublicStageStore {
     id?: string
     post_id: string
     parent_entry_id?: string | null
-    author_agent_id: string
+    author_actor_type?: 'agent' | 'human'
+    author_agent_id?: string | null
+    author_user_id?: string | null
     body: string
     visibility: PublicStageThreadTurn['visibility']
     state: PublicStageThreadTurn['state']
@@ -40,7 +42,9 @@ export class InMemoryPublicStageStore {
         id: input.id,
         post_id: input.post_id,
         community_id: post?.community_id ?? input.post_id,
-        author_agent_id: input.author_agent_id,
+        author_actor_type: input.author_actor_type ?? 'agent',
+        author_agent_id: input.author_agent_id ?? null,
+        author_user_id: input.author_user_id ?? null,
         body: input.body,
         visibility: input.visibility,
         state: input.state,
@@ -60,7 +64,9 @@ export class InMemoryPublicStageStore {
       id: input.id,
       thread_id: threadId,
       post_id: input.post_id,
-      author_agent_id: input.author_agent_id,
+      author_actor_type: input.author_actor_type ?? 'agent',
+      author_agent_id: input.author_agent_id ?? null,
+      author_user_id: input.author_user_id ?? null,
       turn_index: turnIndex,
       anchor_turn_id: parentTurn?.id ?? null,
       body: input.body,

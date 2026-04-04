@@ -38,6 +38,8 @@ model HumanUser {
   legacyMediaAssets           LegacyAgentMediaAsset[]      @relation("LegacyMediaAssetOwner")
   ownedMediaAssets            MediaAsset[]                 @relation("MediaAssetOwner")
   audienceMessages            AudienceMessage[]            @relation("AudienceMessageAuthor")
+  publicStageThreads          PublicStageThread[]          @relation("HumanPublicStageThreads")
+  publicStageTurns            PublicStageTurn[]            @relation("HumanPublicStageTurns")
   aftershowCallouts           AftershowCallout[]           @relation("AftershowCalloutUser")
   incubationGrants            IncubationGrant[]            @relation("IncubationReviewerUser")
   incubationEvents            IncubationEvent[]            @relation("IncubationActorUser")
@@ -345,11 +347,18 @@ enum PublicStageThreadState {
   SPINOFF
 }
 
+enum PublicActorType {
+  AGENT
+  HUMAN
+}
+
 model PublicStageThread {
   id              String                 @id @default(cuid())
   postId          String                 @map("post_id")
   communityId     String                 @map("community_id")
-  authorAgentId   String                 @map("author_agent_id")
+  authorActorType PublicActorType        @default(AGENT) @map("author_actor_type")
+  authorAgentId   String?                @map("author_agent_id")
+  authorUserId    String?                @map("author_user_id")
   body            String
   visibility      Visibility             @default(PUBLIC)
   state           ContentState           @default(PENDING)
@@ -361,34 +370,39 @@ model PublicStageThread {
 
   post          Post                @relation("PostPublicStageThreads", fields: [postId], references: [id])
   community     Community           @relation(fields: [communityId], references: [id])
-  author        Agent               @relation("AgentPublicStageThreads", fields: [authorAgentId], references: [id])
+  authorAgent   Agent?              @relation("AgentPublicStageThreads", fields: [authorAgentId], references: [id])
+  authorUser    HumanUser?          @relation("HumanPublicStageThreads", fields: [authorUserId], references: [id])
   turns         PublicStageTurn[]   @relation("ThreadTurns")
   sceneMetadata ForumSceneMetadata? @relation("ThreadSceneMetadata")
 
   @@index([postId, createdAt])
   @@index([communityId, createdAt])
   @@index([authorAgentId])
+  @@index([authorUserId])
   @@map("public_stage_threads")
 }
 
 model PublicStageTurn {
-  id            String       @id @default(cuid())
-  threadId      String       @map("thread_id")
-  postId        String       @map("post_id")
-  authorAgentId String       @map("author_agent_id")
-  turnIndex     Int          @map("turn_index")
-  anchorTurnId  String?      @map("anchor_turn_id")
-  anchorIntent  String?      @map("anchor_intent")
-  quotedExcerpt String?      @map("quoted_excerpt")
-  body          String
-  visibility    Visibility   @default(PUBLIC)
-  state         ContentState @default(PENDING)
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id              String          @id @default(cuid())
+  threadId        String          @map("thread_id")
+  postId          String          @map("post_id")
+  authorActorType PublicActorType @default(AGENT) @map("author_actor_type")
+  authorAgentId   String?         @map("author_agent_id")
+  authorUserId    String?         @map("author_user_id")
+  turnIndex       Int             @map("turn_index")
+  anchorTurnId    String?         @map("anchor_turn_id")
+  anchorIntent    String?         @map("anchor_intent")
+  quotedExcerpt   String?         @map("quoted_excerpt")
+  body            String
+  visibility      Visibility      @default(PUBLIC)
+  state           ContentState    @default(PENDING)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   thread        PublicStageThread   @relation("ThreadTurns", fields: [threadId], references: [id])
   post          Post                @relation(fields: [postId], references: [id])
-  author        Agent               @relation("AgentPublicStageTurns", fields: [authorAgentId], references: [id])
+  authorAgent   Agent?              @relation("AgentPublicStageTurns", fields: [authorAgentId], references: [id])
+  authorUser    HumanUser?          @relation("HumanPublicStageTurns", fields: [authorUserId], references: [id])
   anchorTurn    PublicStageTurn?    @relation("TurnAnchor", fields: [anchorTurnId], references: [id])
   anchoredTurns PublicStageTurn[]   @relation("TurnAnchor")
   sceneMetadata ForumSceneMetadata? @relation("TurnSceneMetadata")
@@ -397,6 +411,7 @@ model PublicStageTurn {
   @@index([postId, createdAt])
   @@index([threadId, createdAt])
   @@index([authorAgentId])
+  @@index([authorUserId])
   @@map("public_stage_turns")
 }
 
@@ -1532,25 +1547,31 @@ model CommunityConfigApproval {
 }
 
 model CommunityProposal {
-  id                       String                             @id @default(cuid())
-  submittedByUserId        String                             @map("submitted_by_user_id")
-  name                     String
-  slugCandidate            String                             @map("slug_candidate")
-  description              String
-  premiseText              String                             @map("premise_text")
-  targetAudience           String?                            @map("target_audience")
-  sceneTypes               String[]                           @default([]) @map("scene_types")
-  t4Candidate              Boolean                            @default(false) @map("t4_candidate")
-  sourceCommunityId        String?                            @map("source_community_id")
-  status                   CommunityProposalStatus            @default(SUBMITTED)
-  incubationVisibilityMode CommunityIncubationVisibilityMode? @map("incubation_visibility_mode")
-  resultingCommunityId     String?                            @map("resulting_community_id")
-  mergedIntoCommunityId    String?                            @map("merged_into_community_id")
-  reviewedByUserId         String?                            @map("reviewed_by_user_id")
-  reviewedAt               DateTime?                          @map("reviewed_at")
-  metaJson                 Json?                              @map("meta_json")
-  createdAt                DateTime                           @default(now()) @map("created_at")
-  updatedAt                DateTime                           @updatedAt @map("updated_at")
+  id                         String                             @id @default(cuid())
+  submittedByUserId          String                             @map("submitted_by_user_id")
+  name                       String
+  slugCandidate              String                             @map("slug_candidate")
+  description                String
+  premiseText                String                             @map("premise_text")
+  targetAudience             String?                            @map("target_audience")
+  sceneTypes                 String[]                           @default([]) @map("scene_types")
+  proposedCommunityFamily    String?                            @map("proposed_community_family")
+  publicationReviewProfileId String?                            @map("publication_review_profile_id")
+  launchWave                 String?                            @map("launch_wave")
+  publicParticipationMode    String?                            @map("public_participation_mode")
+  audienceSignalIngestion    String?                            @map("audience_signal_ingestion")
+  agentHumanResponseMode     String?                            @map("agent_human_response_mode")
+  t4Candidate                Boolean                            @default(false) @map("t4_candidate")
+  sourceCommunityId          String?                            @map("source_community_id")
+  status                     CommunityProposalStatus            @default(SUBMITTED)
+  incubationVisibilityMode   CommunityIncubationVisibilityMode? @map("incubation_visibility_mode")
+  resultingCommunityId       String?                            @map("resulting_community_id")
+  mergedIntoCommunityId      String?                            @map("merged_into_community_id")
+  reviewedByUserId           String?                            @map("reviewed_by_user_id")
+  reviewedAt                 DateTime?                          @map("reviewed_at")
+  metaJson                   Json?                              @map("meta_json")
+  createdAt                  DateTime                           @default(now()) @map("created_at")
+  updatedAt                  DateTime                           @updatedAt @map("updated_at")
 
   submittedByUser     HumanUser                     @relation("CommunityProposalSubmittedBy", fields: [submittedByUserId], references: [id])
   reviewedByUser      HumanUser?                    @relation("CommunityProposalReviewedBy", fields: [reviewedByUserId], references: [id])
@@ -1563,6 +1584,7 @@ model CommunityProposal {
   @@index([status, createdAt])
   @@index([submittedByUserId, createdAt])
   @@index([slugCandidate])
+  @@index([proposedCommunityFamily])
   @@index([sourceCommunityId])
   @@index([resultingCommunityId])
   @@index([mergedIntoCommunityId])
@@ -1570,17 +1592,18 @@ model CommunityProposal {
 }
 
 model CommunityMergeRecommendation {
-  id                           String                            @id @default(cuid())
-  proposalId                   String                            @unique @map("proposal_id")
-  duplicateOfCommunityId       String?                           @map("duplicate_of_community_id")
-  recommendedAsLaneCommunityId String?                           @map("recommended_as_lane_community_id")
-  recommendedAsSeasonal        Boolean                           @default(true) @map("recommended_as_seasonal")
-  recommendedVisibility        CommunityIncubationVisibilityMode @default(GRAY) @map("recommended_visibility")
-  overlapScore                 Float                             @default(0) @map("overlap_score")
-  rationale                    String[]                          @default([])
-  metaJson                     Json?                             @map("meta_json")
-  createdAt                    DateTime                          @default(now()) @map("created_at")
-  updatedAt                    DateTime                          @updatedAt @map("updated_at")
+  id                           String                             @id @default(cuid())
+  proposalId                   String                             @unique @map("proposal_id")
+  duplicateOfCommunityId       String?                            @map("duplicate_of_community_id")
+  recommendedAsLaneCommunityId String?                            @map("recommended_as_lane_community_id")
+  recommendedAsSeasonal        Boolean                            @default(true) @map("recommended_as_seasonal")
+  incubationVisibilityMode     CommunityIncubationVisibilityMode? @map("incubation_visibility_mode")
+  recommendedVisibility        CommunityIncubationVisibilityMode  @default(GRAY) @map("recommended_visibility")
+  overlapScore                 Float                              @default(0) @map("overlap_score")
+  rationale                    String[]                           @default([])
+  metaJson                     Json?                              @map("meta_json")
+  createdAt                    DateTime                           @default(now()) @map("created_at")
+  updatedAt                    DateTime                           @updatedAt @map("updated_at")
 
   proposal                   CommunityProposal @relation(fields: [proposalId], references: [id])
   duplicateOfCommunity       Community?        @relation("CommunityMergeDuplicateOf", fields: [duplicateOfCommunityId], references: [id])

@@ -203,7 +203,7 @@ export function useAdminPanelController() {
       proposalId,
       action,
       target_community_id: communityProposalTargetId.trim() || null,
-      visibility_mode: action === 'incubate' ? communityProposalVisibilityMode : null,
+      incubation_visibility_mode: action === 'incubate' ? communityProposalVisibilityMode : null,
       reason: communityProposalReason.trim() || null,
     })
     setCommunityProposalReason('')

@@ -10,6 +10,12 @@ import type {
   UpsertCommunityMergeRecommendationInput,
 } from '../types.js'
 import type { CommunityProposalRepository } from '../community-proposal-repository.js'
+import {
+  derivePublicationReviewProfileId,
+  normalizeCommunityFamily,
+  normalizePublicationReviewProfileId,
+  resolveCommunityInteractionContract,
+} from '../../../shared/semantic-taxonomy.js'
 
 function toNullableJsonInput(
   value: Record<string, unknown> | null | undefined,
@@ -28,6 +34,12 @@ function toProposal(row: {
   premiseText: string
   targetAudience: string | null
   sceneTypes: string[]
+  proposedCommunityFamily: string | null
+  publicationReviewProfileId: string | null
+  launchWave: string | null
+  publicParticipationMode: string | null
+  audienceSignalIngestion: string | null
+  agentHumanResponseMode: string | null
   t4Candidate: boolean
   sourceCommunityId: string | null
   status: CommunityProposal['status']
@@ -40,6 +52,18 @@ function toProposal(row: {
   createdAt: Date
   updatedAt: Date
 }): CommunityProposal {
+  const proposedCommunityFamily =
+    normalizeCommunityFamily(row.proposedCommunityFamily)
+    ?? (row.t4Candidate ? 'creator_recommendation' : 'weekly_program')
+  const publicationReviewProfileId =
+    normalizePublicationReviewProfileId(row.publicationReviewProfileId)
+    ?? derivePublicationReviewProfileId(proposedCommunityFamily)
+  const interaction = resolveCommunityInteractionContract({
+    public_participation_mode: row.publicParticipationMode,
+    audience_signal_ingestion: row.audienceSignalIngestion,
+    agent_human_response_mode: row.agentHumanResponseMode,
+  })
+
   return {
     id: row.id,
     submitted_by_user_id: row.submittedByUserId,
@@ -49,7 +73,16 @@ function toProposal(row: {
     premise_text: row.premiseText,
     target_audience: row.targetAudience,
     scene_types: row.sceneTypes,
-    t4_candidate: row.t4Candidate,
+    proposed_community_family: proposedCommunityFamily,
+    publication_review_profile_id: publicationReviewProfileId,
+    launch_wave: row.launchWave,
+    public_participation_mode: interaction.public_participation_mode,
+    audience_signal_ingestion: interaction.audience_signal_ingestion,
+    agent_human_response_mode: interaction.agent_human_response_mode,
+    t4_candidate:
+      row.t4Candidate
+      || publicationReviewProfileId === 'creator_strict_publication'
+      || proposedCommunityFamily.startsWith('creator_'),
     source_community_id: row.sourceCommunityId,
     status: row.status,
     incubation_visibility_mode: row.incubationVisibilityMode,
@@ -69,6 +102,7 @@ function toRecommendation(row: {
   duplicateOfCommunityId: string | null
   recommendedAsLaneCommunityId: string | null
   recommendedAsSeasonal: boolean
+  incubationVisibilityMode: CommunityMergeRecommendation['incubation_visibility_mode'] | null
   recommendedVisibility: CommunityMergeRecommendation['recommended_visibility']
   overlapScore: number
   rationale: string[]
@@ -82,6 +116,7 @@ function toRecommendation(row: {
     duplicate_of_community_id: row.duplicateOfCommunityId,
     recommended_as_lane_community_id: row.recommendedAsLaneCommunityId,
     recommended_as_seasonal: row.recommendedAsSeasonal,
+    incubation_visibility_mode: row.incubationVisibilityMode ?? row.recommendedVisibility,
     recommended_visibility: row.recommendedVisibility,
     overlap_score: row.overlapScore,
     rationale: row.rationale,
@@ -115,6 +150,11 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
   constructor(private readonly prisma: PrismaClient) {}
 
   async createProposal(input: CreateCommunityProposalInput): Promise<CommunityProposal> {
+    const interaction = resolveCommunityInteractionContract({
+      public_participation_mode: input.public_participation_mode,
+      audience_signal_ingestion: input.audience_signal_ingestion,
+      agent_human_response_mode: input.agent_human_response_mode,
+    })
     const row = await this.prisma.communityProposal.create({
       data: {
         id: randomUUID(),
@@ -125,6 +165,12 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         premiseText: input.premise_text,
         targetAudience: input.target_audience ?? null,
         sceneTypes: input.scene_types ?? [],
+        proposedCommunityFamily: input.proposed_community_family,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        launchWave: input.launch_wave ?? null,
+        publicParticipationMode: interaction.public_participation_mode,
+        audienceSignalIngestion: interaction.audience_signal_ingestion,
+        agentHumanResponseMode: interaction.agent_human_response_mode,
         t4Candidate: input.t4_candidate ?? false,
         sourceCommunityId: input.source_community_id ?? null,
         status: input.status ?? 'SUBMITTED',
@@ -140,10 +186,34 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
   }
 
   async updateProposal(id: string, input: UpdateCommunityProposalInput): Promise<CommunityProposal | null> {
+    const interaction =
+      input.public_participation_mode !== undefined
+      || input.audience_signal_ingestion !== undefined
+      || input.agent_human_response_mode !== undefined
+        ? resolveCommunityInteractionContract({
+            public_participation_mode: input.public_participation_mode,
+            audience_signal_ingestion: input.audience_signal_ingestion,
+            agent_human_response_mode: input.agent_human_response_mode,
+          })
+        : null
     const row = await this.prisma.communityProposal.update({
       where: { id },
       data: {
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.proposed_community_family !== undefined
+          ? { proposedCommunityFamily: input.proposed_community_family }
+          : {}),
+        ...(input.publication_review_profile_id !== undefined
+          ? { publicationReviewProfileId: input.publication_review_profile_id }
+          : {}),
+        ...(input.launch_wave !== undefined ? { launchWave: input.launch_wave } : {}),
+        ...(interaction
+          ? {
+              publicParticipationMode: interaction.public_participation_mode,
+              audienceSignalIngestion: interaction.audience_signal_ingestion,
+              agentHumanResponseMode: interaction.agent_human_response_mode,
+            }
+          : {}),
         ...(input.incubation_visibility_mode !== undefined
           ? { incubationVisibilityMode: input.incubation_visibility_mode }
           : {}),
@@ -183,7 +253,8 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         duplicateOfCommunityId: input.duplicate_of_community_id ?? null,
         recommendedAsLaneCommunityId: input.recommended_as_lane_community_id ?? null,
         recommendedAsSeasonal: input.recommended_as_seasonal ?? true,
-        recommendedVisibility: input.recommended_visibility ?? 'GRAY',
+        incubationVisibilityMode: input.incubation_visibility_mode ?? input.recommended_visibility ?? 'GRAY',
+        recommendedVisibility: input.recommended_visibility ?? input.incubation_visibility_mode ?? 'GRAY',
         overlapScore: input.overlap_score ?? 0,
         rationale: input.rationale ?? [],
         metaJson: toNullableJsonInput(input.meta),
@@ -194,7 +265,8 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         duplicateOfCommunityId: input.duplicate_of_community_id ?? null,
         recommendedAsLaneCommunityId: input.recommended_as_lane_community_id ?? null,
         recommendedAsSeasonal: input.recommended_as_seasonal ?? true,
-        recommendedVisibility: input.recommended_visibility ?? 'GRAY',
+        incubationVisibilityMode: input.incubation_visibility_mode ?? input.recommended_visibility ?? 'GRAY',
+        recommendedVisibility: input.recommended_visibility ?? input.incubation_visibility_mode ?? 'GRAY',
         overlapScore: input.overlap_score ?? 0,
         rationale: input.rationale ?? [],
         metaJson: toNullableJsonInput(input.meta),

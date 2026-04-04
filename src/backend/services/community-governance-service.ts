@@ -14,15 +14,22 @@ import type { CommunityConfigService } from './community-config-service.js'
 import {
   buildGovernedCommunityRulesSkeleton,
   listLaunchCommunitySeeds,
+  resolveLaunchCommunitySemanticContract,
 } from '../launch/community-rules.js'
 import { resolvePostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
+import {
+  derivePublicationReviewProfileId,
+  resolveCommunityInteractionContract,
+  type CommunityInteractionContract,
+} from '../../shared/semantic-taxonomy.js'
 
 interface RecommendationCatalogEntry {
   id: string | null
   slug: string
   name: string
   tokens: Set<string>
-  t4_enabled: boolean
+  community_family: CommunityProposal['proposed_community_family']
+  publication_review_profile_id: CommunityProposal['publication_review_profile_id']
   scene_types: string[]
 }
 
@@ -78,6 +85,7 @@ function buildCatalogEntry(input: {
   description?: string | null
   rules_json: Record<string, unknown> | null | undefined
 }): RecommendationCatalogEntry {
+  const semanticContract = resolveLaunchCommunitySemanticContract(input.rules_json)
   const launchProfile = toRecord(input.rules_json?.launch_profile)
   const contentContract = toRecord(input.rules_json?.content_contract)
   const sceneMix = toRecord(input.rules_json?.scene_mix)
@@ -97,7 +105,12 @@ function buildCatalogEntry(input: {
     slug: input.slug,
     name: input.name,
     tokens: new Set(tokenize(tokenSource)),
-    t4_enabled: Boolean(t4Policy?.enabled),
+    community_family:
+      semanticContract?.community_family
+      ?? (Boolean(t4Policy?.enabled) ? 'creator_recommendation' : 'weekly_program'),
+    publication_review_profile_id:
+      semanticContract?.publication_review_profile_id
+      ?? (Boolean(t4Policy?.enabled) ? 'creator_strict_publication' : 'standard_publication'),
     scene_types: Object.keys(sceneMix ?? {}),
   }
 }
@@ -136,7 +149,8 @@ function computeRecommendation(
     overlap_score: number
     text_overlap: number
     scene_overlap: number
-    t4_bonus: number
+    publication_profile_bonus: number
+    community_family_bonus: number
   } | null = null
 
   for (const entry of catalog) {
@@ -145,15 +159,19 @@ function computeRecommendation(
     const sceneOverlap = proposal.scene_types.length > 0
       ? sceneOverlapCount / proposal.scene_types.length
       : 0
-    const t4Bonus = proposal.t4_candidate === entry.t4_enabled ? 0.8 : 0
-    const score = Number((textOverlap + sceneOverlap * 2 + t4Bonus).toFixed(3))
+    const publicationProfileBonus =
+      proposal.publication_review_profile_id === entry.publication_review_profile_id ? 0.8 : 0
+    const communityFamilyBonus =
+      proposal.proposed_community_family === entry.community_family ? 0.5 : 0
+    const score = Number((textOverlap + sceneOverlap * 2 + publicationProfileBonus + communityFamilyBonus).toFixed(3))
     if (!best || score > best.overlap_score) {
       best = {
         entry,
         overlap_score: score,
         text_overlap: textOverlap,
         scene_overlap: sceneOverlap,
-        t4_bonus: t4Bonus,
+        publication_profile_bonus: publicationProfileBonus,
+        community_family_bonus: communityFamilyBonus,
       }
     }
   }
@@ -181,8 +199,11 @@ function computeRecommendation(
   if (best.scene_overlap > 0) {
     rationale.push(`Scene overlap with ${best.entry.name} covers ${(best.scene_overlap * 100).toFixed(0)}% of requested scene types.`)
   }
-  if (best.t4_bonus > 0) {
-    rationale.push(`T4 compatibility aligns with ${best.entry.name}.`)
+  if (best.publication_profile_bonus > 0) {
+    rationale.push(`Publication review profile aligns with ${best.entry.name}.`)
+  }
+  if (best.community_family_bonus > 0) {
+    rationale.push(`Community family aligns with ${best.entry.name}.`)
   }
   if (rationale.length === 0) {
     rationale.push(`Closest current launch lane is ${best.entry.name}, but overlap remains weak.`)
@@ -204,14 +225,15 @@ function computeRecommendation(
     recommended_visibility: recommendedVisibility,
     overlap_score: best.overlap_score,
     rationale,
-    meta: {
-      best_match_slug: best.entry.slug,
-      text_overlap: best.text_overlap,
-      scene_overlap: best.scene_overlap,
-      t4_bonus: best.t4_bonus,
-      thresholds: {
-        merge_threshold: mergeThreshold,
-        lane_threshold: laneThreshold,
+      meta: {
+        best_match_slug: best.entry.slug,
+        text_overlap: best.text_overlap,
+        scene_overlap: best.scene_overlap,
+        publication_profile_bonus: best.publication_profile_bonus,
+        community_family_bonus: best.community_family_bonus,
+        thresholds: {
+          merge_threshold: mergeThreshold,
+          lane_threshold: laneThreshold,
         gray_visibility_threshold: grayVisibilityThreshold,
       },
     },
@@ -248,13 +270,34 @@ export class CommunityGovernanceService {
     premise_text: string
     target_audience?: string | null
     scene_types?: string[]
+    proposed_community_family?: CommunityProposal['proposed_community_family']
+    publication_review_profile_id?: CommunityProposal['publication_review_profile_id'] | null
+    launch_wave?: string | null
+    interaction_contract?: CommunityInteractionContract | null
     t4_candidate?: boolean
     source_community_id?: string | null
   }): Promise<CommunityProposalDetail> {
+    const proposedCommunityFamily =
+      input.proposed_community_family
+      ?? (input.t4_candidate ? 'creator_recommendation' : 'weekly_program')
+    const publicationReviewProfileId =
+      input.publication_review_profile_id
+      ?? derivePublicationReviewProfileId(proposedCommunityFamily)
+    const interactionContract =
+      input.interaction_contract
+      ?? resolveCommunityInteractionContract({})
     const proposal = await this.deps.communityProposalRepo.createProposal({
       ...input,
       scene_types: input.scene_types ?? [],
-      t4_candidate: input.t4_candidate ?? false,
+      proposed_community_family: proposedCommunityFamily,
+      publication_review_profile_id: publicationReviewProfileId,
+      launch_wave: input.launch_wave ?? null,
+      public_participation_mode: interactionContract.public_participation_mode,
+      audience_signal_ingestion: interactionContract.audience_signal_ingestion,
+      agent_human_response_mode: interactionContract.agent_human_response_mode,
+      t4_candidate:
+        input.t4_candidate
+        ?? (publicationReviewProfileId === 'creator_strict_publication'),
     })
     await this.deps.communityProposalRepo.createEvent({
       proposal_id: proposal.id,
@@ -263,7 +306,12 @@ export class CommunityGovernanceService {
       event_type: 'PROPOSAL_SUBMITTED',
       payload_json: {
         slug_candidate: proposal.slug_candidate,
-        t4_candidate: proposal.t4_candidate,
+        proposed_community_family: proposal.proposed_community_family,
+        publication_review_profile_id: proposal.publication_review_profile_id,
+        launch_wave: proposal.launch_wave,
+        public_participation_mode: proposal.public_participation_mode,
+        audience_signal_ingestion: proposal.audience_signal_ingestion,
+        agent_human_response_mode: proposal.agent_human_response_mode,
       },
     })
     const recommendation = await this.refreshRecommendation({
@@ -351,7 +399,7 @@ export class CommunityGovernanceService {
       event_type: 'RECOMMENDATION_REFRESHED',
       payload_json: {
         overlap_score: recommendation.overlap_score,
-        recommended_visibility: recommendation.recommended_visibility,
+        incubation_visibility_mode: recommendation.incubation_visibility_mode,
         duplicate_of_community_id: recommendation.duplicate_of_community_id,
         recommended_as_lane_community_id: recommendation.recommended_as_lane_community_id,
       },
@@ -371,7 +419,7 @@ export class CommunityGovernanceService {
     actor_user_id: string
     actor_role: 'admin' | 'user' | 'system'
     target_community_id?: string | null
-    visibility_mode?: CommunityIncubationVisibilityMode | null
+    incubation_visibility_mode?: CommunityIncubationVisibilityMode | null
     reason?: string | null
   }): Promise<CommunityProposalActionResult> {
     if (input.actor_role !== 'admin') {
@@ -385,7 +433,11 @@ export class CommunityGovernanceService {
     let lifecycleState: CommunityLifecycleState | null = null
     let nextStatus: CommunityProposal['status']
     let visibilityMode: CommunityIncubationVisibilityMode | null =
-      input.visibility_mode ?? proposal.incubation_visibility_mode ?? recommendation?.recommended_visibility ?? 'GRAY'
+      input.incubation_visibility_mode
+      ?? proposal.incubation_visibility_mode
+      ?? recommendation?.incubation_visibility_mode
+      ?? recommendation?.recommended_visibility
+      ?? 'GRAY'
     let mergedIntoCommunityId: string | null = null
 
     switch (input.action) {
@@ -489,7 +541,7 @@ export class CommunityGovernanceService {
         lifecycle_state: lifecycleState,
         target_community_id: community?.id ?? null,
         merged_into_community_id: mergedIntoCommunityId,
-        visibility_mode: visibilityMode,
+        incubation_visibility_mode: visibilityMode,
         config_patch_id: configPatchId,
         config_version_id: configVersionId,
       },
@@ -550,6 +602,14 @@ export class CommunityGovernanceService {
         premise_text: input.proposal.premise_text,
         target_audience: input.proposal.target_audience,
         scene_types: input.proposal.scene_types,
+        proposed_community_family: input.proposal.proposed_community_family,
+        publication_review_profile_id: input.proposal.publication_review_profile_id,
+        launch_wave: input.proposal.launch_wave,
+        interaction_contract: {
+          public_participation_mode: input.proposal.public_participation_mode,
+          audience_signal_ingestion: input.proposal.audience_signal_ingestion,
+          agent_human_response_mode: input.proposal.agent_human_response_mode,
+        },
         t4_candidate: input.proposal.t4_candidate,
         lifecycle_state: input.lifecycle_state,
         incubation_visibility_mode: input.visibility_mode,
@@ -582,8 +642,12 @@ export class CommunityGovernanceService {
       community_lifecycle_state: input.lifecycle_state,
       launch_profile: {
         ...launchProfile,
+        community_type: input.proposal.proposed_community_family,
+        community_family: input.proposal.proposed_community_family,
+        publication_review_profile_id: input.proposal.publication_review_profile_id,
         show_on_home: input.lifecycle_state === 'seasonal_active',
-        launch_phase: input.lifecycle_state,
+        launch_phase: input.proposal.launch_wave ?? input.lifecycle_state,
+        launch_wave: input.proposal.launch_wave ?? input.lifecycle_state,
       },
       governance_policy: governancePolicy,
     }

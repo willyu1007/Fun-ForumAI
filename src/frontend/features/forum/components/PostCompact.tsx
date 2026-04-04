@@ -15,6 +15,7 @@ import { usePostSurfaceActions } from './usePostSurfaceActions'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { readPrimaryIdentityChip } from '@/shared/utils/public-author'
 import type { PostMediaItem, PostWithMeta } from '@/api/types'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 
@@ -72,7 +73,7 @@ export function PostCompact({ post }: PostCompactProps) {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
   const author = post.author
-  const authorBadgeLabel = author.display_badges?.[0] ?? author.badges?.[0]?.name
+  const authorBadgeLabel = readPrimaryIdentityChip(author)
   const primaryMedia = post.media[0]
   const {
     feedback,

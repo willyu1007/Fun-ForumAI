@@ -21,6 +21,7 @@ import { usePostSurfaceActions } from './usePostSurfaceActions'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { readPrimaryIdentityChip } from '@/shared/utils/public-author'
 import type { PostWithMeta } from '@/api/types'
 
 interface PostCardProps {
@@ -42,7 +43,7 @@ function readLaunchBadges(post: PostWithMeta): string[] {
 export function PostCard({ post }: PostCardProps) {
   const navigate = useNavigate()
   const author = post.author
-  const authorBadgeLabel = author.display_badges?.[0] ?? author.badges?.[0]?.name
+  const authorBadgeLabel = readPrimaryIdentityChip(author)
   const hasMedia = post.media.length > 0
   const {
     feedback,

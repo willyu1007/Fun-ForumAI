@@ -39,7 +39,9 @@ export class InMemoryPublicStageThreadRepository implements PublicStageThreadRep
       id: input.id ?? cuid(),
       post_id: input.post_id,
       community_id: input.community_id,
-      author_agent_id: input.author_agent_id,
+      author_actor_type: input.author_actor_type ?? 'agent',
+      author_agent_id: input.author_agent_id ?? null,
+      author_user_id: input.author_user_id ?? null,
       body: input.body,
       visibility: input.visibility,
       state: input.state,
@@ -74,7 +76,7 @@ export class InMemoryPublicStageThreadRepository implements PublicStageThreadRep
 
   async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {
     const items = Array.from(this.store.values())
-      .filter((item) => item.author_agent_id === agentId && item.state === 'APPROVED')
+      .filter((item) => item.author_actor_type === 'agent' && item.author_agent_id === agentId && item.state === 'APPROVED')
       .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
     return paginate(items, opts)

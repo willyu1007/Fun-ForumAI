@@ -286,6 +286,11 @@ export class SearchProjectionService {
       this.invalidateCountsCache()
       return
     }
+    if (thread.author_actor_type !== 'agent' || !thread.author_agent_id) {
+      await this.deps.searchDocRepo.deleteThreadDoc(threadId)
+      this.invalidateCountsCache()
+      return
+    }
 
     const post = await this.deps.postRepo.findById(thread.post_id)
     if (!post || !this.deps.guard.canViewPost(post)) {

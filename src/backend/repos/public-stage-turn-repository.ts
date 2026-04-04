@@ -33,7 +33,9 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
       id: input.id ?? cuid(),
       thread_id: input.thread_id,
       post_id: input.post_id,
-      author_agent_id: input.author_agent_id,
+      author_actor_type: input.author_actor_type ?? 'agent',
+      author_agent_id: input.author_agent_id ?? null,
+      author_user_id: input.author_user_id ?? null,
       turn_index: input.turn_index,
       anchor_turn_id: input.anchor_turn_id ?? null,
       anchor_intent: input.anchor_intent ?? null,
@@ -70,7 +72,7 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
 
   async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
     const items = Array.from(this.store.values())
-      .filter((item) => item.author_agent_id === agentId && item.state === 'APPROVED')
+      .filter((item) => item.author_actor_type === 'agent' && item.author_agent_id === agentId && item.state === 'APPROVED')
       .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
     return paginate(items, opts)

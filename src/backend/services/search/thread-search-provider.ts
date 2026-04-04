@@ -1,6 +1,6 @@
 import type { SearchThreadItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
-import { buildAgentSystemDisplayFields } from '../../launch/system-roster.js'
+import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
 import type { ForumReadService } from '../forum-read-service.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
@@ -80,7 +80,17 @@ export class ThreadSearchProvider implements SearchProvider {
       const author = this.deps.agentRepo.findById(hit.doc.author_agent_id)
       const authorVisibility = this.deps.guard.getAuthorVisibility(author)
       const latestConfig = this.deps.agentConfigRepo.findLatest(hit.doc.author_agent_id)
-      const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+      const authorPresentation = buildAgentPublicAuthorPresentation({
+        agent: {
+          id: hit.doc.author_agent_id,
+          display_name: hit.doc.author_display_name,
+          avatar_url: hit.doc.author_avatar_url,
+        },
+        latest_config: latestConfig,
+        tagline: hit.doc.author_tagline,
+        public_bio: hit.doc.author_public_bio,
+        badges: hit.doc.author_badges,
+      })
       const hrefSearch = new URLSearchParams({ threadId: thread.id })
       if (matchedTurn) {
         hrefSearch.set('turnId', matchedTurn.id)
@@ -111,15 +121,21 @@ export class ThreadSearchProvider implements SearchProvider {
         },
         author: {
           id: hit.doc.author_agent_id,
+          actor_type: 'agent',
           display_name: hit.doc.author_display_name,
-          avatar_url: authorVisibility === 'full' ? hit.doc.author_avatar_url : null,
-          ...(authorVisibility === 'full' ? { agent_kind: displayFields.agent_kind } : {}),
-          ...(authorVisibility === 'full' ? { system_identity: displayFields.system_identity } : {}),
-          ...(authorVisibility === 'full' ? { surface_access: displayFields.surface_access } : {}),
-          ...(authorVisibility === 'full' ? { display_badges: displayFields.display_badges } : {}),
-          ...(authorVisibility === 'full' && hit.doc.author_badges.length > 0 ? { badges: hit.doc.author_badges } : {}),
-          ...(authorVisibility === 'full' && hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : {}),
-          ...(authorVisibility === 'full' ? { public_bio: hit.doc.author_public_bio } : {}),
+          avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
+          ...(authorVisibility === 'full' ? {
+            agent_kind: authorPresentation.agent_kind,
+            public_identity: authorPresentation.public_identity,
+            public_projection: authorPresentation.public_projection,
+            public_proof: authorPresentation.public_proof,
+            system_identity: authorPresentation.system_identity,
+            surface_access: authorPresentation.surface_access,
+            display_badges: authorPresentation.display_badges,
+            ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
+            ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
+            ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
+          } : {}),
         },
         author_visibility: authorVisibility,
         created_at: hit.doc.thread_created_at.toISOString(),

@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Depends on: discussion baseline `/Users/phoenix/Downloads/forum_semantic_convergence_plan.md`, archived launch packaging tasks `T-133` to `T-141`, active execution baselines `T-915`, `T-924`, `T-925`, `T-926`, `T-927`
-- Next step: publish the requirement-to-pack ownership matrix, freeze the naming constitution, and keep the project hub synchronized as child packs move from planning into implementation.
+- Next step: keep `T-144` and `T-145` in lockstep with the frozen `T-143` contract, enforce the mixed-author review gate before `T-146`, and maintain the final closeout checklist as implementation evidence lands.
 
 ## Goal
 
@@ -65,6 +65,24 @@
 - `T-144`: proposal/incubation/admin governance 与三轴交互合同切换
 - `T-145`: agent public DTO 与 surface 语义分层，和现有 bio 生成链完成边界收口
 - `T-146`: search / analytics / semantic field inventory / compat cleanup / backfill / rollback 收口
+
+## Active Implementation Gates
+
+- `T-144` 的 hard gate 不只是命名切换，还必须交付 human-authored main-thread 兼容：
+  - `PublicStageThread / PublicStageTurn` polymorphic author model
+  - mixed agent/human read model 不崩
+  - human-authored main-thread entry 不会打断 search refresh
+- `T-144` handoff contract 必须包含：
+  - human author model
+  - canonical governance payload matrix
+  - legacy governance mapping table
+  - search-safe compatibility note
+- `T-145` handoff contract 必须包含：
+  - surface read-source matrix
+  - `display_badges` / flat `tagline` / flat `public_bio` 的 derived-compat 规则
+- `T-146` 不得在下列事项未 review 签收前启动：
+  - `T-144` 的 human-author 主 thread 兼容和 legacy governance 退场
+  - `T-145` 的 split contract 读模型和 surface read-source matrix
 
 ## Requirement Coverage Matrix
 

@@ -91,6 +91,42 @@ export function useCreateAudienceMessage(postId: string) {
   })
 }
 
+export function useCreatePublicThread(postId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: string) =>
+      api.post(`posts/${postId}/public-threads`, { json: { body } }).json<ApiResponse<PublicStageThreadData>>(),
+    onSuccess: (response) => {
+      qc.invalidateQueries({ queryKey: ['threads', postId] })
+      qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
+      qc.invalidateQueries({ queryKey: queryKeys.thread(response.data.id) })
+    },
+  })
+}
+
+export function useCreatePublicTurn() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      threadId: string
+      postId: string
+      body: string
+      anchor_turn_id?: string | null
+    }) =>
+      api.post(`threads/${input.threadId}/public-turns`, {
+        json: {
+          body: input.body,
+          anchor_turn_id: input.anchor_turn_id ?? null,
+        },
+      }).json<ApiResponse<PublicStageThreadData>>(),
+    onSuccess: (_response, input) => {
+      qc.invalidateQueries({ queryKey: queryKeys.thread(input.threadId) })
+      qc.invalidateQueries({ queryKey: ['threads', input.postId] })
+      qc.invalidateQueries({ queryKey: queryKeys.post(input.postId) })
+    },
+  })
+}
+
 export function useAudienceThread(postId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.audienceThread(postId),

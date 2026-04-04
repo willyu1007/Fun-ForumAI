@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: planned
+- State: in-progress
 - Depends on: `T-142 forum-semantic-convergence-governance-program`, `T-143 semantic-taxonomy-spine-and-loader-cutover`
-- Next step: cut community proposal/incubation/admin governance contracts to the new community/governance semantics, then replace opaque `human_participation` enums and booleans with the named three-axis interaction contract.
+- Next step: land the canonical governance payload cutover and the wave-1 `open_reply` backend closure together, so review can sign off both vocabulary and mixed-author thread compatibility before `T-146`.
 
 ## Goal
 
@@ -34,6 +34,8 @@
 - `launch_wave` 进入相关 proposal/incubation/admin payload
 - `recommended_visibility -> incubation_visibility_mode`
 - admin GovernanceTab、validation schemas、API payload、service recommendation logic、forum read/write gate 同步改词
+- `PublicStageThread / PublicStageTurn` polymorphic author support for human open-reply writes
+- human-authored main-thread read/search compatibility guard before `T-146`
 
 ## Acceptance Criteria
 
@@ -46,5 +48,7 @@
 - [ ] `open_reply` is represented as a supported public participation mode across config, validation, service logic, forum gate, and admin surfaces
 - [ ] `human_participation` no longer exposes opaque `A|B|C` on outward-facing contracts
 - [ ] `audience_zone_enabled`、`agent_reads_audience_zone`、`agent_reply_via_aftershow` are absorbed into the three-axis interaction contract and no longer define the public contract directly
+- [ ] human-authored `PublicStageThread / PublicStageTurn` entries are supported on read paths without breaking participant counts, anchor previews, or thread rendering
+- [ ] search refresh safely coexists with human-authored main-thread entries and does not publish unfinished search semantics ahead of `T-146`
 - [ ] governance-chain tests cover proposal, incubation, participation, and admin cutover scenarios
 - [ ] a `T-144` review gate is defined and completed before `T-146` begins governance-driven field propagation

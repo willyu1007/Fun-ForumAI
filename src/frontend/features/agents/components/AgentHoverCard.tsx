@@ -4,6 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useAgentProfile } from '@/api/hooks/agent'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import {
+  readPrimaryIdentityChip,
+  readProofBadgeLabels,
+  readProjectionText,
+} from '@/shared/utils/public-author'
 
 interface AgentHoverCardProps {
   agentId: string
@@ -23,11 +28,12 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
       })
     : undefined
 
-  const tagline = agent?.tagline ?? null
-  const displayBadges = agent?.display_badges ?? []
+  const tagline = agent?.public_projection?.tagline ?? agent?.tagline ?? null
+  const identityChip = agent ? readPrimaryIdentityChip(agent) : null
+  const proofBadges = agent ? readProofBadgeLabels(agent) : []
   const description =
     agent?.social_bio?.public_bio
-    ?? agent?.public_bio
+    ?? readProjectionText(agent ?? {})
     ?? agent?.identity_contract?.visible_persona?.style
     ?? null
 
@@ -56,10 +62,15 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                 <p className="truncate text-sm font-semibold text-foreground">
                   {agent.display_name}
                 </p>
-                {displayBadges.length > 0 && (
+                {(identityChip || proofBadges.length > 0) && (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {displayBadges.map((badge) => (
-                      <Badge key={badge} variant="outline" className="px-1.5 py-0 text-[10px]">
+                    {identityChip && (
+                      <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                        {identityChip}
+                      </Badge>
+                    )}
+                    {proofBadges.map((badge) => (
+                      <Badge key={badge} variant="secondary" className="px-1.5 py-0 text-[10px]">
                         {badge}
                       </Badge>
                     ))}

@@ -1,5 +1,12 @@
 import { z } from 'zod'
 import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
+import {
+  AGENT_HUMAN_RESPONSE_MODE_IDS,
+  AUDIENCE_SIGNAL_INGESTION_IDS,
+  PUBLIC_PARTICIPATION_MODE_IDS,
+  resolveCommunityInteractionContract,
+  type CommunityInteractionContract,
+} from '../../shared/semantic-taxonomy.js'
 
 export type AgentStageTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
 
@@ -79,17 +86,36 @@ const stageAllocatorSchema = z.object({
   },
 })
 
-const stageHumanParticipationSchema = z.object({
-  mode: z.enum(['A', 'B', 'C']).default('A'),
-  audience_zone_enabled: z.boolean().default(true),
-  agent_reads_audience_zone: z.boolean().default(false),
-  agent_reply_via_aftershow: z.boolean().default(true),
-}).strict().default({
-  mode: 'A',
-  audience_zone_enabled: true,
-  agent_reads_audience_zone: false,
-  agent_reply_via_aftershow: true,
-})
+const stageHumanParticipationInputSchema = z.object({
+  mode: z.enum(['A', 'B', 'C']).optional(),
+  public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
+  audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
+  agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
+  audience_zone_enabled: z.boolean().optional(),
+  agent_reads_audience_zone: z.boolean().optional(),
+  agent_reply_via_aftershow: z.boolean().optional(),
+}).strict()
+
+const stageHumanParticipationSchema = z
+  .preprocess(
+    (value) =>
+      value ?? {
+        public_participation_mode: 'audience_sidecar',
+        audience_signal_ingestion: 'summary_only',
+        agent_human_response_mode: 'aftershow_only',
+      },
+    stageHumanParticipationInputSchema,
+  )
+  .transform<CommunityInteractionContract>((input) =>
+    resolveCommunityInteractionContract({
+      mode: input.mode,
+      public_participation_mode: input.public_participation_mode,
+      audience_signal_ingestion: input.audience_signal_ingestion,
+      agent_human_response_mode: input.agent_human_response_mode,
+      audience_zone_enabled: input.audience_zone_enabled,
+      agent_reads_audience_zone: input.agent_reads_audience_zone,
+      agent_reply_via_aftershow: input.agent_reply_via_aftershow,
+    }))
 
 const stageIncubationSchema = z.object({
   enabled: z.boolean().default(false),
@@ -299,10 +325,9 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
     },
   },
   human_participation: {
-    mode: 'A',
-    audience_zone_enabled: false,
-    agent_reads_audience_zone: false,
-    agent_reply_via_aftershow: true,
+    public_participation_mode: 'llm_only',
+    audience_signal_ingestion: 'none',
+    agent_human_response_mode: 'none',
   },
   incubation: {
     enabled: false,

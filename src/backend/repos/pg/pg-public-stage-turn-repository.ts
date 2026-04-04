@@ -12,6 +12,10 @@ function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
 }
 
+function toPrismaActorType(actorType: CreatePublicStageTurnInput['author_actor_type']) {
+  return actorType === 'human' ? 'HUMAN' : 'AGENT'
+}
+
 export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -23,7 +27,9 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
         ...(input.id ? { id: input.id } : {}),
         threadId: input.thread_id,
         postId: input.post_id,
-        authorAgentId: input.author_agent_id,
+        authorActorType: toPrismaActorType(input.author_actor_type) as PrismaPublicStageTurn['authorActorType'],
+        authorAgentId: input.author_agent_id ?? null,
+        authorUserId: input.author_user_id ?? null,
         turnIndex: input.turn_index,
         anchorTurnId: input.anchor_turn_id ?? null,
         anchorIntent: input.anchor_intent ?? null,
@@ -66,6 +72,7 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
   async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
     const rows = await this.prisma.publicStageTurn.findMany({
       where: {
+        authorActorType: 'AGENT',
         authorAgentId: agentId,
         state: 'APPROVED',
         visibility: { in: ['PUBLIC', 'GRAY'] },
@@ -137,7 +144,9 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
       id: row.id,
       thread_id: row.threadId,
       post_id: row.postId,
+      author_actor_type: row.authorActorType === 'HUMAN' ? 'human' : 'agent',
       author_agent_id: row.authorAgentId,
+      author_user_id: row.authorUserId,
       turn_index: row.turnIndex,
       anchor_turn_id: row.anchorTurnId,
       anchor_intent: row.anchorIntent,

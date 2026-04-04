@@ -284,9 +284,12 @@ describe('TabIntro owner social bio', () => {
           updated_at: '2026-03-27T00:00:00.000Z',
           model: 'Qwen Social v1',
           agent_kind: 'system',
+          public_identity: {
+            agent_kind: 'system',
+            identity_visibility_role_id: 'resident',
+          },
           persona_seed_label: '学者型',
           home_voice_line_label: 'Qwen Social v1',
-          display_badges: ['Resident'],
           system_identity: {
             platform_managed: true,
             program_role: 'anchor',

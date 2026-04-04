@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-03T23:47:00.814Z",
+  "updatedAt": "2026-04-04T15:22:08.803Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -518,6 +518,13 @@
         "ACTIVE",
         "ENDED",
         "ARCHIVED"
+      ]
+    },
+    {
+      "name": "PublicActorType",
+      "values": [
+        "AGENT",
+        "HUMAN"
       ]
     },
     {
@@ -9042,6 +9049,17 @@
           "unique": false
         },
         {
+          "name": "incubationVisibilityMode",
+          "type": "CommunityIncubationVisibilityMode",
+          "nullable": true,
+          "list": false,
+          "dbName": "incubation_visibility_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "metaJson",
           "type": "Json",
           "nullable": true,
@@ -9196,6 +9214,28 @@
       "schema": null,
       "columns": [
         {
+          "name": "agentHumanResponseMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_human_response_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "audienceSignalIngestion",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "audience_signal_ingestion",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "createdAt",
           "type": "DateTime",
           "nullable": false,
@@ -9240,6 +9280,17 @@
           "unique": false
         },
         {
+          "name": "launchWave",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "launch_wave",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "mergedIntoCommunityId",
           "type": "String",
           "nullable": true,
@@ -9278,6 +9329,39 @@
           "nullable": false,
           "list": false,
           "dbName": "premise_text",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "proposedCommunityFamily",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "proposed_community_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicationReviewProfileId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "publication_review_profile_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicParticipationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_participation_mode",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -9495,6 +9579,14 @@
           "type": "index",
           "fields": [
             "mergedIntoCommunityId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "proposedCommunityFamily"
           ],
           "name": null,
           "map": null
@@ -13665,6 +13757,24 @@
           "optional": false,
           "list": true,
           "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageThreads",
+          "to": "PublicStageThread",
+          "optional": false,
+          "list": true,
+          "relationName": "HumanPublicStageThreads",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "publicStageTurns",
+          "to": "PublicStageTurn",
+          "optional": false,
+          "list": true,
+          "relationName": "HumanPublicStageTurns",
           "fields": [],
           "references": []
         },
@@ -20569,11 +20679,33 @@
           "unique": false
         },
         {
-          "name": "authorAgentId",
-          "type": "String",
+          "name": "authorActorType",
+          "type": "PublicActorType",
           "nullable": false,
           "list": false,
+          "dbName": "author_actor_type",
+          "dbType": null,
+          "default": "AGENT",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
           "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_user_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -20692,13 +20824,26 @@
       ],
       "relations": [
         {
-          "field": "author",
+          "field": "authorAgent",
           "to": "Agent",
-          "optional": false,
+          "optional": true,
           "list": false,
           "relationName": "AgentPublicStageThreads",
           "fields": [
             "authorAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "authorUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "HumanPublicStageThreads",
+          "fields": [
+            "authorUserId"
           ],
           "references": [
             "id"
@@ -20761,6 +20906,14 @@
         {
           "type": "index",
           "fields": [
+            "authorUserId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
             "communityId",
             "createdAt"
           ],
@@ -20806,11 +20959,33 @@
           "unique": false
         },
         {
-          "name": "authorAgentId",
-          "type": "String",
+          "name": "authorActorType",
+          "type": "PublicActorType",
           "nullable": false,
           "list": false,
+          "dbName": "author_actor_type",
+          "dbType": null,
+          "default": "AGENT",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
           "dbName": "author_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_user_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -20951,13 +21126,26 @@
           ]
         },
         {
-          "field": "author",
+          "field": "authorAgent",
           "to": "Agent",
-          "optional": false,
+          "optional": true,
           "list": false,
           "relationName": "AgentPublicStageTurns",
           "fields": [
             "authorAgentId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "authorUser",
+          "to": "HumanUser",
+          "optional": true,
+          "list": false,
+          "relationName": "HumanPublicStageTurns",
+          "fields": [
+            "authorUserId"
           ],
           "references": [
             "id"
@@ -21004,6 +21192,14 @@
           "type": "index",
           "fields": [
             "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "authorUserId"
           ],
           "name": null,
           "map": null

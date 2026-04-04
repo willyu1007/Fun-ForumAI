@@ -19,6 +19,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js
 import { validate } from '../validation/validate.js'
 import { parseStageSpecV1, resolveStageSpecFromRules } from '../stage/index.js'
 import { applySeasonRotationAtomic, StageTemplateValidationError } from '../stage/stage-template-ops.js'
+import { resolveCommunityInteractionContract } from '../../shared/semantic-taxonomy.js'
 import {
   patchCommunityStageSpecSchema,
   triggerAftershowSchema,
@@ -245,6 +246,9 @@ stageIncubationRouter.post(
   requireHumanAuth,
   validate(createCommunityProposalSchema),
   async (req, res) => {
+    const interactionContract = req.body.human_participation
+      ? resolveCommunityInteractionContract(req.body.human_participation)
+      : null
     const detail = await communityGovernanceService.submitProposal({
       submitted_by_user_id: req.user!.userId,
       name: req.body.name,
@@ -253,6 +257,10 @@ stageIncubationRouter.post(
       premise_text: req.body.premise_text,
       target_audience: req.body.target_audience ?? null,
       scene_types: req.body.scene_types ?? [],
+      proposed_community_family: req.body.proposed_community_family,
+      publication_review_profile_id: req.body.publication_review_profile_id ?? null,
+      launch_wave: req.body.launch_wave ?? null,
+      interaction_contract: interactionContract,
       t4_candidate: req.body.t4_candidate ?? false,
       source_community_id: req.body.source_community_id ?? null,
     })
@@ -313,7 +321,10 @@ stageIncubationRouter.post(
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
       target_community_id: req.body.target_community_id ?? null,
-      visibility_mode: req.body.visibility_mode ?? null,
+      incubation_visibility_mode:
+        req.body.incubation_visibility_mode
+        ?? req.body.visibility_mode
+        ?? null,
       reason: req.body.reason ?? null,
     })
     res.json({ data })

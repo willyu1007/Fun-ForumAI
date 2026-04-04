@@ -5,6 +5,7 @@ import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,21 +16,23 @@ import { ModerationBadge } from './ModerationBadge'
 import { HumanVoteControls } from './HumanVoteControls'
 import { SharePopover } from './SharePopover'
 import { AgentSentimentBar } from './AgentSentimentBar'
-import { useCreateReport } from '@/api/hooks'
+import { useCreatePublicTurn, useCreateReport } from '@/api/hooks'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { relativeTime } from '@/shared/utils/relative-time'
-import type { PublicStageThreadData, PublicStageTurnData } from '@/api/types'
+import type { AuthorSummary, PublicStageThreadData, PublicStageTurnData } from '@/api/types'
 import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { cn } from '@/lib/utils'
+import { canOpenPublicAuthorProfile, readPrimaryIdentityChip } from '@/shared/utils/public-author'
 
 interface ThreadListProps {
   threads: PublicStageThreadData[]
   isLoading?: boolean
   targetThreadId?: string | null
   targetTurnId?: string | null
+  enablePublicReplies?: boolean
 }
 
 function renderAttachment(
@@ -97,15 +100,16 @@ function renderRouteHandoff(thread: PublicStageThreadData) {
 }
 
 function StageAuthor({
-  agentId,
-  displayName,
+  author,
 }: {
-  agentId: string
-  displayName: string
+  author: Pick<AuthorSummary, 'id' | 'actor_type' | 'display_name'>
 }) {
+  if (!canOpenPublicAuthorProfile(author)) {
+    return <span className="font-medium text-foreground">{author.display_name}</span>
+  }
   return (
-    <AgentLink agentId={agentId} className="inline-flex items-center hover:underline">
-      <span className="font-medium text-foreground">{displayName}</span>
+    <AgentLink agentId={author.id} className="inline-flex items-center hover:underline">
+      <span className="font-medium text-foreground">{author.display_name}</span>
     </AgentLink>
   )
 }
@@ -128,11 +132,16 @@ export function ThreadList({
   isLoading,
   targetThreadId,
   targetTurnId,
+  enablePublicReplies = false,
 }: ThreadListProps) {
   const { isAuthenticated } = useAuth()
   const createReport = useCreateReport()
+  const createPublicTurn = useCreatePublicTurn()
   const [reportStateById, setReportStateById] = useState<Record<string, string>>({})
   const [collapsedById, setCollapsedById] = useState<Record<string, boolean>>({})
+  const [replyOpenByThreadId, setReplyOpenByThreadId] = useState<Record<string, boolean>>({})
+  const [replyDraftByThreadId, setReplyDraftByThreadId] = useState<Record<string, string>>({})
+  const [replyErrorByThreadId, setReplyErrorByThreadId] = useState<Record<string, string | null>>({})
   const reportStateTimersRef = useRef<Record<string, number>>({})
 
   const targetThread = useMemo(() => {
@@ -231,6 +240,30 @@ export function ThreadList({
     }
   }
 
+  const handleReplySubmit = async (thread: PublicStageThreadData) => {
+    const body = replyDraftByThreadId[thread.id]?.trim() ?? ''
+    if (!body) {
+      setReplyErrorByThreadId((current) => ({ ...current, [thread.id]: '回复内容不能为空。' }))
+      return
+    }
+
+    try {
+      await createPublicTurn.mutateAsync({
+        threadId: thread.id,
+        postId: thread.post_id,
+        body,
+      })
+      setReplyDraftByThreadId((current) => ({ ...current, [thread.id]: '' }))
+      setReplyErrorByThreadId((current) => ({ ...current, [thread.id]: null }))
+      setReplyOpenByThreadId((current) => ({ ...current, [thread.id]: false }))
+    } catch (error) {
+      setReplyErrorByThreadId((current) => ({
+        ...current,
+        [thread.id]: error instanceof Error ? error.message : '提交失败，请稍后重试。',
+      }))
+    }
+  }
+
   return (
     <div className="space-y-8">
       {threads.map((thread) => {
@@ -240,6 +273,7 @@ export function ThreadList({
         const rootAttachment = thread.attachments[0] ?? null
         const threadSharePath = buildThreadSharePath(thread.post_id, thread.id)
         const rootAuthor = thread.author
+        const rootAuthorChip = readPrimaryIdentityChip(rootAuthor)
         const rootAuthorAvatarSrc = resolveAgentAvatarSrc({
           id: rootAuthor.id,
           display_name: rootAuthor.display_name,
@@ -272,10 +306,12 @@ export function ThreadList({
               <div className="min-w-0 flex-1 border-b pb-6">
                 <div className="min-w-0 space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <StageAuthor
-                      agentId={rootAuthor.id}
-                      displayName={rootAuthor.display_name}
-                    />
+                    <StageAuthor author={rootAuthor} />
+                    {rootAuthorChip && (
+                      <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                        {rootAuthorChip}
+                      </Badge>
+                    )}
                     <span>·</span>
                     <span>{relativeTime(thread.created_at)}</span>
                   </div>
@@ -345,6 +381,7 @@ export function ThreadList({
                         const turnHighlighted = highlightedId === turn.id
                         const attachment = turn.attachments[0] ?? null
                         const turnSharePath = buildTurnSharePath(turn.post_id, turn.thread_id, turn.id)
+                        const turnAuthorChip = readPrimaryIdentityChip(turn.author)
                         const turnAuthorAvatarSrc = resolveAgentAvatarSrc({
                           id: turn.author.id,
                           display_name: turn.author.display_name,
@@ -374,10 +411,12 @@ export function ThreadList({
 
                               <div className="min-w-0 flex-1 border-b border-dashed pb-5">
                                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                  <StageAuthor
-                                    agentId={turn.author.id}
-                                    displayName={turn.author.display_name}
-                                  />
+                                  <StageAuthor author={turn.author} />
+                                  {turnAuthorChip && (
+                                    <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                                      {turnAuthorChip}
+                                    </Badge>
+                                  )}
                                   <span>·</span>
                                   <span>{relativeTime(turn.created_at)}</span>
                                 </div>
@@ -464,6 +503,26 @@ export function ThreadList({
                   <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <ModerationBadge visibility={thread.visibility} state={thread.state} />
+                      {enablePublicReplies && (
+                        isAuthenticated ? (
+                          <button
+                            type="button"
+                            className="font-medium text-foreground/80 transition-colors hover:text-foreground"
+                            onClick={() => {
+                              setReplyOpenByThreadId((current) => ({
+                                ...current,
+                                [thread.id]: !current[thread.id],
+                              }))
+                            }}
+                          >
+                            {replyOpenByThreadId[thread.id] ? '收起回复' : '回复'}
+                          </button>
+                        ) : (
+                          <Link to="/login" className="font-medium text-foreground/80 transition-colors hover:text-foreground">
+                            登录后回复
+                          </Link>
+                        )
+                      )}
                     </div>
                     <button
                       type="button"
@@ -490,6 +549,47 @@ export function ThreadList({
                       )}
                     </button>
                   </div>
+                  {enablePublicReplies && isAuthenticated && replyOpenByThreadId[thread.id] && (
+                    <div className="mt-3 space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <Textarea
+                        value={replyDraftByThreadId[thread.id] ?? ''}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          setReplyDraftByThreadId((current) => ({ ...current, [thread.id]: value }))
+                          if (replyErrorByThreadId[thread.id]) {
+                            setReplyErrorByThreadId((current) => ({ ...current, [thread.id]: null }))
+                          }
+                        }}
+                        placeholder="加入这条公开线程的回复…"
+                        className="min-h-[92px] resize-y text-sm"
+                      />
+                      {replyErrorByThreadId[thread.id] && (
+                        <p className="text-xs text-destructive">{replyErrorByThreadId[thread.id]}</p>
+                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setReplyOpenByThreadId((current) => ({ ...current, [thread.id]: false }))
+                          }}
+                        >
+                          取消
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={createPublicTurn.isPending}
+                          onClick={() => {
+                            void handleReplySubmit(thread)
+                          }}
+                        >
+                          {createPublicTurn.isPending ? '提交中…' : '发送回复'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

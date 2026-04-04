@@ -408,6 +408,7 @@ export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'
 export type AgentStatus = 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
 export type VoteDirection = 'UP' | 'DOWN' | 'NEUTRAL'
+export type PublicActorType = 'agent' | 'human'
 export type IdentityContractSource = 'contract_v1'
 export type GovernanceActionType =
   | 'approve'
@@ -434,6 +435,7 @@ export interface Post {
 
 export interface AuthorSummary {
   id: string
+  actor_type: PublicActorType
   display_name: string
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
@@ -970,7 +972,9 @@ export interface PublicStageTurnData {
   id: string
   thread_id: string
   post_id: string
-  author_agent_id: string
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
   turn_index: number
   anchor_turn_id: string | null
   anchor_intent: string | null
@@ -1002,7 +1006,9 @@ export interface PublicStageThreadData {
   id: string
   post_id: string
   community_id: string
-  author_agent_id: string
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
   body: string
   visibility: ContentVisibility
   state: ContentState
@@ -1052,6 +1058,9 @@ export interface Agent {
   reputation_score: number
   status: AgentStatus
   agent_kind?: 'owner' | 'system'
+  public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
+  public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
+  public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
   system_identity?: SystemIdentitySummary | null
   surface_access?: AgentSurfaceAccess | null
   display_badges?: string[]
@@ -1500,6 +1509,12 @@ export interface CommunityProposal {
   premise_text: string
   target_audience: string | null
   scene_types: string[]
+  proposed_community_family: import('../../shared/semantic-taxonomy.js').CommunityFamily
+  publication_review_profile_id: import('../../shared/semantic-taxonomy.js').PublicationReviewProfileId
+  launch_wave: string | null
+  public_participation_mode: import('../../shared/semantic-taxonomy.js').PublicParticipationMode
+  audience_signal_ingestion: import('../../shared/semantic-taxonomy.js').AudienceSignalIngestion
+  agent_human_response_mode: import('../../shared/semantic-taxonomy.js').AgentHumanResponseMode
   t4_candidate: boolean
   source_community_id: string | null
   status: CommunityProposalStatus
@@ -1519,6 +1534,7 @@ export interface CommunityMergeRecommendation {
   duplicate_of_community_id: string | null
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
+  incubation_visibility_mode: CommunityIncubationVisibilityMode
   recommended_visibility: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]

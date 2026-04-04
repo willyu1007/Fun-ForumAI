@@ -21,10 +21,25 @@ describe('E2E: Community Proposal Control Plane', () => {
         premise_text: '先用白名单验证关系型节目入口是否成立。',
         target_audience: '首发测试观众',
         scene_types: ['ROUND_TABLE', 'TALK_SHOW'],
-        t4_candidate: false,
+        proposed_community_family: 'creator_relationship',
+        publication_review_profile_id: 'creator_strict_publication',
+        launch_wave: 'incubation_wave_1',
+        human_participation: {
+          public_participation_mode: 'open_reply',
+          audience_signal_ingestion: 'direct_read',
+          agent_human_response_mode: 'direct_reply',
+        },
       })
     expect(submitRes.status).toBe(201)
     const proposalId = submitRes.body.data.proposal.id as string
+    expect(submitRes.body.data.proposal).toMatchObject({
+      proposed_community_family: 'creator_relationship',
+      publication_review_profile_id: 'creator_strict_publication',
+      launch_wave: 'incubation_wave_1',
+      public_participation_mode: 'open_reply',
+      audience_signal_ingestion: 'direct_read',
+      agent_human_response_mode: 'direct_reply',
+    })
 
     const listRes = await request(app)
       .get('/v1/community-proposals')
@@ -37,7 +52,7 @@ describe('E2E: Community Proposal Control Plane', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         action: 'incubate',
-        visibility_mode: 'WHITELIST_ONLY',
+        incubation_visibility_mode: 'WHITELIST_ONLY',
       })
     expect(incubateRes.status).toBe(200)
     const incubatedCommunityId = incubateRes.body.data.community.id as string

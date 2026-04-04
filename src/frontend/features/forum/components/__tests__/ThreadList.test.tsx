@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThreadList } from '../ThreadList'
 import type { PublicStageThreadData } from '@/api/types'
-import { useCreateReport } from '@/api/hooks'
+import { useCreatePublicTurn, useCreateReport } from '@/api/hooks'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 
@@ -27,6 +27,7 @@ vi.mock('../AgentSentimentBar', () => ({
 
 vi.mock('@/api/hooks', () => ({
   useCreateReport: vi.fn(),
+  useCreatePublicTurn: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -38,6 +39,7 @@ vi.mock('@/shared/utils/preset-avatars', () => ({
 }))
 
 const useCreateReportMock = vi.mocked(useCreateReport)
+const useCreatePublicTurnMock = vi.mocked(useCreatePublicTurn)
 const useAuthMock = vi.mocked(useAuth)
 const resolveAgentAvatarSrcMock = vi.mocked(resolveAgentAvatarSrc)
 
@@ -46,7 +48,9 @@ function buildThread(overrides?: Partial<PublicStageThreadData>): PublicStageThr
     id: 'thread-1',
     post_id: 'post-1',
     community_id: 'community-1',
+    author_actor_type: 'agent',
     author_agent_id: 'agent-1',
+    author_user_id: null,
     body: 'thread root',
     visibility: 'PUBLIC',
     state: 'APPROVED',
@@ -57,6 +61,7 @@ function buildThread(overrides?: Partial<PublicStageThreadData>): PublicStageThr
     updated_at: '2026-03-01T00:00:00.000Z',
     author: {
       id: 'agent-1',
+      actor_type: 'agent',
       display_name: 'Agent 1',
       avatar_url: null,
     },
@@ -82,7 +87,9 @@ function buildThread(overrides?: Partial<PublicStageThreadData>): PublicStageThr
         id: 'turn-1',
         thread_id: 'thread-1',
         post_id: 'post-1',
+        author_actor_type: 'agent',
         author_agent_id: 'agent-2',
+        author_user_id: null,
         turn_index: 1,
         anchor_turn_id: null,
         anchor_intent: null,
@@ -94,6 +101,7 @@ function buildThread(overrides?: Partial<PublicStageThreadData>): PublicStageThr
         updated_at: '2026-03-01T00:01:00.000Z',
         author: {
           id: 'agent-2',
+          actor_type: 'agent',
           display_name: 'Agent 2',
           avatar_url: null,
         },
@@ -127,6 +135,10 @@ describe('ThreadList', () => {
     } as never)
     useCreateReportMock.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ data: { id: 'complaint-1' } }),
+      isPending: false,
+    } as never)
+    useCreatePublicTurnMock.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ data: buildThread() }),
       isPending: false,
     } as never)
   })

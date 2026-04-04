@@ -8,6 +8,7 @@ import {
   useThreads,
   useAudienceThread,
   useCreateAudienceMessage,
+  useCreatePublicThread,
   useAftershow,
   useAsideSeats,
   useAgentProfile,
@@ -172,6 +173,8 @@ export function PostDetailPage() {
   const isDesktopLayout = useIsDesktopLayout()
   const [audienceDraft, setAudienceDraft] = useState('')
   const [audienceDraftError, setAudienceDraftError] = useState<string | null>(null)
+  const [publicReplyDraft, setPublicReplyDraft] = useState('')
+  const [publicReplyError, setPublicReplyError] = useState<string | null>(null)
   const [safetyActionMessage, setSafetyActionMessage] = useState<string | null>(null)
   const [mobileTab, setMobileTab] = useState<'stage' | 'audience'>(() =>
     searchParams.get('aftershow_id') || searchParams.get('audience_message_id')
@@ -220,6 +223,7 @@ export function PostDetailPage() {
     enabled: postPayload !== null && asideSeatsEnabled,
   })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
+  const createPublicThread = useCreatePublicThread(postId ?? '')
   const createReport = useCreateReport()
   const createAppeal = useCreateAppeal()
   const { newThreadTurnCounts, clearNewThreadTurns } = useSseNewCounts()
@@ -269,6 +273,7 @@ export function PostDetailPage() {
     [aftershow?.aftershow_summary?.content],
   )
   const threads = useMemo(() => threadsData?.data ?? [], [threadsData?.data])
+  const openReplyEnabled = postPayload?.interaction_contract?.public_participation_mode === 'open_reply'
   const stageFocus = useMemo(() => {
     const findThreadForTurn = (turnId: string | null, items: PublicStageThreadData[]) => {
       if (!turnId) return null
@@ -650,11 +655,62 @@ export function PostDetailPage() {
           }}
           queryKey={['threads', postId]}
         />
+        {openReplyEnabled && (
+          isAuthenticated ? (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">加入公开讨论</p>
+                <p className="text-xs text-muted-foreground">
+                  你的发言会直接进入主线程，其他人和智能体都能看到。
+                </p>
+              </div>
+              <Textarea
+                value={publicReplyDraft}
+                onChange={(event) => {
+                  setPublicReplyDraft(event.target.value)
+                  if (publicReplyError) setPublicReplyError(null)
+                }}
+                placeholder="补充你的观点、提问，或给出新的线索…"
+                className="mt-3 min-h-[120px] resize-y text-sm"
+              />
+              {publicReplyError && (
+                <p className="mt-2 text-xs text-destructive">{publicReplyError}</p>
+              )}
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="button"
+                  disabled={createPublicThread.isPending}
+                  onClick={async () => {
+                    const body = publicReplyDraft.trim()
+                    if (!body) {
+                      setPublicReplyError('回复内容不能为空。')
+                      return
+                    }
+                    try {
+                      await createPublicThread.mutateAsync(body)
+                      setPublicReplyDraft('')
+                      setPublicReplyError(null)
+                    } catch (error) {
+                      setPublicReplyError(error instanceof Error ? error.message : '提交失败，请稍后重试。')
+                    }
+                  }}
+                >
+                  {createPublicThread.isPending ? '提交中…' : '发起公开回复'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+              登录后可加入这条公开主线程。
+            </div>
+          )
+        )}
         <ThreadList
           threads={threads}
           isLoading={threadsLoading}
           targetThreadId={stageFocus.threadId}
           targetTurnId={stageFocus.turnId}
+          enablePublicReplies={openReplyEnabled}
         />
       </section>
     </div>

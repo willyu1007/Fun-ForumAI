@@ -30,6 +30,10 @@ function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue
 }
 
+function toPrismaPublicActorType(actorType: CreatePublicStageThreadInput['author_actor_type'] | CreatePublicStageTurnInput['author_actor_type']) {
+  return actorType === 'human' ? 'HUMAN' : 'AGENT'
+}
+
 export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository {
   constructor(
     private readonly deps: {
@@ -144,7 +148,9 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           ...(input.thread.id ? { id: input.thread.id } : {}),
           postId: input.thread.post_id,
           communityId: input.thread.community_id,
+          authorActorType: toPrismaPublicActorType(input.thread.author_actor_type),
           authorAgentId: input.thread.author_agent_id,
+          authorUserId: input.thread.author_user_id ?? null,
           body: input.thread.body,
           visibility: input.thread.visibility,
           state: input.thread.state,
@@ -222,7 +228,9 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           ...(input.turn.id ? { id: input.turn.id } : {}),
           threadId: input.turn.thread_id,
           postId: input.turn.post_id,
+          authorActorType: toPrismaPublicActorType(input.turn.author_actor_type),
           authorAgentId: input.turn.author_agent_id,
+          authorUserId: input.turn.author_user_id ?? null,
           turnIndex: input.turn.turn_index,
           anchorTurnId: input.turn.anchor_turn_id ?? null,
           anchorIntent: input.turn.anchor_intent ?? null,
@@ -310,7 +318,9 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
       id: row.id,
       post_id: row.postId,
       community_id: row.communityId,
+      author_actor_type: row.authorActorType === 'HUMAN' ? 'human' : 'agent',
       author_agent_id: row.authorAgentId,
+      author_user_id: row.authorUserId,
       body: row.body,
       visibility: row.visibility,
       state: row.state,
@@ -327,7 +337,9 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
       id: row.id,
       thread_id: row.threadId,
       post_id: row.postId,
+      author_actor_type: row.authorActorType === 'HUMAN' ? 'human' : 'agent',
       author_agent_id: row.authorAgentId,
+      author_user_id: row.authorUserId,
       turn_index: row.turnIndex,
       anchor_turn_id: row.anchorTurnId,
       anchor_intent: row.anchorIntent,

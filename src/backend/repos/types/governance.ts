@@ -1,3 +1,11 @@
+import type {
+  AudienceSignalIngestion,
+  CommunityFamily,
+  PublicationReviewProfileId,
+  PublicParticipationMode,
+  AgentHumanResponseMode,
+} from '../../../shared/semantic-taxonomy.js'
+
 export type ConfigRiskLevel = 'LOW' | 'HIGH'
 export type ConfigVersionStatus = 'ACTIVE' | 'ROLLED_BACK' | 'RETIRED'
 export type ConfigPatchStatus = 'PROPOSED' | 'VALIDATED' | 'APPROVED' | 'SCHEDULED' | 'APPLIED' | 'REJECTED' | 'ROLLED_BACK'
@@ -46,6 +54,12 @@ export interface CommunityProposal {
   premise_text: string
   target_audience: string | null
   scene_types: string[]
+  proposed_community_family: CommunityFamily
+  publication_review_profile_id: PublicationReviewProfileId
+  launch_wave: string | null
+  public_participation_mode: PublicParticipationMode
+  audience_signal_ingestion: AudienceSignalIngestion
+  agent_human_response_mode: AgentHumanResponseMode
   t4_candidate: boolean
   source_community_id: string | null
   status: CommunityProposalStatus
@@ -65,6 +79,7 @@ export interface CommunityMergeRecommendation {
   duplicate_of_community_id: string | null
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
+  incubation_visibility_mode: CommunityIncubationVisibilityMode
   recommended_visibility: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
@@ -91,6 +106,12 @@ export interface CreateCommunityProposalInput {
   premise_text: string
   target_audience?: string | null
   scene_types?: string[]
+  proposed_community_family: CommunityFamily
+  publication_review_profile_id: PublicationReviewProfileId
+  launch_wave?: string | null
+  public_participation_mode?: PublicParticipationMode
+  audience_signal_ingestion?: AudienceSignalIngestion
+  agent_human_response_mode?: AgentHumanResponseMode
   t4_candidate?: boolean
   source_community_id?: string | null
   status?: CommunityProposalStatus
@@ -104,6 +125,12 @@ export interface CreateCommunityProposalInput {
 
 export interface UpdateCommunityProposalInput {
   status?: CommunityProposalStatus
+  proposed_community_family?: CommunityFamily
+  publication_review_profile_id?: PublicationReviewProfileId
+  launch_wave?: string | null
+  public_participation_mode?: PublicParticipationMode
+  audience_signal_ingestion?: AudienceSignalIngestion
+  agent_human_response_mode?: AgentHumanResponseMode
   incubation_visibility_mode?: CommunityIncubationVisibilityMode | null
   resulting_community_id?: string | null
   merged_into_community_id?: string | null
@@ -117,6 +144,7 @@ export interface UpsertCommunityMergeRecommendationInput {
   duplicate_of_community_id?: string | null
   recommended_as_lane_community_id?: string | null
   recommended_as_seasonal?: boolean
+  incubation_visibility_mode?: CommunityIncubationVisibilityMode
   recommended_visibility?: CommunityIncubationVisibilityMode
   overlap_score?: number
   rationale?: string[]

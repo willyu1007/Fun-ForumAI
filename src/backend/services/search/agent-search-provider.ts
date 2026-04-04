@@ -1,7 +1,7 @@
 import { buildAgentTarget } from '../../../shared/agent-target.js'
 import type { SearchAgentItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, SearchDocRepository } from '../../repos/index.js'
-import { buildAgentSystemDisplayFields } from '../../launch/system-roster.js'
+import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -86,7 +86,18 @@ export class AgentSearchProvider implements SearchProvider {
       { reason: '命中社交信号', code: 'social_signal', field: 'social_signal', value: hitDoc.social_signal_text },
     ], { fallback_text: snippetSource })
     const latestConfig = this.deps.agentConfigRepo.findLatest(hitDoc.agent_id)
-    const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+    const authorPresentation = buildAgentPublicAuthorPresentation({
+      agent: {
+        id: hitDoc.agent_id,
+        display_name: hitDoc.display_name,
+        avatar_url: hitDoc.avatar_url,
+      },
+      latest_config: latestConfig,
+      tagline: hitDoc.public_tagline,
+      public_bio: hitDoc.public_bio,
+      public_projection_hint: hitDoc.public_projection_hint,
+      badges: hitDoc.public_badges,
+    })
     return {
       type: 'agent',
       id: hitDoc.agent_id,
@@ -97,15 +108,18 @@ export class AgentSearchProvider implements SearchProvider {
       display_name: hitDoc.display_name,
       avatar_url: hitDoc.avatar_url,
       status: hitDoc.status,
-      agent_kind: displayFields.agent_kind,
-      system_identity: displayFields.system_identity,
-      surface_access: displayFields.surface_access,
-      display_badges: displayFields.display_badges,
+      agent_kind: authorPresentation.agent_kind,
+      public_identity: authorPresentation.public_identity,
+      public_projection: authorPresentation.public_projection,
+      public_proof: authorPresentation.public_proof,
+      system_identity: authorPresentation.system_identity,
+      surface_access: authorPresentation.surface_access,
+      display_badges: authorPresentation.display_badges,
       persona_seed_label: hitDoc.persona_seed_label,
       home_voice_line_label: hitDoc.home_voice_line_label,
-      tagline: hitDoc.public_tagline,
-      public_bio: hitDoc.public_bio,
-      badges: hitDoc.public_badges,
+      tagline: authorPresentation.tagline ?? null,
+      public_bio: authorPresentation.public_bio ?? null,
+      badges: authorPresentation.badges ?? [],
       active_communities: hitDoc.active_communities,
       public_activity_score: hitDoc.public_activity_score,
       is_followed: followedAgentIds?.has(hitDoc.agent_id) ?? false,

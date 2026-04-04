@@ -168,7 +168,10 @@ describe('SearchPage', () => {
           display_name: 'Agent 1',
           avatar_url: null,
           status: 'ACTIVE',
-          display_badges: ['Resident'],
+          public_identity: {
+            agent_kind: 'system',
+            identity_visibility_role_id: 'resident',
+          },
           persona_seed_label: '毒舌主持',
           home_voice_line_label: '总能接住梗',
           tagline: '会把火花抬高半格',

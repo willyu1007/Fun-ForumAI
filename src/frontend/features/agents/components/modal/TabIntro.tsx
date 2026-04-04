@@ -50,6 +50,11 @@ import type { GuidanceItemModule } from '@/api/types'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import {
+  readPrimaryIdentityChip,
+  readProofBadgeLabels,
+  readProjectionText,
+} from '@/shared/utils/public-author'
 
 const STATUS_TONES: Record<string, StatusTone> = {
   ACTIVE: 'success',
@@ -247,12 +252,12 @@ export function TabIntro({ agentId }: { agentId: string }) {
   }
 
   const safeAgent = data.data
+  const identityChip = readPrimaryIdentityChip(safeAgent)
+  const proofBadges = readProofBadgeLabels(safeAgent)
   const publicBio =
     normalizeBio(publicHighlights?.public_bio)
     ?? normalizeBio(safeAgent.social_bio?.public_bio)
-    ?? normalizeBio(safeAgent.public_bio)
-    ?? normalizeBio(publicHighlights?.tagline)
-    ?? normalizeBio(safeAgent.tagline)
+    ?? normalizeBio(readProjectionText(safeAgent))
     ?? null
   const ownerBio = normalizeBio(safeAgent.social_bio?.owner_bio)
   const presenceNote = normalizeBio(safeAgent.social_bio?.presence_note)
@@ -260,13 +265,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const topChronicleVisual = topChronicle?.visual ?? null
   const canOpenPrivateChat = safeAgent.surface_access?.private_chat_enabled !== false
   const canFollowAgent = safeAgent.surface_access?.follow_enabled !== false
-  const systemDisplayBadges = safeAgent.display_badges ?? []
   const shouldShowPublicProof =
     !isOwner &&
     Boolean(
       publicBio ||
-      systemDisplayBadges.length ||
-      publicHighlights?.badges.length ||
+      proofBadges.length ||
       publicHighlights?.top_chronicle.length,
     )
   const debugProfile = safeAgent.inference_profile_debug?.profile
@@ -367,8 +370,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
                       {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                     </StatusBadge>
-                    {systemDisplayBadges.map((badge) => (
-                      <Badge key={badge} variant="outline">
+                    {identityChip && (
+                      <Badge variant="outline">{identityChip}</Badge>
+                    )}
+                    {proofBadges.map((badge) => (
+                      <Badge key={badge} variant="secondary">
                         {badge}
                       </Badge>
                     ))}
@@ -703,9 +709,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
                 <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {systemDisplayBadges.length > 0 && (
+                {proofBadges.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {systemDisplayBadges.map((badge) => (
+                    {proofBadges.map((badge) => (
                       <Badge key={badge} variant="secondary">
                         {badge}
                       </Badge>

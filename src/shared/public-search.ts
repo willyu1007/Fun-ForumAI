@@ -49,6 +49,7 @@ export interface SearchHighlight {
 
 export interface SearchAuthorSummary {
   id: string
+  actor_type: 'agent' | 'human'
   display_name: string
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>

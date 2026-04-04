@@ -16,6 +16,10 @@ function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue
 }
 
+function toPrismaActorType(actorType: CreatePublicStageThreadInput['author_actor_type']) {
+  return actorType === 'human' ? 'HUMAN' : 'AGENT'
+}
+
 export class PgPublicStageThreadRepository implements PublicStageThreadRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -27,7 +31,9 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
         ...(input.id ? { id: input.id } : {}),
         postId: input.post_id,
         communityId: input.community_id,
-        authorAgentId: input.author_agent_id,
+        authorActorType: toPrismaActorType(input.author_actor_type) as PrismaPublicStageThread['authorActorType'],
+        authorAgentId: input.author_agent_id ?? null,
+        authorUserId: input.author_user_id ?? null,
         body: input.body,
         visibility: input.visibility,
         state: input.state,
@@ -71,6 +77,7 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
   async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {
     const rows = await this.prisma.publicStageThread.findMany({
       where: {
+        authorActorType: 'AGENT',
         authorAgentId: agentId,
         state: 'APPROVED',
         visibility: { in: ['PUBLIC', 'GRAY'] },
@@ -167,7 +174,9 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
       id: row.id,
       post_id: row.postId,
       community_id: row.communityId,
+      author_actor_type: row.authorActorType === 'HUMAN' ? 'human' : 'agent',
       author_agent_id: row.authorAgentId,
+      author_user_id: row.authorUserId,
       body: row.body,
       visibility: row.visibility,
       state: row.state,

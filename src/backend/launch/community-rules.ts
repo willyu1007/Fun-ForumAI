@@ -269,6 +269,7 @@ export function resolveLaunchCommunityInteractionContract(
 
   const record = humanParticipation as Record<string, unknown>
   return resolveCommunityInteractionContract({
+    mode: readTrimmedString(record.mode),
     public_participation_mode: readTrimmedString(record.public_participation_mode),
     audience_signal_ingestion: readTrimmedString(record.audience_signal_ingestion),
     agent_human_response_mode: readTrimmedString(record.agent_human_response_mode),
@@ -500,25 +501,38 @@ export function buildGovernedCommunityRulesSkeleton(input: {
   premise_text: string
   target_audience?: string | null
   scene_types?: string[]
+  proposed_community_family: CommunitySemanticContract['community_family']
+  publication_review_profile_id?: CommunitySemanticContract['publication_review_profile_id'] | null
+  launch_wave?: string | null
+  interaction_contract?: CommunityInteractionContract | null
   t4_candidate?: boolean
   lifecycle_state: CommunityLifecycleState
   incubation_visibility_mode?: CommunityIncubationVisibilityMode | null
 }): Record<string, unknown> {
   const slug = input.slug?.trim() || slugifyProposalName(input.name)
   const sceneTypes = input.scene_types?.filter((item) => item.trim().length > 0) ?? []
+  const publicationReviewProfileId =
+    input.publication_review_profile_id
+    ?? derivePublicationReviewProfileId(input.proposed_community_family)
+  const interactionContract =
+    input.interaction_contract
+    ?? resolveCommunityInteractionContract({})
+  const strictPublication =
+    publicationReviewProfileId === 'creator_strict_publication'
+    || input.proposed_community_family.startsWith('creator_')
   const defaultSceneMix = sceneTypes.length > 0
     ? Object.fromEntries(sceneTypes.map((sceneType) => [sceneType, Number((1 / sceneTypes.length).toFixed(4))]))
     : { TALK_SHOW: 1 }
   const stageSpec = parseStageSpecV1({
     version: 'v1',
-    min_tier_pool: input.t4_candidate ? 'T3' : 'T2',
+    min_tier_pool: strictPublication ? 'T3' : 'T2',
     tier_gate: {
-      resident_min_tier: input.t4_candidate ? 'T3' : 'T2',
-      core_min_tier: input.t4_candidate ? 'T4' : 'T3',
+      resident_min_tier: strictPublication ? 'T3' : 'T2',
+      core_min_tier: strictPublication ? 'T4' : 'T3',
       t4_longform_min_tier: 'T4',
     },
     strict_t4: {
-      enabled: input.t4_candidate ?? false,
+      enabled: strictPublication || input.t4_candidate === true,
       premod_required: true,
       min_sources: 3,
       grant_required: true,
@@ -533,20 +547,23 @@ export function buildGovernedCommunityRulesSkeleton(input: {
         human_vote_score: 4,
       },
     },
+    human_participation: interactionContract,
   })
 
   const rulesJson = {
     community_lifecycle_state: input.lifecycle_state,
     launch_profile: {
-      community_type: input.t4_candidate ? 'governed_t4_incubation' : 'governed_incubation',
+      community_type: input.proposed_community_family,
+      community_family: input.proposed_community_family,
+      community_shell_category: deriveCommunityShellCategory(input.proposed_community_family),
       headline_priority: 20,
       show_on_home: false,
-      launch_phase: input.lifecycle_state,
-      launch_wave: input.lifecycle_state,
+      launch_phase: input.launch_wave ?? input.lifecycle_state,
+      launch_wave: input.launch_wave ?? input.lifecycle_state,
       editorial_shelf: [],
       default_editorial_shelf_ids: [],
-      publication_review_profile_id: input.t4_candidate ? 'creator_strict_publication' : 'standard_publication',
-      source_contract: 't141_proposal_bootstrap',
+      publication_review_profile_id: publicationReviewProfileId,
+      source_contract: 't144_proposal_bootstrap',
       governed_slug: slug,
     },
     content_contract: {
@@ -566,20 +583,20 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       min_resident_anchor: 1,
       min_resident_contrast: 1,
       min_guest_crossovers: 0,
-      wildcard_probability: input.t4_candidate ? 0.1 : 0.2,
-      must_have_runtime_roles: input.t4_candidate ? ['t4_blogger', 'editor'] : ['anchor'],
+      wildcard_probability: strictPublication ? 0.1 : 0.2,
+      must_have_runtime_roles: strictPublication ? ['t4_blogger', 'editor'] : ['anchor'],
       forbidden_pairings: [],
     },
     visual_policy: {
-      root_cover_probability: input.t4_candidate ? 0.2 : 0.1,
+      root_cover_probability: strictPublication ? 0.2 : 0.1,
       reply_image_probability: 0,
       highlight_hero_required: false,
       aftershow_visual_required: false,
-      preferred_visual_modes: input.t4_candidate ? ['t4_note_card'] : ['headline_card'],
+      preferred_visual_modes: strictPublication ? ['t4_note_card'] : ['headline_card'],
     },
     quality_policy: {
       max_same_topic_repeats_per_24h: 2,
-      min_opposition_density: input.t4_candidate ? 0.1 : 0.2,
+      min_opposition_density: strictPublication ? 0.1 : 0.2,
       repeat_penalty_multiplier: 0.85,
       polite_consensus_penalty: 0.8,
       low_watchability_deboost: 0.75,
@@ -588,17 +605,17 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       homepage_boost: 0.2,
       hot_feed_bias: 0.2,
       new_feed_bias: 0.4,
-      t4_feed_bias: input.t4_candidate ? 1 : 0,
+      t4_feed_bias: strictPublication ? 1 : 0,
       cross_community_route_bias: 0.5,
     },
     cross_route_policy: {
       handoff_targets: [],
       preferred_spinoff_communities: [],
       allow_aftershow_export: false,
-      allow_t4_rewrite: input.t4_candidate ?? false,
+      allow_t4_rewrite: strictPublication || input.t4_candidate === true,
     },
     t4_policy: {
-      enabled: input.t4_candidate ?? false,
+      enabled: strictPublication || input.t4_candidate === true,
     },
     governance_policy: {
       default_visibility: input.lifecycle_state === 'incubating_gray' ? 'GRAY' : 'PUBLIC',

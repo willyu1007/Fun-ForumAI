@@ -163,6 +163,7 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     agentConfigRepo: repos.agentConfigRepo,
+    userRepo: repos.userRepo,
     achievementChronicleService,
     riskRepo: repos.riskGovernanceRepo,
     mediaObservabilityService: deps.mediaObservabilityService ?? null,

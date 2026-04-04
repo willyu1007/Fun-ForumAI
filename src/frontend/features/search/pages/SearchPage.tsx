@@ -37,6 +37,12 @@ import {
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import {
+  canOpenPublicAuthorProfile,
+  readPrimaryIdentityChip,
+  readProofBadgeLabels,
+  readProjectionText,
+} from '@/shared/utils/public-author'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 const TAB_LABELS: Record<SearchTab, string> = {
@@ -102,21 +108,29 @@ const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_
 function SearchAgentIdentity({
   author,
   interactive = true,
+  showProof = false,
 }: {
   author: SearchAuthorSummary
   interactive?: boolean
+  showProof?: boolean
 }) {
-  const displayBadges = author.display_badges ?? []
+  const identityChip = readPrimaryIdentityChip(author)
+  const proofChip = showProof ? readProofBadgeLabels(author)[0] ?? null : null
 
   if (!interactive) {
     return (
       <>
         <span className="font-medium text-foreground/80">{author.display_name}</span>
-        {displayBadges.slice(0, 1).map((badge) => (
-          <Badge key={badge} variant="outline" className="px-1 py-0 text-[9px]">
-            {badge}
+        {identityChip && (
+          <Badge variant="outline" className="px-1 py-0 text-[9px]">
+            {identityChip}
           </Badge>
-        ))}
+        )}
+        {proofChip && (
+          <Badge variant="secondary" className="px-1 py-0 text-[9px]">
+            {proofChip}
+          </Badge>
+        )}
       </>
     )
   }
@@ -136,31 +150,45 @@ function SearchAgentIdentity({
 
   return (
     <>
-      <AgentHoverCard agentId={author.id}>
-        <AgentLink
-          agentId={author.id}
-          data-stop-row-click
-          aria-label="打开头像入口"
-          aria-description={author.display_name}
-          className="shrink-0 hover:no-underline"
-        >
+      {canOpenPublicAuthorProfile(author) ? (
+        <>
+          <AgentHoverCard agentId={author.id}>
+            <AgentLink
+              agentId={author.id}
+              data-stop-row-click
+              aria-label="打开头像入口"
+              aria-description={author.display_name}
+              className="shrink-0 hover:no-underline"
+            >
+              {avatar}
+            </AgentLink>
+          </AgentHoverCard>
+          <AgentHoverCard agentId={author.id}>
+            <AgentLink
+              agentId={author.id}
+              data-stop-row-click
+              className="font-medium text-foreground/80 hover:underline"
+            >
+              {author.display_name}
+            </AgentLink>
+          </AgentHoverCard>
+        </>
+      ) : (
+        <>
           {avatar}
-        </AgentLink>
-      </AgentHoverCard>
-      <AgentHoverCard agentId={author.id}>
-        <AgentLink
-          agentId={author.id}
-          data-stop-row-click
-          className="font-medium text-foreground/80 hover:underline"
-        >
-          {author.display_name}
-        </AgentLink>
-      </AgentHoverCard>
-      {displayBadges.slice(0, 1).map((badge) => (
-        <Badge key={badge} variant="outline" className="px-1 py-0 text-[9px]">
-          {badge}
+          <span className="font-medium text-foreground/80">{author.display_name}</span>
+        </>
+      )}
+      {identityChip && (
+        <Badge variant="outline" className="px-1 py-0 text-[9px]">
+          {identityChip}
         </Badge>
-      ))}
+      )}
+      {proofChip && (
+        <Badge variant="secondary" className="px-1 py-0 text-[9px]">
+          {proofChip}
+        </Badge>
+      )}
     </>
   )
 }
@@ -174,7 +202,8 @@ function PostResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at)
-  const canLinkAuthor = item.author_visibility === 'full'
+  const showProof = item.match_reason_codes.includes('author_badge')
+  const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
 
   return (
     <article
@@ -201,6 +230,7 @@ function PostResultRow({
             <SearchAgentIdentity
               author={item.author}
               interactive={canLinkAuthor}
+              showProof={showProof}
             />
             {time && (
               <>
@@ -337,6 +367,11 @@ function AgentResultRow({
     display_name: item.display_name,
     avatar_url: item.avatar_url,
   })
+  const identityChip = readPrimaryIdentityChip(item)
+  const proofChips = item.match_reason_codes.includes('author_badge')
+    ? readProofBadgeLabels(item).slice(0, 1)
+    : []
+  const projectionText = readProjectionText(item) ?? item.persona_seed_label
 
   return (
     <article
@@ -375,15 +410,20 @@ function AgentResultRow({
                 {item.display_name}
               </AgentLink>
             </AgentHoverCard>
-            {item.display_badges?.slice(0, 2).map((badge) => (
-              <Badge key={badge} variant="outline" className="px-1 py-0 text-[9px]">
+            {identityChip && (
+              <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                {identityChip}
+              </Badge>
+            )}
+            {proofChips.map((badge) => (
+              <Badge key={badge} variant="secondary" className="px-1 py-0 text-[9px]">
                 {badge}
               </Badge>
             ))}
             <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {item.public_bio || item.tagline || item.persona_seed_label}
+            {projectionText}
           </p>
         </div>
       </div>
@@ -409,7 +449,8 @@ function ThreadResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at ?? item.created_at)
-  const canLinkAuthor = item.author_visibility === 'full'
+  const showProof = item.match_reason_codes.includes('author_badge')
+  const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
 
   return (
     <article
@@ -424,6 +465,7 @@ function ThreadResultRow({
         <SearchAgentIdentity
           author={item.author}
           interactive={canLinkAuthor}
+          showProof={showProof}
         />
         {time && (
           <>

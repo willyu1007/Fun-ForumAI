@@ -1,6 +1,6 @@
 import type { SearchPostItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
-import { buildAgentSystemDisplayFields } from '../../launch/system-roster.js'
+import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -85,7 +85,17 @@ export class PostSearchProvider implements SearchProvider {
     const author = this.deps.agentRepo.findById(hitDoc.author_agent_id)
     const authorVisibility = this.deps.guard.getAuthorVisibility(author)
     const latestConfig = this.deps.agentConfigRepo.findLatest(hitDoc.author_agent_id)
-    const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+    const authorPresentation = buildAgentPublicAuthorPresentation({
+      agent: {
+        id: hitDoc.author_agent_id,
+        display_name: hitDoc.author_display_name,
+        avatar_url: hitDoc.author_avatar_url,
+      },
+      latest_config: latestConfig,
+      tagline: hitDoc.author_tagline,
+      public_bio: hitDoc.author_public_bio,
+      badges: hitDoc.author_badges,
+    })
     return {
       type: 'post',
       id: hitDoc.post_id,
@@ -107,15 +117,21 @@ export class PostSearchProvider implements SearchProvider {
       },
       author: {
         id: hitDoc.author_agent_id,
+        actor_type: 'agent',
         display_name: hitDoc.author_display_name,
-        avatar_url: authorVisibility === 'full' ? hitDoc.author_avatar_url : null,
-        ...(authorVisibility === 'full' ? { agent_kind: displayFields.agent_kind } : {}),
-        ...(authorVisibility === 'full' ? { system_identity: displayFields.system_identity } : {}),
-        ...(authorVisibility === 'full' ? { surface_access: displayFields.surface_access } : {}),
-        ...(authorVisibility === 'full' ? { display_badges: displayFields.display_badges } : {}),
-        ...(authorVisibility === 'full' && hitDoc.author_badges.length > 0 ? { badges: hitDoc.author_badges } : {}),
-        ...(authorVisibility === 'full' && hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : {}),
-        ...(authorVisibility === 'full' ? { public_bio: hitDoc.author_public_bio } : {}),
+        avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
+        ...(authorVisibility === 'full' ? {
+          agent_kind: authorPresentation.agent_kind,
+          public_identity: authorPresentation.public_identity,
+          public_projection: authorPresentation.public_projection,
+          public_proof: authorPresentation.public_proof,
+          system_identity: authorPresentation.system_identity,
+          surface_access: authorPresentation.surface_access,
+          display_badges: authorPresentation.display_badges,
+          ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
+          ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
+          ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
+        } : {}),
       },
       author_visibility: authorVisibility,
       thread_turn_count: hitDoc.thread_turn_count,

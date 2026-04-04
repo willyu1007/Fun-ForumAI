@@ -16,6 +16,7 @@ import type {
   PaginatedResult,
   PublicStageThread,
   PublicStageTurn,
+  PublicStageAuthorRef,
   RouteHandoff,
   SurfaceMediaAttachmentView,
   ForumSceneMetadataRepository,
@@ -23,7 +24,6 @@ import type {
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
-import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
 import {
   resolveLaunchCommunityInteractionContract,
   resolveLaunchCommunitySemanticContract,
@@ -60,11 +60,16 @@ import type { AchievementChronicleService } from './achievement-chronicle-servic
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
+import type { UserRepository } from '../repos/user-repository.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type {
   MediaRolloutControllerProfile,
   MediaRolloutControllerService,
 } from '../media/media-rollout-controller-service.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  buildHumanPublicAuthorPresentation,
+} from '../identity/public-author-presentation.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -79,6 +84,7 @@ export interface ForumReadServiceDeps {
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
+  userRepo?: UserRepository | null
   achievementChronicleService?: AchievementChronicleService
   agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
   riskRepo?: RiskGovernanceRepository
@@ -95,6 +101,7 @@ export interface PostMediaSummary {
 
 export interface AuthorSummary {
   id: string
+  actor_type: 'agent' | 'human'
   display_name: string
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
@@ -265,6 +272,26 @@ function isPubliclyVisibleContent(
 export class ForumReadService {
   constructor(private readonly deps: ForumReadServiceDeps) {}
 
+  private buildAuthorCacheKey(input: {
+    actor_type: 'agent' | 'human'
+    id: string
+  }): string {
+    return `${input.actor_type}:${input.id}`
+  }
+
+  private buildPublicActorKey(author: Pick<PublicStageAuthorRef, 'author_actor_type' | 'author_agent_id' | 'author_user_id'>): string {
+    if (author.author_actor_type === 'human' && author.author_user_id) {
+      return this.buildAuthorCacheKey({ actor_type: 'human', id: author.author_user_id })
+    }
+    if (author.author_agent_id) {
+      return this.buildAuthorCacheKey({ actor_type: 'agent', id: author.author_agent_id })
+    }
+    return this.buildAuthorCacheKey({
+      actor_type: author.author_actor_type,
+      id: author.author_user_id ?? author.author_agent_id ?? 'unknown',
+    })
+  }
+
   attachRuntimeDeps(input: {
     agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
   }): void {
@@ -347,68 +374,77 @@ export class ForumReadService {
     return visibility
   }
 
-  private async resolveAuthor(agentId: string): Promise<AuthorSummary> {
-    const withIdentity = async (base: AuthorSummary): Promise<AuthorSummary> => {
-      const emptyIdentity: Awaited<ReturnType<AchievementChronicleService['getFeedAuthorIdentity']>> = {}
-      const [identity, bio] = await Promise.all([
-        config.features.achievementPublicHighlights && this.deps.achievementChronicleService
-          ? this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
-          : Promise.resolve(emptyIdentity),
-        this.deps.agentBioService?.getProjection(agentId, {
-          build_if_missing: true,
-          allow_minor_refresh: false,
-        }).catch(() => null) ?? Promise.resolve(null),
-      ])
-      const publicProjection: AgentPublicProjection | null = identity.tagline || bio?.public_bio
-        ? {
-            tagline: identity.tagline ?? null,
-            public_bio: bio?.public_bio ?? null,
-          }
-        : null
-      const publicProof: AgentPublicProof = {
-        achievement_badges: (identity.badges ?? []).map((badge) => ({
-          code: badge.code,
-          name: badge.name,
-          level: badge.tier,
-        })),
-      }
-      return {
-        ...base,
-        ...(identity.badges ? { badges: identity.badges } : {}),
-        ...(identity.tagline ? { tagline: identity.tagline } : {}),
-        ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
-        public_identity: base.public_identity ?? (base.agent_kind ? { agent_kind: base.agent_kind } : null),
-        ...(publicProjection ? { public_projection: publicProjection } : {}),
-        public_proof: publicProof,
-      }
-    }
-
+  private async resolveAgentAuthor(agentId: string): Promise<AuthorSummary> {
+    const emptyIdentity: Awaited<ReturnType<AchievementChronicleService['getFeedAuthorIdentity']>> = {}
     const agent = this.deps.agentRepo.findById(agentId)
-    if (agent) {
-      const latestConfig = this.deps.agentConfigRepo.findLatest(agent.id)
-      const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
-      return withIdentity({
-        id: agent.id,
-        display_name: agent.display_name,
-        avatar_url: agent.avatar_url,
-        agent_kind: displayFields.agent_kind,
-        public_identity: displayFields.public_identity ?? { agent_kind: displayFields.agent_kind },
-        system_identity: displayFields.system_identity,
-        surface_access: displayFields.surface_access,
-        display_badges: displayFields.display_badges,
+    if (!agent) {
+      return buildAgentPublicAuthorPresentation({
+        agent: {
+          id: agentId,
+          display_name: agentId,
+          avatar_url: null,
+        },
       })
     }
-    return withIdentity({ id: agentId, display_name: agentId, avatar_url: null })
+
+    const latestConfig = this.deps.agentConfigRepo.findLatest(agent.id)
+    const [identity, bio] = await Promise.all([
+      config.features.achievementPublicHighlights && this.deps.achievementChronicleService
+        ? this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
+        : Promise.resolve(emptyIdentity),
+      this.deps.agentBioService?.getProjection(agentId, {
+        build_if_missing: true,
+        allow_minor_refresh: false,
+      }).catch(() => null) ?? Promise.resolve(null),
+    ])
+
+    return buildAgentPublicAuthorPresentation({
+      agent,
+      latest_config: latestConfig,
+      tagline: identity.tagline ?? null,
+      public_bio: bio?.public_bio ?? null,
+      badges: identity.badges ?? [],
+    })
+  }
+
+  private async resolveStageAuthor(author: PublicStageAuthorRef): Promise<AuthorSummary> {
+    if (author.author_actor_type === 'human' && author.author_user_id) {
+      const user = await this.deps.userRepo?.findById(author.author_user_id) ?? null
+      return buildHumanPublicAuthorPresentation({
+        user: user ?? {
+          id: author.author_user_id,
+          display_name: `用户 ${author.author_user_id.slice(0, 8)}`,
+          avatar_url: null,
+        },
+      })
+    }
+    if (author.author_agent_id) {
+      return this.resolveAgentAuthor(author.author_agent_id)
+    }
+    return {
+      id: author.author_user_id ?? author.author_agent_id ?? 'unknown',
+      actor_type: author.author_actor_type,
+      display_name: author.author_user_id ?? author.author_agent_id ?? 'unknown',
+      avatar_url: null,
+      public_identity: null,
+      public_projection: null,
+      public_proof: null,
+      system_identity: null,
+      surface_access: null,
+      display_badges: [],
+      public_bio: null,
+    }
   }
 
   private resolveAuthorCached(
     cache: Map<string, Promise<AuthorSummary>>,
-    agentId: string,
+    author: PublicStageAuthorRef,
   ): Promise<AuthorSummary> {
-    const cached = cache.get(agentId)
+    const key = this.buildPublicActorKey(author)
+    const cached = cache.get(key)
     if (cached) return cached
-    const pending = this.resolveAuthor(agentId)
-    cache.set(agentId, pending)
+    const pending = this.resolveStageAuthor(author)
+    cache.set(key, pending)
     return pending
   }
 
@@ -684,9 +720,11 @@ export class ForumReadService {
   ): Promise<PostWithMeta> {
     const votes = this.getDetailedVoteSummary('POST', post.id, viewerUserId)
     const visibleThreadTurns = await this.listAllVisibleThreadTurns(post.id)
-    const participantIds = new Set<string>([post.author_agent_id])
+    const participantIds = new Set<string>([
+      this.buildAuthorCacheKey({ actor_type: 'agent', id: post.author_agent_id }),
+    ])
     for (const entry of visibleThreadTurns) {
-      participantIds.add(entry.author_agent_id)
+      participantIds.add(this.buildPublicActorKey(entry))
     }
     const lastReplyAt = visibleThreadTurns.length > 0
       ? visibleThreadTurns[visibleThreadTurns.length - 1].created_at
@@ -742,7 +780,7 @@ export class ForumReadService {
         activityAt,
         nowMs,
       }),
-      author: await this.resolveAuthor(post.author_agent_id),
+      author: await this.resolveAgentAuthor(post.author_agent_id),
       community_slug: community.slug,
       community_name: community.name,
       media,
@@ -843,12 +881,12 @@ export class ForumReadService {
     const topicPresentation = await this.resolveThreadTurnTopicSignals(turn.id)
     const anchorTurn = turn.anchor_turn_id ? opts.turnById.get(turn.anchor_turn_id) ?? null : null
     const anchorAuthor = anchorTurn
-      ? await this.resolveAuthorCached(opts.authorCache, anchorTurn.author_agent_id)
+      ? await this.resolveAuthorCached(opts.authorCache, anchorTurn)
       : null
 
     return {
       ...turn,
-      author: await this.resolveAuthorCached(opts.authorCache, turn.author_agent_id),
+      author: await this.resolveAuthorCached(opts.authorCache, turn),
       vote_score: votes.weighted_score,
       agent_vote_score: votes.agent.score,
       agent_vote_up: votes.agent.up,
@@ -858,7 +896,7 @@ export class ForumReadService {
       human_vote_down: votes.human.down,
       weighted_vote_score: votes.weighted_score,
       viewer_human_vote_direction: votes.viewer_direction,
-      ai_label: 'AI生成',
+      ai_label: turn.author_actor_type === 'human' ? '用户' : 'AI生成',
       effective_moderation_label: this.buildEffectiveModerationLabel(turn.visibility, turn.state),
       topic_signals: topicPresentation.topic_signals,
       distribution_state: topicPresentation.distribution_state,
@@ -891,14 +929,14 @@ export class ForumReadService {
         this.toPublicStageTurnWithAuthor(turn, opts)),
     )
     const participantIds = new Set<string>([
-      thread.author_agent_id,
-      ...visibleTurns.map((turn) => turn.author_agent_id),
+      this.buildPublicActorKey(thread),
+      ...visibleTurns.map((turn) => this.buildPublicActorKey(turn)),
     ])
     const lastTurn = visibleTurns[visibleTurns.length - 1] ?? null
 
     return {
       ...thread,
-      author: await this.resolveAuthorCached(opts.authorCache, thread.author_agent_id),
+      author: await this.resolveAuthorCached(opts.authorCache, thread),
       vote_score: votes.weighted_score,
       agent_vote_score: votes.agent.score,
       agent_vote_up: votes.agent.up,
@@ -908,7 +946,7 @@ export class ForumReadService {
       human_vote_down: votes.human.down,
       weighted_vote_score: votes.weighted_score,
       viewer_human_vote_direction: votes.viewer_direction,
-      ai_label: 'AI生成',
+      ai_label: thread.author_actor_type === 'human' ? '用户' : 'AI生成',
       effective_moderation_label: this.buildEffectiveModerationLabel(thread.visibility, thread.state),
       topic_signals: topicPresentation.topic_signals,
       distribution_state: topicPresentation.distribution_state,
