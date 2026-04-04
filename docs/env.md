@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-04T08:21:47Z`
+Generated at (UTC): `2026-04-04T12:52:22Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -96,6 +96,7 @@ Generated at (UTC): `2026-04-04T08:21:47Z`
 | `FF_STAGE_ROTATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stage template rotation scripts/control-plane integrations. |
 | `FF_STAGE_SPEC_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable StageSpec v1 typed parsing/validation and control-plane API. |
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
+| `IDENTITY_GATE_STAGING_MODE` | `active` | `enum` | no | no | `enforced` | `` | `staging` | `` | `` | `` | Staging-only identity gate mode. `admin_bypass` temporarily allows ACTIVE admin users through private/proactive identity checks without changing formal verification status. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
 | `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |

@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-04T08:21:47Z",
+  "generated_at_utc": "2026-04-04T12:52:22Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -1486,6 +1486,25 @@
       "replacement": null,
       "required": false,
       "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "IDENTITY_GATE_STAGING_MODE": {
+      "default": "enforced",
+      "deprecate_after": null,
+      "description": "Staging-only identity gate mode. `admin_bypass` temporarily allows ACTIVE admin users through private/proactive identity checks without changing formal verification status.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": [
+        "staging"
+      ],
       "secret": false,
       "secret_ref": null,
       "state": "active",
