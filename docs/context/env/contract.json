@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-03T14:13:43Z",
+  "generated_at_utc": "2026-04-04T08:01:29Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -130,14 +130,14 @@
     "ARK_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "ByteDance Ark / Doubao provider API key.",
+      "description": "Primary ByteDance Ark / Doubao provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -150,14 +150,14 @@
     "ARK_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary ByteDance Ark / Doubao provider API key for ordered failover.",
+      "description": "Secondary ByteDance Ark / Doubao provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -445,15 +445,18 @@
     "DASHSCOPE_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "DashScope / Qwen provider API key.",
+      "description": "Primary DashScope / Qwen provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
-      "scopes": null,
+      "required": true,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "llm_api_default",
       "state": "active",
@@ -462,14 +465,14 @@
     "DASHSCOPE_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary DashScope / Qwen provider API key for ordered failover.",
+      "description": "Secondary DashScope / Qwen provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -519,14 +522,14 @@
     "DEEPSEEK_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "DeepSeek provider API key.",
+      "description": "Primary DeepSeek provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -539,14 +542,14 @@
     "DEEPSEEK_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary DeepSeek provider API key for ordered failover.",
+      "description": "Secondary DeepSeek provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -2199,15 +2202,18 @@
     "MINIMAX_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "MiniMax provider API key.",
+      "description": "Primary MiniMax provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
-      "scopes": null,
+      "required": true,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
       "secret": true,
       "secret_ref": "llm_api_lowcost",
       "state": "active",
@@ -2216,14 +2222,14 @@
     "MINIMAX_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary MiniMax provider API key for ordered failover.",
+      "description": "Secondary MiniMax provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -2236,14 +2242,14 @@
     "MOONSHOT_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Moonshot / Kimi provider API key.",
+      "description": "Primary Moonshot / Kimi provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -2256,14 +2262,14 @@
     "MOONSHOT_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary Moonshot / Kimi provider API key for ordered failover.",
+      "description": "Secondary Moonshot / Kimi provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -2796,14 +2802,14 @@
     "TENCENT_HUNYUAN_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Tencent Hunyuan provider API key.",
+      "description": "Primary Tencent Hunyuan provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -2816,14 +2822,14 @@
     "TENCENT_HUNYUAN_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary Tencent Hunyuan provider API key for ordered failover.",
+      "description": "Secondary Tencent Hunyuan provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -3023,14 +3029,14 @@
     "ZAI_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "ZAI / GLM provider API key.",
+      "description": "Primary ZAI / GLM provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"
@@ -3043,14 +3049,14 @@
     "ZAI_API_KEY_SECONDARY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Secondary ZAI / GLM provider API key for ordered failover.",
+      "description": "Secondary ZAI / GLM provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
       },
       "migration": null,
       "replacement": null,
-      "required": false,
+      "required": true,
       "scopes": [
         "staging",
         "prod"

@@ -126,3 +126,7 @@
       - `api -> envfile` 的 compile/apply 应在具备 STS role chain + `bws` 的 deploy workspace 上执行，而不是继续依赖人工上传 `staging.env`；
       - staging 放行前新增 NAT/provider reachability gate，要求 ECS/ECI 至少一条 admitted provider 调用能真实返回结果。
       - 在正式 deploy workspace 尚未落位前，`staging api` 被明确允许一次 `local compile + manual ECS import` 的 bootstrap 例外；`prod` 与 `worker` 不适用。
+- 2026-04-04:
+  - Manual review:
+    - 真实 staging bootstrap 验证显示，`bws` 安装后 `staging api` env compile 仍会因为 `talkshow-stag/*_secondary` 七个 secret 缺失而失败；当前 blocker 已从 operator 工具链转为 Bitwarden secret inventory 不完整。
+    - 为消除双轨歧义，`env/contract.yaml` 已把 staging/prod 的 provider primary + secondary routing secrets 明确收紧为 required，避免后续 operator 误以为这些键仍可按 optional 省略。

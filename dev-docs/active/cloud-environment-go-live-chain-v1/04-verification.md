@@ -84,3 +84,10 @@
   - Manual review:
     - 在正式 deploy workspace 尚未落位前，`T-935` 已允许 `staging api` 先走 operator 本机 compile + 手工导入 ECS `.env` 的 bootstrap 例外，以便先跑通 staging 发布链路。
     - 该例外不改变正式 cloud contract，也不适用于 `worker` 或 `prod`。
+- 2026-04-04:
+  - 本机 `bws` 安装后再次执行 `env_localctl.py compile --env staging --runtime-target ecs --workload api --env-file ops/deploy/env-files/staging.env --no-context --no-preflight`
+    - Result: 失败。
+    - Note: 失败原因已从“工具缺失”收敛为 `talkshow-stag/*_secondary` 七个 Bitwarden secret 不存在；这说明外部 secret authority 仍未补齐完整 admitted provider surface。
+  - Manual review:
+    - `env/contract.yaml` 已把 staging/prod 的 provider primary + secondary credential keys 改为 required，并为 `DASHSCOPE_API_KEY` / `MINIMAX_API_KEY` 补齐 `scopes: [staging, prod]`。
+    - 这样合同口径、`env-localctl compile` 行为、`credential_pools.yaml` 候选面与 `eci-worker/env-matrix.yaml` 的 compile-time parity 要求现在一致，不再把 cloud routing secrets 写成“文档 optional、实际硬门”。

@@ -297,111 +297,113 @@ variables:
 
   DASHSCOPE_API_KEY:
     type: string
-    required: false
-    description: DashScope / Qwen provider API key.
+    required: true
+    scopes: [staging, prod]
+    description: Primary DashScope / Qwen provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: llm_api_default
 
   DASHSCOPE_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary DashScope / Qwen provider API key for ordered failover.
+    description: Secondary DashScope / Qwen provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: dashscope_api_key_secondary
 
   ZAI_API_KEY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: ZAI / GLM provider API key.
+    description: Primary ZAI / GLM provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: zai_api_key
 
   ZAI_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary ZAI / GLM provider API key for ordered failover.
+    description: Secondary ZAI / GLM provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: zai_api_key_secondary
 
   DEEPSEEK_API_KEY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: DeepSeek provider API key.
+    description: Primary DeepSeek provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: deepseek_api_key
 
   DEEPSEEK_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary DeepSeek provider API key for ordered failover.
+    description: Secondary DeepSeek provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: deepseek_api_key_secondary
 
   MOONSHOT_API_KEY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Moonshot / Kimi provider API key.
+    description: Primary Moonshot / Kimi provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: moonshot_api_key
 
   MOONSHOT_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary Moonshot / Kimi provider API key for ordered failover.
+    description: Secondary Moonshot / Kimi provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: moonshot_api_key_secondary
 
   MINIMAX_API_KEY:
     type: string
-    required: false
-    description: MiniMax provider API key.
+    required: true
+    scopes: [staging, prod]
+    description: Primary MiniMax provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: llm_api_lowcost
 
   MINIMAX_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary MiniMax provider API key for ordered failover.
+    description: Secondary MiniMax provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: minimax_api_key_secondary
 
   TENCENT_HUNYUAN_API_KEY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Tencent Hunyuan provider API key.
+    description: Primary Tencent Hunyuan provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: tencent_hunyuan_api_key
 
   TENCENT_HUNYUAN_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary Tencent Hunyuan provider API key for ordered failover.
+    description: Secondary Tencent Hunyuan provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: tencent_hunyuan_api_key_secondary
 
   ARK_API_KEY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: ByteDance Ark / Doubao provider API key.
+    description: Primary ByteDance Ark / Doubao provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
     secret: true
     secret_ref: ark_api_key
 
   ARK_API_KEY_SECONDARY:
     type: string
-    required: false
+    required: true
     scopes: [staging, prod]
-    description: Secondary ByteDance Ark / Doubao provider API key for ordered failover.
+    description: Secondary ByteDance Ark / Doubao provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact.
     secret: true
     secret_ref: ark_api_key_secondary
 
