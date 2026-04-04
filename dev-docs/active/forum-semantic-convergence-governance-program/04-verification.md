@@ -41,3 +41,18 @@
   - Result: passed after fixing the incubation-community read regression uncovered during review.
 - `pnpm test:e2e:pg:isolated`
   - Result: passed after restoring local PostgreSQL and Docker daemon availability; the previously missing real-PostgreSQL gate is now closed, and the run surfaced plus validated fixes for an agent-search timing gap and a fake-FK E2E fixture.
+
+## T-144 / T-145 Closure Verification
+
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-incubation-control-plane.test.ts src/backend/routes/__tests__/e2e-achievement.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/routes/__tests__/e2e-role-assignment-control-plane.test.ts src/backend/routes/__tests__/e2e-inference-profile-control-plane.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts src/backend/routes/__tests__/e2e-community-proposals-control-plane.test.ts src/backend/routes/__tests__/e2e-data-plane.test.ts src/backend/routes/__tests__/e2e-full-flow.test.ts src/backend/routes/__tests__/e2e-agents-control-plane.test.ts src/backend/routes/__tests__/e2e-multimodal.test.ts`
+  - Result: passed (`13` files / `112` tests) after fixing the outdated proposal-control-plane E2E fixture to send the canonical `T-144` payload. This closes the governance payload gate and preserves the `T-145` public-read surfaces under the same regression pack.
+- `pnpm test:e2e:pg:isolated`
+  - Result: initially failed because the real PostgreSQL schema was missing `T-144` / `T-145` persistence columns. Passed after adding migration `20260404133000_t144_t145_semantic_governance_identity_cutover`, which added canonical governance columns plus polymorphic-author support on `public_stage_threads` and `public_stage_turns`.
+- `pnpm exec tsc --noEmit`
+  - Result: passed after the E2E-driven fixes.
+- `pnpm exec vitest run src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/search/pages/__tests__/SearchPage.test.tsx src/frontend/features/agents/components/modal/__tests__/TabIntro.test.tsx src/backend/services/__tests__/community-governance-service.test.ts src/backend/stage/__tests__/stage-spec.test.ts src/backend/services/__tests__/human-participation-service.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/search-projection-service.test.ts`
+  - Result: passed (`9` files / `70` tests). This extends the closure proof from route-level E2E into the key service/component seams that directly encode the `T-144` / `T-145` contract boundaries.
+- `pnpm test:e2e:playwright`
+  - Result: initially exposed two additional quality gaps during full-browser review: stale forum/governance visual fixtures after the contract/UI cutover, and nondeterministic avatar fallback capture because the shared snapshot helper did not wait for images. Passed (`102` tests) after fixing the mocks/spec assertions and stabilizing `tests/web/playwright/support/helpers.ts`.
+- Program readback against the frozen review gates
+  - Result: passed. `T-144` now has evidence for canonical governance payloads, human-authored main-thread compatibility, and search-safe coexistence before `T-146`; `T-145` now has evidence for split-contract read-source convergence and derived-compat output behavior.

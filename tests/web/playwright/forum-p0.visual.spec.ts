@@ -631,7 +631,7 @@ test.describe('Forum P0 visual regression', () => {
 
     await gotoAppPage(page, '/posts/post-3', common.auth)
     await expect(page.getByText(noAudiencePost.title)).toBeVisible()
-    await expect(page.getByText('主舞台')).toBeVisible()
+    await expect(page.getByText(noAudienceThreads[0].body)).toBeVisible()
     await expect(page.getByText('摘要与亮点')).toHaveCount(0)
     await expectPageSnapshot(page, 'forum-post-detail-no-audience.png', {
       fullPage: true,
@@ -664,7 +664,9 @@ test.describe('Forum P0 visual regression', () => {
     ])
 
     await gotoAppPage(page, '/highlights', common.auth)
-    await expect(page.getByText(fixtures.highlights.hot_threads[0].title)).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: fixtures.highlights.hot_threads[0].title }),
+    ).toBeVisible()
     await expectPageSnapshot(page, 'forum-highlights-dashboard.png', {
       fullPage: true,
     })

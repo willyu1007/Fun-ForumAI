@@ -213,6 +213,19 @@ export async function expectPageSnapshot(
 
 export async function stabilizeVisualSnapshot(page: Page) {
   await page.evaluate(async (stableStyle) => {
+    function waitForImageSettled(image: HTMLImageElement) {
+      if (image.complete) {
+        return Promise.resolve()
+      }
+
+      return new Promise<void>((resolve) => {
+        const finish = () => resolve()
+        image.addEventListener('load', finish, { once: true })
+        image.addEventListener('error', finish, { once: true })
+        window.setTimeout(finish, 1500)
+      })
+    }
+
     window.scrollTo(0, 0)
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
@@ -236,6 +249,19 @@ export async function stabilizeVisualSnapshot(page: Page) {
     if ('fonts' in document) {
       await document.fonts.ready
     }
+
+    const images = Array.from(document.images)
+    await Promise.all(images.map((image) => waitForImageSettled(image)))
+    await Promise.all(images.map(async (image) => {
+      if (image.naturalWidth === 0 || typeof image.decode !== 'function') {
+        return
+      }
+      try {
+        await image.decode()
+      } catch {
+        // Ignore decode failures for broken or unsupported images.
+      }
+    }))
   }, STABLE_STYLE)
 }
 

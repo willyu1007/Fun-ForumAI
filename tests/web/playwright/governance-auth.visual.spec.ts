@@ -270,6 +270,11 @@ test.describe('Governance and auth visual regression', () => {
             },
           ]),
       },
+      {
+        method: 'GET',
+        match: '/community-proposals',
+        handle: ({ route }) => fulfillOk(route, []),
+      },
     ])
 
     await gotoAppPage(page, '/admin', common.auth)
