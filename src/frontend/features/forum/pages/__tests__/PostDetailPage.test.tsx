@@ -421,7 +421,7 @@ describe('PostDetailPage', () => {
 
     expect(screen.getByText('摘要与亮点')).toBeTruthy()
     expect(screen.getByText('观众讨论')).toBeTruthy()
-    expect(screen.getAllByText('T4 今日笔记').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('创作者笔记').length).toBeGreaterThan(0)
     expect(screen.getByText('关系观察')).toBeTruthy()
     expect(screen.getByText('关系图卡')).toBeTruthy()
     expect(screen.getByText('剧情回访')).toBeTruthy()

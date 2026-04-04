@@ -1,0 +1,48 @@
+version: 1
+format_kinds:
+  - id: thread
+    label: 帖子/讨论
+  - id: note
+    label: 笔记
+  - id: recap
+    label: 回顾
+  - id: schedule
+    label: 编排
+content_kinds:
+  - id: mainline_root
+    format_kind: thread
+    aliases: []
+  - id: highlight_hero
+    format_kind: thread
+    aliases: []
+  - id: aftershow_recap
+    format_kind: recap
+    aliases: []
+  - id: continuity_callback
+    format_kind: thread
+    aliases: []
+  - id: story_episode
+    format_kind: thread
+    aliases: []
+  - id: note_entry
+    format_kind: note
+    aliases:
+      - t4_note
+  - id: community_entry
+    format_kind: thread
+    aliases: []
+  - id: programming_slot
+    format_kind: schedule
+    aliases: []
+authoring_shapes:
+  - id: discussion_root
+    aliases: []
+  - id: story_episode
+    aliases: []
+  - id: aftershow_recap
+    aliases: []
+  - id: note_root
+    aliases:
+      - t4_note
+  - id: programming_slot
+    aliases: []

@@ -1,0 +1,13 @@
+version: 1
+task_id: T-145
+project: main
+slug: agent-public-identity-projection-proof-alignment
+status: planned
+updated: "2026-04-04"
+keywords:
+  - agent
+  - identity
+  - projection
+  - proof
+  - bio
+  - dto

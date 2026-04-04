@@ -400,7 +400,12 @@ describe('PublicSceneSelectorService', () => {
     expect(result.kind).toBe('scene')
     if (result.kind !== 'scene') return
     expect(result.payload.local_intent_block).toContain('## Launch Programming')
-    expect(result.payload.local_intent_block).toContain('t4_note_template_id: recommendation_note')
+    expect(result.payload.local_intent_block).toContain('primary_shelf: notes_today')
+    expect(result.payload.local_intent_block).toContain('note_template_id: recommendation_note')
+    expect(result.payload.launch_programming?.editorial_intent).toMatchObject({
+      primary_shelf: 'notes_today',
+      content_kind: 'note_entry',
+    })
     expect(result.payload.launch_programming?.t4_note).toMatchObject({
       is_t4: true,
       note_template_id: 'recommendation_note',

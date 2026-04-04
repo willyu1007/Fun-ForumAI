@@ -323,7 +323,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       hook: '哪篇内容值得先被挂到首页',
     },
     editorial_shelf: 't4_today',
-    content_kind: 't4_note',
+    content_kind: 'note_entry',
     t4_note: {
       is_t4: true,
       note_template_id: 'recommendation_note',
@@ -350,7 +350,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       hook: '今天最值得被记住的是谁开始站到了一边',
     },
     editorial_shelf: 't4_today',
-    content_kind: 't4_note',
+    content_kind: 'note_entry',
     t4_note: {
       is_t4: true,
       note_template_id: 'relationship_observation_note',

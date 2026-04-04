@@ -49,7 +49,12 @@ interface HighlightThreadItem {
     avatar_url: string | null
   }
   cover_media_url?: string | null
+  community_semantics?: FeedPostItem['community_semantics']
+  interaction_contract?: FeedPostItem['interaction_contract']
+  content_semantics?: FeedPostItem['content_semantics']
+  scene_phase?: FeedPostItem['scene_phase']
   surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  surface_kind_id?: FeedPostItem['surface_kind_id']
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
@@ -58,6 +63,8 @@ interface HighlightThreadItem {
   storyline_state?: LaunchStorylineState
   storyline_hook?: string
   content_kind?: LaunchContentKind
+  format_kind?: FeedPostItem['format_kind']
+  editorial_shelf_id?: FeedPostItem['editorial_shelf_id']
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
@@ -90,7 +97,12 @@ interface ControversyItem {
   participant_count: number
   community_name: string
   cover_media_url?: string | null
+  community_semantics?: FeedPostItem['community_semantics']
+  interaction_contract?: FeedPostItem['interaction_contract']
+  content_semantics?: FeedPostItem['content_semantics']
+  scene_phase?: FeedPostItem['scene_phase']
   surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  surface_kind_id?: FeedPostItem['surface_kind_id']
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
@@ -99,6 +111,8 @@ interface ControversyItem {
   storyline_state?: LaunchStorylineState
   storyline_hook?: string
   content_kind?: LaunchContentKind
+  format_kind?: FeedPostItem['format_kind']
+  editorial_shelf_id?: FeedPostItem['editorial_shelf_id']
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
@@ -181,12 +195,19 @@ export class GlobalHighlightsService {
         avatar_url: item.author.avatar_url,
       },
       cover_media_url: item.media[0]?.media_url ?? null,
+      ...(item.community_semantics ? { community_semantics: item.community_semantics } : {}),
+      ...(item.interaction_contract ? { interaction_contract: item.interaction_contract } : {}),
+      ...(item.content_semantics ? { content_semantics: item.content_semantics } : {}),
+      ...(item.scene_phase ? { scene_phase: item.scene_phase } : {}),
       ...(packagingByPostId.get(item.id) ?? {}),
+      ...(item.surface_kind_id ? { surface_kind_id: item.surface_kind_id } : {}),
       ...(item.storyline_id ? { storyline_id: item.storyline_id } : {}),
       ...(item.storyline_title ? { storyline_title: item.storyline_title } : {}),
       ...(item.storyline_state ? { storyline_state: item.storyline_state } : {}),
       ...(item.storyline_hook ? { storyline_hook: item.storyline_hook } : {}),
       ...(item.content_kind ? { content_kind: item.content_kind } : {}),
+      ...(item.format_kind ? { format_kind: item.format_kind } : {}),
+      ...(item.editorial_shelf_id ? { editorial_shelf_id: item.editorial_shelf_id } : {}),
       ...(item.editorial_shelf ? { editorial_shelf: item.editorial_shelf } : {}),
       ...(typeof item.is_t4 === 'boolean' ? { is_t4: item.is_t4 } : {}),
       ...(typeof item.aftershow_export_bias === 'number' ? { aftershow_export_bias: item.aftershow_export_bias } : {}),
@@ -277,12 +298,19 @@ export class GlobalHighlightsService {
           participant_count: item.participant_count,
           community_name: item.community_name,
           cover_media_url: item.media[0]?.media_url ?? null,
+          ...(item.community_semantics ? { community_semantics: item.community_semantics } : {}),
+          ...(item.interaction_contract ? { interaction_contract: item.interaction_contract } : {}),
+          ...(item.content_semantics ? { content_semantics: item.content_semantics } : {}),
+          ...(item.scene_phase ? { scene_phase: item.scene_phase } : {}),
           ...(packagingByPostId.get(item.id) ?? {}),
+          ...(item.surface_kind_id ? { surface_kind_id: item.surface_kind_id } : {}),
           ...(item.storyline_id ? { storyline_id: item.storyline_id } : {}),
           ...(item.storyline_title ? { storyline_title: item.storyline_title } : {}),
           ...(item.storyline_state ? { storyline_state: item.storyline_state } : {}),
           ...(item.storyline_hook ? { storyline_hook: item.storyline_hook } : {}),
           ...(item.content_kind ? { content_kind: item.content_kind } : {}),
+          ...(item.format_kind ? { format_kind: item.format_kind } : {}),
+          ...(item.editorial_shelf_id ? { editorial_shelf_id: item.editorial_shelf_id } : {}),
           ...(item.editorial_shelf ? { editorial_shelf: item.editorial_shelf } : {}),
           ...(typeof item.is_t4 === 'boolean' ? { is_t4: item.is_t4 } : {}),
           ...(typeof item.aftershow_export_bias === 'number' ? { aftershow_export_bias: item.aftershow_export_bias } : {}),

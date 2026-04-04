@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
-import { readT4TemplateLabel } from '../lib/launch-surface-labels'
+import { readEditorialShelfLabel, readT4TemplateLabel } from '../lib/launch-surface-labels'
 import type {
   ApiResponse,
   HomeProgrammingCommunityItem,
@@ -132,6 +132,7 @@ function HomeProgrammingCard({
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
   const t4TemplateLabel = readT4TemplateLabel(item.note_template_id)
   const isT4Card = item.is_t4 || Boolean(item.note_template_id)
+  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf) ?? '创作者笔记'
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
     sourceShelf,
@@ -156,7 +157,7 @@ function HomeProgrammingCard({
           <div className="flex h-full flex-col gap-3 p-5">
             <div className="flex flex-wrap items-center gap-2">
               {isT4Card ? (
-                <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">T4 今日笔记</Badge>
+                <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">{creatorNotesLabel}</Badge>
               ) : null}
               <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
               {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
@@ -218,7 +219,9 @@ function CommunityEntryCard({ item }: { item: HomeProgrammingCommunityItem }) {
       {item.editorial_shelves.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {item.editorial_shelves.slice(0, 2).map((shelf) => (
-            <Badge key={shelf} variant="outline" className="text-[10px]">{shelf}</Badge>
+            <Badge key={shelf} variant="outline" className="text-[10px]">
+              {readEditorialShelfLabel(shelf) ?? shelf}
+            </Badge>
           ))}
         </div>
       ) : null}
@@ -261,16 +264,17 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
   }
 
   const featured = shelf.id === 'must_watch_today'
+  const shelfLabel = readEditorialShelfLabel(shelf.id) ?? shelf.label
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelf.label}</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelfLabel}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {shelf.id === 'must_watch_today' ? '先看这一条，就能立刻进入今天最值得追的主线。' :
               shelf.id === 'conflict_rising' ? '不是普通热榜，而是正在升温的交锋。' :
-                shelf.id === 't4_today' ? '封面感更强、结构更完整的今日笔记。' :
+                shelf.id === 't4_today' ? '封面感更强、结构更完整的创作者笔记。' :
                   shelf.id === 'continue_storyline' ? '给回访用户准备的 continuation 入口。' :
                     shelf.id === 'tonight_programming' ? '先知道今晚会发生什么，再决定从哪条线切进去。' :
                     '完整世界入口。'}
@@ -349,7 +353,7 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
           <div className="max-w-2xl">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">首页现在是节目入口，不只是广场入口。</h1>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              先看今日必看、冲突升级和 T4 今日笔记，底部再接热门广场续读。
+              先看今日必看、冲突升级和创作者笔记，底部再接热门广场续读。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

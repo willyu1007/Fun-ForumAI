@@ -6,6 +6,14 @@ import {
   type PersonaMood,
   type PersonaSeedCode,
 } from '../../shared/agent-persona-catalog.js'
+import {
+  normalizeIdentityRoleId,
+  normalizeIdentityVisibilityRoleId,
+  type AgentPublicIdentity,
+  type FormatCapabilityId,
+  type IdentityRoleId,
+  type IdentityVisibilityRoleId,
+} from '../../shared/semantic-taxonomy.js'
 import { ValidationError } from '../lib/errors.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
@@ -123,6 +131,8 @@ const launchSystemIdentityConfigSchema = z.object({
   platform_owner_key: z.string().trim().min(1),
   program_role: programRoleSchema,
   visibility_role: visibilityRoleSchema,
+  identity_role_id: z.enum(['anchor', 'challenger', 'wildcard', 'mc', 'creator', 'showrunner', 'editor']).optional(),
+  identity_visibility_role_id: z.enum(['resident', 'host', 'crossover', 'editorial']).optional(),
   home_community: z.string().trim().min(1),
   secondary_communities: z.array(z.string().trim().min(1)),
   resident_memberships: z.array(z.string().trim().min(1)),
@@ -133,6 +143,7 @@ const launchSystemIdentityConfigSchema = z.object({
   }),
   image_affinity: imageAffinitySchema,
   t4_capable: z.boolean(),
+  format_capabilities: z.array(z.enum(['note'])).default([]),
   daily_budget: z.object({
     root_posts: z.number().int().min(0),
     replies: z.number().int().min(0),
@@ -151,7 +162,11 @@ export type LaunchSystemRosterEntry = z.infer<typeof launchSystemRosterEntrySche
 export type LaunchSystemOwnerModel = z.infer<typeof launchSystemOwnerModelSchema>
 export type LaunchSystemSurfaceDisplayPolicy = z.infer<typeof launchSystemSurfaceDisplayPolicySchema>
 export type LaunchSystemRoleMix = z.infer<typeof launchSystemRoleMixSchema>
-export type LaunchSystemIdentityConfig = z.infer<typeof launchSystemIdentityConfigSchema>
+export interface LaunchSystemIdentityConfig extends z.infer<typeof launchSystemIdentityConfigSchema> {
+  identity_role_id: IdentityRoleId
+  identity_visibility_role_id: IdentityVisibilityRoleId
+  format_capabilities: FormatCapabilityId[]
+}
 
 export interface LaunchSystemRosterRuntime {
   version: number
@@ -165,11 +180,14 @@ export interface LaunchSystemRosterRuntime {
 
 export interface AgentSystemIdentitySummary {
   platform_managed: boolean
+  identity_role_id: IdentityRoleId
+  identity_visibility_role_id: IdentityVisibilityRoleId
   program_role: LaunchProgramRole
   visibility_role: LaunchVisibilityRole
   display_mode: LaunchSystemSurfaceDisplayPolicy['display_mode']
   home_community: string
   secondary_communities: string[]
+  format_capabilities: FormatCapabilityId[]
 }
 
 export interface AgentSurfaceAccess {
@@ -180,6 +198,7 @@ export interface AgentSurfaceAccess {
 
 export interface AgentSystemDisplayFields {
   agent_kind: 'owner' | 'system'
+  public_identity: AgentPublicIdentity | null
   system_identity: AgentSystemIdentitySummary | null
   surface_access: AgentSurfaceAccess
   display_badges: string[]
@@ -216,6 +235,28 @@ function countProgramRoles(roster: LaunchSystemRosterEntry[]): LaunchSystemRoleM
       (entry) => entry.program_role === 'showrunner' || entry.program_role === 'editor',
     ).length,
   }
+}
+
+function deriveFormatCapabilities(t4Capable: boolean): FormatCapabilityId[] {
+  return t4Capable ? ['note'] : []
+}
+
+function resolveCanonicalIdentityRoleId(programRole: LaunchProgramRole): IdentityRoleId {
+  const canonical = normalizeIdentityRoleId(programRole)
+  if (!canonical) {
+    throw new ValidationError(`Invalid launch system roster: unsupported identity role mapping for "${programRole}"`)
+  }
+  return canonical
+}
+
+function resolveCanonicalVisibilityRoleId(visibilityRole: LaunchVisibilityRole): IdentityVisibilityRoleId {
+  const canonical = normalizeIdentityVisibilityRoleId(visibilityRole)
+  if (!canonical) {
+    throw new ValidationError(
+      `Invalid launch system roster: unsupported visibility role mapping for "${visibilityRole}"`,
+    )
+  }
+  return canonical
 }
 
 function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterRuntime {
@@ -383,6 +424,8 @@ export function buildLaunchSystemConfigSlice(entry: LaunchSystemRosterEntry): Re
       platform_owner_key: roster.owner_model.platform_owner_key,
       program_role: entry.program_role,
       visibility_role: entry.visibility_role,
+      identity_role_id: resolveCanonicalIdentityRoleId(entry.program_role),
+      identity_visibility_role_id: resolveCanonicalVisibilityRoleId(entry.visibility_role),
       home_community: entry.home_community,
       secondary_communities: [...entry.secondary_communities],
       resident_memberships: [...entry.resident_memberships],
@@ -393,6 +436,7 @@ export function buildLaunchSystemConfigSlice(entry: LaunchSystemRosterEntry): Re
       },
       image_affinity: entry.image_affinity,
       t4_capable: entry.t4_capable,
+      format_capabilities: deriveFormatCapabilities(entry.t4_capable),
       daily_budget: { ...entry.daily_budget },
       cross_route_budget: entry.cross_route_budget,
       identity_scaffold: {
@@ -416,7 +460,26 @@ export function readLaunchSystemIdentityConfig(
       `Invalid ${LAUNCH_SYSTEM_IDENTITY_KEY} config: ${toValidationMessage(parsed.error)}`,
     )
   }
-  return parsed.data
+  const identityRoleId = parsed.data.identity_role_id
+    ? normalizeIdentityRoleId(parsed.data.identity_role_id)
+    : normalizeIdentityRoleId(parsed.data.program_role)
+  const identityVisibilityRoleId = parsed.data.identity_visibility_role_id
+    ? normalizeIdentityVisibilityRoleId(parsed.data.identity_visibility_role_id)
+    : normalizeIdentityVisibilityRoleId(parsed.data.visibility_role)
+  if (!identityRoleId || !identityVisibilityRoleId) {
+    throw new ValidationError(
+      `Invalid ${LAUNCH_SYSTEM_IDENTITY_KEY} config: canonical identity roles could not be resolved`,
+    )
+  }
+
+  return {
+    ...parsed.data,
+    identity_role_id: identityRoleId,
+    identity_visibility_role_id: identityVisibilityRoleId,
+    format_capabilities: parsed.data.format_capabilities.length > 0
+      ? parsed.data.format_capabilities
+      : deriveFormatCapabilities(parsed.data.t4_capable),
+  }
 }
 
 export function isLaunchSystemAgentConfig(configJson: Record<string, unknown> | null | undefined): boolean {
@@ -430,6 +493,7 @@ export function buildAgentSystemDisplayFields(
   if (!systemIdentity) {
     return {
       agent_kind: 'owner',
+      public_identity: { agent_kind: 'owner' },
       system_identity: null,
       surface_access: {
         owner_profile_visible: true,
@@ -448,13 +512,25 @@ export function buildAgentSystemDisplayFields(
 
   return {
     agent_kind: 'system',
+    public_identity: {
+      agent_kind: 'system',
+      identity_role_id: systemIdentity.identity_role_id,
+      identity_visibility_role_id: systemIdentity.identity_visibility_role_id,
+      display_mode: roster.surface_display_policy.display_mode,
+      home_community: systemIdentity.home_community,
+      secondary_communities: [...systemIdentity.secondary_communities],
+      format_capabilities: [...systemIdentity.format_capabilities],
+    },
     system_identity: {
       platform_managed: true,
+      identity_role_id: systemIdentity.identity_role_id,
+      identity_visibility_role_id: systemIdentity.identity_visibility_role_id,
       program_role: systemIdentity.program_role,
       visibility_role: systemIdentity.visibility_role,
       display_mode: roster.surface_display_policy.display_mode,
       home_community: systemIdentity.home_community,
       secondary_communities: [...systemIdentity.secondary_communities],
+      format_capabilities: [...systemIdentity.format_capabilities],
     },
     surface_access: {
       owner_profile_visible: roster.surface_display_policy.owner_profile_visible,

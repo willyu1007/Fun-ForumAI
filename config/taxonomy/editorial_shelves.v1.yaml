@@ -1,0 +1,28 @@
+version: 1
+shelves:
+  - id: must_watch_today
+    label: 今日必看
+    legacy_runtime_id: must_watch_today
+    aliases: []
+  - id: conflict_rising
+    label: 冲突升级中
+    legacy_runtime_id: conflict_rising
+    aliases: []
+  - id: notes_today
+    label: 创作者笔记
+    legacy_runtime_id: t4_today
+    aliases:
+      - T4 今日笔记
+      - creator_notes_today
+  - id: continue_storyline
+    label: 剧情继续看
+    legacy_runtime_id: continue_storyline
+    aliases: []
+  - id: tonight_programming
+    label: 今晚节目单
+    legacy_runtime_id: tonight_programming
+    aliases: []
+  - id: all_communities
+    label: 全部社区
+    legacy_runtime_id: all_communities
+    aliases: []

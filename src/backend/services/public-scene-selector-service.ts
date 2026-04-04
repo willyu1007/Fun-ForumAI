@@ -18,7 +18,6 @@ import {
   getLaunchT4TemplateRuntime,
   resolveLaunchT4Projection,
 } from '../launch/t4-content-templates.js'
-
 interface EligibleCommunity {
   id: string
   slug: string
@@ -799,19 +798,19 @@ function buildLaunchAwareLocalIntentBlock(input: {
     ? launchHints.t4_note.note_template_id
     : null
   if (noteTemplateId) {
-    lines.push(`- t4_note_template_id: ${noteTemplateId}`)
+    lines.push(`- note_template_id: ${noteTemplateId}`)
   }
   const coverMode = typeof launchHints.t4_note?.cover_mode === 'string'
     ? launchHints.t4_note.cover_mode
     : null
   if (coverMode) {
-    lines.push(`- t4_cover_mode: ${coverMode}`)
+    lines.push(`- note_cover_mode: ${coverMode}`)
   }
   const sectionTitles = Array.isArray(launchHints.t4_note?.sections)
     ? launchHints.t4_note.sections.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : []
   if (sectionTitles.length > 0) {
-    lines.push(`- t4_sections: ${sectionTitles.join(' / ')}`)
+    lines.push(`- note_sections: ${sectionTitles.join(' / ')}`)
   }
 
   if (lines.length === 0) {
@@ -859,7 +858,7 @@ function buildLaunchProgrammingHints(input: {
     editorial_intent: {
       primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, t4Projection.is_t4),
       content_kind: t4Projection.is_t4
-        ? 't4_note'
+        ? 'note_entry'
         : input.phase === 'closure' || input.phase === 'aftershow'
           ? 'continuity_callback'
           : 'story_episode',
@@ -873,15 +872,15 @@ function resolvePrimaryShelf(
   isT4: boolean,
 ): string {
   if (isT4 || communitySlug === 't4-picks' || communitySlug === 't4-relations') {
-    return 'T4 今日笔记'
+    return 'notes_today'
   }
   if (phase === 'closure' || phase === 'aftershow') {
-    return '剧情继续看'
+    return 'continue_storyline'
   }
   if (phase === 'escalation' || phase === 'pivot') {
-    return '冲突升级中'
+    return 'conflict_rising'
   }
-  return '今日必看'
+  return 'must_watch_today'
 }
 
 function isTemplateLaunchable(status: StageTemplateV2['lifecycle_status']): boolean {

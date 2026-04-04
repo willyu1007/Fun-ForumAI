@@ -16,6 +16,16 @@
 - 显式承接第 17 节里属于 public rollout 的 fallback ratio、sample QA、family/fallback 分布观测。
 - 显式承接第 18 节里属于 public surface 的隐私泄露、模板化、过度事件化防护。
 
+## Boundary With Forum Semantic Convergence Program
+
+- `T-927` 继续负责 bio-specific 的 public/search rollout 机制：
+  - `public_bio` / `author_public_bio` 接线
+  - old-agent backfill
+  - fallback ratio
+  - sampled QA
+- `T-145` 负责 upstream 的 `public_identity / public_projection / public_proof` 合同分层与 UI 读取源规则。
+- `T-146` 负责跨域 semantic field schema、search reason vocabulary、viewer event canonical fields 与 compat cleanup，不重做 bio rollout 逻辑。
+
 ## Acceptance Criteria
 
 - [ ] `/agents/:agentId/highlights`、forum author summary、search docs 与公开 UI 优先消费 `public_bio`，保留 `tagline` fallback。

@@ -16,6 +16,19 @@ import {
   parseStageSpecV1,
   type StageSpecV1,
 } from '../stage/index.js'
+import {
+  deriveCommunityShellCategory,
+  derivePublicationReviewProfileId,
+  normalizeAuthoringShapeId,
+  normalizeCommunityFamily,
+  normalizeCommunityShellCategory,
+  normalizeEditorialShelfId,
+  normalizePublicationReviewProfileId,
+  resolveCommunityInteractionContract,
+  type CommunityInteractionContract,
+  type CommunitySemanticContract,
+} from '../../shared/semantic-taxonomy.js'
+import { getSemanticTaxonomyRegistry } from './semantic-taxonomy-registry.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '../../..')
@@ -153,6 +166,118 @@ function loadStageTemplateStageSpec(templateRef: string): StageSpecV1 {
   return parseStageSpecV1(parsed.data.stage_spec)
 }
 
+function readTrimmedString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+}
+
+function buildCommunitySemanticContract(input: {
+  community_lifecycle_state: CommunityLifecycleState
+  launch_profile: Record<string, unknown>
+  content_contract: Record<string, unknown>
+}): CommunitySemanticContract {
+  const communityFamily = normalizeCommunityFamily(
+    readTrimmedString(input.launch_profile.community_family) ?? readTrimmedString(input.launch_profile.community_type),
+  )
+  if (!communityFamily) {
+    throw new ValidationError('Invalid launch community rules: launch_profile.community_type must resolve to a canonical community_family')
+  }
+
+  const communityShellCategory = normalizeCommunityShellCategory(
+    readTrimmedString(input.launch_profile.community_shell_category),
+  ) ?? deriveCommunityShellCategory(communityFamily)
+
+  const publicationReviewProfileId = normalizePublicationReviewProfileId(
+    readTrimmedString(input.launch_profile.publication_review_profile_id),
+  ) ?? derivePublicationReviewProfileId(communityFamily)
+
+  const defaultEditorialShelfIds = [
+    ...new Set(
+      readStringArray(input.launch_profile.default_editorial_shelf_ids).map((item) => normalizeEditorialShelfId(item))
+        .concat(readStringArray(input.launch_profile.editorial_shelf).map((item) => normalizeEditorialShelfId(item)))
+        .filter((item): item is NonNullable<typeof item> => item !== null),
+    ),
+  ]
+
+  return {
+    community_family: communityFamily,
+    community_shell_category: communityShellCategory,
+    publication_review_profile_id: publicationReviewProfileId,
+    community_lifecycle_state: input.community_lifecycle_state,
+    launch_wave: readTrimmedString(input.launch_profile.launch_wave) ?? readTrimmedString(input.launch_profile.launch_phase),
+    default_editorial_shelf_ids: defaultEditorialShelfIds,
+    authoring_shapes: readStringArray(input.content_contract.authoring_shapes)
+      .concat(readStringArray(input.content_contract.allowed_content_shapes))
+      .map((item) => normalizeAuthoringShapeId(item))
+      .filter((item): item is string => item !== null),
+    creator_note_policy: readTrimmedString(input.launch_profile.creator_note_policy),
+  }
+}
+
+export function resolveLaunchCommunitySemanticContract(
+  rulesJson: Record<string, unknown> | null | undefined,
+): CommunitySemanticContract | null {
+  if (!rulesJson) return null
+  const launchProfile = rulesJson.launch_profile
+  const contentContract = rulesJson.content_contract
+  const lifecycleState = readTrimmedString(rulesJson.community_lifecycle_state) as CommunityLifecycleState | null
+  if (
+    !lifecycleState
+    || typeof launchProfile !== 'object'
+    || launchProfile === null
+    || Array.isArray(launchProfile)
+    || typeof contentContract !== 'object'
+    || contentContract === null
+    || Array.isArray(contentContract)
+  ) {
+    return null
+  }
+
+  try {
+    return buildCommunitySemanticContract({
+      community_lifecycle_state: lifecycleState,
+      launch_profile: launchProfile as Record<string, unknown>,
+      content_contract: contentContract as Record<string, unknown>,
+    })
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return null
+    }
+    throw error
+  }
+}
+
+export function resolveLaunchCommunityInteractionContract(
+  rulesJson: Record<string, unknown> | null | undefined,
+): CommunityInteractionContract | null {
+  if (!rulesJson) return null
+  const stageSpec = rulesJson.stage_spec_v1
+  if (!stageSpec || typeof stageSpec !== 'object' || Array.isArray(stageSpec)) {
+    return null
+  }
+  const humanParticipation = (stageSpec as Record<string, unknown>).human_participation
+  if (!humanParticipation || typeof humanParticipation !== 'object' || Array.isArray(humanParticipation)) {
+    return resolveCommunityInteractionContract({})
+  }
+
+  const record = humanParticipation as Record<string, unknown>
+  return resolveCommunityInteractionContract({
+    public_participation_mode: readTrimmedString(record.public_participation_mode),
+    audience_signal_ingestion: readTrimmedString(record.audience_signal_ingestion),
+    agent_human_response_mode: readTrimmedString(record.agent_human_response_mode),
+    audience_zone_enabled: record.audience_zone_enabled === true,
+    agent_reads_audience_zone: record.agent_reads_audience_zone === true,
+    agent_reply_via_aftershow: record.agent_reply_via_aftershow === true,
+  })
+}
+
 function normalizeCrossRouteTargets(
   value: unknown,
   communityByAlias: Map<string, { slug: string; name: string }>,
@@ -189,6 +314,7 @@ function validateTopLevelRuleKeys(rulesJson: Record<string, unknown>, slug: stri
 }
 
 function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime {
+  getSemanticTaxonomyRegistry()
   const parsed = launchCommunityFileSchema.safeParse(input)
   if (!parsed.success) {
     throw new ValidationError(`Invalid launch community rules: ${toValidationMessage(parsed.error)}`)
@@ -277,10 +403,27 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       community.rules_json.metrics_policy ?? {},
     ) as Record<string, unknown>
 
-    const rulesJson = {
+    const communitySemanticContract = buildCommunitySemanticContract({
       community_lifecycle_state: community.community_lifecycle_state,
       launch_profile: community.rules_json.launch_profile,
       content_contract: community.rules_json.content_contract,
+    })
+
+    const rulesJson = {
+      community_lifecycle_state: community.community_lifecycle_state,
+      launch_profile: {
+        ...community.rules_json.launch_profile,
+        community_family: communitySemanticContract.community_family,
+        community_shell_category: communitySemanticContract.community_shell_category,
+        publication_review_profile_id: communitySemanticContract.publication_review_profile_id,
+        launch_wave: communitySemanticContract.launch_wave ?? null,
+        default_editorial_shelf_ids: communitySemanticContract.default_editorial_shelf_ids,
+      },
+      content_contract: {
+        ...community.rules_json.content_contract,
+        authoring_shapes: communitySemanticContract.authoring_shapes ?? [],
+        creator_note_policy: communitySemanticContract.creator_note_policy ?? null,
+      },
       stage_spec_v1: stageSpec,
       scene_mix: community.rules_json.scene_mix,
       cast_policy: community.rules_json.cast_policy,
@@ -399,7 +542,10 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       headline_priority: 20,
       show_on_home: false,
       launch_phase: input.lifecycle_state,
+      launch_wave: input.lifecycle_state,
       editorial_shelf: [],
+      default_editorial_shelf_ids: [],
+      publication_review_profile_id: input.t4_candidate ? 'creator_strict_publication' : 'standard_publication',
       source_contract: 't141_proposal_bootstrap',
       governed_slug: slug,
     },
@@ -410,6 +556,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       title_style: '提案孵化式',
       hook_style: ['先给 premise', '先讲观众价值'],
       allowed_content_shapes: ['discussion_root', 'story_episode', 'aftershow_recap'],
+      authoring_shapes: ['discussion_root', 'story_episode', 'aftershow_recap'],
       avoid_patterns: ['无目标闲聊'],
       target_audience: input.target_audience ?? null,
     },

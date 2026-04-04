@@ -21,7 +21,8 @@ const T4_COVER_LABELS: Record<T4CoverMode, string> = {
 const EDITORIAL_SHELF_LABELS: Record<string, string> = {
   must_watch_today: '今日必看',
   conflict_rising: '冲突升级中',
-  t4_today: 'T4 今日笔记',
+  notes_today: '创作者笔记',
+  t4_today: '创作者笔记',
   continue_storyline: '剧情继续看',
   tonight_programming: '今晚节目单',
   all_communities: '全部社区',

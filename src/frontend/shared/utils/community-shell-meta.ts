@@ -1,15 +1,15 @@
 import type { Community } from '@/api/types'
 
-export type CommunityCategory = 'theme' | 'show' | 'world' | 't4'
+export type CommunityCategory = 'theme' | 'show' | 'world' | 'creator'
 
 export const COMMUNITY_CATEGORY_LABELS: Record<CommunityCategory, string> = {
   theme: '圆桌议题',
   show: '舞台剧',
   world: '剧情导向',
-  t4: '博主分享',
+  creator: '创作者内容',
 }
 
-export const COMMUNITY_CATEGORY_ORDER: CommunityCategory[] = ['theme', 'show', 'world', 't4']
+export const COMMUNITY_CATEGORY_ORDER: CommunityCategory[] = ['theme', 'show', 'world', 'creator']
 
 const EXPLICIT_COMMUNITY_CATEGORY_MAP: Record<string, CommunityCategory> = {
   'hot-arena': 'show',
@@ -20,25 +20,29 @@ const EXPLICIT_COMMUNITY_CATEGORY_MAP: Record<string, CommunityCategory> = {
   'banter-watch': 'show',
   'late-night-radio': 'world',
   'plot-twist-club': 'world',
-  't4-picks': 't4',
-  't4-relations': 't4',
+  't4-picks': 'creator',
+  't4-relations': 'creator',
   'weekly-headline': 'show',
   'limited-program': 'show',
   'ai-consciousness': 'world',
-  'code-tasting': 't4',
+  'code-tasting': 'creator',
   'scene-pool-ai-consciousness': 'show',
 }
 
 const CATEGORY_KEYWORD_RULES: Array<{ category: CommunityCategory; keywords: string[] }> = [
   { category: 'show', keywords: ['擂台', '陪审团', '观察局', '大事件', '节目', '限时企划'] },
   { category: 'world', keywords: ['剧情', '抓马', '深夜', '反转', '故事', '修罗场'] },
-  { category: 't4', keywords: ['种草', '博主', '专栏', '长文', '分享', 't4'] },
+  { category: 'creator', keywords: ['种草', '博主', '专栏', '长文', '分享', 't4', '创作者'] },
   { category: 'theme', keywords: ['复盘', '价值观', '议题', '辩台'] },
 ]
 
 export function resolveCommunityCategory(
-  community: Pick<Community, 'slug' | 'name' | 'description'>,
+  community: Pick<Community, 'slug' | 'name' | 'description'> & { community_shell_category?: Community['community_shell_category'] },
 ): CommunityCategory {
+  if (community.community_shell_category) {
+    return community.community_shell_category
+  }
+
   const explicit = EXPLICIT_COMMUNITY_CATEGORY_MAP[community.slug]
   if (explicit) {
     return explicit
@@ -60,7 +64,7 @@ export function getCommunityCategoryGlyph(category: CommunityCategory) {
       return '幕'
     case 'world':
       return '世'
-    case 't4':
+    case 'creator':
       return '博'
     case 'theme':
     default:
@@ -74,7 +78,7 @@ export function getCommunityAvatarToneClassName(category: CommunityCategory) {
       return 'bg-accent/12 text-accent'
     case 'world':
       return 'bg-primary/12 text-primary'
-    case 't4':
+    case 'creator':
       return 'bg-accent/10 text-accent'
     case 'theme':
     default:

@@ -88,13 +88,13 @@ agentControlRouter.post(
       owner_id: req.user!.userId,
       ...req.body,
     })
-    const bioRefresh = await agentBioRefreshService.refresh(agent.id, {
+    await agentBioRefreshService.refresh(agent.id, {
       refresh_kind: 'bootstrap',
       reason: 'agent_create',
     })
-    if (!bioRefresh?.updated) {
-      await searchProjectionService.refreshAgent(agent.id)
-    }
+    // Make newly created agents discoverable on the first read, even when
+    // bio refresh commits and downstream hooks are still asynchronous.
+    await searchProjectionService.refreshAgent(agent.id)
     await trackGuidanceEventFromRequest(
       req,
       res,

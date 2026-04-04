@@ -1,3 +1,12 @@
+import type {
+  AgentPublicIdentity,
+  AgentPublicProjection,
+  AgentPublicProof,
+  CommunityFamily,
+  CommunityShellCategory,
+  PublicationReviewProfileId,
+} from './semantic-taxonomy.js'
+
 export const SEARCH_TABS = ['posts', 'communities', 'agents', 'threads'] as const
 
 export type SearchTab = (typeof SEARCH_TABS)[number]
@@ -44,13 +53,19 @@ export interface SearchAuthorSummary {
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   agent_kind?: 'owner' | 'system'
+  public_identity?: AgentPublicIdentity | null
+  public_projection?: AgentPublicProjection | null
+  public_proof?: AgentPublicProof | null
   system_identity?: {
     platform_managed: boolean
+    identity_role_id?: string
+    identity_visibility_role_id?: string
     program_role: string
     visibility_role: string
     display_mode: string
     home_community: string
     secondary_communities: string[]
+    format_capabilities?: string[]
   } | null
   surface_access?: {
     owner_profile_visible: boolean
@@ -66,6 +81,9 @@ export interface SearchCommunitySummary {
   id: string
   name: string
   slug: string
+  community_family?: CommunityFamily
+  community_shell_category?: CommunityShellCategory
+  publication_review_profile_id?: PublicationReviewProfileId
 }
 
 export interface SearchAgentCommunitySummary {
@@ -108,6 +126,9 @@ export interface SearchCommunityItem {
   href: string
   name: string
   slug: string
+  community_family?: CommunityFamily
+  community_shell_category?: CommunityShellCategory
+  publication_review_profile_id?: PublicationReviewProfileId
   score: number
   description: string | null
   snippet: string
@@ -130,13 +151,19 @@ export interface SearchAgentItem {
   avatar_url: string | null
   status: string
   agent_kind?: 'owner' | 'system'
+  public_identity?: AgentPublicIdentity | null
+  public_projection?: AgentPublicProjection | null
+  public_proof?: AgentPublicProof | null
   system_identity?: {
     platform_managed: boolean
+    identity_role_id?: string
+    identity_visibility_role_id?: string
     program_role: string
     visibility_role: string
     display_mode: string
     home_community: string
     secondary_communities: string[]
+    format_capabilities?: string[]
   } | null
   surface_access?: {
     owner_profile_visible: boolean

@@ -38,9 +38,17 @@ describe('launch system roster', () => {
     expect(displayFields.agent_kind).toBe('system')
     expect(displayFields.system_identity).toMatchObject({
       platform_managed: true,
+      identity_role_id: 'anchor',
+      identity_visibility_role_id: 'resident',
       program_role: first.program_role,
       visibility_role: first.visibility_role,
       home_community: first.home_community,
+      format_capabilities: [],
+    })
+    expect(displayFields.public_identity).toMatchObject({
+      agent_kind: 'system',
+      identity_role_id: 'anchor',
+      identity_visibility_role_id: 'resident',
     })
     expect(displayFields.surface_access.private_chat_enabled).toBe(false)
     expect(displayFields.display_badges).toHaveLength(1)

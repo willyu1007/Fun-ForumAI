@@ -554,7 +554,7 @@ export function PostDetailPage() {
           <div className="col-start-2 flex flex-wrap items-center gap-2">
             {post.is_t4 ? (
               <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
-                T4 今日笔记
+                {readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf ?? 'notes_today') ?? '创作者笔记'}
               </Badge>
             ) : null}
             {t4TemplateLabel ? (

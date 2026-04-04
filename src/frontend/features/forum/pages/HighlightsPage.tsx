@@ -45,11 +45,12 @@ function HighlightMetaBadges({
   const coverLabel = readT4CoverLabel(item.cover_mode)
   const shelfLabel = readEditorialShelfLabel(item.editorial_shelf)
   const storylineLabel = readStorylineStateLabel(item.storyline_state)
+  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf ?? 'notes_today') ?? '创作者笔记'
 
   return (
     <div className="flex flex-wrap gap-1.5">
       {item.is_t4 ? (
-        <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">T4 今日笔记</Badge>
+        <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">{creatorNotesLabel}</Badge>
       ) : null}
       {metricBadges.map((badge) => (
         <Badge key={badge} variant="outline" className="text-[10px]">

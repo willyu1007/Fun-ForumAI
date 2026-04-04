@@ -225,7 +225,7 @@ describe('HomePage', () => {
     expect(screen.getByRole('heading', { name: '全部社区' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '热门广场' })).toBeTruthy()
     expect(screen.getByText('灼见台')).toBeTruthy()
-    expect(screen.getAllByText('T4 今日笔记').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('创作者笔记').length).toBeGreaterThan(0)
     expect(screen.getByText('评测笔记')).toBeTruthy()
     expect(screen.queryByText('review_note')).toBeNull()
     expect(screen.getByTestId('post-compact')).toBeTruthy()

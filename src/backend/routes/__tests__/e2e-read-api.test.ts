@@ -14,7 +14,9 @@ import {
   roleAssignmentService,
   eventRepo,
   forumSceneMetadataRepo,
+  mediaAssetRepo,
   mediaContextProjectionRepo,
+  mediaSemanticSnapshotRepo,
   sceneMediaBindingRepo,
   searchCountsCache,
   searchDocRepo,
@@ -414,6 +416,28 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.data).toBeInstanceOf(Array)
   })
 
+  it('GET /v1/communities exposes canonical semantic contracts for launch-backed communities', async () => {
+    const launchCommunity = getLaunchCommunityBySlug('t4-picks')
+    const community = await createTestCommunity({
+      name: 'Canonical Creator Community',
+      slug: `canonical-creator-${Date.now()}`,
+      rules_json: launchCommunity?.rules_json,
+    })
+
+    const res = await request(app).get('/v1/communities?limit=50')
+    expect(res.status).toBe(200)
+    const item = res.body.data.find((entry: { id: string }) => entry.id === community.id)
+    expect(item).toMatchObject({
+      community_family: 'creator_recommendation',
+      community_shell_category: 'creator',
+      publication_review_profile_id: 'creator_strict_publication',
+      public_participation_mode: 'audience_sidecar',
+      audience_signal_ingestion: 'summary_only',
+      agent_human_response_mode: 'aftershow_only',
+      default_editorial_shelf_ids: ['notes_today'],
+    })
+  })
+
   it('GET /v1/posts/:id returns 404 for unknown post', async () => {
     const res = await request(app).get('/v1/posts/unknown-id')
     expect(res.status).toBe(404)
@@ -585,11 +609,69 @@ describe('E2E: Read API (public)', () => {
       expect(postRes.status).toBe(201)
       const postId = postRes.body.data.id as string
 
+      const asset = await mediaAssetRepo.create({
+        id: `asset-highlight-${Date.now()}`,
+        owner_user_id: 'user1',
+        steward_agent_id: authorRes.body.data.id as string,
+        source_kind: 'owner_console_upload',
+        source_scene_type: 'forum_post',
+        source_scene_id: postId,
+        visibility_policy: 'public_original_allowed',
+        mime_type: 'image/png',
+        file_size_bytes: 1024,
+        width: 1280,
+        height: 720,
+        sha256: `sha-highlight-${Date.now()}`,
+      })
+      const snapshot = await mediaSemanticSnapshotRepo.create({
+        id: `snapshot-highlight-${Date.now()}`,
+        asset_id: asset.id,
+        snapshot_kind: 'visual_core',
+        schema_version: 'media.semantic.v1',
+        model_provider: 'test',
+        model_name: 'fixture',
+        model_version: '1',
+        extraction_status: 'completed',
+        quality_grade: 'rich',
+        summary: {
+          scene: 'Highlights packaging scene',
+          composition: 'single subject',
+          style: {
+            theme: 'studio',
+            mood: 'dramatic',
+            tags: ['highlight', 'cover'],
+          },
+          entities: {
+            salient: ['host'],
+            discussion_points: ['debate'],
+          },
+          ocr: {
+            snippets: [],
+          },
+          safety: {
+            labels: [],
+          },
+          summaries: {
+            public_safe: 'Highlights packaging cover',
+            internal_full: 'Highlights packaging cover with clean frame',
+          },
+          confidence: 0.99,
+          theme: 'studio',
+          mood: 'dramatic',
+          style_tags: ['highlight', 'cover'],
+          discussion_points: ['debate'],
+          salient_entities: ['host'],
+          ocr_snippets: [],
+          safety_labels: [],
+          public_safe_summary: 'Highlights packaging cover',
+          internal_full_summary: 'Highlights packaging cover with clean frame',
+        },
+      })
       const binding = await sceneMediaBindingRepo.create({
         scene_type: 'forum_post',
         scene_id: postId,
-        asset_id: `asset-highlight-${Date.now()}`,
-        semantic_snapshot_id: `snapshot-highlight-${Date.now()}`,
+        asset_id: asset.id,
+        semantic_snapshot_id: snapshot.id,
         binding_role: 'primary',
         relation_to_scene: 'selected_for_post',
         display_policy: 'original_allowed',

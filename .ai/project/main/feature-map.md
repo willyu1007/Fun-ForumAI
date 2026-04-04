@@ -227,4 +227,14 @@ Project: `main`
 | T-139 p1-shelf-template-optimization-and-incubation | archived | dev-docs/archive/p1-shelf-template-optimization-and-incubation |
 | T-140 launch-visual-rollout-and-packaging | archived | dev-docs/archive/launch-visual-rollout-and-packaging |
 | T-141 launch-community-governance-and-incubation | archived | dev-docs/archive/launch-community-governance-and-incubation |
+
+### F-100 Forum Semantic Convergence & Governance
+
+| Task | Status | Dev Docs |
+| --- | --- | --- |
+| T-142 forum-semantic-convergence-governance-program | in-progress | dev-docs/active/forum-semantic-convergence-governance-program |
+| T-143 semantic-taxonomy-spine-and-loader-cutover | archived | dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover |
+| T-144 governance-and-public-participation-cutover | planned | dev-docs/active/governance-and-public-participation-cutover |
+| T-145 agent-public-identity-projection-proof-alignment | planned | dev-docs/active/agent-public-identity-projection-proof-alignment |
+| T-146 search-analytics-backfill-and-compat-cleanup | planned | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
 <!-- AUTO-GENERATED:END feature-map -->

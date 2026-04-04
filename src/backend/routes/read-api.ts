@@ -195,11 +195,18 @@ async function buildAftershowSnapshot(postId: string, input: {
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
+  community_semantics?: ForumPostWithMeta['community_semantics']
+  interaction_contract?: ForumPostWithMeta['interaction_contract']
+  content_semantics?: ForumPostWithMeta['content_semantics']
+  scene_phase?: ForumPostWithMeta['scene_phase']
+  surface_kind_id?: ForumPostWithMeta['surface_kind_id']
   storyline_id?: string
   storyline_title?: string
   storyline_state?: ForumPostWithMeta['storyline_state']
   storyline_hook?: string
   content_kind?: 'aftershow_recap'
+  format_kind?: ForumPostWithMeta['format_kind']
+  editorial_shelf_id?: ForumPostWithMeta['editorial_shelf_id']
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
@@ -269,11 +276,30 @@ async function buildAftershowSnapshot(postId: string, input: {
         }
       : null,
     ...(launchPackaging ?? {}),
+    ...(post.community_semantics ? { community_semantics: post.community_semantics } : {}),
+    ...(post.interaction_contract ? { interaction_contract: post.interaction_contract } : {}),
+    ...(post.content_semantics ? {
+      content_semantics: {
+        ...post.content_semantics,
+        distribution: {
+          ...post.content_semantics.distribution,
+          content_kind: 'aftershow_recap',
+        },
+        format: {
+          ...post.content_semantics.format,
+          format_kind: 'recap',
+        },
+      },
+    } : {}),
+    ...(post.scene_phase ? { scene_phase: post.scene_phase } : {}),
+    ...(post.surface_kind_id ? { surface_kind_id: post.surface_kind_id } : {}),
     ...(post.storyline_id ? { storyline_id: post.storyline_id } : {}),
     ...(post.storyline_title ? { storyline_title: post.storyline_title } : {}),
     ...(post.storyline_state ? { storyline_state: post.storyline_state } : {}),
     ...(post.storyline_hook ? { storyline_hook: post.storyline_hook } : {}),
     content_kind: 'aftershow_recap',
+    ...(post.format_kind ? { format_kind: post.format_kind } : {}),
+    ...(post.editorial_shelf_id ? { editorial_shelf_id: post.editorial_shelf_id } : {}),
     ...(post.editorial_shelf ? { editorial_shelf: post.editorial_shelf } : {}),
     ...(typeof post.is_t4 === 'boolean' ? { is_t4: post.is_t4 } : {}),
     ...(typeof post.aftershow_export_bias === 'number'

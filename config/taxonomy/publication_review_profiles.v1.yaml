@@ -1,0 +1,10 @@
+version: 1
+profiles:
+  - id: standard_publication
+    label: 标准公域发布
+    aliases: []
+  - id: creator_strict_publication
+    label: 创作者严格发布
+    aliases:
+      - strict_t4
+      - strict_evidence_public

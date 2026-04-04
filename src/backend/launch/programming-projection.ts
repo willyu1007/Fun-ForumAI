@@ -7,17 +7,21 @@ import {
   type LaunchT4CoverMode,
   type LaunchT4TemplateId,
 } from './t4-content-templates.js'
+import {
+  deriveFormatKindFromContentKind,
+  normalizeContentKind,
+  normalizeEditorialShelfId,
+  toLegacyEditorialShelfId,
+  type ContentKind,
+  type ContentSemanticProjection,
+  type EditorialShelfId,
+  type FormatKind,
+  type ScenePhase,
+  type StorylineState,
+} from '../../shared/semantic-taxonomy.js'
 
-export type LaunchStorylineState = 'opening' | 'escalating' | 'callback' | 'closed'
-export type LaunchContentKind =
-  | 'mainline_root'
-  | 'highlight_hero'
-  | 'aftershow_recap'
-  | 'continuity_callback'
-  | 'story_episode'
-  | 't4_note'
-  | 'community_entry'
-  | 'programming_slot'
+export type LaunchStorylineState = StorylineState
+export type LaunchContentKind = ContentKind
 
 export interface LaunchProgrammingProjection {
   storyline_id?: string
@@ -25,11 +29,15 @@ export interface LaunchProgrammingProjection {
   storyline_state?: LaunchStorylineState
   storyline_hook?: string
   content_kind?: LaunchContentKind
+  scene_phase?: ScenePhase
+  format_kind?: FormatKind
+  editorial_shelf_id?: EditorialShelfId
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: LaunchT4TemplateId
   cover_mode?: LaunchT4CoverMode
+  content_semantics?: ContentSemanticProjection
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -41,16 +49,7 @@ function readString(value: unknown): string | undefined {
 }
 
 function isLaunchContentKind(value: unknown): value is LaunchContentKind {
-  return typeof value === 'string' && [
-    'mainline_root',
-    'highlight_hero',
-    'aftershow_recap',
-    'continuity_callback',
-    'story_episode',
-    't4_note',
-    'community_entry',
-    'programming_slot',
-  ].includes(value)
+  return typeof value === 'string' && normalizeContentKind(value) !== null
 }
 
 function isLaunchT4CoverMode(value: unknown): value is LaunchT4CoverMode {
@@ -93,9 +92,15 @@ export function buildLaunchProgrammingProjection(input: {
   has_aftershow_artifact?: boolean
 }): LaunchProgrammingProjection {
   const launchProfile = readLaunchProfile(input.community_rules_json)
-  const defaultEditorialShelf = Array.isArray(launchProfile?.editorial_shelf)
-    ? launchProfile.editorial_shelf.find((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : undefined
+  const defaultEditorialShelfId = Array.isArray(launchProfile?.default_editorial_shelf_ids)
+    ? launchProfile.default_editorial_shelf_ids
+      .map((item) => (typeof item === 'string' ? normalizeEditorialShelfId(item) : null))
+      .find((item): item is EditorialShelfId => item !== null)
+    : Array.isArray(launchProfile?.editorial_shelf)
+      ? launchProfile.editorial_shelf
+        .map((item) => (typeof item === 'string' ? normalizeEditorialShelfId(item) : null))
+        .find((item): item is EditorialShelfId => item !== null)
+      : undefined
   const crossRoutePolicy = readCrossRoutePolicy(input.community_rules_json)
   const allowAftershowExport = crossRoutePolicy?.allow_aftershow_export === true
   const payload = input.scene_metadata ? parsePublicScenePayload(input.scene_metadata.payload_json) : null
@@ -125,7 +130,8 @@ export function buildLaunchProgrammingProjection(input: {
     open_loops: payload?.episode_brief.open_loops ?? [],
     media_count: input.media_count ?? 0,
   })
-  const editorialShelf = readString(launchEditorialIntent?.primary_shelf) ?? defaultEditorialShelf
+  const editorialShelfId = normalizeEditorialShelfId(readString(launchEditorialIntent?.primary_shelf))
+    ?? defaultEditorialShelfId
   const isT4 = typeof launchT4Note?.is_t4 === 'boolean'
     ? launchT4Note.is_t4
     : computedT4Projection.is_t4
@@ -136,14 +142,15 @@ export function buildLaunchProgrammingProjection(input: {
     : computedT4Projection.cover_mode
 
   const contentKind: LaunchContentKind | undefined = isLaunchContentKind(launchEditorialIntent?.content_kind)
-    ? launchEditorialIntent.content_kind
+    ? normalizeContentKind(launchEditorialIntent?.content_kind as string) ?? undefined
     : isT4
-      ? 't4_note'
+      ? 'note_entry'
       : storylineState === 'callback'
         ? 'continuity_callback'
         : storylineId
           ? 'story_episode'
           : 'mainline_root'
+  const formatKind = deriveFormatKindFromContentKind(contentKind)
 
   const aftershowExportBias = !allowAftershowExport
     ? 0
@@ -155,16 +162,46 @@ export function buildLaunchProgrammingProjection(input: {
           ? 0.2
           : 0.15
 
+  const contentSemantics: ContentSemanticProjection = {
+    scene_runtime: {
+      ...(input.scene_metadata?.scene_template_id ? { scene_template_id: input.scene_metadata.scene_template_id } : {}),
+      ...(input.scene_metadata?.phase ? { phase: input.scene_metadata.phase } : {}),
+    },
+    narrative: {
+      ...(storylineId ? { storyline_id: storylineId } : {}),
+      ...(storylineTitle ? { storyline_title: storylineTitle } : {}),
+      ...(storylineState ? { storyline_state: storylineState } : {}),
+      ...(storylineHook ? { storyline_hook: storylineHook } : {}),
+    },
+    distribution: {
+      ...(contentKind ? { content_kind: contentKind } : {}),
+      ...(editorialShelfId ? { editorial_shelf_id: editorialShelfId } : {}),
+      aftershow_export_bias: aftershowExportBias,
+    },
+    format: {
+      ...(formatKind ? { format_kind: formatKind } : {}),
+      ...(noteTemplateId ? { note_template_id: noteTemplateId } : {}),
+      ...(coverMode ? { cover_mode: coverMode } : {}),
+    },
+    visual: {
+      ...(isT4 ? { surface_kind: 'note_root_card' } : {}),
+    },
+  }
+
   return {
     ...(storylineId ? { storyline_id: storylineId } : {}),
     ...(storylineTitle ? { storyline_title: storylineTitle } : {}),
     ...(storylineState ? { storyline_state: storylineState } : {}),
     ...(storylineHook ? { storyline_hook: storylineHook } : {}),
     ...(contentKind ? { content_kind: contentKind } : {}),
-    ...(editorialShelf ? { editorial_shelf: editorialShelf } : {}),
+    ...(input.scene_metadata?.phase ? { scene_phase: input.scene_metadata.phase } : {}),
+    ...(formatKind ? { format_kind: formatKind } : {}),
+    ...(editorialShelfId ? { editorial_shelf_id: editorialShelfId } : {}),
+    ...(editorialShelfId ? { editorial_shelf: toLegacyEditorialShelfId(editorialShelfId) ?? editorialShelfId } : {}),
     is_t4: isT4,
     aftershow_export_bias: aftershowExportBias,
     ...(noteTemplateId ? { note_template_id: noteTemplateId } : {}),
     ...(coverMode ? { cover_mode: coverMode } : {}),
+    content_semantics: contentSemantics,
   }
 }

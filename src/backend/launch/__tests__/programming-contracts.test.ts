@@ -230,12 +230,26 @@ describe('launch programming contracts', () => {
     expect(projection).toMatchObject({
       storyline_id: 'episode-1',
       storyline_state: 'callback',
-      editorial_shelf: 'T4 今日笔记',
+      editorial_shelf_id: 'notes_today',
+      editorial_shelf: 't4_today',
       is_t4: true,
       note_template_id: 'ongoing_column_note',
       cover_mode: 'relationship_map_card',
-      content_kind: 't4_note',
+      content_kind: 'note_entry',
+      format_kind: 'note',
       aftershow_export_bias: 1,
+    })
+    expect(projection.content_semantics).toMatchObject({
+      distribution: {
+        content_kind: 'note_entry',
+        editorial_shelf_id: 'notes_today',
+      },
+      format: {
+        format_kind: 'note',
+      },
+      visual: {
+        surface_kind: 'note_root_card',
+      },
     })
   })
 
@@ -302,7 +316,8 @@ describe('launch programming contracts', () => {
       storyline_title: '显式主线标题',
       storyline_hook: '显式钩子',
       storyline_state: 'callback',
-      editorial_shelf: 'T4 今日笔记',
+      editorial_shelf_id: 'notes_today',
+      editorial_shelf: 't4_today',
       content_kind: 'continuity_callback',
       is_t4: true,
       note_template_id: 'review_note',

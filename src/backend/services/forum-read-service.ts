@@ -25,6 +25,10 @@ import { config } from '../lib/config.js'
 import { listPublicStageThreadTurnsByPost } from '../lib/public-stage-thread-turn.js'
 import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
 import {
+  resolveLaunchCommunityInteractionContract,
+  resolveLaunchCommunitySemanticContract,
+} from '../launch/community-rules.js'
+import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
   type LaunchVisualPackagingMetadata,
@@ -39,6 +43,19 @@ import type {
   LaunchT4TemplateId,
 } from '../launch/t4-content-templates.js'
 import { isCommunityVisibleInDirectory } from '../community/community-lifecycle.js'
+import {
+  normalizeLaunchSurfaceKindId,
+  type AgentPublicIdentity,
+  type AgentPublicProjection,
+  type AgentPublicProof,
+  type CommunityInteractionContract,
+  type CommunitySemanticContract,
+  type ContentSemanticProjection,
+  type EditorialShelfId,
+  type FormatKind,
+  type LaunchSurfaceKindId,
+  type ScenePhase,
+} from '../../shared/semantic-taxonomy.js'
 import type { AchievementChronicleService } from './achievement-chronicle-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
@@ -82,13 +99,19 @@ export interface AuthorSummary {
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   agent_kind?: 'owner' | 'system'
+  public_identity?: AgentPublicIdentity | null
+  public_projection?: AgentPublicProjection | null
+  public_proof?: AgentPublicProof | null
   system_identity?: {
     platform_managed: boolean
+    identity_role_id?: string
+    identity_visibility_role_id?: string
     program_role: string
     visibility_role: string
     display_mode: string
     home_community: string
     secondary_communities: string[]
+    format_capabilities?: string[]
   } | null
   surface_access?: {
     owner_profile_visible: boolean
@@ -124,7 +147,12 @@ export interface PostWithMeta extends Post {
   effective_moderation_label: string
   topic_signals: Record<string, unknown> | null
   distribution_state: string
+  community_semantics?: CommunitySemanticContract | null
+  interaction_contract?: CommunityInteractionContract | null
+  content_semantics?: ContentSemanticProjection | null
+  scene_phase?: ScenePhase
   surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
+  surface_kind_id?: LaunchSurfaceKindId
   card_mode?: LaunchVisualPackagingMetadata['card_mode']
   thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
   hero_eligible?: boolean
@@ -133,11 +161,26 @@ export interface PostWithMeta extends Post {
   storyline_state?: LaunchStorylineState
   storyline_hook?: string
   content_kind?: LaunchContentKind
+  format_kind?: FormatKind
+  editorial_shelf_id?: EditorialShelfId
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: LaunchT4TemplateId
   cover_mode?: LaunchT4CoverMode
+}
+
+export interface CommunityReadModel extends Community {
+  community_semantics?: CommunitySemanticContract | null
+  interaction_contract?: CommunityInteractionContract | null
+  community_family?: CommunitySemanticContract['community_family']
+  community_shell_category?: CommunitySemanticContract['community_shell_category']
+  publication_review_profile_id?: CommunitySemanticContract['publication_review_profile_id']
+  public_participation_mode?: CommunityInteractionContract['public_participation_mode']
+  audience_signal_ingestion?: CommunityInteractionContract['audience_signal_ingestion']
+  agent_human_response_mode?: CommunityInteractionContract['agent_human_response_mode']
+  launch_wave?: CommunitySemanticContract['launch_wave']
+  default_editorial_shelf_ids?: CommunitySemanticContract['default_editorial_shelf_ids']
 }
 
 export interface PublicStageThreadTurnWithAuthor extends PublicStageThreadTurn {
@@ -316,11 +359,27 @@ export class ForumReadService {
           allow_minor_refresh: false,
         }).catch(() => null) ?? Promise.resolve(null),
       ])
+      const publicProjection: AgentPublicProjection | null = identity.tagline || bio?.public_bio
+        ? {
+            tagline: identity.tagline ?? null,
+            public_bio: bio?.public_bio ?? null,
+          }
+        : null
+      const publicProof: AgentPublicProof = {
+        achievement_badges: (identity.badges ?? []).map((badge) => ({
+          code: badge.code,
+          name: badge.name,
+          level: badge.tier,
+        })),
+      }
       return {
         ...base,
         ...(identity.badges ? { badges: identity.badges } : {}),
         ...(identity.tagline ? { tagline: identity.tagline } : {}),
         ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
+        public_identity: base.public_identity ?? (base.agent_kind ? { agent_kind: base.agent_kind } : null),
+        ...(publicProjection ? { public_projection: publicProjection } : {}),
+        public_proof: publicProof,
       }
     }
 
@@ -333,6 +392,7 @@ export class ForumReadService {
         display_name: agent.display_name,
         avatar_url: agent.avatar_url,
         agent_kind: displayFields.agent_kind,
+        public_identity: displayFields.public_identity ?? { agent_kind: displayFields.agent_kind },
         system_identity: displayFields.system_identity,
         surface_access: displayFields.surface_access,
         display_badges: displayFields.display_badges,
@@ -358,6 +418,28 @@ export class ForumReadService {
       return { slug: communityId, name: communityId }
     }
     return { slug: community.slug, name: community.name }
+  }
+
+  private enrichCommunityReadModel(community: Community): CommunityReadModel {
+    const communitySemantics = resolveLaunchCommunitySemanticContract(community.rules_json)
+    const interactionContract = resolveLaunchCommunityInteractionContract(community.rules_json)
+    return {
+      ...community,
+      ...(communitySemantics ? {
+        community_semantics: communitySemantics,
+        community_family: communitySemantics.community_family,
+        community_shell_category: communitySemantics.community_shell_category,
+        publication_review_profile_id: communitySemantics.publication_review_profile_id,
+        launch_wave: communitySemantics.launch_wave ?? null,
+        default_editorial_shelf_ids: communitySemantics.default_editorial_shelf_ids,
+      } : {}),
+      ...(interactionContract ? {
+        interaction_contract: interactionContract,
+        public_participation_mode: interactionContract.public_participation_mode,
+        audience_signal_ingestion: interactionContract.audience_signal_ingestion,
+        agent_human_response_mode: interactionContract.agent_human_response_mode,
+      } : {}),
+    }
   }
 
   private resolveRootPostLaunchPackaging(input: {
@@ -631,6 +713,11 @@ export class ForumReadService {
       scene_metadata: sceneMetadata,
       media_count: media.length,
     })
+    const communitySemantics = resolveLaunchCommunitySemanticContract(communityEntity?.rules_json ?? null)
+    const interactionContract = resolveLaunchCommunityInteractionContract(communityEntity?.rules_json ?? null)
+    const surfaceKindId = launchPackaging?.surface_kind
+      ? normalizeLaunchSurfaceKindId(launchPackaging.surface_kind)
+      : null
 
     return {
       ...post,
@@ -663,7 +750,10 @@ export class ForumReadService {
       effective_moderation_label: this.buildEffectiveModerationLabel(post.visibility, post.state),
       topic_signals: topicPresentation.topic_signals,
       distribution_state: topicPresentation.distribution_state,
+      ...(communitySemantics ? { community_semantics: communitySemantics } : {}),
+      ...(interactionContract ? { interaction_contract: interactionContract } : {}),
       ...(launchPackaging ?? {}),
+      ...(surfaceKindId ? { surface_kind_id: surfaceKindId } : {}),
       ...launchProjection,
     }
   }
@@ -906,11 +996,12 @@ export class ForumReadService {
     cursor?: string
     limit?: number
     viewer_role?: 'admin' | 'user' | null
-  }): Promise<PaginatedResult<Community>> {
+  }): Promise<PaginatedResult<CommunityReadModel>> {
     const limit = this.clampLimit(opts.limit, 20, 100)
     const page = this.deps.communityRepo.findAll({ limit: 200 })
     const visible = page.items.filter((community) =>
       isCommunityVisibleInDirectory(community, opts.viewer_role ?? null))
+      .map((community) => this.enrichCommunityReadModel(community))
     let start = 0
     if (opts.cursor) {
       const idx = visible.findIndex((community) => community.id === opts.cursor)

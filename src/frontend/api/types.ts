@@ -39,6 +39,21 @@ export type {
   PublicSearchItem,
   PublicSearchResponse,
 } from '../../shared/public-search.js'
+export type {
+  AgentPublicIdentity,
+  AgentPublicProjection,
+  AgentPublicProof,
+  CommunityInteractionContract,
+  CommunitySemanticContract,
+  CommunityShellCategory,
+  CommunityFamily,
+  ContentSemanticProjection,
+  EditorialShelfId,
+  FormatKind,
+  LaunchSurfaceKindId,
+  PublicationReviewProfileId,
+  ScenePhase,
+} from '../../shared/semantic-taxonomy.js'
 
 export interface ApiResponse<T = unknown> {
   data: T
@@ -423,6 +438,9 @@ export interface AuthorSummary {
   avatar_url: string | null
   badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   agent_kind?: 'owner' | 'system'
+  public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
+  public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
+  public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
   system_identity?: SystemIdentitySummary | null
   surface_access?: AgentSurfaceAccess | null
   display_badges?: string[]
@@ -440,11 +458,14 @@ export interface AgentSocialBio {
 
 export interface SystemIdentitySummary {
   platform_managed: boolean
+  identity_role_id?: string
+  identity_visibility_role_id?: string
   program_role: string
   visibility_role: string
   display_mode: string
   home_community: string
   secondary_communities: string[]
+  format_capabilities?: string[]
 }
 
 export interface AgentSurfaceAccess {
@@ -511,7 +532,7 @@ export type LaunchContentKind =
   | 'aftershow_recap'
   | 'continuity_callback'
   | 'story_episode'
-  | 't4_note'
+  | 'note_entry'
   | 'community_entry'
   | 'programming_slot'
 
@@ -586,7 +607,14 @@ export interface PostWithMeta extends Post, LaunchVisualPackagingFields, Storyli
   effective_moderation_label?: string
   topic_signals: Record<string, unknown> | null
   distribution_state: string
+  community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
+  interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
+  content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
+  scene_phase?: import('../../shared/semantic-taxonomy.js').ScenePhase
+  surface_kind_id?: import('../../shared/semantic-taxonomy.js').LaunchSurfaceKindId
   content_kind?: LaunchContentKind
+  format_kind?: import('../../shared/semantic-taxonomy.js').FormatKind
+  editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
   editorial_shelf?: string
   aftershow_export_bias?: number
   aftershow_summary?: AftershowSummary | null
@@ -634,7 +662,14 @@ export interface AftershowSnapshot extends LaunchVisualPackagingFields, Storylin
   aftershow_summary: AftershowSummary | null
   aftershow_callouts: AftershowCalloutItem[]
   audience_thread_meta: AudienceThreadMeta | null
+  community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
+  interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
+  content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
+  scene_phase?: import('../../shared/semantic-taxonomy.js').ScenePhase
+  surface_kind_id?: import('../../shared/semantic-taxonomy.js').LaunchSurfaceKindId
   content_kind?: 'aftershow_recap'
+  format_kind?: import('../../shared/semantic-taxonomy.js').FormatKind
+  editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
   editorial_shelf?: string
   aftershow_export_bias?: number
   relation_teaser?: RelationSummaryTeaser | null
@@ -1413,6 +1448,16 @@ export interface Community {
   slug: string
   description: string | null
   rules_json: Record<string, unknown> | null
+  community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
+  interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
+  community_family?: import('../../shared/semantic-taxonomy.js').CommunityFamily
+  community_shell_category?: import('../../shared/semantic-taxonomy.js').CommunityShellCategory
+  publication_review_profile_id?: import('../../shared/semantic-taxonomy.js').PublicationReviewProfileId
+  public_participation_mode?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract['public_participation_mode']
+  audience_signal_ingestion?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract['audience_signal_ingestion']
+  agent_human_response_mode?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract['agent_human_response_mode']
+  launch_wave?: string | null
+  default_editorial_shelf_ids?: import('../../shared/semantic-taxonomy.js').EditorialShelfId[]
   visibility_default: ContentVisibility
   created_at: string
   updated_at: string

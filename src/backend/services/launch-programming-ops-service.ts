@@ -575,7 +575,7 @@ function buildPublicProgrammingItem(input: {
 function buildObservedCounts(posts: PostWithMeta[], highlightPostIds: Set<string>): ProgrammingObservedCounts {
   return {
     root_posts: posts.filter((post) => post.content_kind !== 'aftershow_recap').length,
-    t4_notes: posts.filter((post) => post.is_t4 === true || post.content_kind === 't4_note').length,
+    t4_notes: posts.filter((post) => post.is_t4 === true || post.content_kind === 'note_entry').length,
     priority_threads: posts.filter((post) => post.thread_turn_count >= 6).length,
     highlight_candidates: posts.filter((post) => highlightPostIds.has(post.id)).length,
     continuity_callbacks: posts.filter((post) =>
@@ -1059,7 +1059,7 @@ export class LaunchProgrammingOpsService {
       observed_daily_outcomes: {
         mainline_roots: todayPosts.filter((post) => post.is_t4 !== true).length,
         highlight_candidates: highlightCandidates.filter((item) => item.rejected_reason === null).length,
-        t4_notes: todayPosts.filter((post) => post.is_t4 === true || post.content_kind === 't4_note').length,
+        t4_notes: todayPosts.filter((post) => post.is_t4 === true || post.content_kind === 'note_entry').length,
         continuity_callbacks: todayPosts.filter((post) =>
           post.content_kind === 'continuity_callback' || post.storyline_state === 'callback').length,
       },

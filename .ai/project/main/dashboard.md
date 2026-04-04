@@ -8,12 +8,17 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 170 (planned: 1, in-progress: 12, blocked: 1, done: 2, archived: 154)
+- Tasks: 175 (planned: 4, in-progress: 13, blocked: 1, done: 2, archived: 155)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-142 forum-semantic-convergence-governance-program | in-progress | F-100 | dev-docs/active/forum-semantic-convergence-governance-program |
+| T-143 semantic-taxonomy-spine-and-loader-cutover | archived | F-100 | dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover |
+| T-144 governance-and-public-participation-cutover | planned | F-100 | dev-docs/active/governance-and-public-participation-cutover |
+| T-145 agent-public-identity-projection-proof-alignment | planned | F-100 | dev-docs/active/agent-public-identity-projection-proof-alignment |
+| T-146 search-analytics-backfill-and-compat-cleanup | planned | F-100 | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
 | T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
@@ -29,9 +34,4 @@ Project: `main`
 | T-136 launch-t4-community-enablement | archived | F-090 | dev-docs/archive/launch-t4-community-enablement |
 | T-137 launch-programming-ops-and-rollout | archived | F-090 | dev-docs/archive/launch-programming-ops-and-rollout |
 | T-138 p1-lightweight-personalization-and-relation-hints | archived | F-090 | dev-docs/archive/p1-lightweight-personalization-and-relation-hints |
-| T-139 p1-shelf-template-optimization-and-incubation | archived | F-090 | dev-docs/archive/p1-shelf-template-optimization-and-incubation |
-| T-140 launch-visual-rollout-and-packaging | archived | F-090 | dev-docs/archive/launch-visual-rollout-and-packaging |
-| T-141 launch-community-governance-and-incubation | archived | F-090 | dev-docs/archive/launch-community-governance-and-incubation |
-| T-931 forum-post-detail-stage-audience-layout-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
-| T-932 invite-code-seed-registration-v1 | archived | F-000 | dev-docs/archive/invite-code-seed-registration-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

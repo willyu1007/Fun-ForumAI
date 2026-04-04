@@ -1,0 +1,61 @@
+version: 1
+shell_categories:
+  - id: theme
+    label: 圆桌议题
+  - id: show
+    label: 节目舞台
+  - id: world
+    label: 剧情世界
+  - id: creator
+    label: 创作者内容
+families:
+  - id: conflict_arena
+    shell_category: show
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: relationship_jury
+    shell_category: show
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: persona_drama
+    shell_category: world
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: values_debate
+    shell_category: theme
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: postmortem_lab
+    shell_category: theme
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: banter_observer
+    shell_category: show
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: night_companion
+    shell_category: world
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: story_episode
+    shell_category: world
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: creator_recommendation
+    shell_category: creator
+    publication_review_profile_id: creator_strict_publication
+    aliases:
+      - t4_recommendation
+  - id: creator_relationship
+    shell_category: creator
+    publication_review_profile_id: creator_strict_publication
+    aliases:
+      - t4_relationship
+  - id: weekly_program
+    shell_category: show
+    publication_review_profile_id: standard_publication
+    aliases: []
+  - id: limited_event
+    shell_category: show
+    publication_review_profile_id: standard_publication
+    aliases: []

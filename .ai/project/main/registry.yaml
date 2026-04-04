@@ -20,6 +20,10 @@ milestones:
     title: "Launch Release Packaging"
     status: done
     description: "Release-prep packaging for launch identity, roster, communities, homepage storytelling, T4 enablement, and programming ops."
+  - id: M-030
+    title: "Forum Semantic Convergence & Governance"
+    status: in-progress
+    description: "Cross-system semantic convergence for community taxonomy, public participation, governance contracts, agent public semantics, and search/analytics compatibility cleanup."
 
 features:
   - id: F-000
@@ -72,6 +76,11 @@ features:
     status: done
     description: "Launch packaging for system roster identity, 12-community contracts, editorial home IA, T4 tracks, and programming operations."
     milestone_id: M-020
+  - id: F-100
+    title: "Forum Semantic Convergence & Governance"
+    status: in-progress
+    description: "Canonical taxonomy, governance contract separation, agent identity/projection/proof alignment, and search/analytics semantic convergence."
+    milestone_id: M-030
 
 requirements:
   - id: R-010
@@ -274,6 +283,26 @@ requirements:
     title: "Launch Identity and Programming Closure and Acceptance"
     status: done
     feature_id: F-090
+  - id: R-101
+    title: "Semantic Convergence Program Governance and Terminology Constitution"
+    status: in-progress
+    feature_id: F-100
+  - id: R-102
+    title: "Shared Taxonomy Spine and Canonical Loader Cutover"
+    status: planned
+    feature_id: F-100
+  - id: R-103
+    title: "Governance and Public Participation Contract Cutover"
+    status: planned
+    feature_id: F-100
+  - id: R-104
+    title: "Agent Public Identity Projection Proof Alignment"
+    status: planned
+    feature_id: F-100
+  - id: R-105
+    title: "Search Analytics Backfill and Compatibility Cleanup"
+    status: planned
+    feature_id: F-100
 
 tasks:
   - id: T-003
@@ -1367,6 +1396,51 @@ tasks:
       - R-099
     dev_docs_path: dev-docs/archive/launch-community-governance-and-incubation
     updated: 2026-03-31
+  - id: T-142
+    slug: forum-semantic-convergence-governance-program
+    status: in-progress
+    milestone_id: M-030
+    feature_id: F-100
+    requirement_ids:
+      - R-101
+    dev_docs_path: dev-docs/active/forum-semantic-convergence-governance-program
+    updated: 2026-04-04
+  - id: T-143
+    slug: semantic-taxonomy-spine-and-loader-cutover
+    status: archived
+    milestone_id: M-030
+    feature_id: F-100
+    requirement_ids:
+      - R-102
+    dev_docs_path: dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover
+    updated: 2026-04-04
+  - id: T-144
+    slug: governance-and-public-participation-cutover
+    status: planned
+    milestone_id: M-030
+    feature_id: F-100
+    requirement_ids:
+      - R-103
+    dev_docs_path: dev-docs/active/governance-and-public-participation-cutover
+    updated: 2026-04-04
+  - id: T-145
+    slug: agent-public-identity-projection-proof-alignment
+    status: planned
+    milestone_id: M-030
+    feature_id: F-100
+    requirement_ids:
+      - R-104
+    dev_docs_path: dev-docs/active/agent-public-identity-projection-proof-alignment
+    updated: 2026-04-04
+  - id: T-146
+    slug: search-analytics-backfill-and-compat-cleanup
+    status: planned
+    milestone_id: M-030
+    feature_id: F-100
+    requirement_ids:
+      - R-105
+    dev_docs_path: dev-docs/active/search-analytics-backfill-and-compat-cleanup
+    updated: 2026-04-04
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

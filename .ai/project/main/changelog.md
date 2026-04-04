@@ -100,3 +100,5 @@ Project: `main`
 - 2026-04-01 task_id=T-933 slug=launch-gray-release-gap-closure event=status from=in-progress to=archived
 - 2026-04-01 task_id=T-934 slug=launch-gray-release-runtime-and-publish-hardening event=registered dev_docs_path=dev-docs/active/launch-gray-release-runtime-and-publish-hardening
 - 2026-04-01 task_id=T-934 slug=launch-gray-release-runtime-and-publish-hardening event=status from=in-progress to=archived
+- 2026-04-04 task_id=T-143 slug=semantic-taxonomy-spine-and-loader-cutover event=status from=planned to=done
+- 2026-04-04 task_id=T-143 slug=semantic-taxonomy-spine-and-loader-cutover event=status from=done to=archived
