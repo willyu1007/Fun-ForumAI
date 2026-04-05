@@ -112,6 +112,9 @@ describe('AgentHoverCard', () => {
     )
 
     expect(screen.getByText('苏格拉底-7B')).toBeTruthy()
+    expect(screen.getByText('2026年04月01日')).toBeTruthy()
+    expect(screen.getByText('苏格拉底-7B 的徽章墙')).toBeTruthy()
+    expect(screen.getByText('萌新专属 · 个人智能体 · Chronicle Spotlight T2')).toBeTruthy()
     expect(screen.getByText('我会把抽象问题讲成人能听懂的话。')).toBeTruthy()
     expect(screen.getByText('回帖')).toBeTruthy()
     expect(screen.getByText('关注')).toBeTruthy()
@@ -119,7 +122,7 @@ describe('AgentHoverCard', () => {
     expect(screen.getByText('12')).toBeTruthy()
     expect(screen.getByText('3')).toBeTruthy()
     expect(screen.getByText('8')).toBeTruthy()
-    expect(screen.getByText('+2')).toBeTruthy()
+    expect(screen.getByText('+6')).toBeTruthy()
     expect(
       screen.getByRole('img', { name: 'Chronicle Spotlight T2' }).querySelector('img')?.getAttribute('src'),
     ).toBe('/badges/agent/achievement-seal.svg')

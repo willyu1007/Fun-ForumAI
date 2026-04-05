@@ -5,8 +5,10 @@ import { useAgentProfile } from '@/api/hooks/agent'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
-import { AuthorBadgeRail } from '@/features/forum/components/AuthorBadgeRail'
 import { readAllAuthorBadgeItems } from '@/features/forum/lib/author-identity'
+import type { AuthorBadgeItem } from '@/features/forum/lib/author-identity'
+import { readAuthorBadgeVisual } from '@/features/forum/lib/author-badge-icons'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -57,17 +59,6 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
           <HoverCardLoadingState />
         ) : (
           <div className="space-y-4">
-            {hoverBadgeItems.length > 0 ? (
-              <div className="-mx-4 -mt-4 rounded-t-lg border-b border-border/60 bg-primary/5 px-4 py-3">
-                <AuthorBadgeRail
-                  badges={hoverBadgeItems}
-                  limit={10}
-                  iconClassName="size-5"
-                  className="max-h-[3rem] flex-wrap gap-2 overflow-hidden"
-                />
-              </div>
-            ) : null}
-
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <Avatar className="size-11">
@@ -76,9 +67,12 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                     {agent.display_name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 space-y-1">
                   <p className="truncate text-sm font-semibold text-foreground">
                     {agent.display_name}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground/72">
+                    {formatAgentJoinDate(agent.created_at)}
                   </p>
                 </div>
               </div>
@@ -129,6 +123,12 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
               <p className="text-xs text-muted-foreground/60">暂无介绍</p>
             )}
 
+            {hoverBadgeItems.length > 0 ? (
+              <div className="border-t border-border/50 pt-2.5">
+                <HoverBadgeWall agentName={agent.display_name} badges={hoverBadgeItems} />
+              </div>
+            ) : null}
+
             <div className="border-t border-border/50 pt-2.5">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] leading-none text-muted-foreground">
                 <HoverStatInline label="回帖" value={agent.public_stats?.reply_count ?? 0} />
@@ -140,6 +140,74 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
         )}
       </HoverCardContent>
     </HoverCard>
+  )
+}
+
+function formatAgentJoinDate(createdAt: string | null | undefined) {
+  if (!createdAt) {
+    return '未知时间'
+  }
+
+  const parsed = new Date(createdAt)
+  if (Number.isNaN(parsed.getTime())) {
+    return '未知时间'
+  }
+
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+
+  return `${year}年${month}月${day}日`
+}
+
+function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: AuthorBadgeItem[] }) {
+  const visibleBadges = badges.slice(0, 6)
+  const overflowCount = Math.max(badges.length - visibleBadges.length, 0)
+  const badgeSummary = visibleBadges
+    .slice(0, 3)
+    .map((badge) => badge.label)
+    .join(' · ')
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-medium tracking-[0.08em] text-primary">{agentName} 的徽章墙</p>
+      <div className="flex items-center gap-3">
+        <div className="flex w-[58%] items-center pr-1">
+          {visibleBadges.map((badge, index) => {
+            const visual = readAuthorBadgeVisual(badge)
+            return (
+              <span
+                key={`${badge.code ?? 'display'}:${badge.label}`}
+                role="img"
+                aria-label={badge.label}
+                className={cn(
+                  'inline-flex size-[2.15rem] shrink-0 items-center justify-center rounded-full border-2 border-background bg-primary/10 shadow-sm',
+                  index > 0 ? '-ml-3' : '',
+                )}
+              >
+                {visual ? (
+                  <img src={visual.src} alt="" aria-hidden="true" className="size-[88%] rounded-full object-contain" />
+                ) : (
+                  <span className="text-[11px] font-medium leading-none text-primary">
+                    {badge.label.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </span>
+            )
+          })}
+          {overflowCount > 0 ? (
+            <span className="-ml-3 inline-flex h-[2.15rem] min-w-[2.15rem] shrink-0 items-center justify-center rounded-full border-2 border-background bg-muted px-1.5 text-[10px] font-medium leading-none text-muted-foreground shadow-sm">
+              +{overflowCount}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex h-[2.15rem] min-w-0 w-[42%] items-center">
+          <p className="line-clamp-2 w-full overflow-hidden text-[11px] font-normal leading-[1.15] text-muted-foreground/82">
+            {badgeSummary}
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 

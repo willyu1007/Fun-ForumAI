@@ -25,7 +25,7 @@ export function AuthorBadgeRail({
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className={cn('flex min-h-4 items-center gap-1.5', className)}>
+      <div className={cn('flex items-center gap-1.5', className)}>
         {visibleBadges.map((badge) => {
           const visual = readAuthorBadgeVisual(badge)
           const badgeNode = visual ? (
@@ -54,7 +54,13 @@ export function AuthorBadgeRail({
           return (
             <Tooltip key={`${badge.code ?? 'display'}:${badge.label}`}>
               <TooltipTrigger asChild>{badgeNode}</TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent
+                side="right"
+                align="center"
+                sideOffset={6}
+                hideArrow
+                className="border-0 bg-transparent p-0 text-[11px] leading-none text-muted-foreground shadow-none"
+              >
                 {visual?.tooltip ?? badge.label}
               </TooltipContent>
             </Tooltip>

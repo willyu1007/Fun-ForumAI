@@ -19,7 +19,6 @@ import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
@@ -51,13 +50,6 @@ import {
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { AuthorBadgeRail } from '../components/AuthorBadgeRail'
-import {
-  readEditorialShelfLabel,
-  readStorylineStateLabel,
-  readCreatorNoteCoverLabel,
-  readCreatorNoteTemplateLabel,
-} from '../lib/launch-surface-labels'
-import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 import { readAuthorBadgeItems } from '../lib/author-identity'
 
 interface AftershowContentHighlightV1 {
@@ -399,25 +391,7 @@ export function PostDetailPage() {
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
-  const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(post.note_template_id)
-  const creatorNoteCoverLabel = readCreatorNoteCoverLabel(post.cover_mode)
-  const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf)
-  const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
   const authorBadgeItems = readAuthorBadgeItems(author)
-  const isNotePost = isCreatorNoteEntry(post)
-  const noteMetaLabel = isNotePost
-    ? editorialShelfLabel ?? '创作者笔记'
-    : editorialShelfLabel
-  const surfaceMetaLabels = Array.from(
-    new Set(
-      [
-        noteMetaLabel,
-        creatorNoteTemplateLabel,
-        creatorNoteCoverLabel,
-        storylineStateLabel,
-      ].filter((label): label is string => Boolean(label)),
-    ),
-  )
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
       ? topicTransparencyCopy ??
@@ -494,21 +468,27 @@ export function PostDetailPage() {
 
       <article className="min-w-0 space-y-1 px-[25px]" data-testid="post-detail-stage-article">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <AgentHoverCard agentId={author.id}>
-              <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
+          <div className="relative min-w-0 -ml-1">
+            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-1 gap-y-0.5">
+              <div
+                className="row-span-2 inline-flex self-start p-0.5"
+                data-testid="post-detail-author-avatar-region"
+              >
+                <Avatar className="size-10 shrink-0">
+                  <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
+                  <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+                    {author.display_name.slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <AgentHoverCard agentId={author.id}>
                 <AgentLink
                   agentId={author.id}
-                  className="-ml-2 -mr-2 col-span-2 inline-grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-muted/40 hover:no-underline"
+                  aria-label={author.display_name}
+                  className="col-start-2 row-start-1 mt-px min-w-0 self-start text-left hover:no-underline"
                 >
-                  <Avatar className="size-11 shrink-0">
-                    <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
-                    <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                      {author.display_name.slice(0, 1).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
                   <div
-                    className="flex min-w-0 items-center gap-2 pt-2 text-sm leading-none"
+                    className="flex min-w-0 items-center gap-1.5 px-1 text-xs leading-none"
                     data-testid="post-detail-author-primary-line"
                   >
                     <span className="truncate font-semibold text-foreground">{author.display_name}</span>
@@ -516,13 +496,16 @@ export function PostDetailPage() {
                     <span className="shrink-0 text-xs text-muted-foreground/80">{relativeTime(post.created_at)}</span>
                   </div>
                 </AgentLink>
-                {authorBadgeItems.length > 0 ? (
-                  <div className="col-start-2 min-w-0 px-2 pt-0.5" data-testid="post-detail-author-secondary-line">
-                    <AuthorBadgeRail badges={authorBadgeItems} />
-                  </div>
-                ) : null}
-              </div>
-            </AgentHoverCard>
+              </AgentHoverCard>
+              {authorBadgeItems.length > 0 ? (
+                <div
+                  className="col-start-2 row-start-2 min-w-0 self-start px-[0.175rem] py-0.5"
+                  data-testid="post-detail-author-secondary-line"
+                >
+                  <AuthorBadgeRail badges={authorBadgeItems} iconClassName="size-[1.3rem]" />
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-1 pt-0.5">
             <ModerationBadge visibility={post.visibility} state={post.state} />
@@ -583,39 +566,9 @@ export function PostDetailPage() {
           </div>
         </div>
 
-        <div>
+        <div className="pb-2">
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
         </div>
-
-        {(isNotePost || creatorNoteTemplateLabel || creatorNoteCoverLabel || editorialShelfLabel || storylineStateLabel) && (
-          <div className="col-start-2 flex flex-wrap items-center gap-2">
-            {isNotePost ? (
-              <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
-                {readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf ?? 'notes_today') ?? '创作者笔记'}
-              </Badge>
-            ) : null}
-            {creatorNoteTemplateLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {creatorNoteTemplateLabel}
-              </Badge>
-            ) : null}
-            {creatorNoteCoverLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {creatorNoteCoverLabel}
-              </Badge>
-            ) : null}
-            {storylineStateLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {storylineStateLabel}
-              </Badge>
-            ) : null}
-            {editorialShelfLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {editorialShelfLabel}
-              </Badge>
-            ) : null}
-          </div>
-        )}
 
         <RichTextLite
           text={post.body}
@@ -625,12 +578,6 @@ export function PostDetailPage() {
         {post.media.length > 0 && (
           <PostMediaGallery media={post.media} className="w-full" />
         )}
-
-        {surfaceMetaLabels.length > 0 ? (
-          <p className="text-[11px] leading-5 text-muted-foreground/72">
-            {surfaceMetaLabels.join(' · ')}
-          </p>
-        ) : null}
 
         <div className="flex flex-wrap items-center gap-2 pt-4">
           <HumanVoteControls

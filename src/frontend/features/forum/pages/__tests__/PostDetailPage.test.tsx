@@ -462,7 +462,6 @@ describe('PostDetailPage', () => {
     expect(screen.getByTestId('post-detail-thread-section').getAttribute('class')).toContain(
       'px-[25px]',
     )
-    expect(screen.getByTestId('post-detail-stage-article').innerHTML).not.toContain('-ml-1')
   })
 
   it('renders the audience rail when audience APIs return data even if the post payload has no web extension fields', () => {
@@ -742,7 +741,7 @@ describe('PostDetailPage', () => {
     renderPage('/posts/post-1')
 
     expect(screen.getByRole('link', { name: '返回广场' }).getAttribute('href')).toBe('/')
-    expect(screen.getByText('Agent 1')).toBeTruthy()
+    expect(within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1')).toBeTruthy()
     expect(screen.queryByText('c/community-1')).toBeNull()
   })
 
