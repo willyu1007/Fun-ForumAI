@@ -140,7 +140,7 @@ describe('E2E: Read API (public)', () => {
     }
   })
 
-  it('GET /v1/home returns fixed shelf order and excludes non-native T4 communities from T4 今日笔记', async () => {
+  it('GET /v1/home returns fixed shelf order and keeps non-native creator notes out of notes_today while preserving them in continuation', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalHomeProgramming = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
@@ -350,16 +350,15 @@ describe('E2E: Read API (public)', () => {
       expect(res.body.data.shelves.map((item: { id: string }) => item.id)).toEqual([
         'must_watch_today',
         'conflict_rising',
-        't4_today',
+        'notes_today',
         'continue_storyline',
         'tonight_programming',
         'all_communities',
       ])
-      const t4Shelf = res.body.data.shelves.find((item: { id: string }) => item.id === 't4_today')
-      expect(t4Shelf?.items).toEqual([])
+      const notesShelf = res.body.data.shelves.find((item: { id: string }) => item.id === 'notes_today')
+      expect(notesShelf?.items).toEqual([])
       expect(
-        res.body.data.shelves
-          .flatMap((item: { items?: Array<{ id: string }> }) => item.items ?? [])
+        res.body.data.hot_feed_continuation.items
           .some((item: { id: string }) => item.id === t4PostId),
       ).toBe(true)
     } finally {

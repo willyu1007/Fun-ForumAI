@@ -88,6 +88,78 @@ function readSourceContext(req: Request): {
   }
 }
 
+function readViewerSemanticFields(input: {
+  community_semantics?: { community_family?: string | null } | null
+  interaction_contract?: { public_participation_mode?: string | null } | null
+  content_semantics?: {
+    narrative?: { storyline_state?: string | null }
+    distribution?: {
+      content_kind?: string | null
+      editorial_shelf_id?: string | null
+    }
+    format?: {
+      format_kind?: string | null
+      note_template_id?: string | null
+      cover_mode?: string | null
+    }
+  } | null
+  community_family?: string | null
+  public_participation_mode?: string | null
+  content_kind?: string | null
+  editorial_shelf_id?: string | null
+  storyline_state?: string | null
+  format_kind?: string | null
+  note_template_id?: string | null
+  cover_mode?: string | null
+  is_t4?: boolean | null
+}): Pick<
+  CreateViewerPublicViewEventInput,
+  | 'community_family'
+  | 'public_participation_mode'
+  | 'content_kind'
+  | 'editorial_shelf_id'
+  | 'storyline_state'
+  | 'format_kind'
+  | 'note_template_id'
+  | 'cover_mode'
+  | 'is_t4'
+> {
+  const contentKind =
+    input.content_semantics?.distribution?.content_kind
+    ?? input.content_kind
+    ?? null
+  const noteTemplateId =
+    input.content_semantics?.format?.note_template_id
+    ?? input.note_template_id
+    ?? null
+  return {
+    community_family: input.community_semantics?.community_family ?? input.community_family ?? null,
+    public_participation_mode:
+      input.interaction_contract?.public_participation_mode
+      ?? input.public_participation_mode
+      ?? null,
+    content_kind: contentKind,
+    editorial_shelf_id:
+      input.content_semantics?.distribution?.editorial_shelf_id
+      ?? input.editorial_shelf_id
+      ?? null,
+    storyline_state:
+      input.content_semantics?.narrative?.storyline_state
+      ?? input.storyline_state
+      ?? null,
+    format_kind:
+      input.content_semantics?.format?.format_kind
+      ?? input.format_kind
+      ?? null,
+    note_template_id: noteTemplateId,
+    cover_mode:
+      input.content_semantics?.format?.cover_mode
+      ?? input.cover_mode
+      ?? null,
+    is_t4: input.is_t4 ?? contentKind === 'note_entry',
+  }
+}
+
 async function resolveViewerContext(req: Request, res: Response): Promise<ViewerActorContext> {
   const actor = resolveGuidanceActorContext(req, res)
   const viewerAgentIdFromQuery = readQueryString(req.query.viewer_agent_id)
@@ -443,8 +515,7 @@ readApiRouter.get('/home', async (req, res) => {
               target_agent_id: item.author.id,
               community_id: item.community_id,
               storyline_id: item.storyline_id ?? null,
-              is_t4: item.is_t4 ?? false,
-              note_template_id: item.note_template_id ?? null,
+              ...readViewerSemanticFields(item),
             }]
           : [],
       ),
@@ -473,8 +544,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
       target_agent_id: post.author.id,
       community_id: post.community_id,
       storyline_id: post.storyline_id ?? null,
-      is_t4: post.is_t4 ?? false,
-      note_template_id: post.note_template_id ?? null,
+      ...readViewerSemanticFields(post),
     }])
     await trackGuidanceEventFromRequest(
       req,
@@ -518,8 +588,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
     target_agent_id: post.author.id,
     community_id: post.community_id,
     storyline_id: post.storyline_id ?? null,
-    is_t4: post.is_t4 ?? false,
-    note_template_id: post.note_template_id ?? null,
+    ...readViewerSemanticFields(post),
   }])
   res.json({
     data: {
@@ -878,8 +947,7 @@ readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {
     target_agent_id: null,
     community_id: null,
     storyline_id: snapshot.storyline_id ?? null,
-    is_t4: snapshot.is_t4 ?? false,
-    note_template_id: snapshot.note_template_id ?? null,
+    ...readViewerSemanticFields(snapshot),
   }])
   res.json({ data: snapshot })
 })
@@ -985,8 +1053,7 @@ readApiRouter.get('/highlights', async (req, res) => {
       target_agent_id: item.author.id,
       community_id: item.community_id,
       storyline_id: item.storyline_id ?? null,
-      is_t4: item.is_t4 ?? false,
-      note_template_id: item.note_template_id ?? null,
+      ...readViewerSemanticFields(item),
     })),
     ...payload.controversy.map((item, index) => ({
       actor_type: viewer.actor_type,
@@ -1001,8 +1068,7 @@ readApiRouter.get('/highlights', async (req, res) => {
       target_agent_id: null,
       community_id: null,
       storyline_id: item.storyline_id ?? null,
-      is_t4: item.is_t4 ?? false,
-      note_template_id: item.note_template_id ?? null,
+      ...readViewerSemanticFields(item),
     })),
     ...payload.featured_agents.map((item, index) => ({
       actor_type: viewer.actor_type,

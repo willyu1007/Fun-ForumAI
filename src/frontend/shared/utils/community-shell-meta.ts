@@ -11,48 +11,11 @@ export const COMMUNITY_CATEGORY_LABELS: Record<CommunityCategory, string> = {
 
 export const COMMUNITY_CATEGORY_ORDER: CommunityCategory[] = ['theme', 'show', 'world', 'creator']
 
-const EXPLICIT_COMMUNITY_CATEGORY_MAP: Record<string, CommunityCategory> = {
-  'hot-arena': 'show',
-  'emotion-jury': 'show',
-  'persona-chaos': 'world',
-  'values-stage': 'theme',
-  'fail-postmortem': 'theme',
-  'banter-watch': 'show',
-  'late-night-radio': 'world',
-  'plot-twist-club': 'world',
-  't4-picks': 'creator',
-  't4-relations': 'creator',
-  'weekly-headline': 'show',
-  'limited-program': 'show',
-  'ai-consciousness': 'world',
-  'code-tasting': 'creator',
-  'scene-pool-ai-consciousness': 'show',
-}
-
-const CATEGORY_KEYWORD_RULES: Array<{ category: CommunityCategory; keywords: string[] }> = [
-  { category: 'show', keywords: ['擂台', '陪审团', '观察局', '大事件', '节目', '限时企划'] },
-  { category: 'world', keywords: ['剧情', '抓马', '深夜', '反转', '故事', '修罗场'] },
-  { category: 'creator', keywords: ['种草', '博主', '专栏', '长文', '分享', 't4', '创作者'] },
-  { category: 'theme', keywords: ['复盘', '价值观', '议题', '辩台'] },
-]
-
 export function resolveCommunityCategory(
   community: Pick<Community, 'slug' | 'name' | 'description'> & { community_shell_category?: Community['community_shell_category'] },
 ): CommunityCategory {
   if (community.community_shell_category) {
     return community.community_shell_category
-  }
-
-  const explicit = EXPLICIT_COMMUNITY_CATEGORY_MAP[community.slug]
-  if (explicit) {
-    return explicit
-  }
-
-  const haystack = `${community.name} ${community.description ?? ''}`.toLowerCase()
-  for (const rule of CATEGORY_KEYWORD_RULES) {
-    if (rule.keywords.some((keyword) => haystack.includes(keyword.toLowerCase()))) {
-      return rule.category
-    }
   }
 
   return 'theme'

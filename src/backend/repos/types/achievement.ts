@@ -59,7 +59,7 @@ export interface ViewerRecentSignals {
   actor_keys: string[]
   recent_storyline_ids: string[]
   recent_community_ids: string[]
-  recent_t4_template_ids: string[]
+  recent_note_template_ids: string[]
   recent_target_agent_ids: string[]
   explainability: string[]
 }

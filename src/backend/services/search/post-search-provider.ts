@@ -1,4 +1,4 @@
-import type { SearchPostItem } from '../../../shared/public-search.js'
+import type { SearchMatchExplanation, SearchPostItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
 import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
 import { SearchGuard } from './search-guard.js'
@@ -10,8 +10,13 @@ import type {
   SearchProviderResult,
 } from './search-provider.js'
 
-function appendBoostReasons(reasons: string[], extras: string[]): string[] {
-  return Array.from(new Set([...reasons, ...extras])).slice(0, 4)
+function mergeExplanations(
+  base: SearchMatchExplanation[],
+  extras: SearchMatchExplanation[],
+): SearchMatchExplanation[] {
+  return Array.from(new Map(
+    [...base, ...extras].map((item) => [`${item.code}:${item.label}:${item.kind}:${item.chip ?? ''}`, item]),
+  ).values()).slice(0, 4)
 }
 
 export class PostSearchProvider implements SearchProvider {
@@ -70,18 +75,25 @@ export class PostSearchProvider implements SearchProvider {
       { reason: '命中剧情标签', code: 'tag', field: 'tags', value: hitDoc.tags_text },
       { reason: '命中场景标签', code: 'scene_tag', field: 'scene_tags', value: hitDoc.scene_tags_text },
       { reason: '命中社区', code: 'community', field: 'community', value: hitDoc.community_name },
-      { reason: '命中角色标签', code: 'author_tagline', field: 'author_tagline', value: hitDoc.author_tagline },
-      { reason: '命中角色简介', code: 'author_tagline', field: 'author_public_bio', value: hitDoc.author_public_bio },
+      { reason: '命中社区家族', code: 'community_family', kind: 'semantic', chip: hitDoc.community_family ?? undefined, field: 'community_family', value: hitDoc.community_family },
+      { reason: '命中身份角色', code: 'author_identity_role', kind: 'identity', chip: hitDoc.author_identity_role_id ?? undefined, field: 'author_identity', value: hitDoc.author_identity_text },
+      { reason: '命中公域投射', code: 'author_public_projection', kind: 'projection', field: 'author_tagline', value: hitDoc.author_tagline },
+      { reason: '命中公域投射', code: 'author_public_projection', kind: 'projection', field: 'author_public_bio', value: hitDoc.author_public_bio },
+      { reason: '命中内容类型', code: 'content_kind', kind: 'semantic', chip: hitDoc.content_kind ?? undefined, field: 'content_kind', value: hitDoc.content_kind },
+      { reason: '命中模板语义', code: 'note_template', kind: 'semantic', chip: hitDoc.note_template_id ?? undefined, field: 'note_template', value: hitDoc.note_template_id },
+      { reason: '命中剧情状态', code: 'storyline_state', kind: 'semantic', chip: hitDoc.storyline_state ?? undefined, field: 'storyline_state', value: hitDoc.storyline_state },
+      { reason: '命中成就证明', code: 'author_achievement_badge', kind: 'proof', field: 'author_achievement_badges', value: hitDoc.author_achievement_badges_text },
       { reason: '命中正文', code: 'body', field: 'body', value: hitDoc.body },
       { reason: '命中场后总结', code: 'aftershow', field: 'aftershow', value: hitDoc.aftershow_text },
     ], { fallback_text: snippetSource || hitDoc.body })
-    const reasons = appendBoostReasons(
-      presentation.match_reasons,
-        [
-          ...(hitDoc.watchability_score >= 1.15 ? ['命中近期热度'] : []),
-          ...(hitDoc.aftershow_text ? ['命中场后总结'] : []),
-        ],
-      )
+    const matchExplanations = mergeExplanations(
+      presentation.match_explanations,
+      [
+        ...(hitDoc.watchability_score >= 1.15
+          ? [{ code: 'heat' as const, label: '命中近期热度', kind: 'social' as const, chip: '近期热度' }]
+          : []),
+      ],
+    )
     const author = this.deps.agentRepo.findById(hitDoc.author_agent_id)
     const authorVisibility = this.deps.guard.getAuthorVisibility(author)
     const latestConfig = this.deps.agentConfigRepo.findLatest(hitDoc.author_agent_id)
@@ -104,16 +116,16 @@ export class PostSearchProvider implements SearchProvider {
       score,
       snippet: buildSnippet(snippetSource || hitDoc.body, query),
       highlights: presentation.highlights,
-      match_reasons: reasons,
-      match_reason_codes: Array.from(new Set([
-        ...presentation.match_reason_codes,
-        ...(hitDoc.watchability_score >= 1.15 ? ['heat' as const] : []),
-        ...(hitDoc.aftershow_text ? ['aftershow' as const] : []),
-      ])).slice(0, 4),
+      match_explanations: matchExplanations,
+      match_reasons: matchExplanations.map((item) => item.label),
+      match_reason_codes: matchExplanations.map((item) => item.code),
       community: {
         id: hitDoc.community_id,
         name: hitDoc.community_name,
         slug: hitDoc.community_slug,
+        ...(hitDoc.community_family ? { community_family: hitDoc.community_family } : {}),
+        ...(hitDoc.community_shell_category ? { community_shell_category: hitDoc.community_shell_category } : {}),
+        ...(hitDoc.publication_review_profile_id ? { publication_review_profile_id: hitDoc.publication_review_profile_id } : {}),
       },
       author: {
         id: hitDoc.author_agent_id,

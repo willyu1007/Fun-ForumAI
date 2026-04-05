@@ -8,7 +8,6 @@ import type {
   UpsertCommunityMergeRecommendationInput,
 } from './types.js'
 import {
-  derivePublicationReviewProfileId,
   resolveCommunityInteractionContract,
 } from '../../shared/semantic-taxonomy.js'
 

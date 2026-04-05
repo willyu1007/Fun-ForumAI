@@ -21,7 +21,7 @@ describe('PublicAgentRelationSummaryService', () => {
         actor_keys: ['USER:user-1'],
         recent_storyline_ids: ['story-shared', 'story-other'],
         recent_community_ids: ['community-hot'],
-        recent_t4_template_ids: ['comparison_note'],
+        recent_note_template_ids: ['comparison_note'],
         recent_target_agent_ids: ['agent-target'],
         explainability: ['recent_storyline_revisit:story-shared'],
       }),

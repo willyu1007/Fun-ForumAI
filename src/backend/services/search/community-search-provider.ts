@@ -1,4 +1,4 @@
-import type { SearchCommunityItem } from '../../../shared/public-search.js'
+import type { SearchCommunityItem, SearchMatchExplanation } from '../../../shared/public-search.js'
 import type { SearchDocRepository } from '../../repos/index.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -16,8 +16,13 @@ function extractDominantTags(summary: string, sceneTags: string): string[] {
     .slice(0, 6)
 }
 
-function appendBoostReasons(reasons: string[], extras: string[]): string[] {
-  return Array.from(new Set([...reasons, ...extras])).slice(0, 4)
+function mergeExplanations(
+  base: SearchMatchExplanation[],
+  extras: SearchMatchExplanation[],
+): SearchMatchExplanation[] {
+  return Array.from(new Map(
+    [...base, ...extras].map((item) => [`${item.code}:${item.label}:${item.kind}:${item.chip ?? ''}`, item]),
+  ).values()).slice(0, 4)
 }
 
 export class CommunitySearchProvider implements SearchProvider {
@@ -64,31 +69,36 @@ export class CommunitySearchProvider implements SearchProvider {
     ])
     const presentation = buildMatchPresentation(query, [
       { reason: '命中社区名', code: 'name', field: 'name', value: hitDoc.name },
+      { reason: '命中社区家族', code: 'community_family', kind: 'semantic', chip: hitDoc.community_family ?? undefined, field: 'community_family', value: hitDoc.community_family },
       { reason: '命中氛围摘要', code: 'activity', field: 'dominant_tags', value: hitDoc.dominant_tags_summary },
       { reason: '命中常驻角色', code: 'resident_agent', field: 'resident_agents', value: hitDoc.resident_agent_names_text },
       { reason: '命中代表内容', code: 'representative_content', field: 'representative_content', value: `${hitDoc.representative_post_title} ${hitDoc.representative_post_snippet}` },
       { reason: '命中场景标签', code: 'scene_tag', field: 'scene_tags', value: hitDoc.scene_tags_text },
     ], { fallback_text: snippetSource })
+    const matchExplanations = mergeExplanations(
+      presentation.match_explanations,
+      [
+        ...(hitDoc.activity_7d >= 5
+          ? [{ code: 'activity' as const, label: '命中近期热度', kind: 'social' as const, chip: '本周活跃' }]
+          : []),
+      ],
+    )
     return {
       type: 'community',
       id: hitDoc.community_id,
       href: `/c/${hitDoc.slug}`,
       name: hitDoc.name,
       slug: hitDoc.slug,
+      ...(hitDoc.community_family ? { community_family: hitDoc.community_family } : {}),
+      ...(hitDoc.community_shell_category ? { community_shell_category: hitDoc.community_shell_category } : {}),
+      ...(hitDoc.publication_review_profile_id ? { publication_review_profile_id: hitDoc.publication_review_profile_id } : {}),
       score,
       description: hitDoc.description,
       snippet: buildSnippet(snippetSource, query),
       highlights: presentation.highlights,
-      match_reasons: appendBoostReasons(
-        presentation.match_reasons,
-        [
-          ...(hitDoc.activity_7d >= 5 ? ['命中近期热度'] : []),
-        ],
-      ),
-      match_reason_codes: Array.from(new Set([
-        ...presentation.match_reason_codes,
-        ...(hitDoc.activity_7d >= 5 ? ['activity' as const] : []),
-      ])).slice(0, 4),
+      match_explanations: matchExplanations,
+      match_reasons: matchExplanations.map((item) => item.label),
+      match_reason_codes: matchExplanations.map((item) => item.code),
       dominant_tags: extractDominantTags(hitDoc.dominant_tags_summary, hitDoc.scene_tags_text),
       activity_7d: hitDoc.activity_7d,
       activity_30d: hitDoc.activity_30d,

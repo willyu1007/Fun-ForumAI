@@ -86,6 +86,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
         if (strictRedisInfra) {
           throw new Error(
             `[RuntimeInfra] Failed to connect Redis runtime backend in ${config.appEnv}: ${formatInfraError(err)}`,
+            { cause: err },
           )
         }
         console.warn('[RuntimeInfra] Failed to connect Redis runtime backend, fallback to in-memory:', err)
@@ -124,6 +125,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
         if (strictRedisInfra) {
           throw new Error(
             `[SSE] Failed to connect Redis broadcast backend in ${config.appEnv}: ${formatInfraError(err)}`,
+            { cause: err },
           )
         }
         console.warn('[SSE] Failed to connect Redis broadcast backend, falling back to local:', err)

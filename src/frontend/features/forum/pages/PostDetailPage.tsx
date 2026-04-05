@@ -55,6 +55,7 @@ import {
   readT4CoverLabel,
   readT4TemplateLabel,
 } from '../lib/launch-surface-labels'
+import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -249,6 +250,7 @@ export function PostDetailPage() {
       storyline_state: postPayload.storyline_state,
       storyline_hook: postPayload.storyline_hook,
       content_kind: postPayload.content_kind === 'aftershow_recap' ? 'aftershow_recap' : undefined,
+      editorial_shelf_id: postPayload.editorial_shelf_id,
       editorial_shelf: postPayload.editorial_shelf,
       is_t4: postPayload.is_t4,
       aftershow_export_bias: postPayload.aftershow_export_bias,
@@ -396,8 +398,9 @@ export function PostDetailPage() {
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
   const t4TemplateLabel = readT4TemplateLabel(post.note_template_id)
   const t4CoverLabel = readT4CoverLabel(post.cover_mode)
-  const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf)
+  const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf)
   const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
+  const isNotePost = isCreatorNoteEntry(post)
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
       ? topicTransparencyCopy ??
@@ -555,9 +558,9 @@ export function PostDetailPage() {
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
         </div>
 
-        {(post.is_t4 || t4TemplateLabel || t4CoverLabel || editorialShelfLabel || storylineStateLabel) && (
+        {(isNotePost || t4TemplateLabel || t4CoverLabel || editorialShelfLabel || storylineStateLabel) && (
           <div className="col-start-2 flex flex-wrap items-center gap-2">
-            {post.is_t4 ? (
+            {isNotePost ? (
               <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
                 {readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf ?? 'notes_today') ?? '创作者笔记'}
               </Badge>

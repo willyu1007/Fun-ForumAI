@@ -107,10 +107,10 @@ function buildCatalogEntry(input: {
     tokens: new Set(tokenize(tokenSource)),
     community_family:
       semanticContract?.community_family
-      ?? (Boolean(t4Policy?.enabled) ? 'creator_recommendation' : 'weekly_program'),
+      ?? (t4Policy?.enabled ? 'creator_recommendation' : 'weekly_program'),
     publication_review_profile_id:
       semanticContract?.publication_review_profile_id
-      ?? (Boolean(t4Policy?.enabled) ? 'creator_strict_publication' : 'standard_publication'),
+      ?? (t4Policy?.enabled ? 'creator_strict_publication' : 'standard_publication'),
     scene_types: Object.keys(sceneMix ?? {}),
   }
 }

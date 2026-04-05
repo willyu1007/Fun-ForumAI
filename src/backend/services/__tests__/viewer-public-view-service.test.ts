@@ -100,11 +100,11 @@ describe('ViewerPublicViewService', () => {
     expect(signals.actor_keys).toEqual(['USER:user-1'])
     expect(signals.recent_storyline_ids).toEqual(['story-user', 'story-visitor'])
     expect(signals.recent_community_ids).toEqual(['community-t4', 'community-hot'])
-    expect(signals.recent_t4_template_ids).toEqual(['comparison_note'])
+    expect(signals.recent_note_template_ids).toEqual(['comparison_note'])
     expect(signals.recent_target_agent_ids).toEqual(['agent-user', 'agent-visitor'])
     expect(signals.explainability).toEqual([
       'recent_storyline_revisit:story-user,story-visitor',
-      'recent_t4_revisit:comparison_note',
+      'recent_note_template_revisit:comparison_note',
       'recent_agent_touch:agent-user,agent-visitor',
     ])
   })

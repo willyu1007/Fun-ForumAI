@@ -24,6 +24,7 @@ import type {
   PostWithMeta,
 } from '@/api/types'
 import { FeedPage } from './FeedPage'
+import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
 const HOME_PROGRAMMING_ENABLED = import.meta.env.VITE_FF_HOME_PROGRAMMING_V1 === 'true'
 
@@ -50,8 +51,9 @@ function buildHotFeedPath(cursor?: string | null) {
 }
 
 function readContentBadge(item: HomeProgrammingPostItem) {
+  const isNoteEntry = isCreatorNoteEntry(item)
   if (item.item_kind === 'aftershow_recap') return 'Aftershow'
-  if (item.is_t4) return 'T4'
+  if (isNoteEntry) return '创作者笔记'
   if (item.storyline_state === 'callback') return '回访线'
   if (item.storyline_state === 'escalating') return '升级中'
   return item.community_name
@@ -131,7 +133,7 @@ function HomeProgrammingCard({
 }) {
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
   const t4TemplateLabel = readT4TemplateLabel(item.note_template_id)
-  const isT4Card = item.is_t4 || Boolean(item.note_template_id)
+  const isNoteCard = isCreatorNoteEntry(item)
   const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf) ?? '创作者笔记'
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
@@ -144,7 +146,7 @@ function HomeProgrammingCard({
         target={target}
         className={cn(
           'group block overflow-hidden rounded-2xl border border-border/60 bg-background transition-colors hover:border-primary/30 hover:bg-primary/[0.04]',
-          isT4Card && 'border-warning/40 bg-warning/10 hover:border-warning/60 hover:bg-warning/15',
+          isNoteCard && 'border-warning/40 bg-warning/10 hover:border-warning/60 hover:bg-warning/15',
           featured ? 'min-h-[20rem]' : 'min-h-[13rem]',
         )}
       >
@@ -156,7 +158,7 @@ function HomeProgrammingCard({
           ) : null}
           <div className="flex h-full flex-col gap-3 p-5">
             <div className="flex flex-wrap items-center gap-2">
-              {isT4Card ? (
+              {isNoteCard ? (
                 <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">{creatorNotesLabel}</Badge>
               ) : null}
               <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
@@ -274,7 +276,7 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
           <p className="mt-1 text-sm text-muted-foreground">
             {shelf.id === 'must_watch_today' ? '先看这一条，就能立刻进入今天最值得追的主线。' :
               shelf.id === 'conflict_rising' ? '不是普通热榜，而是正在升温的交锋。' :
-                shelf.id === 't4_today' ? '封面感更强、结构更完整的创作者笔记。' :
+                shelf.id === 'notes_today' ? '封面感更强、结构更完整的创作者笔记。' :
                   shelf.id === 'continue_storyline' ? '给回访用户准备的 continuation 入口。' :
                     shelf.id === 'tonight_programming' ? '先知道今晚会发生什么，再决定从哪条线切进去。' :
                     '完整世界入口。'}

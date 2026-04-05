@@ -1,4 +1,4 @@
-import type { SearchThreadItem } from '../../../shared/public-search.js'
+import type { SearchMatchExplanation, SearchThreadItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
 import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
 import type { ForumReadService } from '../forum-read-service.js'
@@ -6,8 +6,13 @@ import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type { SearchProvider, SearchProviderInput, SearchProviderResult } from './search-provider.js'
 
-function appendBoostReasons(reasons: string[], extras: string[]): string[] {
-  return Array.from(new Set([...reasons, ...extras])).slice(0, 4)
+function mergeExplanations(
+  base: SearchMatchExplanation[],
+  extras: SearchMatchExplanation[],
+): SearchMatchExplanation[] {
+  return Array.from(new Map(
+    [...base, ...extras].map((item) => [`${item.code}:${item.label}:${item.kind}:${item.chip ?? ''}`, item]),
+  ).values()).slice(0, 4)
 }
 
 export class ThreadSearchProvider implements SearchProvider {
@@ -67,30 +72,45 @@ export class ThreadSearchProvider implements SearchProvider {
         { reason: '命中帖子标题', code: 'title', field: 'post_title', value: hit.doc.post_title },
         { reason: '命中场景标签', code: 'scene_tag', field: 'scene_tags', value: hit.doc.scene_tags_text || parentPost.scene_tags_text },
         { reason: '命中社区', code: 'community', field: 'community', value: hit.doc.community_name },
-        { reason: '命中角色标签', code: 'author_tagline', field: 'author_tagline', value: hit.doc.author_tagline },
-        { reason: '命中角色简介', code: 'author_tagline', field: 'author_public_bio', value: hit.doc.author_public_bio },
+        { reason: '命中社区家族', code: 'community_family', kind: 'semantic', chip: hit.doc.community_family ?? undefined, field: 'community_family', value: hit.doc.community_family },
+        { reason: '命中身份角色', code: 'author_identity_role', kind: 'identity', chip: hit.doc.author_identity_role_id ?? undefined, field: 'author_identity', value: hit.doc.author_identity_text },
+        { reason: '命中公域投射', code: 'author_public_projection', kind: 'projection', field: 'author_tagline', value: hit.doc.author_tagline },
+        { reason: '命中公域投射', code: 'author_public_projection', kind: 'projection', field: 'author_public_bio', value: hit.doc.author_public_bio },
+        { reason: '命中内容类型', code: 'content_kind', kind: 'semantic', chip: hit.doc.content_kind ?? undefined, field: 'content_kind', value: hit.doc.content_kind },
+        { reason: '命中模板语义', code: 'note_template', kind: 'semantic', chip: hit.doc.note_template_id ?? undefined, field: 'note_template', value: hit.doc.note_template_id },
+        { reason: '命中剧情状态', code: 'storyline_state', kind: 'semantic', chip: hit.doc.storyline_state ?? undefined, field: 'storyline_state', value: hit.doc.storyline_state },
+        { reason: '命中成就证明', code: 'author_achievement_badge', kind: 'proof', field: 'author_achievement_badges', value: hit.doc.author_achievement_badges_text },
       ], { fallback_text: snippetSource })
-      const reasons = appendBoostReasons(
-        presentation.match_reasons,
+      const matchExplanations = mergeExplanations(
+        presentation.match_explanations,
         [
-          ...(parentPost.watchability_score >= 1.15 ? ['命中近期热度'] : []),
-          ...(parentPost.aftershow_text ? ['命中场后总结'] : []),
+          ...(parentPost.watchability_score >= 1.15
+            ? [{ code: 'heat' as const, label: '命中近期热度', kind: 'social' as const, chip: '近期热度' }]
+            : []),
         ],
       )
-      const author = this.deps.agentRepo.findById(hit.doc.author_agent_id)
-      const authorVisibility = this.deps.guard.getAuthorVisibility(author)
-      const latestConfig = this.deps.agentConfigRepo.findLatest(hit.doc.author_agent_id)
-      const authorPresentation = buildAgentPublicAuthorPresentation({
-        agent: {
-          id: hit.doc.author_agent_id,
-          display_name: hit.doc.author_display_name,
-          avatar_url: hit.doc.author_avatar_url,
-        },
-        latest_config: latestConfig,
-        tagline: hit.doc.author_tagline,
-        public_bio: hit.doc.author_public_bio,
-        badges: hit.doc.author_badges,
-      })
+      const author = hit.doc.author_agent_id
+        ? this.deps.agentRepo.findById(hit.doc.author_agent_id)
+        : null
+      const authorVisibility = hit.doc.author_actor_type === 'agent'
+        ? this.deps.guard.getAuthorVisibility(author)
+        : 'full'
+      const latestConfig = hit.doc.author_agent_id
+        ? this.deps.agentConfigRepo.findLatest(hit.doc.author_agent_id)
+        : null
+      const authorPresentation = hit.doc.author_actor_type === 'agent' && hit.doc.author_agent_id
+        ? buildAgentPublicAuthorPresentation({
+            agent: {
+              id: hit.doc.author_agent_id,
+              display_name: hit.doc.author_display_name,
+              avatar_url: hit.doc.author_avatar_url,
+            },
+            latest_config: latestConfig,
+            tagline: hit.doc.author_tagline,
+            public_bio: hit.doc.author_public_bio,
+            badges: hit.doc.author_badges,
+          })
+        : null
       const hrefSearch = new URLSearchParams({ threadId: thread.id })
       if (matchedTurn) {
         hrefSearch.set('turnId', matchedTurn.id)
@@ -108,35 +128,42 @@ export class ThreadSearchProvider implements SearchProvider {
         score: hit.score,
         snippet: buildSnippet(snippetSource, input.query),
         highlights: presentation.highlights,
-        match_reasons: reasons,
-        match_reason_codes: Array.from(new Set([
-          ...presentation.match_reason_codes,
-          ...(parentPost.watchability_score >= 1.15 ? ['heat' as const] : []),
-          ...(parentPost.aftershow_text ? ['aftershow' as const] : []),
-        ])).slice(0, 4),
+        match_explanations: matchExplanations,
+        match_reasons: matchExplanations.map((item) => item.label),
+        match_reason_codes: matchExplanations.map((item) => item.code),
         community: {
           id: hit.doc.community_id,
           name: hit.doc.community_name,
           slug: hit.doc.community_slug,
+          ...(hit.doc.community_family ? { community_family: hit.doc.community_family } : {}),
+          ...(hit.doc.community_shell_category ? { community_shell_category: hit.doc.community_shell_category } : {}),
+          ...(hit.doc.publication_review_profile_id ? { publication_review_profile_id: hit.doc.publication_review_profile_id } : {}),
         },
-        author: {
-          id: hit.doc.author_agent_id,
-          actor_type: 'agent',
-          display_name: hit.doc.author_display_name,
-          avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
-          ...(authorVisibility === 'full' ? {
-            agent_kind: authorPresentation.agent_kind,
-            public_identity: authorPresentation.public_identity,
-            public_projection: authorPresentation.public_projection,
-            public_proof: authorPresentation.public_proof,
-            system_identity: authorPresentation.system_identity,
-            surface_access: authorPresentation.surface_access,
-            display_badges: authorPresentation.display_badges,
-            ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
-            ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
-            ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
-          } : {}),
-        },
+        author: hit.doc.author_actor_type === 'agent' && hit.doc.author_agent_id && authorPresentation
+          ? {
+              id: hit.doc.author_agent_id,
+              actor_type: 'agent',
+              display_name: hit.doc.author_display_name,
+              avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
+              ...(authorVisibility === 'full' ? {
+                agent_kind: authorPresentation.agent_kind,
+                public_identity: authorPresentation.public_identity,
+                public_projection: authorPresentation.public_projection,
+                public_proof: authorPresentation.public_proof,
+                system_identity: authorPresentation.system_identity,
+                surface_access: authorPresentation.surface_access,
+                display_badges: authorPresentation.display_badges,
+                ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
+                ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
+                ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
+              } : {}),
+            }
+          : {
+              id: hit.doc.author_user_id ?? hit.doc.thread_id,
+              actor_type: 'human',
+              display_name: hit.doc.author_display_name,
+              avatar_url: hit.doc.author_avatar_url,
+            },
         author_visibility: authorVisibility,
         created_at: hit.doc.thread_created_at.toISOString(),
         parent_post_heat_score: parentPost.heat_score,

@@ -22,6 +22,10 @@ import {
   type LaunchSurfaceKind,
   type LaunchThumbnailPolicy,
 } from '../launch/visual-rollout.js'
+import {
+  isCreatorNoteEntry,
+  normalizeEditorialShelfId,
+} from '../../shared/semantic-taxonomy.js'
 import type {
   CommunityProposalRepository,
   CommunityRepository,
@@ -575,7 +579,7 @@ function buildPublicProgrammingItem(input: {
 function buildObservedCounts(posts: PostWithMeta[], highlightPostIds: Set<string>): ProgrammingObservedCounts {
   return {
     root_posts: posts.filter((post) => post.content_kind !== 'aftershow_recap').length,
-    t4_notes: posts.filter((post) => post.is_t4 === true || post.content_kind === 'note_entry').length,
+    t4_notes: posts.filter((post) => isCreatorNoteEntry(post)).length,
     priority_threads: posts.filter((post) => post.thread_turn_count >= 6).length,
     highlight_candidates: posts.filter((post) => highlightPostIds.has(post.id)).length,
     continuity_callbacks: posts.filter((post) =>
@@ -862,7 +866,8 @@ export class LaunchProgrammingOpsService {
         title: item.title,
         community_name: item.community_name,
         community_slug: backingPost?.community_slug ?? '',
-        shelf_target: item.editorial_shelf ?? (item.is_t4 ? 't4_today' : 'must_watch_today'),
+        shelf_target:
+          normalizeEditorialShelfId(item.editorial_shelf) ?? (isCreatorNoteEntry(item) ? 'notes_today' : 'must_watch_today'),
         hero_reason: item.hero_eligible ? 'hero_candidate_ready' : null,
         rejected_reason:
           item.thumbnail_policy === 'required' && !hasVisual
@@ -905,11 +910,11 @@ export class LaunchProgrammingOpsService {
 
     const visualRatios = {
       root_cover_ratio: ratioOf(
-        todayPosts.filter((post) => post.is_t4 !== true),
+        todayPosts.filter((post) => !isCreatorNoteEntry(post)),
         (post) => post.media.length > 0,
       ),
       t4_cover_ratio: ratioOf(
-        todayPosts.filter((post) => post.is_t4 === true),
+        todayPosts.filter((post) => isCreatorNoteEntry(post)),
         (post) => post.media.length > 0,
       ),
       highlight_visual_ratio: ratioOf(
@@ -1057,9 +1062,9 @@ export class LaunchProgrammingOpsService {
         ...contract.health_thresholds.required_daily_outcomes,
       },
       observed_daily_outcomes: {
-        mainline_roots: todayPosts.filter((post) => post.is_t4 !== true).length,
+        mainline_roots: todayPosts.filter((post) => !isCreatorNoteEntry(post)).length,
         highlight_candidates: highlightCandidates.filter((item) => item.rejected_reason === null).length,
-        t4_notes: todayPosts.filter((post) => post.is_t4 === true || post.content_kind === 'note_entry').length,
+        t4_notes: todayPosts.filter((post) => isCreatorNoteEntry(post)).length,
         continuity_callbacks: todayPosts.filter((post) =>
           post.content_kind === 'continuity_callback' || post.storyline_state === 'callback').length,
       },

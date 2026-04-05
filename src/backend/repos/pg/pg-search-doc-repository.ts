@@ -154,9 +154,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
         communityId: input.community_id,
         communitySlug: input.community_slug,
         communityName: input.community_name,
+        communityFamily: input.community_family,
+        communityShellCategory: input.community_shell_category,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        publicParticipationMode: input.public_participation_mode,
+        communityLifecycleState: input.community_lifecycle_state,
+        launchWave: input.launch_wave,
         authorAgentId: input.author_agent_id,
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
+        authorIdentityRoleId: input.author_identity_role_id,
+        authorIdentityVisibilityRoleId: input.author_identity_visibility_role_id,
+        authorIdentityText: input.author_identity_text,
+        authorAchievementBadgesText: input.author_achievement_badges_text,
         authorTagline: input.author_tagline,
         authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
@@ -166,8 +176,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
         tagsText: input.tags_text,
         sceneTagsText: input.scene_tags_text,
         scenePhase: input.scene_phase,
+        storylineState: input.storyline_state,
         aftershowText: input.aftershow_text,
         highlightText: input.highlight_text,
+        contentKind: input.content_kind,
+        formatKind: input.format_kind,
+        editorialShelfId: input.editorial_shelf_id,
+        noteTemplateId: input.note_template_id,
+        coverMode: input.cover_mode,
+        surfaceKind: input.surface_kind,
+        cardMode: input.card_mode,
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
@@ -185,9 +203,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
         communityId: input.community_id,
         communitySlug: input.community_slug,
         communityName: input.community_name,
+        communityFamily: input.community_family,
+        communityShellCategory: input.community_shell_category,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        publicParticipationMode: input.public_participation_mode,
+        communityLifecycleState: input.community_lifecycle_state,
+        launchWave: input.launch_wave,
         authorAgentId: input.author_agent_id,
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
+        authorIdentityRoleId: input.author_identity_role_id,
+        authorIdentityVisibilityRoleId: input.author_identity_visibility_role_id,
+        authorIdentityText: input.author_identity_text,
+        authorAchievementBadgesText: input.author_achievement_badges_text,
         authorTagline: input.author_tagline,
         authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
@@ -197,8 +225,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
         tagsText: input.tags_text,
         sceneTagsText: input.scene_tags_text,
         scenePhase: input.scene_phase,
+        storylineState: input.storyline_state,
         aftershowText: input.aftershow_text,
         highlightText: input.highlight_text,
+        contentKind: input.content_kind,
+        formatKind: input.format_kind,
+        editorialShelfId: input.editorial_shelf_id,
+        noteTemplateId: input.note_template_id,
+        coverMode: input.cover_mode,
+        surfaceKind: input.surface_kind,
+        cardMode: input.card_mode,
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
@@ -274,6 +310,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
         communityId: input.community_id,
         name: input.name,
         slug: input.slug,
+        communityFamily: input.community_family,
+        communityShellCategory: input.community_shell_category,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        publicParticipationMode: input.public_participation_mode,
+        audienceSignalIngestion: input.audience_signal_ingestion,
+        agentHumanResponseMode: input.agent_human_response_mode,
+        communityLifecycleState: input.community_lifecycle_state,
+        launchWave: input.launch_wave,
         description: input.description,
         dominantTagsSummary: input.dominant_tags_summary,
         residentAgentNamesText: input.resident_agent_names_text,
@@ -291,6 +335,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
       update: {
         name: input.name,
         slug: input.slug,
+        communityFamily: input.community_family,
+        communityShellCategory: input.community_shell_category,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        publicParticipationMode: input.public_participation_mode,
+        audienceSignalIngestion: input.audience_signal_ingestion,
+        agentHumanResponseMode: input.agent_human_response_mode,
+        communityLifecycleState: input.community_lifecycle_state,
+        launchWave: input.launch_wave,
         description: input.description,
         dominantTagsSummary: input.dominant_tags_summary,
         residentAgentNamesText: input.resident_agent_names_text,
@@ -359,6 +411,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
         avatarUrl: input.avatar_url,
         status: input.status,
         model: input.model,
+        identityRoleId: input.identity_role_id,
+        identityVisibilityRoleId: input.identity_visibility_role_id,
+        formatCapabilities: input.format_capabilities,
+        achievementBadgesText: input.achievement_badges_text,
         personaSeedCode: input.persona_seed_code,
         personaSeedLabel: input.persona_seed_label,
         homeVoiceLineId: input.home_voice_line_id,
@@ -387,6 +443,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
         avatarUrl: input.avatar_url,
         status: input.status,
         model: input.model,
+        identityRoleId: input.identity_role_id,
+        identityVisibilityRoleId: input.identity_visibility_role_id,
+        formatCapabilities: input.format_capabilities,
+        achievementBadgesText: input.achievement_badges_text,
         personaSeedCode: input.persona_seed_code,
         personaSeedLabel: input.persona_seed_label,
         homeVoiceLineId: input.home_voice_line_id,
@@ -462,9 +522,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
         communityId: input.community_id,
         communitySlug: input.community_slug,
         communityName: input.community_name,
+        communityFamily: input.community_family,
+        communityShellCategory: input.community_shell_category,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        publicParticipationMode: input.public_participation_mode,
+        communityLifecycleState: input.community_lifecycle_state,
+        launchWave: input.launch_wave,
+        authorActorType: input.author_actor_type,
         authorAgentId: input.author_agent_id,
+        authorUserId: input.author_user_id,
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
+        authorIdentityRoleId: input.author_identity_role_id,
+        authorIdentityVisibilityRoleId: input.author_identity_visibility_role_id,
+        authorIdentityText: input.author_identity_text,
+        authorAchievementBadgesText: input.author_achievement_badges_text,
         authorTagline: input.author_tagline,
         authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
@@ -473,6 +545,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
         postTitle: input.post_title,
         sceneTagsText: input.scene_tags_text,
         scenePhase: input.scene_phase,
+        storylineState: input.storyline_state,
+        contentKind: input.content_kind,
+        formatKind: input.format_kind,
+        editorialShelfId: input.editorial_shelf_id,
+        noteTemplateId: input.note_template_id,
+        coverMode: input.cover_mode,
+        surfaceKind: input.surface_kind,
+        cardMode: input.card_mode,
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
@@ -485,9 +565,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
         communityId: input.community_id,
         communitySlug: input.community_slug,
         communityName: input.community_name,
+        communityFamily: input.community_family,
+        communityShellCategory: input.community_shell_category,
+        publicationReviewProfileId: input.publication_review_profile_id,
+        publicParticipationMode: input.public_participation_mode,
+        communityLifecycleState: input.community_lifecycle_state,
+        launchWave: input.launch_wave,
+        authorActorType: input.author_actor_type,
         authorAgentId: input.author_agent_id,
+        authorUserId: input.author_user_id,
         authorDisplayName: input.author_display_name,
         authorAvatarUrl: input.author_avatar_url,
+        authorIdentityRoleId: input.author_identity_role_id,
+        authorIdentityVisibilityRoleId: input.author_identity_visibility_role_id,
+        authorIdentityText: input.author_identity_text,
+        authorAchievementBadgesText: input.author_achievement_badges_text,
         authorTagline: input.author_tagline,
         authorPublicBio: input.author_public_bio,
         authorBadgesJson: input.author_badges as unknown as Prisma.InputJsonValue,
@@ -496,6 +588,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
         postTitle: input.post_title,
         sceneTagsText: input.scene_tags_text,
         scenePhase: input.scene_phase,
+        storylineState: input.storyline_state,
+        contentKind: input.content_kind,
+        formatKind: input.format_kind,
+        editorialShelfId: input.editorial_shelf_id,
+        noteTemplateId: input.note_template_id,
+        coverMode: input.cover_mode,
+        surfaceKind: input.surface_kind,
+        cardMode: input.card_mode,
         searchableText: input.searchable_text,
         visibility: input.visibility,
         state: input.state,
@@ -545,9 +645,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: string
       community_slug: string
       community_name: string
+      community_family: string | null
+      community_shell_category: string | null
+      publication_review_profile_id: string | null
+      public_participation_mode: string | null
+      community_lifecycle_state: string | null
+      launch_wave: string | null
       author_agent_id: string
       author_display_name: string
       author_avatar_url: string | null
+      author_identity_role_id: string | null
+      author_identity_visibility_role_id: string | null
+      author_identity_text: string
+      author_achievement_badges_text: string
       author_tagline: string | null
       author_public_bio: string | null
       author_badges_json: unknown
@@ -557,8 +667,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
       tags_text: string
       scene_tags_text: string
       scene_phase: string | null
+      storyline_state: string | null
       aftershow_text: string
       highlight_text: string
+      content_kind: string | null
+      format_kind: string | null
+      editorial_shelf_id: string | null
+      note_template_id: string | null
+      cover_mode: string | null
+      surface_kind: string | null
+      card_mode: string | null
       searchable_text: string
       visibility: PostSearchDoc['visibility']
       state: PostSearchDoc['state']
@@ -581,9 +699,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
           community_id,
           community_slug,
           community_name,
+          community_family,
+          community_shell_category,
+          publication_review_profile_id,
+          public_participation_mode,
+          community_lifecycle_state,
+          launch_wave,
           author_agent_id,
           author_display_name,
           author_avatar_url,
+          author_identity_role_id,
+          author_identity_visibility_role_id,
+          author_identity_text,
+          author_achievement_badges_text,
           author_tagline,
           author_public_bio,
           author_badges_json,
@@ -593,8 +721,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
           tags_text,
           scene_tags_text,
           scene_phase,
+          storyline_state,
           aftershow_text,
           highlight_text,
+          content_kind,
+          format_kind,
+          editorial_shelf_id,
+          note_template_id,
+          cover_mode,
+          surface_kind,
+          card_mode,
           searchable_text,
           visibility,
           state,
@@ -616,9 +752,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(scene_tags_text), lower(${normalized})) * 1.08,
               similarity(lower(aftershow_text), lower(${normalized})) * 1.04,
               similarity(lower(highlight_text), lower(${normalized})) * 1.04,
-              similarity(lower(author_badges_text), lower(${normalized})) * 0.95,
+              similarity(lower(author_identity_text), lower(${normalized})) * 1.02,
+              similarity(lower(author_achievement_badges_text), lower(${normalized})) * 0.95,
               similarity(lower(COALESCE(author_tagline, '')), lower(${normalized})) * 0.92,
               similarity(lower(COALESCE(author_public_bio, '')), lower(${normalized})) * 0.96,
+              similarity(lower(COALESCE(community_family, '')), lower(${normalized})) * 1.04,
+              similarity(lower(COALESCE(content_kind, '')), lower(${normalized})) * 1.06,
+              similarity(lower(COALESCE(format_kind, '')), lower(${normalized})) * 1.02,
+              similarity(lower(COALESCE(editorial_shelf_id, '')), lower(${normalized})) * 1.02,
+              similarity(lower(COALESCE(note_template_id, '')), lower(${normalized})) * 1.08,
+              similarity(lower(COALESCE(storyline_state, '')), lower(${normalized})) * 1.03,
               similarity(lower(body), lower(${normalized})),
               similarity(lower(community_name), lower(${normalized})) * 0.95,
               similarity(lower(author_display_name), lower(${normalized})) * 0.9,
@@ -656,9 +799,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: row.community_id,
       community_slug: row.community_slug,
       community_name: row.community_name,
+      community_family: row.community_family,
+      community_shell_category: row.community_shell_category,
+      publication_review_profile_id: row.publication_review_profile_id,
+      public_participation_mode: row.public_participation_mode,
+      community_lifecycle_state: row.community_lifecycle_state,
+      launch_wave: row.launch_wave,
       author_agent_id: row.author_agent_id,
       author_display_name: row.author_display_name,
       author_avatar_url: row.author_avatar_url,
+      author_identity_role_id: row.author_identity_role_id,
+      author_identity_visibility_role_id: row.author_identity_visibility_role_id,
+      author_identity_text: row.author_identity_text,
+      author_achievement_badges_text: row.author_achievement_badges_text,
       author_tagline: row.author_tagline,
       author_public_bio: row.author_public_bio,
       author_badges: toSearchBadges(row.author_badges_json),
@@ -668,8 +821,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
       tags_text: row.tags_text,
       scene_tags_text: row.scene_tags_text,
       scene_phase: row.scene_phase,
+      storyline_state: row.storyline_state,
       aftershow_text: row.aftershow_text,
       highlight_text: row.highlight_text,
+      content_kind: row.content_kind,
+      format_kind: row.format_kind,
+      editorial_shelf_id: row.editorial_shelf_id,
+      note_template_id: row.note_template_id,
+      cover_mode: row.cover_mode,
+      surface_kind: row.surface_kind,
+      card_mode: row.card_mode,
       searchable_text: row.searchable_text,
       visibility: row.visibility,
       state: row.state,
@@ -697,6 +858,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: string
       name: string
       slug: string
+      community_family: string | null
+      community_shell_category: string | null
+      publication_review_profile_id: string | null
+      public_participation_mode: string | null
+      audience_signal_ingestion: string | null
+      agent_human_response_mode: string | null
+      community_lifecycle_state: string | null
+      launch_wave: string | null
       description: string
       dominant_tags_summary: string
       resident_agent_names_text: string
@@ -719,6 +888,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
           community_id,
           name,
           slug,
+          community_family,
+          community_shell_category,
+          publication_review_profile_id,
+          public_participation_mode,
+          audience_signal_ingestion,
+          agent_human_response_mode,
+          community_lifecycle_state,
+          launch_wave,
           description,
           dominant_tags_summary,
           resident_agent_names_text,
@@ -738,6 +915,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
             GREATEST(
               similarity(lower(name), lower(${normalized})) * 1.35,
               similarity(lower(slug), lower(${normalized})) * 1.1,
+              similarity(lower(COALESCE(community_family, '')), lower(${normalized})) * 1.08,
+              similarity(lower(COALESCE(community_shell_category, '')), lower(${normalized})) * 1.02,
+              similarity(lower(COALESCE(public_participation_mode, '')), lower(${normalized})) * 1.02,
+              similarity(lower(COALESCE(community_lifecycle_state, '')), lower(${normalized})) * 0.98,
               similarity(lower(description), lower(${normalized})),
               similarity(lower(dominant_tags_summary), lower(${normalized})) * 1.05,
               similarity(lower(resident_agent_names_text), lower(${normalized})) * 1.03,
@@ -783,6 +964,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
       avatar_url: string | null
       status: string
       model: string
+      identity_role_id: string | null
+      identity_visibility_role_id: string | null
+      format_capabilities: unknown
+      achievement_badges_text: string
       persona_seed_code: string
       persona_seed_label: string
       home_voice_line_id: string
@@ -816,6 +1001,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
           avatar_url,
           status,
           model,
+          identity_role_id,
+          identity_visibility_role_id,
+          format_capabilities,
+          achievement_badges_text,
           persona_seed_code,
           persona_seed_label,
           home_voice_line_id,
@@ -843,6 +1032,8 @@ export class PgSearchDocRepository implements SearchDocRepository {
           ROUND((
             GREATEST(
               similarity(lower(display_name), lower(${normalized})) * 1.35,
+              similarity(lower(COALESCE(identity_role_id, '')), lower(${normalized})) * 1.16,
+              similarity(lower(COALESCE(identity_visibility_role_id, '')), lower(${normalized})) * 1.1,
               similarity(lower(persona_seed_label), lower(${normalized})) * 1.12,
               similarity(lower(home_voice_line_label), lower(${normalized})) * 1.05,
               similarity(lower(COALESCE(public_projection_hint, '')), lower(${normalized})) * 1.08,
@@ -850,7 +1041,7 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(representative_post_text), lower(${normalized})) * 1.02,
               similarity(lower(representative_thread_turn_text), lower(${normalized})) * 0.98,
               similarity(lower(social_signal_text), lower(${normalized})) * 0.94,
-              similarity(lower(public_badges_text), lower(${normalized})) * 1.08,
+              similarity(lower(achievement_badges_text), lower(${normalized})) * 1.08,
               similarity(lower(active_community_names_text), lower(${normalized})) * 1.02,
               similarity(lower(COALESCE(public_tagline, '')), lower(${normalized})),
               similarity(lower(COALESCE(public_bio, '')), lower(${normalized})) * 1.04,
@@ -885,6 +1076,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
       avatar_url: row.avatar_url,
       status: row.status,
       model: row.model,
+      identity_role_id: row.identity_role_id,
+      identity_visibility_role_id: row.identity_visibility_role_id,
+      format_capabilities: toJsonArray(row.format_capabilities),
+      achievement_badges_text: row.achievement_badges_text,
       persona_seed_code: row.persona_seed_code,
       persona_seed_label: row.persona_seed_label,
       home_voice_line_id: row.home_voice_line_id,
@@ -924,9 +1119,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: string
       community_slug: string
       community_name: string
-      author_agent_id: string
+      community_family: string | null
+      community_shell_category: string | null
+      publication_review_profile_id: string | null
+      public_participation_mode: string | null
+      community_lifecycle_state: string | null
+      launch_wave: string | null
+      author_actor_type: ThreadSearchDoc['author_actor_type']
+      author_agent_id: string | null
+      author_user_id: string | null
       author_display_name: string
       author_avatar_url: string | null
+      author_identity_role_id: string | null
+      author_identity_visibility_role_id: string | null
+      author_identity_text: string
+      author_achievement_badges_text: string
       author_tagline: string | null
       author_public_bio: string | null
       author_badges_json: unknown
@@ -935,6 +1142,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
       post_title: string
       scene_tags_text: string
       scene_phase: string | null
+      storyline_state: string | null
+      content_kind: string | null
+      format_kind: string | null
+      editorial_shelf_id: string | null
+      note_template_id: string | null
+      cover_mode: string | null
+      surface_kind: string | null
+      card_mode: string | null
       searchable_text: string
       visibility: ThreadSearchDoc['visibility']
       state: ThreadSearchDoc['state']
@@ -952,9 +1167,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
           csd.community_id,
           csd.community_slug,
           csd.community_name,
+          csd.community_family,
+          csd.community_shell_category,
+          csd.publication_review_profile_id,
+          csd.public_participation_mode,
+          csd.community_lifecycle_state,
+          csd.launch_wave,
+          csd.author_actor_type,
           csd.author_agent_id,
+          csd.author_user_id,
           csd.author_display_name,
           csd.author_avatar_url,
+          csd.author_identity_role_id,
+          csd.author_identity_visibility_role_id,
+          csd.author_identity_text,
+          csd.author_achievement_badges_text,
           csd.author_tagline,
           csd.author_public_bio,
           csd.author_badges_json,
@@ -963,6 +1190,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
           csd.post_title,
           csd.scene_tags_text,
           csd.scene_phase,
+          csd.storyline_state,
+          csd.content_kind,
+          csd.format_kind,
+          csd.editorial_shelf_id,
+          csd.note_template_id,
+          csd.cover_mode,
+          csd.surface_kind,
+          csd.card_mode,
           csd.searchable_text,
           csd.visibility,
           csd.state,
@@ -976,9 +1211,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(csd.body), lower(${normalized})) * 1.2,
               similarity(lower(csd.post_title), lower(${normalized})) * 1.08,
               similarity(lower(csd.scene_tags_text), lower(${normalized})) * 1.04,
-              similarity(lower(csd.author_badges_text), lower(${normalized})) * 0.94,
+              similarity(lower(csd.author_identity_text), lower(${normalized})) * 1.02,
+              similarity(lower(csd.author_achievement_badges_text), lower(${normalized})) * 0.94,
               similarity(lower(COALESCE(csd.author_tagline, '')), lower(${normalized})) * 0.92,
               similarity(lower(COALESCE(csd.author_public_bio, '')), lower(${normalized})) * 0.96,
+              similarity(lower(COALESCE(csd.community_family, '')), lower(${normalized})) * 1.04,
+              similarity(lower(COALESCE(csd.storyline_state, '')), lower(${normalized})) * 1.03,
+              similarity(lower(COALESCE(csd.content_kind, '')), lower(${normalized})) * 1.06,
+              similarity(lower(COALESCE(csd.note_template_id, '')), lower(${normalized})) * 1.08,
               similarity(lower(csd.community_name), lower(${normalized})) * 0.95,
               similarity(lower(csd.author_display_name), lower(${normalized})) * 0.9,
               similarity(lower(csd.searchable_text), lower(${normalized})) * 0.85
@@ -1016,9 +1256,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: row.community_id,
       community_slug: row.community_slug,
       community_name: row.community_name,
+      community_family: row.community_family,
+      community_shell_category: row.community_shell_category,
+      publication_review_profile_id: row.publication_review_profile_id,
+      public_participation_mode: row.public_participation_mode,
+      community_lifecycle_state: row.community_lifecycle_state,
+      launch_wave: row.launch_wave,
+      author_actor_type: row.author_actor_type,
       author_agent_id: row.author_agent_id,
+      author_user_id: row.author_user_id,
       author_display_name: row.author_display_name,
       author_avatar_url: row.author_avatar_url,
+      author_identity_role_id: row.author_identity_role_id,
+      author_identity_visibility_role_id: row.author_identity_visibility_role_id,
+      author_identity_text: row.author_identity_text,
+      author_achievement_badges_text: row.author_achievement_badges_text,
       author_tagline: row.author_tagline,
       author_public_bio: row.author_public_bio,
       author_badges: toSearchBadges(row.author_badges_json),
@@ -1027,6 +1279,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
       post_title: row.post_title,
       scene_tags_text: row.scene_tags_text,
       scene_phase: row.scene_phase,
+      storyline_state: row.storyline_state,
+      content_kind: row.content_kind,
+      format_kind: row.format_kind,
+      editorial_shelf_id: row.editorial_shelf_id,
+      note_template_id: row.note_template_id,
+      cover_mode: row.cover_mode,
+      surface_kind: row.surface_kind,
+      card_mode: row.card_mode,
       searchable_text: row.searchable_text,
       visibility: row.visibility,
       state: row.state,
@@ -1044,9 +1304,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
     communityId: string
     communitySlug: string
     communityName: string
+    communityFamily: string | null
+    communityShellCategory: string | null
+    publicationReviewProfileId: string | null
+    publicParticipationMode: string | null
+    communityLifecycleState: string | null
+    launchWave: string | null
     authorAgentId: string
     authorDisplayName: string
     authorAvatarUrl: string | null
+    authorIdentityRoleId: string | null
+    authorIdentityVisibilityRoleId: string | null
+    authorIdentityText: string
+    authorAchievementBadgesText: string
     authorTagline: string | null
     authorPublicBio: string | null
     authorBadgesJson: unknown
@@ -1056,8 +1326,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
     tagsText: string
     sceneTagsText: string
     scenePhase: string | null
+    storylineState: string | null
     aftershowText: string
     highlightText: string
+    contentKind: string | null
+    formatKind: string | null
+    editorialShelfId: string | null
+    noteTemplateId: string | null
+    coverMode: string | null
+    surfaceKind: string | null
+    cardMode: string | null
     searchableText: string
     visibility: PostSearchDoc['visibility']
     state: PostSearchDoc['state']
@@ -1078,9 +1356,19 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: row.communityId,
       community_slug: row.communitySlug,
       community_name: row.communityName,
+      community_family: row.communityFamily,
+      community_shell_category: row.communityShellCategory,
+      publication_review_profile_id: row.publicationReviewProfileId,
+      public_participation_mode: row.publicParticipationMode,
+      community_lifecycle_state: row.communityLifecycleState,
+      launch_wave: row.launchWave,
       author_agent_id: row.authorAgentId,
       author_display_name: row.authorDisplayName,
       author_avatar_url: row.authorAvatarUrl,
+      author_identity_role_id: row.authorIdentityRoleId,
+      author_identity_visibility_role_id: row.authorIdentityVisibilityRoleId,
+      author_identity_text: row.authorIdentityText,
+      author_achievement_badges_text: row.authorAchievementBadgesText,
       author_tagline: row.authorTagline,
       author_public_bio: row.authorPublicBio,
       author_badges: toSearchBadges(row.authorBadgesJson),
@@ -1090,8 +1378,16 @@ export class PgSearchDocRepository implements SearchDocRepository {
       tags_text: row.tagsText,
       scene_tags_text: row.sceneTagsText,
       scene_phase: row.scenePhase,
+      storyline_state: row.storylineState,
       aftershow_text: row.aftershowText,
       highlight_text: row.highlightText,
+      content_kind: row.contentKind,
+      format_kind: row.formatKind,
+      editorial_shelf_id: row.editorialShelfId,
+      note_template_id: row.noteTemplateId,
+      cover_mode: row.coverMode,
+      surface_kind: row.surfaceKind,
+      card_mode: row.cardMode,
       searchable_text: row.searchableText,
       visibility: row.visibility,
       state: row.state,
@@ -1113,6 +1409,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
     communityId: string
     name: string
     slug: string
+    communityFamily: string | null
+    communityShellCategory: string | null
+    publicationReviewProfileId: string | null
+    publicParticipationMode: string | null
+    audienceSignalIngestion: string | null
+    agentHumanResponseMode: string | null
+    communityLifecycleState: string | null
+    launchWave: string | null
     description: string
     dominantTagsSummary: string
     residentAgentNamesText: string
@@ -1133,6 +1437,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: row.communityId,
       name: row.name,
       slug: row.slug,
+      community_family: row.communityFamily,
+      community_shell_category: row.communityShellCategory,
+      publication_review_profile_id: row.publicationReviewProfileId,
+      public_participation_mode: row.publicParticipationMode,
+      audience_signal_ingestion: row.audienceSignalIngestion,
+      agent_human_response_mode: row.agentHumanResponseMode,
+      community_lifecycle_state: row.communityLifecycleState,
+      launch_wave: row.launchWave,
       description: row.description,
       dominant_tags_summary: row.dominantTagsSummary,
       resident_agent_names_text: row.residentAgentNamesText,
@@ -1157,6 +1469,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
     avatarUrl: string | null
     status: string
     model: string
+    identityRoleId: string | null
+    identityVisibilityRoleId: string | null
+    formatCapabilities: string[]
+    achievementBadgesText: string
     personaSeedCode: string
     personaSeedLabel: string
     homeVoiceLineId: string
@@ -1188,6 +1504,10 @@ export class PgSearchDocRepository implements SearchDocRepository {
       avatar_url: row.avatarUrl,
       status: row.status,
       model: row.model,
+      identity_role_id: row.identityRoleId,
+      identity_visibility_role_id: row.identityVisibilityRoleId,
+      format_capabilities: row.formatCapabilities,
+      achievement_badges_text: row.achievementBadgesText,
       persona_seed_code: row.personaSeedCode,
       persona_seed_label: row.personaSeedLabel,
       home_voice_line_id: row.homeVoiceLineId,
@@ -1221,9 +1541,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
     communityId: string
     communitySlug: string
     communityName: string
-    authorAgentId: string
+    communityFamily: string | null
+    communityShellCategory: string | null
+    publicationReviewProfileId: string | null
+    publicParticipationMode: string | null
+    communityLifecycleState: string | null
+    launchWave: string | null
+    authorActorType: ThreadSearchDoc['author_actor_type']
+    authorAgentId: string | null
+    authorUserId: string | null
     authorDisplayName: string
     authorAvatarUrl: string | null
+    authorIdentityRoleId: string | null
+    authorIdentityVisibilityRoleId: string | null
+    authorIdentityText: string
+    authorAchievementBadgesText: string
     authorTagline: string | null
     authorPublicBio: string | null
     authorBadgesJson: unknown
@@ -1232,6 +1564,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
     postTitle: string
     sceneTagsText: string
     scenePhase: string | null
+    storylineState: string | null
+    contentKind: string | null
+    formatKind: string | null
+    editorialShelfId: string | null
+    noteTemplateId: string | null
+    coverMode: string | null
+    surfaceKind: string | null
+    cardMode: string | null
     searchableText: string
     visibility: ThreadSearchDoc['visibility']
     state: ThreadSearchDoc['state']
@@ -1247,9 +1587,21 @@ export class PgSearchDocRepository implements SearchDocRepository {
       community_id: row.communityId,
       community_slug: row.communitySlug,
       community_name: row.communityName,
+      community_family: row.communityFamily,
+      community_shell_category: row.communityShellCategory,
+      publication_review_profile_id: row.publicationReviewProfileId,
+      public_participation_mode: row.publicParticipationMode,
+      community_lifecycle_state: row.communityLifecycleState,
+      launch_wave: row.launchWave,
+      author_actor_type: row.authorActorType,
       author_agent_id: row.authorAgentId,
+      author_user_id: row.authorUserId,
       author_display_name: row.authorDisplayName,
       author_avatar_url: row.authorAvatarUrl,
+      author_identity_role_id: row.authorIdentityRoleId,
+      author_identity_visibility_role_id: row.authorIdentityVisibilityRoleId,
+      author_identity_text: row.authorIdentityText,
+      author_achievement_badges_text: row.authorAchievementBadgesText,
       author_tagline: row.authorTagline,
       author_public_bio: row.authorPublicBio,
       author_badges: toSearchBadges(row.authorBadgesJson),
@@ -1258,6 +1610,14 @@ export class PgSearchDocRepository implements SearchDocRepository {
       post_title: row.postTitle,
       scene_tags_text: row.sceneTagsText,
       scene_phase: row.scenePhase,
+      storyline_state: row.storylineState,
+      content_kind: row.contentKind,
+      format_kind: row.formatKind,
+      editorial_shelf_id: row.editorialShelfId,
+      note_template_id: row.noteTemplateId,
+      cover_mode: row.coverMode,
+      surface_kind: row.surfaceKind,
+      card_mode: row.cardMode,
       searchable_text: row.searchableText,
       visibility: row.visibility,
       state: row.state,

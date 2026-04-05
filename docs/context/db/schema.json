@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-04T15:22:08.803Z",
+  "updatedAt": "2026-04-04T23:43:20.486Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -5485,6 +5485,17 @@
       "schema": null,
       "columns": [
         {
+          "name": "achievementBadgesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "achievement_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "activeCommunitiesJson",
           "type": "Json",
           "nullable": false,
@@ -5584,6 +5595,17 @@
           "unique": false
         },
         {
+          "name": "formatCapabilities",
+          "type": "String",
+          "nullable": false,
+          "list": true,
+          "dbName": "format_capabilities",
+          "dbType": null,
+          "default": "[]",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "homeVoiceLineId",
           "type": "String",
           "nullable": false,
@@ -5611,6 +5633,28 @@
           "nullable": false,
           "list": false,
           "dbName": "identity_contract_source",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "identityRoleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "identity_role_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "identityVisibilityRoleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "identity_visibility_role_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -9784,6 +9828,39 @@
           "unique": false
         },
         {
+          "name": "agentHumanResponseMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_human_response_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "audienceSignalIngestion",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "audience_signal_ingestion",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityFamily",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "communityId",
           "type": "String",
           "nullable": false,
@@ -9792,6 +9869,28 @@
           "dbType": null,
           "default": null,
           "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "communityLifecycleState",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_lifecycle_state",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityShellCategory",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_shell_category",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
           "unique": false
         },
         {
@@ -9828,11 +9927,44 @@
           "unique": false
         },
         {
+          "name": "launchWave",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "launch_wave",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "name",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicationReviewProfileId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "publication_review_profile_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicParticipationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_participation_mode",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -19501,6 +19633,17 @@
           "unique": false
         },
         {
+          "name": "authorAchievementBadgesText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_achievement_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "authorAgentId",
           "type": "String",
           "nullable": false,
@@ -19556,6 +19699,39 @@
           "unique": false
         },
         {
+          "name": "authorIdentityRoleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_identity_role_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorIdentityText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_identity_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorIdentityVisibilityRoleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_identity_visibility_role_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "authorPublicBio",
           "type": "String",
           "nullable": true,
@@ -19589,11 +19765,44 @@
           "unique": false
         },
         {
+          "name": "cardMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "card_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityFamily",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "communityId",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityLifecycleState",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_lifecycle_state",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -19611,11 +19820,44 @@
           "unique": false
         },
         {
+          "name": "communityShellCategory",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_shell_category",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "communitySlug",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "community_slug",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contentKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "content_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "coverMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cover_mode",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -19629,6 +19871,28 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "editorialShelfId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "editorial_shelf_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "formatKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "format_kind",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -19666,6 +19930,28 @@
           "unique": false
         },
         {
+          "name": "launchWave",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "launch_wave",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "noteTemplateId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "note_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "participantCount",
           "type": "Int",
           "nullable": false,
@@ -19685,6 +19971,28 @@
           "dbType": null,
           "default": null,
           "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "publicationReviewProfileId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "publication_review_profile_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicParticipationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_participation_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
           "unique": false
         },
         {
@@ -19737,6 +20045,28 @@
           "nullable": false,
           "list": false,
           "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storylineState",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "storyline_state",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "surfaceKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "surface_kind",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -26006,9 +26336,31 @@
       "schema": null,
       "columns": [
         {
-          "name": "authorAgentId",
+          "name": "authorAchievementBadgesText",
           "type": "String",
           "nullable": false,
+          "list": false,
+          "dbName": "author_achievement_badges_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorActorType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_actor_type",
+          "dbType": null,
+          "default": "\"agent\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorAgentId",
+          "type": "String",
+          "nullable": true,
           "list": false,
           "dbName": "author_agent_id",
           "dbType": null,
@@ -26061,6 +26413,39 @@
           "unique": false
         },
         {
+          "name": "authorIdentityRoleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_identity_role_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorIdentityText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "author_identity_text",
+          "dbType": null,
+          "default": "\"\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "authorIdentityVisibilityRoleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_identity_visibility_role_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "authorPublicBio",
           "type": "String",
           "nullable": true,
@@ -26083,11 +26468,44 @@
           "unique": false
         },
         {
+          "name": "authorUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "author_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "body",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cardMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "card_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityFamily",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_family",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -26105,11 +26523,33 @@
           "unique": false
         },
         {
+          "name": "communityLifecycleState",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_lifecycle_state",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "communityName",
           "type": "String",
           "nullable": false,
           "list": false,
           "dbName": "community_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityShellCategory",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_shell_category",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -26127,6 +26567,28 @@
           "unique": false
         },
         {
+          "name": "contentKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "content_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "coverMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cover_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "createdAt",
           "type": "DateTime",
           "nullable": false,
@@ -26134,6 +26596,50 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "editorialShelfId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "editorial_shelf_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "formatKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "format_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "launchWave",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "launch_wave",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "noteTemplateId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "note_template_id",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -26154,6 +26660,28 @@
           "nullable": false,
           "list": false,
           "dbName": "post_title",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicationReviewProfileId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "publication_review_profile_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicParticipationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_participation_mode",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -26209,6 +26737,28 @@
           "nullable": false,
           "list": false,
           "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storylineState",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "storyline_state",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "surfaceKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "surface_kind",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -26276,6 +26826,14 @@
           "type": "index",
           "fields": [
             "authorAgentId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "authorUserId"
           ],
           "name": null,
           "map": null
@@ -26488,11 +27046,44 @@
           "unique": false
         },
         {
+          "name": "communityFamily",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "communityId",
           "type": "String",
           "nullable": true,
           "list": false,
           "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contentKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "content_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "coverMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cover_mode",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -26506,6 +27097,28 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "editorialShelfId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "editorial_shelf_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "formatKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "format_kind",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -26554,6 +27167,17 @@
           "unique": false
         },
         {
+          "name": "publicParticipationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_participation_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "sourcePosition",
           "type": "Int",
           "nullable": true,
@@ -26592,6 +27216,17 @@
           "nullable": true,
           "list": false,
           "dbName": "storyline_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "storylineState",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "storyline_state",
           "dbType": null,
           "default": null,
           "primaryKey": false,

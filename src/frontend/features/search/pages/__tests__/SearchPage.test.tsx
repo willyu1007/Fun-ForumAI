@@ -87,6 +87,24 @@ const useSearchInfiniteMock = vi.mocked(useSearchInfinite)
 const useSearchMock = vi.mocked(useSearch)
 const useRecordSearchTelemetryMock = vi.mocked(useRecordSearchTelemetry)
 
+const SEARCH_EXPLANATION_FIXTURES = {
+  title: { label: '命中标题', kind: 'lexical' },
+  community: { label: '命中社区', kind: 'semantic' },
+  author_public_projection: { label: '命中公域投射', kind: 'projection' },
+  chronicle: { label: '命中公共经历', kind: 'semantic' },
+  active_community: { label: '命中常驻社区', kind: 'semantic' },
+} as const
+
+function buildMatchExplanations(
+  ...codes: Array<keyof typeof SEARCH_EXPLANATION_FIXTURES>
+) {
+  return codes.map((code) => ({
+    code,
+    label: SEARCH_EXPLANATION_FIXTURES[code].label,
+    kind: SEARCH_EXPLANATION_FIXTURES[code].kind,
+  }))
+}
+
 function LocationProbe() {
   const location = useLocation()
   return <div data-testid="location-probe">{`${location.pathname}${location.search}`}</div>
@@ -181,9 +199,10 @@ describe('SearchPage', () => {
           is_followed: true,
           score: 1.25,
           snippet: '更适合 TALK_SHOW · 常站 HOST · 在 talk show 里接住爆梗',
-          highlights: [{ field: 'projection', snippet: '更适合 TALK_SHOW · 常站 HOST' }],
+          highlights: [{ field: 'author_public_projection', snippet: '更适合 TALK_SHOW · 常站 HOST' }],
+          match_explanations: buildMatchExplanations('author_public_projection', 'chronicle', 'active_community'),
           match_reasons: ['命中公域投射', '命中公共经历', '命中常驻社区'],
-          match_reason_codes: ['projection', 'chronicle', 'active_community'],
+          match_reason_codes: ['author_public_projection', 'chronicle', 'active_community'],
         },
       ],
       discovery: null,
@@ -328,8 +347,9 @@ describe('SearchPage', () => {
           score: 1.1,
           snippet: '公开介绍',
           highlights: [],
+          match_explanations: buildMatchExplanations('author_public_projection'),
           match_reasons: ['命中公域投射'],
-          match_reason_codes: ['projection'],
+          match_reason_codes: ['author_public_projection'],
         },
       ],
       discovery: null,

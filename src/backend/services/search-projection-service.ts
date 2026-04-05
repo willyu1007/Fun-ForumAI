@@ -22,10 +22,22 @@ import type { CommunityCultureDigestService } from './community-culture-digest-s
 import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { AftershowService } from './aftershow-service.js'
+import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import {
+  resolveLaunchCommunityInteractionContract,
+  resolveLaunchCommunitySemanticContract,
+} from '../launch/community-rules.js'
 import { parsePublicScenePayload } from './public-scene-runtime.js'
 import { SearchGuard } from './search/search-guard.js'
 import type { SearchAuthorVisibility } from '../../shared/public-search.js'
+import type {
+  AgentPublicIdentity,
+  AgentPublicProof,
+  CommunityInteractionContract,
+  CommunitySemanticContract,
+  ContentSemanticProjection,
+} from '../../shared/semantic-taxonomy.js'
 import {
   findPublicStageThreadTurnById,
   listPublicStageThreadTurnsByAuthor,
@@ -84,6 +96,106 @@ function readCommunityActivity(digestJson: Record<string, unknown> | null): {
 
 function formatBadgeText(badges: SearchBadge[]): string {
   return badges.map((badge) => `${badge.name} T${badge.tier}`).join(' ')
+}
+
+function formatAchievementBadgeText(input: {
+  public_proof?: AgentPublicProof | null
+  badges?: SearchBadge[]
+}): string {
+  const proofNames = input.public_proof?.achievement_badges.map((badge) => badge.name) ?? []
+  if (proofNames.length > 0) {
+    return proofNames.join(' ')
+  }
+  return formatBadgeText(input.badges ?? [])
+}
+
+function formatIdentityText(input: {
+  public_identity?: AgentPublicIdentity | null
+  system_identity?: {
+    identity_role_id?: string
+    identity_visibility_role_id?: string
+    program_role: string
+    visibility_role: string
+    display_mode: string
+    home_community: string
+    secondary_communities: string[]
+    format_capabilities?: string[]
+  } | null
+}): string {
+  return joinSearchParts([
+    input.public_identity?.identity_role_id,
+    input.public_identity?.identity_visibility_role_id,
+    input.public_identity?.display_mode,
+    input.public_identity?.home_community,
+    input.public_identity?.secondary_communities?.join(' '),
+    input.public_identity?.format_capabilities?.join(' '),
+    input.system_identity?.program_role,
+    input.system_identity?.visibility_role,
+    input.system_identity?.display_mode,
+    input.system_identity?.home_community,
+    input.system_identity?.secondary_communities?.join(' '),
+    input.system_identity?.format_capabilities?.join(' '),
+  ])
+}
+
+function readCommunitySemanticFields(input: {
+  community_semantics?: CommunitySemanticContract | null
+  interaction_contract?: CommunityInteractionContract | null
+}): {
+  community_family: string | null
+  community_shell_category: string | null
+  publication_review_profile_id: string | null
+  public_participation_mode: string | null
+  audience_signal_ingestion: string | null
+  agent_human_response_mode: string | null
+  community_lifecycle_state: string | null
+  launch_wave: string | null
+} {
+  return {
+    community_family: input.community_semantics?.community_family ?? null,
+    community_shell_category: input.community_semantics?.community_shell_category ?? null,
+    publication_review_profile_id: input.community_semantics?.publication_review_profile_id ?? null,
+    public_participation_mode: input.interaction_contract?.public_participation_mode ?? null,
+    audience_signal_ingestion: input.interaction_contract?.audience_signal_ingestion ?? null,
+    agent_human_response_mode: input.interaction_contract?.agent_human_response_mode ?? null,
+    community_lifecycle_state: input.community_semantics?.community_lifecycle_state ?? null,
+    launch_wave: input.community_semantics?.launch_wave ?? null,
+  }
+}
+
+function readContentSemanticFields(input: {
+  content_semantics?: ContentSemanticProjection | null
+  scene_phase?: string | null
+  storyline_state?: string | null
+  content_kind?: string | null
+  format_kind?: string | null
+  editorial_shelf_id?: string | null
+  note_template_id?: string | null
+  cover_mode?: string | null
+  surface_kind_id?: string | null
+  card_mode?: string | null
+}): {
+  scene_phase: string | null
+  storyline_state: string | null
+  content_kind: string | null
+  format_kind: string | null
+  editorial_shelf_id: string | null
+  note_template_id: string | null
+  cover_mode: string | null
+  surface_kind: string | null
+  card_mode: string | null
+} {
+  return {
+    scene_phase: input.content_semantics?.scene_runtime.phase ?? input.scene_phase ?? null,
+    storyline_state: input.content_semantics?.narrative.storyline_state ?? input.storyline_state ?? null,
+    content_kind: input.content_semantics?.distribution.content_kind ?? input.content_kind ?? null,
+    format_kind: input.content_semantics?.format.format_kind ?? input.format_kind ?? null,
+    editorial_shelf_id: input.content_semantics?.distribution.editorial_shelf_id ?? input.editorial_shelf_id ?? null,
+    note_template_id: input.content_semantics?.format.note_template_id ?? input.note_template_id ?? null,
+    cover_mode: input.content_semantics?.format.cover_mode ?? input.cover_mode ?? null,
+    surface_kind: input.content_semantics?.visual.surface_kind ?? input.surface_kind_id ?? null,
+    card_mode: input.content_semantics?.visual.card_mode ?? input.card_mode ?? null,
+  }
 }
 
 function readSceneSearchFields(scene: ForumSceneMetadata | null): {
@@ -215,12 +327,22 @@ export class SearchProjectionService {
     ])
 
     const sceneFields = readSceneSearchFields(scene)
-    const projectedAuthor = this.buildProjectedAuthor(postMeta.author.id, {
-      display_name: postMeta.author.display_name,
-      avatar_url: postMeta.author.avatar_url,
-      tagline: postMeta.author.tagline ?? null,
-      public_bio: postMeta.author.public_bio ?? null,
-      badges: postMeta.author.badges ?? [],
+    const projectedAuthor = this.buildProjectedAuthor(postMeta.author)
+    const communityFields = readCommunitySemanticFields({
+      community_semantics: postMeta.community_semantics,
+      interaction_contract: postMeta.interaction_contract,
+    })
+    const contentFields = readContentSemanticFields({
+      content_semantics: postMeta.content_semantics,
+      scene_phase: sceneFields.scene_phase ?? postMeta.scene_phase ?? null,
+      storyline_state: postMeta.storyline_state ?? null,
+      content_kind: postMeta.content_kind ?? null,
+      format_kind: postMeta.format_kind ?? null,
+      editorial_shelf_id: postMeta.editorial_shelf_id ?? null,
+      note_template_id: postMeta.note_template_id ?? null,
+      cover_mode: postMeta.cover_mode ?? null,
+      surface_kind_id: postMeta.surface_kind_id ?? null,
+      card_mode: postMeta.card_mode ?? null,
     })
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
     const watchabilityScore = Number((
@@ -237,9 +359,19 @@ export class SearchProjectionService {
       community_id: postMeta.community_id,
       community_slug: postMeta.community_slug,
       community_name: postMeta.community_name,
+      community_family: communityFields.community_family,
+      community_shell_category: communityFields.community_shell_category,
+      publication_review_profile_id: communityFields.publication_review_profile_id,
+      public_participation_mode: communityFields.public_participation_mode,
+      community_lifecycle_state: communityFields.community_lifecycle_state,
+      launch_wave: communityFields.launch_wave,
       author_agent_id: postMeta.author.id,
       author_display_name: projectedAuthor.display_name,
       author_avatar_url: projectedAuthor.avatar_url,
+      author_identity_role_id: projectedAuthor.identity_role_id,
+      author_identity_visibility_role_id: projectedAuthor.identity_visibility_role_id,
+      author_identity_text: projectedAuthor.identity_text,
+      author_achievement_badges_text: projectedAuthor.achievement_badges_text,
       author_tagline: projectedAuthor.tagline,
       author_public_bio: projectedAuthor.public_bio,
       author_badges: projectedAuthor.badges,
@@ -248,20 +380,45 @@ export class SearchProjectionService {
       body: postMeta.body,
       tags_text: postMeta.tags.join(' '),
       scene_tags_text: sceneFields.scene_tags_text,
-      scene_phase: sceneFields.scene_phase,
+      scene_phase: contentFields.scene_phase,
+      storyline_state: contentFields.storyline_state,
       aftershow_text: aftershowSignals.aftershow_text,
       highlight_text: aftershowSignals.highlight_text,
+      content_kind: contentFields.content_kind,
+      format_kind: contentFields.format_kind,
+      editorial_shelf_id: contentFields.editorial_shelf_id,
+      note_template_id: contentFields.note_template_id,
+      cover_mode: contentFields.cover_mode,
+      surface_kind: contentFields.surface_kind,
+      card_mode: contentFields.card_mode,
       searchable_text: joinSearchParts([
         postMeta.title,
         postMeta.body,
         postMeta.tags.join(' '),
         postMeta.community_name,
         postMeta.community_slug,
+        communityFields.community_family,
+        communityFields.community_shell_category,
+        communityFields.publication_review_profile_id,
+        communityFields.public_participation_mode,
+        communityFields.community_lifecycle_state,
+        communityFields.launch_wave,
         projectedAuthor.display_name,
+        projectedAuthor.identity_text,
         projectedAuthor.tagline,
         projectedAuthor.public_bio,
+        projectedAuthor.achievement_badges_text,
         authorBadgesText,
         sceneFields.scene_tags_text,
+        contentFields.scene_phase,
+        contentFields.storyline_state,
+        contentFields.content_kind,
+        contentFields.format_kind,
+        contentFields.editorial_shelf_id,
+        contentFields.note_template_id,
+        contentFields.cover_mode,
+        contentFields.surface_kind,
+        contentFields.card_mode,
         aftershowSignals.aftershow_text,
         aftershowSignals.highlight_text,
       ]),
@@ -286,11 +443,6 @@ export class SearchProjectionService {
       this.invalidateCountsCache()
       return
     }
-    if (thread.author_actor_type !== 'agent' || !thread.author_agent_id) {
-      await this.deps.searchDocRepo.deleteThreadDoc(threadId)
-      this.invalidateCountsCache()
-      return
-    }
 
     const post = await this.deps.postRepo.findById(thread.post_id)
     if (!post || !this.deps.guard.canViewPost(post)) {
@@ -299,55 +451,103 @@ export class SearchProjectionService {
       return
     }
 
-    const [threadMeta, community, scene] = await Promise.all([
+    const [threadMeta, postMeta, scene] = await Promise.all([
       this.deps.forumReadService.getThread(threadId),
-      Promise.resolve(this.deps.communityRepo.findById(post.community_id)),
+      this.deps.forumReadService.getPost(post.id),
       this.deps.forumSceneMetadataRepo.findByThreadId(threadId),
     ])
-    const followerCount = this.deps.humanFollowRepo.listFollowerUserIds(thread.author_agent_id).length
-    const authorId = threadMeta.author.id
-    const projectedAuthor = this.buildProjectedAuthor(authorId, {
-      display_name: threadMeta.author.display_name,
-      avatar_url: threadMeta.author.avatar_url,
-      tagline: threadMeta.author.tagline ?? null,
-      public_bio: threadMeta.author.public_bio ?? null,
-      badges: threadMeta.author.badges ?? [],
-    })
+    const followerCount = thread.author_agent_id
+      ? this.deps.humanFollowRepo.listFollowerUserIds(thread.author_agent_id).length
+      : 0
+    const projectedAuthor = this.buildProjectedAuthor(threadMeta.author)
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
     const sceneFields = readSceneSearchFields(scene)
-    const threadSignalScore = projectedAuthor.visibility === 'full'
+    const communityFields = readCommunitySemanticFields({
+      community_semantics: postMeta.community_semantics,
+      interaction_contract: postMeta.interaction_contract,
+    })
+    const contentFields = readContentSemanticFields({
+      content_semantics: postMeta.content_semantics,
+      scene_phase: sceneFields.scene_phase ?? postMeta.scene_phase ?? null,
+      storyline_state: postMeta.storyline_state ?? null,
+      content_kind: postMeta.content_kind ?? null,
+      format_kind: postMeta.format_kind ?? null,
+      editorial_shelf_id: postMeta.editorial_shelf_id ?? null,
+      note_template_id: postMeta.note_template_id ?? null,
+      cover_mode: postMeta.cover_mode ?? null,
+      surface_kind_id: postMeta.surface_kind_id ?? null,
+      card_mode: postMeta.card_mode ?? null,
+    })
+    const threadSignalScore = projectedAuthor.actor_type === 'agent' && projectedAuthor.visibility === 'full'
       ? Number((followerCount + projectedAuthor.badges.length * 2 + threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
-      : 0
+      : Number((threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
 
     await this.deps.searchDocRepo.upsertThreadDoc({
       thread_id: threadMeta.id,
       post_id: threadMeta.post_id,
-      community_id: post.community_id,
-      community_slug: community?.slug ?? post.community_id,
-      community_name: community?.name ?? post.community_id,
-      author_agent_id: authorId,
+      community_id: postMeta.community_id,
+      community_slug: postMeta.community_slug,
+      community_name: postMeta.community_name,
+      community_family: communityFields.community_family,
+      community_shell_category: communityFields.community_shell_category,
+      publication_review_profile_id: communityFields.publication_review_profile_id,
+      public_participation_mode: communityFields.public_participation_mode,
+      community_lifecycle_state: communityFields.community_lifecycle_state,
+      launch_wave: communityFields.launch_wave,
+      author_actor_type: projectedAuthor.actor_type,
+      author_agent_id: projectedAuthor.agent_id,
+      author_user_id: projectedAuthor.user_id,
       author_display_name: projectedAuthor.display_name,
       author_avatar_url: projectedAuthor.avatar_url,
+      author_identity_role_id: projectedAuthor.identity_role_id,
+      author_identity_visibility_role_id: projectedAuthor.identity_visibility_role_id,
+      author_identity_text: projectedAuthor.identity_text,
+      author_achievement_badges_text: projectedAuthor.achievement_badges_text,
       author_tagline: projectedAuthor.tagline,
       author_public_bio: projectedAuthor.public_bio,
       author_badges: projectedAuthor.badges,
       author_badges_text: authorBadgesText,
       body: threadMeta.body,
-      post_title: post.title,
+      post_title: postMeta.title,
       scene_tags_text: sceneFields.scene_tags_text,
-      scene_phase: sceneFields.scene_phase,
+      scene_phase: contentFields.scene_phase,
+      storyline_state: contentFields.storyline_state,
+      content_kind: contentFields.content_kind,
+      format_kind: contentFields.format_kind,
+      editorial_shelf_id: contentFields.editorial_shelf_id,
+      note_template_id: contentFields.note_template_id,
+      cover_mode: contentFields.cover_mode,
+      surface_kind: contentFields.surface_kind,
+      card_mode: contentFields.card_mode,
       searchable_text: joinSearchParts([
         threadMeta.body,
         threadMeta.turns.map((turn) => turn.body).join(' '),
         threadMeta.turns.map((turn) => turn.author.display_name).join(' '),
-        post.title,
-        community?.name,
-        community?.slug,
+        postMeta.title,
+        postMeta.community_name,
+        postMeta.community_slug,
+        communityFields.community_family,
+        communityFields.community_shell_category,
+        communityFields.publication_review_profile_id,
+        communityFields.public_participation_mode,
+        communityFields.community_lifecycle_state,
+        communityFields.launch_wave,
         projectedAuthor.display_name,
+        projectedAuthor.identity_text,
         projectedAuthor.tagline,
         projectedAuthor.public_bio,
+        projectedAuthor.achievement_badges_text,
         authorBadgesText,
         sceneFields.scene_tags_text,
+        contentFields.scene_phase,
+        contentFields.storyline_state,
+        contentFields.content_kind,
+        contentFields.format_kind,
+        contentFields.editorial_shelf_id,
+        contentFields.note_template_id,
+        contentFields.cover_mode,
+        contentFields.surface_kind,
+        contentFields.card_mode,
       ]),
       visibility: threadMeta.visibility,
       state: threadMeta.state,
@@ -395,6 +595,10 @@ export class SearchProjectionService {
           ?? memberships[0]?.agent_id
           ?? null,
       )
+    const communityFields = readCommunitySemanticFields({
+      community_semantics: resolveLaunchCommunitySemanticContract(community.rules_json),
+      interaction_contract: resolveLaunchCommunityInteractionContract(community.rules_json),
+    })
     const dominantTagsSummary = toDominantTagsSummary(digestJson)
     const sceneFields = readSceneSearchFields(await this.deps.forumSceneMetadataRepo.findLatestByCommunityId(communityId))
     const representativePostTitle = representativePost?.title ?? ''
@@ -404,6 +608,14 @@ export class SearchProjectionService {
       community_id: community.id,
       name: community.name,
       slug: community.slug,
+      community_family: communityFields.community_family,
+      community_shell_category: communityFields.community_shell_category,
+      publication_review_profile_id: communityFields.publication_review_profile_id,
+      public_participation_mode: communityFields.public_participation_mode,
+      audience_signal_ingestion: communityFields.audience_signal_ingestion,
+      agent_human_response_mode: communityFields.agent_human_response_mode,
+      community_lifecycle_state: communityFields.community_lifecycle_state,
+      launch_wave: communityFields.launch_wave,
       description: community.description ?? '',
       dominant_tags_summary: dominantTagsSummary,
       resident_agent_names_text: residentAgentNamesText,
@@ -413,6 +625,14 @@ export class SearchProjectionService {
       searchable_text: joinSearchParts([
         community.name,
         community.slug,
+        communityFields.community_family,
+        communityFields.community_shell_category,
+        communityFields.publication_review_profile_id,
+        communityFields.public_participation_mode,
+        communityFields.audience_signal_ingestion,
+        communityFields.agent_human_response_mode,
+        communityFields.community_lifecycle_state,
+        communityFields.launch_wave,
         community.description,
         dominantTagsSummary,
         residentAgentNamesText,
@@ -486,6 +706,34 @@ export class SearchProjectionService {
       + (projection?.public_projection_hint ? 0.5 : 0)
     ).toFixed(2))
     const badgeText = formatBadgeText(highlights.badges)
+    const authorPresentation = buildAgentPublicAuthorPresentation({
+      agent: {
+        id: agent.id,
+        display_name: agent.display_name,
+        avatar_url: agent.avatar_url,
+      },
+      latest_config: latestConfig,
+      tagline: highlights.tagline,
+      public_bio: bioProjection?.public_bio ?? null,
+      public_projection_hint: projection?.public_projection_hint ?? null,
+      badges: highlights.badges,
+    })
+    const identityRoleId =
+      authorPresentation.public_identity?.identity_role_id
+      ?? authorPresentation.system_identity?.identity_role_id
+      ?? null
+    const identityVisibilityRoleId =
+      authorPresentation.public_identity?.identity_visibility_role_id
+      ?? authorPresentation.system_identity?.identity_visibility_role_id
+      ?? null
+    const formatCapabilities =
+      authorPresentation.public_identity?.format_capabilities
+      ?? authorPresentation.system_identity?.format_capabilities
+      ?? []
+    const achievementBadgesText = formatAchievementBadgeText({
+      public_proof: authorPresentation.public_proof,
+      badges: highlights.badges,
+    })
     const activeCommunityNamesText = activeCommunities.map((community) => community.name).join(' ')
     const socialSignalText = joinSearchParts([
       followerCount > 0 ? `粉丝 ${followerCount}` : '',
@@ -500,6 +748,10 @@ export class SearchProjectionService {
       avatar_url: agent.avatar_url,
       status: agent.status,
       model: agent.model,
+      identity_role_id: identityRoleId,
+      identity_visibility_role_id: identityVisibilityRoleId,
+      format_capabilities: formatCapabilities,
+      achievement_badges_text: achievementBadgesText,
       persona_seed_code: identity.summary.persona_seed_code,
       persona_seed_label: identity.summary.persona_seed_label,
       home_voice_line_id: identity.summary.home_voice_line_id,
@@ -522,10 +774,14 @@ export class SearchProjectionService {
       social_signal_text: socialSignalText,
       searchable_text: joinSearchParts([
         agent.display_name,
+        identityRoleId,
+        identityVisibilityRoleId,
+        formatCapabilities.join(' '),
         identity.summary.persona_seed_label,
         identity.summary.home_voice_line_label,
         highlights.tagline,
         bioProjection?.public_bio,
+        achievementBadgesText,
         badgeText,
         activeCommunityNamesText,
         projection?.public_projection_hint,
@@ -905,32 +1161,98 @@ export class SearchProjectionService {
     return items
   }
 
-  private buildProjectedAuthor(
-    agentId: string,
-    input: {
-      display_name: string
-      avatar_url: string | null
-      tagline: string | null
-      public_bio: string | null
-      badges: SearchBadge[]
-    },
-  ): {
+  private buildProjectedAuthor(author: {
+    id: string
+    actor_type: 'agent' | 'human'
+    display_name: string
+    avatar_url: string | null
+    badges?: SearchBadge[]
+    public_identity?: AgentPublicIdentity | null
+    public_projection?: { tagline?: string | null; public_bio?: string | null } | null
+    public_proof?: AgentPublicProof | null
+    system_identity?: {
+      identity_role_id?: string
+      identity_visibility_role_id?: string
+      program_role: string
+      visibility_role: string
+      display_mode: string
+      home_community: string
+      secondary_communities: string[]
+      format_capabilities?: string[]
+    } | null
+    public_bio?: string | null
+    tagline?: string | null
+  }): {
+    actor_type: 'agent' | 'human'
+    agent_id: string | null
+    user_id: string | null
     display_name: string
     avatar_url: string | null
     tagline: string | null
     public_bio: string | null
     badges: SearchBadge[]
     visibility: SearchAuthorVisibility
+    identity_role_id: string | null
+    identity_visibility_role_id: string | null
+    identity_text: string
+    achievement_badges_text: string
   } {
-    const agent = this.deps.agentRepo.findById(agentId)
+    if (author.actor_type === 'human') {
+      return {
+        actor_type: 'human',
+        agent_id: null,
+        user_id: author.id,
+        display_name: author.display_name,
+        avatar_url: author.avatar_url,
+        tagline: null,
+        public_bio: null,
+        badges: [],
+        visibility: 'full',
+        identity_role_id: null,
+        identity_visibility_role_id: null,
+        identity_text: '',
+        achievement_badges_text: '',
+      }
+    }
+
+    const agent = this.deps.agentRepo.findById(author.id)
     const visibility = this.deps.guard.getAuthorVisibility(agent)
+    const tagline = author.public_projection?.tagline ?? author.tagline ?? null
+    const publicBio = author.public_projection?.public_bio ?? author.public_bio ?? null
+    const badges = author.badges ?? []
+    const identityRoleId =
+      author.public_identity?.identity_role_id
+      ?? author.system_identity?.identity_role_id
+      ?? null
+    const identityVisibilityRoleId =
+      author.public_identity?.identity_visibility_role_id
+      ?? author.system_identity?.identity_visibility_role_id
+      ?? null
+
     return {
-      display_name: input.display_name,
-      avatar_url: visibility === 'full' ? input.avatar_url : null,
-      tagline: visibility === 'full' ? input.tagline : null,
-      public_bio: visibility === 'full' ? input.public_bio : null,
-      badges: visibility === 'full' ? input.badges : [],
+      actor_type: 'agent',
+      agent_id: author.id,
+      user_id: null,
+      display_name: author.display_name,
+      avatar_url: visibility === 'full' ? author.avatar_url : null,
+      tagline: visibility === 'full' ? tagline : null,
+      public_bio: visibility === 'full' ? publicBio : null,
+      badges: visibility === 'full' ? badges : [],
       visibility,
+      identity_role_id: visibility === 'full' ? identityRoleId : null,
+      identity_visibility_role_id: visibility === 'full' ? identityVisibilityRoleId : null,
+      identity_text: visibility === 'full'
+        ? formatIdentityText({
+            public_identity: author.public_identity,
+            system_identity: author.system_identity ?? null,
+          })
+        : '',
+      achievement_badges_text: visibility === 'full'
+        ? formatAchievementBadgeText({
+            public_proof: author.public_proof,
+            badges,
+          })
+        : '',
     }
   }
 

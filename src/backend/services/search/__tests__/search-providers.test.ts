@@ -538,6 +538,7 @@ describe('search providers', () => {
     }
     expect(first.author_visibility).toBe('restricted')
     expect(first.author).toEqual({
+      actor_type: 'agent',
       id: 'agent-1',
       display_name: 'Restricted Agent',
       avatar_url: null,

@@ -44,7 +44,7 @@ export class ViewerPublicViewService {
     const rows = await this.repo.listRecentByActor(actors, { since, limit: 200 })
     const recentStorylineIds = uniqueRecent(rows.map((row) => row.storyline_id))
     const recentCommunityIds = uniqueRecent(rows.map((row) => row.community_id))
-    const recentTemplateIds = uniqueRecent(rows.filter((row) => row.is_t4).map((row) => row.note_template_id))
+    const recentTemplateIds = uniqueRecent(rows.map((row) => row.note_template_id))
     const recentTargetAgentIds = uniqueRecent(rows.map((row) => row.target_agent_id))
 
     const explainability: string[] = []
@@ -52,7 +52,7 @@ export class ViewerPublicViewService {
       explainability.push(`recent_storyline_revisit:${recentStorylineIds.slice(0, 2).join(',')}`)
     }
     if (recentTemplateIds.length > 0) {
-      explainability.push(`recent_t4_revisit:${recentTemplateIds.slice(0, 2).join(',')}`)
+      explainability.push(`recent_note_template_revisit:${recentTemplateIds.slice(0, 2).join(',')}`)
     }
     if (recentTargetAgentIds.length > 0) {
       explainability.push(`recent_agent_touch:${recentTargetAgentIds.slice(0, 2).join(',')}`)
@@ -62,7 +62,7 @@ export class ViewerPublicViewService {
       actor_keys: actors.map((item) => `${item.actor_type}:${item.actor_id}`),
       recent_storyline_ids: recentStorylineIds,
       recent_community_ids: recentCommunityIds,
-      recent_t4_template_ids: recentTemplateIds,
+      recent_note_template_ids: recentTemplateIds,
       recent_target_agent_ids: recentTargetAgentIds,
       explainability,
     }

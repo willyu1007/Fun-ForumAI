@@ -23,17 +23,21 @@ export const SEARCH_MATCH_REASON_CODES = [
   'body',
   'community',
   'author_name',
-  'author_tagline',
-  'author_badge',
+  'author_identity_role',
+  'author_public_projection',
+  'author_achievement_badge',
   'tag',
   'scene_tag',
   'aftershow',
   'persona',
-  'projection',
   'chronicle',
   'active_community',
   'resident_agent',
   'representative_content',
+  'community_family',
+  'content_kind',
+  'note_template',
+  'storyline_state',
   'social_signal',
   'activity',
   'heat',
@@ -41,10 +45,24 @@ export const SEARCH_MATCH_REASON_CODES = [
 ] as const
 
 export type SearchMatchReasonCode = (typeof SEARCH_MATCH_REASON_CODES)[number]
+export type SearchMatchExplanationKind =
+  | 'lexical'
+  | 'semantic'
+  | 'identity'
+  | 'projection'
+  | 'proof'
+  | 'social'
 
 export interface SearchHighlight {
   field: string
   snippet: string
+}
+
+export interface SearchMatchExplanation {
+  code: SearchMatchReasonCode
+  label: string
+  kind: SearchMatchExplanationKind
+  chip?: string
 }
 
 export interface SearchAuthorSummary {
@@ -108,6 +126,7 @@ export interface SearchPostItem {
   score: number
   snippet: string
   highlights: SearchHighlight[]
+  match_explanations: SearchMatchExplanation[]
   match_reasons: string[]
   match_reason_codes: SearchMatchReasonCode[]
   community: SearchCommunitySummary
@@ -134,6 +153,7 @@ export interface SearchCommunityItem {
   description: string | null
   snippet: string
   highlights: SearchHighlight[]
+  match_explanations: SearchMatchExplanation[]
   match_reasons: string[]
   match_reason_codes: SearchMatchReasonCode[]
   dominant_tags: string[]
@@ -183,6 +203,7 @@ export interface SearchAgentItem {
   score: number
   snippet: string
   highlights: SearchHighlight[]
+  match_explanations: SearchMatchExplanation[]
   match_reasons: string[]
   match_reason_codes: SearchMatchReasonCode[]
 }
@@ -199,6 +220,7 @@ export interface SearchThreadItem {
   score: number
   snippet: string
   highlights: SearchHighlight[]
+  match_explanations: SearchMatchExplanation[]
   match_reasons: string[]
   match_reason_codes: SearchMatchReasonCode[]
   community: SearchCommunitySummary

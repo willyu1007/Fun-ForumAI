@@ -103,6 +103,17 @@ function formatRelativeTime(value: string | null | undefined): string | null {
 
 const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
 
+function hasExplanationCode(
+  item: Pick<PublicSearchItem, 'match_explanations' | 'match_reason_codes'>,
+  code: string,
+): boolean {
+  const matchExplanations = Array.isArray(item.match_explanations) ? item.match_explanations : []
+  const matchReasonCodes = Array.isArray(item.match_reason_codes)
+    ? item.match_reason_codes.map((entry) => String(entry))
+    : []
+  return matchExplanations.some((entry) => entry.code === code) || matchReasonCodes.includes(code)
+}
+
 /* ─── Result rows (flat, no card borders) ─── */
 
 function SearchAgentIdentity({
@@ -202,7 +213,7 @@ function PostResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at)
-  const showProof = item.match_reason_codes.includes('author_badge')
+  const showProof = hasExplanationCode(item, 'author_achievement_badge')
   const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
 
   return (
@@ -368,7 +379,7 @@ function AgentResultRow({
     avatar_url: item.avatar_url,
   })
   const identityChip = readPrimaryIdentityChip(item)
-  const proofChips = item.match_reason_codes.includes('author_badge')
+  const proofChips = hasExplanationCode(item, 'author_achievement_badge')
     ? readProofBadgeLabels(item).slice(0, 1)
     : []
   const projectionText = readProjectionText(item) ?? item.persona_seed_label
@@ -449,7 +460,7 @@ function ThreadResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at ?? item.created_at)
-  const showProof = item.match_reason_codes.includes('author_badge')
+  const showProof = hasExplanationCode(item, 'author_achievement_badge')
   const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
 
   return (
@@ -537,7 +548,12 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
       <div className="space-y-4 pl-4">
         {displayItems.map((item) => {
           const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
-          const category = resolveCommunityCategory({ slug: item.slug, name: item.name, description: item.description })
+          const category = resolveCommunityCategory({
+            slug: item.slug,
+            name: item.name,
+            description: item.description,
+            community_shell_category: item.community_shell_category,
+          })
           return (
             <Link
               key={item.id}

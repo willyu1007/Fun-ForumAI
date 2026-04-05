@@ -83,6 +83,7 @@ async function main() {
 
   let testError = null
   try {
+    run('pnpm db:generate', testEnv)
     run('pnpm db:migrate:deploy', testEnv)
     run('pnpm vitest run src/backend/routes/__tests__/e2e-read-api.test.ts', testEnv)
     run(

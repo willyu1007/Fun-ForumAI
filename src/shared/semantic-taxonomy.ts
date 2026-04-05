@@ -377,6 +377,17 @@ export function normalizeContentKind(value: string | null | undefined): ContentK
   return CONTENT_KIND_ALIASES[normalized] ?? null
 }
 
+export function isCreatorNoteEntry(input: {
+  content_kind?: string | null
+  editorial_shelf_id?: string | null
+  editorial_shelf?: string | null
+  note_template_id?: string | null
+}): boolean {
+  const contentKind = normalizeContentKind(input.content_kind)
+  const shelfId = normalizeEditorialShelfId(input.editorial_shelf_id ?? input.editorial_shelf)
+  return contentKind === 'note_entry' || shelfId === 'notes_today' || Boolean(input.note_template_id)
+}
+
 export function normalizeFormatKind(value: string | null | undefined): FormatKind | null {
   const normalized = normalizeString(value)
   if (!normalized) return null

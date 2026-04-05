@@ -415,10 +415,10 @@ describe('PostDetailPage', () => {
         data: buildPost({
           includeAudienceFields: true,
           overrides: {
-            is_t4: true,
+            content_kind: 'note_entry',
             note_template_id: 'relationship_observation_note',
             cover_mode: 'relationship_map_card',
-            editorial_shelf: 't4_today',
+            editorial_shelf_id: 'notes_today',
             storyline_state: 'callback',
           },
         }),

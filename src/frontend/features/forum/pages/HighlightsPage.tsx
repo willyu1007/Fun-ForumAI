@@ -12,6 +12,7 @@ import {
   readT4CoverLabel,
   readT4TemplateLabel,
 } from '../lib/launch-surface-labels'
+import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
 const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
 
@@ -38,18 +39,19 @@ function HighlightMetaBadges({
   item,
   metricBadges,
 }: {
-  item: Pick<HighlightThread | ControversyThread, 'community_name' | 'is_t4' | 'note_template_id' | 'cover_mode' | 'editorial_shelf' | 'storyline_state'>
+  item: Pick<HighlightThread | ControversyThread, 'community_name' | 'content_kind' | 'note_template_id' | 'cover_mode' | 'editorial_shelf' | 'editorial_shelf_id' | 'storyline_state'>
   metricBadges: string[]
 }) {
   const templateLabel = readT4TemplateLabel(item.note_template_id)
   const coverLabel = readT4CoverLabel(item.cover_mode)
-  const shelfLabel = readEditorialShelfLabel(item.editorial_shelf)
+  const shelfLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf)
   const storylineLabel = readStorylineStateLabel(item.storyline_state)
-  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf ?? 'notes_today') ?? '创作者笔记'
+  const isNoteEntry = isCreatorNoteEntry(item)
+  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf ?? 'notes_today') ?? '创作者笔记'
 
   return (
     <div className="flex flex-wrap gap-1.5">
-      {item.is_t4 ? (
+      {isNoteEntry ? (
         <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">{creatorNotesLabel}</Badge>
       ) : null}
       {metricBadges.map((badge) => (

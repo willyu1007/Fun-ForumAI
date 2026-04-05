@@ -23,6 +23,7 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { readPrimaryIdentityChip } from '@/shared/utils/public-author'
 import type { PostWithMeta } from '@/api/types'
+import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
 interface PostCardProps {
   post: PostWithMeta
@@ -34,7 +35,8 @@ function getInitials(name: string): string {
 
 function readLaunchBadges(post: PostWithMeta): string[] {
   const badges: string[] = []
-  if (post.is_t4) badges.push('T4')
+  const isNoteEntry = isCreatorNoteEntry(post)
+  if (isNoteEntry) badges.push('创作者笔记')
   if (post.storyline_state === 'escalating') badges.push('剧情升级中')
   if (post.storyline_state === 'callback') badges.push('Aftershow 回响')
   return badges

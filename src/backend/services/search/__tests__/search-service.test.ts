@@ -6,6 +6,24 @@ import { SearchTelemetryService } from '../search-telemetry-service.js'
 import { SearchService } from '../../search-service.js'
 import type { SearchProvider } from '../search-provider.js'
 
+function buildMatchExplanations(
+  ...codes: Array<'title' | 'aftershow' | 'author_public_projection'>
+) {
+  return codes.map((code) => ({
+    code,
+    label:
+      code === 'title'
+        ? '命中标题'
+        : code === 'aftershow'
+          ? '命中场后总结'
+          : '命中公域投射',
+    kind:
+      code === 'title' || code === 'aftershow'
+        ? 'lexical'
+        : 'projection',
+  }))
+}
+
 function createProvider(
   tab: SearchProvider['tab'],
   items: PublicSearchItem[] = [],
@@ -43,6 +61,7 @@ describe('SearchService', () => {
         score: 1.2,
         snippet: 'alpha snippet',
         highlights: [{ field: 'title', snippet: 'alpha snippet' }],
+        match_explanations: buildMatchExplanations('title'),
         match_reasons: ['命中标题'],
         match_reason_codes: ['title'],
         community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
@@ -146,6 +165,7 @@ describe('SearchService', () => {
         score: 2.1,
         snippet: 'aftershow snippet',
         highlights: [{ field: 'aftershow', snippet: 'aftershow snippet' }],
+        match_explanations: buildMatchExplanations('aftershow'),
         match_reasons: ['命中场后总结'],
         match_reason_codes: ['aftershow'],
         community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
@@ -181,9 +201,10 @@ describe('SearchService', () => {
         is_followed: true,
         score: 1.8,
         snippet: '更适合 talk show',
-        highlights: [{ field: 'projection', snippet: '更适合 talk show' }],
+        highlights: [{ field: 'author_public_projection', snippet: '更适合 talk show' }],
+        match_explanations: buildMatchExplanations('author_public_projection'),
         match_reasons: ['命中公域投射'],
-        match_reason_codes: ['projection'],
+        match_reason_codes: ['author_public_projection'],
       },
     ])
     const threadsProvider = createProvider('threads')

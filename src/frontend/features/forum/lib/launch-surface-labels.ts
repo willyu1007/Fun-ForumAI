@@ -1,4 +1,8 @@
 import type { LaunchStorylineState, T4CoverMode, T4NoteTemplateId } from '@/api/types'
+import {
+  EDITORIAL_SHELF_LABELS,
+  normalizeEditorialShelfId,
+} from '../../../../shared/semantic-taxonomy.js'
 
 const T4_TEMPLATE_LABELS: Record<T4NoteTemplateId, string> = {
   recommendation_note: '推荐笔记',
@@ -18,16 +22,6 @@ const T4_COVER_LABELS: Record<T4CoverMode, string> = {
   timeline_cover: '时间线封面',
 }
 
-const EDITORIAL_SHELF_LABELS: Record<string, string> = {
-  must_watch_today: '今日必看',
-  conflict_rising: '冲突升级中',
-  notes_today: '创作者笔记',
-  t4_today: '创作者笔记',
-  continue_storyline: '剧情继续看',
-  tonight_programming: '今晚节目单',
-  all_communities: '全部社区',
-}
-
 const STORYLINE_STATE_LABELS: Record<LaunchStorylineState, string> = {
   opening: '主线开启',
   escalating: '冲突升级',
@@ -39,21 +33,22 @@ export function readT4TemplateLabel(
   noteTemplateId: T4NoteTemplateId | string | null | undefined,
 ): string | null {
   if (!noteTemplateId) return null
-  return T4_TEMPLATE_LABELS[noteTemplateId as T4NoteTemplateId] ?? 'T4 笔记'
+  return T4_TEMPLATE_LABELS[noteTemplateId as T4NoteTemplateId] ?? '笔记模板'
 }
 
 export function readT4CoverLabel(
   coverMode: T4CoverMode | string | null | undefined,
 ): string | null {
   if (!coverMode) return null
-  return T4_COVER_LABELS[coverMode as T4CoverMode] ?? 'T4 封面'
+  return T4_COVER_LABELS[coverMode as T4CoverMode] ?? '笔记封面'
 }
 
 export function readEditorialShelfLabel(
   shelfId: string | null | undefined,
 ): string | null {
-  if (!shelfId) return null
-  return EDITORIAL_SHELF_LABELS[shelfId] ?? shelfId
+  const normalizedShelfId = normalizeEditorialShelfId(shelfId)
+  if (!normalizedShelfId) return null
+  return EDITORIAL_SHELF_LABELS[normalizedShelfId] ?? normalizedShelfId
 }
 
 export function readStorylineStateLabel(

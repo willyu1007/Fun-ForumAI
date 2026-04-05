@@ -51,6 +51,7 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
     storyline_state: input.storyline_state,
     storyline_hook: input.storyline_hook,
     content_kind: input.content_kind,
+    editorial_shelf_id: input.editorial_shelf_id,
     editorial_shelf: input.editorial_shelf,
     is_t4: input.is_t4,
     aftershow_export_bias: input.aftershow_export_bias,
@@ -63,7 +64,7 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
 }
 
 describe('HomeProgrammingService', () => {
-  it('builds the six launch shelves and keeps T4 today native-only', async () => {
+  it('builds the six launch shelves and keeps creator notes native-only', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalFlag = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
@@ -93,7 +94,8 @@ describe('HomeProgrammingService', () => {
                 community_slug: 't4-picks',
                 community_name: '种草研究所',
                 title: '这条该不该直接入手',
-                is_t4: true,
+                content_kind: 'note_entry',
+                editorial_shelf_id: 'notes_today',
                 note_template_id: 'comparison_note',
                 cover_mode: 'comparison_cover',
                 storyline_id: 'episode-t4',
@@ -182,7 +184,7 @@ describe('HomeProgrammingService', () => {
       expect(payload.shelves.map((item) => item.id)).toEqual([
         'must_watch_today',
         'conflict_rising',
-        't4_today',
+        'notes_today',
         'continue_storyline',
         'tonight_programming',
         'all_communities',
@@ -193,8 +195,8 @@ describe('HomeProgrammingService', () => {
         content_kind: 'highlight_hero',
         next_jump_target: '/posts/post-main?threadId=thread-main',
       })
-      expect(payload.shelves.find((item) => item.id === 't4_today')?.items).toHaveLength(1)
-      expect(payload.shelves.find((item) => item.id === 't4_today')?.items[0]).toMatchObject({
+      expect(payload.shelves.find((item) => item.id === 'notes_today')?.items).toHaveLength(1)
+      expect(payload.shelves.find((item) => item.id === 'notes_today')?.items[0]).toMatchObject({
         item_kind: 'post',
         id: 'post-t4',
         next_jump_target: '/posts/post-t4',
@@ -557,7 +559,8 @@ describe('HomeProgrammingService', () => {
                 community_slug: 't4-picks',
                 community_name: '种草研究所',
                 title: 'T4 应该前置',
-                is_t4: true,
+                content_kind: 'note_entry',
+                editorial_shelf_id: 'notes_today',
                 note_template_id: 'comparison_note',
                 storyline_id: 'episode-t4',
                 storyline_state: 'opening',
@@ -630,7 +633,7 @@ describe('HomeProgrammingService', () => {
             actor_keys: [`USER:user-1`],
             recent_storyline_ids: ['episode-revisit'],
             recent_community_ids: ['community-hot'],
-            recent_t4_template_ids: ['comparison_note'],
+            recent_note_template_ids: ['comparison_note'],
             recent_target_agent_ids: ['agent-match'],
             explainability: ['recent_storyline_revisit:episode-revisit'],
           }),
@@ -654,13 +657,13 @@ describe('HomeProgrammingService', () => {
 
       expect(payload.shelves.map((item) => item.id)).toEqual([
         'must_watch_today',
-        't4_today',
+        'notes_today',
         'conflict_rising',
         'continue_storyline',
         'tonight_programming',
         'all_communities',
       ])
-      expect(payload.shelves.find((item) => item.id === 't4_today')?.items[0]).toMatchObject({
+      expect(payload.shelves.find((item) => item.id === 'notes_today')?.items[0]).toMatchObject({
         id: 'post-t4',
       })
       expect(payload.shelves.find((item) => item.id === 'continue_storyline')?.items[0]).toMatchObject({

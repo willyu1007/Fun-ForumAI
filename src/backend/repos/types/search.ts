@@ -1,4 +1,23 @@
 import type { PaginatedResult } from './common.js'
+import type {
+  AgentHumanResponseMode,
+  AudienceSignalIngestion,
+  CommunityFamily,
+  CommunityLifecycleState,
+  CommunityShellCategory,
+  ContentKind,
+  EditorialShelfId,
+  FormatCapabilityId,
+  FormatKind,
+  IdentityRoleId,
+  IdentityVisibilityRoleId,
+  LaunchSurfaceKindId,
+  PublicParticipationMode,
+  PublicationReviewProfileId,
+  ScenePhase,
+  StorylineState,
+} from '../../../shared/semantic-taxonomy.js'
+import type { PublicActorType } from './forum.js'
 
 export type SearchTab = 'posts' | 'communities' | 'agents' | 'threads'
 
@@ -27,9 +46,19 @@ export interface PostSearchDoc {
   community_id: string
   community_slug: string
   community_name: string
+  community_family: CommunityFamily | null
+  community_shell_category: CommunityShellCategory | null
+  publication_review_profile_id: PublicationReviewProfileId | null
+  public_participation_mode: PublicParticipationMode | null
+  community_lifecycle_state: CommunityLifecycleState | null
+  launch_wave: string | null
   author_agent_id: string
   author_display_name: string
   author_avatar_url: string | null
+  author_identity_role_id: IdentityRoleId | null
+  author_identity_visibility_role_id: IdentityVisibilityRoleId | null
+  author_identity_text: string
+  author_achievement_badges_text: string
   author_tagline: string | null
   author_public_bio: string | null
   author_badges: SearchBadge[]
@@ -38,9 +67,17 @@ export interface PostSearchDoc {
   body: string
   tags_text: string
   scene_tags_text: string
-  scene_phase: string | null
+  scene_phase: ScenePhase | null
+  storyline_state: StorylineState | null
   aftershow_text: string
   highlight_text: string
+  content_kind: ContentKind | null
+  format_kind: FormatKind | null
+  editorial_shelf_id: EditorialShelfId | null
+  note_template_id: string | null
+  cover_mode: string | null
+  surface_kind: LaunchSurfaceKindId | null
+  card_mode: string | null
   searchable_text: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -61,6 +98,14 @@ export interface CommunitySearchDoc {
   community_id: string
   name: string
   slug: string
+  community_family: CommunityFamily | null
+  community_shell_category: CommunityShellCategory | null
+  publication_review_profile_id: PublicationReviewProfileId | null
+  public_participation_mode: PublicParticipationMode | null
+  audience_signal_ingestion: AudienceSignalIngestion | null
+  agent_human_response_mode: AgentHumanResponseMode | null
+  community_lifecycle_state: CommunityLifecycleState | null
+  launch_wave: string | null
   description: string
   dominant_tags_summary: string
   resident_agent_names_text: string
@@ -90,6 +135,10 @@ export interface AgentSearchDoc {
   avatar_url: string | null
   status: string
   model: string
+  identity_role_id: IdentityRoleId | null
+  identity_visibility_role_id: IdentityVisibilityRoleId | null
+  format_capabilities: FormatCapabilityId[]
+  achievement_badges_text: string
   persona_seed_code: string
   persona_seed_label: string
   home_voice_line_id: string
@@ -122,9 +171,21 @@ export interface ThreadSearchDoc {
   community_id: string
   community_slug: string
   community_name: string
-  author_agent_id: string
+  community_family: CommunityFamily | null
+  community_shell_category: CommunityShellCategory | null
+  publication_review_profile_id: PublicationReviewProfileId | null
+  public_participation_mode: PublicParticipationMode | null
+  community_lifecycle_state: CommunityLifecycleState | null
+  launch_wave: string | null
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
   author_display_name: string
   author_avatar_url: string | null
+  author_identity_role_id: IdentityRoleId | null
+  author_identity_visibility_role_id: IdentityVisibilityRoleId | null
+  author_identity_text: string
+  author_achievement_badges_text: string
   author_tagline: string | null
   author_public_bio: string | null
   author_badges: SearchBadge[]
@@ -132,7 +193,15 @@ export interface ThreadSearchDoc {
   body: string
   post_title: string
   scene_tags_text: string
-  scene_phase: string | null
+  scene_phase: ScenePhase | null
+  storyline_state: StorylineState | null
+  content_kind: ContentKind | null
+  format_kind: FormatKind | null
+  editorial_shelf_id: EditorialShelfId | null
+  note_template_id: string | null
+  cover_mode: string | null
+  surface_kind: LaunchSurfaceKindId | null
+  card_mode: string | null
   searchable_text: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'

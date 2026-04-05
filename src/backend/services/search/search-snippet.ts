@@ -1,9 +1,16 @@
-import type { SearchHighlight, SearchMatchReasonCode } from '../../../shared/public-search.js'
+import type {
+  SearchHighlight,
+  SearchMatchExplanation,
+  SearchMatchExplanationKind,
+  SearchMatchReasonCode,
+} from '../../../shared/public-search.js'
 
 interface MatchField {
   label?: string
   reason?: string
   code: SearchMatchReasonCode
+  kind?: SearchMatchExplanationKind
+  chip?: string
   field?: string
   value: string | null | undefined
 }
@@ -111,12 +118,14 @@ export function buildMatchPresentation(
   fields: MatchField[],
   options?: { fallback_text?: string | null | undefined },
 ): {
+  match_explanations: SearchMatchExplanation[]
   match_reasons: string[]
   match_reason_codes: SearchMatchReasonCode[]
   highlights: SearchHighlight[]
 } {
   if (!query) {
     return {
+      match_explanations: [],
       match_reasons: [],
       match_reason_codes: [],
       highlights: [],
@@ -140,9 +149,15 @@ export function buildMatchPresentation(
     .sort((a, b) => Number(b.direct) - Number(a.direct) || b.strength - a.strength || (a.field ?? a.code).localeCompare(b.field ?? b.code))
 
   if (candidates.length === 0) {
+    const explanation: SearchMatchExplanation = {
+      code: 'fuzzy_relevance',
+      label: '文本相关',
+      kind: 'lexical',
+    }
     return {
-      match_reasons: ['文本相关'],
-      match_reason_codes: ['fuzzy_relevance'],
+      match_explanations: [explanation],
+      match_reasons: [explanation.label],
+      match_reason_codes: [explanation.code],
       highlights: options?.fallback_text
         ? [{ field: 'text', snippet: buildSnippet(options.fallback_text, query) }]
         : [],
@@ -150,9 +165,21 @@ export function buildMatchPresentation(
   }
 
   const selected = candidates.slice(0, 3)
+  const explanations = Array.from(new Map(
+    selected.map((field) => {
+      const explanation: SearchMatchExplanation = {
+        code: field.code,
+        label: field.reason ?? field.label ?? `${field.field ?? field.code}命中`,
+        kind: field.kind ?? 'lexical',
+        ...(field.chip ? { chip: field.chip } : {}),
+      }
+      return [`${explanation.code}:${explanation.label}:${explanation.kind}:${explanation.chip ?? ''}`, explanation]
+    }),
+  ).values()).slice(0, 3)
   return {
-    match_reasons: Array.from(new Set(selected.map((field) => field.reason ?? `${field.label ?? '文本'}命中`))).slice(0, 3),
-    match_reason_codes: Array.from(new Set(selected.map((field) => field.code))).slice(0, 3),
+    match_explanations: explanations,
+    match_reasons: explanations.map((field) => field.label),
+    match_reason_codes: explanations.map((field) => field.code),
     highlights: selected.map((field) => ({
       field: field.field ?? field.code,
       snippet: buildSnippet(field.value, query),

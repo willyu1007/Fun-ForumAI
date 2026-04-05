@@ -8,6 +8,11 @@ import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
 } from '../launch/visual-rollout.js'
+import {
+  EDITORIAL_SHELF_LABELS,
+  isCreatorNoteEntry,
+  normalizeEditorialShelfId,
+} from '../../shared/semantic-taxonomy.js'
 import type {
   CommunityRepository,
   HumanFollowRepository,
@@ -108,6 +113,15 @@ interface HomeViewerRuntime {
   explainability: string[]
 }
 
+function toPublicHomeShelfId(shelfId: string): string {
+  return normalizeEditorialShelfId(shelfId) ?? shelfId
+}
+
+function toPublicHomeShelfLabel(shelfId: string, fallback: string): string {
+  const normalizedShelfId = normalizeEditorialShelfId(shelfId)
+  return normalizedShelfId ? EDITORIAL_SHELF_LABELS[normalizedShelfId] : fallback
+}
+
 export function buildDisabledHomeProgrammingPayload(now = new Date()): HomeProgrammingPayload {
   const contract = getLaunchHomeProgramming()
   return {
@@ -115,8 +129,8 @@ export function buildDisabledHomeProgrammingPayload(now = new Date()): HomeProgr
     mode: contract.home_surface.default_mode,
     fallback_mode: contract.home_surface.fallback_mode,
     shelves: contract.shelves.map((shelf) => ({
-      id: shelf.id,
-      label: shelf.label,
+      id: toPublicHomeShelfId(shelf.id),
+      label: toPublicHomeShelfLabel(shelf.id, shelf.label),
       collapsed: true,
       items: [],
     })),
@@ -232,38 +246,56 @@ export class HomeProgrammingService {
 
     const shelvesById = new Map<string, HomeShelf>([
       ['must_watch_today', {
-        id: 'must_watch_today',
-        label: contract.shelves.find((item) => item.id === 'must_watch_today')?.label ?? '今日必看',
+        id: toPublicHomeShelfId('must_watch_today'),
+        label: toPublicHomeShelfLabel(
+          'must_watch_today',
+          contract.shelves.find((item) => item.id === 'must_watch_today')?.label ?? '今日必看',
+        ),
         collapsed: mustWatch.length === 0,
         items: mustWatch,
       }],
       ['conflict_rising', {
-        id: 'conflict_rising',
-        label: contract.shelves.find((item) => item.id === 'conflict_rising')?.label ?? '冲突升级',
+        id: toPublicHomeShelfId('conflict_rising'),
+        label: toPublicHomeShelfLabel(
+          'conflict_rising',
+          contract.shelves.find((item) => item.id === 'conflict_rising')?.label ?? '冲突升级',
+        ),
         collapsed: conflictRising.length === 0,
         items: conflictRising,
       }],
       ['t4_today', {
-        id: 't4_today',
-        label: contract.shelves.find((item) => item.id === 't4_today')?.label ?? 'T4 今日',
+        id: toPublicHomeShelfId('t4_today'),
+        label: toPublicHomeShelfLabel(
+          't4_today',
+          contract.shelves.find((item) => item.id === 't4_today')?.label ?? '创作者笔记',
+        ),
         collapsed: t4Today.length === 0,
         items: t4Today,
       }],
       ['continue_storyline', {
-        id: 'continue_storyline',
-        label: contract.shelves.find((item) => item.id === 'continue_storyline')?.label ?? '继续追更',
+        id: toPublicHomeShelfId('continue_storyline'),
+        label: toPublicHomeShelfLabel(
+          'continue_storyline',
+          contract.shelves.find((item) => item.id === 'continue_storyline')?.label ?? '继续追更',
+        ),
         collapsed: continueStoryline.length === 0,
         items: continueStoryline,
       }],
       ['tonight_programming', {
-        id: 'tonight_programming',
-        label: contract.shelves.find((item) => item.id === 'tonight_programming')?.label ?? '今晚节目单',
+        id: toPublicHomeShelfId('tonight_programming'),
+        label: toPublicHomeShelfLabel(
+          'tonight_programming',
+          contract.shelves.find((item) => item.id === 'tonight_programming')?.label ?? '今晚节目单',
+        ),
         collapsed: tonightProgramming.length === 0,
         items: tonightProgramming,
       }],
       ['all_communities', {
-        id: 'all_communities',
-        label: contract.shelves.find((item) => item.id === 'all_communities')?.label ?? '完整社区',
+        id: toPublicHomeShelfId('all_communities'),
+        label: toPublicHomeShelfLabel(
+          'all_communities',
+          contract.shelves.find((item) => item.id === 'all_communities')?.label ?? '完整社区',
+        ),
         collapsed: false,
         items: allCommunities,
       }],
@@ -341,7 +373,7 @@ export class HomeProgrammingService {
     )
     const items = primaryPool
       .filter((item) => !usedPostIds.has(item.id))
-      .filter((item) => !item.is_t4)
+      .filter((item) => !isCreatorNoteEntry(item))
       .filter((item) => item.storyline_state === 'escalating')
       .slice(0, 4)
       .map((item) => this.asPostShelfItem(item))
@@ -350,7 +382,7 @@ export class HomeProgrammingService {
       const recentStorylines = new Set(viewerRuntime.recentSignals?.recent_storyline_ids ?? [])
       const fallbackPool = primaryPool
         .filter((item) => !usedPostIds.has(item.id))
-        .filter((item) => !item.is_t4)
+        .filter((item) => !isCreatorNoteEntry(item))
       const reservedForContinuation = viewerRuntime.enabled
         ? fallbackPool.filter((item) => item.storyline_id && recentStorylines.has(item.storyline_id))
         : []
@@ -379,7 +411,7 @@ export class HomeProgrammingService {
   ): HomeProgrammingPostItem[] {
     const items = hotFeed
       .filter((item) => !usedPostIds.has(item.id))
-      .filter((item) => item.is_t4 === true)
+      .filter((item) => isCreatorNoteEntry(item))
       .filter((item) => isLaunchNativeT4Community(item.community_slug))
       .filter((item) => Boolean(item.note_template_id))
       .slice()
@@ -423,7 +455,7 @@ export class HomeProgrammingService {
       hotFeed
         .filter((item) => !usedPostIds.has(item.id))
         .filter((item) => Boolean(item.storyline_id))
-        .filter((item) => item.is_t4 !== true || item.community_slug === 't4-relations'),
+        .filter((item) => !isCreatorNoteEntry(item) || item.community_slug === 't4-relations'),
       viewerRuntime,
       { preferStorylineRevisit: true },
     )
@@ -714,7 +746,7 @@ export class HomeProgrammingService {
     if (options?.preferStorylineRevisit && item.storyline_id && recentSignals?.recent_storyline_ids.includes(item.storyline_id)) {
       score += 40
     }
-    if (options?.preferT4Revisit && item.note_template_id && recentSignals?.recent_t4_template_ids.includes(item.note_template_id)) {
+    if (options?.preferT4Revisit && item.note_template_id && recentSignals?.recent_note_template_ids.includes(item.note_template_id)) {
       score += 20
     }
     return score
