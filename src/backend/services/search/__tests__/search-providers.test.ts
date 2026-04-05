@@ -432,7 +432,7 @@ describe('search providers', () => {
               guest_memberships: ['本周大事件'],
               pairing_preferences: { prefers: [], avoids: [] },
               image_affinity: 'medium',
-              t4_capable: false,
+              format_capabilities: [],
               daily_budget: { root_posts: 2, replies: 8, image_posts: 1 },
               cross_route_budget: 2,
               identity_scaffold: {

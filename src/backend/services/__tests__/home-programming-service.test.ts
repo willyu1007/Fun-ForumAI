@@ -534,7 +534,7 @@ describe('HomeProgrammingService', () => {
     featureFlags.homeProgrammingV1 = true
     featureFlags.lightweightPersonalizationV1 = true
     featureFlags.postLaunchTuningV1 = true
-    tuningConfig.activeProfile = 't4_focus'
+    tuningConfig.activeProfile = 'creator_note_focus'
 
     try {
       const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
@@ -672,7 +672,7 @@ describe('HomeProgrammingService', () => {
         id: 'post-match',
       })
       expect(payload.meta).toMatchObject({
-        active_tuning_profile: 't4_focus',
+        active_tuning_profile: 'creator_note_focus',
         personalization_mode: 'viewer_aware',
         viewer_agent_id: viewerAgentId,
       })

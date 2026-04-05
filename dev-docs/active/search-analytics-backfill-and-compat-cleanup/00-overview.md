@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-142 forum-semantic-convergence-governance-program`, `T-144 governance-and-public-participation-cutover`, `T-145 agent-public-identity-projection-proof-alignment`, baseline `T-915 search-correctness-convergence-and-discovery-hardening-v1`
-- Next step: feed the completed `T-146` verification and closure evidence back into `T-142` for the final program review and closeout decision.
+- Next step: none; `T-146` closure evidence has been fed back into `T-142`, and the program bundle now owns the final freeze/readback only.
 
 ## Goal
 

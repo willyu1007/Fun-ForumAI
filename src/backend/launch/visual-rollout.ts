@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
+import { normalizeLaunchSurfaceKindId } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import { ValidationError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
@@ -15,7 +16,7 @@ const DEFAULT_LAUNCH_VISUAL_ROLLOUT_PATH = resolveLaunchContractPath({
 
 export const LAUNCH_VISUAL_SURFACES = [
   'home_root_card',
-  't4_root_card',
+  'note_root_card',
   'thread_turn',
   'highlight_card',
   'aftershow_card',
@@ -113,7 +114,10 @@ export interface ResolveLaunchVisualPackagingInput {
   }
 }
 
-const launchSurfaceSchema = z.enum(LAUNCH_VISUAL_SURFACES)
+const launchSurfaceSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeLaunchSurfaceKindId(value) ?? value.trim()
+}, z.enum(LAUNCH_VISUAL_SURFACES))
 const launchCardModeSchema = z.enum(LAUNCH_CARD_MODES)
 const launchThumbnailPolicySchema = z.enum(LAUNCH_THUMBNAIL_POLICIES)
 const launchThreadTurnKindSchema = z.enum(LAUNCH_THREAD_TURN_KINDS)
@@ -140,7 +144,8 @@ const visualRolloutFileSchema = z.object({
   notes: z.array(z.string().trim().min(1)).default([]),
   surface_rollout: z.object({
     home_root_card: surfaceRolloutRuleSchema,
-    t4_root_card: surfaceRolloutRuleSchema,
+    note_root_card: surfaceRolloutRuleSchema.optional(),
+    t4_root_card: surfaceRolloutRuleSchema.optional(),
     thread_turn: surfaceRolloutRuleSchema,
     highlight_card: surfaceRolloutRuleSchema,
     aftershow_card: surfaceRolloutRuleSchema,
@@ -154,7 +159,8 @@ const visualRolloutFileSchema = z.object({
   card_modes: z.array(cardModeDefinitionSchema).min(1),
   hero_rules: z.object({
     home_root_card: heroRuleSchema,
-    t4_root_card: heroRuleSchema,
+    note_root_card: heroRuleSchema.optional(),
+    t4_root_card: heroRuleSchema.optional(),
     thread_turn: heroRuleSchema,
     highlight_card: heroRuleSchema,
     aftershow_card: heroRuleSchema,
@@ -162,7 +168,8 @@ const visualRolloutFileSchema = z.object({
   thumbnail_policy: z.object({
     default: launchThumbnailPolicySchema,
     home_root_card: launchThumbnailPolicySchema,
-    t4_root_card: launchThumbnailPolicySchema,
+    note_root_card: launchThumbnailPolicySchema.optional(),
+    t4_root_card: launchThumbnailPolicySchema.optional(),
     thread_turn: launchThumbnailPolicySchema,
     highlight_card: launchThumbnailPolicySchema,
     aftershow_card: launchThumbnailPolicySchema,
@@ -248,11 +255,30 @@ function normalizeLaunchVisualRolloutRuntime(input: unknown): LaunchVisualRollou
     version: file.version,
     draft_status: file.draft_status,
     notes: file.notes,
-    surface_rollout: file.surface_rollout,
+    surface_rollout: {
+      home_root_card: file.surface_rollout.home_root_card,
+      note_root_card: file.surface_rollout.note_root_card ?? file.surface_rollout.t4_root_card!,
+      thread_turn: file.surface_rollout.thread_turn,
+      highlight_card: file.surface_rollout.highlight_card,
+      aftershow_card: file.surface_rollout.aftershow_card,
+    },
     budget_guardrail: file.budget_guardrail,
     card_modes: file.card_modes,
-    hero_rules: file.hero_rules,
-    thumbnail_policy: file.thumbnail_policy,
+    hero_rules: {
+      home_root_card: file.hero_rules.home_root_card,
+      note_root_card: file.hero_rules.note_root_card ?? file.hero_rules.t4_root_card!,
+      thread_turn: file.hero_rules.thread_turn,
+      highlight_card: file.hero_rules.highlight_card,
+      aftershow_card: file.hero_rules.aftershow_card,
+    },
+    thumbnail_policy: {
+      default: file.thumbnail_policy.default,
+      home_root_card: file.thumbnail_policy.home_root_card,
+      note_root_card: file.thumbnail_policy.note_root_card ?? file.thumbnail_policy.t4_root_card!,
+      thread_turn: file.thumbnail_policy.thread_turn,
+      highlight_card: file.thumbnail_policy.highlight_card,
+      aftershow_card: file.thumbnail_policy.aftershow_card,
+    },
   }
 }
 
@@ -381,7 +407,7 @@ export function resolveLaunchVisualPackaging(
     }
   }
 
-  if (input.surface === 't4_root_card' && input.content_context?.is_t4 === false) {
+  if (input.surface === 'note_root_card' && input.content_context?.is_t4 === false) {
     return null
   }
 

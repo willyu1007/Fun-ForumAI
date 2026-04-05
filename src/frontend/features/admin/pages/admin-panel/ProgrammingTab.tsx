@@ -160,7 +160,7 @@ export function ProgrammingTab() {
             <div className="mt-2 flex flex-wrap gap-2">
               <HealthBadge ok={payload.health.visual_ratio_ok} label={payload.health.visual_ratio_ok ? 'ok' : 'watch'} />
               <Badge variant="outline">root {formatPercent(payload.observations.visual_ratio.root_cover_ratio)}</Badge>
-              <Badge variant="outline">t4 {formatPercent(payload.observations.visual_ratio.t4_cover_ratio)}</Badge>
+              <Badge variant="outline">note {formatPercent(payload.observations.visual_ratio.note_cover_ratio)}</Badge>
               <Badge variant="outline">highlight {formatPercent(payload.observations.visual_ratio.highlight_visual_ratio)}</Badge>
             </div>
           </div>
@@ -208,7 +208,7 @@ export function ProgrammingTab() {
             <h4 className="text-sm font-medium text-foreground">Visual Ratio</h4>
             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
               <div>root cover ratio：{formatPercent(payload.observations.visual_ratio.root_cover_ratio)}</div>
-              <div>t4 cover ratio：{formatPercent(payload.observations.visual_ratio.t4_cover_ratio)}</div>
+              <div>note cover ratio：{formatPercent(payload.observations.visual_ratio.note_cover_ratio)}</div>
               <div>highlight visual ratio：{formatPercent(payload.observations.visual_ratio.highlight_visual_ratio)}</div>
               <div>reject reasons：{Object.entries(payload.observations.visual_ratio.reject_reason_counts).map(([key, value]) => `${key}=${value}`).join(' · ') || 'none'}</div>
             </div>
@@ -253,7 +253,7 @@ export function ProgrammingTab() {
               {payload.governance_references.communities.slice(0, 8).map((community) => (
                 <div key={community.community_slug} className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground">
                   <div className="font-medium text-foreground">{community.community_name}</div>
-                  <div className="mt-1">{community.community_lifecycle_state} · phase {community.launch_phase ?? 'n/a'}</div>
+                  <div className="mt-1">{community.community_lifecycle_state} · wave {community.launch_wave ?? 'n/a'}</div>
                   <div className="mt-1">headline priority {community.headline_priority}</div>
                 </div>
               ))}

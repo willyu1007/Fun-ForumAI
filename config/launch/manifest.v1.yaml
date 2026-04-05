@@ -12,10 +12,10 @@ contracts:
     bundle_slug: launch-home-ia-storyline-highlights
     file_name: home_ia_and_shelves.v1.yaml
     path: config/launch/home_ia_and_shelves.v1.yaml
-  - id: t4_templates
+  - id: creator_note_templates
     bundle_slug: launch-t4-community-enablement
-    file_name: t4_content_templates.v1.yaml
-    path: config/launch/t4_content_templates.v1.yaml
+    file_name: creator_note_templates.v1.yaml
+    path: config/launch/creator_note_templates.v1.yaml
   - id: visual_rollout
     bundle_slug: launch-visual-rollout-and-packaging
     file_name: visual_surface_rollout.v1.yaml

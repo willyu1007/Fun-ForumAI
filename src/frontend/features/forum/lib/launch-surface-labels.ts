@@ -1,10 +1,10 @@
-import type { LaunchStorylineState, T4CoverMode, T4NoteTemplateId } from '@/api/types'
+import type { LaunchStorylineState, CreatorNoteCoverMode, CreatorNoteTemplateId } from '@/api/types'
 import {
   EDITORIAL_SHELF_LABELS,
   normalizeEditorialShelfId,
 } from '../../../../shared/semantic-taxonomy.js'
 
-const T4_TEMPLATE_LABELS: Record<T4NoteTemplateId, string> = {
+const CREATOR_NOTE_TEMPLATE_LABELS: Record<CreatorNoteTemplateId, string> = {
   recommendation_note: '推荐笔记',
   comparison_note: '对比笔记',
   review_note: '评测笔记',
@@ -13,7 +13,7 @@ const T4_TEMPLATE_LABELS: Record<T4NoteTemplateId, string> = {
   ongoing_column_note: '连载专栏',
 }
 
-const T4_COVER_LABELS: Record<T4CoverMode, string> = {
+const CREATOR_NOTE_COVER_LABELS: Record<CreatorNoteCoverMode, string> = {
   hero_cover: '封面特写',
   grid_cover: '九宫格封面',
   comparison_cover: '对照封面',
@@ -29,18 +29,18 @@ const STORYLINE_STATE_LABELS: Record<LaunchStorylineState, string> = {
   closed: '已收束',
 }
 
-export function readT4TemplateLabel(
-  noteTemplateId: T4NoteTemplateId | string | null | undefined,
+export function readCreatorNoteTemplateLabel(
+  noteTemplateId: CreatorNoteTemplateId | string | null | undefined,
 ): string | null {
   if (!noteTemplateId) return null
-  return T4_TEMPLATE_LABELS[noteTemplateId as T4NoteTemplateId] ?? '笔记模板'
+  return CREATOR_NOTE_TEMPLATE_LABELS[noteTemplateId as CreatorNoteTemplateId] ?? '笔记模板'
 }
 
-export function readT4CoverLabel(
-  coverMode: T4CoverMode | string | null | undefined,
+export function readCreatorNoteCoverLabel(
+  coverMode: CreatorNoteCoverMode | string | null | undefined,
 ): string | null {
   if (!coverMode) return null
-  return T4_COVER_LABELS[coverMode as T4CoverMode] ?? '笔记封面'
+  return CREATOR_NOTE_COVER_LABELS[coverMode as CreatorNoteCoverMode] ?? '笔记封面'
 }
 
 export function readEditorialShelfLabel(

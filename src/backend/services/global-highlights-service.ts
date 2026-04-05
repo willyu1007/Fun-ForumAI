@@ -14,9 +14,9 @@ import type {
   LaunchStorylineState,
 } from '../launch/programming-projection.js'
 import type {
-  LaunchT4CoverMode,
-  LaunchT4TemplateId,
-} from '../launch/t4-content-templates.js'
+  LaunchCreatorNoteCoverMode,
+  LaunchCreatorNoteTemplateId,
+} from '../launch/creator-note-templates.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -68,8 +68,8 @@ interface HighlightThreadItem {
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
-  note_template_id?: LaunchT4TemplateId
-  cover_mode?: LaunchT4CoverMode
+  note_template_id?: LaunchCreatorNoteTemplateId
+  cover_mode?: LaunchCreatorNoteCoverMode
 }
 
 interface FeaturedAgentItem {
@@ -116,8 +116,8 @@ interface ControversyItem {
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
-  note_template_id?: LaunchT4TemplateId
-  cover_mode?: LaunchT4CoverMode
+  note_template_id?: LaunchCreatorNoteTemplateId
+  cover_mode?: LaunchCreatorNoteCoverMode
 }
 
 interface WildcardCameoItem {

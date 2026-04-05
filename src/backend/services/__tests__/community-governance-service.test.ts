@@ -72,14 +72,22 @@ describe('community governance service', () => {
 
     expect(actionResult.proposal.status).toBe('INCUBATING')
     expect(actionResult.community?.slug).toBe('hot-arena-plus')
-    expect(actionResult.community?.rules_json).toMatchObject({
+    const communityRules = actionResult.community?.rules_json
+    expect(communityRules).toBeTruthy()
+    expect(communityRules).toMatchObject({
       community_lifecycle_state: 'incubating_gray',
+      launch_profile: expect.objectContaining({
+        community_family: 'weekly_program',
+        launch_wave: 'incubating_gray',
+      }),
       governance_policy: expect.objectContaining({
         incubation_visibility_mode: 'WHITELIST_ONLY',
         proposal_id: detail.proposal.id,
       }),
       stage_spec_v1: expect.objectContaining({ version: 'v1' }),
     })
+    expect((communityRules?.launch_profile as Record<string, unknown>)?.community_type).toBeUndefined()
+    expect((communityRules?.launch_profile as Record<string, unknown>)?.launch_phase).toBeUndefined()
     expect(actionResult.config_patch_id).toBeTruthy()
     expect(actionResult.config_version).toBe(1)
 
@@ -97,7 +105,7 @@ describe('community governance service', () => {
     const originalTuningFlag = featureFlags.postLaunchTuningV1
     const originalActiveProfile = tuningConfig.activeProfile
     featureFlags.postLaunchTuningV1 = true
-    tuningConfig.activeProfile = 't4_focus'
+    tuningConfig.activeProfile = 'creator_note_focus'
 
     try {
       const ctx = setup()

@@ -22,3 +22,10 @@
   - Result: passed (`58` tests). This confirms the canonical governance resolver, human `open_reply` write gate, mixed-author forum read model, and post-detail / thread-detail consumers stay aligned with the frozen `T-144` contract.
 - `pnpm test:e2e:playwright`
   - Result: initially failed on browser governance/forum surfaces because the admin dashboard gained a new canonical proposal queue mock, the forum spec still asserted an old “主舞台” label, and the visual snapshot helper did not wait for avatar images to settle. Passed (`102` tests) after fixing the governance/forum mocks and stabilizing `tests/web/playwright/support/helpers.ts` to wait for image load/decode before snapshot capture.
+
+## 2026-04-05 — final status readback
+
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-144`
+  - Result: passed; task now reads back as `done` under `M-030 > F-100 > R-103`.
+- Corrective `T-143` source-config readback
+  - Result: passed; the 2026-04-05 canonical launch-config cleanup did not change the frozen `T-144` outward governance payloads, mixed-author thread behavior, or pre-`T-146` search-safe compatibility guarantees.

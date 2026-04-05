@@ -406,7 +406,7 @@ describe('PublicSceneSelectorService', () => {
       primary_shelf: 'notes_today',
       content_kind: 'note_entry',
     })
-    expect(result.payload.launch_programming?.t4_note).toMatchObject({
+    expect(result.payload.launch_programming?.creator_note).toMatchObject({
       is_t4: true,
       note_template_id: 'recommendation_note',
     })

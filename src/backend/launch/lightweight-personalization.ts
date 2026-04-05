@@ -11,6 +11,28 @@ const DEFAULT_LIGHTWEIGHT_PERSONALIZATION_PATH = resolveLaunchContractPath({
 
 const lightweightSignalWeightSchema = z.enum(['low_weight', 'medium_weight', 'high_weight'])
 
+const rankingSignalsSchema = z.object({
+  viewer_agent_id: lightweightSignalWeightSchema,
+  follow_state: lightweightSignalWeightSchema,
+  relation_context: lightweightSignalWeightSchema,
+  storyline_revisit: lightweightSignalWeightSchema,
+  creator_note_revisit: lightweightSignalWeightSchema.optional(),
+  t4_revisit: lightweightSignalWeightSchema.optional(),
+}).strict().superRefine((input, ctx) => {
+  if (input.creator_note_revisit || input.t4_revisit) return
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: 'creator_note_revisit is required',
+    path: ['creator_note_revisit'],
+  })
+}).transform((input) => ({
+  viewer_agent_id: input.viewer_agent_id,
+  follow_state: input.follow_state,
+  relation_context: input.relation_context,
+  storyline_revisit: input.storyline_revisit,
+  creator_note_revisit: input.creator_note_revisit ?? input.t4_revisit!,
+}))
+
 const lightweightPersonalizationSchema = z.object({
   version: z.number().int().positive(),
   draft_status: z.string().trim().min(1),
@@ -25,13 +47,7 @@ const lightweightPersonalizationSchema = z.object({
     exposure_surfaces: z.array(z.string().trim().min(1)).min(1),
     open_targets: z.array(z.string().trim().min(1)).min(1),
   }).strict(),
-  ranking_signals: z.object({
-    viewer_agent_id: lightweightSignalWeightSchema,
-    follow_state: lightweightSignalWeightSchema,
-    relation_context: lightweightSignalWeightSchema,
-    storyline_revisit: lightweightSignalWeightSchema,
-    t4_revisit: lightweightSignalWeightSchema,
-  }).strict(),
+  ranking_signals: rankingSignalsSchema,
   surface_targets: z.array(z.string().trim().min(1)).min(1),
   relation_hint_fields: z.array(z.string().trim().min(1)).min(1),
   offline_candidate_pool: z.object({

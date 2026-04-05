@@ -2,7 +2,7 @@ version: 1
 task_id: T-146
 project: main
 slug: search-analytics-backfill-and-compat-cleanup
-status: in-progress
+status: done
 updated: "2026-04-05"
 keywords:
   - search

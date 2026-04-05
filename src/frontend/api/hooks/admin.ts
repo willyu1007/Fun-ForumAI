@@ -89,7 +89,7 @@ function buildDisabledLaunchProgrammingOpsResponse(): ApiResponse<LaunchProgramm
       observations: {
         visual_ratio: {
           root_cover_ratio: null,
-          t4_cover_ratio: null,
+          note_cover_ratio: null,
           highlight_visual_ratio: null,
           reject_reason_counts: {},
           budget_remaining_cny: null,

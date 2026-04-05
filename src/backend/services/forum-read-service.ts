@@ -39,9 +39,9 @@ import type {
 import { buildLaunchProgrammingProjection } from '../launch/programming-projection.js'
 import type { PublicStageAuthorRef } from '../repos/types/forum.js'
 import type {
-  LaunchT4CoverMode,
-  LaunchT4TemplateId,
-} from '../launch/t4-content-templates.js'
+  LaunchCreatorNoteCoverMode,
+  LaunchCreatorNoteTemplateId,
+} from '../launch/creator-note-templates.js'
 import { isCommunityVisibleInDirectory } from '../community/community-lifecycle.js'
 import {
   normalizeLaunchSurfaceKindId,
@@ -173,8 +173,8 @@ export interface PostWithMeta extends Post {
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
-  note_template_id?: LaunchT4TemplateId
-  cover_mode?: LaunchT4CoverMode
+  note_template_id?: LaunchCreatorNoteTemplateId
+  cover_mode?: LaunchCreatorNoteCoverMode
 }
 
 export interface CommunityReadModel extends Community {
@@ -491,7 +491,7 @@ export class ForumReadService {
       launch_community_slug: input.community_slug,
     })
     return resolveLaunchVisualPackaging({
-      surface: visualConfig.is_t4 ? 't4_root_card' : 'home_root_card',
+      surface: visualConfig.is_t4 ? 'note_root_card' : 'home_root_card',
       community_visual_policy: visualConfig.community_visual_policy,
       has_thumbnail: input.media.length > 0,
       rollout_profile: input.rolloutProfile

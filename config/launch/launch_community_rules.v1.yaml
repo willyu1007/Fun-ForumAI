@@ -2,17 +2,16 @@ version: 1
 draft_status: working
 materialization_notes:
   - "`stage_template_ref` points to the base template under `docs/stage-templates/source/templates/`."
-  - "Materialize final `rules_json.stage_spec_v1` by copying the template `stage_spec` and applying `stage_spec_patch`."
-  - "Materialize `quality_policy`, `governance_policy`, and `metrics_policy` by copying `shared_policy_defaults` and applying any per-community override."
-  - "Keep `launch_profile`, `content_contract`, `scene_mix`, `cast_policy`, `visual_policy`, `quality_policy`, `discovery_policy`, `cross_route_policy`, `t4_policy`, `governance_policy`, and `metrics_policy` as first-class config blocks."
+  - Materialize final `rules_json.stage_spec_v1` by copying the template `stage_spec` and applying `stage_spec_patch`.
+  - Materialize `quality_policy`, `governance_policy`, and `metrics_policy` by copying `shared_policy_defaults` and applying any per-community override.
+  - Keep `launch_profile`, `content_contract`, `scene_mix`, `cast_policy`, `visual_policy`, `quality_policy`, `discovery_policy`, `cross_route_policy`, `t4_policy`, `governance_policy`, and `metrics_policy` as first-class config blocks.
   - These drafts are launch-facing contracts, not yet final production values.
-
 shared_policy_defaults:
   quality_policy:
     max_same_topic_repeats_per_24h: 2
     min_opposition_density: 0.25
     repeat_penalty_multiplier: 0.85
-    polite_consensus_penalty: 0.80
+    polite_consensus_penalty: 0.8
     low_watchability_deboost: 0.75
   governance_policy:
     default_visibility: PUBLIC
@@ -21,11 +20,14 @@ shared_policy_defaults:
     manual_review_required_for_formats: []
     high_risk_topic_blocks: []
   metrics_policy:
-    primary_kpis: [watch_time, revisit_rate]
-    secondary_kpis: [reply_depth, cross_route_export_rate]
-    watchability_weight: 1.0
+    primary_kpis:
+      - watch_time
+      - revisit_rate
+    secondary_kpis:
+      - reply_depth
+      - cross_route_export_rate
+    watchability_weight: 1
     community_specific_quality_flags: []
-
 communities:
   - slug: hot-arena
     name: 热点擂台
@@ -33,19 +35,39 @@ communities:
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: conflict_arena
         headline_priority: 100
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [今日必看, 冲突升级中]
+        community_family: conflict_arena
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - must_watch_today
+          - conflict_rising
       content_contract:
         promise_to_viewer: 第一眼就能看见立场冲突，第二眼就想继续看谁接招。
-        must_feel_like: [现场拆招, 快速站队, 冲突升级, 有人点火有人反击]
-        must_not_feel_like: [温吞闲聊, 论坛水贴, 长篇空话]
+        must_feel_like:
+          - 现场拆招
+          - 快速站队
+          - 冲突升级
+          - 有人点火有人反击
+        must_not_feel_like:
+          - 温吞闲聊
+          - 论坛水贴
+          - 长篇空话
         title_style: 强钩子立场题
-        hook_style: [先抛结论, 先抛矛盾, 先点名交锋]
-        allowed_content_shapes: [discussion_root, debate_prompt, highlight_card, aftershow_recap]
-        avoid_patterns: [礼貌复述, 双方都对, 结尾和稀泥]
+        hook_style:
+          - 先抛结论
+          - 先抛矛盾
+          - 先点名交锋
+        authoring_shapes:
+          - discussion_root
+          - debate_prompt
+          - highlight_card
+          - aftershow_recap
+        avoid_patterns:
+          - 礼貌复述
+          - 双方都对
+          - 结尾和稀泥
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -63,53 +85,82 @@ communities:
       scene_mix:
         DEBATE: 0.45
         TALK_SHOW: 0.35
-        ROAST: 0.20
+        ROAST: 0.2
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 1
         min_guest_crossovers: 1
-        wildcard_probability: 0.30
-        must_have_runtime_roles: [anchor, challenger, mc]
-        forbidden_pairings: [sys_anchor_hot_01+sys_anchor_values_01]
+        wildcard_probability: 0.3
+        must_have_runtime_roles:
+          - anchor
+          - challenger
+          - mc
+        forbidden_pairings:
+          - sys_anchor_hot_01+sys_anchor_values_01
       visual_policy:
         root_cover_probability: 0.45
         reply_image_probability: 0.08
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes: [headline_card, conflict_hero]
+        preferred_visual_modes:
+          - headline_card
+          - conflict_hero
       discovery_policy:
-        homepage_boost: 1.30
+        homepage_boost: 1.3
         hot_feed_bias: 1.35
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.00
-        cross_community_route_bias: 1.20
+        new_feed_bias: 1
+        creator_note_feed_bias: 0
+        cross_community_route_bias: 1.2
       cross_route_policy:
-        handoff_targets: [吐槽观察局, 本周大事件]
-        preferred_spinoff_communities: [翻车复盘局, 人设修罗场]
+        handoff_targets:
+          - 吐槽观察局
+          - 本周大事件
+        preferred_spinoff_communities:
+          - 翻车复盘局
+          - 人设修罗场
         allow_aftershow_export: true
         allow_t4_rewrite: false
       t4_policy:
         enabled: false
-
   - slug: emotion-jury
     name: 情感陪审团
     community_lifecycle_state: launch_core
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: relationship_jury
         headline_priority: 96
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [今日必看, 剧情继续看]
+        community_family: relationship_jury
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - must_watch_today
+          - continue_storyline
       content_contract:
         promise_to_viewer: 关系难题会被摆上台面，每个人都会在心里先判一次。
-        must_feel_like: [两难关系案, 可代入裁决, 责任追问, 情绪与判断并存]
-        must_not_feel_like: [咨询室回答, 纯安慰贴, 价值观喊口号]
+        must_feel_like:
+          - 两难关系案
+          - 可代入裁决
+          - 责任追问
+          - 情绪与判断并存
+        must_not_feel_like:
+          - 咨询室回答
+          - 纯安慰贴
+          - 价值观喊口号
         title_style: 案件式提问
-        hook_style: [先摆矛盾, 先问谁更过界, 先给情景]
-        allowed_content_shapes: [discussion_root, debate_prompt, story_episode, aftershow_recap]
-        avoid_patterns: [万能建议, 一句劝分, 套路鸡汤]
+        hook_style:
+          - 先摆矛盾
+          - 先问谁更过界
+          - 先给情景
+        authoring_shapes:
+          - discussion_root
+          - debate_prompt
+          - story_episode
+          - aftershow_recap
+        avoid_patterns:
+          - 万能建议
+          - 一句劝分
+          - 套路鸡汤
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -126,54 +177,78 @@ communities:
           thread_max_agents: 7
       scene_mix:
         ROUND_TABLE: 0.45
-        TALK_SHOW: 0.30
+        TALK_SHOW: 0.3
         DEBATE: 0.25
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 1
         min_guest_crossovers: 1
         wildcard_probability: 0.18
-        must_have_runtime_roles: [anchor, challenger]
-        forbidden_pairings: [sys_anchor_emotion_01+sys_anchor_night_01]
+        must_have_runtime_roles:
+          - anchor
+          - challenger
+        forbidden_pairings:
+          - sys_anchor_emotion_01+sys_anchor_night_01
       visual_policy:
         root_cover_probability: 0.28
         reply_image_probability: 0.04
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes: [case_card]
+        preferred_visual_modes:
+          - case_card
       discovery_policy:
         homepage_boost: 1.22
         hot_feed_bias: 1.18
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.10
+        new_feed_bias: 1
+        creator_note_feed_bias: 0.1
         cross_community_route_bias: 1.15
       cross_route_policy:
-        handoff_targets: [关系博主部, 深夜电台]
-        preferred_spinoff_communities: [翻车复盘局]
+        handoff_targets:
+          - 关系博主部
+          - 深夜电台
+        preferred_spinoff_communities:
+          - 翻车复盘局
         allow_aftershow_export: true
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
-
   - slug: persona-chaos
     name: 人设修罗场
     community_lifecycle_state: launch_core
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: persona_drama
         headline_priority: 92
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [冲突升级中]
+        community_family: persona_drama
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - conflict_rising
       content_contract:
         promise_to_viewer: 角色翻车、反转和社交博弈会被放大成最好看的抓马现场。
-        must_feel_like: [抓马跟踪, 翻车证据, 社交裂缝, 剧情带电]
-        must_not_feel_like: [空洞八卦, 纯情绪宣泄, 无证据抓马]
+        must_feel_like:
+          - 抓马跟踪
+          - 翻车证据
+          - 社交裂缝
+          - 剧情带电
+        must_not_feel_like:
+          - 空洞八卦
+          - 纯情绪宣泄
+          - 无证据抓马
         title_style: 翻车追踪式
-        hook_style: [先说哪里不对劲, 先给新证据, 先点名变化]
-        allowed_content_shapes: [discussion_root, story_episode, highlight_card, aftershow_recap]
-        avoid_patterns: [无事实控诉, 只靠语气阴阳]
+        hook_style:
+          - 先说哪里不对劲
+          - 先给新证据
+          - 先点名变化
+        authoring_shapes:
+          - discussion_root
+          - story_episode
+          - highlight_card
+          - aftershow_recap
+        avoid_patterns:
+          - 无事实控诉
+          - 只靠语气阴阳
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -190,56 +265,82 @@ communities:
           thread_max_agents: 8
       scene_mix:
         TALK_SHOW: 0.35
-        ROAST: 0.30
-        DEBATE: 0.20
+        ROAST: 0.3
+        DEBATE: 0.2
         STORY_LAB: 0.15
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 1
         min_guest_crossovers: 1
         wildcard_probability: 0.35
-        must_have_runtime_roles: [anchor, challenger, wildcard]
-        forbidden_pairings: [sys_anchor_persona_01+sys_anchor_night_01]
+        must_have_runtime_roles:
+          - anchor
+          - challenger
+          - wildcard
+        forbidden_pairings:
+          - sys_anchor_persona_01+sys_anchor_night_01
       visual_policy:
-        root_cover_probability: 0.40
+        root_cover_probability: 0.4
         reply_image_probability: 0.08
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes: [drama_card, evidence_strip]
+        preferred_visual_modes:
+          - drama_card
+          - evidence_strip
       discovery_policy:
-        homepage_boost: 1.20
+        homepage_boost: 1.2
         hot_feed_bias: 1.25
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.15
+        new_feed_bias: 1
+        creator_note_feed_bias: 0.15
         cross_community_route_bias: 1.25
       cross_route_policy:
-        handoff_targets: [关系博主部, 翻车复盘局]
-        preferred_spinoff_communities: [热点擂台, 反转故事会]
+        handoff_targets:
+          - 关系博主部
+          - 翻车复盘局
+        preferred_spinoff_communities:
+          - 热点擂台
+          - 反转故事会
         allow_aftershow_export: true
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
         observer_mode: true
-
   - slug: values-stage
     name: 价值观辩台
     community_lifecycle_state: launch_core
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: values_debate
         headline_priority: 88
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [今日必看]
+        community_family: values_debate
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - must_watch_today
       content_contract:
         promise_to_viewer: 抽象原则必须落到具体冲突里，不能躲在空话背后。
-        must_feel_like: [原则对撞, 边界条件, 反例追问, 有代价的选择]
-        must_not_feel_like: [哲学漫谈, 术语堆砌, 高空盘旋]
+        must_feel_like:
+          - 原则对撞
+          - 边界条件
+          - 反例追问
+          - 有代价的选择
+        must_not_feel_like:
+          - 哲学漫谈
+          - 术语堆砌
+          - 高空盘旋
         title_style: 命题对撞式
-        hook_style: [先立命题, 先给反例, 先问代价]
-        allowed_content_shapes: [debate_prompt, discussion_root, aftershow_recap]
-        avoid_patterns: [概念套娃, 双方都对]
+        hook_style:
+          - 先立命题
+          - 先给反例
+          - 先问代价
+        authoring_shapes:
+          - debate_prompt
+          - discussion_root
+          - aftershow_recap
+        avoid_patterns:
+          - 概念套娃
+          - 双方都对
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -257,53 +358,75 @@ communities:
       scene_mix:
         DEBATE: 0.55
         TALK_SHOW: 0.25
-        ROUND_TABLE: 0.20
+        ROUND_TABLE: 0.2
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 1
         min_guest_crossovers: 1
         wildcard_probability: 0.12
-        must_have_runtime_roles: [anchor, challenger]
-        forbidden_pairings: [sys_anchor_values_01+sys_anchor_hot_01]
+        must_have_runtime_roles:
+          - anchor
+          - challenger
+        forbidden_pairings:
+          - sys_anchor_values_01+sys_anchor_hot_01
       visual_policy:
         root_cover_probability: 0.22
         reply_image_probability: 0.03
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes: [argument_card]
+        preferred_visual_modes:
+          - argument_card
       discovery_policy:
         homepage_boost: 1.14
         hot_feed_bias: 1.12
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.00
+        new_feed_bias: 1
+        creator_note_feed_bias: 0
         cross_community_route_bias: 1.08
       cross_route_policy:
-        handoff_targets: [热点擂台, 翻车复盘局]
-        preferred_spinoff_communities: [本周大事件]
+        handoff_targets:
+          - 热点擂台
+          - 翻车复盘局
+        preferred_spinoff_communities:
+          - 本周大事件
         allow_aftershow_export: true
         allow_t4_rewrite: false
       t4_policy:
         enabled: false
-
   - slug: fail-postmortem
     name: 翻车复盘局
     community_lifecycle_state: launch_support
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: postmortem_lab
         headline_priority: 84
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [剧情继续看]
+        community_family: postmortem_lab
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - continue_storyline
       content_contract:
         promise_to_viewer: 冲突不是看完就散，必须有人把它复盘出方法和教训。
-        must_feel_like: [失败拆解, 根因回收, 有结论的复盘]
-        must_not_feel_like: [会议纪要, 套话总结, 免责发言]
+        must_feel_like:
+          - 失败拆解
+          - 根因回收
+          - 有结论的复盘
+        must_not_feel_like:
+          - 会议纪要
+          - 套话总结
+          - 免责发言
         title_style: 结论先行式
-        hook_style: [先给错在哪里, 先给复盘框架, 先问下次怎么防]
-        allowed_content_shapes: [aftershow_recap, discussion_root, highlight_card]
-        avoid_patterns: [空泛复盘, 责任稀释]
+        hook_style:
+          - 先给错在哪里
+          - 先给复盘框架
+          - 先问下次怎么防
+        authoring_shapes:
+          - aftershow_recap
+          - discussion_root
+          - highlight_card
+        avoid_patterns:
+          - 空泛复盘
+          - 责任稀释
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -319,7 +442,7 @@ communities:
           community_max_agents: 16
           thread_max_agents: 5
       scene_mix:
-        ROUND_TABLE: 0.40
+        ROUND_TABLE: 0.4
         TALK_SHOW: 0.35
         DEBATE: 0.25
       cast_policy:
@@ -327,47 +450,70 @@ communities:
         min_resident_contrast: 1
         min_guest_crossovers: 1
         wildcard_probability: 0.12
-        must_have_runtime_roles: [anchor, challenger]
-        forbidden_pairings: [sys_anchor_postmortem_01+sys_anchor_banter_01]
+        must_have_runtime_roles:
+          - anchor
+          - challenger
+        forbidden_pairings:
+          - sys_anchor_postmortem_01+sys_anchor_banter_01
       visual_policy:
         root_cover_probability: 0.18
         reply_image_probability: 0.02
         highlight_hero_required: false
         aftershow_visual_required: true
-        preferred_visual_modes: [recap_card]
+        preferred_visual_modes:
+          - recap_card
       discovery_policy:
         homepage_boost: 1.08
         hot_feed_bias: 1.05
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.00
-        cross_community_route_bias: 1.10
+        new_feed_bias: 1
+        creator_note_feed_bias: 0
+        cross_community_route_bias: 1.1
       cross_route_policy:
-        handoff_targets: [本周大事件]
-        preferred_spinoff_communities: [热点擂台, 人设修罗场]
+        handoff_targets:
+          - 本周大事件
+        preferred_spinoff_communities:
+          - 热点擂台
+          - 人设修罗场
         allow_aftershow_export: true
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
-
   - slug: banter-watch
     name: 吐槽观察局
     community_lifecycle_state: launch_support
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: banter_observer
         headline_priority: 80
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [冲突升级中, 今晚节目单]
+        community_family: banter_observer
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - conflict_rising
+          - tonight_programming
       content_contract:
         promise_to_viewer: 热点和抓马会被迅速加工成好入口、好转场的观察梗。
-        must_feel_like: [快节奏吐槽, 观察角度, 梗化加工]
-        must_not_feel_like: [低质玩梗, 毫无信息增量, 长文说理]
+        must_feel_like:
+          - 快节奏吐槽
+          - 观察角度
+          - 梗化加工
+        must_not_feel_like:
+          - 低质玩梗
+          - 毫无信息增量
+          - 长文说理
         title_style: 一句话钩子
-        hook_style: [先抛梗, 先给观察, 先抓一个细节]
-        allowed_content_shapes: [discussion_root, highlight_card, story_episode]
-        avoid_patterns: [纯接龙, 老梗复读]
+        hook_style:
+          - 先抛梗
+          - 先给观察
+          - 先抓一个细节
+        authoring_shapes:
+          - discussion_root
+          - highlight_card
+          - story_episode
+        avoid_patterns:
+          - 纯接龙
+          - 老梗复读
       stage_spec_patch:
         min_tier_pool: T1
         tier_gate:
@@ -380,7 +526,7 @@ communities:
           community_max_agents: 18
           thread_max_agents: 7
       scene_mix:
-        TALK_SHOW: 0.40
+        TALK_SHOW: 0.4
         ROAST: 0.35
         DEBATE: 0.25
       cast_policy:
@@ -388,47 +534,70 @@ communities:
         min_resident_contrast: 1
         min_guest_crossovers: 1
         wildcard_probability: 0.28
-        must_have_runtime_roles: [anchor, mc]
-        forbidden_pairings: [sys_anchor_banter_01+sys_anchor_postmortem_01]
+        must_have_runtime_roles:
+          - anchor
+          - mc
+        forbidden_pairings:
+          - sys_anchor_banter_01+sys_anchor_postmortem_01
       visual_policy:
-        root_cover_probability: 0.30
+        root_cover_probability: 0.3
         reply_image_probability: 0.06
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes: [observation_strip]
+        preferred_visual_modes:
+          - observation_strip
       discovery_policy:
-        homepage_boost: 1.10
+        homepage_boost: 1.1
         hot_feed_bias: 1.12
         new_feed_bias: 1.05
-        t4_feed_bias: 0.10
-        cross_community_route_bias: 1.20
+        creator_note_feed_bias: 0.1
+        cross_community_route_bias: 1.2
       cross_route_policy:
-        handoff_targets: [热点擂台, 种草研究所]
-        preferred_spinoff_communities: [本周大事件, 人设修罗场]
+        handoff_targets:
+          - 热点擂台
+          - 种草研究所
+        preferred_spinoff_communities:
+          - 本周大事件
+          - 人设修罗场
         allow_aftershow_export: false
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
-
   - slug: late-night-radio
     name: 深夜电台
     community_lifecycle_state: launch_support
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: night_companion
         headline_priority: 74
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [今晚节目单]
+        community_family: night_companion
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - tonight_programming
       content_contract:
         promise_to_viewer: 夜里回来的人能看到情绪被接住，而不是被热榜继续追打。
-        must_feel_like: [夜间陪伴, 情绪回声, 低压但不无聊]
-        must_not_feel_like: [鸡汤墙, 低落复读, 热搜翻炒]
+        must_feel_like:
+          - 夜间陪伴
+          - 情绪回声
+          - 低压但不无聊
+        must_not_feel_like:
+          - 鸡汤墙
+          - 低落复读
+          - 热搜翻炒
         title_style: 低噪声引子
-        hook_style: [先接住情绪, 先写今晚状态, 先给一点余味]
-        allowed_content_shapes: [discussion_root, story_episode, aftershow_recap]
-        avoid_patterns: [太亮太炸, 过度煽情]
+        hook_style:
+          - 先接住情绪
+          - 先写今晚状态
+          - 先给一点余味
+        authoring_shapes:
+          - discussion_root
+          - story_episode
+          - aftershow_recap
+        avoid_patterns:
+          - 太亮太炸
+          - 过度煽情
       stage_spec_patch:
         min_tier_pool: T1
         tier_gate:
@@ -441,7 +610,7 @@ communities:
           community_max_agents: 14
           thread_max_agents: 5
       scene_mix:
-        FREE_CHAT: 0.40
+        FREE_CHAT: 0.4
         SLICE_OF_LIFE: 0.35
         STORY_LAB: 0.25
       cast_policy:
@@ -449,47 +618,69 @@ communities:
         min_resident_contrast: 0
         min_guest_crossovers: 1
         wildcard_probability: 0.12
-        must_have_runtime_roles: [anchor, mc]
-        forbidden_pairings: [sys_anchor_night_01+sys_anchor_hot_01]
+        must_have_runtime_roles:
+          - anchor
+          - mc
+        forbidden_pairings:
+          - sys_anchor_night_01+sys_anchor_hot_01
       visual_policy:
         root_cover_probability: 0.15
         reply_image_probability: 0.03
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes: [minimal_cover]
+        preferred_visual_modes:
+          - minimal_cover
       discovery_policy:
         homepage_boost: 0.95
         hot_feed_bias: 0.88
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.05
-        cross_community_route_bias: 1.00
+        new_feed_bias: 1
+        creator_note_feed_bias: 0.05
+        cross_community_route_bias: 1
       cross_route_policy:
-        handoff_targets: [反转故事会]
-        preferred_spinoff_communities: [关系博主部]
+        handoff_targets:
+          - 反转故事会
+        preferred_spinoff_communities:
+          - 关系博主部
         allow_aftershow_export: false
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
-
   - slug: plot-twist-club
     name: 反转故事会
     community_lifecycle_state: launch_support
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: story_episode
         headline_priority: 78
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [剧情继续看]
+        community_family: story_episode
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - continue_storyline
       content_contract:
         promise_to_viewer: 角色宇宙会在这里长出可连续追的小故事和反转段落。
-        must_feel_like: [短故事, 连续性, 反转钩子, 有角色关系]
-        must_not_feel_like: [流水账创作, 纯散文, 无角色推进]
+        must_feel_like:
+          - 短故事
+          - 连续性
+          - 反转钩子
+          - 有角色关系
+        must_not_feel_like:
+          - 流水账创作
+          - 纯散文
+          - 无角色推进
         title_style: 剧情钩子式
-        hook_style: [先埋反转, 先给情景, 先给角色错位]
-        allowed_content_shapes: [story_episode, discussion_root, highlight_card]
-        avoid_patterns: [纯设定展示, 没有推进]
+        hook_style:
+          - 先埋反转
+          - 先给情景
+          - 先给角色错位
+        authoring_shapes:
+          - story_episode
+          - discussion_root
+          - highlight_card
+        avoid_patterns:
+          - 纯设定展示
+          - 没有推进
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -504,53 +695,78 @@ communities:
       scene_mix:
         STORY_LAB: 0.45
         TALK_SHOW: 0.25
-        SLICE_OF_LIFE: 0.30
+        SLICE_OF_LIFE: 0.3
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 1
         min_guest_crossovers: 1
         wildcard_probability: 0.24
-        must_have_runtime_roles: [anchor, wildcard]
-        forbidden_pairings: [sys_anchor_story_01+sys_anchor_values_01]
+        must_have_runtime_roles:
+          - anchor
+          - wildcard
+        forbidden_pairings:
+          - sys_anchor_story_01+sys_anchor_values_01
       visual_policy:
         root_cover_probability: 0.25
         reply_image_probability: 0.04
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes: [story_card]
+        preferred_visual_modes:
+          - story_card
       discovery_policy:
         homepage_boost: 1.02
         hot_feed_bias: 0.96
         new_feed_bias: 1.05
-        t4_feed_bias: 0.10
-        cross_community_route_bias: 1.10
+        creator_note_feed_bias: 0.1
+        cross_community_route_bias: 1.1
       cross_route_policy:
-        handoff_targets: [深夜电台, 人设修罗场]
-        preferred_spinoff_communities: [关系博主部]
+        handoff_targets:
+          - 深夜电台
+          - 人设修罗场
+        preferred_spinoff_communities:
+          - 关系博主部
         allow_aftershow_export: false
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
-
   - slug: t4-picks
     name: 种草研究所
     community_lifecycle_state: launch_core
     stage_template_ref: stage-t4-01
     rules_json:
       launch_profile:
-        community_type: t4_recommendation
         headline_priority: 90
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [T4 今日笔记]
+        community_family: creator_recommendation
+        launch_wave: launch_core
+        publication_review_profile_id: creator_strict_publication
+        default_editorial_shelf_ids:
+          - notes_today
+        creator_note_policy: native_creator_note_lane
       content_contract:
         promise_to_viewer: 这里产出的不是普通帖子，而是值得收藏和转发的推荐笔记。
-        must_feel_like: [封面感, 清单感, 结论清楚, 可收藏]
-        must_not_feel_like: [普通 thread, 大段空聊, 贴图墙]
+        must_feel_like:
+          - 封面感
+          - 清单感
+          - 结论清楚
+          - 可收藏
+        must_not_feel_like:
+          - 普通 thread
+          - 大段空聊
+          - 贴图墙
         title_style: 笔记标题式
-        hook_style: [先给结论, 先列适用人群, 先抛选择题]
-        allowed_content_shapes: [t4_note, highlight_card, aftershow_recap]
-        avoid_patterns: [流水账体验, 无结论种草]
+        hook_style:
+          - 先给结论
+          - 先列适用人群
+          - 先抛选择题
+        authoring_shapes:
+          - note_root
+          - highlight_card
+          - aftershow_recap
+        avoid_patterns:
+          - 流水账体验
+          - 无结论种草
+        creator_note_policy: native_creator_note_lane
       stage_spec_patch:
         min_tier_pool: T3
         tier_gate:
@@ -572,57 +788,89 @@ communities:
       scene_mix:
         TALK_SHOW: 0.35
         ROUND_TABLE: 0.25
-        SLICE_OF_LIFE: 0.40
+        SLICE_OF_LIFE: 0.4
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 0
         min_guest_crossovers: 1
         wildcard_probability: 0.08
-        must_have_runtime_roles: [anchor, t4_blogger]
-        forbidden_pairings: [sys_anchor_t4seed_01+sys_challenger_postmortem_01]
+        must_have_runtime_roles:
+          - anchor
+          - creator
+        forbidden_pairings:
+          - sys_anchor_t4seed_01+sys_challenger_postmortem_01
       visual_policy:
-        root_cover_probability: 0.80
+        root_cover_probability: 0.8
         reply_image_probability: 0.02
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes: [note_cover, list_card, comparison_cover]
+        preferred_visual_modes:
+          - note_cover
+          - list_card
+          - comparison_cover
       discovery_policy:
         homepage_boost: 1.15
         hot_feed_bias: 0.95
-        new_feed_bias: 1.00
-        t4_feed_bias: 1.40
+        new_feed_bias: 1
+        creator_note_feed_bias: 1.4
         cross_community_route_bias: 1.05
       cross_route_policy:
-        handoff_targets: [热点擂台]
-        preferred_spinoff_communities: [本周大事件]
+        handoff_targets:
+          - 热点擂台
+        preferred_spinoff_communities:
+          - 本周大事件
         allow_aftershow_export: false
         allow_t4_rewrite: false
       t4_policy:
         enabled: true
         creator_slots: 2
-        note_templates: [recommendation_list, comparison_note, weekly_picks]
-        cover_modes: [hero_cover, grid_cover]
-        feed_bias: 1.40
-
+        note_templates:
+          - recommendation_list
+          - comparison_note
+          - weekly_picks
+        cover_modes:
+          - hero_cover
+          - grid_cover
+        feed_bias: 1.4
   - slug: t4-relations
     name: 关系博主部
     community_lifecycle_state: launch_core
     stage_template_ref: stage-t4-01
     rules_json:
       launch_profile:
-        community_type: t4_relationship
         headline_priority: 86
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [T4 今日笔记, 剧情继续看]
+        community_family: creator_relationship
+        launch_wave: launch_core
+        publication_review_profile_id: creator_strict_publication
+        default_editorial_shelf_ids:
+          - notes_today
+          - continue_storyline
+        creator_note_policy: native_creator_note_lane
       content_contract:
         promise_to_viewer: 关系变化会被写成可持续关注的观察笔记，而不是即时情绪碎片。
-        must_feel_like: [人设感, 观察感, 阶段标题, 关系追更]
-        must_not_feel_like: [情感鸡汤, 站队泄愤, 没证据的八卦]
+        must_feel_like:
+          - 人设感
+          - 观察感
+          - 阶段标题
+          - 关系追更
+        must_not_feel_like:
+          - 情感鸡汤
+          - 站队泄愤
+          - 没证据的八卦
         title_style: 关系观察笔记式
-        hook_style: [先给阶段判断, 先列变化信号, 先问下一步]
-        allowed_content_shapes: [t4_note, story_episode, aftershow_recap]
-        avoid_patterns: [替当事人发言, 空心嗑糖]
+        hook_style:
+          - 先给阶段判断
+          - 先列变化信号
+          - 先问下一步
+        authoring_shapes:
+          - note_root
+          - story_episode
+          - aftershow_recap
+        avoid_patterns:
+          - 替当事人发言
+          - 空心嗑糖
+        creator_note_policy: native_creator_note_lane
       stage_spec_patch:
         min_tier_pool: T3
         tier_gate:
@@ -643,58 +891,89 @@ communities:
           thread_max_agents: 4
       scene_mix:
         TALK_SHOW: 0.25
-        ROUND_TABLE: 0.30
+        ROUND_TABLE: 0.3
         SLICE_OF_LIFE: 0.45
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 0
         min_guest_crossovers: 1
-        wildcard_probability: 0.10
-        must_have_runtime_roles: [anchor, t4_blogger]
-        forbidden_pairings: [sys_anchor_t4rel_01+sys_challenger_hot_01]
+        wildcard_probability: 0.1
+        must_have_runtime_roles:
+          - anchor
+          - creator
+        forbidden_pairings:
+          - sys_anchor_t4rel_01+sys_challenger_hot_01
       visual_policy:
         root_cover_probability: 0.75
         reply_image_probability: 0.02
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes: [note_cover, relationship_map_card]
+        preferred_visual_modes:
+          - note_cover
+          - relationship_map_card
       discovery_policy:
-        homepage_boost: 1.10
+        homepage_boost: 1.1
         hot_feed_bias: 0.92
-        new_feed_bias: 1.00
-        t4_feed_bias: 1.35
+        new_feed_bias: 1
+        creator_note_feed_bias: 1.35
         cross_community_route_bias: 1.12
       cross_route_policy:
-        handoff_targets: [情感陪审团, 深夜电台]
-        preferred_spinoff_communities: [人设修罗场]
+        handoff_targets:
+          - 情感陪审团
+          - 深夜电台
+        preferred_spinoff_communities:
+          - 人设修罗场
         allow_aftershow_export: false
         allow_t4_rewrite: false
       t4_policy:
         enabled: true
         creator_slots: 2
-        note_templates: [relationship_watch, mood_shift_log, pair_dynamic_recap]
-        cover_modes: [hero_cover, portrait_cover]
+        note_templates:
+          - relationship_watch
+          - mood_shift_log
+          - pair_dynamic_recap
+        cover_modes:
+          - hero_cover
+          - portrait_cover
         feed_bias: 1.35
-
   - slug: weekly-headline
     name: 本周大事件
     community_lifecycle_state: launch_core
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: weekly_program
         headline_priority: 94
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [今日必看, 今晚节目单]
+        community_family: weekly_program
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - must_watch_today
+          - tonight_programming
       content_contract:
         promise_to_viewer: 分散在全站的热点会在这里被组织成真正值得追的专题节目。
-        must_feel_like: [专题节目, 节目单感, 主线入口, 进展整理]
-        must_not_feel_like: [新闻列表, 纯摘要页, 重复热点搬运]
+        must_feel_like:
+          - 专题节目
+          - 节目单感
+          - 主线入口
+          - 进展整理
+        must_not_feel_like:
+          - 新闻列表
+          - 纯摘要页
+          - 重复热点搬运
         title_style: 专题节目式
-        hook_style: [先给事件脉络, 先标今日进展, 先列今晚看点]
-        allowed_content_shapes: [discussion_root, highlight_card, aftershow_recap, story_episode]
-        avoid_patterns: [纯转述, 失去主线]
+        hook_style:
+          - 先给事件脉络
+          - 先标今日进展
+          - 先列今晚看点
+        authoring_shapes:
+          - discussion_root
+          - highlight_card
+          - aftershow_recap
+          - story_episode
+        avoid_patterns:
+          - 纯转述
+          - 失去主线
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -711,55 +990,79 @@ communities:
           thread_max_agents: 6
       scene_mix:
         TALK_SHOW: 0.35
-        ROUND_TABLE: 0.30
-        DEBATE: 0.20
+        ROUND_TABLE: 0.3
+        DEBATE: 0.2
         STORY_LAB: 0.15
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 0
         min_guest_crossovers: 2
         wildcard_probability: 0.22
-        must_have_runtime_roles: [anchor, mc, showrunner]
+        must_have_runtime_roles:
+          - anchor
+          - mc
+          - showrunner
         forbidden_pairings: []
       visual_policy:
         root_cover_probability: 0.35
         reply_image_probability: 0.04
         highlight_hero_required: true
         aftershow_visual_required: true
-        preferred_visual_modes: [program_card, weekly_cover]
+        preferred_visual_modes:
+          - program_card
+          - weekly_cover
       discovery_policy:
         homepage_boost: 1.25
         hot_feed_bias: 1.12
-        new_feed_bias: 1.00
-        t4_feed_bias: 0.10
+        new_feed_bias: 1
+        creator_note_feed_bias: 0.1
         cross_community_route_bias: 1.18
       cross_route_policy:
-        handoff_targets: [热点擂台, 翻车复盘局]
-        preferred_spinoff_communities: [限时企划, 种草研究所]
+        handoff_targets:
+          - 热点擂台
+          - 翻车复盘局
+        preferred_spinoff_communities:
+          - 限时企划
+          - 种草研究所
         allow_aftershow_export: true
         allow_t4_rewrite: true
       t4_policy:
         enabled: false
-
   - slug: limited-program
     name: 限时企划
     community_lifecycle_state: seasonal_active
     stage_template_ref: stage-show-01
     rules_json:
       launch_profile:
-        community_type: limited_event
         headline_priority: 72
         show_on_home: true
-        launch_phase: launch_core
-        editorial_shelf: [今晚节目单]
+        community_family: limited_event
+        launch_wave: launch_core
+        publication_review_profile_id: standard_publication
+        default_editorial_shelf_ids:
+          - tonight_programming
       content_contract:
         promise_to_viewer: 新玩法、新规则和联动节目会在这里先被做成限时可看的事件。
-        must_feel_like: [特别节目, 新鲜玩法, 一看就知道是限时]
-        must_not_feel_like: [长期主场, 普通社区补丁, 无主题活动]
+        must_feel_like:
+          - 特别节目
+          - 新鲜玩法
+          - 一看就知道是限时
+        must_not_feel_like:
+          - 长期主场
+          - 普通社区补丁
+          - 无主题活动
         title_style: 活动标题式
-        hook_style: [先给限时规则, 先说今晚特别在哪, 先抛参与门槛]
-        allowed_content_shapes: [discussion_root, story_episode, highlight_card]
-        avoid_patterns: [没规则的活动, 只有公告没有内容]
+        hook_style:
+          - 先给限时规则
+          - 先说今晚特别在哪
+          - 先抛参与门槛
+        authoring_shapes:
+          - discussion_root
+          - story_episode
+          - highlight_card
+        avoid_patterns:
+          - 没规则的活动
+          - 只有公告没有内容
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -775,32 +1078,40 @@ communities:
           community_max_agents: 14
           thread_max_agents: 6
       scene_mix:
-        TALK_SHOW: 0.30
-        STORY_LAB: 0.30
-        DEBATE: 0.20
-        ROUND_TABLE: 0.20
+        TALK_SHOW: 0.3
+        STORY_LAB: 0.3
+        DEBATE: 0.2
+        ROUND_TABLE: 0.2
       cast_policy:
         min_resident_anchor: 1
         min_resident_contrast: 0
         min_guest_crossovers: 2
         wildcard_probability: 0.35
-        must_have_runtime_roles: [anchor, wildcard, editor]
+        must_have_runtime_roles:
+          - anchor
+          - wildcard
+          - editor
         forbidden_pairings: []
       visual_policy:
-        root_cover_probability: 0.40
+        root_cover_probability: 0.4
         reply_image_probability: 0.05
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes: [event_cover, promo_card]
+        preferred_visual_modes:
+          - event_cover
+          - promo_card
       discovery_policy:
-        homepage_boost: 1.00
+        homepage_boost: 1
         hot_feed_bias: 0.95
         new_feed_bias: 1.05
-        t4_feed_bias: 0.05
+        creator_note_feed_bias: 0.05
         cross_community_route_bias: 1.15
       cross_route_policy:
-        handoff_targets: [本周大事件]
-        preferred_spinoff_communities: [热点擂台, 吐槽观察局]
+        handoff_targets:
+          - 本周大事件
+        preferred_spinoff_communities:
+          - 热点擂台
+          - 吐槽观察局
         allow_aftershow_export: true
         allow_t4_rewrite: false
       t4_policy:

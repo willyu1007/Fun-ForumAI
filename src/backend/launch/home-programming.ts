@@ -1,13 +1,22 @@
 import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
+import {
+  EDITORIAL_SHELF_LABELS,
+  normalizeContentKind,
+  normalizeEditorialShelfId,
+  normalizeLaunchSurfaceKindId,
+  type ContentKind,
+  type EditorialShelfId,
+  type LaunchSurfaceKindId,
+} from '../../shared/semantic-taxonomy.js'
 import { ValidationError } from '../lib/errors.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
 export const LAUNCH_HOME_SHELF_IDS = [
   'must_watch_today',
   'conflict_rising',
-  't4_today',
+  'notes_today',
   'continue_storyline',
   'tonight_programming',
   'all_communities',
@@ -15,22 +24,13 @@ export const LAUNCH_HOME_SHELF_IDS = [
 
 export type LaunchHomeShelfId = (typeof LAUNCH_HOME_SHELF_IDS)[number]
 
-const LAUNCH_HOME_SHELF_LABELS: Record<LaunchHomeShelfId, string> = {
-  must_watch_today: '今日必看',
-  conflict_rising: '冲突升级中',
-  t4_today: 'T4 今日笔记',
-  continue_storyline: '剧情继续看',
-  tonight_programming: '今晚节目单',
-  all_communities: '全部社区',
-}
-
 const DEFAULT_LAUNCH_HOME_PROGRAMMING_PATH = resolveLaunchContractPath({
   bundle_slug: 'launch-home-ia-storyline-highlights',
   file_name: 'home_ia_and_shelves.v1.yaml',
 })
 
 const shelfSchema = z.object({
-  id: z.enum(LAUNCH_HOME_SHELF_IDS),
+  id: z.string().trim().min(1),
   label: z.string().trim().min(1),
   position: z.number().int().positive(),
   max_items: z.number().int().positive(),
@@ -106,6 +106,55 @@ function readYaml(pathname: string): unknown {
   return parseYaml(readFileSync(pathname, 'utf8'))
 }
 
+function normalizeLaunchHomeShelfId(value: string, pathLabel: string): LaunchHomeShelfId {
+  const shelfId = normalizeEditorialShelfId(value)
+  if (!shelfId || !(LAUNCH_HOME_SHELF_IDS as readonly string[]).includes(shelfId)) {
+    throw new ValidationError(
+      `Invalid launch home programming contract: ${pathLabel} must use a canonical launch shelf id`,
+    )
+  }
+  return shelfId as LaunchHomeShelfId
+}
+
+function normalizeLaunchHomeContentKinds(
+  values: string[],
+  pathLabel: string,
+): ContentKind[] {
+  return values.map((value, index) => {
+    const contentKind = normalizeContentKind(value)
+    if (!contentKind) {
+      throw new ValidationError(
+        `Invalid launch home programming contract: ${pathLabel}[${index}] must use a canonical content_kind`,
+      )
+    }
+    return contentKind
+  })
+}
+
+function normalizeLaunchHomeSurfaceKinds(
+  values: string[] | undefined,
+  pathLabel: string,
+): LaunchSurfaceKindId[] | undefined {
+  if (!values) return undefined
+  return values.map((value, index) => {
+    const surfaceKind = normalizeLaunchSurfaceKindId(value)
+    if (!surfaceKind) {
+      throw new ValidationError(
+        `Invalid launch home programming contract: ${pathLabel}[${index}] must use a canonical surface_kind`,
+      )
+    }
+    return surfaceKind
+  })
+}
+
+function normalizeLaunchHomeShelfLabel(shelfId: LaunchHomeShelfId, label: string): string {
+  const normalizedLabelShelfId = normalizeEditorialShelfId(label)
+  if (normalizedLabelShelfId === shelfId) {
+    return EDITORIAL_SHELF_LABELS[shelfId as EditorialShelfId]
+  }
+  return label
+}
+
 function normalizeLaunchHomeProgrammingRuntime(input: unknown): LaunchHomeProgrammingRuntime {
   const parsed = launchHomeProgrammingSchema.safeParse(input)
   if (!parsed.success) {
@@ -113,7 +162,24 @@ function normalizeLaunchHomeProgrammingRuntime(input: unknown): LaunchHomeProgra
   }
 
   const file = parsed.data
-  const actualOrder = file.shelves.map((item) => item.id)
+  const normalizedShelves = file.shelves.map((shelf, index) => ({
+    ...shelf,
+    id: normalizeLaunchHomeShelfId(shelf.id, `shelves[${index}].id`),
+    label: normalizeLaunchHomeShelfLabel(
+      normalizeLaunchHomeShelfId(shelf.id, `shelves[${index}].id`),
+      shelf.label,
+    ),
+    accepts_content_kinds: normalizeLaunchHomeContentKinds(
+      shelf.accepts_content_kinds,
+      `shelves[${index}].accepts_content_kinds`,
+    ),
+    preferred_surface_kinds: normalizeLaunchHomeSurfaceKinds(
+      shelf.preferred_surface_kinds,
+      `shelves[${index}].preferred_surface_kinds`,
+    ),
+  }))
+
+  const actualOrder = normalizedShelves.map((item) => item.id)
   const expectedOrder = [...LAUNCH_HOME_SHELF_IDS]
   if (actualOrder.length !== expectedOrder.length || actualOrder.some((id, index) => id !== expectedOrder[index])) {
     throw new ValidationError(
@@ -121,27 +187,27 @@ function normalizeLaunchHomeProgrammingRuntime(input: unknown): LaunchHomeProgra
     )
   }
 
-  file.shelves.forEach((shelf, index) => {
+  normalizedShelves.forEach((shelf, index) => {
     if (shelf.position !== index + 1) {
       throw new ValidationError(
         `Invalid launch home programming contract: ${shelf.id} must use position ${index + 1}`,
       )
     }
-    if (shelf.label !== LAUNCH_HOME_SHELF_LABELS[shelf.id]) {
+    if (shelf.label !== EDITORIAL_SHELF_LABELS[shelf.id as EditorialShelfId]) {
       throw new ValidationError(
-        `Invalid launch home programming contract: ${shelf.id} must use label "${LAUNCH_HOME_SHELF_LABELS[shelf.id]}"`,
+        `Invalid launch home programming contract: ${shelf.id} must use label "${EDITORIAL_SHELF_LABELS[shelf.id as EditorialShelfId]}"`,
       )
     }
   })
 
-  const t4Shelf = file.shelves.find((item) => item.id === 't4_today')
-  if (!t4Shelf || t4Shelf.empty_policy !== 'collapse') {
+  const notesShelf = normalizedShelves.find((item) => item.id === 'notes_today')
+  if (!notesShelf || notesShelf.empty_policy !== 'collapse') {
     throw new ValidationError(
-      'Invalid launch home programming contract: t4_today must collapse when no native T4 supply is available',
+      'Invalid launch home programming contract: notes_today must collapse when no native creator-note supply is available',
     )
   }
 
-  const tonightShelf = file.shelves.find((item) => item.id === 'tonight_programming')
+  const tonightShelf = normalizedShelves.find((item) => item.id === 'tonight_programming')
   if (!tonightShelf || tonightShelf.empty_policy !== 'collapse') {
     throw new ValidationError(
       'Invalid launch home programming contract: tonight_programming must collapse until T-137 provides schedule data',
@@ -155,7 +221,7 @@ function normalizeLaunchHomeProgrammingRuntime(input: unknown): LaunchHomeProgra
     home_surface: file.home_surface,
     source_endpoints: file.source_endpoints,
     feature_flags: file.feature_flags,
-    shelves: file.shelves,
+    shelves: normalizedShelves,
     storyline_contract: file.storyline_contract,
     highlight_projection: file.highlight_projection,
     aftershow_projection: file.aftershow_projection,

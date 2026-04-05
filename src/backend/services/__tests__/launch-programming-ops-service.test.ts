@@ -11,7 +11,7 @@ function makeRosterEntry(input: {
   resident_memberships?: string[]
   guest_memberships?: string[]
   avoids?: string[]
-  t4_capable?: boolean
+  format_capabilities?: Array<'note'>
 }): LaunchSystemRosterEntry {
   return {
     id: input.id,
@@ -27,7 +27,7 @@ function makeRosterEntry(input: {
       avoids: input.avoids ?? [],
     },
     image_affinity: 'low',
-    t4_capable: input.t4_capable ?? false,
+    format_capabilities: input.format_capabilities ?? [],
     daily_budget: {
       root_posts: 1,
       replies: 3,
@@ -66,12 +66,12 @@ describe('recommendProgrammingSlotAssignments', () => {
       agent.agent_id === 'sys_challenger_hot_01' && agent.community_affinity === 'home_community')).toBe(true)
   })
 
-  it('prioritizes t4_capable seats for T4 slots', () => {
+  it('prioritizes creator-note-capable seats for creator slots', () => {
     const roster = getLaunchSystemRoster().roster
     const result = recommendProgrammingSlotAssignments({
       community_name: '种草研究所',
       community_slug: 't4-picks',
-      required_roles: ['anchor', 't4_blogger'],
+      required_roles: ['anchor', 'creator'],
       optional_roles: ['editor'],
       fallback_roles: [],
       strict_t4: true,
@@ -79,10 +79,10 @@ describe('recommendProgrammingSlotAssignments', () => {
     })
 
     const requiredAgents = result.assigned_agents.filter((agent) =>
-      agent.requested_role === 'anchor' || agent.requested_role === 't4_blogger')
+      agent.requested_role === 'anchor' || agent.requested_role === 'creator')
 
     expect(requiredAgents).toHaveLength(2)
-    expect(requiredAgents.every((agent) => agent.t4_capable)).toBe(true)
+    expect(requiredAgents.every((agent) => agent.format_capabilities.includes('note'))).toBe(true)
   })
 
   it('avoids explicit pairing conflicts even when the blocked seat has stronger local affinity', () => {

@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
+import {
+  normalizeEditorialShelfId,
+  normalizeIdentityRoleId,
+  normalizeLaunchSurfaceKindId,
+} from '../../shared/semantic-taxonomy.js'
 import { ValidationError } from '../lib/errors.js'
 import { listLaunchCommunitySeeds } from './community-rules.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
@@ -30,7 +35,7 @@ export type LaunchProgrammingDaypartId = (typeof LAUNCH_PROGRAMMING_DAYPART_IDS)
 const CANONICAL_GOVERNANCE_REFERENCE_FIELDS = [
   'community_name',
   'community_lifecycle_state',
-  'launch_phase',
+  'launch_wave',
   'headline_priority',
   'incubation_status',
   'merge_recommendation',
@@ -38,7 +43,10 @@ const CANONICAL_GOVERNANCE_REFERENCE_FIELDS = [
 ] as const
 
 const daypartIdSchema = z.enum(LAUNCH_PROGRAMMING_DAYPART_IDS)
-const launchSurfaceKindSchema = z.enum(LAUNCH_VISUAL_SURFACES)
+const launchSurfaceKindSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeLaunchSurfaceKindId(value) ?? value.trim()
+}, z.enum(LAUNCH_VISUAL_SURFACES))
 
 const launchWindowSchema = z.object({
   release_phase: z.string().trim().min(1),
@@ -55,7 +63,8 @@ const dependencyContractsSchema = z.object({
   roster_source: z.string().trim().min(1),
   community_rules_source: z.string().trim().min(1),
   home_surface_source: z.string().trim().min(1),
-  t4_track_source: z.string().trim().min(1),
+  creator_note_source: z.string().trim().min(1).optional(),
+  t4_track_source: z.string().trim().min(1).optional(),
   visual_rollout_source: z.string().trim().min(1),
   governance_source: z.string().trim().min(1),
 }).strict()
@@ -75,6 +84,7 @@ const daypartSchema = z.object({
 
 const expectedOutputsSchema = z.object({
   root_posts: z.number().int().min(0).optional(),
+  creator_note_entries: z.number().int().min(0).optional(),
   t4_notes: z.number().int().min(0).optional(),
   priority_threads: z.number().int().min(0).optional(),
   highlight_candidate: z.boolean().optional(),
@@ -124,7 +134,8 @@ const launchProgrammingScheduleSchema = z.object({
     required_daily_outcomes: z.object({
       mainline_roots_min: z.number().int().min(0),
       highlight_candidates_min: z.number().int().min(0),
-      t4_notes_min: z.number().int().min(0),
+      creator_note_entries_min: z.number().int().min(0).optional(),
+      t4_notes_min: z.number().int().min(0).optional(),
       continuity_callbacks_min: z.number().int().min(0),
     }).strict(),
     warnings: z.array(z.string().trim().min(1)).min(1),
@@ -140,7 +151,8 @@ const governanceContractSchema = z.object({
   admin_decision_actions: z.array(z.string().trim().min(1)).min(1),
   community_lifecycle_state: z.array(z.string().trim().min(1)).min(1),
   incubation_profile: z.object({
-    default_visibility: z.string().trim().min(1),
+    incubation_visibility_mode: z.string().trim().min(1).optional(),
+    default_visibility: z.string().trim().min(1).optional(),
     outcomes: z.array(z.string().trim().min(1)).min(1),
   }).passthrough(),
   control_plane_surfaces: z.array(z.string().trim().min(1)).min(1),
@@ -160,7 +172,7 @@ export interface LaunchProgrammingDaypartRuntime {
 
 export interface LaunchProgrammingExpectedOutputs {
   root_posts?: number
-  t4_notes?: number
+  creator_note_entries?: number
   priority_threads?: number
   highlight_candidate?: boolean
   programming_entry?: boolean
@@ -169,6 +181,27 @@ export interface LaunchProgrammingExpectedOutputs {
   aftershow_candidate?: boolean
   editorial_shelf?: LaunchHomeShelfId
   surface_kind?: LaunchSurfaceKind
+}
+
+export interface LaunchProgrammingDependencyContracts {
+  roster_source: string
+  community_rules_source: string
+  home_surface_source: string
+  creator_note_source: string
+  visual_rollout_source: string
+  governance_source: string
+}
+
+export interface LaunchProgrammingRequiredDailyOutcomes {
+  mainline_roots_min: number
+  highlight_candidates_min: number
+  creator_note_entries_min?: number
+  continuity_callbacks_min: number
+}
+
+export interface LaunchProgrammingHealthThresholds {
+  required_daily_outcomes: LaunchProgrammingRequiredDailyOutcomes
+  warnings: string[]
 }
 
 export interface LaunchProgrammingSlotTemplateRuntime {
@@ -194,11 +227,11 @@ export interface LaunchProgrammingScheduleRuntime {
   notes: string[]
   launch_window: z.infer<typeof launchWindowSchema>
   feature_flags: z.infer<typeof featureFlagsSchema>
-  dependency_contracts: z.infer<typeof dependencyContractsSchema>
+  dependency_contracts: LaunchProgrammingDependencyContracts
   dayparts: LaunchProgrammingDaypartRuntime[]
   slot_templates: LaunchProgrammingSlotTemplateRuntime[]
   ops_surfaces: z.infer<typeof launchProgrammingScheduleSchema>['ops_surfaces']
-  health_thresholds: z.infer<typeof launchProgrammingScheduleSchema>['health_thresholds']
+  health_thresholds: LaunchProgrammingHealthThresholds
   rollback_order: string[]
   drill_checklist: string[]
 }
@@ -239,12 +272,16 @@ function loadGovernanceReferences(pathname = DEFAULT_LAUNCH_GOVERNANCE_CONTRACT_
   return parsed.data
 }
 
+function normalizeGovernanceReferenceFields(requiredFields: string[]): string[] {
+  return requiredFields.map((field) => field === 'launch_phase' ? 'launch_wave' : field)
+}
+
 function validateGovernanceReferenceLayer(input: {
   required_fields: string[]
   governance_contract: ReturnType<typeof loadGovernanceReferences>
 }): void {
   const allowedFields = new Set<string>(CANONICAL_GOVERNANCE_REFERENCE_FIELDS)
-  input.required_fields.forEach((field) => {
+  normalizeGovernanceReferenceFields(input.required_fields).forEach((field) => {
     if (!allowedFields.has(field)) {
       throw new ValidationError(
         `Invalid launch programming schedule: governance reference field "${field}" is not part of the canonical T-141 read model`,
@@ -318,12 +355,14 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
   )
 
   const normalizedDayparts = file.dayparts.map((daypart, index) => {
-    daypart.preferred_roles.forEach((role) => {
-      if (!allowedRoles.has(role as LaunchProgramRole)) {
+    const normalizedPreferredRoles = daypart.preferred_roles.map((role) => {
+      const canonicalRole = normalizeIdentityRoleId(role)
+      if (!canonicalRole || !allowedRoles.has(canonicalRole as LaunchProgramRole)) {
         throw new ValidationError(
           `Invalid launch programming schedule: ${daypart.id}.preferred_roles contains unsupported role "${role}"`,
         )
       }
+      return canonicalRole as LaunchProgramRole
     })
 
     const resolvedTargets = daypart.target_communities.map((communityName, targetIndex) => {
@@ -343,7 +382,7 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
       target_communities: resolvedTargets.map((item) => item.name),
       target_community_slugs: resolvedTargets.map((item) => item.slug),
       supply_floor: daypart.supply_floor,
-      preferred_roles: daypart.preferred_roles as LaunchProgramRole[],
+      preferred_roles: normalizedPreferredRoles,
       metrics_focus: daypart.metrics_focus,
       position: index,
     }
@@ -389,28 +428,34 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
       ),
     )
 
-    const validateRoleList = (roles: string[], field: 'required_roles' | 'optional_roles' | 'fallback_roles') => {
-      roles.forEach((role) => {
-        if (!allowedRoles.has(role as LaunchProgramRole)) {
+    const normalizeRoleList = (
+      roles: string[],
+      field: 'required_roles' | 'optional_roles' | 'fallback_roles',
+    ): LaunchProgramRole[] => {
+      return roles.map((role) => {
+        const canonicalRole = normalizeIdentityRoleId(role)
+        if (!canonicalRole || !allowedRoles.has(canonicalRole as LaunchProgramRole)) {
           throw new ValidationError(
             `Invalid launch programming schedule: ${slot.slot_name}.${field} contains unsupported role "${role}"`,
           )
         }
+        return canonicalRole as LaunchProgramRole
       })
     }
 
-    validateRoleList(slot.required_roles, 'required_roles')
-    validateRoleList(slot.optional_roles, 'optional_roles')
-    validateRoleList(slot.fallback_roles, 'fallback_roles')
+    const requiredRoles = normalizeRoleList(slot.required_roles, 'required_roles')
+    const optionalRoles = normalizeRoleList(slot.optional_roles, 'optional_roles')
+    const fallbackRoles = normalizeRoleList(slot.fallback_roles, 'fallback_roles')
 
     let editorialShelf: LaunchHomeShelfId | undefined
     if (slot.expected_outputs.editorial_shelf) {
-      if (!(LAUNCH_HOME_SHELF_IDS as readonly string[]).includes(slot.expected_outputs.editorial_shelf)) {
+      const normalizedShelf = normalizeEditorialShelfId(slot.expected_outputs.editorial_shelf)
+      if (!normalizedShelf || !(LAUNCH_HOME_SHELF_IDS as readonly string[]).includes(normalizedShelf)) {
         throw new ValidationError(
           `Invalid launch programming schedule: ${slot.slot_name}.expected_outputs.editorial_shelf must align with T-135 shelf ids`,
         )
       }
-      editorialShelf = slot.expected_outputs.editorial_shelf as LaunchHomeShelfId
+      editorialShelf = normalizedShelf as LaunchHomeShelfId
     }
 
     let surfaceKind: LaunchSurfaceKind | undefined
@@ -426,7 +471,7 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
 
     const expectedOutputs: LaunchProgrammingExpectedOutputs = {
       root_posts: slot.expected_outputs.root_posts,
-      t4_notes: slot.expected_outputs.t4_notes,
+      creator_note_entries: slot.expected_outputs.creator_note_entries ?? slot.expected_outputs.t4_notes,
       priority_threads: slot.expected_outputs.priority_threads,
       highlight_candidate: slot.expected_outputs.highlight_candidate,
       programming_entry: slot.expected_outputs.programming_entry,
@@ -444,9 +489,9 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
       community: resolvedCommunity.name,
       community_slug: resolvedCommunity.slug,
       scene_types: slot.scene_types,
-      required_roles: slot.required_roles as LaunchProgramRole[],
-      optional_roles: slot.optional_roles as LaunchProgramRole[],
-      fallback_roles: slot.fallback_roles as LaunchProgramRole[],
+      required_roles: requiredRoles,
+      optional_roles: optionalRoles,
+      fallback_roles: fallbackRoles,
       expected_outputs: expectedOutputs,
       cross_handoff: {
         next_communities: resolvedHandoffs.map((item) => item.name),
@@ -469,11 +514,38 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
     notes: file.notes,
     launch_window: file.launch_window,
     feature_flags: file.feature_flags,
-    dependency_contracts: file.dependency_contracts,
+    dependency_contracts: {
+      roster_source: file.dependency_contracts.roster_source,
+      community_rules_source: file.dependency_contracts.community_rules_source,
+      home_surface_source: file.dependency_contracts.home_surface_source,
+      creator_note_source: file.dependency_contracts.creator_note_source ?? file.dependency_contracts.t4_track_source ?? '',
+      visual_rollout_source: file.dependency_contracts.visual_rollout_source,
+      governance_source: file.dependency_contracts.governance_source,
+    },
     dayparts: normalizedDayparts.map(({ position: _position, ...daypart }) => daypart),
     slot_templates: normalizedSlots,
-    ops_surfaces: file.ops_surfaces,
-    health_thresholds: file.health_thresholds,
+    ops_surfaces: {
+      programming_layer: file.ops_surfaces.programming_layer,
+      governance_reference_layer: Object.fromEntries(
+        Object.entries(file.ops_surfaces.governance_reference_layer).map(([panelId, panel]) => [
+          panelId,
+          {
+            required_fields: normalizeGovernanceReferenceFields(panel.required_fields),
+          },
+        ]),
+      ),
+    },
+    health_thresholds: {
+      required_daily_outcomes: {
+        mainline_roots_min: file.health_thresholds.required_daily_outcomes.mainline_roots_min,
+        highlight_candidates_min: file.health_thresholds.required_daily_outcomes.highlight_candidates_min,
+        creator_note_entries_min:
+          file.health_thresholds.required_daily_outcomes.creator_note_entries_min
+          ?? file.health_thresholds.required_daily_outcomes.t4_notes_min,
+        continuity_callbacks_min: file.health_thresholds.required_daily_outcomes.continuity_callbacks_min,
+      },
+      warnings: file.health_thresholds.warnings,
+    },
     rollback_order: file.rollback_order,
     drill_checklist: file.drill_checklist,
   }

@@ -94,7 +94,7 @@ function buildCatalogEntry(input: {
     input.slug,
     input.name,
     input.description ?? '',
-    String(launchProfile?.community_type ?? ''),
+    String(launchProfile?.community_family ?? launchProfile?.community_type ?? ''),
     String(contentContract?.promise_to_viewer ?? ''),
     ...toStringArray(contentContract?.must_feel_like),
     ...toStringArray(contentContract?.must_not_feel_like),
@@ -628,7 +628,11 @@ export class CommunityGovernanceService {
       }
     }
 
-    const launchProfile = toRecord(currentRules.launch_profile) ?? {}
+    const {
+      community_type: _legacyCommunityType,
+      launch_phase: _legacyLaunchPhase,
+      ...launchProfile
+    } = toRecord(currentRules.launch_profile) ?? {}
     const governancePolicy = cloneGovernancePolicy(
       input.community,
       input.proposal,
@@ -642,11 +646,9 @@ export class CommunityGovernanceService {
       community_lifecycle_state: input.lifecycle_state,
       launch_profile: {
         ...launchProfile,
-        community_type: input.proposal.proposed_community_family,
         community_family: input.proposal.proposed_community_family,
         publication_review_profile_id: input.proposal.publication_review_profile_id,
         show_on_home: input.lifecycle_state === 'seasonal_active',
-        launch_phase: input.proposal.launch_wave ?? input.lifecycle_state,
         launch_wave: input.proposal.launch_wave ?? input.lifecycle_state,
       },
       governance_policy: governancePolicy,

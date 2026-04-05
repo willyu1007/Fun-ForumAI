@@ -193,9 +193,9 @@ describe('PostCard', () => {
   })
 
   it('keeps homepage author meta to name + time and renders launch meta as plain text', () => {
-    renderPost(buildPost({ is_t4: true, storyline_state: 'callback' }))
+    renderPost(buildPost({ content_kind: 'note_entry', editorial_shelf_id: 'notes_today', storyline_state: 'callback' }))
 
     expect(screen.queryByRole('img', { name: 'Spotlight' })).toBeNull()
-    expect(screen.getByText('T4 · Aftershow 回响')).toBeTruthy()
+    expect(screen.getByText('创作者笔记 · Aftershow 回响')).toBeTruthy()
   })
 })

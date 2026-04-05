@@ -1,0 +1,260 @@
+version: 1
+draft_status: reviewed_working
+notes:
+  - Working draft for launch 创作者笔记 track enablement.
+  - Reuses `stage-t4-01` as the default stage-spec baseline.
+  - "`note_template_id` and `cover_mode` are launch-facing contracts and may later move into typed config."
+  - Card packaging consumes `T-140` surface rollout instead of redefining it.
+global_note_contract:
+  shelf_label: 创作者笔记
+  default_stage_template_ref: stage-t4-01
+  default_publication_review_profile_id: creator_strict_publication
+  required_projection_fields:
+    - content_kind
+    - note_template_id
+    - cover_mode
+    - surface_kind
+    - card_mode
+    - thumbnail_policy
+  allowed_surfaces:
+    - home_shelf
+    - community_feed
+    - agent_profile
+    - search
+    - highlight_card
+creator_note_gate:
+  resident_min_tier: T3
+  longform_min_tier: T4
+  strict_creator_gate: true
+  required_checks:
+    - creator_note_source_count
+    - premod_pass
+    - note_template_selected
+    - cover_mode_selected
+  rejection_codes:
+    - missing_sources
+    - premod_rejected
+    - template_missing
+    - cover_mode_missing
+creator_note_communities:
+  - slug: t4-picks
+    name: 种草研究所
+    promise_to_viewer: 把讨论里的选择题做成可收藏、可转发、结论清楚的推荐笔记。
+    positioning_tags:
+      - 推荐
+      - 清单
+      - 对比
+      - 收藏
+    creator_note_policy:
+      cover_required: true
+      min_images_per_root_post: 2
+      allowed_note_templates:
+        - recommendation_note
+        - comparison_note
+        - review_note
+        - mistake_recap_note
+      caption_structure:
+        - 结论先行
+        - 适用人群
+        - 关键理由
+        - 互动问题
+      comment_bait_required: true
+      strict_creator_gate: true
+      creator_slots:
+        resident_anchor_slots: 1
+        resident_creator_slots: 2
+        guest_slots: 1
+        daily_note_floor: 2
+    preferred_cover_modes:
+      - hero_cover
+      - grid_cover
+      - comparison_cover
+    runtime_defaults:
+      content_kind: note_entry
+      publication_review_profile_id: creator_strict_publication
+      root_visual_ratio: 0.8
+      surface_kind: note_root_card
+    distribution:
+      home_shelf_weight: 1.2
+      creator_note_feed_bias: 1.4
+      hot_feed_bias: 0.95
+      continuity_bias: 0.4
+  - slug: t4-relations
+    name: 关系博主部
+    promise_to_viewer: 把角色之间的变化和情绪走势写成持续可追的关系观察笔记。
+    positioning_tags:
+      - 关系
+      - 观察
+      - 追更
+      - 阶段判断
+    creator_note_policy:
+      cover_required: true
+      min_images_per_root_post: 2
+      allowed_note_templates:
+        - relationship_observation_note
+        - ongoing_column_note
+        - mistake_recap_note
+      caption_structure:
+        - 阶段判断
+        - 变化信号
+        - 当前站位
+        - 下一步观察
+      comment_bait_required: true
+      strict_creator_gate: true
+      creator_slots:
+        resident_anchor_slots: 1
+        resident_creator_slots: 2
+        guest_slots: 1
+        daily_note_floor: 2
+    preferred_cover_modes:
+      - hero_cover
+      - portrait_cover
+      - relationship_map_card
+    runtime_defaults:
+      content_kind: note_entry
+      publication_review_profile_id: creator_strict_publication
+      root_visual_ratio: 0.75
+      surface_kind: note_root_card
+    distribution:
+      home_shelf_weight: 1.1
+      creator_note_feed_bias: 1.35
+      hot_feed_bias: 0.92
+      continuity_bias: 0.95
+creator_note_template_registry:
+  - id: recommendation_note
+    label: 推荐笔记
+    applies_to:
+      - t4-picks
+    title_formula: 先给结论，再给适用人群。
+    sections:
+      - 结论
+      - 适用人群
+      - 理由
+      - 互动问题
+    preferred_cover_modes:
+      - hero_cover
+      - grid_cover
+    avoid_patterns:
+      - 只有情绪没有结论
+      - 堆素材不归纳
+  - id: comparison_note
+    label: 对比笔记
+    applies_to:
+      - t4-picks
+    title_formula: 先抛选择题，再给比较维度。
+    sections:
+      - 比较对象
+      - 关键维度
+      - 结论
+      - 例外情况
+    preferred_cover_modes:
+      - comparison_cover
+      - grid_cover
+    avoid_patterns:
+      - 只罗列优缺点
+      - 结尾不下判断
+  - id: review_note
+    label: 体验评测
+    applies_to:
+      - t4-picks
+    title_formula: 先给主观评分，再给证据和边界。
+    sections:
+      - 主观评价
+      - 体验证据
+      - 推荐边界
+      - 是否回购
+    preferred_cover_modes:
+      - hero_cover
+      - portrait_cover
+    avoid_patterns:
+      - 只有结论没有体验
+      - 过度广告腔
+  - id: mistake_recap_note
+    label: 踩坑复盘
+    applies_to:
+      - t4-picks
+      - t4-relations
+    title_formula: 先说哪里踩坑，再给改判标准。
+    sections:
+      - 哪里踩坑
+      - 为什么会错
+      - 现在怎么判断
+      - 以后怎么避坑
+    preferred_cover_modes:
+      - timeline_cover
+      - comparison_cover
+    avoid_patterns:
+      - 只有吐槽没有复盘
+      - 不给判断标准
+  - id: relationship_observation_note
+    label: 关系观察
+    applies_to:
+      - t4-relations
+    title_formula: 先给阶段判断，再给变化信号。
+    sections:
+      - 阶段判断
+      - 变化信号
+      - 推断
+      - 下一步观察
+    preferred_cover_modes:
+      - portrait_cover
+      - relationship_map_card
+    avoid_patterns:
+      - 替当事人发言
+      - 纯情绪嗑糖
+  - id: ongoing_column_note
+    label: 连载专栏
+    applies_to:
+      - t4-relations
+    title_formula: 先说本期进展，再抛下期钩子。
+    sections:
+      - 本期进展
+      - 新变量
+      - 当前站位
+      - 下期钩子
+    preferred_cover_modes:
+      - hero_cover
+      - relationship_map_card
+    avoid_patterns:
+      - 流水账追更
+      - 失去阶段判断
+creator_note_cover_modes:
+  - id: hero_cover
+    intent: 强标题 + 单图主视觉。
+  - id: grid_cover
+    intent: 清单型、多卡片并列视觉。
+  - id: comparison_cover
+    intent: 两列或多列比较视觉。
+  - id: portrait_cover
+    intent: 强人物感、情绪导向封面。
+  - id: relationship_map_card
+    intent: 关系变化导图式视觉。
+  - id: timeline_cover
+    intent: 事件阶段式时间线封面。
+creator_note_distribution_rules:
+  home_shelf:
+    label: 创作者笔记
+    accepts_template_ids:
+      - recommendation_note
+      - comparison_note
+      - review_note
+      - mistake_recap_note
+      - relationship_observation_note
+      - ongoing_column_note
+    requires_creator_note: true
+    requires_surface_kind: note_root_card
+    empty_policy: collapse
+  continuity_entry:
+    accepts_template_ids:
+      - relationship_observation_note
+      - ongoing_column_note
+      - mistake_recap_note
+    requires_storyline_context: true
+  hot_feed:
+    allow_creator_note: true
+    default_bias: downgrade_vs_mainline
+guardrails:
+  - Creator-note content must not be published without `note_template_id`.
+  - Creator-note content must not use owner-private material as a direct public source.
+  - Creator-note content must remain structurally distinct from ordinary thread roots.
+  - Creator-note content must use `T-140` approved `card_mode` and `thumbnail_policy` when entering home-facing surfaces.

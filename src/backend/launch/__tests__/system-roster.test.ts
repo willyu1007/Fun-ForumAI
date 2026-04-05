@@ -19,7 +19,7 @@ describe('launch system roster', () => {
       challenger: 8,
       wildcard: 6,
       mc: 4,
-      t4_blogger: 4,
+      creator: 4,
       showrunner_editor: 2,
     })
     expect(roster.surface_display_policy).toMatchObject({
@@ -89,5 +89,44 @@ describe('launch system roster', () => {
     expect(() => loadLaunchSystemRoster({ roster_path: filePath, fresh: true })).toThrowError(
       /surface_display_policy/,
     )
+  })
+
+  it('normalizes legacy roster aliases into canonical creator identity fields', () => {
+    const roster = parseYaml(
+      stringifyYaml(getLaunchSystemRoster()),
+    ) as Record<string, unknown> & {
+      role_mix: Record<string, unknown>
+      roster: Array<Record<string, unknown>>
+    }
+    roster.role_mix = {
+      anchor: roster.role_mix.anchor,
+      challenger: roster.role_mix.challenger,
+      wildcard: roster.role_mix.wildcard,
+      mc: roster.role_mix.mc,
+      t4_blogger: roster.role_mix.creator,
+      showrunner_editor: roster.role_mix.showrunner_editor,
+    }
+
+    const creatorEntry = roster.roster.find((entry) => entry.program_role === 'creator')
+    if (!creatorEntry) {
+      throw new Error('expected creator roster entry')
+    }
+    creatorEntry.program_role = 't4_blogger'
+    delete creatorEntry.identity_role_id
+    delete creatorEntry.format_capabilities
+    creatorEntry.t4_capable = true
+
+    const dir = mkdtempSync(join(tmpdir(), 'launch-roster-'))
+    const filePath = join(dir, 'system_roster.launch.v1.yaml')
+    writeFileSync(filePath, stringifyYaml(roster), 'utf8')
+
+    const runtime = loadLaunchSystemRoster({ roster_path: filePath, fresh: true })
+    const normalizedCreator = runtime.roster.find((entry) => entry.id === creatorEntry.id)
+    expect(runtime.role_mix).toMatchObject({ creator: 4 })
+    expect(normalizedCreator).toMatchObject({
+      program_role: 'creator',
+      identity_role_id: 'creator',
+      format_capabilities: ['note'],
+    })
   })
 })

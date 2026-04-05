@@ -39,7 +39,7 @@ describe('launch visual rollout', () => {
       hero_required: true,
       requires_hero_eligible: true,
     })
-    expect(runtime.thumbnail_policy.t4_root_card).toBe('required')
+    expect(runtime.thumbnail_policy.note_root_card).toBe('required')
   })
 
   it('rejects drafts that miss a required surface', () => {
@@ -177,7 +177,7 @@ describe('launch visual rollout', () => {
 
   it('reads T4 preferred_cover_modes through the same alias normalization path', () => {
     const result = resolveLaunchVisualPackaging({
-      surface: 't4_root_card',
+      surface: 'note_root_card',
       community_visual_policy: {
         preferred_cover_modes: ['grid_cover'],
       },
@@ -188,7 +188,7 @@ describe('launch visual rollout', () => {
     })
 
     expect(result).toEqual({
-      surface_kind: 't4_root_card',
+      surface_kind: 'note_root_card',
       card_mode: 'multi_panel_cover',
       thumbnail_policy: 'required',
       hero_eligible: false,
@@ -197,7 +197,7 @@ describe('launch visual rollout', () => {
 
   it('drops packaging when required thumbnails are missing', () => {
     const result = resolveLaunchVisualPackaging({
-      surface: 't4_root_card',
+      surface: 'note_root_card',
       community_visual_policy: {
         preferred_visual_modes: ['note_cover'],
       },

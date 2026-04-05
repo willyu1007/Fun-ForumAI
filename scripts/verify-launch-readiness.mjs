@@ -310,9 +310,9 @@ async function runStagingChecks() {
     `count=${shelvesById.get('conflict_rising')?.items?.length ?? 0}`,
   );
   pushResult(
-    't4_today threshold',
-    (shelvesById.get('t4_today')?.items?.length ?? 0) >= 2,
-    `count=${shelvesById.get('t4_today')?.items?.length ?? 0}`,
+    'notes_today threshold',
+    (shelvesById.get('notes_today')?.items?.length ?? 0) >= 2,
+    `count=${shelvesById.get('notes_today')?.items?.length ?? 0}`,
   );
   pushResult(
     'continue_storyline threshold',

@@ -56,3 +56,39 @@
   - Result: initially exposed two additional quality gaps during full-browser review: stale forum/governance visual fixtures after the contract/UI cutover, and nondeterministic avatar fallback capture because the shared snapshot helper did not wait for images. Passed (`102` tests) after fixing the mocks/spec assertions and stabilizing `tests/web/playwright/support/helpers.ts`.
 - Program readback against the frozen review gates
   - Result: passed. `T-144` now has evidence for canonical governance payloads, human-authored main-thread compatibility, and search-safe coexistence before `T-146`; `T-145` now has evidence for split-contract read-source convergence and derived-compat output behavior.
+
+## 2026-04-05 — final closeout recovery verification
+
+- `pnpm exec vitest run src/backend/launch/__tests__/community-rules.test.ts src/backend/launch/__tests__/system-roster.test.ts src/backend/launch/__tests__/programming-contracts.test.ts src/backend/launch/__tests__/visual-rollout.test.ts src/backend/services/__tests__/launch-programming-ops-service.test.ts scripts/lib/__tests__/launch-readiness.test.ts`
+  - Result: passed. This is the corrective `T-143` source-config canonicalization gate covering canonical-only fixtures plus explicit alias-ingress behavior.
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-community-proposals-control-plane.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/services/__tests__/community-governance-service.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/frontend/features/search/pages/__tests__/SearchPage.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - Result: passed. This is the short downstream readback proving the corrective `T-143` pass did not reopen `T-144` / `T-145` / `T-146` semantics.
+- `pnpm exec tsc --noEmit`
+  - Result: passed after the source-config canonicalization pass and documentation/status resync.
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: passed; regenerated the project-hub derived views with the final `T-142/T-144/T-145/T-146` task states.
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed after the final status sync.
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-142`
+  - Result: passed; `T-142` reads back as `done`.
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-143`
+  - Result: passed; `T-143` remains `archived` as the frozen upstream contract bundle, with the corrective pass recorded in its archive docs.
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-144`
+  - Result: passed; `T-144` reads back as `done`.
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-145`
+  - Result: passed; `T-145` reads back as `done`.
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-146`
+  - Result: passed; `T-146` reads back as `done`.
+- `rg -n 'T-14[2-6]' .ai/project/main/task-index.md .ai/project/main/dashboard.md .ai/project/main/registry.yaml`
+  - Result: passed; the derived project-hub views show the same final state split: `T-142/T-144/T-145/T-146 = done`, `T-143 = archived`.
+
+## 2026-04-05 — post-merge drift cleanup verification
+
+- `pnpm exec vitest run src/backend/launch/__tests__/programming-schedule.test.ts src/backend/launch/__tests__/lightweight-personalization.test.ts src/frontend/features/forum/components/__tests__/PostCard.test.tsx src/frontend/features/forum/components/__tests__/PostCompact.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - Result: passed; canonical creator-note UI badges, launch source-config naming, and alias-ingress normalization remain stable after the drift cleanup.
+- `pnpm exec tsc --noEmit`
+  - Result: passed after removing `is_t4` from the primary forum read paths and adding the lightweight-personalization normalization test.
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: passed; regenerated the project-hub derived views after the milestone / feature / requirement state cleanup.
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed after the final project-hub resync.

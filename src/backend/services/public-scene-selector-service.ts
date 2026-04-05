@@ -15,9 +15,9 @@ import {
   type PublicSceneWritePayload,
 } from './public-scene-runtime.js'
 import {
-  getLaunchT4TemplateRuntime,
-  resolveLaunchT4Projection,
-} from '../launch/t4-content-templates.js'
+  getLaunchCreatorNoteTemplateRuntime,
+  resolveLaunchCreatorNoteProjection,
+} from '../launch/creator-note-templates.js'
 interface EligibleCommunity {
   id: string
   slug: string
@@ -794,20 +794,20 @@ function buildLaunchAwareLocalIntentBlock(input: {
   if (storylineHook) {
     lines.push(`- storyline_hook: ${storylineHook}`)
   }
-  const noteTemplateId = typeof launchHints.t4_note?.note_template_id === 'string'
-    ? launchHints.t4_note.note_template_id
+  const noteTemplateId = typeof launchHints.creator_note?.note_template_id === 'string'
+    ? launchHints.creator_note.note_template_id
     : null
   if (noteTemplateId) {
     lines.push(`- note_template_id: ${noteTemplateId}`)
   }
-  const coverMode = typeof launchHints.t4_note?.cover_mode === 'string'
-    ? launchHints.t4_note.cover_mode
+  const coverMode = typeof launchHints.creator_note?.cover_mode === 'string'
+    ? launchHints.creator_note.cover_mode
     : null
   if (coverMode) {
     lines.push(`- note_cover_mode: ${coverMode}`)
   }
-  const sectionTitles = Array.isArray(launchHints.t4_note?.sections)
-    ? launchHints.t4_note.sections.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  const sectionTitles = Array.isArray(launchHints.creator_note?.sections)
+    ? launchHints.creator_note.sections.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     : []
   if (sectionTitles.length > 0) {
     lines.push(`- note_sections: ${sectionTitles.join(' / ')}`)
@@ -832,32 +832,30 @@ function buildLaunchProgrammingHints(input: {
     hook: input.episodeBrief.open_loops[0] ?? input.episodeBrief.scene_goal.viewer_goal,
   }
 
-  const t4Projection = resolveLaunchT4Projection({
+  const creatorNoteProjection = resolveLaunchCreatorNoteProjection({
     community_slug: input.communitySlug ?? '',
     phase: input.phase,
     scene_goal: input.episodeBrief.scene_goal.viewer_goal,
     open_loops: input.episodeBrief.open_loops,
   })
-  const template = t4Projection.note_template_id
-    ? getLaunchT4TemplateRuntime().template_registry.find((item) => item.id === t4Projection.note_template_id)
+  const template = creatorNoteProjection.note_template_id
+    ? getLaunchCreatorNoteTemplateRuntime().template_registry.find((item) => item.id === creatorNoteProjection.note_template_id)
     : null
 
   return {
     storyline,
-    t4_note: t4Projection.is_t4
+    creator_note: creatorNoteProjection.is_t4
       ? {
           is_t4: true,
-          note_template_id: t4Projection.note_template_id ?? null,
-          cover_mode: t4Projection.cover_mode ?? null,
+          note_template_id: creatorNoteProjection.note_template_id ?? null,
+          cover_mode: creatorNoteProjection.cover_mode ?? null,
           title_formula: template?.title_formula ?? null,
           sections: template?.sections ?? [],
         }
-      : {
-          is_t4: false,
-        },
+      : { is_t4: false },
     editorial_intent: {
-      primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, t4Projection.is_t4),
-      content_kind: t4Projection.is_t4
+      primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, creatorNoteProjection.is_t4),
+      content_kind: creatorNoteProjection.is_t4
         ? 'note_entry'
         : input.phase === 'closure' || input.phase === 'aftershow'
           ? 'continuity_callback'

@@ -88,3 +88,27 @@
   - 在正式实名审核链路尚未闭环前，允许 `staging` 通过 `IDENTITY_GATE_STAGING_MODE=admin_bypass` 临时放开私聊/主动私信门禁；
   - 该开关只对 `ACTIVE + ADMIN` 用户生效，且状态会直接暴露在 `/v1/admin/runtime/stats`、`/v1/admin/runtime/features` 和 Runtime Dashboard；
   - `prod` 仍保持实名强制，不接受同一路径的语义漂移。
+
+## 2026-04-05
+
+- `T-128` 的部署侧 parent narrative 进一步从“设计/合同”推进到“已有一条真实 operator 流程被验证”：
+  - 当前 `main@6341cd28cb93e4f281b58e567b231b2a923f4176` 已有对应的 ACR immutable image：
+    - `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-6341cd28cb93e4f281b58e567b231b2a923f4176`
+    - digest: `sha256:5649208fe0ef4582eee747821421214be81f17fd9decc63def2d08806eb07819`
+  - 对应 GitHub Actions 证据为 `Publish Image` run `23994502585`，说明当前 `main` 状态已经被重新打包并送入 ACR，不再停留在 repo-only。
+- 当前 staging web 的 operator 流程已从实际验证中收口为以下顺序：
+  1. 确认 `main` 对应的 immutable image 已成功发布到 ACR；
+  2. 在 operator 本机通过 `env-localctl compile --env staging --runtime-target ecs --workload api --no-preflight` 生成 `ops/deploy/env-files/staging.env`；
+  3. 把 env 文件上传到 ECS，例如 `/tmp/fun-forum-staging.env`；
+  4. 使用 `sudo install -m 600 /tmp/fun-forum-staging.env /srv/apps/fun-forum/.env` 覆盖宿主机正式 env；
+  5. 部署前先检查 `/srv/apps/fun-forum/.env` 不再含 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL`；
+  6. 在 ECS 上以 immutable `IMAGE_REF` 运行 `./deploy.sh --image-ref <sha-ref> --with-migrate --db-compat backwards`；
+  7. 用 `docker compose ps`、`/health`、`/v1/health`、`/v1/admin/runtime/stats`、`/v1/admin/runtime/features` 做发布后检查。
+- 这次真实操作也暴露并沉淀了两个部署级注意点：
+  - 如果只上传文件但没有真正覆盖 `/srv/apps/fun-forum/.env`，ECS 会继续带着旧 pin/env 启动；所以“上传成功”不等于“正式 env 已切换”。
+  - `api` 运行镜像如果缺 `env/contract.yaml`，runtime 虽然能看到 provider env，但无法把 `secret-ref:*` 收口到 env-first credential 解析；这已经在 repo 里通过 `llm-forum.Dockerfile` 修复，并成为 staging redeploy 的硬前提。
+- 当前 deployment 进度判断：
+  - `ACR immutable image publish`：已形成当前 `main` 的真实交付证据。
+  - `staging web ECS deploy procedure`：已跑通过一次健康检查链路，operator 步骤已清晰。
+  - `staging web latest-image redeploy`：尚待用最新镜像再次部署，确认 `llm_configured`、visible closeout 与 identity gate workaround 已一起生效。
+  - `worker ECI live deploy`：仍未形成真实上线证据，依旧是 `T-935/T-936` 的剩余 blocker。

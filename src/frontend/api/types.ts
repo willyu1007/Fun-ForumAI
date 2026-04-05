@@ -504,7 +504,7 @@ export interface SurfaceMediaAttachment {
 
 export type LaunchSurfaceKind =
   | 'home_root_card'
-  | 't4_root_card'
+  | 'note_root_card'
   | 'thread_turn'
   | 'highlight_card'
   | 'aftershow_card'
@@ -545,7 +545,7 @@ export type LaunchContentKind =
   | 'community_entry'
   | 'programming_slot'
 
-export type T4NoteTemplateId =
+export type CreatorNoteTemplateId =
   | 'recommendation_note'
   | 'comparison_note'
   | 'review_note'
@@ -553,7 +553,7 @@ export type T4NoteTemplateId =
   | 'relationship_observation_note'
   | 'ongoing_column_note'
 
-export type T4CoverMode =
+export type CreatorNoteCoverMode =
   | 'hero_cover'
   | 'grid_cover'
   | 'comparison_cover'
@@ -568,10 +568,10 @@ export interface StorylineProjection {
   storyline_hook?: string
 }
 
-export interface T4Projection {
+export interface CreatorNoteProjection {
   is_t4?: boolean
-  note_template_id?: T4NoteTemplateId
-  cover_mode?: T4CoverMode
+  note_template_id?: CreatorNoteTemplateId
+  cover_mode?: CreatorNoteCoverMode
 }
 
 export interface RelationSummaryTeaser {
@@ -592,7 +592,7 @@ export interface PublicAgentRelationSummary extends RelationSummaryTeaser {
   recent_ppr_candidates: string[]
 }
 
-export interface PostWithMeta extends Post, LaunchVisualPackagingFields, StorylineProjection, T4Projection {
+export interface PostWithMeta extends Post, LaunchVisualPackagingFields, StorylineProjection, CreatorNoteProjection {
   thread_turn_count: number
   vote_score: number
   vote_up: number
@@ -666,7 +666,7 @@ export interface AftershowCalloutItem {
   deep_link: string
 }
 
-export interface AftershowSnapshot extends LaunchVisualPackagingFields, StorylineProjection, T4Projection {
+export interface AftershowSnapshot extends LaunchVisualPackagingFields, StorylineProjection, CreatorNoteProjection {
   post_id: string
   aftershow_summary: AftershowSummary | null
   aftershow_callouts: AftershowCalloutItem[]
@@ -765,7 +765,7 @@ export interface ProgrammingAgentRecommendation {
   program_role: string
   requested_role: string
   community_affinity: string
-  t4_capable: boolean
+  format_capabilities: string[]
 }
 
 export interface ProgrammingSlotRecommendation {
@@ -787,7 +787,7 @@ export interface ProgrammingSlotRecommendation {
   assignment_source: 'recommended_contract'
   expected_outputs: {
     root_posts?: number
-    t4_notes?: number
+    creator_note_entries?: number
     priority_threads?: number
     highlight_candidate?: boolean
     programming_entry?: boolean
@@ -857,7 +857,7 @@ export interface LaunchProgrammingOpsPayload {
   observations: {
     visual_ratio: {
       root_cover_ratio: number | null
-      t4_cover_ratio: number | null
+      note_cover_ratio: number | null
       highlight_visual_ratio: number | null
       reject_reason_counts: Record<string, number>
       budget_remaining_cny: number | null
@@ -888,7 +888,7 @@ export interface LaunchProgrammingOpsPayload {
       community_name: string
       community_slug: string
       community_lifecycle_state: string
-      launch_phase: string | null
+      launch_wave: string | null
       headline_priority: number
     }>
     incubation: Array<{
@@ -1314,7 +1314,7 @@ export interface GlobalHighlightsData {
       display_name: string
       avatar_url: string | null
     }
-  } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
+  } & LaunchVisualPackagingFields & StorylineProjection & CreatorNoteProjection & {
     content_kind?: LaunchContentKind
     editorial_shelf?: string
     editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
@@ -1346,7 +1346,7 @@ export interface GlobalHighlightsData {
     participant_count: number
     community_name: string
     cover_media_url?: string | null
-  } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
+  } & LaunchVisualPackagingFields & StorylineProjection & CreatorNoteProjection & {
     content_kind?: LaunchContentKind
     editorial_shelf?: string
     editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId

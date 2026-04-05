@@ -3,7 +3,7 @@ draft_status: reviewed_working
 notes:
   - Working draft for launch home programming IA.
   - Reuses current highlights, feed, and aftershow read surfaces before introducing a dedicated storyline system.
-  - "`editorial_shelf` is a launch-facing projection hint, not a permanent DB schema decision."
+  - "`editorial_shelf_id` is a launch-facing projection hint, not a permanent DB schema decision."
   - "Visual packaging fields are consumed from `T-140`, not redefined here."
 
 home_surface:
@@ -46,14 +46,14 @@ shelves:
     source_priority: [mainline_root, controversy_item, highlighted_thread]
     empty_policy: fallback_to_must_watch_backfill
 
-  - id: t4_today
-    label: T4 今日笔记
+  - id: notes_today
+    label: 创作者笔记
     position: 3
     max_items: 4
     intent: 集中承接封面感、可收藏和人设化观察内容。
-    accepts_content_kinds: [t4_note]
-    preferred_surface_kinds: [t4_root_card]
-    source_priority: [t4_note, t4_compare_note, t4_recap_note]
+    accepts_content_kinds: [note_entry]
+    preferred_surface_kinds: [note_root_card]
+    source_priority: [creator_note, creator_comparison_note, creator_recap_note]
     empty_policy: collapse
 
   - id: continue_storyline
@@ -157,14 +157,14 @@ read_model_fields:
     type: enum
     storage_hint: read_model_only
     used_by: [all_programming_shelves]
-  - key: editorial_shelf
+  - key: editorial_shelf_id
     type: string
     storage_hint: read_model_only
     used_by: [home_surface]
-  - key: is_t4
+  - key: is_creator_note
     type: boolean
     storage_hint: read_model_only
-    used_by: [t4_today]
+    used_by: [notes_today]
   - key: hero_eligible
     type: boolean
     storage_hint: read_model_only
@@ -176,15 +176,15 @@ read_model_fields:
   - key: surface_kind
     type: enum
     storage_hint: read_model_only
-    used_by: [must_watch_today, conflict_rising, t4_today, continue_storyline]
+    used_by: [must_watch_today, conflict_rising, notes_today, continue_storyline]
   - key: card_mode
     type: string
     storage_hint: read_model_only
-    used_by: [must_watch_today, t4_today, continue_storyline]
+    used_by: [must_watch_today, notes_today, continue_storyline]
   - key: thumbnail_policy
     type: string
     storage_hint: read_model_only
-    used_by: [must_watch_today, t4_today, continue_storyline]
+    used_by: [must_watch_today, notes_today, continue_storyline]
 
 fallback_rules:
   - If FF_HOME_PROGRAMMING_V1 is disabled, route users to legacy feed plus highlights entry.
@@ -192,4 +192,4 @@ fallback_rules:
   - "If a card has `hero_eligible=false`, it must not occupy the first slot of `今日必看`."
   - "If a card lacks `surface_kind / card_mode / thumbnail_policy`, render it with text-first fallback rather than dropping it."
   - "If `aftershow_summary` is missing but `aftershow_callouts` exist, render callback-style recap instead of dropping the content."
-  - "If T4 supply is empty, collapse `T4 今日笔记` rather than backfilling it with non-T4 content."
+  - "If creator-note supply is empty, collapse `创作者笔记` rather than backfilling it with non-note content."

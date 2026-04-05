@@ -139,3 +139,13 @@
   - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . && python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root .`
     - Result: 通过。
     - Note: `IDENTITY_GATE_STAGING_MODE` 已进入 env contract，并同步刷新示例 env 与 context 文档。
+- 2026-04-05:
+  - `gh run list --workflow "Publish Image" --limit 10 --json databaseId,status,conclusion,headSha,displayTitle,createdAt,url`
+    - Result: 通过。
+    - Note: 当前 `HEAD=6341cd28cb93e4f281b58e567b231b2a923f4176` 对应 `Publish Image` run `23994502585`，状态为 `completed/success`。
+  - `gh run view 23994502585 --log | rg -n "sha-6341cd28|image_ref|final digest|talkshow-ai-acr-registry" -n -S`
+    - Result: 通过。
+    - Note: 已确认当前 `main` 的 immutable image ref 为 `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-6341cd28cb93e4f281b58e567b231b2a923f4176`，digest 为 `sha256:5649208fe0ef4582eee747821421214be81f17fd9decc63def2d08806eb07819`。
+  - Manual review:
+    - Result: 通过。
+    - Note: `T-128` 现已补录 staging web 的 operator deployment sequence：`env-localctl compile -> upload env file -> install /srv/apps/fun-forum/.env -> immutable IMAGE_REF deploy.sh -> /health + /v1/health + /v1/admin/runtime/*`。

@@ -107,3 +107,50 @@
   - search/forum read-contract and chip/explanation consumers second
   - compat heuristics removal only after canonical readers are live
 - Marked project-hub synchronization as an immediate governance repair item because registry state drift still shows `T-144` / `T-145` as `planned` and `T-146` as `planned`, which blocks a clean lint signal for the program lane.
+
+## 2026-04-05 — closeout recovery and source-config canonicalization
+
+- Reopened `T-143` narrowly under `T-142` governance for one corrective pass on raw launch source config only; no new downstream semantic scope was introduced.
+- Cut the launch-config SSOT over to canonical-first naming:
+  - `community_family`
+  - `launch_wave`
+  - `default_editorial_shelf_ids`
+  - `authoring_shapes`
+  - `creator_note_policy`
+  - `publication_review_profile_id`
+  - `proposed_community_family`
+  - `incubation_visibility_mode`
+  - `identity_role_id`
+  - `identity_visibility_role_id`
+  - `format_capabilities`
+  - `notes_today`
+- Renamed the template-config source of truth from `t4_content_templates.v1.yaml` to `creator_note_templates.v1.yaml` and locked `global_note_contract` / `creator_note_*` as the top-level contract vocabulary.
+- Kept legacy names only at alias-ingress points in loaders and tests:
+  - `community_type`
+  - `launch_phase`
+  - `t4_today`
+  - `t4_blogger`
+  - `t4_capable`
+  - `t4_root_card`
+- Ran a downstream readback instead of reopening `T-144` / `T-145` / `T-146` semantic scope:
+  - governance/public-participation outputs remain unchanged
+  - identity/projection/proof outputs remain unchanged
+  - search/event canonical fields remain unchanged
+- Closed the program with the final conclusion that:
+  - execution order was satisfied in practice
+  - downstream ownership did not move
+  - remaining legacy DB/API fields are explicit compatibility surfaces only
+  - no unresolved semantic decision is being pushed downstream
+
+## 2026-04-05 — post-merge drift cleanup
+
+- Re-audited `main` after the remote merge and found four remaining non-closeable surfaces under the `T-142` standard:
+  - forum feed cards still rendered a user-facing `T4` badge from `is_t4`
+  - `PostDetailPage` still used `is_t4` in primary note-label derivation
+  - raw launch source config still carried `t4_pick_of_the_day`, `t4_revisit`, and creator-note distribution flags keyed by `is_t4` / `allow_t4`
+  - project-hub milestone / feature / requirement statuses and launch-history labels still exposed stale `in-progress/planned` and `T4` wording
+- Closed those residuals without reopening downstream semantic scope:
+  - forum card/detail note badges now read only from canonical creator-note semantics
+  - launch source config now uses `creator_note_pick_of_the_day`, `creator_note_revisit`, `requires_creator_note`, and `allow_creator_note`
+  - lightweight-personalization loader now treats `t4_revisit` as alias ingress only
+  - project hub now marks `M-030 / F-100 / R-101~R-105` as done and removes the remaining `T4` wording from active launch summaries

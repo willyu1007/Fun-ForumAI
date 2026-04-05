@@ -1,12 +1,12 @@
 import type { ForumSceneMetadata } from '../repos/types/forum-scene.js'
 import { parsePublicScenePayload } from '../services/public-scene-runtime.js'
 import {
-  LAUNCH_T4_COVER_MODE_IDS,
-  normalizeLaunchT4TemplateId,
-  resolveLaunchT4Projection,
-  type LaunchT4CoverMode,
-  type LaunchT4TemplateId,
-} from './t4-content-templates.js'
+  LAUNCH_CREATOR_NOTE_COVER_MODE_IDS,
+  normalizeLaunchCreatorNoteTemplateId,
+  resolveLaunchCreatorNoteProjection,
+  type LaunchCreatorNoteCoverMode,
+  type LaunchCreatorNoteTemplateId,
+} from './creator-note-templates.js'
 import {
   deriveFormatKindFromContentKind,
   normalizeContentKind,
@@ -35,8 +35,8 @@ export interface LaunchProgrammingProjection {
   editorial_shelf?: string
   is_t4?: boolean
   aftershow_export_bias?: number
-  note_template_id?: LaunchT4TemplateId
-  cover_mode?: LaunchT4CoverMode
+  note_template_id?: LaunchCreatorNoteTemplateId
+  cover_mode?: LaunchCreatorNoteCoverMode
   content_semantics?: ContentSemanticProjection
 }
 
@@ -52,8 +52,8 @@ function isLaunchContentKind(value: unknown): value is LaunchContentKind {
   return typeof value === 'string' && normalizeContentKind(value) !== null
 }
 
-function isLaunchT4CoverMode(value: unknown): value is LaunchT4CoverMode {
-  return typeof value === 'string' && (LAUNCH_T4_COVER_MODE_IDS as readonly string[]).includes(value)
+function isLaunchCreatorNoteCoverMode(value: unknown): value is LaunchCreatorNoteCoverMode {
+  return typeof value === 'string' && (LAUNCH_CREATOR_NOTE_COVER_MODE_IDS as readonly string[]).includes(value)
 }
 
 function readLaunchProfile(rulesJson: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
@@ -106,7 +106,9 @@ export function buildLaunchProgrammingProjection(input: {
   const payload = input.scene_metadata ? parsePublicScenePayload(input.scene_metadata.payload_json) : null
   const launchProgramming = payload?.launch_programming
   const launchStoryline = isRecord(launchProgramming?.storyline) ? launchProgramming.storyline : null
-  const launchT4Note = isRecord(launchProgramming?.t4_note) ? launchProgramming.t4_note : null
+  const launchCreatorNote = isRecord(launchProgramming?.creator_note)
+    ? launchProgramming.creator_note
+    : null
   const launchEditorialIntent = isRecord(launchProgramming?.editorial_intent) ? launchProgramming.editorial_intent : null
   const storylineId = readString(launchStoryline?.id)
     ?? payload?.episode_brief.episode_id
@@ -122,7 +124,7 @@ export function buildLaunchProgrammingProjection(input: {
     phase: input.scene_metadata?.phase,
     has_aftershow_artifact: input.has_aftershow_artifact,
   })
-  const computedT4Projection = resolveLaunchT4Projection({
+  const creatorNoteProjection = resolveLaunchCreatorNoteProjection({
     community_slug: input.community_slug,
     phase: input.scene_metadata?.phase ?? payload?.scene_metadata.phase ?? null,
     title: storylineTitle ?? null,
@@ -132,14 +134,14 @@ export function buildLaunchProgrammingProjection(input: {
   })
   const editorialShelfId = normalizeEditorialShelfId(readString(launchEditorialIntent?.primary_shelf))
     ?? defaultEditorialShelfId
-  const isT4 = typeof launchT4Note?.is_t4 === 'boolean'
-    ? launchT4Note.is_t4
-    : computedT4Projection.is_t4
-  const noteTemplateId = normalizeLaunchT4TemplateId(readString(launchT4Note?.note_template_id))
-    ?? computedT4Projection.note_template_id
-  const coverMode = isLaunchT4CoverMode(launchT4Note?.cover_mode)
-    ? launchT4Note.cover_mode
-    : computedT4Projection.cover_mode
+  const isT4 = typeof launchCreatorNote?.is_t4 === 'boolean'
+    ? launchCreatorNote.is_t4
+    : creatorNoteProjection.is_t4
+  const noteTemplateId = normalizeLaunchCreatorNoteTemplateId(readString(launchCreatorNote?.note_template_id))
+    ?? creatorNoteProjection.note_template_id
+  const coverMode = isLaunchCreatorNoteCoverMode(launchCreatorNote?.cover_mode)
+    ? launchCreatorNote.cover_mode
+    : creatorNoteProjection.cover_mode
 
   const contentKind: LaunchContentKind | undefined = isLaunchContentKind(launchEditorialIntent?.content_kind)
     ? normalizeContentKind(launchEditorialIntent?.content_kind as string) ?? undefined

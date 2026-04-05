@@ -1,20 +1,21 @@
 import { readFileSync } from 'node:fs'
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
+import { normalizeEditorialShelfId, normalizeLaunchSurfaceKindId } from '../../shared/semantic-taxonomy.js'
 import { ValidationError } from '../lib/errors.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
 const POST_LAUNCH_HOME_SHELF_IDS = [
   'must_watch_today',
   'conflict_rising',
-  't4_today',
+  'notes_today',
   'continue_storyline',
   'tonight_programming',
   'all_communities',
 ] as const
 
-const POST_LAUNCH_T4_COMMUNITY_SLUGS = ['t4-picks', 't4-relations'] as const
-const POST_LAUNCH_T4_TEMPLATE_IDS = [
+const POST_LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS = ['t4-picks', 't4-relations'] as const
+const POST_LAUNCH_CREATOR_NOTE_TEMPLATE_IDS = [
   'recommendation_note',
   'comparison_note',
   'review_note',
@@ -22,7 +23,7 @@ const POST_LAUNCH_T4_TEMPLATE_IDS = [
   'relationship_observation_note',
   'ongoing_column_note',
 ] as const
-const POST_LAUNCH_T4_COVER_MODE_IDS = [
+const POST_LAUNCH_CREATOR_NOTE_COVER_MODE_IDS = [
   'hero_cover',
   'grid_cover',
   'comparison_cover',
@@ -32,7 +33,7 @@ const POST_LAUNCH_T4_COVER_MODE_IDS = [
 ] as const
 const POST_LAUNCH_VISUAL_SURFACES = [
   'home_root_card',
-  't4_root_card',
+  'note_root_card',
   'thread_turn',
   'highlight_card',
   'aftershow_card',
@@ -55,31 +56,44 @@ const DEFAULT_POST_LAUNCH_TUNING_PATH = resolveLaunchContractPath({
   file_name: 'post_launch_optimization_and_tuning.v1.yaml',
 })
 
+const postLaunchShelfIdSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeEditorialShelfId(value) ?? value.trim()
+}, z.enum(POST_LAUNCH_HOME_SHELF_IDS))
+
+const postLaunchSurfaceSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeLaunchSurfaceKindId(value) ?? value.trim()
+}, z.enum(POST_LAUNCH_VISUAL_SURFACES))
+
+const postLaunchCreatorNoteSchema = z.object({
+  preferred_templates_by_community: z.record(
+    z.enum(POST_LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS),
+    z.array(z.enum(POST_LAUNCH_CREATOR_NOTE_TEMPLATE_IDS)).min(1),
+  ),
+  preferred_cover_modes_by_community: z.record(
+    z.enum(POST_LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS),
+    z.array(z.enum(POST_LAUNCH_CREATOR_NOTE_COVER_MODE_IDS)).min(1),
+  ),
+  caption_structure_variant: z.string().trim().min(1),
+}).strict()
+
 const postLaunchTuningProfileSchema = z.object({
   description: z.string().trim().min(1),
   home: z.object({
-    shelf_order: z.array(z.enum(POST_LAUNCH_HOME_SHELF_IDS)).length(POST_LAUNCH_HOME_SHELF_IDS.length),
+    shelf_order: z.array(postLaunchShelfIdSchema).length(POST_LAUNCH_HOME_SHELF_IDS.length),
     default_mode: z.string().trim().min(1),
     hero_slot_copy: z.record(z.string(), z.string().trim().min(1)).default({}),
   }).strict(),
-  t4: z.object({
-    preferred_templates_by_community: z.record(
-      z.enum(POST_LAUNCH_T4_COMMUNITY_SLUGS),
-      z.array(z.enum(POST_LAUNCH_T4_TEMPLATE_IDS)).min(1),
-    ),
-    preferred_cover_modes_by_community: z.record(
-      z.enum(POST_LAUNCH_T4_COMMUNITY_SLUGS),
-      z.array(z.enum(POST_LAUNCH_T4_COVER_MODE_IDS)).min(1),
-    ),
-    caption_structure_variant: z.string().trim().min(1),
-  }).strict(),
+  creator_note: postLaunchCreatorNoteSchema.optional(),
+  t4: postLaunchCreatorNoteSchema.optional(),
   visual: z.object({
     surface_ratio: z.partialRecord(
-      z.enum(POST_LAUNCH_VISUAL_SURFACES),
+      postLaunchSurfaceSchema,
       z.number().min(0).max(1),
     ),
     preferred_card_modes: z.partialRecord(
-      z.enum(POST_LAUNCH_VISUAL_SURFACES),
+      postLaunchSurfaceSchema,
       z.array(z.enum(POST_LAUNCH_CARD_MODES)).min(1),
     ),
     budget_threshold: z.object({
@@ -113,8 +127,13 @@ const postLaunchTuningSchema = z.object({
   }).strict(),
 }).strict()
 
-export type PostLaunchTuningRuntime = z.infer<typeof postLaunchTuningSchema>
-export type PostLaunchTuningProfile = z.infer<typeof postLaunchTuningProfileSchema>
+export interface PostLaunchTuningProfile extends Omit<z.infer<typeof postLaunchTuningProfileSchema>, 'creator_note' | 't4'> {
+  creator_note: z.infer<typeof postLaunchCreatorNoteSchema>
+}
+
+export interface PostLaunchTuningRuntime extends Omit<z.infer<typeof postLaunchTuningSchema>, 'profiles'> {
+  profiles: Record<string, PostLaunchTuningProfile>
+}
 
 let cachedRuntime: PostLaunchTuningRuntime | null = null
 
@@ -136,10 +155,30 @@ export function getPostLaunchTuningRuntime(
   if (!parsed.success) {
     throw new ValidationError(`Invalid post-launch tuning contract: ${toValidationMessage(parsed.error)}`)
   }
-  if (pathname === DEFAULT_POST_LAUNCH_TUNING_PATH) {
-    cachedRuntime = parsed.data
+  const runtime: PostLaunchTuningRuntime = {
+    ...parsed.data,
+    profiles: Object.fromEntries(
+      Object.entries(parsed.data.profiles).map(([profileId, profile]) => {
+        const creatorNoteProfile = profile.creator_note ?? profile.t4
+        if (!creatorNoteProfile) {
+          throw new ValidationError(
+            `Invalid post-launch tuning contract: profile "${profileId}" must define creator_note preferences`,
+          )
+        }
+        return [
+          profileId,
+          {
+            ...profile,
+            creator_note: creatorNoteProfile,
+          },
+        ]
+      }),
+    ),
   }
-  return parsed.data
+  if (pathname === DEFAULT_POST_LAUNCH_TUNING_PATH) {
+    cachedRuntime = runtime
+  }
+  return runtime
 }
 
 export function resolvePostLaunchTuningProfile(input?: {

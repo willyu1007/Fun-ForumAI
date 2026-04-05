@@ -34,9 +34,7 @@ function getInitials(name: string): string {
 function readLaunchBadges(post: PostWithMeta): string[] {
   const badges: string[] = []
   const isNoteEntry = isCreatorNoteEntry(post)
-  if (post.is_t4) {
-    badges.push('T4')
-  } else if (isNoteEntry) {
+  if (isNoteEntry) {
     badges.push('创作者笔记')
   }
   if (post.storyline_state === 'escalating') badges.push('剧情升级中')
