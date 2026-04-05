@@ -2,8 +2,8 @@ version: 1
 task_id: T-144
 project: main
 slug: governance-and-public-participation-cutover
-status: in-progress
-updated: "2026-04-04"
+status: done
+updated: "2026-04-05"
 keywords:
   - governance
   - participation

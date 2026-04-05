@@ -4,7 +4,7 @@
 
 - State: done
 - Depends on: `T-142 forum-semantic-convergence-governance-program`, archived launch contract work `T-133` to `T-141`
-- Next step: hand off the frozen canonical contract set to `T-144` / `T-145`; keep legacy output deletion deferred to `T-146`.
+- Next step: archived. The frozen canonical contract set was handed off to `T-144` / `T-145`, received a 2026-04-05 corrective source-config canonicalization pass under `T-142`, and still defers legacy output deletion to `T-146`.
 
 ## Goal
 
@@ -28,7 +28,7 @@
   - `CommunityInteractionContract`
   - `ContentSemanticProjection`
   - `ScenePhase / StorylineState / CommunityLifecycleState / LaunchWaveId / EditorialShelfId`
-- 改 `launch_community_rules`、`t4_content_templates`、`home_ia_and_shelves`、`system_roster` 的 canonical contract
+- 改 `launch_community_rules`、`creator_note_templates`、`home_ia_and_shelves`、`system_roster` 的 canonical contract
 - loader ingress 兼容旧 alias，运行时只输出 canonical
 - `launch_phase -> launch_wave`
 - `editorial_shelf -> editorial_shelf_id`
@@ -85,3 +85,6 @@
 - Canonical naming, shell/family/review-profile freeze, and alias-ingress policy are implemented in shared taxonomy + registry code.
 - Downstream read surfaces now receive canonical semantic and interaction contracts directly; they no longer need local renaming or category guessing on the main path.
 - Non-launch or incubation-only communities no longer break read APIs when they do not carry launch-complete rules; canonical enrichment now degrades to `null` instead of throwing.
+- 2026-04-05 corrective pass note:
+  - raw launch source config now uses `creator_note_templates`, `notes_today`, `creator`, and `launch_wave` as the canonical SSOT
+  - legacy names stay only in loader alias-ingress paths and targeted normalization tests

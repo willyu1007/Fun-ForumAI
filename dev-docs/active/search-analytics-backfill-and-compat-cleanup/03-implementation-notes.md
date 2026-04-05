@@ -89,7 +89,7 @@
   - switched forum post cards, home, highlights, post detail, home programming, and launch programming ops away from `is_t4`-driven primary reads
   - kept `is_t4` only as a compatibility output, not as the UI/programming source of truth
 - Canonicalized the public home-programming shelf contract at the read boundary:
-  - `t4_today` remains an internal legacy launch-contract id
+  - `notes_today` is now the canonical launch-config shelf id
   - `/v1/home` now publishes `notes_today` as the outward shelf id/label so downstream consumers do not branch on the legacy name
 - Updated E2E coverage to match the new closure rule:
   - non-native creator notes stay out of `notes_today`

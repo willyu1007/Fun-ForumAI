@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-142 forum-semantic-convergence-governance-program`, `T-143 semantic-taxonomy-spine-and-loader-cutover`, capability baseline `T-924`, `T-925`, `T-926`, `T-927`
-- Next step: converge backend read models and frontend surfaces onto the split contract, with identity-first chips on feed/search and proof only on demand.
+- Next step: none; `T-145` is implemented, review-signed, and has already handed the frozen public contract to `T-146` and the final `T-142` readback.
 
 ## Goal
 
@@ -41,11 +41,11 @@
 
 ## Acceptance Criteria
 
-- [ ] public DTOs explicitly separate `public_identity`, `public_projection`, and `public_proof`
-- [ ] launch-era identity names are normalized to canonical identity/format capability semantics
-- [ ] public identity surfaces do not mix in `scene_cast_role_id` or `template_cast_archetype_id`
-- [ ] profile, hover card, forum author summary, and agent search results stop using mixed badge/projection fallback rules
-- [ ] identity-first rendering is enforced on feed/search/post-card surfaces, while proof chips remain hover/profile-first
-- [ ] bio generation remains automatic and is consumed as projection data rather than as owner-edited content
-- [ ] identity/projection/proof read-source consistency is covered by targeted tests
-- [ ] a `T-145` review gate is defined and completed before `T-146` finalizes search explanations or semantic field propagation
+- [x] public DTOs explicitly separate `public_identity`, `public_projection`, and `public_proof`
+- [x] launch-era identity names are normalized to canonical identity/format capability semantics
+- [x] public identity surfaces do not mix in `scene_cast_role_id` or `template_cast_archetype_id`
+- [x] profile, hover card, forum author summary, and agent search results stop using mixed badge/projection fallback rules
+- [x] identity-first rendering is enforced on feed/search/post-card surfaces, while proof chips remain hover/profile-first
+- [x] bio generation remains automatic and is consumed as projection data rather than as owner-edited content
+- [x] identity/projection/proof read-source consistency is covered by targeted tests
+- [x] a `T-145` review gate is defined and completed before `T-146` finalizes search explanations or semantic field propagation

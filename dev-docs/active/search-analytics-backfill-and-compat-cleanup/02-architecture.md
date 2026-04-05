@@ -16,7 +16,6 @@
 
 - Search docs:
   - `community_family`
-  - `community_subtype`
   - `content_kind`
   - `editorial_shelf_id`
   - `storyline_state`

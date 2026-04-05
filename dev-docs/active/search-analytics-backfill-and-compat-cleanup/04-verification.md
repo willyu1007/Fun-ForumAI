@@ -87,3 +87,12 @@
     - public read API suite
     - governance/incubation/community-config/role-assignment/inference-profile control-plane suites
     - focused post-run reruns for role-assignment and aside-seat database paths
+
+## 2026-04-05 — final closeout readback
+
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-community-proposals-control-plane.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/services/__tests__/community-governance-service.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/frontend/features/search/pages/__tests__/SearchPage.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - Result: passed as the final downstream smoke after the corrective `T-143` source-config canonicalization pass.
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-146`
+  - Result: passed; task now reads back as `done` under `M-030 > F-100 > R-105`.
+- Source-config dependency readback
+  - Result: passed; `notes_today`, `note_root_card`, `creator_note_templates`, `launch_wave`, and canonical identity fields remain stable upstream owners, and no new `T-146` field ownership overlap was introduced with `T-927`.

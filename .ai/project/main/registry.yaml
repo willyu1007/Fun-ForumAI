@@ -1398,13 +1398,13 @@ tasks:
     updated: 2026-03-31
   - id: T-142
     slug: forum-semantic-convergence-governance-program
-    status: in-progress
+    status: done
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-101
     dev_docs_path: dev-docs/active/forum-semantic-convergence-governance-program
-    updated: 2026-04-04
+    updated: 2026-04-05
   - id: T-143
     slug: semantic-taxonomy-spine-and-loader-cutover
     status: archived
@@ -1416,7 +1416,7 @@ tasks:
     updated: 2026-04-04
   - id: T-144
     slug: governance-and-public-participation-cutover
-    status: in-progress
+    status: done
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
@@ -1425,7 +1425,7 @@ tasks:
     updated: 2026-04-05
   - id: T-145
     slug: agent-public-identity-projection-proof-alignment
-    status: in-progress
+    status: done
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
@@ -1434,7 +1434,7 @@ tasks:
     updated: 2026-04-05
   - id: T-146
     slug: search-analytics-backfill-and-compat-cleanup
-    status: in-progress
+    status: done
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:

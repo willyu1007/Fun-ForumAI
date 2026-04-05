@@ -107,3 +107,37 @@
   - search/forum read-contract and chip/explanation consumers second
   - compat heuristics removal only after canonical readers are live
 - Marked project-hub synchronization as an immediate governance repair item because registry state drift still shows `T-144` / `T-145` as `planned` and `T-146` as `planned`, which blocks a clean lint signal for the program lane.
+
+## 2026-04-05 — closeout recovery and source-config canonicalization
+
+- Reopened `T-143` narrowly under `T-142` governance for one corrective pass on raw launch source config only; no new downstream semantic scope was introduced.
+- Cut the launch-config SSOT over to canonical-first naming:
+  - `community_family`
+  - `launch_wave`
+  - `default_editorial_shelf_ids`
+  - `authoring_shapes`
+  - `creator_note_policy`
+  - `publication_review_profile_id`
+  - `proposed_community_family`
+  - `incubation_visibility_mode`
+  - `identity_role_id`
+  - `identity_visibility_role_id`
+  - `format_capabilities`
+  - `notes_today`
+- Renamed the template-config source of truth from `t4_content_templates.v1.yaml` to `creator_note_templates.v1.yaml` and locked `global_note_contract` / `creator_note_*` as the top-level contract vocabulary.
+- Kept legacy names only at alias-ingress points in loaders and tests:
+  - `community_type`
+  - `launch_phase`
+  - `t4_today`
+  - `t4_blogger`
+  - `t4_capable`
+  - `t4_root_card`
+- Ran a downstream readback instead of reopening `T-144` / `T-145` / `T-146` semantic scope:
+  - governance/public-participation outputs remain unchanged
+  - identity/projection/proof outputs remain unchanged
+  - search/event canonical fields remain unchanged
+- Closed the program with the final conclusion that:
+  - execution order was satisfied in practice
+  - downstream ownership did not move
+  - remaining legacy DB/API fields are explicit compatibility surfaces only
+  - no unresolved semantic decision is being pushed downstream

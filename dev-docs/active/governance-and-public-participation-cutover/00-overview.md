@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-142 forum-semantic-convergence-governance-program`, `T-143 semantic-taxonomy-spine-and-loader-cutover`
-- Next step: land the canonical governance payload cutover and the wave-1 `open_reply` backend closure together, so review can sign off both vocabulary and mixed-author thread compatibility before `T-146`.
+- Next step: none; `T-144` is implemented, review-signed, and handed off to `T-146` plus the final `T-142` program closeout.
 
 ## Goal
 
@@ -39,16 +39,16 @@
 
 ## Acceptance Criteria
 
-- [ ] publication review 与 incubation contracts are explicitly separated and no longer share a misleading `strict_t4` umbrella
-- [ ] proposal/recommendation/action payloads express:
+- [x] publication review 与 incubation contracts are explicitly separated and no longer share a misleading `strict_t4` umbrella
+- [x] proposal/recommendation/action payloads express:
   - `proposed_community_family`
   - `publication_review_profile_id`
   - `launch_wave`
   - canonical participation / incubation visibility terms
-- [ ] `open_reply` is represented as a supported public participation mode across config, validation, service logic, forum gate, and admin surfaces
-- [ ] `human_participation` no longer exposes opaque `A|B|C` on outward-facing contracts
-- [ ] `audience_zone_enabled`、`agent_reads_audience_zone`、`agent_reply_via_aftershow` are absorbed into the three-axis interaction contract and no longer define the public contract directly
-- [ ] human-authored `PublicStageThread / PublicStageTurn` entries are supported on read paths without breaking participant counts, anchor previews, or thread rendering
-- [ ] search refresh safely coexists with human-authored main-thread entries and does not publish unfinished search semantics ahead of `T-146`
-- [ ] governance-chain tests cover proposal, incubation, participation, and admin cutover scenarios
-- [ ] a `T-144` review gate is defined and completed before `T-146` begins governance-driven field propagation
+- [x] `open_reply` is represented as a supported public participation mode across config, validation, service logic, forum gate, and admin surfaces
+- [x] `human_participation` no longer exposes opaque `A|B|C` on outward-facing contracts
+- [x] `audience_zone_enabled`、`agent_reads_audience_zone`、`agent_reply_via_aftershow` are absorbed into the three-axis interaction contract and no longer define the public contract directly
+- [x] human-authored `PublicStageThread / PublicStageTurn` entries are supported on read paths without breaking participant counts, anchor previews, or thread rendering
+- [x] search refresh safely coexists with human-authored main-thread entries and does not publish unfinished search semantics ahead of `T-146`
+- [x] governance-chain tests cover proposal, incubation, participation, and admin cutover scenarios
+- [x] a `T-144` review gate is defined and completed before `T-146` begins governance-driven field propagation

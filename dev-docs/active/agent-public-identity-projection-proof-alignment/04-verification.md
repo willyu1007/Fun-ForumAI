@@ -27,3 +27,10 @@
   - Result: passed; the split contract is exposed consistently and the deprecated flat fields remain derived compatibility output only.
 - Code readback across `PostCard`, `PostCompact`, thread detail, hover card, and search result rendering
   - Result: passed; identity is the primary chip on feed/search/detail surfaces, while proof remains hover/profile-first and only appears on search when explicitly relevant.
+
+## 2026-04-05 — final status readback
+
+- `node .ai/scripts/ctl-project-governance.mjs query --project main --id T-145`
+  - Result: passed; task now reads back as `done` under `M-030 > F-100 > R-104`.
+- Corrective `T-143` source-config readback
+  - Result: passed; the 2026-04-05 canonical launch-config cleanup did not reopen `identity / projection / proof` semantics or change the frozen public DTO / surface read-source contract.
