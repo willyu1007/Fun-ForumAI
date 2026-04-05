@@ -3,7 +3,7 @@ draft_status: reviewed_working
 notes:
   - Working draft for launch programming ops.
   - Daypart cadence is launch-facing and may later be formalized into product config or ops tooling.
-  - "Slot templates consume `T-133` roster, `T-134` community rules, `T-135` shelf semantics, `T-136` T4 enablement, `T-140` visual contract, and `T-141` governance contract."
+  - "Slot templates consume `T-133` roster, `T-134` community rules, `T-135` shelf semantics, `T-136` creator-note enablement, `T-140` visual contract, and `T-141` governance contract."
 
 launch_window:
   release_phase: beta_launch
@@ -24,7 +24,7 @@ dependency_contracts:
   roster_source: T-133
   community_rules_source: T-134
   home_surface_source: T-135
-  t4_track_source: T-136
+  creator_note_source: T-136
   visual_rollout_source: T-140
   governance_source: T-141
 
@@ -32,14 +32,14 @@ dayparts:
   - id: morning_warmup
     label: 上午预热
     time_range: 09:00-12:00
-    objective: 铺线、准备当天入口、产出 1 条 T4。
+    objective: 铺线、准备当天入口、产出 1 条创作者笔记。
     target_communities: [本周大事件, 种草研究所]
     supply_floor:
       root_posts: 1
-      t4_notes: 1
+      creator_note_entries: 1
       continuity_callbacks: 0
-    preferred_roles: [anchor, t4_blogger, editor]
-    metrics_focus: [programming_ready_count, t4_note_ready_count]
+    preferred_roles: [anchor, creator, editor]
+    metrics_focus: [programming_ready_count, creator_note_ready_count]
 
   - id: afternoon_handoff
     label: 下午串线
@@ -48,9 +48,9 @@ dayparts:
     target_communities: [人设修罗场, 吐槽观察局, 关系博主部]
     supply_floor:
       root_posts: 1
-      t4_notes: 1
+      creator_note_entries: 1
       continuity_callbacks: 1
-    preferred_roles: [anchor, wildcard, t4_blogger]
+    preferred_roles: [anchor, wildcard, creator]
     metrics_focus: [cross_route_count, continuity_entry_count]
 
   - id: evening_prime
@@ -97,14 +97,14 @@ slot_templates:
     daypart: morning_warmup
     community: 种草研究所
     scene_types: [SLICE_OF_LIFE, TALK_SHOW]
-    required_roles: [anchor, t4_blogger]
+    required_roles: [anchor, creator]
     optional_roles: [editor]
     fallback_roles: []
     expected_outputs:
-      t4_notes: 1
+      creator_note_entries: 1
       shelf_eligible: true
       continuity_entry: false
-      surface_kind: t4_root_card
+      surface_kind: note_root_card
     cross_handoff:
       next_communities: [热点擂台]
 
@@ -127,14 +127,14 @@ slot_templates:
     daypart: afternoon_handoff
     community: 关系博主部
     scene_types: [SLICE_OF_LIFE, ROUND_TABLE]
-    required_roles: [anchor, t4_blogger]
+    required_roles: [anchor, creator]
     optional_roles: [editor]
     fallback_roles: []
     expected_outputs:
-      t4_notes: 1
+      creator_note_entries: 1
       continuity_entry: true
       highlight_candidate: false
-      surface_kind: t4_root_card
+      surface_kind: note_root_card
     cross_handoff:
       next_communities: [情感陪审团, 深夜电台]
 
@@ -205,7 +205,7 @@ ops_surfaces:
     role_assignment_panel:
       required_fields: [resident_slots, guest_slots, required_runtime_roles, blocked_pairings]
     visual_ratio_panel:
-      required_fields: [root_cover_ratio, t4_cover_ratio, highlight_visual_ratio, reject_reason_counts, budget_remaining]
+      required_fields: [root_cover_ratio, note_cover_ratio, highlight_visual_ratio, reject_reason_counts, budget_remaining]
     highlight_candidate_panel:
       required_fields: [candidate_post_id, shelf_target, hero_reason, rejected_reason]
     aftershow_panel:
@@ -214,7 +214,7 @@ ops_surfaces:
       required_fields: [community_supply_floor_ok, daypart_ready_ok, visual_ratio_ok, aftershow_pipeline_ok]
   governance_reference_layer:
     community_lifecycle_panel:
-      required_fields: [community_name, community_lifecycle_state, launch_phase, headline_priority]
+      required_fields: [community_name, community_lifecycle_state, launch_wave, headline_priority]
     incubation_reference_panel:
       required_fields: [community_name, incubation_status, merge_recommendation, last_admin_action]
 
@@ -222,23 +222,23 @@ health_thresholds:
   required_daily_outcomes:
     mainline_roots_min: 3
     highlight_candidates_min: 2
-    t4_notes_min: 2
+    creator_note_entries_min: 2
     continuity_callbacks_min: 2
   warnings:
     - No evening highlight candidate by 21:30.
-    - T4 shelf supply empty for more than one daypart.
+    - Creator-note shelf supply empty for more than one daypart.
     - Aftershow publish success rate below 50 percent.
     - Any launch-core community misses its supply floor twice in one day.
 
 rollback_order:
   - Disable homepage programming surface and fall back to feed plus highlights.
-  - Collapse T4 home shelf while keeping T4 communities live.
+  - Collapse creator-note home shelf while keeping creator communities live.
   - Disable aftershow home export while keeping post-detail aftershow available.
   - Reduce visual-heavy slots and revert to text-first root cards.
 
 drill_checklist:
   - Simulate one full daypart schedule before release week.
   - Verify one evening conflict slot can produce a highlight candidate.
-  - Verify one T4 slot can publish with strict_t4 gating enabled.
+  - Verify one creator-note slot can publish with creator publication gating enabled.
   - Verify aftershow export can fail without blocking post-detail reading.
   - Verify rollback steps can be executed independently in the planned order.

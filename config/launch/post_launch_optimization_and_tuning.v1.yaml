@@ -14,11 +14,11 @@ profiles:
   baseline:
     description: 保持首发 contract 基线，仅暴露 profile 读面。
     home:
-      shelf_order: [must_watch_today, conflict_rising, t4_today, continue_storyline, tonight_programming, all_communities]
+      shelf_order: [must_watch_today, conflict_rising, notes_today, continue_storyline, tonight_programming, all_communities]
       default_mode: storyline_first
       hero_slot_copy:
         must_watch_today: 今日最值得先点开的主线。
-    t4:
+    creator_note:
       preferred_templates_by_community:
         t4-picks: [recommendation_note, comparison_note, review_note]
         t4-relations: [relationship_observation_note, ongoing_column_note, comparison_note]
@@ -29,7 +29,7 @@ profiles:
     visual:
       surface_ratio:
         home_root_card: 0.35
-        t4_root_card: 0.55
+        note_root_card: 0.55
         highlight_card: 0.4
       preferred_card_modes:
         home_root_card: [single_cover, multi_panel_cover]
@@ -44,14 +44,14 @@ profiles:
       merge_threshold: 4
       lane_threshold: 2
       gray_visibility_threshold: 1.5
-  t4_focus:
-    description: 首发后优先放大 T4 进入率与封面命中。
+  creator_note_focus:
+    description: 首发后优先放大创作者笔记进入率与封面命中。
     home:
-      shelf_order: [must_watch_today, t4_today, conflict_rising, continue_storyline, tonight_programming, all_communities]
+      shelf_order: [must_watch_today, notes_today, conflict_rising, continue_storyline, tonight_programming, all_communities]
       default_mode: storyline_first
       hero_slot_copy:
         must_watch_today: 先看主线，再切进今天最有封面感的内容。
-    t4:
+    creator_note:
       preferred_templates_by_community:
         t4-picks: [comparison_note, recommendation_note, review_note]
         t4-relations: [relationship_observation_note, ongoing_column_note, comparison_note]
@@ -62,7 +62,7 @@ profiles:
     visual:
       surface_ratio:
         home_root_card: 0.38
-        t4_root_card: 0.62
+        note_root_card: 0.62
         highlight_card: 0.42
       preferred_card_modes:
         home_root_card: [single_cover, comparison_cover]
@@ -80,11 +80,11 @@ profiles:
   conservative_visual:
     description: 灰测出现视觉成本或供给压力时的保守回退档。
     home:
-      shelf_order: [must_watch_today, conflict_rising, continue_storyline, t4_today, tonight_programming, all_communities]
+      shelf_order: [must_watch_today, conflict_rising, continue_storyline, notes_today, tonight_programming, all_communities]
       default_mode: editorial_first
       hero_slot_copy:
         must_watch_today: 优先保证主线命中，减少高成本封面依赖。
-    t4:
+    creator_note:
       preferred_templates_by_community:
         t4-picks: [recommendation_note, review_note, comparison_note]
         t4-relations: [ongoing_column_note, relationship_observation_note, comparison_note]
@@ -95,7 +95,7 @@ profiles:
     visual:
       surface_ratio:
         home_root_card: 0.3
-        t4_root_card: 0.45
+        note_root_card: 0.45
         highlight_card: 0.35
       preferred_card_modes:
         home_root_card: [single_cover, quote_card]
@@ -113,14 +113,14 @@ profiles:
 
 config_writeback_targets:
   - home_ia_and_shelves
-  - t4_content_templates
+  - creator_note_templates
   - visual_surface_rollout
   - launch_community_rules
 
 metrics:
   primary:
     - shelf_ctr_delta
-    - t4_entry_rate_delta
+    - creator_note_entry_rate_delta
     - revisit_rate_delta
   secondary:
     - visual_cost_efficiency

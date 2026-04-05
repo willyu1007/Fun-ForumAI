@@ -12,8 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
-import { readEditorialShelfLabel, readT4TemplateLabel } from '../lib/launch-surface-labels'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { readEditorialShelfLabel, readCreatorNoteTemplateLabel } from '../lib/launch-surface-labels'
 import type {
   ApiResponse,
   HomeProgrammingCommunityItem,
@@ -133,7 +133,7 @@ function HomeProgrammingCard({
   sourcePosition: number
 }) {
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
-  const t4TemplateLabel = readT4TemplateLabel(item.note_template_id)
+  const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
   const isNoteCard = isCreatorNoteEntry(item)
   const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf) ?? '创作者笔记'
   const target = appendSourceContext(item.next_jump_target, {
@@ -164,8 +164,8 @@ function HomeProgrammingCard({
               ) : null}
               <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
               {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
-              {t4TemplateLabel ? (
-                <Badge variant="outline" className="text-[10px]">{t4TemplateLabel}</Badge>
+              {creatorNoteTemplateLabel ? (
+                <Badge variant="outline" className="text-[10px]">{creatorNoteTemplateLabel}</Badge>
               ) : null}
               {item.storyline_title ? (
                 <span className="text-[11px] text-muted-foreground">{item.storyline_title}</span>

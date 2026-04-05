@@ -73,4 +73,54 @@ describe('launch community rules', () => {
 
     expect(() => getLaunchCommunityRules(filePath)).toThrowError(/Invalid launch community rules/)
   })
+
+  it('normalizes legacy community-rule aliases into canonical launch semantics', () => {
+    const source = parseYaml(
+      readFileSync(
+        resolveLaunchContractPath({
+          bundle_slug: 'launch-communities-and-rules-pack',
+          file_name: 'launch_community_rules.v1.yaml',
+        }),
+        'utf8',
+      ),
+    ) as Record<string, unknown> & {
+      communities: Array<Record<string, unknown>>
+    }
+    const creatorCommunity = source.communities.find((community) => community.slug === 't4-picks')
+    if (!creatorCommunity) {
+      throw new Error('expected creator launch community')
+    }
+    const rulesJson = creatorCommunity.rules_json as Record<string, unknown>
+    rulesJson.launch_profile = {
+      headline_priority: 90,
+      show_on_home: true,
+      community_type: 't4_recommendation',
+      launch_phase: 'launch_core',
+      editorial_shelf: ['T4 今日笔记'],
+    }
+    rulesJson.content_contract = {
+      ...(rulesJson.content_contract as Record<string, unknown>),
+      allowed_content_shapes: ['t4_note', 'aftershow_recap'],
+    }
+    delete (rulesJson.content_contract as Record<string, unknown>).authoring_shapes
+
+    const dir = mkdtempSync(join(tmpdir(), 'launch-community-rules-'))
+    const filePath = join(dir, 'launch_community_rules.v1.yaml')
+    writeFileSync(filePath, stringifyYaml(source), 'utf8')
+
+    const runtime = getLaunchCommunityRules(filePath)
+    const picks = runtime.communities.find((community) => community.slug === 't4-picks')
+    expect(picks?.rules_json).toMatchObject({
+      launch_profile: {
+        community_family: 'creator_recommendation',
+        launch_wave: 'launch_core',
+        default_editorial_shelf_ids: ['notes_today'],
+      },
+      content_contract: {
+        authoring_shapes: ['note_root', 'aftershow_recap'],
+      },
+    })
+    expect((picks?.rules_json.launch_profile as Record<string, unknown>)?.community_type).toBeUndefined()
+    expect((picks?.rules_json.launch_profile as Record<string, unknown>)?.launch_phase).toBeUndefined()
+  })
 })

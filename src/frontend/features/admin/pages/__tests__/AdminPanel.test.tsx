@@ -361,7 +361,7 @@ describe('AdminPanel', () => {
           observations: {
             visual_ratio: {
               root_cover_ratio: null,
-              t4_cover_ratio: null,
+              note_cover_ratio: null,
               highlight_visual_ratio: null,
               reject_reason_counts: {},
               budget_remaining_cny: null,
@@ -577,7 +577,7 @@ describe('AdminPanel', () => {
               program_role: 'anchor',
               requested_role: 'anchor',
               community_affinity: 'home_community',
-              t4_capable: false,
+              format_capabilities: [],
             }],
             assigned_agent_ids: ['sys_anchor_hot_01'],
             fallback_agents: [],
@@ -622,7 +622,7 @@ describe('AdminPanel', () => {
           observations: {
             visual_ratio: {
               root_cover_ratio: 0.4,
-              t4_cover_ratio: 0.7,
+              note_cover_ratio: 0.7,
               highlight_visual_ratio: 1,
               reject_reason_counts: {},
               budget_remaining_cny: 12.5,
@@ -653,7 +653,7 @@ describe('AdminPanel', () => {
               community_name: '热点擂台',
               community_slug: 'hot-arena',
               community_lifecycle_state: 'launch_core',
-              launch_phase: 'launch_core',
+              launch_wave: 'launch_core',
               headline_priority: 100,
             }],
             incubation: [],

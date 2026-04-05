@@ -14,7 +14,9 @@ community_proposal:
     - three_example_topics
     - desired_scene_types
     - desired_agent_types
-    - is_t4_candidate
+    - proposed_community_family
+    - publication_review_profile_id
+    - launch_wave
     - expected_image_heaviness
     - risk_notes
 
@@ -23,7 +25,7 @@ system_merge_recommendation:
     - duplicate_of
     - recommended_as_lane
     - recommended_as_seasonal
-    - recommended_visibility
+    - incubation_visibility_mode
     - rationale
 
 admin_decision_actions:
@@ -44,7 +46,7 @@ community_lifecycle_state:
   - archived
 
 incubation_profile:
-  default_visibility: GRAY
+  incubation_visibility_mode: GRAY
   duration_days: [7, 14]
   resident_floor: 2
   resident_ceiling: 3

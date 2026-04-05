@@ -40,11 +40,16 @@ const STAGE_TEMPLATE_ROOT = resolve(REPO_ROOT, 'docs/stage-templates/source/temp
 
 const lifecycleStateSchema = z.enum(COMMUNITY_LIFECYCLE_STATES)
 const launchProfileSchema = z.object({
-  community_type: z.string().trim().min(1),
+  community_family: z.string().trim().min(1).optional(),
+  community_type: z.string().trim().min(1).optional(),
   headline_priority: z.number().min(0).max(100),
   show_on_home: z.boolean(),
-  launch_phase: z.string().trim().min(1),
+  launch_wave: z.string().trim().min(1).optional(),
+  launch_phase: z.string().trim().min(1).optional(),
+  publication_review_profile_id: z.string().trim().min(1).optional(),
+  default_editorial_shelf_ids: z.array(z.string().trim().min(1)).default([]),
   editorial_shelf: z.array(z.string().trim().min(1)).default([]),
+  creator_note_policy: z.string().trim().min(1).optional().nullable(),
 }).passthrough()
 
 const contentContractSchema = z.object({
@@ -53,8 +58,10 @@ const contentContractSchema = z.object({
   must_not_feel_like: z.array(z.string().trim().min(1)).min(1),
   title_style: z.string().trim().min(1),
   hook_style: z.array(z.string().trim().min(1)).min(1),
-  allowed_content_shapes: z.array(z.string().trim().min(1)).min(1),
+  authoring_shapes: z.array(z.string().trim().min(1)).optional(),
+  allowed_content_shapes: z.array(z.string().trim().min(1)).optional(),
   avoid_patterns: z.array(z.string().trim().min(1)).default([]),
+  creator_note_policy: z.string().trim().min(1).optional().nullable(),
 }).passthrough()
 
 const launchCommunityRulesSchema = z.object({
@@ -187,7 +194,7 @@ function buildCommunitySemanticContract(input: {
     readTrimmedString(input.launch_profile.community_family) ?? readTrimmedString(input.launch_profile.community_type),
   )
   if (!communityFamily) {
-    throw new ValidationError('Invalid launch community rules: launch_profile.community_type must resolve to a canonical community_family')
+    throw new ValidationError('Invalid launch community rules: launch_profile.community_family must resolve to a canonical community_family')
   }
 
   const communityShellCategory = normalizeCommunityShellCategory(
@@ -217,7 +224,9 @@ function buildCommunitySemanticContract(input: {
       .concat(readStringArray(input.content_contract.allowed_content_shapes))
       .map((item) => normalizeAuthoringShapeId(item))
       .filter((item): item is string => item !== null),
-    creator_note_policy: readTrimmedString(input.launch_profile.creator_note_policy),
+    creator_note_policy:
+      readTrimmedString(input.launch_profile.creator_note_policy)
+      ?? readTrimmedString(input.content_contract.creator_note_policy),
   }
 }
 
@@ -300,7 +309,7 @@ function normalizeCrossRouteTargets(
 function collectAllowedRuntimeRoles(): Set<string> {
   const roster = getLaunchSystemRoster()
   return new Set<string>(
-    roster.roster.map((entry) => entry.program_role).concat(['anchor', 'challenger', 'wildcard', 'mc', 't4_blogger', 'showrunner', 'editor']),
+    roster.roster.map((entry) => entry.program_role).concat(['anchor', 'challenger', 'wildcard', 'mc', 'creator', 'showrunner', 'editor']),
   )
 }
 
@@ -410,19 +419,33 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       content_contract: community.rules_json.content_contract,
     })
 
+    const {
+      community_type: _legacyCommunityType,
+      launch_phase: _legacyLaunchPhase,
+      ...canonicalLaunchProfile
+    } = community.rules_json.launch_profile
+
     const rulesJson = {
       community_lifecycle_state: community.community_lifecycle_state,
       launch_profile: {
-        ...community.rules_json.launch_profile,
+        ...canonicalLaunchProfile,
         community_family: communitySemanticContract.community_family,
         community_shell_category: communitySemanticContract.community_shell_category,
         publication_review_profile_id: communitySemanticContract.publication_review_profile_id,
         launch_wave: communitySemanticContract.launch_wave ?? null,
         default_editorial_shelf_ids: communitySemanticContract.default_editorial_shelf_ids,
+        editorial_shelf:
+          readStringArray(community.rules_json.launch_profile.editorial_shelf).length > 0
+            ? readStringArray(community.rules_json.launch_profile.editorial_shelf)
+            : communitySemanticContract.default_editorial_shelf_ids,
       },
       content_contract: {
         ...community.rules_json.content_contract,
         authoring_shapes: communitySemanticContract.authoring_shapes ?? [],
+        allowed_content_shapes:
+          readStringArray(community.rules_json.content_contract.allowed_content_shapes).length > 0
+            ? readStringArray(community.rules_json.content_contract.allowed_content_shapes)
+            : communitySemanticContract.authoring_shapes ?? [],
         creator_note_policy: communitySemanticContract.creator_note_policy ?? null,
       },
       stage_spec_v1: stageSpec,
@@ -553,16 +576,14 @@ export function buildGovernedCommunityRulesSkeleton(input: {
   const rulesJson = {
     community_lifecycle_state: input.lifecycle_state,
     launch_profile: {
-      community_type: input.proposed_community_family,
       community_family: input.proposed_community_family,
       community_shell_category: deriveCommunityShellCategory(input.proposed_community_family),
       headline_priority: 20,
       show_on_home: false,
-      launch_phase: input.launch_wave ?? input.lifecycle_state,
       launch_wave: input.launch_wave ?? input.lifecycle_state,
-      editorial_shelf: [],
       default_editorial_shelf_ids: [],
       publication_review_profile_id: publicationReviewProfileId,
+      creator_note_policy: strictPublication ? 'native_creator_note_lane' : null,
       source_contract: 't144_proposal_bootstrap',
       governed_slug: slug,
     },
@@ -572,9 +593,9 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       must_not_feel_like: ['空泛重复', '无边界扩散'],
       title_style: '提案孵化式',
       hook_style: ['先给 premise', '先讲观众价值'],
-      allowed_content_shapes: ['discussion_root', 'story_episode', 'aftershow_recap'],
       authoring_shapes: ['discussion_root', 'story_episode', 'aftershow_recap'],
       avoid_patterns: ['无目标闲聊'],
+      creator_note_policy: strictPublication ? 'native_creator_note_lane' : null,
       target_audience: input.target_audience ?? null,
     },
     stage_spec_v1: stageSpec,
@@ -584,7 +605,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       min_resident_contrast: 1,
       min_guest_crossovers: 0,
       wildcard_probability: strictPublication ? 0.1 : 0.2,
-      must_have_runtime_roles: strictPublication ? ['t4_blogger', 'editor'] : ['anchor'],
+      must_have_runtime_roles: strictPublication ? ['creator', 'editor'] : ['anchor'],
       forbidden_pairings: [],
     },
     visual_policy: {
@@ -592,7 +613,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       reply_image_probability: 0,
       highlight_hero_required: false,
       aftershow_visual_required: false,
-      preferred_visual_modes: strictPublication ? ['t4_note_card'] : ['headline_card'],
+      preferred_visual_modes: strictPublication ? ['note_cover'] : ['headline_card'],
     },
     quality_policy: {
       max_same_topic_repeats_per_24h: 2,
@@ -605,7 +626,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       homepage_boost: 0.2,
       hot_feed_bias: 0.2,
       new_feed_bias: 0.4,
-      t4_feed_bias: strictPublication ? 1 : 0,
+      creator_note_feed_bias: strictPublication ? 1 : 0,
       cross_community_route_bias: 0.5,
     },
     cross_route_policy: {

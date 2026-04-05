@@ -38,7 +38,7 @@ async function main() {
       timeout: 60_000,
     })
 
-    for (const text of ['今日必看', 'T4 今日笔记', '全部社区']) {
+    for (const text of ['今日必看', '创作者笔记', '全部社区']) {
       await page.getByText(text, { exact: false }).first().waitFor({
         state: 'visible',
         timeout: 15_000,
@@ -47,7 +47,7 @@ async function main() {
 
     console.log(JSON.stringify({
       url,
-      markers: ['今日必看', 'T4 今日笔记', '全部社区'],
+      markers: ['今日必看', '创作者笔记', '全部社区'],
     }, null, 2))
   } finally {
     await browser.close()

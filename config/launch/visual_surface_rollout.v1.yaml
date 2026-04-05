@@ -9,7 +9,7 @@ surface_rollout:
   home_root_card:
     target_ratio: 0.50
     prefer_modes: [single_cover, quote_card]
-  t4_root_card:
+  note_root_card:
     target_ratio: 0.70
     prefer_modes: [single_cover, multi_panel_cover, comparison_cover]
   thread_turn:
@@ -31,7 +31,7 @@ budget_guardrail:
     - thread_turn
     - aftershow_card
     - home_root_card
-    - t4_root_card
+    - note_root_card
     - highlight_card
 
 card_modes:
@@ -60,7 +60,7 @@ hero_rules:
   home_root_card:
     hero_required: false
     requires_hero_eligible: false
-  t4_root_card:
+  note_root_card:
     hero_required: false
     requires_hero_eligible: false
   thread_turn:
@@ -76,7 +76,7 @@ hero_rules:
 thumbnail_policy:
   default: optional
   home_root_card: required_if_available
-  t4_root_card: required
+  note_root_card: required
   thread_turn: optional
   highlight_card: required
   aftershow_card: optional

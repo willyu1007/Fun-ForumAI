@@ -27,16 +27,24 @@ const ALLOWED_BADGE_LABELS = ['Resident', 'Host', '常驻', '节目位'] as cons
 
 const launchBadgeLabelSchema = z.enum(ALLOWED_BADGE_LABELS)
 const surfaceDisplayModeSchema = z.literal('program_seat_only')
-const programRoleSchema = z.enum([
+const canonicalProgramRoleSchema = z.enum([
   'anchor',
   'challenger',
   'wildcard',
   'mc',
-  't4_blogger',
+  'creator',
   'showrunner',
   'editor',
 ])
-const visibilityRoleSchema = z.enum(['resident', 'host', 'crossover', 'editorial'])
+const programRoleSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeIdentityRoleId(value) ?? value.trim()
+}, canonicalProgramRoleSchema)
+const canonicalVisibilityRoleSchema = z.enum(['resident', 'host', 'crossover', 'editorial'])
+const visibilityRoleSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeIdentityVisibilityRoleId(value) ?? value.trim()
+}, canonicalVisibilityRoleSchema)
 const imageAffinitySchema = z.enum(['low', 'medium', 'high'])
 const stanceAxisSchema = z.enum(['low', 'medium', 'strong'])
 const generalAxisSchema = z.enum(['low', 'medium', 'high'])
@@ -60,6 +68,8 @@ const launchSystemRosterEntrySchema = z.object({
   display_name: z.string().trim().min(1),
   program_role: programRoleSchema,
   visibility_role: visibilityRoleSchema,
+  identity_role_id: canonicalProgramRoleSchema.optional(),
+  identity_visibility_role_id: canonicalVisibilityRoleSchema.optional(),
   home_community: z.string().trim().min(1),
   secondary_communities: z.array(z.string().trim().min(1)).default([]),
   resident_memberships: z.array(z.string().trim().min(1)).default([]),
@@ -69,7 +79,8 @@ const launchSystemRosterEntrySchema = z.object({
     avoids: z.array(z.string().trim().min(1)).default([]),
   }),
   image_affinity: imageAffinitySchema,
-  t4_capable: z.boolean(),
+  t4_capable: z.boolean().optional(),
+  format_capabilities: z.array(z.enum(['note'])).default([]),
   daily_budget: z.object({
     root_posts: z.number().int().min(0),
     replies: z.number().int().min(0),
@@ -110,7 +121,8 @@ const launchSystemRoleMixSchema = z.object({
   challenger: z.number().int().min(0),
   wildcard: z.number().int().min(0),
   mc: z.number().int().min(0),
-  t4_blogger: z.number().int().min(0),
+  creator: z.number().int().min(0).optional(),
+  t4_blogger: z.number().int().min(0).optional(),
   showrunner_editor: z.number().int().min(0),
 })
 
@@ -131,8 +143,8 @@ const launchSystemIdentityConfigSchema = z.object({
   platform_owner_key: z.string().trim().min(1),
   program_role: programRoleSchema,
   visibility_role: visibilityRoleSchema,
-  identity_role_id: z.enum(['anchor', 'challenger', 'wildcard', 'mc', 'creator', 'showrunner', 'editor']).optional(),
-  identity_visibility_role_id: z.enum(['resident', 'host', 'crossover', 'editorial']).optional(),
+  identity_role_id: canonicalProgramRoleSchema.optional(),
+  identity_visibility_role_id: canonicalVisibilityRoleSchema.optional(),
   home_community: z.string().trim().min(1),
   secondary_communities: z.array(z.string().trim().min(1)),
   resident_memberships: z.array(z.string().trim().min(1)),
@@ -142,7 +154,7 @@ const launchSystemIdentityConfigSchema = z.object({
     avoids: z.array(z.string().trim().min(1)),
   }),
   image_affinity: imageAffinitySchema,
-  t4_capable: z.boolean(),
+  t4_capable: z.boolean().optional(),
   format_capabilities: z.array(z.enum(['note'])).default([]),
   daily_budget: z.object({
     root_posts: z.number().int().min(0),
@@ -230,15 +242,21 @@ function countProgramRoles(roster: LaunchSystemRosterEntry[]): LaunchSystemRoleM
     challenger: roster.filter((entry) => entry.program_role === 'challenger').length,
     wildcard: roster.filter((entry) => entry.program_role === 'wildcard').length,
     mc: roster.filter((entry) => entry.program_role === 'mc').length,
-    t4_blogger: roster.filter((entry) => entry.program_role === 't4_blogger').length,
+    creator: roster.filter((entry) => entry.program_role === 'creator').length,
     showrunner_editor: roster.filter(
       (entry) => entry.program_role === 'showrunner' || entry.program_role === 'editor',
     ).length,
   }
 }
 
-function deriveFormatCapabilities(t4Capable: boolean): FormatCapabilityId[] {
-  return t4Capable ? ['note'] : []
+function deriveFormatCapabilities(input: {
+  format_capabilities?: FormatCapabilityId[]
+  t4_capable?: boolean
+}): FormatCapabilityId[] {
+  if (input.format_capabilities && input.format_capabilities.length > 0) {
+    return [...new Set(input.format_capabilities)]
+  }
+  return input.t4_capable ? ['note'] : []
 }
 
 function resolveCanonicalIdentityRoleId(programRole: LaunchProgramRole): IdentityRoleId {
@@ -332,13 +350,20 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
   }
 
   const actualRoleMix = countProgramRoles(file.roster)
-  const expectedRoleMix = file.role_mix
+  const expectedRoleMix: LaunchSystemRoleMix = {
+    anchor: file.role_mix.anchor,
+    challenger: file.role_mix.challenger,
+    wildcard: file.role_mix.wildcard,
+    mc: file.role_mix.mc,
+    creator: file.role_mix.creator ?? file.role_mix.t4_blogger ?? 0,
+    showrunner_editor: file.role_mix.showrunner_editor,
+  }
   if (
     actualRoleMix.anchor !== expectedRoleMix.anchor
     || actualRoleMix.challenger !== expectedRoleMix.challenger
     || actualRoleMix.wildcard !== expectedRoleMix.wildcard
     || actualRoleMix.mc !== expectedRoleMix.mc
-    || actualRoleMix.t4_blogger !== expectedRoleMix.t4_blogger
+    || actualRoleMix.creator !== expectedRoleMix.creator
     || actualRoleMix.showrunner_editor !== expectedRoleMix.showrunner_editor
   ) {
     throw new ValidationError(
@@ -361,8 +386,13 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
       badge_by_visibility_role: { ...file.surface_display_policy.badge_by_visibility_role },
     },
     role_mix: expectedRoleMix,
-    roster: file.roster.map((entry) => ({
-      ...entry,
+    roster: file.roster.map((entry) => {
+      const { t4_capable: _legacyCreatorCapability, ...canonicalEntry } = entry
+      return {
+        ...canonicalEntry,
+      identity_role_id: entry.identity_role_id ?? resolveCanonicalIdentityRoleId(entry.program_role),
+      identity_visibility_role_id:
+        entry.identity_visibility_role_id ?? resolveCanonicalVisibilityRoleId(entry.visibility_role),
       secondary_communities: [...entry.secondary_communities],
       resident_memberships: [...entry.resident_memberships],
       guest_memberships: [...entry.guest_memberships],
@@ -370,6 +400,10 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
         prefers: [...entry.pairing_preferences.prefers],
         avoids: [...entry.pairing_preferences.avoids],
       },
+      format_capabilities: deriveFormatCapabilities({
+        format_capabilities: entry.format_capabilities,
+        t4_capable: entry.t4_capable,
+      }),
       daily_budget: { ...entry.daily_budget },
       identity_scaffold: {
         ...entry.identity_scaffold,
@@ -377,7 +411,8 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
         signature_topics: [...entry.identity_scaffold.signature_topics],
         signature_relationships: [...entry.identity_scaffold.signature_relationships],
       },
-    })),
+      }
+    }),
   }
 }
 
@@ -424,8 +459,9 @@ export function buildLaunchSystemConfigSlice(entry: LaunchSystemRosterEntry): Re
       platform_owner_key: roster.owner_model.platform_owner_key,
       program_role: entry.program_role,
       visibility_role: entry.visibility_role,
-      identity_role_id: resolveCanonicalIdentityRoleId(entry.program_role),
-      identity_visibility_role_id: resolveCanonicalVisibilityRoleId(entry.visibility_role),
+      identity_role_id: entry.identity_role_id ?? resolveCanonicalIdentityRoleId(entry.program_role),
+      identity_visibility_role_id:
+        entry.identity_visibility_role_id ?? resolveCanonicalVisibilityRoleId(entry.visibility_role),
       home_community: entry.home_community,
       secondary_communities: [...entry.secondary_communities],
       resident_memberships: [...entry.resident_memberships],
@@ -435,8 +471,10 @@ export function buildLaunchSystemConfigSlice(entry: LaunchSystemRosterEntry): Re
         avoids: [...entry.pairing_preferences.avoids],
       },
       image_affinity: entry.image_affinity,
-      t4_capable: entry.t4_capable,
-      format_capabilities: deriveFormatCapabilities(entry.t4_capable),
+      format_capabilities: deriveFormatCapabilities({
+        format_capabilities: entry.format_capabilities,
+        t4_capable: entry.t4_capable,
+      }),
       daily_budget: { ...entry.daily_budget },
       cross_route_budget: entry.cross_route_budget,
       identity_scaffold: {
@@ -472,13 +510,16 @@ export function readLaunchSystemIdentityConfig(
     )
   }
 
+  const { t4_capable: _legacyCreatorCapability, ...canonicalIdentity } = parsed.data
+
   return {
-    ...parsed.data,
+    ...canonicalIdentity,
     identity_role_id: identityRoleId,
     identity_visibility_role_id: identityVisibilityRoleId,
-    format_capabilities: parsed.data.format_capabilities.length > 0
-      ? parsed.data.format_capabilities
-      : deriveFormatCapabilities(parsed.data.t4_capable),
+    format_capabilities: deriveFormatCapabilities({
+      format_capabilities: parsed.data.format_capabilities,
+      t4_capable: parsed.data.t4_capable,
+    }),
   }
 }
 
@@ -595,7 +636,7 @@ function derivePersonaSeedCode(entry: LaunchSystemRosterEntry): PersonaSeedCode 
   if (entry.identity_scaffold.narrative_axis === 'high') {
     return 'philosopher'
   }
-  if (entry.program_role === 't4_blogger') {
+  if (entry.program_role === 'creator') {
     return entry.identity_scaffold.empathy_axis === 'high' ? 'warmhearted' : 'scholar'
   }
   if (entry.identity_scaffold.stance_axis === 'strong') {

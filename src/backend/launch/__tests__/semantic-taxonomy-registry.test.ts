@@ -63,10 +63,10 @@ describe('semantic taxonomy registry', () => {
     expect(resolveLaunchCommunitySemanticContract({
       community_lifecycle_state: 'incubating_gray',
       launch_profile: {
-        community_type: 'graybox_experiment',
+        community_family: 'graybox_experiment',
       },
       content_contract: {
-        allowed_content_shapes: ['thread'],
+        authoring_shapes: ['thread'],
       },
     })).toBeNull()
   })

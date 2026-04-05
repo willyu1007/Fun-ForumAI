@@ -22,7 +22,7 @@ export interface PublicSceneWritePayload {
   visual_ref?: PublicSceneVisualRef | null
   launch_programming?: {
     storyline?: Record<string, unknown> | null
-    t4_note?: Record<string, unknown> | null
+    creator_note?: Record<string, unknown> | null
     editorial_intent?: Record<string, unknown> | null
   } | null
 }
@@ -174,7 +174,7 @@ function parseLaunchProgramming(
   const record = value as Record<string, unknown>
   return {
     storyline: toRecord(record.storyline),
-    t4_note: toRecord(record.t4_note),
+    creator_note: toRecord(record.creator_note) ?? toRecord(record.t4_note),
     editorial_intent: toRecord(record.editorial_intent),
   }
 }

@@ -3,7 +3,7 @@ import { listLaunchCommunitySeeds } from '../launch/community-rules.js'
 import { getLaunchHomeProgramming } from '../launch/home-programming.js'
 import { resolvePostLaunchTuningProfile, type PostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
 import type { LaunchContentKind } from '../launch/programming-projection.js'
-import { isLaunchNativeT4Community } from '../launch/t4-content-templates.js'
+import { isLaunchNativeCreatorNoteCommunity } from '../launch/creator-note-templates.js'
 import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
@@ -212,7 +212,7 @@ export class HomeProgrammingService {
       usedPostIds,
       viewerRuntime,
     )
-    let t4Today = this.pickT4Today(hotFeed.items, usedPostIds, viewerRuntime, tuning?.active_profile)
+    let notesToday = this.pickNotesToday(hotFeed.items, usedPostIds, viewerRuntime, tuning?.active_profile)
     let continueStoryline = this.pickContinueStoryline(
       hotFeed.items,
       aftershowCandidates,
@@ -224,17 +224,17 @@ export class HomeProgrammingService {
       conflictRising,
     }))
     const resolvedTargets = await this.resolveNextJumpTargets(
-      [...mustWatch, ...conflictRising, ...t4Today, ...continueStoryline],
+      [...mustWatch, ...conflictRising, ...notesToday, ...continueStoryline],
       input.viewerUserId,
     )
     mustWatch = this.applyResolvedTargets(mustWatch, resolvedTargets)
     conflictRising = this.applyResolvedTargets(conflictRising, resolvedTargets)
-    t4Today = this.applyResolvedTargets(t4Today, resolvedTargets)
+    notesToday = this.applyResolvedTargets(notesToday, resolvedTargets)
     continueStoryline = this.applyResolvedTargets(continueStoryline, resolvedTargets)
-    ;[mustWatch, conflictRising, t4Today, continueStoryline] = await Promise.all([
+    ;[mustWatch, conflictRising, notesToday, continueStoryline] = await Promise.all([
       this.attachRelationTeasersToShelfItems(mustWatch, viewerRuntime.viewer),
       this.attachRelationTeasersToShelfItems(conflictRising, viewerRuntime.viewer),
-      this.attachRelationTeasersToShelfItems(t4Today, viewerRuntime.viewer),
+      this.attachRelationTeasersToShelfItems(notesToday, viewerRuntime.viewer),
       this.attachRelationTeasersToShelfItems(continueStoryline, viewerRuntime.viewer),
     ])
 
@@ -263,14 +263,14 @@ export class HomeProgrammingService {
         collapsed: conflictRising.length === 0,
         items: conflictRising,
       }],
-      ['t4_today', {
-        id: toPublicHomeShelfId('t4_today'),
+      ['notes_today', {
+        id: toPublicHomeShelfId('notes_today'),
         label: toPublicHomeShelfLabel(
-          't4_today',
-          contract.shelves.find((item) => item.id === 't4_today')?.label ?? '创作者笔记',
+          'notes_today',
+          contract.shelves.find((item) => item.id === 'notes_today')?.label ?? '创作者笔记',
         ),
-        collapsed: t4Today.length === 0,
-        items: t4Today,
+        collapsed: notesToday.length === 0,
+        items: notesToday,
       }],
       ['continue_storyline', {
         id: toPublicHomeShelfId('continue_storyline'),
@@ -403,7 +403,7 @@ export class HomeProgrammingService {
     return items
   }
 
-  private pickT4Today(
+  private pickNotesToday(
     hotFeed: PostWithMeta[],
     usedPostIds: Set<string>,
     viewerRuntime: HomeViewerRuntime,
@@ -412,14 +412,15 @@ export class HomeProgrammingService {
     const items = hotFeed
       .filter((item) => !usedPostIds.has(item.id))
       .filter((item) => isCreatorNoteEntry(item))
-      .filter((item) => isLaunchNativeT4Community(item.community_slug))
+      .filter((item) => isLaunchNativeCreatorNoteCommunity(item.community_slug))
       .filter((item) => Boolean(item.note_template_id))
       .slice()
       .sort((a, b) => {
-        const tuningDelta = this.readT4TemplateRank(b, tuningProfile) - this.readT4TemplateRank(a, tuningProfile)
+        const tuningDelta =
+          this.readCreatorNoteTemplateRank(b, tuningProfile) - this.readCreatorNoteTemplateRank(a, tuningProfile)
         if (tuningDelta !== 0) return tuningDelta
-        const viewerDelta = this.computeViewerScore(b, viewerRuntime, { preferT4Revisit: true })
-          - this.computeViewerScore(a, viewerRuntime, { preferT4Revisit: true })
+        const viewerDelta = this.computeViewerScore(b, viewerRuntime, { preferCreatorNoteRevisit: true })
+          - this.computeViewerScore(a, viewerRuntime, { preferCreatorNoteRevisit: true })
         if (viewerDelta !== 0) return viewerDelta
         return b.heat_score - a.heat_score
       })
@@ -439,7 +440,7 @@ export class HomeProgrammingService {
     const items: HomeProgrammingPostItem[] = []
     const rankedAftershow = this.sortByViewerContext(aftershowCandidates, viewerRuntime, {
       preferStorylineRevisit: true,
-      preferT4Revisit: true,
+      preferCreatorNoteRevisit: true,
     })
 
     for (const item of rankedAftershow) {
@@ -708,7 +709,7 @@ export class HomeProgrammingService {
     viewerRuntime: HomeViewerRuntime,
     options?: {
       preferStorylineRevisit?: boolean
-      preferT4Revisit?: boolean
+      preferCreatorNoteRevisit?: boolean
     },
   ): T[] {
     if (!viewerRuntime.enabled || items.length <= 1) {
@@ -734,7 +735,7 @@ export class HomeProgrammingService {
     viewerRuntime: HomeViewerRuntime,
     options?: {
       preferStorylineRevisit?: boolean
-      preferT4Revisit?: boolean
+      preferCreatorNoteRevisit?: boolean
     },
   ): number {
     if (!viewerRuntime.enabled) return 0
@@ -746,20 +747,24 @@ export class HomeProgrammingService {
     if (options?.preferStorylineRevisit && item.storyline_id && recentSignals?.recent_storyline_ids.includes(item.storyline_id)) {
       score += 40
     }
-    if (options?.preferT4Revisit && item.note_template_id && recentSignals?.recent_note_template_ids.includes(item.note_template_id)) {
+    if (
+      options?.preferCreatorNoteRevisit
+      && item.note_template_id
+      && recentSignals?.recent_note_template_ids.includes(item.note_template_id)
+    ) {
       score += 20
     }
     return score
   }
 
-  private readT4TemplateRank(
+  private readCreatorNoteTemplateRank(
     item: Pick<PostWithMeta, 'community_slug' | 'note_template_id'>,
     tuningProfile?: PostLaunchTuningProfile,
   ): number {
-    if (!tuningProfile || !isLaunchNativeT4Community(item.community_slug) || !item.note_template_id) {
+    if (!tuningProfile || !isLaunchNativeCreatorNoteCommunity(item.community_slug) || !item.note_template_id) {
       return 0
     }
-    const preferred = tuningProfile.t4.preferred_templates_by_community[item.community_slug] ?? []
+    const preferred = tuningProfile.creator_note.preferred_templates_by_community[item.community_slug] ?? []
     const index = preferred.indexOf(item.note_template_id)
     return index >= 0 ? preferred.length - index : 0
   }

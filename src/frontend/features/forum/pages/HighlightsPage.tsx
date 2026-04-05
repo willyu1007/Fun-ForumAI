@@ -10,8 +10,8 @@ import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import {
   readEditorialShelfLabel,
   readStorylineStateLabel,
-  readT4CoverLabel,
-  readT4TemplateLabel,
+  readCreatorNoteCoverLabel,
+  readCreatorNoteTemplateLabel,
 } from '../lib/launch-surface-labels'
 import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
@@ -43,8 +43,8 @@ function HighlightMetaBadges({
   item: Pick<HighlightThread | ControversyThread, 'community_name' | 'content_kind' | 'note_template_id' | 'cover_mode' | 'editorial_shelf' | 'editorial_shelf_id' | 'storyline_state'>
   metricBadges: string[]
 }) {
-  const templateLabel = readT4TemplateLabel(item.note_template_id)
-  const coverLabel = readT4CoverLabel(item.cover_mode)
+  const templateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
+  const coverLabel = readCreatorNoteCoverLabel(item.cover_mode)
   const shelfLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf)
   const storylineLabel = readStorylineStateLabel(item.storyline_state)
   const isNoteEntry = isCreatorNoteEntry(item)
@@ -95,7 +95,7 @@ function HighlightHero({
   sourceShelf: 'hot_threads' | 'controversy'
 }) {
   const href = buildPostHref(item.post_id, sourceShelf)
-  const templateLabel = readT4TemplateLabel(item.note_template_id)
+  const templateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
   const storylineLabel = readStorylineStateLabel(item.storyline_state)
   const heroLabel =
     sourceShelf === 'hot_threads'

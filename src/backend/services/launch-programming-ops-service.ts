@@ -15,7 +15,7 @@ import {
   type LaunchProgramRole,
   type LaunchSystemRosterEntry,
 } from '../launch/system-roster.js'
-import { isLaunchNativeT4Community } from '../launch/t4-content-templates.js'
+import { isLaunchNativeCreatorNoteCommunity } from '../launch/creator-note-templates.js'
 import {
   getLaunchVisualRollout,
   type LaunchCardMode,
@@ -58,7 +58,7 @@ interface DaypartWindow {
 
 interface ProgrammingObservedCounts {
   root_posts: number
-  t4_notes: number
+  creator_note_entries: number
   priority_threads: number
   highlight_candidates: number
   continuity_callbacks: number
@@ -88,7 +88,7 @@ export interface ProgrammingAgentRecommendation {
   program_role: LaunchProgramRole
   requested_role: LaunchProgramRole
   community_affinity: CommunityAffinity
-  t4_capable: boolean
+  format_capabilities: string[]
 }
 
 export interface ProgrammingSlotRecommendation {
@@ -183,7 +183,7 @@ export interface LaunchProgrammingOpsPayload {
   observations: {
     visual_ratio: {
       root_cover_ratio: number | null
-      t4_cover_ratio: number | null
+      note_cover_ratio: number | null
       highlight_visual_ratio: number | null
       reject_reason_counts: Record<string, number>
       budget_remaining_cny: number | null
@@ -214,7 +214,7 @@ export interface LaunchProgrammingOpsPayload {
       community_name: string
       community_slug: string
       community_lifecycle_state: string
-      launch_phase: string | null
+      launch_wave: string | null
       headline_priority: number
     }>
     incubation: Array<{
@@ -360,6 +360,10 @@ function buildRoleMix(entries: ProgrammingAgentRecommendation[]): Partial<Record
   }, {})
 }
 
+function isCreatorNoteCapable(entry: LaunchSystemRosterEntry): boolean {
+  return entry.format_capabilities?.includes('note') === true || entry.t4_capable === true
+}
+
 function rankProgrammingCandidates(input: {
   desired_role: LaunchProgramRole
   pool: LaunchSystemRosterEntry[]
@@ -382,9 +386,10 @@ function rankProgrammingCandidates(input: {
         + (selectedEntry.pairing_preferences.prefers.includes(entry.id) ? 35 : 0)
         + (entry.pairing_preferences.prefers.includes(selectedEntry.id) ? 25 : 0)
       ), 0)
+      const creatorNoteCapable = isCreatorNoteCapable(entry)
       const t4Score = input.strict_t4
-        ? (entry.t4_capable ? 200 : -220)
-        : (entry.t4_capable ? 20 : 0)
+        ? (creatorNoteCapable ? 200 : -220)
+        : (creatorNoteCapable ? 20 : 0)
       const fallbackRoleScore = input.allow_fallback_role ? -60 : 0
       const score = affinity.score
         + preferScore
@@ -419,7 +424,7 @@ function toProgrammingAgentRecommendation(input: {
     program_role: input.entry.program_role,
     requested_role: input.requested_role,
     community_affinity: input.community_affinity,
-    t4_capable: input.entry.t4_capable,
+    format_capabilities: isCreatorNoteCapable(input.entry) ? ['note'] : [],
   }
 }
 
@@ -520,7 +525,7 @@ export function recommendProgrammingSlotAssignments(
 function summarizeExpectedOutputs(outputs: LaunchProgrammingExpectedOutputs): string {
   const parts: string[] = []
   if (outputs.root_posts) parts.push(`主线帖 ${outputs.root_posts} 条`)
-  if (outputs.t4_notes) parts.push(`T4 笔记 ${outputs.t4_notes} 条`)
+  if (outputs.creator_note_entries) parts.push(`创作者笔记 ${outputs.creator_note_entries} 条`)
   if (outputs.priority_threads) parts.push(`优先线程 ${outputs.priority_threads} 条`)
   if (outputs.highlight_candidate) parts.push('进入高光候选')
   if (outputs.continuity_entry) parts.push('可承接 continuity')
@@ -534,8 +539,8 @@ function derivePublicSurfaceKind(slot: ProgrammingSlotRecommendation): LaunchSur
   if (slot.expected_outputs.surface_kind) {
     return slot.expected_outputs.surface_kind
   }
-  if (slot.expected_outputs.editorial_shelf === 't4_today') {
-    return 't4_root_card'
+  if (slot.expected_outputs.editorial_shelf === 'notes_today') {
+    return 'note_root_card'
   }
   if (slot.expected_outputs.editorial_shelf === 'continue_storyline') {
     return 'aftershow_card'
@@ -579,7 +584,7 @@ function buildPublicProgrammingItem(input: {
 function buildObservedCounts(posts: PostWithMeta[], highlightPostIds: Set<string>): ProgrammingObservedCounts {
   return {
     root_posts: posts.filter((post) => post.content_kind !== 'aftershow_recap').length,
-    t4_notes: posts.filter((post) => isCreatorNoteEntry(post)).length,
+    creator_note_entries: posts.filter((post) => isCreatorNoteEntry(post)).length,
     priority_threads: posts.filter((post) => post.thread_turn_count >= 6).length,
     highlight_candidates: posts.filter((post) => highlightPostIds.has(post.id)).length,
     continuity_callbacks: posts.filter((post) =>
@@ -617,12 +622,15 @@ function isPostInsideDaypart(post: PostWithMeta, daypart: ProgrammingDaypart, ti
 
 function readLaunchProfileValue(
   communityRules: Record<string, unknown> | null | undefined,
-  key: 'launch_phase' | 'headline_priority',
+  key: 'launch_wave' | 'headline_priority',
 ): string | number | null {
   if (!communityRules || typeof communityRules !== 'object' || Array.isArray(communityRules)) return null
   const launchProfile = communityRules.launch_profile
   if (!launchProfile || typeof launchProfile !== 'object' || Array.isArray(launchProfile)) return null
-  const value = (launchProfile as Record<string, unknown>)[key]
+  const value = key === 'launch_wave'
+    ? (launchProfile as Record<string, unknown>).launch_wave
+      ?? (launchProfile as Record<string, unknown>).launch_phase
+    : (launchProfile as Record<string, unknown>)[key]
   return typeof value === 'string' || typeof value === 'number' ? value : null
 }
 
@@ -638,6 +646,7 @@ function summarizeMergeRecommendation(input: {
   duplicate_of_community_id: string | null
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
+  incubation_visibility_mode?: string | null
   recommended_visibility: string
 }): string | null {
   if (input.duplicate_of_community_id) {
@@ -647,7 +656,7 @@ function summarizeMergeRecommendation(input: {
     return `incubate beside ${input.recommended_as_lane_community_id}`
   }
   if (input.recommended_as_seasonal) {
-    return `seasonal / ${input.recommended_visibility}`
+    return `seasonal / ${input.incubation_visibility_mode ?? input.recommended_visibility}`
   }
   return null
 }
@@ -660,7 +669,7 @@ function buildEmptyHealth(contract: ReturnType<typeof getLaunchProgrammingSchedu
     observed_daily_outcomes: {
       mainline_roots: 0,
       highlight_candidates: 0,
-      t4_notes: 0,
+      creator_note_entries: 0,
       continuity_callbacks: 0,
     },
     daypart_readiness: [],
@@ -684,7 +693,7 @@ export function buildDisabledLaunchProgrammingOpsPayload(now = new Date()): Laun
     observations: {
       visual_ratio: {
         root_cover_ratio: null,
-        t4_cover_ratio: null,
+        note_cover_ratio: null,
         highlight_visual_ratio: null,
         reject_reason_counts: {},
         budget_remaining_cny: null,
@@ -821,7 +830,7 @@ export class LaunchProgrammingOpsService {
       const current = requiredCommunityCounts.get(slot.community_slug) ?? {}
       const outputs = slot.expected_outputs
       current.root_posts = (current.root_posts ?? 0) + (outputs.root_posts ?? 0)
-      current.t4_notes = (current.t4_notes ?? 0) + (outputs.t4_notes ?? 0)
+      current.creator_note_entries = (current.creator_note_entries ?? 0) + (outputs.creator_note_entries ?? 0)
       current.priority_threads = (current.priority_threads ?? 0) + (outputs.priority_threads ?? 0)
       current.highlight_candidates = (current.highlight_candidates ?? 0) + (outputs.highlight_candidate ? 1 : 0)
       current.continuity_callbacks = (current.continuity_callbacks ?? 0) + (outputs.continuity_entry ? 1 : 0)
@@ -834,7 +843,7 @@ export class LaunchProgrammingOpsService {
       const launchCommunity = getLaunchCommunityBySlug(communitySlug)
       const missedSlots = contract.slot_templates.filter((slot) => {
         if (slot.community_slug !== communitySlug) return false
-        return ['root_posts', 't4_notes', 'priority_threads'].some((key) => {
+        return ['root_posts', 'creator_note_entries', 'priority_threads'].some((key) => {
           const requiredValue = slot.expected_outputs[key as keyof LaunchProgrammingExpectedOutputs]
           if (typeof requiredValue !== 'number') return false
           return (observed[key as keyof ProgrammingObservedCounts] ?? 0) < requiredValue
@@ -846,7 +855,7 @@ export class LaunchProgrammingOpsService {
         required,
         observed: {
           root_posts: observed.root_posts,
-          t4_notes: observed.t4_notes,
+          creator_note_entries: observed.creator_note_entries,
           priority_threads: observed.priority_threads,
           highlight_candidates: observed.highlight_candidates,
           continuity_callbacks: observed.continuity_callbacks,
@@ -913,7 +922,7 @@ export class LaunchProgrammingOpsService {
         todayPosts.filter((post) => !isCreatorNoteEntry(post)),
         (post) => post.media.length > 0,
       ),
-      t4_cover_ratio: ratioOf(
+      note_cover_ratio: ratioOf(
         todayPosts.filter((post) => isCreatorNoteEntry(post)),
         (post) => post.media.length > 0,
       ),
@@ -950,14 +959,14 @@ export class LaunchProgrammingOpsService {
         affected_daypart: 'evening_prime',
       })
     }
-    const emptyT4Dayparts = daypartReadiness.filter((item) =>
+    const emptyCreatorNoteDayparts = daypartReadiness.filter((item) =>
       ['morning_warmup', 'afternoon_handoff'].includes(item.daypart_id)
-      && (item.observed.t4_notes ?? 0) === 0)
-    if (emptyT4Dayparts.length > 1) {
+      && (item.observed.creator_note_entries ?? 0) === 0)
+    if (emptyCreatorNoteDayparts.length > 1) {
       warnings.push({
-        code: 't4_supply_empty_multi_daypart',
+        code: 'creator_note_supply_empty_multi_daypart',
         severity: 'warn',
-        message: 'T4 供给连续超过一个 daypart 为空。',
+        message: '创作者笔记供给连续超过一个 daypart 为空。',
       })
     }
     const aftershowPublishedCount = aftershowObservations.filter((item) => item.published_status === 'published').length
@@ -1015,8 +1024,8 @@ export class LaunchProgrammingOpsService {
           community_slug: persisted?.slug ?? seed.slug,
           community_lifecycle_state:
             readCommunityLifecycleState(rulesJson) ?? seed.community_lifecycle_state,
-          launch_phase:
-            (readLaunchProfileValue(rulesJson, 'launch_phase') as string | null) ?? null,
+          launch_wave:
+            (readLaunchProfileValue(rulesJson, 'launch_wave') as string | null) ?? null,
           headline_priority:
             Number(readLaunchProfileValue(rulesJson, 'headline_priority') ?? 0),
         }
@@ -1049,6 +1058,7 @@ export class LaunchProgrammingOpsService {
                 duplicate_of_community_id: recommendation.duplicate_of_community_id,
                 recommended_as_lane_community_id: recommendation.recommended_as_lane_community_id,
                 recommended_as_seasonal: recommendation.recommended_as_seasonal,
+                incubation_visibility_mode: recommendation.incubation_visibility_mode,
                 recommended_visibility: recommendation.recommended_visibility,
               })
             : null,
@@ -1064,7 +1074,7 @@ export class LaunchProgrammingOpsService {
       observed_daily_outcomes: {
         mainline_roots: todayPosts.filter((post) => !isCreatorNoteEntry(post)).length,
         highlight_candidates: highlightCandidates.filter((item) => item.rejected_reason === null).length,
-        t4_notes: todayPosts.filter((post) => isCreatorNoteEntry(post)).length,
+        creator_note_entries: todayPosts.filter((post) => isCreatorNoteEntry(post)).length,
         continuity_callbacks: todayPosts.filter((post) =>
           post.content_kind === 'continuity_callback' || post.storyline_state === 'callback').length,
       },
@@ -1123,9 +1133,9 @@ export class LaunchProgrammingOpsService {
       fallback_roles: slot.fallback_roles,
       blocked_pairings: blockedPairings,
       strict_t4:
-        isLaunchNativeT4Community(slot.community_slug)
-        || slot.expected_outputs.surface_kind === 't4_root_card'
-        || Boolean(slot.expected_outputs.t4_notes),
+        isLaunchNativeCreatorNoteCommunity(slot.community_slug)
+        || slot.expected_outputs.surface_kind === 'note_root_card'
+        || Boolean(slot.expected_outputs.creator_note_entries),
     })
 
     return {

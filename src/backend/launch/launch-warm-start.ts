@@ -28,12 +28,12 @@ import {
   type LaunchSystemRosterRuntime,
 } from './system-roster.js'
 import type { LaunchContentKind } from './programming-projection.js'
-import type { LaunchT4CoverMode, LaunchT4TemplateId } from './t4-content-templates.js'
+import type { LaunchCreatorNoteCoverMode, LaunchCreatorNoteTemplateId } from './creator-note-templates.js'
 
 type WarmStartShelfId =
   | 'must_watch_today'
   | 'conflict_rising'
-  | 't4_today'
+  | 'notes_today'
   | 'continue_storyline'
 
 interface LaunchWarmStartSpec {
@@ -52,10 +52,10 @@ interface LaunchWarmStartSpec {
   }
   editorial_shelf: WarmStartShelfId
   content_kind: LaunchContentKind
-  t4_note?: {
+  creator_note?: {
     is_t4: true
-    note_template_id: LaunchT4TemplateId
-    cover_mode: LaunchT4CoverMode
+    note_template_id: LaunchCreatorNoteTemplateId
+    cover_mode: LaunchCreatorNoteCoverMode
   }
 }
 
@@ -220,7 +220,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-fail-postmortem',
     pass: 'occupancy',
     community_slug: 'fail-postmortem',
-    preferred_roles: ['editor', 'anchor', 't4_blogger'],
+    preferred_roles: ['editor', 'anchor', 'creator'],
     phase: 'opening',
     title: '翻车复盘局先把必须继续追的缺口钉住',
     body: [
@@ -307,24 +307,24 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-t4-picks',
     pass: 'occupancy',
     community_slug: 't4-picks',
-    preferred_roles: ['t4_blogger', 'editor', 'anchor'],
+    preferred_roles: ['creator', 'editor', 'anchor'],
     phase: 'pivot',
-    title: '种草研究所先交第一篇 T4 今日笔记',
+    title: '种草研究所先交第一篇创作者笔记',
     body: [
       '这不是普通推荐，而是首发期最该点开的一篇结构化笔记。',
       '',
       '我会先看三件事：观点够不够清楚、信息能不能支撑追更、封面感能不能成立。',
       '三项都过线，它就不该只停留在社区内部。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 'occupancy', 't4'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'creator-note'],
     storyline: {
       id: 'launch-occupancy-009',
       title: '首发期第一篇结构化推荐',
       hook: '哪篇内容值得先被挂到首页',
     },
-    editorial_shelf: 't4_today',
+    editorial_shelf: 'notes_today',
     content_kind: 'note_entry',
-    t4_note: {
+    creator_note: {
       is_t4: true,
       note_template_id: 'recommendation_note',
       cover_mode: 'comparison_cover',
@@ -334,24 +334,24 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-t4-relations',
     pass: 'occupancy',
     community_slug: 't4-relations',
-    preferred_roles: ['t4_blogger', 'editor', 'anchor'],
+    preferred_roles: ['creator', 'editor', 'anchor'],
     phase: 'closure',
-    title: '关系博主部先交第二篇 T4 今日笔记',
+    title: '关系博主部先交第二篇创作者笔记',
     body: [
       '今天更适合被记住的，不是某一句狠话，而是角色关系已经怎么变了。',
       '',
       '谁在借题发挥，谁在顺势贴近，谁在悄悄把冲突改写成新的联盟，',
       '这些关系变化比单条热评更值得做成完整笔记。',
     ].join('\n'),
-    tags: ['launch-warm-start', 'gray-release', 'occupancy', 't4', 'relationships'],
+    tags: ['launch-warm-start', 'gray-release', 'occupancy', 'creator-note', 'relationships'],
     storyline: {
       id: 'launch-occupancy-010',
       title: '首发关系线第一次显形',
       hook: '今天最值得被记住的是谁开始站到了一边',
     },
-    editorial_shelf: 't4_today',
+    editorial_shelf: 'notes_today',
     content_kind: 'note_entry',
-    t4_note: {
+    creator_note: {
       is_t4: true,
       note_template_id: 'relationship_observation_note',
       cover_mode: 'relationship_map_card',
@@ -455,7 +455,7 @@ export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
 const REQUIRED_HOME_THRESHOLD_COUNTS: Record<string, number> = {
   must_watch_today: 1,
   conflict_rising: 1,
-  t4_today: 2,
+  notes_today: 2,
   continue_storyline: 2,
   tonight_programming: 1,
 }
@@ -713,7 +713,7 @@ function buildWarmStartScenePayload(input: {
         primary_shelf: input.spec.editorial_shelf,
         content_kind: input.spec.content_kind,
       },
-      t4_note: input.spec.t4_note ?? null,
+      creator_note: input.spec.creator_note ?? null,
     },
   }
 }
@@ -723,7 +723,7 @@ function readShelfCounts(homePayload: HomeProgrammingPayload): Record<string, nu
   return {
     must_watch_today: byId.get('must_watch_today') ?? 0,
     conflict_rising: byId.get('conflict_rising') ?? 0,
-    t4_today: byId.get('t4_today') ?? 0,
+    notes_today: byId.get('notes_today') ?? 0,
     continue_storyline: byId.get('continue_storyline') ?? 0,
     tonight_programming: byId.get('tonight_programming') ?? 0,
   }

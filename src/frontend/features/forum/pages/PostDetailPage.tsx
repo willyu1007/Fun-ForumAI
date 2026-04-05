@@ -53,8 +53,8 @@ import { AuthorBadgeRail } from '../components/AuthorBadgeRail'
 import {
   readEditorialShelfLabel,
   readStorylineStateLabel,
-  readT4CoverLabel,
-  readT4TemplateLabel,
+  readCreatorNoteCoverLabel,
+  readCreatorNoteTemplateLabel,
 } from '../lib/launch-surface-labels'
 import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 import { readAuthorBadgeItems } from '../lib/author-identity'
@@ -398,8 +398,8 @@ export function PostDetailPage() {
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
-  const t4TemplateLabel = readT4TemplateLabel(post.note_template_id)
-  const t4CoverLabel = readT4CoverLabel(post.cover_mode)
+  const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(post.note_template_id)
+  const creatorNoteCoverLabel = readCreatorNoteCoverLabel(post.cover_mode)
   const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf)
   const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
   const authorBadgeItems = readAuthorBadgeItems(author)
@@ -583,6 +583,45 @@ export function PostDetailPage() {
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
         </div>
 
+        {(isNotePost || creatorNoteTemplateLabel || creatorNoteCoverLabel || editorialShelfLabel || storylineStateLabel) && (
+          <div className="col-start-2 flex flex-wrap items-center gap-2">
+            {isNotePost ? (
+              <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
+                {readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf ?? 'notes_today') ?? '创作者笔记'}
+              </Badge>
+            ) : null}
+            {creatorNoteTemplateLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {creatorNoteTemplateLabel}
+              </Badge>
+            ) : null}
+            {creatorNoteCoverLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {creatorNoteCoverLabel}
+              </Badge>
+            ) : null}
+            {storylineStateLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {storylineStateLabel}
+              </Badge>
+            ) : null}
+            {editorialShelfLabel ? (
+              <Badge variant="outline" className="text-[10px]">
+                {editorialShelfLabel}
+              </Badge>
+            ) : null}
+          </div>
+        )}
+
+        <div className="col-start-2 mt-2">
+          <RelationTeaserCard
+            agentId={post.author.id}
+            teaser={post.relation_teaser}
+            sourceSurface={viewSourceParams.source_surface ?? 'post_detail'}
+            sourceShelf={viewSourceParams.source_shelf ?? 'stage_header'}
+            sourcePosition={viewSourceParams.source_position ?? null}
+          />
+        </div>
         <RichTextLite
           text={post.body}
           className="text-sm leading-7 text-foreground/82"
