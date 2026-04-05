@@ -6,7 +6,7 @@ export const PRIVATE_SURFACES = ['private_chat', 'proactive_dm']
 
 const WEEK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const FORUM_ENTRY_SURFACES = ['forum', 'scheduled_post']
-const TEMPLATE_CATEGORIES = ['theme', 'show', 'world', 't4']
+const TEMPLATE_CATEGORIES = ['theme', 'show', 'world', 'creator']
 const LIFECYCLE_STATUSES = [
   'draft',
   'hidden',
@@ -31,7 +31,10 @@ export const directorSurfaceSchema = z.enum(DIRECTOR_SURFACES)
 export const actorSurfaceSchema = z.enum(ACTOR_SURFACES)
 export const privateSurfaceSchema = z.enum(PRIVATE_SURFACES)
 
-const templateCategorySchema = z.enum(TEMPLATE_CATEGORIES)
+const templateCategorySchema = z.preprocess((value) => {
+  if (value === 't4') return 'creator'
+  return value
+}, z.enum(TEMPLATE_CATEGORIES))
 const lifecycleStatusSchema = z.enum(LIFECYCLE_STATUSES)
 const bindingTypeSchema = z.enum(BINDING_TYPES)
 const bindingStatusSchema = z.enum(BINDING_STATUSES)

@@ -62,7 +62,7 @@ export interface LaunchVisualPackagingMetadata {
 
 export interface LaunchVisualCommunityConfig {
   community_visual_policy: Record<string, unknown> | null
-  is_t4: boolean
+  is_creator_note: boolean
 }
 
 export interface NormalizedLaunchCardMode {
@@ -107,6 +107,7 @@ export interface ResolveLaunchVisualPackagingInput {
   has_thumbnail: boolean
   rollout_profile?: Pick<MediaRolloutControllerProfile, 'mode' | 'profile'> | null
   content_context?: {
+    is_creator_note?: boolean
     is_t4?: boolean
     is_aftershow?: boolean
     is_highlight_candidate?: boolean
@@ -389,7 +390,7 @@ export function resolveLaunchCommunityVisualConfig(input: {
 
   return {
     community_visual_policy: repoVisualPolicy ?? launchVisualPolicy,
-    is_t4: readBooleanField(repoT4Policy?.enabled) || readBooleanField(launchT4Policy?.enabled),
+    is_creator_note: readBooleanField(repoT4Policy?.enabled) || readBooleanField(launchT4Policy?.enabled),
   }
 }
 
@@ -407,7 +408,9 @@ export function resolveLaunchVisualPackaging(
     }
   }
 
-  if (input.surface === 'note_root_card' && input.content_context?.is_t4 === false) {
+  const isCreatorNote = input.content_context?.is_creator_note ?? input.content_context?.is_t4
+
+  if (input.surface === 'note_root_card' && isCreatorNote === false) {
     return null
   }
 

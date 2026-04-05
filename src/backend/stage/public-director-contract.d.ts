@@ -112,7 +112,7 @@ export type StageTemplateAuthoringBinding =
 
 export interface StageTemplateAuthoringManifestItem {
   id: string
-  category: 'theme' | 'show' | 'world' | 't4'
+  category: 'theme' | 'show' | 'world' | 'creator'
   path: string
   lifecycle_status: 'draft' | 'hidden' | 'canary' | 'seasonal_active' | 'core_active' | 'retiring' | 'archived' | 'blocked'
   bindings: StageTemplateAuthoringBinding[]
@@ -139,7 +139,7 @@ export interface StageTemplateAuthoringDocument {
   template_id: string
   template_version: 'v2'
   name: string
-  category: 'theme' | 'show' | 'world' | 't4'
+  category: 'theme' | 'show' | 'world' | 'creator'
   notes?: string
   stage_spec: StageSpecV1 | (Record<string, unknown> & { version: 'v1' })
   director: StageTemplateDirector
@@ -149,7 +149,7 @@ export interface StageTemplateV2 {
   template_id: string
   template_version: string
   name: string
-  category: 'theme' | 'show' | 'world' | 't4'
+  category: 'theme' | 'show' | 'world' | 'creator'
   lifecycle_status: 'draft' | 'hidden' | 'canary' | 'seasonal_active' | 'core_active' | 'retiring' | 'archived' | 'blocked'
   stage_spec: StageSpecV1 | (Record<string, unknown> & { version: 'v1' })
   director: StageTemplateDirector

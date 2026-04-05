@@ -1,7 +1,7 @@
-template_id: stage-t4-03
+template_id: stage-creator-01
 template_version: v2
-name: T4 Template 03
-category: t4
+name: Creator Template 01
+category: creator
 notes: Launch-ready template bound to live community.
 stage_spec:
   version: v1

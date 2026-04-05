@@ -491,7 +491,7 @@ export class ForumReadService {
       launch_community_slug: input.community_slug,
     })
     return resolveLaunchVisualPackaging({
-      surface: visualConfig.is_t4 ? 'note_root_card' : 'home_root_card',
+      surface: visualConfig.is_creator_note ? 'note_root_card' : 'home_root_card',
       community_visual_policy: visualConfig.community_visual_policy,
       has_thumbnail: input.media.length > 0,
       rollout_profile: input.rolloutProfile
@@ -501,7 +501,7 @@ export class ForumReadService {
           }
         : null,
       content_context: {
-        is_t4: visualConfig.is_t4,
+        is_creator_note: visualConfig.is_creator_note,
       },
     })
   }

@@ -7,7 +7,7 @@ launch:
     theme: 6
     show: 8
     world: 3
-    t4: 3
+    creator: 3
   core_communities:
     - general
     - philosophy
@@ -50,7 +50,7 @@ rotation_audit:
       - slot: season-slot-2
         template_id: stage-world-03
       - slot: season-slot-3
-        template_id: stage-t4-01
+        template_id: stage-creator-01
     activated:
       - slot: season-slot-1
         template_id: stage-theme-07
@@ -864,14 +864,14 @@ templates:
     path: templates/stage-world-10.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-01
-    category: t4
-    path: templates/stage-t4-01.yaml
+  - id: stage-creator-01
+    category: creator
+    path: templates/stage-creator-01.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-02
-    category: t4
-    path: templates/stage-t4-02.yaml
+  - id: stage-creator-02
+    category: creator
+    path: templates/stage-creator-02.yaml
     lifecycle_status: seasonal_active
     bindings:
       - surface: forum
@@ -896,9 +896,9 @@ templates:
           trigger_conditions: []
         governance: {}
         constraints: {}
-  - id: stage-t4-03
-    category: t4
-    path: templates/stage-t4-03.yaml
+  - id: stage-creator-03
+    category: creator
+    path: templates/stage-creator-03.yaml
     lifecycle_status: seasonal_active
     bindings:
       - surface: forum
@@ -923,48 +923,48 @@ templates:
           trigger_conditions: []
         governance: {}
         constraints: {}
-  - id: stage-t4-04
-    category: t4
-    path: templates/stage-t4-04.yaml
+  - id: stage-creator-04
+    category: creator
+    path: templates/stage-creator-04.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-05
-    category: t4
-    path: templates/stage-t4-05.yaml
+  - id: stage-creator-05
+    category: creator
+    path: templates/stage-creator-05.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-06
-    category: t4
-    path: templates/stage-t4-06.yaml
+  - id: stage-creator-06
+    category: creator
+    path: templates/stage-creator-06.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-07
-    category: t4
-    path: templates/stage-t4-07.yaml
+  - id: stage-creator-07
+    category: creator
+    path: templates/stage-creator-07.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-08
-    category: t4
-    path: templates/stage-t4-08.yaml
+  - id: stage-creator-08
+    category: creator
+    path: templates/stage-creator-08.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-09
-    category: t4
-    path: templates/stage-t4-09.yaml
+  - id: stage-creator-09
+    category: creator
+    path: templates/stage-creator-09.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-10
-    category: t4
-    path: templates/stage-t4-10.yaml
+  - id: stage-creator-10
+    category: creator
+    path: templates/stage-creator-10.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-11
-    category: t4
-    path: templates/stage-t4-11.yaml
+  - id: stage-creator-11
+    category: creator
+    path: templates/stage-creator-11.yaml
     lifecycle_status: hidden
     bindings: []
-  - id: stage-t4-12
-    category: t4
-    path: templates/stage-t4-12.yaml
+  - id: stage-creator-12
+    category: creator
+    path: templates/stage-creator-12.yaml
     lifecycle_status: hidden
     bindings: []

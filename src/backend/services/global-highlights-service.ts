@@ -242,7 +242,7 @@ export class GlobalHighlightsService {
       has_thumbnail: item.media.length > 0,
       rollout_profile: rolloutProfile,
       content_context: {
-        is_t4: visualConfig.is_t4,
+        is_creator_note: visualConfig.is_creator_note,
         is_highlight_candidate: true,
       },
     })

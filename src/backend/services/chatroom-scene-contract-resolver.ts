@@ -56,7 +56,7 @@ const ROOM_PROGRAM_SCENE_PRESETS: Record<RoomSceneType, {
   },
   DEBATE: {
     name: 'Chat Room Debate',
-    category: 't4',
+    category: 'creator',
     viewerGoal: '让争议被掰开讲清，而不是平铺附和。',
     growthGoal: '训练角色在公开冲突中的立场稳定性与回应能力。',
     mustHaveRoles: ['HOST', 'SKEPTIC'],
@@ -129,7 +129,7 @@ export class ChatroomSceneContractResolver {
         return 'witty'
       case 'world':
         return 'warm'
-      case 't4':
+      case 'creator':
         return 'serious'
       default:
         return 'neutral'

@@ -2,12 +2,12 @@ version: 1
 draft_status: reviewed_working
 notes:
   - Working draft for launch 创作者笔记 track enablement.
-  - Reuses `stage-t4-01` as the default stage-spec baseline.
+  - Reuses `stage-creator-01` as the default stage-spec baseline.
   - "`note_template_id` and `cover_mode` are launch-facing contracts and may later move into typed config."
   - Card packaging consumes `T-140` surface rollout instead of redefining it.
 global_note_contract:
   shelf_label: 创作者笔记
-  default_stage_template_ref: stage-t4-01
+  default_stage_template_ref: stage-creator-01
   default_publication_review_profile_id: creator_strict_publication
   required_projection_fields:
     - content_kind

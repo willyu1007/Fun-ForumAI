@@ -628,11 +628,9 @@ export class CommunityGovernanceService {
       }
     }
 
-    const {
-      community_type: _legacyCommunityType,
-      launch_phase: _legacyLaunchPhase,
-      ...launchProfile
-    } = toRecord(currentRules.launch_profile) ?? {}
+    const launchProfile = { ...(toRecord(currentRules.launch_profile) ?? {}) }
+    delete launchProfile.community_type
+    delete launchProfile.launch_phase
     const governancePolicy = cloneGovernancePolicy(
       input.community,
       input.proposal,

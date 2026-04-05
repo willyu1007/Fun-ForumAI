@@ -214,7 +214,7 @@ export interface ResolveLaunchCreatorNoteProjectionInput {
 }
 
 export interface LaunchCreatorNoteProjection {
-  is_t4: boolean
+  is_creator_note: boolean
   note_template_id?: LaunchCreatorNoteTemplateId
   cover_mode?: LaunchCreatorNoteCoverMode
 }
@@ -415,7 +415,7 @@ export function resolveLaunchCreatorNoteProjection(
   input: ResolveLaunchCreatorNoteProjectionInput,
 ): LaunchCreatorNoteProjection {
   if (!isLaunchNativeCreatorNoteCommunity(input.community_slug)) {
-    return { is_t4: false }
+    return { is_creator_note: false }
   }
 
   const runtime = getLaunchCreatorNoteTemplateRuntime()
@@ -433,7 +433,7 @@ export function resolveLaunchCreatorNoteProjection(
     : template?.preferred_cover_modes ?? []
 
   return {
-    is_t4: true,
+    is_creator_note: true,
     note_template_id: template?.id,
     cover_mode: template
       ? resolveCoverMode({

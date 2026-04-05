@@ -387,7 +387,8 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
     },
     role_mix: expectedRoleMix,
     roster: file.roster.map((entry) => {
-      const { t4_capable: _legacyCreatorCapability, ...canonicalEntry } = entry
+      const canonicalEntry = { ...entry }
+      delete canonicalEntry.t4_capable
       return {
         ...canonicalEntry,
       identity_role_id: entry.identity_role_id ?? resolveCanonicalIdentityRoleId(entry.program_role),
@@ -510,7 +511,8 @@ export function readLaunchSystemIdentityConfig(
     )
   }
 
-  const { t4_capable: _legacyCreatorCapability, ...canonicalIdentity } = parsed.data
+  const canonicalIdentity = { ...parsed.data }
+  delete canonicalIdentity.t4_capable
 
   return {
     ...canonicalIdentity,

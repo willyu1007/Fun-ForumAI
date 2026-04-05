@@ -134,9 +134,11 @@ export function buildLaunchProgrammingProjection(input: {
   })
   const editorialShelfId = normalizeEditorialShelfId(readString(launchEditorialIntent?.primary_shelf))
     ?? defaultEditorialShelfId
-  const isT4 = typeof launchCreatorNote?.is_t4 === 'boolean'
-    ? launchCreatorNote.is_t4
-    : creatorNoteProjection.is_t4
+  const isCreatorNote = typeof launchCreatorNote?.is_creator_note === 'boolean'
+    ? launchCreatorNote.is_creator_note
+    : typeof launchCreatorNote?.is_t4 === 'boolean'
+      ? launchCreatorNote.is_t4
+      : creatorNoteProjection.is_creator_note
   const noteTemplateId = normalizeLaunchCreatorNoteTemplateId(readString(launchCreatorNote?.note_template_id))
     ?? creatorNoteProjection.note_template_id
   const coverMode = isLaunchCreatorNoteCoverMode(launchCreatorNote?.cover_mode)
@@ -145,7 +147,7 @@ export function buildLaunchProgrammingProjection(input: {
 
   const contentKind: LaunchContentKind | undefined = isLaunchContentKind(launchEditorialIntent?.content_kind)
     ? normalizeContentKind(launchEditorialIntent?.content_kind as string) ?? undefined
-    : isT4
+    : isCreatorNote
       ? 'note_entry'
       : storylineState === 'callback'
         ? 'continuity_callback'
@@ -186,7 +188,7 @@ export function buildLaunchProgrammingProjection(input: {
       ...(coverMode ? { cover_mode: coverMode } : {}),
     },
     visual: {
-      ...(isT4 ? { surface_kind: 'note_root_card' } : {}),
+      ...(isCreatorNote ? { surface_kind: 'note_root_card' } : {}),
     },
   }
 
@@ -200,7 +202,7 @@ export function buildLaunchProgrammingProjection(input: {
     ...(formatKind ? { format_kind: formatKind } : {}),
     ...(editorialShelfId ? { editorial_shelf_id: editorialShelfId } : {}),
     ...(editorialShelfId ? { editorial_shelf: toLegacyEditorialShelfId(editorialShelfId) ?? editorialShelfId } : {}),
-    is_t4: isT4,
+    is_t4: isCreatorNote,
     aftershow_export_bias: aftershowExportBias,
     ...(noteTemplateId ? { note_template_id: noteTemplateId } : {}),
     ...(coverMode ? { cover_mode: coverMode } : {}),

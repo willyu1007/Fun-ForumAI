@@ -295,7 +295,7 @@ describe('launch programming contracts', () => {
       phase: 'pivot',
       media_count: 3,
     })).toEqual({
-      is_t4: true,
+      is_creator_note: true,
       note_template_id: 'comparison_note',
       cover_mode: 'comparison_cover',
     })
@@ -306,7 +306,7 @@ describe('launch programming contracts', () => {
       title: '这波复盘里到底谁先翻车',
       media_count: 1,
     })).toEqual({
-      is_t4: true,
+      is_creator_note: true,
       note_template_id: 'mistake_recap_note',
       cover_mode: 'timeline_cover',
     })
@@ -334,7 +334,7 @@ describe('launch programming contracts', () => {
       expect(baseVisual.surface_rollout.note_root_card.target_ratio).toBe(0.7)
       expect(effectiveVisual.surface_rollout.note_root_card.target_ratio).toBe(0.62)
       expect(tunedProjection).toEqual({
-        is_t4: true,
+        is_creator_note: true,
         note_template_id: 'recommendation_note',
         cover_mode: 'comparison_cover',
       })

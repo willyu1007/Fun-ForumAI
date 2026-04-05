@@ -716,7 +716,7 @@ function deriveToneHint(template: StageTemplateV2): LocalIntent['tone_hint'] {
       return 'witty'
     case 'world':
       return 'warm'
-    case 't4':
+    case 'creator':
       return 'serious'
     default:
       return 'neutral'
@@ -844,18 +844,19 @@ function buildLaunchProgrammingHints(input: {
 
   return {
     storyline,
-    creator_note: creatorNoteProjection.is_t4
+    creator_note: creatorNoteProjection.is_creator_note
       ? {
+          is_creator_note: true,
           is_t4: true,
           note_template_id: creatorNoteProjection.note_template_id ?? null,
           cover_mode: creatorNoteProjection.cover_mode ?? null,
           title_formula: template?.title_formula ?? null,
           sections: template?.sections ?? [],
         }
-      : { is_t4: false },
+      : { is_creator_note: false, is_t4: false },
     editorial_intent: {
-      primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, creatorNoteProjection.is_t4),
-      content_kind: creatorNoteProjection.is_t4
+      primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, creatorNoteProjection.is_creator_note),
+      content_kind: creatorNoteProjection.is_creator_note
         ? 'note_entry'
         : input.phase === 'closure' || input.phase === 'aftershow'
           ? 'continuity_callback'
@@ -867,9 +868,9 @@ function buildLaunchProgrammingHints(input: {
 function resolvePrimaryShelf(
   communitySlug: string | null,
   phase: SceneMetadata['phase'],
-  isT4: boolean,
+  isCreatorNote: boolean,
 ): string {
-  if (isT4 || communitySlug === 't4-picks' || communitySlug === 't4-relations') {
+  if (isCreatorNote || communitySlug === 't4-picks' || communitySlug === 't4-relations') {
     return 'notes_today'
   }
   if (phase === 'closure' || phase === 'aftershow') {

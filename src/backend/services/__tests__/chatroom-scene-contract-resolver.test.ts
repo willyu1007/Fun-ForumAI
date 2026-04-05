@@ -148,6 +148,6 @@ describe('ChatroomSceneContractResolver', () => {
     expect(resolved.source).toBe('room_program')
     expect(resolved.binding).toBeNull()
     expect(resolved.template.template_id).toBe('room-program-debate')
-    expect(resolved.template.category).toBe('t4')
+    expect(resolved.template.category).toBe('creator')
   })
 })

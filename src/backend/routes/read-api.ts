@@ -375,7 +375,7 @@ async function buildAftershowSnapshot(postId: string, input: {
         }
       : null,
     content_context: {
-      is_t4: visualConfig.is_t4,
+      is_creator_note: visualConfig.is_creator_note,
       is_aftershow: true,
     },
   })

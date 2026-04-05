@@ -375,14 +375,16 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
     }
 
     const t4Enabled = community.rules_json.t4_policy.enabled
-    if (t4Enabled && !community.stage_template_ref.startsWith('stage-t4-')) {
+    const usesCreatorStageTemplate = community.stage_template_ref.startsWith('stage-creator-')
+      || community.stage_template_ref.startsWith('stage-t4-')
+    if (t4Enabled && !usesCreatorStageTemplate) {
       throw new ValidationError(
-        `Invalid launch community rules: ${community.slug} T4 communities must bind a T4 stage template`,
+        `Invalid launch community rules: ${community.slug} creator-note communities must bind a creator stage template`,
       )
     }
-    if (!t4Enabled && community.stage_template_ref.startsWith('stage-t4-')) {
+    if (!t4Enabled && usesCreatorStageTemplate) {
       throw new ValidationError(
-        `Invalid launch community rules: ${community.slug} T4 stage templates require t4_policy.enabled=true`,
+        `Invalid launch community rules: ${community.slug} creator stage templates require t4_policy.enabled=true`,
       )
     }
 
@@ -419,11 +421,9 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       content_contract: community.rules_json.content_contract,
     })
 
-    const {
-      community_type: _legacyCommunityType,
-      launch_phase: _legacyLaunchPhase,
-      ...canonicalLaunchProfile
-    } = community.rules_json.launch_profile
+    const canonicalLaunchProfile = { ...community.rules_json.launch_profile }
+    delete canonicalLaunchProfile.community_type
+    delete canonicalLaunchProfile.launch_phase
 
     const rulesJson = {
       community_lifecycle_state: community.community_lifecycle_state,

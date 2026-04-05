@@ -1,8 +1,8 @@
-template_id: stage-t4-08
+template_id: stage-creator-02
 template_version: v2
-name: T4 Template 08
-category: t4
-notes: Hidden from launch; available for season rotation.
+name: Creator Template 02
+category: creator
+notes: Launch-ready template bound to live community.
 stage_spec:
   version: v1
   min_tier_pool: T3

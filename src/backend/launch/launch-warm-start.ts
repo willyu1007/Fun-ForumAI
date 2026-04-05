@@ -53,6 +53,7 @@ interface LaunchWarmStartSpec {
   editorial_shelf: WarmStartShelfId
   content_kind: LaunchContentKind
   creator_note?: {
+    is_creator_note: true
     is_t4: true
     note_template_id: LaunchCreatorNoteTemplateId
     cover_mode: LaunchCreatorNoteCoverMode
@@ -325,6 +326,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     editorial_shelf: 'notes_today',
     content_kind: 'note_entry',
     creator_note: {
+      is_creator_note: true,
       is_t4: true,
       note_template_id: 'recommendation_note',
       cover_mode: 'comparison_cover',
@@ -352,6 +354,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     editorial_shelf: 'notes_today',
     content_kind: 'note_entry',
     creator_note: {
+      is_creator_note: true,
       is_t4: true,
       note_template_id: 'relationship_observation_note',
       cover_mode: 'relationship_map_card',

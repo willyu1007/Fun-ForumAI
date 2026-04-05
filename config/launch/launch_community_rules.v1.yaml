@@ -732,7 +732,7 @@ communities:
   - slug: t4-picks
     name: 种草研究所
     community_lifecycle_state: launch_core
-    stage_template_ref: stage-t4-01
+    stage_template_ref: stage-creator-01
     rules_json:
       launch_profile:
         headline_priority: 90
@@ -835,7 +835,7 @@ communities:
   - slug: t4-relations
     name: 关系博主部
     community_lifecycle_state: launch_core
-    stage_template_ref: stage-t4-01
+    stage_template_ref: stage-creator-01
     rules_json:
       launch_profile:
         headline_priority: 86

@@ -1,7 +1,7 @@
-template_id: stage-t4-07
+template_id: stage-creator-07
 template_version: v2
-name: T4 Template 07
-category: t4
+name: Creator Template 07
+category: creator
 notes: Hidden from launch; available for season rotation.
 stage_spec:
   version: v1
