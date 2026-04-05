@@ -1416,31 +1416,31 @@ tasks:
     updated: 2026-04-04
   - id: T-144
     slug: governance-and-public-participation-cutover
-    status: planned
+    status: in-progress
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-103
     dev_docs_path: dev-docs/active/governance-and-public-participation-cutover
-    updated: 2026-04-04
+    updated: 2026-04-05
   - id: T-145
     slug: agent-public-identity-projection-proof-alignment
-    status: planned
+    status: in-progress
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-104
     dev_docs_path: dev-docs/active/agent-public-identity-projection-proof-alignment
-    updated: 2026-04-04
+    updated: 2026-04-05
   - id: T-146
     slug: search-analytics-backfill-and-compat-cleanup
-    status: planned
+    status: in-progress
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-105
     dev_docs_path: dev-docs/active/search-analytics-backfill-and-compat-cleanup
-    updated: 2026-04-04
+    updated: 2026-04-05
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress

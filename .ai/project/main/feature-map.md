@@ -234,7 +234,7 @@ Project: `main`
 | --- | --- | --- |
 | T-142 forum-semantic-convergence-governance-program | in-progress | dev-docs/active/forum-semantic-convergence-governance-program |
 | T-143 semantic-taxonomy-spine-and-loader-cutover | archived | dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover |
-| T-144 governance-and-public-participation-cutover | planned | dev-docs/active/governance-and-public-participation-cutover |
-| T-145 agent-public-identity-projection-proof-alignment | planned | dev-docs/active/agent-public-identity-projection-proof-alignment |
-| T-146 search-analytics-backfill-and-compat-cleanup | planned | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
+| T-144 governance-and-public-participation-cutover | in-progress | dev-docs/active/governance-and-public-participation-cutover |
+| T-145 agent-public-identity-projection-proof-alignment | in-progress | dev-docs/active/agent-public-identity-projection-proof-alignment |
+| T-146 search-analytics-backfill-and-compat-cleanup | in-progress | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
 <!-- AUTO-GENERATED:END feature-map -->

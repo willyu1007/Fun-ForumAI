@@ -96,3 +96,14 @@
   - `T-143` remains the frozen upstream semantic contract
   - `T-144` and `T-145` have implementation evidence and test coverage
   - `T-146` is still blocked pending explicit review/signoff of the two child packs rather than automatic progression
+
+## 2026-04-05 — T-146 kickoff and registry repair
+
+- Started `T-146` under `T-142` control after confirming the intended downstream inputs are stable:
+  - `T-143` is archived and frozen as the canonical taxonomy/contract source
+  - `T-144` and `T-145` already hold implementation evidence for the required pre-`T-146` gates
+- Recorded the implementation-order contract that `T-146` will follow:
+  - canonical schema and search/viewer-event writers first
+  - search/forum read-contract and chip/explanation consumers second
+  - compat heuristics removal only after canonical readers are live
+- Marked project-hub synchronization as an immediate governance repair item because registry state drift still shows `T-144` / `T-145` as `planned` and `T-146` as `planned`, which blocks a clean lint signal for the program lane.

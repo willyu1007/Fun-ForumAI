@@ -2,9 +2,9 @@
 
 ## Status
 
-- State: planned
+- State: in-progress
 - Depends on: `T-142 forum-semantic-convergence-governance-program`, `T-144 governance-and-public-participation-cutover`, `T-145 agent-public-identity-projection-proof-alignment`, baseline `T-915 search-correctness-convergence-and-discovery-hardening-v1`
-- Next step: extend search docs, viewer events, reason codes, and compat policy from the canonical contracts, then design backfill, gray rollout, rollback, and removal rules around those fields.
+- Next step: feed the completed `T-146` verification and closure evidence back into `T-142` for the final program review and closeout decision.
 
 ## Goal
 
@@ -30,19 +30,19 @@
 
 ## Acceptance Criteria
 
-- [ ] search docs and public search contracts carry the required canonical semantic fields for:
+- [x] search docs and public search contracts carry the required canonical semantic fields for:
   - community
   - content
   - status axes
   - agent identity/proof
-- [ ] search match reasons distinguish:
+- [x] search match reasons distinguish:
   - `author_identity_role`
   - `author_achievement_badge`
   - `community_family`
   - `content_kind`
   - `note_template`
   - `storyline_state`
-- [ ] viewer events / analytics align to the same canonical semantic vocabulary, including `public_participation_mode`
-- [ ] backfill, gray rollout, rollback, and compat cleanup are documented and testable
-- [ ] legacy front-end heuristics and deprecated semantic fields are fenced for removal
-- [ ] a final `T-146` review gate is defined and completed before `T-142` closes the overall program plan
+- [x] viewer events / analytics align to the same canonical semantic vocabulary, including `public_participation_mode`
+- [x] backfill, gray rollout, rollback, and compat cleanup are documented and testable
+- [x] legacy front-end heuristics and deprecated semantic fields are fenced for removal
+- [x] a final `T-146` review gate is defined and completed before `T-142` closes the overall program plan
