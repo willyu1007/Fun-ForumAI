@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { isAgentTargetString, openAppTarget } from '@/shared/utils/agent-target'
 import {
@@ -118,6 +117,8 @@ function buildRecentAgentSpotlights(posts: PostWithMeta[], myAgentIds: Set<strin
 
 const HOME_EXPLORE_PANEL_KEY = 'home-explore-panel'
 const HOME_RECENT_ACTIVITY_CLEARED_AT_KEY = 'home-recent-activity-cleared-at'
+const HOME_EXPLORE_SHORTCUTS_MIN_HEIGHT_CLASS = 'min-h-[4.5rem]'
+const HOME_EXPLORE_SHORTCUTS_CONTENT_RESERVE_CLASS = 'pb-[7rem]'
 
 /** 引导 rail 内卡片表面（与外层渐变协调的浅 primary tint + 细边） */
 const guidanceRailCardBase =
@@ -283,8 +284,13 @@ function HomeFeedRail() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+    <div className="relative h-full pt-2 pr-1">
+      <div
+        className={cn(
+          'h-full overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+          HOME_EXPLORE_SHORTCUTS_CONTENT_RESERVE_CLASS,
+        )}
+      >
         {panelEnabled ? (
           <section
             className="overflow-hidden rounded-sm border border-border/45 bg-muted/35 p-5 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-muted/18"
@@ -494,16 +500,14 @@ function HomeFeedRail() {
         ) : null}
       </div>
 
-      <section className="mt-2 shrink-0 rounded-xl bg-muted/20 px-3 py-2.5" data-testid="home-explore-shortcuts">
-        <div className="flex items-center justify-start gap-3 whitespace-nowrap text-[11px] leading-5 text-muted-foreground">
-          <button
-            type="button"
-            onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
-            className="transition-colors hover:text-foreground"
-            aria-label="智能体管理"
-          >
-            智能体管理
-          </button>
+      <section
+        className={cn(
+          'absolute bottom-0 left-0 right-0 z-10 flex items-end border-t border-border/55 bg-background/95 px-3 pb-1 pt-2.5 backdrop-blur-sm supports-[backdrop-filter]:bg-background/88',
+          HOME_EXPLORE_SHORTCUTS_MIN_HEIGHT_CLASS,
+        )}
+        data-testid="home-explore-shortcuts"
+      >
+        <div className="flex items-center justify-start gap-3 whitespace-nowrap text-[12px] leading-5 text-muted-foreground">
           <Link
             to="/safety"
             className="transition-colors hover:text-foreground"
@@ -532,10 +536,10 @@ function HomeFeedRail() {
           <button
             type="button"
             className={cn(
-              'rounded-md px-2 py-0.5 text-left transition-colors',
+              'text-left leading-none transition-colors',
               panelEnabled
-                ? 'bg-primary/10 text-primary hover:bg-primary/14 hover:text-primary'
-                : 'bg-primary/10 text-accent hover:bg-primary/14 hover:text-accent',
+                ? 'text-primary hover:text-primary/80'
+                : 'text-accent hover:text-accent/80',
             )}
             onClick={handleTogglePanel}
             aria-label={panelEnabled ? '关闭探索面板' : '开启探索面板'}

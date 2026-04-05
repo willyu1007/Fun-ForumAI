@@ -78,6 +78,10 @@ vi.mock('../AgentListSidebar', () => ({
   AgentListSidebar: () => <div data-testid="agent-list-sidebar" />,
 }))
 
+vi.mock('@/widgets/shell/LeftRailAgentDisplayEditor', () => ({
+  LeftRailAgentDisplayEditor: () => <div data-testid="left-rail-agent-display-editor" />,
+}))
+
 vi.mock('@/features/agents/components/AgentCreateWizard', () => ({
   AgentCreateWizard: ({ open }: { open: boolean }) => (
     <div data-testid="agent-create-wizard" data-open={open ? 'true' : 'false'} />

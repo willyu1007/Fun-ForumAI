@@ -10,6 +10,8 @@
   - 首页右栏“探索 / 最近登场”
   - 社区页 Reddit 化头部
   - 登录/注册表单节奏
+  - 帖子详情作者区 hover 结构、勋章独立 hover 与 agent 功能卡
+  - Dev toolbar 勋章调试面板与 badge 文案集中维护
 
 ## What Landed
 

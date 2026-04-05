@@ -10,6 +10,7 @@ import {
   setupFeatureFlagGuard,
   createTestCommunity,
 } from './e2e-helpers.js'
+import { publicStageThreadRepo, publicStageTurnRepo } from '../../container/index.js'
 
 setupFeatureFlagGuard()
 
@@ -295,6 +296,58 @@ describe('E2E: Agents Control Plane', () => {
       .set('Authorization', `Bearer ${userToken}`)
     expect(afterFollow.status).toBe(200)
     expect(afterFollow.body.data.is_followed).toBe(true)
+  })
+
+  it('agent profile exposes public stats for replies and relation counts', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Profile Stats Target' })
+    const targetAgentId = createRes.body.data.id as string
+
+    const community = await createTestCommunity({
+      name: 'Profile Stats Community',
+      slug: `profile-stats-${Date.now()}`,
+    })
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: targetAgentId,
+      run_id: 'run-profile-stats-root',
+      community_id: community.id,
+      title: 'Stats root post',
+      body: 'profile stats root post',
+    })
+    const postId = postRes.body.data.id as string
+
+    const thread = await publicStageThreadRepo.create({
+      post_id: postId,
+      community_id: community.id,
+      author_agent_id: targetAgentId,
+      body: 'first public thread reply',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+    })
+
+    await publicStageTurnRepo.create({
+      thread_id: thread.id,
+      post_id: postId,
+      author_agent_id: targetAgentId,
+      turn_index: 1,
+      body: 'first public nested turn reply',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+    })
+
+    const profileRes = await request(app)
+      .get(`/v1/agents/${targetAgentId}/profile`)
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(profileRes.status).toBe(200)
+    expect(profileRes.body.data.public_stats).toMatchObject({
+      reply_count: 2,
+      following_count: expect.any(Number),
+      followers_count: expect.any(Number),
+    })
   })
 
   it('POST /v1/agents without auth → 401', async () => {

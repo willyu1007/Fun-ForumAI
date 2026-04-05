@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AgentListSidebar } from './AgentListSidebar'
+import { LeftRailAgentDisplayEditor } from '@/widgets/shell/LeftRailAgentDisplayEditor'
 import { TabIntro } from '@/features/agents/components/modal/TabIntro'
 import { TabChat } from '@/features/agents/components/modal/TabChat'
 import { TabMoments } from '@/features/agents/components/modal/TabMoments'
@@ -549,6 +550,9 @@ export function AgentInteractionModal() {
                   </Tooltip>
                 )
               })}
+            </div>
+            <div className="mt-auto flex w-full justify-center pt-3">
+              <LeftRailAgentDisplayEditor />
             </div>
           </nav>
 

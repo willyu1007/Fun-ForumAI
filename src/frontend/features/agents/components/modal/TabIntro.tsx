@@ -55,6 +55,7 @@ import {
   readProofBadgeLabels,
   readProjectionText,
 } from '@/shared/utils/public-author'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
 const STATUS_TONES: Record<string, StatusTone> = {
   ACTIVE: 'success',
@@ -75,9 +76,9 @@ function normalizeBio(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null
 }
 
-const STATS_UI_ENABLED = import.meta.env.VITE_FF_AGENT_STATS_UI === 'true'
-const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
-const MULTIMODAL_MEDIA_ENABLED = import.meta.env.VITE_FF_MULTIMODAL_AGENT_MEDIA_V1 === 'true'
+const STATS_UI_ENABLED = isFrontendFlagEnabled('VITE_FF_AGENT_STATS_UI')
+const HUMAN_PARTICIPATION_ENABLED = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
+const MULTIMODAL_MEDIA_ENABLED = isFrontendFlagEnabled('VITE_FF_MULTIMODAL_AGENT_MEDIA_V1')
 type TabId =
   | 'overview'
   | 'stats'
@@ -91,7 +92,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const qc = useQueryClient()
   const guidanceEnabled = isGuidanceEnabled()
   const routerLocation = useLocation()
-  const { viewMode, setActiveTab, introSection, sourceSessionId } = useAgentModalStore()
+  const { viewMode, setActiveTab, setIntroSection, introSection, sourceSessionId } = useAgentModalStore()
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [showManagementDetails, setShowManagementDetails] = useState(false)
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
@@ -214,8 +215,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
   useEffect(() => {
     if (!tabs.some((item) => item.id === tab)) {
       setTab('overview')
+      setIntroSection('overview')
     }
-  }, [tab, tabs])
+  }, [setIntroSection, tab, tabs])
 
   if (isLoading) {
     return (
@@ -329,6 +331,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
           type="button"
           onClick={() => {
             setTab(t.id as TabId)
+            setIntroSection(t.id as TabId)
           }}
           className={`${"whitespace-nowrap px-3 py-2 text-sm transition-colors"} ${
             tab === t.id

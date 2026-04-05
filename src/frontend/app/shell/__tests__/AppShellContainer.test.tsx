@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_SHELL_CONTENT_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
+import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { AppShellContainer } from '../AppShellContainer'
@@ -14,6 +15,10 @@ vi.mock('@/shared/stores/sidebar-store', () => ({
 
 vi.mock('@/shared/stores/feed-view-store', () => ({
   useFeedViewStore: vi.fn(),
+}))
+
+vi.mock('@/shared/stores/dev-auth-toolbar-store', () => ({
+  useDevAuthToolbarStore: vi.fn(),
 }))
 
 vi.mock('@/widgets/shell/ShellTopBarContainer', () => ({
@@ -37,6 +42,7 @@ vi.mock('@/widgets/agent-modal/AgentInteractionModal', () => ({
 
 const useSidebarStoreMock = vi.mocked(useSidebarStore)
 const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
+const useDevAuthToolbarStoreMock = vi.mocked(useDevAuthToolbarStore)
 
 describe('AppShellContainer', () => {
   beforeEach(() => {
@@ -49,6 +55,13 @@ describe('AppShellContainer', () => {
       leftOpen: true,
       toggleLeft: vi.fn(),
     } as never)
+    useDevAuthToolbarStoreMock.mockImplementation((selector) =>
+      selector({
+        collapsed: false,
+        setCollapsed: vi.fn(),
+        toggleCollapsed: vi.fn(),
+      } as never),
+    )
   })
 
   it('assembles the shell layout and passes sidebar state into the top-bar container', () => {
@@ -81,6 +94,29 @@ describe('AppShellContainer', () => {
       leftOpen: true,
       onToggleLeft: toggleLeft,
     })
+  })
+
+  it('releases the larger dev-toolbar safe area when the toolbar is collapsed', () => {
+    useDevAuthToolbarStoreMock.mockImplementation((selector) =>
+      selector({
+        collapsed: true,
+        setCollapsed: vi.fn(),
+        toggleCollapsed: vi.fn(),
+      } as never),
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route index element={<div>home</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('shell-page-frame').parentElement?.className).toContain('pb-6')
+    expect(screen.getByTestId('shell-page-frame').parentElement?.className).not.toContain('pb-16')
   })
 
   it('keeps a narrower page frame on non-feed, non-community routes', () => {

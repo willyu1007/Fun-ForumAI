@@ -12,9 +12,9 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { Link, useLocation } from 'react-router'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
+import { openMyAgentsWorkspace } from '@/shared/utils/agent-modal-entry'
 import { AgentPanelWidget } from './AgentPanelWidget'
 import { ActivityPanelWidget } from './ActivityPanelWidget'
 import { ShellIconHint } from './ShellIconHint'
@@ -109,7 +109,7 @@ function UserMenu({
           <Link to="/search">搜索广场</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}>我的智能体</button>
+          <button type="button" onClick={openMyAgentsWorkspace}>我的智能体</button>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link

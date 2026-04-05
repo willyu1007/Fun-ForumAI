@@ -8,6 +8,10 @@ import {
 } from '../../../shared/agent-target.js'
 
 export type AgentModalTab = AgentTargetTab
+export interface AgentModalAgentContext {
+  tab: AgentModalTab
+  introSection: AgentIntroSection | null
+}
 export interface AgentModalRect {
   x: number
   y: number
@@ -22,6 +26,7 @@ export interface AgentModalState {
   viewMode: AgentTargetMode
   activeTab: AgentModalTab
   introSection: AgentIntroSection | null
+  agentContextsById: Record<string, AgentModalAgentContext>
   sourceSessionId: string | null
   sourceSurface: string | null
   sourceShelf: string | null
@@ -46,8 +51,30 @@ export interface AgentModalState {
   hideForCapture: () => void
   showAfterCapture: () => void
   setActiveTab: (tab: AgentModalTab) => void
+  setIntroSection: (introSection: AgentIntroSection | null) => void
   setActiveAgent: (agentId: string | null) => void
   setLastModalRect: (rect: AgentModalRect) => void
+}
+
+function getAgentContext(
+  contextsById: Record<string, AgentModalAgentContext>,
+  agentId: string,
+): AgentModalAgentContext {
+  return contextsById[agentId] ?? {
+    tab: 'chat',
+    introSection: null,
+  }
+}
+
+function upsertAgentContext(
+  contextsById: Record<string, AgentModalAgentContext>,
+  agentId: string,
+  context: AgentModalAgentContext,
+) {
+  return {
+    ...contextsById,
+    [agentId]: context,
+  }
 }
 
 export const useAgentModalStore = create<AgentModalState>()(
@@ -59,6 +86,7 @@ export const useAgentModalStore = create<AgentModalState>()(
       viewMode: 'readonly',
       activeTab: 'intro',
       introSection: null,
+      agentContextsById: {},
       sourceSessionId: null,
       sourceSurface: null,
       sourceShelf: null,
@@ -76,13 +104,30 @@ export const useAgentModalStore = create<AgentModalState>()(
             && !opts?.sourceSessionId
             && currentState.activeAgentId != null
 
+          const nextAgentId = canRestoreLastContext ? currentState.activeAgentId : agentId
+          const nextActiveTab = canRestoreLastContext ? currentState.activeTab : tab
+          const existingContext = nextAgentId
+            ? getAgentContext(currentState.agentContextsById, nextAgentId)
+            : null
+          const nextIntroSection = canRestoreLastContext
+            ? currentState.introSection
+            : tab === 'intro'
+              ? (opts?.introSection ?? existingContext?.introSection ?? null)
+              : (existingContext?.introSection ?? null)
+
           return {
             isOpen: true,
             isCaptureHidden: false,
-            activeAgentId: canRestoreLastContext ? currentState.activeAgentId : agentId,
+            activeAgentId: nextAgentId,
             viewMode: mode,
-            activeTab: canRestoreLastContext ? currentState.activeTab : tab,
-            introSection: canRestoreLastContext ? currentState.introSection : (opts?.introSection ?? null),
+            activeTab: nextActiveTab,
+            introSection: nextIntroSection,
+            agentContextsById: nextAgentId
+              ? upsertAgentContext(currentState.agentContextsById, nextAgentId, {
+                  tab: nextActiveTab,
+                  introSection: nextIntroSection,
+                })
+              : currentState.agentContextsById,
             sourceSessionId: opts?.sourceSessionId ?? null,
             sourceSurface: opts?.sourceSurface ?? null,
             sourceShelf: opts?.sourceShelf ?? null,
@@ -109,13 +154,57 @@ export const useAgentModalStore = create<AgentModalState>()(
         }),
 
       setActiveTab: (tab) =>
-        set({
-          activeTab: tab,
+        set((state) => {
+          if (!state.activeAgentId) {
+            return {
+              activeTab: tab,
+            }
+          }
+
+          const existingContext = getAgentContext(state.agentContextsById, state.activeAgentId)
+          return {
+            activeTab: tab,
+            introSection: existingContext.introSection,
+            agentContextsById: upsertAgentContext(state.agentContextsById, state.activeAgentId, {
+              tab,
+              introSection: existingContext.introSection,
+            }),
+          }
+        }),
+
+      setIntroSection: (introSection) =>
+        set((state) => {
+          if (!state.activeAgentId) {
+            return {
+              introSection,
+            }
+          }
+
+          const existingContext = getAgentContext(state.agentContextsById, state.activeAgentId)
+          return {
+            introSection,
+            agentContextsById: upsertAgentContext(state.agentContextsById, state.activeAgentId, {
+              tab: state.activeTab === 'intro' ? 'intro' : existingContext.tab,
+              introSection,
+            }),
+          }
         }),
 
       setActiveAgent: (agentId) =>
-        set({
-          activeAgentId: agentId,
+        set((state) => {
+          if (!agentId) {
+            return {
+              activeAgentId: null,
+            }
+          }
+
+          const nextContext = getAgentContext(state.agentContextsById, agentId)
+          return {
+            activeAgentId: agentId,
+            activeTab: nextContext.tab,
+            introSection: nextContext.introSection,
+            agentContextsById: upsertAgentContext(state.agentContextsById, agentId, nextContext),
+          }
         }),
 
       setLastModalRect: (rect) =>
@@ -130,6 +219,7 @@ export const useAgentModalStore = create<AgentModalState>()(
         activeAgentId: state.activeAgentId,
         activeTab: state.activeTab,
         introSection: state.introSection,
+        agentContextsById: state.agentContextsById,
         viewMode: state.viewMode,
         lastModalRect: state.lastModalRect,
       }),

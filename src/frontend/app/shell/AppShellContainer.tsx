@@ -5,9 +5,10 @@ import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
-  APP_SHELL_CONTENT_SAFE_AREA_CLASS,
+  getAppShellContentSafeAreaClass,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
 } from '@/shared/layout/dev-auth-toolbar'
+import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { cn } from '@/lib/utils'
 import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
@@ -23,10 +24,15 @@ export function AppShellContainer() {
   const { leftOpen, toggleLeft } = useSidebarStore()
   const { view } = useFeedViewStore()
   const shouldMountAgentModal = useAgentModalStore((state) => state.isOpen || state.activeAgentId !== null)
+  const isDevAuthToolbarCollapsed = useDevAuthToolbarStore((state) => state.collapsed)
   const { pathname } = useLocation()
   const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search'
   const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
   const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
+  const contentSafeAreaClass = getAppShellContentSafeAreaClass(
+    SHOULD_RENDER_DEV_AUTH_TOOLBAR,
+    isDevAuthToolbarCollapsed,
+  )
 
   return (
     <AppShell
@@ -35,11 +41,9 @@ export function AppShellContainer() {
       leftRail={
         <div
           className={cn(
-            '-mt-[16px] sticky top-[52px] flex flex-col border-r border-foreground/20 bg-background transition-all duration-200',
-            SHOULD_RENDER_DEV_AUTH_TOOLBAR
-              ? 'h-[calc(100vh-52px-3rem+16px)]'
-              : 'h-[calc(100vh-52px+16px)]',
-            leftOpen ? 'w-[17.375rem]' : 'w-0 overflow-hidden border-r-0',
+            'sticky top-[52px] flex flex-col border-r border-foreground/20 bg-background transition-all duration-200',
+            'h-[calc(100vh-52px)]',
+            leftOpen ? 'w-[16.5rem]' : 'w-0 overflow-hidden border-r-0',
           )}
         >
           <ShellLeftRail />
@@ -50,7 +54,7 @@ export function AppShellContainer() {
     >
       <div className={cn(
         'min-w-0 flex-1 transition-[padding] duration-200',
-        APP_SHELL_CONTENT_SAFE_AREA_CLASS,
+        contentSafeAreaClass,
         leftOpen && 'md:pl-3',
       )}>
         <div

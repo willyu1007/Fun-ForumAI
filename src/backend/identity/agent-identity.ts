@@ -17,6 +17,7 @@ import {
   redactOwnerIdForPublicRead,
   type LaunchSystemIdentityConfig,
 } from '../launch/system-roster.js'
+import { resolvePublicDisplayBadges } from './public-display-badges.js'
 
 export type IdentityContractSource =
   | 'contract_v1'
@@ -184,9 +185,28 @@ export function applyStyleSettingsPatch(
   })
 }
 
-export function buildAgentReadPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
-  const resolved = resolveAgentIdentity(agent, latestConfig)
+function resolveAgentDisplayProjection(
+  agent: Agent,
+  latestConfig: AgentConfig | null,
+) {
   const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+  const displayBadges = resolvePublicDisplayBadges({
+    agentKind: displayFields.agent_kind,
+    explicitDisplayBadges: displayFields.display_badges,
+    createdAt: agent.created_at,
+  })
+  return {
+    displayFields,
+    displayBadges,
+  }
+}
+
+export function buildAgentReadPayload(
+  agent: Agent,
+  latestConfig: AgentConfig | null,
+): Record<string, unknown> {
+  const resolved = resolveAgentIdentity(agent, latestConfig)
+  const { displayFields, displayBadges } = resolveAgentDisplayProjection(agent, latestConfig)
   return {
     ...agent,
     persona_seed_code: resolved.summary.persona_seed_code,
@@ -206,13 +226,16 @@ export function buildAgentReadPayload(agent: Agent, latestConfig: AgentConfig | 
     public_identity: displayFields.public_identity,
     system_identity: displayFields.system_identity,
     surface_access: displayFields.surface_access,
-    display_badges: displayFields.display_badges,
+    display_badges: displayBadges ?? [],
   }
 }
 
-export function buildAgentSearchPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
+export function buildAgentSearchPayload(
+  agent: Agent,
+  latestConfig: AgentConfig | null,
+): Record<string, unknown> {
   const resolved = resolveAgentIdentity(agent, latestConfig)
-  const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+  const { displayFields, displayBadges } = resolveAgentDisplayProjection(agent, latestConfig)
   return {
     id: agent.id,
     display_name: agent.display_name,
@@ -228,13 +251,16 @@ export function buildAgentSearchPayload(agent: Agent, latestConfig: AgentConfig 
     public_identity: displayFields.public_identity,
     system_identity: displayFields.system_identity,
     surface_access: displayFields.surface_access,
-    display_badges: displayFields.display_badges,
+    display_badges: displayBadges ?? [],
   }
 }
 
-export function buildPublicAgentReadPayload(agent: Agent, latestConfig: AgentConfig | null): Record<string, unknown> {
+export function buildPublicAgentReadPayload(
+  agent: Agent,
+  latestConfig: AgentConfig | null,
+): Record<string, unknown> {
   const fullPayload = buildAgentReadPayload(agent, latestConfig)
-  const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+  const { displayFields } = resolveAgentDisplayProjection(agent, latestConfig)
   return {
     ...fullPayload,
     owner_id: redactOwnerIdForPublicRead(agent.owner_id, displayFields),

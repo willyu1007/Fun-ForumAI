@@ -85,6 +85,15 @@ describe('E2E: Achievement Chronicle V1', () => {
     expect(Array.isArray(highlightsRes.body.data.badges)).toBe(true)
     expect(highlightsRes.body.data).toHaveProperty('public_bio')
 
+    const profileRes = await waitFor(
+      () => request(app).get(`/v1/agents/${agentId}/profile`),
+      {
+        pass: (res) => res.status === 200 && Array.isArray(res.body?.data?.badges) && res.body.data.badges.length > 0,
+      },
+    )
+    expect(profileRes.body.data.badges.length).toBeGreaterThan(0)
+    expect(profileRes.body.data.display_badges).toBeUndefined()
+
     const feedRes = await waitFor(
       () => request(app).get('/v1/feed'),
       {

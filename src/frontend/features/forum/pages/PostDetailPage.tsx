@@ -19,7 +19,6 @@ import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
@@ -43,12 +42,14 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import {
   describeTopicSignals,
   HOT_TOPIC_DISTRIBUTION_LABELS,
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
+import { AuthorBadgeRail } from '../components/AuthorBadgeRail'
 import {
   readEditorialShelfLabel,
   readStorylineStateLabel,
@@ -56,6 +57,7 @@ import {
   readT4TemplateLabel,
 } from '../lib/launch-surface-labels'
 import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
+import { readAuthorBadgeItems } from '../lib/author-identity'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -79,19 +81,19 @@ interface RailHighlightItem {
 const DESKTOP_BREAKPOINT = 1024
 
 function isAudienceAftershowWebEnabled() {
-  return import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 === 'true'
+  return isFrontendFlagEnabled('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1')
 }
 
 function isAudienceZoneEnabled(audienceAftershowWebEnabled: boolean) {
-  return audienceAftershowWebEnabled && import.meta.env.VITE_FF_AUDIENCE_ZONE_V1 === 'true'
+  return audienceAftershowWebEnabled && isFrontendFlagEnabled('VITE_FF_AUDIENCE_ZONE_V1')
 }
 
 function isAftershowEnabled(audienceAftershowWebEnabled: boolean) {
-  return audienceAftershowWebEnabled && import.meta.env.VITE_FF_AFTERSHOW_V1 === 'true'
+  return audienceAftershowWebEnabled && isFrontendFlagEnabled('VITE_FF_AFTERSHOW_V1')
 }
 
 function isAsideSeatsEnabled(audienceAftershowWebEnabled: boolean) {
-  return audienceAftershowWebEnabled && import.meta.env.VITE_FF_ROLE_ASSIGNMENT_V1 === 'true'
+  return audienceAftershowWebEnabled && isFrontendFlagEnabled('VITE_FF_ROLE_ASSIGNMENT_V1')
 }
 
 function toAftershowContentV1(
@@ -400,7 +402,22 @@ export function PostDetailPage() {
   const t4CoverLabel = readT4CoverLabel(post.cover_mode)
   const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf)
   const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
-  const isNotePost = isCreatorNoteEntry(post)
+  const authorBadgeItems = readAuthorBadgeItems(author)
+  const noteMetaLabel = post.is_t4
+    ? 'T4 今日笔记'
+    : isCreatorNoteEntry(post)
+      ? editorialShelfLabel ?? '创作者笔记'
+      : editorialShelfLabel
+  const surfaceMetaLabels = Array.from(
+    new Set(
+      [
+        noteMetaLabel,
+        t4TemplateLabel,
+        t4CoverLabel,
+        storylineStateLabel,
+      ].filter((label): label is string => Boolean(label)),
+    ),
+  )
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
       ? topicTransparencyCopy ??
@@ -461,41 +478,49 @@ export function PostDetailPage() {
   }
 
   const stageContent = (
-    <div className="min-w-0 space-y-8">
-      <article className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
-        <div className="row-span-5 self-start">
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            asChild
-            className="size-11 shrink-0 rounded-full bg-muted/65 text-foreground hover:bg-muted"
-          >
-            <Link to="/" aria-label="返回广场">
-              <ArrowLeft className="size-5" />
-            </Link>
-          </Button>
-        </div>
+    <div className="relative min-w-0 space-y-8" data-testid="post-detail-stage-content">
+      <div className="mb-3 lg:absolute lg:-left-[2.125rem] lg:top-0 lg:mb-0" data-testid="post-detail-back-link-wrap">
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          asChild
+          className="size-11 shrink-0 rounded-full bg-muted/65 text-foreground hover:bg-muted"
+        >
+          <Link to="/" aria-label="返回广场">
+            <ArrowLeft className="size-5" />
+          </Link>
+        </Button>
+      </div>
 
-        <div className="col-start-2 flex min-w-0 flex-wrap items-start justify-between gap-3">
-          <AgentHoverCard agentId={author.id}>
-            <AgentLink
-              agentId={author.id}
-              className="-ml-1 inline-flex min-w-0 items-center gap-3 rounded-full py-1 text-left transition-colors hover:bg-muted/40 hover:no-underline"
-            >
-              <Avatar className="size-10 shrink-0">
-                <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
-                <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                  {author.display_name.slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="-mt-1.5 min-w-0 truncate text-sm leading-tight">
-                <span className="font-semibold text-foreground">{author.display_name}</span>
-                <span className="mx-2 text-muted-foreground">·</span>
-                <span className="text-muted-foreground">{relativeTime(post.created_at)}</span>
-              </div>
-            </AgentLink>
-          </AgentHoverCard>
-          <div className="flex shrink-0 items-center gap-1 pt-1">
+      <article className="min-w-0 space-y-1 px-[25px]" data-testid="post-detail-stage-article">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <AgentHoverCard agentId={author.id}>
+              <AgentLink
+                agentId={author.id}
+                className="-ml-2 -mr-2 inline-flex min-w-0 items-center gap-3 rounded-2xl py-2 pr-2 pl-[7px] text-left transition-colors hover:bg-muted/40 hover:no-underline"
+              >
+                <Avatar className="size-11 shrink-0">
+                  <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
+                  <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+                    {author.display_name.slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className="flex min-w-0 items-center gap-2 text-sm leading-none"
+                  data-testid="post-detail-author-primary-line"
+                >
+                  <span className="truncate font-semibold text-foreground">{author.display_name}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="shrink-0 text-xs text-muted-foreground/80">{relativeTime(post.created_at)}</span>
+                </div>
+              </AgentLink>
+            </AgentHoverCard>
+            <div className="pl-[63px] pr-2" data-testid="post-detail-author-secondary-line">
+              <AuthorBadgeRail badges={authorBadgeItems} />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 pt-0.5">
             <ModerationBadge visibility={post.visibility} state={post.state} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -554,60 +579,26 @@ export function PostDetailPage() {
           </div>
         </div>
 
-        <div className="col-start-2 -mt-0.5">
+        <div>
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
-        </div>
-
-        {(isNotePost || t4TemplateLabel || t4CoverLabel || editorialShelfLabel || storylineStateLabel) && (
-          <div className="col-start-2 flex flex-wrap items-center gap-2">
-            {isNotePost ? (
-              <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
-                {readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf ?? 'notes_today') ?? '创作者笔记'}
-              </Badge>
-            ) : null}
-            {t4TemplateLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {t4TemplateLabel}
-              </Badge>
-            ) : null}
-            {t4CoverLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {t4CoverLabel}
-              </Badge>
-            ) : null}
-            {storylineStateLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {storylineStateLabel}
-              </Badge>
-            ) : null}
-            {editorialShelfLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {editorialShelfLabel}
-              </Badge>
-            ) : null}
-          </div>
-        )}
-
-        <div className="col-start-2 mt-2">
-          <RelationTeaserCard
-            agentId={post.author.id}
-            teaser={post.relation_teaser}
-            sourceSurface={viewSourceParams.source_surface ?? 'post_detail'}
-            sourceShelf={viewSourceParams.source_shelf ?? 'stage_header'}
-            sourcePosition={viewSourceParams.source_position ?? null}
-          />
         </div>
 
         <RichTextLite
           text={post.body}
-          className="col-start-2 max-w-3xl text-sm leading-7 text-foreground/82"
+          className="text-sm leading-7 text-foreground/82"
         />
 
         {post.media.length > 0 && (
-          <PostMediaGallery media={post.media} className="col-start-2 max-w-4xl" />
+          <PostMediaGallery media={post.media} className="w-full" />
         )}
 
-        <div className="col-start-2 flex flex-wrap items-center gap-2 pt-4">
+        {surfaceMetaLabels.length > 0 ? (
+          <p className="text-[11px] leading-5 text-muted-foreground/72">
+            {surfaceMetaLabels.join(' · ')}
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2 pt-4">
           <HumanVoteControls
             targetType="POST"
             targetId={post.id}
@@ -628,7 +619,7 @@ export function PostDetailPage() {
         </div>
 
         {distributionNotice && (
-          <p className="col-start-2 text-xs leading-6 text-muted-foreground">
+          <p className="text-xs leading-6 text-muted-foreground">
             {distributionNotice}{' '}
             <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
               查看规则
@@ -640,8 +631,8 @@ export function PostDetailPage() {
           <p
             className={
               createReport.isError || createAppeal.isError
-                ? 'col-start-2 text-xs text-destructive'
-                : 'col-start-2 text-xs text-muted-foreground'
+                ? 'text-xs text-destructive'
+                : 'text-xs text-muted-foreground'
             }
           >
             {safetyActionMessage}
@@ -649,7 +640,7 @@ export function PostDetailPage() {
         )}
       </article>
 
-      <section className="space-y-4 pl-14">
+      <section className="space-y-4 px-[25px]" data-testid="post-detail-thread-section">
         <NewContentBanner
           count={newThreadTurnCount}
           label="条新舞台发言"

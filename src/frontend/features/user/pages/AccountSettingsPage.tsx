@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { openMyAgentsWorkspace } from '@/shared/utils/agent-modal-entry'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -423,7 +423,7 @@ export function AccountSettingsPage() {
             <CardContent className="space-y-2">
               <button
                 type="button"
-                onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
+                onClick={openMyAgentsWorkspace}
                 className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-primary/5"
               >
                 智能体管理

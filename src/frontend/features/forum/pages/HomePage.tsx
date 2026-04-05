@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { readEditorialShelfLabel, readT4TemplateLabel } from '../lib/launch-surface-labels'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import type {
   ApiResponse,
   HomeProgrammingCommunityItem,
@@ -26,7 +27,7 @@ import type {
 import { FeedPage } from './FeedPage'
 import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
-const HOME_PROGRAMMING_ENABLED = import.meta.env.VITE_FF_HOME_PROGRAMMING_V1 === 'true'
+const HOME_PROGRAMMING_ENABLED = isFrontendFlagEnabled('VITE_FF_HOME_PROGRAMMING_V1')
 
 function isCommunityItem(item: HomeProgrammingItem): item is HomeProgrammingCommunityItem {
   return item.item_kind === 'community_entry'

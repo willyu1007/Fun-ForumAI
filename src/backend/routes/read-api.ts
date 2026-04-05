@@ -23,6 +23,8 @@ import {
   publicAgentRelationSummaryService,
   guidanceOrchestrator,
   guidanceStateService,
+  publicStageThreadRepo,
+  publicStageTurnRepo,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
@@ -260,6 +262,24 @@ async function attachRelationTeasersToPosts<T extends RelationTeaserAttachable>(
       relation_teaser: teaserByAgentId.get(item.author.id) ?? null,
     }
   })
+}
+
+async function buildPublicAgentStats(agentId: string): Promise<{
+  reply_count: number
+  following_count: number
+  followers_count: number
+}> {
+  const [threadReplyCount, turnReplyCount, relationSummary] = await Promise.all([
+    publicStageThreadRepo.countPublicByAuthorAgent(agentId),
+    publicStageTurnRepo.countPublicByAuthorAgent(agentId),
+    relationService?.getSummary(agentId) ?? Promise.resolve(null),
+  ])
+
+  return {
+    reply_count: threadReplyCount + turnReplyCount,
+    following_count: relationSummary?.following.effective ?? 0,
+    followers_count: relationSummary?.followers.effective ?? 0,
+  }
 }
 
 async function buildAftershowSnapshot(postId: string, input: {
@@ -1151,16 +1171,19 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
     : isOwner
       ? await inferenceProfileService.getNarrative(agent.id)
       : null
-  const [socialBio, highlights] = await Promise.all([
+  const [socialBio, highlights, publicStats] = await Promise.all([
     agentBioRefreshService.getProjection(agent.id, {
       build_if_missing: true,
       allow_minor_refresh: canViewPrivateBio,
     }).catch(() => null),
-    achievementChronicleService.getPublicHighlights(agent.id).catch(() => ({
-      badges: [],
-      tagline: null,
-      top_chronicle: [],
-    })),
+    config.features.achievementPublicHighlights && achievementChronicleService
+      ? achievementChronicleService.getPublicHighlights(agent.id).catch(() => ({
+          badges: [],
+          tagline: null,
+          top_chronicle: [],
+        }))
+      : Promise.resolve({ badges: [], tagline: null, top_chronicle: [] }),
+    buildPublicAgentStats(agent.id),
   ])
   const publicPresentation = buildAgentPublicAuthorPresentation({
     agent,
@@ -1169,17 +1192,28 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
     public_bio: socialBio?.public_bio ?? null,
     badges: highlights.badges,
   })
+  const {
+    display_badges: _legacyDisplayBadges,
+    public_identity: _legacyPublicIdentity,
+    ...publicPayload
+  } = buildPublicAgentReadPayload(agent, latestConfig)
+  void _legacyDisplayBadges
+  void _legacyPublicIdentity
 
   res.json({
     data: {
-      ...buildPublicAgentReadPayload(agent, latestConfig),
+      ...publicPayload,
       public_identity: publicPresentation.public_identity,
       public_projection: publicPresentation.public_projection,
       public_proof: publicPresentation.public_proof,
-      display_badges: publicPresentation.display_badges,
+      ...(publicPresentation.display_badges
+        ? { display_badges: publicPresentation.display_badges }
+        : {}),
+      ...(publicPresentation.badges ? { badges: publicPresentation.badges } : {}),
       tagline: publicPresentation.tagline ?? null,
       public_bio: publicPresentation.public_bio ?? null,
       is_followed,
+      public_stats: publicStats,
       social_bio: {
         public_bio: socialBio?.public_bio ?? null,
         owner_bio: canViewPrivateBio ? socialBio?.owner_bio ?? null : null,

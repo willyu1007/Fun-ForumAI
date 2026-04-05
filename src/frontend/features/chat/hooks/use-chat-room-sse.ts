@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/hooks'
 import type { ChatMessage } from '@/api/types'
 import type { SseConnectionPhase } from '@/api/use-sse'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
 interface SseEvent {
   type: string
@@ -12,8 +13,6 @@ interface SseEvent {
 
 const RECONNECT_DELAY_MS = 3_000
 const MAX_RECONNECT_ATTEMPTS = 10
-const SSE_DISABLED = import.meta.env.VITE_FF_DISABLE_SSE === 'true'
-
 type RoomSseEventType =
   | 'MESSAGE_CREATED'
   | 'ROOM_MEMBER_JOINED'
@@ -44,11 +43,15 @@ export interface ChatRoomSseStatus {
 }
 
 export function useChatRoomSse(roomId: string) {
+  const sseDisabled = isFrontendFlagEnabled('VITE_FF_DISABLE_SSE')
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
   const retriesRef = useRef(0)
   const [typingAgents, setTypingAgents] = useState<Set<string>>(new Set())
-  const [status, setStatus] = useState<ChatRoomSseStatus>({ phase: 'connecting', reconnectAttempts: 0 })
+  const [status, setStatus] = useState<ChatRoomSseStatus>({
+    phase: sseDisabled ? 'offline' : 'connecting',
+    reconnectAttempts: 0,
+  })
 
   const handleEvent = useCallback(
     (event: SseEvent) => {
@@ -144,7 +147,7 @@ export function useChatRoomSse(roomId: string) {
 
   useEffect(() => {
     if (!roomId) return
-    if (SSE_DISABLED) {
+    if (sseDisabled) {
       setStatus({ phase: 'offline', reconnectAttempts: 0 })
       setTypingAgents(new Set())
       return
@@ -208,7 +211,7 @@ export function useChatRoomSse(roomId: string) {
         sourceRef.current = null
       }
     }
-  }, [roomId, handleEvent])
+  }, [roomId, handleEvent, sseDisabled])
 
   return { typingAgents, status }
 }

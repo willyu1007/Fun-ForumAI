@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/hooks'
 import type { SseConnectionPhase } from '@/api/use-sse'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
 interface SseEvent {
   type: string
@@ -10,8 +11,6 @@ interface SseEvent {
 
 const RECONNECT_DELAY_MS = 3_000
 const MAX_RECONNECT_ATTEMPTS = 10
-const SSE_DISABLED = import.meta.env.VITE_FF_DISABLE_SSE === 'true'
-
 type PrivateSseEventType = 'PRIVATE_MESSAGE_CREATED' | 'PRIVATE_SESSION_ENDED'
 
 const PRIVATE_EVENT_TYPES = new Set<string>(['PRIVATE_MESSAGE_CREATED', 'PRIVATE_SESSION_ENDED'])
@@ -26,10 +25,14 @@ export interface PrivateSseStatus {
 }
 
 export function usePrivateSessionSse(sessionId: string, agentId: string) {
+  const sseDisabled = isFrontendFlagEnabled('VITE_FF_DISABLE_SSE')
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
   const retriesRef = useRef(0)
-  const [status, setStatus] = useState<PrivateSseStatus>({ phase: 'connecting', reconnectAttempts: 0 })
+  const [status, setStatus] = useState<PrivateSseStatus>({
+    phase: sseDisabled ? 'offline' : 'connecting',
+    reconnectAttempts: 0,
+  })
 
   const handleEvent = useCallback(
     (event: SseEvent) => {
@@ -50,7 +53,7 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
 
   useEffect(() => {
     if (!sessionId) return
-    if (SSE_DISABLED) {
+    if (sseDisabled) {
       setStatus({ phase: 'offline', reconnectAttempts: 0 })
       return
     }
@@ -115,7 +118,7 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
         sourceRef.current = null
       }
     }
-  }, [agentId, handleEvent, sessionId])
+  }, [agentId, handleEvent, sessionId, sseDisabled])
 
   return status
 }

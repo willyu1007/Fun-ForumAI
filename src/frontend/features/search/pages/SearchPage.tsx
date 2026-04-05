@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentSentimentBar } from '@/features/forum/components/AgentSentimentBar'
@@ -35,7 +35,6 @@ import {
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   canOpenPublicAuthorProfile,
@@ -43,6 +42,7 @@ import {
   readProofBadgeLabels,
   readProjectionText,
 } from '@/shared/utils/public-author'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 const TAB_LABELS: Record<SearchTab, string> = {
@@ -101,7 +101,7 @@ function formatRelativeTime(value: string | null | undefined): string | null {
   return `${years} 年前`
 }
 
-const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
+const HUMAN_PARTICIPATION_ENABLED = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
 
 function hasExplanationCode(
   item: Pick<PublicSearchItem, 'match_explanations' | 'match_reason_codes'>,
@@ -531,7 +531,7 @@ function SearchResultRow({
 
 /* ─── Community Sidebar ─── */
 
-const SIDEBAR_COMMUNITY_MAX = 4
+const SIDEBAR_COMMUNITY_MAX = 10
 
 function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string; sort?: string; timeRange?: string; onViewAll: () => void }) {
   const result = useSearch(query ? { q: query, tab: 'communities', limit: SIDEBAR_COMMUNITY_MAX + 1, sort, time_range: timeRange } : undefined)
@@ -694,6 +694,9 @@ function DiscoverySection({
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const sidebarSlotRef = useRef<HTMLElement | null>(null)
+  const floatingSidebarRef = useRef<HTMLDivElement | null>(null)
+  const [sidebarSlotRect, setSidebarSlotRect] = useState<{ left: number; top: number; width: number } | null>(null)
   const currentTab = readTab(searchParams.get('tab'))
   const currentQuery = searchParams.get('q') ?? ''
   const currentSort = searchParams.get('sort') ?? undefined
@@ -765,6 +768,58 @@ export function SearchPage() {
   const activeFilters = TAB_FILTERS[currentTab] ?? []
 
   const showGrid = currentTab === 'posts' && currentQuery.trim()
+
+  useLayoutEffect(() => {
+    if (!showGrid) {
+      setSidebarSlotRect(null)
+      return
+    }
+
+    const element = sidebarSlotRef.current
+    if (!element) {
+      setSidebarSlotRect(null)
+      return
+    }
+
+    const measure = () => {
+      const rect = element.getBoundingClientRect()
+      if (rect.width <= 0 || window.innerWidth < 1024) {
+        setSidebarSlotRect(null)
+        return
+      }
+      setSidebarSlotRect({
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+      })
+    }
+
+    measure()
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => measure())
+      : null
+    resizeObserver?.observe(element)
+    window.addEventListener('resize', measure)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [showGrid])
+
+  useLayoutEffect(() => {
+    const element = floatingSidebarRef.current
+    if (!element || !showGrid || !sidebarSlotRect) {
+      return
+    }
+
+    element.style.position = 'fixed'
+    element.style.top = `${sidebarSlotRect.top}px`
+    element.style.bottom = '0px'
+    element.style.left = `${sidebarSlotRect.left}px`
+    element.style.width = `${sidebarSlotRect.width}px`
+  }, [showGrid, sidebarSlotRect])
 
   return (
     <div data-testid="search-page">
@@ -963,14 +1018,17 @@ export function SearchPage() {
 
         {/* Sidebar column: always occupies grid space on posts tab to prevent width jumps */}
         {showGrid && (
-          <aside className="hidden min-h-0 self-stretch lg:block">
-            <div
-              className={
-                SHOULD_RENDER_DEV_AUTH_TOOLBAR
-                  ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] overflow-hidden bg-muted/70 pr-1'
-                  : 'sticky top-[68px] h-[calc(100vh-68px)] overflow-hidden bg-muted/70 pr-1'
-              }
-            >
+          <aside ref={sidebarSlotRef} className="hidden lg:block" aria-hidden />
+        )}
+      </div>
+
+      {showGrid && sidebarSlotRect ? (
+        <div
+          ref={floatingSidebarRef}
+          className="hidden overflow-hidden rounded-t-3xl bg-muted/70 lg:block"
+        >
+          <div className="flex h-full flex-col pr-1">
+            <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <CommunitySidebar
                 query={currentQuery}
                 sort={currentSort}
@@ -978,9 +1036,9 @@ export function SearchPage() {
                 onViewAll={() => updateSearch({ tab: 'communities' })}
               />
             </div>
-          </aside>
-        )}
-      </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

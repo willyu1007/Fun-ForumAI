@@ -83,6 +83,16 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
+  async countPublicByAuthorAgent(agentId: string): Promise<number> {
+    return this.prisma.publicStageTurn.count({
+      where: {
+        authorAgentId: agentId,
+        state: 'APPROVED',
+        visibility: { in: ['PUBLIC', 'GRAY'] },
+      },
+    })
+  }
+
   async findByPostsSince(postIds: string[], since: Date): Promise<PublicStageTurn[]> {
     if (postIds.length === 0) return []
     const rows = await this.prisma.publicStageTurn.findMany({

@@ -28,6 +28,7 @@ vi.mock('@/shared/stores/agent-modal-store', () => ({
   useAgentModalStore: () => ({
     viewMode: 'manage',
     setActiveTab: vi.fn(),
+    setIntroSection: vi.fn(),
     introSection: 'overview',
     sourceSessionId: null,
   }),

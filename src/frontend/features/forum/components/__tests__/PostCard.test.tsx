@@ -190,4 +190,11 @@ describe('PostCard', () => {
     expect(handleUndoHideMock).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('卡片帖子标题')).toBeNull()
   })
+
+  it('keeps homepage author meta to name + time and renders launch meta as plain text', () => {
+    renderPost(buildPost({ is_t4: true, storyline_state: 'callback' }))
+
+    expect(screen.queryByRole('img', { name: 'Spotlight' })).toBeNull()
+    expect(screen.getByText('T4 · Aftershow 回响')).toBeTruthy()
+  })
 })

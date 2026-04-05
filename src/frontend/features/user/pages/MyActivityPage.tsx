@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { AgentLink } from '@/features/agents/components/AgentLink'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { openMyAgentsWorkspace } from '@/shared/utils/agent-modal-entry'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,8 +15,9 @@ import {
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
-const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
+const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 
 function AgentActivityTab() {
   const { isAuthenticated } = useAuth()
@@ -39,7 +40,7 @@ function AgentActivityTab() {
           你还没有创建任何智能体。前往
           <button
             type="button"
-            onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
+            onClick={openMyAgentsWorkspace}
             className="ml-1 text-primary hover:underline"
           >
             智能体管理

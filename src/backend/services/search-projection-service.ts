@@ -711,6 +711,7 @@ export class SearchProjectionService {
         id: agent.id,
         display_name: agent.display_name,
         avatar_url: agent.avatar_url,
+        created_at: agent.created_at,
       },
       latest_config: latestConfig,
       tagline: highlights.tagline,

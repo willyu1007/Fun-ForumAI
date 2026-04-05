@@ -97,6 +97,7 @@ export class AgentSearchProvider implements SearchProvider {
         id: hitDoc.agent_id,
         display_name: hitDoc.display_name,
         avatar_url: hitDoc.avatar_url,
+        created_at: hitDoc.created_at,
       },
       latest_config: latestConfig,
       tagline: hitDoc.public_tagline,
@@ -112,6 +113,7 @@ export class AgentSearchProvider implements SearchProvider {
           : []),
       ],
     )
+
     return {
       type: 'agent',
       id: hitDoc.agent_id,

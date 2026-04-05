@@ -4,7 +4,6 @@ import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { Link, useNavigate } from 'react-router'
 import { ImageIcon, MoveDiagonal2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ModerationBadge } from './ModerationBadge'
 import { HumanVoteControls } from './HumanVoteControls'
@@ -15,7 +14,6 @@ import { usePostSurfaceActions } from './usePostSurfaceActions'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readPrimaryIdentityChip } from '@/shared/utils/public-author'
 import type { PostMediaItem, PostWithMeta } from '@/api/types'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
@@ -65,7 +63,11 @@ function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined, d
 function readLaunchBadges(post: PostWithMeta): string[] {
   const badges: string[] = []
   const isNoteEntry = isCreatorNoteEntry(post)
-  if (isNoteEntry) badges.push('创作者笔记')
+  if (post.is_t4) {
+    badges.push('T4')
+  } else if (isNoteEntry) {
+    badges.push('创作者笔记')
+  }
   if (post.storyline_state === 'escalating') badges.push('剧情升级中')
   if (post.storyline_state === 'callback') badges.push('Aftershow 回响')
   return badges
@@ -75,7 +77,6 @@ export function PostCompact({ post }: PostCompactProps) {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
   const author = post.author
-  const authorBadgeLabel = readPrimaryIdentityChip(author)
   const primaryMedia = post.media[0]
   const {
     feedback,
@@ -126,7 +127,7 @@ export function PostCompact({ post }: PostCompactProps) {
 
           <div className="min-w-0">
             <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+              <div className="flex min-w-0 items-baseline gap-1.5 text-[11px] leading-none text-muted-foreground">
                 <AgentHoverCard agentId={author.id}>
                   <AgentLink agentId={author.id} className="shrink-0 hover:no-underline">
                     <Avatar className="size-4.5">
@@ -140,18 +141,12 @@ export function PostCompact({ post }: PostCompactProps) {
                 <AgentHoverCard agentId={author.id}>
                   <AgentLink
                     agentId={author.id}
-                    className="shrink-0 font-medium text-foreground/90 hover:no-underline hover:text-accent"
+                    className="shrink-0 font-medium leading-none text-foreground/90 hover:no-underline hover:text-accent"
                   >
                     {author.display_name}
                   </AgentLink>
                 </AgentHoverCard>
-                {authorBadgeLabel && (
-                  <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                    {authorBadgeLabel}
-                  </Badge>
-                )}
-                <span>·</span>
-                <span className="shrink-0">{relativeTime(post.created_at)}</span>
+                <span className="shrink-0 text-[11px] leading-none text-muted-foreground/78">{relativeTime(post.created_at)}</span>
                 <div className="ml-auto flex shrink-0 items-center">
                   <ModerationBadge visibility={post.visibility} state={post.state} />
                 </div>
@@ -162,16 +157,6 @@ export function PostCompact({ post }: PostCompactProps) {
                   {post.title}
                 </h3>
               </Link>
-
-              {launchBadges.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {launchBadges.map((badge) => (
-                    <Badge key={badge} variant="outline" className="px-1.5 py-0 text-[9px]">
-                      {badge}
-                    </Badge>
-                  ))}
-                </div>
-              )}
 
               <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-2">
                 <button
@@ -252,6 +237,12 @@ export function PostCompact({ post }: PostCompactProps) {
                   <AgentSentimentBar agentUp={post.agent_vote_up} agentDown={post.agent_vote_down} />
                 </div>
               </div>
+
+              {launchBadges.length > 0 && (
+                <p className="mt-2 text-[11px] leading-5 text-muted-foreground/72">
+                  {launchBadges.join(' · ')}
+                </p>
+              )}
 
               {feedback && (
                 <p

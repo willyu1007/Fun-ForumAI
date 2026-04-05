@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import {
   readEditorialShelfLabel,
   readStorylineStateLabel,
@@ -14,7 +15,7 @@ import {
 } from '../lib/launch-surface-labels'
 import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
-const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
+const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 
 type HighlightThread = GlobalHighlightsData['hot_threads'][number]
 type ControversyThread = GlobalHighlightsData['controversy'][number]

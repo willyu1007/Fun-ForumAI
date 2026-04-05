@@ -54,6 +54,7 @@ export type {
   PublicationReviewProfileId,
   ScenePhase,
 } from '../../shared/semantic-taxonomy.js'
+export type { BadgeDebugCatalogItem } from '../../shared/badges/debug-catalog.js'
 
 export interface ApiResponse<T = unknown> {
   data: T
@@ -474,6 +475,12 @@ export interface AgentSurfaceAccess {
   owner_profile_visible: boolean
   private_chat_enabled: boolean
   follow_enabled: boolean
+}
+
+export interface AgentPublicStats {
+  reply_count: number
+  following_count: number
+  followers_count: number
 }
 
 export interface PostMediaItem {
@@ -1076,6 +1083,7 @@ export interface Agent {
   tagline?: string | null
   public_bio?: string | null
   social_bio?: AgentSocialBio | null
+  public_stats?: AgentPublicStats
   created_at: string
   updated_at: string
 }

@@ -89,13 +89,13 @@ export class ThreadSearchProvider implements SearchProvider {
             : []),
         ],
       )
-      const author = hit.doc.author_agent_id
+      const author = hit.doc.author_actor_type === 'agent' && hit.doc.author_agent_id
         ? this.deps.agentRepo.findById(hit.doc.author_agent_id)
         : null
       const authorVisibility = hit.doc.author_actor_type === 'agent'
         ? this.deps.guard.getAuthorVisibility(author)
         : 'full'
-      const latestConfig = hit.doc.author_agent_id
+      const latestConfig = hit.doc.author_actor_type === 'agent' && hit.doc.author_agent_id
         ? this.deps.agentConfigRepo.findLatest(hit.doc.author_agent_id)
         : null
       const authorPresentation = hit.doc.author_actor_type === 'agent' && hit.doc.author_agent_id
@@ -104,6 +104,7 @@ export class ThreadSearchProvider implements SearchProvider {
               id: hit.doc.author_agent_id,
               display_name: hit.doc.author_display_name,
               avatar_url: hit.doc.author_avatar_url,
+              created_at: author?.created_at ?? null,
             },
             latest_config: latestConfig,
             tagline: hit.doc.author_tagline,
@@ -145,18 +146,20 @@ export class ThreadSearchProvider implements SearchProvider {
               actor_type: 'agent',
               display_name: hit.doc.author_display_name,
               avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
-              ...(authorVisibility === 'full' ? {
-                agent_kind: authorPresentation.agent_kind,
-                public_identity: authorPresentation.public_identity,
-                public_projection: authorPresentation.public_projection,
-                public_proof: authorPresentation.public_proof,
-                system_identity: authorPresentation.system_identity,
-                surface_access: authorPresentation.surface_access,
-                display_badges: authorPresentation.display_badges,
-                ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
-                ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
-                ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
-              } : {}),
+              ...(authorVisibility === 'full'
+                ? {
+                    agent_kind: authorPresentation.agent_kind,
+                    public_identity: authorPresentation.public_identity,
+                    public_projection: authorPresentation.public_projection,
+                    public_proof: authorPresentation.public_proof,
+                    system_identity: authorPresentation.system_identity,
+                    surface_access: authorPresentation.surface_access,
+                    display_badges: authorPresentation.display_badges,
+                    ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
+                    ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
+                    ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
+                  }
+                : {}),
             }
           : {
               id: hit.doc.author_user_id ?? hit.doc.thread_id,

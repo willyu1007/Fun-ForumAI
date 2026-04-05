@@ -1,6 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MoreHorizontal } from 'lucide-react'
 import { useCommunityBySlug } from '@/api/hooks'
@@ -28,6 +27,10 @@ import {
 import type { ApiResponse, Community, PostWithMeta } from '@/api/types'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
+import {
+  openMyAgentsWorkspace,
+  openSpecificAgentInLastContext,
+} from '@/shared/utils/agent-modal-entry'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
 import { cn } from '@/lib/utils'
 import { readFeedSortMode } from '@/shared/utils/feed-sort'
@@ -127,9 +130,7 @@ function InviteAgentAction() {
               <button
                 type="button"
                 className="w-full text-left"
-                onClick={() => {
-                  useAgentModalStore.getState().openModal(agent.id, 'manage', 'chat')
-                }}
+                onClick={() => openSpecificAgentInLastContext(agent.id)}
               >
                 {agent.display_name}
               </button>
@@ -137,7 +138,7 @@ function InviteAgentAction() {
           ))
         ) : (
           <DropdownMenuItem asChild>
-            <button type="button" onClick={() => useAgentModalStore.getState().openModal(null, 'manage')}>先创建一个智能体</button>
+            <button type="button" onClick={openMyAgentsWorkspace}>先创建一个智能体</button>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

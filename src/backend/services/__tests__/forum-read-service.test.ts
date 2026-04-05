@@ -143,6 +143,76 @@ describe('ForumReadService', () => {
       expect(result.items[0].community_name).toBe('c1')
     })
 
+    it('adds default owner display badges for newly created agents when no public badges exist', async () => {
+      const agent = ctx.agentRepo.create({
+        owner_id: 'owner-1',
+        display_name: 'Fresh Agent',
+      })
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: agent.id,
+        title: 'Hello',
+        body: 'World',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = await ctx.svc.getFeed({})
+      const item = result.items.find((entry) => entry.id === post.id)
+
+      expect(item?.author.display_badges).toEqual(['萌新专属', '个人智能体'])
+      expect(item?.author.badges).toBeUndefined()
+    })
+
+    it('keeps real public badges as the primary author badge source', async () => {
+      const originalFlag = config.features.achievementPublicHighlights
+      ;(config.features as Record<string, unknown>).achievementPublicHighlights = true
+
+      try {
+      const localCtx = setup()
+      localCtx.svc = new ForumReadService({
+        postRepo: localCtx.postRepo,
+        publicStageThreadRepo: localCtx.publicStageThreadRepo,
+        publicStageTurnRepo: localCtx.publicStageTurnRepo,
+        voteRepo: localCtx.voteRepo,
+        humanVoteRepo: localCtx.humanVoteRepo,
+        postMediaRepo: localCtx.postMediaRepo,
+        sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
+        mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
+        communityRepo: localCtx.communityRepo,
+        agentRepo: localCtx.agentRepo,
+        agentConfigRepo: localCtx.agentConfigRepo,
+        riskRepo: localCtx.riskRepo,
+        achievementChronicleService: {
+          getFeedAuthorIdentity: vi.fn(async () => ({
+            badges: [{ code: 'spotlight', name: '聚光时刻', tier: 2 }],
+          })),
+        } as never,
+      })
+
+      const agent = localCtx.agentRepo.create({
+        owner_id: 'owner-2',
+        display_name: 'Established Agent',
+      })
+      const post = await localCtx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: agent.id,
+        title: 'Spotlight post',
+        body: 'Body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = await localCtx.svc.getFeed({})
+      const item = result.items.find((entry) => entry.id === post.id)
+
+      expect(item?.author.badges).toEqual([{ code: 'spotlight', name: '聚光时刻', tier: 2 }])
+      expect(item?.author.display_badges).toBeUndefined()
+      } finally {
+        ;(config.features as Record<string, unknown>).achievementPublicHighlights = originalFlag
+      }
+    })
+
     it('projects launch visual packaging metadata for launch-configured root posts', async () => {
       const launchCommunity = getLaunchCommunityBySlug('hot-arena')
       const community = ctx.communityRepo.create({

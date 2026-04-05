@@ -11,6 +11,7 @@ export interface PublicStageTurnRepository {
   findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>>
   findByThreads(threadIds: string[]): Promise<PublicStageTurn[]>
   findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>>
+  countPublicByAuthorAgent(agentId: string): Promise<number>
   findByPostsSince(postIds: string[], since: Date): Promise<PublicStageTurn[]>
   countByThread(threadId: string): Promise<number>
   delete(id: string): Promise<void>
@@ -76,6 +77,13 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
       .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
     return paginate(items, opts)
+  }
+
+  async countPublicByAuthorAgent(agentId: string): Promise<number> {
+    return Array.from(this.store.values())
+      .filter((item) => item.author_agent_id === agentId && item.state === 'APPROVED')
+      .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
+      .length
   }
 
   async findByPostsSince(postIds: string[], since: Date): Promise<PublicStageTurn[]> {

@@ -170,12 +170,12 @@ export function TopBarSearch() {
       <div ref={containerRef} className="relative mx-auto w-full max-w-[32rem]">
         {/* Collapsed button */}
         {!open ? (
-          <div className="rounded-full border border-primary/20 bg-background/95 p-[1.5px] ring-1 ring-primary/10 transition-colors duration-200 hover:border-primary/35 hover:ring-primary/15">
-            <div className="flex h-9 items-center rounded-full bg-background">
+          <div className="search-gradient-border rounded-full p-[1.5px]">
+            <div className="flex h-9 items-center rounded-full bg-background transition-colors duration-200 hover:bg-secondary focus-within:bg-secondary">
               <button
                 type="button"
                 onClick={() => { setQuery(urlQuery); setOpen(true) }}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-4 text-sm transition-colors hover:bg-secondary hover:text-foreground"
+                className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-full bg-transparent px-4 text-sm transition-colors hover:text-foreground"
               >
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className={`truncate ${urlQuery ? 'text-foreground' : 'text-muted-foreground/75'}`}>
@@ -188,7 +188,7 @@ export function TopBarSearch() {
                   <button
                     type="button"
                     aria-label="清除当前搜索"
-                    className="mr-1.5 ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="mr-1.5 ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation()
                       clearCurrentSearch()

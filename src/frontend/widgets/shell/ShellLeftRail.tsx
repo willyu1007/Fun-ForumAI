@@ -17,23 +17,37 @@ import {
   Bot,
   Component,
 } from 'lucide-react'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { useMyAgents } from '@/api/hooks/user'
+import { useAuth } from '@/shared/hooks/use-auth'
 import { useCommunities } from '@/api/hooks/forum'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import type { Community } from '@/api/types'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { getInitials } from '@/shared/utils/get-initials'
+import { useLeftRailAgentDisplayStore } from '@/shared/stores/left-rail-agent-display-store'
+import {
+  resolveLeftRailDisplayAgents,
+  resolveLeftRailDisplayOwnerId,
+} from '@/shared/utils/left-rail-agent-display'
+import {
+  openMyAgentsWorkspace,
+  openSpecificAgentInLastContext,
+} from '@/shared/utils/agent-modal-entry'
 import {
   getCommunityAvatarTheme,
   getCommunityAvatarToneClassName,
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
+import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 
-const GLOBAL_HIGHLIGHTS_ENABLED = import.meta.env.VITE_FF_GLOBAL_HIGHLIGHTS_V1 === 'true'
+const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 const LEFT_RAIL_SECTION_STATE_KEY = 'shell-left-rail-sections'
 const LEFT_RAIL_RECENT_VISITS_KEY = 'shell-left-rail-recent-visits'
 const RECENT_VISIT_LIMIT = 5
+const EMPTY_SELECTED_AGENT_IDS: string[] = []
 
 const HIGHLIGHT_LINKS = [
   { to: '/highlights', label: '全站高光', icon: Flame },
@@ -289,8 +303,24 @@ function SectionDivider() {
 
 export function ShellLeftRail() {
   const { pathname, search } = useLocation()
+  const { user } = useAuth()
   const { data } = useCommunities()
+  const { data: myAgentsData } = useMyAgents()
   const communities = useMemo(() => data?.data ?? EMPTY_COMMUNITIES, [data])
+  const myAgents = useMemo(() => myAgentsData?.data ?? [], [myAgentsData])
+  const ownerId = useMemo(
+    () => resolveLeftRailDisplayOwnerId(myAgents, user?.id),
+    [myAgents, user?.id],
+  )
+  const selectionsByOwnerId = useLeftRailAgentDisplayStore((state) => state.selectionsByOwnerId)
+  const selectedAgentIds = useMemo(
+    () => (ownerId ? (selectionsByOwnerId[ownerId] ?? EMPTY_SELECTED_AGENT_IDS) : EMPTY_SELECTED_AGENT_IDS),
+    [ownerId, selectionsByOwnerId],
+  )
+  const displayedAgents = useMemo(
+    () => resolveLeftRailDisplayAgents(myAgents, selectedAgentIds),
+    [myAgents, selectedAgentIds],
+  )
   const [sectionState, setSectionState] = useState<LeftRailSectionState>(readSectionState)
   const [recentVisits, setRecentVisits] = useState<string[]>(readRecentVisits)
 
@@ -443,29 +473,59 @@ export function ShellLeftRail() {
       </ScrollArea>
 
       {/* My Agents (Fixed at bottom) */}
-      <div className="flex shrink-0 flex-col transition-colors duration-200 hover:bg-muted/70">
-        <div className="-mt-1 border-t border-primary/22" aria-hidden />
-        <div className="flex min-h-[4.25rem] items-start px-3 pb-4 pt-2">
+      <div
+        className={cn(
+          'mb-3 flex h-56 w-full shrink-0 flex-col',
+        )}
+      >
+        <div className="border-t border-primary/22" aria-hidden />
+        <div className="flex shrink-0 items-start px-3 pb-1.5 pt-2">
           <button
             type="button"
-            className="group -mt-2 block w-full text-left text-base transition-colors"
-            onClick={() => useAgentModalStore.getState().openModal(null, 'manage', 'chat')}
+            className="group block w-full text-left text-base transition-colors"
+            onClick={openMyAgentsWorkspace}
           >
             <span
               className={cn(
-                'mx-auto flex w-[95%] items-center gap-4 rounded-[10px] px-4 py-3.5 transition-colors duration-200',
-                'text-foreground/80 group-hover:text-foreground',
+                'flex w-full items-center gap-4 rounded-[10px] px-4 py-2.5 transition-colors duration-200',
+                'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
               )}
             >
               <Bot
-                className="h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200 group-hover:text-primary group-focus-within:text-primary"
+                className="gradient-icon-flow h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200"
                 strokeWidth={2}
               />
-              <span className="truncate font-semibold text-foreground transition-colors duration-200 group-hover:text-primary group-focus-within:text-primary">
-                我的智能体
-              </span>
+              <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">我的智能体</span>
             </span>
           </button>
+        </div>
+        <div className="flex flex-1 flex-col justify-start px-3 pb-3">
+          <div className="space-y-0.5 px-4">
+            {displayedAgents.length === 0 ? (
+              <div className="py-2 text-xs text-muted-foreground">还没有智能体</div>
+            ) : (
+              displayedAgents.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  className="group flex w-full items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm text-foreground/80 transition-colors duration-200 hover:bg-primary/6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                  onClick={() => openSpecificAgentInLastContext(agent.id)}
+                >
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarImage
+                      src={resolveAgentAvatarSrc(agent)}
+                      alt={agent.display_name}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-muted text-[10px] font-medium text-foreground/75">
+                      {getInitials(agent.display_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-[13px] font-medium">{agent.display_name}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

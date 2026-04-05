@@ -1,6 +1,6 @@
 {
   "meta": {
-    "contract_version": "1.0.0",
+    "contract_version": "1.1.0",
     "description": "UI style contract for data-ui based rendering. Roles and enumerations are intentionally small and stable. Expand only via approved RFC.",
     "tailwind_policy": "semantic-token-guarded",
     "theme_policy": "token-only"
@@ -205,6 +205,10 @@
           "sm",
           "md",
           "lg"
+        ],
+        "shape": [
+          "default",
+          "pill"
         ],
         "state": [
           "default",

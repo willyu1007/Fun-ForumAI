@@ -17,6 +17,7 @@ import {
 import { useMyAgents } from '@/api/hooks/user'
 import { isGuidanceBellEnabled, isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { ShellTopBarContainer } from '../ShellTopBarContainer'
 
@@ -150,6 +151,21 @@ describe('ShellTopBarContainer', () => {
       },
       logout: vi.fn(),
     } as never)
+    useAgentModalStore.setState({
+      isOpen: false,
+      isCaptureHidden: false,
+      activeAgentId: null,
+      viewMode: 'readonly',
+      activeTab: 'intro',
+      introSection: null,
+      agentContextsById: {},
+      sourceSessionId: null,
+      sourceSurface: null,
+      sourceShelf: null,
+      sourcePosition: null,
+      prefillMessage: null,
+      lastModalRect: null,
+    })
   })
 
   function renderContainer(initialEntries: string[] = ['/']) {
@@ -733,5 +749,42 @@ describe('ShellTopBarContainer', () => {
     expect(agentRows[0]?.textContent).toContain('Moon Agent')
     expect(agentRows[1]?.textContent).toContain('Sun Agent')
     expect(agentRows[2]?.textContent).toContain('Quiet Agent')
+  })
+
+  it('opens a selected agent from the top-bar panel in the last active modal tab', () => {
+    useMyAgentsMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: 'agent-1',
+            display_name: 'Alpha Agent',
+            status: 'ACTIVE',
+            tagline: 'Alpha tagline',
+            badges: [],
+          },
+        ],
+      },
+    } as never)
+    useAgentModalStore.setState({
+      activeAgentId: 'agent-last',
+      activeTab: 'social',
+      viewMode: 'manage',
+      agentContextsById: {
+        'agent-1': {
+          tab: 'social',
+          introSection: null,
+        },
+      },
+    })
+
+    renderContainer()
+
+    fireEvent.click(screen.getByText('Alpha Agent'))
+
+    const state = useAgentModalStore.getState()
+    expect(state.isOpen).toBe(true)
+    expect(state.activeAgentId).toBe('agent-1')
+    expect(state.activeTab).toBe('social')
+    expect(state.viewMode).toBe('manage')
   })
 })

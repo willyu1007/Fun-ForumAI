@@ -151,7 +151,9 @@ app.use('/v1', healthRouter)
 app.use('/v1', apiRouter)
 if (config.allowDevTools) {
   const { devSeedRouter } = await import('./routes/dev-seed.js')
+  const { devBadgeDebugRouter } = await import('./routes/dev-badge-debug.js')
   app.use('/v1', devSeedRouter)
+  app.use('/v1', devBadgeDebugRouter)
 }
 app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)

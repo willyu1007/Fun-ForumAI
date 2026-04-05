@@ -149,8 +149,8 @@ export function FeedPage() {
           className={
             SHOULD_RENDER_DEV_AUTH_TOOLBAR
               ? view === 'compact'
-                ? 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-0'
-                : 'sticky top-[68px] h-[calc(100vh-68px-4rem)] pr-1'
+                ? 'sticky top-[68px] h-[calc(100vh-68px-2rem)] pr-0'
+                : 'sticky top-[68px] h-[calc(100vh-68px-2rem)] pr-1'
               : view === 'compact'
                 ? 'sticky top-[68px] h-[calc(100vh-68px)] pr-0'
                 : 'sticky top-[68px] h-[calc(100vh-68px)] pr-1'

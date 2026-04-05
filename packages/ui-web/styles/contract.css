@@ -15,6 +15,8 @@
   [data-ui="page"][data-density="compact"] { padding: var(--ui-space-4); }
   [data-ui="page"] [data-slot="header"] { margin-bottom: var(--ui-space-4); }
   [data-ui="page"] [data-slot="footer"] { margin-top: var(--ui-space-6); }
+  [data-ui="page"][data-layout="app"] [data-slot="header"] { margin-bottom: 0; }
+  [data-ui="page"][data-layout="app"] [data-slot="footer"] { margin-top: 0; }
 
   /* ---------- Layout primitives ---------- */
   [data-ui="section"] { margin-bottom: var(--ui-space-5); }
@@ -123,6 +125,8 @@
                 border-color var(--ui-motion-duration-normal) var(--ui-motion-ease-standard),
                 color var(--ui-motion-duration-normal) var(--ui-motion-ease-standard);
   }
+
+  [data-ui="button"][data-shape="pill"] { border-radius: var(--ui-radius-full); }
 
   [data-ui="button"][data-size="sm"] { padding: var(--ui-space-2) var(--ui-space-3); }
   [data-ui="button"][data-size="md"] { padding: var(--ui-space-3) var(--ui-space-4); }

@@ -38,7 +38,7 @@ export function AppShell({
     >
       {/* Top Bar */}
       {topBar && (
-        <header {...dataSlot('header')} className="shrink-0">
+        <header {...dataSlot('header')} className="shrink-0" style={{ marginBottom: 0 }}>
           {topBar}
         </header>
       )}
@@ -79,7 +79,7 @@ export function AppShell({
 
       {/* Footer */}
       {footer && (
-        <footer {...dataSlot('footer')} className="shrink-0">
+        <footer {...dataSlot('footer')} className="shrink-0" style={{ marginTop: 0 }}>
           {footer}
         </footer>
       )}

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRecordSearchTelemetry, useSearch, useSearchInfinite } from '@/api/hooks'
 import { buildAgentTarget } from '@/shared/utils/agent-target'
 import { SearchPage } from '../SearchPage'
@@ -86,6 +86,8 @@ vi.mock('@/components/ui/avatar', () => ({
 const useSearchInfiniteMock = vi.mocked(useSearchInfinite)
 const useSearchMock = vi.mocked(useSearch)
 const useRecordSearchTelemetryMock = vi.mocked(useRecordSearchTelemetry)
+const originalInnerWidth = window.innerWidth
+const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect
 
 const SEARCH_EXPLANATION_FIXTURES = {
   title: { label: '命中标题', kind: 'lexical' },
@@ -142,6 +144,39 @@ describe('SearchPage', () => {
   const telemetryMutation = {
     mutate: vi.fn(),
   }
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 1280,
+    })
+
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      if (this.tagName === 'ASIDE' && this.getAttribute('aria-hidden') === 'true') {
+        return {
+          x: 900,
+          y: 120,
+          width: 360,
+          height: 640,
+          top: 120,
+          right: 1260,
+          bottom: 760,
+          left: 900,
+          toJSON: () => ({}),
+        } as DOMRect
+      }
+
+      return originalGetBoundingClientRect.call(this)
+    }
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: originalInnerWidth,
+    })
+    HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect
+  })
 
   useRecordSearchTelemetryMock.mockReturnValue(telemetryMutation as never)
 
@@ -481,13 +516,13 @@ describe('SearchPage', () => {
     renderSearchPage('/search?q=rust&tab=posts')
 
     const sidebarHeading = screen.getByRole('heading', { name: '社区' })
-    const aside = sidebarHeading.closest('aside')
-    expect(aside?.getAttribute('class') ?? '').toContain('self-stretch')
-    const stickyRail = sidebarHeading.parentElement?.parentElement
-    expect(stickyRail?.getAttribute('class') ?? '').toContain('sticky')
-    expect(stickyRail?.getAttribute('class') ?? '').toContain('bg-muted/70')
-    expect(stickyRail?.getAttribute('class') ?? '').toContain('overflow-hidden')
-    expect(sidebarHeading.parentElement?.getAttribute('class') ?? '').not.toContain('rounded-xl')
-    expect(within(sidebarHeading.parentElement as HTMLElement).getByText('Rust Lab')).toBeTruthy()
+    const sidebarCard = sidebarHeading.parentElement
+    const railShell = sidebarHeading.closest('.bg-muted\\/70')
+    expect(railShell?.getAttribute('class') ?? '').toContain('hidden')
+    expect(railShell?.getAttribute('class') ?? '').toContain('lg:block')
+    expect(railShell?.getAttribute('class') ?? '').toContain('bg-muted/70')
+    expect(railShell?.getAttribute('class') ?? '').toContain('overflow-hidden')
+    expect(sidebarCard?.getAttribute('class') ?? '').not.toContain('rounded-xl')
+    expect(within(sidebarCard as HTMLElement).getByText('Rust Lab')).toBeTruthy()
   })
 })

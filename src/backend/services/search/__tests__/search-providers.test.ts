@@ -468,6 +468,70 @@ describe('search providers', () => {
     expect(result.items[0]?.snippet).not.toContain('banter=')
   })
 
+  it('AgentSearchProvider adds fallback display badges for new owner agents', async () => {
+    const searchDocRepo = {
+      searchAgentDocs: vi.fn().mockResolvedValue({
+        items: [
+          {
+            doc: {
+              agent_id: 'agent-owner-1',
+              display_name: 'Owner Agent',
+              avatar_url: null,
+              status: 'ACTIVE',
+              model: 'gpt-4o',
+              persona_seed_code: 'seed',
+              persona_seed_label: '学者型',
+              home_voice_line_id: 'voice-1',
+              home_voice_line_label: '冷静观察',
+              identity_contract_source: 'contract',
+              public_tagline: null,
+              public_bio: null,
+              public_badges: [],
+              public_badges_text: '',
+              active_membership_count: 0,
+              active_community_ids: [],
+              active_communities: [],
+              active_community_names_text: '',
+              follower_count: 0,
+              public_activity_score: 0,
+              public_projection_hint: null,
+              top_chronicle_text: '',
+              representative_post_text: '',
+              representative_thread_turn_text: '',
+              social_signal_text: '',
+              searchable_text: 'Owner Agent',
+              refreshed_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            score: 1,
+          },
+        ],
+        next_cursor: null,
+      }),
+      countAgentDocs: vi.fn().mockResolvedValue(1),
+    } as unknown as SearchDocRepository
+
+    const provider = new AgentSearchProvider({
+      searchDocRepo,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => null),
+      } as never,
+      guard: new SearchGuard(),
+    })
+
+    const result = await provider.search({
+      query: 'owner',
+      limit: 20,
+    })
+
+    expect(result.items[0]).toMatchObject({
+      id: 'agent-owner-1',
+      agent_kind: 'owner',
+      display_badges: ['萌新专属', '个人智能体'],
+    })
+  })
+
   it('PostSearchProvider fails closed for missing authors while keeping public content searchable', async () => {
     const searchDocRepo = {
       searchPostDocs: vi.fn().mockResolvedValue({
@@ -545,5 +609,81 @@ describe('search providers', () => {
     })
     expect(first.agent_vote_up).toBe(7)
     expect(first.agent_vote_down).toBe(2)
+  })
+
+  it('PostSearchProvider adds fallback display badges for recent owner authors', async () => {
+    const searchDocRepo = {
+      searchPostDocs: vi.fn().mockResolvedValue({
+        items: [
+          {
+            doc: {
+              post_id: 'post-2',
+              community_id: 'community-1',
+              community_slug: 'community-1',
+              community_name: 'Community 1',
+              author_agent_id: 'agent-owner-2',
+              author_display_name: 'Owner Agent',
+              author_avatar_url: null,
+              author_tagline: null,
+              author_badges: [],
+              author_badges_text: '',
+              title: 'owner post',
+              body: 'body',
+              tags_text: '',
+              scene_tags_text: '',
+              scene_phase: null,
+              aftershow_text: '',
+              highlight_text: '',
+              searchable_text: 'owner post body',
+              visibility: 'PUBLIC',
+              state: 'APPROVED',
+              thread_turn_count: 0,
+              participant_count: 1,
+              last_activity_at: new Date(),
+              heat_score: 0,
+              watchability_score: 0.9,
+              thumbnail_url: null,
+              agent_vote_up: 0,
+              agent_vote_down: 0,
+              refreshed_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            score: 1,
+          },
+        ],
+        next_cursor: null,
+      }),
+      countPostDocs: vi.fn().mockResolvedValue(1),
+    } as unknown as SearchDocRepository
+
+    const provider = new PostSearchProvider({
+      searchDocRepo,
+      agentRepo: {
+        findById: vi.fn().mockReturnValue({
+          id: 'agent-owner-2',
+          owner_id: 'user-1',
+          display_name: 'Owner Agent',
+          avatar_url: null,
+          model: 'gpt-4o',
+          persona_version: 1,
+          reputation_score: 0,
+          status: 'ACTIVE',
+          created_at: new Date(),
+          updated_at: new Date(),
+        }),
+      } as never,
+      agentConfigRepo: {
+        findLatest: vi.fn(() => null),
+      } as never,
+      guard: new SearchGuard(),
+    })
+
+    const result = await provider.search({
+      query: 'owner',
+      limit: 20,
+    })
+
+    expect(result.items[0]?.author.display_badges).toEqual(['萌新专属', '个人智能体'])
   })
 })

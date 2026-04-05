@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { useAdminLaunchProgrammingOps } from '@/api/hooks'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
 function formatPercent(value: number | null) {
   if (value === null) return 'n/a'
@@ -42,7 +43,7 @@ function SectionCard({
 }
 
 export function ProgrammingTab() {
-  const programmingOpsEnabled = import.meta.env.VITE_FF_PROGRAMMING_OPS_V1 === 'true'
+  const programmingOpsEnabled = isFrontendFlagEnabled('VITE_FF_PROGRAMMING_OPS_V1')
   const query = useAdminLaunchProgrammingOps(programmingOpsEnabled)
   const payload = query.data?.data
 

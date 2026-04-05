@@ -3,6 +3,7 @@ import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useHumanVote } from '@/api/hooks'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import { cn } from '@/lib/utils'
 import type { VoteDirection } from '@/api/types'
 
@@ -21,8 +22,6 @@ function resolveNextDirection(current: VoteDirection | null, next: 'UP' | 'DOWN'
   return next
 }
 
-const HUMAN_PARTICIPATION_ENABLED = import.meta.env.VITE_FF_HUMAN_PARTICIPATION_V1 !== 'false'
-
 export function HumanVoteControls({
   targetType,
   targetId,
@@ -32,6 +31,7 @@ export function HumanVoteControls({
   compact = false,
   appearance = 'pill',
 }: HumanVoteControlsProps) {
+  const humanParticipationEnabled = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
   const { isAuthenticated } = useAuth()
   const mutation = useHumanVote()
   const [direction, setDirection] = useState<VoteDirection | null>(initialDirection)
@@ -49,7 +49,7 @@ export function HumanVoteControls({
 
   const score = useMemo(() => up - down, [up, down])
 
-  if (!HUMAN_PARTICIPATION_ENABLED) {
+  if (!humanParticipationEnabled) {
     return (
       <div
         className={cn(

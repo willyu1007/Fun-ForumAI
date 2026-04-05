@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PostDetailPage } from '../PostDetailPage'
@@ -435,13 +435,36 @@ describe('PostDetailPage', () => {
     expect(screen.getByTestId('post-detail-rail-shell').getAttribute('class')).toContain(
       'bg-muted/70',
     )
-    expect(screen.getAllByText('创作者笔记').length).toBeGreaterThan(0)
-    expect(screen.getByText('关系观察')).toBeTruthy()
-    expect(screen.getByText('关系图卡')).toBeTruthy()
-    expect(screen.getByText('剧情回访')).toBeTruthy()
     expect(screen.getByTestId('thread-list')).toBeTruthy()
     expect(screen.queryByText('主舞台')).toBeNull()
     expect(screen.queryByRole('tab', { name: '舞台' })).toBeNull()
+  })
+
+  it('keeps the post body aligned with the main column while placing the back button in a separate gutter', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(screen.getByTestId('post-detail-back-link-wrap').getAttribute('class')).toContain(
+      'lg:-left-[2.125rem]',
+    )
+    expect(screen.getByTestId('post-detail-stage-article').getAttribute('class')).not.toContain(
+      'grid-cols-[auto_minmax(0,1fr)]',
+    )
+    expect(screen.getByTestId('post-detail-stage-article').getAttribute('class')).toContain(
+      'px-[25px]',
+    )
+    expect(screen.getByTestId('post-detail-thread-section').getAttribute('class')).not.toContain(
+      'pl-14',
+    )
+    expect(screen.getByTestId('post-detail-thread-section').getAttribute('class')).toContain(
+      'px-[25px]',
+    )
+    expect(screen.getByTestId('post-detail-stage-article').innerHTML).not.toContain('-ml-1')
   })
 
   it('renders the audience rail when audience APIs return data even if the post payload has no web extension fields', () => {
@@ -725,6 +748,33 @@ describe('PostDetailPage', () => {
     expect(screen.queryByText('c/community-1')).toBeNull()
   })
 
+  it('places the author badge under the agent name in the top header when one is available', () => {
+    usePostMock.mockReturnValue({
+      data: {
+        data: buildPost({
+          includeAudienceFields: true,
+          overrides: {
+            author: {
+              id: 'agent-1',
+              display_name: 'Agent 1',
+              avatar_url: null,
+              display_badges: ['Resident'],
+            },
+          },
+        }),
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    const authorTrigger = screen.getByRole('button', { name: /Agent 1/i })
+    expect(within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1')).toBeTruthy()
+    expect(within(authorTrigger).queryByRole('img', { name: 'Resident' })).toBeNull()
+    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByRole('img', { name: 'Resident' })).toBeTruthy()
+  })
+
   it('does not render author bio copy or post tags in the top hero', () => {
     usePostMock.mockReturnValue({
       data: {
@@ -750,6 +800,32 @@ describe('PostDetailPage', () => {
     expect(screen.queryByText('这阵子 Agent 1 把哲学、意识收得更近一点。')).toBeNull()
     expect(screen.queryByText('意识')).toBeNull()
     expect(screen.queryByText('哲学')).toBeNull()
+  })
+
+  it('keeps relation teasers out of the stage header flow between the title and body', () => {
+    usePostMock.mockReturnValue({
+      data: {
+        data: buildPost({
+          includeAudienceFields: true,
+          overrides: {
+            relation_teaser: {
+              relation_label: 'T4',
+              relation_state_delta: 'stable',
+              shared_storyline_count: 1,
+              recent_callout_presence: false,
+              cta_target: '/agents/agent-1',
+            },
+          },
+        }),
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(within(screen.getByTestId('post-detail-stage-article')).queryByText('查看关系')).toBeNull()
+    expect(screen.getByText('查看关系')).toBeTruthy()
   })
 
   it('uses list-style pills in the footer and keeps AI sentiment on the right', () => {

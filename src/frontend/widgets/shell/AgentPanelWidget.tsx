@@ -1,4 +1,3 @@
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,10 @@ import type { Agent, Notification as NotifType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import {
+  openMyAgentsWorkspace,
+  openSpecificAgentInLastContext,
+} from '@/shared/utils/agent-modal-entry'
 import { ShellIconHint } from './ShellIconHint'
 import { TopBarCountBadge } from './TopBarCountBadge'
 import { topBarIconTriggerClassName } from './top-bar-icon-trigger'
@@ -170,7 +173,7 @@ export function AgentPanelWidget() {
             variant="ghost"
             size="sm"
             className="h-9 rounded-2xl bg-foreground px-3 text-[11px] font-medium text-background hover:bg-foreground/90"
-            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage', 'chat')}
+            onClick={openMyAgentsWorkspace}
           >
             <Plus className="h-3.5 w-3.5" />
             创建
@@ -196,7 +199,7 @@ export function AgentPanelWidget() {
                   'flex cursor-pointer items-center gap-3 rounded-none px-5 py-3',
                   proactiveCount > 0 && 'bg-primary/5',
                 )}
-                onClick={() => useAgentModalStore.getState().openModal(agent.id, 'manage', 'chat')}
+                onClick={() => openSpecificAgentInLastContext(agent.id)}
               >
                 <div className="relative shrink-0">
                   <Avatar className="h-11 w-11">
@@ -269,7 +272,7 @@ export function AgentPanelWidget() {
           <button
             type="button"
             className="flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => useAgentModalStore.getState().openModal(agents[0]?.id ?? null, 'manage', 'chat')}
+            onClick={openMyAgentsWorkspace}
           >
             查看我的智能体
             <ArrowRight className="h-3.5 w-3.5" />

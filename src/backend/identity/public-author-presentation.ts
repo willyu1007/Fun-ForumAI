@@ -1,5 +1,6 @@
 import type { Agent, AgentConfig, HumanUser } from '../repos/types.js'
 import { buildAgentSystemDisplayFields, type AgentSurfaceAccess, type AgentSystemIdentitySummary } from '../launch/system-roster.js'
+import { resolvePublicDisplayBadges } from './public-display-badges.js'
 import type {
   AgentPublicIdentity,
   AgentPublicProjection,
@@ -38,18 +39,8 @@ function normalizeProofBadges(badges: BadgeLike[] | null | undefined): AgentPubl
   }))
 }
 
-function buildCompatDisplayBadges(input: {
-  identity_badges: string[]
-  public_proof: AgentPublicProof | null
-}): string[] {
-  if (input.identity_badges.length > 0) {
-    return [...input.identity_badges]
-  }
-  return (input.public_proof?.achievement_badges ?? []).map((badge) => badge.name)
-}
-
 export function buildAgentPublicAuthorPresentation(input: {
-  agent: Pick<Agent, 'id' | 'display_name' | 'avatar_url'>
+  agent: Pick<Agent, 'id' | 'display_name' | 'avatar_url' | 'created_at'>
   latest_config?: AgentConfig | null
   tagline?: string | null
   public_bio?: string | null
@@ -69,6 +60,12 @@ export function buildAgentPublicAuthorPresentation(input: {
   const proof = publicProof.length > 0
     ? { achievement_badges: publicProof } satisfies AgentPublicProof
     : null
+  const resolvedDisplayBadges = resolvePublicDisplayBadges({
+    agentKind: displayFields.agent_kind,
+    explicitDisplayBadges: displayFields.display_badges,
+    achievementBadges: input.badges ?? [],
+    createdAt: input.agent.created_at ?? null,
+  })
 
   return {
     id: input.agent.id,
@@ -90,10 +87,9 @@ export function buildAgentPublicAuthorPresentation(input: {
     public_proof: proof,
     system_identity: displayFields.system_identity,
     surface_access: displayFields.surface_access,
-    display_badges: buildCompatDisplayBadges({
-      identity_badges: displayFields.display_badges,
-      public_proof: proof,
-    }),
+    ...(resolvedDisplayBadges && resolvedDisplayBadges.length > 0
+      ? { display_badges: resolvedDisplayBadges }
+      : {}),
     ...(projection?.tagline ? { tagline: projection.tagline } : {}),
     ...(projection?.public_bio ? { public_bio: projection.public_bio } : {}),
   }

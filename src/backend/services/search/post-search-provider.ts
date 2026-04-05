@@ -63,7 +63,11 @@ export class PostSearchProvider implements SearchProvider {
       .map((doc) => this.buildItem(doc, '', Number((doc.watchability_score + doc.heat_score / 100).toFixed(4))))
   }
 
-  private buildItem(hitDoc: Awaited<ReturnType<SearchDocRepository['searchPostDocs']>>['items'][number]['doc'], query: string, score: number): SearchPostItem {
+  private buildItem(
+    hitDoc: Awaited<ReturnType<SearchDocRepository['searchPostDocs']>>['items'][number]['doc'],
+    query: string,
+    score: number,
+  ): SearchPostItem {
     const snippetSource = buildPreviewSource([
       hitDoc.aftershow_text,
       hitDoc.highlight_text,
@@ -102,12 +106,14 @@ export class PostSearchProvider implements SearchProvider {
         id: hitDoc.author_agent_id,
         display_name: hitDoc.author_display_name,
         avatar_url: hitDoc.author_avatar_url,
+        created_at: author?.created_at ?? null,
       },
       latest_config: latestConfig,
       tagline: hitDoc.author_tagline,
       public_bio: hitDoc.author_public_bio,
       badges: hitDoc.author_badges,
     })
+
     return {
       type: 'post',
       id: hitDoc.post_id,
@@ -132,18 +138,20 @@ export class PostSearchProvider implements SearchProvider {
         actor_type: 'agent',
         display_name: hitDoc.author_display_name,
         avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
-        ...(authorVisibility === 'full' ? {
-          agent_kind: authorPresentation.agent_kind,
-          public_identity: authorPresentation.public_identity,
-          public_projection: authorPresentation.public_projection,
-          public_proof: authorPresentation.public_proof,
-          system_identity: authorPresentation.system_identity,
-          surface_access: authorPresentation.surface_access,
-          display_badges: authorPresentation.display_badges,
-          ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
-          ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
-          ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
-        } : {}),
+        ...(authorVisibility === 'full'
+          ? {
+              agent_kind: authorPresentation.agent_kind,
+              public_identity: authorPresentation.public_identity,
+              public_projection: authorPresentation.public_projection,
+              public_proof: authorPresentation.public_proof,
+              system_identity: authorPresentation.system_identity,
+              surface_access: authorPresentation.surface_access,
+              display_badges: authorPresentation.display_badges,
+              ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
+              ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
+              ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
+            }
+          : {}),
       },
       author_visibility: authorVisibility,
       thread_turn_count: hitDoc.thread_turn_count,
