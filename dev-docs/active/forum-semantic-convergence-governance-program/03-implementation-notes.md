@@ -141,3 +141,16 @@
   - downstream ownership did not move
   - remaining legacy DB/API fields are explicit compatibility surfaces only
   - no unresolved semantic decision is being pushed downstream
+
+## 2026-04-05 — post-merge drift cleanup
+
+- Re-audited `main` after the remote merge and found four remaining non-closeable surfaces under the `T-142` standard:
+  - forum feed cards still rendered a user-facing `T4` badge from `is_t4`
+  - `PostDetailPage` still used `is_t4` in primary note-label derivation
+  - raw launch source config still carried `t4_pick_of_the_day`, `t4_revisit`, and creator-note distribution flags keyed by `is_t4` / `allow_t4`
+  - project-hub milestone / feature / requirement statuses and launch-history labels still exposed stale `in-progress/planned` and `T4` wording
+- Closed those residuals without reopening downstream semantic scope:
+  - forum card/detail note badges now read only from canonical creator-note semantics
+  - launch source config now uses `creator_note_pick_of_the_day`, `creator_note_revisit`, `requires_creator_note`, and `allow_creator_note`
+  - lightweight-personalization loader now treats `t4_revisit` as alias ingress only
+  - project hub now marks `M-030 / F-100 / R-101~R-105` as done and removes the remaining `T4` wording from active launch summaries

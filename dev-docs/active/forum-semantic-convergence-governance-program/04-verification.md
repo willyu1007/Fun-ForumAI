@@ -81,3 +81,14 @@
   - Result: passed; `T-146` reads back as `done`.
 - `rg -n 'T-14[2-6]' .ai/project/main/task-index.md .ai/project/main/dashboard.md .ai/project/main/registry.yaml`
   - Result: passed; the derived project-hub views show the same final state split: `T-142/T-144/T-145/T-146 = done`, `T-143 = archived`.
+
+## 2026-04-05 — post-merge drift cleanup verification
+
+- `pnpm exec vitest run src/backend/launch/__tests__/programming-schedule.test.ts src/backend/launch/__tests__/lightweight-personalization.test.ts src/frontend/features/forum/components/__tests__/PostCard.test.tsx src/frontend/features/forum/components/__tests__/PostCompact.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - Result: passed; canonical creator-note UI badges, launch source-config naming, and alias-ingress normalization remain stable after the drift cleanup.
+- `pnpm exec tsc --noEmit`
+  - Result: passed after removing `is_t4` from the primary forum read paths and adding the lightweight-personalization normalization test.
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
+  - Result: passed; regenerated the project-hub derived views after the milestone / feature / requirement state cleanup.
+- `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Result: passed after the final project-hub resync.

@@ -19,10 +19,10 @@ milestones:
   - id: M-020
     title: "Launch Release Packaging"
     status: done
-    description: "Release-prep packaging for launch identity, roster, communities, homepage storytelling, T4 enablement, and programming ops."
+    description: "Release-prep packaging for launch identity, roster, communities, homepage storytelling, creator-note enablement, and programming ops."
   - id: M-030
     title: "Forum Semantic Convergence & Governance"
-    status: in-progress
+    status: done
     description: "Cross-system semantic convergence for community taxonomy, public participation, governance contracts, agent public semantics, and search/analytics compatibility cleanup."
 
 features:
@@ -74,11 +74,11 @@ features:
   - id: F-090
     title: "Launch Identity & Programming"
     status: done
-    description: "Launch packaging for system roster identity, 12-community contracts, editorial home IA, T4 tracks, and programming operations."
+    description: "Launch packaging for system roster identity, 12-community contracts, editorial home IA, creator-note tracks, and programming operations."
     milestone_id: M-020
   - id: F-100
     title: "Forum Semantic Convergence & Governance"
-    status: in-progress
+    status: done
     description: "Canonical taxonomy, governance contract separation, agent identity/projection/proof alignment, and search/analytics semantic convergence."
     milestone_id: M-030
 
@@ -256,7 +256,7 @@ requirements:
     status: done
     feature_id: F-090
   - id: R-094
-    title: "T4 Community Enablement"
+    title: "Creator Community Enablement"
     status: done
     feature_id: F-090
   - id: R-095
@@ -285,23 +285,23 @@ requirements:
     feature_id: F-090
   - id: R-101
     title: "Semantic Convergence Program Governance and Terminology Constitution"
-    status: in-progress
+    status: done
     feature_id: F-100
   - id: R-102
     title: "Shared Taxonomy Spine and Canonical Loader Cutover"
-    status: planned
+    status: done
     feature_id: F-100
   - id: R-103
     title: "Governance and Public Participation Contract Cutover"
-    status: planned
+    status: done
     feature_id: F-100
   - id: R-104
     title: "Agent Public Identity Projection Proof Alignment"
-    status: planned
+    status: done
     feature_id: F-100
   - id: R-105
     title: "Search Analytics Backfill and Compatibility Cleanup"
-    status: planned
+    status: done
     feature_id: F-100
 
 tasks:
