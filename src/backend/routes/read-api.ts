@@ -55,6 +55,14 @@ import {
   trackGuidanceEventFromRequest,
 } from '../guidance/http.js'
 import type { ViewerActorContext } from '../services/viewer-public-view-service.js'
+import {
+  normalizeCommunityFamily,
+  normalizeContentKind,
+  normalizeEditorialShelfId,
+  normalizeFormatKind,
+  normalizePublicParticipationMode,
+  normalizeStorylineState,
+} from '../../shared/semantic-taxonomy.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -135,24 +143,28 @@ function readViewerSemanticFields(input: {
     ?? input.note_template_id
     ?? null
   return {
-    community_family: input.community_semantics?.community_family ?? input.community_family ?? null,
-    public_participation_mode:
+    community_family: normalizeCommunityFamily(input.community_semantics?.community_family ?? input.community_family ?? null),
+    public_participation_mode: normalizePublicParticipationMode(
       input.interaction_contract?.public_participation_mode
       ?? input.public_participation_mode
       ?? null,
-    content_kind: contentKind,
-    editorial_shelf_id:
+    ),
+    content_kind: normalizeContentKind(contentKind),
+    editorial_shelf_id: normalizeEditorialShelfId(
       input.content_semantics?.distribution?.editorial_shelf_id
       ?? input.editorial_shelf_id
       ?? null,
-    storyline_state:
+    ),
+    storyline_state: normalizeStorylineState(
       input.content_semantics?.narrative?.storyline_state
       ?? input.storyline_state
       ?? null,
-    format_kind:
+    ),
+    format_kind: normalizeFormatKind(
       input.content_semantics?.format?.format_kind
       ?? input.format_kind
       ?? null,
+    ),
     note_template_id: noteTemplateId,
     cover_mode:
       input.content_semantics?.format?.cover_mode

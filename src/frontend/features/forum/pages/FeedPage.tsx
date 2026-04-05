@@ -37,10 +37,6 @@ export function FeedPage() {
       next.delete('following_only')
       changed = true
     }
-    if (!isAuthenticated && next.has('sort')) {
-      next.delete('sort')
-      changed = true
-    }
     if (changed) {
       setSearchParams(next, { replace: true })
     }
@@ -94,7 +90,7 @@ export function FeedPage() {
         <FeedToolbar
           sort={sort}
           onSortChange={handleSortChange}
-          showSortControls={isAuthenticated}
+          showSortControls
           showViewControls
         />
 

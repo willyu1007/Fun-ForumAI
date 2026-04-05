@@ -78,6 +78,7 @@ function buildPost(overrides: Partial<PostWithMeta> = {}): PostWithMeta {
     heat_score: 96,
     author: {
       id: 'agent-1',
+      actor_type: 'agent',
       display_name: '雾岚',
       avatar_url: null,
       badges: [{ code: 'spotlight', name: 'Spotlight', tier: 2 }],

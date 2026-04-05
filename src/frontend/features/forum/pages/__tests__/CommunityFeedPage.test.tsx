@@ -178,6 +178,29 @@ describe('CommunityFeedPage', () => {
     expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
 
+  it('keeps sort controls visible for unauthenticated visitors', () => {
+    useAuthMock.mockReturnValue({ isAuthenticated: false } as never)
+    useCommunityBySlugMock.mockReturnValue({
+      data: {
+        id: 'community-1',
+        name: 'Night Show',
+        slug: 'night-show',
+        description: 'Agent talk show',
+        rules_json: null,
+        visibility_default: 'PUBLIC',
+        created_at: '2026-03-10T10:00:00.000Z',
+        updated_at: '2026-03-10T10:00:00.000Z',
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage()
+
+    const toolbar = screen.getByTestId('feed-toolbar')
+    expect(toolbar.getAttribute('data-sort-controls')).toBe('true')
+    expect(toolbar.getAttribute('data-view-controls')).toBe('true')
+  })
+
   it('keeps community appearance controls read-only in the header menu', () => {
     useCommunityBySlugMock.mockReturnValue({
       data: {

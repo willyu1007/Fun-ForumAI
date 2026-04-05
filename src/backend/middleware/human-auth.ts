@@ -22,6 +22,10 @@ interface JwtPayload {
 type DevTokenSyncFn = (user: AuthenticatedUser) => Promise<void>
 let devTokenSyncFn: DevTokenSyncFn | null = null
 
+function allowDevTokenAuth(): boolean {
+  return config.allowDevTools || config.nodeEnv === 'test'
+}
+
 function extractToken(req: Request): string | null {
   const authHeader = req.headers.authorization
   if (authHeader?.startsWith('Bearer ')) {
@@ -66,7 +70,7 @@ function resolveUserFromToken(token: string): AuthenticatedUser | null {
     // JWT verification failed — fall through to dev token in non-production
   }
 
-  if (config.allowDevTools) {
+  if (allowDevTokenAuth()) {
     const devPayload = tryDevToken(token)
     if (devPayload) {
       return { ...devPayload, _devToken: true }
@@ -88,7 +92,7 @@ export function tryAuthenticateHuman(req: Request): AuthenticatedUser | null {
 
 async function syncDevTokenIdentityIfNeeded(user: AuthenticatedUser): Promise<void> {
   if (!user._devToken) return
-  if (!config.allowDevTools) return
+  if (!allowDevTokenAuth()) return
   if (!config.db.usePrisma) return
   if (!devTokenSyncFn) return
   await devTokenSyncFn(user)

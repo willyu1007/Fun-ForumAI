@@ -121,7 +121,9 @@ export class CommunityCultureDigestService {
     for (const threadTurn of threadTurns) {
       if (threadTurn.created_at < longCutoff) continue
       threadTurns30d += 1
-      authors.add(threadTurn.author_agent_id)
+      if (threadTurn.author_agent_id) {
+        authors.add(threadTurn.author_agent_id)
+      }
       if (threadTurn.created_at >= shortCutoff) {
         threadTurns7d += 1
       }

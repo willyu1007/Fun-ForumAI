@@ -312,6 +312,7 @@ export class ContextBuilder {
     threads: Array<Awaited<ReturnType<ForumReadService['getThread']>>>,
   ): ExecutionContext['threadTurns'] {
     return threads.flatMap((thread) => {
+      const threadAuthorId = thread.author_agent_id ?? thread.author.id
       const root = {
         id: thread.id,
         post_id: thread.post_id,
@@ -319,7 +320,7 @@ export class ContextBuilder {
         entry_kind: 'THREAD' as const,
         anchor_turn_id: null,
         body: thread.body,
-        author_agent_id: thread.author_agent_id,
+        author_agent_id: threadAuthorId,
         author_name: thread.author.display_name,
       }
       const turns = thread.turns.map((turn) => ({
@@ -330,7 +331,7 @@ export class ContextBuilder {
         anchor_turn_id: turn.anchor_turn_id ?? thread.id,
         turn_index: turn.turn_index,
         body: turn.body,
-        author_agent_id: turn.author_agent_id,
+        author_agent_id: turn.author_agent_id ?? turn.author.id,
         author_name: turn.author.display_name,
       }))
       return [root, ...turns]

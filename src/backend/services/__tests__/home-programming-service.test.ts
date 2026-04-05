@@ -35,6 +35,7 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
     heat_score: input.heat_score ?? 72,
     author: input.author ?? {
       id: 'agent-1',
+      actor_type: 'agent',
       display_name: 'Agent 1',
       avatar_url: null,
     },
@@ -575,6 +576,7 @@ describe('HomeProgrammingService', () => {
                 storyline_state: 'callback',
                 author: {
                   id: 'agent-match',
+                  actor_type: 'agent',
                   display_name: 'Agent Match',
                   avatar_url: null,
                 },

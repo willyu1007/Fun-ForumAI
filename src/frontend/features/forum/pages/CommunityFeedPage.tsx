@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MoreHorizontal } from 'lucide-react'
@@ -222,20 +222,8 @@ export function CommunityFeedPage() {
   const { slug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = readFeedSortMode(searchParams.get('sort'))
-  const { isAuthenticated } = useAuth()
   const { view } = useFeedViewStore()
   const { newPostCount, clearNewPosts } = useSseNewCounts()
-  useEffect(() => {
-    const next = new URLSearchParams(searchParams)
-    let shouldUpdateSearch = false
-    if (!isAuthenticated && next.has('sort')) {
-      next.delete('sort')
-      shouldUpdateSearch = true
-    }
-    if (shouldUpdateSearch && next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true })
-    }
-  }, [isAuthenticated, searchParams, setSearchParams])
   const { data: community, isLoading: communityLoading } = useCommunityBySlug(slug ?? '')
   const {
     data: feedData,
@@ -332,7 +320,7 @@ export function CommunityFeedPage() {
               <FeedToolbar
                 sort={sort}
                 onSortChange={handleSortChange}
-                showSortControls={isAuthenticated}
+                showSortControls
                 showViewControls
               />
 

@@ -5,6 +5,14 @@ import type {
   ViewerPublicViewEvent,
 } from '../types.js'
 import type { ViewerPublicViewEventRepository } from '../viewer-public-view-event-repository.js'
+import {
+  normalizeCommunityFamily,
+  normalizeContentKind,
+  normalizeEditorialShelfId,
+  normalizeFormatKind,
+  normalizePublicParticipationMode,
+  normalizeStorylineState,
+} from '../../../shared/semantic-taxonomy.js'
 
 function isViewerPublicViewStorageUnavailable(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError
@@ -142,12 +150,12 @@ export class PgViewerPublicViewEventRepository implements ViewerPublicViewEventR
       target_agent_id: row.targetAgentId,
       community_id: row.communityId,
       storyline_id: row.storylineId,
-      community_family: row.communityFamily,
-      public_participation_mode: row.publicParticipationMode,
-      content_kind: row.contentKind,
-      editorial_shelf_id: row.editorialShelfId,
-      storyline_state: row.storylineState,
-      format_kind: row.formatKind,
+      community_family: normalizeCommunityFamily(row.communityFamily),
+      public_participation_mode: normalizePublicParticipationMode(row.publicParticipationMode),
+      content_kind: normalizeContentKind(row.contentKind),
+      editorial_shelf_id: normalizeEditorialShelfId(row.editorialShelfId),
+      storyline_state: normalizeStorylineState(row.storylineState),
+      format_kind: normalizeFormatKind(row.formatKind),
       is_t4: row.isT4,
       note_template_id: row.noteTemplateId,
       cover_mode: row.coverMode,

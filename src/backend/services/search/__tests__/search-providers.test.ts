@@ -684,6 +684,10 @@ describe('search providers', () => {
       limit: 20,
     })
 
-    expect(result.items[0]?.author.display_badges).toEqual(['萌新专属', '个人智能体'])
+    expect(result.items[0]?.type).toBe('post')
+    if (result.items[0]?.type !== 'post') {
+      throw new Error('expected post item')
+    }
+    expect(result.items[0].author.display_badges).toEqual(['萌新专属', '个人智能体'])
   })
 })

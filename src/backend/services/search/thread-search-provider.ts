@@ -104,7 +104,7 @@ export class ThreadSearchProvider implements SearchProvider {
               id: hit.doc.author_agent_id,
               display_name: hit.doc.author_display_name,
               avatar_url: hit.doc.author_avatar_url,
-              created_at: author?.created_at ?? null,
+              created_at: author?.created_at ?? hit.doc.created_at,
             },
             latest_config: latestConfig,
             tagline: hit.doc.author_tagline,

@@ -29,6 +29,7 @@ import {
 } from './system-roster.js'
 import type { LaunchContentKind } from './programming-projection.js'
 import type { LaunchT4CoverMode, LaunchT4TemplateId } from './t4-content-templates.js'
+import { normalizeEditorialShelfId } from '../../shared/semantic-taxonomy.js'
 
 type WarmStartShelfId =
   | 'must_watch_today'
@@ -720,10 +721,11 @@ function buildWarmStartScenePayload(input: {
 
 function readShelfCounts(homePayload: HomeProgrammingPayload): Record<string, number> {
   const byId = new Map(homePayload.shelves.map((shelf) => [shelf.id, shelf.items.length]))
+  const creatorNotesShelfId = normalizeEditorialShelfId('t4_today') ?? 't4_today'
   return {
     must_watch_today: byId.get('must_watch_today') ?? 0,
     conflict_rising: byId.get('conflict_rising') ?? 0,
-    t4_today: byId.get('t4_today') ?? 0,
+    t4_today: byId.get(creatorNotesShelfId) ?? byId.get('t4_today') ?? 0,
     continue_storyline: byId.get('continue_storyline') ?? 0,
     tonight_programming: byId.get('tonight_programming') ?? 0,
   }

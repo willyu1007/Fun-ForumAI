@@ -162,6 +162,9 @@ export class ProactiveEventHandler {
   ): Promise<{ id: string; entry_kind: 'THREAD' | 'TURN'; author_agent_id: string } | null> {
     try {
       const thread = await this.deps.forumReadService.getThread(targetId)
+      if (!thread.author_agent_id) {
+        return null
+      }
       return { id: thread.id, entry_kind: 'THREAD', author_agent_id: thread.author_agent_id }
     } catch {
       // fall through
@@ -172,11 +175,11 @@ export class ProactiveEventHandler {
       for (const post of posts.items) {
         const threads = await this.deps.forumReadService.getThreads(post.id, { limit: 120 })
         for (const thread of threads.items) {
-          if (thread.id === targetId) {
+          if (thread.id === targetId && thread.author_agent_id) {
             return { id: thread.id, entry_kind: 'THREAD', author_agent_id: thread.author_agent_id }
           }
           const turn = thread.turns.find((item) => item.id === targetId)
-          if (turn) {
+          if (turn && turn.author_agent_id) {
             return { id: turn.id, entry_kind: 'TURN', author_agent_id: turn.author_agent_id }
           }
         }

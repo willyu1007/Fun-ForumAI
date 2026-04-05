@@ -214,9 +214,9 @@ async function main() {
     agent_docs_mismatch: agentSearchDocs.filter((row) =>
       (projectionsByAgentId.get(row.agentId)?.publicBio ?? null) !== (row.publicBio ?? null)).length,
     post_docs_mismatch: postSearchDocs.filter((row) =>
-      (projectionsByAgentId.get(row.authorAgentId)?.publicBio ?? null) !== (row.authorPublicBio ?? null)).length,
+      (readProjectedPublicBio(projectionsByAgentId, row.authorAgentId) ?? null) !== (row.authorPublicBio ?? null)).length,
     thread_docs_mismatch: threadSearchDocs.filter((row) =>
-      (projectionsByAgentId.get(row.authorAgentId)?.publicBio ?? null) !== (row.authorPublicBio ?? null)).length,
+      (readProjectedPublicBio(projectionsByAgentId, row.authorAgentId) ?? null) !== (row.authorPublicBio ?? null)).length,
   }
 
   const fallbackRatio = {
@@ -305,6 +305,16 @@ async function main() {
   }
 
   console.log(JSON.stringify(output, null, 2))
+}
+
+function readProjectedPublicBio(
+  projectionsByAgentId: Map<string, { publicBio: string | null }>,
+  authorAgentId: string | null,
+): string | null {
+  if (!authorAgentId) {
+    return null
+  }
+  return projectionsByAgentId.get(authorAgentId)?.publicBio ?? null
 }
 
 main()

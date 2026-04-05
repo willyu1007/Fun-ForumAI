@@ -341,6 +341,53 @@ export const IDENTITY_VISIBILITY_ROLE_ALIASES: Record<string, IdentityVisibility
   editorial: 'editorial',
 }
 
+export const PUBLIC_PARTICIPATION_MODE_ALIASES: Record<string, PublicParticipationMode> = {
+  llm_only: 'llm_only',
+  audience_sidecar: 'audience_sidecar',
+  open_reply: 'open_reply',
+}
+
+export const AUDIENCE_SIGNAL_INGESTION_ALIASES: Record<string, AudienceSignalIngestion> = {
+  none: 'none',
+  summary_only: 'summary_only',
+  direct_read: 'direct_read',
+}
+
+export const AGENT_HUMAN_RESPONSE_MODE_ALIASES: Record<string, AgentHumanResponseMode> = {
+  none: 'none',
+  aftershow_only: 'aftershow_only',
+  direct_reply: 'direct_reply',
+}
+
+export const SCENE_PHASE_ALIASES: Record<string, ScenePhase> = {
+  opening: 'opening',
+  escalation: 'escalation',
+  pivot: 'pivot',
+  closure: 'closure',
+  aftershow: 'aftershow',
+}
+
+export const STORYLINE_STATE_ALIASES: Record<string, StorylineState> = {
+  opening: 'opening',
+  escalating: 'escalating',
+  callback: 'callback',
+  closed: 'closed',
+}
+
+export const COMMUNITY_LIFECYCLE_STATE_ALIASES: Record<string, CommunityLifecycleState> = {
+  launch_core: 'launch_core',
+  launch_support: 'launch_support',
+  seasonal_active: 'seasonal_active',
+  incubating_gray: 'incubating_gray',
+  dormant: 'dormant',
+  merged: 'merged',
+  archived: 'archived',
+}
+
+export const FORMAT_CAPABILITY_ALIASES: Record<string, FormatCapabilityId> = {
+  note: 'note',
+}
+
 function normalizeString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim()
@@ -351,6 +398,50 @@ export function normalizeCommunityFamily(value: string | null | undefined): Comm
   const normalized = normalizeString(value)
   if (!normalized) return null
   return COMMUNITY_FAMILY_ALIASES[normalized] ?? null
+}
+
+export function normalizePublicParticipationMode(
+  value: string | null | undefined,
+): PublicParticipationMode | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return PUBLIC_PARTICIPATION_MODE_ALIASES[normalized] ?? null
+}
+
+export function normalizeAudienceSignalIngestion(
+  value: string | null | undefined,
+): AudienceSignalIngestion | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return AUDIENCE_SIGNAL_INGESTION_ALIASES[normalized] ?? null
+}
+
+export function normalizeAgentHumanResponseMode(
+  value: string | null | undefined,
+): AgentHumanResponseMode | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return AGENT_HUMAN_RESPONSE_MODE_ALIASES[normalized] ?? null
+}
+
+export function normalizeScenePhase(value: string | null | undefined): ScenePhase | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return SCENE_PHASE_ALIASES[normalized] ?? null
+}
+
+export function normalizeStorylineState(value: string | null | undefined): StorylineState | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return STORYLINE_STATE_ALIASES[normalized] ?? null
+}
+
+export function normalizeCommunityLifecycleState(
+  value: string | null | undefined,
+): CommunityLifecycleState | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return COMMUNITY_LIFECYCLE_STATE_ALIASES[normalized] ?? null
 }
 
 export function normalizeCommunityShellCategory(value: string | null | undefined): CommunityShellCategory | null {
@@ -412,6 +503,12 @@ export function normalizeIdentityVisibilityRoleId(
   const normalized = normalizeString(value)
   if (!normalized) return null
   return IDENTITY_VISIBILITY_ROLE_ALIASES[normalized] ?? null
+}
+
+export function normalizeFormatCapabilityId(value: string | null | undefined): FormatCapabilityId | null {
+  const normalized = normalizeString(value)
+  if (!normalized) return null
+  return FORMAT_CAPABILITY_ALIASES[normalized] ?? null
 }
 
 export function deriveCommunityShellCategory(family: CommunityFamily): CommunityShellCategory {

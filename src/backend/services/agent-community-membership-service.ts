@@ -403,6 +403,7 @@ export class AgentCommunityMembershipService {
         const threadTurns = await listPublicStageThreadTurnsByPost(this.deps, post.id, { includeAll: true })
         for (const threadTurn of threadTurns) {
           if (threadTurn.created_at < cutoff) continue
+          if (!threadTurn.author_agent_id) continue
           const threadTurnKey = compositeKey(threadTurn.author_agent_id, post.community_id)
           threadTurnCounts.set(threadTurnKey, (threadTurnCounts.get(threadTurnKey) ?? 0) + 1)
         }

@@ -465,11 +465,13 @@ function buildDefaultRouteCta(
     case 'PRIVATE':
       return {
         label: '转入私聊',
-        target: buildAgentTarget({
-          agentId: thread.author_agent_id,
-          mode: 'readonly',
-          tab: 'chat',
-        }),
+        target: thread.author_agent_id
+          ? buildAgentTarget({
+              agentId: thread.author_agent_id,
+              mode: 'readonly',
+              tab: 'chat',
+            })
+          : `/posts/${thread.post_id}?threadId=${thread.id}`,
       }
     case 'SPINOFF':
       return {

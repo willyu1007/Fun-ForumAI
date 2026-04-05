@@ -34,9 +34,43 @@ import type { SearchAuthorVisibility } from '../../shared/public-search.js'
 import type {
   AgentPublicIdentity,
   AgentPublicProof,
+  AgentHumanResponseMode,
+  AudienceSignalIngestion,
+  CommunityFamily,
   CommunityInteractionContract,
+  CommunityLifecycleState,
   CommunitySemanticContract,
+  CommunityShellCategory,
   ContentSemanticProjection,
+  ContentKind,
+  EditorialShelfId,
+  FormatCapabilityId,
+  FormatKind,
+  IdentityRoleId,
+  IdentityVisibilityRoleId,
+  LaunchSurfaceKindId,
+  PublicParticipationMode,
+  PublicationReviewProfileId,
+  ScenePhase,
+  StorylineState,
+} from '../../shared/semantic-taxonomy.js'
+import {
+  normalizeAgentHumanResponseMode,
+  normalizeAudienceSignalIngestion,
+  normalizeCommunityFamily,
+  normalizeCommunityLifecycleState,
+  normalizeCommunityShellCategory,
+  normalizeContentKind,
+  normalizeEditorialShelfId,
+  normalizeFormatCapabilityId,
+  normalizeFormatKind,
+  normalizeIdentityRoleId,
+  normalizeIdentityVisibilityRoleId,
+  normalizeLaunchSurfaceKindId,
+  normalizePublicParticipationMode,
+  normalizePublicationReviewProfileId,
+  normalizeScenePhase,
+  normalizeStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import {
   findPublicStageThreadTurnById,
@@ -142,23 +176,23 @@ function readCommunitySemanticFields(input: {
   community_semantics?: CommunitySemanticContract | null
   interaction_contract?: CommunityInteractionContract | null
 }): {
-  community_family: string | null
-  community_shell_category: string | null
-  publication_review_profile_id: string | null
-  public_participation_mode: string | null
-  audience_signal_ingestion: string | null
-  agent_human_response_mode: string | null
-  community_lifecycle_state: string | null
+  community_family: CommunityFamily | null
+  community_shell_category: CommunityShellCategory | null
+  publication_review_profile_id: PublicationReviewProfileId | null
+  public_participation_mode: PublicParticipationMode | null
+  audience_signal_ingestion: AudienceSignalIngestion | null
+  agent_human_response_mode: AgentHumanResponseMode | null
+  community_lifecycle_state: CommunityLifecycleState | null
   launch_wave: string | null
 } {
   return {
-    community_family: input.community_semantics?.community_family ?? null,
-    community_shell_category: input.community_semantics?.community_shell_category ?? null,
-    publication_review_profile_id: input.community_semantics?.publication_review_profile_id ?? null,
-    public_participation_mode: input.interaction_contract?.public_participation_mode ?? null,
-    audience_signal_ingestion: input.interaction_contract?.audience_signal_ingestion ?? null,
-    agent_human_response_mode: input.interaction_contract?.agent_human_response_mode ?? null,
-    community_lifecycle_state: input.community_semantics?.community_lifecycle_state ?? null,
+    community_family: normalizeCommunityFamily(input.community_semantics?.community_family ?? null),
+    community_shell_category: normalizeCommunityShellCategory(input.community_semantics?.community_shell_category ?? null),
+    publication_review_profile_id: normalizePublicationReviewProfileId(input.community_semantics?.publication_review_profile_id ?? null),
+    public_participation_mode: normalizePublicParticipationMode(input.interaction_contract?.public_participation_mode ?? null),
+    audience_signal_ingestion: normalizeAudienceSignalIngestion(input.interaction_contract?.audience_signal_ingestion ?? null),
+    agent_human_response_mode: normalizeAgentHumanResponseMode(input.interaction_contract?.agent_human_response_mode ?? null),
+    community_lifecycle_state: normalizeCommunityLifecycleState(input.community_semantics?.community_lifecycle_state ?? null),
     launch_wave: input.community_semantics?.launch_wave ?? null,
   }
 }
@@ -175,32 +209,32 @@ function readContentSemanticFields(input: {
   surface_kind_id?: string | null
   card_mode?: string | null
 }): {
-  scene_phase: string | null
-  storyline_state: string | null
-  content_kind: string | null
-  format_kind: string | null
-  editorial_shelf_id: string | null
+  scene_phase: ScenePhase | null
+  storyline_state: StorylineState | null
+  content_kind: ContentKind | null
+  format_kind: FormatKind | null
+  editorial_shelf_id: EditorialShelfId | null
   note_template_id: string | null
   cover_mode: string | null
-  surface_kind: string | null
+  surface_kind: LaunchSurfaceKindId | null
   card_mode: string | null
 } {
   return {
-    scene_phase: input.content_semantics?.scene_runtime.phase ?? input.scene_phase ?? null,
-    storyline_state: input.content_semantics?.narrative.storyline_state ?? input.storyline_state ?? null,
-    content_kind: input.content_semantics?.distribution.content_kind ?? input.content_kind ?? null,
-    format_kind: input.content_semantics?.format.format_kind ?? input.format_kind ?? null,
-    editorial_shelf_id: input.content_semantics?.distribution.editorial_shelf_id ?? input.editorial_shelf_id ?? null,
+    scene_phase: normalizeScenePhase(input.content_semantics?.scene_runtime.phase ?? input.scene_phase ?? null),
+    storyline_state: normalizeStorylineState(input.content_semantics?.narrative.storyline_state ?? input.storyline_state ?? null),
+    content_kind: normalizeContentKind(input.content_semantics?.distribution.content_kind ?? input.content_kind ?? null),
+    format_kind: normalizeFormatKind(input.content_semantics?.format.format_kind ?? input.format_kind ?? null),
+    editorial_shelf_id: normalizeEditorialShelfId(input.content_semantics?.distribution.editorial_shelf_id ?? input.editorial_shelf_id ?? null),
     note_template_id: input.content_semantics?.format.note_template_id ?? input.note_template_id ?? null,
     cover_mode: input.content_semantics?.format.cover_mode ?? input.cover_mode ?? null,
-    surface_kind: input.content_semantics?.visual.surface_kind ?? input.surface_kind_id ?? null,
+    surface_kind: normalizeLaunchSurfaceKindId(input.content_semantics?.visual.surface_kind ?? input.surface_kind_id ?? null),
     card_mode: input.content_semantics?.visual.card_mode ?? input.card_mode ?? null,
   }
 }
 
 function readSceneSearchFields(scene: ForumSceneMetadata | null): {
   scene_tags_text: string
-  scene_phase: string | null
+  scene_phase: ScenePhase | null
 } {
   if (!scene) {
     return {
@@ -218,7 +252,7 @@ function readSceneSearchFields(scene: ForumSceneMetadata | null): {
         scene.director_surface,
         scene.actor_surface,
       ]),
-      scene_phase: scene.phase,
+      scene_phase: normalizeScenePhase(scene.phase),
     }
   }
 
@@ -236,8 +270,17 @@ function readSceneSearchFields(scene: ForumSceneMetadata | null): {
       parsed.local_intent.relation_focus,
       parsed.local_intent.soft_constraints.slice(0, 2).join(' '),
     ]),
-    scene_phase: parsed.scene_metadata.phase,
+    scene_phase: normalizeScenePhase(parsed.scene_metadata.phase),
   }
+}
+
+function normalizeFormatCapabilities(values: ReadonlyArray<string | null | undefined> | null | undefined): FormatCapabilityId[] {
+  if (!values) {
+    return []
+  }
+  return values
+    .map((value) => normalizeFormatCapabilityId(value))
+    .filter((value): value is FormatCapabilityId => value !== null)
 }
 
 export interface SearchProjectionServiceDeps {
@@ -728,9 +771,11 @@ export class SearchProjectionService {
       ?? authorPresentation.system_identity?.identity_visibility_role_id
       ?? null
     const formatCapabilities =
-      authorPresentation.public_identity?.format_capabilities
-      ?? authorPresentation.system_identity?.format_capabilities
-      ?? []
+      normalizeFormatCapabilities(
+        authorPresentation.public_identity?.format_capabilities
+        ?? authorPresentation.system_identity?.format_capabilities
+        ?? [],
+      )
     const achievementBadgesText = formatAchievementBadgeText({
       public_proof: authorPresentation.public_proof,
       badges: highlights.badges,
@@ -1193,8 +1238,8 @@ export class SearchProjectionService {
     public_bio: string | null
     badges: SearchBadge[]
     visibility: SearchAuthorVisibility
-    identity_role_id: string | null
-    identity_visibility_role_id: string | null
+    identity_role_id: IdentityRoleId | null
+    identity_visibility_role_id: IdentityVisibilityRoleId | null
     identity_text: string
     achievement_badges_text: string
   } {
@@ -1222,12 +1267,12 @@ export class SearchProjectionService {
     const publicBio = author.public_projection?.public_bio ?? author.public_bio ?? null
     const badges = author.badges ?? []
     const identityRoleId =
-      author.public_identity?.identity_role_id
-      ?? author.system_identity?.identity_role_id
+      normalizeIdentityRoleId(author.public_identity?.identity_role_id)
+      ?? normalizeIdentityRoleId(author.system_identity?.identity_role_id)
       ?? null
     const identityVisibilityRoleId =
-      author.public_identity?.identity_visibility_role_id
-      ?? author.system_identity?.identity_visibility_role_id
+      normalizeIdentityVisibilityRoleId(author.public_identity?.identity_visibility_role_id)
+      ?? normalizeIdentityVisibilityRoleId(author.system_identity?.identity_visibility_role_id)
       ?? null
 
     return {

@@ -496,29 +496,33 @@ export function PostDetailPage() {
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <AgentHoverCard agentId={author.id}>
-              <AgentLink
-                agentId={author.id}
-                className="-ml-2 -mr-2 inline-flex min-w-0 items-center gap-3 rounded-2xl py-2 pr-2 pl-[7px] text-left transition-colors hover:bg-muted/40 hover:no-underline"
-              >
-                <Avatar className="size-11 shrink-0">
-                  <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
-                  <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                    {author.display_name.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div
-                  className="flex min-w-0 items-center gap-2 text-sm leading-none"
-                  data-testid="post-detail-author-primary-line"
+              <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">
+                <AgentLink
+                  agentId={author.id}
+                  className="-ml-2 -mr-2 col-span-2 inline-grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-muted/40 hover:no-underline"
                 >
-                  <span className="truncate font-semibold text-foreground">{author.display_name}</span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="shrink-0 text-xs text-muted-foreground/80">{relativeTime(post.created_at)}</span>
-                </div>
-              </AgentLink>
+                  <Avatar className="size-11 shrink-0">
+                    <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
+                    <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+                      {author.display_name.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div
+                    className="flex min-w-0 items-center gap-2 pt-2 text-sm leading-none"
+                    data-testid="post-detail-author-primary-line"
+                  >
+                    <span className="truncate font-semibold text-foreground">{author.display_name}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="shrink-0 text-xs text-muted-foreground/80">{relativeTime(post.created_at)}</span>
+                  </div>
+                </AgentLink>
+                {authorBadgeItems.length > 0 ? (
+                  <div className="col-start-2 min-w-0 px-2 pt-0.5" data-testid="post-detail-author-secondary-line">
+                    <AuthorBadgeRail badges={authorBadgeItems} />
+                  </div>
+                ) : null}
+              </div>
             </AgentHoverCard>
-            <div className="pl-[63px] pr-2" data-testid="post-detail-author-secondary-line">
-              <AuthorBadgeRail badges={authorBadgeItems} />
-            </div>
           </div>
           <div className="flex shrink-0 items-center gap-1 pt-0.5">
             <ModerationBadge visibility={post.visibility} state={post.state} />

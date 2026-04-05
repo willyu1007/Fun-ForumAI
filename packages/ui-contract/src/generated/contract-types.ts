@@ -24,6 +24,7 @@ export interface UiRoleAttributesMap {
   "button": {
     variant?: "primary" | "secondary" | "ghost" | "danger";
     size?: "sm" | "md" | "lg";
+    shape?: "default" | "pill";
     state?: "default" | "loading" | "disabled";
   };
   "card": {
@@ -395,6 +396,10 @@ export const UI_ROLE_MANIFEST = {
         "sm",
         "md",
         "lg"
+      ],
+      "shape": [
+        "default",
+        "pill"
       ],
       "state": [
         "default",
@@ -860,7 +865,7 @@ export const UI_ROLE_MANIFEST = {
 } as const;
 
 export const CONTRACT_META = {
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "description": "UI style contract for data-ui based rendering. Roles and enumerations are intentionally small and stable. Expand only via approved RFC.",
   "tailwind_policy": "semantic-token-guarded",
   "theme_policy": "token-only"

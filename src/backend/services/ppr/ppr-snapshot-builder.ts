@@ -503,6 +503,9 @@ export class PprSnapshotBuilder {
 
     const threadTurns = await listPublicStageThreadTurnsByPostsSince(this.deps, postIds, since)
     for (const threadTurn of threadTurns) {
+      if (!threadTurn.author_agent_id) {
+        continue
+      }
       const list = result.get(threadTurn.post_id) ?? []
       list.push({
         id: threadTurn.id,

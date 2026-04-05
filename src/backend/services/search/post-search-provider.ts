@@ -106,7 +106,7 @@ export class PostSearchProvider implements SearchProvider {
         id: hitDoc.author_agent_id,
         display_name: hitDoc.author_display_name,
         avatar_url: hitDoc.author_avatar_url,
-        created_at: author?.created_at ?? null,
+        created_at: author?.created_at ?? hitDoc.created_at,
       },
       latest_config: latestConfig,
       tagline: hitDoc.author_tagline,

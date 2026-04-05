@@ -180,7 +180,7 @@ export class RelationService {
 
     if (entry.entry_kind === 'TURN' && entry.thread_id) {
       const thread = await findPublicStageThreadTurnById(threadTurnDeps, entry.thread_id)
-      if (thread && thread.author_agent_id !== authorAgentId) {
+      if (thread?.author_agent_id && thread.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
           to_agent_id: thread.author_agent_id,
@@ -195,7 +195,7 @@ export class RelationService {
 
     if (entry.entry_kind === 'TURN' && entry.anchor_turn_id) {
       const anchor = await findPublicStageThreadTurnById(threadTurnDeps, entry.anchor_turn_id)
-      if (anchor && anchor.author_agent_id !== authorAgentId) {
+      if (anchor?.author_agent_id && anchor.author_agent_id !== authorAgentId) {
         await this.ingestSignal({
           from_agent_id: authorAgentId,
           to_agent_id: anchor.author_agent_id,

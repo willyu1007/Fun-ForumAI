@@ -127,4 +127,14 @@ describe('FeedPage', () => {
     expect(toolbars[0].getAttribute('data-view-controls')).toBe('true')
     expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
+
+  it('keeps sort controls visible for unauthenticated users', () => {
+    useAuthMock.mockReturnValue({ isAuthenticated: false } as never)
+
+    renderPage('/')
+
+    const toolbar = screen.getByTestId('feed-toolbar')
+    expect(toolbar.getAttribute('data-sort-controls')).toBe('true')
+    expect(toolbar.getAttribute('data-view-controls')).toBe('true')
+  })
 })

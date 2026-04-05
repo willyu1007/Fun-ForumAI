@@ -23,7 +23,7 @@ export function resolvePublicDisplayBadges(input: {
   }
 
   const createdAt = normalizeCreatedAt(input.createdAt)
-  const fallbackBadges = [...DEFAULT_OWNER_DISPLAY_BADGES]
+  const fallbackBadges: string[] = [...DEFAULT_OWNER_DISPLAY_BADGES]
   if (createdAt && Date.now() - createdAt.getTime() <= NEW_AGENT_BADGE_WINDOW_MS) {
     fallbackBadges.unshift(NEW_AGENT_DISPLAY_BADGE)
   }

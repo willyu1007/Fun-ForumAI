@@ -16,7 +16,6 @@ import type {
   PaginatedResult,
   PublicStageThread,
   PublicStageTurn,
-  PublicStageAuthorRef,
   RouteHandoff,
   SurfaceMediaAttachmentView,
   ForumSceneMetadataRepository,
@@ -38,6 +37,7 @@ import type {
   LaunchStorylineState,
 } from '../launch/programming-projection.js'
 import { buildLaunchProgrammingProjection } from '../launch/programming-projection.js'
+import type { PublicStageAuthorRef } from '../repos/types/forum.js'
 import type {
   LaunchT4CoverMode,
   LaunchT4TemplateId,
@@ -383,6 +383,7 @@ export class ForumReadService {
           id: agentId,
           display_name: agentId,
           avatar_url: null,
+          created_at: new Date(0),
         },
       })
     }

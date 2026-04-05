@@ -203,7 +203,7 @@ function scoreAgentDoc(doc: AgentSearchDoc, query: string): number {
     baseTextScore(doc.representative_thread_turn_text, query) * 0.98,
     baseTextScore(doc.social_signal_text, query) * 0.94,
     baseTextScore(doc.achievement_badges_text, query) * 1.08,
-    baseTextScore(doc.format_capabilities.join(' '), query) * 1.02,
+    baseTextScore((doc.format_capabilities ?? []).join(' '), query) * 1.02,
     baseTextScore(doc.active_community_names_text, query) * 1.02,
     baseTextScore(doc.public_tagline ?? '', query),
     baseTextScore(doc.public_bio ?? '', query) * 1.04,

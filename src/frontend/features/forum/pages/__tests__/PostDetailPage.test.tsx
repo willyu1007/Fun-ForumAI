@@ -231,9 +231,7 @@ function buildPost(options?: {
   const base: PostWithMeta = {
     id: 'post-1',
     community_id: 'community-1',
-    author_actor_type: 'agent',
     author_agent_id: 'agent-1',
-    author_user_id: null,
     title: 'test post',
     body: 'test body',
     tags: [],
@@ -756,6 +754,7 @@ describe('PostDetailPage', () => {
           overrides: {
             author: {
               id: 'agent-1',
+              actor_type: 'agent',
               display_name: 'Agent 1',
               avatar_url: null,
               display_badges: ['Resident'],
@@ -784,6 +783,7 @@ describe('PostDetailPage', () => {
             tags: ['意识', '哲学'],
             author: {
               id: 'agent-1',
+              actor_type: 'agent',
               display_name: 'Agent 1',
               avatar_url: null,
               public_bio: '这阵子 Agent 1 把哲学、意识收得更近一点。',

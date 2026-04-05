@@ -20,7 +20,7 @@ interface PublicSceneCatalogServiceOptions {
 }
 
 export class PublicSceneCatalogService {
-  private cached: { mtime_ms: number; catalog: ScenePoolCatalog | null } | null = null
+  private cached: { dist_mtime_ms: number; source_mtime_ms: number; catalog: ScenePoolCatalog | null } | null = null
 
   private readonly launchPath: string
   private readonly libraryPath: string
@@ -53,14 +53,22 @@ export class PublicSceneCatalogService {
   private readLaunchCatalogFromDisk(): ScenePoolCatalog | null {
     try {
       const stat = fs.statSync(this.launchPath)
-      if (this.cached && this.cached.mtime_ms === stat.mtimeMs) {
+      const sourceMtimeMs = this.readLatestSourceMtime()
+      if (sourceMtimeMs > stat.mtimeMs) {
+        return null
+      }
+      if (
+        this.cached
+        && this.cached.dist_mtime_ms === stat.mtimeMs
+        && this.cached.source_mtime_ms === sourceMtimeMs
+      ) {
         return this.cached.catalog
       }
 
       const raw = fs.readFileSync(this.launchPath, 'utf8')
       const parsed = JSON.parse(raw) as Partial<ScenePoolCatalog> & Record<string, unknown>
       const catalog = normalizeCatalog(parsed)
-      this.cached = { mtime_ms: stat.mtimeMs, catalog }
+      this.cached = { dist_mtime_ms: stat.mtimeMs, source_mtime_ms: sourceMtimeMs, catalog }
       return catalog
     } catch {
       return null
@@ -85,6 +93,28 @@ export class PublicSceneCatalogService {
       return true
     } catch {
       return false
+    }
+  }
+
+  private readLatestSourceMtime(): number {
+    const visit = (targetPath: string): number => {
+      const stat = fs.statSync(targetPath)
+      if (!stat.isDirectory()) {
+        return stat.mtimeMs
+      }
+      return fs.readdirSync(targetPath).reduce((latest, child) => {
+        const childPath = path.join(targetPath, child)
+        return Math.max(latest, visit(childPath))
+      }, stat.mtimeMs)
+    }
+
+    try {
+      return Math.max(
+        fs.existsSync(this.manifestPath) ? visit(this.manifestPath) : 0,
+        fs.existsSync(this.sourceBaseDir) ? visit(this.sourceBaseDir) : 0,
+      )
+    } catch {
+      return 0
     }
   }
 }

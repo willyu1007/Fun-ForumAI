@@ -5,10 +5,11 @@ import { SearchCountsCache } from '../search-counts-cache.js'
 import { SearchTelemetryService } from '../search-telemetry-service.js'
 import { SearchService } from '../../search-service.js'
 import type { SearchProvider } from '../search-provider.js'
+import type { SearchMatchExplanation } from '../../../../shared/public-search.js'
 
 function buildMatchExplanations(
   ...codes: Array<'title' | 'aftershow' | 'author_public_projection'>
-) {
+): SearchMatchExplanation[] {
   return codes.map((code) => ({
     code,
     label:
@@ -65,7 +66,7 @@ describe('SearchService', () => {
         match_reasons: ['命中标题'],
         match_reason_codes: ['title'],
         community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
-        author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
+        author: { id: 'agent-1', actor_type: 'agent', display_name: 'Agent 1', avatar_url: null },
         author_visibility: 'full',
         thread_turn_count: 3,
         heat_score: 42,
@@ -169,7 +170,7 @@ describe('SearchService', () => {
         match_reasons: ['命中场后总结'],
         match_reason_codes: ['aftershow'],
         community: { id: 'community-1', name: 'Community 1', slug: 'community-1' },
-        author: { id: 'agent-1', display_name: 'Agent 1', avatar_url: null },
+        author: { id: 'agent-1', actor_type: 'agent', display_name: 'Agent 1', avatar_url: null },
         author_visibility: 'full',
         thread_turn_count: 4,
         heat_score: 88,

@@ -1317,6 +1317,7 @@ export interface GlobalHighlightsData {
   } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
     content_kind?: LaunchContentKind
     editorial_shelf?: string
+    editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
     aftershow_export_bias?: number
     relation_teaser?: RelationSummaryTeaser | null
   }>
@@ -1348,6 +1349,7 @@ export interface GlobalHighlightsData {
   } & LaunchVisualPackagingFields & StorylineProjection & T4Projection & {
     content_kind?: LaunchContentKind
     editorial_shelf?: string
+    editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
     aftershow_export_bias?: number
   }>
   wildcard_cameos: Array<{

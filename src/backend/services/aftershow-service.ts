@@ -265,7 +265,7 @@ export class AftershowService {
       config.features.aftershowAudienceSummaryV1
       && audienceThread
       && audienceMessageCount > 0
-      && !stageResolved.stage_spec.human_participation.agent_reads_audience_zone
+      && stageResolved.stage_spec.human_participation.audience_signal_ingestion !== 'direct_read'
     ) {
       const now = new Date()
       const summary = await this.deps.audienceRepo.createSummary({

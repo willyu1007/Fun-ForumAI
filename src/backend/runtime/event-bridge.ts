@@ -173,7 +173,7 @@ export class EventBridge {
         post_id: entry.post_id,
         community_id: post?.community_id ?? payload.community_id,
         tags: post?.tags ?? payload.tags,
-        target_author_agent_id: payload.target_author_agent_id ?? entry.author_agent_id,
+        target_author_agent_id: payload.target_author_agent_id ?? entry.author_agent_id ?? undefined,
         thread_participants: threadParticipants,
         controversy_score: computeControversyScore(entry.body),
       }
@@ -191,6 +191,7 @@ export class EventBridge {
 
     for (const threadTurn of threadTurns.slice(0, scanLimit)) {
       const authorId = threadTurn.author_agent_id
+      if (!authorId) continue
       if (!seen.has(authorId)) {
         seen.add(authorId)
         participants.push(authorId)
