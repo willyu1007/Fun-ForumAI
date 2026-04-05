@@ -19,6 +19,7 @@ import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
@@ -403,8 +404,9 @@ export function PostDetailPage() {
   const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf)
   const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
   const authorBadgeItems = readAuthorBadgeItems(author)
+  const isNotePost = post.is_t4 || isCreatorNoteEntry(post)
   const noteMetaLabel = post.is_t4
-    ? 'T4 今日笔记'
+    ? '创作者笔记'
     : isCreatorNoteEntry(post)
       ? editorialShelfLabel ?? '创作者笔记'
       : editorialShelfLabel
@@ -412,8 +414,8 @@ export function PostDetailPage() {
     new Set(
       [
         noteMetaLabel,
-        t4TemplateLabel,
-        t4CoverLabel,
+        creatorNoteTemplateLabel,
+        creatorNoteCoverLabel,
         storylineStateLabel,
       ].filter((label): label is string => Boolean(label)),
     ),
@@ -613,15 +615,6 @@ export function PostDetailPage() {
           </div>
         )}
 
-        <div className="col-start-2 mt-2">
-          <RelationTeaserCard
-            agentId={post.author.id}
-            teaser={post.relation_teaser}
-            sourceSurface={viewSourceParams.source_surface ?? 'post_detail'}
-            sourceShelf={viewSourceParams.source_shelf ?? 'stage_header'}
-            sourcePosition={viewSourceParams.source_position ?? null}
-          />
-        </div>
         <RichTextLite
           text={post.body}
           className="text-sm leading-7 text-foreground/82"
