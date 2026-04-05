@@ -241,7 +241,7 @@ creator_note_distribution_rules:
       - mistake_recap_note
       - relationship_observation_note
       - ongoing_column_note
-    requires_is_t4: true
+    requires_creator_note: true
     requires_surface_kind: note_root_card
     empty_policy: collapse
   continuity_entry:
@@ -251,7 +251,7 @@ creator_note_distribution_rules:
       - mistake_recap_note
     requires_storyline_context: true
   hot_feed:
-    allow_t4: true
+    allow_creator_note: true
     default_bias: downgrade_vs_mainline
 guardrails:
   - Creator-note content must not be published without `note_template_id`.

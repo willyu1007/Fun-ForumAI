@@ -809,7 +809,7 @@ describe('PostDetailPage', () => {
           includeAudienceFields: true,
           overrides: {
             relation_teaser: {
-              relation_label: 'T4',
+              relation_label: '关系观察',
               relation_state_delta: 'stable',
               shared_storyline_count: 1,
               recent_callout_presence: false,

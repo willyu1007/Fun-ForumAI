@@ -404,12 +404,10 @@ export function PostDetailPage() {
   const editorialShelfLabel = readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf)
   const storylineStateLabel = readStorylineStateLabel(post.storyline_state)
   const authorBadgeItems = readAuthorBadgeItems(author)
-  const isNotePost = post.is_t4 || isCreatorNoteEntry(post)
-  const noteMetaLabel = post.is_t4
-    ? '创作者笔记'
-    : isCreatorNoteEntry(post)
-      ? editorialShelfLabel ?? '创作者笔记'
-      : editorialShelfLabel
+  const isNotePost = isCreatorNoteEntry(post)
+  const noteMetaLabel = isNotePost
+    ? editorialShelfLabel ?? '创作者笔记'
+    : editorialShelfLabel
   const surfaceMetaLabels = Array.from(
     new Set(
       [

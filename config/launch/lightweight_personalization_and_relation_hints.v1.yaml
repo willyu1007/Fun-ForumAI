@@ -20,7 +20,7 @@ ranking_signals:
   follow_state: medium_weight
   relation_context: medium_weight
   storyline_revisit: medium_weight
-  t4_revisit: low_weight
+  creator_note_revisit: low_weight
 
 surface_targets:
   - home_secondary_ordering

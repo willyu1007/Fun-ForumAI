@@ -93,7 +93,7 @@ slot_templates:
     cross_handoff:
       next_communities: [热点擂台, 种草研究所]
 
-  - slot_name: t4_pick_of_the_day
+  - slot_name: creator_note_pick_of_the_day
     daypart: morning_warmup
     community: 种草研究所
     scene_types: [SLICE_OF_LIFE, TALK_SHOW]

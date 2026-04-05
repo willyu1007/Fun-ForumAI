@@ -39,6 +39,12 @@ describe('launch programming schedule', () => {
         surface_kind: 'home_root_card',
       },
     })
+    expect(runtime.slot_templates.find((slot) => slot.slot_name === 'creator_note_pick_of_the_day')).toMatchObject({
+      community: '种草研究所',
+      expected_outputs: {
+        creator_note_entries: 1,
+      },
+    })
   })
 
   it('rejects unsupported slot roles', () => {
