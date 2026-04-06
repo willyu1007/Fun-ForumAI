@@ -18,6 +18,7 @@
   - canonicalizes `agent_configs.config_json.launch_system_identity` by replacing `t4_blogger`, projecting `t4_capable -> format_capabilities=["note"]`, and deleting `t4_capable`
 - Removed obsolete archive-side pseudo-SSOT artifacts that could be mistaken for live contracts, while preserving archived task narratives:
   - stale launch home IA, community rules, creator-note template, post-launch tuning, and system roster config copies under `dev-docs/archive/*`
+  - stale lightweight-personalization, community-governance/incubation, and launch-programming YAML contract copies under `dev-docs/archive/*`
 - Refreshed derived artifacts after the cleanup:
   - `docs/stage-templates/dist/*` regenerated from canonical source templates
   - `docs/env.md` and `docs/context/env/contract.json` regenerated from `env/contract.yaml`
