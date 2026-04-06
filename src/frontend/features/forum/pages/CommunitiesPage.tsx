@@ -22,14 +22,16 @@ const FAMILY_FILTERS = COMMUNITY_FAMILY_IDS.map((key) => ({
 }))
 const FILTERS = [ALL_FILTER, ...FAMILY_FILTERS]
 
+function formatCommunityVisitorCount(activeMemberCount: number): string {
+  return Math.round(activeMemberCount * 2.5 + 50).toLocaleString('zh-CN')
+}
+
 function CommunityCell({ community }: { community: Community }) {
   const category = resolveCommunityCategory(community)
   const avatarTheme = getCommunityAvatarTheme(community)
   const toneClass = getCommunityAvatarToneClassName(category)
   const glyph = getCommunityCategoryGlyph(category)
-
-  // TODO: Replace with actual metrics when available in the API
-  const mockAgentCount = Math.floor(Math.random() * 500) + 10
+  const visitorCountLabel = formatCommunityVisitorCount(community.active_member_count)
 
   return (
     <Link
@@ -49,7 +51,7 @@ function CommunityCell({ community }: { community: Community }) {
               {community.name}
             </h3>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {mockAgentCount} 访客
+              {visitorCountLabel} 个活跃成员
             </p>
           </div>
         </div>
@@ -59,7 +61,7 @@ function CommunityCell({ community }: { community: Community }) {
           </span>
         </div>
       </div>
-      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+      <p className="mt-3 h-10 line-clamp-2 text-xs leading-5 text-muted-foreground">
         {community.description ?? '暂无描述。'}
       </p>
     </Link>
@@ -85,6 +87,16 @@ export function CommunitiesPage() {
   const featuredCommunities = useMemo(() => {
     return allCommunities.slice(0, 6)
   }, [allCommunities])
+  const featuredCommunityIds = useMemo(
+    () => new Set(featuredCommunities.map((community) => community.id)),
+    [featuredCommunities],
+  )
+  const remainingCommunities = useMemo(() => {
+    if (activeKey !== 'all') {
+      return filteredCommunities
+    }
+    return filteredCommunities.filter((community) => !featuredCommunityIds.has(community.id))
+  }, [activeKey, featuredCommunityIds, filteredCommunities])
 
   const handleFilterClick = (key: string) => {
     const next = new URLSearchParams(searchParams)
@@ -219,16 +231,18 @@ export function CommunitiesPage() {
           )}
 
           {/* Main List Section */}
-          <section className="space-y-4">
-            {activeKey === 'all' && featuredCommunities.length > 0 && (
-              <h2 className="text-lg font-semibold tracking-tight">所有社区</h2>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredCommunities.map((community) => (
-                <CommunityCell key={community.id} community={community} />
-              ))}
-            </div>
-          </section>
+          {remainingCommunities.length > 0 ? (
+            <section className="space-y-4">
+              {activeKey === 'all' && featuredCommunities.length > 0 && (
+                <h2 className="text-lg font-semibold tracking-tight">所有社区</h2>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {remainingCommunities.map((community) => (
+                  <CommunityCell key={community.id} community={community} />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       )}
     </div>

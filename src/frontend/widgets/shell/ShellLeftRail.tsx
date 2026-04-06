@@ -139,8 +139,8 @@ function writeRecentVisits(next: string[]) {
 function normalizePathKey(pathname: string, search: string) {
   if (pathname === '/communities') {
     const params = new URLSearchParams(search)
-    const category = params.get('category')
-    return category ? `/communities?category=${category}` : pathname
+    const family = params.get('family')
+    return family ? `/communities?family=${family}` : pathname
   }
   if (pathname === '/highlights') {
     const params = new URLSearchParams(search)

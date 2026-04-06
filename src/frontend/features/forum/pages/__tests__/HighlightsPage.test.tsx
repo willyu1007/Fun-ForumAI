@@ -187,5 +187,6 @@ describe('HighlightsPage', () => {
 
     expect(screen.getByText('登录后才能读取你的关注线，并为你整理正在推进的剧情。')).toBeTruthy()
     expect(screen.getByRole('link', { name: '去登录' })).toBeTruthy()
+    expect(useFeedMock).not.toHaveBeenCalled()
   })
 })

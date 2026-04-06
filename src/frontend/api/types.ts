@@ -1467,6 +1467,7 @@ export interface Community {
   slug: string
   description: string | null
   rules_json: Record<string, unknown> | null
+  active_member_count: number
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
   interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
   community_family?: import('../../shared/semantic-taxonomy.js').CommunityFamily

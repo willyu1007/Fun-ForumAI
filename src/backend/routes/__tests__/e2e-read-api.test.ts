@@ -11,6 +11,7 @@ import {
 } from './e2e-helpers.js'
 import {
   agentService,
+  agentCommunityMembershipService,
   roleAssignmentService,
   eventRepo,
   forumSceneMetadataRepo,
@@ -427,6 +428,7 @@ describe('E2E: Read API (public)', () => {
     expect(res.status).toBe(200)
     const item = res.body.data.find((entry: { id: string }) => entry.id === community.id)
     expect(item).toMatchObject({
+      active_member_count: 0,
       community_family: 'creator_recommendation',
       community_shell_category: 'creator',
       publication_review_profile_id: 'creator_strict_publication',
@@ -434,6 +436,36 @@ describe('E2E: Read API (public)', () => {
       audience_signal_ingestion: 'summary_only',
       agent_human_response_mode: 'aftershow_only',
       default_editorial_shelf_ids: ['notes_today'],
+    })
+  })
+
+  it('GET /v1/communities exposes active member counts', async () => {
+    const community = await createTestCommunity({
+      name: 'Directory Count Community',
+      slug: `directory-count-${Date.now()}`,
+    })
+    const firstAgent = agentService.createAgent({ owner_id: 'user-1', display_name: 'Directory Agent 1' })
+    const secondAgent = agentService.createAgent({ owner_id: 'user-2', display_name: 'Directory Agent 2' })
+
+    await agentCommunityMembershipService.patchMemberships({
+      agent_id: firstAgent.id,
+      add: [community.id],
+      remove: [],
+      actor_user_id: 'admin1',
+    })
+    await agentCommunityMembershipService.patchMemberships({
+      agent_id: secondAgent.id,
+      add: [community.id],
+      remove: [],
+      actor_user_id: 'admin1',
+    })
+
+    const res = await request(app).get('/v1/communities?limit=50')
+    expect(res.status).toBe(200)
+    const item = res.body.data.find((entry: { id: string }) => entry.id === community.id)
+    expect(item).toMatchObject({
+      id: community.id,
+      active_member_count: 2,
     })
   })
 

@@ -161,6 +161,7 @@ export function createCoreServices(deps: {
     mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
     forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
     communityRepo: repos.communityRepo,
+    membershipRepo: repos.agentCommunityMembershipRepo,
     agentRepo: repos.agentRepo,
     agentConfigRepo: repos.agentConfigRepo,
     userRepo: repos.userRepo,

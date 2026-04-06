@@ -7,6 +7,7 @@ import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.j
 import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-binding-repository.js'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
+import { InMemoryAgentCommunityMembershipRepository } from '../../repos/agent-community-membership-repository.js'
 import { InMemoryAgentConfigRepository, InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
@@ -32,6 +33,7 @@ function setup() {
   const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
   const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
   const communityRepo = new InMemoryCommunityRepository()
+  const membershipRepo = new InMemoryAgentCommunityMembershipRepository()
   const agentRepo = new InMemoryAgentRepository()
   const agentConfigRepo = new InMemoryAgentConfigRepository()
   const riskRepo = new InMemoryRiskGovernanceRepository()
@@ -45,6 +47,7 @@ function setup() {
     sceneMediaBindingRepo,
     mediaContextProjectionRepo,
     communityRepo,
+    membershipRepo,
     agentRepo,
     agentConfigRepo,
     riskRepo,
@@ -61,6 +64,7 @@ function setup() {
     sceneMediaBindingRepo,
     mediaContextProjectionRepo,
     communityRepo,
+    membershipRepo,
     agentRepo,
     agentConfigRepo,
     riskRepo,
@@ -79,6 +83,7 @@ function setupWithObservability(record: (input: CreateMediaObservabilityEventInp
     sceneMediaBindingRepo: base.sceneMediaBindingRepo,
     mediaContextProjectionRepo: base.mediaContextProjectionRepo,
     communityRepo: base.communityRepo,
+    membershipRepo: base.membershipRepo,
     agentRepo: base.agentRepo,
     agentConfigRepo: base.agentConfigRepo,
     riskRepo: base.riskRepo,
@@ -180,6 +185,7 @@ describe('ForumReadService', () => {
         sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
         mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
         communityRepo: localCtx.communityRepo,
+        membershipRepo: localCtx.membershipRepo,
         agentRepo: localCtx.agentRepo,
         agentConfigRepo: localCtx.agentConfigRepo,
         riskRepo: localCtx.riskRepo,
@@ -258,6 +264,7 @@ describe('ForumReadService', () => {
           sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
           mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
           communityRepo: localCtx.communityRepo,
+          membershipRepo: localCtx.membershipRepo,
           agentRepo: localCtx.agentRepo,
           agentConfigRepo: localCtx.agentConfigRepo,
           riskRepo: localCtx.riskRepo,
@@ -813,6 +820,31 @@ describe('ForumReadService', () => {
       ctx.communityRepo.create({ name: 'Tech', slug: 'tech' })
       const result = await ctx.svc.getCommunities({})
       expect(result.items).toHaveLength(1)
+      expect(result.items[0]?.active_member_count).toBe(0)
+    })
+
+    it('includes active member counts', async () => {
+      const community = ctx.communityRepo.create({ name: 'Tech', slug: 'tech' })
+      await ctx.membershipRepo.upsertActive({
+        agent_id: 'agent-1',
+        community_id: community.id,
+      })
+      await ctx.membershipRepo.upsertActive({
+        agent_id: 'agent-2',
+        community_id: community.id,
+      })
+      await ctx.membershipRepo.create({
+        agent_id: 'agent-muted',
+        community_id: community.id,
+        status: 'MUTED',
+      })
+
+      const result = await ctx.svc.getCommunities({})
+
+      expect(result.items[0]).toMatchObject({
+        id: community.id,
+        active_member_count: 2,
+      })
     })
 
     it('filters merged and whitelist-only incubating communities for non-admin readers', async () => {

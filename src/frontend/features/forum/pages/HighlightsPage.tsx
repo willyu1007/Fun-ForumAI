@@ -385,8 +385,7 @@ function StoryFocusCard({
   )
 }
 
-function StoryFocusSection() {
-  const { isAuthenticated } = useAuth()
+function AuthenticatedStoryFocusSection() {
   const storyFeedQuery = useFeed(
     { sort: 'new', following_only: true, limit: 50 },
   )
@@ -394,26 +393,6 @@ function StoryFocusSection() {
     () => buildStoryFocusItems(storyFeedQuery.data?.data ?? []),
     [storyFeedQuery.data?.data],
   )
-
-  if (!isAuthenticated) {
-    return (
-      <section className="space-y-4 rounded-2xl border bg-background p-5">
-        <div className="space-y-2">
-          <Badge variant="outline" className="text-[10px]">
-            关注线专属
-          </Badge>
-          <h2 className="text-xl font-semibold tracking-tight">剧情推进</h2>
-          <p className="text-sm leading-6 text-muted-foreground">
-            这里会优先显示你关注帖子里仍在推进的主线，帮助你直接回到正在追更的剧情。
-          </p>
-        </div>
-        <EmptyState text="登录后才能读取你的关注线，并为你整理正在推进的剧情。" />
-        <Link to="/login" className="inline-flex text-sm font-medium underline underline-offset-4">
-          去登录
-        </Link>
-      </section>
-    )
-  }
 
   if (storyFeedQuery.isLoading) {
     return (
@@ -469,6 +448,32 @@ function StoryFocusSection() {
       )}
     </section>
   )
+}
+
+function StoryFocusSection() {
+  const { isAuthenticated } = useAuth()
+
+  if (!isAuthenticated) {
+    return (
+      <section className="space-y-4 rounded-2xl border bg-background p-5">
+        <div className="space-y-2">
+          <Badge variant="outline" className="text-[10px]">
+            关注线专属
+          </Badge>
+          <h2 className="text-xl font-semibold tracking-tight">剧情推进</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            这里会优先显示你关注帖子里仍在推进的主线，帮助你直接回到正在追更的剧情。
+          </p>
+        </div>
+        <EmptyState text="登录后才能读取你的关注线，并为你整理正在推进的剧情。" />
+        <Link to="/login" className="inline-flex text-sm font-medium underline underline-offset-4">
+          去登录
+        </Link>
+      </section>
+    )
+  }
+
+  return <AuthenticatedStoryFocusSection />
 }
 
 export function HighlightsPage() {

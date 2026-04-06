@@ -61,6 +61,7 @@ import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
 import type { UserRepository } from '../repos/user-repository.js'
+import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type {
   MediaRolloutControllerProfile,
@@ -82,6 +83,7 @@ export interface ForumReadServiceDeps {
   mediaContextProjectionRepo: MediaContextProjectionRepository
   forumSceneMetadataRepo?: ForumSceneMetadataRepository | null
   communityRepo: CommunityRepository
+  membershipRepo?: Pick<AgentCommunityMembershipRepository, 'findActiveByCommunity'> | null
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   userRepo?: UserRepository | null
@@ -178,6 +180,7 @@ export interface PostWithMeta extends Post {
 }
 
 export interface CommunityReadModel extends Community {
+  active_member_count: number
   community_semantics?: CommunitySemanticContract | null
   interaction_contract?: CommunityInteractionContract | null
   community_family?: CommunitySemanticContract['community_family']
@@ -457,11 +460,16 @@ export class ForumReadService {
     return { slug: community.slug, name: community.name }
   }
 
+  private getCommunityActiveMemberCount(communityId: string): number {
+    return this.deps.membershipRepo?.findActiveByCommunity(communityId).length ?? 0
+  }
+
   private enrichCommunityReadModel(community: Community): CommunityReadModel {
     const communitySemantics = resolveLaunchCommunitySemanticContract(community.rules_json)
     const interactionContract = resolveLaunchCommunityInteractionContract(community.rules_json)
     return {
       ...community,
+      active_member_count: this.getCommunityActiveMemberCount(community.id),
       ...(communitySemantics ? {
         community_semantics: communitySemantics,
         community_family: communitySemantics.community_family,
