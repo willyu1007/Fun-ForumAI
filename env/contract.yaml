@@ -428,8 +428,8 @@ variables:
   MEDIA_GENERATION_TIMEOUT_MS:
     type: int
     required: false
-    default: 120000
-    description: Timeout per image generation request in milliseconds.
+    default: 180000
+    description: Timeout per image generation request in milliseconds. Raised for slower text-to-image providers in non-realtime surfaces.
 
   MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS:
     type: int
@@ -518,8 +518,8 @@ variables:
   MEDIA_GENERATION_RUNNING_TIMEOUT_MS:
     type: int
     required: false
-    default: 180000
-    description: Running job timeout before the worker reclaims and marks the job timed out.
+    default: 360000
+    description: Running job timeout before the worker reclaims and marks the job timed out. This should stay comfortably above the provider request timeout.
 
   MEDIA_GENERATION_GLOBAL_CONCURRENCY:
     type: int
@@ -554,8 +554,8 @@ variables:
   LLM_TIMEOUT_MS:
     type: int
     required: false
-    default: 30000
-    description: Timeout per LLM API call in milliseconds.
+    default: 45000
+    description: Timeout per LLM API call in milliseconds. Tuned for lower realtime pressure and occasional slower provider responses.
 
   RUNTIME_ENABLED:
     type: enum
