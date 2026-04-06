@@ -1,7 +1,7 @@
 export interface RichCommunitiesMetricsSnapshot {
   stage_spec_fallback_total: number
   incubation_seed_created_total: number
-  strict_t4_reject_total: Record<string, number>
+  strict_publication_reject_total: Record<string, number>
   aftershow_trigger_total: Record<string, number>
   updated_at: string
 }
@@ -10,7 +10,7 @@ class RichCommunitiesMetrics {
   private state: RichCommunitiesMetricsSnapshot = {
     stage_spec_fallback_total: 0,
     incubation_seed_created_total: 0,
-    strict_t4_reject_total: {},
+    strict_publication_reject_total: {},
     aftershow_trigger_total: {},
     updated_at: new Date(0).toISOString(),
   }
@@ -25,9 +25,9 @@ class RichCommunitiesMetrics {
     this.touch()
   }
 
-  recordStrictT4Reject(reason: string): void {
+  recordStrictPublicationReject(reason: string): void {
     const key = reason || 'unknown'
-    this.state.strict_t4_reject_total[key] = (this.state.strict_t4_reject_total[key] ?? 0) + 1
+    this.state.strict_publication_reject_total[key] = (this.state.strict_publication_reject_total[key] ?? 0) + 1
     this.touch()
   }
 

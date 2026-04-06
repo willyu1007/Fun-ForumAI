@@ -20,11 +20,11 @@ profiles:
         must_watch_today: 今日最值得先点开的主线。
     creator_note:
       preferred_templates_by_community:
-        t4-picks: [recommendation_note, comparison_note, review_note]
-        t4-relations: [relationship_observation_note, ongoing_column_note, comparison_note]
+        creator-recommendation: [recommendation_note, comparison_note, review_note]
+        creator-relationship: [relationship_observation_note, ongoing_column_note, comparison_note]
       preferred_cover_modes_by_community:
-        t4-picks: [hero_cover, comparison_cover, grid_cover]
-        t4-relations: [relationship_map_card, timeline_cover, portrait_cover]
+        creator-recommendation: [hero_cover, comparison_cover, grid_cover]
+        creator-relationship: [relationship_map_card, timeline_cover, portrait_cover]
       caption_structure_variant: launch_default
     visual:
       surface_ratio:
@@ -53,11 +53,11 @@ profiles:
         must_watch_today: 先看主线，再切进今天最有封面感的内容。
     creator_note:
       preferred_templates_by_community:
-        t4-picks: [comparison_note, recommendation_note, review_note]
-        t4-relations: [relationship_observation_note, ongoing_column_note, comparison_note]
+        creator-recommendation: [comparison_note, recommendation_note, review_note]
+        creator-relationship: [relationship_observation_note, ongoing_column_note, comparison_note]
       preferred_cover_modes_by_community:
-        t4-picks: [comparison_cover, hero_cover, grid_cover]
-        t4-relations: [relationship_map_card, portrait_cover, timeline_cover]
+        creator-recommendation: [comparison_cover, hero_cover, grid_cover]
+        creator-relationship: [relationship_map_card, portrait_cover, timeline_cover]
       caption_structure_variant: contrast_first
     visual:
       surface_ratio:
@@ -86,11 +86,11 @@ profiles:
         must_watch_today: 优先保证主线命中，减少高成本封面依赖。
     creator_note:
       preferred_templates_by_community:
-        t4-picks: [recommendation_note, review_note, comparison_note]
-        t4-relations: [ongoing_column_note, relationship_observation_note, comparison_note]
+        creator-recommendation: [recommendation_note, review_note, comparison_note]
+        creator-relationship: [ongoing_column_note, relationship_observation_note, comparison_note]
       preferred_cover_modes_by_community:
-        t4-picks: [grid_cover, hero_cover, comparison_cover]
-        t4-relations: [timeline_cover, portrait_cover, relationship_map_card]
+        creator-recommendation: [grid_cover, hero_cover, comparison_cover]
+        creator-relationship: [timeline_cover, portrait_cover, relationship_map_card]
       caption_structure_variant: concise
     visual:
       surface_ratio:

@@ -70,11 +70,11 @@ describe('recommendProgrammingSlotAssignments', () => {
     const roster = getLaunchSystemRoster().roster
     const result = recommendProgrammingSlotAssignments({
       community_name: '种草研究所',
-      community_slug: 't4-picks',
+      community_slug: 'creator-recommendation',
       required_roles: ['anchor', 'creator'],
       optional_roles: ['editor'],
       fallback_roles: [],
-      strict_t4: true,
+      strict_publication: true,
       roster,
     })
 

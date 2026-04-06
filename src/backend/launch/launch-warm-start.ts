@@ -50,11 +50,10 @@ interface LaunchWarmStartSpec {
     title: string
     hook: string
   }
-  editorial_shelf: WarmStartShelfId
+  editorial_shelf_id: WarmStartShelfId
   content_kind: LaunchContentKind
   creator_note?: {
     is_creator_note: true
-    is_t4: true
     note_template_id: LaunchCreatorNoteTemplateId
     cover_mode: LaunchCreatorNoteCoverMode
   }
@@ -149,7 +148,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '首发主线先亮相',
       hook: '谁会先把这一句判断接成真正的对撞',
     },
-    editorial_shelf: 'conflict_rising',
+    editorial_shelf_id: 'conflict_rising',
     content_kind: 'mainline_root',
   },
   {
@@ -171,7 +170,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '情感裁决题先开庭',
       hook: '这道题更像保护，还是更像纵容',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'community_entry',
   },
   {
@@ -192,7 +191,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '人设第一轮失真',
       hook: '谁会先说这是反差，谁会说这是伪装',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'community_entry',
   },
   {
@@ -214,7 +213,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '价值判断进入对撞段',
       hook: '最难自洽的那条理由先不要躲',
     },
-    editorial_shelf: 'conflict_rising',
+    editorial_shelf_id: 'conflict_rising',
     content_kind: 'story_episode',
   },
   {
@@ -236,7 +235,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '复盘第一轮还不能收口',
       hook: '答案还没出现，所以这条线必须留着',
     },
-    editorial_shelf: 'continue_storyline',
+    editorial_shelf_id: 'continue_storyline',
     content_kind: 'continuity_callback',
   },
   {
@@ -257,7 +256,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '第一句公共梗出现了',
       hook: '这句会变成全场共识，还是立刻翻车',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'community_entry',
   },
   {
@@ -279,7 +278,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '今晚的情绪底噪先落地',
       hook: '哪一句会被观众在更晚的时候重新想起',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'community_entry',
   },
   {
@@ -301,13 +300,13 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '第一条反转线先别收口',
       hook: '真正的代价还没有被讲出来',
     },
-    editorial_shelf: 'continue_storyline',
+    editorial_shelf_id: 'continue_storyline',
     content_kind: 'continuity_callback',
   },
   {
-    id: 'occupancy-t4-picks',
+    id: 'occupancy-creator-recommendation',
     pass: 'occupancy',
-    community_slug: 't4-picks',
+    community_slug: 'creator-recommendation',
     preferred_roles: ['creator', 'editor', 'anchor'],
     phase: 'pivot',
     title: '种草研究所先交第一篇创作者笔记',
@@ -323,19 +322,18 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '首发期第一篇结构化推荐',
       hook: '哪篇内容值得先被挂到首页',
     },
-    editorial_shelf: 'notes_today',
+    editorial_shelf_id: 'notes_today',
     content_kind: 'note_entry',
     creator_note: {
       is_creator_note: true,
-      is_t4: true,
       note_template_id: 'recommendation_note',
       cover_mode: 'comparison_cover',
     },
   },
   {
-    id: 'occupancy-t4-relations',
+    id: 'occupancy-creator-relationship',
     pass: 'occupancy',
-    community_slug: 't4-relations',
+    community_slug: 'creator-relationship',
     preferred_roles: ['creator', 'editor', 'anchor'],
     phase: 'closure',
     title: '关系博主部先交第二篇创作者笔记',
@@ -351,11 +349,10 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '首发关系线第一次显形',
       hook: '今天最值得被记住的是谁开始站到了一边',
     },
-    editorial_shelf: 'notes_today',
+    editorial_shelf_id: 'notes_today',
     content_kind: 'note_entry',
     creator_note: {
       is_creator_note: true,
-      is_t4: true,
       note_template_id: 'relationship_observation_note',
       cover_mode: 'relationship_map_card',
     },
@@ -379,7 +376,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '首发总入口先给出来',
       hook: '今天只点开一条内容，也能迅速知道主线在哪',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'highlight_hero',
   },
   {
@@ -400,7 +397,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '限时内容先进入可追状态',
       hook: '再晚一点进场，就会错过今晚最好接的一轮',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'programming_slot',
   },
 ] as const
@@ -424,7 +421,7 @@ const AMPLIFICATION_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '主冲突进入第二轮',
       hook: '火已经点着，谁把它推到更高的一档',
     },
-    editorial_shelf: 'conflict_rising',
+    editorial_shelf_id: 'conflict_rising',
     content_kind: 'story_episode',
   },
   {
@@ -445,7 +442,7 @@ const AMPLIFICATION_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '首屏导语要把价值说透',
       hook: '只看一条，也该先看这条',
     },
-    editorial_shelf: 'must_watch_today',
+    editorial_shelf_id: 'must_watch_today',
     content_kind: 'highlight_hero',
   },
 ] as const
@@ -713,7 +710,7 @@ function buildWarmStartScenePayload(input: {
         hook: input.spec.storyline.hook,
       },
       editorial_intent: {
-        primary_shelf: input.spec.editorial_shelf,
+        primary_shelf_id: input.spec.editorial_shelf_id,
         content_kind: input.spec.content_kind,
       },
       creator_note: input.spec.creator_note ?? null,

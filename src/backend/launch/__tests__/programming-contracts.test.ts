@@ -109,7 +109,7 @@ describe('launch programming contracts', () => {
     expect(runtime.shelves.find((item) => item.id === 'tonight_programming')?.empty_policy).toBe('collapse')
   })
 
-  it('normalizes legacy home-programming ingress aliases into canonical shelf and surface ids', () => {
+  it('loads canonical home-programming shelf and surface ids', () => {
     const source = parseYaml(
       readFileSync(
         locateLaunchContractPath({
@@ -122,10 +122,10 @@ describe('launch programming contracts', () => {
 
     source.shelves[2] = {
       ...source.shelves[2],
-      id: 't4_today',
-      label: 'T4 今日笔记',
-      accepts_content_kinds: ['t4_note'],
-      preferred_surface_kinds: ['t4_root_card'],
+      id: 'notes_today',
+      label: '创作者笔记',
+      accepts_content_kinds: ['note_entry'],
+      preferred_surface_kinds: ['note_root_card'],
     }
 
     const dir = mkdtempSync(join(tmpdir(), 'launch-home-programming-'))
@@ -141,7 +141,7 @@ describe('launch programming contracts', () => {
     })
   })
 
-  it('loads the canonical creator-note template registry and normalizes legacy aliases', () => {
+  it('loads the canonical creator-note template registry from copied config', () => {
     const runtime = getLaunchCreatorNoteTemplateRuntime()
 
     expect(runtime.template_registry.map((item) => item.id)).toEqual([
@@ -156,11 +156,11 @@ describe('launch programming contracts', () => {
     expect(normalizeLaunchCreatorNoteTemplateId('relationship_watch')).toBe('relationship_observation_note')
   })
 
-  it('accepts legacy creator-note template top-level blocks via alias ingress', () => {
+  it('rejects creator-note template drafts that fall back to legacy alias blocks', () => {
     const source = parseYaml(
       readFileSync(
         locateLaunchContractPath({
-          bundle_slug: 'launch-t4-community-enablement',
+          bundle_slug: 'launch-creator-note-enablement',
           file_name: 'creator_note_templates.v1.yaml',
         }).path,
         'utf8',
@@ -168,25 +168,28 @@ describe('launch programming contracts', () => {
     ) as Record<string, unknown>
 
     const creatorNoteCommunities = source.creator_note_communities as Array<Record<string, unknown>>
-    const legacySource = {
+    const copiedSource = {
       version: source.version,
       draft_status: source.draft_status,
       notes: source.notes,
-      global_t4_contract: {
+      global_note_contract: {
         ...(source.global_note_contract as Record<string, unknown>),
-        strict_t4_default: true,
+        strict_publication_default: true,
       },
-      creator_gate: source.creator_note_gate,
-      communities: creatorNoteCommunities.map((community) => ({
-        ...community,
-        t4_policy: community.creator_note_policy,
-        runtime_defaults: {
-          ...(community.runtime_defaults as Record<string, unknown>),
-          is_t4: true,
-          strict_t4: true,
-          surface_kind: 't4_root_card',
-        },
-      })),
+      creator_note_gate: source.creator_note_gate,
+      communities: creatorNoteCommunities.map((community) => {
+        const { creator_note_runtime: creatorNoteRuntime, ...rest } = community
+        return {
+          ...rest,
+          creator_note_policy: creatorNoteRuntime,
+          runtime_defaults: {
+            ...(community.runtime_defaults as Record<string, unknown>),
+            is_creator_note: true,
+            strict_publication: true,
+            surface_kind: 'note_root_card',
+          },
+        }
+      }),
       template_registry: source.creator_note_template_registry,
       cover_modes: source.creator_note_cover_modes,
       distribution_rules: source.creator_note_distribution_rules,
@@ -194,15 +197,15 @@ describe('launch programming contracts', () => {
     }
 
     const dir = mkdtempSync(join(tmpdir(), 'launch-creator-note-'))
-    const filePath = join(dir, 't4_content_templates.v1.yaml')
-    writeFileSync(filePath, stringifyYaml(legacySource), 'utf8')
+    const filePath = join(dir, 'creator_note_templates.v1.yaml')
+    writeFileSync(filePath, stringifyYaml(copiedSource), 'utf8')
 
-    const runtime = getLaunchCreatorNoteTemplateRuntime(filePath)
-    expect(runtime.global_note_contract.shelf_label).toBe('创作者笔记')
-    expect(runtime.template_registry).toHaveLength(6)
+    expect(() => getLaunchCreatorNoteTemplateRuntime(filePath)).toThrowError(
+      /Unrecognized keys: "communities", "template_registry", "cover_modes", "distribution_rules"/,
+    )
   })
 
-  it('normalizes legacy programming-schedule and post-launch alias fields into canonical ids', () => {
+  it('loads canonical programming-schedule and post-launch ids', () => {
     const scheduleSource = parseYaml(
       readFileSync(
         locateLaunchContractPath({
@@ -219,27 +222,22 @@ describe('launch programming contracts', () => {
         governance_reference_layer: Record<string, { required_fields: string[] }>
       }
     }
-    scheduleSource.dependency_contracts = {
-      ...scheduleSource.dependency_contracts,
-      t4_track_source: scheduleSource.dependency_contracts.creator_note_source,
-    }
-    delete scheduleSource.dependency_contracts.creator_note_source
     scheduleSource.dayparts[0] = {
       ...scheduleSource.dayparts[0],
-      preferred_roles: ['anchor', 't4_blogger', 'editor'],
+      preferred_roles: ['anchor', 'creator', 'editor'],
     }
     scheduleSource.slot_templates[1] = {
       ...scheduleSource.slot_templates[1],
-      required_roles: ['anchor', 't4_blogger'],
+      required_roles: ['anchor', 'creator'],
       expected_outputs: {
         ...((scheduleSource.slot_templates[1]?.expected_outputs as Record<string, unknown>) ?? {}),
-        surface_kind: 't4_root_card',
+        surface_kind: 'note_root_card',
       },
     }
     scheduleSource.ops_surfaces.governance_reference_layer.community_lifecycle_panel.required_fields = [
       'community_name',
       'community_lifecycle_state',
-      'launch_phase',
+      'launch_wave',
       'headline_priority',
     ]
 
@@ -249,7 +247,6 @@ describe('launch programming contracts', () => {
 
     const scheduleRuntime = getLaunchProgrammingSchedule(schedulePath)
     expect(scheduleRuntime.dependency_contracts.creator_note_source).toBe('T-136')
-    expect('t4_track_source' in scheduleRuntime.dependency_contracts).toBe(false)
     expect(scheduleRuntime.dayparts[0]?.preferred_roles).toContain('creator')
     expect(scheduleRuntime.slot_templates[1]?.required_roles).toContain('creator')
     expect(
@@ -269,13 +266,13 @@ describe('launch programming contracts', () => {
       ...tuningSource.profiles.baseline,
       home: {
         ...((tuningSource.profiles.baseline.home as Record<string, unknown>) ?? {}),
-        shelf_order: ['must_watch_today', 'conflict_rising', 't4_today', 'continue_storyline', 'tonight_programming', 'all_communities'],
+        shelf_order: ['must_watch_today', 'conflict_rising', 'notes_today', 'continue_storyline', 'tonight_programming', 'all_communities'],
       },
       visual: {
         ...((tuningSource.profiles.baseline.visual as Record<string, unknown>) ?? {}),
         surface_ratio: {
           ...(((tuningSource.profiles.baseline.visual as Record<string, unknown>)?.surface_ratio as Record<string, unknown>) ?? {}),
-          t4_root_card: 0.55,
+          note_root_card: 0.55,
         },
       },
     }
@@ -289,9 +286,9 @@ describe('launch programming contracts', () => {
     expect(tuningRuntime.profiles.baseline.visual.surface_ratio.note_root_card).toBe(0.55)
   })
 
-  it('selects T4 note templates and cover modes from community/phase/media rules', () => {
+  it('selects creator-note templates and cover modes from community/phase/media rules', () => {
     expect(resolveLaunchCreatorNoteProjection({
-      community_slug: 't4-picks',
+      community_slug: 'creator-recommendation',
       phase: 'pivot',
       media_count: 3,
     })).toEqual({
@@ -301,7 +298,7 @@ describe('launch programming contracts', () => {
     })
 
     expect(resolveLaunchCreatorNoteProjection({
-      community_slug: 't4-relations',
+      community_slug: 'creator-relationship',
       phase: 'closure',
       title: '这波复盘里到底谁先翻车',
       media_count: 1,
@@ -312,7 +309,7 @@ describe('launch programming contracts', () => {
     })
   })
 
-  it('applies the active post-launch tuning profile as a runtime overlay for T4 and visual packaging', () => {
+  it('applies the active post-launch tuning profile as a runtime overlay for creator notes and visual packaging', () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const tuningConfig = config.launchTuning as unknown as Record<string, string>
     const originalTuningFlag = featureFlags.postLaunchTuningV1
@@ -324,7 +321,7 @@ describe('launch programming contracts', () => {
       const baseVisual = getLaunchVisualRollout()
       const effectiveVisual = resolveEffectiveLaunchVisualRollout()
       const tunedProjection = resolveLaunchCreatorNoteProjection({
-        community_slug: 't4-picks',
+        community_slug: 'creator-recommendation',
         phase: 'opening',
         media_count: 2,
       })
@@ -358,12 +355,12 @@ describe('launch programming contracts', () => {
     }
   })
 
-  it('projects launch storyline and T4 fields from scene metadata without a schema migration', () => {
+  it('projects launch storyline and creator-note fields from scene metadata without a schema migration', () => {
     const projection = buildLaunchProgrammingProjection({
-      community_slug: 't4-relations',
+      community_slug: 'creator-relationship',
       community_rules_json: {
         launch_profile: {
-          editorial_shelf: ['T4 今日笔记', '剧情继续看'],
+          default_editorial_shelf_ids: ['创作者笔记', '剧情继续看'],
         },
         cross_route_policy: {
           allow_aftershow_export: true,
@@ -402,8 +399,6 @@ describe('launch programming contracts', () => {
       storyline_id: 'episode-1',
       storyline_state: 'callback',
       editorial_shelf_id: 'notes_today',
-      editorial_shelf: 't4_today',
-      is_t4: true,
       note_template_id: 'ongoing_column_note',
       cover_mode: 'relationship_map_card',
       content_kind: 'note_entry',
@@ -424,12 +419,12 @@ describe('launch programming contracts', () => {
     })
   })
 
-  it('prefers launch_programming payload hints when they are present in scene metadata', () => {
+  it('prefers launch_programming payload hints when they are present in scene metadata for creator-note projection', () => {
     const projection = buildLaunchProgrammingProjection({
-      community_slug: 't4-picks',
+      community_slug: 'creator-recommendation',
       community_rules_json: {
         launch_profile: {
-          editorial_shelf: ['冲突升级中'],
+          default_editorial_shelf_ids: ['冲突升级中'],
         },
         cross_route_policy: {
           allow_aftershow_export: true,
@@ -465,12 +460,12 @@ describe('launch programming contracts', () => {
               hook: '显式钩子',
             },
             creator_note: {
-              is_t4: true,
+              is_creator_note: true,
               note_template_id: 'review_note',
               cover_mode: 'portrait_cover',
             },
             editorial_intent: {
-              primary_shelf: 'T4 今日笔记',
+              primary_shelf_id: '创作者笔记',
               content_kind: 'continuity_callback',
             },
           },
@@ -488,9 +483,7 @@ describe('launch programming contracts', () => {
       storyline_hook: '显式钩子',
       storyline_state: 'callback',
       editorial_shelf_id: 'notes_today',
-      editorial_shelf: 't4_today',
       content_kind: 'continuity_callback',
-      is_t4: true,
       note_template_id: 'review_note',
       cover_mode: 'portrait_cover',
     })

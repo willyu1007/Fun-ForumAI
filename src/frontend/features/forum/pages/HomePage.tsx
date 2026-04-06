@@ -135,7 +135,7 @@ function HomeProgrammingCard({
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
   const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
   const isNoteCard = isCreatorNoteEntry(item)
-  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf) ?? '创作者笔记'
+  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id) ?? '创作者笔记'
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
     sourceShelf,

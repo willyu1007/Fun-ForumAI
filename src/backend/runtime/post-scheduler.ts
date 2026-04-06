@@ -12,6 +12,7 @@ import type { InferenceProfileService } from '../services/inference-profile-serv
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
+import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import type { PromptComposeAudit } from './types.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
@@ -20,10 +21,17 @@ import type { ImagePlannerService } from '../media/image-planner-service.js'
 import type { MediaGenerationService } from '../media/media-generation-service.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
+import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
+import {
+  resolveStageSpecFromRules,
+  STAGE_TIER_ORDER,
+  tierMeets,
+  type AgentStageTier,
+} from '../stage/index.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -43,7 +51,9 @@ export interface PostSchedulerDeps {
   dataplaneWriter: DataPlaneWriter
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
-  membershipRepo?: Pick<AgentCommunityMembershipRepository, 'listActiveCommunityIdsByAgent'>
+  membershipRepo?: Pick<AgentCommunityMembershipRepository, 'listActiveCommunityIdsByAgent' | 'findCurrent'>
+  roleAssignmentRepo?: Pick<RoleAssignmentRepository, 'findPrimaryForAgent'>
+  stageTierService?: Pick<AgentStageTierService, 'getSnapshot'> | null
   promptOrchestrator?: PromptOrchestrator | null
   mediaProjectionService?: MediaProjectionService | null
   visualDirectiveService?: VisualDirectiveService | null
@@ -79,6 +89,7 @@ interface CommunityCandidate {
   name: string
   description: string
   rules: string
+  rules_json: Record<string, unknown> | null
 }
 
 interface SelectedAgent {
@@ -111,6 +122,7 @@ interface ScheduledPostVisualPlan {
  */
 export class PostScheduler {
   private lastPostAt = 0
+  private lastSkipAt = 0
   private postsToday = 0
   private todayDate = ''
 
@@ -122,6 +134,7 @@ export class PostScheduler {
   get stats() {
     return {
       lastPostAt: this.lastPostAt,
+      lastSkipAt: this.lastSkipAt,
       postsToday: this.postsToday,
       postMaxPerDay: this.cfg.postMaxPerDay,
       postIntervalMs: this.cfg.postIntervalMs,
@@ -132,6 +145,7 @@ export class PostScheduler {
     this.rolloverDay()
     if (this.postsToday >= this.cfg.postMaxPerDay) return false
     if (Date.now() - this.lastPostAt < this.cfg.postIntervalMs) return false
+    if (Date.now() - this.lastSkipAt < this.cfg.postIntervalMs) return false
     return true
   }
 
@@ -143,26 +157,24 @@ export class PostScheduler {
     const start = Date.now()
 
     try {
-      const selected = await this.pickAgent()
-      if (!selected) return { triggered: false, error: 'No active agents' }
-      const routing = await this.resolveVisibleRouting(selected.id, 'base')
-
       const communities = await this.listCommunities()
-      if (communities.length === 0) return { triggered: false, error: 'No communities' }
-      const eligibleCommunities = this.resolveEligibleCommunities(selected.id, communities)
-      if (eligibleCommunities.length === 0) {
-        return {
-          triggered: true,
-          agent_id: selected.id,
-          error: 'Selected agent has no writable communities',
-        }
+      if (communities.length === 0) {
+        this.recordSkip()
+        return { triggered: false, error: 'No communities' }
       }
-      const fallbackCommunity = this.pickRandomCommunity(eligibleCommunities)
+      const candidate = await this.pickRunnableAgentCandidate(communities)
+      if (!candidate) {
+        this.recordSkip()
+        return { triggered: false, error: 'No stage-eligible posting candidates' }
+      }
+      const { selected, writableCommunities } = candidate
+      const routing = await this.resolveVisibleRouting(selected.id, 'base')
+      const fallbackCommunity = this.pickRandomCommunity(writableCommunities)
       if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
       const sceneSelection = this.deps.publicSceneSelectorService
         ? await this.deps.publicSceneSelectorService.selectScheduledPost({
             agent: selected,
-            eligible_communities: eligibleCommunities,
+            eligible_communities: writableCommunities,
           })
         : { kind: 'skip' as const, reason: 'scene_selector_unavailable' }
       const targetCommunity = sceneSelection.kind === 'scene'
@@ -186,7 +198,7 @@ export class PostScheduler {
 
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
-      const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
+      const communityCatalog = this.toCommunityCatalog(writableCommunities)
       let visualPlan: ScheduledPostVisualPlan | null = null
       if (scenePayload) {
         try {
@@ -392,7 +404,7 @@ export class PostScheduler {
       const instruction = this.deps.responseParser.parseAsScheduledPost({
         text: llmResponse.content,
         fallbackCommunityId: targetCommunity.id,
-        communities: eligibleCommunities,
+        communities: writableCommunities,
         lockedCommunityId: effectiveScenePayload ? targetCommunity.id : undefined,
       })
 
@@ -486,6 +498,7 @@ export class PostScheduler {
       }
 
       this.lastPostAt = Date.now()
+      this.lastSkipAt = 0
       this.postsToday++
 
       if (renderDecision && this.deps.personaStateService) {
@@ -499,7 +512,7 @@ export class PostScheduler {
         })
       }
 
-      const actualCommunity = eligibleCommunities.find((item) => item.id === instruction.community_id)
+      const actualCommunity = writableCommunities.find((item) => item.id === instruction.community_id)
       console.log(
         `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
       )
@@ -521,14 +534,16 @@ export class PostScheduler {
 
   /** Force a post regardless of interval/quota (for dev endpoints). */
   async forcePost(): Promise<PostSchedulerResult> {
-    const saved = { lastPostAt: this.lastPostAt, postsToday: this.postsToday }
+    const saved = { lastPostAt: this.lastPostAt, lastSkipAt: this.lastSkipAt, postsToday: this.postsToday }
     this.lastPostAt = 0
+    this.lastSkipAt = 0
     this.postsToday = 0
     try {
       return await this.createPost()
     } finally {
       if (this.postsToday === 0) {
         this.lastPostAt = saved.lastPostAt
+        this.lastSkipAt = saved.lastSkipAt
         this.postsToday = saved.postsToday
       }
     }
@@ -542,29 +557,59 @@ export class PostScheduler {
     }
   }
 
-  private async pickAgent(): Promise<SelectedAgent | null> {
+  private recordSkip(): void {
+    this.lastSkipAt = Date.now()
+  }
+
+  private async pickRunnableAgentCandidate(communities: CommunityCandidate[]): Promise<{
+    selected: SelectedAgent
+    writableCommunities: CommunityCandidate[]
+  } | null> {
     const activeAgents = this.listEligibleAgents()
     if (activeAgents.length === 0) return null
 
+    const candidates: Array<{
+      selected: SelectedAgent
+      writableCommunities: CommunityCandidate[]
+    }> = []
+
+    for (const agent of activeAgents) {
+      const eligibleCommunities = this.resolveEligibleCommunities(agent.id, communities)
+      if (eligibleCommunities.length === 0) {
+        continue
+      }
+      const writableCommunities = await this.resolveStageEligibleCommunities(
+        agent.id,
+        eligibleCommunities,
+      )
+      if (writableCommunities.length === 0) {
+        continue
+      }
+      candidates.push({
+        selected: {
+          id: agent.id,
+          display_name: agent.display_name,
+        },
+        writableCommunities,
+      })
+    }
+
+    if (candidates.length === 0) {
+      return null
+    }
+
     if (config.features.multimodalAgentMediaV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
       const prioritizedAgentIds = await this.deps.imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(100)
-      const activeById = new Map(activeAgents.map((agent) => [agent.id, agent]))
+      const activeById = new Map(candidates.map((candidate) => [candidate.selected.id, candidate]))
       for (const agentId of prioritizedAgentIds) {
         const selected = activeById.get(agentId)
         if (selected) {
-          return {
-            id: selected.id,
-            display_name: selected.display_name,
-          }
+          return selected
         }
       }
     }
 
-    const selected = activeAgents[Math.floor(Math.random() * activeAgents.length)]
-    return {
-      id: selected.id,
-      display_name: selected.display_name,
-    }
+    return candidates[Math.floor(Math.random() * candidates.length)] ?? null
   }
 
   private listEligibleAgents(): Array<{ id: string; display_name: string }> {
@@ -586,6 +631,9 @@ export class PostScheduler {
       name: item.name,
       description: item.description || '',
       rules: item.rules_json ? JSON.stringify(item.rules_json) : '',
+      rules_json: item.rules_json && typeof item.rules_json === 'object'
+        ? item.rules_json as Record<string, unknown>
+        : null,
     }))
   }
 
@@ -599,6 +647,88 @@ export class PostScheduler {
 
     const activeCommunityIds = new Set(this.deps.membershipRepo.listActiveCommunityIdsByAgent(agentId))
     return communities.filter((item) => activeCommunityIds.has(item.id))
+  }
+
+  private async resolveStageEligibleCommunities(
+    agentId: string,
+    communities: CommunityCandidate[],
+  ): Promise<CommunityCandidate[]> {
+    if (!config.features.stageRoleRuntimeV1) {
+      return communities
+    }
+
+    const agentTier = await this.resolveAgentTier(agentId)
+    return communities.filter((community) =>
+      this.isStageEligibleCommunity({
+        agentId,
+        agentTier,
+        community,
+      }))
+  }
+
+  private isStageEligibleCommunity(input: {
+    agentId: string
+    agentTier: AgentStageTier
+    community: CommunityCandidate
+  }): boolean {
+    const stageResolved = resolveStageSpecFromRules(input.community.rules_json ?? null, {
+      community_id: input.community.id,
+    })
+    if (
+      config.features.riskControlV1
+      && config.launch.market === 'mainland'
+      && stageResolved.used_fallback
+    ) {
+      return false
+    }
+
+    const membership = this.deps.membershipRepo?.findCurrent(input.agentId, input.community.id) ?? null
+    if (
+      (config.features.membershipsV1
+        || config.features.membershipStatusV1
+        || config.features.stageRoleRuntimeV1)
+      && !membership
+    ) {
+      return false
+    }
+    if (membership?.left_at) {
+      return false
+    }
+    if (config.features.membershipStatusV1 && membership && membership.status !== 'ACTIVE') {
+      return false
+    }
+
+    let roleKey = membership?.role === 'GUEST' ? 'guest' : 'resident'
+    if (config.features.roleAssignmentV1 && this.deps.roleAssignmentRepo) {
+      const assignment = this.deps.roleAssignmentRepo.findPrimaryForAgent({
+        agent_id: input.agentId,
+        community_id: input.community.id,
+        post_id: null,
+      })
+      if (assignment && assignment.role.trim().length > 0) {
+        const assignedRole = assignment.role.trim()
+        if (Object.prototype.hasOwnProperty.call(stageResolved.stage_spec.roles, assignedRole)) {
+          roleKey = assignedRole
+        }
+      }
+    }
+
+    const roleSpec = stageResolved.stage_spec.roles[roleKey]
+    if (!roleSpec) {
+      return false
+    }
+    if (!roleSpec.runtime_gate) {
+      return true
+    }
+
+    let requiredTier = roleSpec.min_tier
+    if (roleKey === 'resident') {
+      requiredTier = maxTier(requiredTier, stageResolved.stage_spec.tier_gate.resident_min_tier)
+    }
+    if (roleKey === 'core') {
+      requiredTier = maxTier(requiredTier, stageResolved.stage_spec.tier_gate.core_min_tier)
+    }
+    return tierMeets(requiredTier, input.agentTier)
   }
 
   private pickRandomCommunity(communities: CommunityCandidate[]): CommunityCandidate | null {
@@ -618,6 +748,16 @@ export class PostScheduler {
 
   private requiresMembershipScopedPosting(): boolean {
     return config.features.membershipsV1 || config.features.membershipStatusV1 || config.features.stageRoleRuntimeV1
+  }
+
+  private async resolveAgentTier(agentId: string): Promise<AgentStageTier> {
+    if (config.features.stageTierV1 && this.deps.stageTierService) {
+      const snapshot = await this.deps.stageTierService.getSnapshot(agentId, {
+        recomputeIfMissing: true,
+      })
+      return snapshot.tier
+    }
+    return 'T1'
   }
 
   private loadPersona(agentId: string): AgentPersona {
@@ -872,4 +1012,8 @@ export class PostScheduler {
       },
     }
   }
+}
+
+function maxTier(a: AgentStageTier, b: AgentStageTier): AgentStageTier {
+  return STAGE_TIER_ORDER[a] >= STAGE_TIER_ORDER[b] ? a : b
 }

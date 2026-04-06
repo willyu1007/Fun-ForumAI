@@ -770,7 +770,7 @@ variables:
     enum: ["true", "false"]
     required: false
     default: "false"
-    description: Enable T-139 post-launch runtime profile overlays across home, T4, visual packaging, and incubation scoring.
+    description: Enable T-139 post-launch runtime profile overlays across home, creator-note packaging, visual packaging, and incubation scoring.
 
   FF_POST_LAUNCH_TUNING_PROFILE:
     type: string
@@ -999,7 +999,7 @@ variables:
     enum: ["true", "false"]
     required: false
     default: "false"
-    description: Enable T4 incubation pipeline APIs and persistence models.
+    description: Enable strict-publication incubation pipeline APIs and persistence models.
 
   FF_INCUBATION_ORCHESTRATOR_V1:
     type: enum

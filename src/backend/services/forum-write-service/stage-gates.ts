@@ -43,8 +43,8 @@ function assertRoleTierGate(input: {
   }
 }
 
-function rejectStrictT4(reason: string, message: string): never {
-  richCommunitiesMetrics.recordStrictT4Reject(reason)
+function rejectStrictPublication(reason: string, message: string): never {
+  richCommunitiesMetrics.recordStrictPublicationReject(reason)
   throw new ValidationError(message)
 }
 
@@ -52,14 +52,14 @@ function assertStrictStrongRedaction(body: string): void {
   const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(body)
   const hasPhone = /\+?\d[\d\s()-]{7,}\d/.test(body)
   if (hasEmail || hasPhone) {
-    rejectStrictT4(
+    rejectStrictPublication(
       'redaction_violation',
-      'T4 strict mode requires strong redaction (remove direct email/phone identifiers)',
+      'Strict publication mode requires strong redaction (remove direct email/phone identifiers)',
     )
   }
 }
 
-async function assertLongformT4Gate(
+async function assertStrictPublicationLongformGate(
   context: ForumWriteContext,
   input: {
     body: string
@@ -70,73 +70,73 @@ async function assertLongformT4Gate(
     trust_context?: TrustContextInput
   },
 ): Promise<void> {
-  const requiredTier = input.stage_spec.tier_gate.t4_longform_min_tier
+  const requiredTier = input.stage_spec.tier_gate.strict_publication_longform_min_tier
   if (!tierMeets(requiredTier, input.tier)) {
     throw new ForbiddenError(`Long-form stage content requires ${requiredTier} or above`)
   }
 
-  if (!input.stage_spec.strict_t4.enabled) return
+  if (!input.stage_spec.strict_publication.enabled) return
 
   const trustContext = input.trust_context
   const incubationRepo = context.deps.incubationRepo
 
   if (!incubationRepo || !trustContext) {
-    rejectStrictT4(
+    rejectStrictPublication(
       'trust_context_missing',
-      'T4 strict mode requires trust_context with grant and source bundle references',
+      'Strict publication mode requires trust_context with grant and source bundle references',
     )
   }
 
   const job = await incubationRepo.findJobById(trustContext.job_id)
   if (!job) {
-    rejectStrictT4('job_not_found', `incubation job not found: ${trustContext.job_id}`)
+    rejectStrictPublication('job_not_found', `incubation job not found: ${trustContext.job_id}`)
   }
   if (job.community_id !== input.community_id) {
-    rejectStrictT4(
+    rejectStrictPublication(
       'job_community_mismatch',
       'trust_context job does not belong to target community',
     )
   }
   if (job.proposer_agent_id !== input.actor_agent_id) {
-    rejectStrictT4('job_proposer_mismatch', 'trust_context job is not owned by post author')
+    rejectStrictPublication('job_proposer_mismatch', 'trust_context job is not owned by post author')
   }
 
   const grants = await incubationRepo.listGrantsByJob(job.id)
   const grant = grants.find((item) => item.id === trustContext.grant_id)
   if (!grant) {
-    rejectStrictT4('grant_not_found', `incubation grant not found: ${trustContext.grant_id}`)
+    rejectStrictPublication('grant_not_found', `incubation grant not found: ${trustContext.grant_id}`)
   }
   if (grant.status !== 'ACTIVE') {
-    rejectStrictT4('grant_inactive', `incubation grant is ${grant.status}, expected ACTIVE`)
+    rejectStrictPublication('grant_inactive', `incubation grant is ${grant.status}, expected ACTIVE`)
   }
   if (grant.expires_at.getTime() <= Date.now()) {
-    rejectStrictT4('grant_expired', 'incubation grant has expired')
+    rejectStrictPublication('grant_expired', 'incubation grant has expired')
   }
 
   const sourceBundles = await incubationRepo.listSourceBundlesByJob(job.id)
   const sourceById = new Set(sourceBundles.map((item) => item.id))
   if (trustContext.source_bundle_ids.some((id) => !sourceById.has(id))) {
-    rejectStrictT4(
+    rejectStrictPublication(
       'source_bundle_missing',
       'trust_context contains unknown source bundle ids',
     )
   }
-  if (trustContext.source_bundle_ids.length < input.stage_spec.strict_t4.min_sources) {
-    rejectStrictT4(
+  if (trustContext.source_bundle_ids.length < input.stage_spec.strict_publication.min_sources) {
+    rejectStrictPublication(
       'source_bundle_count_insufficient',
-      `T4 strict mode requires at least ${input.stage_spec.strict_t4.min_sources} source bundles`,
+      `Strict publication mode requires at least ${input.stage_spec.strict_publication.min_sources} source bundles`,
     )
   }
 
-  if (input.stage_spec.strict_t4.redaction === 'strong') {
+  if (input.stage_spec.strict_publication.redaction === 'strong') {
     if (job.redaction_level !== 'strong') {
-      rejectStrictT4('redaction_job_level', 'incubation job redaction level is below strong')
+      rejectStrictPublication('redaction_job_level', 'incubation job redaction level is below strong')
     }
     const profile = trustContext.redaction_profile ?? grant.anonymity_level
     if (profile !== 'strong') {
-      rejectStrictT4('redaction_profile', 'trust_context redaction profile must be strong')
+      rejectStrictPublication('redaction_profile', 'trust_context redaction profile must be strong')
     }
-  assertStrictStrongRedaction(input.body)
+    assertStrictStrongRedaction(input.body)
   }
 }
 
@@ -227,7 +227,7 @@ export async function resolveStageWriteContext(
     })
 
     if (input.is_longform && input.content_type === 'post') {
-      await assertLongformT4Gate(context, {
+      await assertStrictPublicationLongformGate(context, {
         body: input.body,
         stage_spec: stageResolved.stage_spec,
         tier,

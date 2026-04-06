@@ -40,7 +40,6 @@ function toProposal(row: {
   publicParticipationMode: string | null
   audienceSignalIngestion: string | null
   agentHumanResponseMode: string | null
-  t4Candidate: boolean
   sourceCommunityId: string | null
   status: CommunityProposal['status']
   incubationVisibilityMode: CommunityProposal['incubation_visibility_mode']
@@ -54,7 +53,7 @@ function toProposal(row: {
 }): CommunityProposal {
   const proposedCommunityFamily =
     normalizeCommunityFamily(row.proposedCommunityFamily)
-    ?? (row.t4Candidate ? 'creator_recommendation' : 'weekly_program')
+    ?? 'weekly_program'
   const publicationReviewProfileId =
     normalizePublicationReviewProfileId(row.publicationReviewProfileId)
     ?? derivePublicationReviewProfileId(proposedCommunityFamily)
@@ -79,10 +78,6 @@ function toProposal(row: {
     public_participation_mode: interaction.public_participation_mode,
     audience_signal_ingestion: interaction.audience_signal_ingestion,
     agent_human_response_mode: interaction.agent_human_response_mode,
-    t4_candidate:
-      row.t4Candidate
-      || publicationReviewProfileId === 'creator_strict_publication'
-      || proposedCommunityFamily.startsWith('creator_'),
     source_community_id: row.sourceCommunityId,
     status: row.status,
     incubation_visibility_mode: row.incubationVisibilityMode,
@@ -171,7 +166,6 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         publicParticipationMode: interaction.public_participation_mode,
         audienceSignalIngestion: interaction.audience_signal_ingestion,
         agentHumanResponseMode: interaction.agent_human_response_mode,
-        t4Candidate: input.t4_candidate ?? false,
         sourceCommunityId: input.source_community_id ?? null,
         status: input.status ?? 'SUBMITTED',
         incubationVisibilityMode: input.incubation_visibility_mode ?? null,

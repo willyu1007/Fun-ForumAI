@@ -53,8 +53,6 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
     storyline_hook: input.storyline_hook,
     content_kind: input.content_kind,
     editorial_shelf_id: input.editorial_shelf_id,
-    editorial_shelf: input.editorial_shelf,
-    is_t4: input.is_t4,
     aftershow_export_bias: input.aftershow_export_bias,
     note_template_id: input.note_template_id,
     cover_mode: input.cover_mode,
@@ -72,7 +70,7 @@ describe('HomeProgrammingService', () => {
 
     try {
       const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
-      const t4PicksRules = getLaunchCommunityBySlug('t4-picks')?.rules_json ?? null
+      const t4PicksRules = getLaunchCommunityBySlug('creator-recommendation')?.rules_json ?? null
       const service = new HomeProgrammingService({
         forumReadService: {
           getFeed: async () => ({
@@ -87,19 +85,18 @@ describe('HomeProgrammingService', () => {
                 storyline_id: 'episode-main',
                 storyline_title: '热点擂台主线',
                 storyline_state: 'escalating',
-                is_t4: false,
               }),
               makePost({
-                id: 'post-t4',
-                community_id: 'community-t4',
-                community_slug: 't4-picks',
+                id: 'post-creator-note',
+                community_id: 'community-creator-note',
+                community_slug: 'creator-recommendation',
                 community_name: '种草研究所',
                 title: '这条该不该直接入手',
                 content_kind: 'note_entry',
                 editorial_shelf_id: 'notes_today',
                 note_template_id: 'comparison_note',
                 cover_mode: 'comparison_cover',
-                storyline_id: 'episode-t4',
+                storyline_id: 'episode-creator-note',
                 storyline_title: '种草线',
                 storyline_state: 'opening',
               }),
@@ -167,10 +164,10 @@ describe('HomeProgrammingService', () => {
                 rules_json: hotArenaRules,
               }
             }
-            if (communityId === 'community-t4') {
+            if (communityId === 'community-creator-note') {
               return {
                 id: communityId,
-                slug: 't4-picks',
+                slug: 'creator-recommendation',
                 name: '种草研究所',
                 rules_json: t4PicksRules,
               }
@@ -199,8 +196,8 @@ describe('HomeProgrammingService', () => {
       expect(payload.shelves.find((item) => item.id === 'notes_today')?.items).toHaveLength(1)
       expect(payload.shelves.find((item) => item.id === 'notes_today')?.items[0]).toMatchObject({
         item_kind: 'post',
-        id: 'post-t4',
-        next_jump_target: '/posts/post-t4',
+        id: 'post-creator-note',
+        next_jump_target: '/posts/post-creator-note',
       })
       expect(payload.shelves.find((item) => item.id === 'tonight_programming')).toMatchObject({
         collapsed: true,
@@ -252,7 +249,6 @@ describe('HomeProgrammingService', () => {
                 title: '普通热帖',
                 storyline_id: 'episode-main',
                 storyline_state: 'opening',
-                is_t4: false,
               }),
             ],
             next_cursor: null,
@@ -358,7 +354,6 @@ describe('HomeProgrammingService', () => {
                 title: '第一条冲突升级',
                 storyline_id: 'episode-1',
                 storyline_state: 'escalating',
-                is_t4: false,
                 heat_score: 88,
               }),
               makePost({
@@ -369,7 +364,6 @@ describe('HomeProgrammingService', () => {
                 title: '第二条冲突升级',
                 storyline_id: 'episode-2',
                 storyline_state: 'escalating',
-                is_t4: false,
                 heat_score: 76,
               }),
             ],
@@ -491,7 +485,7 @@ describe('HomeProgrammingService', () => {
               community_name: '热点擂台',
               objective: '形成当天主线、节目高点和 highlight candidate。',
               expected_output_summary: '主线帖 1 条 · 进入高光候选',
-              editorial_shelf: 'tonight_programming',
+              editorial_shelf_id: 'tonight_programming',
               surface_kind: 'home_root_card',
               card_mode: 'program_card',
               thumbnail_policy: 'required_if_available',
@@ -538,7 +532,7 @@ describe('HomeProgrammingService', () => {
 
     try {
       const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
-      const t4PicksRules = getLaunchCommunityBySlug('t4-picks')?.rules_json ?? null
+      const t4PicksRules = getLaunchCommunityBySlug('creator-recommendation')?.rules_json ?? null
       const viewerAgentId = 'viewer-agent'
       const service = new HomeProgrammingService({
         forumReadService: {
@@ -555,15 +549,15 @@ describe('HomeProgrammingService', () => {
                 storyline_state: 'opening',
               }),
               makePost({
-                id: 'post-t4',
-                community_id: 'community-t4',
-                community_slug: 't4-picks',
+                id: 'post-creator-note',
+                community_id: 'community-creator-note',
+                community_slug: 'creator-recommendation',
                 community_name: '种草研究所',
-                title: 'T4 应该前置',
+                title: '创作者笔记应该前置',
                 content_kind: 'note_entry',
                 editorial_shelf_id: 'notes_today',
                 note_template_id: 'comparison_note',
-                storyline_id: 'episode-t4',
+                storyline_id: 'episode-creator-note',
                 storyline_state: 'opening',
               }),
               makePost({
@@ -614,10 +608,10 @@ describe('HomeProgrammingService', () => {
         } as never,
         communityRepo: {
           findById: (communityId: string) => {
-            if (communityId === 'community-t4') {
+            if (communityId === 'community-creator-note') {
               return {
                 id: communityId,
-                slug: 't4-picks',
+                slug: 'creator-recommendation',
                 name: '种草研究所',
                 rules_json: t4PicksRules,
               }
@@ -666,7 +660,7 @@ describe('HomeProgrammingService', () => {
         'all_communities',
       ])
       expect(payload.shelves.find((item) => item.id === 'notes_today')?.items[0]).toMatchObject({
-        id: 'post-t4',
+        id: 'post-creator-note',
       })
       expect(payload.shelves.find((item) => item.id === 'continue_storyline')?.items[0]).toMatchObject({
         id: 'post-match',

@@ -174,7 +174,7 @@ function parseLaunchProgramming(
   const record = value as Record<string, unknown>
   return {
     storyline: toRecord(record.storyline),
-    creator_note: toRecord(record.creator_note) ?? toRecord(record.t4_note),
+    creator_note: toRecord(record.creator_note),
     editorial_intent: toRecord(record.editorial_intent),
   }
 }

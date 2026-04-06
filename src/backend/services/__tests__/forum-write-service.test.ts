@@ -40,21 +40,21 @@ const GRAY_RESULT: ModerationResult = {
   verdict: 'FOLD',
 }
 
-function buildStrictT4StageSpec() {
+function buildStrictPublicationStageSpec() {
   return {
     version: 'v1',
     min_tier_pool: 'T1',
     roles: {
-      resident: { min_tier: 'T1', runtime_gate: true, t4_longform_only: false },
-      guest: { min_tier: 'T1', runtime_gate: true, t4_longform_only: false },
-      core: { min_tier: 'T1', runtime_gate: true, t4_longform_only: false },
+      resident: { min_tier: 'T1', runtime_gate: true },
+      guest: { min_tier: 'T1', runtime_gate: true },
+      core: { min_tier: 'T1', runtime_gate: true },
     },
     tier_gate: {
       resident_min_tier: 'T1',
       core_min_tier: 'T1',
-      t4_longform_min_tier: 'T1',
+      strict_publication_longform_min_tier: 'T1',
     },
-    strict_t4: {
+    strict_publication: {
       enabled: true,
       premod_required: true,
       min_sources: 2,
@@ -366,10 +366,10 @@ describe('ForumWriteService', () => {
 
       try {
         const { svc, communityRepo, communityId, roleAssignmentRepo } = setup()
-        const strictRoleSpec = buildStrictT4StageSpec()
+        const strictRoleSpec = buildStrictPublicationStageSpec()
         strictRoleSpec.roles.resident.min_tier = 'T5'
         strictRoleSpec.tier_gate.resident_min_tier = 'T5'
-        strictRoleSpec.strict_t4.enabled = false
+        strictRoleSpec.strict_publication.enabled = false
         communityRepo.update(communityId, { rules_json: { stage_spec_v1: strictRoleSpec } })
 
         await expect(
@@ -408,21 +408,21 @@ describe('ForumWriteService', () => {
       }
     })
 
-    it('enforces structured trust_context in strict T4', async () => {
+    it('enforces structured trust_context in strict publication communities', async () => {
       const featureFlags = config.features as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
       featureFlags.stageRoleRuntimeV1 = true
 
       try {
         const { svc, communityRepo, communityId } = setup()
-        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictT4StageSpec() } })
+        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictPublicationStageSpec() } })
 
         await expect(
           svc.createPost({
             actor_agent_id: 'a1',
             run_id: 'r-strict-missing-trust',
             community_id: communityId,
-            title: 'Strict T4 post',
+            title: 'Strict publication post',
             body: `Longform body ${'x'.repeat(1_300)}`,
           }),
         ).rejects.toThrow('trust_context')
@@ -438,14 +438,14 @@ describe('ForumWriteService', () => {
 
       try {
         const { svc, communityRepo, communityId } = setup()
-        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictT4StageSpec() } })
+        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictPublicationStageSpec() } })
 
         await expect(
           svc.createPost({
             actor_agent_id: 'a1',
             run_id: 'r-strict-legacy-fallback',
             community_id: communityId,
-            title: 'Strict T4 legacy',
+            title: 'Strict publication legacy',
             body: `[grant:legacy-1] https://a.example.com/source https://b.example.com/source ${'x'.repeat(1_300)}`,
           }),
         ).rejects.toThrow('trust_context')
@@ -461,7 +461,7 @@ describe('ForumWriteService', () => {
 
       try {
         const { svc, communityRepo, communityId, incubationRepo } = setup()
-        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictT4StageSpec() } })
+        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictPublicationStageSpec() } })
 
         const job = await incubationRepo.createJob({
           post_id: null,
@@ -494,7 +494,7 @@ describe('ForumWriteService', () => {
             actor_agent_id: 'a1',
             run_id: 'r-strict-expired-grant',
             community_id: communityId,
-            title: 'Strict T4 expired grant',
+            title: 'Strict publication expired grant',
             body: `https://a.example.com https://b.example.com ${'x'.repeat(1_300)}`,
             trust_context: {
               job_id: job.id,
@@ -516,7 +516,7 @@ describe('ForumWriteService', () => {
 
       try {
         const { svc, communityRepo, communityId, incubationRepo } = setup()
-        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictT4StageSpec() } })
+        communityRepo.update(communityId, { rules_json: { stage_spec_v1: buildStrictPublicationStageSpec() } })
 
         const job = await incubationRepo.createJob({
           post_id: null,
@@ -548,7 +548,7 @@ describe('ForumWriteService', () => {
           actor_agent_id: 'a1',
           run_id: 'r-strict-valid-trust',
           community_id: communityId,
-          title: 'Strict T4 valid grant',
+          title: 'Strict publication valid grant',
           body: `https://a.example.com https://b.example.com ${'x'.repeat(1_300)}`,
           trust_context: {
             job_id: job.id,

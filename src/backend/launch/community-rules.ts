@@ -41,14 +41,11 @@ const STAGE_TEMPLATE_ROOT = resolve(REPO_ROOT, 'docs/stage-templates/source/temp
 const lifecycleStateSchema = z.enum(COMMUNITY_LIFECYCLE_STATES)
 const launchProfileSchema = z.object({
   community_family: z.string().trim().min(1).optional(),
-  community_type: z.string().trim().min(1).optional(),
   headline_priority: z.number().min(0).max(100),
   show_on_home: z.boolean(),
   launch_wave: z.string().trim().min(1).optional(),
-  launch_phase: z.string().trim().min(1).optional(),
   publication_review_profile_id: z.string().trim().min(1).optional(),
   default_editorial_shelf_ids: z.array(z.string().trim().min(1)).default([]),
-  editorial_shelf: z.array(z.string().trim().min(1)).default([]),
   creator_note_policy: z.string().trim().min(1).optional().nullable(),
 }).passthrough()
 
@@ -84,9 +81,9 @@ const launchCommunityRulesSchema = z.object({
     handoff_targets: z.array(z.string().trim().min(1)).default([]),
     preferred_spinoff_communities: z.array(z.string().trim().min(1)).default([]),
     allow_aftershow_export: z.boolean(),
-    allow_t4_rewrite: z.boolean(),
+    allow_creator_note_rewrite: z.boolean(),
   }).passthrough(),
-  t4_policy: z.object({
+  creator_note_runtime: z.object({
     enabled: z.boolean(),
   }).passthrough(),
   governance_policy: z.record(z.string(), z.unknown()).optional(),
@@ -147,7 +144,7 @@ const TOP_LEVEL_RULE_KEYS = [
   'quality_policy',
   'discovery_policy',
   'cross_route_policy',
-  't4_policy',
+  'creator_note_runtime',
   'governance_policy',
   'metrics_policy',
 ] as const
@@ -191,7 +188,7 @@ function buildCommunitySemanticContract(input: {
   content_contract: Record<string, unknown>
 }): CommunitySemanticContract {
   const communityFamily = normalizeCommunityFamily(
-    readTrimmedString(input.launch_profile.community_family) ?? readTrimmedString(input.launch_profile.community_type),
+    readTrimmedString(input.launch_profile.community_family),
   )
   if (!communityFamily) {
     throw new ValidationError('Invalid launch community rules: launch_profile.community_family must resolve to a canonical community_family')
@@ -208,7 +205,6 @@ function buildCommunitySemanticContract(input: {
   const defaultEditorialShelfIds = [
     ...new Set(
       readStringArray(input.launch_profile.default_editorial_shelf_ids).map((item) => normalizeEditorialShelfId(item))
-        .concat(readStringArray(input.launch_profile.editorial_shelf).map((item) => normalizeEditorialShelfId(item)))
         .filter((item): item is NonNullable<typeof item> => item !== null),
     ),
   ]
@@ -218,7 +214,7 @@ function buildCommunitySemanticContract(input: {
     community_shell_category: communityShellCategory,
     publication_review_profile_id: publicationReviewProfileId,
     community_lifecycle_state: input.community_lifecycle_state,
-    launch_wave: readTrimmedString(input.launch_profile.launch_wave) ?? readTrimmedString(input.launch_profile.launch_phase),
+    launch_wave: readTrimmedString(input.launch_profile.launch_wave),
     default_editorial_shelf_ids: defaultEditorialShelfIds,
     authoring_shapes: readStringArray(input.content_contract.authoring_shapes)
       .concat(readStringArray(input.content_contract.allowed_content_shapes))
@@ -374,17 +370,16 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       }
     }
 
-    const t4Enabled = community.rules_json.t4_policy.enabled
+    const creatorNoteRuntimeEnabled = community.rules_json.creator_note_runtime.enabled
     const usesCreatorStageTemplate = community.stage_template_ref.startsWith('stage-creator-')
-      || community.stage_template_ref.startsWith('stage-t4-')
-    if (t4Enabled && !usesCreatorStageTemplate) {
+    if (creatorNoteRuntimeEnabled && !usesCreatorStageTemplate) {
       throw new ValidationError(
         `Invalid launch community rules: ${community.slug} creator-note communities must bind a creator stage template`,
       )
     }
-    if (!t4Enabled && usesCreatorStageTemplate) {
+    if (!creatorNoteRuntimeEnabled && usesCreatorStageTemplate) {
       throw new ValidationError(
-        `Invalid launch community rules: ${community.slug} creator stage templates require t4_policy.enabled=true`,
+        `Invalid launch community rules: ${community.slug} creator stage templates require creator_note_runtime.enabled=true`,
       )
     }
 
@@ -422,8 +417,6 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
     })
 
     const canonicalLaunchProfile = { ...community.rules_json.launch_profile }
-    delete canonicalLaunchProfile.community_type
-    delete canonicalLaunchProfile.launch_phase
 
     const rulesJson = {
       community_lifecycle_state: community.community_lifecycle_state,
@@ -434,10 +427,6 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
         publication_review_profile_id: communitySemanticContract.publication_review_profile_id,
         launch_wave: communitySemanticContract.launch_wave ?? null,
         default_editorial_shelf_ids: communitySemanticContract.default_editorial_shelf_ids,
-        editorial_shelf:
-          readStringArray(community.rules_json.launch_profile.editorial_shelf).length > 0
-            ? readStringArray(community.rules_json.launch_profile.editorial_shelf)
-            : communitySemanticContract.default_editorial_shelf_ids,
       },
       content_contract: {
         ...community.rules_json.content_contract,
@@ -455,7 +444,7 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       quality_policy: qualityPolicy,
       discovery_policy: community.rules_json.discovery_policy,
       cross_route_policy: crossRoutePolicy,
-      t4_policy: community.rules_json.t4_policy,
+      creator_note_runtime: community.rules_json.creator_note_runtime,
       governance_policy: governancePolicy,
       metrics_policy: metricsPolicy,
     }
@@ -528,7 +517,6 @@ export function buildGovernedCommunityRulesSkeleton(input: {
   publication_review_profile_id?: CommunitySemanticContract['publication_review_profile_id'] | null
   launch_wave?: string | null
   interaction_contract?: CommunityInteractionContract | null
-  t4_candidate?: boolean
   lifecycle_state: CommunityLifecycleState
   incubation_visibility_mode?: CommunityIncubationVisibilityMode | null
 }): Record<string, unknown> {
@@ -552,10 +540,10 @@ export function buildGovernedCommunityRulesSkeleton(input: {
     tier_gate: {
       resident_min_tier: strictPublication ? 'T3' : 'T2',
       core_min_tier: strictPublication ? 'T4' : 'T3',
-      t4_longform_min_tier: 'T4',
+      strict_publication_longform_min_tier: 'T4',
     },
-    strict_t4: {
-      enabled: strictPublication || input.t4_candidate === true,
+    strict_publication: {
+      enabled: strictPublication,
       premod_required: true,
       min_sources: 3,
       grant_required: true,
@@ -633,10 +621,10 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       handoff_targets: [],
       preferred_spinoff_communities: [],
       allow_aftershow_export: false,
-      allow_t4_rewrite: strictPublication || input.t4_candidate === true,
+      allow_creator_note_rewrite: strictPublication,
     },
-    t4_policy: {
-      enabled: strictPublication || input.t4_candidate === true,
+    creator_note_runtime: {
+      enabled: strictPublication,
     },
     governance_policy: {
       default_visibility: input.lifecycle_state === 'incubating_gray' ? 'GRAY' : 'PUBLIC',

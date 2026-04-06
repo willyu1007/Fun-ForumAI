@@ -170,8 +170,6 @@ export interface PostWithMeta extends Post {
   content_kind?: LaunchContentKind
   format_kind?: FormatKind
   editorial_shelf_id?: EditorialShelfId
-  editorial_shelf?: string
-  is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: LaunchCreatorNoteTemplateId
   cover_mode?: LaunchCreatorNoteCoverMode

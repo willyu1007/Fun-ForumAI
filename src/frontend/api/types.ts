@@ -569,7 +569,6 @@ export interface StorylineProjection {
 }
 
 export interface CreatorNoteProjection {
-  is_t4?: boolean
   note_template_id?: CreatorNoteTemplateId
   cover_mode?: CreatorNoteCoverMode
 }
@@ -624,7 +623,6 @@ export interface PostWithMeta extends Post, LaunchVisualPackagingFields, Storyli
   content_kind?: LaunchContentKind
   format_kind?: import('../../shared/semantic-taxonomy.js').FormatKind
   editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
-  editorial_shelf?: string
   aftershow_export_bias?: number
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
@@ -679,7 +677,6 @@ export interface AftershowSnapshot extends LaunchVisualPackagingFields, Storylin
   content_kind?: 'aftershow_recap'
   format_kind?: import('../../shared/semantic-taxonomy.js').FormatKind
   editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
-  editorial_shelf?: string
   aftershow_export_bias?: number
   relation_teaser?: RelationSummaryTeaser | null
 }
@@ -722,7 +719,7 @@ export interface HomeProgrammingSlotItem extends LaunchVisualPackagingFields {
   community_name: string
   objective: string
   expected_output_summary: string
-  editorial_shelf: string | null
+  editorial_shelf_id: import('../../shared/semantic-taxonomy.js').EditorialShelfId | null
   lead_seats: HomeProgrammingSlotLeadSeat[]
   next_jump_target: string
   assignment_source: 'recommended_contract'
@@ -794,7 +791,7 @@ export interface ProgrammingSlotRecommendation {
     shelf_eligible?: boolean
     continuity_entry?: boolean
     aftershow_candidate?: boolean
-    editorial_shelf?: string
+    editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
     surface_kind?: LaunchSurfaceKind
   }
   expected_output_summary: string
@@ -1316,7 +1313,6 @@ export interface GlobalHighlightsData {
     }
   } & LaunchVisualPackagingFields & StorylineProjection & CreatorNoteProjection & {
     content_kind?: LaunchContentKind
-    editorial_shelf?: string
     editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
     aftershow_export_bias?: number
     relation_teaser?: RelationSummaryTeaser | null
@@ -1348,7 +1344,6 @@ export interface GlobalHighlightsData {
     cover_media_url?: string | null
   } & LaunchVisualPackagingFields & StorylineProjection & CreatorNoteProjection & {
     content_kind?: LaunchContentKind
-    editorial_shelf?: string
     editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
     aftershow_export_bias?: number
   }>
@@ -1525,7 +1520,6 @@ export interface CommunityProposal {
   public_participation_mode: import('../../shared/semantic-taxonomy.js').PublicParticipationMode
   audience_signal_ingestion: import('../../shared/semantic-taxonomy.js').AudienceSignalIngestion
   agent_human_response_mode: import('../../shared/semantic-taxonomy.js').AgentHumanResponseMode
-  t4_candidate: boolean
   source_community_id: string | null
   status: CommunityProposalStatus
   incubation_visibility_mode: CommunityIncubationVisibilityMode | null

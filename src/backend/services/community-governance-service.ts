@@ -89,12 +89,12 @@ function buildCatalogEntry(input: {
   const launchProfile = toRecord(input.rules_json?.launch_profile)
   const contentContract = toRecord(input.rules_json?.content_contract)
   const sceneMix = toRecord(input.rules_json?.scene_mix)
-  const t4Policy = toRecord(input.rules_json?.t4_policy)
+  const creatorNoteRuntime = toRecord(input.rules_json?.creator_note_runtime)
   const tokenSource = [
     input.slug,
     input.name,
     input.description ?? '',
-    String(launchProfile?.community_family ?? launchProfile?.community_type ?? ''),
+    String(launchProfile?.community_family ?? ''),
     String(contentContract?.promise_to_viewer ?? ''),
     ...toStringArray(contentContract?.must_feel_like),
     ...toStringArray(contentContract?.must_not_feel_like),
@@ -107,10 +107,10 @@ function buildCatalogEntry(input: {
     tokens: new Set(tokenize(tokenSource)),
     community_family:
       semanticContract?.community_family
-      ?? (t4Policy?.enabled ? 'creator_recommendation' : 'weekly_program'),
+      ?? (creatorNoteRuntime?.enabled ? 'creator_recommendation' : 'weekly_program'),
     publication_review_profile_id:
       semanticContract?.publication_review_profile_id
-      ?? (t4Policy?.enabled ? 'creator_strict_publication' : 'standard_publication'),
+      ?? (creatorNoteRuntime?.enabled ? 'creator_strict_publication' : 'standard_publication'),
     scene_types: Object.keys(sceneMix ?? {}),
   }
 }
@@ -274,12 +274,11 @@ export class CommunityGovernanceService {
     publication_review_profile_id?: CommunityProposal['publication_review_profile_id'] | null
     launch_wave?: string | null
     interaction_contract?: CommunityInteractionContract | null
-    t4_candidate?: boolean
     source_community_id?: string | null
   }): Promise<CommunityProposalDetail> {
     const proposedCommunityFamily =
       input.proposed_community_family
-      ?? (input.t4_candidate ? 'creator_recommendation' : 'weekly_program')
+      ?? 'weekly_program'
     const publicationReviewProfileId =
       input.publication_review_profile_id
       ?? derivePublicationReviewProfileId(proposedCommunityFamily)
@@ -295,9 +294,6 @@ export class CommunityGovernanceService {
       public_participation_mode: interactionContract.public_participation_mode,
       audience_signal_ingestion: interactionContract.audience_signal_ingestion,
       agent_human_response_mode: interactionContract.agent_human_response_mode,
-      t4_candidate:
-        input.t4_candidate
-        ?? (publicationReviewProfileId === 'creator_strict_publication'),
     })
     await this.deps.communityProposalRepo.createEvent({
       proposal_id: proposal.id,
@@ -610,7 +606,6 @@ export class CommunityGovernanceService {
           audience_signal_ingestion: input.proposal.audience_signal_ingestion,
           agent_human_response_mode: input.proposal.agent_human_response_mode,
         },
-        t4_candidate: input.proposal.t4_candidate,
         lifecycle_state: input.lifecycle_state,
         incubation_visibility_mode: input.visibility_mode,
       })
@@ -629,8 +624,6 @@ export class CommunityGovernanceService {
     }
 
     const launchProfile = { ...(toRecord(currentRules.launch_profile) ?? {}) }
-    delete launchProfile.community_type
-    delete launchProfile.launch_phase
     const governancePolicy = cloneGovernancePolicy(
       input.community,
       input.proposal,

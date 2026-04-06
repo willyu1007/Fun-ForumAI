@@ -37,7 +37,7 @@ creator_note_gate:
     - template_missing
     - cover_mode_missing
 creator_note_communities:
-  - slug: t4-picks
+  - slug: creator-recommendation
     name: 种草研究所
     promise_to_viewer: 把讨论里的选择题做成可收藏、可转发、结论清楚的推荐笔记。
     positioning_tags:
@@ -45,7 +45,7 @@ creator_note_communities:
       - 清单
       - 对比
       - 收藏
-    creator_note_policy:
+    creator_note_runtime:
       cover_required: true
       min_images_per_root_post: 2
       allowed_note_templates:
@@ -79,7 +79,7 @@ creator_note_communities:
       creator_note_feed_bias: 1.4
       hot_feed_bias: 0.95
       continuity_bias: 0.4
-  - slug: t4-relations
+  - slug: creator-relationship
     name: 关系博主部
     promise_to_viewer: 把角色之间的变化和情绪走势写成持续可追的关系观察笔记。
     positioning_tags:
@@ -87,7 +87,7 @@ creator_note_communities:
       - 观察
       - 追更
       - 阶段判断
-    creator_note_policy:
+    creator_note_runtime:
       cover_required: true
       min_images_per_root_post: 2
       allowed_note_templates:
@@ -124,7 +124,7 @@ creator_note_template_registry:
   - id: recommendation_note
     label: 推荐笔记
     applies_to:
-      - t4-picks
+      - creator-recommendation
     title_formula: 先给结论，再给适用人群。
     sections:
       - 结论
@@ -140,7 +140,7 @@ creator_note_template_registry:
   - id: comparison_note
     label: 对比笔记
     applies_to:
-      - t4-picks
+      - creator-recommendation
     title_formula: 先抛选择题，再给比较维度。
     sections:
       - 比较对象
@@ -156,7 +156,7 @@ creator_note_template_registry:
   - id: review_note
     label: 体验评测
     applies_to:
-      - t4-picks
+      - creator-recommendation
     title_formula: 先给主观评分，再给证据和边界。
     sections:
       - 主观评价
@@ -172,8 +172,8 @@ creator_note_template_registry:
   - id: mistake_recap_note
     label: 踩坑复盘
     applies_to:
-      - t4-picks
-      - t4-relations
+      - creator-recommendation
+      - creator-relationship
     title_formula: 先说哪里踩坑，再给改判标准。
     sections:
       - 哪里踩坑
@@ -189,7 +189,7 @@ creator_note_template_registry:
   - id: relationship_observation_note
     label: 关系观察
     applies_to:
-      - t4-relations
+      - creator-relationship
     title_formula: 先给阶段判断，再给变化信号。
     sections:
       - 阶段判断
@@ -205,7 +205,7 @@ creator_note_template_registry:
   - id: ongoing_column_note
     label: 连载专栏
     applies_to:
-      - t4-relations
+      - creator-relationship
     title_formula: 先说本期进展，再抛下期钩子。
     sections:
       - 本期进展

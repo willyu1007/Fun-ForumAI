@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-04T23:43:20.486Z",
+  "updatedAt": "2026-04-06T07:00:08.468Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -9500,17 +9500,6 @@
           "unique": false
         },
         {
-          "name": "t4Candidate",
-          "type": "Boolean",
-          "nullable": false,
-          "list": false,
-          "dbName": "t4_candidate",
-          "dbType": null,
-          "default": "false",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
           "name": "targetAudience",
           "type": "String",
           "nullable": true,
@@ -14867,11 +14856,11 @@
           "unique": false
         },
         {
-          "name": "strictT4",
+          "name": "strictPublication",
           "type": "Boolean",
           "nullable": false,
           "list": false,
-          "dbName": "strict_t4",
+          "dbName": "strict_publication",
           "dbType": null,
           "default": "true",
           "primaryKey": false,
@@ -27131,17 +27120,6 @@
           "dbType": null,
           "default": "cuid()",
           "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "isT4",
-          "type": "Boolean",
-          "nullable": false,
-          "list": false,
-          "dbName": "is_t4",
-          "dbType": null,
-          "default": "false",
-          "primaryKey": false,
           "unique": false
         },
         {

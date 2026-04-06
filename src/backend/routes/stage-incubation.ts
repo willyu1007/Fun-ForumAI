@@ -261,7 +261,6 @@ stageIncubationRouter.post(
       publication_review_profile_id: req.body.publication_review_profile_id ?? null,
       launch_wave: req.body.launch_wave ?? null,
       interaction_contract: interactionContract,
-      t4_candidate: req.body.t4_candidate ?? false,
       source_community_id: req.body.source_community_id ?? null,
     })
     res.status(201).json({ data: detail })

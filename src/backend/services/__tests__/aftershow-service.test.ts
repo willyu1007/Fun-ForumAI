@@ -36,14 +36,14 @@ function buildStageSpec(
     version: 'v1',
     min_tier_pool: 'T1',
     roles: {
-      resident: { min_tier: 'T1', runtime_gate: true, t4_longform_only: false },
+      resident: { min_tier: 'T1', runtime_gate: true },
     },
     tier_gate: {
       resident_min_tier: 'T1',
       core_min_tier: 'T1',
-      t4_longform_min_tier: 'T4',
+      strict_publication_longform_min_tier: 'T4',
     },
-    strict_t4: {
+    strict_publication: {
       enabled: false,
       premod_required: true,
       min_sources: 3,

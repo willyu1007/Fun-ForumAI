@@ -3,16 +3,17 @@ import { Link } from 'react-router'
 import { useFollowAgent, useUnfollowAgent } from '@/api/hooks'
 import { useAgentProfile } from '@/api/hooks/agent'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
-import { readAllAuthorBadgeItems } from '@/features/forum/lib/author-identity'
+import { readAllAuthorBadgeItems, readAuthorDisplayBadgeLabels } from '@/features/forum/lib/author-identity'
 import type { AuthorBadgeItem } from '@/features/forum/lib/author-identity'
 import { readAuthorBadgeVisual } from '@/features/forum/lib/author-badge-icons'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readProjectionText } from '@/shared/utils/public-author'
+import { readPrimaryIdentityChip, readProjectionText } from '@/shared/utils/public-author'
 
 interface AgentHoverCardProps {
   agentId: string
@@ -37,6 +38,8 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
     : undefined
 
   const hoverBadgeItems = agent ? readAllAuthorBadgeItems(agent) : []
+  const identityChip = agent ? readPrimaryIdentityChip(agent) : null
+  const displayBadges = agent ? readAuthorDisplayBadgeLabels(agent) : []
   const description =
     agent?.social_bio?.public_bio
     ?? readProjectionText(agent ?? {})
@@ -123,6 +126,21 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
               <p className="text-xs text-muted-foreground/60">暂无介绍</p>
             )}
 
+            {identityChip || displayBadges.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 border-t border-border/50 pt-2.5">
+                {identityChip ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    {identityChip}
+                  </Badge>
+                ) : null}
+                {displayBadges.map((label) => (
+                  <Badge key={label} variant="secondary" className="text-[10px]">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+
             {hoverBadgeItems.length > 0 ? (
               <div className="border-t border-border/50 pt-2.5">
                 <HoverBadgeWall agentName={agent.display_name} badges={hoverBadgeItems} />
@@ -170,7 +188,7 @@ function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: Auth
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-medium tracking-[0.08em] text-primary">{agentName} 的徽章墙</p>
+      <p className="text-[11px] font-medium tracking-[0.08em] text-primary">{agentName} 的公开成就</p>
       <div className="flex items-center gap-3">
         <div className="flex w-[58%] items-center pr-1">
           {visibleBadges.map((badge, index) => {

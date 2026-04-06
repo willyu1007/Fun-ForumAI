@@ -91,7 +91,7 @@ describe('launch system roster', () => {
     )
   })
 
-  it('normalizes legacy roster aliases into canonical creator identity fields', () => {
+  it('rejects legacy creator aliases in roster drafts', () => {
     const roster = parseYaml(
       stringifyYaml(getLaunchSystemRoster()),
     ) as Record<string, unknown> & {
@@ -120,13 +120,8 @@ describe('launch system roster', () => {
     const filePath = join(dir, 'system_roster.launch.v1.yaml')
     writeFileSync(filePath, stringifyYaml(roster), 'utf8')
 
-    const runtime = loadLaunchSystemRoster({ roster_path: filePath, fresh: true })
-    const normalizedCreator = runtime.roster.find((entry) => entry.id === creatorEntry.id)
-    expect(runtime.role_mix).toMatchObject({ creator: 4 })
-    expect(normalizedCreator).toMatchObject({
-      program_role: 'creator',
-      identity_role_id: 'creator',
-      format_capabilities: ['note'],
-    })
+    expect(() => loadLaunchSystemRoster({ roster_path: filePath, fresh: true })).toThrowError(
+      /Invalid launch system roster/,
+    )
   })
 })

@@ -51,15 +51,15 @@ function HighlightMetaBadges({
   item,
   metricBadges,
 }: {
-  item: Pick<HighlightThread | ControversyThread, 'community_name' | 'content_kind' | 'note_template_id' | 'cover_mode' | 'editorial_shelf' | 'editorial_shelf_id' | 'storyline_state'>
+  item: Pick<HighlightThread | ControversyThread, 'community_name' | 'content_kind' | 'note_template_id' | 'cover_mode' | 'editorial_shelf_id' | 'storyline_state'>
   metricBadges: string[]
 }) {
   const templateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
   const coverLabel = readCreatorNoteCoverLabel(item.cover_mode)
-  const shelfLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf)
+  const shelfLabel = readEditorialShelfLabel(item.editorial_shelf_id)
   const storylineLabel = readStorylineStateLabel(item.storyline_state)
   const isNoteEntry = isCreatorNoteEntry(item)
-  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? item.editorial_shelf ?? 'notes_today') ?? '创作者笔记'
+  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? 'notes_today') ?? '创作者笔记'
 
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -287,7 +287,7 @@ function hasStoryFocusSignal(post: PostWithMeta) {
     post.storyline_title ||
     post.storyline_state ||
     post.storyline_hook ||
-    post.editorial_shelf === 'continue_storyline',
+    post.editorial_shelf_id === 'continue_storyline',
   )
 }
 
@@ -317,7 +317,7 @@ function readStoryFocusStateLabel(post: PostWithMeta) {
   if (post.storyline_state === 'escalating') return '升级中'
   if (post.storyline_state === 'opening') return '开场线'
   if (post.storyline_state === 'closed') return '已收束'
-  return readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf) ?? '关注线'
+  return readEditorialShelfLabel(post.editorial_shelf_id) ?? '关注线'
 }
 
 function readStoryFocusPreview(post: PostWithMeta) {

@@ -17,8 +17,13 @@ export function readAuthorBadgeItems(author: BadgeReadable): AuthorBadgeItem[] {
 }
 
 export function readAllAuthorBadgeItems(author: BadgeReadable): AuthorBadgeItem[] {
-  return [
-    ...(author.badges?.map((badge) => ({ label: badge.name, code: badge.code })) ?? []),
-    ...(author.display_badges?.map((label) => ({ label, code: null })) ?? []),
-  ].filter((badge, index, source) => source.findIndex((candidate) => candidate.label === badge.label) === index)
+  return (author.badges ?? [])
+    .map((badge) => ({ label: badge.name, code: badge.code }))
+    .filter((badge, index, source) => source.findIndex((candidate) => candidate.label === badge.label) === index)
+}
+
+export function readAuthorDisplayBadgeLabels(author: BadgeReadable): string[] {
+  return (author.display_badges ?? []).filter(
+    (label, index, source) => source.findIndex((candidate) => candidate === label) === index,
+  )
 }

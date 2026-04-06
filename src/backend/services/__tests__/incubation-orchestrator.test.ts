@@ -173,7 +173,7 @@ describe('IncubationOrchestrator', () => {
             tier_gate: {
               resident_min_tier: 'T1',
               core_min_tier: 'T1',
-              t4_longform_min_tier: 'T4',
+              strict_publication_longform_min_tier: 'T4',
             },
           },
         },

@@ -13,7 +13,7 @@ contracts:
     file_name: home_ia_and_shelves.v1.yaml
     path: config/launch/home_ia_and_shelves.v1.yaml
   - id: creator_note_templates
-    bundle_slug: launch-t4-community-enablement
+    bundle_slug: launch-creator-note-enablement
     file_name: creator_note_templates.v1.yaml
     path: config/launch/creator_note_templates.v1.yaml
   - id: visual_rollout

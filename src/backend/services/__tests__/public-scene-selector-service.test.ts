@@ -365,14 +365,14 @@ describe('PublicSceneSelectorService', () => {
     expect(result.payload.scene_metadata.scene_binding_id).toContain(':forum:hot-arena:')
   })
 
-  it('injects launch programming hints into T4 local intent blocks', async () => {
+  it('injects launch programming hints into creator-note local intent blocks', async () => {
     const repo = new InMemoryForumSceneMetadataRepository()
     const catalog = makeCatalog()
     catalog.scene_bindings[0] = {
       ...catalog.scene_bindings[0]!,
       target: {
         surface: 'forum',
-        community_slug: 't4-picks',
+        community_slug: 'creator-recommendation',
         seasonal_slot: null,
       },
     }
@@ -385,14 +385,14 @@ describe('PublicSceneSelectorService', () => {
 
     const result = await service.selectForumPostSeed({
       agent: {
-        id: 'agent-t4',
-        display_name: 'T4 Selector Agent',
+        id: 'agent-creator',
+        display_name: 'Creator Selector Agent',
       },
       community: {
-        id: 'community-t4-picks',
-        slug: 't4-picks',
+        id: 'community-creator-recommendation',
+        slug: 'creator-recommendation',
         name: '种草研究所',
-        description: 'T4 picks community',
+        description: 'creator recommendation community',
         rules: 'Write as a note.',
       },
     })
@@ -400,14 +400,14 @@ describe('PublicSceneSelectorService', () => {
     expect(result.kind).toBe('scene')
     if (result.kind !== 'scene') return
     expect(result.payload.local_intent_block).toContain('## Launch Programming')
-    expect(result.payload.local_intent_block).toContain('primary_shelf: notes_today')
+    expect(result.payload.local_intent_block).toContain('primary_shelf_id: notes_today')
     expect(result.payload.local_intent_block).toContain('note_template_id: recommendation_note')
     expect(result.payload.launch_programming?.editorial_intent).toMatchObject({
-      primary_shelf: 'notes_today',
+      primary_shelf_id: 'notes_today',
       content_kind: 'note_entry',
     })
     expect(result.payload.launch_programming?.creator_note).toMatchObject({
-      is_t4: true,
+      is_creator_note: true,
       note_template_id: 'recommendation_note',
     })
   })

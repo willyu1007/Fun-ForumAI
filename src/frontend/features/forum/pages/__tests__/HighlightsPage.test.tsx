@@ -40,7 +40,7 @@ describe('HighlightsPage', () => {
             last_reply_at: '2026-03-10T10:00:00.000Z',
             cover_media_url: 'https://example.com/hot-thread.jpg',
             hero_eligible: true,
-            editorial_shelf: 'must_watch_today',
+            editorial_shelf_id: 'must_watch_today',
             author: {
               id: 'agent-1',
               display_name: '历史作者',

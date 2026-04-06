@@ -79,7 +79,6 @@ const launchSystemRosterEntrySchema = z.object({
     avoids: z.array(z.string().trim().min(1)).default([]),
   }),
   image_affinity: imageAffinitySchema,
-  t4_capable: z.boolean().optional(),
   format_capabilities: z.array(z.enum(['note'])).default([]),
   daily_budget: z.object({
     root_posts: z.number().int().min(0),
@@ -121,8 +120,7 @@ const launchSystemRoleMixSchema = z.object({
   challenger: z.number().int().min(0),
   wildcard: z.number().int().min(0),
   mc: z.number().int().min(0),
-  creator: z.number().int().min(0).optional(),
-  t4_blogger: z.number().int().min(0).optional(),
+  creator: z.number().int().min(0),
   showrunner_editor: z.number().int().min(0),
 })
 
@@ -154,7 +152,6 @@ const launchSystemIdentityConfigSchema = z.object({
     avoids: z.array(z.string().trim().min(1)),
   }),
   image_affinity: imageAffinitySchema,
-  t4_capable: z.boolean().optional(),
   format_capabilities: z.array(z.enum(['note'])).default([]),
   daily_budget: z.object({
     root_posts: z.number().int().min(0),
@@ -251,12 +248,11 @@ function countProgramRoles(roster: LaunchSystemRosterEntry[]): LaunchSystemRoleM
 
 function deriveFormatCapabilities(input: {
   format_capabilities?: FormatCapabilityId[]
-  t4_capable?: boolean
 }): FormatCapabilityId[] {
   if (input.format_capabilities && input.format_capabilities.length > 0) {
     return [...new Set(input.format_capabilities)]
   }
-  return input.t4_capable ? ['note'] : []
+  return []
 }
 
 function resolveCanonicalIdentityRoleId(programRole: LaunchProgramRole): IdentityRoleId {
@@ -355,7 +351,7 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
     challenger: file.role_mix.challenger,
     wildcard: file.role_mix.wildcard,
     mc: file.role_mix.mc,
-    creator: file.role_mix.creator ?? file.role_mix.t4_blogger ?? 0,
+    creator: file.role_mix.creator,
     showrunner_editor: file.role_mix.showrunner_editor,
   }
   if (
@@ -386,11 +382,8 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
       badge_by_visibility_role: { ...file.surface_display_policy.badge_by_visibility_role },
     },
     role_mix: expectedRoleMix,
-    roster: file.roster.map((entry) => {
-      const canonicalEntry = { ...entry }
-      delete canonicalEntry.t4_capable
-      return {
-        ...canonicalEntry,
+    roster: file.roster.map((entry) => ({
+      ...entry,
       identity_role_id: entry.identity_role_id ?? resolveCanonicalIdentityRoleId(entry.program_role),
       identity_visibility_role_id:
         entry.identity_visibility_role_id ?? resolveCanonicalVisibilityRoleId(entry.visibility_role),
@@ -403,7 +396,6 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
       },
       format_capabilities: deriveFormatCapabilities({
         format_capabilities: entry.format_capabilities,
-        t4_capable: entry.t4_capable,
       }),
       daily_budget: { ...entry.daily_budget },
       identity_scaffold: {
@@ -412,8 +404,7 @@ function normalizeLaunchSystemRosterRuntime(input: unknown): LaunchSystemRosterR
         signature_topics: [...entry.identity_scaffold.signature_topics],
         signature_relationships: [...entry.identity_scaffold.signature_relationships],
       },
-      }
-    }),
+    })),
   }
 }
 
@@ -474,7 +465,6 @@ export function buildLaunchSystemConfigSlice(entry: LaunchSystemRosterEntry): Re
       image_affinity: entry.image_affinity,
       format_capabilities: deriveFormatCapabilities({
         format_capabilities: entry.format_capabilities,
-        t4_capable: entry.t4_capable,
       }),
       daily_budget: { ...entry.daily_budget },
       cross_route_budget: entry.cross_route_budget,
@@ -511,16 +501,12 @@ export function readLaunchSystemIdentityConfig(
     )
   }
 
-  const canonicalIdentity = { ...parsed.data }
-  delete canonicalIdentity.t4_capable
-
   return {
-    ...canonicalIdentity,
+    ...parsed.data,
     identity_role_id: identityRoleId,
     identity_visibility_role_id: identityVisibilityRoleId,
     format_capabilities: deriveFormatCapabilities({
       format_capabilities: parsed.data.format_capabilities,
-      t4_capable: parsed.data.t4_capable,
     }),
   }
 }

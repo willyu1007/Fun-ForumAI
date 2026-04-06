@@ -108,7 +108,6 @@ export interface ResolveLaunchVisualPackagingInput {
   rollout_profile?: Pick<MediaRolloutControllerProfile, 'mode' | 'profile'> | null
   content_context?: {
     is_creator_note?: boolean
-    is_t4?: boolean
     is_aftershow?: boolean
     is_highlight_candidate?: boolean
     thread_turn_kind?: LaunchThreadTurnKind | null
@@ -145,8 +144,7 @@ const visualRolloutFileSchema = z.object({
   notes: z.array(z.string().trim().min(1)).default([]),
   surface_rollout: z.object({
     home_root_card: surfaceRolloutRuleSchema,
-    note_root_card: surfaceRolloutRuleSchema.optional(),
-    t4_root_card: surfaceRolloutRuleSchema.optional(),
+    note_root_card: surfaceRolloutRuleSchema,
     thread_turn: surfaceRolloutRuleSchema,
     highlight_card: surfaceRolloutRuleSchema,
     aftershow_card: surfaceRolloutRuleSchema,
@@ -160,8 +158,7 @@ const visualRolloutFileSchema = z.object({
   card_modes: z.array(cardModeDefinitionSchema).min(1),
   hero_rules: z.object({
     home_root_card: heroRuleSchema,
-    note_root_card: heroRuleSchema.optional(),
-    t4_root_card: heroRuleSchema.optional(),
+    note_root_card: heroRuleSchema,
     thread_turn: heroRuleSchema,
     highlight_card: heroRuleSchema,
     aftershow_card: heroRuleSchema,
@@ -169,8 +166,7 @@ const visualRolloutFileSchema = z.object({
   thumbnail_policy: z.object({
     default: launchThumbnailPolicySchema,
     home_root_card: launchThumbnailPolicySchema,
-    note_root_card: launchThumbnailPolicySchema.optional(),
-    t4_root_card: launchThumbnailPolicySchema.optional(),
+    note_root_card: launchThumbnailPolicySchema,
     thread_turn: launchThumbnailPolicySchema,
     highlight_card: launchThumbnailPolicySchema,
     aftershow_card: launchThumbnailPolicySchema,
@@ -199,7 +195,6 @@ const CARD_MODE_ALIASES: Record<string, Omit<NormalizedLaunchCardMode, 'input_mo
   weekly_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
   event_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
   promo_card: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  t4_note_card: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
   hero_cover: { card_mode: 'single_cover', hero_eligible: true, visual_tone: null },
   conflict_hero: { card_mode: 'single_cover', hero_eligible: true, visual_tone: 'conflict' },
   list_card: { card_mode: 'multi_panel_cover', hero_eligible: false, visual_tone: null },
@@ -258,7 +253,7 @@ function normalizeLaunchVisualRolloutRuntime(input: unknown): LaunchVisualRollou
     notes: file.notes,
     surface_rollout: {
       home_root_card: file.surface_rollout.home_root_card,
-      note_root_card: file.surface_rollout.note_root_card ?? file.surface_rollout.t4_root_card!,
+      note_root_card: file.surface_rollout.note_root_card,
       thread_turn: file.surface_rollout.thread_turn,
       highlight_card: file.surface_rollout.highlight_card,
       aftershow_card: file.surface_rollout.aftershow_card,
@@ -267,7 +262,7 @@ function normalizeLaunchVisualRolloutRuntime(input: unknown): LaunchVisualRollou
     card_modes: file.card_modes,
     hero_rules: {
       home_root_card: file.hero_rules.home_root_card,
-      note_root_card: file.hero_rules.note_root_card ?? file.hero_rules.t4_root_card!,
+      note_root_card: file.hero_rules.note_root_card,
       thread_turn: file.hero_rules.thread_turn,
       highlight_card: file.hero_rules.highlight_card,
       aftershow_card: file.hero_rules.aftershow_card,
@@ -275,7 +270,7 @@ function normalizeLaunchVisualRolloutRuntime(input: unknown): LaunchVisualRollou
     thumbnail_policy: {
       default: file.thumbnail_policy.default,
       home_root_card: file.thumbnail_policy.home_root_card,
-      note_root_card: file.thumbnail_policy.note_root_card ?? file.thumbnail_policy.t4_root_card!,
+      note_root_card: file.thumbnail_policy.note_root_card,
       thread_turn: file.thumbnail_policy.thread_turn,
       highlight_card: file.thumbnail_policy.highlight_card,
       aftershow_card: file.thumbnail_policy.aftershow_card,
@@ -385,12 +380,16 @@ export function resolveLaunchCommunityVisualConfig(input: {
     ? launchRules.visual_policy
     : null
 
-  const repoT4Policy = rules && isRecord(rules.t4_policy) ? rules.t4_policy : null
-  const launchT4Policy = launchRules && isRecord(launchRules.t4_policy) ? launchRules.t4_policy : null
+  const repoCreatorNoteRuntime = rules && isRecord(rules.creator_note_runtime) ? rules.creator_note_runtime : null
+  const launchCreatorNoteRuntime = launchRules && isRecord(launchRules.creator_note_runtime)
+    ? launchRules.creator_note_runtime
+    : null
 
   return {
     community_visual_policy: repoVisualPolicy ?? launchVisualPolicy,
-    is_creator_note: readBooleanField(repoT4Policy?.enabled) || readBooleanField(launchT4Policy?.enabled),
+    is_creator_note:
+      readBooleanField(repoCreatorNoteRuntime?.enabled)
+      || readBooleanField(launchCreatorNoteRuntime?.enabled),
   }
 }
 
@@ -408,7 +407,7 @@ export function resolveLaunchVisualPackaging(
     }
   }
 
-  const isCreatorNote = input.content_context?.is_creator_note ?? input.content_context?.is_t4
+  const isCreatorNote = input.content_context?.is_creator_note
 
   if (input.surface === 'note_root_card' && isCreatorNote === false) {
     return null

@@ -26,8 +26,7 @@ content_kinds:
     aliases: []
   - id: note_entry
     format_kind: note
-    aliases:
-      - t4_note
+    aliases: []
   - id: community_entry
     format_kind: thread
     aliases: []
@@ -42,7 +41,6 @@ authoring_shapes:
   - id: aftershow_recap
     aliases: []
   - id: note_root
-    aliases:
-      - t4_note
+    aliases: []
   - id: programming_slot
     aliases: []

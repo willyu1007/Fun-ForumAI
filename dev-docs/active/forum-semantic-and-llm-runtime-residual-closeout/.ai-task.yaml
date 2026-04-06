@@ -1,0 +1,15 @@
+version: 1
+task_id: T-937
+project: main
+slug: forum-semantic-and-llm-runtime-residual-closeout
+status: done
+updated: "2026-04-06"
+keywords:
+  - forum
+  - semantic
+  - governance
+  - search
+  - analytics
+  - ui
+  - llm
+  - adapter

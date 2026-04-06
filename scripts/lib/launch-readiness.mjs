@@ -238,7 +238,7 @@ export function validatePackagingWireup() {
     'ARG VITE_FF_HOME_PROGRAMMING_V1=false',
     'ARG VITE_FF_PROGRAMMING_OPS_V1=false',
     'node ops/packaging/scripts/frontend-build-profile.mjs --profile "$FRONTEND_BUILD_PROFILE" --out dist/frontend/frontend-build-flags.json',
-    'COPY config/launch ./config/launch',
+    'COPY config ./config',
     'COPY env/contract.yaml ./env/contract.yaml',
     'COPY env/secrets ./env/secrets',
   ];

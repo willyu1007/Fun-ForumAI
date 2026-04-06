@@ -173,7 +173,11 @@ export class AgentExecutor {
       const promptScene = this.pickScene(event, ctx)
       const promptIntent = promptScene === 'chat_room' ? 'chat_reply' : 'forum_reply'
       const templateId = this.pickTemplate(event, ctx)
-      const routing = await this.resolveVisibleRouting(agent.agent_id, 'base')
+      const routing = await this.resolveVisibleRouting(
+        agent.agent_id,
+        promptIntent === 'chat_reply' ? 'lite' : 'base',
+        promptIntent === 'chat_reply' ? 'lite' : undefined,
+      )
       const identity = this.resolveObservationIdentity(agent.agent_id)
       const llmResponse = await this.deps.llmGateway.generateVisibleText({
         intent: promptIntent,
@@ -371,13 +375,21 @@ export class AgentExecutor {
     }
   }
 
-  private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
+  private async resolveVisibleRouting(
+    agentId: string,
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier,
+    requestedTierCeiling?: import('../../shared/agent-persona-catalog.js').RenderTier,
+  ): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
     preferredModelId?: string
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }> {
     if (this.deps.inferenceProfileService) {
-      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier })
+      return this.deps.inferenceProfileService.resolveVisibleRoute({
+        agentId,
+        requestedTier,
+        requestedTierCeiling,
+      })
     }
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)

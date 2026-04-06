@@ -31,6 +31,7 @@ describe('launch community rules', () => {
       'cast_policy',
       'community_lifecycle_state',
       'content_contract',
+      'creator_note_runtime',
       'cross_route_policy',
       'discovery_policy',
       'governance_policy',
@@ -39,7 +40,6 @@ describe('launch community rules', () => {
       'quality_policy',
       'scene_mix',
       'stage_spec_v1',
-      't4_policy',
       'visual_policy',
     ])
   })
@@ -86,7 +86,7 @@ describe('launch community rules', () => {
     ) as Record<string, unknown> & {
       communities: Array<Record<string, unknown>>
     }
-    const creatorCommunity = source.communities.find((community) => community.slug === 't4-picks')
+    const creatorCommunity = source.communities.find((community) => community.slug === 'creator-recommendation')
     if (!creatorCommunity) {
       throw new Error('expected creator launch community')
     }
@@ -94,13 +94,13 @@ describe('launch community rules', () => {
     rulesJson.launch_profile = {
       headline_priority: 90,
       show_on_home: true,
-      community_type: 't4_recommendation',
-      launch_phase: 'launch_core',
-      editorial_shelf: ['T4 今日笔记'],
+      community_family: 'creator_recommendation',
+      launch_wave: 'launch_core',
+      default_editorial_shelf_ids: ['notes_today'],
     }
     rulesJson.content_contract = {
       ...(rulesJson.content_contract as Record<string, unknown>),
-      allowed_content_shapes: ['t4_note', 'aftershow_recap'],
+      allowed_content_shapes: ['note_root', 'aftershow_recap'],
     }
     delete (rulesJson.content_contract as Record<string, unknown>).authoring_shapes
 
@@ -109,7 +109,7 @@ describe('launch community rules', () => {
     writeFileSync(filePath, stringifyYaml(source), 'utf8')
 
     const runtime = getLaunchCommunityRules(filePath)
-    const picks = runtime.communities.find((community) => community.slug === 't4-picks')
+    const picks = runtime.communities.find((community) => community.slug === 'creator-recommendation')
     expect(picks?.rules_json).toMatchObject({
       launch_profile: {
         community_family: 'creator_recommendation',
@@ -120,7 +120,5 @@ describe('launch community rules', () => {
         authoring_shapes: ['note_root', 'aftershow_recap'],
       },
     })
-    expect((picks?.rules_json.launch_profile as Record<string, unknown>)?.community_type).toBeUndefined()
-    expect((picks?.rules_json.launch_profile as Record<string, unknown>)?.launch_phase).toBeUndefined()
   })
 })

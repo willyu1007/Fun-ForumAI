@@ -188,6 +188,7 @@ export async function generateMessage(
     ? await context.deps.inferenceProfileService.resolveVisibleRoute({
         agentId,
         requestedTier: renderDecision?.requestedTier ?? 'lite',
+        requestedTierCeiling: 'lite',
       })
     : {
         homeVoiceLineId: resolvedIdentity.homeVoiceLineId,

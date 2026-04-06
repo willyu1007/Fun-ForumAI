@@ -90,7 +90,7 @@ describe('launch visual rollout', () => {
     expect(() => getLaunchVisualRollout(missingThumbnailPolicyPath)).toThrowError(/Invalid launch visual rollout/)
   })
 
-  it('normalizes legacy and T4 aliases into canonical card modes', () => {
+  it('normalizes legacy creator-note aliases into canonical card modes', () => {
     expect(normalizeLaunchCardMode('headline_card')).toEqual({
       input_mode: 'headline_card',
       card_mode: 'single_cover',
@@ -143,7 +143,7 @@ describe('launch visual rollout', () => {
       },
       has_thumbnail: true,
       content_context: {
-        is_t4: false,
+        is_creator_note: false,
       },
     })
 
@@ -163,7 +163,7 @@ describe('launch visual rollout', () => {
       },
       has_thumbnail: false,
       content_context: {
-        is_t4: false,
+        is_creator_note: false,
       },
     })
 
@@ -175,7 +175,7 @@ describe('launch visual rollout', () => {
     })
   })
 
-  it('reads T4 preferred_cover_modes through the same alias normalization path', () => {
+  it('reads creator-note preferred_cover_modes through the same alias normalization path', () => {
     const result = resolveLaunchVisualPackaging({
       surface: 'note_root_card',
       community_visual_policy: {
@@ -183,7 +183,7 @@ describe('launch visual rollout', () => {
       },
       has_thumbnail: true,
       content_context: {
-        is_t4: true,
+        is_creator_note: true,
       },
     })
 
@@ -203,7 +203,7 @@ describe('launch visual rollout', () => {
       },
       has_thumbnail: false,
       content_context: {
-        is_t4: true,
+        is_creator_note: true,
       },
     })
 
@@ -251,7 +251,7 @@ describe('launch visual rollout', () => {
         profile: 'off',
       },
       content_context: {
-        is_t4: false,
+        is_creator_note: false,
       },
     })).toBeNull()
 

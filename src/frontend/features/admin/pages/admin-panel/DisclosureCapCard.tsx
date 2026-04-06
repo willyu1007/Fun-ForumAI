@@ -18,7 +18,12 @@ export function DisclosureCapCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-2 sm:grid-cols-3">
+          <label htmlFor="disclosure-cap-scope-type" className="sr-only">
+            Cap 作用域类型
+          </label>
           <select
+            id="disclosure-cap-scope-type"
+            name="disclosure-cap-scope-type"
             value={disclosureCaps.scopeType}
             onChange={(event) =>
               disclosureCaps.setScopeType(event.target.value as 'agent' | 'community')
@@ -28,12 +33,22 @@ export function DisclosureCapCard({
             <option value="agent">agent</option>
             <option value="community">community</option>
           </select>
+          <label htmlFor="disclosure-cap-scope-id" className="sr-only">
+            Cap 作用域 ID
+          </label>
           <Input
+            id="disclosure-cap-scope-id"
+            name="disclosure-cap-scope-id"
             placeholder="scope id"
             value={disclosureCaps.scopeId}
             onChange={(event) => disclosureCaps.setScopeId(event.target.value)}
           />
+          <label htmlFor="disclosure-cap-level" className="sr-only">
+            Cap 级别
+          </label>
           <select
+            id="disclosure-cap-level"
+            name="disclosure-cap-level"
             value={disclosureCaps.capLevel}
             onChange={(event) => disclosureCaps.setCapLevel(event.target.value)}
             className={"h-8 w-full rounded-md border bg-background px-2 text-xs"}
@@ -45,7 +60,12 @@ export function DisclosureCapCard({
             ))}
           </select>
         </div>
+        <label htmlFor="disclosure-cap-reason" className="sr-only">
+          设置原因
+        </label>
         <Input
+          id="disclosure-cap-reason"
+          name="disclosure-cap-reason"
           placeholder="设置原因（选填）"
           value={disclosureCaps.capReason}
           onChange={(event) => disclosureCaps.setCapReason(event.target.value)}
@@ -59,7 +79,12 @@ export function DisclosureCapCard({
         >
           {disclosureCaps.createMutation.isPending ? '设置中…' : '设置 Cap Override'}
         </Button>
+        <label htmlFor="disclosure-cap-release-reason" className="sr-only">
+          释放原因
+        </label>
         <Input
+          id="disclosure-cap-release-reason"
+          name="disclosure-cap-release-reason"
           placeholder="释放原因（选填）"
           value={disclosureCaps.releaseCapReason}
           onChange={(event) => disclosureCaps.setReleaseCapReason(event.target.value)}

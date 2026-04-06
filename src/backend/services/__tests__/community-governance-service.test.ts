@@ -51,7 +51,6 @@ describe('community governance service', () => {
       description: '把热点冲突继续做成一档灰度加演节目。',
       premise_text: '围绕热点擂台延伸新的冲突加演。',
       scene_types: ['DEBATE', 'TALK_SHOW'],
-      t4_candidate: false,
     })
 
     expect(detail.proposal.status).toBe('SUBMITTED')
@@ -86,8 +85,6 @@ describe('community governance service', () => {
       }),
       stage_spec_v1: expect.objectContaining({ version: 'v1' }),
     })
-    expect((communityRules?.launch_profile as Record<string, unknown>)?.community_type).toBeUndefined()
-    expect((communityRules?.launch_profile as Record<string, unknown>)?.launch_phase).toBeUndefined()
     expect(actionResult.config_patch_id).toBeTruthy()
     expect(actionResult.config_version).toBe(1)
 
@@ -125,7 +122,8 @@ describe('community governance service', () => {
         description: '给关系向节目做灰度 incubation。',
         premise_text: '先在灰度观察期里验证关系线是否值得转正。',
         scene_types: ['TALK_SHOW'],
-        t4_candidate: true,
+        proposed_community_family: 'creator_relationship',
+        publication_review_profile_id: 'creator_strict_publication',
       })
 
       expect(detail.recommendation?.meta).toMatchObject({

@@ -29,14 +29,15 @@ describe('lightweight personalization contract', () => {
     expect(runtime.ranking_signals.creator_note_revisit).toBe('low_weight')
   })
 
-  it('accepts legacy t4_revisit as alias ingress and normalizes to creator_note_revisit', () => {
+  it('rejects drafts that omit creator_note_revisit', () => {
     const filePath = withLightweightPersonalizationDraft((draft) => {
       const rankingSignals = draft.ranking_signals as Record<string, unknown>
       rankingSignals.t4_revisit = rankingSignals.creator_note_revisit
       delete rankingSignals.creator_note_revisit
     })
 
-    const runtime = getLightweightPersonalizationRuntime(filePath)
-    expect(runtime.ranking_signals.creator_note_revisit).toBe('low_weight')
+    expect(() => getLightweightPersonalizationRuntime(filePath)).toThrowError(
+      /Invalid lightweight personalization contract/,
+    )
   })
 })

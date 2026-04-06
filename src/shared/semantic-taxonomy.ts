@@ -218,34 +218,6 @@ export const EDITORIAL_SHELF_LABELS: Record<EditorialShelfId, string> = {
   all_communities: '全部社区',
 }
 
-export const LEGACY_EDITORIAL_SHELF_IDS: Record<EditorialShelfId, string> = {
-  must_watch_today: 'must_watch_today',
-  conflict_rising: 'conflict_rising',
-  notes_today: 't4_today',
-  continue_storyline: 'continue_storyline',
-  tonight_programming: 'tonight_programming',
-  all_communities: 'all_communities',
-}
-
-export const LEGACY_CONTENT_KINDS: Record<ContentKind, string> = {
-  mainline_root: 'mainline_root',
-  highlight_hero: 'highlight_hero',
-  aftershow_recap: 'aftershow_recap',
-  continuity_callback: 'continuity_callback',
-  story_episode: 'story_episode',
-  note_entry: 't4_note',
-  community_entry: 'community_entry',
-  programming_slot: 'programming_slot',
-}
-
-export const LEGACY_LAUNCH_SURFACE_KINDS: Record<LaunchSurfaceKindId, string> = {
-  home_root_card: 'home_root_card',
-  note_root_card: 't4_root_card',
-  thread_turn: 'thread_turn',
-  highlight_card: 'highlight_card',
-  aftershow_card: 'aftershow_card',
-}
-
 export const COMMUNITY_FAMILY_ALIASES: Record<string, CommunityFamily> = {
   conflict_arena: 'conflict_arena',
   relationship_jury: 'relationship_jury',
@@ -257,8 +229,6 @@ export const COMMUNITY_FAMILY_ALIASES: Record<string, CommunityFamily> = {
   story_episode: 'story_episode',
   creator_recommendation: 'creator_recommendation',
   creator_relationship: 'creator_relationship',
-  t4_recommendation: 'creator_recommendation',
-  t4_relationship: 'creator_relationship',
   weekly_program: 'weekly_program',
   limited_event: 'limited_event',
 }
@@ -268,13 +238,12 @@ export const COMMUNITY_SHELL_CATEGORY_ALIASES: Record<string, CommunityShellCate
   show: 'show',
   world: 'world',
   creator: 'creator',
-  t4: 'creator',
 }
 
 export const PUBLICATION_REVIEW_PROFILE_ALIASES: Record<string, PublicationReviewProfileId> = {
   standard_publication: 'standard_publication',
   creator_strict_publication: 'creator_strict_publication',
-  strict_t4: 'creator_strict_publication',
+  strict_publication: 'creator_strict_publication',
   strict_evidence_public: 'creator_strict_publication',
 }
 
@@ -284,9 +253,8 @@ export const EDITORIAL_SHELF_ALIASES: Record<string, EditorialShelfId> = {
   conflict_rising: 'conflict_rising',
   '冲突升级中': 'conflict_rising',
   notes_today: 'notes_today',
+  '创作者笔记': 'notes_today',
   creator_notes_today: 'notes_today',
-  t4_today: 'notes_today',
-  'T4 今日笔记': 'notes_today',
   continue_storyline: 'continue_storyline',
   '剧情继续看': 'continue_storyline',
   tonight_programming: 'tonight_programming',
@@ -302,7 +270,6 @@ export const CONTENT_KIND_ALIASES: Record<string, ContentKind> = {
   continuity_callback: 'continuity_callback',
   story_episode: 'story_episode',
   note_entry: 'note_entry',
-  t4_note: 'note_entry',
   community_entry: 'community_entry',
   programming_slot: 'programming_slot',
 }
@@ -317,7 +284,6 @@ export const FORMAT_KIND_ALIASES: Record<string, FormatKind> = {
 export const LAUNCH_SURFACE_KIND_ALIASES: Record<string, LaunchSurfaceKindId> = {
   home_root_card: 'home_root_card',
   note_root_card: 'note_root_card',
-  t4_root_card: 'note_root_card',
   thread_turn: 'thread_turn',
   highlight_card: 'highlight_card',
   aftershow_card: 'aftershow_card',
@@ -329,7 +295,6 @@ export const IDENTITY_ROLE_ALIASES: Record<string, IdentityRoleId> = {
   wildcard: 'wildcard',
   mc: 'mc',
   creator: 'creator',
-  t4_blogger: 'creator',
   showrunner: 'showrunner',
   editor: 'editor',
 }
@@ -471,11 +436,10 @@ export function normalizeContentKind(value: string | null | undefined): ContentK
 export function isCreatorNoteEntry(input: {
   content_kind?: string | null
   editorial_shelf_id?: string | null
-  editorial_shelf?: string | null
   note_template_id?: string | null
 }): boolean {
   const contentKind = normalizeContentKind(input.content_kind)
-  const shelfId = normalizeEditorialShelfId(input.editorial_shelf_id ?? input.editorial_shelf)
+  const shelfId = normalizeEditorialShelfId(input.editorial_shelf_id)
   return contentKind === 'note_entry' || shelfId === 'notes_today' || Boolean(input.note_template_id)
 }
 
@@ -522,7 +486,6 @@ export function derivePublicationReviewProfileId(family: CommunityFamily): Publi
 export function normalizeAuthoringShapeId(value: string | null | undefined): string | null {
   const normalized = normalizeString(value)
   if (!normalized) return null
-  if (normalized === 't4_note') return 'note_root'
   return normalized
 }
 
@@ -545,20 +508,6 @@ export function deriveFormatKindFromContentKind(contentKind: ContentKind | null 
   }
 }
 
-export function toLegacyEditorialShelfId(shelfId: EditorialShelfId | null | undefined): string | null {
-  if (!shelfId) return null
-  return LEGACY_EDITORIAL_SHELF_IDS[shelfId] ?? null
-}
-
-export function toLegacyContentKind(contentKind: ContentKind | null | undefined): string | null {
-  if (!contentKind) return null
-  return LEGACY_CONTENT_KINDS[contentKind] ?? null
-}
-
-export function toLegacyLaunchSurfaceKind(surfaceKind: LaunchSurfaceKindId | null | undefined): string | null {
-  if (!surfaceKind) return null
-  return LEGACY_LAUNCH_SURFACE_KINDS[surfaceKind] ?? null
-}
 
 export function resolveCommunityInteractionContract(input: {
   mode?: string | null
