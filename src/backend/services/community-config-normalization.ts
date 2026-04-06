@@ -10,7 +10,7 @@ export const REJECTED_TOP_LEVEL_STAGE_SPEC_KEYS = [
   'min_tier_pool',
   'roles',
   'tier_gate',
-  'strict_t4',
+  'strict_publication',
   'aftershow',
   'allocator',
   'human_participation',

@@ -456,7 +456,7 @@ export class HomeProgrammingService {
       hotFeed
         .filter((item) => !usedPostIds.has(item.id))
         .filter((item) => Boolean(item.storyline_id))
-        .filter((item) => !isCreatorNoteEntry(item) || item.community_slug === 't4-relations'),
+        .filter((item) => !isCreatorNoteEntry(item) || item.community_slug === 'creator-relationship'),
       viewerRuntime,
       { preferStorylineRevisit: true },
     )
@@ -844,7 +844,7 @@ export class HomeProgrammingService {
     ) {
       return []
     }
-    const shelves = (rulesJson.launch_profile as Record<string, unknown>).editorial_shelf
+    const shelves = (rulesJson.launch_profile as Record<string, unknown>).default_editorial_shelf_ids
     return Array.isArray(shelves)
       ? shelves.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
       : []

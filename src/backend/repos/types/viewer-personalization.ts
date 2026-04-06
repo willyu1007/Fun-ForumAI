@@ -41,7 +41,6 @@ export interface ViewerPublicViewEvent {
   editorial_shelf_id: ViewerEditorialShelfId | null
   storyline_state: ViewerStorylineState | null
   format_kind: ViewerFormatKind | null
-  is_t4: boolean
   note_template_id: string | null
   cover_mode: string | null
   occurred_at: Date
@@ -68,7 +67,6 @@ export interface CreateViewerPublicViewEventInput {
   editorial_shelf_id?: ViewerEditorialShelfId | null
   storyline_state?: ViewerStorylineState | null
   format_kind?: ViewerFormatKind | null
-  is_t4?: boolean
   note_template_id?: string | null
   cover_mode?: string | null
   occurred_at?: Date

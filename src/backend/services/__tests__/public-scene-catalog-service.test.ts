@@ -42,15 +42,15 @@ describe('PublicSceneCatalogService', () => {
     expect(fs.existsSync(path.join(distDir, 'library.json'))).toBe(true)
   })
 
-  it('keeps stage-show-01 launch bindings aligned with non-T4 launch communities', () => {
+  it('keeps stage-show-01 launch bindings aligned with non-creator-note launch communities', () => {
     const service = new PublicSceneCatalogService()
     const catalog = service.getLaunchCatalog()
 
     expect(catalog).toBeTruthy()
     const expectedSlugs = listLaunchCommunitySeeds()
       .filter((community) => {
-        const t4Policy = community.rules_json.t4_policy as Record<string, unknown> | undefined
-        return t4Policy?.enabled !== true
+        const creatorNoteRuntime = community.rules_json.creator_note_runtime as Record<string, unknown> | undefined
+        return creatorNoteRuntime?.enabled !== true
       })
       .map((community) => community.slug)
       .sort()

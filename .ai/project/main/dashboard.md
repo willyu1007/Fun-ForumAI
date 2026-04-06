@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 175 (planned: 1, in-progress: 12, blocked: 1, done: 6, archived: 155)
+- Tasks: 177 (planned: 1, in-progress: 12, blocked: 1, done: 7, archived: 156)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-937 forum-semantic-and-llm-runtime-residual-closeout | done | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
+| T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-142 forum-semantic-convergence-governance-program | done | F-100 | dev-docs/active/forum-semantic-convergence-governance-program |
 | T-144 governance-and-public-participation-cutover | done | F-100 | dev-docs/active/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | done | F-100 | dev-docs/active/agent-public-identity-projection-proof-alignment |
@@ -32,6 +34,4 @@ Project: `main`
 | T-134 launch-communities-and-rules-pack | archived | F-090 | dev-docs/archive/launch-communities-and-rules-pack |
 | T-135 launch-home-ia-storyline-highlights | archived | F-090 | dev-docs/archive/launch-home-ia-storyline-highlights |
 | T-136 launch-t4-community-enablement | archived | F-090 | dev-docs/archive/launch-t4-community-enablement |
-| T-137 launch-programming-ops-and-rollout | archived | F-090 | dev-docs/archive/launch-programming-ops-and-rollout |
-| T-138 p1-lightweight-personalization-and-relation-hints | archived | F-090 | dev-docs/archive/p1-lightweight-personalization-and-relation-hints |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -4,7 +4,7 @@ materialization_notes:
   - "`stage_template_ref` points to the base template under `docs/stage-templates/source/templates/`."
   - Materialize final `rules_json.stage_spec_v1` by copying the template `stage_spec` and applying `stage_spec_patch`.
   - Materialize `quality_policy`, `governance_policy`, and `metrics_policy` by copying `shared_policy_defaults` and applying any per-community override.
-  - Keep `launch_profile`, `content_contract`, `scene_mix`, `cast_policy`, `visual_policy`, `quality_policy`, `discovery_policy`, `cross_route_policy`, `t4_policy`, `governance_policy`, and `metrics_policy` as first-class config blocks.
+  - Keep `launch_profile`, `content_contract`, `scene_mix`, `cast_policy`, `visual_policy`, `quality_policy`, `discovery_policy`, `cross_route_policy`, `creator_note_runtime`, `governance_policy`, and `metrics_policy` as first-class config blocks.
   - These drafts are launch-facing contracts, not yet final production values.
 shared_policy_defaults:
   quality_policy:
@@ -73,7 +73,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: THRESHOLD
           threshold:
@@ -119,8 +119,8 @@ communities:
           - 翻车复盘局
           - 人设修罗场
         allow_aftershow_export: true
-        allow_t4_rewrite: false
-      t4_policy:
+        allow_creator_note_rewrite: false
+      creator_note_runtime:
         enabled: false
   - slug: emotion-jury
     name: 情感陪审团
@@ -166,7 +166,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: THRESHOLD
           threshold:
@@ -209,8 +209,8 @@ communities:
         preferred_spinoff_communities:
           - 翻车复盘局
         allow_aftershow_export: true
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
   - slug: persona-chaos
     name: 人设修罗场
@@ -254,7 +254,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: THRESHOLD
           threshold:
@@ -301,8 +301,8 @@ communities:
           - 热点擂台
           - 反转故事会
         allow_aftershow_export: true
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
         observer_mode: true
   - slug: values-stage
@@ -346,7 +346,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: THRESHOLD
           threshold:
@@ -389,8 +389,8 @@ communities:
         preferred_spinoff_communities:
           - 本周大事件
         allow_aftershow_export: true
-        allow_t4_rewrite: false
-      t4_policy:
+        allow_creator_note_rewrite: false
+      creator_note_runtime:
         enabled: false
   - slug: fail-postmortem
     name: 翻车复盘局
@@ -432,7 +432,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: PERIODIC
           periodic:
@@ -475,8 +475,8 @@ communities:
           - 热点擂台
           - 人设修罗场
         allow_aftershow_export: true
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
   - slug: banter-watch
     name: 吐槽观察局
@@ -519,7 +519,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T2
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: OFF
         allocator:
@@ -560,8 +560,8 @@ communities:
           - 本周大事件
           - 人设修罗场
         allow_aftershow_export: false
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
   - slug: late-night-radio
     name: 深夜电台
@@ -603,7 +603,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T2
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: OFF
         allocator:
@@ -642,8 +642,8 @@ communities:
         preferred_spinoff_communities:
           - 关系博主部
         allow_aftershow_export: false
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
   - slug: plot-twist-club
     name: 反转故事会
@@ -686,7 +686,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T2
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: OFF
         allocator:
@@ -726,10 +726,10 @@ communities:
         preferred_spinoff_communities:
           - 关系博主部
         allow_aftershow_export: false
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
-  - slug: t4-picks
+  - slug: creator-recommendation
     name: 种草研究所
     community_lifecycle_state: launch_core
     stage_template_ref: stage-creator-01
@@ -772,8 +772,8 @@ communities:
         tier_gate:
           resident_min_tier: T3
           core_min_tier: T4
-          t4_longform_min_tier: T4
-        strict_t4:
+          strict_publication_longform_min_tier: T4
+        strict_publication:
           enabled: true
           premod_required: true
           min_sources: 3
@@ -820,8 +820,8 @@ communities:
         preferred_spinoff_communities:
           - 本周大事件
         allow_aftershow_export: false
-        allow_t4_rewrite: false
-      t4_policy:
+        allow_creator_note_rewrite: false
+      creator_note_runtime:
         enabled: true
         creator_slots: 2
         note_templates:
@@ -832,7 +832,7 @@ communities:
           - hero_cover
           - grid_cover
         feed_bias: 1.4
-  - slug: t4-relations
+  - slug: creator-relationship
     name: 关系博主部
     community_lifecycle_state: launch_core
     stage_template_ref: stage-creator-01
@@ -876,8 +876,8 @@ communities:
         tier_gate:
           resident_min_tier: T3
           core_min_tier: T4
-          t4_longform_min_tier: T4
-        strict_t4:
+          strict_publication_longform_min_tier: T4
+        strict_publication:
           enabled: true
           premod_required: true
           min_sources: 3
@@ -924,8 +924,8 @@ communities:
         preferred_spinoff_communities:
           - 人设修罗场
         allow_aftershow_export: false
-        allow_t4_rewrite: false
-      t4_policy:
+        allow_creator_note_rewrite: false
+      creator_note_runtime:
         enabled: true
         creator_slots: 2
         note_templates:
@@ -979,7 +979,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: THRESHOLD
           threshold:
@@ -1025,8 +1025,8 @@ communities:
           - 限时企划
           - 种草研究所
         allow_aftershow_export: true
-        allow_t4_rewrite: true
-      t4_policy:
+        allow_creator_note_rewrite: true
+      creator_note_runtime:
         enabled: false
   - slug: limited-program
     name: 限时企划
@@ -1068,7 +1068,7 @@ communities:
         tier_gate:
           resident_min_tier: T2
           core_min_tier: T3
-          t4_longform_min_tier: T4
+          strict_publication_longform_min_tier: T4
         aftershow:
           mode: MANUAL
           threshold:
@@ -1113,6 +1113,6 @@ communities:
           - 热点擂台
           - 吐槽观察局
         allow_aftershow_export: true
-        allow_t4_rewrite: false
-      t4_policy:
+        allow_creator_note_rewrite: false
+      creator_note_runtime:
         enabled: false

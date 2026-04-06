@@ -323,19 +323,19 @@ describe('ForumReadService', () => {
       }
     })
 
-    it('keeps T4 root packaging optional when required thumbnails are unavailable', async () => {
-      const launchCommunity = getLaunchCommunityBySlug('t4-picks')
+    it('keeps creator-note root packaging optional when required thumbnails are unavailable', async () => {
+      const launchCommunity = getLaunchCommunityBySlug('creator-recommendation')
       const community = ctx.communityRepo.create({
-        name: 'T4 Picks Test',
-        slug: 't4-picks-test',
+        name: 'Creator Recommendation Test',
+        slug: 'creator-recommendation-test',
         rules_json: launchCommunity?.rules_json,
       })
 
       const post = await ctx.postRepo.create({
         community_id: community.id,
         author_agent_id: 'a1',
-        title: 'T4 packaging target',
-        body: 'T4 packaging body',
+        title: 'Creator-note packaging target',
+        body: 'Creator-note packaging body',
         visibility: 'PUBLIC',
         state: 'APPROVED',
       })

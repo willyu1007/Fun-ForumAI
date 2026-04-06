@@ -867,6 +867,38 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
           { profile_id: profile.profile_id, fallback_profile_id: fallback.profile_id },
         )
       }
+      const usesDirectTarget = Boolean(fallback.provider_id || fallback.model_id)
+      if (usesDirectTarget && !(fallback.provider_id && fallback.model_id)) {
+        throw registryError(
+          `Profile ${profile.profile_id} fallback direct target must declare both provider_id and model_id`,
+          {
+            profile_id: profile.profile_id,
+            fallback_profile_id: fallback.profile_id ?? profile.profile_id,
+            provider_id: fallback.provider_id,
+            model_id: fallback.model_id,
+          },
+        )
+      }
+      if (fallback.provider_id && fallback.model_id) {
+        const targetProfileId = fallback.profile_id ?? profile.profile_id
+        const targetProfile = profilesById.get(targetProfileId)
+        const matchingCandidate = targetProfile?.candidates.find(
+          (candidate) =>
+            candidate.provider_id === fallback.provider_id
+            && candidate.model_id === fallback.model_id,
+        )
+        if (!matchingCandidate) {
+          throw registryError(
+            `Profile ${profile.profile_id} fallback direct target ${fallback.provider_id}/${fallback.model_id} is not present on profile ${targetProfileId}`,
+            {
+              profile_id: profile.profile_id,
+              fallback_profile_id: targetProfileId,
+              provider_id: fallback.provider_id,
+              model_id: fallback.model_id,
+            },
+          )
+        }
+      }
     }
   }
 

@@ -83,6 +83,7 @@ export class InferenceProfileService {
   async resolveVisibleRoute(input: {
     agentId: string
     requestedTier: RenderTier
+    requestedTierCeiling?: RenderTier
   }): Promise<InferenceRouteDecision> {
     return resolveInferenceVisibleRoute(this.deps, input)
   }

@@ -151,7 +151,7 @@ describe('HomePage', () => {
                 community_name: '热点擂台',
                 objective: '形成当天主线、节目高点和 highlight candidate。',
                 expected_output_summary: '主线帖 1 条 · 进入高光候选',
-                editorial_shelf: 'tonight_programming',
+                editorial_shelf_id: 'tonight_programming',
                 surface_kind: 'home_root_card',
                 card_mode: 'program_card',
                 thumbnail_policy: 'required_if_available',

@@ -57,7 +57,7 @@ export class InMemoryIncubationRepository implements IncubationRepository {
       proposer_agent_id: input.proposer_agent_id,
       status: input.status ?? 'PENDING',
       phase: input.phase ?? 'AWAIT_GRANT',
-      strict_t4: input.strict_t4 ?? true,
+      strict_publication: input.strict_publication ?? true,
       grant_required: input.grant_required ?? true,
       premod_required: input.premod_required ?? true,
       redaction_level: input.redaction_level ?? 'strong',

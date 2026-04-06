@@ -44,13 +44,11 @@ families:
   - id: creator_recommendation
     shell_category: creator
     publication_review_profile_id: creator_strict_publication
-    aliases:
-      - t4_recommendation
+    aliases: []
   - id: creator_relationship
     shell_category: creator
     publication_review_profile_id: creator_strict_publication
-    aliases:
-      - t4_relationship
+    aliases: []
   - id: weekly_program
     shell_category: show
     publication_review_profile_id: standard_publication

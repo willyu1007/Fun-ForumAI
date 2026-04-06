@@ -17,7 +17,7 @@ feature_flags:
     - FF_AFTERSHOW_EVENT_PIPELINE_V1
   planned:
     - FF_HOME_PROGRAMMING_V1
-    - FF_T4_HOME_SHELF_V1
+    - FF_CREATOR_NOTE_HOME_SHELF_V1
     - FF_PROGRAMMING_OPS_V1
 
 dependency_contracts:
@@ -89,7 +89,7 @@ slot_templates:
       root_posts: 1
       highlight_candidate: false
       programming_entry: true
-      editorial_shelf: tonight_programming
+      editorial_shelf_id: tonight_programming
     cross_handoff:
       next_communities: [热点擂台, 种草研究所]
 
@@ -119,7 +119,7 @@ slot_templates:
       root_posts: 1
       continuity_entry: true
       highlight_candidate: false
-      editorial_shelf: conflict_rising
+      editorial_shelf_id: conflict_rising
     cross_handoff:
       next_communities: [关系博主部, 翻车复盘局]
 

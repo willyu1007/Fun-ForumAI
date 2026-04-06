@@ -15,6 +15,7 @@ ARG VITE_FF_AFTERSHOW_V1=false
 ARG VITE_FF_ROLE_ASSIGNMENT_V1=false
 ARG VITE_FF_HOME_PROGRAMMING_V1=false
 ARG VITE_FF_PROGRAMMING_OPS_V1=false
+ARG VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=false
 
 ENV FRONTEND_BUILD_PROFILE=${FRONTEND_BUILD_PROFILE} \
     VITE_FF_GLOBAL_HIGHLIGHTS_V1=${VITE_FF_GLOBAL_HIGHLIGHTS_V1} \
@@ -23,7 +24,8 @@ ENV FRONTEND_BUILD_PROFILE=${FRONTEND_BUILD_PROFILE} \
     VITE_FF_AFTERSHOW_V1=${VITE_FF_AFTERSHOW_V1} \
     VITE_FF_ROLE_ASSIGNMENT_V1=${VITE_FF_ROLE_ASSIGNMENT_V1} \
     VITE_FF_HOME_PROGRAMMING_V1=${VITE_FF_HOME_PROGRAMMING_V1} \
-    VITE_FF_PROGRAMMING_OPS_V1=${VITE_FF_PROGRAMMING_OPS_V1}
+    VITE_FF_PROGRAMMING_OPS_V1=${VITE_FF_PROGRAMMING_OPS_V1} \
+    VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=${VITE_FF_MULTIMODAL_AGENT_MEDIA_V1}
 
 COPY pnpm-lock.yaml package.json ./
 COPY prisma ./prisma
@@ -52,7 +54,7 @@ RUN pnpm db:generate
 COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY src/backend ./src/backend
 COPY src/shared ./src/shared
-COPY config/launch ./config/launch
+COPY config ./config
 COPY scripts/director-history-maintenance.mjs ./scripts/director-history-maintenance.mjs
 COPY scripts/lib ./scripts/lib
 COPY .ai/llm-config ./.ai/llm-config

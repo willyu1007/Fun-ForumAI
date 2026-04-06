@@ -65,8 +65,6 @@ interface HighlightThreadItem {
   content_kind?: LaunchContentKind
   format_kind?: FeedPostItem['format_kind']
   editorial_shelf_id?: FeedPostItem['editorial_shelf_id']
-  editorial_shelf?: string
-  is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: LaunchCreatorNoteTemplateId
   cover_mode?: LaunchCreatorNoteCoverMode
@@ -113,8 +111,6 @@ interface ControversyItem {
   content_kind?: LaunchContentKind
   format_kind?: FeedPostItem['format_kind']
   editorial_shelf_id?: FeedPostItem['editorial_shelf_id']
-  editorial_shelf?: string
-  is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: LaunchCreatorNoteTemplateId
   cover_mode?: LaunchCreatorNoteCoverMode
@@ -208,8 +204,6 @@ export class GlobalHighlightsService {
       ...(item.content_kind ? { content_kind: item.content_kind } : {}),
       ...(item.format_kind ? { format_kind: item.format_kind } : {}),
       ...(item.editorial_shelf_id ? { editorial_shelf_id: item.editorial_shelf_id } : {}),
-      ...(item.editorial_shelf ? { editorial_shelf: item.editorial_shelf } : {}),
-      ...(typeof item.is_t4 === 'boolean' ? { is_t4: item.is_t4 } : {}),
       ...(typeof item.aftershow_export_bias === 'number' ? { aftershow_export_bias: item.aftershow_export_bias } : {}),
       ...(item.note_template_id ? { note_template_id: item.note_template_id } : {}),
       ...(item.cover_mode ? { cover_mode: item.cover_mode } : {}),
@@ -311,8 +305,6 @@ export class GlobalHighlightsService {
           ...(item.content_kind ? { content_kind: item.content_kind } : {}),
           ...(item.format_kind ? { format_kind: item.format_kind } : {}),
           ...(item.editorial_shelf_id ? { editorial_shelf_id: item.editorial_shelf_id } : {}),
-          ...(item.editorial_shelf ? { editorial_shelf: item.editorial_shelf } : {}),
-          ...(typeof item.is_t4 === 'boolean' ? { is_t4: item.is_t4 } : {}),
           ...(typeof item.aftershow_export_bias === 'number' ? { aftershow_export_bias: item.aftershow_export_bias } : {}),
           ...(item.note_template_id ? { note_template_id: item.note_template_id } : {}),
           ...(item.cover_mode ? { cover_mode: item.cover_mode } : {}),

@@ -13,10 +13,11 @@ describe('check-image-launch-proof', () => {
         VITE_FF_ROLE_ASSIGNMENT_V1: 'true',
         VITE_FF_HOME_PROGRAMMING_V1: 'true',
         VITE_FF_PROGRAMMING_OPS_V1: 'true',
+        VITE_FF_MULTIMODAL_AGENT_MEDIA_V1: 'true',
       },
     })).toMatchObject({
       profile: 'launch',
-      enabled_flags: 7,
+      enabled_flags: 8,
     })
   })
 
@@ -36,6 +37,7 @@ describe('check-image-launch-proof', () => {
         VITE_FF_ROLE_ASSIGNMENT_V1: 'true',
         VITE_FF_HOME_PROGRAMMING_V1: 'false',
         VITE_FF_PROGRAMMING_OPS_V1: 'true',
+        VITE_FF_MULTIMODAL_AGENT_MEDIA_V1: 'true',
       },
     })).toThrow(/missing enabled launch flags/)
   })

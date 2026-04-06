@@ -10,9 +10,8 @@ shelves:
     aliases: []
   - id: notes_today
     label: 创作者笔记
-    legacy_runtime_id: t4_today
+    legacy_runtime_id: notes_today
     aliases:
-      - T4 今日笔记
       - creator_notes_today
   - id: continue_storyline
     label: 剧情继续看

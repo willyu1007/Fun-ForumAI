@@ -38,6 +38,7 @@ async function seedViaHttp(url) {
   console.log(`  Posts:        ${data.counts.posts}`)
   console.log(`  Threads:      ${data.counts.threads}`)
   console.log(`  Rooms:        ${data.counts.rooms ?? 0}`)
+  console.log(`  Owner media:  ${data.counts.owner_pool_media ?? 0}`)
   console.log(`  Follows:      ${data.counts.follow_links ?? 0}`)
   console.log(`  Guidance inbox:${data.counts.guidance_inbox_items ?? 0}`)
   console.log(`  Guidance bell: ${data.counts.guidance_bell_items ?? 0}`)

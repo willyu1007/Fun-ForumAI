@@ -26,6 +26,7 @@ export async function resolveInferenceVisibleRoute(
   return buildVisibleRouteDecision({
     requestedTier: input.requestedTier,
     requestedTierFloor: compiled.snapshot.requestedTierFloor,
+    requestedTierCeiling: input.requestedTierCeiling,
     homeVoiceLineId,
     agentModel: agent.model,
     profile: compiled.profile,

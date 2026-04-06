@@ -1,0 +1,46 @@
+# 00 Overview — forum-semantic-and-llm-runtime-residual-closeout (T-937)
+
+## Status
+
+- State: done
+- Depends on: `T-142`, `T-145`, `T-146`, `T-901`
+- Next step: package the residual cleanup as reviewed commits and archive the task once downstream rollout notes are recorded.
+
+## Goal
+
+Close the residual real issues left after the earlier semantic/governance and provider-runtime programs:
+
+- creator-community slug and naming drift still present in runtime/config
+- governance and incubation still depend on legacy `t4*` truth fields
+- read-model/API/analytics still emit legacy semantic fields
+- author presentation still mixes identity and proof in major UI surfaces
+- LLM gateway still plans by adapter but executes by direct client dispatch
+
+## Non-goals
+
+- Add a new public API version.
+- Preserve old creator-community URLs or aliases.
+- Implement a real native-provider runtime.
+- Reopen or rewrite historical task bundles that are already archived or marked done.
+
+## Scope
+
+- Shared semantic taxonomy and launch config contracts
+- Stage/governance/proposal/incubation backend services
+- Prisma schema, migrations, and semantic backfill
+- Read API, search/analytics projections, and relevant frontend surfaces
+- LLM gateway/runtime interface and registry validation
+
+## Acceptance criteria (high level)
+
+- [x] Creator communities use only canonical slugs and canonical governance semantics.
+- [x] Backend/runtime paths no longer depend on `strict_t4`, `t4_candidate`, `is_t4`, or old creator slugs.
+- [x] `/v1` read payloads and frontend surfaces no longer expose or depend on `is_t4` and `editorial_shelf`.
+- [x] Author presentation separates identity and proof on post detail, hover card, and related surfaces.
+- [x] LLM execution is adapter-first, and registry validation blocks invalid direct fallback targets.
+
+## Current status
+
+- Task created from audit-confirmed residual drift.
+- Historical task bundles remain reference material; this task owns the final closeout implementation and verification.
+- Residual compatibility ingress and stale archive artifacts were removed in a final cleanup round on 2026-04-06.

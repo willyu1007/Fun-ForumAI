@@ -164,7 +164,7 @@ export interface PublicProgrammingSlotItem {
   community_name: string
   objective: string
   expected_output_summary: string
-  editorial_shelf: LaunchHomeShelfId | null
+  editorial_shelf_id: LaunchHomeShelfId | null
   surface_kind: LaunchSurfaceKind
   card_mode: LaunchCardMode
   thumbnail_policy: LaunchThumbnailPolicy
@@ -253,7 +253,7 @@ export interface RecommendProgrammingSlotAssignmentsInput {
   optional_roles: LaunchProgramRole[]
   fallback_roles: LaunchProgramRole[]
   blocked_pairings?: string[]
-  strict_t4?: boolean
+  strict_publication?: boolean
   roster?: LaunchSystemRosterEntry[]
 }
 
@@ -361,7 +361,7 @@ function buildRoleMix(entries: ProgrammingAgentRecommendation[]): Partial<Record
 }
 
 function isCreatorNoteCapable(entry: LaunchSystemRosterEntry): boolean {
-  return entry.format_capabilities?.includes('note') === true || entry.t4_capable === true
+  return entry.format_capabilities?.includes('note') === true
 }
 
 function rankProgrammingCandidates(input: {
@@ -369,7 +369,7 @@ function rankProgrammingCandidates(input: {
   pool: LaunchSystemRosterEntry[]
   community_name: string
   selected: LaunchSystemRosterEntry[]
-  strict_t4: boolean
+  strict_publication: boolean
   blocked_pairings: Set<string>
   allow_fallback_role?: boolean
 }): Array<{
@@ -387,13 +387,13 @@ function rankProgrammingCandidates(input: {
         + (entry.pairing_preferences.prefers.includes(selectedEntry.id) ? 25 : 0)
       ), 0)
       const creatorNoteCapable = isCreatorNoteCapable(entry)
-      const t4Score = input.strict_t4
+      const strictPublicationScore = input.strict_publication
         ? (creatorNoteCapable ? 200 : -220)
         : (creatorNoteCapable ? 20 : 0)
       const fallbackRoleScore = input.allow_fallback_role ? -60 : 0
       const score = affinity.score
         + preferScore
-        + t4Score
+        + strictPublicationScore
         + entry.cross_route_budget * 3
         + entry.daily_budget.root_posts
         + fallbackRoleScore
@@ -452,7 +452,7 @@ export function recommendProgrammingSlotAssignments(
       pool,
       community_name: input.community_name,
       selected: selectedEntries,
-      strict_t4: input.strict_t4 ?? false,
+      strict_publication: input.strict_publication ?? false,
       blocked_pairings: blockedPairings,
       allow_fallback_role: allowFallbackRole,
     })
@@ -478,7 +478,7 @@ export function recommendProgrammingSlotAssignments(
       pool,
       community_name: input.community_name,
       selected: selectedEntries,
-      strict_t4: input.strict_t4 ?? false,
+      strict_publication: input.strict_publication ?? false,
       blocked_pairings: blockedPairings,
     }).slice(0, 2)
     ranked.forEach((candidate) => {
@@ -531,7 +531,7 @@ function summarizeExpectedOutputs(outputs: LaunchProgrammingExpectedOutputs): st
   if (outputs.continuity_entry) parts.push('可承接 continuity')
   if (outputs.aftershow_candidate) parts.push('保留 aftershow 候选')
   if (outputs.programming_entry) parts.push('进入节目入口')
-  if (outputs.editorial_shelf) parts.push(`目标 shelf: ${outputs.editorial_shelf}`)
+  if (outputs.editorial_shelf_id) parts.push(`目标 shelf: ${outputs.editorial_shelf_id}`)
   return parts.join(' · ') || '保持日内节目供给'
 }
 
@@ -539,10 +539,10 @@ function derivePublicSurfaceKind(slot: ProgrammingSlotRecommendation): LaunchSur
   if (slot.expected_outputs.surface_kind) {
     return slot.expected_outputs.surface_kind
   }
-  if (slot.expected_outputs.editorial_shelf === 'notes_today') {
+  if (slot.expected_outputs.editorial_shelf_id === 'notes_today') {
     return 'note_root_card'
   }
-  if (slot.expected_outputs.editorial_shelf === 'continue_storyline') {
+  if (slot.expected_outputs.editorial_shelf_id === 'continue_storyline') {
     return 'aftershow_card'
   }
   return 'home_root_card'
@@ -565,7 +565,7 @@ function buildPublicProgrammingItem(input: {
     community_name: input.slot.community_name,
     objective: input.daypart.objective,
     expected_output_summary: input.slot.expected_output_summary,
-    editorial_shelf: input.slot.expected_outputs.editorial_shelf ?? null,
+    editorial_shelf_id: input.slot.expected_outputs.editorial_shelf_id ?? null,
     surface_kind: derivePublicSurfaceKind(input.slot),
     card_mode: 'program_card',
     thumbnail_policy: input.thumbnail_policy,
@@ -627,10 +627,7 @@ function readLaunchProfileValue(
   if (!communityRules || typeof communityRules !== 'object' || Array.isArray(communityRules)) return null
   const launchProfile = communityRules.launch_profile
   if (!launchProfile || typeof launchProfile !== 'object' || Array.isArray(launchProfile)) return null
-  const value = key === 'launch_wave'
-    ? (launchProfile as Record<string, unknown>).launch_wave
-      ?? (launchProfile as Record<string, unknown>).launch_phase
-    : (launchProfile as Record<string, unknown>)[key]
+  const value = (launchProfile as Record<string, unknown>)[key]
   return typeof value === 'string' || typeof value === 'number' ? value : null
 }
 
@@ -876,7 +873,7 @@ export class LaunchProgrammingOpsService {
         community_name: item.community_name,
         community_slug: backingPost?.community_slug ?? '',
         shelf_target:
-          normalizeEditorialShelfId(item.editorial_shelf) ?? (isCreatorNoteEntry(item) ? 'notes_today' : 'must_watch_today'),
+          normalizeEditorialShelfId(item.editorial_shelf_id) ?? (isCreatorNoteEntry(item) ? 'notes_today' : 'must_watch_today'),
         hero_reason: item.hero_eligible ? 'hero_candidate_ready' : null,
         rejected_reason:
           item.thumbnail_policy === 'required' && !hasVisual
@@ -1132,7 +1129,7 @@ export class LaunchProgrammingOpsService {
       optional_roles: slot.optional_roles,
       fallback_roles: slot.fallback_roles,
       blocked_pairings: blockedPairings,
-      strict_t4:
+      strict_publication:
         isLaunchNativeCreatorNoteCommunity(slot.community_slug)
         || slot.expected_outputs.surface_kind === 'note_root_card'
         || Boolean(slot.expected_outputs.creator_note_entries),

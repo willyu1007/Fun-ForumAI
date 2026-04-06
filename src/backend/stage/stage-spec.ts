@@ -23,7 +23,6 @@ const stageTierSchema = z.enum(['T1', 'T2', 'T3', 'T4', 'T5'])
 const stageRoleSpecSchema = z.object({
   min_tier: stageTierSchema,
   runtime_gate: z.boolean().default(true),
-  t4_longform_only: z.boolean().default(false),
 }).strict()
 
 const stageAllocatorSchema = z.object({
@@ -193,29 +192,26 @@ const stageSpecV1Schema = z.object({
     resident: {
       min_tier: 'T1',
       runtime_gate: true,
-      t4_longform_only: false,
     },
     guest: {
       min_tier: 'T1',
       runtime_gate: true,
-      t4_longform_only: false,
     },
     core: {
       min_tier: 'T3',
       runtime_gate: true,
-      t4_longform_only: false,
     },
   }),
   tier_gate: z.object({
     resident_min_tier: stageTierSchema.default('T3'),
     core_min_tier: stageTierSchema.default('T3'),
-    t4_longform_min_tier: stageTierSchema.default('T4'),
+    strict_publication_longform_min_tier: stageTierSchema.default('T4'),
   }).strict().default({
     resident_min_tier: 'T3',
     core_min_tier: 'T3',
-    t4_longform_min_tier: 'T4',
+    strict_publication_longform_min_tier: 'T4',
   }),
-  strict_t4: z.object({
+  strict_publication: z.object({
     enabled: z.boolean().default(true),
     premod_required: z.boolean().default(true),
     min_sources: z.number().int().min(1).default(3),
@@ -254,8 +250,8 @@ export const DEFAULT_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schema.parse({
 })
 
 // Maximally permissive spec used when rules_json is missing or invalid.
-// strict_t4.enabled=false keeps the incubation pipeline from gating agents
-// that haven't earned T4 yet, preventing availability deadlocks on new communities.
+// strict_publication.enabled=false keeps the incubation pipeline from gating agents
+// that haven't earned the required stage tier yet, preventing availability deadlocks on new communities.
 export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schema.parse({
   version: 'v1',
   min_tier_pool: 'T1',
@@ -263,25 +259,22 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
     resident: {
       min_tier: 'T1',
       runtime_gate: true,
-      t4_longform_only: false,
     },
     guest: {
       min_tier: 'T1',
       runtime_gate: true,
-      t4_longform_only: false,
     },
     core: {
       min_tier: 'T1',
       runtime_gate: true,
-      t4_longform_only: false,
     },
   },
   tier_gate: {
     resident_min_tier: 'T1',
     core_min_tier: 'T1',
-    t4_longform_min_tier: 'T1',
+    strict_publication_longform_min_tier: 'T1',
   },
-  strict_t4: {
+  strict_publication: {
     enabled: false,
     premod_required: true,
     min_sources: 3,

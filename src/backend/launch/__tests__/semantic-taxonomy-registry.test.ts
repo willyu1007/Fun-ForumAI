@@ -34,15 +34,16 @@ describe('semantic taxonomy registry', () => {
     expect(registry.content_formats.content_kinds.map((entry) => entry.id)).toContain('note_entry')
   })
 
-  it('normalizes legacy aliases only at ingress', () => {
-    expect(normalizeCommunityFamily('t4_recommendation')).toBe('creator_recommendation')
-    expect(normalizeEditorialShelfId('T4 今日笔记')).toBe('notes_today')
-    expect(normalizeContentKind('t4_note')).toBe('note_entry')
-    expect(normalizeIdentityRoleId('t4_blogger')).toBe('creator')
+  it('normalizes canonical semantic ids and retained format aliases', () => {
+    expect(normalizeCommunityFamily('creator_recommendation')).toBe('creator_recommendation')
+    expect(normalizeEditorialShelfId('notes_today')).toBe('notes_today')
+    expect(normalizeContentKind('note_entry')).toBe('note_entry')
+    expect(normalizeIdentityRoleId('creator')).toBe('creator')
+    expect(normalizeIdentityRoleId('t4_blogger')).toBeNull()
   })
 
   it('resolves canonical community and interaction contracts for launch communities', () => {
-    const picks = getLaunchCommunityBySlug('t4-picks')
+    const picks = getLaunchCommunityBySlug('creator-recommendation')
     expect(picks).not.toBeNull()
     if (!picks) return
 

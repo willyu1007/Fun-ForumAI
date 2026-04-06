@@ -782,11 +782,11 @@ function buildLaunchAwareLocalIntentBlock(input: {
   })
 
   const lines: string[] = []
-  const primaryShelf = typeof launchHints.editorial_intent?.primary_shelf === 'string'
-    ? launchHints.editorial_intent.primary_shelf
+  const primaryShelf = typeof launchHints.editorial_intent?.primary_shelf_id === 'string'
+    ? launchHints.editorial_intent.primary_shelf_id
     : null
   if (primaryShelf) {
-    lines.push(`- primary_shelf: ${primaryShelf}`)
+    lines.push(`- primary_shelf_id: ${primaryShelf}`)
   }
   const storylineHook = typeof launchHints.storyline?.hook === 'string'
     ? launchHints.storyline.hook
@@ -847,15 +847,14 @@ function buildLaunchProgrammingHints(input: {
     creator_note: creatorNoteProjection.is_creator_note
       ? {
           is_creator_note: true,
-          is_t4: true,
           note_template_id: creatorNoteProjection.note_template_id ?? null,
           cover_mode: creatorNoteProjection.cover_mode ?? null,
           title_formula: template?.title_formula ?? null,
           sections: template?.sections ?? [],
         }
-      : { is_creator_note: false, is_t4: false },
+      : { is_creator_note: false },
     editorial_intent: {
-      primary_shelf: resolvePrimaryShelf(input.communitySlug, input.phase, creatorNoteProjection.is_creator_note),
+      primary_shelf_id: resolvePrimaryShelf(input.communitySlug, input.phase, creatorNoteProjection.is_creator_note),
       content_kind: creatorNoteProjection.is_creator_note
         ? 'note_entry'
         : input.phase === 'closure' || input.phase === 'aftershow'
@@ -870,7 +869,7 @@ function resolvePrimaryShelf(
   phase: SceneMetadata['phase'],
   isCreatorNote: boolean,
 ): string {
-  if (isCreatorNote || communitySlug === 't4-picks' || communitySlug === 't4-relations') {
+  if (isCreatorNote || communitySlug === 'creator-recommendation' || communitySlug === 'creator-relationship') {
     return 'notes_today'
   }
   if (phase === 'closure' || phase === 'aftershow') {

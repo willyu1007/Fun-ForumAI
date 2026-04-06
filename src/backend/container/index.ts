@@ -537,6 +537,8 @@ const rt = createRuntime({
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
   membershipRepo: repos.agentCommunityMembershipRepo,
+  roleAssignmentRepo: repos.roleAssignmentRepo,
+  stageTierService: core.stageTierService,
   postRepo: repos.postRepo,
   publicStageThreadRepo: repos.publicStageThreadRepo,
   publicStageTurnRepo: repos.publicStageTurnRepo,

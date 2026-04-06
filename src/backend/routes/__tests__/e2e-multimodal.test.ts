@@ -8,7 +8,7 @@ import {
   VALID_PNG_BUFFER,
   setupFeatureFlagGuard,
 } from './e2e-helpers.js'
-import { llmClient, llmGateway, postScheduler } from '../../container.js'
+import { llmClient, llmGateway, mediaGenerationGateway, postScheduler } from '../../container.js'
 
 setupFeatureFlagGuard()
 
@@ -97,15 +97,18 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
   const featureFlags = config.features as unknown as Record<string, boolean>
   const originalMultimodal = featureFlags.multimodalAgentMediaV1
   const originalRolloutController = featureFlags.mediaRolloutControllerV1
+  const originalMediaGeneration = featureFlags.mediaGenerationV1
 
   beforeAll(() => {
     featureFlags.multimodalAgentMediaV1 = true
     featureFlags.mediaRolloutControllerV1 = true
+    featureFlags.mediaGenerationV1 = true
   })
 
   afterAll(() => {
     featureFlags.multimodalAgentMediaV1 = originalMultimodal
     featureFlags.mediaRolloutControllerV1 = originalRolloutController
+    featureFlags.mediaGenerationV1 = originalMediaGeneration
   })
 
   it('upload/current/delete and local media read work for owner', async () => {
@@ -444,6 +447,223 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
       if (selectorService && originalSelectScheduledPost) {
         selectorService.selectScheduledPost = originalSelectScheduledPost
       }
+    }
+  })
+
+  it('derives a generated public attachment from a private-only owner-pool asset on the next scheduled post', async () => {
+    featureFlags.membershipsV1 = true
+    featureFlags.mediaGenerationV1 = true
+    const originalChat = llmClient.chat.bind(llmClient)
+    const originalIsConfigured = Object.getOwnPropertyDescriptor(llmClient, 'isConfigured')
+    const originalGatewayIsConfigured = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(llmGateway),
+      'isConfigured',
+    ) ?? Object.getOwnPropertyDescriptor(llmGateway, 'isConfigured')
+    const originalGatewayGenerateVisibleText = llmGateway.generateVisibleText.bind(llmGateway)
+    const originalGatewayGenerateHiddenArtifact = llmGateway.generateHiddenArtifact.bind(llmGateway)
+    const originalMediaGatewayGenerate = mediaGenerationGateway.generate.bind(mediaGenerationGateway)
+    const originalMediaGatewayIsConfigured = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(mediaGenerationGateway),
+      'isConfigured',
+    ) ?? Object.getOwnPropertyDescriptor(mediaGenerationGateway, 'isConfigured')
+    const originalFetch = globalThis.fetch
+    const schedulerDeps = postScheduler as unknown as {
+      deps?: {
+        publicSceneSelectorService?: {
+          selectScheduledPost: (input: {
+            eligible_communities: Array<{
+              id: string
+              slug: string
+              name: string
+              description: string
+              rules: string
+            }>
+          }) => Promise<unknown>
+        } | null
+      }
+    }
+    const selectorService = schedulerDeps.deps?.publicSceneSelectorService ?? null
+    const originalSelectScheduledPost = selectorService?.selectScheduledPost.bind(selectorService)
+
+    Object.defineProperty(llmClient, 'isConfigured', {
+      value: true,
+      configurable: true,
+    })
+    Object.defineProperty(llmGateway, 'isConfigured', {
+      value: true,
+      configurable: true,
+    })
+    Object.defineProperty(mediaGenerationGateway, 'isConfigured', {
+      value: true,
+      configurable: true,
+    })
+
+    const stubRenderDecision = {
+      voiceLineId: 'default',
+      tier: 'base',
+      profileId: 'test',
+      providerId: 'test',
+      modelId: 'test-model',
+      region: 'local',
+      fallbackLevel: 'none',
+      reasons: ['initial_profile_resolution'],
+    }
+
+    llmClient.chat = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        community_id_or_slug: 'hot-arena',
+        title: '私域素材派生挂图测试帖',
+        body: '这是一条用于验证 private-only owner pool -> generated_public 挂图链路的测试正文。',
+      }),
+      model: 'test-model',
+      usage: { prompt_tokens: 12, completion_tokens: 24, total_tokens: 36 },
+    })
+    llmGateway.generateVisibleText = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        community_id_or_slug: 'hot-arena',
+        title: '私域素材派生挂图测试帖',
+        body: '这是一条用于验证 private-only owner pool -> generated_public 挂图链路的测试正文。',
+      }),
+      messages: [],
+      usage: { prompt_tokens: 12, completion_tokens: 24, total_tokens: 36 },
+      finishReason: 'stop',
+      latencyMs: 10,
+      platformRetryCount: 0,
+      renderDecision: stubRenderDecision,
+      promptRef: { template_id: 'test', version: 1 },
+    })
+    llmGateway.generateHiddenArtifact = vi.fn().mockResolvedValue({
+      content: JSON.stringify({
+        theme: 'debate stage',
+        scene: 'dramatic debate stage',
+        mood: 'tense',
+        discussion_points: ['讨论舞台张力', '讨论视觉对比'],
+        salient_entities: ['podiums'],
+        ocr_snippets: [],
+        safety_labels: [],
+        public_safe_summary: 'A dramatic debate stage with two podiums under red spotlights.',
+        internal_full_summary: 'A dramatic debate stage that supports public-safe derivative generation.',
+      }),
+      messages: [],
+      usage: { prompt_tokens: 50, completion_tokens: 30, total_tokens: 80 },
+      finishReason: 'stop',
+      latencyMs: 20,
+      platformRetryCount: 0,
+      renderDecision: stubRenderDecision,
+      promptRef: { template_id: 'internal-vision-summary', version: 1 },
+    })
+    mediaGenerationGateway.generate = vi.fn().mockResolvedValue({
+      image_url: 'https://generated.example.com/private-derived.png',
+      mime_type: 'image/png',
+    })
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === 'https://generated.example.com/private-derived.png') {
+        return new Response(VALID_PNG_BUFFER, {
+          status: 200,
+          headers: {
+            'Content-Type': 'image/png',
+          },
+        })
+      }
+      return originalFetch(input, init)
+    }) as typeof fetch)
+
+    try {
+      const seedRes = await request(app).post('/v1/dev/seed').send()
+      expect(seedRes.status).toBe(200)
+      if (!selectorService || !originalSelectScheduledPost) {
+        throw new Error('public scene selector unavailable in test container')
+      }
+      selectorService.selectScheduledPost = vi.fn(async (input) => {
+        const community = input.eligible_communities.find((item: ScheduledPostEligibleCommunity) => item.slug === 'hot-arena')
+          ?? input.eligible_communities[0]
+        if (!community) {
+          return { kind: 'skip', reason: 'no_eligible_communities' }
+        }
+        return buildScheduledPostSelection(community)
+      })
+
+      const createAgentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Private Derive Agent' })
+      const agentId = createAgentRes.body.data.id as string
+
+      const communitiesRes = await request(app).get('/v1/communities?limit=20')
+      expect(communitiesRes.status).toBe(200)
+      const launchCoreCommunity = communitiesRes.body.data.find((item: ScheduledPostEligibleCommunity) => item.slug === 'hot-arena')
+      expect(launchCoreCommunity).toBeTruthy()
+      if (!launchCoreCommunity) {
+        throw new Error('hot-arena community unavailable in e2e seed')
+      }
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          add: [launchCoreCommunity.id],
+          remove: [],
+          role: 'resident',
+        })
+      expect(membershipRes.status).toBe(200)
+
+      const uploadRes = await request(app)
+        .post(`/v1/agents/${agentId}/media/upload`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .field('owner_note', '保持舞台张力，但不要直接复用原图。')
+        .attach('file', VALID_PNG_BUFFER, {
+          filename: 'private-only-media.png',
+          contentType: 'image/png',
+        })
+      expect(uploadRes.status).toBe(201)
+      const originalAssetId = uploadRes.body.data.asset_id as string
+      expect(uploadRes.body.data.visibility_policy).toBe('private_only')
+
+      const runtimePostRes = await request(app).post('/v1/dev/runtime/post').send()
+      expect(runtimePostRes.status).toBe(200)
+      expect(runtimePostRes.body.data.triggered).toBe(true)
+      expect(runtimePostRes.body.data.agent_id).toBe(agentId)
+      const postId = runtimePostRes.body.data.post_id as string
+      expect(typeof postId).toBe('string')
+
+      const postRes = await request(app).get(`/v1/posts/${postId}`)
+      expect(postRes.status).toBe(200)
+      expect(Array.isArray(postRes.body.data.media)).toBe(true)
+      expect(postRes.body.data.media.length).toBeGreaterThan(0)
+      const generatedAssetId = postRes.body.data.media[0].asset_id as string
+      expect(generatedAssetId).not.toBe(originalAssetId)
+
+      const currentRes = await request(app)
+        .get(`/v1/agents/${agentId}/media/current`)
+        .set('Authorization', `Bearer ${userToken}`)
+      expect(currentRes.status).toBe(200)
+      expect(currentRes.body.data.pool.latest_asset.asset_id).toBe(originalAssetId)
+      expect(currentRes.body.data.latest_public_attachment.asset_id).toBe(generatedAssetId)
+    } finally {
+      llmClient.chat = originalChat
+      llmGateway.generateVisibleText = originalGatewayGenerateVisibleText
+      llmGateway.generateHiddenArtifact = originalGatewayGenerateHiddenArtifact
+      mediaGenerationGateway.generate = originalMediaGatewayGenerate
+      if (originalIsConfigured) {
+        Object.defineProperty(llmClient, 'isConfigured', originalIsConfigured)
+      } else {
+        delete (llmClient as unknown as Record<string, unknown>).isConfigured
+      }
+      if (originalGatewayIsConfigured) {
+        Object.defineProperty(llmGateway, 'isConfigured', originalGatewayIsConfigured)
+      } else {
+        delete (llmGateway as unknown as Record<string, unknown>).isConfigured
+      }
+      if (originalMediaGatewayIsConfigured) {
+        Object.defineProperty(mediaGenerationGateway, 'isConfigured', originalMediaGatewayIsConfigured)
+      } else {
+        delete (mediaGenerationGateway as unknown as Record<string, unknown>).isConfigured
+      }
+      if (selectorService && originalSelectScheduledPost) {
+        selectorService.selectScheduledPost = originalSelectScheduledPost
+      }
+      vi.stubGlobal('fetch', originalFetch)
     }
   })
 })

@@ -14,6 +14,22 @@ export function resolveMediaAssetUrl(
   return null
 }
 
+export async function resolveAvailableMediaAssetUrl(
+  asset: Pick<MediaAsset, 'storage_key' | 'origin_url'>,
+  storage: Pick<StorageAdapter, 'publicUrl' | 'getObject'>,
+): Promise<string | null> {
+  if (asset.storage_key) {
+    const object = await storage.getObject(asset.storage_key)
+    if (object) {
+      return storage.publicUrl(asset.storage_key)
+    }
+  }
+  if (asset.origin_url) {
+    return asset.origin_url
+  }
+  return null
+}
+
 export function pickModelReachableMediaUrl(
   ...candidates: Array<string | null | undefined>
 ): string | null {

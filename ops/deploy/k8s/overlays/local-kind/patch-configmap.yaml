@@ -7,6 +7,7 @@ data:
   NODE_ENV: development
   NODE_OPTIONS: "--max-old-space-size=1536"
   CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+  MEDIA_LOCAL_DIR: /var/media-assets
   RUNTIME_LEADER_TTL_MS: "120000"
   FF_MEMBERSHIPS_V1: "true"
   FF_GLOBAL_HIGHLIGHTS_V1: "true"
@@ -22,6 +23,7 @@ data:
   FF_PERSONA_RUNTIME_V1: "true"
   FF_PERSONA_RUNTIME_SCENES: "forum_post,forum_thread,forum_turn,chat_room,private_chat,proactive_dm,scheduled_post"
   FF_PERSONA_WRITEBACK_V1: "true"
+  FF_MULTIMODAL_AGENT_MEDIA_V1: "true"
   FF_MULTIMODAL_AGENT_INCLINATION_V1: "true"
   FF_MEDIA_GENERATION_V1: "true"
   FF_MEDIA_OBSERVABILITY_V1: "true"

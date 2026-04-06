@@ -143,8 +143,15 @@ export function GovernanceTab({
         <CardContent className="space-y-2">
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
-              <label className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>操作类型</label>
+              <label
+                htmlFor="governance-action"
+                className={"mb-1 block text-[10px] font-medium text-muted-foreground"}
+              >
+                操作类型
+              </label>
               <select
+                id="governance-action"
+                name="governance-action"
                 value={governance.action}
                 onChange={(event) =>
                   governance.setAction(event.target.value as typeof governance.action)
@@ -159,8 +166,15 @@ export function GovernanceTab({
               </select>
             </div>
             <div>
-              <label className={"mb-1 block text-[10px] font-medium text-muted-foreground"}>目标类型</label>
+              <label
+                htmlFor="governance-target-type"
+                className={"mb-1 block text-[10px] font-medium text-muted-foreground"}
+              >
+                目标类型
+              </label>
               <select
+                id="governance-target-type"
+                name="governance-target-type"
                 value={governance.targetType}
                 onChange={(event) => governance.setTargetType(event.target.value)}
                 className={"h-8 w-full rounded-md border bg-background px-2 text-xs"}
@@ -173,13 +187,23 @@ export function GovernanceTab({
               </select>
             </div>
           </div>
+          <label htmlFor="governance-target-id" className="sr-only">
+            目标 ID
+          </label>
           <Input
+            id="governance-target-id"
+            name="governance-target-id"
             placeholder="目标 ID（如 post_123…）"
             value={governance.targetId}
             onChange={(event) => governance.setTargetId(event.target.value)}
             className={"h-8 text-xs"}
           />
+          <label htmlFor="governance-reason" className="sr-only">
+            治理原因
+          </label>
           <Input
+            id="governance-reason"
+            name="governance-reason"
             placeholder="原因（选填）"
             value={governance.reason}
             onChange={(event) => governance.setReason(event.target.value)}
@@ -239,15 +263,27 @@ export function GovernanceTab({
             <CardTitle className="text-sm">Proposal Queue</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <label htmlFor="proposal-target-community-id" className="sr-only">
+              归并目标社区 ID
+            </label>
             <Input
+              id="proposal-target-community-id"
+              name="proposal-target-community-id"
               placeholder="归并目标社区 ID（可选）"
               value={communityGovernance.targetCommunityId}
               onChange={(event) => communityGovernance.setTargetCommunityId(event.target.value)}
               className="h-8 text-xs"
             />
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-muted-foreground">孵化可见性</label>
+              <label
+                htmlFor="proposal-visibility-mode"
+                className="mb-1 block text-[10px] font-medium text-muted-foreground"
+              >
+                孵化可见性
+              </label>
               <select
+                id="proposal-visibility-mode"
+                name="proposal-visibility-mode"
                 value={communityGovernance.visibilityMode}
                 onChange={(event) =>
                   communityGovernance.setVisibilityMode(
@@ -263,7 +299,12 @@ export function GovernanceTab({
                 ))}
               </select>
             </div>
+            <label htmlFor="proposal-governance-reason" className="sr-only">
+              社区治理备注
+            </label>
             <Input
+              id="proposal-governance-reason"
+              name="proposal-governance-reason"
               placeholder="社区治理备注（选填）"
               value={communityGovernance.reason}
               onChange={(event) => communityGovernance.setReason(event.target.value)}

@@ -21,7 +21,12 @@ export function AgentRiskProfileCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex gap-2">
+          <label htmlFor="agent-risk-profile-id" className="sr-only">
+            Agent ID
+          </label>
           <Input
+            id="agent-risk-profile-id"
+            name="agent-risk-profile-id"
             placeholder="Agent ID"
             value={riskProfile.agentId}
             onChange={(event) => riskProfile.setAgentId(event.target.value)}

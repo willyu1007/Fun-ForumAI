@@ -176,12 +176,27 @@ export async function startPortForward({ context, namespace, podName, localPort,
 
 export async function stopChildProcess(child) {
   if (!child || child.exitCode !== null) return
+  const targetPid = Number(child.pid ?? 0)
+  if (targetPid > 0) {
+    try {
+      process.kill(targetPid, 'SIGTERM')
+    } catch {
+      // fall back to child.kill below if direct pid signaling fails
+    }
+  }
   child.kill('SIGTERM')
   await Promise.race([
     new Promise((resolve) => child.once('exit', resolve)),
     sleep(1500),
   ])
   if (child.exitCode === null) {
+    if (targetPid > 0) {
+      try {
+        process.kill(targetPid, 'SIGKILL')
+      } catch {
+        // fall back to child.kill below if direct pid signaling fails
+      }
+    }
     child.kill('SIGKILL')
     await Promise.race([
       new Promise((resolve) => child.once('exit', resolve)),

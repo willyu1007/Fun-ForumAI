@@ -53,7 +53,7 @@ export class IncubationOrchestrator {
         const tierSnapshot = await this.deps.stageTierService.getSnapshot(input.agent_id, {
           recomputeIfMissing: true,
         })
-        if (!tierMeets(stageSpec.tier_gate.t4_longform_min_tier, tierSnapshot.tier)) {
+        if (!tierMeets(stageSpec.tier_gate.strict_publication_longform_min_tier, tierSnapshot.tier)) {
           skipped += 1
           continue
         }
@@ -73,9 +73,9 @@ export class IncubationOrchestrator {
         proposer_agent_id: input.agent_id,
         status: 'PENDING',
         phase: 'AWAIT_GRANT',
-        strict_t4: stageSpec.strict_t4.enabled,
+        strict_publication: stageSpec.strict_publication.enabled,
         grant_required: stageSpec.incubation.grant_required,
-        premod_required: stageSpec.strict_t4.premod_required,
+        premod_required: stageSpec.strict_publication.premod_required,
         redaction_level: stageSpec.incubation.redaction_profile,
         source_count: 1,
         idempotency_key: idempotencyKey,

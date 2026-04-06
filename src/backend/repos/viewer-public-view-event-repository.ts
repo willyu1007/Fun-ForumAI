@@ -45,7 +45,6 @@ export class InMemoryViewerPublicViewEventRepository implements ViewerPublicView
         editorial_shelf_id: entry.editorial_shelf_id ?? null,
         storyline_state: entry.storyline_state ?? null,
         format_kind: entry.format_kind ?? null,
-        is_t4: entry.is_t4 ?? false,
         note_template_id: entry.note_template_id ?? null,
         cover_mode: entry.cover_mode ?? null,
         occurred_at: entry.occurred_at ?? now,

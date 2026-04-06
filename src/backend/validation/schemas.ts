@@ -258,15 +258,14 @@ export const patchCommunityStageSpecSchema = z
       z.object({
         min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
         runtime_gate: z.boolean().optional(),
-        t4_longform_only: z.boolean().optional(),
       }),
     ),
     tier_gate: z.object({
       resident_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
       core_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
-      t4_longform_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
+      strict_publication_longform_min_tier: z.enum(['T1', 'T2', 'T3', 'T4', 'T5']),
     }),
-    strict_t4: z.object({
+    strict_publication: z.object({
       enabled: z.boolean(),
       premod_required: z.boolean(),
       min_sources: z.number().int().min(1),
@@ -375,7 +374,6 @@ export const createCommunityProposalSchema = z.object({
   publication_review_profile_id: z.enum(PUBLICATION_REVIEW_PROFILE_IDS).optional(),
   launch_wave: z.string().trim().min(1).max(120).nullable().optional(),
   human_participation: humanParticipationInputSchema.optional(),
-  t4_candidate: z.boolean().optional(),
   source_community_id: z.string().trim().min(1).nullable().optional(),
 }).strict()
 

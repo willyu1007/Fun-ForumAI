@@ -154,6 +154,7 @@ export function createLlmServices(deps: {
     mediaProjectionService,
     mediaReuseGovernanceService,
     mediaLineageService,
+    storage: mediaAssetStorage,
   })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -189,9 +190,11 @@ export function createLlmServices(deps: {
     mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
     mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    forumSceneMetadataRepo: deps.forumSceneMetadataRepo,
     mediaAssetService,
     mediaReuseGovernanceService,
     mediaProjectionService,
+    mediaWriteBridge,
     gateway: mediaGenerationGateway,
     mediaObservabilityService,
     mediaLineageService,

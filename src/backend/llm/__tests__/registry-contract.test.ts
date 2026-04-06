@@ -8,6 +8,7 @@ import {
   defaultExecutionPolicyId,
   loadLlmRegistryBundle,
   loadPromptTemplatesRegistry,
+  validateLlmRegistryBundle,
 } from '../registry-loader.js'
 import {
   resolveIdentityWriteProfileRef,
@@ -210,6 +211,26 @@ describe('LLM registry contract', () => {
         }
       }
     }
+  })
+
+  it('rejects fallback direct targets that are not declared on the target profile', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profile = bundle.modelProfiles.profiles[0]
+
+    expect(profile).toBeDefined()
+    if (!profile) return
+
+    profile.fallback.push({
+      level: 'same-line',
+      profile_id: profile.profile_id,
+      provider_id: 'dashscope-openai',
+      model_id: 'missing-model',
+      reason: 'invalid_direct_target',
+    })
+
+    expect(() => validateLlmRegistryBundle(bundle)).toThrow(
+      /fallback direct target .* is not present on profile/i,
+    )
   })
 
   it('requires all five compiled V2 blocks on visible token-budget templates', () => {

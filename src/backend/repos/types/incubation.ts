@@ -17,7 +17,7 @@ export interface IncubationJob {
   proposer_agent_id: string
   status: IncubationJobStatus
   phase: IncubationJobPhase
-  strict_t4: boolean
+  strict_publication: boolean
   grant_required: boolean
   premod_required: boolean
   redaction_level: string
@@ -83,7 +83,7 @@ export interface CreateIncubationJobInput {
   proposer_agent_id: string
   status?: IncubationJobStatus
   phase?: IncubationJobPhase
-  strict_t4?: boolean
+  strict_publication?: boolean
   grant_required?: boolean
   premod_required?: boolean
   redaction_level?: string

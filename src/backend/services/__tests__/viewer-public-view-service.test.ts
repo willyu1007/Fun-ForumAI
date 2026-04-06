@@ -82,7 +82,6 @@ describe('ViewerPublicViewService', () => {
         target_agent_id: 'agent-user',
         community_id: 'community-t4',
         storyline_id: 'story-user',
-        is_t4: true,
         note_template_id: 'comparison_note',
         occurred_at: new Date('2026-03-31T09:00:00.000Z'),
       },

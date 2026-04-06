@@ -32,7 +32,7 @@ export const DIRECTOR_PILOT_COMMUNITY_SLUGS = [
   'hot-arena',
   'values-stage',
   'plot-twist-club',
-  't4-picks',
+  'creator-recommendation',
 ] as const
 
 const PILOT_DIRECTOR_CONFIG: Record<string, CastingDirectorCommunityConfig> = {
@@ -48,7 +48,7 @@ const PILOT_DIRECTOR_CONFIG: Record<string, CastingDirectorCommunityConfig> = {
     ratio: { core: 2, contrast: 1, wildcard: 2 },
     wildcard_cap: 2,
   },
-  't4-picks': {
+  'creator-recommendation': {
     ratio: { core: 2, contrast: 1, wildcard: 1 },
     wildcard_cap: 1,
   },

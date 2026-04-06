@@ -148,16 +148,16 @@ describe('E2E: Read API (public)', () => {
 
     try {
       const hotArena = getLaunchCommunityBySlug('hot-arena')
-      const t4Picks = getLaunchCommunityBySlug('t4-picks')
+      const creatorRecommendation = getLaunchCommunityBySlug('creator-recommendation')
       const hotCommunity = await createTestCommunity({
         name: 'Home Hot Community',
         slug: `home-hot-${Date.now()}`,
         rules_json: hotArena?.rules_json,
       })
-      const t4Community = await createTestCommunity({
-        name: 'Home T4 Community',
-        slug: `home-t4-${Date.now()}`,
-        rules_json: t4Picks?.rules_json,
+      const creatorNoteCommunity = await createTestCommunity({
+        name: 'Home Creator Note Community',
+        slug: `home-creator-note-${Date.now()}`,
+        rules_json: creatorRecommendation?.rules_json,
       })
       const authorRes = await request(app)
         .post('/v1/agents')
@@ -176,15 +176,15 @@ describe('E2E: Read API (public)', () => {
       expect(hotPostRes.status).toBe(201)
       const hotPostId = hotPostRes.body.data.id as string
 
-      const t4PostRes = await servicePost('/v1/posts', {
+      const creatorNotePostRes = await servicePost('/v1/posts', {
         actor_agent_id: agentId,
-        run_id: `run-home-t4-${Date.now()}`,
-        community_id: t4Community.id,
+        run_id: `run-home-creator-note-${Date.now()}`,
+        community_id: creatorNoteCommunity.id,
         title: '这条到底值不值得入手',
-        body: 't4 home body',
+        body: 'creator note home body',
       })
-      expect(t4PostRes.status).toBe(201)
-      const t4PostId = t4PostRes.body.data.id as string
+      expect(creatorNotePostRes.status).toBe(201)
+      const creatorNotePostId = creatorNotePostRes.body.data.id as string
 
       await forumSceneMetadataRepo.create({
         target_type: 'POST',
@@ -268,17 +268,17 @@ describe('E2E: Read API (public)', () => {
 
       await forumSceneMetadataRepo.create({
         target_type: 'POST',
-        community_id: t4Community.id,
-        post_id: t4PostId,
-        episode_id: 'episode-home-t4',
-        selection_id: 'selection-home-t4',
-        episode_plan_id: 'plan-home-t4',
-        local_intent_id: 'intent-home-t4',
+        community_id: creatorNoteCommunity.id,
+        post_id: creatorNotePostId,
+        episode_id: 'episode-home-creator-note',
+        selection_id: 'selection-home-creator-note',
+        episode_plan_id: 'plan-home-creator-note',
+        local_intent_id: 'intent-home-creator-note',
         director_surface: 'forum',
         actor_surface: 'forum_post',
         scene_template_id: 'launch-template',
         scene_template_version: 'v1',
-        scene_binding_id: 'binding-home-t4',
+        scene_binding_id: 'binding-home-creator-note',
         overlay_id: null,
         beat_id: null,
         phase: 'pivot',
@@ -290,20 +290,20 @@ describe('E2E: Read API (public)', () => {
             actor_surface: 'forum_post',
             scene_template_id: 'launch-template',
             scene_template_version: 'v1',
-            scene_binding_id: 'binding-home-t4',
+            scene_binding_id: 'binding-home-creator-note',
             overlay_id: null,
-            episode_id: 'episode-home-t4',
+            episode_id: 'episode-home-creator-note',
             beat_id: null,
             phase: 'pivot',
             selection_mode: 'pool_guided',
-            selection_id: 'selection-home-t4',
-            episode_plan_id: 'plan-home-t4',
-            local_intent_id: 'intent-home-t4',
+            selection_id: 'selection-home-creator-note',
+            episode_plan_id: 'plan-home-creator-note',
+            local_intent_id: 'intent-home-creator-note',
             started_at: new Date('2026-03-31T00:00:00.000Z').toISOString(),
             expires_at: null,
           },
           episode_brief: {
-            episode_id: 'episode-home-t4',
+            episode_id: 'episode-home-creator-note',
             director_surface: 'forum',
             actor_surface: 'forum_post',
             template_id: 'launch-template',
@@ -328,7 +328,7 @@ describe('E2E: Read API (public)', () => {
             expires_at: new Date('2026-04-01T00:00:00.000Z').toISOString(),
           },
           local_intent: {
-            intent_id: 'intent-home-t4',
+            intent_id: 'intent-home-creator-note',
             delivery_surface: 'forum_post',
             initiative: 'open_topic',
             opinion_policy: 'free_opinion',
@@ -360,7 +360,7 @@ describe('E2E: Read API (public)', () => {
       expect(notesShelf?.items).toEqual([])
       expect(
         res.body.data.hot_feed_continuation.items
-          .some((item: { id: string }) => item.id === t4PostId),
+          .some((item: { id: string }) => item.id === creatorNotePostId),
       ).toBe(true)
     } finally {
       featureFlags.homeProgrammingV1 = originalHomeProgramming
@@ -417,7 +417,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/communities exposes canonical semantic contracts for launch-backed communities', async () => {
-    const launchCommunity = getLaunchCommunityBySlug('t4-picks')
+    const launchCommunity = getLaunchCommunityBySlug('creator-recommendation')
     const community = await createTestCommunity({
       name: 'Canonical Creator Community',
       slug: `canonical-creator-${Date.now()}`,

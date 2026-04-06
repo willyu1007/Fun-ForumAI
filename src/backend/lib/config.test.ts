@@ -73,4 +73,20 @@ describe('config', () => {
     expect(config.allowDevTools).toBe(false)
     expect(config.secureCookies).toBe(true)
   })
+
+  it('uses relaxed default timeouts for low-realtime LLM and media generation flows', async () => {
+    const { config } = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      LLM_TIMEOUT_MS: undefined,
+      MEDIA_GENERATION_TIMEOUT_MS: undefined,
+      MEDIA_GENERATION_RUNNING_TIMEOUT_MS: undefined,
+    })
+
+    expect(config.llm.timeoutMs).toBe(45_000)
+    expect(config.mediaGeneration.timeoutMs).toBe(180_000)
+    expect(config.mediaGeneration.runningTimeoutMs).toBe(360_000)
+  })
 })

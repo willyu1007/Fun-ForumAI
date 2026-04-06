@@ -37,6 +37,7 @@ describe('frontend build profile', () => {
       ['FRONTEND_BUILD_PROFILE', 'launch'],
       ['VITE_FF_HOME_PROGRAMMING_V1', 'true'],
       ['VITE_FF_PROGRAMMING_OPS_V1', 'true'],
+      ['VITE_FF_MULTIMODAL_AGENT_MEDIA_V1', 'true'],
     ]))
   })
 })

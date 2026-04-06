@@ -6,7 +6,7 @@ import { config } from '../lib/config.js'
 import { resolvePostLaunchTuningProfile } from './post-launch-tuning.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
-export const LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS = ['t4-picks', 't4-relations'] as const
+export const LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS = ['creator-recommendation', 'creator-relationship'] as const
 export const LAUNCH_CREATOR_NOTE_TEMPLATE_IDS = [
   'recommendation_note',
   'comparison_note',
@@ -29,7 +29,7 @@ export type LaunchCreatorNoteTemplateId = (typeof LAUNCH_CREATOR_NOTE_TEMPLATE_I
 export type LaunchCreatorNoteCoverMode = (typeof LAUNCH_CREATOR_NOTE_COVER_MODE_IDS)[number]
 
 const DEFAULT_LAUNCH_CREATOR_NOTE_TEMPLATES_PATH = resolveLaunchContractPath({
-  bundle_slug: 'launch-t4-community-enablement',
+  bundle_slug: 'launch-creator-note-enablement',
   file_name: 'creator_note_templates.v1.yaml',
 })
 
@@ -38,7 +38,7 @@ const creatorNoteCommunitySchema = z.object({
   name: z.string().trim().min(1),
   promise_to_viewer: z.string().trim().min(1),
   positioning_tags: z.array(z.string().trim().min(1)).min(1),
-  creator_note_policy: z.object({
+  creator_note_runtime: z.object({
     cover_required: z.boolean(),
     min_images_per_root_post: z.number().int().min(0),
     allowed_note_templates: z.array(z.enum(LAUNCH_CREATOR_NOTE_TEMPLATE_IDS)).min(1),
@@ -48,22 +48,6 @@ const creatorNoteCommunitySchema = z.object({
     creator_slots: z.object({
       resident_anchor_slots: z.number().int().min(0),
       resident_creator_slots: z.number().int().min(0).optional(),
-      resident_t4_slots: z.number().int().min(0).optional(),
-      guest_slots: z.number().int().min(0),
-      daily_note_floor: z.number().int().min(0),
-    }).strict(),
-  }).strict().optional(),
-  t4_policy: z.object({
-    cover_required: z.boolean(),
-    min_images_per_root_post: z.number().int().min(0),
-    allowed_note_templates: z.array(z.enum(LAUNCH_CREATOR_NOTE_TEMPLATE_IDS)).min(1),
-    caption_structure: z.array(z.string().trim().min(1)).min(1),
-    comment_bait_required: z.boolean(),
-    strict_creator_gate: z.boolean(),
-    creator_slots: z.object({
-      resident_anchor_slots: z.number().int().min(0),
-      resident_creator_slots: z.number().int().min(0).optional(),
-      resident_t4_slots: z.number().int().min(0).optional(),
       guest_slots: z.number().int().min(0),
       daily_note_floor: z.number().int().min(0),
     }).strict(),
@@ -72,16 +56,14 @@ const creatorNoteCommunitySchema = z.object({
   runtime_defaults: z.object({
     content_kind: z.string().trim().min(1).optional(),
     is_creator_note: z.boolean().optional(),
-    is_t4: z.boolean().optional(),
     publication_review_profile_id: z.string().trim().min(1).optional(),
-    strict_t4: z.boolean().optional(),
+    strict_publication: z.boolean().optional(),
     root_visual_ratio: z.number().min(0).max(1),
     surface_kind: z.string().trim().min(1),
   }).strict(),
   distribution: z.object({
     home_shelf_weight: z.number(),
     creator_note_feed_bias: z.number().optional(),
-    t4_feed_bias: z.number().optional(),
     hot_feed_bias: z.number(),
     continuity_bias: z.number(),
   }).strict(),
@@ -102,7 +84,7 @@ const globalNoteContractSchema = z.object({
   default_stage_template_ref: z.string().trim().min(1),
   default_publication_review_profile_id: z.string().trim().min(1).optional(),
   strict_creator_gate_default: z.boolean().optional(),
-  strict_t4_default: z.boolean().optional(),
+  strict_publication_default: z.boolean().optional(),
   required_projection_fields: z.array(z.string().trim().min(1)).default([]),
   allowed_surfaces: z.array(z.string().trim().min(1)).default([]),
 }).strict()
@@ -120,23 +102,14 @@ const creatorNoteTemplateSchema = z.object({
   draft_status: z.string().trim().min(1),
   notes: z.array(z.string().trim().min(1)).default([]),
   global_note_contract: globalNoteContractSchema.optional(),
-  global_t4_contract: globalNoteContractSchema.optional(),
   creator_note_gate: creatorNoteGateSchema.optional(),
-  creator_gate: creatorNoteGateSchema.optional(),
   creator_note_communities: z.array(creatorNoteCommunitySchema).length(LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS.length).optional(),
-  communities: z.array(creatorNoteCommunitySchema).length(LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS.length).optional(),
   creator_note_template_registry: z.array(templateRegistryEntrySchema).length(LAUNCH_CREATOR_NOTE_TEMPLATE_IDS.length).optional(),
-  template_registry: z.array(templateRegistryEntrySchema).length(LAUNCH_CREATOR_NOTE_TEMPLATE_IDS.length).optional(),
   creator_note_cover_modes: z.array(z.object({
     id: z.enum(LAUNCH_CREATOR_NOTE_COVER_MODE_IDS),
     intent: z.string().trim().min(1),
   }).strict()).length(LAUNCH_CREATOR_NOTE_COVER_MODE_IDS.length).optional(),
-  cover_modes: z.array(z.object({
-    id: z.enum(LAUNCH_CREATOR_NOTE_COVER_MODE_IDS),
-    intent: z.string().trim().min(1),
-  }).strict()).length(LAUNCH_CREATOR_NOTE_COVER_MODE_IDS.length).optional(),
   creator_note_distribution_rules: z.record(z.string(), z.unknown()).optional(),
-  distribution_rules: z.record(z.string(), z.unknown()).optional(),
   guardrails: z.array(z.string().trim().min(1)).default([]),
 }).strict()
 
@@ -167,7 +140,7 @@ export interface LaunchCreatorNoteTemplateRuntime {
     name: string
     promise_to_viewer: string
     positioning_tags: string[]
-    creator_note_policy: {
+    creator_note_runtime: {
       cover_required: boolean
       min_images_per_root_post: number
       allowed_note_templates: LaunchCreatorNoteTemplateId[]
@@ -185,9 +158,8 @@ export interface LaunchCreatorNoteTemplateRuntime {
     runtime_defaults: {
       content_kind?: string
       is_creator_note?: boolean
-      is_t4?: boolean
       publication_review_profile_id?: string
-      strict_t4?: boolean
+      strict_publication?: boolean
       root_visual_ratio: number
       surface_kind: string
     }
@@ -242,12 +214,12 @@ function normalizeLaunchCreatorNoteTemplateRuntime(input: unknown): LaunchCreato
   }
 
   const file = parsed.data
-  const globalNoteContract = file.global_note_contract ?? file.global_t4_contract
-  const creatorNoteGate = file.creator_note_gate ?? file.creator_gate
-  const communities = file.creator_note_communities ?? file.communities
-  const templateRegistry = file.creator_note_template_registry ?? file.template_registry
-  const coverModes = file.creator_note_cover_modes ?? file.cover_modes
-  const distributionRules = file.creator_note_distribution_rules ?? file.distribution_rules
+  const globalNoteContract = file.global_note_contract
+  const creatorNoteGate = file.creator_note_gate
+  const communities = file.creator_note_communities
+  const templateRegistry = file.creator_note_template_registry
+  const coverModes = file.creator_note_cover_modes
+  const distributionRules = file.creator_note_distribution_rules
   if (!globalNoteContract || !creatorNoteGate || !communities || !templateRegistry || !coverModes || !distributionRules) {
     throw new ValidationError('Invalid launch creator-note template contract: canonical creator_note_* blocks are required')
   }
@@ -273,36 +245,29 @@ function normalizeLaunchCreatorNoteTemplateRuntime(input: unknown): LaunchCreato
     global_note_contract: {
       ...globalNoteContract,
       strict_creator_gate_default:
-        globalNoteContract.strict_creator_gate_default ?? globalNoteContract.strict_t4_default,
+        globalNoteContract.strict_creator_gate_default ?? globalNoteContract.strict_publication_default,
     },
     creator_note_gate: creatorNoteGate,
     communities: communities.map((community) => {
-      const creatorNotePolicy = community.creator_note_policy ?? community.t4_policy
       return {
         slug: community.slug,
         name: community.name,
         promise_to_viewer: community.promise_to_viewer,
         positioning_tags: community.positioning_tags,
-        creator_note_policy: creatorNotePolicy
-          ? {
-              ...creatorNotePolicy,
-              creator_slots: {
-                resident_anchor_slots: creatorNotePolicy.creator_slots.resident_anchor_slots,
-                resident_creator_slots:
-                  creatorNotePolicy.creator_slots.resident_creator_slots
-                  ?? creatorNotePolicy.creator_slots.resident_t4_slots
-                  ?? 0,
-                guest_slots: creatorNotePolicy.creator_slots.guest_slots,
-                daily_note_floor: creatorNotePolicy.creator_slots.daily_note_floor,
-              },
-            }
-          : undefined,
+        creator_note_runtime: {
+          ...community.creator_note_runtime,
+          creator_slots: {
+            resident_anchor_slots: community.creator_note_runtime.creator_slots.resident_anchor_slots,
+            resident_creator_slots: community.creator_note_runtime.creator_slots.resident_creator_slots ?? 0,
+            guest_slots: community.creator_note_runtime.creator_slots.guest_slots,
+            daily_note_floor: community.creator_note_runtime.creator_slots.daily_note_floor,
+          },
+        },
         preferred_cover_modes: community.preferred_cover_modes,
         runtime_defaults: community.runtime_defaults,
         distribution: {
           home_shelf_weight: community.distribution.home_shelf_weight,
-          creator_note_feed_bias:
-            community.distribution.creator_note_feed_bias ?? community.distribution.t4_feed_bias ?? 0,
+          creator_note_feed_bias: community.distribution.creator_note_feed_bias ?? 0,
           hot_feed_bias: community.distribution.hot_feed_bias,
           continuity_bias: community.distribution.continuity_bias,
         },
@@ -359,7 +324,7 @@ function resolveTemplateFromPhase(input: ResolveLaunchCreatorNoteProjectionInput
   ].join(' ')
   const isMistakeRecap = /踩坑|翻车|复盘|教训/u.test(joinedHints)
 
-  if (input.community_slug === 't4-picks') {
+  if (input.community_slug === 'creator-recommendation') {
     if (isMistakeRecap) return 'mistake_recap_note'
     if (input.phase === 'pivot') return 'comparison_note'
     if (input.phase === 'closure' || input.phase === 'aftershow') return 'review_note'

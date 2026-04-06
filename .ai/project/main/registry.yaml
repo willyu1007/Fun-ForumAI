@@ -1704,3 +1704,17 @@ tasks:
       - R-027
     dev_docs_path: dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1
     updated: 2026-04-03
+  - id: T-937
+    slug: forum-semantic-and-llm-runtime-residual-closeout
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout
+    updated: 2026-04-06
+  - id: T-938
+    slug: runtime-e2e-seed-and-media-closeout
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/runtime-e2e-seed-and-media-closeout
+    updated: 2026-04-06

@@ -13,6 +13,12 @@ import {
   startPortForward,
   stopChildProcess,
 } from './k8s-smoke-utils.mjs'
+import { registerChildProcessCleanup } from './lib/k8s-process-cleanup.mjs'
+import {
+  loadFrontendBuildProfile,
+  toDockerBuildArgs,
+} from '../ops/packaging/scripts/frontend-build-profile.mjs'
+import { validateLaunchImageProof } from './ci/check-image-launch-proof.mjs'
 
 function usage(exitCode = 0) {
   console.log(`
@@ -31,6 +37,7 @@ Options:
   --dashscope-api-key-env <name>  Environment variable for the primary DashScope API key (default: DASHSCOPE_API_KEY)
   --media-generation-api-key-env <name>
                                    Environment variable for the image generation API key (default: MEDIA_GENERATION_API_KEY)
+  --frontend-build-profile <id>   Frontend build profile to bake into the image (default: launch, use "none" to skip)
   --image-tag <image>             Backend image tag to build/load (default: fun-forum-api:dev)
   --kind-load-image <image>       Backward-compatible alias for --image-tag
   --dockerfile <path>             Dockerfile used for the backend image build (default: ops/packaging/services/llm-forum.Dockerfile)
@@ -45,6 +52,8 @@ Options:
   --backend-label <selector>      Backend pod label selector (default: app.kubernetes.io/name=backend)
   --backend-local-port <port>     Local port for temporary backend port-forward (default: 4100)
   --backend-port <port>           Backend container port (default: 4000)
+  --seed-profile <profile>        Dev seed profile to apply after rollout (default: canonical, use "none" to skip)
+  --skip-seed                     Skip POST /v1/dev/seed after rollout
   --run-smoke                     Optional: run generic runtime staging smoke after rollout
   --help
 
@@ -53,6 +62,7 @@ Examples:
   DASHSCOPE_API_KEY=*** MEDIA_GENERATION_API_KEY=*** node scripts/k8s-local-staging.mjs
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --create-kind-if-missing
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --skip-db-migrate
+  DASHSCOPE_API_KEY=*** MEDIA_GENERATION_API_KEY=*** node scripts/k8s-local-staging.mjs --seed-profile canonical
   DASHSCOPE_API_KEY=*** pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 `)
   process.exit(exitCode)
@@ -157,6 +167,7 @@ async function maybeRefreshImage({
   imageTag,
   dockerfile,
   buildContext,
+  dockerBuildArgs,
   clusterName,
   skipImageRefresh,
   skipImageBuild,
@@ -175,6 +186,7 @@ async function maybeRefreshImage({
       String(dockerfile),
       '-t',
       String(imageTag),
+      ...dockerBuildArgs,
       String(buildContext),
     ])
   } else {
@@ -392,6 +404,32 @@ async function fetchRuntimeFeatures(baseUrl, adminToken) {
   return res.json?.data
 }
 
+async function fetchFrontendBuildProof(baseUrl) {
+  const res = await requestJson(`${baseUrl}/frontend-build-flags.json`, {
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+  if (!res.ok) {
+    throw new Error(`GET /frontend-build-flags.json failed: ${res.status} ${res.text}`)
+  }
+  return res.json
+}
+
+async function seedDevData(baseUrl, profile) {
+  const res = await requestJson(`${baseUrl}/v1/dev/seed`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(profile ? { profile } : {}),
+  })
+  if (!res.ok) {
+    throw new Error(`POST /v1/dev/seed failed: ${res.status} ${res.text}`)
+  }
+  return res.json?.data
+}
+
 async function loadLocalRuntimeBuildInfo() {
   const mod = await tsImport('../src/backend/lib/runtime-build-info.ts', import.meta.url)
   return mod.getRuntimeBuildInfo()
@@ -410,14 +448,19 @@ function validateRuntimeFeatures(features, localBuildInfo) {
 
   const flags = features?.flags ?? {}
   const requiredScenes = ['forum_post', 'forum_thread', 'forum_turn', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
-  const requiredDirectorFlags = ['directorRuntimeStateV1']
+  const requiredTrueFlags = [
+    'directorRuntimeStateV1',
+    'multimodalAgentMediaV1',
+    'mediaGenerationV1',
+    'mediaRolloutControllerV1',
+  ]
   if (flags.personaRuntimeV1 !== true) {
     throw new Error('Runtime features show personaRuntimeV1=false after local-kind reconciliation')
   }
   if (flags.personaWritebackV1 !== true) {
     throw new Error('Runtime features show personaWritebackV1=false after local-kind reconciliation')
   }
-  for (const flagName of requiredDirectorFlags) {
+  for (const flagName of requiredTrueFlags) {
     if (flags[flagName] !== true) {
       throw new Error(`Runtime features show ${flagName}=false after local-kind reconciliation`)
     }
@@ -431,6 +474,22 @@ function validateRuntimeFeatures(features, localBuildInfo) {
   }
 }
 
+function normalizeFrontendBuildProfile(raw) {
+  if (raw === 'none') return null
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    return raw.trim()
+  }
+  return 'launch'
+}
+
+function normalizeSeedProfile(raw) {
+  if (raw === 'none') return null
+  if (raw === 'launch' || raw === 'smoke-minimal') {
+    return raw
+  }
+  return 'canonical'
+}
+
 async function main() {
   const args = parseCliArgs(process.argv, {
     k8sContext: 'kind-funforum',
@@ -439,6 +498,7 @@ async function main() {
     secretName: 'forum-app-secret',
     dashscopeApiKeyEnv: 'DASHSCOPE_API_KEY',
     mediaGenerationApiKeyEnv: 'MEDIA_GENERATION_API_KEY',
+    frontendBuildProfile: 'launch',
     imageTag: 'fun-forum-api:dev',
     dockerfile: 'ops/packaging/services/llm-forum.Dockerfile',
     buildContext: '.',
@@ -452,6 +512,8 @@ async function main() {
     backendLabel: 'app.kubernetes.io/name=backend',
     backendLocalPort: 4100,
     backendPort: 4000,
+    seedProfile: 'canonical',
+    skipSeed: false,
     runSmoke: false,
   })
 
@@ -477,6 +539,15 @@ async function main() {
   await access(dockerfilePath)
   const buildContextPath = resolve(process.cwd(), String(args.buildContext))
   await access(buildContextPath)
+  const frontendBuildProfileId = normalizeFrontendBuildProfile(args.frontendBuildProfile)
+  const frontendBuildProfile = frontendBuildProfileId
+    ? loadFrontendBuildProfile(frontendBuildProfileId)
+    : null
+  const dockerBuildArgs = frontendBuildProfile
+    ? toDockerBuildArgs(frontendBuildProfile)
+      .flatMap(([key, value]) => ['--build-arg', `${key}=${value}`])
+    : []
+  const seedProfile = normalizeSeedProfile(args.seedProfile)
 
   const existingSecretData = await getSecretData({
     context: args.k8sContext,
@@ -511,6 +582,7 @@ async function main() {
     imageTag: String(args.imageTag || args.kindLoadImage),
     dockerfile: dockerfilePath,
     buildContext: buildContextPath,
+    dockerBuildArgs,
     clusterName: args.kindClusterName,
     skipImageRefresh: Boolean(args.skipImageRefresh),
     skipImageBuild: Boolean(args.skipImageBuild),
@@ -628,6 +700,7 @@ async function main() {
       containerPort: asInt(args.backendPort, 4000, '--backend-port'),
     })
     backendForward = backendForwardResult.child
+    const unregisterBackendForwardCleanup = registerChildProcessCleanup(backendForward)
     const backendLocalPort = backendForwardResult.localPort
     if (backendForwardResult.fellBackFromRequestedPort) {
       console.warn(
@@ -639,11 +712,29 @@ async function main() {
     await waitForBackend(baseUrl)
     const runtimeFeatures = await fetchRuntimeFeatures(baseUrl, adminToken)
     validateRuntimeFeatures(runtimeFeatures, localBuildInfo)
+    if (frontendBuildProfile) {
+      const frontendBuildProof = await fetchFrontendBuildProof(baseUrl)
+      validateLaunchImageProof(frontendBuildProof, frontendBuildProfile.profile)
+      if (frontendBuildProof.frontend_flags?.VITE_FF_MULTIMODAL_AGENT_MEDIA_V1 !== 'true') {
+        throw new Error('Frontend build proof is missing VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=true')
+      }
+    }
+    let seedSummary = null
+    if (!args.skipSeed && seedProfile) {
+      seedSummary = await seedDevData(baseUrl, seedProfile)
+      if ((seedSummary?.counts?.communities ?? 0) < 1 || (seedSummary?.counts?.agents ?? 0) < 1) {
+        throw new Error(`Seed profile ${seedProfile} did not create usable entities`)
+      }
+    }
     console.log('[staging] Runtime fingerprint verified:', JSON.stringify({
       code_fingerprint: runtimeFeatures.runtime.build.code_fingerprint,
       persona_runtime: runtimeFeatures.runtime.persona_runtime,
+      frontend_build_profile: frontendBuildProfile?.profile ?? null,
+      seeded_profile: !args.skipSeed && seedProfile ? seedProfile : null,
+      seeded_counts: seedSummary?.counts ?? null,
       local_port: backendLocalPort,
     }))
+    unregisterBackendForwardCleanup()
   } finally {
     await stopChildProcess(backendForward)
   }

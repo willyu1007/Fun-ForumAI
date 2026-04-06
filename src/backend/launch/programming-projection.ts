@@ -11,7 +11,6 @@ import {
   deriveFormatKindFromContentKind,
   normalizeContentKind,
   normalizeEditorialShelfId,
-  toLegacyEditorialShelfId,
   type ContentKind,
   type ContentSemanticProjection,
   type EditorialShelfId,
@@ -32,8 +31,6 @@ export interface LaunchProgrammingProjection {
   scene_phase?: ScenePhase
   format_kind?: FormatKind
   editorial_shelf_id?: EditorialShelfId
-  editorial_shelf?: string
-  is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: LaunchCreatorNoteTemplateId
   cover_mode?: LaunchCreatorNoteCoverMode
@@ -96,11 +93,7 @@ export function buildLaunchProgrammingProjection(input: {
     ? launchProfile.default_editorial_shelf_ids
       .map((item) => (typeof item === 'string' ? normalizeEditorialShelfId(item) : null))
       .find((item): item is EditorialShelfId => item !== null)
-    : Array.isArray(launchProfile?.editorial_shelf)
-      ? launchProfile.editorial_shelf
-        .map((item) => (typeof item === 'string' ? normalizeEditorialShelfId(item) : null))
-        .find((item): item is EditorialShelfId => item !== null)
-      : undefined
+    : undefined
   const crossRoutePolicy = readCrossRoutePolicy(input.community_rules_json)
   const allowAftershowExport = crossRoutePolicy?.allow_aftershow_export === true
   const payload = input.scene_metadata ? parsePublicScenePayload(input.scene_metadata.payload_json) : null
@@ -132,13 +125,13 @@ export function buildLaunchProgrammingProjection(input: {
     open_loops: payload?.episode_brief.open_loops ?? [],
     media_count: input.media_count ?? 0,
   })
-  const editorialShelfId = normalizeEditorialShelfId(readString(launchEditorialIntent?.primary_shelf))
+  const editorialShelfId = normalizeEditorialShelfId(
+    readString(launchEditorialIntent?.primary_shelf_id) ?? readString(launchEditorialIntent?.primary_shelf),
+  )
     ?? defaultEditorialShelfId
   const isCreatorNote = typeof launchCreatorNote?.is_creator_note === 'boolean'
     ? launchCreatorNote.is_creator_note
-    : typeof launchCreatorNote?.is_t4 === 'boolean'
-      ? launchCreatorNote.is_t4
-      : creatorNoteProjection.is_creator_note
+    : creatorNoteProjection.is_creator_note
   const noteTemplateId = normalizeLaunchCreatorNoteTemplateId(readString(launchCreatorNote?.note_template_id))
     ?? creatorNoteProjection.note_template_id
   const coverMode = isLaunchCreatorNoteCoverMode(launchCreatorNote?.cover_mode)
@@ -201,8 +194,6 @@ export function buildLaunchProgrammingProjection(input: {
     ...(input.scene_metadata?.phase ? { scene_phase: input.scene_metadata.phase } : {}),
     ...(formatKind ? { format_kind: formatKind } : {}),
     ...(editorialShelfId ? { editorial_shelf_id: editorialShelfId } : {}),
-    ...(editorialShelfId ? { editorial_shelf: toLegacyEditorialShelfId(editorialShelfId) ?? editorialShelfId } : {}),
-    is_t4: isCreatorNote,
     aftershow_export_bias: aftershowExportBias,
     ...(noteTemplateId ? { note_template_id: noteTemplateId } : {}),
     ...(coverMode ? { cover_mode: coverMode } : {}),

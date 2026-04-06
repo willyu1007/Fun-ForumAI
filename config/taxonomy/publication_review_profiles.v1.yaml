@@ -6,5 +6,5 @@ profiles:
   - id: creator_strict_publication
     label: 创作者严格发布
     aliases:
-      - strict_t4
+      - strict_publication
       - strict_evidence_public

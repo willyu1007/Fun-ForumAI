@@ -306,6 +306,7 @@ export class LLMGateway {
             max_tokens: resolvedParams.maxTokens,
             stop: resolvedParams.stop,
             response_mode: resolvedParams.responseMode,
+            adapter_id: adapterBinding.adapterId,
             provider: {
               provider_id: candidate.provider_id,
               gateway_kind: credential.provider.gateway_kind,

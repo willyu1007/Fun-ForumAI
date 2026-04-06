@@ -16,22 +16,8 @@ const rankingSignalsSchema = z.object({
   follow_state: lightweightSignalWeightSchema,
   relation_context: lightweightSignalWeightSchema,
   storyline_revisit: lightweightSignalWeightSchema,
-  creator_note_revisit: lightweightSignalWeightSchema.optional(),
-  t4_revisit: lightweightSignalWeightSchema.optional(),
-}).strict().superRefine((input, ctx) => {
-  if (input.creator_note_revisit || input.t4_revisit) return
-  ctx.addIssue({
-    code: z.ZodIssueCode.custom,
-    message: 'creator_note_revisit is required',
-    path: ['creator_note_revisit'],
-  })
-}).transform((input) => ({
-  viewer_agent_id: input.viewer_agent_id,
-  follow_state: input.follow_state,
-  relation_context: input.relation_context,
-  storyline_revisit: input.storyline_revisit,
-  creator_note_revisit: input.creator_note_revisit ?? input.t4_revisit!,
-}))
+  creator_note_revisit: lightweightSignalWeightSchema,
+}).strict()
 
 const lightweightPersonalizationSchema = z.object({
   version: z.number().int().positive(),

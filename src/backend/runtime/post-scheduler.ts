@@ -5,13 +5,18 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AgentPersona } from './types.js'
-import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
+import {
+  buildLocalIntentBlock,
+  generateSceneId,
+  type PublicSceneWritePayload,
+} from '../services/public-scene-runtime.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
+import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import type { PromptComposeAudit } from './types.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
@@ -20,10 +25,17 @@ import type { ImagePlannerService } from '../media/image-planner-service.js'
 import type { MediaGenerationService } from '../media/media-generation-service.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
+import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
+import {
+  resolveStageSpecFromRules,
+  STAGE_TIER_ORDER,
+  tierMeets,
+  type AgentStageTier,
+} from '../stage/index.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -43,7 +55,9 @@ export interface PostSchedulerDeps {
   dataplaneWriter: DataPlaneWriter
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
-  membershipRepo?: Pick<AgentCommunityMembershipRepository, 'listActiveCommunityIdsByAgent'>
+  membershipRepo?: Pick<AgentCommunityMembershipRepository, 'listActiveCommunityIdsByAgent' | 'findCurrent'>
+  roleAssignmentRepo?: Pick<RoleAssignmentRepository, 'findPrimaryForAgent'>
+  stageTierService?: Pick<AgentStageTierService, 'getSnapshot'> | null
   promptOrchestrator?: PromptOrchestrator | null
   mediaProjectionService?: MediaProjectionService | null
   visualDirectiveService?: VisualDirectiveService | null
@@ -79,6 +93,7 @@ interface CommunityCandidate {
   name: string
   description: string
   rules: string
+  rules_json: Record<string, unknown> | null
 }
 
 interface SelectedAgent {
@@ -111,6 +126,7 @@ interface ScheduledPostVisualPlan {
  */
 export class PostScheduler {
   private lastPostAt = 0
+  private lastSkipAt = 0
   private postsToday = 0
   private todayDate = ''
 
@@ -122,6 +138,7 @@ export class PostScheduler {
   get stats() {
     return {
       lastPostAt: this.lastPostAt,
+      lastSkipAt: this.lastSkipAt,
       postsToday: this.postsToday,
       postMaxPerDay: this.cfg.postMaxPerDay,
       postIntervalMs: this.cfg.postIntervalMs,
@@ -132,6 +149,7 @@ export class PostScheduler {
     this.rolloverDay()
     if (this.postsToday >= this.cfg.postMaxPerDay) return false
     if (Date.now() - this.lastPostAt < this.cfg.postIntervalMs) return false
+    if (Date.now() - this.lastSkipAt < this.cfg.postIntervalMs) return false
     return true
   }
 
@@ -143,63 +161,65 @@ export class PostScheduler {
     const start = Date.now()
 
     try {
-      const selected = await this.pickAgent()
-      if (!selected) return { triggered: false, error: 'No active agents' }
-      const routing = await this.resolveVisibleRouting(selected.id, 'base')
-
       const communities = await this.listCommunities()
-      if (communities.length === 0) return { triggered: false, error: 'No communities' }
-      const eligibleCommunities = this.resolveEligibleCommunities(selected.id, communities)
-      if (eligibleCommunities.length === 0) {
-        return {
-          triggered: true,
-          agent_id: selected.id,
-          error: 'Selected agent has no writable communities',
-        }
+      if (communities.length === 0) {
+        this.recordSkip()
+        return { triggered: false, error: 'No communities' }
       }
-      const fallbackCommunity = this.pickRandomCommunity(eligibleCommunities)
+      const candidate = await this.pickRunnableAgentCandidate(communities)
+      if (!candidate) {
+        this.recordSkip()
+        return { triggered: false, error: 'No stage-eligible posting candidates' }
+      }
+      const { selected, writableCommunities } = candidate
+      const routing = await this.resolveVisibleRouting(selected.id, 'base')
+      const fallbackCommunity = this.pickRandomCommunity(writableCommunities)
       if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
       const sceneSelection = this.deps.publicSceneSelectorService
         ? await this.deps.publicSceneSelectorService.selectScheduledPost({
             agent: selected,
-            eligible_communities: eligibleCommunities,
+            eligible_communities: writableCommunities,
           })
         : { kind: 'skip' as const, reason: 'scene_selector_unavailable' }
       const targetCommunity = sceneSelection.kind === 'scene'
         ? sceneSelection.community
         : fallbackCommunity
-      const scenePayload = sceneSelection.kind === 'scene'
+      const selectorScenePayload = sceneSelection.kind === 'scene'
         ? sceneSelection.payload
         : null
-      let effectiveScenePayload = scenePayload
       const scheduledFallbackReason = sceneSelection.kind === 'skip'
         ? sceneSelection.reason
         : null
+      let effectiveScenePayload = selectorScenePayload
+        ?? this.buildFallbackScheduledScenePayload({
+          community: targetCommunity,
+          reason: scheduledFallbackReason,
+        })
       if (scheduledFallbackReason) {
         console.warn(
           `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,
         )
       }
-      const promptRef = scenePayload
+      const promptRef = selectorScenePayload
         ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
         : buildPromptTemplateRef('agent-create-post', 4)
 
       const persona = this.loadPersona(selected.id)
       const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
-      const communityCatalog = this.toCommunityCatalog(eligibleCommunities)
+      const communityCatalog = this.toCommunityCatalog(writableCommunities)
       let visualPlan: ScheduledPostVisualPlan | null = null
-      if (scenePayload) {
+      if (effectiveScenePayload) {
         try {
           visualPlan = await this.prepareVisualPlan({
             agent_id: selected.id,
             community_id: targetCommunity.id,
-            scenePayload,
+            scenePayload: effectiveScenePayload,
           })
           if (visualPlan) {
             effectiveScenePayload = {
-              ...scenePayload,
+              ...effectiveScenePayload,
               planning_audit: {
-                ...(scenePayload.planning_audit ?? {}),
+                ...(effectiveScenePayload.planning_audit ?? {}),
                 ...visualPlan.planning_audit,
               },
               visual_ref: {
@@ -213,9 +233,9 @@ export class PostScheduler {
           const message = error instanceof Error ? error.message : 'visual_planning_failed'
           console.error(`[PostScheduler] visual planning failed for agent=${selected.id}: ${message}`)
           effectiveScenePayload = {
-            ...scenePayload,
+            ...effectiveScenePayload,
             planning_audit: {
-              ...(scenePayload.planning_audit ?? {}),
+              ...(effectiveScenePayload.planning_audit ?? {}),
               visual_planning_status: 'degraded',
               visual_planning_error: message,
             },
@@ -392,7 +412,7 @@ export class PostScheduler {
       const instruction = this.deps.responseParser.parseAsScheduledPost({
         text: llmResponse.content,
         fallbackCommunityId: targetCommunity.id,
-        communities: eligibleCommunities,
+        communities: writableCommunities,
         lockedCommunityId: effectiveScenePayload ? targetCommunity.id : undefined,
       })
 
@@ -486,6 +506,7 @@ export class PostScheduler {
       }
 
       this.lastPostAt = Date.now()
+      this.lastSkipAt = 0
       this.postsToday++
 
       if (renderDecision && this.deps.personaStateService) {
@@ -499,7 +520,7 @@ export class PostScheduler {
         })
       }
 
-      const actualCommunity = eligibleCommunities.find((item) => item.id === instruction.community_id)
+      const actualCommunity = writableCommunities.find((item) => item.id === instruction.community_id)
       console.log(
         `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
       )
@@ -521,14 +542,16 @@ export class PostScheduler {
 
   /** Force a post regardless of interval/quota (for dev endpoints). */
   async forcePost(): Promise<PostSchedulerResult> {
-    const saved = { lastPostAt: this.lastPostAt, postsToday: this.postsToday }
+    const saved = { lastPostAt: this.lastPostAt, lastSkipAt: this.lastSkipAt, postsToday: this.postsToday }
     this.lastPostAt = 0
+    this.lastSkipAt = 0
     this.postsToday = 0
     try {
       return await this.createPost()
     } finally {
       if (this.postsToday === 0) {
         this.lastPostAt = saved.lastPostAt
+        this.lastSkipAt = saved.lastSkipAt
         this.postsToday = saved.postsToday
       }
     }
@@ -542,29 +565,59 @@ export class PostScheduler {
     }
   }
 
-  private async pickAgent(): Promise<SelectedAgent | null> {
+  private recordSkip(): void {
+    this.lastSkipAt = Date.now()
+  }
+
+  private async pickRunnableAgentCandidate(communities: CommunityCandidate[]): Promise<{
+    selected: SelectedAgent
+    writableCommunities: CommunityCandidate[]
+  } | null> {
     const activeAgents = this.listEligibleAgents()
     if (activeAgents.length === 0) return null
 
+    const candidates: Array<{
+      selected: SelectedAgent
+      writableCommunities: CommunityCandidate[]
+    }> = []
+
+    for (const agent of activeAgents) {
+      const eligibleCommunities = this.resolveEligibleCommunities(agent.id, communities)
+      if (eligibleCommunities.length === 0) {
+        continue
+      }
+      const writableCommunities = await this.resolveStageEligibleCommunities(
+        agent.id,
+        eligibleCommunities,
+      )
+      if (writableCommunities.length === 0) {
+        continue
+      }
+      candidates.push({
+        selected: {
+          id: agent.id,
+          display_name: agent.display_name,
+        },
+        writableCommunities,
+      })
+    }
+
+    if (candidates.length === 0) {
+      return null
+    }
+
     if (config.features.multimodalAgentMediaV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
       const prioritizedAgentIds = await this.deps.imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(100)
-      const activeById = new Map(activeAgents.map((agent) => [agent.id, agent]))
+      const activeById = new Map(candidates.map((candidate) => [candidate.selected.id, candidate]))
       for (const agentId of prioritizedAgentIds) {
         const selected = activeById.get(agentId)
         if (selected) {
-          return {
-            id: selected.id,
-            display_name: selected.display_name,
-          }
+          return selected
         }
       }
     }
 
-    const selected = activeAgents[Math.floor(Math.random() * activeAgents.length)]
-    return {
-      id: selected.id,
-      display_name: selected.display_name,
-    }
+    return candidates[Math.floor(Math.random() * candidates.length)] ?? null
   }
 
   private listEligibleAgents(): Array<{ id: string; display_name: string }> {
@@ -586,6 +639,9 @@ export class PostScheduler {
       name: item.name,
       description: item.description || '',
       rules: item.rules_json ? JSON.stringify(item.rules_json) : '',
+      rules_json: item.rules_json && typeof item.rules_json === 'object'
+        ? item.rules_json as Record<string, unknown>
+        : null,
     }))
   }
 
@@ -599,6 +655,88 @@ export class PostScheduler {
 
     const activeCommunityIds = new Set(this.deps.membershipRepo.listActiveCommunityIdsByAgent(agentId))
     return communities.filter((item) => activeCommunityIds.has(item.id))
+  }
+
+  private async resolveStageEligibleCommunities(
+    agentId: string,
+    communities: CommunityCandidate[],
+  ): Promise<CommunityCandidate[]> {
+    if (!config.features.stageRoleRuntimeV1) {
+      return communities
+    }
+
+    const agentTier = await this.resolveAgentTier(agentId)
+    return communities.filter((community) =>
+      this.isStageEligibleCommunity({
+        agentId,
+        agentTier,
+        community,
+      }))
+  }
+
+  private isStageEligibleCommunity(input: {
+    agentId: string
+    agentTier: AgentStageTier
+    community: CommunityCandidate
+  }): boolean {
+    const stageResolved = resolveStageSpecFromRules(input.community.rules_json ?? null, {
+      community_id: input.community.id,
+    })
+    if (
+      config.features.riskControlV1
+      && config.launch.market === 'mainland'
+      && stageResolved.used_fallback
+    ) {
+      return false
+    }
+
+    const membership = this.deps.membershipRepo?.findCurrent(input.agentId, input.community.id) ?? null
+    if (
+      (config.features.membershipsV1
+        || config.features.membershipStatusV1
+        || config.features.stageRoleRuntimeV1)
+      && !membership
+    ) {
+      return false
+    }
+    if (membership?.left_at) {
+      return false
+    }
+    if (config.features.membershipStatusV1 && membership && membership.status !== 'ACTIVE') {
+      return false
+    }
+
+    let roleKey = membership?.role === 'GUEST' ? 'guest' : 'resident'
+    if (config.features.roleAssignmentV1 && this.deps.roleAssignmentRepo) {
+      const assignment = this.deps.roleAssignmentRepo.findPrimaryForAgent({
+        agent_id: input.agentId,
+        community_id: input.community.id,
+        post_id: null,
+      })
+      if (assignment && assignment.role.trim().length > 0) {
+        const assignedRole = assignment.role.trim()
+        if (Object.prototype.hasOwnProperty.call(stageResolved.stage_spec.roles, assignedRole)) {
+          roleKey = assignedRole
+        }
+      }
+    }
+
+    const roleSpec = stageResolved.stage_spec.roles[roleKey]
+    if (!roleSpec) {
+      return false
+    }
+    if (!roleSpec.runtime_gate) {
+      return true
+    }
+
+    let requiredTier = roleSpec.min_tier
+    if (roleKey === 'resident') {
+      requiredTier = maxTier(requiredTier, stageResolved.stage_spec.tier_gate.resident_min_tier)
+    }
+    if (roleKey === 'core') {
+      requiredTier = maxTier(requiredTier, stageResolved.stage_spec.tier_gate.core_min_tier)
+    }
+    return tierMeets(requiredTier, input.agentTier)
   }
 
   private pickRandomCommunity(communities: CommunityCandidate[]): CommunityCandidate | null {
@@ -618,6 +756,16 @@ export class PostScheduler {
 
   private requiresMembershipScopedPosting(): boolean {
     return config.features.membershipsV1 || config.features.membershipStatusV1 || config.features.stageRoleRuntimeV1
+  }
+
+  private async resolveAgentTier(agentId: string): Promise<AgentStageTier> {
+    if (config.features.stageTierV1 && this.deps.stageTierService) {
+      const snapshot = await this.deps.stageTierService.getSnapshot(agentId, {
+        recomputeIfMissing: true,
+      })
+      return snapshot.tier
+    }
+    return 'T1'
   }
 
   private loadPersona(agentId: string): AgentPersona {
@@ -678,6 +826,102 @@ export class PostScheduler {
         feed.items.map((p) => `- **${p.title}**`).join('\n')
     } catch {
       return ''
+    }
+  }
+
+  private buildFallbackScheduledScenePayload(input: {
+    community: CommunityCandidate
+    reason: string | null
+  }): PublicSceneWritePayload {
+    const now = new Date()
+    const selectionId = generateSceneId('fallback_scene_sel')
+    const episodeId = generateSceneId('fallback_episode')
+    const episodePlanId = generateSceneId('fallback_episode_plan')
+    const localIntentId = generateSceneId('fallback_local_intent')
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+    const viewerGoal = `在 ${input.community.name} 发起新的公共讨论`
+    const growthGoal = '保持社区供给并继续驱动视觉规划'
+    const localIntent = {
+      intent_id: localIntentId,
+      delivery_surface: 'forum_post',
+      initiative: 'open_topic',
+      opinion_policy: 'free_opinion',
+      relation_focus: 'none',
+      tone_hint: 'neutral',
+      privacy_mode: 'public_only',
+      memory_scope: 'public_contextual',
+      reference_scope: 'seed_only',
+      prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+      target_ref: { kind: 'none' },
+      hard_constraints: [
+        '不得改写目标社区',
+        `围绕 ${input.community.name} 的公共语境发起讨论`,
+      ],
+      soft_constraints: [
+        `让 ${input.community.name} 首页首屏立即可消费`,
+        '保持适合公共展示与视觉规划的开场语境',
+      ],
+    } as const
+
+    const episodeBrief = {
+      episode_id: episodeId,
+      director_surface: 'scheduled_post',
+      actor_surface: 'forum_post',
+      template_id: 'scheduled-post-fallback',
+      template_version: 'v1',
+      binding_id: `scheduled-post-fallback:${input.community.slug}`,
+      phase: 'opening',
+      scene_goal: {
+        viewer_goal: viewerGoal,
+        growth_goal: growthGoal,
+      },
+      casting_directive: {
+        must_have_roles: [],
+        avoid_pairs: [],
+        core_quota: 1,
+        contrast_quota: 1,
+        wildcard_quota: 0,
+      },
+      open_loops: [],
+      must_hit_points: ['给出可继续接招的话题入口'],
+      avoid_repeat: [],
+      close_condition: {
+        ttl_hours: 24,
+        message_threshold: 12,
+        objective: viewerGoal,
+      },
+      expires_at: expiresAt,
+    } as const
+
+    return {
+      scene_metadata: {
+        director_surface: 'scheduled_post',
+        actor_surface: 'forum_post',
+        scene_template_id: 'scheduled-post-fallback',
+        scene_template_version: 'v1',
+        scene_binding_id: `scheduled-post-fallback:${input.community.slug}`,
+        overlay_id: null,
+        episode_id: episodeId,
+        beat_id: null,
+        phase: 'opening',
+        selection_mode: 'pool_guided',
+        selection_id: selectionId,
+        episode_plan_id: episodePlanId,
+        local_intent_id: localIntentId,
+        started_at: now.toISOString(),
+        expires_at: expiresAt,
+      },
+      episode_brief: episodeBrief,
+      local_intent: localIntent,
+      local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
+      selection_audit: {
+        community_id: input.community.id,
+        fallback: true,
+      },
+      planning_audit: {
+        scene_selection_status: 'fallback',
+        ...(input.reason ? { scene_selection_reason: input.reason } : {}),
+      },
     }
   }
 
@@ -872,4 +1116,8 @@ export class PostScheduler {
       },
     }
   }
+}
+
+function maxTier(a: AgentStageTier, b: AgentStageTier): AgentStageTier {
+  return STAGE_TIER_ORDER[a] >= STAGE_TIER_ORDER[b] ? a : b
 }

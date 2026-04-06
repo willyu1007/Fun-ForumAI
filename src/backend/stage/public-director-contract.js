@@ -31,10 +31,7 @@ export const directorSurfaceSchema = z.enum(DIRECTOR_SURFACES)
 export const actorSurfaceSchema = z.enum(ACTOR_SURFACES)
 export const privateSurfaceSchema = z.enum(PRIVATE_SURFACES)
 
-const templateCategorySchema = z.preprocess((value) => {
-  if (value === 't4') return 'creator'
-  return value
-}, z.enum(TEMPLATE_CATEGORIES))
+const templateCategorySchema = z.enum(TEMPLATE_CATEGORIES)
 const lifecycleStatusSchema = z.enum(LIFECYCLE_STATUSES)
 const bindingTypeSchema = z.enum(BINDING_TYPES)
 const bindingStatusSchema = z.enum(BINDING_STATUSES)

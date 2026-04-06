@@ -64,7 +64,6 @@ const dependencyContractsSchema = z.object({
   community_rules_source: z.string().trim().min(1),
   home_surface_source: z.string().trim().min(1),
   creator_note_source: z.string().trim().min(1).optional(),
-  t4_track_source: z.string().trim().min(1).optional(),
   visual_rollout_source: z.string().trim().min(1),
   governance_source: z.string().trim().min(1),
 }).strict()
@@ -85,14 +84,13 @@ const daypartSchema = z.object({
 const expectedOutputsSchema = z.object({
   root_posts: z.number().int().min(0).optional(),
   creator_note_entries: z.number().int().min(0).optional(),
-  t4_notes: z.number().int().min(0).optional(),
   priority_threads: z.number().int().min(0).optional(),
   highlight_candidate: z.boolean().optional(),
   programming_entry: z.boolean().optional(),
   shelf_eligible: z.boolean().optional(),
   continuity_entry: z.boolean().optional(),
   aftershow_candidate: z.boolean().optional(),
-  editorial_shelf: z.string().trim().min(1).optional(),
+  editorial_shelf_id: z.string().trim().min(1).optional(),
   surface_kind: z.string().trim().min(1).optional(),
 }).strict()
 
@@ -135,7 +133,6 @@ const launchProgrammingScheduleSchema = z.object({
       mainline_roots_min: z.number().int().min(0),
       highlight_candidates_min: z.number().int().min(0),
       creator_note_entries_min: z.number().int().min(0).optional(),
-      t4_notes_min: z.number().int().min(0).optional(),
       continuity_callbacks_min: z.number().int().min(0),
     }).strict(),
     warnings: z.array(z.string().trim().min(1)).min(1),
@@ -179,7 +176,7 @@ export interface LaunchProgrammingExpectedOutputs {
   shelf_eligible?: boolean
   continuity_entry?: boolean
   aftershow_candidate?: boolean
-  editorial_shelf?: LaunchHomeShelfId
+  editorial_shelf_id?: LaunchHomeShelfId
   surface_kind?: LaunchSurfaceKind
 }
 
@@ -273,7 +270,7 @@ function loadGovernanceReferences(pathname = DEFAULT_LAUNCH_GOVERNANCE_CONTRACT_
 }
 
 function normalizeGovernanceReferenceFields(requiredFields: string[]): string[] {
-  return requiredFields.map((field) => field === 'launch_phase' ? 'launch_wave' : field)
+  return requiredFields
 }
 
 function validateGovernanceReferenceLayer(input: {
@@ -447,15 +444,15 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
     const optionalRoles = normalizeRoleList(slot.optional_roles, 'optional_roles')
     const fallbackRoles = normalizeRoleList(slot.fallback_roles, 'fallback_roles')
 
-    let editorialShelf: LaunchHomeShelfId | undefined
-    if (slot.expected_outputs.editorial_shelf) {
-      const normalizedShelf = normalizeEditorialShelfId(slot.expected_outputs.editorial_shelf)
+    let editorialShelfId: LaunchHomeShelfId | undefined
+    if (slot.expected_outputs.editorial_shelf_id) {
+      const normalizedShelf = normalizeEditorialShelfId(slot.expected_outputs.editorial_shelf_id)
       if (!normalizedShelf || !(LAUNCH_HOME_SHELF_IDS as readonly string[]).includes(normalizedShelf)) {
         throw new ValidationError(
-          `Invalid launch programming schedule: ${slot.slot_name}.expected_outputs.editorial_shelf must align with T-135 shelf ids`,
+          `Invalid launch programming schedule: ${slot.slot_name}.expected_outputs.editorial_shelf_id must align with T-135 shelf ids`,
         )
       }
-      editorialShelf = normalizedShelf as LaunchHomeShelfId
+      editorialShelfId = normalizedShelf as LaunchHomeShelfId
     }
 
     let surfaceKind: LaunchSurfaceKind | undefined
@@ -471,14 +468,14 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
 
     const expectedOutputs: LaunchProgrammingExpectedOutputs = {
       root_posts: slot.expected_outputs.root_posts,
-      creator_note_entries: slot.expected_outputs.creator_note_entries ?? slot.expected_outputs.t4_notes,
+      creator_note_entries: slot.expected_outputs.creator_note_entries,
       priority_threads: slot.expected_outputs.priority_threads,
       highlight_candidate: slot.expected_outputs.highlight_candidate,
       programming_entry: slot.expected_outputs.programming_entry,
       shelf_eligible: slot.expected_outputs.shelf_eligible,
       continuity_entry: slot.expected_outputs.continuity_entry,
       aftershow_candidate: slot.expected_outputs.aftershow_candidate,
-      editorial_shelf: editorialShelf,
+      editorial_shelf_id: editorialShelfId,
       surface_kind: surfaceKind,
     }
 
@@ -518,7 +515,7 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
       roster_source: file.dependency_contracts.roster_source,
       community_rules_source: file.dependency_contracts.community_rules_source,
       home_surface_source: file.dependency_contracts.home_surface_source,
-      creator_note_source: file.dependency_contracts.creator_note_source ?? file.dependency_contracts.t4_track_source ?? '',
+      creator_note_source: file.dependency_contracts.creator_note_source ?? '',
       visual_rollout_source: file.dependency_contracts.visual_rollout_source,
       governance_source: file.dependency_contracts.governance_source,
     },
@@ -539,9 +536,7 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
       required_daily_outcomes: {
         mainline_roots_min: file.health_thresholds.required_daily_outcomes.mainline_roots_min,
         highlight_candidates_min: file.health_thresholds.required_daily_outcomes.highlight_candidates_min,
-        creator_note_entries_min:
-          file.health_thresholds.required_daily_outcomes.creator_note_entries_min
-          ?? file.health_thresholds.required_daily_outcomes.t4_notes_min,
+        creator_note_entries_min: file.health_thresholds.required_daily_outcomes.creator_note_entries_min,
         continuity_callbacks_min: file.health_thresholds.required_daily_outcomes.continuity_callbacks_min,
       },
       warnings: file.health_thresholds.warnings,

@@ -10,6 +10,7 @@
     "VITE_FF_AFTERSHOW_V1": "true",
     "VITE_FF_ROLE_ASSIGNMENT_V1": "true",
     "VITE_FF_HOME_PROGRAMMING_V1": "true",
-    "VITE_FF_PROGRAMMING_OPS_V1": "true"
+    "VITE_FF_PROGRAMMING_OPS_V1": "true",
+    "VITE_FF_MULTIMODAL_AGENT_MEDIA_V1": "true"
   }
 }

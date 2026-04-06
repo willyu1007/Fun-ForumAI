@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { PostScheduler } from '../post-scheduler.js'
 import type { PostSchedulerDeps } from '../post-scheduler.js'
 import type { PublicSceneWritePayload } from '../../services/public-scene-runtime.js'
+import { config } from '../../lib/config.js'
 
 function buildScenePayload(): PublicSceneWritePayload {
   return {
@@ -102,6 +103,10 @@ function createDeps(
       id: string
       display_name: string
     }>
+    membershipRole?: 'RESIDENT' | 'GUEST'
+    membershipStatus?: 'ACTIVE' | 'PAUSED' | 'BANNED'
+    agentTier?: 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
+    roleAssignmentRole?: string | null
   } = {},
 ): PostSchedulerDeps {
   const communities = options.communities ?? [
@@ -194,7 +199,55 @@ function createDeps(
     } as unknown as PostSchedulerDeps['agentRunRepo'],
     membershipRepo: {
       listActiveCommunityIdsByAgent: vi.fn(() => options.activeCommunityIdsByAgent ?? communities.map((item) => item.id)),
+      findCurrent: vi.fn((agentId: string, communityId: string) => {
+        if (!(options.activeCommunityIdsByAgent ?? communities.map((item) => item.id)).includes(communityId)) {
+          return null
+        }
+        return {
+          id: `membership:${agentId}:${communityId}`,
+          agent_id: agentId,
+          community_id: communityId,
+          role: options.membershipRole ?? 'RESIDENT',
+          status: options.membershipStatus ?? 'ACTIVE',
+          left_at: null,
+        }
+      }),
     } as unknown as NonNullable<PostSchedulerDeps['membershipRepo']>,
+    roleAssignmentRepo: {
+      findPrimaryForAgent: vi.fn((input: { community_id: string }) =>
+        options.roleAssignmentRole
+          ? {
+              id: `role:${input.community_id}`,
+              community_id: input.community_id,
+              post_id: null,
+              agent_id: 'agent-1',
+              scope: 'COMMUNITY',
+              scope_id: input.community_id,
+              role: options.roleAssignmentRole,
+              status: 'ACTIVE',
+              assigned_by: null,
+              expires_at: null,
+              revoked_at: null,
+              meta: null,
+              created_at: new Date(),
+              updated_at: new Date(),
+            }
+          : null),
+    } as unknown as NonNullable<PostSchedulerDeps['roleAssignmentRepo']>,
+    stageTierService: {
+      getSnapshot: vi.fn(async () => ({
+        id: 'tier-1',
+        agent_id: 'agent-1',
+        tier: options.agentTier ?? 'T3',
+        score: 0,
+        achievement_points: 0,
+        chronicle_points: 0,
+        trust_penalty: 0,
+        reasoning: {},
+        computed_at: new Date(),
+        updated_at: new Date(),
+      })),
+    } as unknown as NonNullable<PostSchedulerDeps['stageTierService']>,
     promptOrchestrator: {
       compose: vi.fn(async () => ({
         persona: {
@@ -533,6 +586,208 @@ describe('PostScheduler', () => {
     )
   })
 
+  it('does not spend an LLM call when no enrolled community passes the stage role gate', async () => {
+    const featureFlags = config.features
+    const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
+    const originalStageTier = featureFlags.stageTierV1
+    featureFlags.stageRoleRuntimeV1 = true
+    featureFlags.stageTierV1 = true
+
+    try {
+      const write = vi.fn(async () => ({ success: true, content_id: 'post-ignored' }))
+      const deps = createDeps(write, {
+        agentTier: 'T2',
+        communities: [
+          {
+            id: 'community-1',
+            slug: 'strict-stage',
+            name: 'Strict Stage',
+            description: '',
+            rules_json: {
+              stage_spec_v1: {
+                version: 'v1',
+                roles: {
+                  resident: {
+                    min_tier: 'T1',
+                    runtime_gate: true,
+                  },
+                },
+                tier_gate: {
+                  resident_min_tier: 'T3',
+                  core_min_tier: 'T3',
+                  strict_publication_longform_min_tier: 'T4',
+                },
+              },
+            },
+          },
+        ],
+        activeCommunityIdsByAgent: ['community-1'],
+        scheduledPostCommunityId: 'community-1',
+      })
+      const scheduler = new PostScheduler(deps, {
+        postIntervalMs: 60_000,
+        postMaxPerDay: 2,
+      })
+
+      const result = await scheduler.createPost()
+
+      expect(result).toEqual(expect.objectContaining({
+        triggered: false,
+        error: 'No stage-eligible posting candidates',
+      }))
+      expect(deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).not.toHaveBeenCalled()
+      expect(write).not.toHaveBeenCalled()
+    } finally {
+      featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
+      featureFlags.stageTierV1 = originalStageTier
+    }
+  })
+
+  it('cools down no-op scheduled post scans when no stage-eligible candidate exists', async () => {
+    const featureFlags = config.features
+    const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
+    const originalStageTier = featureFlags.stageTierV1
+    featureFlags.stageRoleRuntimeV1 = true
+    featureFlags.stageTierV1 = true
+
+    try {
+      const write = vi.fn(async () => ({ success: true, content_id: 'post-ignored' }))
+      const deps = createDeps(write, {
+        agentTier: 'T1',
+        communities: [
+          {
+            id: 'community-1',
+            slug: 'strict-stage',
+            name: 'Strict Stage',
+            description: '',
+            rules_json: {
+              stage_spec_v1: {
+                version: 'v1',
+                roles: {
+                  resident: {
+                    min_tier: 'T1',
+                    runtime_gate: true,
+                  },
+                },
+                tier_gate: {
+                  resident_min_tier: 'T4',
+                  core_min_tier: 'T4',
+                  strict_publication_longform_min_tier: 'T4',
+                },
+              },
+            },
+          },
+        ],
+        activeCommunityIdsByAgent: ['community-1'],
+        scheduledPostCommunityId: 'community-1',
+      })
+      const scheduler = new PostScheduler(deps, {
+        postIntervalMs: 60_000,
+        postMaxPerDay: 2,
+      })
+
+      const first = await scheduler.createPost()
+      const second = await scheduler.createPost()
+
+      expect(first).toEqual(expect.objectContaining({
+        triggered: false,
+        error: 'No stage-eligible posting candidates',
+      }))
+      expect(second).toEqual({ triggered: false })
+      expect((deps.agentService.listActiveAgents as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(1)
+      expect(deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).not.toHaveBeenCalled()
+      expect(write).not.toHaveBeenCalled()
+    } finally {
+      featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
+      featureFlags.stageTierV1 = originalStageTier
+    }
+  })
+
+  it('only selects agents that still have stage-eligible writable communities', async () => {
+    const featureFlags = config.features
+    const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
+    const originalStageTier = featureFlags.stageTierV1
+    featureFlags.stageRoleRuntimeV1 = true
+    featureFlags.stageTierV1 = true
+
+    try {
+      const write = vi.fn(async () => ({ success: true, content_id: 'post-eligible-1' }))
+      const deps = createDeps(write, {
+        activeAgents: [
+          { id: 'agent-1', display_name: 'Agent One' },
+          { id: 'agent-2', display_name: 'Agent Two' },
+        ],
+        communities: [
+          {
+            id: 'community-1',
+            slug: 'strict-stage',
+            name: 'Strict Stage',
+            description: '',
+            rules_json: {
+              stage_spec_v1: {
+                version: 'v1',
+                roles: {
+                  resident: {
+                    min_tier: 'T1',
+                    runtime_gate: true,
+                  },
+                },
+                tier_gate: {
+                  resident_min_tier: 'T3',
+                  core_min_tier: 'T3',
+                  strict_publication_longform_min_tier: 'T4',
+                },
+              },
+            },
+          },
+        ],
+        activeCommunityIdsByAgent: ['community-1'],
+        scheduledPostCommunityId: 'community-1',
+      })
+      ;(deps.stageTierService?.getSnapshot as ReturnType<typeof vi.fn>).mockImplementation(
+        async (agentId: string) => ({
+          id: `tier:${agentId}`,
+          agent_id: agentId,
+          tier: agentId === 'agent-2' ? 'T3' : 'T1',
+          score: 0,
+          achievement_points: 0,
+          chronicle_points: 0,
+          trust_penalty: 0,
+          reasoning: {},
+          computed_at: new Date(),
+          updated_at: new Date(),
+        }),
+      )
+      const scheduler = new PostScheduler(deps, {
+        postIntervalMs: 60_000,
+        postMaxPerDay: 2,
+      })
+
+      const result = await scheduler.createPost()
+
+      expect(result).toEqual(expect.objectContaining({
+        triggered: true,
+        agent_id: 'agent-2',
+        community_id: 'community-1',
+        post_id: 'post-eligible-1',
+      }))
+      expect(write).toHaveBeenCalledWith(
+        expect.objectContaining({
+          community_id: 'community-1',
+        }),
+        'agent-2',
+        'evt-1',
+        expect.anything(),
+        expect.any(Number),
+        0,
+        expect.anything(),
+      )
+    } finally {
+      featureFlags.stageRoleRuntimeV1 = originalStageRoleRuntime
+      featureFlags.stageTierV1 = originalStageTier
+    }
+  })
+
   it('locks scheduled_post to selector authority and switches to scene prompt version', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-scene-1' }))
     const scenePayload = buildScenePayload()
@@ -607,7 +862,7 @@ describe('PostScheduler', () => {
     expect(writeCall?.[2]).toBe('evt-1')
   })
 
-  it('falls back to unlocked community scheduling when selector cannot provide a public scene', async () => {
+  it('falls back to unlocked community scheduling while preserving fallback visual planning', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-fallback-1' }))
     const deps = createDeps(write, {
       sceneSelection: {
@@ -633,14 +888,34 @@ describe('PostScheduler', () => {
     expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-1',
-        lockedCommunityId: undefined,
+        lockedCommunityId: 'community-1',
       }))
     expect(write).toHaveBeenCalledTimes(1)
     const fallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as Record<string, unknown> | undefined
     expect(fallbackInstruction).toEqual(expect.objectContaining({
       community_id: 'community-1',
+      image_plan_id: 'image-plan-1',
+      display_attachment_refs: [{
+        asset_id: 'asset-1',
+        slot: 0,
+        display_variant: 'original',
+      }],
+      public_scene: expect.objectContaining({
+        scene_metadata: expect.objectContaining({
+          scene_template_id: 'scheduled-post-fallback',
+          scene_template_version: 'v1',
+        }),
+        planning_audit: expect.objectContaining({
+          scene_selection_status: 'fallback',
+          scene_selection_reason: 'scene_catalog_unavailable',
+        }),
+        visual_ref: {
+          directive_id: 'directive-1',
+          image_plan_id: 'image-plan-1',
+          runtime_card_ids: ['card-1'],
+        },
+      }),
     }))
-    expect(fallbackInstruction?.public_scene).toBeUndefined()
     expect(fallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
       scheduled_post_scene_selection: 'fallback',
       scheduled_post_scene_reason: 'scene_catalog_unavailable',
@@ -668,6 +943,19 @@ describe('PostScheduler', () => {
       .toEqual({ id: 'agent-create-post', version: 4 })
     expect(write).toHaveBeenCalledTimes(1)
     const selectorFallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as Record<string, unknown> | undefined
+    expect(selectorFallbackInstruction).toEqual(expect.objectContaining({
+      image_plan_id: 'image-plan-1',
+      public_scene: expect.objectContaining({
+        scene_metadata: expect.objectContaining({
+          scene_template_id: 'scheduled-post-fallback',
+        }),
+        visual_ref: {
+          directive_id: 'directive-1',
+          image_plan_id: 'image-plan-1',
+          runtime_card_ids: ['card-1'],
+        },
+      }),
+    }))
     expect(selectorFallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
       scheduled_post_scene_selection: 'fallback',
       scheduled_post_scene_reason: 'scene_selector_unavailable',

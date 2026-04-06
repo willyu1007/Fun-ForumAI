@@ -59,7 +59,6 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
       public_participation_mode: interaction.public_participation_mode,
       audience_signal_ingestion: interaction.audience_signal_ingestion,
       agent_human_response_mode: interaction.agent_human_response_mode,
-      t4_candidate: input.t4_candidate ?? false,
       source_community_id: input.source_community_id ?? null,
       status: input.status ?? 'SUBMITTED',
       incubation_visibility_mode: input.incubation_visibility_mode ?? null,

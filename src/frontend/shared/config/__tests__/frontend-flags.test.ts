@@ -41,4 +41,19 @@ describe('frontend-flags', () => {
     })
     expect(isFrontendFlagEnabled('VITE_FF_HOME_PROGRAMMING_V1')).toBe(true)
   })
+
+  it('launch preset enables multimodal agent media alongside staging-like UI flags', async () => {
+    localStorage.setItem(
+      'dev-frontend-flag-config-v1',
+      JSON.stringify({
+        preset: 'launch',
+        overrides: {},
+      }),
+    )
+
+    const { isFrontendFlagEnabled, readLaunchPresetOverrides } = await import('../frontend-flags')
+
+    expect(readLaunchPresetOverrides().VITE_FF_MULTIMODAL_AGENT_MEDIA_V1).toBe('true')
+    expect(isFrontendFlagEnabled('VITE_FF_MULTIMODAL_AGENT_MEDIA_V1')).toBe(true)
+  })
 })

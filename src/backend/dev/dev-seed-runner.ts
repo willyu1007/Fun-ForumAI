@@ -20,6 +20,8 @@ import {
   humanFollowRepo,
   mediaAssetRepo,
   mediaContextProjectionRepo,
+  mediaProjectionService,
+  mediaRolloutControllerService,
   mediaSemanticSnapshotRepo,
   postMediaRepo,
   postRepo,
@@ -34,6 +36,7 @@ import type {
   Agent,
   Community,
   DevSeedProfile,
+  MediaSemanticSummary,
   Post,
   Room,
 } from '../repos/types.js'
@@ -44,10 +47,13 @@ import {
   getDevSeedFixtureSet,
   type DevSeedAgentSpec,
   type DevSeedFixtureSet,
+  type DevSeedOwnerPoolMediaSpec,
   type DevSeedPostSpec,
   type DevSeedRoomSpec,
 } from './dev-seed-fixtures.js'
 import { buildFallbackMediaSemanticSummary } from '../media/media-semantic-service.js'
+import { buildOwnerPrivatePoolSceneId } from '../media/media-binding-service.js'
+import { MEDIA_SEMANTIC_SCHEMA_VERSION, normalizeStoredSemanticSummary } from '../media/media-contract-utils.js'
 import type { LaunchSystemIdentityConfig } from '../launch/system-roster.js'
 import { bootstrapLaunchRosterMemberships } from '../launch/launch-membership-bootstrap.js'
 
@@ -70,6 +76,8 @@ type ActivityGuidanceFixtureResult = {
   bell_items: number
 }
 
+export const DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON = 'dev_seed_canonical_media_e2e'
+
 export interface DevSeedRunResult {
   profile: DevSeedProfile
   counts: {
@@ -80,6 +88,7 @@ export interface DevSeedRunResult {
     rooms: number
     votes: number
     media: number
+    owner_pool_media: number
     private_sessions: number
     private_messages: number
     notifications: number
@@ -509,6 +518,186 @@ async function rebuildSeedPostMedia(
       })
       mediaCount += 1
     }
+  }
+
+  return mediaCount
+}
+
+function seedStableSuffix(seedKey: string): string {
+  return seedKey.replace(/[^a-zA-Z0-9_-]/g, '-')
+}
+
+function buildSeedOwnerPoolSummary(
+  spec: DevSeedOwnerPoolMediaSpec,
+): MediaSemanticSummary {
+  const fallback = buildFallbackMediaSemanticSummary(spec.mime)
+  return normalizeStoredSemanticSummary({
+    ...fallback,
+    ...spec.summary,
+    scene: spec.summary?.scene ?? spec.alt,
+    public_safe_summary: spec.summary?.public_safe_summary ?? spec.alt,
+    internal_full_summary: spec.summary?.internal_full_summary ?? `${spec.alt}（seed owner pool asset）`,
+  })
+}
+
+async function rebuildSeedOwnerPoolMedia(
+  fixtures: DevSeedFixtureSet['owner_pool_media'],
+  agentsBySeedKey: Map<string, Agent>,
+  prisma: PrismaClient | null,
+): Promise<number> {
+  let mediaCount = 0
+
+  for (const spec of fixtures) {
+    const agent = agentsBySeedKey.get(spec.agent_seed_key)
+    if (!agent) continue
+
+    const suffix = seedStableSuffix(spec.seed_key)
+    const assetId = `seed-owner-media-asset-${suffix}`
+    const snapshotId = `seed-owner-media-snapshot-${suffix}`
+    const bindingId = `seed-owner-media-binding-${suffix}`
+    const summary = buildSeedOwnerPoolSummary(spec)
+
+    if (prisma) {
+      await prisma.mediaAsset.upsert({
+        where: { id: assetId },
+        update: {
+          stewardAgentId: agent.id,
+          ownerUserId: agent.owner_id,
+          sourceKind: 'owner_console_upload',
+          visibilityPolicy: 'private_only',
+          lifecycleStatus: 'active',
+          storageKey: null,
+          originUrl: spec.url,
+          mimeType: spec.mime,
+          fileSizeBytes: 0,
+          width: null,
+          height: null,
+          sha256: `seed-owner-media-sha256-${suffix}`,
+          phash: null,
+        },
+        create: {
+          id: assetId,
+          stewardAgentId: agent.id,
+          ownerUserId: agent.owner_id,
+          sourceKind: 'owner_console_upload',
+          visibilityPolicy: 'private_only',
+          lifecycleStatus: 'active',
+          storageKey: null,
+          originUrl: spec.url,
+          mimeType: spec.mime,
+          fileSizeBytes: 0,
+          width: null,
+          height: null,
+          sha256: `seed-owner-media-sha256-${suffix}`,
+          phash: null,
+        },
+      })
+      await prisma.mediaSemanticSnapshot.upsert({
+        where: { id: snapshotId },
+        update: {
+          assetId,
+          snapshotKind: 'visual_core',
+          schemaVersion: MEDIA_SEMANTIC_SCHEMA_VERSION,
+          modelProvider: 'seed',
+          modelName: 'seed',
+          modelVersion: '1.0',
+          summaryJson: summary,
+          extractionStatus: 'completed',
+          qualityGrade: 'rich',
+          isCurrent: true,
+        },
+        create: {
+          id: snapshotId,
+          assetId,
+          snapshotKind: 'visual_core',
+          schemaVersion: MEDIA_SEMANTIC_SCHEMA_VERSION,
+          modelProvider: 'seed',
+          modelName: 'seed',
+          modelVersion: '1.0',
+          summaryJson: summary,
+          extractionStatus: 'completed',
+          qualityGrade: 'rich',
+          isCurrent: true,
+        },
+      })
+      await prisma.mediaSemanticSnapshot.updateMany({
+        where: {
+          assetId,
+          id: { not: snapshotId },
+          isCurrent: true,
+        },
+        data: { isCurrent: false },
+      })
+    } else {
+      const asset = await mediaAssetRepo.findById(assetId)
+      if (!asset) {
+        await mediaAssetRepo.create({
+          id: assetId,
+          steward_agent_id: agent.id,
+          owner_user_id: agent.owner_id,
+          source_kind: 'owner_console_upload',
+          visibility_policy: 'private_only',
+          lifecycle_status: 'active',
+          storage_key: null,
+          origin_url: spec.url,
+          mime_type: spec.mime,
+          file_size_bytes: 0,
+          width: null,
+          height: null,
+          sha256: `seed-owner-media-sha256-${suffix}`,
+          phash: null,
+        })
+      }
+      const currentSnapshot = await mediaSemanticSnapshotRepo.findCurrentByAssetId(assetId)
+      if (!currentSnapshot) {
+        await mediaSemanticSnapshotRepo.create({
+          id: snapshotId,
+          asset_id: assetId,
+          snapshot_kind: 'visual_core',
+          schema_version: MEDIA_SEMANTIC_SCHEMA_VERSION,
+          model_provider: 'seed',
+          model_name: 'seed',
+          model_version: '1.0',
+          summary,
+          extraction_status: 'completed',
+          quality_grade: 'rich',
+          is_current: true,
+        })
+      }
+    }
+
+    const asset = await mediaAssetRepo.findById(assetId)
+    const snapshot = await mediaSemanticSnapshotRepo.findCurrentByAssetId(assetId)
+    if (!asset || !snapshot) continue
+
+    const existingBindings = await sceneMediaBindingRepo.findByAssetId(assetId)
+    const existingBindingIds = existingBindings.map((binding) => binding.id)
+    await mediaContextProjectionRepo.deleteByBindingIds(existingBindingIds)
+    await sceneMediaBindingRepo.deleteByIds(existingBindingIds)
+
+    const binding = await sceneMediaBindingRepo.create({
+      id: bindingId,
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId(agent.id),
+      asset_id: assetId,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      binding_note_text: spec.owner_note ?? null,
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: agent.owner_id,
+    })
+
+    await mediaProjectionService.createRetrievalCaptionProjection({
+      binding,
+      asset,
+      snapshot,
+      mediaUrl: spec.url,
+      ownerNote: spec.owner_note ?? null,
+    })
+
+    mediaCount += 1
   }
 
   return mediaCount
@@ -996,6 +1185,56 @@ async function cleanupStaleProfileEntries(
   )
 }
 
+function isManagedDevSeedMediaOverride(reason: string | null | undefined): boolean {
+  return reason === DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON
+}
+
+async function reconcileDevSeedMediaRollout(profile: DevSeedProfile): Promise<void> {
+  if (!config.features.mediaRolloutControllerV1 || !mediaRolloutControllerService) return
+
+  const activeOverride = await mediaRolloutControllerService.getActiveOverride()
+  const managedActive = activeOverride && isManagedDevSeedMediaOverride(activeOverride.reason)
+    ? activeOverride
+    : null
+
+  if (profile !== 'canonical') {
+    if (managedActive) {
+      await mediaRolloutControllerService.releaseOverride({
+        override_id: managedActive.id,
+        released_by_user_id: 'dev-seed',
+        released_reason: `dev_seed_${profile}_restored_auto`,
+      })
+    }
+    return
+  }
+
+  if (
+    managedActive
+    && managedActive.mode === 'MANUAL'
+    && managedActive.allow_generation === true
+    && managedActive.generation_tier === 'medium'
+    && managedActive.sync_generation_ms_budget === 2600
+    && managedActive.allow_private_runtime_projection === true
+    && managedActive.allow_private_inspired_generation === true
+    && managedActive.force_safe_mode === false
+  ) {
+    return
+  }
+
+  await mediaRolloutControllerService.createOrReplaceOverride({
+    mode: 'MANUAL',
+    threshold_delta: -0.2,
+    allow_generation: true,
+    generation_tier: 'medium',
+    sync_generation_ms_budget: 2600,
+    allow_private_runtime_projection: true,
+    allow_private_inspired_generation: true,
+    force_safe_mode: false,
+    reason: DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON,
+    created_by_user_id: 'dev-seed',
+  })
+}
+
 export async function runDevSeed(input: {
   profile?: DevSeedProfile
   refresh_bio?: boolean
@@ -1081,6 +1320,11 @@ export async function runDevSeed(input: {
   }
 
   const mediaCount = await rebuildSeedPostMedia(fixtures.posts, postsBySeedKey, agentsBySeedKey, prisma)
+  const ownerPoolMediaCount = await rebuildSeedOwnerPoolMedia(
+    fixtures.owner_pool_media,
+    agentsBySeedKey,
+    prisma,
+  )
   const threadIds = await rebuildSeedThreads(profile, fixtures.threads, postsBySeedKey, agentsBySeedKey, tracker)
   const voteCount = profile === 'canonical' ? await seedVotes(fixtures, postsBySeedKey, agentsBySeedKey) : 0
 
@@ -1120,6 +1364,7 @@ export async function runDevSeed(input: {
     posts: Array.from(postsBySeedKey.values()),
     threadIds,
   })
+  await reconcileDevSeedMediaRollout(profile)
 
   await cleanupStaleProfileEntries(profile, tracker.activeSeedKeys())
 
@@ -1133,6 +1378,7 @@ export async function runDevSeed(input: {
       rooms: roomIds.length,
       votes: voteCount,
       media: mediaCount,
+      owner_pool_media: ownerPoolMediaCount,
       private_sessions: proactiveFixtures.sessions,
       private_messages: proactiveFixtures.messages,
       notifications: proactiveFixtures.notifications,

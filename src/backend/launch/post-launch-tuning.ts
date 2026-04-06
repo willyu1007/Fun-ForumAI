@@ -14,7 +14,7 @@ const POST_LAUNCH_HOME_SHELF_IDS = [
   'all_communities',
 ] as const
 
-const POST_LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS = ['t4-picks', 't4-relations'] as const
+const POST_LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS = ['creator-recommendation', 'creator-relationship'] as const
 const POST_LAUNCH_CREATOR_NOTE_TEMPLATE_IDS = [
   'recommendation_note',
   'comparison_note',
@@ -86,7 +86,6 @@ const postLaunchTuningProfileSchema = z.object({
     hero_slot_copy: z.record(z.string(), z.string().trim().min(1)).default({}),
   }).strict(),
   creator_note: postLaunchCreatorNoteSchema.optional(),
-  t4: postLaunchCreatorNoteSchema.optional(),
   visual: z.object({
     surface_ratio: z.partialRecord(
       postLaunchSurfaceSchema,
@@ -127,7 +126,7 @@ const postLaunchTuningSchema = z.object({
   }).strict(),
 }).strict()
 
-export interface PostLaunchTuningProfile extends Omit<z.infer<typeof postLaunchTuningProfileSchema>, 'creator_note' | 't4'> {
+export interface PostLaunchTuningProfile extends z.infer<typeof postLaunchTuningProfileSchema> {
   creator_note: z.infer<typeof postLaunchCreatorNoteSchema>
 }
 
@@ -159,7 +158,7 @@ export function getPostLaunchTuningRuntime(
     ...parsed.data,
     profiles: Object.fromEntries(
       Object.entries(parsed.data.profiles).map(([profileId, profile]) => {
-        const creatorNoteProfile = profile.creator_note ?? profile.t4
+        const creatorNoteProfile = profile.creator_note
         if (!creatorNoteProfile) {
           throw new ValidationError(
             `Invalid post-launch tuning contract: profile "${profileId}" must define creator_note preferences`,

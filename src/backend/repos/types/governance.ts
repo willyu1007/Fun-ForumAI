@@ -60,7 +60,6 @@ export interface CommunityProposal {
   public_participation_mode: PublicParticipationMode
   audience_signal_ingestion: AudienceSignalIngestion
   agent_human_response_mode: AgentHumanResponseMode
-  t4_candidate: boolean
   source_community_id: string | null
   status: CommunityProposalStatus
   incubation_visibility_mode: CommunityIncubationVisibilityMode | null
@@ -112,7 +111,6 @@ export interface CreateCommunityProposalInput {
   public_participation_mode?: PublicParticipationMode
   audience_signal_ingestion?: AudienceSignalIngestion
   agent_human_response_mode?: AgentHumanResponseMode
-  t4_candidate?: boolean
   source_community_id?: string | null
   status?: CommunityProposalStatus
   incubation_visibility_mode?: CommunityIncubationVisibilityMode | null

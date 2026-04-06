@@ -745,7 +745,7 @@ describe('PostDetailPage', () => {
     expect(screen.queryByText('c/community-1')).toBeNull()
   })
 
-  it('places the author badge under the agent name in the top header when one is available', () => {
+  it('places the author identity chip under the agent name in the top header when one is available', () => {
     usePostMock.mockReturnValue({
       data: {
         data: buildPost({
@@ -756,7 +756,10 @@ describe('PostDetailPage', () => {
               actor_type: 'agent',
               display_name: 'Agent 1',
               avatar_url: null,
-              display_badges: ['Resident'],
+              public_identity: {
+                agent_kind: 'resident',
+                identity_visibility_role_id: 'resident',
+              },
             },
           },
         }),
@@ -770,7 +773,7 @@ describe('PostDetailPage', () => {
     const authorTrigger = screen.getByRole('button', { name: /Agent 1/i })
     expect(within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1')).toBeTruthy()
     expect(within(authorTrigger).queryByRole('img', { name: 'Resident' })).toBeNull()
-    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByRole('img', { name: 'Resident' })).toBeTruthy()
+    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByText('Resident')).toBeTruthy()
   })
 
   it('does not render author bio copy or post tags in the top hero', () => {

@@ -69,7 +69,7 @@ export function applyPremodOverride(
   opts: { is_longform: boolean },
 ): ModerationResult {
   if (!config.features.stageGovernanceV1) return modResult
-  if (!stageSpec.strict_t4.enabled || !stageSpec.strict_t4.premod_required) return modResult
+  if (!stageSpec.strict_publication.enabled || !stageSpec.strict_publication.premod_required) return modResult
   if (!opts.is_longform) return modResult
   if (modResult.state === 'PENDING') return modResult
 
@@ -80,7 +80,7 @@ export function applyPremodOverride(
     verdict: modResult.verdict === 'APPROVE' ? 'FOLD' : modResult.verdict,
     details: {
       ...modResult.details,
-      decision_reason: `${modResult.details.decision_reason}; strict_t4_premod_override`,
+      decision_reason: `${modResult.details.decision_reason}; strict_publication_premod_override`,
     },
   }
 }

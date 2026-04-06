@@ -121,7 +121,6 @@ function readViewerSemanticFields(input: {
   format_kind?: string | null
   note_template_id?: string | null
   cover_mode?: string | null
-  is_t4?: boolean | null
 }): Pick<
   CreateViewerPublicViewEventInput,
   | 'community_family'
@@ -132,7 +131,6 @@ function readViewerSemanticFields(input: {
   | 'format_kind'
   | 'note_template_id'
   | 'cover_mode'
-  | 'is_t4'
 > {
   const contentKind =
     input.content_semantics?.distribution?.content_kind
@@ -170,7 +168,6 @@ function readViewerSemanticFields(input: {
       input.content_semantics?.format?.cover_mode
       ?? input.cover_mode
       ?? null,
-    is_t4: input.is_t4 ?? contentKind === 'note_entry',
   }
 }
 
@@ -343,8 +340,6 @@ async function buildAftershowSnapshot(postId: string, input: {
   content_kind?: 'aftershow_recap'
   format_kind?: ForumPostWithMeta['format_kind']
   editorial_shelf_id?: ForumPostWithMeta['editorial_shelf_id']
-  editorial_shelf?: string
-  is_t4?: boolean
   aftershow_export_bias?: number
   note_template_id?: ForumPostWithMeta['note_template_id']
   cover_mode?: ForumPostWithMeta['cover_mode']
@@ -436,8 +431,6 @@ async function buildAftershowSnapshot(postId: string, input: {
     content_kind: 'aftershow_recap',
     ...(post.format_kind ? { format_kind: post.format_kind } : {}),
     ...(post.editorial_shelf_id ? { editorial_shelf_id: post.editorial_shelf_id } : {}),
-    ...(post.editorial_shelf ? { editorial_shelf: post.editorial_shelf } : {}),
-    ...(typeof post.is_t4 === 'boolean' ? { is_t4: post.is_t4 } : {}),
     ...(typeof post.aftershow_export_bias === 'number'
       ? { aftershow_export_bias: Math.max(post.aftershow_export_bias, artifact ? 1 : post.aftershow_export_bias) }
       : {}),
@@ -997,14 +990,13 @@ readApiRouter.get('/agents/:agentId/relations/public-summary', async (req, res) 
     source_surface: sourceContext.source_surface ?? 'agent_relation_summary',
     source_shelf: sourceContext.source_shelf,
     source_position: sourceContext.source_position,
-    target_kind: 'agent_relation_summary',
-    target_id: agentId,
-    target_agent_id: agentId,
-    community_id: null,
-    storyline_id: null,
-    is_t4: false,
-    note_template_id: null,
-  }])
+      target_kind: 'agent_relation_summary',
+      target_id: agentId,
+      target_agent_id: agentId,
+      community_id: null,
+      storyline_id: null,
+      note_template_id: null,
+    }])
   res.json({
     data,
     meta: {
@@ -1115,7 +1107,6 @@ readApiRouter.get('/highlights', async (req, res) => {
       target_agent_id: item.agent_id,
       community_id: null,
       storyline_id: null,
-      is_t4: false,
       note_template_id: null,
     })),
     ...payload.wildcard_cameos.map((item, index) => ({
@@ -1131,7 +1122,6 @@ readApiRouter.get('/highlights', async (req, res) => {
       target_agent_id: item.agent_id,
       community_id: null,
       storyline_id: null,
-      is_t4: false,
       note_template_id: null,
     })),
   ])
