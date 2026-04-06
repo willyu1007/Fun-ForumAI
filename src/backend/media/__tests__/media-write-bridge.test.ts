@@ -15,14 +15,29 @@ import { MediaReuseGovernanceService } from '../media-reuse-governance-service.j
 import { MediaWriteBridge } from '../media-write-bridge.js'
 import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
 
-function createStorageStub(): StorageAdapter {
+function createStorageStub(
+  objects?: Record<string, { data: Buffer; contentType: string }>,
+): StorageAdapter {
   return {
     backend: 'local',
     async putObject() {
       throw new Error('not implemented')
     },
-    async getObject() {
-      throw new Error('not implemented')
+    async getObject(key: string) {
+      if (!objects) {
+        return {
+          data: Buffer.from('image-bytes'),
+          contentType: 'image/png',
+          size: 11,
+        }
+      }
+      const object = objects[key]
+      if (!object) return null
+      return {
+        data: object.data,
+        contentType: object.contentType,
+        size: object.data.byteLength,
+      }
     },
     async deleteObject() {
       throw new Error('not implemented')
@@ -92,7 +107,7 @@ describe('MediaWriteBridge', () => {
       postMediaRepo,
       imagePlanRepo,
       forumSceneMetadataRepo,
-      storage: createStorageStub(),
+      storage: createStorageStub({}),
       mediaBindingService,
       mediaProjectionService,
       mediaReuseGovernanceService,
@@ -204,6 +219,91 @@ describe('MediaWriteBridge', () => {
     expect(result.linked).toBe(false)
     expect(await sceneMediaBindingRepo.findByScene('forum_post', 'post-runtime-only')).toEqual([])
     expect(postMediaRepo.findByPostId('post-runtime-only')).toEqual([])
+  })
+
+  it('does not attach an asset to a post when the stored object is missing', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const postMediaRepo = new InMemoryPostMediaRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaBindingService = new MediaBindingService({ sceneMediaBindingRepo })
+    const mediaProjectionService = new MediaProjectionService({ mediaContextProjectionRepo })
+    const mediaReuseGovernanceService = createGovernanceService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaBindingService,
+    })
+    const bridge = new MediaWriteBridge({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      postMediaRepo,
+      imagePlanRepo,
+      forumSceneMetadataRepo,
+      storage: createStorageStub({}),
+      mediaBindingService,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-missing-storage',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: 'missing/storage.png',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-missing-storage',
+    })
+    const snapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildSummary('missing storage'),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: 'owner_private_pool:agent-1',
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+    await mediaReuseGovernanceService.promotePrivateOriginalToSelfPublicArchive({
+      asset_id: asset.id,
+      agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      actor_user_id: 'owner-1',
+    })
+
+    const result = await bridge.attachAssetToPost({
+      asset_id: asset.id,
+      post_id: 'post-missing-storage',
+      created_by_id: 'agent-1',
+    })
+
+    expect(result.linked).toBe(false)
+    expect(await sceneMediaBindingRepo.findByScene('forum_post', 'post-missing-storage')).toEqual([])
+    expect(postMediaRepo.findByPostId('post-missing-storage')).toEqual([])
   })
 
   it('only binds generated derivatives to the public post when generation was based on a private source', async () => {

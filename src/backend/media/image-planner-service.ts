@@ -7,6 +7,7 @@ import type { MediaContextProjectionRepository } from '../repos/media-context-pr
 import type { MediaProjectionService } from './media-projection-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
 import type { MediaLineageService } from './media-lineage-service.js'
+import type { StorageAdapter } from '../services/storage-adapter.js'
 import type {
   AspectRatioHint,
   CompiledMediaPrompt,
@@ -94,6 +95,7 @@ export interface ImagePlannerServiceDeps {
   mediaProjectionService: MediaProjectionService
   mediaReuseGovernanceService: MediaReuseGovernanceService
   mediaLineageService?: MediaLineageService | null
+  storage?: Pick<StorageAdapter, 'getObject'> | null
 }
 
 export class ImagePlannerService {
@@ -119,7 +121,7 @@ export class ImagePlannerService {
       const bindings = await this.deps.sceneMediaBindingRepo.findByAssetIds(assets.map((item) => item.id))
       const ownerSceneId = buildOwnerPrivatePoolSceneId(agentId)
       const hasOwnerPoolCandidate = assets.some((asset) =>
-        asset.visibility_policy === 'public_original_allowed'
+        asset.visibility_policy !== 'blocked'
         && bindings.some((binding) =>
           binding.asset_id === asset.id
           && binding.scene_type === 'memory_card'
@@ -186,10 +188,13 @@ export class ImagePlannerService {
       })
     const thresholds = resolveSelectionThresholds(input.directive)
 
-    const quoteCandidate = ranked.find((item) =>
-      !item.rejection_reason
-      && item.allowed_reuse_modes.includes('quote_original')
-      && item.score.total >= thresholds.quote_original) ?? null
+    const readableStorageCache = new Map<string, boolean>()
+    const quoteCandidate = await this.findFirstRankedCandidate(ranked, {
+      reuseMode: 'quote_original',
+      minimumScore: thresholds.quote_original,
+      requireDisplayable: true,
+      readableStorageCache,
+    })
     const deriveCandidate = ranked.find((item) =>
       !item.rejection_reason
       && item.allowed_reuse_modes.includes('derive_new')
@@ -716,6 +721,58 @@ export class ImagePlannerService {
     }
 
     return dedupeCandidates(candidates)
+  }
+
+  private async isAssetDisplayable(
+    asset: Pick<MediaAsset, 'storage_key' | 'origin_url'>,
+    cache: Map<string, boolean>,
+  ): Promise<boolean> {
+    if (asset.storage_key) {
+      if (cache.has(asset.storage_key)) {
+        return cache.get(asset.storage_key) ?? false
+      }
+      if (!this.deps.storage?.getObject) {
+        cache.set(asset.storage_key, true)
+        return true
+      }
+      const readable = (await this.deps.storage.getObject(asset.storage_key)) !== null
+      cache.set(asset.storage_key, readable)
+      if (readable) {
+        return true
+      }
+    }
+    return Boolean(asset.origin_url)
+  }
+
+  private async findFirstRankedCandidate(
+    ranked: EvaluatedCandidate[],
+    input: {
+      reuseMode: MediaReuseMode
+      minimumScore: number
+      requireDisplayable?: boolean
+      readableStorageCache: Map<string, boolean>
+    },
+  ): Promise<EvaluatedCandidate | null> {
+    for (const item of ranked) {
+      if (item.rejection_reason) continue
+      if (!item.allowed_reuse_modes.includes(input.reuseMode)) continue
+      if (item.score.total < input.minimumScore) continue
+      if (input.requireDisplayable && !await this.isCandidateDisplayable(item.candidate, input.readableStorageCache)) {
+        continue
+      }
+      return item
+    }
+    return null
+  }
+
+  private async isCandidateDisplayable(
+    candidate: PlannerCandidate,
+    cache: Map<string, boolean>,
+  ): Promise<boolean> {
+    if (!candidate.asset) {
+      return false
+    }
+    return this.isAssetDisplayable(candidate.asset, cache)
   }
 
   private async planScratchGeneration(input: {

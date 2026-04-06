@@ -33,7 +33,7 @@ import { MediaWriteBridge } from './media-write-bridge.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
 import type { MediaLineageService } from './media-lineage-service.js'
 import { listSurfaceMediaAttachmentViews } from './surface-media-view.js'
-import { pickModelReachableMediaUrl, resolveMediaAssetUrl } from './media-url.js'
+import { pickModelReachableMediaUrl, resolveAvailableMediaAssetUrl, resolveMediaAssetUrl } from './media-url.js'
 import {
   buildPrivateSessionThreadRootRef,
   normalizeStoredSemanticSummary,
@@ -998,7 +998,7 @@ export class MediaAssetService {
     const ownerSceneId = buildOwnerPrivatePoolSceneId(agentId)
 
     for (const asset of assets) {
-      const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
+      const mediaUrl = await resolveAvailableMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl || asset.visibility_policy !== 'public_original_allowed') continue
       const assetBindings = bindings.filter((binding) => binding.asset_id === asset.id)
       const inOwnerPool = assetBindings.some(
@@ -1059,7 +1059,7 @@ export class MediaAssetService {
   async getResolvedMediaUrl(assetId: string): Promise<string | null> {
     const asset = await this.deps.mediaAssetRepo.findById(assetId)
     if (!asset) return null
-    return resolveMediaAssetUrl(asset, this.deps.storage)
+    return resolveAvailableMediaAssetUrl(asset, this.deps.storage)
   }
 
   private async createOwnerPoolRecord(input: {

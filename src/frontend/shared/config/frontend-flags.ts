@@ -186,6 +186,7 @@ const LAUNCH_PRESET_OVERRIDES: Partial<Record<FrontendFlagKey, FrontendFlagValue
   VITE_FF_ROLE_ASSIGNMENT_V1: 'true',
   VITE_FF_HOME_PROGRAMMING_V1: 'true',
   VITE_FF_PROGRAMMING_OPS_V1: 'true',
+  VITE_FF_MULTIMODAL_AGENT_MEDIA_V1: 'true',
 }
 
 const FLAG_DEFAULTS = Object.fromEntries(

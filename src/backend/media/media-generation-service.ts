@@ -8,6 +8,8 @@ import type { MediaAssetService } from './media-asset-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
 import type { MediaLineageService } from './media-lineage-service.js'
 import type { MediaRolloutControllerService } from './media-rollout-controller-service.js'
+import type { MediaWriteBridge } from './media-write-bridge.js'
+import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type {
   CompiledMediaPrompt,
   MediaAsset,
@@ -58,9 +60,11 @@ export interface MediaGenerationServiceDeps {
   mediaGenerationJobRepo: MediaGenerationJobRepository
   mediaContextProjectionRepo: MediaContextProjectionRepository
   mediaSemanticSnapshotRepo: Pick<MediaSemanticSnapshotRepository, 'findCurrentByAssetId'>
+  forumSceneMetadataRepo?: Pick<ForumSceneMetadataRepository, 'listByEpisodeId'> | null
   mediaAssetService: MediaAssetService
   mediaReuseGovernanceService: MediaReuseGovernanceService
   mediaProjectionService: MediaProjectionService
+  mediaWriteBridge?: Pick<MediaWriteBridge, 'applyImagePlanAfterPersist'> | null
   gateway: MediaGenerationGateway
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'getEstimatedGenerationCostCny'> | null
   mediaLineageService?: MediaLineageService | null
@@ -79,8 +83,12 @@ const DEFAULT_MEDIA_GENERATION_HARDENING_SETTINGS: MediaGenerationHardeningSetti
   lineage_required: false,
 }
 
+const MEDIA_GENERATION_MAX_ATTEMPTS = 2
+
 export class MediaGenerationService {
   private processKickScheduled = false
+  private activeProcessPromise: Promise<MediaGenerationJob | null> | null = null
+  private followupProcessRequested = false
 
   constructor(private readonly deps: MediaGenerationServiceDeps) {}
 
@@ -259,6 +267,27 @@ export class MediaGenerationService {
   }
 
   async processNextQueuedJob(): Promise<MediaGenerationJob | null> {
+    if (this.activeProcessPromise) {
+      this.followupProcessRequested = true
+      return this.activeProcessPromise
+    }
+
+    const activeRun = this.processNextQueuedJobInternal()
+    this.activeProcessPromise = activeRun
+    try {
+      return await activeRun
+    } finally {
+      this.activeProcessPromise = null
+      if (this.followupProcessRequested) {
+        this.followupProcessRequested = false
+        queueMicrotask(() => {
+          void this.processNextQueuedJob().catch(() => {})
+        })
+      }
+    }
+  }
+
+  private async processNextQueuedJobInternal(): Promise<MediaGenerationJob | null> {
     if (!config.features.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
       return null
     }
@@ -266,16 +295,19 @@ export class MediaGenerationService {
     const timedOutJobs = await this.deps.mediaGenerationJobRepo.markTimedOutRunningJobs(
       new Date(),
       config.mediaGeneration.runningTimeoutMs,
+      MEDIA_GENERATION_MAX_ATTEMPTS,
     )
     for (const timedOutJob of timedOutJobs) {
       await this.syncLinkedPlansWithJob(timedOutJob)
-      await this.recordJobEvent(timedOutJob, 'generation_timed_out')
+      if (timedOutJob.status === 'timed_out') {
+        await this.recordJobEvent(timedOutJob, 'generation_timed_out')
+      }
     }
 
     const job = await this.deps.mediaGenerationJobRepo.claimNextQueued({
       now: new Date(),
       running_timeout_ms: config.mediaGeneration.runningTimeoutMs,
-      max_attempts: 2,
+      max_attempts: MEDIA_GENERATION_MAX_ATTEMPTS,
       global_concurrency: config.mediaGeneration.globalConcurrency,
       provider_concurrency: config.mediaGeneration.providerConcurrency,
       provider: this.deps.gateway.providerId,
@@ -449,7 +481,7 @@ export class MediaGenerationService {
       return finished ?? job
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'media_generation_failed'
-      const nextStatus = job.attempt_count >= 2 ? 'failed' : 'queued'
+      const nextStatus = job.attempt_count >= MEDIA_GENERATION_MAX_ATTEMPTS ? 'failed' : 'queued'
       const updated = await this.deps.mediaGenerationJobRepo.update(job.id, {
         status: nextStatus,
         error_code: nextStatus === 'queued' ? 'provider_retryable' : 'provider_failed',
@@ -582,6 +614,7 @@ export class MediaGenerationService {
           error_code: null,
         },
       })
+      await this.applyReadyPlanAfterPersist(plan)
       if (rewrittenCard && snapshot) {
         await this.deps.mediaObservabilityService?.record({
           event_type: 'generation_output_rewritten',
@@ -786,6 +819,68 @@ export class MediaGenerationService {
         error_code: 'audit_blocked',
       },
     }
+  }
+
+  private async applyReadyPlanAfterPersist(plan: PersistedImagePlan): Promise<void> {
+    if (!this.deps.mediaWriteBridge) return
+    const sceneTarget = await this.resolvePersistedSceneTarget(plan)
+    if (!sceneTarget) return
+    try {
+      await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
+        image_plan_id: plan.id,
+        scene_type: sceneTarget.scene_type,
+        scene_id: sceneTarget.scene_id,
+        created_by_id: 'media-generation-service',
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'apply_image_plan_after_generation_failed'
+      console.error(
+        `[MediaGenerationService] applyImagePlanAfterPersist failed for image_plan=${plan.id}: ${message}`,
+      )
+    }
+  }
+
+  private async resolvePersistedSceneTarget(plan: PersistedImagePlan): Promise<{
+    scene_type: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message'
+    scene_id: string
+  } | null> {
+    if (plan.scene_ref.post_id?.trim()) {
+      return { scene_type: 'forum_post', scene_id: plan.scene_ref.post_id }
+    }
+    if (plan.scene_ref.thread_id?.trim()) {
+      return { scene_type: 'forum_thread', scene_id: plan.scene_ref.thread_id }
+    }
+    if (plan.scene_ref.turn_id?.trim()) {
+      return { scene_type: 'forum_turn', scene_id: plan.scene_ref.turn_id }
+    }
+    if (plan.scene_ref.message_id?.trim()) {
+      return { scene_type: 'chat_room_message', scene_id: plan.scene_ref.message_id }
+    }
+    if (!this.deps.forumSceneMetadataRepo || !plan.scene_ref.episode_id?.trim()) {
+      return null
+    }
+
+    const candidates = await this.deps.forumSceneMetadataRepo.listByEpisodeId(plan.scene_ref.episode_id)
+    const matched = candidates.find((item) => {
+      if (item.actor_surface !== plan.scene_ref.actor_surface) return false
+      if (item.director_surface !== plan.scene_ref.director_surface) return false
+      if (plan.scene_ref.community_id && item.community_id !== plan.scene_ref.community_id) return false
+      if (plan.scene_ref.selection_id && item.selection_id !== plan.scene_ref.selection_id) return false
+      if (plan.scene_ref.local_intent_id && item.local_intent_id !== plan.scene_ref.local_intent_id) return false
+      return true
+    })
+    if (!matched) return null
+
+    if (matched.target_type === 'POST' && matched.post_id) {
+      return { scene_type: 'forum_post', scene_id: matched.post_id }
+    }
+    if (matched.target_type === 'THREAD' && matched.thread_id) {
+      return { scene_type: 'forum_thread', scene_id: matched.thread_id }
+    }
+    if (matched.target_type === 'TURN' && matched.turn_id) {
+      return { scene_type: 'forum_turn', scene_id: matched.turn_id }
+    }
+    return null
   }
 }
 

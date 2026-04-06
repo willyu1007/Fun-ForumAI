@@ -34,7 +34,7 @@ export interface MediaGenerationJobRepository {
   findById(id: string): Promise<MediaGenerationJob | null>
   findByFingerprint(requestFingerprint: string): Promise<MediaGenerationJob | null>
   findByOutputAssetId(assetId: string): Promise<MediaGenerationJob[]>
-  markTimedOutRunningJobs(now: Date, timeoutMs: number): Promise<MediaGenerationJob[]>
+  markTimedOutRunningJobs(now: Date, timeoutMs: number, maxAttempts: number): Promise<MediaGenerationJob[]>
   update(id: string, patch: UpdateMediaGenerationJobPatch): Promise<MediaGenerationJob | null>
   claimNextQueued(input: ClaimMediaGenerationJobInput): Promise<MediaGenerationJob | null>
   cancelQueuedByProjectionIds(
@@ -128,14 +128,22 @@ export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobR
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
-  async markTimedOutRunningJobs(now: Date, timeoutMs: number): Promise<MediaGenerationJob[]> {
+  async markTimedOutRunningJobs(now: Date, timeoutMs: number, maxAttempts: number): Promise<MediaGenerationJob[]> {
     const timedOut: MediaGenerationJob[] = []
     for (const job of this.store.values()) {
       if (!isTimedOut(job, now, timeoutMs)) continue
-      job.status = 'timed_out'
-      job.finished_at = now
-      job.error_code = 'running_timeout'
-      job.error_message = 'generation job exceeded running timeout'
+      if (job.attempt_count < maxAttempts) {
+        job.status = 'queued'
+        job.started_at = null
+        job.finished_at = null
+        job.error_code = null
+        job.error_message = null
+      } else {
+        job.status = 'timed_out'
+        job.finished_at = now
+        job.error_code = 'running_timeout'
+        job.error_message = 'generation job exceeded running timeout'
+      }
       job.updated_at = now
       timedOut.push(job)
     }

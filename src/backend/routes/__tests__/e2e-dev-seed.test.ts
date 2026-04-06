@@ -10,8 +10,10 @@ import {
   communityRepo,
   forumWriteService,
   homeProgrammingService,
+  imagePlannerService,
   humanFollowRepo,
   launchProgrammingOpsService,
+  mediaRolloutControllerService,
   mediaContextProjectionRepo,
   postRepo,
   postScheduler,
@@ -24,6 +26,7 @@ import {
 import { config } from '../../lib/config.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import { countDevSeedFixtures, getDevSeedFixtureSet } from '../../dev/dev-seed-fixtures.js'
+import { DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON } from '../../dev/dev-seed-runner.js'
 import { runLaunchWarmStart, CURATED_LAUNCH_WARM_START_POSTS } from '../../launch/launch-warm-start.js'
 import { app, createTestCommunity } from './e2e-helpers.js'
 
@@ -35,13 +38,18 @@ describe('E2E: Dev seed route', () => {
       (sum, post) => sum + (post.media?.length ?? 0),
       0,
     )
+    const canonicalOwnerPoolMediaCount = canonicalFixtures.owner_pool_media.length
     const featureFlags = config.features as unknown as Record<string, boolean>
     const previousGuidance = featureFlags.guidanceV1
     const previousGuidanceRecall = featureFlags.guidanceRecallV1
     const previousHumanParticipation = featureFlags.humanParticipationV1
+    const previousMediaRolloutController = featureFlags.mediaRolloutControllerV1
+    const previousMediaGeneration = featureFlags.mediaGenerationV1
     featureFlags.guidanceV1 = true
     featureFlags.guidanceRecallV1 = true
     featureFlags.humanParticipationV1 = true
+    featureFlags.mediaRolloutControllerV1 = true
+    featureFlags.mediaGenerationV1 = true
     try {
       await createTestCommunity({
         name: '旧版热点擂台',
@@ -63,6 +71,7 @@ describe('E2E: Dev seed route', () => {
       expect(firstRes.body.data.counts.threads).toBe(canonicalCounts.threads)
       expect(firstRes.body.data.counts.rooms).toBe(canonicalCounts.rooms)
       expect(firstRes.body.data.counts.media).toBe(canonicalMediaCount)
+      expect(firstRes.body.data.counts.owner_pool_media).toBe(canonicalOwnerPoolMediaCount)
       expect(firstRes.body.data.counts.votes).toBe(canonicalCounts.posts * (canonicalCounts.agents - 1))
       expect(firstAgentIds).toHaveLength(canonicalCounts.agents)
       expect(firstRoomIds).toHaveLength(canonicalCounts.rooms)
@@ -73,7 +82,13 @@ describe('E2E: Dev seed route', () => {
       const seededLaunchCore = communityRepo.findBySlug('hot-arena')
       expect(seededLaunchCore?.name).toBe('热点擂台')
       expect(seededLaunchCore?.rules_json).toMatchObject({
-        stage_spec_v1: expect.objectContaining({ version: 'v1' }),
+        stage_spec_v1: expect.objectContaining({
+          version: 'v1',
+          tier_gate: expect.objectContaining({
+            resident_min_tier: 'T1',
+            strict_publication_longform_min_tier: 'T1',
+          }),
+        }),
       })
       expect(humanFollowRepo.isFollowing('dev-user-001', firstAgentIds[4]!)).toBe(true)
       expect(humanFollowRepo.isFollowing('dev-admin-001', firstAgentIds[0]!)).toBe(true)
@@ -83,6 +98,21 @@ describe('E2E: Dev seed route', () => {
       const firstProjections = await mediaContextProjectionRepo.findByBindingIds(firstBindings.map((item) => item.id))
       expect(firstProjections).toHaveLength(3)
       expect(voteRepo.findByTarget('POST', 'seed-post-welcome-launch-core')).toHaveLength(canonicalCounts.agents - 1)
+      const debater = agentRepo.findByOwner('dev-user-001').find((agent) => agent.display_name === '辩论大师')
+      const lovelace = agentRepo.findByOwner('dev-user-001').find((agent) => agent.display_name === '洛芙蕾丝')
+      expect(debater).toBeTruthy()
+      expect(lovelace).toBeTruthy()
+      expect(await imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(10)).toContain(debater!.id)
+      const ownerPoolCandidateIds = await imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(10)
+      expect(ownerPoolCandidateIds).toContain(lovelace!.id)
+      expect(
+        agentCommunityMembershipService.listActive(lovelace!.id).some((membership) => membership.community_id === seededLaunchCore?.id),
+      ).toBe(true)
+      const seededRolloutProfile = await mediaRolloutControllerService.getEffectiveProfile()
+      expect(seededRolloutProfile.profile).toBe('manual')
+      expect(seededRolloutProfile.effective.allow_generation).toBe(true)
+      expect(seededRolloutProfile.effective.allow_private_inspired_generation).toBe(true)
+      expect(seededRolloutProfile.active_override?.reason).toBe(DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON)
 
       const devUserToken = createDevToken({ userId: 'dev-user-001', email: 'dev-user-001@dev.local', role: 'user' })
       const devAdminToken = createDevToken({ userId: 'dev-admin-001', email: 'dev-admin-001@dev.local', role: 'admin' })
@@ -163,6 +193,7 @@ describe('E2E: Dev seed route', () => {
       expect(secondRes.body.data.counts.threads).toBe(canonicalCounts.threads)
       expect(secondRes.body.data.counts.rooms).toBe(canonicalCounts.rooms)
       expect(secondRes.body.data.counts.media).toBe(canonicalMediaCount)
+      expect(secondRes.body.data.counts.owner_pool_media).toBe(canonicalOwnerPoolMediaCount)
       expect(secondRes.body.data.counts.votes).toBe(canonicalCounts.posts * (canonicalCounts.agents - 1))
       expect(secondRes.body.data.counts.guidance_inbox_items).toBe(4)
       expect(secondRes.body.data.counts.guidance_bell_items).toBe(4)
@@ -191,55 +222,77 @@ describe('E2E: Dev seed route', () => {
       const afterSecondSeedBio = agentBioRefreshService.inspectObservability()
       expect(afterSecondSeedBio.counts.committed).toBe(afterFirstSeedBio.counts.committed)
       expect(afterSecondSeedBio.by_kind.major.committed).toBe(afterFirstSeedBio.by_kind.major.committed)
+      const reseededRolloutProfile = await mediaRolloutControllerService.getEffectiveProfile()
+      expect(reseededRolloutProfile.profile).toBe('manual')
+      expect(reseededRolloutProfile.active_override?.reason).toBe(DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON)
     } finally {
       featureFlags.guidanceV1 = previousGuidance
       featureFlags.guidanceRecallV1 = previousGuidanceRecall
       featureFlags.humanParticipationV1 = previousHumanParticipation
+      featureFlags.mediaRolloutControllerV1 = previousMediaRolloutController
+      featureFlags.mediaGenerationV1 = previousMediaGeneration
     }
   })
 
   it('POST /v1/dev/seed supports smoke-minimal without inflating canonical fixtures', async () => {
     const smokeCounts = countDevSeedFixtures('smoke-minimal')
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const previousMediaRolloutController = featureFlags.mediaRolloutControllerV1
+    const previousMediaGeneration = featureFlags.mediaGenerationV1
+    featureFlags.mediaRolloutControllerV1 = true
+    featureFlags.mediaGenerationV1 = true
 
-    const firstRes = await request(app)
-      .post('/v1/dev/seed')
-      .send({ profile: 'smoke-minimal' })
-    expect(firstRes.status).toBe(200)
-    expect(firstRes.body.data.profile).toBe('smoke-minimal')
-    expect(firstRes.body.data.counts.communities).toBe(smokeCounts.communities)
-    expect(firstRes.body.data.counts.agents).toBe(smokeCounts.agents)
-    expect(firstRes.body.data.counts.posts).toBe(smokeCounts.posts)
-    expect(firstRes.body.data.counts.threads).toBe(0)
-    expect(firstRes.body.data.counts.rooms).toBe(0)
-    expect(firstRes.body.data.counts.votes).toBe(0)
-    expect(firstRes.body.data.counts.media).toBe(0)
-    expect(firstRes.body.data.counts.private_sessions).toBe(0)
-    expect(firstRes.body.data.counts.private_messages).toBe(0)
-    expect(firstRes.body.data.counts.notifications).toBe(0)
-    expect(firstRes.body.data.counts.follow_links).toBe(0)
-    expect(firstRes.body.data.counts.guidance_inbox_items).toBe(0)
-    expect(firstRes.body.data.counts.guidance_bell_items).toBe(0)
-    expect(firstRes.body.data.ids.agents).toHaveLength(1)
-    expect(firstRes.body.data.ids.posts).toEqual(['seed-post-welcome-launch-core'])
-    expect(await roomRepo.findBySlug('code-tasting')).not.toBeNull()
+    try {
+      const firstRes = await request(app)
+        .post('/v1/dev/seed')
+        .send({ profile: 'smoke-minimal' })
+      expect(firstRes.status).toBe(200)
+      expect(firstRes.body.data.profile).toBe('smoke-minimal')
+      expect(firstRes.body.data.counts.communities).toBe(smokeCounts.communities)
+      expect(firstRes.body.data.counts.agents).toBe(smokeCounts.agents)
+      expect(firstRes.body.data.counts.posts).toBe(smokeCounts.posts)
+      expect(firstRes.body.data.counts.owner_pool_media).toBe(0)
+      expect(firstRes.body.data.counts.threads).toBe(0)
+      expect(firstRes.body.data.counts.rooms).toBe(0)
+      expect(firstRes.body.data.counts.votes).toBe(0)
+      expect(firstRes.body.data.counts.media).toBe(0)
+      expect(firstRes.body.data.counts.private_sessions).toBe(0)
+      expect(firstRes.body.data.counts.private_messages).toBe(0)
+      expect(firstRes.body.data.counts.notifications).toBe(0)
+      expect(firstRes.body.data.counts.follow_links).toBe(0)
+      expect(firstRes.body.data.counts.guidance_inbox_items).toBe(0)
+      expect(firstRes.body.data.counts.guidance_bell_items).toBe(0)
+      expect(firstRes.body.data.ids.agents).toHaveLength(1)
+      expect(firstRes.body.data.ids.posts).toEqual(['seed-post-welcome-launch-core'])
+      expect(await roomRepo.findBySlug('code-tasting')).not.toBeNull()
+      expect((await mediaRolloutControllerService.getActiveOverride())?.reason).not.toBe(DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON)
 
-    const secondRes = await request(app)
-      .post('/v1/dev/seed')
-      .send({ profile: 'smoke-minimal' })
-    expect(secondRes.status).toBe(200)
-    expect(secondRes.body.data.ids.communities).toEqual(firstRes.body.data.ids.communities)
-    expect(secondRes.body.data.ids.agents).toEqual(firstRes.body.data.ids.agents)
-    expect(secondRes.body.data.ids.posts).toEqual(firstRes.body.data.ids.posts)
-    expect(secondRes.body.data.ids.rooms).toEqual([])
-    expect(secondRes.body.data.ids.threads).toEqual([])
+      const secondRes = await request(app)
+        .post('/v1/dev/seed')
+        .send({ profile: 'smoke-minimal' })
+      expect(secondRes.status).toBe(200)
+      expect(secondRes.body.data.ids.communities).toEqual(firstRes.body.data.ids.communities)
+      expect(secondRes.body.data.ids.agents).toEqual(firstRes.body.data.ids.agents)
+      expect(secondRes.body.data.ids.posts).toEqual(firstRes.body.data.ids.posts)
+      expect(secondRes.body.data.ids.rooms).toEqual([])
+      expect(secondRes.body.data.ids.threads).toEqual([])
+      expect((await mediaRolloutControllerService.getActiveOverride())?.reason).not.toBe(DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON)
+    } finally {
+      featureFlags.mediaRolloutControllerV1 = previousMediaRolloutController
+      featureFlags.mediaGenerationV1 = previousMediaGeneration
+    }
   })
 
   it('POST /v1/dev/seed supports launch roster bootstrap without materializing content fixtures', async () => {
     const launchCounts = countDevSeedFixtures('launch')
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalMemberships = featureFlags.membershipsV1
+    const previousMediaRolloutController = featureFlags.mediaRolloutControllerV1
+    const previousMediaGeneration = featureFlags.mediaGenerationV1
 
     try {
+      featureFlags.mediaRolloutControllerV1 = true
+      featureFlags.mediaGenerationV1 = true
       const res = await request(app)
         .post('/v1/dev/seed')
         .send({ profile: 'launch' })
@@ -248,6 +301,7 @@ describe('E2E: Dev seed route', () => {
       expect(res.body.data.counts.communities).toBe(launchCounts.communities)
       expect(res.body.data.counts.agents).toBe(launchCounts.agents)
       expect(res.body.data.counts.posts).toBe(0)
+      expect(res.body.data.counts.owner_pool_media).toBe(0)
       expect(res.body.data.counts.threads).toBe(0)
       expect(res.body.data.counts.rooms).toBe(0)
       expect(res.body.data.counts.votes).toBe(0)
@@ -266,10 +320,19 @@ describe('E2E: Dev seed route', () => {
       expect(profileRes.body.data.surface_access.private_chat_enabled).toBe(false)
       expect(profileRes.body.data.display_badges).toEqual(expect.any(Array))
       expect(profileRes.body.data.display_badges.length).toBeGreaterThan(0)
+      expect((await mediaRolloutControllerService.getActiveOverride())?.reason).not.toBe(DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON)
 
       const activeMemberships = agentCommunityMembershipService.listActive(firstAgentId!)
       expect(activeMemberships.length).toBeGreaterThan(0)
       expect(activeMemberships.every((membership) => membership.status === 'ACTIVE')).toBe(true)
+      expect(communityRepo.findBySlug('hot-arena')?.rules_json).toMatchObject({
+        stage_spec_v1: expect.objectContaining({
+          tier_gate: expect.objectContaining({
+            resident_min_tier: 'T2',
+            strict_publication_longform_min_tier: 'T4',
+          }),
+        }),
+      })
 
       featureFlags.membershipsV1 = true
       const writeResult = await forumWriteService.createPost({
@@ -284,6 +347,8 @@ describe('E2E: Dev seed route', () => {
       expect(writeResult.post.community_id).toBe(activeMemberships[0]!.community_id)
     } finally {
       featureFlags.membershipsV1 = originalMemberships
+      featureFlags.mediaRolloutControllerV1 = previousMediaRolloutController
+      featureFlags.mediaGenerationV1 = previousMediaGeneration
     }
   })
 

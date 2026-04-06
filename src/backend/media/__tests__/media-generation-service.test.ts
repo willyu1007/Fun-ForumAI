@@ -88,6 +88,7 @@ function buildPendingGenerationPlan(
     planId: string
     projectionId: string
     fingerprint?: string
+    sceneRef?: Partial<PersistedImagePlan['scene_ref']>
   },
 ): Promise<PersistedImagePlan> {
   return repo.create({
@@ -104,6 +105,7 @@ function buildPendingGenerationPlan(
       local_intent_id: 'intent-1',
       phase: 'opening',
       selection_mode: 'pool_guided',
+      ...input.sceneRef,
     },
     status: 'pending_generation',
     decision: 'generate_from_private_projection',
@@ -155,6 +157,31 @@ function buildPendingGenerationPlan(
   })
 }
 
+function createSemanticSnapshot(assetId: string): MediaSemanticSnapshot {
+  return {
+    id: `snapshot-${assetId}`,
+    asset_id: assetId,
+    snapshot_kind: 'visual_core',
+    schema_version: 'visual_core.v1',
+    model_provider: 'test',
+    model_name: 'test',
+    model_version: '1',
+    summary: buildMediaSemanticSummary({
+      theme: 'travel',
+      scene: 'city skyline',
+      mood: 'bright',
+      discussion_points: ['城市氛围'],
+      salient_entities: ['city'],
+      public_safe_summary: 'A bright city skyline.',
+      internal_full_summary: 'A bright city skyline.',
+    }),
+    extraction_status: 'completed',
+    quality_grade: 'rich',
+    is_current: true,
+    created_at: new Date(),
+  }
+}
+
 describe('MediaGenerationService', () => {
   const originalMediaGeneration = { ...config.mediaGeneration }
   const originalFeatureFlags = {
@@ -166,6 +193,66 @@ describe('MediaGenerationService', () => {
     Object.assign(config.features, originalFeatureFlags)
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it('coalesces concurrent processing requests into a single in-flight generation pass', async () => {
+    config.features.mediaGenerationV1 = true
+    let releaseClaim: (() => void) | null = null
+    const claimStarted = new Promise<void>((resolve) => {
+      releaseClaim = resolve
+    })
+    let markClaimInvoked: (() => void) | null = null
+    const claimInvoked = new Promise<void>((resolve) => {
+      markClaimInvoked = resolve
+    })
+    const mediaGenerationJobRepo = {
+      findByFingerprint: vi.fn(async () => null),
+      create: vi.fn(),
+      findById: vi.fn(async () => null),
+      findByOutputAssetId: vi.fn(async () => []),
+      markTimedOutRunningJobs: vi.fn(async () => []),
+      update: vi.fn(async () => null),
+      cancelQueuedByProjectionIds: vi.fn(async () => []),
+      claimNextQueued: vi.fn(async () => {
+        markClaimInvoked?.()
+        await claimStarted
+        return null
+      }),
+    }
+    const service = new MediaGenerationService({
+      imagePlanRepo: {
+        create: vi.fn(),
+        findById: vi.fn(async () => null),
+        listByGenerationJobId: vi.fn(async () => []),
+        update: vi.fn(async () => null),
+      },
+      mediaGenerationJobRepo: mediaGenerationJobRepo as never,
+      mediaContextProjectionRepo: {
+        findByIds: vi.fn(async () => []),
+      },
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async () => null),
+      },
+      mediaAssetService: {} as never,
+      mediaReuseGovernanceService: {} as never,
+      mediaProjectionService: {} as never,
+      gateway: {
+        providerId: 'ark-seedream',
+        modelName: 'doubao-seedream-5-0-lite-260128',
+        isConfigured: true,
+        generate: vi.fn(),
+      },
+    })
+
+    const firstPass = service.processNextQueuedJob()
+    await claimInvoked
+    const secondPass = service.processNextQueuedJob()
+
+    expect(mediaGenerationJobRepo.claimNextQueued).toHaveBeenCalledTimes(1)
+
+    releaseClaim?.()
+    await expect(firstPass).resolves.toBeNull()
+    await expect(secondPass).resolves.toBeNull()
   })
 
   it('deduplicates jobs by request_fingerprint for the same image plan intent', async () => {
@@ -408,6 +495,9 @@ describe('MediaGenerationService', () => {
     const plan = await buildPendingGenerationPlan(imagePlanRepo, {
       planId: 'image-plan-1',
       projectionId: projection.id,
+      sceneRef: {
+        post_id: 'post-1',
+      },
     })
     await mediaGenerationJobRepo.create({
       id: 'job-1',
@@ -546,6 +636,7 @@ describe('MediaGenerationService', () => {
       }),
     )
     vi.stubGlobal('fetch', fetchMock)
+    const applyImagePlanAfterPersist = vi.fn(async () => ({ linked: true }))
 
     const service = new MediaGenerationService({
       imagePlanRepo,
@@ -568,6 +659,9 @@ describe('MediaGenerationService', () => {
         createDisplayAttachmentProjection,
         ensurePublicMediaCard,
       } as never,
+      mediaWriteBridge: {
+        applyImagePlanAfterPersist,
+      } as never,
       gateway: {
         providerId: 'ark-seedream',
         modelName: 'doubao-seedream-5-0-lite-260128',
@@ -588,6 +682,13 @@ describe('MediaGenerationService', () => {
     expect(registerPrivateDerivedPublicAsset).toHaveBeenCalledTimes(1)
     expect(createDisplayAttachmentProjection).toHaveBeenCalledTimes(1)
     expect(ensurePublicMediaCard).toHaveBeenCalledTimes(1)
+    expect(applyImagePlanAfterPersist).toHaveBeenCalledTimes(1)
+    expect(applyImagePlanAfterPersist).toHaveBeenCalledWith({
+      image_plan_id: plan.id,
+      scene_type: 'forum_post',
+      scene_id: 'post-1',
+      created_by_id: 'media-generation-service',
+    })
     expect(updatedPlan?.status).toBe('ready')
     expect(updatedPlan?.generation.status).toBe('succeeded')
     expect(updatedPlan?.display.attachments[0]?.display_variant).toBe('generated_derivative')
@@ -829,7 +930,7 @@ describe('MediaGenerationService', () => {
     expect(updatedSecond?.display.attachments[0]?.display_variant).toBe('generated_derivative')
   })
 
-  it('marks stale running jobs timed_out and degrades linked plans', async () => {
+  it('requeues stale running jobs when retry budget remains and completes the next pass', async () => {
     Object.assign(config.features, {
       mediaGenerationV1: true,
     })
@@ -885,6 +986,148 @@ describe('MediaGenerationService', () => {
       mediaSemanticSnapshotRepo: {
         findCurrentByAssetId: vi.fn(async () => null),
       },
+      mediaAssetService: {
+        ingestGeneratedDerivative: vi.fn(async () => ({
+          asset: {
+            id: 'generated-asset-timeout-1',
+            agent_id: 'agent-1',
+            mime_type: 'image/png',
+            width: 1024,
+            height: 1280,
+            file_size_bytes: 2048,
+            storage_key: 'generated/timeouts/recovered.png',
+            visibility_policy: 'public_original_allowed',
+            copyright_status: 'owned',
+            lifecycle_status: 'active',
+            origin_type: 'generated',
+            source_url: null,
+            source_domain: null,
+            perception_hash: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+          snapshot: createSemanticSnapshot('generated-asset-timeout-1'),
+          media_url: '/v1/media/generated-timeout-1.png',
+        })),
+        getAssetById: vi.fn(async () => ({
+          id: 'generated-asset-timeout-1',
+          agent_id: 'agent-1',
+          mime_type: 'image/png',
+          width: 1024,
+          height: 1280,
+          file_size_bytes: 2048,
+          storage_key: 'generated/timeouts/recovered.png',
+          visibility_policy: 'public_original_allowed',
+          copyright_status: 'owned',
+          lifecycle_status: 'active',
+          origin_type: 'generated',
+          source_url: null,
+          source_domain: null,
+          perception_hash: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })),
+      } as never,
+      mediaReuseGovernanceService: {
+        registerGeneratedPublicAsset: vi.fn(async () => ({
+          binding: {
+            id: 'binding-generated-timeout-1',
+            agent_id: 'agent-1',
+          },
+        })),
+        registerPrivateDerivedPublicAsset: vi.fn(async () => ({
+          binding: {
+            id: 'binding-generated-timeout-1',
+            agent_id: 'agent-1',
+          },
+        })),
+      } as never,
+      mediaProjectionService: {
+        createDisplayAttachmentProjection: vi.fn(async () => null),
+        ensurePublicMediaCard: vi.fn(async () => null),
+      } as never,
+      gateway: {
+        providerId: 'ark-seedream',
+        modelName: 'doubao-seedream-5-0-lite-260128',
+        isConfigured: true,
+        generate: vi.fn(async () => ({
+          image_url: 'https://provider.example.com/generated-timeout-retry.png',
+          mime_type: 'image/png',
+        })),
+      },
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/png' },
+    }))
+
+    const nextJob = await service.processNextQueuedJob()
+    const recoveredJob = await mediaGenerationJobRepo.findById('job-timeout-1')
+    const updatedPlan = await imagePlanRepo.findById(plan.id)
+
+    expect(nextJob?.status).toBe('succeeded')
+    expect(recoveredJob?.status).toBe('succeeded')
+    expect(recoveredJob?.attempt_count).toBe(2)
+    expect(updatedPlan?.status).toBe('ready')
+    expect(updatedPlan?.generation.status).toBe('succeeded')
+  })
+
+  it('marks stale running jobs timed_out after retry budget is exhausted and degrades linked plans', async () => {
+    Object.assign(config.features, {
+      mediaGenerationV1: true,
+    })
+    Object.assign(config.mediaGeneration, {
+      pollIntervalMs: 5,
+      downloadTimeoutMs: 5_000,
+      runningTimeoutMs: 10,
+      globalConcurrency: 1,
+      providerConcurrency: 1,
+    })
+
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaGenerationJobRepo = new InMemoryMediaGenerationJobRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const projection = await mediaContextProjectionRepo.create({
+      id: 'projection-timeout-exhausted-1',
+      binding_id: 'binding-private-timeout-exhausted-1',
+      projection_surface: 'planner',
+      projection_kind: 'public_reuse_handoff',
+      schema_version: 'public-reuse-handoff.v1',
+      payload_json: {},
+    })
+    const plan = await buildPendingGenerationPlan(imagePlanRepo, {
+      planId: 'image-plan-timeout-exhausted-1',
+      projectionId: projection.id,
+      fingerprint: 'fp-timeout-exhausted-1',
+    })
+    await imagePlanRepo.update(plan.id, {
+      generation: {
+        ...plan.generation,
+        job_id: 'job-timeout-exhausted-1',
+        status: 'running',
+      },
+    })
+    await mediaGenerationJobRepo.create({
+      id: 'job-timeout-exhausted-1',
+      agent_id: 'agent-1',
+      plan_id: plan.id,
+      status: 'running',
+      provider: 'ark-seedream',
+      model_name: 'doubao-seedream-5-0-lite-260128',
+      request_fingerprint: 'fp-timeout-exhausted-1',
+      prompt_brief: 'scene=city skyline',
+      aspect_ratio_hint: '4:5',
+      based_on_projection_ids: [projection.id],
+      attempt_count: 2,
+      started_at: new Date(Date.now() - 5_000),
+    })
+    const service = new MediaGenerationService({
+      imagePlanRepo,
+      mediaGenerationJobRepo,
+      mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async () => null),
+      },
       mediaAssetService: {} as never,
       mediaReuseGovernanceService: {} as never,
       mediaProjectionService: {} as never,
@@ -897,7 +1140,7 @@ describe('MediaGenerationService', () => {
     })
 
     const nextJob = await service.processNextQueuedJob()
-    const timedOutJob = await mediaGenerationJobRepo.findById('job-timeout-1')
+    const timedOutJob = await mediaGenerationJobRepo.findById('job-timeout-exhausted-1')
     const updatedPlan = await imagePlanRepo.findById(plan.id)
 
     expect(nextJob).toBeNull()

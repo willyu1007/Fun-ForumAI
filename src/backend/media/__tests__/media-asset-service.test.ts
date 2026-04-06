@@ -299,4 +299,52 @@ describe('MediaAssetService', () => {
     expect((updatedDisplayProjection?.payload_json as { alt_text: string; public_caption: string }).public_caption)
       .toBe('published old caption')
   })
+
+  it('does not return owner-pool attachment candidates when the stored object is missing', async () => {
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const storage = createStorageStub()
+    const service = new MediaAssetService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      storage,
+      mediaSemanticService: {} as never,
+      mediaBindingService: new MediaBindingService({ sceneMediaBindingRepo }),
+      mediaProjectionService: new MediaProjectionService({ mediaContextProjectionRepo }),
+      mediaWriteBridge: {} as never,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-owner-pool-missing',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: 'missing/owner-pool.png',
+      mime_type: 'image/png',
+      file_size_bytes: 512,
+      sha256: 'sha-owner-pool-missing',
+    })
+    await sceneMediaBindingRepo.create({
+      id: 'binding-owner-pool-missing',
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId('agent-1'),
+      asset_id: asset.id,
+      semantic_snapshot_id: 'snapshot-owner-pool-missing',
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+
+    const candidate = await service.getLatestEligibleOwnerPoolAsset('agent-1')
+
+    expect(candidate).toBeNull()
+  })
 })

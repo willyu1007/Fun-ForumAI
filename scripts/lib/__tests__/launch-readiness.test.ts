@@ -3,6 +3,7 @@ import {
   validateCanonicalLaunchBuildProfile,
   validateDevOnlyStartupHardening,
   validateFrontendDeliveryAssets,
+  validateLocalKindMediaPersistence,
   validateLaunchMembershipBootstrapAssets,
   validateLaunchRuntimeContracts,
   validateLaunchWarmStartAssets,
@@ -30,6 +31,7 @@ describe('launch readiness repo checks', () => {
 
   it('requires launch bootstrap, worker assets, publish wireup, and startup hardening', () => {
     expect(validateFrontendDeliveryAssets()).toMatchObject({ ok: true })
+    expect(validateLocalKindMediaPersistence()).toMatchObject({ ok: true })
     expect(validateLaunchMembershipBootstrapAssets()).toMatchObject({ ok: true })
     expect(validateLaunchWarmStartAssets()).toMatchObject({ ok: true })
     expect(validateWorkerAssets()).toMatchObject({ ok: true })

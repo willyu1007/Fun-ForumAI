@@ -12,6 +12,19 @@ import type { MediaObservabilityService } from './media-observability-service.js
 import type { MediaRolloutControllerService } from './media-rollout-controller-service.js'
 import { resolveMediaObservabilitySurface } from './media-observability-service.js'
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isImagePlanDirectiveConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = 'code' in error ? error.code : null
+  const message = 'message' in error && typeof error.message === 'string'
+    ? error.message
+    : ''
+  return code === 'P2003' && message.includes('image_plans_directive_id_fkey')
+}
+
 export interface PreparedSurfaceVisualPlan {
   directive_id: string
   image_plan_id: string
@@ -96,10 +109,7 @@ export class SurfaceMediaPlanningService {
     agent_id: string
     directive: PersistedVisualDirective
   }): Promise<PreparedSurfaceVisualPlan | null> {
-    const plan = await this.deps.imagePlannerService.planWithDirective({
-      agent_id: input.agent_id,
-      directive: input.directive,
-    })
+    const plan = await this.planWithDirectiveRetry(input)
     const surface = resolveMediaObservabilitySurface({
       actor_surface: input.directive.scene_ref.actor_surface,
       director_surface: input.directive.scene_ref.director_surface,
@@ -233,5 +243,27 @@ export class SurfaceMediaPlanningService {
           : 'not_requested',
       },
     }
+  }
+
+  private async planWithDirectiveRetry(input: {
+    agent_id: string
+    directive: PersistedVisualDirective
+  }) {
+    try {
+      return await this.deps.imagePlannerService.planWithDirective({
+        agent_id: input.agent_id,
+        directive: input.directive,
+      })
+    } catch (error) {
+      if (!isImagePlanDirectiveConstraintError(error)) {
+        throw error
+      }
+    }
+
+    await delay(25)
+    return this.deps.imagePlannerService.planWithDirective({
+      agent_id: input.agent_id,
+      directive: input.directive,
+    })
   }
 }

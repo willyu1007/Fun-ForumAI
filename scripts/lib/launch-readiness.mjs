@@ -173,6 +173,57 @@ export function validateLaunchRuntimeOverlay(relativePath, expectedAppEnv) {
   };
 }
 
+export function validateLocalKindMediaPersistence() {
+  const overlayPath = 'ops/deploy/k8s/overlays/local-kind/kustomization.yaml';
+  const configPatchPath = 'ops/deploy/k8s/overlays/local-kind/patch-configmap.yaml';
+  const pvcPath = 'ops/deploy/k8s/overlays/local-kind/backend-media-pvc.yaml';
+  const storagePatchPath = 'ops/deploy/k8s/overlays/local-kind/patch-backend-media-storage.yaml';
+
+  const missingFiles = [overlayPath, configPatchPath, pvcPath, storagePatchPath]
+    .filter((relativePath) => !existsSync(resolve(ROOT, relativePath)));
+  if (missingFiles.length > 0) {
+    return {
+      ok: false,
+      detail: `missing local-kind media persistence assets: ${missingFiles.join(', ')}`,
+    };
+  }
+
+  const overlay = readYaml(overlayPath);
+  const configPatch = readYaml(configPatchPath);
+  const pvc = readYaml(pvcPath);
+  const storagePatch = readYaml(storagePatchPath);
+  const overlayResources = Array.isArray(overlay?.resources) ? overlay.resources : [];
+  const overlayPatches = Array.isArray(overlay?.patches) ? overlay.patches : [];
+  const overlayHasPvc = overlayResources.includes('backend-media-pvc.yaml');
+  const overlayHasStoragePatch = overlayPatches.some((entry) =>
+    typeof entry === 'string'
+      ? entry === 'patch-backend-media-storage.yaml'
+      : entry?.path === 'patch-backend-media-storage.yaml');
+  const mediaLocalDirOk = configPatch?.data?.MEDIA_LOCAL_DIR === '/var/media-assets';
+  const pvcOk =
+    pvc?.kind === 'PersistentVolumeClaim' &&
+    pvc?.metadata?.name === 'backend-media-assets' &&
+    pvc?.spec?.resources?.requests?.storage === '5Gi';
+  const backendContainer = Array.isArray(storagePatch?.spec?.template?.spec?.containers)
+    ? storagePatch.spec.template.spec.containers.find((container) => container?.name === 'backend')
+    : null;
+  const mountOk = Array.isArray(backendContainer?.volumeMounts)
+    && backendContainer.volumeMounts.some((mount) =>
+      mount?.name === 'backend-media-assets' && mount?.mountPath === '/var/media-assets');
+  const volumeOk = Array.isArray(storagePatch?.spec?.template?.spec?.volumes)
+    && storagePatch.spec.template.spec.volumes.some((volume) =>
+      volume?.name === 'backend-media-assets'
+      && volume?.persistentVolumeClaim?.claimName === 'backend-media-assets');
+
+  const ok = overlayHasPvc && overlayHasStoragePatch && mediaLocalDirOk && pvcOk && mountOk && volumeOk;
+  return {
+    ok,
+    detail: ok
+      ? 'local-kind backend media assets persist on a dedicated PVC'
+      : 'local-kind backend media persistence is incomplete',
+  };
+}
+
 export function validateFrontendBuildProfile(profileId, target = 'llm-forum') {
   try {
     const profile = loadFrontendBuildProfile(profileId);
@@ -237,6 +288,7 @@ export function validatePackagingWireup() {
     'ARG FRONTEND_BUILD_PROFILE=""',
     'ARG VITE_FF_HOME_PROGRAMMING_V1=false',
     'ARG VITE_FF_PROGRAMMING_OPS_V1=false',
+    'ARG VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=false',
     'node ops/packaging/scripts/frontend-build-profile.mjs --profile "$FRONTEND_BUILD_PROFILE" --out dist/frontend/frontend-build-flags.json',
     'COPY config ./config',
     'COPY env/contract.yaml ./env/contract.yaml',

@@ -5,7 +5,11 @@ import type { AgentService } from '../services/agent-service.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AgentPersona } from './types.js'
-import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
+import {
+  buildLocalIntentBlock,
+  generateSceneId,
+  type PublicSceneWritePayload,
+} from '../services/public-scene-runtime.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
@@ -180,19 +184,23 @@ export class PostScheduler {
       const targetCommunity = sceneSelection.kind === 'scene'
         ? sceneSelection.community
         : fallbackCommunity
-      const scenePayload = sceneSelection.kind === 'scene'
+      const selectorScenePayload = sceneSelection.kind === 'scene'
         ? sceneSelection.payload
         : null
-      let effectiveScenePayload = scenePayload
       const scheduledFallbackReason = sceneSelection.kind === 'skip'
         ? sceneSelection.reason
         : null
+      let effectiveScenePayload = selectorScenePayload
+        ?? this.buildFallbackScheduledScenePayload({
+          community: targetCommunity,
+          reason: scheduledFallbackReason,
+        })
       if (scheduledFallbackReason) {
         console.warn(
           `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,
         )
       }
-      const promptRef = scenePayload
+      const promptRef = selectorScenePayload
         ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
         : buildPromptTemplateRef('agent-create-post', 4)
 
@@ -200,18 +208,18 @@ export class PostScheduler {
       const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
       const communityCatalog = this.toCommunityCatalog(writableCommunities)
       let visualPlan: ScheduledPostVisualPlan | null = null
-      if (scenePayload) {
+      if (effectiveScenePayload) {
         try {
           visualPlan = await this.prepareVisualPlan({
             agent_id: selected.id,
             community_id: targetCommunity.id,
-            scenePayload,
+            scenePayload: effectiveScenePayload,
           })
           if (visualPlan) {
             effectiveScenePayload = {
-              ...scenePayload,
+              ...effectiveScenePayload,
               planning_audit: {
-                ...(scenePayload.planning_audit ?? {}),
+                ...(effectiveScenePayload.planning_audit ?? {}),
                 ...visualPlan.planning_audit,
               },
               visual_ref: {
@@ -225,9 +233,9 @@ export class PostScheduler {
           const message = error instanceof Error ? error.message : 'visual_planning_failed'
           console.error(`[PostScheduler] visual planning failed for agent=${selected.id}: ${message}`)
           effectiveScenePayload = {
-            ...scenePayload,
+            ...effectiveScenePayload,
             planning_audit: {
-              ...(scenePayload.planning_audit ?? {}),
+              ...(effectiveScenePayload.planning_audit ?? {}),
               visual_planning_status: 'degraded',
               visual_planning_error: message,
             },
@@ -818,6 +826,102 @@ export class PostScheduler {
         feed.items.map((p) => `- **${p.title}**`).join('\n')
     } catch {
       return ''
+    }
+  }
+
+  private buildFallbackScheduledScenePayload(input: {
+    community: CommunityCandidate
+    reason: string | null
+  }): PublicSceneWritePayload {
+    const now = new Date()
+    const selectionId = generateSceneId('fallback_scene_sel')
+    const episodeId = generateSceneId('fallback_episode')
+    const episodePlanId = generateSceneId('fallback_episode_plan')
+    const localIntentId = generateSceneId('fallback_local_intent')
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+    const viewerGoal = `在 ${input.community.name} 发起新的公共讨论`
+    const growthGoal = '保持社区供给并继续驱动视觉规划'
+    const localIntent = {
+      intent_id: localIntentId,
+      delivery_surface: 'forum_post',
+      initiative: 'open_topic',
+      opinion_policy: 'free_opinion',
+      relation_focus: 'none',
+      tone_hint: 'neutral',
+      privacy_mode: 'public_only',
+      memory_scope: 'public_contextual',
+      reference_scope: 'seed_only',
+      prohibited_reference_types: ['owner_private_speech', 'private_memory', 'hidden_director_goal'],
+      target_ref: { kind: 'none' },
+      hard_constraints: [
+        '不得改写目标社区',
+        `围绕 ${input.community.name} 的公共语境发起讨论`,
+      ],
+      soft_constraints: [
+        `让 ${input.community.name} 首页首屏立即可消费`,
+        '保持适合公共展示与视觉规划的开场语境',
+      ],
+    } as const
+
+    const episodeBrief = {
+      episode_id: episodeId,
+      director_surface: 'scheduled_post',
+      actor_surface: 'forum_post',
+      template_id: 'scheduled-post-fallback',
+      template_version: 'v1',
+      binding_id: `scheduled-post-fallback:${input.community.slug}`,
+      phase: 'opening',
+      scene_goal: {
+        viewer_goal: viewerGoal,
+        growth_goal: growthGoal,
+      },
+      casting_directive: {
+        must_have_roles: [],
+        avoid_pairs: [],
+        core_quota: 1,
+        contrast_quota: 1,
+        wildcard_quota: 0,
+      },
+      open_loops: [],
+      must_hit_points: ['给出可继续接招的话题入口'],
+      avoid_repeat: [],
+      close_condition: {
+        ttl_hours: 24,
+        message_threshold: 12,
+        objective: viewerGoal,
+      },
+      expires_at: expiresAt,
+    } as const
+
+    return {
+      scene_metadata: {
+        director_surface: 'scheduled_post',
+        actor_surface: 'forum_post',
+        scene_template_id: 'scheduled-post-fallback',
+        scene_template_version: 'v1',
+        scene_binding_id: `scheduled-post-fallback:${input.community.slug}`,
+        overlay_id: null,
+        episode_id: episodeId,
+        beat_id: null,
+        phase: 'opening',
+        selection_mode: 'pool_guided',
+        selection_id: selectionId,
+        episode_plan_id: episodePlanId,
+        local_intent_id: localIntentId,
+        started_at: now.toISOString(),
+        expires_at: expiresAt,
+      },
+      episode_brief: episodeBrief,
+      local_intent: localIntent,
+      local_intent_block: buildLocalIntentBlock(localIntent, episodeBrief),
+      selection_audit: {
+        community_id: input.community.id,
+        fallback: true,
+      },
+      planning_audit: {
+        scene_selection_status: 'fallback',
+        ...(input.reason ? { scene_selection_reason: input.reason } : {}),
+      },
     }
   }
 

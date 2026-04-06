@@ -24,7 +24,7 @@ import {
   buildForumThreadThreadRootRef,
   readForumThreadIdFromThreadRootRef,
 } from './media-contract-utils.js'
-import { resolveMediaAssetUrl } from './media-url.js'
+import { resolveAvailableMediaAssetUrl } from './media-url.js'
 
 export interface MediaWriteBridgeDeps {
   mediaAssetRepo: MediaAssetRepository
@@ -63,7 +63,7 @@ export class MediaWriteBridge {
       return { linked: false }
     }
 
-    const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
+    const mediaUrl = await resolveAvailableMediaAssetUrl(asset, this.deps.storage)
     if (!mediaUrl) {
       return { linked: false }
     }
@@ -175,7 +175,7 @@ export class MediaWriteBridge {
         },
       })
 
-      const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
+      const mediaUrl = await resolveAvailableMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
       const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
       const hasDisplayAttachment = projections.some(
@@ -240,7 +240,7 @@ export class MediaWriteBridge {
           display_variant: attachment.display_variant,
         },
       })
-      const mediaUrl = resolveMediaAssetUrl(asset, this.deps.storage)
+      const mediaUrl = await resolveAvailableMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
       const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
       const hasDisplayAttachment = projections.some(

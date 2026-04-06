@@ -609,7 +609,7 @@ describe('PostScheduler', () => {
                 roles: {
                   resident: {
                     min_tier: 'T1',
-                    runtime_gate: true,,
+                    runtime_gate: true,
                   },
                 },
                 tier_gate: {
@@ -666,7 +666,7 @@ describe('PostScheduler', () => {
                 roles: {
                   resident: {
                     min_tier: 'T1',
-                    runtime_gate: true,,
+                    runtime_gate: true,
                   },
                 },
                 tier_gate: {
@@ -729,7 +729,7 @@ describe('PostScheduler', () => {
                 roles: {
                   resident: {
                     min_tier: 'T1',
-                    runtime_gate: true,,
+                    runtime_gate: true,
                   },
                 },
                 tier_gate: {
@@ -862,7 +862,7 @@ describe('PostScheduler', () => {
     expect(writeCall?.[2]).toBe('evt-1')
   })
 
-  it('falls back to unlocked community scheduling when selector cannot provide a public scene', async () => {
+  it('falls back to unlocked community scheduling while preserving fallback visual planning', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-fallback-1' }))
     const deps = createDeps(write, {
       sceneSelection: {
@@ -888,14 +888,34 @@ describe('PostScheduler', () => {
     expect((deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0])
       .toEqual(expect.objectContaining({
         fallbackCommunityId: 'community-1',
-        lockedCommunityId: undefined,
+        lockedCommunityId: 'community-1',
       }))
     expect(write).toHaveBeenCalledTimes(1)
     const fallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as Record<string, unknown> | undefined
     expect(fallbackInstruction).toEqual(expect.objectContaining({
       community_id: 'community-1',
+      image_plan_id: 'image-plan-1',
+      display_attachment_refs: [{
+        asset_id: 'asset-1',
+        slot: 0,
+        display_variant: 'original',
+      }],
+      public_scene: expect.objectContaining({
+        scene_metadata: expect.objectContaining({
+          scene_template_id: 'scheduled-post-fallback',
+          scene_template_version: 'v1',
+        }),
+        planning_audit: expect.objectContaining({
+          scene_selection_status: 'fallback',
+          scene_selection_reason: 'scene_catalog_unavailable',
+        }),
+        visual_ref: {
+          directive_id: 'directive-1',
+          image_plan_id: 'image-plan-1',
+          runtime_card_ids: ['card-1'],
+        },
+      }),
     }))
-    expect(fallbackInstruction?.public_scene).toBeUndefined()
     expect(fallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
       scheduled_post_scene_selection: 'fallback',
       scheduled_post_scene_reason: 'scene_catalog_unavailable',
@@ -923,6 +943,19 @@ describe('PostScheduler', () => {
       .toEqual({ id: 'agent-create-post', version: 4 })
     expect(write).toHaveBeenCalledTimes(1)
     const selectorFallbackInstruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as Record<string, unknown> | undefined
+    expect(selectorFallbackInstruction).toEqual(expect.objectContaining({
+      image_plan_id: 'image-plan-1',
+      public_scene: expect.objectContaining({
+        scene_metadata: expect.objectContaining({
+          scene_template_id: 'scheduled-post-fallback',
+        }),
+        visual_ref: {
+          directive_id: 'directive-1',
+          image_plan_id: 'image-plan-1',
+          runtime_card_ids: ['card-1'],
+        },
+      }),
+    }))
     expect(selectorFallbackInstruction?.audit_metadata).toEqual(expect.objectContaining({
       scheduled_post_scene_selection: 'fallback',
       scheduled_post_scene_reason: 'scene_selector_unavailable',

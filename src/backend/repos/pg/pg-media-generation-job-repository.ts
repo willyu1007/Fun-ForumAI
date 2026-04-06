@@ -96,7 +96,7 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
     return rows.map((row) => this.toDomain(row))
   }
 
-  async markTimedOutRunningJobs(now: Date, timeoutMs: number): Promise<MediaGenerationJob[]> {
+  async markTimedOutRunningJobs(now: Date, timeoutMs: number, maxAttempts: number): Promise<MediaGenerationJob[]> {
     const timeoutThreshold = new Date(now.getTime() - timeoutMs)
     return this.prisma.$transaction(async (tx) => {
       const stale = await tx.mediaGenerationJobRecord.findMany({
@@ -108,18 +108,39 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
       })
       if (stale.length === 0) return []
 
-      await tx.mediaGenerationJobRecord.updateMany({
-        where: {
-          id: { in: stale.map((row) => row.id) },
-          status: 'running',
-        },
-        data: {
-          status: 'timed_out',
-          finishedAt: now,
-          errorCode: 'running_timeout',
-          errorMessage: 'generation job exceeded running timeout',
-        },
-      })
+      const retryable = stale.filter((row) => row.attemptCount < maxAttempts)
+      const exhausted = stale.filter((row) => row.attemptCount >= maxAttempts)
+
+      if (retryable.length > 0) {
+        await tx.mediaGenerationJobRecord.updateMany({
+          where: {
+            id: { in: retryable.map((row) => row.id) },
+            status: 'running',
+          },
+          data: {
+            status: 'queued',
+            startedAt: null,
+            finishedAt: null,
+            errorCode: null,
+            errorMessage: null,
+          },
+        })
+      }
+
+      if (exhausted.length > 0) {
+        await tx.mediaGenerationJobRecord.updateMany({
+          where: {
+            id: { in: exhausted.map((row) => row.id) },
+            status: 'running',
+          },
+          data: {
+            status: 'timed_out',
+            finishedAt: now,
+            errorCode: 'running_timeout',
+            errorMessage: 'generation job exceeded running timeout',
+          },
+        })
+      }
 
       const refreshed = await tx.mediaGenerationJobRecord.findMany({
         where: {
