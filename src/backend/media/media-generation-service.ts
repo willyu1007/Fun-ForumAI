@@ -84,11 +84,14 @@ const DEFAULT_MEDIA_GENERATION_HARDENING_SETTINGS: MediaGenerationHardeningSetti
 }
 
 const MEDIA_GENERATION_MAX_ATTEMPTS = 2
+const MEDIA_GENERATION_TIMEOUT_SWEEP_INTERVAL_MS = 15_000
 
 export class MediaGenerationService {
   private processKickScheduled = false
   private activeProcessPromise: Promise<MediaGenerationJob | null> | null = null
+  private activeTimeoutSweepPromise: Promise<MediaGenerationJob[]> | null = null
   private followupProcessRequested = false
+  private lastTimeoutSweepAt = 0
 
   constructor(private readonly deps: MediaGenerationServiceDeps) {}
 
@@ -287,21 +290,35 @@ export class MediaGenerationService {
     }
   }
 
+  async sweepTimedOutRunningJobs(force = false): Promise<MediaGenerationJob[]> {
+    if (!config.features.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
+      return []
+    }
+    const nowMs = Date.now()
+    if (
+      !force
+      && this.lastTimeoutSweepAt > 0
+      && nowMs - this.lastTimeoutSweepAt < MEDIA_GENERATION_TIMEOUT_SWEEP_INTERVAL_MS
+    ) {
+      return []
+    }
+    if (this.activeTimeoutSweepPromise) {
+      return this.activeTimeoutSweepPromise
+    }
+
+    const activeSweep = this.sweepTimedOutRunningJobsInternal(new Date(nowMs))
+    this.activeTimeoutSweepPromise = activeSweep
+    this.lastTimeoutSweepAt = nowMs
+    try {
+      return await activeSweep
+    } finally {
+      this.activeTimeoutSweepPromise = null
+    }
+  }
+
   private async processNextQueuedJobInternal(): Promise<MediaGenerationJob | null> {
     if (!config.features.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
       return null
-    }
-
-    const timedOutJobs = await this.deps.mediaGenerationJobRepo.markTimedOutRunningJobs(
-      new Date(),
-      config.mediaGeneration.runningTimeoutMs,
-      MEDIA_GENERATION_MAX_ATTEMPTS,
-    )
-    for (const timedOutJob of timedOutJobs) {
-      await this.syncLinkedPlansWithJob(timedOutJob)
-      if (timedOutJob.status === 'timed_out') {
-        await this.recordJobEvent(timedOutJob, 'generation_timed_out')
-      }
     }
 
     const job = await this.deps.mediaGenerationJobRepo.claimNextQueued({
@@ -496,6 +513,21 @@ export class MediaGenerationService {
       }
       return updated ?? job
     }
+  }
+
+  private async sweepTimedOutRunningJobsInternal(now: Date): Promise<MediaGenerationJob[]> {
+    const timedOutJobs = await this.deps.mediaGenerationJobRepo.markTimedOutRunningJobs(
+      now,
+      config.mediaGeneration.runningTimeoutMs,
+      MEDIA_GENERATION_MAX_ATTEMPTS,
+    )
+    for (const timedOutJob of timedOutJobs) {
+      await this.syncLinkedPlansWithJob(timedOutJob)
+      if (timedOutJob.status === 'timed_out') {
+        await this.recordJobEvent(timedOutJob, 'generation_timed_out')
+      }
+    }
+    return timedOutJobs
   }
 
   private kickProcessing(): void {

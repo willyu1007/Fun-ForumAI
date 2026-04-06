@@ -163,6 +163,7 @@ export interface CredentialPoolEntry {
   allowed_model_ids?: string[]
   rpm_headroom?: number
   tpm_headroom?: number
+  max_concurrency?: number
 }
 
 export interface RoutingPolicyEntry {

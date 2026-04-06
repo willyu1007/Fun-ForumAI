@@ -5,6 +5,7 @@ import type { LeaderElector } from './leader-elector.js'
 
 const SESSION_TIMEOUT_CHECK_MS = 5 * 60 * 1000 // 5 minutes
 const MEMORY_DECAY_CHECK_MS = 24 * 60 * 60 * 1000 // 24 hours
+const PENDING_REPLY_RECOVERY_CHECK_MS = 15 * 1000 // 15 seconds
 
 export interface PrivateChannelSchedulerDeps {
   channelService: PrivateChannelService
@@ -16,6 +17,7 @@ export interface PrivateChannelSchedulerDeps {
 export class PrivateChannelScheduler {
   private sessionTimer: ReturnType<typeof setInterval> | null = null
   private decayTimer: ReturnType<typeof setInterval> | null = null
+  private pendingReplyRecoveryTimer: ReturnType<typeof setInterval> | null = null
   private running = false
 
   constructor(private readonly deps: PrivateChannelSchedulerDeps) {}
@@ -34,10 +36,15 @@ export class PrivateChannelScheduler {
       MEMORY_DECAY_CHECK_MS,
     )
 
+    this.pendingReplyRecoveryTimer = setInterval(
+      () => void this.recoverPendingReplies(),
+      PENDING_REPLY_RECOVERY_CHECK_MS,
+    )
+
     // Run first decay check after a short delay (not blocking startup)
     setTimeout(() => void this.runMemoryDecay(), 60_000)
 
-    console.log('[PrivateChannelScheduler] Started (session timeout: 5min, memory decay: 24h)')
+    console.log('[PrivateChannelScheduler] Started (session timeout: 5min, pending reply recovery: 15s, memory decay: 24h)')
   }
 
   stop(): void {
@@ -50,6 +57,10 @@ export class PrivateChannelScheduler {
     if (this.decayTimer) {
       clearInterval(this.decayTimer)
       this.decayTimer = null
+    }
+    if (this.pendingReplyRecoveryTimer) {
+      clearInterval(this.pendingReplyRecoveryTimer)
+      this.pendingReplyRecoveryTimer = null
     }
     if (this.deps.leaderElector) {
       void this.deps.leaderElector.releaseLeadership()
@@ -104,6 +115,19 @@ export class PrivateChannelScheduler {
       }
     } catch (err) {
       console.error('[PrivateChannelScheduler] Memory decay failed:', err)
+    }
+  }
+
+  private async recoverPendingReplies(): Promise<void> {
+    if (!(await this.ensureLeadership())) return
+
+    try {
+      const recovered = await this.deps.channelService.recoverStalePendingReplies()
+      if (recovered.length > 0) {
+        console.log(`[PrivateChannelScheduler] Recovered ${recovered.length} stale private reply placeholder(s)`)
+      }
+    } catch (err) {
+      console.error('[PrivateChannelScheduler] Pending private reply recovery failed:', err)
     }
   }
 

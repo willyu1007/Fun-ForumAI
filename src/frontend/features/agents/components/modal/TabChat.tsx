@@ -99,6 +99,10 @@ function isIdentityGateError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('实名审核')
 }
 
+function isPendingAgentReply(message: PrivateMessage): boolean {
+  return message.author_type === 'AGENT' && (message.runtime_status ?? 'READY') === 'THINKING'
+}
+
 export function TabChat({
   agentId,
   onCaptureScreenshot,
@@ -363,6 +367,9 @@ function ChatTimeline({
     (sum, item) => sum + item.messages.length,
     0,
   )
+  const currentHasPendingAgentReply = (
+    timelineItems.find((item) => item.session.id === currentSessionId)?.messages ?? []
+  ).some(isPendingAgentReply)
   const searchMatches = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase('zh-CN')
     if (!normalizedQuery) return []
@@ -496,22 +503,6 @@ function ChatTimeline({
             </div>
           ))}
 
-          {sendMessage.isPending && currentSession?.status === 'ACTIVE' && (
-            <div className={"flex items-start gap-2"}>
-              <Avatar className={"h-7 w-7 shrink-0"}>
-                {agentAvatarSrc ? <AvatarImage src={agentAvatarSrc} alt={agentName} className="object-cover" /> : null}
-                <AvatarFallback className={"text-xs bg-primary/10"}>{agentName[0]}</AvatarFallback>
-              </Avatar>
-              <div className={"rounded-md bg-muted/55 px-3 py-2"}>
-                <div className={"flex gap-1"}>
-                  <span className="animate-bounce">·</span>
-                  <span className={"animate-bounce [animation-delay:0.1s]"}>·</span>
-                  <span className={"animate-bounce [animation-delay:0.2s]"}>·</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {sessionGovernanceMessage && (
             <ChatSystemNote tone={sessionGovernanceMessage.includes('失败') ? 'danger' : 'muted'}>
               {sessionGovernanceMessage}
@@ -543,7 +534,7 @@ function ChatTimeline({
           onCaptureScreenshot={onCaptureScreenshot}
           onEndSession={handleEnd}
           draftStorageKey={`private-chat-draft:${agentId}:${currentSessionId}`}
-          disabled={sendMessage.isPending}
+          disabled={sendMessage.isPending || currentHasPendingAgentReply}
           sessionEnded={false}
           toolbar={({
             openFilePicker,
@@ -1033,7 +1024,12 @@ function MessageBubble({
   searchActive?: boolean
 }) {
   const isHuman = message.author_type === 'HUMAN'
-  const deliveryLabel = message.delivery_status ? DELIVERY_BADGE[message.delivery_status] : null
+  const runtimeStatus = message.runtime_status ?? 'READY'
+  const isThinking = !isHuman && runtimeStatus === 'THINKING'
+  const isFailed = !isHuman && runtimeStatus === 'FAILED'
+  const deliveryLabel = runtimeStatus === 'READY' && message.delivery_status
+    ? DELIVERY_BADGE[message.delivery_status]
+    : null
   const attachments = message.attachments ?? []
 
   return (
@@ -1076,9 +1072,22 @@ function MessageBubble({
             ))}
           </div>
         )}
-        {message.content.trim().length > 0 && (
+        {isThinking && (
+          <div className={cn("mt-0.5 flex items-center gap-1 text-[12px] opacity-90", attachments.length > 0 && 'mt-1.5')}>
+            <span className="animate-bounce">·</span>
+            <span className={"animate-bounce [animation-delay:0.1s]"}>·</span>
+            <span className={"animate-bounce [animation-delay:0.2s]"}>·</span>
+            <span className="ml-1 text-[11px] opacity-80">正在回复…</span>
+          </div>
+        )}
+        {!isThinking && message.content.trim().length > 0 && (
           <p className={cn("whitespace-pre-wrap break-words text-[13px] leading-[1.45]", attachments.length > 0 && 'mt-1.5')}>
             {message.content}
+          </p>
+        )}
+        {isFailed && message.content.trim().length === 0 && (
+          <p className={cn("text-[12px] leading-[1.45] opacity-90", attachments.length > 0 && 'mt-1.5')}>
+            回复失败，请稍后重试上一条消息。
           </p>
         )}
         {deliveryLabel && (

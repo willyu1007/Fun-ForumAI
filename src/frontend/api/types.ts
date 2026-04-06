@@ -2672,6 +2672,9 @@ export interface PrivateMessage {
   id: string
   session_id: string
   author_type: PrivateAuthorType
+  reply_to_message_id?: string | null
+  runtime_status?: 'READY' | 'THINKING' | 'FAILED'
+  runtime_error_code?: string | null
   content: string
   attachments: PrivateMessageAttachment[]
   delivery_status?: 'PENDING_REVIEW' | 'DELIVERED' | 'REWRITTEN' | 'REFUSED' | 'BLOCKED'

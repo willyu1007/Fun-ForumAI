@@ -272,6 +272,19 @@ describe('PrivateChannelService', () => {
 
   it('uses PromptOrchestrator + PromptEngine path when enabled', async () => {
     const session = buildSession()
+    const updateMessage = vi.fn(async (id: string, patch: Record<string, unknown>) => ({
+      id,
+      session_id: session.id,
+      author_type: 'AGENT',
+      content: String(patch.content ?? ''),
+      attachments: [],
+      delivery_status: patch.delivery_status ?? 'DELIVERED',
+      moderation_metadata: patch.moderation_metadata ?? null,
+      reply_to_message_id: 'msg-human',
+      runtime_status: patch.runtime_status ?? 'READY',
+      runtime_error_code: patch.runtime_error_code ?? null,
+      created_at: new Date(),
+    }))
     const channelRepo = {
       findSessionById: vi.fn(async () => session),
       createMessage: vi
@@ -281,15 +294,28 @@ describe('PrivateChannelService', () => {
           session_id: session.id,
           author_type: 'HUMAN',
           content: '你好',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: null,
+          runtime_status: 'READY',
+          runtime_error_code: null,
           created_at: new Date(),
         })
         .mockResolvedValueOnce({
           id: 'msg-agent',
           session_id: session.id,
           author_type: 'AGENT',
-          content: '你好呀',
+          content: '',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: 'msg-human',
+          runtime_status: 'THINKING',
+          runtime_error_code: null,
           created_at: new Date(),
         }),
+      updateMessage,
       listMessages: vi.fn(async () => ({
         items: [],
         next_cursor: null,
@@ -385,21 +411,187 @@ describe('PrivateChannelService', () => {
     })
 
     const result = await service.sendMessage(session.id, 'user-1', { content: ' 你好 ' })
-    expect(result.agent_reply.content).toBe('你好呀')
-    expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
-      preferredModelId: 'qwen-flash-character',
-      promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
-      variables: expect.objectContaining({
-        persona_name: 'Agent One',
-        owner_display_name: 'Owner',
-        current_context_block: 'context',
-      }),
-    }))
+    expect(result.token_cost).toBe(0)
+    expect(result.agent_reply.content).toBe('')
+    expect(result.agent_reply.runtime_status).toBe('THINKING')
+    await vi.waitFor(() => {
+      expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
+        preferredModelId: 'qwen-flash-character',
+        promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+        allowFallbackWithinLine: true,
+        variables: expect.objectContaining({
+          persona_name: 'Agent One',
+          owner_display_name: 'Owner',
+          current_context_block: 'context',
+        }),
+      }))
+    })
     const firstCall = gatewayGenerate.mock.calls.at(0)?.[0] as { variables: Record<string, string> } | undefined
     expect(Object.keys(firstCall?.variables ?? {}).every((key) => !key.startsWith('layer_'))).toBe(true)
+    await vi.waitFor(() => {
+      expect(updateMessage).toHaveBeenCalledWith('msg-agent', expect.objectContaining({
+        content: '你好呀',
+        runtime_status: 'READY',
+        runtime_error_code: null,
+      }))
+    })
   })
 
-  it('fails fast when private prompt orchestration fails', async () => {
+  it('waits for the final agent reply when running closeout visible replies', async () => {
+    const startedAt = new Date('2026-04-06T00:00:00.000Z')
+    const session = {
+      ...buildSession(),
+      started_at: startedAt,
+    }
+    const updateMessage = vi.fn(async (id: string, patch: Record<string, unknown>) => ({
+      id,
+      session_id: session.id,
+      author_type: 'AGENT',
+      content: String(patch.content ?? ''),
+      attachments: [],
+      delivery_status: patch.delivery_status ?? 'DELIVERED',
+      moderation_metadata: patch.moderation_metadata ?? null,
+      reply_to_message_id: 'msg-human',
+      runtime_status: patch.runtime_status ?? 'READY',
+      runtime_error_code: patch.runtime_error_code ?? null,
+      created_at: new Date(),
+    }))
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'msg-human',
+          session_id: session.id,
+          author_type: 'HUMAN',
+          content: '继续',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: null,
+          runtime_status: 'READY',
+          runtime_error_code: null,
+          created_at: startedAt,
+        })
+        .mockResolvedValueOnce({
+          id: 'msg-agent',
+          session_id: session.id,
+          author_type: 'AGENT',
+          content: '',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: 'msg-human',
+          runtime_status: 'THINKING',
+          runtime_error_code: null,
+          created_at: new Date(startedAt.getTime() + 1000),
+        }),
+      updateMessage,
+      findPendingAgentReply: vi.fn(async () => null),
+      listMessages: vi.fn(async () => ({
+        items: [],
+        next_cursor: null,
+      })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(async () => session),
+      listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Agent One',
+          model: 'qwen-flash',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: {
+        generateVisibleText: vi.fn(async () => ({
+          content: '已准备好继续。',
+          messages: [],
+          usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+          latencyMs: 18,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'base',
+            profileId: 'profile-1',
+            policyId: 'visible-private_reply-realtime',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-flash-character',
+            adapterId: 'openai-chat-completions-v1',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['test'],
+            promptTemplateId: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.id,
+            promptVersion: PROMPT_TEMPLATE_REFS.agentPrivateChatReply.version,
+          },
+          executionPlan: {} as never,
+          promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
+          warnings: [],
+          finishReason: 'stop',
+        })),
+      } as never,
+      promptOrchestrator: {
+        isSceneEnabled: vi.fn(() => true),
+        compose: vi.fn(async () => ({
+          persona: {
+            name: 'Agent One',
+            style: 'warm',
+            interests: ['ai'],
+            language: 'zh-CN',
+          },
+          blocks: {
+            hard_control_block: 'hard',
+            compact_control_block: 'compact',
+            current_context_block: 'context',
+            memory_block: 'memory',
+            soft_expression_block: 'soft',
+          },
+          audit: {
+            version: 'v2',
+            scene: 'private_chat',
+            includedBlockIds: ['hard_control_block', 'current_context_block'],
+            promptContract: 'compiled_blocks_v2',
+            tokenEstimates: { hard_control_block: 10, current_context_block: 20 },
+            lintWarnings: [],
+            trimReasons: [],
+          },
+        })),
+      } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      sseHub: null,
+    })
+
+    const result = await service.runCloseoutVisibleReply({
+      agentId: 'agent-1',
+      humanUserId: 'user-1',
+      content: '继续',
+    })
+
+    expect(result.session.id).toBe(session.id)
+    expect(result.agent_reply.content).toBe('已准备好继续。')
+    expect(result.agent_reply.runtime_status).toBe('READY')
+    expect(result.token_cost).toBe(16)
+    expect(updateMessage).toHaveBeenCalledWith('msg-agent', expect.objectContaining({
+      content: '已准备好继续。',
+      runtime_status: 'READY',
+    }))
+  })
+
+  it('marks the pending reply failed when private prompt orchestration fails after the ack', async () => {
     const session = buildSession()
     const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
       content: 'fallback reply',
@@ -423,6 +615,19 @@ describe('PrivateChannelService', () => {
       },
       promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
     }))
+    const updateMessage = vi.fn(async (id: string, patch: Record<string, unknown>) => ({
+      id,
+      session_id: session.id,
+      author_type: 'AGENT',
+      content: String(patch.content ?? ''),
+      attachments: [],
+      delivery_status: patch.delivery_status ?? 'DELIVERED',
+      moderation_metadata: patch.moderation_metadata ?? null,
+      reply_to_message_id: 'msg-human',
+      runtime_status: patch.runtime_status ?? 'READY',
+      runtime_error_code: patch.runtime_error_code ?? null,
+      created_at: new Date(),
+    }))
     const channelRepo = {
       findSessionById: vi.fn(async () => session),
       createMessage: vi
@@ -432,15 +637,28 @@ describe('PrivateChannelService', () => {
           session_id: session.id,
           author_type: 'HUMAN',
           content: 'question',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: null,
+          runtime_status: 'READY',
+          runtime_error_code: null,
           created_at: new Date(),
         })
         .mockResolvedValueOnce({
           id: 'msg-agent',
           session_id: session.id,
           author_type: 'AGENT',
-          content: 'fallback reply',
+          content: '',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: 'msg-human',
+          runtime_status: 'THINKING',
+          runtime_error_code: null,
           created_at: new Date(),
         }),
+      updateMessage,
       listMessages: vi.fn(async () => ({
         items: [],
         next_cursor: null,
@@ -488,7 +706,18 @@ describe('PrivateChannelService', () => {
       sseHub: null,
     })
 
-    await expect(service.sendMessage(session.id, 'user-1', { content: ' question ' })).rejects.toThrow('compose failed')
+    const result = await service.sendMessage(session.id, 'user-1', { content: ' question ' })
+
+    expect(result.token_cost).toBe(0)
+    expect(result.agent_reply.runtime_status).toBe('THINKING')
+    expect(result.agent_reply.reply_to_message_id).toBe('msg-human')
+
+    await vi.waitFor(() => {
+      expect(updateMessage).toHaveBeenCalledWith('msg-agent', expect.objectContaining({
+        runtime_status: 'FAILED',
+        runtime_error_code: 'PRIVATE_REPLY_FAILED',
+      }))
+    })
     expect(gatewayGenerate).not.toHaveBeenCalled()
   })
 
@@ -601,16 +830,39 @@ describe('PrivateChannelService', () => {
           author_type: 'HUMAN',
           content: '',
           attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: null,
+          runtime_status: 'READY',
+          runtime_error_code: null,
           created_at: new Date(),
         })
         .mockResolvedValueOnce({
           id: 'msg-agent',
           session_id: session.id,
           author_type: 'AGENT',
-          content: '这张咖啡看起来很暖。',
+          content: '',
           attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: 'msg-human',
+          runtime_status: 'THINKING',
+          runtime_error_code: null,
           created_at: new Date(),
         }),
+      updateMessage: vi.fn(async (id: string, patch: Record<string, unknown>) => ({
+        id,
+        session_id: session.id,
+        author_type: 'AGENT',
+        content: String(patch.content ?? ''),
+        attachments: [],
+        delivery_status: patch.delivery_status ?? 'DELIVERED',
+        moderation_metadata: patch.moderation_metadata ?? null,
+        reply_to_message_id: 'msg-human',
+        runtime_status: patch.runtime_status ?? 'READY',
+        runtime_error_code: patch.runtime_error_code ?? null,
+        created_at: new Date(),
+      })),
       listMessages: vi.fn(async () => ({
         items: [
           {
@@ -619,6 +871,11 @@ describe('PrivateChannelService', () => {
             author_type: 'AGENT',
             content: '我们刚才聊过咖啡风味。',
             attachments: [],
+            delivery_status: 'DELIVERED',
+            moderation_metadata: null,
+            reply_to_message_id: null,
+            runtime_status: 'READY',
+            runtime_error_code: null,
             created_at: new Date(),
           },
           {
@@ -627,6 +884,11 @@ describe('PrivateChannelService', () => {
             author_type: 'HUMAN',
             content: '',
             attachments: [],
+            delivery_status: 'DELIVERED',
+            moderation_metadata: null,
+            reply_to_message_id: null,
+            runtime_status: 'READY',
+            runtime_error_code: null,
             created_at: new Date(),
           },
         ],
@@ -915,21 +1177,55 @@ describe('PrivateChannelService', () => {
     expect(gatewayGenerate).not.toHaveBeenCalled()
   })
 
-  it('rolls back attachment message state when agent reply generation fails', async () => {
+  it('marks the pending agent reply failed when reply generation collapses after the ack', async () => {
     const session = buildSession()
     const rollbackPrivateMessageAttachmentArtifacts = vi.fn(async () => undefined)
     const cleanupPrivateMediaMemory = vi.fn(async () => undefined)
     const deleteMessage = vi.fn(async () => true)
+    const updateMessage = vi.fn(async (id: string, patch: Record<string, unknown>) => ({
+      id,
+      session_id: session.id,
+      author_type: 'AGENT',
+      content: String(patch.content ?? ''),
+      attachments: [],
+      delivery_status: patch.delivery_status ?? 'DELIVERED',
+      moderation_metadata: patch.moderation_metadata ?? null,
+      reply_to_message_id: 'msg-human',
+      runtime_status: patch.runtime_status ?? 'READY',
+      runtime_error_code: patch.runtime_error_code ?? null,
+      created_at: new Date(),
+    }))
     const channelRepo = {
       findSessionById: vi.fn(async () => session),
-      createMessage: vi.fn(async () => ({
-        id: 'msg-human',
-        session_id: session.id,
-        author_type: 'HUMAN',
-        content: '',
-        attachments: [],
-        created_at: new Date(),
-      })),
+      createMessage: vi
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'msg-human',
+          session_id: session.id,
+          author_type: 'HUMAN',
+          content: '',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: null,
+          runtime_status: 'READY',
+          runtime_error_code: null,
+          created_at: new Date(),
+        })
+        .mockResolvedValueOnce({
+          id: 'msg-agent',
+          session_id: session.id,
+          author_type: 'AGENT',
+          content: '',
+          attachments: [],
+          delivery_status: 'DELIVERED',
+          moderation_metadata: null,
+          reply_to_message_id: 'msg-human',
+          runtime_status: 'THINKING',
+          runtime_error_code: null,
+          created_at: new Date(),
+        }),
+      updateMessage,
       deleteMessage,
       listMessages: vi.fn(async () => ({
         items: [],
@@ -1058,18 +1354,20 @@ describe('PrivateChannelService', () => {
       sseHub: null,
     })
 
-    await expect(service.sendMessage(session.id, 'user-1', {
+    const result = await service.sendMessage(session.id, 'user-1', {
       content: '',
       attachment_asset_ids: ['asset-1'],
-    })).rejects.toThrow('visible generation failed')
-
-    expect(cleanupPrivateMediaMemory).toHaveBeenCalledWith({
-      agent_id: 'agent-1',
-      message_id: 'msg-human',
-      asset_ids: ['asset-1'],
     })
-    expect(rollbackPrivateMessageAttachmentArtifacts).toHaveBeenCalledWith('msg-human')
-    expect(deleteMessage).toHaveBeenCalledWith('msg-human')
+    expect(result.agent_reply.runtime_status).toBe('THINKING')
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(updateMessage).toHaveBeenCalledWith('msg-agent', expect.objectContaining({
+      runtime_status: 'FAILED',
+      runtime_error_code: 'PRIVATE_REPLY_FAILED',
+    }))
+    expect(cleanupPrivateMediaMemory).not.toHaveBeenCalled()
+    expect(rollbackPrivateMessageAttachmentArtifacts).not.toHaveBeenCalled()
+    expect(deleteMessage).not.toHaveBeenCalled()
   })
 
   it('rejects message listing for a non-owner session reader', async () => {
@@ -1109,5 +1407,71 @@ describe('PrivateChannelService', () => {
 
     await expect(service.getMessages(session.id, 'user-2', { limit: 20 })).rejects.toThrow('Not your session')
     expect(channelRepo.listMessages).not.toHaveBeenCalled()
+  })
+
+  it('recovers stale pending private replies that lost their in-process task', async () => {
+    const staleMessageCreatedAt = new Date('2026-04-06T00:00:00.000Z')
+    const recoveredAt = new Date('2026-04-06T00:03:00.000Z')
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(recoveredAt)
+
+      const stalePendingReply = {
+        id: 'msg-agent-stale',
+        session_id: 'session-1',
+        author_type: 'AGENT',
+        content: '',
+        attachments: [],
+        delivery_status: 'DELIVERED',
+        moderation_metadata: null,
+        reply_to_message_id: 'msg-human',
+        runtime_status: 'THINKING',
+        runtime_error_code: null,
+        created_at: staleMessageCreatedAt,
+      } as const
+      const updateMessage = vi.fn(async (id: string, patch: Record<string, unknown>) => ({
+        ...stalePendingReply,
+        id,
+        runtime_status: patch.runtime_status ?? 'READY',
+        runtime_error_code: patch.runtime_error_code ?? null,
+        moderation_metadata: patch.moderation_metadata ?? null,
+        created_at: stalePendingReply.created_at,
+      }))
+      const broadcastToSession = vi.fn()
+      const channelRepo = {
+        listPendingAgentRepliesOlderThan: vi.fn(async () => [stalePendingReply]),
+        updateMessage,
+      }
+
+      const service = new PrivateChannelService({
+        channelRepo: channelRepo as never,
+        memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+        agentService: { getAgent: vi.fn(), getLatestConfig: vi.fn(() => null) } as never,
+        llmGateway: { generateVisibleText: vi.fn() } as never,
+        eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+        agentRunRepo: { create: vi.fn() } as never,
+        budgetService: null,
+        costTracker: null,
+        mediaAssetService: buildMediaAssetServiceMock() as never,
+        sseHub: { broadcastToSession } as never,
+      })
+
+      const recovered = await service.recoverStalePendingReplies()
+
+      expect(channelRepo.listPendingAgentRepliesOlderThan).toHaveBeenCalledWith(
+        new Date(recoveredAt.getTime() - 2 * 60 * 1000),
+        25,
+      )
+      expect(updateMessage).toHaveBeenCalledWith('msg-agent-stale', expect.objectContaining({
+        runtime_status: 'FAILED',
+        runtime_error_code: 'PRIVATE_REPLY_RECOVERY_TIMEOUT',
+      }))
+      expect(broadcastToSession).toHaveBeenCalledWith('session-1', expect.objectContaining({
+        type: 'PRIVATE_MESSAGE_UPDATED',
+      }))
+      expect(recovered).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

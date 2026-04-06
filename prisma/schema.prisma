@@ -1223,28 +1223,28 @@ enum IncubationGrantStatus {
 }
 
 model IncubationJob {
-  id              String              @id @default(cuid())
-  postId          String?             @map("post_id")
-  communityId     String              @map("community_id")
-  proposerAgentId String              @map("proposer_agent_id")
-  status          IncubationJobStatus @default(PENDING)
-  phase           String              @default("AWAIT_GRANT")
-  strictPublication Boolean           @default(true) @map("strict_publication")
-  grantRequired   Boolean             @default(true) @map("grant_required")
-  premodRequired  Boolean             @default(true) @map("premod_required")
-  redactionLevel  String              @default("strong") @map("redaction_level")
-  sourceCount     Int                 @default(0) @map("source_count")
-  idempotencyKey  String?             @map("idempotency_key")
-  sourceSessionId String?             @map("source_session_id")
-  sourceMemoryId  String?             @map("source_memory_id")
-  researchJson    Json?               @map("research_json")
-  draftJson       Json?               @map("draft_json")
-  reviewJson      Json?               @map("review_json")
-  requestedAt     DateTime            @default(now()) @map("requested_at")
-  expiresAt       DateTime?           @map("expires_at")
-  metaJson        Json?               @map("meta_json")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  id                String              @id @default(cuid())
+  postId            String?             @map("post_id")
+  communityId       String              @map("community_id")
+  proposerAgentId   String              @map("proposer_agent_id")
+  status            IncubationJobStatus @default(PENDING)
+  phase             String              @default("AWAIT_GRANT")
+  strictPublication Boolean             @default(true) @map("strict_publication")
+  grantRequired     Boolean             @default(true) @map("grant_required")
+  premodRequired    Boolean             @default(true) @map("premod_required")
+  redactionLevel    String              @default("strong") @map("redaction_level")
+  sourceCount       Int                 @default(0) @map("source_count")
+  idempotencyKey    String?             @map("idempotency_key")
+  sourceSessionId   String?             @map("source_session_id")
+  sourceMemoryId    String?             @map("source_memory_id")
+  researchJson      Json?               @map("research_json")
+  draftJson         Json?               @map("draft_json")
+  reviewJson        Json?               @map("review_json")
+  requestedAt       DateTime            @default(now()) @map("requested_at")
+  expiresAt         DateTime?           @map("expires_at")
+  metaJson          Json?               @map("meta_json")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   post          Post?                    @relation(fields: [postId], references: [id])
   community     Community                @relation(fields: [communityId], references: [id])
@@ -2835,18 +2835,30 @@ enum DigestStatus {
   SKIPPED
 }
 
+enum PrivateMessageRuntimeStatus {
+  READY
+  THINKING
+  FAILED
+}
+
 model PrivateMessage {
-  id                     String                @id @default(cuid())
-  sessionId              String                @map("session_id")
-  authorType             PrivateAuthorType     @map("author_type")
+  id                     String                      @id @default(cuid())
+  sessionId              String                      @map("session_id")
+  authorType             PrivateAuthorType           @map("author_type")
+  replyToMessageId       String?                     @map("reply_to_message_id")
+  runtimeStatus          PrivateMessageRuntimeStatus @default(READY) @map("runtime_status")
+  runtimeErrorCode       String?                     @map("runtime_error_code")
   content                String
-  deliveryStatus         MessageDeliveryStatus @default(DELIVERED) @map("delivery_status")
-  moderationMetadataJson Json?                 @map("moderation_metadata_json")
-  createdAt              DateTime              @default(now()) @map("created_at")
+  deliveryStatus         MessageDeliveryStatus       @default(DELIVERED) @map("delivery_status")
+  moderationMetadataJson Json?                       @map("moderation_metadata_json")
+  createdAt              DateTime                    @default(now()) @map("created_at")
 
   session PrivateSession @relation(fields: [sessionId], references: [id])
 
   @@index([sessionId, createdAt])
+  @@index([sessionId, runtimeStatus, createdAt])
+  @@index([runtimeStatus, createdAt])
+  @@index([replyToMessageId])
   @@map("private_messages")
 }
 

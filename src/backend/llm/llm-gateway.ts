@@ -259,10 +259,11 @@ export class LLMGateway {
         })
 
         let renderDecision: RenderDecision | null = null
+        let credential: ReturnType<CredentialBroker['resolve']> | null = null
         const startedAt = Date.now()
 
         try {
-          const credential = this.options.credentialBroker.resolve({
+          credential = this.options.credentialBroker.resolve({
             candidate,
             visibility: request.visibility,
             budgetClass: request.budgetClass,
@@ -449,6 +450,8 @@ export class LLMGateway {
           if (!shouldTryNextRoute(code)) {
             throw toGatewayError(error, code)
           }
+        } finally {
+          credential?.release()
         }
       }
     }

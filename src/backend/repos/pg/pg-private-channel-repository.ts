@@ -15,7 +15,10 @@ import type {
   SessionInitiator,
   DigestStatus,
 } from '../types.js'
-import type { PrivateChannelRepository } from '../private-channel-repository.js'
+import type {
+  PrivateChannelRepository,
+  UpdatePrivateMessagePatch,
+} from '../private-channel-repository.js'
 
 export class PgPrivateChannelRepository implements PrivateChannelRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -118,6 +121,9 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
       data: {
         sessionId: input.session_id,
         authorType: input.author_type,
+        replyToMessageId: input.reply_to_message_id ?? null,
+        runtimeStatus: input.runtime_status ?? 'READY',
+        runtimeErrorCode: input.runtime_error_code ?? null,
         content: input.content,
         deliveryStatus: input.delivery_status ?? 'DELIVERED',
         moderationMetadataJson:
@@ -126,6 +132,51 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
       },
     })
     return this.messageToDomain(row)
+  }
+
+  async updateMessage(id: string, patch: UpdatePrivateMessagePatch): Promise<PrivateMessage | null> {
+    try {
+      const row = await this.prisma.privateMessage.update({
+        where: { id },
+        data: {
+          ...(patch.content !== undefined ? { content: patch.content } : {}),
+          ...(patch.delivery_status !== undefined ? { deliveryStatus: patch.delivery_status } : {}),
+          ...(patch.moderation_metadata !== undefined
+            ? { moderationMetadataJson: (patch.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue }
+            : {}),
+          ...(patch.runtime_status !== undefined ? { runtimeStatus: patch.runtime_status } : {}),
+          ...(patch.runtime_error_code !== undefined ? { runtimeErrorCode: patch.runtime_error_code } : {}),
+        },
+      })
+      return this.messageToDomain(row)
+    } catch {
+      return null
+    }
+  }
+
+  async findPendingAgentReply(sessionId: string): Promise<PrivateMessage | null> {
+    const row = await this.prisma.privateMessage.findFirst({
+      where: {
+        sessionId,
+        authorType: 'AGENT',
+        runtimeStatus: 'THINKING',
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    return row ? this.messageToDomain(row) : null
+  }
+
+  async listPendingAgentRepliesOlderThan(cutoff: Date, limit: number): Promise<PrivateMessage[]> {
+    const rows = await this.prisma.privateMessage.findMany({
+      where: {
+        authorType: 'AGENT',
+        runtimeStatus: 'THINKING',
+        createdAt: { lt: cutoff },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+    })
+    return rows.map((row) => this.messageToDomain(row))
   }
 
   async deleteMessage(id: string): Promise<boolean> {
@@ -181,6 +232,9 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
       id: row.id,
       session_id: row.sessionId,
       author_type: row.authorType,
+      reply_to_message_id: row.replyToMessageId,
+      runtime_status: row.runtimeStatus,
+      runtime_error_code: row.runtimeErrorCode,
       content: row.content,
       attachments: [],
       delivery_status: row.deliveryStatus,

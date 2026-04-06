@@ -2,7 +2,7 @@ import type { LeaderElector } from './leader-elector.js'
 import type { MediaGenerationService } from '../media/media-generation-service.js'
 
 export interface MediaGenerationWorkerDeps {
-  service: Pick<MediaGenerationService, 'processNextQueuedJob'>
+  service: Pick<MediaGenerationService, 'processNextQueuedJob' | 'sweepTimedOutRunningJobs'>
   leaderElector?: LeaderElector
 }
 
@@ -69,6 +69,7 @@ export class MediaGenerationWorker {
     this.ticking = true
     try {
       if (!(await this.ensureLeadership())) return
+      await this.deps.service.sweepTimedOutRunningJobs()
       const job = await this.deps.service.processNextQueuedJob()
       if (job) {
         console.log(`[MediaGenerationWorker] processed job=${job.id} status=${job.status}`)

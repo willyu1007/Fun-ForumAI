@@ -1060,6 +1060,7 @@ describe('MediaGenerationService', () => {
       headers: { 'content-type': 'image/png' },
     }))
 
+    await service.sweepTimedOutRunningJobs(true)
     const nextJob = await service.processNextQueuedJob()
     const recoveredJob = await mediaGenerationJobRepo.findById('job-timeout-1')
     const updatedPlan = await imagePlanRepo.findById(plan.id)
@@ -1138,6 +1139,7 @@ describe('MediaGenerationService', () => {
       },
     })
 
+    await service.sweepTimedOutRunningJobs(true)
     const nextJob = await service.processNextQueuedJob()
     const timedOutJob = await mediaGenerationJobRepo.findById('job-timeout-exhausted-1')
     const updatedPlan = await imagePlanRepo.findById(plan.id)

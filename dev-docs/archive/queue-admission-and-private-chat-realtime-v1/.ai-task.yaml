@@ -1,0 +1,13 @@
+version: 1
+task_id: T-939
+project: main
+slug: queue-admission-and-private-chat-realtime-v1
+status: archived
+updated: "2026-04-07"
+keywords:
+  - queue
+  - admission
+  - llm
+  - private-chat
+  - realtime
+  - media

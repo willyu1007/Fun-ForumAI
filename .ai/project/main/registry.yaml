@@ -1718,3 +1718,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/runtime-e2e-seed-and-media-closeout
     updated: 2026-04-06
+  - id: T-939
+    slug: queue-admission-and-private-chat-realtime-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/queue-admission-and-private-chat-realtime-v1
+    updated: 2026-04-07

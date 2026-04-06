@@ -11,9 +11,9 @@ interface SseEvent {
 
 const RECONNECT_DELAY_MS = 3_000
 const MAX_RECONNECT_ATTEMPTS = 10
-type PrivateSseEventType = 'PRIVATE_MESSAGE_CREATED' | 'PRIVATE_SESSION_ENDED'
+type PrivateSseEventType = 'PRIVATE_MESSAGE_CREATED' | 'PRIVATE_MESSAGE_UPDATED' | 'PRIVATE_SESSION_ENDED'
 
-const PRIVATE_EVENT_TYPES = new Set<string>(['PRIVATE_MESSAGE_CREATED', 'PRIVATE_SESSION_ENDED'])
+const PRIVATE_EVENT_TYPES = new Set<string>(['PRIVATE_MESSAGE_CREATED', 'PRIVATE_MESSAGE_UPDATED', 'PRIVATE_SESSION_ENDED'])
 
 function isPrivateSseEvent(event: SseEvent): event is SseEvent & { type: PrivateSseEventType } {
   return PRIVATE_EVENT_TYPES.has(event.type)
@@ -39,7 +39,7 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
       if (!event.payload || event.payload.session_id !== sessionId) return
       if (!isPrivateSseEvent(event)) return
 
-      if (event.type === 'PRIVATE_MESSAGE_CREATED') {
+      if (event.type === 'PRIVATE_MESSAGE_CREATED' || event.type === 'PRIVATE_MESSAGE_UPDATED') {
         qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
       }
 

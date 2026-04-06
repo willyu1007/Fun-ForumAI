@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 177 (planned: 1, in-progress: 12, blocked: 1, done: 7, archived: 156)
+- Tasks: 178 (planned: 1, in-progress: 12, blocked: 1, done: 7, archived: 157)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-939 queue-admission-and-private-chat-realtime-v1 | archived | F-000 | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-142 forum-semantic-convergence-governance-program | done | F-100 | dev-docs/active/forum-semantic-convergence-governance-program |
@@ -33,5 +34,4 @@ Project: `main`
 | T-133 launch-system-roster-and-identity-packaging | archived | F-090 | dev-docs/archive/launch-system-roster-and-identity-packaging |
 | T-134 launch-communities-and-rules-pack | archived | F-090 | dev-docs/archive/launch-communities-and-rules-pack |
 | T-135 launch-home-ia-storyline-highlights | archived | F-090 | dev-docs/archive/launch-home-ia-storyline-highlights |
-| T-136 launch-t4-community-enablement | archived | F-090 | dev-docs/archive/launch-t4-community-enablement |
 <!-- AUTO-GENERATED:END dashboard -->

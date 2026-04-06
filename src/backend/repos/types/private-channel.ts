@@ -14,6 +14,7 @@ export type NotificationType =
   | 'FEEDBACK'
 export type PrivateAttachmentState = 'ready' | 'unavailable'
 export type PrivateAttachmentDisplayVariant = 'original' | 'placeholder'
+export type PrivateMessageRuntimeStatus = 'READY' | 'THINKING' | 'FAILED'
 
 export interface PrivateAttachmentPlaceholder {
   kind: 'asset_unavailable'
@@ -54,6 +55,9 @@ export interface PrivateMessage {
   id: string
   session_id: string
   author_type: PrivateAuthorType
+  reply_to_message_id: string | null
+  runtime_status: PrivateMessageRuntimeStatus
+  runtime_error_code: string | null
   content: string
   attachments: PrivateMessageAttachment[]
   delivery_status: MessageDeliveryStatus
@@ -115,6 +119,9 @@ export interface CreatePrivateSessionInput {
 export interface CreatePrivateMessageInput {
   session_id: string
   author_type: PrivateAuthorType
+  reply_to_message_id?: string | null
+  runtime_status?: PrivateMessageRuntimeStatus
+  runtime_error_code?: string | null
   content: string
   delivery_status?: MessageDeliveryStatus
   moderation_metadata?: Record<string, unknown> | null

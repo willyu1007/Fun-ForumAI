@@ -4,7 +4,10 @@ import type { PromptEngine } from '../llm/prompt-engine.js'
 import type { AgentService } from './agent-service.js'
 import type { BudgetService } from './budget-service.js'
 import type { CostTracker } from './cost-tracker.js'
-import type { PrivateChannelRepository } from '../repos/private-channel-repository.js'
+import type {
+  PrivateChannelRepository,
+  UpdatePrivateMessagePatch,
+} from '../repos/private-channel-repository.js'
 import type { MemoryRepository } from '../repos/memory-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { SseHub } from '../sse/hub.js'
@@ -41,11 +44,55 @@ import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 
 export const PRIVATE_SESSION_TIMEOUT_MS = 30 * 60 * 1000
+export const PRIVATE_REPLY_RECOVERY_STALE_MS = 2 * 60 * 1000
+export const PRIVATE_REPLY_RECOVERY_BATCH_LIMIT = 25
 
 interface CurrentPrivateMediaCardInput {
   source_id: string
   text: string
   topic_hints: string[]
+}
+
+interface PreparedPrivateReplyContext {
+  enrichedHumanMessage: PrivateMessage
+  auditInputText: string
+  replyPlan: {
+    promptRef: typeof PROMPT_TEMPLATE_REFS.agentPrivateChatReply
+    variables: Record<string, string>
+    renderDecision: RenderTierDecisionResult | null
+    promptAudit: PromptComposeAudit | null
+  }
+  routing: {
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    preferredModelId?: string
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+  }
+}
+
+interface GeneratedPrivateReplyResult {
+  llmResponse: LLMGatewayResponse
+  latencyMs: number
+  observation: PersonaObservationV1
+  finalContent: string
+  deliveryStatus: PrivateMessage['delivery_status']
+  moderationMetadata: Record<string, unknown> | null
+}
+
+interface CompletedPrivateReplyResult {
+  agentReply: PrivateMessage
+  tokenCost: number
+}
+
+interface PendingPrivateReplyTaskInput {
+  session: PrivateSession
+  humanUserId: string
+  humanMessage: PrivateMessage
+  effectiveHumanContent: string
+  attachmentAssetIds: string[]
+  humanInput: string
+  pendingReplyId: string
+  traceId: string
+  preparedContext?: PreparedPrivateReplyContext
 }
 
 export interface PrivateChannelServiceDeps {
@@ -68,6 +115,8 @@ export interface PrivateChannelServiceDeps {
 }
 
 export class PrivateChannelService {
+  private readonly pendingReplyTasks = new Map<string, Promise<CompletedPrivateReplyResult>>()
+
   constructor(private readonly deps: PrivateChannelServiceDeps) {}
 
   bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
@@ -152,6 +201,10 @@ export class PrivateChannelService {
     if (!normalizedContent && attachmentAssetIds.length === 0) {
       throw new ValidationError('Message content or attachment is required')
     }
+    const pendingReply = await this.findPendingAgentReply(sessionId)
+    if (pendingReply) {
+      throw new AppError(409, 'Previous private reply is still generating', 'PRIVATE_REPLY_IN_PROGRESS')
+    }
     if (attachmentAssetIds.length > 0) {
       this.requirePrivateMediaMemoryService()
     }
@@ -215,126 +268,58 @@ export class PrivateChannelService {
       })
       return {
         human_message: blockedHumanMessage,
-        agent_reply: { ...refusal, attachments: [] },
+        agent_reply: { ...refusal, attachments: [], reply_to_message_id: humanMsg.id, runtime_status: 'READY', runtime_error_code: null },
         token_cost: 0,
       }
     }
 
     try {
-      const attachmentContext = await this.prepareMessageAttachments({
-        session,
-        humanUserId,
-        messageId: humanMsg.id,
-        attachmentAssetIds,
-      })
-      const enrichedHumanMessage: PrivateMessage = {
-        ...humanMsg,
-        attachments: attachmentContext.attachments,
-      }
-
-      const replyPlan = await this.buildRequestForReply(
-        session,
-        effectiveHumanContent,
-        attachmentContext.current_media_cards,
-      )
-      const routing = await this.resolveVisibleRouting(
-        session.agent_id,
-        replyPlan.renderDecision?.requestedTier ?? 'base',
-      )
-      const startMs = Date.now()
-      const llmResponse = await this.deps.llmGateway.generateVisibleText({
-        intent: 'private_reply',
-        scene: 'private_chat',
-        modality: 'text',
-        responseMode: 'text',
-        agentId: session.agent_id,
-        homeVoiceLineId: routing.homeVoiceLineId,
-        preferredModelId: routing.preferredModelId,
-        promptRef: replyPlan.promptRef,
-        variables: replyPlan.variables,
-        budgetClass: 'visible_standard',
-        traceId: `private-chat:${session.id}:${humanMsg.id}`,
-        promptBudgetSummary: buildPromptBudgetSummary('private_chat', replyPlan.promptRef, replyPlan.promptAudit),
-        requestedTier: routing.requestedTier,
-        allowFallbackWithinLine: false,
-        allowCrossFamily: false,
-      })
-      const latencyMs = Date.now() - startMs
-      const identity = this.resolveObservationIdentity(session.agent_id)
-      const observation = buildPersonaObservation({
-        sourceCallsiteId: 'private-channel-reply',
-        scene: 'private_chat',
-        intent: 'private_reply',
-        visibility: 'visible',
-        coverageStatus: 'visible_complete',
-        personaSeedCode: identity?.persona_seed_code,
-        homeVoiceLineId: identity?.home_voice_line_id,
-        promptRef: replyPlan.promptRef,
-        requestedTier: llmResponse.renderDecision.tier,
-        resolvedTier: llmResponse.renderDecision.tier,
-        renderDecision: llmResponse.renderDecision,
-        usage: llmResponse.usage,
-        latencyMs,
-        parseSuccess: true,
-        promptAudit: replyPlan.promptAudit,
-        llmProviderId: llmResponse.renderDecision.providerId,
-        llmModelId: llmResponse.renderDecision.modelId,
-      })
-
-      const outboundPolicy = this.deps.policyGatewayService
-        ? await this.deps.policyGatewayService.evaluate({
-            channel: 'private_outbound',
-            text: llmResponse.content,
-            author_agent_id: session.agent_id,
-            user_id: humanUserId,
-            target_type: 'private_session',
-            target_id: session.id,
-            session_id: session.id,
-            scene: 'private_chat',
+      const prepared = attachmentAssetIds.length > 0
+        ? await this.preparePrivateReplyContext({
+            session,
+            humanUserId,
+            humanMessage: humanMsg,
+            effectiveHumanContent,
+            attachmentAssetIds,
           })
         : null
-
       const agentReply = await this.deps.channelRepo.createMessage({
         session_id: sessionId,
         author_type: 'AGENT',
-        content: outboundPolicy?.final_text ?? llmResponse.content,
-        delivery_status: outboundPolicy?.action === 'block'
-          ? 'REFUSED'
-          : outboundPolicy?.delivery_status ?? 'DELIVERED',
-        moderation_metadata: outboundPolicy?.metadata ?? null,
+        reply_to_message_id: humanMsg.id,
+        runtime_status: 'THINKING',
+        content: '',
       })
+      const outboundHumanMessage = prepared?.enrichedHumanMessage ?? { ...humanMsg, attachments: [] }
       this.deps.sseHub?.broadcastToSession(sessionId, {
         type: 'PRIVATE_MESSAGE_CREATED',
-        payload: { session_id: sessionId, message: enrichedHumanMessage },
+        payload: { session_id: sessionId, message: outboundHumanMessage },
       })
       this.deps.sseHub?.broadcastToSession(sessionId, {
         type: 'PRIVATE_MESSAGE_CREATED',
         payload: { session_id: sessionId, message: agentReply },
       })
 
-      if (replyPlan.renderDecision && this.deps.personaStateService) {
-        await this.deps.personaStateService.recordVisibleRender({
-          agentId: session.agent_id,
-          scene: 'private_chat',
-          renderDecision: replyPlan.renderDecision,
-          outputText: agentReply.content,
-        }).catch((err) => {
-          console.error('[PrivateChannel] persona runtime render record failed:', err)
-        })
-      }
-
-      this.recordAuditTrail(
-        session,
-        normalizedContent || attachmentContext.audit_input_text,
-        llmResponse,
-        latencyMs,
-        observation,
+      const pendingReplyTask = this.trackPendingReplyTask(
+        agentReply.id,
+        this.finishPendingReply({
+          session,
+          humanUserId,
+          humanMessage: humanMsg,
+          effectiveHumanContent,
+          attachmentAssetIds,
+          humanInput: normalizedContent || prepared?.auditInputText || effectiveHumanContent,
+          pendingReplyId: agentReply.id,
+          traceId: `private-chat:${session.id}:${humanMsg.id}`,
+          preparedContext: prepared ?? undefined,
+        }),
       )
+      void pendingReplyTask.catch(() => undefined)
 
       return {
-        human_message: enrichedHumanMessage,
+        human_message: outboundHumanMessage,
         agent_reply: { ...agentReply, attachments: [] },
-        token_cost: llmResponse.usage.total_tokens,
+        token_cost: 0,
       }
     } catch (err) {
       if (attachmentAssetIds.length > 0) {
@@ -386,6 +371,63 @@ export class PrivateChannelService {
       throw new AppError(500, 'Failed to build staged attachment view', 'PRIVATE_ATTACHMENT_STAGE_FAILED')
     }
     return attachment
+  }
+
+  private trackPendingReplyTask(
+    pendingReplyId: string,
+    task: Promise<CompletedPrivateReplyResult>,
+  ): Promise<CompletedPrivateReplyResult> {
+    const trackedTask = task.finally(() => {
+      this.pendingReplyTasks.delete(pendingReplyId)
+    })
+    this.pendingReplyTasks.set(pendingReplyId, trackedTask)
+    return trackedTask
+  }
+
+  private async waitForPendingReply(
+    pendingReplyId: string,
+  ): Promise<CompletedPrivateReplyResult | null> {
+    const task = this.pendingReplyTasks.get(pendingReplyId)
+    if (!task) {
+      return null
+    }
+    return task
+  }
+
+  async runCloseoutVisibleReply(input: {
+    agentId: string
+    humanUserId: string
+    content: string
+  }): Promise<{
+    session: PrivateSession
+    human_message: PrivateMessage
+    agent_reply: PrivateMessage
+    token_cost: number
+  }> {
+    const session = await this.createSession(input.agentId, input.humanUserId)
+    const result = await this.sendMessage(session.id, input.humanUserId, {
+      content: input.content,
+    })
+    if (result.agent_reply.runtime_status !== 'THINKING') {
+      return {
+        session,
+        ...result,
+      }
+    }
+    const completed = await this.waitForPendingReply(result.agent_reply.id)
+    if (!completed) {
+      throw new AppError(
+        500,
+        'Private closeout reply tracking was not registered',
+        'PRIVATE_CLOSEOUT_REPLY_TRACKING_MISSING',
+      )
+    }
+    return {
+      session,
+      human_message: result.human_message,
+      agent_reply: completed.agentReply,
+      token_cost: completed.tokenCost,
+    }
   }
 
   private async prepareMessageAttachments(input: {
@@ -447,6 +489,186 @@ export class PrivateChannelService {
       attachments,
       current_media_cards: currentMediaCards,
       audit_input_text: currentMediaCards.map((item) => item.text).join('\n'),
+    }
+  }
+
+  private async preparePrivateReplyContext(input: {
+    session: PrivateSession
+    humanUserId: string
+    humanMessage: PrivateMessage
+    effectiveHumanContent: string
+    attachmentAssetIds: string[]
+  }): Promise<PreparedPrivateReplyContext> {
+    const attachmentContext = await this.prepareMessageAttachments({
+      session: input.session,
+      humanUserId: input.humanUserId,
+      messageId: input.humanMessage.id,
+      attachmentAssetIds: input.attachmentAssetIds,
+    })
+    const enrichedHumanMessage: PrivateMessage = {
+      ...input.humanMessage,
+      attachments: attachmentContext.attachments,
+    }
+    const replyPlan = await this.buildRequestForReply(
+      input.session,
+      input.effectiveHumanContent,
+      attachmentContext.current_media_cards,
+    )
+    const routing = await this.resolveVisibleRouting(
+      input.session.agent_id,
+      replyPlan.renderDecision?.requestedTier ?? 'base',
+    )
+    return {
+      enrichedHumanMessage,
+      auditInputText: attachmentContext.audit_input_text,
+      replyPlan,
+      routing,
+    }
+  }
+
+  private async finishPendingReply(input: PendingPrivateReplyTaskInput): Promise<CompletedPrivateReplyResult> {
+    try {
+      const prepared = input.preparedContext ?? await this.preparePrivateReplyContext({
+        session: input.session,
+        humanUserId: input.humanUserId,
+        humanMessage: input.humanMessage,
+        effectiveHumanContent: input.effectiveHumanContent,
+        attachmentAssetIds: input.attachmentAssetIds,
+      })
+      const generated = await this.generatePrivateReply({
+        session: input.session,
+        humanUserId: input.humanUserId,
+        traceId: input.traceId,
+        replyPlan: prepared.replyPlan,
+        routing: prepared.routing,
+      })
+      const agentReply = await this.updatePrivateMessage(input.pendingReplyId, {
+        content: generated.finalContent,
+        delivery_status: generated.deliveryStatus,
+        moderation_metadata: generated.moderationMetadata,
+        runtime_status: 'READY',
+        runtime_error_code: null,
+      })
+      if (!agentReply) {
+        console.error('[PrivateChannel] pending reply update failed:', { messageId: input.pendingReplyId })
+        throw new AppError(500, 'Pending private reply update failed', 'PRIVATE_REPLY_UPDATE_FAILED')
+      }
+      this.deps.sseHub?.broadcastToSession(input.session.id, {
+        type: 'PRIVATE_MESSAGE_UPDATED',
+        payload: { session_id: input.session.id, message: agentReply },
+      })
+
+      if (prepared.replyPlan.renderDecision && this.deps.personaStateService) {
+        await this.deps.personaStateService.recordVisibleRender({
+          agentId: input.session.agent_id,
+          scene: 'private_chat',
+          renderDecision: prepared.replyPlan.renderDecision,
+          outputText: agentReply.content,
+        }).catch((err) => {
+          console.error('[PrivateChannel] persona runtime render record failed:', err)
+        })
+      }
+
+      this.recordAuditTrail(
+        input.session,
+        input.humanInput,
+        generated.llmResponse,
+        generated.latencyMs,
+        generated.observation,
+      )
+      return {
+        agentReply,
+        tokenCost: generated.llmResponse.usage.total_tokens,
+      }
+    } catch (err) {
+      const failedReply = await this.updatePrivateMessage(input.pendingReplyId, {
+        runtime_status: 'FAILED',
+        runtime_error_code: resolvePrivateReplyErrorCode(err),
+        moderation_metadata: {
+          runtime_status: 'failed',
+          failure_message: err instanceof Error ? err.message : 'Private reply generation failed',
+        },
+      })
+      if (failedReply) {
+        this.deps.sseHub?.broadcastToSession(input.session.id, {
+          type: 'PRIVATE_MESSAGE_UPDATED',
+          payload: { session_id: input.session.id, message: failedReply },
+        })
+      }
+      console.error('[PrivateChannel] pending reply failed:', err)
+      throw err
+    }
+  }
+
+  private async generatePrivateReply(input: {
+    session: PrivateSession
+    humanUserId: string
+    traceId: string
+    replyPlan: PreparedPrivateReplyContext['replyPlan']
+    routing: PreparedPrivateReplyContext['routing']
+  }): Promise<GeneratedPrivateReplyResult> {
+    const startMs = Date.now()
+    const llmResponse = await this.deps.llmGateway.generateVisibleText({
+      intent: 'private_reply',
+      scene: 'private_chat',
+      modality: 'text',
+      responseMode: 'text',
+      agentId: input.session.agent_id,
+      homeVoiceLineId: input.routing.homeVoiceLineId,
+      preferredModelId: input.routing.preferredModelId,
+      promptRef: input.replyPlan.promptRef,
+      variables: input.replyPlan.variables,
+      budgetClass: 'visible_standard',
+      traceId: input.traceId,
+      promptBudgetSummary: buildPromptBudgetSummary('private_chat', input.replyPlan.promptRef, input.replyPlan.promptAudit),
+      requestedTier: input.routing.requestedTier,
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    })
+    const latencyMs = Date.now() - startMs
+    const identity = this.resolveObservationIdentity(input.session.agent_id)
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'private-channel-reply',
+      scene: 'private_chat',
+      intent: 'private_reply',
+      visibility: 'visible',
+      coverageStatus: 'visible_complete',
+      personaSeedCode: identity?.persona_seed_code,
+      homeVoiceLineId: identity?.home_voice_line_id,
+      promptRef: input.replyPlan.promptRef,
+      requestedTier: llmResponse.renderDecision.tier,
+      resolvedTier: llmResponse.renderDecision.tier,
+      renderDecision: llmResponse.renderDecision,
+      usage: llmResponse.usage,
+      latencyMs,
+      parseSuccess: true,
+      promptAudit: input.replyPlan.promptAudit,
+      llmProviderId: llmResponse.renderDecision.providerId,
+      llmModelId: llmResponse.renderDecision.modelId,
+    })
+
+    const outboundPolicy = this.deps.policyGatewayService
+      ? await this.deps.policyGatewayService.evaluate({
+          channel: 'private_outbound',
+          text: llmResponse.content,
+          author_agent_id: input.session.agent_id,
+          user_id: input.humanUserId,
+          target_type: 'private_session',
+          target_id: input.session.id,
+          session_id: input.session.id,
+          scene: 'private_chat',
+        })
+      : null
+
+    return {
+      llmResponse,
+      latencyMs,
+      observation,
+      finalContent: outboundPolicy?.final_text ?? llmResponse.content,
+      deliveryStatus: outboundPolicy?.action === 'block'
+        ? 'REFUSED'
+        : outboundPolicy?.delivery_status ?? 'DELIVERED',
+      moderationMetadata: outboundPolicy?.metadata ?? null,
     }
   }
 
@@ -596,6 +818,41 @@ export class PrivateChannelService {
     return ended
   }
 
+  async recoverStalePendingReplies(input?: {
+    staleMs?: number
+    limit?: number
+  }): Promise<PrivateMessage[]> {
+    const staleMs = input?.staleMs ?? PRIVATE_REPLY_RECOVERY_STALE_MS
+    const limit = input?.limit ?? PRIVATE_REPLY_RECOVERY_BATCH_LIMIT
+    const cutoff = new Date(Date.now() - staleMs)
+    const staleReplies = await this.deps.channelRepo.listPendingAgentRepliesOlderThan(cutoff, limit)
+    const recovered: PrivateMessage[] = []
+
+    for (const staleReply of staleReplies) {
+      if (this.pendingReplyTasks.has(staleReply.id)) {
+        continue
+      }
+      const recoveredReply = await this.updatePrivateMessage(staleReply.id, {
+        runtime_status: 'FAILED',
+        runtime_error_code: 'PRIVATE_REPLY_RECOVERY_TIMEOUT',
+        moderation_metadata: {
+          runtime_status: 'failed',
+          failure_message: 'Private reply did not complete before the recovery timeout expired.',
+        },
+      })
+      if (!recoveredReply) {
+        continue
+      }
+      this.deps.sseHub?.broadcastToSession(recoveredReply.session_id, {
+        type: 'PRIVATE_MESSAGE_UPDATED',
+        payload: { session_id: recoveredReply.session_id, message: recoveredReply },
+      })
+      recovered.push(recoveredReply)
+    }
+
+    return recovered
+  }
+
   async getMessageCount(sessionId: string): Promise<number> {
     return this.deps.channelRepo.countMessages(sessionId)
   }
@@ -630,26 +887,6 @@ export class PrivateChannelService {
       }))
     }
     return { session, messages }
-  }
-
-  async runCloseoutVisibleReply(input: {
-    agentId: string
-    humanUserId: string
-    content: string
-  }): Promise<{
-    session: PrivateSession
-    human_message: PrivateMessage
-    agent_reply: PrivateMessage
-    token_cost: number
-  }> {
-    const session = await this.createSession(input.agentId, input.humanUserId)
-    const result = await this.sendMessage(session.id, input.humanUserId, {
-      content: input.content,
-    })
-    return {
-      session,
-      ...result,
-    }
   }
 
   private async buildRequestForReply(
@@ -772,13 +1009,13 @@ export class PrivateChannelService {
     return this.deps.memoryService
   }
 
-  private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
+  private async resolveVisibleRouting(agentId: string, _requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
     preferredModelId?: string
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }> {
     if (this.deps.inferenceProfileService) {
-      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier })
+      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier: 'base' })
     }
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
@@ -787,7 +1024,7 @@ export class PrivateChannelService {
     return {
       homeVoiceLineId,
       preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
-      requestedTier,
+      requestedTier: 'base',
     }
   }
 
@@ -806,6 +1043,29 @@ export class PrivateChannelService {
     } catch {
       return null
     }
+  }
+
+  private async updatePrivateMessage(
+    messageId: string,
+    patch: UpdatePrivateMessagePatch,
+  ): Promise<PrivateMessage | null> {
+    const channelRepo = this.deps.channelRepo as PrivateChannelRepository & {
+      updateMessage?: PrivateChannelRepository['updateMessage']
+    }
+    if (typeof channelRepo.updateMessage !== 'function') {
+      return null
+    }
+    return channelRepo.updateMessage(messageId, patch)
+  }
+
+  private async findPendingAgentReply(sessionId: string): Promise<PrivateMessage | null> {
+    const channelRepo = this.deps.channelRepo as PrivateChannelRepository & {
+      findPendingAgentReply?: PrivateChannelRepository['findPendingAgentReply']
+    }
+    if (typeof channelRepo.findPendingAgentReply !== 'function') {
+      return null
+    }
+    return channelRepo.findPendingAgentReply(sessionId)
   }
 }
 
@@ -869,4 +1129,16 @@ function dedupeStrings(values: string[]): string[] {
     result.push(value)
   }
   return result
+}
+
+function resolvePrivateReplyErrorCode(error: unknown): string {
+  if (
+    error
+    && typeof error === 'object'
+    && 'code' in error
+    && typeof (error as { code?: unknown }).code === 'string'
+  ) {
+    return (error as { code: string }).code
+  }
+  return 'PRIVATE_REPLY_FAILED'
 }

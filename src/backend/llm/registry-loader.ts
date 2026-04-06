@@ -342,6 +342,7 @@ const credentialPoolsSchema = z
           allowed_model_ids: z.array(z.string().min(1)).optional(),
           rpm_headroom: z.number().int().min(0).optional(),
           tpm_headroom: z.number().int().min(0).optional(),
+          max_concurrency: z.number().int().positive().optional(),
         })
         .strict(),
     ),

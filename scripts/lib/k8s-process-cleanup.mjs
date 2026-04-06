@@ -10,13 +10,11 @@ function installHooks() {
   hooksInstalled = true
 
   const runCleanupAndExit = async (exitCode, rethrow) => {
-    try {
-      await Promise.allSettled(Array.from(CLEANUP_CALLBACKS, (callback) => callback()))
-    } finally {
-      CLEANUP_CALLBACKS.clear()
+    await Promise.allSettled(Array.from(CLEANUP_CALLBACKS, (callback) => callback()))
+    CLEANUP_CALLBACKS.clear()
+    if (rethrow) {
+      throw rethrow
     }
-
-    if (rethrow) throw rethrow
     process.exit(exitCode)
   }
 

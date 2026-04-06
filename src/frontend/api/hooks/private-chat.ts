@@ -71,7 +71,24 @@ export function useSendPrivateMessage(agentId: string, sessionId: string) {
       api
         .post(`agents/${agentId}/chat/sessions/${sessionId}/messages`, { json: input })
         .json<ApiResponse<SendMessageResult>>(),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      qc.setQueryData<ApiResponse<PaginatedList<PrivateMessage>> | undefined>(
+        queryKeys.privateMessages(agentId, sessionId),
+        (current) => {
+          const existing = current?.data?.items ?? []
+          const appended = appendPrivateMessages(existing, [
+            response.data.human_message,
+            response.data.agent_reply,
+          ])
+          return {
+            data: {
+              items: appended,
+              next_cursor: current?.data?.next_cursor ?? null,
+            },
+            meta: current?.meta,
+          }
+        },
+      )
       qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
     },
   })
@@ -101,4 +118,17 @@ export function useEndPrivateSession(agentId: string, sessionId: string) {
       qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
     },
   })
+}
+
+function appendPrivateMessages(
+  existing: PrivateMessage[],
+  incoming: PrivateMessage[],
+): PrivateMessage[] {
+  const byId = new Map(existing.map((message) => [message.id, message] as const))
+  for (const message of incoming) {
+    byId.set(message.id, message)
+  }
+  return Array.from(byId.values()).sort(
+    (left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
+  )
 }

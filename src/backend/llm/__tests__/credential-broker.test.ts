@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { CredentialBroker } from '../credential-broker.js'
 import type { LlmRegistryBundle } from '../registry-loader.js'
+import { PoolAdmissionController } from '../pool-admission-controller.js'
 
 function buildBundle() : LlmRegistryBundle {
   return {
@@ -170,5 +171,113 @@ describe('CredentialBroker', () => {
 
     expect(resolved.pool.credential_id).toBe('moonshot-secondary')
     expect(resolved.apiKey).toBe('secondary-key')
+  })
+
+  it('routes around a saturated primary pool before falling back to a higher-capacity secondary pool', () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools = bundle.credentialPools.pools.map((pool) => ({
+      ...pool,
+      max_concurrency: pool.credential_id === 'moonshot-primary' ? 1 : 3,
+    }))
+    const broker = new CredentialBroker({
+      bundle,
+      secretResolver: {
+        resolve: vi.fn((ref: string) => `${ref}-value`),
+      } as never,
+      admissionController: new PoolAdmissionController(),
+    })
+
+    const first = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+
+    const second = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+
+    expect(first.pool.credential_id).toBe('moonshot-primary')
+    expect(second.pool.credential_id).toBe('moonshot-secondary')
+
+    first.release()
+    second.release()
+  })
+
+  it('surfaces a rate-limit error when every bounded pool is saturated', () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools = bundle.credentialPools.pools.map((pool) => ({
+      ...pool,
+      max_concurrency: 1,
+    }))
+    const broker = new CredentialBroker({
+      bundle,
+      secretResolver: {
+        resolve: vi.fn((ref: string) => `${ref}-value`),
+      } as never,
+      admissionController: new PoolAdmissionController(),
+    })
+
+    const first = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+    const second = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+
+    try {
+      broker.resolve({
+        candidate: {
+          provider_id: 'moonshot-openai',
+          model_id: 'kimi-k2-0905-preview',
+          region: 'cn',
+          endpoint_id: 'moonshot-cn',
+          weight: 100,
+          quality_class: 'premium',
+        },
+        visibility: 'visible',
+        budgetClass: 'visible_standard',
+      })
+      throw new Error('expected saturated pools to raise a rate-limit error')
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'RateLimitError' })
+    }
+
+    first.release()
+    second.release()
   })
 })

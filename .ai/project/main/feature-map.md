@@ -106,6 +106,7 @@ Project: `main`
 | T-935 cloud-environment-go-live-chain-v1 | in-progress | dev-docs/active/cloud-environment-go-live-chain-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
+| T-939 queue-admission-and-private-chat-realtime-v1 | archived | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
 
 ### F-010 Agent Stats System
 

@@ -13,6 +13,8 @@ import {
   compileMediaGenerationSpec,
 } from '../../media/media-generation-compiler.js'
 
+const TIMED_OUT_SWEEP_BATCH_LIMIT = 25
+
 function includesAnyProjection(
   value: unknown,
   projectionIds: Set<string>,
@@ -105,6 +107,7 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
           startedAt: { lte: timeoutThreshold },
         },
         orderBy: [{ createdAt: 'asc' }],
+        take: TIMED_OUT_SWEEP_BATCH_LIMIT,
       })
       if (stale.length === 0) return []
 
@@ -180,51 +183,51 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
   }
 
   async claimNextQueued(input: ClaimMediaGenerationJobInput): Promise<MediaGenerationJob | null> {
-    return this.prisma.$transaction(async (tx) => {
-      const runningCount = await tx.mediaGenerationJobRecord.count({
-        where: { status: 'running' },
-      })
-      if (runningCount >= input.global_concurrency) return null
+    const providerFilter = input.provider
+      ? Prisma.sql`AND job.provider = ${input.provider}`
+      : Prisma.empty
+    const providerCapacityGuard = input.provider
+      ? Prisma.sql`AND capacity.provider_running < ${input.provider_concurrency}`
+      : Prisma.empty
+    const providerRunningCount = input.provider
+      ? Prisma.sql`COUNT(*) FILTER (WHERE status = 'running' AND provider = ${input.provider})::int`
+      : Prisma.sql`0::int`
 
-      if (input.provider) {
-        const providerRunningCount = await tx.mediaGenerationJobRecord.count({
-          where: {
-            status: 'running',
-            provider: input.provider,
-          },
-        })
-        if (providerRunningCount >= input.provider_concurrency) return null
-      }
+    const rows = await this.prisma.$queryRaw<PrismaMediaGenerationJobRecord[]>(Prisma.sql`
+      WITH capacity AS (
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'running')::int AS global_running,
+          ${providerRunningCount} AS provider_running
+        FROM media_generation_jobs
+      ),
+      next_job AS (
+        SELECT job.id
+        FROM media_generation_jobs AS job
+        CROSS JOIN capacity
+        WHERE job.status = 'queued'
+          ${providerFilter}
+          AND job.attempt_count < ${input.max_attempts}
+          AND capacity.global_running < ${input.global_concurrency}
+          ${providerCapacityGuard}
+        ORDER BY job.created_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+      )
+      UPDATE media_generation_jobs AS job
+      SET
+        status = 'running',
+        started_at = ${input.now},
+        finished_at = NULL,
+        error_code = NULL,
+        error_message = NULL,
+        attempt_count = job.attempt_count + 1,
+        updated_at = NOW()
+      WHERE job.id IN (SELECT id FROM next_job)
+      RETURNING job.*
+    `)
 
-      const next = await tx.mediaGenerationJobRecord.findFirst({
-        where: {
-          status: 'queued',
-          ...(input.provider ? { provider: input.provider } : {}),
-          attemptCount: { lt: input.max_attempts },
-        },
-        orderBy: [{ createdAt: 'asc' }],
-      })
-      if (!next) return null
-
-      const claimed = await tx.mediaGenerationJobRecord.updateMany({
-        where: {
-          id: next.id,
-          status: 'queued',
-        },
-        data: {
-          status: 'running',
-          startedAt: input.now,
-          finishedAt: null,
-          errorCode: null,
-          errorMessage: null,
-          attemptCount: { increment: 1 },
-        },
-      })
-      if (claimed.count === 0) return null
-
-      const row = await tx.mediaGenerationJobRecord.findUnique({ where: { id: next.id } })
-      return row ? this.toDomain(row) : null
-    })
+    const row = rows[0] ?? null
+    return row ? this.toDomain(row) : null
   }
 
   async cancelQueuedByProjectionIds(

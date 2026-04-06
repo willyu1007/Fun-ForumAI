@@ -101,6 +101,7 @@ profiles:
     tier: base
     intent: private_reply
     visibility: visible
+    policy_id: visible-private_reply-realtime
     candidates:
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
@@ -399,6 +400,7 @@ profiles:
     tier: base
     intent: private_reply
     visibility: visible
+    policy_id: visible-private_reply-realtime
     candidates:
       - provider_id: zai-openai
         model_id: glm-5
@@ -787,6 +789,7 @@ profiles:
     tier: base
     intent: private_reply
     visibility: visible
+    policy_id: visible-private_reply-realtime
     candidates:
       - provider_id: minimax-openai
         model_id: MiniMax-M2.5
@@ -1025,6 +1028,7 @@ profiles:
     tier: base
     intent: private_reply
     visibility: visible
+    policy_id: visible-private_reply-realtime
     candidates:
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview

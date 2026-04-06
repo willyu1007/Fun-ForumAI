@@ -7,25 +7,30 @@ import type {
 import { LLMGatewayContractError } from './gateway-contract.js'
 import type { LlmRegistryBundle } from './registry-loader.js'
 import { SecretResolver } from './secret-resolver.js'
+import { PoolAdmissionController } from './pool-admission-controller.js'
 
 export interface ResolvedCredential {
   provider: ProviderRegistryEntry
   pool: CredentialPoolEntry
   apiKey: string
+  release(): void
 }
 
 interface CredentialBrokerOptions {
   bundle: LlmRegistryBundle
   secretResolver: SecretResolver
+  admissionController?: PoolAdmissionController
 }
 
 export class CredentialBroker {
   private readonly providersById: Map<string, ProviderRegistryEntry>
+  private readonly admissionController: PoolAdmissionController
 
   constructor(private readonly options: CredentialBrokerOptions) {
     this.providersById = new Map(
       options.bundle.providers.providers.map((provider) => [provider.provider_id, provider] as const),
     )
+    this.admissionController = options.admissionController ?? new PoolAdmissionController()
   }
 
   hasAnyUsableCredential(): boolean {
@@ -88,27 +93,63 @@ export class CredentialBroker {
       )
     }
 
+    let saturatedPoolCount = 0
+    let lastAuthFailure: unknown = null
+    let lastAuthFailurePoolId: string | null = null
+
     for (const pool of pools) {
+      const lease = this.admissionController.tryAcquire(pool)
+      if (!lease) {
+        saturatedPoolCount += 1
+        continue
+      }
       try {
         const apiKey = this.options.secretResolver.resolve(pool.credential_ref)
         if (!apiKey.trim()) {
           throw new Error('resolved api key was empty')
         }
-        return { provider, pool, apiKey }
-      } catch (error) {
-        if (pool === pools[pools.length - 1]) {
-          throw new LLMGatewayContractError(
-            'AuthError',
-            `Failed to resolve any credential for ${input.candidate.provider_id}/${input.candidate.model_id}`,
-            {
-              provider_id: input.candidate.provider_id,
-              model_id: input.candidate.model_id,
-              last_pool_id: pool.credential_id,
-              cause: error instanceof Error ? error.message : 'Unknown credential resolution error',
-            },
-          )
+        return {
+          provider,
+          pool,
+          apiKey,
+          release: () => lease.release(),
         }
+      } catch (error) {
+        lastAuthFailure = error
+        lastAuthFailurePoolId = pool.credential_id
+        lease.release()
       }
+    }
+
+    if (lastAuthFailure) {
+      throw new LLMGatewayContractError(
+        'AuthError',
+        `Failed to resolve any credential for ${input.candidate.provider_id}/${input.candidate.model_id}`,
+        {
+          provider_id: input.candidate.provider_id,
+          model_id: input.candidate.model_id,
+          last_pool_id: lastAuthFailurePoolId,
+          cause: lastAuthFailure instanceof Error ? lastAuthFailure.message : 'Unknown credential resolution error',
+        },
+      )
+    }
+
+    if (saturatedPoolCount > 0) {
+      throw new LLMGatewayContractError(
+        'RateLimitError',
+        `All credential pools are saturated for ${input.candidate.provider_id}/${input.candidate.model_id}`,
+        {
+          provider_id: input.candidate.provider_id,
+          model_id: input.candidate.model_id,
+          region: input.candidate.region,
+          endpoint_id: input.candidate.endpoint_id,
+          pool_limits: pools.map((pool) => ({
+            credential_id: pool.credential_id,
+            max_concurrency: pool.max_concurrency ?? null,
+            active_count: this.admissionController.getActiveCount(pool.credential_id),
+          })),
+        },
+      )
     }
 
     throw new LLMGatewayContractError(

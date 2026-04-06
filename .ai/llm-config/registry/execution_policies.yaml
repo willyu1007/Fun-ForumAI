@@ -54,7 +54,7 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none, same-line]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
+      allow_callsite_override_fields: [temperature, maxTokens, stop]
       allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-scheduled_post-premium
@@ -74,19 +74,19 @@ policies:
       allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
       allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
 
-  - policy_id: visible-private_reply-base
+  - policy_id: visible-private_reply-realtime
     lane: visible_private_reply
     modality: text
     response_mode: text
     defaults:
-      temperature: 0.8
-      max_tokens: 720
-      timeout_ms: 30000
-      max_retries: 2
+      temperature: 0.78
+      max_tokens: 640
+      timeout_ms: 12000
+      max_retries: 1
     fallback:
-      allow_fallback_within_line: false
+      allow_fallback_within_line: true
       allow_cross_family: false
-      allowed_fallback_levels: [none]
+      allowed_fallback_levels: [none, same-line]
     merge:
       allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
       allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]

@@ -24,4 +24,24 @@ describe('PrivateChannelScheduler', () => {
     expect(generateDigest).toHaveBeenNthCalledWith(1, 'session-1')
     expect(generateDigest).toHaveBeenNthCalledWith(2, 'session-2')
   })
+
+  it('recovers stale private reply placeholders on the recovery tick', async () => {
+    const recoverStalePendingReplies = vi.fn().mockResolvedValue([
+      { id: 'msg-agent-1' },
+      { id: 'msg-agent-2' },
+    ])
+    const scheduler = new PrivateChannelScheduler({
+      channelService: {
+        checkTimeouts: vi.fn().mockResolvedValue([]),
+        recoverStalePendingReplies,
+      } as never,
+      memoryService: { generateDigest: vi.fn().mockResolvedValue(null) } as never,
+      agentRepo: { findActive: vi.fn(() => ({ items: [], next_cursor: null })) } as never,
+      leaderElector: { ensureLeadership: vi.fn().mockResolvedValue(true) } as never,
+    })
+
+    await (scheduler as unknown as { recoverPendingReplies: () => Promise<void> }).recoverPendingReplies()
+
+    expect(recoverStalePendingReplies).toHaveBeenCalledTimes(1)
+  })
 })
