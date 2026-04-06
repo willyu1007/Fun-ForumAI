@@ -556,7 +556,10 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
       image_url: 'https://generated.example.com/private-derived.png',
       mime_type: 'image/png',
     })
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    vi.stubGlobal('fetch', vi.fn(async (
+      input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1],
+    ) => {
       const url = String(input)
       if (url === 'https://generated.example.com/private-derived.png') {
         return new Response(VALID_PNG_BUFFER, {

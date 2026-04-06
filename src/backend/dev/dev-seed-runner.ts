@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util'
-import type { PrismaClient } from '@prisma/client'
+import { Prisma, type PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
 import { sanitizeIdentityConfig } from '../identity/agent-identity.js'
 import {
@@ -601,7 +601,7 @@ async function rebuildSeedOwnerPoolMedia(
           modelProvider: 'seed',
           modelName: 'seed',
           modelVersion: '1.0',
-          summaryJson: summary,
+          summaryJson: summary as unknown as Prisma.InputJsonValue,
           extractionStatus: 'completed',
           qualityGrade: 'rich',
           isCurrent: true,
@@ -614,7 +614,7 @@ async function rebuildSeedOwnerPoolMedia(
           modelProvider: 'seed',
           modelName: 'seed',
           modelVersion: '1.0',
-          summaryJson: summary,
+          summaryJson: summary as unknown as Prisma.InputJsonValue,
           extractionStatus: 'completed',
           qualityGrade: 'rich',
           isCurrent: true,

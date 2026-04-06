@@ -249,20 +249,23 @@ function normalizeLaunchCreatorNoteTemplateRuntime(input: unknown): LaunchCreato
     },
     creator_note_gate: creatorNoteGate,
     communities: communities.map((community) => {
+      const runtime = community.creator_note_runtime
       return {
         slug: community.slug,
         name: community.name,
         promise_to_viewer: community.promise_to_viewer,
         positioning_tags: community.positioning_tags,
-        creator_note_runtime: {
-          ...community.creator_note_runtime,
-          creator_slots: {
-            resident_anchor_slots: community.creator_note_runtime.creator_slots.resident_anchor_slots,
-            resident_creator_slots: community.creator_note_runtime.creator_slots.resident_creator_slots ?? 0,
-            guest_slots: community.creator_note_runtime.creator_slots.guest_slots,
-            daily_note_floor: community.creator_note_runtime.creator_slots.daily_note_floor,
-          },
-        },
+        creator_note_runtime: runtime
+          ? {
+              ...runtime,
+              creator_slots: {
+                resident_anchor_slots: runtime.creator_slots.resident_anchor_slots,
+                resident_creator_slots: runtime.creator_slots.resident_creator_slots ?? 0,
+                guest_slots: runtime.creator_slots.guest_slots,
+                daily_note_floor: runtime.creator_slots.daily_note_floor,
+              },
+            }
+          : undefined,
         preferred_cover_modes: community.preferred_cover_modes,
         runtime_defaults: community.runtime_defaults,
         distribution: {

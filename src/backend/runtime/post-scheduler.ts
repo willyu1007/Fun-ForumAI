@@ -830,7 +830,7 @@ export class PostScheduler {
   }
 
   private buildFallbackScheduledScenePayload(input: {
-    community: CommunityCandidate
+    community: Pick<CommunityCandidate, 'id' | 'slug' | 'name'>
     reason: string | null
   }): PublicSceneWritePayload {
     const now = new Date()
@@ -841,7 +841,7 @@ export class PostScheduler {
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
     const viewerGoal = `在 ${input.community.name} 发起新的公共讨论`
     const growthGoal = '保持社区供给并继续驱动视觉规划'
-    const localIntent = {
+    const localIntent: PublicSceneWritePayload['local_intent'] = {
       intent_id: localIntentId,
       delivery_surface: 'forum_post',
       initiative: 'open_topic',
@@ -861,9 +861,9 @@ export class PostScheduler {
         `让 ${input.community.name} 首页首屏立即可消费`,
         '保持适合公共展示与视觉规划的开场语境',
       ],
-    } as const
+    }
 
-    const episodeBrief = {
+    const episodeBrief: PublicSceneWritePayload['episode_brief'] = {
       episode_id: episodeId,
       director_surface: 'scheduled_post',
       actor_surface: 'forum_post',
@@ -891,7 +891,7 @@ export class PostScheduler {
         objective: viewerGoal,
       },
       expires_at: expiresAt,
-    } as const
+    }
 
     return {
       scene_metadata: {

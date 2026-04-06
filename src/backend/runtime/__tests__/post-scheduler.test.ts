@@ -587,7 +587,7 @@ describe('PostScheduler', () => {
   })
 
   it('does not spend an LLM call when no enrolled community passes the stage role gate', async () => {
-    const featureFlags = config.features
+    const featureFlags = config.features as unknown as Record<string, boolean>
     const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
     const originalStageTier = featureFlags.stageTierV1
     featureFlags.stageRoleRuntimeV1 = true
@@ -644,7 +644,7 @@ describe('PostScheduler', () => {
   })
 
   it('cools down no-op scheduled post scans when no stage-eligible candidate exists', async () => {
-    const featureFlags = config.features
+    const featureFlags = config.features as unknown as Record<string, boolean>
     const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
     const originalStageTier = featureFlags.stageTierV1
     featureFlags.stageRoleRuntimeV1 = true
@@ -704,7 +704,7 @@ describe('PostScheduler', () => {
   })
 
   it('only selects agents that still have stage-eligible writable communities', async () => {
-    const featureFlags = config.features
+    const featureFlags = config.features as unknown as Record<string, boolean>
     const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
     const originalStageTier = featureFlags.stageTierV1
     featureFlags.stageRoleRuntimeV1 = true

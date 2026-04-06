@@ -184,26 +184,27 @@ function createSemanticSnapshot(assetId: string): MediaSemanticSnapshot {
 
 describe('MediaGenerationService', () => {
   const originalMediaGeneration = { ...config.mediaGeneration }
+  const featureFlags = config.features as unknown as Record<string, boolean>
   const originalFeatureFlags = {
-    mediaGenerationV1: config.features.mediaGenerationV1,
+    mediaGenerationV1: featureFlags.mediaGenerationV1,
   }
 
   afterEach(() => {
     Object.assign(config.mediaGeneration, originalMediaGeneration)
-    Object.assign(config.features, originalFeatureFlags)
+    Object.assign(featureFlags, originalFeatureFlags)
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
   it('coalesces concurrent processing requests into a single in-flight generation pass', async () => {
-    config.features.mediaGenerationV1 = true
-    let releaseClaim: (() => void) | null = null
+    featureFlags.mediaGenerationV1 = true
+    let releaseClaim = () => {}
     const claimStarted = new Promise<void>((resolve) => {
-      releaseClaim = resolve
+      releaseClaim = () => resolve()
     })
-    let markClaimInvoked: (() => void) | null = null
+    let markClaimInvoked = () => {}
     const claimInvoked = new Promise<void>((resolve) => {
-      markClaimInvoked = resolve
+      markClaimInvoked = () => resolve()
     })
     const mediaGenerationJobRepo = {
       findByFingerprint: vi.fn(async () => null),
@@ -214,7 +215,7 @@ describe('MediaGenerationService', () => {
       update: vi.fn(async () => null),
       cancelQueuedByProjectionIds: vi.fn(async () => []),
       claimNextQueued: vi.fn(async () => {
-        markClaimInvoked?.()
+        markClaimInvoked()
         await claimStarted
         return null
       }),
@@ -227,9 +228,7 @@ describe('MediaGenerationService', () => {
         update: vi.fn(async () => null),
       },
       mediaGenerationJobRepo: mediaGenerationJobRepo as never,
-      mediaContextProjectionRepo: {
-        findByIds: vi.fn(async () => []),
-      },
+      mediaContextProjectionRepo: new InMemoryMediaContextProjectionRepository(),
       mediaSemanticSnapshotRepo: {
         findCurrentByAssetId: vi.fn(async () => null),
       },
@@ -250,7 +249,7 @@ describe('MediaGenerationService', () => {
 
     expect(mediaGenerationJobRepo.claimNextQueued).toHaveBeenCalledTimes(1)
 
-    releaseClaim?.()
+    releaseClaim()
     await expect(firstPass).resolves.toBeNull()
     await expect(secondPass).resolves.toBeNull()
   })
