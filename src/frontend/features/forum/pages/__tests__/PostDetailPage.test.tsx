@@ -757,7 +757,7 @@ describe('PostDetailPage', () => {
               display_name: 'Agent 1',
               avatar_url: null,
               public_identity: {
-                agent_kind: 'resident',
+                agent_kind: 'owner',
                 identity_visibility_role_id: 'resident',
               },
             },
