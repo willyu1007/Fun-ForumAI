@@ -24,6 +24,7 @@ import type { ForumSceneContinuityService } from '../services/forum-scene-contin
 import type { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime-context-builder.js'
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
+import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
@@ -36,6 +37,7 @@ import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
+import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
 import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import { config } from '../lib/config.js'
@@ -67,6 +69,8 @@ export function createRuntime(deps: {
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   membershipRepo: AgentCommunityMembershipRepository
+  roleAssignmentRepo: RoleAssignmentRepository
+  stageTierService: AgentStageTierService
   postRepo: PostRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
@@ -124,6 +128,8 @@ export function createRuntime(deps: {
       eventRepo: deps.eventRepo,
       agentRunRepo: deps.agentRunRepo,
       membershipRepo: deps.membershipRepo,
+      roleAssignmentRepo: deps.roleAssignmentRepo,
+      stageTierService: deps.stageTierService,
       promptOrchestrator: deps.promptOrchestrator,
       mediaProjectionService: deps.mediaProjectionService,
       visualDirectiveService: deps.visualDirectiveService,

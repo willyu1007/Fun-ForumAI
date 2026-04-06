@@ -53,6 +53,7 @@ export interface InferenceProfileEvaluationResult {
 export interface ResolveVisibleRouteInput {
   agentId: string
   requestedTier: RenderTier
+  requestedTierCeiling?: RenderTier
 }
 
 export type StoredInferenceShadowReview = Awaited<

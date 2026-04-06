@@ -80,5 +80,6 @@ export interface LlmChatOptions {
   temperature?: number
   stop?: string[]
   response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
+  adapter_id?: string
   provider: LlmChatProviderInput
 }

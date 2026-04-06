@@ -10,6 +10,7 @@ import { maxRenderTier } from './compile.js'
 export function buildVisibleRouteDecision(input: {
   requestedTier: RenderTier
   requestedTierFloor: RenderTier | null
+  requestedTierCeiling?: RenderTier
   homeVoiceLineId: VoiceLineId
   agentModel: string | null | undefined
   profile: AgentInferenceProfile
@@ -23,8 +24,25 @@ export function buildVisibleRouteDecision(input: {
   return {
     homeVoiceLineId: input.homeVoiceLineId,
     preferredModelId: preferredModelId ?? undefined,
-    requestedTier: maxRenderTier(input.requestedTier, input.requestedTierFloor),
+    requestedTier: clampRenderTier(
+      input.requestedTier,
+      input.requestedTierFloor,
+      input.requestedTierCeiling,
+    ),
     profile: input.profile,
     snapshot: input.snapshot,
   }
+}
+
+function clampRenderTier(
+  requestedTier: RenderTier,
+  requestedTierFloor: RenderTier | null,
+  requestedTierCeiling?: RenderTier,
+): RenderTier {
+  const order: RenderTier[] = ['lite', 'base', 'premium']
+  const flooredTier = maxRenderTier(requestedTier, requestedTierFloor)
+  if (!requestedTierCeiling) {
+    return flooredTier
+  }
+  return order[Math.min(order.indexOf(flooredTier), order.indexOf(requestedTierCeiling))]
 }

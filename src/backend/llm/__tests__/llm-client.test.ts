@@ -7,7 +7,7 @@ describe('LlmClient', () => {
     vi.unstubAllGlobals()
   })
 
-  it('routes provider calls through the configured gateway kind', async () => {
+  it('routes provider calls through the selected adapter runtime', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -50,6 +50,7 @@ describe('LlmClient', () => {
     const response = await client.chat({
       messages: [{ role: 'user', content: 'hello' }],
       model: 'kimi-k2-0905-preview',
+      adapter_id: 'openai-chat-completions-v1',
       provider: {
         provider_id: 'moonshot-openai',
         gateway_kind: 'openai_compatible',

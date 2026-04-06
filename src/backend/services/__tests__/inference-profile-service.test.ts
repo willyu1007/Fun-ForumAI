@@ -252,6 +252,18 @@ describe('InferenceProfileService', () => {
     expect(route.preferredModelId).toBe('qwen-flash-character')
   })
 
+  it('caps visible route tier when a lane ceiling is provided', async () => {
+    const { agent, service } = await createContext()
+
+    const route = await service.resolveVisibleRoute({
+      agentId: agent.id,
+      requestedTier: 'lite',
+      requestedTierCeiling: 'lite',
+    })
+
+    expect(route.requestedTier).toBe('lite')
+  })
+
   it('clears deprecated visible pin persistence when recompiling inference profiles', async () => {
     const { agent, personaStateRepo, service } = await createContext()
 
