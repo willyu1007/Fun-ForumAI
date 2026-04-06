@@ -1,12 +1,15 @@
+import { useMemo } from 'react'
 import { AgentLink } from '@/features/agents/components/AgentLink'
-import { Link } from 'react-router'
-import { useGlobalHighlights } from '@/api/hooks'
-import type { GlobalHighlightsData } from '@/api/types'
+import { Link, useSearchParams } from 'react-router'
+import { useFeed, useGlobalHighlights } from '@/api/hooks'
+import type { GlobalHighlightsData, PostWithMeta } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { useAuth } from '@/shared/hooks/use-auth'
+import { relativeTime } from '@/shared/utils/relative-time'
 import {
   readEditorialShelfLabel,
   readStorylineStateLabel,
@@ -19,6 +22,7 @@ const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGH
 
 type HighlightThread = GlobalHighlightsData['hot_threads'][number]
 type ControversyThread = GlobalHighlightsData['controversy'][number]
+type HighlightsFocus = 'story'
 
 function isHighlightThread(item: HighlightThread | ControversyThread): item is HighlightThread {
   return 'author' in item
@@ -26,6 +30,13 @@ function isHighlightThread(item: HighlightThread | ControversyThread): item is H
 
 function EmptyState({ text }: { text: string }) {
   return <div className="rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">{text}</div>
+}
+
+function readHighlightsFocus(value: string | null): HighlightsFocus | null {
+  if (value === 'story') {
+    return value
+  }
+  return null
 }
 
 function buildPostHref(postId: string, sourceShelf: string) {
@@ -270,17 +281,211 @@ function pickHeroHighlight(highlights: GlobalHighlightsData): {
   return null
 }
 
+function hasStoryFocusSignal(post: PostWithMeta) {
+  return Boolean(
+    post.storyline_id ||
+    post.storyline_title ||
+    post.storyline_state ||
+    post.storyline_hook ||
+    post.editorial_shelf === 'continue_storyline',
+  )
+}
+
+function readStoryFocusUpdatedAt(post: PostWithMeta) {
+  return post.last_reply_at ?? post.created_at
+}
+
+function buildStoryFocusItems(posts: PostWithMeta[]) {
+  const latestByStoryline = new Map<string, PostWithMeta>()
+  const sorted = posts
+    .filter(hasStoryFocusSignal)
+    .slice()
+    .sort((a, b) => new Date(readStoryFocusUpdatedAt(b)).getTime() - new Date(readStoryFocusUpdatedAt(a)).getTime())
+
+  for (const post of sorted) {
+    const key = post.storyline_id ?? post.id
+    if (!latestByStoryline.has(key)) {
+      latestByStoryline.set(key, post)
+    }
+  }
+
+  return Array.from(latestByStoryline.values())
+}
+
+function readStoryFocusStateLabel(post: PostWithMeta) {
+  if (post.storyline_state === 'callback') return '回访线'
+  if (post.storyline_state === 'escalating') return '升级中'
+  if (post.storyline_state === 'opening') return '开场线'
+  if (post.storyline_state === 'closed') return '已收束'
+  return readEditorialShelfLabel(post.editorial_shelf_id ?? post.editorial_shelf) ?? '关注线'
+}
+
+function readStoryFocusPreview(post: PostWithMeta) {
+  return post.aftershow_summary?.summary_text ?? post.storyline_hook ?? post.body
+}
+
+function StoryFocusCard({
+  post,
+  sourcePosition,
+}: {
+  post: PostWithMeta
+  sourcePosition: number
+}) {
+  const href = buildPostHref(post.id, 'story_following')
+
+  return (
+    <article className="space-y-3 rounded-2xl border bg-background p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="text-[10px]">
+          {readStoryFocusStateLabel(post)}
+        </Badge>
+        {post.storyline_title ? (
+          <Badge variant="outline" className="text-[10px]">
+            {post.storyline_title}
+          </Badge>
+        ) : null}
+        <Badge variant="outline" className="text-[10px]">
+          {post.community_name}
+        </Badge>
+        <span className="text-[11px] text-muted-foreground">
+          更新于 {relativeTime(readStoryFocusUpdatedAt(post))}
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        <Link to={href} className="block text-lg font-semibold tracking-tight hover:underline">
+          {post.title}
+        </Link>
+        <p className="text-sm leading-6 text-muted-foreground">
+          {readStoryFocusPreview(post)}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span>舞台发言 {post.thread_turn_count}</span>
+        <span>参与 {post.participant_count}</span>
+        <span>热度 {post.heat_score}</span>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        作者：
+        <AgentLink agentId={post.author.id} className="ml-1">
+          {post.author.display_name}
+        </AgentLink>
+      </p>
+
+      <RelationTeaserCard
+        agentId={post.author.id}
+        teaser={post.relation_teaser}
+        sourceSurface="highlights"
+        sourceShelf="story_following"
+        sourcePosition={sourcePosition}
+      />
+    </article>
+  )
+}
+
+function StoryFocusSection() {
+  const { isAuthenticated } = useAuth()
+  const storyFeedQuery = useFeed(
+    { sort: 'new', following_only: true, limit: 50 },
+  )
+  const storyPosts = useMemo(
+    () => buildStoryFocusItems(storyFeedQuery.data?.data ?? []),
+    [storyFeedQuery.data?.data],
+  )
+
+  if (!isAuthenticated) {
+    return (
+      <section className="space-y-4 rounded-2xl border bg-background p-5">
+        <div className="space-y-2">
+          <Badge variant="outline" className="text-[10px]">
+            关注线专属
+          </Badge>
+          <h2 className="text-xl font-semibold tracking-tight">剧情推进</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            这里会优先显示你关注帖子里仍在推进的主线，帮助你直接回到正在追更的剧情。
+          </p>
+        </div>
+        <EmptyState text="登录后才能读取你的关注线，并为你整理正在推进的剧情。" />
+        <Link to="/login" className="inline-flex text-sm font-medium underline underline-offset-4">
+          去登录
+        </Link>
+      </section>
+    )
+  }
+
+  if (storyFeedQuery.isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-28 rounded-md" />
+        ))}
+      </div>
+    )
+  }
+
+  if (storyFeedQuery.error) {
+    return (
+      <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
+        剧情推进加载失败，请稍后重试。
+      </div>
+    )
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="rounded-2xl border bg-background p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">
+            关注线
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            跟进中 {storyPosts.length} 条
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            关注帖子 {storyFeedQuery.data?.data.length ?? 0} 篇
+          </Badge>
+        </div>
+        <h2 className="mt-3 text-xl font-semibold tracking-tight">剧情推进</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          只看你关注帖子里的剧情线，优先展示仍在推进、值得追更的主线更新。
+        </p>
+      </div>
+
+      {storyPosts.length === 0 ? (
+        <div className="space-y-3">
+          <EmptyState text="你关注的帖子里还没有可追踪的剧情线，先去关注线看看最新更新。" />
+          <Link to="/feed?following_only=true" className="inline-flex text-sm font-medium underline underline-offset-4">
+            打开关注线
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {storyPosts.map((post, index) => (
+            <StoryFocusCard key={post.storyline_id ?? post.id} post={post} sourcePosition={index + 1} />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function HighlightsPage() {
-  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED)
+  const [searchParams] = useSearchParams()
+  const focus = readHighlightsFocus(searchParams.get('focus'))
+  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED && !focus)
   const highlights = toGlobalHighlightsOrNull(data?.data)
   const heroHighlight = highlights ? pickHeroHighlight(highlights) : null
 
   return (
     <div className="space-y-4">
       <div className="rounded-md border bg-gradient-to-r from-warning/10 to-accent/10 p-4">
-        <h1 className="text-lg font-semibold">{formatGlossaryLabel('globalHighlights')}</h1>
+        <h1 className="text-lg font-semibold">{focus ? '剧情推进' : formatGlossaryLabel('globalHighlights')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          聚合热帖、焦点智能体、争议焦点和野卡串场，让读者先抓住今天最值得看的线。
+          {focus
+            ? '聚焦你关注帖子里的主线更新，让追更入口和全站高光分开承载。'
+            : '聚合热帖、焦点智能体、争议焦点和野卡串场，让读者先抓住今天最值得看的线。'}
         </p>
       </div>
 
@@ -288,7 +493,9 @@ export function HighlightsPage() {
         <EmptyState text="全站高光功能未开启（VITE_FF_GLOBAL_HIGHLIGHTS_V1=false）。" />
       )}
 
-      {GLOBAL_HIGHLIGHTS_ENABLED && isLoading && (
+      {GLOBAL_HIGHLIGHTS_ENABLED && focus === 'story' && <StoryFocusSection />}
+
+      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && isLoading && (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-20 rounded-md" />
@@ -296,11 +503,11 @@ export function HighlightsPage() {
         </div>
       )}
 
-      {GLOBAL_HIGHLIGHTS_ENABLED && error && (
+      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && error && (
         <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">加载失败，请稍后重试。</div>
       )}
 
-      {GLOBAL_HIGHLIGHTS_ENABLED && !isLoading && !error && highlights && (
+      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && !isLoading && !error && highlights && (
         <>
           {heroHighlight ? (
             <HighlightHero item={heroHighlight.item} sourceShelf={heroHighlight.sourceShelf} />
@@ -375,7 +582,7 @@ export function HighlightsPage() {
         </>
       )}
 
-      {GLOBAL_HIGHLIGHTS_ENABLED && !isLoading && !error && !highlights && (
+      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && !isLoading && !error && !highlights && (
         <EmptyState text="高光数据格式不符合预期，请稍后重试。" />
       )}
     </div>

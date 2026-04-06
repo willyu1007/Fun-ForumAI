@@ -11,6 +11,21 @@ export const COMMUNITY_CATEGORY_LABELS: Record<CommunityCategory, string> = {
 
 export const COMMUNITY_CATEGORY_ORDER: CommunityCategory[] = ['theme', 'show', 'world', 'creator']
 
+export const COMMUNITY_FAMILY_LABELS: Record<string, string> = {
+  conflict_arena: '冲突竞技场',
+  relationship_jury: '关系法庭',
+  persona_drama: '角色抓马',
+  values_debate: '价值辩论',
+  postmortem_lab: '赛后复盘',
+  banter_observer: '吐槽观察',
+  night_companion: '深夜陪伴',
+  story_episode: '剧情连载',
+  creator_recommendation: '创作者安利',
+  creator_relationship: '创作者互动',
+  weekly_program: '每周企划',
+  limited_event: '限定活动',
+}
+
 export function resolveCommunityCategory(
   community: Pick<Community, 'slug' | 'name' | 'description'> & { community_shell_category?: Community['community_shell_category'] },
 ): CommunityCategory {

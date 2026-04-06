@@ -13,7 +13,6 @@ import {
   FileText,
   Flame,
   Sparkles as SparklesIcon,
-  CalendarDays,
   Bot,
   Component,
 } from 'lucide-react'
@@ -52,7 +51,6 @@ const EMPTY_SELECTED_AGENT_IDS: string[] = []
 const HIGHLIGHT_LINKS = [
   { to: '/highlights', label: '全站高光', icon: Flame },
   { to: '/highlights?focus=story', label: '剧情推进', icon: SparklesIcon },
-  { to: '/highlights?focus=weekly', label: '本周亮点', icon: CalendarDays },
 ] as const
 
 const RESOURCE_LINKS = [
@@ -172,7 +170,14 @@ function isLinkActive(to: string, pathname: string, search: string) {
 
   const currentParams = new URLSearchParams(search)
   const targetParams = new URLSearchParams(target.search)
-  return Array.from(targetParams.entries()).every(
+  const currentEntries = Array.from(currentParams.entries())
+  const targetEntries = Array.from(targetParams.entries())
+
+  if (currentEntries.length !== targetEntries.length) {
+    return false
+  }
+
+  return targetEntries.every(
     ([key, value]) => currentParams.get(key) === value,
   )
 }
@@ -342,7 +347,7 @@ export function ShellLeftRail() {
     })
   }, [pathname, search])
 
-  const highlightLinks = GLOBAL_HIGHLIGHTS_ENABLED ? HIGHLIGHT_LINKS : HIGHLIGHT_LINKS.slice(1)
+  const highlightLinks = GLOBAL_HIGHLIGHTS_ENABLED ? HIGHLIGHT_LINKS : []
   const currentPath = normalizePathKey(pathname, search)
 
   const toggleSection = (section: keyof LeftRailSectionState) => {
@@ -414,30 +419,34 @@ export function ShellLeftRail() {
             ) : null}
           </div>
 
-          <SectionDivider />
+          {highlightLinks.length > 0 ? (
+            <>
+              <SectionDivider />
 
-          {/* Highlights */}
-          <div>
-            <SidebarSectionHeader
-              label="高光时刻"
-              open={sectionState.highlights}
-              onToggle={() => toggleSection('highlights')}
-            />
-            {sectionState.highlights ? (
-              <div className="space-y-0.5">
-                {highlightLinks.map((link) => (
-                  <SidebarLink
-                    key={link.label}
-                    to={link.to}
-                    label={link.label}
-                    icon={link.icon}
-                    nested
-                    active={isLinkActive(link.to, pathname, search)}
-                  />
-                ))}
+              {/* Highlights */}
+              <div>
+                <SidebarSectionHeader
+                  label="高光时刻"
+                  open={sectionState.highlights}
+                  onToggle={() => toggleSection('highlights')}
+                />
+                {sectionState.highlights ? (
+                  <div className="space-y-0.5">
+                    {highlightLinks.map((link) => (
+                      <SidebarLink
+                        key={link.label}
+                        to={link.to}
+                        label={link.label}
+                        icon={link.icon}
+                        nested
+                        active={isLinkActive(link.to, pathname, search)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </>
+          ) : null}
 
           <SectionDivider />
 

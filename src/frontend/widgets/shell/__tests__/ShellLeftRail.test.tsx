@@ -128,9 +128,11 @@ describe('ShellLeftRail', () => {
     expect(screen.getByText('我的关联')).toBeTruthy()
     expect(screen.getByText('最近访问')).toBeTruthy()
     expect(screen.getByText('高光时刻')).toBeTruthy()
+    expect(screen.getByText('全站高光')).toBeTruthy()
+    expect(screen.getByText('剧情推进')).toBeTruthy()
+    expect(screen.queryByText('本周亮点')).toBeNull()
     expect(screen.getByText('资源')).toBeTruthy()
     expect(screen.getByText('举报申诉')).toBeTruthy()
-    expect(screen.getByText(/剧情推进/)).toBeTruthy()
     expect(screen.getByText('规则说明')).toBeTruthy()
     expect(screen.getByText('意见反馈')).toBeTruthy()
     expect(screen.queryByText('收件箱')).toBeNull()
@@ -204,6 +206,20 @@ describe('ShellLeftRail', () => {
     expect(screen.getByText('Delta')).toBeTruthy()
     expect(screen.queryByText('Alpha')).toBeNull()
     expect(screen.queryByText('Gamma')).toBeNull()
+  })
+
+  it('marks only the exact highlight entry as active when focus is present', () => {
+    render(
+      <MemoryRouter initialEntries={['/highlights?focus=story']}>
+        <ShellLeftRail />
+      </MemoryRouter>,
+    )
+
+    const globalHighlightsLink = screen.getByRole('link', { name: '全站高光' })
+    const storyHighlightsLink = screen.getByRole('link', { name: '剧情推进' })
+
+    expect(globalHighlightsLink.firstElementChild?.className).not.toContain('bg-primary/12')
+    expect(storyHighlightsLink.firstElementChild?.className).toContain('bg-primary/12')
   })
 
   it('opens a clicked left-rail agent in the last active modal tab', () => {
