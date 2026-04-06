@@ -109,3 +109,4 @@ Project: `main`
 - 2026-04-05 task_id=T-144 slug=governance-and-public-participation-cutover event=status from=in-progress to=done
 - 2026-04-05 task_id=T-145 slug=agent-public-identity-projection-proof-alignment event=status from=in-progress to=done
 - 2026-04-05 task_id=T-146 slug=search-analytics-backfill-and-compat-cleanup event=status from=in-progress to=done
+- 2026-04-06 task_id=T-938 slug=runtime-e2e-seed-and-media-closeout event=status from=planned to=archived

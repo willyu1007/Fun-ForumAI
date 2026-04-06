@@ -105,6 +105,7 @@ Project: `main`
 | T-934 launch-gray-release-runtime-and-publish-hardening | archived | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
 | T-935 cloud-environment-go-live-chain-v1 | in-progress | dev-docs/active/cloud-environment-go-live-chain-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
+| T-938 runtime-e2e-seed-and-media-closeout | archived | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 
 ### F-010 Agent Stats System
 

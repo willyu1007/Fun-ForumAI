@@ -28,7 +28,7 @@ kind load docker-image fun-forum-api:dev --name funforum
 ```
 
 3. Inject provider API keys and apply local staging overlay.
-By default the staging script now rebuilds `fun-forum-api:dev`, loads it into kind, applies the overlay, and verifies runtime fingerprint parity through `GET /v1/admin/runtime/features`:
+By default the staging script now rebuilds `fun-forum-api:dev` with the `launch` frontend build profile, loads it into kind, applies the overlay, seeds canonical dev data, and verifies runtime/build parity through `GET /v1/admin/runtime/features` plus `/frontend-build-flags.json`:
 
 ```bash
 export DASHSCOPE_API_KEY=<your-dashscope-api-key>
@@ -52,8 +52,9 @@ pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum
 
 Notes:
 - `scripts/k8s-local-staging.mjs` applies `overlays/local-kind`, runs `pnpm db:migrate:deploy` through a temporary Postgres port-forward (default), injects provider-specific API keys into `secret/forum-app-secret`, restarts `deploy/backend`, and waits for rollout.
+- `scripts/k8s-local-staging.mjs` seeds `canonical` data by default so a fresh local-kind rehearsal immediately has stage-eligible runtime candidates; use `--skip-seed` or `--seed-profile none` to opt out.
 - Local-kind feature flags stay in `configmap/forum-app-config`; `secret/forum-app-secret` is reserved for secrets only so feature toggles do not fork across two sources.
-- The local-kind overlay pins backend replicas to `1` because media assets are stored on pod-local disk in this environment; multi-replica reads would make image retrieval nondeterministic without shared object storage.
+- The local-kind overlay pins backend replicas to `1` because media assets are backed by a single-writer local PVC in this environment; scaling backend replicas would require shared object storage or a multi-reader storage contract.
 - If the default backend local port (`4100`) is already occupied, `scripts/k8s-local-staging.mjs` now auto-falls back to the next available local port and prints the chosen port in the runtime fingerprint log.
 - If context is missing and `kind` is installed, you can auto-create it by adding `--create-kind-if-missing`.
 - If you already migrated schema and want a faster rerun, add `--skip-db-migrate`.
