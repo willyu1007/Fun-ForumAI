@@ -934,7 +934,7 @@ export function SearchPage() {
       {/* Content grid: results + stable sidebar column */}
       <div
         className={`mt-4 ${
-          showGrid ? 'grid gap-8 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:gap-10' : ''
+          showGrid ? 'grid gap-8 lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)] lg:gap-10' : ''
         }`}
       >
         {/* Main column */}

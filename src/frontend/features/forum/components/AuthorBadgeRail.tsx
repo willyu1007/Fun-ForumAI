@@ -59,7 +59,7 @@ export function AuthorBadgeRail({
                 align="center"
                 sideOffset={6}
                 hideArrow
-                className="border-0 bg-transparent p-0 text-[11px] leading-none text-muted-foreground shadow-none"
+                className="w-max max-w-none whitespace-nowrap rounded-md border border-border/70 bg-popover px-2.5 py-2 text-[11px] leading-none text-popover-foreground shadow-md"
               >
                 {visual?.tooltip ?? badge.label}
               </TooltipContent>
