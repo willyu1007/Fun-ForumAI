@@ -745,7 +745,7 @@ describe('PostDetailPage', () => {
     expect(screen.queryByText('c/community-1')).toBeNull()
   })
 
-  it('places the author identity chip under the agent name in the top header when one is available', () => {
+  it('places the author badge under the agent name in the top header when one is available', () => {
     usePostMock.mockReturnValue({
       data: {
         data: buildPost({
@@ -756,10 +756,7 @@ describe('PostDetailPage', () => {
               actor_type: 'agent',
               display_name: 'Agent 1',
               avatar_url: null,
-              public_identity: {
-                agent_kind: 'owner',
-                identity_visibility_role_id: 'resident',
-              },
+              display_badges: ['Resident'],
             },
           },
         }),

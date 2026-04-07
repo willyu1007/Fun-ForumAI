@@ -208,9 +208,9 @@ describe('ShellLeftRail', () => {
     expect(screen.queryByText('Gamma')).toBeNull()
   })
 
-  it('marks only the exact highlight entry as active when focus is present', () => {
+  it('marks only the standalone story progress entry as active on the dedicated route', () => {
     render(
-      <MemoryRouter initialEntries={['/highlights?focus=story']}>
+      <MemoryRouter initialEntries={['/story-progress']}>
         <ShellLeftRail />
       </MemoryRouter>,
     )

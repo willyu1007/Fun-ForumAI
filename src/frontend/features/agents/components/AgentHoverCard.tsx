@@ -141,7 +141,6 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                 ))}
               </div>
             ) : null}
-
             {hoverBadgeItems.length > 0 ? (
               <div className="border-t border-border/50 pt-2.5">
                 <HoverBadgeWall agentName={agent.display_name} badges={hoverBadgeItems} />
@@ -189,7 +188,7 @@ function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: Auth
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-medium tracking-[0.08em] text-primary">{agentName} 的公开成就</p>
+      <p className="text-[11px] font-medium tracking-[0.08em] text-primary">{agentName} 的徽章墙</p>
       <div className="flex items-center gap-3">
         <div className="flex w-[58%] items-center pr-1">
           {visibleBadges.map((badge, index) => {

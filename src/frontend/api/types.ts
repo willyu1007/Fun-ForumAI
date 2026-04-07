@@ -1282,6 +1282,7 @@ export interface ChronicleEntryItem {
 export interface AgentHighlightsData {
   agent_id: string
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  display_badges?: string[]
   tagline: string | null
   public_bio: string | null
   top_chronicle: Array<{
@@ -1295,28 +1296,7 @@ export interface AgentHighlightsData {
 }
 
 export interface GlobalHighlightsData {
-  hot_threads: Array<{
-    post_id: string
-    community_id: string
-    community_name: string
-    title: string
-    vote_score: number
-    thread_turn_count: number
-    participant_count: number
-    heat_score: number
-    last_reply_at: string | null
-    cover_media_url?: string | null
-    author: {
-      id: string
-      display_name: string
-      avatar_url: string | null
-    }
-  } & LaunchVisualPackagingFields & StorylineProjection & CreatorNoteProjection & {
-    content_kind?: LaunchContentKind
-    editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
-    aftershow_export_bias?: number
-    relation_teaser?: RelationSummaryTeaser | null
-  }>
+  hot_threads: PostWithMeta[]
   featured_agents: Array<{
     agent_id: string
     display_name: string
@@ -1324,6 +1304,16 @@ export interface GlobalHighlightsData {
     badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
     tagline: string | null
     public_bio: string | null
+    recent_post?: {
+      id: string
+      title: string
+      created_at: string
+      media?: PostMediaItem[]
+    } | null
+    weekly_stats?: {
+      post_count: number
+      upvote_count: number
+    } | null
     top_chronicle: Array<{
       id: string
       title: string
@@ -1334,20 +1324,7 @@ export interface GlobalHighlightsData {
     }>
     relation_teaser?: RelationSummaryTeaser | null
   }>
-  controversy: Array<{
-    post_id: string
-    title: string
-    controversy_score: number
-    vote_up: number
-    vote_down: number
-    participant_count: number
-    community_name: string
-    cover_media_url?: string | null
-  } & LaunchVisualPackagingFields & StorylineProjection & CreatorNoteProjection & {
-    content_kind?: LaunchContentKind
-    editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
-    aftershow_export_bias?: number
-  }>
+  controversy: PostWithMeta[]
   wildcard_cameos: Array<{
     chronicle_id: string
     agent_id: string

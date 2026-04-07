@@ -12,6 +12,8 @@ describe('GlobalHighlightsService', () => {
             community_name: 'Community 1',
             community_slug: 'community-1',
             title: 'Hero thread',
+            created_at: '2026-04-07T08:00:00.000Z',
+            updated_at: '2026-04-07T08:00:00.000Z',
             vote_score: 42,
             thread_turn_count: 8,
             participant_count: 5,

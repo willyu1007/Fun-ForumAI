@@ -23,6 +23,11 @@ export const HighlightsPage = lazy(() =>
     default: m.HighlightsPage,
   })),
 )
+export const StoryProgressPage = lazy(() =>
+  import('../features/forum/pages/StoryProgressPage').then((m) => ({
+    default: m.StoryProgressPage,
+  })),
+)
 export const SearchPage = lazy(() =>
   import('../features/search/pages/SearchPage').then((m) => ({
     default: m.SearchPage,

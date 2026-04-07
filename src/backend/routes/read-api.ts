@@ -1039,16 +1039,15 @@ readApiRouter.get('/highlights', async (req, res) => {
     return
   }
 
+  const user = tryAuthenticateHuman(req)
   const viewer = await resolveViewerContext(req, res)
-  const data = await globalHighlightsService.collectToday()
-  const hotThreadPosts = await attachRelationTeasersToPosts(
-    data.hot_threads.map((item) => ({
-      ...item,
-      author_agent_id: item.author.id,
-      author: item.author,
-    })),
-    viewer,
-  )
+  const data = await globalHighlightsService.collectToday({
+    viewerUserId: user?.userId,
+  })
+  const [hotThreadPosts, controversyPosts] = await Promise.all([
+    attachRelationTeasersToPosts(data.hot_threads, viewer),
+    attachRelationTeasersToPosts(data.controversy, viewer),
+  ])
   const featuredAgentRows = await Promise.all(
     data.featured_agents.map(async (item) => ({
       ...item,
@@ -1057,10 +1056,8 @@ readApiRouter.get('/highlights', async (req, res) => {
   )
   const payload = {
     ...data,
-    hot_threads: data.hot_threads.map((item, index) => ({
-      ...item,
-      relation_teaser: hotThreadPosts[index]?.relation_teaser ?? null,
-    })),
+    hot_threads: hotThreadPosts,
+    controversy: controversyPosts,
     featured_agents: featuredAgentRows,
   }
   await recordPublicViewEvents([
@@ -1073,7 +1070,7 @@ readApiRouter.get('/highlights', async (req, res) => {
       source_shelf: 'hot_threads',
       source_position: index,
       target_kind: 'highlight_post' as const,
-      target_id: item.post_id,
+      target_id: item.id,
       target_agent_id: item.author.id,
       community_id: item.community_id,
       storyline_id: item.storyline_id ?? null,
@@ -1088,9 +1085,9 @@ readApiRouter.get('/highlights', async (req, res) => {
       source_shelf: 'controversy',
       source_position: index,
       target_kind: 'controversy_post' as const,
-      target_id: item.post_id,
-      target_agent_id: null,
-      community_id: null,
+      target_id: item.id,
+      target_agent_id: item.author.id,
+      community_id: item.community_id,
       storyline_id: item.storyline_id ?? null,
       ...readViewerSemanticFields(item),
     })),

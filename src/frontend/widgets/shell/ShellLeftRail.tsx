@@ -50,7 +50,7 @@ const EMPTY_SELECTED_AGENT_IDS: string[] = []
 
 const HIGHLIGHT_LINKS = [
   { to: '/highlights', label: '全站高光', icon: Flame },
-  { to: '/highlights?focus=story', label: '剧情推进', icon: SparklesIcon },
+  { to: '/story-progress', label: '剧情推进', icon: SparklesIcon },
 ] as const
 
 const RESOURCE_LINKS = [
@@ -146,6 +146,9 @@ function normalizePathKey(pathname: string, search: string) {
     const params = new URLSearchParams(search)
     const focus = params.get('focus')
     return focus ? `/highlights?focus=${focus}` : pathname
+  }
+  if (pathname === '/story-progress') {
+    return pathname
   }
   return pathname
 }

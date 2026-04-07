@@ -17,10 +17,10 @@ import {
 } from '@/api/hooks'
 import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -499,7 +499,7 @@ export function PostDetailPage() {
               </AgentHoverCard>
               {authorIdentityChip || authorProofChips.length > 0 ? (
                 <div
-                  className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-1.5 self-start px-[0.175rem] py-0.5"
+                  className="col-start-2 row-start-2 min-w-0 self-start px-[0.175rem] py-0.5"
                   data-testid="post-detail-author-secondary-line"
                 >
                   {authorIdentityChip ? (

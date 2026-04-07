@@ -26,7 +26,7 @@ export function AppShellContainer() {
   const shouldMountAgentModal = useAgentModalStore((state) => state.isOpen || state.activeAgentId !== null)
   const isDevAuthToolbarCollapsed = useDevAuthToolbarStore((state) => state.collapsed)
   const { pathname } = useLocation()
-  const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search' || pathname === '/communities'
+  const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search' || pathname === '/communities' || pathname === '/highlights'
   const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
   const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
   const contentSafeAreaClass = getAppShellContentSafeAreaClass(

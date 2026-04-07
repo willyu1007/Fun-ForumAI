@@ -1,6 +1,6 @@
 import type { Agent, AuthorSummary } from '@/api/types'
 
-type BadgeReadable = Pick<AuthorSummary | Agent, 'badges'>
+type BadgeReadable = Pick<AuthorSummary | Agent, 'badges' | 'display_badges'>
 
 export interface AuthorBadgeItem {
   label: string
@@ -17,7 +17,9 @@ export function readAuthorBadgeItems(author: BadgeReadable): AuthorBadgeItem[] {
 }
 
 export function readAllAuthorBadgeItems(author: BadgeReadable): AuthorBadgeItem[] {
-  return (author.badges ?? [])
-    .map((badge) => ({ label: badge.name, code: badge.code }))
+  return [
+    ...(author.badges?.map((badge) => ({ label: badge.name, code: badge.code })) ?? []),
+    ...(author.display_badges?.map((label) => ({ label, code: null })) ?? []),
+  ]
     .filter((badge, index, source) => source.findIndex((candidate) => candidate.label === badge.label) === index)
 }

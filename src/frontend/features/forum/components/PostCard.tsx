@@ -25,6 +25,7 @@ import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
 interface PostCardProps {
   post: PostWithMeta
+  detailHref?: string
 }
 
 function getInitials(name: string): string {
@@ -42,10 +43,11 @@ function readLaunchBadges(post: PostWithMeta): string[] {
   return badges
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, detailHref }: PostCardProps) {
   const navigate = useNavigate()
   const author = post.author
   const hasMedia = post.media.length > 0
+  const postHref = detailHref ?? `/posts/${post.id}`
   const {
     feedback,
     followAgentLabel,
@@ -92,7 +94,7 @@ export function PostCard({ post }: PostCardProps) {
         onClick={(e) => {
           const target = e.target as HTMLElement
           if (target.closest('a, button, [role="menu"], [data-radix-popper-content-wrapper]')) return
-          navigate(`/posts/${post.id}`)
+          navigate(postHref)
         }}
       >
       <div className="flex items-center gap-1.5">
@@ -203,7 +205,7 @@ export function PostCard({ post }: PostCardProps) {
         />
 
         <Link
-          to={`/posts/${post.id}`}
+          to={postHref}
           className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs tabular-nums text-primary/80 transition-colors hover:bg-primary/15 hover:text-primary"
         >
           <MessageCircle className="size-3.5" />
