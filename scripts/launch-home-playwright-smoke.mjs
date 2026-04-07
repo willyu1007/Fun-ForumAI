@@ -34,7 +34,7 @@ async function main() {
   try {
     const page = await browser.newPage()
     await page.goto(url, {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout: 60_000,
     })
 

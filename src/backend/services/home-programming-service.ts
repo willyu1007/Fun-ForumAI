@@ -3,7 +3,10 @@ import { listLaunchCommunitySeeds } from '../launch/community-rules.js'
 import { getLaunchHomeProgramming } from '../launch/home-programming.js'
 import { resolvePostLaunchTuningProfile, type PostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
 import type { LaunchContentKind } from '../launch/programming-projection.js'
-import { isLaunchNativeCreatorNoteCommunity } from '../launch/creator-note-templates.js'
+import {
+  LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS,
+  isLaunchNativeCreatorNoteCommunity,
+} from '../launch/creator-note-templates.js'
 import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
@@ -122,6 +125,8 @@ function toPublicHomeShelfLabel(shelfId: string, fallback: string): string {
   return normalizedShelfId ? EDITORIAL_SHELF_LABELS[normalizedShelfId] : fallback
 }
 
+const NOTES_TODAY_TARGET_COUNT = 4
+
 export function buildDisabledHomeProgrammingPayload(now = new Date()): HomeProgrammingPayload {
   const contract = getLaunchHomeProgramming()
   return {
@@ -183,6 +188,7 @@ export class HomeProgrammingService {
       hotFeed.items.filter((item) => (item.aftershow_export_bias ?? 0) > 0).slice(0, 12),
       rolloutProfile,
     )
+    const notesTodayCandidates = await this.collectNotesTodayCandidates(hotFeed.items, input.viewerUserId)
     const hotFeedById = new Map(hotFeed.items.map((item) => [item.id, item]))
     const [highlightCandidates, controversyCandidates] = await Promise.all([
       this.materializePostsByIds(
@@ -212,7 +218,7 @@ export class HomeProgrammingService {
       usedPostIds,
       viewerRuntime,
     )
-    let notesToday = this.pickNotesToday(hotFeed.items, usedPostIds, viewerRuntime, tuning?.active_profile)
+    let notesToday = this.pickNotesToday(notesTodayCandidates, usedPostIds, viewerRuntime, tuning?.active_profile)
     let continueStoryline = this.pickContinueStoryline(
       hotFeed.items,
       aftershowCandidates,
@@ -404,16 +410,14 @@ export class HomeProgrammingService {
   }
 
   private pickNotesToday(
-    hotFeed: PostWithMeta[],
+    notesPool: PostWithMeta[],
     usedPostIds: Set<string>,
     viewerRuntime: HomeViewerRuntime,
     tuningProfile?: PostLaunchTuningProfile,
   ): HomeProgrammingPostItem[] {
-    const items = hotFeed
+    const items = notesPool
       .filter((item) => !usedPostIds.has(item.id))
-      .filter((item) => isCreatorNoteEntry(item))
-      .filter((item) => isLaunchNativeCreatorNoteCommunity(item.community_slug))
-      .filter((item) => Boolean(item.note_template_id))
+      .filter((item) => this.isNotesTodayCandidate(item))
       .slice()
       .sort((a, b) => {
         const tuningDelta =
@@ -429,6 +433,47 @@ export class HomeProgrammingService {
 
     items.forEach((item) => usedPostIds.add(item.id))
     return items
+  }
+
+  private async collectNotesTodayCandidates(
+    hotFeed: PostWithMeta[],
+    viewerUserId?: string,
+  ): Promise<PostWithMeta[]> {
+    const byId = new Map(hotFeed.map((item) => [item.id, item] as const))
+    const hotFeedNotes = hotFeed.filter((item) => this.isNotesTodayCandidate(item))
+    if (hotFeedNotes.length >= NOTES_TODAY_TARGET_COUNT) {
+      return hotFeed
+    }
+
+    const topUpFeeds = await Promise.all(
+      LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS.map(async (slug) => {
+        const community = this.deps.communityRepo.findBySlug(slug)
+        if (!community) return []
+        const result = await this.deps.forumReadService.getFeed({
+          communityId: community.id,
+          sort: 'hot',
+          limit: NOTES_TODAY_TARGET_COUNT,
+          viewerUserId,
+        })
+        return result.items
+      }),
+    )
+
+    for (const item of topUpFeeds.flat()) {
+      if (!byId.has(item.id)) {
+        byId.set(item.id, item)
+      }
+    }
+
+    return Array.from(byId.values())
+  }
+
+  private isNotesTodayCandidate(
+    item: Pick<PostWithMeta, 'community_slug' | 'content_kind' | 'note_template_id'>,
+  ): boolean {
+    return isCreatorNoteEntry(item)
+      && isLaunchNativeCreatorNoteCommunity(item.community_slug)
+      && Boolean(item.note_template_id)
   }
 
   private pickContinueStoryline(

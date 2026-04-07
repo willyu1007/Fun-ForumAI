@@ -165,6 +165,17 @@ describe('HomeProgrammingService', () => {
             }
             return null
           },
+          findBySlug: (slug: string) => {
+            if (slug === 'creator-recommendation') {
+              return {
+                id: 'community-creator-note',
+                slug,
+                name: '种草研究所',
+                rules_json: t4PicksRules,
+              }
+            }
+            return null
+          },
         } as never,
       })
 
@@ -195,6 +206,156 @@ describe('HomeProgrammingService', () => {
         items: [],
       })
       expect(payload.hot_feed_continuation.items.find((item) => item.id === 'post-main')).toBeUndefined()
+    } finally {
+      featureFlags.homeProgrammingV1 = originalFlag
+    }
+  })
+
+  it('tops up notes_today from native creator-note communities when the global hot feed is crowded out', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.homeProgrammingV1
+    featureFlags.homeProgrammingV1 = true
+
+    try {
+      const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
+      const creatorRecommendationRules = getLaunchCommunityBySlug('creator-recommendation')?.rules_json ?? null
+      const creatorRelationshipRules = getLaunchCommunityBySlug('creator-relationship')?.rules_json ?? null
+      const service = new HomeProgrammingService({
+        forumReadService: {
+          getFeed: async (opts?: { communityId?: string }) => {
+            if (opts?.communityId === 'community-creator-recommendation') {
+              return {
+                items: [makePost({
+                  id: 'post-note-recommendation',
+                  community_id: 'community-creator-recommendation',
+                  community_slug: 'creator-recommendation',
+                  community_name: '种草研究所',
+                  title: '种草研究所补进首页的创作者笔记',
+                  content_kind: 'note_entry',
+                  editorial_shelf_id: 'notes_today',
+                  note_template_id: 'recommendation_note',
+                  cover_mode: 'comparison_cover',
+                  heat_score: 18,
+                })],
+                next_cursor: null,
+              }
+            }
+            if (opts?.communityId === 'community-creator-relationship') {
+              return {
+                items: [makePost({
+                  id: 'post-note-relationship',
+                  community_id: 'community-creator-relationship',
+                  community_slug: 'creator-relationship',
+                  community_name: '关系博主部',
+                  title: '关系博主部补进首页的创作者笔记',
+                  content_kind: 'note_entry',
+                  editorial_shelf_id: 'notes_today',
+                  note_template_id: 'relationship_observation_note',
+                  cover_mode: 'relationship_map_card',
+                  heat_score: 16,
+                })],
+                next_cursor: null,
+              }
+            }
+            return {
+              items: [makePost({
+                id: 'post-main-crowded',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '全站热榜把 creator note 挤出去了',
+                hero_eligible: true,
+                storyline_id: 'episode-crowded',
+                storyline_title: '热点拥挤',
+                storyline_state: 'escalating',
+              })],
+              next_cursor: 'cursor-main',
+            }
+          },
+          getPost: async () => {
+            throw new Error('unexpected getPost')
+          },
+          getThreads: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+        } as never,
+        globalHighlightsService: {
+          collectToday: async () => ({
+            hot_threads: [],
+            featured_agents: [],
+            controversy: [],
+            wildcard_cameos: [],
+            meta: {
+              range: 'today',
+              generated_at: '2026-03-31T00:00:00.000Z',
+              source: 'global-highlights-v1',
+            },
+          }),
+        } as never,
+        aftershowService: {
+          getLatestByPost: async () => ({
+            artifact: null,
+            callouts: [],
+          }),
+        } as never,
+        communityRepo: {
+          findById: (communityId: string) => {
+            if (communityId === 'community-hot') {
+              return {
+                id: communityId,
+                slug: 'hot-arena',
+                name: '热点擂台',
+                rules_json: hotArenaRules,
+              }
+            }
+            if (communityId === 'community-creator-recommendation') {
+              return {
+                id: communityId,
+                slug: 'creator-recommendation',
+                name: '种草研究所',
+                rules_json: creatorRecommendationRules,
+              }
+            }
+            if (communityId === 'community-creator-relationship') {
+              return {
+                id: communityId,
+                slug: 'creator-relationship',
+                name: '关系博主部',
+                rules_json: creatorRelationshipRules,
+              }
+            }
+            return null
+          },
+          findBySlug: (slug: string) => {
+            if (slug === 'creator-recommendation') {
+              return {
+                id: 'community-creator-recommendation',
+                slug,
+                name: '种草研究所',
+                rules_json: creatorRecommendationRules,
+              }
+            }
+            if (slug === 'creator-relationship') {
+              return {
+                id: 'community-creator-relationship',
+                slug,
+                name: '关系博主部',
+                rules_json: creatorRelationshipRules,
+              }
+            }
+            return null
+          },
+        } as never,
+      })
+
+      const payload = await service.getHome()
+      const notesToday = payload.shelves.find((item) => item.id === 'notes_today')?.items ?? []
+
+      expect(notesToday.map((item) => item.id)).toEqual([
+        'post-note-recommendation',
+        'post-note-relationship',
+      ])
     } finally {
       featureFlags.homeProgrammingV1 = originalFlag
     }
@@ -300,6 +461,7 @@ describe('HomeProgrammingService', () => {
             name: '热点擂台',
             rules_json: hotArenaRules,
           }),
+          findBySlug: () => null,
         } as never,
       })
 
@@ -386,6 +548,7 @@ describe('HomeProgrammingService', () => {
             name: '热点擂台',
             rules_json: hotArenaRules,
           }),
+          findBySlug: () => null,
         } as never,
       })
 
@@ -453,6 +616,7 @@ describe('HomeProgrammingService', () => {
             name: '热点擂台',
             rules_json: hotArenaRules,
           }),
+          findBySlug: () => null,
         } as never,
         launchProgrammingOpsService: {
           getHomeItems: async () => ([
@@ -605,6 +769,17 @@ describe('HomeProgrammingService', () => {
               name: '热点擂台',
               rules_json: hotArenaRules,
             }
+          },
+          findBySlug: (slug: string) => {
+            if (slug === 'creator-recommendation') {
+              return {
+                id: 'community-creator-note',
+                slug,
+                name: '种草研究所',
+                rules_json: t4PicksRules,
+              }
+            }
+            return null
           },
         } as never,
         viewerPublicViewService: {

@@ -13,6 +13,10 @@ Usage:
     [--poll-ms <ms>] [--timeout-ms <ms>] \\
     [--stale-minutes <minutes>] [--message-count <count>] \\
     [--allow-deprecated-env-pins] [--allow-debug-overrides]
+
+Environment fallbacks:
+  RUNTIME_CLOSEOUT_BASE_URL or LAUNCH_WEB_BASE_URL or LAUNCH_WORKER_BASE_URL
+  RUNTIME_CLOSEOUT_ADMIN_TOKEN or LAUNCH_ADMIN_TOKEN
 `)
   process.exit(exitCode)
 }
@@ -20,6 +24,11 @@ Usage:
 function parseArgs(argv) {
   const args = argv.slice(2)
   const out = {
+    baseUrl: process.env.RUNTIME_CLOSEOUT_BASE_URL
+      || process.env.LAUNCH_WEB_BASE_URL
+      || process.env.LAUNCH_WORKER_BASE_URL
+      || '',
+    adminToken: process.env.RUNTIME_CLOSEOUT_ADMIN_TOKEN || process.env.LAUNCH_ADMIN_TOKEN || '',
     pollMs: 10_000,
     timeoutMs: 8 * 60_000,
     staleMinutes: 35,
@@ -49,7 +58,7 @@ function parseArgs(argv) {
   }
 
   if (!out.baseUrl) {
-    throw new Error('--base-url is required')
+    throw new Error('--base-url is required (or set RUNTIME_CLOSEOUT_BASE_URL / LAUNCH_WEB_BASE_URL / LAUNCH_WORKER_BASE_URL)')
   }
 
   out.pollMs = Number(out.pollMs)

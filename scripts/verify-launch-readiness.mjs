@@ -346,7 +346,8 @@ async function runStagingChecks() {
       continue;
     }
     const feedResponse = await fetchJson(`${webBaseUrl}/v1/feed?community_id=${encodeURIComponent(community.id)}&limit=1`);
-    const itemCount = Array.isArray(feedResponse.body?.data?.items) ? feedResponse.body.data.items.length : 0;
+    // `/v1/feed` returns `data: PostWithMeta[]` with pagination on `meta.cursor`.
+    const itemCount = Array.isArray(feedResponse.body?.data) ? feedResponse.body.data.length : 0;
     if (feedResponse.status !== 200 || itemCount < 1) {
       occupancyFailures.push(`${slug}:${feedResponse.status}:${itemCount}`);
     }
