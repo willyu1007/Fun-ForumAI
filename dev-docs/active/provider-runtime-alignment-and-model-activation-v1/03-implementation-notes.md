@@ -88,3 +88,18 @@
 - `llm-gateway.ts` 的 capability fit 判定改为依赖显式声明：
   - `supportsModality / supportsResponseMode` 不再对缺 capability 字段做 text 宽容；
   - 这样 registry validator、boot-time loader、request-time routing 三层都使用同一套严格语义。
+
+## 2026-04-07 Follow-up Intake From `T-941`
+
+- `T-941` 的真实 kind-staging rehearse 已确认 DashScope `qwen-flash-character` 凭据与模型可用，但 forum visible runtime 在现行 profile / candidate ordering 下仍更常落到 `qwen-plus-character`。
+- 该问题不归 forum orchestration 四连包处理；若要调整“forum visible lane 何时优先命中 flash、何时仍保留 plus 作为 baseline”的 runtime contract，应由 `T-901` 继续承担 profile candidate ordering / preferred-model semantics / provider admission 侧的设计与代码变更。
+- `T-936` 只承接 live closeout 证据与 staging gate，不负责重新定义 visible lane 的默认模型策略。
+
+## 2026-04-07 Kind-Staging Live Evidence Update
+
+- 从 kind-staging 的 `/v1/admin/runtime/features` recent attribution summary 取得了第一组真实运行证据：
+  - visible/forum lane 的近期命中分布中，`qwen-plus-character` 仍是主力，但 `qwen-flash-character` 已有稳定真实命中，不再停留在“理论可选”。
+  - `by_credential` 已同时观察到 `dashscope-primary` 与 `dashscope-secondary` 被实际使用，且 ledger 中存在 `fallback_history_total > 0`，说明至少 DashScope 家族的 ordered failover 已有真实执行证据。
+- 这些证据收窄了 `T-901` 的剩余范围：
+  - 不再是“完全没有 live runtime evidence”。
+  - 而是“已有单 provider / 双 credential 的 live proof，但多 provider connectivity 与跨 provider ordered failover 仍待补齐”。

@@ -38,7 +38,7 @@
 - `git diff --check`
   - pass
 
-## Pending
+## 2026-04-03 Repo Checks
 
 - 2026-04-03:
   - `pnpm exec vitest run src/backend/llm/__tests__/secret-resolver.test.ts`
@@ -60,17 +60,6 @@
     - 7 tests passed；新增覆盖 inference profile recompilation 会清空遗留 visible pin 持久化字段。
   - `git diff --check`
     - pass
-
-- live provider connectivity:
-  - `glm-5`
-  - `kimi-k2-0905-preview`
-  - `kimi-k2-thinking`
-  - `MiniMax-M2.5`
-  - `hunyuan-2.0-instruct-20251111`
-  - `hunyuan-2.0-thinking-20251109`
-  - `doubao-seed-2-0-lite-260215`
-  - `doubao-seed-2-0-pro-260215`
-- ordered primary/secondary failover against real provider credentials after Bitwarden provisioning
 
 ## 2026-04-03 Runtime Contract Closeout
 
@@ -132,3 +121,27 @@
   - 真实 provider connectivity / ordered failover；
   - `T-936` staging live closeout；
   - `T-935` staging API env-file compile 的真实 secret/STS 前提。
+
+## External Live Verification Pending
+
+- Status:
+  - repo 侧 contract / review gate / hardening 已通过；kind-staging 已补上 DashScope live evidence，当前仅剩多 provider connectivity / ordered failover 的外部验收。
+- Kind-staging live evidence:
+  - `curl -sf -H 'Authorization: Bearer <redacted>' http://127.0.0.1:4200/v1/admin/runtime/features | jq '.data.observability.attribution_summary | {by_provider_model, by_credential, fallback_history_total}'`
+    - pass
+    - 观察到 `dashscope-openai/qwen-plus-character` 与 `dashscope-openai/qwen-flash-character` 的真实命中；`dashscope-primary` / `dashscope-secondary` 两个 credential 均被使用，且存在 fallback history。
+- Preconditions:
+  - provider-specific keys 已在目标环境完成 provisioning；需要 dual-key failover 的 provider 已配齐 primary/secondary。
+  - 对应 credential pools 在目标环境可用且未被 `blocked` 状态拦截。
+  - ordered failover 运行需要能记录 selected credential、fallback history、`provider_id + model_id` attribution。
+- Pending live provider connectivity:
+  - `glm-5`
+  - `kimi-k2-0905-preview`
+  - `kimi-k2-thinking`
+  - `MiniMax-M2.5`
+  - `hunyuan-2.0-instruct-20251111`
+  - `hunyuan-2.0-thinking-20251109`
+  - `doubao-seed-2-0-lite-260215`
+  - `doubao-seed-2-0-pro-260215`
+- Pending ordered failover:
+  - ordered primary/secondary failover against real provider credentials after the remaining provider keys / pools are provisioned in the target environment.

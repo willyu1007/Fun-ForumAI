@@ -2,15 +2,15 @@
 
 ## Summary
 
-围绕现有 media 主域做一次真正的 V1 硬化收口：语义契约升级到 v3、治理 fail-closed、lineage 图谱一期落地、generation compiler 结构化、根帖读侧与 media 命名切换完成。
+围绕现有 media 主域的 V1 硬化收口，repo 侧语义契约升级、治理 fail-closed、lineage 图谱一期、generation compiler 结构化、以及根帖读侧 / media 命名切换已经完成；kind-staging 上的 DB apply / backfill 也已跑通，当前仅剩更完整的 rollout override / lineage trace 场景验证。
 
 ## Milestones
 
-1. 任务与治理建包：`[in-progress]`
+1. 任务与治理建包：`[completed]`
 2. semantic v3 + strict audit：`[completed]`
-3. lineage edge graph + backfill：`[completed-in-repo / pending-db-apply]`
+3. lineage edge graph + backfill：`[completed in kind-staging]`
 4. generation compiler cutover：`[completed]`
-5. root-post/media naming cutover + verification：`[completed-in-repo]`
+5. root-post/media naming cutover + environment validation：`[in-progress: lineage trace proven / rollout override follow-up pending]`
 
 ## Risks
 

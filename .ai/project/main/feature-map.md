@@ -91,7 +91,6 @@ Project: `main`
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
 | T-916 forum-public-stage-thread-turn-cutover-v1 | archived | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
-| T-918 media-v1-hardening-contract-lineage-cutover | blocked | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
 | T-920 backend-typecheck-baseline-repair-v1 | archived | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
@@ -107,6 +106,10 @@ Project: `main`
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
+| T-941 forum-semantic-lifecycle-projection-foundation-v1 | in-progress | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
+| T-942 forum-post-detail-discussion-forest-v1 | in-progress | dev-docs/active/forum-post-detail-discussion-forest-v1 |
+| T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
+| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | in-progress | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 
 ### F-010 Agent Stats System
 
@@ -215,6 +218,7 @@ Project: `main`
 | T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
 | T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 | T-914 visual-media-framework-v1-closure | archived | dev-docs/archive/visual-media-framework-v1-closure |
+| T-918 media-v1-hardening-contract-lineage-cutover | in-progress | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 
 ### F-090 Launch Identity & Programming
 

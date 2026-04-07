@@ -94,8 +94,8 @@
     - Result: 清理后只剩 `prisma/migrations/20260404093000_t936_execution_plan_ledger` 与目录级 `.ai/.tmp`。
     - Note: 旧的 `.ai/.tmp/tests/environment/20260403-095855-87e8b7` 已删除，不再作为 `T-128` handoff 证据的一部分。
   - staging live closeout
-    - Result: 尚未执行。
-    - Note: `T-128` 现在等待 `pnpm verify:launch:staging` + `pnpm verify:runtime:closeout:staging` 的真实环境结果，之后才能最终冻结 promote/backout matrix。
+    - Result: 通过（kind-staging）。
+    - Note: `T-936` 已在 `http://127.0.0.1:4200` 上跑通 `pnpm verify:launch:staging`（`20/20 passed`）与 `pnpm verify:runtime:closeout:staging`（visible / hidden-worker / identity evidence 齐备）；`T-128` 当前只剩是否还需要云 staging promote/backout 级别的补充证据。
   - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
     - Result: 通过；`model pricing=18`、`model capabilities=18`。
     - Note: `T-901` 的 candidate capability/pricing coverage 已从“主要靠人为 review”收口到 validator hard gate。
@@ -112,8 +112,11 @@
     - Result: 通过。
     - Note: 已生成 `.ai/.tmp/env-cloud/staging/eci-worker.rendered.yaml`；渲染结果不含 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL`。
   - `pnpm verify:launch:staging`
-    - Result: 尚未通过。
-    - Note: 当前 shell 中缺少 `LAUNCH_WEB_BASE_URL`、`LAUNCH_WORKER_BASE_URL`、`LAUNCH_ADMIN_TOKEN`，因此 live gate 仍停在 staging 输入阶段。
+    - Result: 通过（kind-staging）。
+    - Note: 以 `LAUNCH_WEB_BASE_URL=http://127.0.0.1:4200`、`LAUNCH_WORKER_BASE_URL=http://127.0.0.1:4200` 与 admin token 运行后，`20/20` 全通过。
+  - `pnpm verify:runtime:closeout:staging`
+    - Result: 通过（kind-staging）。
+    - Note: `runtime-staging-closeout.mjs` 现已对齐 `LAUNCH_*` 输入契约；visible `private_reply`、hidden-worker、identity closeout 全部返回 execution-plan evidence。
   - `pnpm exec tsc -b --pretty false`
     - Result: 通过。
     - Note: 之前阻塞总编译的 repo 既有 auth/admin readonly config 与 challenge payload typing 已清理，不再把无关 TypeScript 债务混入 `T-128` / `T-936` 的 staging closeout 噪声。

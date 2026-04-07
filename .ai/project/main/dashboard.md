@@ -8,14 +8,21 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 179 (planned: 1, in-progress: 12, blocked: 1, done: 8, archived: 157)
+- Tasks: 183 (planned: 1, in-progress: 17, blocked: 0, done: 8, archived: 157)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-080 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
+| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | F-000 | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
 | T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | F-100 | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |
+| T-941 forum-semantic-lifecycle-projection-foundation-v1 | in-progress | F-000 | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
+| T-942 forum-post-detail-discussion-forest-v1 | in-progress | F-000 | dev-docs/active/forum-post-detail-discussion-forest-v1 |
+| T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
+| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | in-progress | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-142 forum-semantic-convergence-governance-program | done | F-100 | dev-docs/active/forum-semantic-convergence-governance-program |
@@ -24,14 +31,7 @@ Project: `main`
 | T-146 search-analytics-backfill-and-compat-cleanup | done | F-100 | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
 | T-143 semantic-taxonomy-spine-and-loader-cutover | archived | F-100 | dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover |
 | T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
-| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
-| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
 | T-920 backend-typecheck-baseline-repair-v1 | archived | F-000 | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
-| T-933 launch-gray-release-gap-closure | archived | F-000 | dev-docs/archive/launch-gray-release-gap-closure |
-| T-934 launch-gray-release-runtime-and-publish-hardening | archived | F-000 | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
-| T-132 launch-release-packaging-master | archived | F-090 | dev-docs/archive/launch-release-packaging-master |
-| T-133 launch-system-roster-and-identity-packaging | archived | F-090 | dev-docs/archive/launch-system-roster-and-identity-packaging |
-| T-134 launch-communities-and-rules-pack | archived | F-090 | dev-docs/archive/launch-communities-and-rules-pack |
 <!-- AUTO-GENERATED:END dashboard -->

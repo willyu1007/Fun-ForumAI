@@ -74,3 +74,22 @@
   - bypass 范围被硬限制为 `ACTIVE + ADMIN` 用户，formal verification status 仍保持原值；也就是说，这只是 staging operator workaround，不是“把实名审核改成通过”。
   - `/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 现在都会暴露 `identity_gate` runtime state，前端 Runtime Dashboard 也同步展示“当前是否临时放开、作用范围、受控操作”。
   - `private_session_create / private_message_send / proactive_receive` 继续走同一套门禁服务，只是 staging admin users 在开关打开时允许通过；`prod` 与非 admin 用户不受影响。
+
+## 2026-04-07 Follow-up Intake From `T-941`
+
+- `T-941` 的真实 kind-staging rehearse 已完成 forum read/runtime preview 路径验证，并确认 `ops/deploy/env-files/staging.env` 足以拉起 backend rollout、health/readiness 和 forum debug surfaces。
+- 这意味着 `T-936` 当前不再缺“基础 staging 可用性”证据，剩余 closeout 重点明确收敛到两项：
+  - 用标准 `verify:launch:staging` / `verify:runtime:closeout:staging` 把 visible、hidden/worker、identity 三条 lane 的正式 live evidence 补齐。
+  - 把 visible forum lane 在真实流量下命中 `qwen-plus-character` 还是 `qwen-flash-character` 的证据记录下来；若需要调整策略，回交 `T-901`，本包只负责证据与放行门。
+
+## 2026-04-07 Kind-Staging Closeout Pass
+
+- 修复了一处真实执行层漂移：`pnpm verify:runtime:closeout:staging` 之前虽然与 `verify:launch:staging` 共用同一套 `LAUNCH_*` 输入口径，但 `runtime-staging-closeout.mjs` 并不会读取这些环境变量，导致命令名义存在、实际无法直接执行。
+- `runtime-staging-closeout.mjs` 现已支持从 `RUNTIME_CLOSEOUT_BASE_URL` / `LAUNCH_WEB_BASE_URL` / `LAUNCH_WORKER_BASE_URL` 解析 base URL，并从 `RUNTIME_CLOSEOUT_ADMIN_TOKEN` / `LAUNCH_ADMIN_TOKEN` 解析 admin token；CLI 参数仍保持最高优先级。
+- 在 kind-staging (`http://127.0.0.1:4200`) 上重新执行两层 live gate 后，结果收口为：
+  - `verify:launch:staging`：`20/20 passed`。
+  - `verify:runtime:closeout:staging`：visible `private_reply`、hidden-worker digest、identity finalize 全部返回 execution-plan evidence。
+- 同批 closeout 证据还确认：
+  - `/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 返回 `routing_mode=policy_driven`。
+  - `override_state` 无 deprecated env pin、无未批准 debug override。
+  - forum visible lane 的 recent attribution 以 `qwen-plus-character` 为主，同时可观察到 `qwen-flash-character` 与 dashscope primary/secondary credential 的真实命中；策略解释继续回交 `T-901`。

@@ -4,7 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-103 personality-compiler-inference-profile-v1`
-- Next step: 执行真实 provider connectivity / ordered failover 验收，并把剩余 callsite cutover / staging live close-out 交给 `T-936`。
+- Current status: `T-901` 的 repo 侧 contract / review gate / hardening 已完成；kind-staging 现已补上第一组真实运行证据：forum visible lane 近期命中同时出现 `qwen-plus-character` 与 `qwen-flash-character`，并可观察到 dashscope `primary/secondary` credential 都被实际使用、`fallback_history` 也有真实记录。当前尚未关闭的只剩“多 provider connectivity / ordered failover”这组环境外部验收。
+- Next step: 在具备对应 provider keys/pools 的目标环境继续补齐多 provider live probe；forum visible lane 的命中分布已由 `T-936` 回写，本包后续只负责是否调整 candidate ordering / preferred-model semantics。
 
 ## Goal
 
@@ -37,4 +38,4 @@
 - `glm/kimi/minimax/tencent/ark` 使用官方 upstream `model_id` 收口到现有 voice line/profile。
 - visible profiles 的 admitted candidate 与 credential pools、provider admission metadata 完整对齐。
 - shadow review evidence 只聚合目标 agent 的 observability / identity write / fallback 数据。
-- **live provider connectivity**：在 keys 配齐后执行各 provider 真实连通性与主备回退验收（04 Pending 所列 model 列表）。
+- **live provider connectivity**：在 keys 配齐后执行各 provider 真实连通性与主备回退验收（见 `04 Verification` 的 `External Live Verification Pending`）。

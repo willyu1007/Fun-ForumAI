@@ -1,6 +1,6 @@
 # 04 Verification
 
-## Planned checks
+## Repo Checks Passed
 
 - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
 - `node .ai/scripts/ctl-project-governance.mjs map --task T-936 --feature F-020 --requirement R-027 --apply`
@@ -10,10 +10,8 @@
 - `pnpm prisma generate`
 - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
 - `pnpm exec vitest run src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/runtime/__tests__/persona-observability.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
-- `pnpm verify:launch:staging`
-- `pnpm verify:runtime:closeout:staging`
 
-## Execution records
+## Repo Execution Records
 
 - 2026-04-03:
   - `node .ai/scripts/ctl-project-governance.mjs map --task T-936 --feature F-020 --requirement R-027 --apply`
@@ -43,9 +41,6 @@
   - `pnpm exec tsc -b --pretty false`
     - Result: 历史失败记录。
     - Note: 当时仅剩 repo 既有 auth/admin 基线问题；该项已被本文件后续的 `pnpm exec tsc -b --pretty false -> 通过` 记录覆盖。
-  - staging live gate
-    - Result: 尚未执行。
-    - Note: 需要在真实 staging 环境先跑 `pnpm verify:launch:staging`，再跑 `pnpm verify:runtime:closeout:staging` 收集 visible / hidden-worker / identity 证据。
   - `pnpm exec vitest run src/backend/services/__tests__/proactive-interaction-service.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/llm/__tests__/credential-broker.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/llm/__tests__/usage-ledger.test.ts src/backend/runtime/__tests__/rollout-evidence-collector.test.ts src/backend/runtime/__tests__/persona-observability.test.ts`
     - Result: 通过；61 tests passed。
     - Note: closeout proactive fallback、dense hidden-worker fixture stale window、ledger/admin observability 与 LLM request typing 回归全部通过。
@@ -67,9 +62,6 @@
     - Note: 新增覆盖 recent-ledger override aggregation、candidate pricing/capability coverage、以及 launch readiness repo checks。
   - `node --check scripts/verify-launch-readiness.mjs`
     - Result: 通过。
-  - `pnpm verify:launch:staging`
-    - Result: 尚未通过。
-    - Note: 当前 shell 中缺少 `LAUNCH_WEB_BASE_URL`、`LAUNCH_WORKER_BASE_URL`、`LAUNCH_ADMIN_TOKEN`，staging live gate 仍停在外部输入阶段。
   - `pnpm exec tsc -b --pretty false`
     - Result: 通过。
     - Note: 之前阻塞 `T-936` 验证读数的 repo 既有 auth/admin TypeScript 基线问题已清理，不再作为 live gate 噪声项。
@@ -85,3 +77,18 @@
   - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root .`
     - Result: 通过。
     - Note: `env/.env.example`、`docs/env.md`、`docs/context/env/contract.json` 已刷新。
+
+## 2026-04-07 Kind-Staging Live Checks
+
+- `export LAUNCH_WEB_BASE_URL=http://127.0.0.1:4200 LAUNCH_WORKER_BASE_URL=http://127.0.0.1:4200 LAUNCH_ADMIN_TOKEN='<redacted>'; pnpm verify:launch:staging`
+  - Result: 通过；`20/20 passed, 0 failed`。
+  - Note: 两侧 health/readiness、`routing_mode=policy_driven`、override cleanliness、launch shelf order、community occupancy、browser smoke 全部通过。
+- `node scripts/runtime-staging-closeout.mjs --base-url http://127.0.0.1:4200 --admin-token '<redacted>'`
+  - Result: 通过。
+  - Note: visible `private_reply`、hidden-worker digest、identity finalize 全部返回 execution-plan evidence；`override_state` 仍为 clean。
+- `export LAUNCH_WEB_BASE_URL=http://127.0.0.1:4200 LAUNCH_WORKER_BASE_URL=http://127.0.0.1:4200 LAUNCH_ADMIN_TOKEN='<redacted>'; pnpm verify:runtime:closeout:staging`
+  - Result: 通过。
+  - Note: `runtime-staging-closeout.mjs` 已对齐 `verify:launch:staging` 的 `LAUNCH_*` 环境变量契约，因此 package script 可以直接复用相同输入。
+- `curl -sf -H 'Authorization: Bearer <redacted>' http://127.0.0.1:4200/v1/admin/runtime/features | jq '.data.observability.attribution_summary | {by_provider_model, by_credential, fallback_history_total}'`
+  - Result: 通过。
+  - Note: kind-staging recent ledger 已记录 `dashscope-openai/qwen-plus-character` 与 `dashscope-openai/qwen-flash-character` 的真实命中，且能看到 primary/secondary credential 同时被使用；visible lane 的策略解释继续回交 `T-901`。

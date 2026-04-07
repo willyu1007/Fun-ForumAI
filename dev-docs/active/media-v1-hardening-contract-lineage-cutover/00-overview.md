@@ -2,9 +2,10 @@
 
 ## Status
 
-- State: blocked
-- Depends on: `T-910 media-framework-audit-and-remediation`, `T-914 visual-media-framework-v1-closure`
-- Next step: 在明确目标环境后执行 Prisma migration / lineage backfill，并把 rollout override / lineage trace 放到 staging 做一次带数据验证。
+- State: in-progress
+- Depends on: kind/staging 目标 DB 连通、Prisma migration apply、`media:backfill-lineage` dry-run/apply、带数据 lineage trace 验证
+- Current status: `T-918` 的 repo 侧 contract、rollout hardening、targeted tests 与 route/naming cutover 已完成；2026-04-07 已在 kind-staging 数据库上实际执行 `prisma migrate deploy` 与 `media:backfill-lineage` dry-run/apply，并验证 `T-918` migration 已存在、`media_lineage_edges` 已落库、`image_plans.directive_id -> visual_directives.id` 无 orphan。当前剩余的是更完整的 rollout override / lineage trace 验证，以及继续观察是否还有环境级 `P2028` 残余。
+- Next step: 在已完成 backfill 的 kind/staging 环境继续补一次 admin lineage trace / rollout validation，并把“无 `image_plans_directive_id_fkey` orphan”与回填结果写回父任务或后续 cutover 证据。
 
 ## Goal
 
@@ -33,3 +34,6 @@
 - [x] generation 改为结构化 spec + compiled prompt，不再以 `prompt_brief` 作为主契约。
 - [x] forum root post 读侧不再回退 `post_media`；媒体 API 与本地存储 URL 主路径切到 `media` 命名。
 - [x] 补齐 targeted tests、回填脚本与 rollout 开关，并记录验证结果。
+- [x] 在目标环境完成 Prisma migration apply，并确认 schema 与 repo contract 一致。
+- [x] 在目标环境执行 `media:backfill-lineage` dry-run + apply，并记录结果。
+- [ ] 在 staging 完成一次带真实数据的 rollout override + lineage trace 验证，确认 DB apply 后无 `image_plans_directive_id_fkey` / `P2028` 残余环境级问题。

@@ -1453,7 +1453,7 @@ tasks:
     requirement_ids:
       - R-027
     dev_docs_path: dev-docs/active/provider-runtime-alignment-and-model-activation-v1
-    updated: 2026-04-03
+    updated: 2026-04-07
   - id: T-902
     slug: chronicle-chapter-summary-alignment
     status: archived
@@ -1574,11 +1574,15 @@ tasks:
     updated: 2026-03-23
   - id: T-918
     slug: media-v1-hardening-contract-lineage-cutover
-    status: blocked
+    status: in-progress
     milestone_id: M-000
-    feature_id: F-000
+    feature_id: F-080
+    requirement_ids:
+      - R-080
+      - R-084
+      - R-086
     dev_docs_path: dev-docs/active/media-v1-hardening-contract-lineage-cutover
-    updated: 2026-03-27
+    updated: 2026-04-07
   - id: T-919
     slug: feedback-ticket-and-admin-inbox-v1
     status: in-progress
@@ -1707,7 +1711,7 @@ tasks:
     requirement_ids:
       - R-027
     dev_docs_path: dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1
-    updated: 2026-04-03
+    updated: 2026-04-07
   - id: T-937
     slug: forum-semantic-and-llm-runtime-residual-closeout
     status: done
@@ -1737,4 +1741,32 @@ tasks:
     requirement_ids:
       - R-106
     dev_docs_path: dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1
+    updated: 2026-04-07
+  - id: T-941
+    slug: forum-semantic-lifecycle-projection-foundation-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1
+    updated: 2026-04-07
+  - id: T-942
+    slug: forum-post-detail-discussion-forest-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-post-detail-discussion-forest-v1
+    updated: 2026-04-07
+  - id: T-943
+    slug: forum-participation-contract-and-viewer-write-plane-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1
+    updated: 2026-04-07
+  - id: T-944
+    slug: forum-attention-opportunity-and-perception-full-cutover-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1
     updated: 2026-04-07

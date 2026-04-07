@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-901 provider-runtime-alignment-and-model-activation-v1`, `T-935 cloud-environment-go-live-chain-v1`
-- Current status: `T-936` 的 repo 侧 contract 已完成第二轮 audit/cleanup，且 override evidence 已从“占位字段”升级为“recent ledger + process env 真聚合”：visible/hidden/identity/vision_summary 的 callsite cutover 已收口，execution-plan trace 已接入 usage ledger + admin observability，`/v1/admin/runtime/stats` 与 `/v1/admin/runtime/features` 的 `override_state` 不再写死，`verify:launch:staging` 也已扩展到同时检查 `api/worker` 两侧的 `routing_mode` 与 override cleanliness。当前剩余 blocker 只在真实 staging 输入：还缺 live URL/admin token；API env-file 注入则允许先通过 `staging api` 的临时 bootstrap 路径补齐。
-- Next step: 在 staging 先通过 bootstrap 例外或正式 deploy workspace 生成并导入 `ops/deploy/env-files/staging.env`，再执行 `pnpm verify:launch:staging` 与 `pnpm verify:runtime:closeout:staging`，收集 visible、hidden/worker、identity 三条 lane 的 live evidence，并据此冻结 promote / rollback prerequisites。
+- Current status: `T-936` 的 repo 侧 contract 与 live closeout 脚本都已在 kind-staging 上跑通：`verify:launch:staging` 现为 `20/20` 全通过，`verify:runtime:closeout:staging` 也已补齐 visible/private-reply、hidden-worker digest、identity 三条 lane 的真实 evidence，并确认 `routing_mode=policy_driven`、无 deprecated env pin、无未批准 debug override。当前剩余工作不再是 repo/blocker，而是把同批证据写回 parent task，并继续记录 forum visible lane 的真实命中模型分布供 `T-901` 决策使用。
+- Next step: 把 kind-staging live closeout 结果同步回 `T-128/T-935` 的 promote/rollback 叙事；若后续需要调整 visible lane 默认命中策略，仅回交 `T-901`，本包不再改 routing contract。
 
 ## Goal
 

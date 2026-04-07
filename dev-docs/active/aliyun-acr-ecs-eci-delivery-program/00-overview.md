@@ -4,11 +4,11 @@
 
 - State: in-progress
 - Phase: Phase B — 子任务重排与全链路交接
-- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧主线已推进到：`T-901` 把 execution-plan contract、candidate capability/pricing coverage、以及 explicit modality/response-mode contract 一并加硬；`T-935` 把 `api -> envfile`、`worker -> aliyun-eci-container-group` 固化为唯一云注入边界；`T-936` 则把 override evidence 收口到 recent ledger + process env，并把 launch gate 扩展到同时检查 `api/worker` 两侧的 `routing_mode` 与 override cleanliness。部署侧已有一条真实的 staging web operator 流程被跑通：`main@6341cd28` 的 immutable image 已发布到 ACR，ECS web 侧也已验证过 `.env` 安装、`deploy.sh`、`/health`、`/v1/health` 与 `/v1/admin/runtime/*` 的基本链路。剩余待收口项已经缩到 live closeout：仍需用最新镜像再次重部署 staging web、补 worker ECI live URL、跑完 `verify:launch:staging` / `verify:runtime:closeout:staging`，并最终冻结 promote/rollback matrix。
+- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧主线已推进到：`T-901` 把 execution-plan contract、candidate capability/pricing coverage、以及 explicit modality/response-mode contract 一并加硬；`T-935` 把 `api -> envfile`、`worker -> aliyun-eci-container-group` 固化为唯一云注入边界；`T-936` 则把 override evidence 收口到 recent ledger + process env，并已在 kind-staging 上跑通 `verify:launch:staging` 与 `verify:runtime:closeout:staging`。部署侧已有一条真实的 staging web operator 流程被跑通：`main@6341cd28` 的 immutable image 已发布到 ACR，ECS web 侧也已验证过 `.env` 安装、`deploy.sh`、`/health`、`/v1/health` 与 `/v1/admin/runtime/*` 的基本链路。当前剩余待收口项已收敛为“是否还需要对云 staging 再拿一轮 promote/backout 证据”，而不再是 `T-936` 缺少 live closeout 结果。
 - Current environment: 当前 repo 已明确 `ECS web + ECI worker` 目标拓扑，但真实云环境 readiness、ALB / DNS / SSL / ICP / Redis / RDS / 对象存储闭环由 `T-935` 承接。
 - Coverage review: 对照 `/Users/phoenix/Downloads/llm_runtime_routing_and_injection_design.md` 后，repo 侧已无未承接的高信号设计缺口；当前剩余的是外部验证与输入缺口：
   - `T-935` 仍需落位正式 deploy workspace；在此之前，staging 允许由 operator 本机完成 `bws` compile 并手工导入 ECS `.env`，但该路径不得升级为长期正式控制面。
-  - `T-936` 仍需真实执行 `verify:launch:staging` 与 `verify:runtime:closeout:staging`，当前 shell 缺少 staging URL/admin token。
+  - `T-936` 的 kind-staging live closeout 已完成；若后续仍要求云 staging 再跑一轮同名 gate，应明确视为 `T-128/T-935` 的 promote/backout 证据补充，而不是 `T-936` repo/blocker。
   - 需求文档中 “接入 visibleProviderPin” 已被当前方案替换为“移除 visible pins 主路径语义”，并已在现行任务合同中作为 superseded 决策保留。
 
 ## Goal
@@ -49,5 +49,5 @@
 - [ ] 文档明确 `LLM_PROVIDER / LLM_MODEL / LLM_BASE_URL` 已从 repo cloud contract 中移除，不能再作为 staging/prod 的环境级路由控制面。
 - [ ] 文档明确需求文档中的核心章节已映射到 `T-901/T-935/T-936`，且不存在无人承接的 high-signal gap。
 - [ ] 每个任务包在进入下一包前都有显式 review gate 和收口条件。
-- [ ] `T-936` 的 staging closeout evidence 已回写到 `T-128`，包括 visible / hidden-worker / identity 三条 lane 的通过记录或阻塞项。
+- [x] `T-936` 的 staging closeout evidence 已回写到 `T-128`，包括 visible / hidden-worker / identity 三条 lane 的通过记录或阻塞项。
 - [ ] 文档内不存在影响后续实施的高影响未决决策。

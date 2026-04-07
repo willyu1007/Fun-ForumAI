@@ -167,7 +167,7 @@ Project: `main`
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | in-progress | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
 | T-916 forum-public-stage-thread-turn-cutover-v1 | archived | F-000 | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | F-000 | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
-| T-918 media-v1-hardening-contract-lineage-cutover | blocked | F-000 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
+| T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-080 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | F-000 | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
 | T-920 backend-typecheck-baseline-repair-v1 | archived | F-000 | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | F-000 | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
@@ -189,4 +189,8 @@ Project: `main`
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | F-000 | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
 | T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | F-100 | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |
+| T-941 forum-semantic-lifecycle-projection-foundation-v1 | in-progress | F-000 | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
+| T-942 forum-post-detail-discussion-forest-v1 | in-progress | F-000 | dev-docs/active/forum-post-detail-discussion-forest-v1 |
+| T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
+| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | in-progress | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 <!-- AUTO-GENERATED:END task-index -->
