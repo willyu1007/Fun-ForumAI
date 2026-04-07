@@ -25,6 +25,13 @@
 
 ## Acceptance Criteria
 
+## Temporary Staging Override (2026-04-07)
+
+- The active staging worker path is temporarily changed from `worker -> aliyun-eci-container-group` to `worker -> same-host Docker Compose service on ECS`.
+- `api -> envfile` remains unchanged.
+- This override exists only to close the first staging launch quickly.
+- `prod` worker topology remains a separate follow-up freeze decision.
+
 - `docs/project/policy.yaml` 能按 workload 区分 `api -> envfile`、`worker -> aliyun-eci-container-group`，且 `require_target=true`。
 - `env-cloudctl` 能对 `aliyun-eci-container-group` 执行 plan/apply/verify，并产出 redacted rendered manifest。
 - `ops/deploy/workloads/eci-worker/env-matrix.yaml` 与 container-group 模板覆盖 staging/prod 的多 provider primary+secondary runtime secret surface。

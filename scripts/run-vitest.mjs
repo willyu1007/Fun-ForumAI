@@ -3,9 +3,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const vitestEntrypoint = path.join(rootDir, 'node_modules', 'vitest', 'vitest.mjs')
 const vitestArgs = process.argv.slice(2)
-const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
-const result = spawnSync(command, ['exec', 'vitest', ...vitestArgs], {
+const result = spawnSync(process.execPath, [vitestEntrypoint, ...vitestArgs], {
   cwd: rootDir,
   env: process.env,
   stdio: 'inherit',

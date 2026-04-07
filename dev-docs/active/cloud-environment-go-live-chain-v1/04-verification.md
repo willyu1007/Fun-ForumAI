@@ -89,3 +89,12 @@
     - `staging` Bitwarden inventory 已与 repo cloud contract 重新对齐：DashScope/ZAI/MiniMax/Ark 使用 provider-specific primary+secondary keys，DeepSeek/Moonshot/Tencent 暂时只保留单 credential，并通过 cross-provider fallback 兜底。
   - Manual review:
     - `env/contract.yaml` / `credential_pools.yaml` / `env/secrets/staging.ref.yaml` / `eci-worker/env-matrix.yaml` 现在一致地表达 staging 实际 admitted credential surface，不再把 generic `llm_api_default` 或不存在的 `talkshow-stag/*_secondary` 当成正常 cloud routing 面。
+- 2026-04-07:
+  - `node scripts/run-vitest.mjs run src/backend/services/__tests__/auth-service.test.ts`
+    - Result: passed, `9` tests passed.
+    - Note: covers bootstrap-admin email self-bootstrap via password-reset, bootstrap-admin phone first-time SMS login without invite code, and existing login/reset regressions.
+  - `pnpm exec tsc --noEmit`
+    - Result: passed.
+  - `node scripts/bootstrap-admin-account.mjs --help`
+    - Result: passed.
+    - Note: operator bootstrap-account script is executable under plain `node` and no longer depends on importing TS-only runtime modules.

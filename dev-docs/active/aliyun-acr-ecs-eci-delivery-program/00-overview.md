@@ -38,6 +38,14 @@
 
 ## Acceptance Criteria
 
+## Temporary Freeze Override (2026-04-07)
+
+- `staging` temporarily switches from `ECS web + ECI worker` to `single ECS host + Docker Compose web/worker` for fastest launch closure.
+- This override is temporary and staging-only.
+- `prod` does not inherit this topology automatically; the long-term worker topology remains a follow-up decision.
+- Immutable image, build-once-promote-many, Redis-backed runtime contracts, and policy/registry routing authority remain unchanged.
+- Release bookkeeping temporarily keeps the legacy target label `eci_worker` even though staging execution uses a same-host Compose worker.
+
 - [ ] `T-128`、`T-129`、`T-130`、`T-131`、`T-901`、`T-935`、`T-936` 的治理边界清晰且已同步 project hub。
 - [ ] 总任务清晰覆盖全链路目标、依赖、回滚、最终验收与环境晋升顺序。
 - [ ] 子任务分别清晰覆盖 ACR 发布、ECS web、ECI worker 基线、云环境全链路、runtime cutover 五条执行线。

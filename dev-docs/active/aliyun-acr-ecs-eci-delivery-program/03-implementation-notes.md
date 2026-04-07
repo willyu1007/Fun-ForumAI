@@ -112,3 +112,31 @@
   - `staging web ECS deploy procedure`：已跑通过一次健康检查链路，operator 步骤已清晰。
   - `staging web latest-image redeploy`：尚待用最新镜像再次部署，确认 `llm_configured`、visible closeout 与 identity gate workaround 已一起生效。
   - `worker ECI live deploy`：仍未形成真实上线证据，依旧是 `T-935/T-936` 的剩余 blocker。
+
+## 2026-04-07
+
+- Cleared the remaining repo-side launch gate noise before live staging closeout:
+  - fixed a front-end test assertion that used an unnecessary escaped slash and failed `pnpm lint`
+  - rewired `scripts/run-vitest.mjs` to invoke the local `vitest` entrypoint via `process.execPath`, so launch regression checks no longer depend on `pnpm` being discoverable from a plain `node` environment on Windows
+- Revalidated the current publish candidate against live GitHub evidence:
+  - `HEAD` is now `04a06dc9837ab2ec183347114ee8e014e659440d`
+  - latest successful `Publish Image` run is `24062747866`
+  - immutable image ref is `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d`
+  - final digest is `sha256:cc078c7db682c05037c034a184371f80f2792d6ed5ae70c32ff67ab46f432407`
+- Net result for `T-128`:
+  - repo gate is green again (`pnpm verify:launch`)
+  - remaining blockers are now external/operator-owned only: desired release recording, staging web redeploy to the latest immutable image, worker live URL/input collection, and `verify:launch:staging` plus `verify:runtime:closeout:staging`
+- Temporary freeze decision update:
+  - staging worker topology switches to same-host Docker Compose on the ECS host for fastest launch closure
+  - this is explicitly temporary and does not redefine the long-term prod worker topology
+  - retained `ECI worker` assets stay in-repo as historical baseline and fallback design material
+## 2026-04-07 (bootstrap-admin recovery)
+
+- Staging closeout uncovered a remaining auth-delivery bootstrap gap:
+  - configured bootstrap-admin emails/phones only promoted after successful login, but did not help when the account row was missing and SMTP/SMS providers were unavailable
+  - repo now provides two recovery paths:
+    - formal self-bootstrap path: bootstrap-admin email can self-bootstrap through password reset; bootstrap-admin phone can self-bootstrap through first-time SMS login without an invite code
+    - operator escape hatch: `node scripts/bootstrap-admin-account.mjs ...` / `pnpm auth:bootstrap-admin` can create the bootstrap-admin account row and set an email password directly against `DATABASE_URL`
+- Net effect for `T-128`:
+  - the remaining staging blocker is no longer “repo lacks a viable admin-login path”
+  - the unresolved part is now purely environment-side: wiring real SMTP/SMS providers if delivery-backed login/reset flows are required instead of the operator bootstrap script

@@ -75,6 +75,7 @@
     "launch:warm-start": "tsx src/backend/dev/launch-warm-start.ts",
     "dev:reset:seed": "tsx src/backend/dev/dev-seed-reset-command.ts",
     "smoke:runtime:staging": "node scripts/runtime-staging-smoke.mjs",
+    "auth:bootstrap-admin": "node scripts/bootstrap-admin-account.mjs",
     "test:e2e:pg:isolated": "node scripts/e2e-pg-isolated.mjs",
     "stage:templates:validate": "node scripts/stage-templates-validate.mjs",
     "stage:templates:export": "node scripts/stage-templates-export.mjs",

@@ -18,6 +18,11 @@ Files in this directory are the repo-side source of truth for the host copies:
 - `rollback.sh`
 - `smoke.sh`
 
+Temporary staging worker note:
+
+- The `worker` Compose service is gated behind the `staging-same-host-worker` profile.
+- It is a staging-only launch-closure override, not the default prod worker topology.
+
 ## Host prerequisites
 
 - Docker Engine with the Compose plugin
@@ -27,6 +32,9 @@ Files in this directory are the repo-side source of truth for the host copies:
   - `ACR_PULL_PASSWORD`
 - `ACR_IMAGE_REPOSITORY=<acr-login-server>/<namespace>/app` when using `--sha`
 - Runtime application env written to `/srv/apps/fun-forum/.env`
+- Optional host bind overrides:
+  - `WEB_BIND_PORT` defaults to `14000`
+  - `WORKER_HOST_PORT` defaults to `14001`
 
 ## Deployment examples
 

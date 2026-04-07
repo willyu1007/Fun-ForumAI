@@ -1,11 +1,12 @@
-# ECS Web + ECI Worker Rollout
+# ECS Web + Worker Rollout
 
 ## Scope
 
 - Launch gray-release rollout order for `staging` and `prod`
 - Repo-tracked assets only
 - ECS web remains the host-facing role
-- ECI worker remains the runtime/background role
+- Temporary staging topology runs the runtime/background worker on the same ECS host via Docker Compose
+- Historical ECI worker assets remain in-repo as a retained baseline, but they are not the active staging launch path
 
 ## Required repo-side assets
 
@@ -27,10 +28,9 @@
 5. Roll ECS web to the same immutable image ref with `RUNTIME_ENABLED=false`.
 6. Verify ECS web loopback health and smoke checks.
 7. Mark `ecs_web` as applied in the desired release record.
-8. Render/verify the ECI worker contract with `env_cloudctl.py plan/apply --runtime-target ecs --workload worker`.
-9. Replace the ECI worker container group with the same immutable image ref and `RUNTIME_ENABLED=true`.
-10. Verify worker `/health`, queue backend, leader backend, and the admitted provider secret surface.
-11. Mark `eci_worker` as applied in the desired release record; when both targets are applied, the desired release becomes fulfilled.
+8. Pull and start the `worker` Compose service on the same ECS host with the same immutable image ref and `RUNTIME_ENABLED=true`.
+9. Verify worker health, queue backend, leader backend, and runtime startup logs.
+10. Mark `eci_worker` as applied in the desired release record; when both targets are applied, the desired release becomes fulfilled.
 
 ## Staging example
 
@@ -46,10 +46,8 @@ IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env staging)"
 cd /srv/apps/fun-forum
 ./deploy.sh --sha <40-char-commit> --with-migrate --db-compat backwards
 node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target ecs_web --status applied --image-ref "$IMAGE_REF"
-# then replace the ECI worker container group using:
-# ops/deploy/workloads/eci-worker/staging.container-group.yaml
-# after:
-# python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env staging --runtime-target ecs --workload worker
+docker compose --profile staging-same-host-worker pull worker
+docker compose --profile staging-same-host-worker up -d --no-deps worker
 node ops/deploy/scripts/release-intent.mjs mark-target --env staging --target eci_worker --status applied --image-ref "$IMAGE_REF"
 ```
 
@@ -67,18 +65,16 @@ IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env prod)"
 cd /srv/apps/fun-forum
 ./deploy.sh --image-ref <acr-login-server>/<namespace>/app:sha-<commit> --db-compat backwards
 node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target ecs_web --status applied --image-ref "$IMAGE_REF"
-# then replace the ECI worker container group using:
-# ops/deploy/workloads/eci-worker/prod.container-group.yaml
-# after:
-# python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan --root . --env prod --runtime-target ecs --workload worker
-node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target eci_worker --status applied --image-ref "$IMAGE_REF"
+#
+# Prod worker topology is intentionally deferred.
+# Do not copy the temporary staging same-host worker topology into prod without a separate freeze decision.
 ```
 
 ## Backout
 
 - Web backout: `ops/deploy/handbook/runbooks/ecs-compose-web-deploy.md`
 - Worker backout:
-  - replace the current container group with the previous immutable image ref
+  - restart the worker service with the previous immutable image ref on the ECS host
   - do not back out the worker alone if the current DB migration is not backward-compatible
 
 ## Verification
@@ -89,10 +85,12 @@ node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target eci_w
   - `/frontend-build-flags.json` exposes the launch build proof for the deployed image
   - browser smoke for `/` shows Home Programming markers such as `今日必看`
 - Worker:
-  - `/health` reports `runtime.enabled=true`
+  - `docker compose --profile staging-same-host-worker ps worker` reports healthy
+  - `/health` returns healthy
   - runtime queue backend matches contract
   - leader backend matches contract
-  - rendered worker manifest includes admitted provider primary + secondary secret refs
+  - `/v1/admin/runtime/stats` reports `runtime.enabled=true`
+  - worker logs show runtime startup under the shared immutable image
 
 ## Launch gray-release close-out
 

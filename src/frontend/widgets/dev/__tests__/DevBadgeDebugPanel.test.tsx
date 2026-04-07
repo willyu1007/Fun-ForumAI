@@ -157,7 +157,7 @@ describe('DevBadgeDebugPanel', () => {
     expect(screen.getByText(/给新创建的个人智能体一个短期可见的开场标记/)).toBeTruthy()
     expect(screen.getByText(/display_priority_rank > tier > achieved_at/)).toBeTruthy()
     expect(screen.getAllByText('Family').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('触发\/指标').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('触发/指标').length).toBeGreaterThan(0)
     expect(screen.getAllByText('阈值').length).toBeGreaterThan(0)
     expect(screen.getAllByText('达成条件').length).toBeGreaterThan(0)
     expect(screen.getAllByText('判断依据').length).toBeGreaterThan(0)

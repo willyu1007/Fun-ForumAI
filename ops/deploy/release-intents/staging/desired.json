@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "env": "staging",
+  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d",
+  "git_sha": "04a06dc9837ab2ec183347114ee8e014e659440d",
+  "published_at": "2026-04-07T06:12:06.537Z",
+  "approved_at": "2026-04-07T06:12:06.537Z",
+  "approved_by": "phoenix",
+  "recorded_at": "2026-04-07T06:12:06.537Z",
+  "updated_at": "2026-04-07T07:35:54.665Z",
+  "db_compat": "backwards",
+  "db_plan": "",
+  "notes": "",
+  "targets": {
+    "ecs_web": {
+      "status": "applied",
+      "notes": "",
+      "updated_at": "2026-04-07T06:15:01.624Z",
+      "applied_at": "2026-04-07T06:15:01.624Z",
+      "applied_image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d"
+    },
+    "eci_worker": {
+      "status": "applied",
+      "notes": "",
+      "updated_at": "2026-04-07T07:35:54.665Z",
+      "applied_at": "2026-04-07T07:35:54.665Z",
+      "applied_image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d"
+    }
+  },
+  "status": "fulfilled",
+  "fulfilled_at": "2026-04-07T07:35:54.665Z"
+}

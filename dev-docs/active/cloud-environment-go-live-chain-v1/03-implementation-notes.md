@@ -35,3 +35,16 @@
   - 保持正式 contract 不变：`api -> envfile`、`worker -> aliyun-eci-container-group`。
   - 但在正式 deploy workspace 尚未落位前，允许 `staging api` 临时走 “operator 本机 compile -> 手工导入 ECS `.env`” 的 bootstrap 路径。
   - 该例外已明确限制为 staging-only，不得外溢到 `prod` 或 `worker`。
+## 2026-04-07
+
+- Closed the bootstrap-admin deadlock that was blocking live staging verification:
+  - `AuthService.startEmailPasswordReset()` now accepts a configured bootstrap-admin email even when the user row does not exist yet.
+  - `AuthService.verifyEmailPasswordReset()` now materializes that bootstrap-admin account on first successful verification, sets the password hash, then promotes to `ADMIN` through the existing bootstrap-admin authority.
+  - `AuthService.verifySmsAuth()` now allows configured bootstrap-admin phones to complete first-time SMS login without an invite code; the newly created phone account is then promoted to `ADMIN`.
+- Added `scripts/bootstrap-admin-account.mjs` plus `pnpm auth:bootstrap-admin` as an operator escape hatch for staging/prod:
+  - works directly against `DATABASE_URL`
+  - only accepts identities already listed in `AUTH_BOOTSTRAP_ADMIN_EMAILS` / `AUTH_BOOTSTRAP_ADMIN_PHONES`
+  - can create the account row and optionally set an email password without waiting for SMTP/SMS providers
+- Net effect:
+  - immediate unblock path exists for staging closeout even when auth delivery providers are not wired yet
+  - formal email/SMS bootstrap-admin self-service path also exists once SMTP/SMS providers are configured

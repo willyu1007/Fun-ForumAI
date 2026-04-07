@@ -3,7 +3,7 @@
 environment: staging
 deployment_model: vm-compose
 host_count: 1
-current_topology: 1 ECS web + 1 ECI worker
+current_topology: 1 ECS host running web + worker via Docker Compose (temporary staging topology)
 entrypoint: ALB -> shared Caddy on the ECS host
 requires_human_approval: true
 requires_with_migrate: true
@@ -16,3 +16,5 @@ notes:
   - Deploy immutable sha images only.
   - GitHub Actions publishes images but does not connect to the ECS host.
   - Staging public ingress is expected to terminate at ALB before proxying into the ECS host.
+  - Temporary override: staging worker runs on the same ECS host as web for fastest launch closure.
+  - This does not freeze prod to the same topology; prod worker topology is deferred for a follow-up task.

@@ -149,6 +149,35 @@ describe('AuthService', () => {
     })
   })
 
+  it('allows a bootstrap admin email to self-bootstrap through password reset when the account does not exist yet', async () => {
+    setBootstrapAdmins({ emails: ['bootstrap-reset@example.com'] })
+
+    const userRepo = new InMemoryUserRepository()
+    const service = new AuthService(
+      userRepo,
+      new InMemoryInviteCodeRepository(userRepo),
+      new InMemoryAuthVerificationChallengeRepository(),
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+      new AdminUserAccessService(userRepo),
+    )
+
+    const start = await service.startEmailPasswordReset({ email: 'bootstrap-reset@example.com' })
+    await expect(
+      service.verifyEmailPasswordReset({
+        challengeId: start.challengeId,
+        code: start.debugCode!,
+        password: 'newpassword1',
+      }),
+    ).resolves.toMatchObject({
+      user: {
+        email: 'bootstrap-reset@example.com',
+        role: 'admin',
+        planTier: 'ADMIN',
+      },
+    })
+  })
+
   it('does not downgrade a bootstrap-configured PRO account during login', async () => {
     setBootstrapAdmins({ emails: ['pro-bootstrap@example.com'] })
 
@@ -212,6 +241,36 @@ describe('AuthService', () => {
     })
     await expect(service.login('reset@example.com', 'newpassword1')).resolves.toMatchObject({
       user: { id: user.id },
+    })
+  })
+
+  it('allows a bootstrap admin phone to self-bootstrap without an invite code on first sms verification', async () => {
+    setBootstrapAdmins({ phones: ['13800138009'] })
+
+    const userRepo = new InMemoryUserRepository()
+    const service = new AuthService(
+      userRepo,
+      new InMemoryInviteCodeRepository(userRepo),
+      new InMemoryAuthVerificationChallengeRepository(),
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+      new AdminUserAccessService(userRepo),
+    )
+
+    const start = await service.startSmsAuth({ phone: '13800138009' })
+    await expect(
+      service.verifySmsAuth({
+        challengeId: start.challengeId,
+        code: start.debugCode!,
+        displayName: 'Bootstrap Phone Admin',
+      }),
+    ).resolves.toMatchObject({
+      isNewUser: true,
+      user: {
+        phone: '13800138009',
+        role: 'admin',
+        planTier: 'ADMIN',
+      },
     })
   })
 })

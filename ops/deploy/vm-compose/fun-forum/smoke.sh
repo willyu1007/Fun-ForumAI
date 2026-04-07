@@ -5,6 +5,8 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RELEASES_DIR="$APP_DIR/releases"
 CURRENT_RELEASE_FILE="$RELEASES_DIR/current.json"
 LOOPBACK_PORT="${LOOPBACK_PORT:-14000}"
+WEB_BIND_PORT="${WEB_BIND_PORT:-$LOOPBACK_PORT}"
+WORKER_HOST_PORT="${WORKER_HOST_PORT:-14001}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-fun-forum}"
 BASE_URL="http://127.0.0.1:${LOOPBACK_PORT}"
 
@@ -37,6 +39,8 @@ resolve_image_ref() {
 cd "$APP_DIR"
 IMAGE_REF="$(resolve_image_ref)"
 export IMAGE_REF
+export WEB_BIND_PORT
+export WORKER_HOST_PORT
 
 echo "[smoke] GET ${BASE_URL}/health"
 health_body="$(curl -fsS "${BASE_URL}/health")"

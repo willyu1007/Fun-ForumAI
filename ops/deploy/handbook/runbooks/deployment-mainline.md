@@ -7,11 +7,13 @@ Canonical operator playbook for the current cloud delivery mainline:
 - image publishing: GitHub Actions -> ACR
 - env rendering: Bitwarden -> `env-localctl compile`
 - web deploy target: ECS host running `Docker Compose`
-- worker deploy target: ECI container group
+- worker deploy target:
+  - `staging`: temporary same-host Docker Compose worker on the ECS host
+  - `prod`: deferred for a follow-up topology decision
 - release contract: immutable `sha-<commit>` image refs only
 - routing authority: registry/policy driven, not env-level model pins
 
-Use this document as the end-to-end sequence. Keep the specialized runbooks for host-only rollback or ECI replacement as supporting references.
+Use this document as the end-to-end sequence. Keep the specialized runbooks for host-only rollback or retained historical worker-topology references as supporting references.
 
 Environment readiness and public-entry prerequisites live in:
 
@@ -20,11 +22,11 @@ Environment readiness and public-entry prerequisites live in:
 ## Current topology
 
 - `staging`
-  - `1 ECS web`
-  - `ECI worker target defined, live rollout pending`
+  - `1 ECS host`
+  - `web` and `worker` run via Docker Compose on the same host as a temporary launch-closure topology
 - `prod`
   - `1 ECS web`
-  - `ECI worker target defined, live rollout pending`
+  - worker topology deferred; do not inherit the temporary staging same-host worker automatically
 
 Canonical repo-side assets:
 
@@ -33,7 +35,7 @@ Canonical repo-side assets:
 - staging values: `env/values/staging.yaml`
 - prod values: `env/values/prod.yaml`
 - ECS host files: `ops/deploy/vm-compose/fun-forum`
-- ECI worker template: `ops/deploy/workloads/eci-worker`
+- ECI worker template: `ops/deploy/workloads/eci-worker` (retained historical baseline; not the active staging launch path)
 - desired release records: `ops/deploy/release-intents`
 - cloud readiness chain: `ops/deploy/handbook/runbooks/cloud-go-live-chain.md`
 
@@ -247,26 +249,20 @@ node ops/deploy/scripts/release-intent.mjs mark-target \
   --image-ref "$IMAGE_REF"
 ```
 
-## Phase 8: Replace ECI worker
+## Phase 8: Start the temporary staging worker on the ECS host
 
-After ECS web is healthy, replace the worker container group with the same immutable image ref and `RUNTIME_ENABLED=true`.
+After ECS web is healthy, start the `worker` Compose service on the same ECS host with the same immutable image ref and `RUNTIME_ENABLED=true`.
 
-Canonical worker planning path:
+On the ECS host:
 
 ```bash
-python3 -B -S .ai/skills/features/environment/env-cloudctl/scripts/env_cloudctl.py plan \
-  --root . \
-  --env staging \
-  --runtime-target ecs \
-  --workload worker
+cd /srv/apps/fun-forum
+export IMAGE_REF='talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-<40-char-commit>'
+sudo -E docker compose --profile staging-same-host-worker pull worker
+sudo -E docker compose --profile staging-same-host-worker up -d --no-deps worker
+sudo -E docker compose --profile staging-same-host-worker ps worker
+sudo -E docker compose --profile staging-same-host-worker logs --tail=120 worker
 ```
-
-The rendered manifest must expose the full admitted provider primary + secondary secret surface required by runtime fallback.
-
-Supporting assets:
-
-- `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md`
-- `ops/deploy/workloads/eci-worker`
 
 Then mark worker applied:
 
@@ -278,6 +274,10 @@ node ops/deploy/scripts/release-intent.mjs mark-target \
   --status applied \
   --image-ref "$IMAGE_REF"
 ```
+
+Bookkeeping note:
+
+- `eci_worker` remains the temporary target label in release-intent records even though staging execution is now same-host Compose worker.
 
 ## Rollback
 
@@ -317,5 +317,5 @@ Do not perform image-only rollback when the current release recorded `db_compat=
 ## Canonical references
 
 - web deploy details: `ops/deploy/handbook/runbooks/ecs-compose-web-deploy.md`
-- ECS + ECI rollout order: `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md`
+- staging same-host web/worker rollout order: `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md`
 - rollback details: `ops/deploy/handbook/runbooks/rollback-procedure.md`

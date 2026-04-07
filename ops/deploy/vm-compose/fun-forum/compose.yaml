@@ -9,7 +9,7 @@ services:
     environment:
       RUNTIME_ENABLED: "false"
     ports:
-      - "127.0.0.1:${LOOPBACK_PORT:-14000}:4000"
+      - "${WEB_BIND_PORT:-14000}:4000"
     healthcheck:
       test:
         [
@@ -22,6 +22,30 @@ services:
       timeout: 5s
       retries: 6
       start_period: 20s
+
+  worker:
+    profiles: ["staging-same-host-worker"]
+    image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RUNTIME_ENABLED: "true"
+      SERVICE_ROLE: "worker"
+    ports:
+      - "${WORKER_HOST_PORT:-14001}:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 25s
 
   migrate:
     image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}

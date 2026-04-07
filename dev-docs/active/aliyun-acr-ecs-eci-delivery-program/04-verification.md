@@ -152,3 +152,34 @@
   - Manual review:
     - Result: 通过。
     - Note: `T-128` 现已补录 staging web 的 operator deployment sequence：`env-localctl compile -> upload env file -> install /srv/apps/fun-forum/.env -> immutable IMAGE_REF deploy.sh -> /health + /v1/health + /v1/admin/runtime/*`。
+- 2026-04-07:
+  - `git rev-parse HEAD`
+    - Result: `04a06dc9837ab2ec183347114ee8e014e659440d`
+  - `gh run list --workflow "Publish Image" --limit 3 --json databaseId,status,conclusion,headSha,displayTitle,createdAt,url`
+    - Result: latest run `24062747866` is `completed/success` for `HEAD=04a06dc9837ab2ec183347114ee8e014e659440d`
+  - `gh run view 24062747866 --log`
+    - Result: publish summary confirms immutable image ref `talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d`
+    - Note: final digest resolved as `sha256:cc078c7db682c05037c034a184371f80f2792d6ed5ae70c32ff67ab46f432407`
+  - `pnpm lint`
+    - Result: passed
+    - Note: previously failing `no-useless-escape` in `src/frontend/widgets/dev/__tests__/DevBadgeDebugPanel.test.tsx` is cleared
+  - `node scripts/run-vitest.mjs run scripts/ci/__tests__/check-image-launch-proof.test.ts src/backend/app.test.ts src/backend/launch/__tests__/programming-contracts.test.ts src/backend/services/__tests__/agent-community-membership-service.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts ops/packaging/scripts/__tests__/frontend-build-profile.test.ts scripts/lib/__tests__/launch-readiness.test.ts src/frontend/features/forum/pages/__tests__/HomePage.test.tsx src/frontend/features/forum/pages/__tests__/HighlightsPage.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+    - Result: passed, `10` files / `52` tests passed
+    - Note: `scripts/run-vitest.mjs` no longer fails under Windows plain-`node` execution
+  - `pnpm verify:launch`
+    - Result: passed, `17/17` checks green
+  - `node ops/deploy/scripts/release-intent.mjs show --env staging`
+    - Result: failed with `[error] No desired release recorded for staging.`
+    - Note: this is now an operator/actionable launch step, not a repo gate failure
+  - `node ops/deploy/scripts/release-intent.mjs show --env prod`
+    - Result: failed with `[error] No desired release recorded for prod.`
+    - Note: prod has not entered promote preparation yet
+- 2026-04-07:
+  - `node scripts/run-vitest.mjs run src/backend/services/__tests__/auth-service.test.ts`
+    - Result: passed, `9` tests passed.
+    - Note: bootstrap-admin recovery paths now have explicit regression coverage before re-entering staging live closeout.
+  - `pnpm exec tsc --noEmit`
+    - Result: passed.
+  - `node scripts/bootstrap-admin-account.mjs --help`
+    - Result: passed.
+    - Note: operator fallback for bootstrap-admin account creation is executable under plain `node`.

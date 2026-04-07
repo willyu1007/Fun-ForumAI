@@ -34,7 +34,8 @@ interface EmailSignupChallengePayload extends Record<string, unknown> {
 
 interface EmailPasswordResetChallengePayload extends Record<string, unknown> {
   kind: 'password_reset'
-  userId: string
+  userId?: string
+  bootstrapEmail?: string
 }
 
 interface InviteChallengePayload extends Record<string, unknown> {
@@ -159,11 +160,18 @@ function parseEmailPasswordResetPayload(
 
   const kind = payload.kind
   const userId = payload.userId
-  if (kind !== 'password_reset' || typeof userId !== 'string' || userId.length === 0) {
+  const bootstrapEmail = payload.bootstrapEmail
+  const hasUserId = typeof userId === 'string' && userId.length > 0
+  const hasBootstrapEmail = typeof bootstrapEmail === 'string' && bootstrapEmail.length > 0
+  if (kind !== 'password_reset' || (!hasUserId && !hasBootstrapEmail)) {
     throw new Error('Invalid email password reset payload')
   }
 
-  return { kind: 'password_reset', userId }
+  return {
+    kind: 'password_reset',
+    ...(hasUserId ? { userId } : {}),
+    ...(hasBootstrapEmail ? { bootstrapEmail } : {}),
+  }
 }
 
 function createEmailSignupPayload(input: {
@@ -180,12 +188,22 @@ function createEmailSignupPayload(input: {
 }
 
 function createEmailPasswordResetPayload(input: {
-  userId: string
+  userId?: string
+  bootstrapEmail?: string
 }): EmailPasswordResetChallengePayload {
   return {
     kind: 'password_reset',
-    userId: input.userId,
+    ...(input.userId ? { userId: input.userId } : {}),
+    ...(input.bootstrapEmail ? { bootstrapEmail: input.bootstrapEmail } : {}),
   }
+}
+
+function isBootstrapAdminEmail(email: string): boolean {
+  return config.auth.bootstrapAdmins.emails.includes(normalizeEmail(email))
+}
+
+function isBootstrapAdminPhone(phone: string): boolean {
+  return config.auth.bootstrapAdmins.phones.includes(normalizePhone(phone))
 }
 
 function parseInviteChallengePayload(
@@ -273,10 +291,10 @@ export class AuthService {
   }): Promise<AuthChallengeResult> {
     const email = normalizeEmail(input.email)
     const user = await this.userRepo.findByEmail(email)
-    if (!user) {
+    if (!user && !isBootstrapAdminEmail(email)) {
       throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
     }
-    if (user.status === 'SUSPENDED') {
+    if (user?.status === 'SUSPENDED') {
       throw new UnauthorizedError('账号已被停用')
     }
 
@@ -300,7 +318,7 @@ export class AuthService {
         target: email,
         code,
       }),
-      payload_json: createEmailPasswordResetPayload({ userId: user.id }),
+      payload_json: createEmailPasswordResetPayload(user ? { userId: user.id } : { bootstrapEmail: email }),
       requested_from_ip: input.ipAddress ?? null,
       expires_at: this.getExpiry(now),
       last_sent_at: now,
@@ -395,15 +413,15 @@ export class AuthService {
     } catch {
       throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
     }
-    const user = await this.userRepo.findById(payload.userId)
-    if (!user || !user.email) {
+    const user = payload.userId ? await this.userRepo.findById(payload.userId) : null
+    if (!user && !payload.bootstrapEmail) {
       throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
     }
-    if (user.status === 'SUSPENDED') {
+    if (user?.status === 'SUSPENDED') {
       throw new UnauthorizedError('账号已被停用')
     }
 
-    const email = normalizeEmail(user.email)
+    const email = normalizeEmail(user?.email ?? payload.bootstrapEmail!)
     const now = new Date()
     this.assertResendCooldown(existingChallenge, now)
     await this.ensureChallengeRateLimit({
@@ -425,7 +443,7 @@ export class AuthService {
         target: email,
         code,
       }),
-      payload_json: createEmailPasswordResetPayload({ userId: user.id }),
+      payload_json: createEmailPasswordResetPayload(user ? { userId: user.id } : { bootstrapEmail: email }),
       requested_from_ip: input.ipAddress ?? null,
       expires_at: this.getExpiry(now),
       last_sent_at: now,
@@ -518,11 +536,11 @@ export class AuthService {
     } catch {
       throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
     }
-    const user = await this.userRepo.findById(payload.userId)
-    if (!user || !user.email) {
+    const user = payload.userId ? await this.userRepo.findById(payload.userId) : null
+    if (!user && !payload.bootstrapEmail) {
       throw new AppError(404, '该邮箱尚未注册', 'USER_NOT_FOUND')
     }
-    if (user.status === 'SUSPENDED') {
+    if (user?.status === 'SUSPENDED') {
       throw new UnauthorizedError('账号已被停用')
     }
 
@@ -541,13 +559,14 @@ export class AuthService {
     this.assertConsumeResult(consumed)
 
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS)
-    const updated = await this.userRepo.updatePassword(user.id, passwordHash)
+    const ensuredUser = user ?? await this.ensureBootstrapAdminEmailAccount(payload.bootstrapEmail!)
+    const updated = await this.userRepo.updatePassword(ensuredUser.id, passwordHash)
     if (!updated) {
       throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
     }
 
-    await this.userRepo.updateLastLogin(updated.id)
-    return this.issueAuthResult(updated)
+    const authenticatedUser = await this.finalizeAuthUser(updated)
+    return this.issueAuthResult(authenticatedUser)
   }
 
   async startSmsAuth(input: {
@@ -671,12 +690,13 @@ export class AuthService {
     const existingBeforeConsume = await this.userRepo.findByPhone(phone)
     const displayName = input.displayName?.trim()
     const invitePayload = parseInviteChallengePayload(challenge)
+    const bootstrapPhone = !existingBeforeConsume && isBootstrapAdminPhone(phone)
 
     if (!existingBeforeConsume && !displayName) {
       throw new AppError(400, '首次使用手机号注册时需要填写昵称', 'DISPLAY_NAME_REQUIRED')
     }
     let inviteCodeId: string | null = invitePayload?.inviteCodeId ?? null
-    if (!existingBeforeConsume) {
+    if (!existingBeforeConsume && !bootstrapPhone) {
       if (!inviteCodeId && input.inviteCode?.trim()) {
         inviteCodeId = (await this.requireUsableInviteCodeByCode(input.inviteCode)).id
       }
@@ -715,7 +735,16 @@ export class AuthService {
     }
 
     try {
-      const result = await this.inviteCodeRepo.createInvitedUser({
+      const result = bootstrapPhone
+        ? {
+            kind: 'created' as const,
+            user: await this.userRepo.create({
+              display_name: displayName,
+              phone,
+              phone_verified: true,
+            }),
+          }
+        : await this.inviteCodeRepo.createInvitedUser({
         invite_code_id: inviteCodeId!,
         user: {
           display_name: displayName,
@@ -807,6 +836,24 @@ export class AuthService {
       : user
     await this.userRepo.updateLastLogin(resolvedUser.id)
     return resolvedUser
+  }
+
+  private async ensureBootstrapAdminEmailAccount(email: string): Promise<HumanUser> {
+    const normalizedEmail = normalizeEmail(email)
+    if (!isBootstrapAdminEmail(normalizedEmail)) {
+      throw new AppError(404, 'User not found', 'USER_NOT_FOUND')
+    }
+
+    const existing = await this.userRepo.findByEmail(normalizedEmail)
+    if (existing) {
+      return existing
+    }
+
+    return this.userRepo.create({
+      email: normalizedEmail,
+      display_name: 'Bootstrap Admin',
+      email_verified: true,
+    })
   }
 
   private assertConsumeResult(
