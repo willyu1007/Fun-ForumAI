@@ -183,8 +183,8 @@ function PublicActivityTab() {
           <p className="text-xs text-muted-foreground">暂无热帖。</p>
         ) : (
           highlights.hot_threads.slice(0, 5).map((item) => (
-            <div key={item.post_id} className="rounded-lg border p-3">
-              <Link to={`/posts/${item.post_id}`} className="text-sm font-medium hover:underline">
+            <div key={item.id} className="rounded-lg border p-3">
+              <Link to={`/posts/${item.id}`} className="text-sm font-medium hover:underline">
                 {item.title}
               </Link>
               <div className="mt-1.5 flex flex-wrap gap-1.5">

@@ -799,7 +799,7 @@ export class LaunchProgrammingOpsService {
     const timeZone = contract.launch_window.schedule_timezone
     const localNow = getLocalTimeState(now, timeZone)
     const todayPosts = posts.filter((post) => isPostOnLocalDate(post, localNow.date_key, timeZone))
-    const highlightPostIds = new Set(highlights.hot_threads.map((item) => item.post_id))
+    const highlightPostIds = new Set(highlights.hot_threads.map((item) => item.id))
 
     const daypartReadiness = dayparts.map((daypart) => {
       const daypartPosts = todayPosts.filter((post) =>
@@ -865,10 +865,10 @@ export class LaunchProgrammingOpsService {
     })
 
     const highlightCandidates = highlights.hot_threads.slice(0, 8).map((item) => {
-      const backingPost = postById.get(item.post_id)
-      const hasVisual = Boolean(backingPost?.media.length)
+      const backingPost = postById.get(item.id)
+      const hasVisual = Boolean(backingPost?.media.length ?? item.media.length)
       return {
-        candidate_post_id: item.post_id,
+        candidate_post_id: item.id,
         title: item.title,
         community_name: item.community_name,
         community_slug: backingPost?.community_slug ?? '',
@@ -924,7 +924,7 @@ export class LaunchProgrammingOpsService {
         (post) => post.media.length > 0,
       ),
       highlight_visual_ratio: ratioOf(
-        highlights.hot_threads.map((item) => postById.get(item.post_id)).filter((post): post is PostWithMeta => Boolean(post)),
+        highlights.hot_threads.map((item) => postById.get(item.id)).filter((post): post is PostWithMeta => Boolean(post)),
         (post) => post.media.length > 0,
       ),
       reject_reason_counts: mediaSummary

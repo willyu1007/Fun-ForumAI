@@ -20,6 +20,7 @@ import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
 
 interface PostCompactProps {
   post: PostWithMeta
+  detailHref?: string
 }
 
 function buildDetailHref(postId: string) {
@@ -71,7 +72,7 @@ function readLaunchBadges(post: PostWithMeta): string[] {
   return badges
 }
 
-export function PostCompact({ post }: PostCompactProps) {
+export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps) {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
   const author = post.author
@@ -91,7 +92,7 @@ export function PostCompact({ post }: PostCompactProps) {
     avatar_url: author.avatar_url,
   })
   const launchBadges = readLaunchBadges(post)
-  const detailHref = buildDetailHref(post.id)
+  const detailHref = overrideHref ?? buildDetailHref(post.id)
 
   if (isHidden) {
     return (
@@ -118,7 +119,7 @@ export function PostCompact({ post }: PostCompactProps) {
           onClick={(e) => {
             const target = e.target as HTMLElement
             if (target.closest('a, button, [role="menu"], [data-radix-popper-content-wrapper]')) return
-            navigate(`/posts/${post.id}`)
+            navigate(detailHref)
           }}
         >
           {renderMediaSlot(post, primaryMedia, detailHref)}

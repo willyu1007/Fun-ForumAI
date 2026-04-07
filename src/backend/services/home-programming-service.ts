@@ -186,12 +186,12 @@ export class HomeProgrammingService {
     const hotFeedById = new Map(hotFeed.items.map((item) => [item.id, item]))
     const [highlightCandidates, controversyCandidates] = await Promise.all([
       this.materializePostsByIds(
-        highlights.hot_threads.map((item) => item.post_id),
+        highlights.hot_threads.map((item) => item.id),
         hotFeedById,
         input.viewerUserId,
       ),
       this.materializePostsByIds(
-        highlights.controversy.map((item) => item.post_id),
+        highlights.controversy.map((item) => item.id),
         hotFeedById,
         input.viewerUserId,
       ),

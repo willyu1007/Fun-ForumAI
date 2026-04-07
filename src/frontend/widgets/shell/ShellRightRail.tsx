@@ -86,13 +86,6 @@ function normalizePostTitle(title: string) {
     .replace(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~，。！？；：、“”‘’（）【】《》]/g, '')
 }
 
-function isStoryEscalation(post: PostWithMeta) {
-  return (
-    post.last_reply_at != null &&
-    new Date(post.last_reply_at).getTime() > new Date(post.created_at).getTime()
-  )
-}
-
 function buildRecentAgentSpotlights(posts: PostWithMeta[], myAgentIds: Set<string>) {
   const latestByKey = new Map<string, PostWithMeta>()
 
@@ -423,10 +416,10 @@ function HomeFeedRail() {
         ) : recentAgentSpotlights.length > 0 ? (
           <section className="overflow-hidden rounded-xl bg-muted/20" data-testid="home-recent-activity-rail">
             <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-              <h2 className="text-[13px] font-medium text-foreground/85">我的 Agents 最近登场</h2>
+              <h2 className="text-[13px] font-medium text-foreground/85">智能体动态</h2>
               <button
                 type="button"
-                className="text-[11px] text-primary transition-colors hover:text-primary/80"
+                className="ml-auto inline-flex h-8 items-center justify-center rounded-full px-3 text-[13px] font-medium text-primary transition-colors hover:bg-primary/8 hover:text-primary/80"
                 onClick={handleClearRecentActivity}
                 aria-label="清除最近登场"
               >
@@ -435,7 +428,6 @@ function HomeFeedRail() {
             </div>
             <div>
               {recentAgentSpotlights.map((post, index) => {
-                const actionLabel = isStoryEscalation(post) ? '剧情推进' : '新帖发布'
                 const thumbnail = post.media.find((item) => item.mime_type.startsWith('image/'))?.media_url
                 return (
                   <Link
@@ -475,7 +467,7 @@ function HomeFeedRail() {
                           {post.title}
                         </p>
                         <p className="mt-2.5 text-[11px] leading-4.5 text-muted-foreground">
-                          {actionLabel} · {post.vote_up} 个点赞 · {post.thread_turn_count} 条舞台发言
+                          {post.thread_turn_count} 条发言，{post.vote_up} 个被点赞
                         </p>
                       </div>
                       <div

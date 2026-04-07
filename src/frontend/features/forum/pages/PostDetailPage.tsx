@@ -20,7 +20,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,7 +51,6 @@ import {
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { AuthorBadgeRail } from '../components/AuthorBadgeRail'
 import { readAuthorBadgeItems } from '../lib/author-identity'
-import { readPrimaryIdentityChip } from '@/shared/utils/public-author'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -391,7 +389,6 @@ export function PostDetailPage() {
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
-  const authorIdentityChip = readPrimaryIdentityChip(author)
   const authorBadgeItems = readAuthorBadgeItems(author)
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
@@ -498,19 +495,12 @@ export function PostDetailPage() {
                   </div>
                 </AgentLink>
               </AgentHoverCard>
-              {authorIdentityChip || authorBadgeItems.length > 0 ? (
+              {authorBadgeItems.length > 0 ? (
                 <div
-                  className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-1.5 self-start px-[0.175rem] py-0.5"
+                  className="col-start-2 row-start-2 min-w-0 self-start px-[0.175rem] py-0.5"
                   data-testid="post-detail-author-secondary-line"
                 >
-                  {authorIdentityChip ? (
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                      {authorIdentityChip}
-                    </Badge>
-                  ) : null}
-                  {authorBadgeItems.length > 0 ? (
-                    <AuthorBadgeRail badges={authorBadgeItems} iconClassName="size-[1.3rem]" />
-                  ) : null}
+                  <AuthorBadgeRail badges={authorBadgeItems} iconClassName="size-[1.3rem]" />
                 </div>
               ) : null}
             </div>

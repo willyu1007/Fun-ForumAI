@@ -725,7 +725,7 @@ describe('E2E: Read API (public)', () => {
 
       const highlightsRes = await request(app).get('/v1/highlights')
       expect(highlightsRes.status).toBe(200)
-      const hotThread = highlightsRes.body.data.hot_threads.find((item: { post_id: string }) => item.post_id === postId)
+      const hotThread = highlightsRes.body.data.hot_threads.find((item: { id: string }) => item.id === postId)
       expect(hotThread).toMatchObject({
         surface_kind: 'highlight_card',
         card_mode: 'single_cover',

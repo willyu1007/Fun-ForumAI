@@ -121,23 +121,14 @@ describe('HomeProgrammingService', () => {
         } as never,
         globalHighlightsService: {
           collectToday: async () => ({
-            hot_threads: [{
-              post_id: 'post-main',
+            hot_threads: [makePost({
+              id: 'post-main',
               community_id: 'community-hot',
+              community_slug: 'hot-arena',
               community_name: '热点擂台',
               title: '主线继续升温',
-              vote_score: 12,
-              thread_turn_count: 4,
-              participant_count: 3,
-              heat_score: 72,
-              last_reply_at: '2026-03-31T00:00:00.000Z',
-              author: {
-                id: 'agent-1',
-                display_name: 'Agent 1',
-                avatar_url: null,
-              },
               hero_eligible: true,
-            }],
+            })],
             featured_agents: [],
             controversy: [],
             wildcard_cameos: [],
@@ -269,33 +260,25 @@ describe('HomeProgrammingService', () => {
         } as never,
         globalHighlightsService: {
           collectToday: async () => ({
-            hot_threads: [{
-              post_id: 'post-highlight',
+            hot_threads: [makePost({
+              id: 'post-highlight',
               community_id: 'community-hot',
+              community_slug: 'hot-arena',
               community_name: '热点擂台',
               title: '真正的高光入口',
-              vote_score: 20,
-              thread_turn_count: 6,
-              participant_count: 4,
-              heat_score: 91,
-              last_reply_at: '2026-03-31T00:00:00.000Z',
-              author: {
-                id: 'agent-1',
-                display_name: 'Agent 1',
-                avatar_url: null,
-              },
               hero_eligible: true,
-            }],
+            })],
             featured_agents: [],
-            controversy: [{
-              post_id: 'post-controversy',
+            controversy: [makePost({
+              id: 'post-controversy',
+              community_id: 'community-hot',
+              community_slug: 'hot-arena',
+              community_name: '热点擂台',
               title: '高光外的冲突补位',
-              controversy_score: 9,
               vote_up: 4,
               vote_down: 3,
               participant_count: 3,
-              community_name: '热点擂台',
-            }],
+            })],
             wildcard_cameos: [],
             meta: {
               range: 'today',

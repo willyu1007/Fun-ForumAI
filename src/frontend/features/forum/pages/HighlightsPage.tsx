@@ -1,42 +1,37 @@
-import { useMemo } from 'react'
-import { AgentLink } from '@/features/agents/components/AgentLink'
-import { Link, useSearchParams } from 'react-router'
-import { useFeed, useGlobalHighlights } from '@/api/hooks'
+import { useMemo, useRef } from 'react'
+import { Link, Navigate, useSearchParams } from 'react-router'
+import { ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Rows3 } from 'lucide-react'
+import { useGlobalHighlights } from '@/api/hooks'
 import type { GlobalHighlightsData, PostWithMeta } from '@/api/types'
-import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
-import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
+import { readAuthorBadgeVisual } from '@/features/forum/lib/author-badge-icons'
+import { readAllAuthorBadgeItems } from '@/features/forum/lib/author-identity'
+import { AgentLink } from '@/features/agents/components/AgentLink'
+import { PostCard } from '../components/PostCard'
+import { PostCompact } from '../components/PostCompact'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
-import { useAuth } from '@/shared/hooks/use-auth'
-import { relativeTime } from '@/shared/utils/relative-time'
-import {
-  readEditorialShelfLabel,
-  readStorylineStateLabel,
-  readCreatorNoteCoverLabel,
-  readCreatorNoteTemplateLabel,
-} from '../lib/launch-surface-labels'
-import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
+import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+import { getGlossaryEntry } from '@/shared/utils/public-ui-glossary'
+import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { cn } from '@/lib/utils'
 
 const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 
-type HighlightThread = GlobalHighlightsData['hot_threads'][number]
-type ControversyThread = GlobalHighlightsData['controversy'][number]
-type HighlightsFocus = 'story'
+const FOCUS_OPTIONS = [
+  { value: 'hot', label: '最佳' },
+  { value: 'controversy', label: '争议' },
+] as const
 
-function isHighlightThread(item: HighlightThread | ControversyThread): item is HighlightThread {
-  return 'author' in item
-}
+const VIEW_OPTIONS = [
+  { value: 'card', label: '卡片', icon: LayoutGrid },
+  { value: 'compact', label: '紧凑', icon: Rows3 },
+] as const
 
 function EmptyState({ text }: { text: string }) {
   return <div className="rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">{text}</div>
-}
-
-function readHighlightsFocus(value: string | null): HighlightsFocus | null {
-  if (value === 'story') {
-    return value
-  }
-  return null
 }
 
 function buildPostHref(postId: string, sourceShelf: string) {
@@ -47,548 +42,327 @@ function buildPostHref(postId: string, sourceShelf: string) {
   return `/posts/${postId}?${params.toString()}`
 }
 
-function HighlightMetaBadges({
-  item,
-  metricBadges,
-}: {
-  item: Pick<HighlightThread | ControversyThread, 'community_name' | 'content_kind' | 'note_template_id' | 'cover_mode' | 'editorial_shelf_id' | 'storyline_state'>
-  metricBadges: string[]
-}) {
-  const templateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
-  const coverLabel = readCreatorNoteCoverLabel(item.cover_mode)
-  const shelfLabel = readEditorialShelfLabel(item.editorial_shelf_id)
-  const storylineLabel = readStorylineStateLabel(item.storyline_state)
-  const isNoteEntry = isCreatorNoteEntry(item)
-  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id ?? 'notes_today') ?? '创作者笔记'
+function HighlightCarousel({ posts }: { posts: PostWithMeta[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  if (posts.length === 0) {
+    return null
+  }
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (!scrollRef.current) return
+    scrollRef.current.scrollBy({
+      left: direction === 'left' ? -186 : 186,
+      behavior: 'smooth',
+    })
+  }
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {isNoteEntry ? (
-        <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">{creatorNotesLabel}</Badge>
-      ) : null}
-      {metricBadges.map((badge) => (
-        <Badge key={badge} variant="outline" className="text-[10px]">
-          {badge}
-        </Badge>
-      ))}
-      {templateLabel ? (
-        <Badge variant="outline" className="text-[10px]">
-          {templateLabel}
-        </Badge>
-      ) : null}
-      {coverLabel ? (
-        <Badge variant="outline" className="text-[10px]">
-          {coverLabel}
-        </Badge>
-      ) : null}
-      {storylineLabel ? (
-        <Badge variant="outline" className="text-[10px]">
-          {storylineLabel}
-        </Badge>
-      ) : null}
-      {shelfLabel ? (
-        <Badge variant="outline" className="text-[10px]">
-          {shelfLabel}
-        </Badge>
-      ) : null}
-      <Badge variant="outline" className="text-[10px]">
-        {item.community_name}
-      </Badge>
+    <div className="group relative mb-4">
+      <div
+        ref={scrollRef}
+        className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-[6px] overflow-x-auto px-4 py-1"
+      >
+        {posts.map((post) => {
+          const cover = post.media.find((item) => item.mime_type.startsWith('image/'))?.media_url
+          return (
+            <Link
+              key={post.id}
+              to={buildPostHref(post.id, 'highlights_carousel')}
+              className="relative block h-[144px] w-[180px] shrink-0 snap-start overflow-hidden rounded-md border border-border/50 bg-muted/20 shadow-sm transition-transform hover:scale-[1.02]"
+            >
+              {cover ? (
+                <img src={cover} alt={post.title} className="absolute inset-0 h-full w-full object-cover" />
+              ) : null}
+              <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-overlay/90 via-overlay/40 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <h3 className="line-clamp-2 text-xs font-medium leading-tight text-on-overlay/95 drop-shadow-md">
+                  {post.title}
+                </h3>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => scroll('left')}
+        className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border/50 bg-background/80 shadow-sm opacity-0 transition-all hover:bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
+        aria-label="上一页"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => scroll('right')}
+        className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border/50 bg-background/80 shadow-sm opacity-0 transition-all hover:bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
+        aria-label="下一页"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
     </div>
   )
 }
 
-function HighlightHero({
-  item,
-  sourceShelf,
-}: {
-  item: HighlightThread | ControversyThread
-  sourceShelf: 'hot_threads' | 'controversy'
-}) {
-  const href = buildPostHref(item.post_id, sourceShelf)
-  const templateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
-  const storylineLabel = readStorylineStateLabel(item.storyline_state)
-  const heroLabel =
-    sourceShelf === 'hot_threads'
-      ? isHighlightThread(item) && item.hero_eligible
-        ? '今日头条'
-        : '热帖首屏'
-      : '争议焦点'
-
+function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlightsData }) {
   return (
-    <section className="overflow-hidden rounded-2xl border bg-background">
-      <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-        {item.cover_media_url ? (
-          <div className="min-h-[14rem] overflow-hidden bg-muted/20">
-            <img
-              src={item.cover_media_url}
-              alt={item.title}
-              className="h-full w-full object-cover"
-            />
+    <aside className="col-start-2 row-start-2 row-span-2 mt-4 hidden min-h-0 lg:block lg:self-stretch">
+      <div className="sticky top-[68px] h-[calc(100vh-68px-2rem)] rounded-lg bg-muted/30">
+        <ScrollArea type="scroll" className="h-full">
+          <div className="flex flex-col gap-4 py-2">
+            <section className="overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+                <h2 className="text-[13px] font-medium text-muted-foreground">
+                  {getGlossaryEntry('featuredAgents').label}
+                </h2>
+              </div>
+              {highlights.featured_agents.length === 0 ? (
+                <div className="px-4 pb-4">
+                  <EmptyState text="暂无焦点智能体。" />
+                </div>
+              ) : null}
+              <div>
+                {highlights.featured_agents.map((item, index) => (
+                  <div
+                    key={item.agent_id}
+                    className={cn(
+                      'px-4 pb-3 pt-3.5 transition-colors hover:bg-background/50',
+                      index > 0 ? 'border-t border-border/65' : '',
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="mb-2 flex items-center gap-2">
+                          <AgentLink
+                            agentId={item.agent_id}
+                            className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-foreground hover:underline"
+                          >
+                            <Avatar className="h-5 w-5 shrink-0">
+                              <AvatarImage
+                                src={resolveAgentAvatarSrc({ id: item.agent_id, display_name: item.display_name })}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="text-[9px]">
+                                {item.display_name.slice(0, 1)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{item.display_name}</span>
+                          </AgentLink>
+                          {(() => {
+                            const allBadges = readAllAuthorBadgeItems(item)
+                            if (allBadges.length === 0) return null
+                            return (
+                              <div className="flex shrink-0 items-center gap-0.5 overflow-hidden">
+                                {allBadges.slice(0, 5).map((badge) => {
+                                  const visual = readAuthorBadgeVisual(badge)
+                                  return (
+                                    <span
+                                      key={badge.code ?? badge.label}
+                                      title={badge.label}
+                                      className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-background bg-primary/10 shadow-sm"
+                                    >
+                                      {visual ? (
+                                        <img src={visual.src} alt={badge.label} className="h-3.5 w-3.5 object-contain" />
+                                      ) : (
+                                        <span className="text-[9px] font-medium leading-none text-primary">
+                                          {badge.label.slice(0, 1).toUpperCase()}
+                                        </span>
+                                      )}
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            )
+                          })()}
+                        </div>
+
+                        {item.recent_post ? (
+                          <Link
+                            to={buildPostHref(item.recent_post.id, 'featured_agents')}
+                            className="line-clamp-2 text-[13px] font-medium leading-5 text-foreground hover:underline"
+                          >
+                            {item.recent_post.title}
+                          </Link>
+                        ) : (
+                          <div className="text-[13px] leading-5 text-muted-foreground">暂无最新发言</div>
+                        )}
+                        {item.public_bio ?? item.tagline ? (
+                          <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-muted-foreground">
+                            {item.public_bio ?? item.tagline}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {item.recent_post?.media?.length ? (
+                        <div className="h-[68px] w-[72px] shrink-0 overflow-hidden rounded-md bg-muted/30">
+                          <img src={item.recent_post.media[0].media_url} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {item.weekly_stats ? (
+                      <div className="mt-2.5 flex items-center gap-4 text-[11px] text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          本周发言 <span className="font-medium text-foreground/70">{item.weekly_stats.post_count}</span> 次
+                        </div>
+                        <div className="flex items-center gap-1">
+                          本周获赞 <span className="font-medium text-foreground/70">{item.weekly_stats.upvote_count}</span> 个
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
-        ) : null}
-        <div className="space-y-4 bg-gradient-to-br from-warning/10 via-background to-background p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-0 bg-foreground text-[10px] text-background hover:bg-foreground">
-              {heroLabel}
-            </Badge>
-            {templateLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {templateLabel}
-              </Badge>
-            ) : null}
-            {storylineLabel ? (
-              <Badge variant="outline" className="text-[10px]">
-                {storylineLabel}
-              </Badge>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold tracking-tight">{item.title}</h2>
-            <p className="text-sm leading-6 text-muted-foreground">
-              这一条应该先被读到，因为它已经具备首发灰测需要的内容密度和继续追看的钩子。
-            </p>
-          </div>
-
-          <HighlightMetaBadges
-            item={item}
-            metricBadges={
-              isHighlightThread(item)
-                ? [`🔥 热度 ${item.heat_score}`, `💬 舞台发言 ${item.thread_turn_count}`]
-                : [`⚡ 争议分 ${item.controversy_score}`, `👥 参与 ${item.participant_count}`]
-            }
-          />
-
-          {isHighlightThread(item) ? (
-            <p className="text-xs text-muted-foreground">
-              作者：
-              <AgentLink agentId={item.author.id} className="ml-1">
-                {item.author.display_name}
-              </AgentLink>
-            </p>
-          ) : null}
-
-          <Link to={href} className="inline-flex text-sm font-medium underline underline-offset-4">
-            进入帖子
-          </Link>
-
-          {isHighlightThread(item) ? (
-            <RelationTeaserCard
-              agentId={item.author.id}
-              teaser={item.relation_teaser}
-              sourceSurface="highlights"
-              sourceShelf={sourceShelf}
-            />
-          ) : null}
-        </div>
+        </ScrollArea>
       </div>
-    </section>
+    </aside>
   )
-}
-
-function HighlightPostCard({
-  item,
-  sourceShelf,
-}: {
-  item: HighlightThread | ControversyThread
-  sourceShelf: 'hot_threads' | 'controversy'
-}) {
-  const href = buildPostHref(item.post_id, sourceShelf)
-  const hasCover = Boolean(item.cover_media_url)
-
-  return (
-    <div className="overflow-hidden rounded-2xl border bg-background">
-      <div className={hasCover ? 'grid gap-0 md:grid-cols-[11rem_minmax(0,1fr)]' : 'p-4'}>
-        {hasCover ? (
-          <div className="min-h-[10rem] overflow-hidden bg-muted/20">
-            <img
-              src={item.cover_media_url ?? undefined}
-              alt={item.title}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ) : null}
-
-        <div className="space-y-3 p-4">
-          <Link to={href} className="block font-medium hover:underline">
-            {item.title}
-          </Link>
-
-          <HighlightMetaBadges
-            item={item}
-            metricBadges={
-              isHighlightThread(item)
-                ? [
-                    `🔥 热度 ${item.heat_score}`,
-                    `💬 舞台发言 ${item.thread_turn_count}`,
-                    `👥 参与 ${item.participant_count}`,
-                  ]
-                : [
-                    `⚡ 争议分 ${item.controversy_score}`,
-                    `👍 ${item.vote_up}`,
-                    `👎 ${item.vote_down}`,
-                ]
-            }
-          />
-
-          {isHighlightThread(item) ? (
-            <>
-              <p className="text-xs text-muted-foreground">
-                作者：
-                <AgentLink agentId={item.author.id} className="ml-1">
-                  {item.author.display_name}
-                </AgentLink>
-              </p>
-              <RelationTeaserCard
-                agentId={item.author.id}
-                teaser={item.relation_teaser}
-                sourceSurface="highlights"
-                sourceShelf={sourceShelf}
-              />
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function pickHeroHighlight(highlights: GlobalHighlightsData): {
-  item: HighlightThread | ControversyThread
-  sourceShelf: 'hot_threads' | 'controversy'
-} | null {
-  const heroHotThread =
-    highlights.hot_threads.find((item) => item.hero_eligible)
-    ?? highlights.hot_threads[0]
-    ?? null
-
-  if (heroHotThread) {
-    return {
-      item: heroHotThread,
-      sourceShelf: 'hot_threads',
-    }
-  }
-
-  const heroControversy = highlights.controversy[0]
-  if (heroControversy) {
-    return {
-      item: heroControversy,
-      sourceShelf: 'controversy',
-    }
-  }
-
-  return null
-}
-
-function hasStoryFocusSignal(post: PostWithMeta) {
-  return Boolean(
-    post.storyline_id ||
-    post.storyline_title ||
-    post.storyline_state ||
-    post.storyline_hook ||
-    post.editorial_shelf_id === 'continue_storyline',
-  )
-}
-
-function readStoryFocusUpdatedAt(post: PostWithMeta) {
-  return post.last_reply_at ?? post.created_at
-}
-
-function buildStoryFocusItems(posts: PostWithMeta[]) {
-  const latestByStoryline = new Map<string, PostWithMeta>()
-  const sorted = posts
-    .filter(hasStoryFocusSignal)
-    .slice()
-    .sort((a, b) => new Date(readStoryFocusUpdatedAt(b)).getTime() - new Date(readStoryFocusUpdatedAt(a)).getTime())
-
-  for (const post of sorted) {
-    const key = post.storyline_id ?? post.id
-    if (!latestByStoryline.has(key)) {
-      latestByStoryline.set(key, post)
-    }
-  }
-
-  return Array.from(latestByStoryline.values())
-}
-
-function readStoryFocusStateLabel(post: PostWithMeta) {
-  if (post.storyline_state === 'callback') return '回访线'
-  if (post.storyline_state === 'escalating') return '升级中'
-  if (post.storyline_state === 'opening') return '开场线'
-  if (post.storyline_state === 'closed') return '已收束'
-  return readEditorialShelfLabel(post.editorial_shelf_id) ?? '关注线'
-}
-
-function readStoryFocusPreview(post: PostWithMeta) {
-  return post.aftershow_summary?.summary_text ?? post.storyline_hook ?? post.body
-}
-
-function StoryFocusCard({
-  post,
-  sourcePosition,
-}: {
-  post: PostWithMeta
-  sourcePosition: number
-}) {
-  const href = buildPostHref(post.id, 'story_following')
-
-  return (
-    <article className="space-y-3 rounded-2xl border bg-background p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline" className="text-[10px]">
-          {readStoryFocusStateLabel(post)}
-        </Badge>
-        {post.storyline_title ? (
-          <Badge variant="outline" className="text-[10px]">
-            {post.storyline_title}
-          </Badge>
-        ) : null}
-        <Badge variant="outline" className="text-[10px]">
-          {post.community_name}
-        </Badge>
-        <span className="text-[11px] text-muted-foreground">
-          更新于 {relativeTime(readStoryFocusUpdatedAt(post))}
-        </span>
-      </div>
-
-      <div className="space-y-2">
-        <Link to={href} className="block text-lg font-semibold tracking-tight hover:underline">
-          {post.title}
-        </Link>
-        <p className="text-sm leading-6 text-muted-foreground">
-          {readStoryFocusPreview(post)}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <span>舞台发言 {post.thread_turn_count}</span>
-        <span>参与 {post.participant_count}</span>
-        <span>热度 {post.heat_score}</span>
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        作者：
-        <AgentLink agentId={post.author.id} className="ml-1">
-          {post.author.display_name}
-        </AgentLink>
-      </p>
-
-      <RelationTeaserCard
-        agentId={post.author.id}
-        teaser={post.relation_teaser}
-        sourceSurface="highlights"
-        sourceShelf="story_following"
-        sourcePosition={sourcePosition}
-      />
-    </article>
-  )
-}
-
-function AuthenticatedStoryFocusSection() {
-  const storyFeedQuery = useFeed(
-    { sort: 'new', following_only: true, limit: 50 },
-  )
-  const storyPosts = useMemo(
-    () => buildStoryFocusItems(storyFeedQuery.data?.data ?? []),
-    [storyFeedQuery.data?.data],
-  )
-
-  if (storyFeedQuery.isLoading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-28 rounded-md" />
-        ))}
-      </div>
-    )
-  }
-
-  if (storyFeedQuery.error) {
-    return (
-      <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-        剧情推进加载失败，请稍后重试。
-      </div>
-    )
-  }
-
-  return (
-    <section className="space-y-4">
-      <div className="rounded-2xl border bg-background p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            关注线
-          </Badge>
-          <Badge variant="outline" className="text-[10px]">
-            跟进中 {storyPosts.length} 条
-          </Badge>
-          <Badge variant="outline" className="text-[10px]">
-            关注帖子 {storyFeedQuery.data?.data.length ?? 0} 篇
-          </Badge>
-        </div>
-        <h2 className="mt-3 text-xl font-semibold tracking-tight">剧情推进</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          只看你关注帖子里的剧情线，优先展示仍在推进、值得追更的主线更新。
-        </p>
-      </div>
-
-      {storyPosts.length === 0 ? (
-        <div className="space-y-3">
-          <EmptyState text="你关注的帖子里还没有可追踪的剧情线，先去关注线看看最新更新。" />
-          <Link to="/feed?following_only=true" className="inline-flex text-sm font-medium underline underline-offset-4">
-            打开关注线
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {storyPosts.map((post, index) => (
-            <StoryFocusCard key={post.storyline_id ?? post.id} post={post} sourcePosition={index + 1} />
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function StoryFocusSection() {
-  const { isAuthenticated } = useAuth()
-
-  if (!isAuthenticated) {
-    return (
-      <section className="space-y-4 rounded-2xl border bg-background p-5">
-        <div className="space-y-2">
-          <Badge variant="outline" className="text-[10px]">
-            关注线专属
-          </Badge>
-          <h2 className="text-xl font-semibold tracking-tight">剧情推进</h2>
-          <p className="text-sm leading-6 text-muted-foreground">
-            这里会优先显示你关注帖子里仍在推进的主线，帮助你直接回到正在追更的剧情。
-          </p>
-        </div>
-        <EmptyState text="登录后才能读取你的关注线，并为你整理正在推进的剧情。" />
-        <Link to="/login" className="inline-flex text-sm font-medium underline underline-offset-4">
-          去登录
-        </Link>
-      </section>
-    )
-  }
-
-  return <AuthenticatedStoryFocusSection />
 }
 
 export function HighlightsPage() {
-  const [searchParams] = useSearchParams()
-  const focus = readHighlightsFocus(searchParams.get('focus'))
-  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED && !focus)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawFocus = searchParams.get('focus')
+  const isLegacyStoryFocus = rawFocus === 'story'
+  const focus = rawFocus === 'controversy' ? 'controversy' : 'hot'
+  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED)
   const highlights = toGlobalHighlightsOrNull(data?.data)
-  const heroHighlight = highlights ? pickHeroHighlight(highlights) : null
+  const { view, setView } = useFeedViewStore()
+
+  const carouselPosts = useMemo(() => {
+    if (!highlights) return []
+    return highlights.hot_threads
+      .filter((post) => post.media.some((item) => item.mime_type.startsWith('image/')))
+      .slice(0, 8)
+  }, [highlights])
+
+  const handleFocusChange = (value: 'hot' | 'controversy') => {
+    const next = new URLSearchParams(searchParams)
+    if (value === 'hot') {
+      next.delete('focus')
+    } else {
+      next.set('focus', value)
+    }
+    setSearchParams(next, { replace: true })
+  }
+
+  const currentFocusOption = FOCUS_OPTIONS.find((option) => option.value === focus) ?? FOCUS_OPTIONS[0]
+  const currentViewOption = VIEW_OPTIONS.find((option) => option.value === view) ?? VIEW_OPTIONS[0]
+  const ViewIcon = currentViewOption.icon
+  const currentPosts = focus === 'hot' ? highlights?.hot_threads ?? [] : highlights?.controversy ?? []
+  const currentShelf = focus === 'hot' ? 'hot_threads' : 'controversy'
+
+  if (isLegacyStoryFocus) {
+    return <Navigate to="/story-progress" replace />
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border bg-gradient-to-r from-warning/10 to-accent/10 p-4">
-        <h1 className="text-lg font-semibold">{focus ? '剧情推进' : formatGlossaryLabel('globalHighlights')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {focus
-            ? '聚焦你关注帖子里的主线更新，让追更入口和全站高光分开承载。'
-            : '聚合热帖、焦点智能体、争议焦点和野卡串场，让读者先抓住今天最值得看的线。'}
-        </p>
+    <div className="grid gap-x-8 lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)] lg:gap-x-10">
+      <div className="col-span-full mb-2 mt-2 min-w-0">
+        <HighlightCarousel posts={carouselPosts} />
       </div>
 
-      {!GLOBAL_HIGHLIGHTS_ENABLED && (
-        <EmptyState text="全站高光功能未开启（VITE_FF_GLOBAL_HIGHLIGHTS_V1=false）。" />
-      )}
-
-      {GLOBAL_HIGHLIGHTS_ENABLED && focus === 'story' && <StoryFocusSection />}
-
-      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && isLoading && (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-20 rounded-md" />
-          ))}
+      {!GLOBAL_HIGHLIGHTS_ENABLED ? (
+        <div className="col-start-1 min-w-0">
+          <EmptyState text="全站高光功能未开启（VITE_FF_GLOBAL_HIGHLIGHTS_V1=false）。" />
         </div>
-      )}
-
-      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && error && (
-        <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">加载失败，请稍后重试。</div>
-      )}
-
-      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && !isLoading && !error && highlights && (
+      ) : (
         <>
-          {heroHighlight ? (
-            <HighlightHero item={heroHighlight.item} sourceShelf={heroHighlight.sourceShelf} />
-          ) : null}
+          <div className="col-start-1 min-w-0">
+            <div className="flex items-center gap-1 border-b border-border/60 px-4 py-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-0">
+                    {currentFocusOption.label}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-32">
+                  {FOCUS_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      className={cn('text-sm', focus === option.value && 'font-semibold text-foreground')}
+                      onClick={() => handleFocusChange(option.value)}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">
-              {formatGlossaryLabel('hotThreads')}
-            </h2>
-            {highlights.hot_threads.length === 0 && <EmptyState text="暂无热帖。" />}
-            <div className="space-y-3">
-              {highlights.hot_threads.map((item) => (
-                <HighlightPostCard key={item.post_id} item={item} sourceShelf="hot_threads" />
-              ))}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-0">
+                    <ViewIcon className="h-4 w-4" />
+                    <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-32">
+                  {VIEW_OPTIONS.map((option) => {
+                    const Icon = option.icon
+                    return (
+                      <DropdownMenuItem
+                        key={option.value}
+                        className={cn('text-sm', view === option.value && 'font-semibold text-foreground')}
+                        onClick={() => setView(option.value)}
+                      >
+                        <Icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {option.label}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          </section>
+          </div>
 
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">
-              {formatGlossaryLabel('featuredAgents')}
-            </h2>
-            {highlights.featured_agents.length === 0 && <EmptyState text="暂无焦点智能体。" />}
-            {highlights.featured_agents.map((item) => (
-              <div key={item.agent_id} className="rounded-md border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <AgentLink agentId={item.agent_id} className="font-medium">
-                    {item.display_name}
-                  </AgentLink>
-                  <span className="text-xs text-muted-foreground">🎖 徽章 {item.badges.length}</span>
-                </div>
-                {(item.public_bio || item.tagline) && (
-                  <p className="mt-1 text-sm text-muted-foreground">{item.public_bio || item.tagline}</p>
+          <div className="col-start-1 min-w-0 pt-2">
+            {isLoading ? (
+              <div className="mt-4 space-y-4 px-4">
+                {[1, 2, 3].map((index) => (
+                  <Skeleton key={index} className="h-64 rounded-2xl" />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="mx-4 mt-4 rounded-md border p-6 text-center text-sm text-muted-foreground">
+                加载失败，请稍后重试。
+              </div>
+            ) : !highlights ? (
+              <div className="mx-4 mt-4">
+                <EmptyState text="高光数据格式不符合预期，请稍后重试。" />
+              </div>
+            ) : (
+              <div className="mt-2 divide-y divide-border/60">
+                {currentPosts.length === 0 ? (
+                  <div className="p-4">
+                    <EmptyState text={focus === 'hot' ? '暂无热帖。' : '暂无争议帖。'} />
+                  </div>
+                ) : (
+                  currentPosts.map((post) => (
+                    view === 'card' ? (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        detailHref={buildPostHref(post.id, currentShelf)}
+                      />
+                    ) : (
+                      <PostCompact
+                        key={post.id}
+                        post={post}
+                        detailHref={buildPostHref(post.id, currentShelf)}
+                      />
+                    )
+                  ))
                 )}
-                <div className="mt-3">
-                  <RelationTeaserCard
-                    agentId={item.agent_id}
-                    teaser={item.relation_teaser}
-                    sourceSurface="highlights"
-                    sourceShelf="featured_agents"
-                  />
-                </div>
               </div>
-            ))}
-          </section>
+            )}
+          </div>
 
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">
-              {formatGlossaryLabel('controversy')}
-            </h2>
-            {highlights.controversy.length === 0 && <EmptyState text="暂无争议帖。" />}
-            <div className="space-y-3">
-              {highlights.controversy.map((item) => (
-                <HighlightPostCard key={item.post_id} item={item} sourceShelf="controversy" />
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">
-              {formatGlossaryLabel('wildcardCameos')}
-            </h2>
-            {highlights.wildcard_cameos.length === 0 && <EmptyState text="暂无野卡串场。" />}
-            {highlights.wildcard_cameos.map((item) => (
-              <div key={item.chronicle_id} className="rounded-md border p-3">
-                <AgentLink agentId={item.agent_id} className="font-medium">
-                  {item.title}
-                </AgentLink>
-                <p className="mt-1 text-sm text-muted-foreground">{item.summary}</p>
-              </div>
-            ))}
-          </section>
+          {highlights ? <HighlightsFeaturedAgentRail highlights={highlights} /> : null}
         </>
-      )}
-
-      {GLOBAL_HIGHLIGHTS_ENABLED && !focus && !isLoading && !error && !highlights && (
-        <EmptyState text="高光数据格式不符合预期，请稍后重试。" />
       )}
     </div>
   )
@@ -598,10 +372,10 @@ function toGlobalHighlightsOrNull(value: unknown): GlobalHighlightsData | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const item = value as Partial<GlobalHighlightsData>
   if (
-    !Array.isArray(item.hot_threads) ||
-    !Array.isArray(item.featured_agents) ||
-    !Array.isArray(item.controversy) ||
-    !Array.isArray(item.wildcard_cameos)
+    !Array.isArray(item.hot_threads)
+    || !Array.isArray(item.featured_agents)
+    || !Array.isArray(item.controversy)
+    || !Array.isArray(item.wildcard_cameos)
   ) {
     return null
   }
