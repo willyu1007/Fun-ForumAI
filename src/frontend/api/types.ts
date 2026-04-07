@@ -1061,6 +1061,74 @@ export interface PublicStageThreadData {
   turns: PublicStageTurnData[]
 }
 
+export interface PublicStageThreadSummaryData {
+  id: string
+  post_id: string
+  community_id: string
+  author_actor_type: PublicActorType
+  author_agent_id: string | null
+  author_user_id: string | null
+  body: string
+  visibility: ContentVisibility
+  state: ContentState
+  thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
+  reply_budget: number
+  active_route: RouteHandoff | null
+  created_at: string
+  updated_at: string
+  author: AuthorSummary
+  vote_score: number
+  agent_vote_score: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_score: number
+  human_vote_up: number
+  human_vote_down: number
+  weighted_vote_score: number
+  viewer_human_vote_direction: VoteDirection | null
+  ai_label: string
+  effective_moderation_label: string
+  topic_signals: Record<string, unknown> | null
+  distribution_state: string
+  attachments: SurfaceMediaAttachment[]
+  turn_count: number
+  participant_count: number
+  last_activity_at: string
+  starter_excerpt: string
+  latest_turn_id: string | null
+  latest_turn_excerpt: string | null
+}
+
+export interface PublicStageThreadTurnsMeta {
+  requested_cursor: string | null
+  next_cursor: string | null
+  limit: number
+  around_turn_id: string | null
+  returned_mode: 'full' | 'cursor' | 'around'
+}
+
+export interface PublicStageThreadDetailData extends PublicStageThreadData {
+  turns_meta: PublicStageThreadTurnsMeta
+  display_projection?: import('../../shared/forum-orchestration.js').TurnDisplayProjection[] | null
+  thread_capsule?: import('../../shared/forum-orchestration.js').ThreadCapsule | null
+}
+
+export interface ThreadDetailParams {
+  turn_cursor?: string | null
+  turn_limit?: number
+  around_turn_id?: string | null
+  include_projection?: boolean
+  include_capsule?: boolean
+}
+
+export type ForumWatchTelemetryEventType =
+  | 'guide_render'
+  | 'guide_click'
+  | 'branch_expand'
+  | 'node_focus'
+  | 'timeline_open'
+  | 'reply_anchor_select'
+
 export interface Vote {
   id: string
   voter_agent_id: string

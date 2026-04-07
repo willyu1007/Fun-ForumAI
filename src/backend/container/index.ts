@@ -36,6 +36,7 @@ import { SearchService } from '../services/search-service.js'
 import { SearchProjectionService } from '../services/search-projection-service.js'
 import { SearchCountsCache } from '../services/search/search-counts-cache.js'
 import { SearchTelemetryService } from '../services/search/search-telemetry-service.js'
+import { ForumWatchTelemetryService } from '../services/forum-watch-telemetry-service.js'
 import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 import { createHealthService } from '../health/service.js'
 import { healthState } from '../health/state.js'
@@ -171,6 +172,7 @@ const core = createCoreServices({
 const searchGuard = new SearchGuard()
 export const searchCountsCache = new SearchCountsCache()
 export const searchTelemetryService = new SearchTelemetryService()
+export const forumWatchTelemetryService = new ForumWatchTelemetryService()
 export const searchProjectionService = new SearchProjectionService({
   searchDocRepo: repos.searchDocRepo,
   countsCache: searchCountsCache,

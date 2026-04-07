@@ -13,14 +13,18 @@ import type {
   ViewerWriteResult,
   ViewerWriteSourceContext,
   PublicStageThreadData,
+  PublicStageThreadDetailData,
+  PublicStageThreadSummaryData,
   Community,
   HealthData,
   FeedParams,
   PaginationParams,
+  ThreadDetailParams,
   AudienceThreadData,
   AudienceMessageCreateResult,
   AftershowSnapshot,
   AsideSeatsData,
+  ForumWatchTelemetryEventType,
   PublicSearchResponse,
   SearchTab,
 } from '../types'
@@ -125,10 +129,29 @@ export function useThreads(
   })
 }
 
-export function useThread(threadId: string, options?: { enabled?: boolean }) {
+export function useThreadSummaries(
+  postId: string,
+  params?: PaginationParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
-    queryKey: queryKeys.thread(threadId),
-    queryFn: () => api.get(`threads/${threadId}`).json<ApiResponse<PublicStageThreadData>>(),
+    queryKey: queryKeys.threadSummaries(postId, params),
+    queryFn: () =>
+      api
+        .get(`posts/${postId}/threads-summary${toSearchString(params)}`)
+        .json<ApiResponse<PublicStageThreadSummaryData[]>>(),
+    enabled: !!postId && (options?.enabled ?? true),
+  })
+}
+
+export function useThread(
+  threadId: string,
+  params?: ThreadDetailParams,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.thread(threadId, params),
+    queryFn: () => api.get(`threads/${threadId}${toSearchString(params ?? undefined)}`).json<ApiResponse<PublicStageThreadDetailData>>(),
     enabled: !!threadId && (options?.enabled ?? true),
   })
 }
@@ -161,10 +184,11 @@ export function useCreatePublicThread(postId: string) {
     },
     onSuccess: (response) => {
       qc.invalidateQueries({ queryKey: ['threads', postId] })
+      qc.invalidateQueries({ queryKey: ['threadSummaries', postId] })
       qc.invalidateQueries({ queryKey: ['discussionForest', postId] })
       qc.invalidateQueries({ queryKey: queryKeys.readingGuide(postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
-      qc.invalidateQueries({ queryKey: queryKeys.thread(response.data.data.id) })
+      qc.invalidateQueries({ queryKey: ['thread', response.data.data.id] })
     },
   })
 }
@@ -195,8 +219,9 @@ export function useCreatePublicTurn() {
         },
       }).json<ApiResponse<ViewerWriteResult<PublicStageThreadData>>>(),
     onSuccess: (_response, input) => {
-      qc.invalidateQueries({ queryKey: queryKeys.thread(input.threadId) })
+      qc.invalidateQueries({ queryKey: ['thread', input.threadId] })
       qc.invalidateQueries({ queryKey: ['threads', input.postId] })
+      qc.invalidateQueries({ queryKey: ['threadSummaries', input.postId] })
       qc.invalidateQueries({ queryKey: ['discussionForest', input.postId] })
       qc.invalidateQueries({ queryKey: queryKeys.readingGuide(input.postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(input.postId) })
@@ -310,5 +335,19 @@ export function useRecordSearchTelemetry() {
       result_id?: string
     }) =>
       api.post('search/telemetry', { json: body }).json<ApiResponse<{ accepted: boolean }>>(),
+  })
+}
+
+export function useRecordForumWatchTelemetry(postId: string) {
+  return useMutation({
+    mutationFn: (body: {
+      event_type: ForumWatchTelemetryEventType
+      thread_id?: string
+      turn_id?: string
+      branch_group_id?: string
+      source_surface?: string
+      source_shelf?: string
+    }) =>
+      api.post(`posts/${postId}/watch-telemetry`, { json: body }).json<ApiResponse<{ accepted: boolean }>>(),
   })
 }

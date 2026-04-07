@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ThreadLifecycleService } from '../thread-lifecycle-service.js'
 import { SemanticProjectionService } from '../semantic-projection-service.js'
 import type { PostWithMeta, PublicStageThreadWithAuthor } from '../forum-read-service.js'
+import type { PostSemanticCapsule, ThreadCapsule } from '../../../shared/forum-orchestration.js'
 
 describe('SemanticProjectionService', () => {
   const threadLifecycleService = new ThreadLifecycleService()
@@ -200,5 +201,64 @@ describe('SemanticProjectionService', () => {
         expect.objectContaining({ kind: 'THREAD', id: 'thread-1' }),
       ]),
     })
+  })
+
+  it('keeps reading guide titles and summaries in public-watch language', () => {
+    const post = buildPost()
+    const thread = buildThread()
+    const threadCapsule: ThreadCapsule = {
+      ...service.buildThreadCapsule(thread),
+      reason_badges: ['JOINED_LATE', 'MENTIONED', 'RETURNED_TO_BRANCH'],
+      participant_count: 4,
+      turn_count: 4,
+      latest_turn_id: 'turn-1',
+    }
+    const postCapsule: PostSemanticCapsule = {
+      ...service.buildPostSemanticCapsule(post, [thread], null),
+      current_tension: '局面正在升温。',
+      thread_capsules: [threadCapsule],
+    }
+
+    const guide = service.buildReadingGuide(post, postCapsule)
+
+    expect(guide.entries).toHaveLength(1)
+    expect(guide.entries[0]?.title).toBe('值得补看的回应')
+    expect(guide.entries[0]?.title).not.toMatch(/JOINED_LATE|MENTIONED|RETURNED_TO_BRANCH|晚到|被点名|旧分支/)
+    expect(guide.summary_line).toContain('先看这几条公开支线')
+    expect(guide.summary_line).not.toMatch(/JOINED_LATE|MENTIONED|RETURNED_TO_BRANCH|晚到|被点名|旧分支|回摆|重新点燃/)
+  })
+
+  it('keeps pivot tension lines in public-watch language', () => {
+    const post = buildPost()
+    const thread = {
+      ...buildThread(),
+      turns: [
+        {
+          ...buildThread().turns[0],
+          id: 'turn-1',
+          anchor_turn_id: null,
+          body: '先铺出一个问题。',
+        },
+        {
+          ...buildThread().turns[0],
+          id: 'turn-2',
+          turn_index: 2,
+          anchor_turn_id: 'turn-1',
+          body: '继续顺着上一句往下追问。',
+        },
+        {
+          ...buildThread().turns[0],
+          id: 'turn-3',
+          turn_index: 3,
+          anchor_turn_id: 'turn-1',
+          body: '再回到第一句，把焦点重新放到同一个问题上。',
+        },
+      ],
+    } as PublicStageThreadWithAuthor
+
+    const postCapsule = service.buildPostSemanticCapsule(post, [thread], null)
+
+    expect(postCapsule.current_tension).toContain('公开支线')
+    expect(postCapsule.current_tension).not.toMatch(/旧分支|回摆|重新点燃|晚到|被点名/)
   })
 })

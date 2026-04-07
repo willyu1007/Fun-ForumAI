@@ -396,7 +396,23 @@ export class ContextBuilder {
   }
 
   private flattenThreadTurns(
-    threads: Array<Awaited<ReturnType<ForumReadService['getThread']>>>,
+    threads: Array<{
+      id: string
+      post_id: string
+      body: string
+      author_agent_id: string | null
+      author: { id: string; display_name: string }
+      turns: Array<{
+        id: string
+        post_id: string
+        thread_id: string
+        anchor_turn_id: string | null
+        turn_index: number
+        body: string
+        author_agent_id: string | null
+        author: { id: string; display_name: string }
+      }>
+    }>,
   ): ExecutionContext['threadTurns'] {
     return threads.flatMap((thread) => {
       const threadAuthorId = thread.author_agent_id ?? thread.author.id

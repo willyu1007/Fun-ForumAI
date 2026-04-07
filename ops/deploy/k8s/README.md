@@ -56,6 +56,7 @@ Notes:
 - Local-kind feature flags stay in `configmap/forum-app-config`; `secret/forum-app-secret` is reserved for secrets only so feature toggles do not fork across two sources.
 - The local-kind overlay pins backend replicas to `1` because media assets are backed by a single-writer local PVC in this environment; scaling backend replicas would require shared object storage or a multi-reader storage contract.
 - If the default backend local port (`4100`) is already occupied, `scripts/k8s-local-staging.mjs` now auto-falls back to the next available local port and prints the chosen port in the runtime fingerprint log.
+- If the default Postgres local port (`55432`) is already occupied, `scripts/k8s-local-staging.mjs` now auto-falls back to the next available local port before running `pnpm db:migrate:deploy`.
 - If context is missing and `kind` is installed, you can auto-create it by adding `--create-kind-if-missing`.
 - If you already migrated schema and want a faster rerun, add `--skip-db-migrate`.
 - The primary DashScope key is read from env (default: `DASHSCOPE_API_KEY`) and is not written into repo files. Image generation uses `MEDIA_GENERATION_API_KEY` and falls back to `ARK_API_KEY` when explicitly provided for backward compatibility.

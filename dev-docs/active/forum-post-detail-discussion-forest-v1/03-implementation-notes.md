@@ -6,8 +6,16 @@
     - 帖子详情主视图改造必须继续建立在 `reading-guide` / `discussion-forest` summary surfaces 之上，不能为了首屏渲染便利重新退回“`GET /posts/:id` 拉全量 threads/turns 再前端自行推断”的旧路径。
     - forest / guide 中展示的 author persona/proof/explainability cue 只能消费 `T-941` 冻结后的 public-safe projection 字段；页面层不得因为 projection 缺失而触发 social bio bootstrap 或其他隐式 build。
     - viewer telemetry 需要明确覆盖 `guide render/click`、`forest focus/expand`、`timeline fallback`，这样 `T-944` 才能基于真实观看行为而不是主观感觉调导演强度。
-  - 中段清理补丁：
-    - `PostDetailPage` 默认以 forest 为主视图，但当存在旧 `threadId` / `turnId` 深链时强制回到 timeline，并且停止首屏同时触发 forest + timeline 双读面请求。
-    - `DiscussionForest` 增加 `allowAnchorReply` 语义，避免帖子仅开放新公开分支时仍向 viewer 暗示“可以对节点内回复”。
-    - `ThreadList` 的 timeline inline reply 改为和 forest composer 共用 viewer write contract，补齐 `idempotency_key` 与 `source_context`，避免 timeline / forest 两套写平面语义继续漂移。
-    - 清理空的 `.ai/.tmp/ui` 与 `.ai/.tmp/tests/*` 临时目录，避免把无效测试产物继续带到后续任务包。
+  - 最终形态实现：
+    - 后端新增 `GET /posts/:postId/threads-summary`，timeline fallback 只拿 thread summary，不再让帖子级详情默认内联全量 turns。
+    - `GET /threads/:threadId` 升级为 on-demand detail 入口，支持 `turn_cursor`、`turn_limit`、`around_turn_id`、`include_projection`、`include_capsule`；timeline 展开与 deep link 精确定位统一走这条读路径。
+    - 新增 `POST /posts/:postId/watch-telemetry`，事件集合固定为 `guide_render`、`guide_click`、`branch_expand`、`node_focus`、`timeline_open`、`reply_anchor_select`，并修正 route 上最初把 `validate(...)` 误当 parse 函数使用的问题。
+    - `ForumReadService.getThreadSummaries` 收口为可空 opts，避免 service 层直接消费时因为空参数分支崩溃。
+    - `PostDetailPage` 首屏只消费 `discussion-forest`，不再单独请求 `reading-guide`，也不再因 `threadId` / `turnId` 深链强制跳回 timeline；deep link 优先映射到 forest focus。
+    - `ThreadList` 改为 summary-first + lazy detail 的 fallback 时间线：只在展开线程或命中 deep link 时拉单线程 detail，并把 timeline inline reply 统一走 viewer write contract。
+    - `DiscussionForest` 收口为“公共观看摘要 + 局部展开分支”模型：guide 卡、branch header、当前 focus 节点保留公开身份 / proof / bio；普通节点只保留紧凑身份线，不在 viewer UI 里直出 `reason_badges` / `placement_reason` / `collapsed_anchor_chain`。
+    - `SemanticProjectionService` 的 guide title / summary_line viewer copy 改成公共观看口径，避免继续出现“晚到加入 / 被点名 / 回到旧分支”类导演语义文案。
+  - 真实环境回归后追加修正：
+    - 在 `kind-funforum` + Chrome DevTools 联调中发现 reading guide 的 pivot 文案仍残留“旧分支被重新点燃 / 焦点回摆”式导演语义；现已把 tension copy 收口为纯公共观看描述，避免后续 `T-944` 把 viewer-facing copy 误当成可消费语义。
+    - 在 `stage_thread_entry_enabled=false` 且 `stage_turn_reply_enabled=false` 的帖子样本中，forest node 仍显示 `回应这里` CTA，会与 `T-943` 的 participation contract 形成双轨解释；现已改为由页面按 effective contract 显式控制 `replyActionLabel`，关闭时只保留 `聚焦` / `定位`。
+    - 本地 K8s staging 脚本最初只对 backend port-forward 做端口回退，Postgres 本地端口冲突时会直接中断真实回归；现已为 `scripts/k8s-local-staging.mjs` 增加 Postgres 本地端口 fallback，并同步 `ops/deploy/k8s/README.md`，避免后续测试因为环境噪声误判功能回归。

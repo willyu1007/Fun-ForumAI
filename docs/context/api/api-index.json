@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-07T07:04:59.864Z",
+  "generatedAt": "2026-04-07T10:57:36.765Z",
   "sourceOpenapi": "docs/context/api/openapi.yaml",
-  "sourceChecksumSha256": "67ac397a0990fe7b464e407e536701d945f4175dfb64c59a67970f37f1bedee5",
+  "sourceChecksumSha256": "771ce44664ab5b2aec09f0530b61a97b74bbc0cb091732b55247c5fb7c1bbf6a",
   "stats": {
-    "totalEndpoints": 8,
+    "totalEndpoints": 11,
     "byTag": {
-      "forum-orchestration": 2,
+      "forum-orchestration": 5,
       "forum-orchestration-internal": 6
     }
   },
@@ -63,6 +63,101 @@
       ],
       "example": {
         "curl": "curl -X GET '/v1/posts/{postId}/discussion-forest'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/posts/{postId}/threads-summary",
+      "operationId": "getForumThreadSummaries",
+      "summary": "Return thread timeline summaries for a post without inlining full turn detail",
+      "tag": "forum-orchestration",
+      "auth": "none",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data",
+          "meta"
+        ]
+      },
+      "errors": [
+        400,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/posts/{postId}/threads-summary'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/posts/{postId}/watch-telemetry",
+      "operationId": "recordForumWatchTelemetry",
+      "summary": "Accept lightweight watch telemetry from the post-detail viewing surface",
+      "tag": "forum-orchestration",
+      "auth": "none",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": {
+          "required": [
+            "event_type"
+          ],
+          "optional": [
+            "thread_id",
+            "turn_id",
+            "branch_group_id",
+            "source_surface",
+            "source_shelf"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 202,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        400
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/posts/{postId}/watch-telemetry' -H 'Content-Type: application/json' -d '{\"event_type\":\"<event_type>\"}'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/threads/{threadId}",
+      "operationId": "getForumThreadDetail",
+      "summary": "Return on-demand thread detail for the timeline fallback or deep links",
+      "tag": "forum-orchestration",
+      "auth": "none",
+      "input": {
+        "params": [
+          "threadId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        400,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/threads/{threadId}'"
       }
     },
     {

@@ -439,6 +439,24 @@ export const buildRuntimeContextPreviewSchema = z
   })
   .strict()
 
+export const forumWatchTelemetrySchema = z
+  .object({
+    event_type: z.enum([
+      'guide_render',
+      'guide_click',
+      'branch_expand',
+      'node_focus',
+      'timeline_open',
+      'reply_anchor_select',
+    ]),
+    thread_id: z.string().trim().min(1).max(200).optional(),
+    turn_id: z.string().trim().min(1).max(200).optional(),
+    branch_group_id: z.string().trim().min(1).max(200).optional(),
+    source_surface: z.string().trim().min(1).max(80).optional(),
+    source_shelf: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict()
+
 export const triggerAftershowSchema = z
   .object({
     mode: z.enum(['AUTO', 'MANUAL']).default('AUTO'),

@@ -279,6 +279,45 @@ async function startServicePortForward({
   return child
 }
 
+async function startServicePortForwardWithFallback({
+  context,
+  namespace,
+  serviceName,
+  preferredLocalPort,
+  servicePort,
+  maxAttempts = 10,
+}) {
+  const requestedPort = Number(preferredLocalPort)
+  let lastError = null
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const candidatePort = requestedPort + attempt
+    try {
+      const child = await startServicePortForward({
+        context,
+        namespace,
+        serviceName,
+        localPort: candidatePort,
+        servicePort,
+      })
+      return {
+        child,
+        localPort: candidatePort,
+        fellBackFromRequestedPort: candidatePort !== requestedPort,
+      }
+    } catch (error) {
+      lastError = error
+      const message = error instanceof Error ? error.message : String(error)
+      const isPortConflict = /address already in use|unable to listen on any of the requested ports/i.test(message)
+      if (!isPortConflict) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError ?? new Error(`Unable to establish service port-forward after ${maxAttempts} attempts`)
+}
+
 async function runDbMigrations({
   context,
   namespace,
@@ -287,15 +326,21 @@ async function runDbMigrations({
   postgresServicePort = 5432,
   databaseName = 'llm_forum',
 }) {
-  const forward = await startServicePortForward({
+  const forwardResult = await startServicePortForwardWithFallback({
     context,
     namespace,
     serviceName: postgresServiceName,
-    localPort: Number(postgresLocalPort),
+    preferredLocalPort: Number(postgresLocalPort),
     servicePort: Number(postgresServicePort),
   })
+  const forward = forwardResult.child
   try {
-    const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${Number(postgresLocalPort)}/${databaseName}`
+    if (forwardResult.fellBackFromRequestedPort) {
+      console.warn(
+        `[staging] WARN: postgres local port ${postgresLocalPort} was unavailable, using ${forwardResult.localPort} instead`,
+      )
+    }
+    const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${forwardResult.localPort}/${databaseName}`
     await runCommandCapture('pnpm', ['db:migrate:deploy'], {
       env: {
         ...process.env,

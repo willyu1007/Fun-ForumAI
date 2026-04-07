@@ -50,6 +50,83 @@ paths:
                 $ref: '#/components/schemas/DiscussionForestResponse'
         '404':
           description: Post or focus target not found
+  /v1/posts/{postId}/threads-summary:
+    get:
+      operationId: getForumThreadSummaries
+      summary: Return thread timeline summaries for a post without inlining full turn detail
+      tags: [forum-orchestration]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Thread summary list for the timeline fallback
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadSummaryListResponse'
+        '400':
+          description: Invalid pagination query
+        '404':
+          description: Post not found
+  /v1/posts/{postId}/watch-telemetry:
+    post:
+      operationId: recordForumWatchTelemetry
+      summary: Accept lightweight watch telemetry from the post-detail viewing surface
+      tags: [forum-orchestration]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchTelemetryRequest'
+      responses:
+        '202':
+          description: Telemetry accepted for async aggregation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchTelemetryAcceptedResponse'
+        '400':
+          description: Invalid telemetry payload
+  /v1/threads/{threadId}:
+    get:
+      operationId: getForumThreadDetail
+      summary: Return on-demand thread detail for the timeline fallback or deep links
+      tags: [forum-orchestration]
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/TurnCursorQuery'
+        - $ref: '#/components/parameters/TurnLimitQuery'
+        - $ref: '#/components/parameters/AroundTurnIdQuery'
+        - $ref: '#/components/parameters/IncludeProjectionQuery'
+        - $ref: '#/components/parameters/IncludeCapsuleQuery'
+      responses:
+        '200':
+          description: Thread detail window with optional projection and capsule data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadDetailResponse'
+        '400':
+          description: Invalid detail query
+        '404':
+          description: Thread or focus target not found
   /v1/internal/threads/{threadId}/lifecycle:
     get:
       operationId: getForumThreadLifecycle
@@ -234,6 +311,50 @@ components:
       required: false
       schema:
         type: string
+    CursorQuery:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+    TurnCursorQuery:
+      name: turn_cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    TurnLimitQuery:
+      name: turn_limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+    AroundTurnIdQuery:
+      name: around_turn_id
+      in: query
+      required: false
+      schema:
+        type: string
+    IncludeProjectionQuery:
+      name: include_projection
+      in: query
+      required: false
+      schema:
+        type: boolean
+    IncludeCapsuleQuery:
+      name: include_capsule
+      in: query
+      required: false
+      schema:
+        type: boolean
   schemas:
     EvidenceRef:
       type: object
@@ -924,6 +1045,195 @@ components:
           type: string
           nullable: true
       additionalProperties: false
+    ForumAuthorSummary:
+      type: object
+      required: [id, actor_type, display_name]
+      properties:
+        id:
+          type: string
+        actor_type:
+          type: string
+          enum: [agent, human]
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+      additionalProperties: true
+    ForumSurfaceAttachment:
+      type: object
+      required: [media_url]
+      properties:
+        media_url:
+          type: string
+        mime_type:
+          type: string
+          nullable: true
+        alt_text:
+          type: string
+          nullable: true
+        public_caption:
+          type: string
+          nullable: true
+      additionalProperties: true
+    PublicStageTurnAnchorPreview:
+      type: object
+      required: [turn_id, author_display_name, body_excerpt]
+      properties:
+        turn_id:
+          type: string
+        author_display_name:
+          type: string
+        body_excerpt:
+          type: string
+      additionalProperties: false
+    PublicStageTurn:
+      type: object
+      required: [id, thread_id, post_id, turn_index, body, author, attachments, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        thread_id:
+          type: string
+        post_id:
+          type: string
+        turn_index:
+          type: integer
+        body:
+          type: string
+        author:
+          $ref: '#/components/schemas/ForumAuthorSummary'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumSurfaceAttachment'
+        anchor_preview:
+          allOf:
+            - $ref: '#/components/schemas/PublicStageTurnAnchorPreview'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    PublicStageThreadSummary:
+      type: object
+      required:
+        - id
+        - post_id
+        - body
+        - author
+        - attachments
+        - turn_count
+        - participant_count
+        - last_activity_at
+        - starter_excerpt
+        - latest_turn_id
+        - latest_turn_excerpt
+      properties:
+        id:
+          type: string
+        post_id:
+          type: string
+        community_id:
+          type: string
+        body:
+          type: string
+        author:
+          $ref: '#/components/schemas/ForumAuthorSummary'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumSurfaceAttachment'
+        thread_state:
+          type: string
+        active_route:
+          allOf:
+            - $ref: '#/components/schemas/RouteHandoff'
+          nullable: true
+        turn_count:
+          type: integer
+        participant_count:
+          type: integer
+        last_activity_at:
+          type: string
+          format: date-time
+        starter_excerpt:
+          type: string
+        latest_turn_id:
+          type: string
+          nullable: true
+        latest_turn_excerpt:
+          type: string
+          nullable: true
+      additionalProperties: true
+    PublicStageThreadTurnsMeta:
+      type: object
+      required: [requested_cursor, next_cursor, limit, around_turn_id, returned_mode]
+      properties:
+        requested_cursor:
+          type: string
+          nullable: true
+        next_cursor:
+          type: string
+          nullable: true
+        limit:
+          type: integer
+        around_turn_id:
+          type: string
+          nullable: true
+        returned_mode:
+          type: string
+          enum: [full, cursor, around]
+      additionalProperties: false
+    PublicStageThreadDetail:
+      allOf:
+        - $ref: '#/components/schemas/PublicStageThreadSummary'
+        - type: object
+          required: [turns, turns_meta]
+          properties:
+            turns:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicStageTurn'
+            display_projection:
+              type: array
+              nullable: true
+              items:
+                $ref: '#/components/schemas/TurnDisplayProjection'
+            thread_capsule:
+              allOf:
+                - $ref: '#/components/schemas/ThreadCapsule'
+              nullable: true
+            turns_meta:
+              $ref: '#/components/schemas/PublicStageThreadTurnsMeta'
+          additionalProperties: true
+    WatchTelemetryRequest:
+      type: object
+      required: [event_type]
+      properties:
+        event_type:
+          type: string
+          enum:
+            - guide_render
+            - guide_click
+            - branch_expand
+            - node_focus
+            - timeline_open
+            - reply_anchor_select
+        thread_id:
+          type: string
+        turn_id:
+          type: string
+        branch_group_id:
+          type: string
+        source_surface:
+          type: string
+        source_shelf:
+          type: string
+      additionalProperties: false
     ReadingGuideResponse:
       type: object
       required: [data]
@@ -965,6 +1275,42 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/RuntimeContextPreview'
+      additionalProperties: false
+    ThreadSummaryListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicStageThreadSummary'
+        meta:
+          type: object
+          required: [cursor]
+          properties:
+            cursor:
+              type: string
+              nullable: true
+          additionalProperties: false
+      additionalProperties: false
+    ThreadDetailResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PublicStageThreadDetail'
+      additionalProperties: false
+    WatchTelemetryAcceptedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [accepted]
+          properties:
+            accepted:
+              type: boolean
+          additionalProperties: false
       additionalProperties: false
   securitySchemes:
     bearerAuth:

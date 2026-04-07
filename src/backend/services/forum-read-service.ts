@@ -84,6 +84,7 @@ import type {
   RuntimeContextEnvelope,
   ThreadCapsule,
   ThreadLifecycleSnapshot,
+  TurnDisplayProjection,
 } from '../../shared/forum-orchestration.js'
 import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
 import type { SemanticProjectionService } from './semantic-projection-service.js'
@@ -292,6 +293,26 @@ export interface PublicStageThreadWithAuthor extends PublicStageThread {
   last_activity_at: Date
   turns: PublicStageTurnWithAuthor[]
   active_route: RouteHandoff | null
+}
+
+export interface PublicStageThreadSummaryWithAuthor extends Omit<PublicStageThreadWithAuthor, 'turns'> {
+  starter_excerpt: string
+  latest_turn_id: string | null
+  latest_turn_excerpt: string | null
+}
+
+export interface PublicStageThreadDetailTurnsMeta {
+  requested_cursor: string | null
+  next_cursor: string | null
+  limit: number
+  around_turn_id: string | null
+  returned_mode: 'full' | 'cursor' | 'around'
+}
+
+export interface PublicStageThreadDetailWithAuthor extends PublicStageThreadWithAuthor {
+  turns_meta: PublicStageThreadDetailTurnsMeta
+  display_projection: TurnDisplayProjection[] | null
+  thread_capsule: ThreadCapsule | null
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
@@ -1244,6 +1265,116 @@ export class ForumReadService {
     }
   }
 
+  private async toPublicStageThreadSummaryWithAuthor(
+    thread: PublicStageThread,
+    turns: PublicStageTurn[],
+    opts: {
+      viewerUserId?: string
+      authorCache: Map<string, Promise<AuthorSummary>>
+      attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
+    },
+  ): Promise<PublicStageThreadSummaryWithAuthor> {
+    const votes = this.getDetailedVoteSummary('THREAD', thread.id, opts.viewerUserId)
+    const topicPresentation = await this.resolveThreadTurnTopicSignals(thread.id)
+    const visibleTurns = turns.filter((turn) => isPubliclyVisibleContent(turn))
+    const participantIds = new Set<string>([
+      this.buildPublicActorKey(thread),
+      ...visibleTurns.map((turn) => this.buildPublicActorKey(turn)),
+    ])
+    const lastTurn = visibleTurns[visibleTurns.length - 1] ?? null
+
+    return {
+      ...thread,
+      author: await this.resolveAuthorCached(opts.authorCache, thread),
+      vote_score: votes.weighted_score,
+      agent_vote_score: votes.agent.score,
+      agent_vote_up: votes.agent.up,
+      agent_vote_down: votes.agent.down,
+      human_vote_score: votes.human.score,
+      human_vote_up: votes.human.up,
+      human_vote_down: votes.human.down,
+      weighted_vote_score: votes.weighted_score,
+      viewer_human_vote_direction: votes.viewer_direction,
+      ai_label: thread.author_actor_type === 'human' ? '用户' : 'AI生成',
+      effective_moderation_label: this.buildEffectiveModerationLabel(thread.visibility, thread.state),
+      topic_signals: topicPresentation.topic_signals,
+      distribution_state: topicPresentation.distribution_state,
+      attachments: opts.attachmentMap.get(thread.id) ?? [],
+      turn_count: visibleTurns.length,
+      participant_count: participantIds.size,
+      last_activity_at: lastTurn?.created_at ?? thread.created_at,
+      active_route: thread.active_route,
+      starter_excerpt: thread.body.slice(0, 180),
+      latest_turn_id: lastTurn?.id ?? null,
+      latest_turn_excerpt: lastTurn?.body.slice(0, 180) ?? null,
+    }
+  }
+
+  private async listAllVisibleTurnsByThread(threadId: string): Promise<PublicStageTurn[]> {
+    const turns: PublicStageTurn[] = []
+    let cursor: string | undefined
+
+    while (true) {
+      const page = await this.deps.publicStageTurnRepo.findByThread(threadId, {
+        cursor,
+        limit: 500,
+      })
+      if (page.items.length === 0) break
+      turns.push(...page.items)
+      if (!page.next_cursor || page.next_cursor === cursor) break
+      cursor = page.next_cursor
+    }
+
+    return turns
+  }
+
+  private sliceThreadTurns(
+    turns: PublicStageTurn[],
+    input: {
+      turn_cursor?: string | null
+      turn_limit: number
+      around_turn_id?: string | null
+    },
+  ): {
+    items: PublicStageTurn[]
+    next_cursor: string | null
+    returned_mode: PublicStageThreadDetailTurnsMeta['returned_mode']
+  } {
+    if (input.around_turn_id) {
+      const focusIndex = turns.findIndex((turn) => turn.id === input.around_turn_id)
+      if (focusIndex < 0) {
+        throw new NotFoundError('Turn', input.around_turn_id)
+      }
+      const halfWindow = Math.floor((input.turn_limit - 1) / 2)
+      let start = Math.max(0, focusIndex - halfWindow)
+      let end = Math.min(turns.length, start + input.turn_limit)
+      if (end - start < input.turn_limit) {
+        start = Math.max(0, end - input.turn_limit)
+      }
+      const items = turns.slice(start, end)
+      return {
+        items,
+        next_cursor: end < turns.length ? items[items.length - 1]?.id ?? null : null,
+        returned_mode: 'around',
+      }
+    }
+
+    let start = 0
+    if (input.turn_cursor) {
+      const index = turns.findIndex((turn) => turn.id === input.turn_cursor)
+      start = index >= 0 ? index + 1 : 0
+    }
+    const items = turns.slice(start, start + input.turn_limit)
+    const next_cursor = items.length === input.turn_limit && start + input.turn_limit < turns.length
+      ? items[items.length - 1]?.id ?? null
+      : null
+    return {
+      items,
+      next_cursor,
+      returned_mode: input.turn_cursor ? 'cursor' : 'full',
+    }
+  }
+
   async getThreads(
     postId: string,
     opts: { cursor?: string; limit?: number },
@@ -1289,7 +1420,62 @@ export class ForumReadService {
     return { items, next_cursor: result.next_cursor }
   }
 
-  async getThread(threadId: string, viewerUserId?: string): Promise<PublicStageThreadWithAuthor> {
+  async getThreadSummaries(
+    postId: string,
+    opts?: { cursor?: string; limit?: number },
+    viewerUserId?: string,
+  ): Promise<PaginatedResult<PublicStageThreadSummaryWithAuthor>> {
+    const post = await this.deps.postRepo.findById(postId)
+    if (!post) throw new NotFoundError('Post', postId)
+    if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
+
+    const limit = this.clampLimit(opts?.limit, 20, 200)
+    const result = await this.deps.publicStageThreadRepo.findByPost(postId, {
+      cursor: opts?.cursor,
+      limit,
+    })
+    const turns = await this.deps.publicStageTurnRepo.findByThreads(result.items.map((thread) => thread.id))
+    const attachmentMap = await this.resolveThreadTurnAttachmentViews(
+      result.items.map((thread) => ({ id: thread.id, entry_kind: 'THREAD' as const })),
+    )
+    const turnsByThreadId = new Map<string, PublicStageTurn[]>()
+    for (const turn of turns) {
+      if (!turnsByThreadId.has(turn.thread_id)) {
+        turnsByThreadId.set(turn.thread_id, [])
+      }
+      turnsByThreadId.get(turn.thread_id)!.push(turn)
+    }
+    const authorCache = new Map<string, Promise<AuthorSummary>>()
+
+    const items = await Promise.all(
+      result.items.map((thread) =>
+        this.toPublicStageThreadSummaryWithAuthor(thread, turnsByThreadId.get(thread.id) ?? [], {
+          viewerUserId,
+          authorCache,
+          attachmentMap,
+        })),
+    )
+
+    return { items, next_cursor: result.next_cursor }
+  }
+
+  async getThread(
+    threadId: string,
+    optsOrViewerUserId?: {
+      turn_cursor?: string | null
+      turn_limit?: number
+      around_turn_id?: string | null
+      include_projection?: boolean
+      include_capsule?: boolean
+    } | string,
+    maybeViewerUserId?: string,
+  ): Promise<PublicStageThreadDetailWithAuthor> {
+    const opts = typeof optsOrViewerUserId === 'string' || optsOrViewerUserId === undefined
+      ? undefined
+      : optsOrViewerUserId
+    const viewerUserId = typeof optsOrViewerUserId === 'string'
+      ? optsOrViewerUserId
+      : maybeViewerUserId
     const thread = await this.deps.publicStageThreadRepo.findById(threadId)
     if (!thread) throw new NotFoundError('Thread', threadId)
     if (!isPubliclyVisibleContent(thread)) throw new NotFoundError('Thread', threadId)
@@ -1297,9 +1483,18 @@ export class ForumReadService {
     const post = await this.deps.postRepo.findById(thread.post_id)
     if (!post || !isPubliclyVisibleContent(post)) throw new NotFoundError('Thread', threadId)
 
-    const turnsPage = await this.deps.publicStageTurnRepo.findByThread(thread.id, {
-      cursor: undefined,
-      limit: 500,
+    const allTurns = await this.listAllVisibleTurnsByThread(thread.id)
+    const hasDetailQuery =
+      Boolean(opts?.turn_cursor)
+      || typeof opts?.turn_limit === 'number'
+      || Boolean(opts?.around_turn_id)
+      || opts?.include_projection === true
+      || opts?.include_capsule === true
+    const turnLimit = this.clampLimit(opts?.turn_limit, hasDetailQuery ? 50 : 500, 500)
+    const turnsPage = this.sliceThreadTurns(allTurns, {
+      turn_cursor: opts?.turn_cursor ?? null,
+      turn_limit: turnLimit,
+      around_turn_id: opts?.around_turn_id ?? null,
     })
     const turns = turnsPage.items
     const attachmentMap = await this.resolveThreadTurnAttachmentViews([
@@ -1307,18 +1502,49 @@ export class ForumReadService {
       ...turns.map((turn) => ({ id: turn.id, entry_kind: 'TURN' as const })),
     ])
     const visibleTurnById = new Map(
-      turns
+      allTurns
         .filter((turn) => isPubliclyVisibleContent(turn))
         .map((turn) => [turn.id, turn] as const),
     )
     const authorCache = new Map<string, Promise<AuthorSummary>>()
-
-    return this.toPublicStageThreadWithAuthor(thread, turns, {
+    const detail = await this.toPublicStageThreadWithAuthor(thread, turns, {
       viewerUserId,
       authorCache,
       visibleTurnById,
       attachmentMap,
     })
+
+    let displayProjection: TurnDisplayProjection[] | null = null
+    let threadCapsule: ThreadCapsule | null = null
+    if (opts?.include_projection || opts?.include_capsule) {
+      const bundle = await this.buildProjectionBundle(
+        thread.post_id,
+        {
+          focus_thread_id: thread.id,
+          focus_turn_id: opts?.around_turn_id ?? null,
+        },
+        viewerUserId,
+      )
+      if (opts.include_projection) {
+        displayProjection = bundle.forest.nodes.filter((node) => node.thread_id === thread.id)
+      }
+      if (opts.include_capsule) {
+        threadCapsule = bundle.thread_capsule
+      }
+    }
+
+    return {
+      ...detail,
+      turns_meta: {
+        requested_cursor: opts?.turn_cursor ?? null,
+        next_cursor: turnsPage.next_cursor,
+        limit: turnLimit,
+        around_turn_id: opts?.around_turn_id ?? null,
+        returned_mode: turnsPage.returned_mode,
+      },
+      display_projection: displayProjection,
+      thread_capsule: threadCapsule,
+    }
   }
 
   async getThreadLifecycle(threadId: string): Promise<ThreadLifecycleSnapshot> {

@@ -379,7 +379,7 @@ function derivePostFlowPhase(threadCapsules: ThreadCapsule[]): PostFlowPhase {
 
 function describePostTension(flowPhase: PostFlowPhase, threadCapsules: ThreadCapsule[]): string {
   if (flowPhase === 'AFTERSHOW') return '公开主线正在收口，后续关注正在转向余波与转场。'
-  if (flowPhase === 'PIVOT') return '旧分支被重新点燃，讨论焦点开始回摆。'
+  if (flowPhase === 'PIVOT') return '讨论重点正在变化，几条公开支线值得并排回看。'
   if (flowPhase === 'ESCALATION') return '多个分支同时升温，主线张力正在上扬。'
   if (flowPhase === 'CLOSURE') return '讨论开始收束，重点转向收口与余味。'
   return threadCapsules.length > 0
@@ -407,19 +407,19 @@ function chooseGuideMark(marks: TurnSemanticMark[]): TurnSemanticMark | null {
 }
 
 function describeGuideTitle(threadCapsule: ThreadCapsule): string {
-  if (threadCapsule.reason_badges.includes('RETURNED_TO_BRANCH')) {
-    return '回到旧分支'
-  }
-  if (threadCapsule.reason_badges.includes('JOINED_LATE')) {
-    return '晚到角色入场'
-  }
   if (threadCapsule.reason_badges.includes('MENTIONED')) {
-    return '被点名后的回应'
+    return '值得补看的回应'
   }
   if (threadCapsule.route_handoff?.route_type === 'AFTERSHOW') {
-    return '接近收束的主线'
+    return '接近收束的一条支线'
   }
-  return '值得先看的分支'
+  if (threadCapsule.participant_count >= 3) {
+    return '参与者较多的一条支线'
+  }
+  if (threadCapsule.turn_count >= 3) {
+    return '正在延展的一条支线'
+  }
+  return '从这里开始看'
 }
 
 function describeGuideTeaser(postBody: string, threadCapsule: ThreadCapsule): string {
@@ -430,11 +430,10 @@ function describeGuideTeaser(postBody: string, threadCapsule: ThreadCapsule): st
 }
 
 function describeReadingGuideSummary(postCapsule: PostSemanticCapsule): string {
-  const firstThread = postCapsule.thread_capsules[0]
-  if (!firstThread) {
+  if (!postCapsule.thread_capsules[0]) {
     return '主舞台刚起步，还没有形成明确的观看入口。'
   }
-  return `${postCapsule.current_tension} 先从「${describeGuideTitle(firstThread)}」开始补课。`
+  return `${postCapsule.current_tension} 先看这几条公开支线。`
 }
 
 function inferTurnAct(

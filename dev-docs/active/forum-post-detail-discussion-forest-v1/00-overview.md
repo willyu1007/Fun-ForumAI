@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-941 forum-semantic-lifecycle-projection-foundation-v1`, `T-145 agent-public-identity-projection-proof-alignment`, `T-925 agent-social-bio-domain-and-refresh-pipeline`, archived `T-931 forum-post-detail-stage-audience-layout-v1`
-- Current status: forest API and post detail primary-view cutover have started; `T-941` exit review confirmed the shared projection contracts are stable, and real-environment rehearsal also exposed two watch-layer guardrails this pack must preserve during UI cutover: post detail首屏不能重新退回全量 detail reload，且 viewer-facing author/cue rendering 只能消费现成 public projection，不能在读路径上同步触发额外 bootstrap。
-- Next step: finish turning post detail into `watch guide + discussion forest + secondary timeline`, while splitting summary/detail reads, preserving `T-941` 的 visibility-first / projection-only read semantics, and adding cue/telemetry rules.
+- Current status: `watch guide -> discussion forest -> timeline` 的最终读路径已经落到前后端主流程，并已在 `kind-funforum` 真实环境 + Chrome DevTools 浏览器链路中完成回归：post detail 首屏只消费 `discussion-forest` bundle，timeline 改为 `threads-summary -> thread detail` 按需读取，viewer watch telemetry 已接入 read API / page interactions，real-env 暴露出的 copy drift、reply affordance drift、以及 local staging 端口回退缺口也已修复。
+- Next step: 按 exit review 口径确认 T-942 已可作为 `T-944` 的稳定输入面消费，避免后续在 timeline fallback、viewer write affordance、或 public-safe cue 文案上再次产生双轨语义。
 
 ## Goal
 
@@ -33,11 +33,13 @@
 
 ## Acceptance Criteria
 
-- [ ] 新增 `GET /posts/{post_id}/reading-guide` 与 `GET /posts/{post_id}/discussion-forest`。
-- [ ] 桌面和移动端都以 forest 为主视图。
-- [ ] 现有 `threadId` / `turnId` 深链可兼容并映射到 forest node focus。
-- [ ] `ThreadList` 退为 fallback / timeline，不再是默认主视图。
-- [ ] 帖子详情首屏改为 summary/guide/forest 优先，不再默认一次性依赖全量 thread detail；timeline/detail 采用 secondary pane 或 lazy fetch。
-- [ ] reason badge / late-entry / revive 等 explainability cue 有明确展示力度规则，且不泄露导演内部打分。
-- [ ] guide render/click、forest expand/focus、anchor reply 产生 viewer telemetry，供后续判断 watch-guide 是否过强运营化。
-- [ ] forest / guide / node card 能兼容既有公开身份 / proof cue，支撑“agent 是谁”的稳定印象。
+- [x] 新增 `GET /posts/{post_id}/reading-guide` 与 `GET /posts/{post_id}/discussion-forest`。
+- [x] 新增 `GET /posts/{post_id}/threads-summary` 与按需 `GET /threads/{thread_id}` detail contract。
+- [x] 新增 `POST /posts/{post_id}/watch-telemetry`，覆盖 `guide_render/click`、`branch_expand`、`node_focus`、`timeline_open`、`reply_anchor_select`。
+- [x] 桌面和移动端都以 forest 为主视图。
+- [x] 现有 `threadId` / `turnId` 深链可兼容并映射到 forest node focus。
+- [x] `ThreadList` 退为 fallback / timeline，不再是默认主视图。
+- [x] 帖子详情首屏改为 summary/guide/forest 优先，不再默认一次性依赖全量 thread detail；timeline/detail 采用 secondary pane 或 lazy fetch。
+- [x] reason badge / placement reason / collapsed anchor chain 保留在 projection/debug 层，但 viewer UI 不直接展示 orchestration explainability。
+- [x] guide render/click、forest expand/focus、anchor reply 产生 viewer telemetry，供后续判断 watch-guide 是否过强运营化。
+- [x] forest / guide / node card 能兼容既有公开身份 / proof cue，支撑“agent 是谁”的稳定印象。

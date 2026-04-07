@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { useParams, Link, useSearchParams } from 'react-router'
 import { ArrowLeft, MessageCircle, MoreHorizontal } from 'lucide-react'
 import {
   usePost,
-  useThreads,
+  useThreadSummaries,
   useAudienceThread,
   useCreateAudienceMessage,
   useCreatePublicThread,
@@ -17,8 +17,9 @@ import {
   useCreateReport,
   useDiscussionForest,
   usePostParticipationContract,
+  useRecordForumWatchTelemetry,
 } from '@/api/hooks'
-import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
+import type { AftershowSnapshot } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -176,12 +177,11 @@ export function PostDetailPage() {
   const [publicReplyDraft, setPublicReplyDraft] = useState('')
   const [publicReplyError, setPublicReplyError] = useState<string | null>(null)
   const [safetyActionMessage, setSafetyActionMessage] = useState<string | null>(null)
+  const [stageView, setStageView] = useState<'forest' | 'timeline'>('forest')
   const [mobileTab, setMobileTab] = useState<'stage' | 'audience'>(() =>
     searchParams.get('aftershow_id') || searchParams.get('audience_message_id')
       ? 'audience'
-      : searchParams.get('threadId') || searchParams.get('turnId')
-        ? 'stage'
-        : 'stage',
+      : 'stage',
   )
   const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '', viewSourceParams)
   const postPayload = postData?.data ?? null
@@ -194,31 +194,18 @@ export function PostDetailPage() {
       Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta'))
   const focusedThreadIdFromQuery = searchParams.get('threadId')
   const focusedTurnIdFromQuery = searchParams.get('turnId')
-  const hasStageDeepLink = Boolean(focusedThreadIdFromQuery || focusedTurnIdFromQuery)
-  const threadsQueryParams = useMemo(
-    () =>
-      hasStageDeepLink
-        ? { limit: 500 }
-        : { limit: 200 },
-    [hasStageDeepLink],
-  )
-  const [stageView, setStageView] = useState<'forest' | 'timeline'>(() =>
-    hasStageDeepLink ? 'timeline' : 'forest',
-  )
-  const shouldLoadForest = !hasStageDeepLink || stageView === 'forest'
-  const shouldLoadThreads = stageView === 'timeline' || hasStageDeepLink
-  const { data: threadsData, isLoading: threadsLoading } = useThreads(
-    postId ?? '',
-    threadsQueryParams,
-    { enabled: shouldLoadThreads },
-  )
   const { data: forestData, isLoading: forestLoading } = useDiscussionForest(
     postId ?? '',
     {
       focus_thread_id: focusedThreadIdFromQuery ?? null,
       focus_turn_id: focusedTurnIdFromQuery ?? null,
     },
-    { enabled: shouldLoadForest },
+    { enabled: true },
+  )
+  const { data: threadSummariesData, isLoading: threadSummariesLoading } = useThreadSummaries(
+    postId ?? '',
+    { limit: 100 },
+    { enabled: stageView === 'timeline' },
   )
   const { data: participationContractData } = usePostParticipationContract(postId ?? '', {
     enabled: postPayload !== null,
@@ -245,6 +232,9 @@ export function PostDetailPage() {
   const createPublicTurn = useCreatePublicTurn()
   const createReport = useCreateReport()
   const createAppeal = useCreateAppeal()
+  const watchTelemetry = useRecordForumWatchTelemetry(postId ?? '')
+  const guideRenderRef = useRef<string | null>(null)
+  const previousStageViewRef = useRef<'forest' | 'timeline'>('forest')
   const { newThreadTurnCounts, clearNewThreadTurns } = useSseNewCounts()
   const newThreadTurnCount = (postId && newThreadTurnCounts[postId]) || 0
   const audienceThreadResult = audienceZoneEnabled ? audienceThreadData?.data : null
@@ -290,7 +280,7 @@ export function PostDetailPage() {
     () => toAftershowContentV1(aftershow?.aftershow_summary?.content ?? null),
     [aftershow?.aftershow_summary?.content],
   )
-  const threads = useMemo(() => threadsData?.data ?? [], [threadsData?.data])
+  const threadSummaries = useMemo(() => threadSummariesData?.data ?? [], [threadSummariesData?.data])
   const forest = useMemo(() => forestData?.data ?? null, [forestData?.data])
   const participationContract = participationContractData?.data ?? null
   const openReplyEnabled =
@@ -301,25 +291,31 @@ export function PostDetailPage() {
     focusedTurnIdFromQuery ?? focusedThreadIdFromQuery ?? null,
   )
   const stageFocus = useMemo(() => {
-    const findThreadForTurn = (turnId: string | null, items: PublicStageThreadData[]) => {
-      if (!turnId) return null
-      return items.find((thread) => thread.turns.some((turn) => turn.id === turnId)) ?? null
+    return {
+      threadId: forest?.focus_thread_id ?? focusedThreadIdFromQuery ?? null,
+      turnId: forest?.focus_turn_id ?? focusedTurnIdFromQuery ?? null,
     }
-
-    if (focusedThreadIdFromQuery || focusedTurnIdFromQuery) {
-      const owner = findThreadForTurn(focusedTurnIdFromQuery, threads)
-      return {
-        threadId: focusedThreadIdFromQuery ?? owner?.id ?? null,
-        turnId: focusedTurnIdFromQuery,
-      }
-    }
-    return { threadId: null, turnId: null }
-  }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery, threads])
+  }, [forest?.focus_thread_id, forest?.focus_turn_id, focusedThreadIdFromQuery, focusedTurnIdFromQuery])
   const selectedForestNode = useMemo(
     () => forest?.nodes.find((node) => node.id === selectedForestNodeId) ?? null,
     [forest?.nodes, selectedForestNodeId],
   )
   const composerAnchorNode = selectedForestNode && stageTurnReplyEnabled ? selectedForestNode : null
+  const recordWatchTelemetry = (input: {
+    event_type: 'guide_render' | 'guide_click' | 'branch_expand' | 'node_focus' | 'timeline_open' | 'reply_anchor_select'
+    thread_id?: string
+    turn_id?: string
+    branch_group_id?: string
+    source_surface?: string
+    source_shelf?: string
+  }) => {
+    if (!postId) return
+    watchTelemetry.mutate({
+      ...input,
+      source_surface: input.source_surface ?? 'post_detail',
+      source_shelf: input.source_shelf ?? stageView,
+    })
+  }
   const timelineFocus = useMemo(() => {
     if (selectedForestNode) {
       return {
@@ -408,10 +404,29 @@ export function PostDetailPage() {
   }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery])
 
   useEffect(() => {
-    if (hasStageDeepLink) {
-      setStageView('timeline')
+    if (!forest || forest.reading_guide.entries.length === 0) {
+      return
     }
-  }, [hasStageDeepLink])
+    const telemetryKey = `${postId ?? 'unknown'}:${forest.generated_at}`
+    if (guideRenderRef.current === telemetryKey) {
+      return
+    }
+    guideRenderRef.current = telemetryKey
+    recordWatchTelemetry({
+      event_type: 'guide_render',
+      thread_id: forest.reading_guide.entries[0]?.thread_id,
+      turn_id: forest.reading_guide.entries[0]?.focus_turn_id ?? undefined,
+      source_shelf: 'forest',
+    })
+  }, [forest, postId])
+
+  useEffect(() => {
+    const previous = previousStageViewRef.current
+    if (previous !== stageView && stageView === 'timeline') {
+      recordWatchTelemetry({ event_type: 'timeline_open', source_shelf: 'timeline' })
+    }
+    previousStageViewRef.current = stageView
+  }, [stageView])
 
   useEffect(() => {
     if (selectedForestNodeId || !forest) {
@@ -751,7 +766,7 @@ export function PostDetailPage() {
           onRefresh={() => {
             if (postId) clearNewThreadTurns(postId)
           }}
-          queryKey={['threads', postId]}
+          queryKey={['discussionForest', postId]}
         />
         {openReplyEnabled && (
           isAuthenticated ? (
@@ -842,16 +857,48 @@ export function PostDetailPage() {
               forest={forest}
               isLoading={forestLoading}
               selectedNodeId={selectedForestNodeId}
-              allowAnchorReply={stageTurnReplyEnabled}
-              onSelectNode={(node) => {
+              replyActionLabel={stageTurnReplyEnabled ? '回应这里' : null}
+              onSelectNode={(node, source) => {
                 setSelectedForestNodeId(node.id)
+                if (source === 'guide') {
+                  recordWatchTelemetry({
+                    event_type: 'guide_click',
+                    thread_id: node.thread_id,
+                    turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
+                    source_shelf: 'forest',
+                  })
+                  return
+                }
+                if (source === 'reply') {
+                  recordWatchTelemetry({
+                    event_type: 'reply_anchor_select',
+                    thread_id: node.thread_id,
+                    turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
+                    source_shelf: 'forest',
+                  })
+                  return
+                }
+                recordWatchTelemetry({
+                  event_type: 'node_focus',
+                  thread_id: node.thread_id,
+                  turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
+                  source_shelf: 'forest',
+                })
+              }}
+              onBranchExpand={(group) => {
+                recordWatchTelemetry({
+                  event_type: 'branch_expand',
+                  thread_id: group.thread_id,
+                  branch_group_id: group.id,
+                  source_shelf: 'forest',
+                })
               }}
             />
           </TabsContent>
           <TabsContent value="timeline" className="pt-4">
             <ThreadList
-              threads={threads}
-              isLoading={threadsLoading}
+              summaries={threadSummaries}
+              isLoading={threadSummariesLoading}
               targetThreadId={timelineFocus.threadId}
               targetTurnId={timelineFocus.turnId}
               enablePublicReplies={openReplyEnabled}

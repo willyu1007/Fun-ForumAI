@@ -6,7 +6,7 @@ import { PostDetailPage } from '../PostDetailPage'
 import type { AftershowSnapshot, AudienceThreadData, PostWithMeta } from '@/api/types'
 import {
   usePost,
-  useThreads,
+  useThreadSummaries,
   useAudienceThread,
   useCreateAudienceMessage,
   useCreatePublicThread,
@@ -18,13 +18,14 @@ import {
   useAgentProfile,
   useDiscussionForest,
   usePostParticipationContract,
+  useRecordForumWatchTelemetry,
 } from '@/api/hooks'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/api/hooks', () => ({
   usePost: vi.fn(),
-  useThreads: vi.fn(),
+  useThreadSummaries: vi.fn(),
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
   useCreatePublicThread: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock('@/api/hooks', () => ({
   useAgentProfile: vi.fn(),
   useDiscussionForest: vi.fn(),
   usePostParticipationContract: vi.fn(),
+  useRecordForumWatchTelemetry: vi.fn(),
 }))
 
 vi.mock('@/api/use-sse', () => ({
@@ -209,7 +211,7 @@ vi.mock('@/features/agents/components/AgentHoverCard', () => ({
 }))
 
 const usePostMock = vi.mocked(usePost)
-const useThreadsMock = vi.mocked(useThreads)
+const useThreadSummariesMock = vi.mocked(useThreadSummaries)
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
 const useCreatePublicThreadMock = vi.mocked(useCreatePublicThread)
@@ -221,6 +223,7 @@ const useAsideSeatsMock = vi.mocked(useAsideSeats)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
 const useDiscussionForestMock = vi.mocked(useDiscussionForest)
 const usePostParticipationContractMock = vi.mocked(usePostParticipationContract)
+const useRecordForumWatchTelemetryMock = vi.mocked(useRecordForumWatchTelemetry)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
 const useAuthMock = vi.mocked(useAuth)
 
@@ -343,7 +346,7 @@ describe('PostDetailPage', () => {
       clearNewThreadTurns: vi.fn(),
     } as never)
 
-    useThreadsMock.mockReturnValue({
+    useThreadSummariesMock.mockReturnValue({
       data: { data: [] },
       isLoading: false,
     } as never)
@@ -423,6 +426,7 @@ describe('PostDetailPage', () => {
     useDiscussionForestMock.mockReturnValue({
       data: {
         data: {
+          generated_at: '2026-03-01T00:00:00.000Z',
           reading_guide: {
             entries: [],
           },
@@ -435,6 +439,10 @@ describe('PostDetailPage', () => {
 
     usePostParticipationContractMock.mockReturnValue({
       data: undefined,
+    } as never)
+
+    useRecordForumWatchTelemetryMock.mockReturnValue({
+      mutate: vi.fn(),
     } as never)
   })
 
@@ -471,7 +479,7 @@ describe('PostDetailPage', () => {
     )
     expect(screen.getByTestId('discussion-forest')).toBeTruthy()
     expect(screen.queryByTestId('thread-list')).toBeNull()
-    expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 200 }, { enabled: false })
+    expect(useThreadSummariesMock).toHaveBeenCalledWith('post-1', { limit: 100 }, { enabled: false })
     expect(useDiscussionForestMock).toHaveBeenCalledWith(
       'post-1',
       {
@@ -754,7 +762,7 @@ describe('PostDetailPage', () => {
     })
   })
 
-  it('requests a larger thread page when opened from a stage deep link', () => {
+  it('keeps stage deep links on the forest first and defers timeline loading', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
@@ -763,23 +771,71 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1?turnId=turn-42')
 
-    expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 500 }, { enabled: true })
+    expect(useThreadSummariesMock).toHaveBeenCalledWith('post-1', { limit: 100 }, { enabled: false })
     expect(useDiscussionForestMock).toHaveBeenCalledWith(
       'post-1',
       {
         focus_thread_id: null,
         focus_turn_id: 'turn-42',
       },
-      { enabled: false },
+      { enabled: true },
     )
-    expect(screen.getByTestId('thread-list')).toBeTruthy()
+    expect(screen.queryByTestId('thread-list')).toBeNull()
   })
 
-  it('passes anchor-reply capability into the discussion forest from the participation contract', () => {
+  it('keeps node-internal replies out of the composer when the participation contract closes them', async () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
       error: null,
+    } as never)
+    useDiscussionForestMock.mockReturnValue({
+      data: {
+        data: {
+          generated_at: '2026-03-01T00:00:00.000Z',
+          focus_thread_id: 'thread-1',
+          focus_turn_id: 'thread-1',
+          reading_guide: {
+            entries: [
+              {
+                id: 'guide-1',
+                thread_id: 'thread-1',
+                focus_turn_id: null,
+                title: '先看这里',
+                teaser: 'guide teaser',
+                participant_count: 2,
+                turn_count: 2,
+                latest_activity_at: '2026-03-01T00:00:00.000Z',
+              },
+            ],
+          },
+          branch_groups: [
+            {
+              id: 'branch-1',
+              thread_id: 'thread-1',
+              display_title: '主分支',
+              participant_count: 2,
+              turn_count: 1,
+              latest_activity_at: '2026-03-01T00:00:00.000Z',
+            },
+          ],
+          nodes: [
+            {
+              id: 'thread-1',
+              thread_id: 'thread-1',
+              entry_kind: 'THREAD',
+              body: '主分支',
+              author: {
+                id: 'agent-1',
+                actor_type: 'agent',
+                display_name: 'Agent 1',
+                avatar_url: null,
+              },
+            },
+          ],
+        },
+      },
+      isLoading: false,
     } as never)
     usePostParticipationContractMock.mockReturnValue({
       data: {
@@ -792,11 +848,83 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(discussionForestMock).toHaveBeenCalledWith(
+    await waitFor(() => {
+      expect(
+        screen.getByText('当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'),
+      ).toBeTruthy()
+    })
+    expect(discussionForestMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        allowAnchorReply: false,
+        replyActionLabel: null,
       }),
     )
+  })
+
+  it('records watch telemetry and only enables timeline summaries after the viewer opens timeline', async () => {
+    const mutate = vi.fn()
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useRecordForumWatchTelemetryMock.mockReturnValue({
+      mutate,
+    } as never)
+    useDiscussionForestMock.mockReturnValue({
+      data: {
+        data: {
+          generated_at: '2026-03-01T00:00:00.000Z',
+          focus_thread_id: 'thread-1',
+          focus_turn_id: 'turn-1',
+          reading_guide: {
+            entries: [
+              {
+                id: 'guide-1',
+                thread_id: 'thread-1',
+                focus_turn_id: 'turn-1',
+                title: '先看这里',
+                teaser: 'guide teaser',
+                participant_count: 2,
+                turn_count: 3,
+                latest_activity_at: '2026-03-01T00:00:00.000Z',
+              },
+            ],
+          },
+          branch_groups: [],
+          nodes: [],
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    await waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event_type: 'guide_render',
+          thread_id: 'thread-1',
+          turn_id: 'turn-1',
+          source_surface: 'post_detail',
+          source_shelf: 'forest',
+        }),
+      )
+    })
+    expect(useThreadSummariesMock).toHaveBeenLastCalledWith('post-1', { limit: 100 }, { enabled: false })
+
+    fireEvent.click(screen.getByRole('tab', { name: '时间线' }))
+
+    await waitFor(() => {
+      expect(useThreadSummariesMock).toHaveBeenLastCalledWith('post-1', { limit: 100 }, { enabled: true })
+    })
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: 'timeline_open',
+        source_surface: 'post_detail',
+        source_shelf: 'timeline',
+      }),
+    )
+    expect(screen.getByTestId('thread-list')).toBeTruthy()
   })
 
   it('does not render the legacy governance banner for normal posts', () => {

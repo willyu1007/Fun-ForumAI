@@ -841,6 +841,118 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('GET /v1/posts/:postId/threads-summary and GET /v1/threads/:threadId expose summary-first timeline contracts', async () => {
+    const community = await createTestCommunity({
+      name: 'Thread Summary Community',
+      slug: `thread-summary-${Date.now()}`,
+    })
+    const rootAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Thread Summary Root' })
+    expect(rootAuthorRes.status).toBe(201)
+    const turnAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Thread Summary Turn' })
+    expect(turnAuthorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-thread-summary-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Thread summary target',
+      body: 'Post body for thread summary reads.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-thread-summary-root-${Date.now()}`,
+      body: 'Opening stage stance.',
+    })
+    expect(threadRes.status).toBe(201)
+    const threadId = threadRes.body.data.id as string
+
+    const firstTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: turnAuthorRes.body.data.id,
+      run_id: `run-thread-summary-turn-1-${Date.now()}`,
+      body: 'First stage turn.',
+    })
+    expect(firstTurnRes.status).toBe(201)
+    const firstTurnId = firstTurnRes.body.data.id as string
+
+    const secondTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-thread-summary-turn-2-${Date.now()}`,
+      body: 'Second stage turn.',
+    })
+    expect(secondTurnRes.status).toBe(201)
+    const secondTurnId = secondTurnRes.body.data.id as string
+
+    const summaryRes = await request(app).get(`/v1/posts/${postId}/threads-summary`)
+    expect(summaryRes.status).toBe(200)
+    expect(summaryRes.body.data).toHaveLength(1)
+    expect(summaryRes.body.data[0]).toMatchObject({
+      id: threadId,
+      post_id: postId,
+      starter_excerpt: 'Opening stage stance.',
+      latest_turn_id: secondTurnId,
+      latest_turn_excerpt: 'Second stage turn.',
+    })
+    expect(summaryRes.body.data[0].turns).toBeUndefined()
+
+    const cursorRes = await request(app)
+      .get(`/v1/threads/${threadId}`)
+      .query({ turn_limit: 1, turn_cursor: firstTurnId })
+    expect(cursorRes.status).toBe(200)
+    expect(cursorRes.body.data.turns_meta).toMatchObject({
+      requested_cursor: firstTurnId,
+      next_cursor: null,
+      limit: 1,
+      around_turn_id: null,
+      returned_mode: 'cursor',
+    })
+    expect(cursorRes.body.data.turns).toHaveLength(1)
+    expect(cursorRes.body.data.turns[0]).toMatchObject({
+      id: secondTurnId,
+      body: 'Second stage turn.',
+    })
+
+    const detailRes = await request(app)
+      .get(`/v1/threads/${threadId}`)
+      .query({
+        turn_limit: 1,
+        around_turn_id: secondTurnId,
+        include_projection: true,
+        include_capsule: true,
+      })
+    expect(detailRes.status).toBe(200)
+    expect(detailRes.body.data.turns_meta).toMatchObject({
+      requested_cursor: null,
+      next_cursor: null,
+      limit: 1,
+      around_turn_id: secondTurnId,
+      returned_mode: 'around',
+    })
+    expect(detailRes.body.data.turns).toHaveLength(1)
+    expect(detailRes.body.data.turns[0]).toMatchObject({
+      id: secondTurnId,
+      body: 'Second stage turn.',
+    })
+    expect(detailRes.body.data.display_projection).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: threadId, entry_kind: 'THREAD' }),
+        expect.objectContaining({ id: secondTurnId, entry_kind: 'TURN' }),
+      ]),
+    )
+    expect(detailRes.body.data.thread_capsule).toMatchObject({
+      thread_id: threadId,
+      latest_turn_id: secondTurnId,
+    })
+  })
+
   it('GET /v1/posts/:postId/reading-guide and /v1/posts/:postId/discussion-forest return post-detail projections', async () => {
     const community = await createTestCommunity({
       name: 'Discussion Forest Community',
@@ -1038,6 +1150,35 @@ describe('E2E: Read API (public)', () => {
       }),
       evidence_window_turns: expect.any(Array),
     })
+  })
+
+  it('POST /v1/posts/:postId/watch-telemetry validates payloads and accepts public watch events', async () => {
+    const acceptedRes = await request(app)
+      .post('/v1/posts/post-telemetry/watch-telemetry')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        event_type: 'guide_click',
+        thread_id: 'thread-telemetry',
+        turn_id: 'turn-telemetry',
+        source_surface: 'post_detail',
+        source_shelf: 'forest',
+      })
+
+    expect(acceptedRes.status).toBe(202)
+    expect(acceptedRes.body).toEqual({
+      data: {
+        accepted: true,
+      },
+    })
+
+    const invalidRes = await request(app)
+      .post('/v1/posts/post-telemetry/watch-telemetry')
+      .send({
+        event_type: 'unknown_event',
+      })
+
+    expect(invalidRes.status).toBe(400)
+    expect(invalidRes.body.error.code).toBe('VALIDATION_ERROR')
   })
 
   it('GET /v1/posts/:postId does not block on slow rollout profile evaluation when aftershow web is enabled', async () => {

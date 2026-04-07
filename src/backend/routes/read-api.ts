@@ -22,6 +22,7 @@ import {
   viewerPublicViewService,
   publicAgentRelationSummaryService,
   viewerPublicWriteService,
+  forumWatchTelemetryService,
   guidanceOrchestrator,
   guidanceStateService,
   publicStageThreadRepo,
@@ -31,6 +32,7 @@ import { config } from '../lib/config.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { requireAdmin, requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
+import type { ForumWatchTelemetryEventType } from '../services/forum-watch-telemetry-service.js'
 import type { CreateViewerPublicViewEventInput } from '../repos/index.js'
 import type { PostWithMeta as ForumPostWithMeta } from '../services/forum-read-service.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
@@ -49,6 +51,7 @@ import {
   createFeedbackSchema,
   feedbackCategorySchema,
   feedbackStatusSchema,
+  forumWatchTelemetrySchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
 import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
@@ -94,6 +97,13 @@ function readQueryNumber(value: unknown): number | null {
   if (typeof value !== 'string' || value.trim().length === 0) return null
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function readQueryBoolean(value: unknown): boolean | null {
+  if (typeof value !== 'string') return null
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return null
 }
 
 function readSourceContext(req: Request): {
@@ -697,6 +707,27 @@ readApiRouter.get('/posts/:postId/threads', async (req, res) => {
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
+readApiRouter.get('/posts/:postId/threads-summary', async (req, res) => {
+  const user = tryAuthenticateHuman(req)
+  const { cursor, limit } = req.query as Record<string, string | undefined>
+  const parsedLimit = limit ? parseInt(limit, 10) : undefined
+  if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Invalid limit parameter' },
+    })
+    return
+  }
+  const result = await forumReadService.getThreadSummaries(
+    req.params.postId,
+    {
+      cursor,
+      limit: parsedLimit,
+    },
+    user?.userId,
+  )
+  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+})
+
 readApiRouter.get('/posts/:postId/reading-guide', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const data = await forumReadService.getReadingGuide(req.params.postId, user?.userId)
@@ -714,6 +745,35 @@ readApiRouter.get('/posts/:postId/discussion-forest', async (req, res) => {
     user?.userId,
   )
   res.json({ data })
+})
+
+readApiRouter.post('/posts/:postId/watch-telemetry', validate(forumWatchTelemetrySchema), (req, res) => {
+  const parsed = req.body as {
+    event_type: ForumWatchTelemetryEventType
+    thread_id?: string | string[]
+    turn_id?: string | string[]
+    branch_group_id?: string | string[]
+    source_surface?: string | string[]
+    source_shelf?: string | string[]
+  }
+  const threadId = typeof parsed.thread_id === 'string' ? parsed.thread_id : undefined
+  const turnId = typeof parsed.turn_id === 'string' ? parsed.turn_id : undefined
+  const branchGroupId = typeof parsed.branch_group_id === 'string' ? parsed.branch_group_id : undefined
+  const sourceSurface = typeof parsed.source_surface === 'string' ? parsed.source_surface : undefined
+  const sourceShelf = typeof parsed.source_shelf === 'string' ? parsed.source_shelf : undefined
+  const actor = resolveGuidanceActorContext(req, res)
+  forumWatchTelemetryService.record({
+    post_id: String(req.params.postId),
+    event_type: parsed.event_type,
+    actor_type: actor.actor_type,
+    actor_id: actor.actor_id,
+    thread_id: threadId,
+    turn_id: turnId,
+    branch_group_id: branchGroupId,
+    source_surface: sourceSurface,
+    source_shelf: sourceShelf,
+  })
+  res.status(202).json({ data: { accepted: true } })
 })
 
 readApiRouter.get(
@@ -775,7 +835,26 @@ readApiRouter.get(
 
 readApiRouter.get('/threads/:threadId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
-  const data = await forumReadService.getThread(req.params.threadId, user?.userId)
+  const turnLimit = readQueryNumber(req.query.turn_limit)
+  if (turnLimit !== null && turnLimit < 1) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Invalid turn_limit parameter' },
+    })
+    return
+  }
+  const includeProjection = readQueryBoolean(req.query.include_projection)
+  const includeCapsule = readQueryBoolean(req.query.include_capsule)
+  const data = await forumReadService.getThread(
+    req.params.threadId,
+    {
+      turn_cursor: readQueryString(req.query.turn_cursor),
+      turn_limit: turnLimit ?? undefined,
+      around_turn_id: readQueryString(req.query.around_turn_id),
+      include_projection: includeProjection ?? false,
+      include_capsule: includeCapsule ?? false,
+    },
+    user?.userId,
+  )
   res.json({ data })
 })
 
