@@ -10,11 +10,14 @@ import {
   useAudienceThread,
   useCreateAudienceMessage,
   useCreatePublicThread,
+  useCreatePublicTurn,
   useCreateAppeal,
   useCreateReport,
   useAftershow,
   useAsideSeats,
   useAgentProfile,
+  useDiscussionForest,
+  usePostParticipationContract,
 } from '@/api/hooks'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
@@ -25,11 +28,14 @@ vi.mock('@/api/hooks', () => ({
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
   useCreatePublicThread: vi.fn(),
+  useCreatePublicTurn: vi.fn(),
   useCreateReport: vi.fn(),
   useCreateAppeal: vi.fn(),
   useAftershow: vi.fn(),
   useAsideSeats: vi.fn(),
   useAgentProfile: vi.fn(),
+  useDiscussionForest: vi.fn(),
+  usePostParticipationContract: vi.fn(),
 }))
 
 vi.mock('@/api/use-sse', () => ({
@@ -184,6 +190,12 @@ vi.mock('../../components/ThreadList', () => ({
   ThreadList: (props: unknown) => threadListMock(props),
 }))
 
+const discussionForestMock = vi.fn((_props: unknown) => <div data-testid="discussion-forest" />)
+
+vi.mock('../../components/DiscussionForest', () => ({
+  DiscussionForest: (props: unknown) => discussionForestMock(props),
+}))
+
 vi.mock('../../components/NewContentBanner', () => ({
   NewContentBanner: () => <div data-testid="new-content-banner" />,
 }))
@@ -201,11 +213,14 @@ const useThreadsMock = vi.mocked(useThreads)
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
 const useCreatePublicThreadMock = vi.mocked(useCreatePublicThread)
+const useCreatePublicTurnMock = vi.mocked(useCreatePublicTurn)
 const useCreateReportMock = vi.mocked(useCreateReport)
 const useCreateAppealMock = vi.mocked(useCreateAppeal)
 const useAftershowMock = vi.mocked(useAftershow)
 const useAsideSeatsMock = vi.mocked(useAsideSeats)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
+const useDiscussionForestMock = vi.mocked(useDiscussionForest)
+const usePostParticipationContractMock = vi.mocked(usePostParticipationContract)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
 const useAuthMock = vi.mocked(useAuth)
 
@@ -378,6 +393,10 @@ describe('PostDetailPage', () => {
       isPending: false,
       mutateAsync: vi.fn(),
     } as never)
+    useCreatePublicTurnMock.mockReturnValue({
+      isPending: false,
+      mutateAsync: vi.fn(),
+    } as never)
 
     useCreateReportMock.mockReturnValue({
       isPending: false,
@@ -399,6 +418,23 @@ describe('PostDetailPage', () => {
           is_followed: false,
         },
       },
+    } as never)
+
+    useDiscussionForestMock.mockReturnValue({
+      data: {
+        data: {
+          reading_guide: {
+            entries: [],
+          },
+          branch_groups: [],
+          nodes: [],
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    usePostParticipationContractMock.mockReturnValue({
+      data: undefined,
     } as never)
   })
 
@@ -433,9 +469,21 @@ describe('PostDetailPage', () => {
     expect(screen.getByTestId('post-detail-rail-shell').getAttribute('class')).toContain(
       'bg-muted/70',
     )
-    expect(screen.getByTestId('thread-list')).toBeTruthy()
+    expect(screen.getByTestId('discussion-forest')).toBeTruthy()
+    expect(screen.queryByTestId('thread-list')).toBeNull()
+    expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 200 }, { enabled: false })
+    expect(useDiscussionForestMock).toHaveBeenCalledWith(
+      'post-1',
+      {
+        focus_thread_id: null,
+        focus_turn_id: null,
+      },
+      { enabled: true },
+    )
     expect(screen.queryByText('主舞台')).toBeNull()
     expect(screen.queryByRole('tab', { name: '舞台' })).toBeNull()
+    expect(screen.getByRole('tab', { name: '讨论森林' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '时间线' })).toBeTruthy()
   })
 
   it('keeps the post body aligned with the main column while placing the back button in a separate gutter', () => {
@@ -715,7 +763,40 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1?turnId=turn-42')
 
-    expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 500 })
+    expect(useThreadsMock).toHaveBeenCalledWith('post-1', { limit: 500 }, { enabled: true })
+    expect(useDiscussionForestMock).toHaveBeenCalledWith(
+      'post-1',
+      {
+        focus_thread_id: null,
+        focus_turn_id: 'turn-42',
+      },
+      { enabled: false },
+    )
+    expect(screen.getByTestId('thread-list')).toBeTruthy()
+  })
+
+  it('passes anchor-reply capability into the discussion forest from the participation contract', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    usePostParticipationContractMock.mockReturnValue({
+      data: {
+        data: {
+          stage_thread_entry_enabled: true,
+          stage_turn_reply_enabled: false,
+        },
+      },
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(discussionForestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowAnchorReply: false,
+      }),
+    )
   })
 
   it('does not render the legacy governance banner for normal posts', () => {

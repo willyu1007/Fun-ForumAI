@@ -6,6 +6,12 @@ import type {
   ApiResponse,
   HomeProgrammingPayload,
   PostWithMeta,
+  ReadingGuideProjection,
+  DiscussionForestProjection,
+  EffectiveParticipationContract,
+  ParticipationContract,
+  ViewerWriteResult,
+  ViewerWriteSourceContext,
   PublicStageThreadData,
   Community,
   HealthData,
@@ -59,14 +65,63 @@ export function usePost(postId: string, params?: ViewSourceParams) {
   })
 }
 
-export function useThreads(postId: string, params?: PaginationParams) {
+export function useReadingGuide(postId: string) {
+  return useQuery({
+    queryKey: queryKeys.readingGuide(postId),
+    queryFn: () => api.get(`posts/${postId}/reading-guide`).json<ApiResponse<ReadingGuideProjection>>(),
+    enabled: !!postId,
+  })
+}
+
+export function useDiscussionForest(
+  postId: string,
+  params?: { focus_thread_id?: string | null; focus_turn_id?: string | null },
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.discussionForest(postId, params),
+    queryFn: () =>
+      api
+        .get(`posts/${postId}/discussion-forest${toSearchString(params ?? undefined)}`)
+        .json<ApiResponse<DiscussionForestProjection>>(),
+    enabled: !!postId && (options?.enabled ?? true),
+  })
+}
+
+export function useCommunityParticipationContract(communityId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.communityParticipationContract(communityId),
+    queryFn: () =>
+      api
+        .get(`communities/${communityId}/participation-contract`)
+        .json<ApiResponse<ParticipationContract>>(),
+    enabled: !!communityId && (options?.enabled ?? true),
+  })
+}
+
+export function usePostParticipationContract(postId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.postParticipationContract(postId),
+    queryFn: () =>
+      api
+        .get(`posts/${postId}/participation-contract`)
+        .json<ApiResponse<EffectiveParticipationContract>>(),
+    enabled: !!postId && (options?.enabled ?? true),
+  })
+}
+
+export function useThreads(
+  postId: string,
+  params?: PaginationParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: queryKeys.threads(postId, params),
     queryFn: () =>
       api
         .get(`posts/${postId}/threads${toSearchString(params)}`)
         .json<ApiResponse<PublicStageThreadData[]>>(),
-    enabled: !!postId,
+    enabled: !!postId && (options?.enabled ?? true),
   })
 }
 
@@ -94,12 +149,22 @@ export function useCreateAudienceMessage(postId: string) {
 export function useCreatePublicThread(postId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: string) =>
-      api.post(`posts/${postId}/public-threads`, { json: { body } }).json<ApiResponse<PublicStageThreadData>>(),
+    mutationFn: (input: string | {
+      body: string
+      idempotency_key?: string | null
+      source_context?: ViewerWriteSourceContext | null
+    }) => {
+      const payload = typeof input === 'string' ? { body: input } : input
+      return api
+        .post(`viewer/posts/${postId}/public-threads`, { json: payload })
+        .json<ApiResponse<ViewerWriteResult<PublicStageThreadData>>>()
+    },
     onSuccess: (response) => {
       qc.invalidateQueries({ queryKey: ['threads', postId] })
+      qc.invalidateQueries({ queryKey: ['discussionForest', postId] })
+      qc.invalidateQueries({ queryKey: queryKeys.readingGuide(postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
-      qc.invalidateQueries({ queryKey: queryKeys.thread(response.data.id) })
+      qc.invalidateQueries({ queryKey: queryKeys.thread(response.data.data.id) })
     },
   })
 }
@@ -112,16 +177,28 @@ export function useCreatePublicTurn() {
       postId: string
       body: string
       anchor_turn_id?: string | null
+      focused_turn_id?: string | null
+      actual_anchor_turn_id?: string | null
+      quoted_excerpt?: string | null
+      idempotency_key?: string | null
+      source_context?: ViewerWriteSourceContext | null
     }) =>
-      api.post(`threads/${input.threadId}/public-turns`, {
+      api.post(`viewer/threads/${input.threadId}/public-turns`, {
         json: {
           body: input.body,
           anchor_turn_id: input.anchor_turn_id ?? null,
+          focused_turn_id: input.focused_turn_id ?? input.anchor_turn_id ?? null,
+          actual_anchor_turn_id: input.actual_anchor_turn_id ?? input.anchor_turn_id ?? null,
+          quoted_excerpt: input.quoted_excerpt ?? null,
+          idempotency_key: input.idempotency_key ?? null,
+          source_context: input.source_context ?? null,
         },
-      }).json<ApiResponse<PublicStageThreadData>>(),
+      }).json<ApiResponse<ViewerWriteResult<PublicStageThreadData>>>(),
     onSuccess: (_response, input) => {
       qc.invalidateQueries({ queryKey: queryKeys.thread(input.threadId) })
       qc.invalidateQueries({ queryKey: ['threads', input.postId] })
+      qc.invalidateQueries({ queryKey: ['discussionForest', input.postId] })
+      qc.invalidateQueries({ queryKey: queryKeys.readingGuide(input.postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(input.postId) })
     },
   })

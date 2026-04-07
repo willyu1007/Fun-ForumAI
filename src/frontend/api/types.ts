@@ -40,6 +40,18 @@ export type {
   PublicSearchResponse,
 } from '../../shared/public-search.js'
 export type {
+  AttentionOpportunity,
+  DiscussionBranchGroup,
+  DiscussionForestProjection,
+  EffectiveParticipationContract,
+  ParticipationContract,
+  ReadingGuideProjection,
+  TurnDisplayProjection,
+  TurnReasonBadgeId,
+  ViewerWriteResult,
+  ViewerWriteSourceContext,
+} from '../../shared/forum-orchestration.js'
+export type {
   AgentPublicIdentity,
   AgentPublicIdentityBadge,
   AgentPublicProjection,

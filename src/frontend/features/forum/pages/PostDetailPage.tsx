@@ -9,11 +9,14 @@ import {
   useAudienceThread,
   useCreateAudienceMessage,
   useCreatePublicThread,
+  useCreatePublicTurn,
   useAftershow,
   useAsideSeats,
   useAgentProfile,
   useCreateAppeal,
   useCreateReport,
+  useDiscussionForest,
+  usePostParticipationContract,
 } from '@/api/hooks'
 import type { AftershowSnapshot, PublicStageThreadData } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -32,6 +35,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ModerationBadge } from '../components/ModerationBadge'
 import { ThreadList } from '../components/ThreadList'
+import { DiscussionForest } from '../components/DiscussionForest'
 import { NewContentBanner } from '../components/NewContentBanner'
 import { HumanVoteControls } from '../components/HumanVoteControls'
 import { SharePopover } from '../components/SharePopover'
@@ -190,17 +194,35 @@ export function PostDetailPage() {
       Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta'))
   const focusedThreadIdFromQuery = searchParams.get('threadId')
   const focusedTurnIdFromQuery = searchParams.get('turnId')
+  const hasStageDeepLink = Boolean(focusedThreadIdFromQuery || focusedTurnIdFromQuery)
   const threadsQueryParams = useMemo(
     () =>
-      focusedThreadIdFromQuery || focusedTurnIdFromQuery
+      hasStageDeepLink
         ? { limit: 500 }
         : { limit: 200 },
-    [focusedThreadIdFromQuery, focusedTurnIdFromQuery],
+    [hasStageDeepLink],
   )
+  const [stageView, setStageView] = useState<'forest' | 'timeline'>(() =>
+    hasStageDeepLink ? 'timeline' : 'forest',
+  )
+  const shouldLoadForest = !hasStageDeepLink || stageView === 'forest'
+  const shouldLoadThreads = stageView === 'timeline' || hasStageDeepLink
   const { data: threadsData, isLoading: threadsLoading } = useThreads(
     postId ?? '',
     threadsQueryParams,
+    { enabled: shouldLoadThreads },
   )
+  const { data: forestData, isLoading: forestLoading } = useDiscussionForest(
+    postId ?? '',
+    {
+      focus_thread_id: focusedThreadIdFromQuery ?? null,
+      focus_turn_id: focusedTurnIdFromQuery ?? null,
+    },
+    { enabled: shouldLoadForest },
+  )
+  const { data: participationContractData } = usePostParticipationContract(postId ?? '', {
+    enabled: postPayload !== null,
+  })
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
     enabled: postPayload !== null && audienceZoneEnabled,
   })
@@ -220,6 +242,7 @@ export function PostDetailPage() {
   })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
   const createPublicThread = useCreatePublicThread(postId ?? '')
+  const createPublicTurn = useCreatePublicTurn()
   const createReport = useCreateReport()
   const createAppeal = useCreateAppeal()
   const { newThreadTurnCounts, clearNewThreadTurns } = useSseNewCounts()
@@ -268,7 +291,15 @@ export function PostDetailPage() {
     [aftershow?.aftershow_summary?.content],
   )
   const threads = useMemo(() => threadsData?.data ?? [], [threadsData?.data])
-  const openReplyEnabled = postPayload?.interaction_contract?.public_participation_mode === 'open_reply'
+  const forest = useMemo(() => forestData?.data ?? null, [forestData?.data])
+  const participationContract = participationContractData?.data ?? null
+  const openReplyEnabled =
+    participationContract?.stage_thread_entry_enabled
+    ?? (postPayload?.interaction_contract?.public_participation_mode === 'open_reply')
+  const stageTurnReplyEnabled = participationContract?.stage_turn_reply_enabled ?? openReplyEnabled
+  const [selectedForestNodeId, setSelectedForestNodeId] = useState<string | null>(
+    focusedTurnIdFromQuery ?? focusedThreadIdFromQuery ?? null,
+  )
   const stageFocus = useMemo(() => {
     const findThreadForTurn = (turnId: string | null, items: PublicStageThreadData[]) => {
       if (!turnId) return null
@@ -284,6 +315,20 @@ export function PostDetailPage() {
     }
     return { threadId: null, turnId: null }
   }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery, threads])
+  const selectedForestNode = useMemo(
+    () => forest?.nodes.find((node) => node.id === selectedForestNodeId) ?? null,
+    [forest?.nodes, selectedForestNodeId],
+  )
+  const composerAnchorNode = selectedForestNode && stageTurnReplyEnabled ? selectedForestNode : null
+  const timelineFocus = useMemo(() => {
+    if (selectedForestNode) {
+      return {
+        threadId: selectedForestNode.thread_id,
+        turnId: selectedForestNode.entry_kind === 'TURN' ? selectedForestNode.id : null,
+      }
+    }
+    return stageFocus
+  }, [selectedForestNode, stageFocus])
   const focusedAftershowId = searchParams.get('aftershow_id')
   const focusedCalloutIndexRaw = searchParams.get('callout_index')
   const focusedCalloutIndex = focusedCalloutIndexRaw
@@ -355,6 +400,32 @@ export function PostDetailPage() {
     }
   }, [focusedAudienceMessageId, renderedAudienceMessages, mobileTab])
 
+  useEffect(() => {
+    const nextFocusedId = focusedTurnIdFromQuery ?? focusedThreadIdFromQuery ?? null
+    if (nextFocusedId) {
+      setSelectedForestNodeId(nextFocusedId)
+    }
+  }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery])
+
+  useEffect(() => {
+    if (hasStageDeepLink) {
+      setStageView('timeline')
+    }
+  }, [hasStageDeepLink])
+
+  useEffect(() => {
+    if (selectedForestNodeId || !forest) {
+      return
+    }
+    const firstGuideNodeId = forest.reading_guide.entries[0]?.focus_turn_id
+      ?? forest.reading_guide.entries[0]?.thread_id
+      ?? forest.nodes[0]?.id
+      ?? null
+    if (firstGuideNodeId) {
+      setSelectedForestNodeId(firstGuideNodeId)
+    }
+  }, [forest, selectedForestNodeId])
+
   if (postLoading) {
     return (
       <div className="space-y-3">
@@ -417,6 +488,49 @@ export function PostDetailPage() {
       setAudienceDraft('')
     } catch (error) {
       setAudienceDraftError(error instanceof Error ? error.message : '发布失败，请稍后重试')
+    }
+  }
+
+  const handleSubmitStageReply = async () => {
+    const body = publicReplyDraft.trim()
+    if (!body || !postId) {
+      setPublicReplyError('回复内容不能为空。')
+      return
+    }
+    const idempotencyKey = `viewer-stage:${postId}:${Date.now()}`
+    try {
+      if (composerAnchorNode) {
+        await createPublicTurn.mutateAsync({
+          threadId: composerAnchorNode.thread_id,
+          postId: postId,
+          body,
+          anchor_turn_id: composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null,
+          focused_turn_id: composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null,
+          actual_anchor_turn_id: composerAnchorNode.actual_anchor_turn_id
+            ?? (composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null),
+          quoted_excerpt: composerAnchorNode.body.slice(0, 180),
+          idempotency_key: idempotencyKey,
+          source_context: {
+            discovered_via: 'discussion_forest',
+            source_surface: 'post_detail',
+            source_shelf: stageView,
+          },
+        })
+      } else {
+        await createPublicThread.mutateAsync({
+          body,
+          idempotency_key: idempotencyKey,
+          source_context: {
+            discovered_via: forest ? 'discussion_forest' : 'timeline',
+            source_surface: 'post_detail',
+            source_shelf: stageView,
+          },
+        })
+      }
+      setPublicReplyDraft('')
+      setPublicReplyError(null)
+    } catch (error) {
+      setPublicReplyError(error instanceof Error ? error.message : '提交失败，请稍后重试。')
     }
   }
 
@@ -642,19 +756,54 @@ export function PostDetailPage() {
         {openReplyEnabled && (
           isAuthenticated ? (
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">加入公开讨论</p>
-                <p className="text-xs text-muted-foreground">
-                  你的发言会直接进入主线程，其他人和智能体都能看到。
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {composerAnchorNode ? '回应当前节点' : '发起新的公开分支'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {composerAnchorNode
+                      ? `你的发言会顺着 ${composerAnchorNode.author.display_name} 的这条${composerAnchorNode.entry_kind === 'TURN' ? '发言' : '分支开场'}继续。`
+                      : '你的发言会直接进入主舞台，并形成新的公开讨论分支。'}
+                  </p>
+                </div>
+                {composerAnchorNode ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setSelectedForestNodeId(null)}
+                  >
+                    清除锚点
+                  </Button>
+                ) : null}
               </div>
+              {composerAnchorNode ? (
+                <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    当前锚点 · {composerAnchorNode.author.display_name}
+                  </p>
+                  <RichTextLite text={composerAnchorNode.body} className="mt-1 text-xs leading-6 text-foreground/80" />
+                </div>
+              ) : null}
+              {selectedForestNode && !composerAnchorNode ? (
+                <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    当前聚焦节点 · {selectedForestNode.author.display_name}
+                  </p>
+                  <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                    当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。
+                  </p>
+                </div>
+              ) : null}
               <Textarea
                 value={publicReplyDraft}
                 onChange={(event) => {
                   setPublicReplyDraft(event.target.value)
                   if (publicReplyError) setPublicReplyError(null)
                 }}
-                placeholder="补充你的观点、提问，或给出新的线索…"
+                placeholder={composerAnchorNode ? '顺着这个节点继续回应…' : '补充你的观点、提问，或给出新的线索…'}
                 className="mt-3 min-h-[120px] resize-y text-sm"
               />
               {publicReplyError && (
@@ -663,23 +812,16 @@ export function PostDetailPage() {
               <div className="mt-3 flex justify-end">
                 <Button
                   type="button"
-                  disabled={createPublicThread.isPending}
-                  onClick={async () => {
-                    const body = publicReplyDraft.trim()
-                    if (!body) {
-                      setPublicReplyError('回复内容不能为空。')
-                      return
-                    }
-                    try {
-                      await createPublicThread.mutateAsync(body)
-                      setPublicReplyDraft('')
-                      setPublicReplyError(null)
-                    } catch (error) {
-                      setPublicReplyError(error instanceof Error ? error.message : '提交失败，请稍后重试。')
-                    }
+                  disabled={createPublicThread.isPending || createPublicTurn.isPending}
+                  onClick={() => {
+                    void handleSubmitStageReply()
                   }}
                 >
-                  {createPublicThread.isPending ? '提交中…' : '发起公开回复'}
+                  {createPublicThread.isPending || createPublicTurn.isPending
+                    ? '提交中…'
+                    : composerAnchorNode
+                      ? '发送回应'
+                      : '发起公开回复'}
                 </Button>
               </div>
             </div>
@@ -689,13 +831,33 @@ export function PostDetailPage() {
             </div>
           )
         )}
-        <ThreadList
-          threads={threads}
-          isLoading={threadsLoading}
-          targetThreadId={stageFocus.threadId}
-          targetTurnId={stageFocus.turnId}
-          enablePublicReplies={openReplyEnabled}
-        />
+        <Tabs value={stageView} onValueChange={(value) => setStageView(value as 'forest' | 'timeline')}>
+          <TabsList variant="line" className="w-full justify-start">
+            <TabsTrigger value="forest">讨论森林</TabsTrigger>
+            <TabsTrigger value="timeline">时间线</TabsTrigger>
+          </TabsList>
+          <TabsContent value="forest" className="pt-4">
+            <DiscussionForest
+              postId={post.id}
+              forest={forest}
+              isLoading={forestLoading}
+              selectedNodeId={selectedForestNodeId}
+              allowAnchorReply={stageTurnReplyEnabled}
+              onSelectNode={(node) => {
+                setSelectedForestNodeId(node.id)
+              }}
+            />
+          </TabsContent>
+          <TabsContent value="timeline" className="pt-4">
+            <ThreadList
+              threads={threads}
+              isLoading={threadsLoading}
+              targetThreadId={timelineFocus.threadId}
+              targetTurnId={timelineFocus.turnId}
+              enablePublicReplies={openReplyEnabled}
+            />
+          </TabsContent>
+        </Tabs>
       </section>
     </div>
   )

@@ -237,6 +237,46 @@ describe('ThreadList', () => {
     expect(screen.getByText('turn reply body')).toBeTruthy()
   })
 
+  it('submits timeline replies through the viewer write contract', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ data: buildThread() })
+    useCreatePublicTurnMock.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    } as never)
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1234)
+
+    try {
+      render(
+        <MemoryRouter>
+          <ThreadList threads={[buildThread()]} enablePublicReplies />
+        </MemoryRouter>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: '回复' }))
+      fireEvent.change(screen.getByPlaceholderText('加入这条公开线程的回复…'), {
+        target: { value: '来自时间线的公开回应' },
+      })
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: '发送回复' }))
+      })
+
+      expect(mutateAsync).toHaveBeenCalledWith({
+        threadId: 'thread-1',
+        postId: 'post-1',
+        body: '来自时间线的公开回应',
+        idempotency_key: 'viewer-timeline:post-1:thread-1:1234',
+        source_context: {
+          discovered_via: 'timeline',
+          source_surface: 'post_detail',
+          source_shelf: 'timeline',
+        },
+      })
+    } finally {
+      dateNowSpy.mockRestore()
+    }
+  })
+
   it('renders a minimal route handoff note and CTA link', () => {
     render(
       <MemoryRouter>

@@ -249,10 +249,17 @@ export function ThreadList({
     }
 
     try {
+      const idempotencyKey = `viewer-timeline:${thread.post_id}:${thread.id}:${Date.now()}`
       await createPublicTurn.mutateAsync({
         threadId: thread.id,
         postId: thread.post_id,
         body,
+        idempotency_key: idempotencyKey,
+        source_context: {
+          discovered_via: 'timeline',
+          source_surface: 'post_detail',
+          source_shelf: 'timeline',
+        },
       })
       setReplyDraftByThreadId((current) => ({ ...current, [thread.id]: '' }))
       setReplyErrorByThreadId((current) => ({ ...current, [thread.id]: null }))

@@ -8,6 +8,13 @@ export const queryKeys = {
   homeProgramming: ['homeProgramming'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,
   post: (postId: string) => ['post', postId] as const,
+  readingGuide: (postId: string) => ['readingGuide', postId] as const,
+  discussionForest: (
+    postId: string,
+    params?: { focus_thread_id?: string | null; focus_turn_id?: string | null },
+  ) => ['discussionForest', postId, params ?? null] as const,
+  communityParticipationContract: (communityId: string) => ['communityParticipationContract', communityId] as const,
+  postParticipationContract: (postId: string) => ['postParticipationContract', postId] as const,
   threads: (postId: string, params?: PaginationParams) => ['threads', postId, params] as const,
   thread: (threadId: string) => ['thread', threadId] as const,
   audienceThread: (postId: string) => ['audienceThread', postId] as const,
