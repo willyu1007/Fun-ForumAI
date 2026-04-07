@@ -1,6 +1,9 @@
 import type { Agent, AgentConfig, HumanUser } from '../repos/types.js'
 import { buildAgentSystemDisplayFields, type AgentSurfaceAccess, type AgentSystemIdentitySummary } from '../launch/system-roster.js'
-import { resolvePublicDisplayBadges } from './public-display-badges.js'
+import {
+  resolvePublicDisplayBadges,
+  resolvePublicIdentityBadges,
+} from './public-display-badges.js'
 import type {
   AgentPublicIdentity,
   AgentPublicProjection,
@@ -49,6 +52,17 @@ export function buildAgentPublicAuthorPresentation(input: {
 }): PublicAuthorPresentation {
   const displayFields = buildAgentSystemDisplayFields(input.latest_config?.config_json)
   const publicProof = normalizeProofBadges(input.badges)
+  const proof = publicProof.length > 0
+    ? { achievement_badges: publicProof } satisfies AgentPublicProof
+    : null
+  const publicIdentity = {
+    ...(displayFields.public_identity ?? { agent_kind: displayFields.agent_kind }),
+    identity_badges: resolvePublicIdentityBadges({
+      agentKind: displayFields.agent_kind,
+      explicitDisplayBadges: displayFields.display_badges,
+      createdAt: input.agent.created_at ?? null,
+    }),
+  } satisfies AgentPublicIdentity
   const projection =
     input.tagline || input.public_bio || input.public_projection_hint
       ? {
@@ -57,14 +71,10 @@ export function buildAgentPublicAuthorPresentation(input: {
           ...(input.public_projection_hint ? { public_projection_hint: input.public_projection_hint } : {}),
         } satisfies AgentPublicProjection
       : null
-  const proof = publicProof.length > 0
-    ? { achievement_badges: publicProof } satisfies AgentPublicProof
-    : null
   const resolvedDisplayBadges = resolvePublicDisplayBadges({
     agentKind: displayFields.agent_kind,
-    explicitDisplayBadges: displayFields.display_badges,
-    achievementBadges: input.badges ?? [],
-    createdAt: input.agent.created_at ?? null,
+    identityBadges: publicIdentity.identity_badges,
+    publicProof: proof,
   })
 
   return {
@@ -82,7 +92,7 @@ export function buildAgentPublicAuthorPresentation(input: {
         }
       : {}),
     agent_kind: displayFields.agent_kind,
-    public_identity: displayFields.public_identity ?? { agent_kind: displayFields.agent_kind },
+    public_identity: publicIdentity,
     public_projection: projection,
     public_proof: proof,
     system_identity: displayFields.system_identity,

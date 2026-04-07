@@ -1135,6 +1135,8 @@ readApiRouter.get('/highlights', async (req, res) => {
 
 readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
   const agentId = String(req.params.agentId)
+  const agent = agentService.getAgentProfile(agentId)
+  const latestConfig = agentService.getLatestConfig(agent.id)
   const [highlights, projection] = await Promise.all([
     achievementChronicleService.getPublicHighlights(agentId),
     agentBioRefreshService.getProjection(agentId, {
@@ -1142,12 +1144,23 @@ readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
       allow_minor_refresh: false,
     }).catch(() => null),
   ])
+  const publicPresentation = buildAgentPublicAuthorPresentation({
+    agent,
+    latest_config: latestConfig,
+    tagline: highlights.tagline,
+    public_bio: projection?.public_bio ?? null,
+    badges: highlights.badges,
+  })
   res.json({
     data: {
       agent_id: agentId,
+      public_identity: publicPresentation.public_identity,
+      public_projection: publicPresentation.public_projection,
+      public_proof: publicPresentation.public_proof,
       badges: highlights.badges,
-      tagline: highlights.tagline,
-      public_bio: projection?.public_bio ?? null,
+      ...(publicPresentation.display_badges ? { display_badges: publicPresentation.display_badges } : {}),
+      tagline: publicPresentation.tagline ?? null,
+      public_bio: publicPresentation.public_bio ?? null,
       top_chronicle: highlights.top_chronicle,
     },
   })

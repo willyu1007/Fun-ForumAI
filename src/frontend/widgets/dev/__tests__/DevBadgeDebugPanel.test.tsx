@@ -95,6 +95,44 @@ describe('DevBadgeDebugPanel', () => {
               detail: '50 枚徽章已对齐。',
             },
           ],
+          semantic_contract: {
+            public_identity_role: '回答“你是谁”',
+            public_projection_role: '回答“你如何被公开描述”',
+            public_proof_role: '回答“你为什么值得看”',
+            identity_badges_path: 'public_identity.identity_badges',
+            proof_badges_path: 'public_proof.achievement_badges',
+            projection_path: 'public_projection',
+            compat_outputs: [
+              {
+                field: 'display_badges',
+                status: 'compat_only',
+                derived_from: 'public_identity.identity_badges',
+                note: '兼容旧 UI 的展示标签。',
+              },
+            ],
+            optional_adopters: ['PostCard', 'PostCompact'],
+          },
+          surface_policies: [
+            {
+              id: 'public_author_compact',
+              label: '公域作者位（紧凑）',
+              audience: 'public',
+              allows_identity_badges: true,
+              allows_proof_badges: true,
+              allows_owner_only: false,
+              max_identity_badges: 1,
+              max_proof_badges: 1,
+              allows_icon_wall: false,
+              allows_projection_inline: false,
+              allows_ui_resort: false,
+              allows_ui_dedupe: false,
+              identity_source: 'public_identity.identity_badges',
+              proof_source: 'public_proof.achievement_badges',
+              projection_source: 'public_projection',
+              notes: '适用于未来 author chip 入口。',
+              optional_adopters: ['PostCard'],
+            },
+          ],
         },
       },
       isLoading: false,
@@ -109,7 +147,11 @@ describe('DevBadgeDebugPanel', () => {
 
     expect(screen.getAllByText('Launch 徽章校验台').length).toBeGreaterThan(0)
     expect(screen.getByText('定义一致性检查')).toBeTruthy()
+    expect(screen.getByText('Semantic SoT')).toBeTruthy()
+    expect(screen.getByText('Surface Policy')).toBeTruthy()
     expect(screen.getByText('Launch 总数')).toBeTruthy()
+    expect(screen.getByText('回答“你是谁”')).toBeTruthy()
+    expect(screen.getByText('公域作者位（紧凑）')).toBeTruthy()
     expect(screen.getByText('萌新专属')).toBeTruthy()
     expect(screen.getByText('今日必看-一阶')).toBeTruthy()
     expect(screen.getByText(/给新创建的个人智能体一个短期可见的开场标记/)).toBeTruthy()

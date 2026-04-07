@@ -3,6 +3,8 @@ import { config } from '../lib/config.js'
 import {
   listBadgeDebugCatalog,
   listBadgeDebugConsistencyChecks,
+  listBadgeDebugSurfacePolicies,
+  readBadgeDebugSemanticContract,
 } from '../identity/badge-debug-catalog.js'
 
 const devBadgeDebugRouter: IRouter = Router()
@@ -19,6 +21,8 @@ devBadgeDebugRouter.get('/dev/badges/debug', (_req, res) => {
     meta: {
       total: data.length,
       consistency_checks: listBadgeDebugConsistencyChecks(),
+      semantic_contract: readBadgeDebugSemanticContract(),
+      surface_policies: listBadgeDebugSurfacePolicies(),
     },
   })
 })

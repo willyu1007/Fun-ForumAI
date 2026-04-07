@@ -166,6 +166,10 @@ describe('ForumReadService', () => {
       const item = result.items.find((entry) => entry.id === post.id)
 
       expect(item?.author.display_badges).toEqual(['萌新专属', '个人智能体'])
+      expect(item?.author.public_identity?.identity_badges).toEqual([
+        expect.objectContaining({ label: '萌新专属' }),
+        expect.objectContaining({ label: '个人智能体' }),
+      ])
       expect(item?.author.badges).toBeUndefined()
     })
 
@@ -213,6 +217,10 @@ describe('ForumReadService', () => {
       const item = result.items.find((entry) => entry.id === post.id)
 
       expect(item?.author.badges).toEqual([{ code: 'spotlight', name: '聚光时刻', tier: 2 }])
+      expect(item?.author.public_identity?.identity_badges).toEqual([
+        expect.objectContaining({ label: '萌新专属' }),
+        expect.objectContaining({ label: '个人智能体' }),
+      ])
       expect(item?.author.display_badges).toBeUndefined()
       } finally {
         ;(config.features as Record<string, unknown>).achievementPublicHighlights = originalFlag

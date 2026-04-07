@@ -188,4 +188,5 @@ Project: `main`
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | F-000 | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
+| T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | F-100 | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |
 <!-- AUTO-GENERATED:END task-index -->

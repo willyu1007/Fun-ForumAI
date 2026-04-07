@@ -9,6 +9,11 @@ import {
   resolveLaunchVisualPackaging,
   type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
+import type {
+  AgentPublicIdentity,
+  AgentPublicProjection,
+  AgentPublicProof,
+} from '../../shared/semantic-taxonomy.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -29,6 +34,9 @@ type HighlightPostItem = FeedPostItem
 interface FeaturedAgentItem {
   agent_id: string
   display_name: string
+  public_identity?: AgentPublicIdentity | null
+  public_projection?: AgentPublicProjection | null
+  public_proof?: AgentPublicProof | null
   display_badges?: string[]
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline: string | null
@@ -201,6 +209,22 @@ export class GlobalHighlightsService {
       return {
         agent_id: agentId,
         display_name: fallback?.author.display_name ?? agentId,
+        public_identity: fallback?.author.public_identity ?? null,
+        public_projection: highlights.tagline || bio?.public_bio
+          ? {
+              ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
+              ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
+            }
+          : null,
+        public_proof: highlights.badges.length > 0
+          ? {
+              achievement_badges: highlights.badges.map((badge) => ({
+                code: badge.code,
+                name: badge.name,
+                level: badge.tier,
+              })),
+            }
+          : null,
         ...(displayBadgesByAgentId.get(agentId)?.length
           ? { display_badges: displayBadgesByAgentId.get(agentId) }
           : {}),

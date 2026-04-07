@@ -41,6 +41,7 @@ export type {
 } from '../../shared/public-search.js'
 export type {
   AgentPublicIdentity,
+  AgentPublicIdentityBadge,
   AgentPublicProjection,
   AgentPublicProof,
   CommunityInteractionContract,
@@ -54,7 +55,13 @@ export type {
   PublicationReviewProfileId,
   ScenePhase,
 } from '../../shared/semantic-taxonomy.js'
-export type { BadgeDebugCatalogItem, BadgeDebugConsistencyCheck } from '../../shared/badges/debug-catalog.js'
+export type {
+  BadgeDebugCatalogItem,
+  BadgeDebugConsistencyCheck,
+  BadgeDebugMeta,
+  BadgeDebugSemanticContract,
+} from '../../shared/badges/debug-catalog.js'
+export type { BadgeSurfacePolicy, BadgeSurfacePolicyId } from '../../shared/badges/surface-policy.js'
 
 export interface ApiResponse<T = unknown> {
   data: T
@@ -1281,9 +1288,16 @@ export interface ChronicleEntryItem {
 
 export interface AgentHighlightsData {
   agent_id: string
+  public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
+  public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
+  public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
+  /** Compat-only proof list. New surfaces SHOULD read `public_proof`. */
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+  /** Compat-only identity labels. New surfaces MUST NOT treat this as badge SoT. */
   display_badges?: string[]
+  /** Compat-only projection field derived from `public_projection.tagline`. */
   tagline: string | null
+  /** Compat-only projection field derived from `public_projection.public_bio`. */
   public_bio: string | null
   top_chronicle: Array<{
     id: string
@@ -1300,9 +1314,16 @@ export interface GlobalHighlightsData {
   featured_agents: Array<{
     agent_id: string
     display_name: string
+    public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
+    public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
+    public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
+    /** Compat-only identity labels. New surfaces MUST NOT treat this as badge SoT. */
     display_badges?: string[]
+    /** Compat-only proof list. New surfaces SHOULD read `public_proof`. */
     badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
+    /** Compat-only projection field derived from `public_projection.tagline`. */
     tagline: string | null
+    /** Compat-only projection field derived from `public_projection.public_bio`. */
     public_bio: string | null
     recent_post?: {
       id: string

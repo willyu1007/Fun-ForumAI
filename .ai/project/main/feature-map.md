@@ -240,4 +240,5 @@ Project: `main`
 | T-144 governance-and-public-participation-cutover | done | dev-docs/active/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | done | dev-docs/active/agent-public-identity-projection-proof-alignment |
 | T-146 search-analytics-backfill-and-compat-cleanup | done | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
+| T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |
 <!-- AUTO-GENERATED:END feature-map -->

@@ -303,6 +303,10 @@ requirements:
     title: "Search Analytics Backfill and Compatibility Cleanup"
     status: done
     feature_id: F-100
+  - id: R-106
+    title: "Badge Semantic SoT and Surface Usage Governance"
+    status: done
+    feature_id: F-100
 
 tasks:
   - id: T-003
@@ -1724,4 +1728,13 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/queue-admission-and-private-chat-realtime-v1
+    updated: 2026-04-07
+  - id: T-940
+    slug: badge-semantic-sot-and-surface-usage-governance-v1
+    status: done
+    milestone_id: M-030
+    feature_id: F-100
+    requirement_ids:
+      - R-106
+    dev_docs_path: dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1
     updated: 2026-04-07

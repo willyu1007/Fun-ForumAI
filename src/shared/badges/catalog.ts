@@ -1,3 +1,5 @@
+import type { AgentPublicIdentityBadge, AgentPublicIdentityBadgeSourceKind } from '../semantic-taxonomy.js'
+
 export type BadgeSourceKind = 'system_display' | 'default_display' | 'achievement'
 export type CanonicalSystemBadgeLabel = '节目位' | '常驻席' | '主持席'
 
@@ -22,6 +24,10 @@ export interface AchievementBadgeStaticDoc extends BadgeStaticVisualDoc {
 export interface BadgeVisualLookupInput {
   label: string
   code?: string | null
+}
+
+export interface IdentityBadgeCatalogEntry extends AgentPublicIdentityBadge {
+  tooltip: string
 }
 
 const SYSTEM_BADGE_ICON = '/badges/agent/system-seat.svg'
@@ -89,6 +95,49 @@ export const SYSTEM_DISPLAY_BADGE_DOCS: Record<CanonicalSystemBadgeLabel, Displa
     evidence_summary: 'source=launch system roster；display_badges 来自显式 surface display policy，不经过 owner fallback。',
     display_priority: '系统身份：显式配置的主持席徽章；展示时排在公开成就徽章之后，但优先于默认 owner 徽章。',
     priority_rank: 225,
+  },
+}
+
+const IDENTITY_BADGE_ENTRY_BY_LABEL: Record<string, IdentityBadgeCatalogEntry> = {
+  '萌新专属': {
+    badge_id: 'identity:owner_rookie_badge',
+    internal_code: 'owner_rookie_badge',
+    label: '萌新专属',
+    source_kind: 'default_display',
+    priority_rank: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].priority_rank,
+    tooltip: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].tooltip,
+  },
+  '个人智能体': {
+    badge_id: 'identity:owner_agent_badge',
+    internal_code: 'owner_agent_badge',
+    label: '个人智能体',
+    source_kind: 'default_display',
+    priority_rank: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].priority_rank,
+    tooltip: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].tooltip,
+  },
+  '节目位': {
+    badge_id: 'identity:system_editorial_badge',
+    internal_code: 'system_editorial_badge',
+    label: '节目位',
+    source_kind: 'system_display',
+    priority_rank: SYSTEM_DISPLAY_BADGE_DOCS['节目位'].priority_rank,
+    tooltip: SYSTEM_DISPLAY_BADGE_DOCS['节目位'].tooltip,
+  },
+  '常驻席': {
+    badge_id: 'identity:system_resident_badge',
+    internal_code: 'system_resident_badge',
+    label: '常驻席',
+    source_kind: 'system_display',
+    priority_rank: SYSTEM_DISPLAY_BADGE_DOCS['常驻席'].priority_rank,
+    tooltip: SYSTEM_DISPLAY_BADGE_DOCS['常驻席'].tooltip,
+  },
+  '主持席': {
+    badge_id: 'identity:system_host_badge',
+    internal_code: 'system_host_badge',
+    label: '主持席',
+    source_kind: 'system_display',
+    priority_rank: SYSTEM_DISPLAY_BADGE_DOCS['主持席'].priority_rank,
+    tooltip: SYSTEM_DISPLAY_BADGE_DOCS['主持席'].tooltip,
   },
 }
 
@@ -188,6 +237,31 @@ export const ACHIEVEMENT_BADGE_GROUP_DOCS: Record<string, AchievementBadgeStatic
 export function normalizeSystemDisplayBadgeLabel(label: string): CanonicalSystemBadgeLabel | null {
   const normalized = SYSTEM_BADGE_LABEL_ALIASES[label]
   return normalized ?? null
+}
+
+export function resolveIdentityBadgeCatalogEntry(label: string): IdentityBadgeCatalogEntry | null {
+  const canonicalSystemLabel = normalizeSystemDisplayBadgeLabel(label)
+  const key = canonicalSystemLabel ?? label
+  const entry = IDENTITY_BADGE_ENTRY_BY_LABEL[key]
+  return entry ? { ...entry } : null
+}
+
+export function buildIdentityBadge(input: {
+  label: string
+  source_kind?: AgentPublicIdentityBadgeSourceKind | null
+}): AgentPublicIdentityBadge | null {
+  const entry = resolveIdentityBadgeCatalogEntry(input.label)
+  if (!entry) return null
+  if (input.source_kind && entry.source_kind !== input.source_kind) {
+    return null
+  }
+  return {
+    badge_id: entry.badge_id,
+    internal_code: entry.internal_code,
+    label: entry.label,
+    source_kind: entry.source_kind,
+    priority_rank: entry.priority_rank,
+  }
 }
 
 export function resolveAchievementBadgePriorityRank(

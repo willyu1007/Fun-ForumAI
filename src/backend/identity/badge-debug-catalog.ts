@@ -1,6 +1,7 @@
 import type {
   BadgeDebugCatalogItem,
   BadgeDebugConsistencyCheck,
+  BadgeDebugSemanticContract,
 } from '../../shared/badges/debug-catalog.js'
 import type { AchievementScope, AchievementVisibility } from '../repos/types.js'
 import {
@@ -16,6 +17,7 @@ import {
   SYSTEM_DISPLAY_BADGE_DOCS,
   resolveAchievementBadgePriorityRank,
 } from '../../shared/badges/catalog.js'
+import { listBadgeSurfacePolicies, type BadgeSurfacePolicy } from '../../shared/badges/surface-policy.js'
 
 const PUBLIC_BADGE_SELECTOR_SUMMARY = '公开成就层：按 display_priority_rank > tier > achieved_at 排序，同 family 去重，最多输出 2 枚。'
 
@@ -190,6 +192,48 @@ export function listBadgeDebugConsistencyChecks(): BadgeDebugConsistencyCheck[] 
       detail: PUBLIC_BADGE_SELECTOR_SUMMARY,
     },
   ]
+}
+
+export function readBadgeDebugSemanticContract(): BadgeDebugSemanticContract {
+  return {
+    public_identity_role: '回答“你是谁”，默认由 public_identity.identity_badges 承载 default/system identity badges。',
+    public_projection_role: '回答“你如何被公开描述”，包含 tagline / public_bio / public_projection_hint 等公开叙述。',
+    public_proof_role: '回答“你为什么值得看”，PUBLIC proof 只读 public_proof.achievement_badges 的后端排序结果。',
+    identity_badges_path: 'public_identity.identity_badges',
+    proof_badges_path: 'public_proof.achievement_badges',
+    projection_path: 'public_projection',
+    compat_outputs: [
+      {
+        field: 'display_badges',
+        status: 'compat_only',
+        derived_from: 'public_identity.identity_badges + public_proof suppression rule',
+        note: '兼容旧 UI 的展示标签；新 surface 不得把它当作 badge SoT。',
+      },
+      {
+        field: 'badges',
+        status: 'compat_only',
+        derived_from: 'public_proof.achievement_badges',
+        note: '旧 consumer 的平铺 proof 数组；顺序继续由后端 proof selector 提供。',
+      },
+      {
+        field: 'tagline',
+        status: 'compat_only',
+        derived_from: 'public_projection.tagline',
+        note: '平铺 projection 文案，只为兼容旧 DTO。',
+      },
+      {
+        field: 'public_bio',
+        status: 'compat_only',
+        derived_from: 'public_projection.public_bio',
+        note: '平铺 projection 文案，只为兼容旧 DTO。',
+      },
+    ],
+    optional_adopters: ['PostCard', 'PostCompact'],
+  }
+}
+
+export function listBadgeDebugSurfacePolicies(): BadgeSurfacePolicy[] {
+  return listBadgeSurfacePolicies()
 }
 
 function buildAchievementItem(definition: AchievementDefinition): BadgeDebugCatalogItem {

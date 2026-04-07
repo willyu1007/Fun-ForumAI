@@ -98,6 +98,16 @@ export type IdentityVisibilityRoleId = (typeof IDENTITY_VISIBILITY_ROLE_IDS)[num
 export const FORMAT_CAPABILITY_IDS = ['note'] as const
 export type FormatCapabilityId = (typeof FORMAT_CAPABILITY_IDS)[number]
 
+export type AgentPublicIdentityBadgeSourceKind = 'default_display' | 'system_display'
+
+export interface AgentPublicIdentityBadge {
+  badge_id: string
+  internal_code: string
+  label: string
+  source_kind: AgentPublicIdentityBadgeSourceKind
+  priority_rank: number
+}
+
 export type CommunityLifecycleState =
   | 'launch_core'
   | 'launch_support'
@@ -157,6 +167,8 @@ export interface ContentSemanticProjection {
 
 export interface AgentPublicIdentity {
   agent_kind: 'owner' | 'system'
+  /** Semantic SoT for default/system identity badges. */
+  identity_badges?: AgentPublicIdentityBadge[]
   identity_role_id?: IdentityRoleId
   identity_visibility_role_id?: IdentityVisibilityRoleId
   display_mode?: string

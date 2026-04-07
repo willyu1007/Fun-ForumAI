@@ -12,7 +12,12 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { useBadgeDebugCatalog } from '@/api/hooks/dev'
-import type { BadgeDebugCatalogItem, BadgeDebugConsistencyCheck } from '@/api/types'
+import type {
+  BadgeDebugCatalogItem,
+  BadgeDebugConsistencyCheck,
+  BadgeDebugSemanticContract,
+  BadgeSurfacePolicy,
+} from '@/api/types'
 
 function readSourceLabel(sourceKind: BadgeDebugCatalogItem['source_kind']) {
   switch (sourceKind) {
@@ -70,9 +75,9 @@ export function DevBadgeDebugPanel() {
   const [open, setOpen] = useState(false)
   const badgeCatalog = useBadgeDebugCatalog(open)
   const items = badgeCatalog.data?.data ?? []
-  const consistencyChecks = Array.isArray(badgeCatalog.data?.meta?.consistency_checks)
-    ? badgeCatalog.data?.meta?.consistency_checks as BadgeDebugConsistencyCheck[]
-    : []
+  const consistencyChecks = (badgeCatalog.data?.meta?.consistency_checks ?? []) as BadgeDebugConsistencyCheck[]
+  const semanticContract = (badgeCatalog.data?.meta?.semantic_contract ?? null) as BadgeDebugSemanticContract | null
+  const surfacePolicies = (badgeCatalog.data?.meta?.surface_policies ?? []) as BadgeSurfacePolicy[]
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -127,6 +132,96 @@ export function DevBadgeDebugPanel() {
                         </Badge>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{check.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {semanticContract ? (
+                <section className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Semantic SoT</h3>
+                    <Badge variant="outline" className="text-[10px]">
+                      semantic-first
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <DebugField label="Identity" value={semanticContract.public_identity_role} />
+                    <DebugField label="Projection" value={semanticContract.public_projection_role} />
+                    <DebugField label="Proof" value={semanticContract.public_proof_role} />
+                    <DebugField label="Identity 路径" value={semanticContract.identity_badges_path} />
+                    <DebugField label="Proof 路径" value={semanticContract.proof_badges_path} />
+                    <DebugField label="Projection 路径" value={semanticContract.projection_path} />
+                    <DebugField label="可选采用" value={joinOrFallback(semanticContract.optional_adopters)} />
+                  </div>
+                  <div className="grid gap-2">
+                    {semanticContract.compat_outputs.map((field) => (
+                      <div
+                        key={field.field}
+                        className="rounded-xl border border-border/60 bg-background/80 px-3 py-2"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-xs font-medium text-foreground">{field.field}</p>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {field.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          来源：{field.derived_from}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {field.note}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">Surface Policy</h3>
+                  <Badge variant="outline" className="text-[10px]">
+                    {surfacePolicies.length} 类
+                  </Badge>
+                </div>
+                <div className="grid gap-2">
+                  {surfacePolicies.map((policy) => (
+                    <div
+                      key={policy.id}
+                      className="rounded-xl border border-border/60 bg-background/80 px-3 py-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-medium text-foreground">{policy.label}</p>
+                        <Badge variant="outline" className="text-[10px]">
+                          {policy.id}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {policy.audience}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        <DebugField
+                          label="来源"
+                          value={`identity=${policy.identity_source} / proof=${policy.proof_source}`}
+                        />
+                        <DebugField
+                          label="数量"
+                          value={`identity<=${policy.max_identity_badges ?? 'full'} / proof<=${policy.max_proof_badges ?? 'full'}`}
+                        />
+                        <DebugField
+                          label="限制"
+                          value={`owner_only=${policy.allows_owner_only ? '允许' : '禁止'} / icon_wall=${policy.allows_icon_wall ? '允许' : '禁止'} / projection_inline=${policy.allows_projection_inline ? '允许' : '禁止'}`}
+                        />
+                        <DebugField
+                          label="UI 行为"
+                          value={`resort=${policy.allows_ui_resort ? '允许' : '禁止'} / dedupe=${policy.allows_ui_dedupe ? '允许' : '禁止'}`}
+                        />
+                        <DebugField label="说明" value={policy.notes} />
+                        {policy.optional_adopters?.length ? (
+                          <DebugField label="可选入口" value={joinOrFallback(policy.optional_adopters)} />
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                 </div>

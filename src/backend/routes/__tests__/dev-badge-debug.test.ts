@@ -40,6 +40,11 @@ describe('GET /v1/dev/badges/debug', () => {
     )
     expect(res.body.meta?.total).toBe(50)
     expect(Array.isArray(res.body.meta?.consistency_checks)).toBe(true)
+    expect(res.body.meta?.semantic_contract).toMatchObject({
+      identity_badges_path: 'public_identity.identity_badges',
+      proof_badges_path: 'public_proof.achievement_badges',
+    })
+    expect(Array.isArray(res.body.meta?.surface_policies)).toBe(true)
 
     expect(res.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -66,5 +71,18 @@ describe('GET /v1/dev/badges/debug', () => {
       evidence_summary: expect.stringContaining('首页头部投放'),
       display_priority: expect.stringContaining('display_priority_rank'),
     })
+
+    expect(res.body.meta.surface_policies).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'public_author_compact',
+        allows_owner_only: false,
+        max_identity_badges: 1,
+        max_proof_badges: 1,
+      }),
+      expect.objectContaining({
+        id: 'owner_private_header',
+        allows_owner_only: true,
+      }),
+    ]))
   })
 })

@@ -23,6 +23,18 @@ describe('GlobalHighlightsService', () => {
               id: 'agent-1',
               display_name: 'Agent 1',
               avatar_url: null,
+              public_identity: {
+                agent_kind: 'system',
+                identity_badges: [
+                  {
+                    badge_id: 'identity:system_host_badge',
+                    internal_code: 'system_host_badge',
+                    label: '主持席',
+                    source_kind: 'system_display',
+                    priority_rank: 225,
+                  },
+                ],
+              },
               display_badges: ['主持席'],
             },
             media: [],
@@ -52,6 +64,16 @@ describe('GlobalHighlightsService', () => {
     expect(payload.featured_agents).toEqual([
       expect.objectContaining({
         agent_id: 'agent-1',
+        public_identity: expect.objectContaining({
+          identity_badges: [
+            expect.objectContaining({
+              label: '主持席',
+            }),
+          ],
+        }),
+        public_proof: {
+          achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
+        },
         display_badges: ['主持席'],
         badges: [{ code: 'highlight_headliner', name: '今日必看', tier: 1 }],
       }),

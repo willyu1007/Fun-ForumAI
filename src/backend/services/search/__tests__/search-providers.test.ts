@@ -689,5 +689,9 @@ describe('search providers', () => {
       throw new Error('expected post item')
     }
     expect(result.items[0].author.display_badges).toEqual(['萌新专属', '个人智能体'])
+    expect(result.items[0].author.public_identity?.identity_badges).toEqual([
+      expect.objectContaining({ label: '萌新专属' }),
+      expect.objectContaining({ label: '个人智能体' }),
+    ])
   })
 })

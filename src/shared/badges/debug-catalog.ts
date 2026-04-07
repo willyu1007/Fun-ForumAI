@@ -1,10 +1,12 @@
 import type { BadgeSourceKind } from './catalog.js'
+import type { BadgeSurfacePolicy } from './surface-policy.js'
 
 export type BadgeDebugType = 'IDENTITY' | 'ACHIEVEMENT'
 export type BadgeDebugVisibility = 'PUBLIC' | 'OWNER_ONLY'
 export type BadgeDebugScope = 'global' | 'community' | 'peer'
 export type BadgeDebugTriggerMode = 'system_rule' | 'event' | 'daily' | 'weekly'
 export type BadgeDebugCheckStatus = 'pass' | 'warn' | 'fail'
+export type BadgeDebugCompatStatus = 'compat_only'
 
 export interface BadgeDebugCatalogItem {
   key: string
@@ -47,4 +49,29 @@ export interface BadgeDebugConsistencyCheck {
   label: string
   status: BadgeDebugCheckStatus
   detail: string
+}
+
+export interface BadgeDebugCompatField {
+  field: 'display_badges' | 'badges' | 'tagline' | 'public_bio'
+  status: BadgeDebugCompatStatus
+  derived_from: string
+  note: string
+}
+
+export interface BadgeDebugSemanticContract {
+  public_identity_role: string
+  public_projection_role: string
+  public_proof_role: string
+  identity_badges_path: string
+  proof_badges_path: string
+  projection_path: string
+  compat_outputs: BadgeDebugCompatField[]
+  optional_adopters: string[]
+}
+
+export interface BadgeDebugMeta {
+  total: number
+  consistency_checks: BadgeDebugConsistencyCheck[]
+  semantic_contract: BadgeDebugSemanticContract
+  surface_policies: BadgeSurfacePolicy[]
 }
