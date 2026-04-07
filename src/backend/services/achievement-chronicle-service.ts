@@ -13,6 +13,7 @@ import { buildChronicleStoryMetaV1, withChronicleStoryMeta } from './chronicle-s
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import { resolveSurfaceMediaAttachmentFromEvidence } from '../media/surface-media-view.js'
+import { resolveAchievementBadgePriorityRank } from '../../shared/badges/catalog.js'
 
 export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
@@ -156,10 +157,17 @@ function selectTopUniqueBadges(achievements: AgentAchievement[], limit: number):
   const badges: PublicBadge[] = []
   const sorted = achievements
     .slice()
-    .sort((a, b) => b.tier - a.tier || b.achieved_at.getTime() - a.achieved_at.getTime())
+    .sort((a, b) => {
+      const leftRank = resolveAchievementBadgePriorityRank(a.code, a.tier) ?? 0
+      const rightRank = resolveAchievementBadgePriorityRank(b.code, b.tier) ?? 0
+      return rightRank - leftRank
+        || b.tier - a.tier
+        || b.achieved_at.getTime() - a.achieved_at.getTime()
+        || a.code.localeCompare(b.code)
+    })
 
   for (const item of sorted) {
-    const key = `${item.code}:${item.tier}`
+    const key = item.code
     if (seen.has(key)) continue
     seen.add(key)
     badges.push({ code: item.code, name: item.name, tier: item.tier })

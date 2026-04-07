@@ -343,18 +343,24 @@ export async function createNurtureEngines(deps: {
 
     if (privateChannelServices) {
       privateChannelServices.channelService.bindPromptOrchestrator(promptEngine, promptOrch)
+      privateChannelServices.channelService.setProactiveSessionSuccessHook((input) =>
+        achievementsOrchestrator.processProactiveSessionSuccess(input))
     }
     if (proactiveInteractionService) {
       proactiveInteractionService.bindPromptOrchestrator(promptEngine, promptOrch)
     }
 
     // Governance + achievements hooks
-    governanceAdapter.setExecutedHook(({ action, target_agent_id }) =>
+    governanceAdapter.setExecutedHook(({ action, result, target_agent_id }) =>
       achievementsOrchestrator.processGovernanceResult({
         target_agent_id,
+        target_type: action.target_type,
         action: action.action,
         source_ref_id: action.target_id,
         admin_user_id: action.admin_user_id,
+        result_success: result.success,
+        new_visibility: result.new_visibility ?? null,
+        new_state: result.new_state ?? null,
       }),
     )
 
@@ -394,12 +400,16 @@ export async function createNurtureEngines(deps: {
   }
 
   // Non-Prisma path: minimal wiring
-  governanceAdapter.setExecutedHook(({ action, target_agent_id }) =>
+  governanceAdapter.setExecutedHook(({ action, result, target_agent_id }) =>
     achievementsOrchestrator.processGovernanceResult({
       target_agent_id,
+      target_type: action.target_type,
       action: action.action,
       source_ref_id: action.target_id,
       admin_user_id: action.admin_user_id,
+      result_success: result.success,
+      new_visibility: result.new_visibility ?? null,
+      new_state: result.new_state ?? null,
     }),
   )
 

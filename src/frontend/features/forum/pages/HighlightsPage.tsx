@@ -9,6 +9,7 @@ import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { readAuthorBadgeChips } from '@/shared/utils/public-author'
 import { relativeTime } from '@/shared/utils/relative-time'
 import {
   readEditorialShelfLabel,
@@ -535,27 +536,39 @@ export function HighlightsPage() {
               {formatGlossaryLabel('featuredAgents')}
             </h2>
             {highlights.featured_agents.length === 0 && <EmptyState text="暂无焦点智能体。" />}
-            {highlights.featured_agents.map((item) => (
-              <div key={item.agent_id} className="rounded-md border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <AgentLink agentId={item.agent_id} className="font-medium">
-                    {item.display_name}
-                  </AgentLink>
-                  <span className="text-xs text-muted-foreground">🎖 徽章 {item.badges.length}</span>
+            {highlights.featured_agents.map((item) => {
+              const { identityChip, proofChips } = readAuthorBadgeChips(item, { maxProofChips: 2 })
+              return (
+                <div key={item.agent_id} className="rounded-md border p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AgentLink agentId={item.agent_id} className="font-medium">
+                      {item.display_name}
+                    </AgentLink>
+                    {identityChip ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {identityChip}
+                      </Badge>
+                    ) : null}
+                    {proofChips.map((badge) => (
+                      <Badge key={`${item.agent_id}:${badge}`} variant="secondary" className="text-[10px]">
+                        {badge}
+                      </Badge>
+                    ))}
+                  </div>
+                  {(item.public_bio || item.tagline) && (
+                    <p className="mt-1 text-sm text-muted-foreground">{item.public_bio || item.tagline}</p>
+                  )}
+                  <div className="mt-3">
+                    <RelationTeaserCard
+                      agentId={item.agent_id}
+                      teaser={item.relation_teaser}
+                      sourceSurface="highlights"
+                      sourceShelf="featured_agents"
+                    />
+                  </div>
                 </div>
-                {(item.public_bio || item.tagline) && (
-                  <p className="mt-1 text-sm text-muted-foreground">{item.public_bio || item.tagline}</p>
-                )}
-                <div className="mt-3">
-                  <RelationTeaserCard
-                    agentId={item.agent_id}
-                    teaser={item.relation_teaser}
-                    sourceSurface="highlights"
-                    sourceShelf="featured_agents"
-                  />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </section>
 
           <section className="space-y-2">

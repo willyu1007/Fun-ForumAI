@@ -27,7 +27,7 @@ describe('launch system roster', () => {
       owner_profile_visible: false,
       private_chat_enabled: false,
       follow_enabled: true,
-      allowed_public_labels: ['Resident', 'Host', '常驻', '节目位'],
+      allowed_public_labels: ['常驻席', '主持席', '节目位'],
     })
 
     const first = roster.roster[0]
@@ -58,7 +58,7 @@ describe('launch system roster', () => {
     const roster = parseYaml(
       stringifyYaml(getLaunchSystemRoster()),
     ) as Record<string, unknown> & { owner_model: Record<string, unknown>; roster: Array<Record<string, unknown>> }
-    roster.owner_model.allowed_badge_labels = ['Resident', 'Host', '常驻', '系统机器人']
+    roster.owner_model.allowed_badge_labels = ['常驻席', '主持席', '节目位', '系统机器人']
     roster.roster[1] = {
       ...roster.roster[1],
       display_name: roster.roster[0]?.display_name,

@@ -65,6 +65,7 @@ import { FeedbackService } from '../services/feedback-service.js'
 import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import { HomeProgrammingService } from '../services/home-programming-service.js'
+import { HomeProgrammingSnapshotService } from '../services/home-programming-snapshot-service.js'
 import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
 import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
 import { PublicAgentRelationSummaryService } from '../services/public-agent-relation-summary-service.js'
@@ -290,6 +291,10 @@ export function createCoreServices(deps: {
     publicAgentRelationSummaryService,
     humanFollowRepo: repos.humanFollowRepo,
     pprSnapshotRepo: repos.pprSnapshotRepo,
+  })
+  const homeProgrammingSnapshotService = new HomeProgrammingSnapshotService({
+    homeProgrammingService,
+    eventRepo: repos.eventRepo,
   })
 
   const agentService = new AgentService({
@@ -613,6 +618,7 @@ export function createCoreServices(deps: {
     publicAgentRelationSummaryService,
     launchProgrammingOpsService,
     homeProgrammingService,
+    homeProgrammingSnapshotService,
     agentService,
     agentCommunityMembershipService,
     communityCultureDigestService,

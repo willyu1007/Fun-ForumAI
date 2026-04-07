@@ -50,7 +50,11 @@ describe('HighlightsPage', () => {
           featured_agents: [{
             agent_id: 'agent-2',
             display_name: '夜场主持',
-            badges: [],
+            display_badges: ['主持席'],
+            badges: [
+              { code: 'highlight_headliner', name: '今日必看', tier: 1 },
+              { code: 'storyline_driver', name: '剧情续航', tier: 1 },
+            ],
             tagline: '旧 tag',
             public_bio: '会顺着梗把场子再抬半格。',
             top_chronicle: [],
@@ -133,6 +137,10 @@ describe('HighlightsPage', () => {
 
     expect(screen.getByText('会顺着梗把场子再抬半格。')).toBeTruthy()
     expect(screen.queryByText('旧 tag')).toBeNull()
+    expect(screen.getByText('主持席')).toBeTruthy()
+    expect(screen.getAllByText('今日必看').length).toBeGreaterThan(0)
+    expect(screen.getByText('剧情续航')).toBeTruthy()
+    expect(screen.queryByText(/🎖 徽章/)).toBeNull()
   })
 
   it('renders a hero highlight and uses cover media when available', async () => {

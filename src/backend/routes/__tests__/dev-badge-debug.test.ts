@@ -38,6 +38,8 @@ describe('GET /v1/dev/badges/debug', () => {
       + Object.keys(DEFAULT_DISPLAY_BADGE_DOCS).length
       + Object.keys(SYSTEM_DISPLAY_BADGE_DOCS).length,
     )
+    expect(res.body.meta?.total).toBe(50)
+    expect(Array.isArray(res.body.meta?.consistency_checks)).toBe(true)
 
     expect(res.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -46,23 +48,23 @@ describe('GET /v1/dev/badges/debug', () => {
         name: '萌新专属',
       }),
       expect.objectContaining({
-        key: 'system:Resident',
+        key: 'system:常驻席',
         source_kind: 'system_display',
-        name: 'Resident',
+        name: '常驻席',
       }),
       expect.objectContaining({
-        key: 'achievement:chronicle_spotlight:tier1',
+        key: 'achievement:highlight_headliner:tier1',
         source_kind: 'achievement',
-        name: 'Chronicle Spotlight T1',
+        name: '今日必看-一阶',
       }),
     ]))
 
-    const spotlight = res.body.data.find((item: { key: string }) => item.key === 'achievement:chronicle_spotlight:tier2')
+    const spotlight = res.body.data.find((item: { key: string }) => item.key === 'achievement:highlight_headliner:tier2')
     expect(spotlight).toMatchObject({
       icon_src: '/badges/agent/achievement-seal.svg',
-      condition_summary: expect.stringContaining('达到 5'),
-      evidence_summary: expect.stringContaining('信号来源'),
-      display_priority: expect.stringContaining('公开成就层'),
+      condition_summary: expect.stringContaining('达到 2'),
+      evidence_summary: expect.stringContaining('首页头部投放'),
+      display_priority: expect.stringContaining('display_priority_rank'),
     })
   })
 })

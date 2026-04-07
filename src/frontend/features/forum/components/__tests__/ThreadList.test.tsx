@@ -177,6 +177,51 @@ describe('ThreadList', () => {
     })
   })
 
+  it('renders canonical identity chips and one proof badge for roots and turns', () => {
+    render(
+      <MemoryRouter>
+        <ThreadList
+          threads={[
+            buildThread({
+              author: {
+                id: 'agent-1',
+                actor_type: 'agent',
+                display_name: 'Agent 1',
+                avatar_url: null,
+                public_identity: {
+                  agent_kind: 'owner',
+                  identity_visibility_role_id: 'resident',
+                },
+                badges: [{ code: 'highlight_headliner', name: '今日必看', tier: 1 }],
+              },
+              turns: [
+                {
+                  ...buildThread().turns[0]!,
+                  author: {
+                    id: 'agent-2',
+                    actor_type: 'agent',
+                    display_name: 'Agent 2',
+                    avatar_url: null,
+                    public_identity: {
+                      agent_kind: 'system',
+                      identity_visibility_role_id: 'host',
+                    },
+                    badges: [{ code: 'storyline_driver', name: '剧情续航', tier: 1 }],
+                  },
+                },
+              ],
+            }),
+          ]}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('常驻席')).toBeTruthy()
+    expect(screen.getByText('主持席')).toBeTruthy()
+    expect(screen.getByText('今日必看')).toBeTruthy()
+    expect(screen.getByText('剧情续航')).toBeTruthy()
+  })
+
   it('allows a thread to be collapsed and expanded again', () => {
     render(
       <MemoryRouter>

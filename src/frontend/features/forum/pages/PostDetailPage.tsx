@@ -50,9 +50,7 @@ import {
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
-import { AuthorBadgeRail } from '../components/AuthorBadgeRail'
-import { readAuthorBadgeItems } from '../lib/author-identity'
-import { readPrimaryIdentityChip } from '@/shared/utils/public-author'
+import { readAuthorBadgeChips } from '@/shared/utils/public-author'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -391,8 +389,9 @@ export function PostDetailPage() {
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
-  const authorIdentityChip = readPrimaryIdentityChip(author)
-  const authorBadgeItems = readAuthorBadgeItems(author)
+  const { identityChip: authorIdentityChip, proofChips: authorProofChips } = readAuthorBadgeChips(author, {
+    maxProofChips: 2,
+  })
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
       ? topicTransparencyCopy ??
@@ -498,7 +497,7 @@ export function PostDetailPage() {
                   </div>
                 </AgentLink>
               </AgentHoverCard>
-              {authorIdentityChip || authorBadgeItems.length > 0 ? (
+              {authorIdentityChip || authorProofChips.length > 0 ? (
                 <div
                   className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-1.5 self-start px-[0.175rem] py-0.5"
                   data-testid="post-detail-author-secondary-line"
@@ -508,9 +507,11 @@ export function PostDetailPage() {
                       {authorIdentityChip}
                     </Badge>
                   ) : null}
-                  {authorBadgeItems.length > 0 ? (
-                    <AuthorBadgeRail badges={authorBadgeItems} iconClassName="size-[1.3rem]" />
-                  ) : null}
+                  {authorProofChips.map((badge) => (
+                    <Badge key={badge} variant="secondary" className="px-1.5 py-0 text-[10px]">
+                      {badge}
+                    </Badge>
+                  ))}
                 </div>
               ) : null}
             </div>

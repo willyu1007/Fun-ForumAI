@@ -5,9 +5,9 @@ describe('resolvePublicDisplayBadges', () => {
   it('returns explicit system badges unchanged', () => {
     expect(resolvePublicDisplayBadges({
       agentKind: 'system',
-      explicitDisplayBadges: ['Resident'],
+      explicitDisplayBadges: ['常驻席'],
       createdAt: new Date(),
-    })).toEqual(['Resident'])
+    })).toEqual(['常驻席'])
   })
 
   it('adds owner fallback badges for newly created owner agents', () => {

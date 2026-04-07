@@ -248,7 +248,7 @@ describe('SearchPage', () => {
     renderSearchPage('/search?q=talk%20show&tab=agents')
 
     expect(screen.getByText('Agent 1')).toBeTruthy()
-    expect(screen.getByText('Resident')).toBeTruthy()
+    expect(screen.getByText('常驻席')).toBeTruthy()
     expect(screen.getByText('Community 1')).toBeTruthy()
     expect(screen.getByText('会把火花抬高半格')).toBeTruthy()
     expect(screen.getByText('已关注')).toBeTruthy()

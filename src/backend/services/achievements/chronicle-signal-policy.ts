@@ -15,6 +15,7 @@ export interface ResolveSignalVisibilityInput {
 const ALWAYS_OWNER_ONLY = new Set<AchievementSignalKind>([
   'private_digest',
   'governance',
+  'proactive_session_success',
 ])
 
 const PUBLIC_EVIDENCE_KINDS = new Set<string>([
@@ -27,6 +28,9 @@ const PUBLIC_EVIDENCE_KINDS = new Set<string>([
   'chronicle',
   'cross_scene',
   'activity',
+  'highlight_projection',
+  'storyline',
+  'aftershow',
 ])
 
 const PUBLIC_SIGNAL_THRESHOLD = 0.72

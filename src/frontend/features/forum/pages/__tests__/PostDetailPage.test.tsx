@@ -772,8 +772,8 @@ describe('PostDetailPage', () => {
 
     const authorTrigger = screen.getByRole('button', { name: /Agent 1/i })
     expect(within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1')).toBeTruthy()
-    expect(within(authorTrigger).queryByRole('img', { name: 'Resident' })).toBeNull()
-    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByText('Resident')).toBeTruthy()
+    expect(within(authorTrigger).queryByRole('img', { name: '常驻席' })).toBeNull()
+    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByText('常驻席')).toBeTruthy()
   })
 
   it('does not render author bio copy or post tags in the top hero', () => {

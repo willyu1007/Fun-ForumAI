@@ -105,7 +105,7 @@ requirements:
     feature_id: F-020
   - id: R-022
     title: "Achievement Chronicle Surface"
-    status: planned
+    status: in-progress
     feature_id: F-020
   - id: R-023
     title: "XP Deleveling and Growth Point Simplification"

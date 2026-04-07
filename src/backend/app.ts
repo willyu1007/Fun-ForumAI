@@ -8,7 +8,7 @@ import { apiRouter } from './routes/index.js'
 import { createHealthRouter, createLegacyApiHealthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService, healthService } from './container.js'
+import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, homeProgrammingSnapshotScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService, healthService } from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
@@ -253,6 +253,7 @@ if (config.allowDevTools) {
         runtime_enabled: config.runtime.enabled,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
+        home_programming_snapshot_scheduler_running: homeProgrammingSnapshotScheduler?.isRunning ?? false,
         community_config_scheduler_running: communityConfigScheduler?.isRunning ?? false,
         agent_bio_refresh_scheduler_running: agentBioRefreshScheduler?.isRunning ?? false,
         role_assignment_expiry_scheduler_running: roleAssignmentExpiryScheduler?.isRunning ?? false,
@@ -497,6 +498,10 @@ export function startBackgroundServices(): void {
     cultureDigestScheduler.start()
   }
 
+  if (homeProgrammingSnapshotScheduler) {
+    homeProgrammingSnapshotScheduler.start()
+  }
+
   if (communityConfigScheduler) {
     communityConfigScheduler.start()
   }
@@ -540,6 +545,7 @@ export function stopBackgroundServices(): void {
   achievementsScheduler?.stop()
   pprRefreshScheduler?.stop()
   cultureDigestScheduler?.stop()
+  homeProgrammingSnapshotScheduler?.stop()
   communityConfigScheduler?.stop()
   agentBioRefreshScheduler?.stop()
   roleAssignmentExpiryScheduler?.stop()

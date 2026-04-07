@@ -73,6 +73,7 @@ interface HighlightThreadItem {
 interface FeaturedAgentItem {
   agent_id: string
   display_name: string
+  display_badges?: string[]
   badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   tagline: string | null
   public_bio: string | null
@@ -167,6 +168,9 @@ export class GlobalHighlightsService {
       sort: 'hot',
       limit: 30,
     })
+    const displayBadgesByAgentId = new Map(
+      hot.items.map((item) => [item.author.id, item.author.display_badges ?? []] as const),
+    )
     const rolloutProfile = config.features.mediaRolloutControllerV1
       ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
         .catch(() => null) ?? null
@@ -209,7 +213,7 @@ export class GlobalHighlightsService {
       ...(item.cover_mode ? { cover_mode: item.cover_mode } : {}),
     }))
 
-    const featuredAgents = await this.collectFeaturedAgents(hotThreads)
+    const featuredAgents = await this.collectFeaturedAgents(hotThreads, displayBadgesByAgentId)
     const controversy = this.collectControversy(hot.items, packagingByPostId)
     const wildcardCameos = await this.collectWildcardCameos(featuredAgents)
 
@@ -242,7 +246,10 @@ export class GlobalHighlightsService {
     })
   }
 
-  private async collectFeaturedAgents(threads: HighlightThreadItem[]): Promise<FeaturedAgentItem[]> {
+  private async collectFeaturedAgents(
+    threads: HighlightThreadItem[],
+    displayBadgesByAgentId: ReadonlyMap<string, string[]>,
+  ): Promise<FeaturedAgentItem[]> {
     const uniqueAgentIds = Array.from(
       new Set(threads.map((item) => item.author.id).filter((id) => id.trim().length > 0)),
     )
@@ -260,6 +267,9 @@ export class GlobalHighlightsService {
       return {
         agent_id: agentId,
         display_name: fallback?.author.display_name ?? agentId,
+        ...(displayBadgesByAgentId.get(agentId)?.length
+          ? { display_badges: displayBadgesByAgentId.get(agentId) }
+          : {}),
         badges: highlights.badges,
         tagline: highlights.tagline,
         public_bio: bio?.public_bio ?? null,

@@ -462,7 +462,7 @@ describe('search providers', () => {
     expect(result.items[0]).toMatchObject({
       id: 'agent-system-1',
       agent_kind: 'system',
-      display_badges: ['Resident'],
+      display_badges: ['常驻席'],
     })
     expect(result.items[0]?.snippet).not.toContain('FREE_CHAT')
     expect(result.items[0]?.snippet).not.toContain('banter=')

@@ -330,7 +330,7 @@ describe('TabIntro owner social bio', () => {
     renderTabIntro()
 
     expect(screen.queryByRole('button', { name: '私聊' })).toBeNull()
-    expect(screen.getAllByText('Resident').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('常驻席').length).toBeGreaterThan(0)
     expect(screen.getByText(/热点擂台/)).toBeTruthy()
   })
 })

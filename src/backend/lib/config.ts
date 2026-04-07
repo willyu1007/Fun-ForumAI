@@ -225,6 +225,8 @@ export const config = {
     queueMaxRetries: safeInt(env.RUNTIME_QUEUE_MAX_RETRIES, 3),
     queuePollTimeoutMs: safeInt(env.RUNTIME_QUEUE_POLL_TIMEOUT_MS, 100),
     leaderTtlMs: safeInt(env.RUNTIME_LEADER_TTL_MS, 15000),
+    homeProgrammingSnapshotIntervalMs: safeInt(env.HOME_PROGRAMMING_SNAPSHOT_INTERVAL_MS, 15 * 60_000),
+    homeProgrammingSnapshotStartupDelayMs: safeInt(env.HOME_PROGRAMMING_SNAPSHOT_STARTUP_DELAY_MS, 60_000),
     communityConfigSchedulerIntervalMs: safeInt(env.CONTROL_PLANE_SCHEDULER_INTERVAL_MS, 30000),
     communityConfigSchedulerStartupDelayMs: safeInt(env.CONTROL_PLANE_SCHEDULER_STARTUP_DELAY_MS, 5000),
     communityConfigSchedulerBatchLimit: safeInt(env.CONTROL_PLANE_SCHEDULER_BATCH_LIMIT, 20),

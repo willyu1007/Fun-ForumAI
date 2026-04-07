@@ -54,7 +54,7 @@ export type {
   PublicationReviewProfileId,
   ScenePhase,
 } from '../../shared/semantic-taxonomy.js'
-export type { BadgeDebugCatalogItem } from '../../shared/badges/debug-catalog.js'
+export type { BadgeDebugCatalogItem, BadgeDebugConsistencyCheck } from '../../shared/badges/debug-catalog.js'
 
 export interface ApiResponse<T = unknown> {
   data: T
@@ -1320,6 +1320,7 @@ export interface GlobalHighlightsData {
   featured_agents: Array<{
     agent_id: string
     display_name: string
+    display_badges?: string[]
     badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
     tagline: string | null
     public_bio: string | null

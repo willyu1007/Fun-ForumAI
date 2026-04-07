@@ -8,6 +8,7 @@ import { createNurtureEngines } from './nurture.js'
 import { createRuntime } from './runtime.js'
 import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.js'
 import { DirectorHistoryMaintenanceScheduler } from '../runtime/director-history-maintenance-scheduler.js'
+import { HomeProgrammingSnapshotScheduler } from '../runtime/home-programming-snapshot-scheduler.js'
 import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
 import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
@@ -333,6 +334,17 @@ const communityConfigScheduler = new CommunityConfigScheduler(
   },
 )
 
+const homeProgrammingSnapshotScheduler = new HomeProgrammingSnapshotScheduler(
+  {
+    service: core.homeProgrammingSnapshotService,
+    leaderElector: infra.leaderElectors.homeProgrammingSnapshotScheduler,
+  },
+  {
+    intervalMs: config.runtime.homeProgrammingSnapshotIntervalMs,
+    startupDelayMs: config.runtime.homeProgrammingSnapshotStartupDelayMs,
+  },
+)
+
 const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
   {
     service: core.roleAssignmentService,
@@ -550,6 +562,24 @@ const rt = createRuntime({
 })
 
 // ─── 8. Event Hook Wiring ───────────────────────────────────
+core.aftershowService.setEventHook(async (event) => {
+  await searchProjectionService.handleForumEvent(event)
+
+  if (core.achievementsOrchestrator) {
+    core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
+      console.error('[Container] Achievement orchestrator aftershow ingest failed:', err)
+    })
+  }
+})
+
+core.homeProgrammingSnapshotService.setEventHook(async (event) => {
+  if (core.achievementsOrchestrator) {
+    core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
+      console.error('[Container] Achievement orchestrator home snapshot ingest failed:', err)
+    })
+  }
+})
+
 core.forumWriteService.setEventHook(async (event) => {
   await searchProjectionService.handleForumEvent(event)
 
@@ -694,6 +724,7 @@ export const globalHighlightsService = core.globalHighlightsService
 export const publicAgentRelationSummaryService = core.publicAgentRelationSummaryService
 export const launchProgrammingOpsService = core.launchProgrammingOpsService
 export const homeProgrammingService = core.homeProgrammingService
+export const homeProgrammingSnapshotService = core.homeProgrammingSnapshotService
 export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService
 export const communityCultureDigestService = core.communityCultureDigestService
@@ -746,6 +777,7 @@ export const privateChannelServices = nurture.privateChannelServices
 export const privateChannelScheduler = nurture.privateChannelScheduler
 export const proactiveInteractionService = nurture.proactiveInteractionService
 export {
+  homeProgrammingSnapshotScheduler,
   communityConfigScheduler,
   agentBioRefreshScheduler,
   roleAssignmentExpiryScheduler,

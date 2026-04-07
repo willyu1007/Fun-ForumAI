@@ -1,6 +1,9 @@
 import { Router, type IRouter } from 'express'
 import { config } from '../lib/config.js'
-import { listBadgeDebugCatalog } from '../identity/badge-debug-catalog.js'
+import {
+  listBadgeDebugCatalog,
+  listBadgeDebugConsistencyChecks,
+} from '../identity/badge-debug-catalog.js'
 
 const devBadgeDebugRouter: IRouter = Router()
 
@@ -10,8 +13,13 @@ devBadgeDebugRouter.get('/dev/badges/debug', (_req, res) => {
     return
   }
 
+  const data = listBadgeDebugCatalog()
   res.json({
-    data: listBadgeDebugCatalog(),
+    data,
+    meta: {
+      total: data.length,
+      consistency_checks: listBadgeDebugConsistencyChecks(),
+    },
   })
 })
 

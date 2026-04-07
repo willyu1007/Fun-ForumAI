@@ -8,6 +8,7 @@ import type {
   NotificationRepository,
   AftershowArtifact,
   AftershowCallout,
+  DomainEvent,
 } from '../repos/index.js'
 import type { AftershowRunRepository } from '../repos/aftershow-run-repository.js'
 import type { CommunityRepository } from '../repos/community-repository.js'
@@ -34,6 +35,7 @@ export interface AftershowServiceDeps {
   artifactRepo: AftershowArtifactRepository
   eventRepo: EventRepository
   notificationRepo?: NotificationRepository | null
+  onEventCreated?: (event: DomainEvent) => Promise<void> | void
 }
 
 function toStartOfDay(now: Date): Date {
@@ -44,6 +46,10 @@ function toStartOfDay(now: Date): Date {
 
 export class AftershowService {
   constructor(private readonly deps: AftershowServiceDeps) {}
+
+  setEventHook(hook: (event: DomainEvent) => Promise<void> | void): void {
+    this.deps.onEventCreated = hook
+  }
 
   private buildAudienceSummary(messages: AudienceMessage[]): string {
     const uniqueUsers = new Set(messages.map((m) => m.author_user_id)).size
@@ -85,7 +91,7 @@ export class AftershowService {
     correlation_id: string
     payload_json: Record<string, unknown>
   }): Promise<void> {
-    this.deps.eventRepo.create({
+    await this.createEvent({
       event_type: input.event_type,
       plane: 'RUNTIME',
       schema_version: 'v1',
@@ -97,6 +103,16 @@ export class AftershowService {
       correlation_id: input.correlation_id,
       payload_json: input.payload_json,
     })
+  }
+
+  private async createEvent(input: Parameters<EventRepository['create']>[0]): Promise<DomainEvent> {
+    const event = this.deps.eventRepo.create(input)
+    try {
+      await this.deps.onEventCreated?.(event)
+    } catch (err) {
+      console.error('[AftershowService] Event hook error:', err)
+    }
+    return event
   }
 
   private async createNotificationsForCallouts(input: {
@@ -144,7 +160,7 @@ export class AftershowService {
         notification_id: notification.id,
       })
 
-      this.deps.eventRepo.create({
+      await this.createEvent({
         event_type: 'HUMAN_NOTIFICATION_CREATED',
         plane: 'CONTROL',
         schema_version: 'v1',
@@ -464,13 +480,16 @@ export class AftershowService {
           community_id: post.community_id,
           post_id: post.id,
           correlation_id: correlationId,
-          payload_json: {
-            artifact_id: artifact.id,
-            publish_shape: 'aftershow_block',
-          },
-        })
+        payload_json: {
+          artifact_id: artifact.id,
+          author_agent_id: post.author_agent_id,
+          community_id: post.community_id,
+          publish_shape: 'aftershow_block',
+          post_id: post.id,
+        },
+      })
 
-        this.deps.eventRepo.create({
+        await this.createEvent({
           event_type: 'AFTERSHOW_ENTRY_CREATED',
           plane: 'DATA',
           schema_version: 'v1',
@@ -482,6 +501,7 @@ export class AftershowService {
           payload_json: {
             artifact_id: artifact.id,
             post_id: post.id,
+            author_agent_id: post.author_agent_id,
           },
         })
 
@@ -497,7 +517,7 @@ export class AftershowService {
           callouts.push(created)
         }
 
-        this.deps.eventRepo.create({
+        await this.createEvent({
           event_type: 'AFTERSHOW_CALLOUTS_EXTRACTED',
           plane: 'CONTROL',
           schema_version: 'v1',

@@ -26,7 +26,7 @@ import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { cn } from '@/lib/utils'
-import { canOpenPublicAuthorProfile, readPrimaryIdentityChip } from '@/shared/utils/public-author'
+import { canOpenPublicAuthorProfile, readAuthorBadgeChips } from '@/shared/utils/public-author'
 
 interface ThreadListProps {
   threads: PublicStageThreadData[]
@@ -274,7 +274,9 @@ export function ThreadList({
         const rootAttachment = thread.attachments[0] ?? null
         const threadSharePath = buildThreadSharePath(thread.post_id, thread.id)
         const rootAuthor = thread.author
-        const rootAuthorChip = readPrimaryIdentityChip(rootAuthor)
+        const { identityChip: rootAuthorChip, proofChips: rootAuthorProofChips } = readAuthorBadgeChips(rootAuthor, {
+          maxProofChips: 1,
+        })
         const rootAuthorAvatarSrc = resolveAgentAvatarSrc({
           id: rootAuthor.id,
           display_name: rootAuthor.display_name,
@@ -313,6 +315,11 @@ export function ThreadList({
                         {rootAuthorChip}
                       </Badge>
                     )}
+                    {rootAuthorProofChips.map((badge) => (
+                      <Badge key={`${thread.id}:${badge}`} variant="secondary" className="px-1 py-0 text-[9px]">
+                        {badge}
+                      </Badge>
+                    ))}
                     <span>·</span>
                     <span>{relativeTime(thread.created_at)}</span>
                   </div>
@@ -382,7 +389,10 @@ export function ThreadList({
                         const turnHighlighted = highlightedId === turn.id
                         const attachment = turn.attachments[0] ?? null
                         const turnSharePath = buildTurnSharePath(turn.post_id, turn.thread_id, turn.id)
-                        const turnAuthorChip = readPrimaryIdentityChip(turn.author)
+                        const { identityChip: turnAuthorChip, proofChips: turnAuthorProofChips } = readAuthorBadgeChips(
+                          turn.author,
+                          { maxProofChips: 1 },
+                        )
                         const turnAuthorAvatarSrc = resolveAgentAvatarSrc({
                           id: turn.author.id,
                           display_name: turn.author.display_name,
@@ -418,6 +428,11 @@ export function ThreadList({
                                       {turnAuthorChip}
                                     </Badge>
                                   )}
+                                  {turnAuthorProofChips.map((badge) => (
+                                    <Badge key={`${turn.id}:${badge}`} variant="secondary" className="px-1 py-0 text-[9px]">
+                                      {badge}
+                                    </Badge>
+                                  ))}
                                   <span>·</span>
                                   <span>{relativeTime(turn.created_at)}</span>
                                 </div>

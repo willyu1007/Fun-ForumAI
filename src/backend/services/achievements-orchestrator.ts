@@ -35,6 +35,10 @@ interface MetricSnapshot {
   activity_days: number
   cross_scene: number
   chronicle_entries: number
+  featured_highlights: number
+  aftershow_exports: number
+  storyline_continuations: number
+  proactive_sessions_responded: number
 }
 
 interface ScopeContext {
@@ -106,6 +110,14 @@ function signalImportanceSignals(
       return { F: 0.5, S: 0.48, R: 0.4, D: visibilityWeight, O: 0.28, N: 0.36, C: 0.44, spamPenalty: 0.05 }
     case 'private_digest':
       return { F: 0.5, S: 0.46, R: 0.36, D: visibilityWeight, O: 0.35, N: 0.3, C: 0.5 }
+    case 'highlight_featured':
+      return { F: 0.76, S: 0.78, R: 0.72, D: visibilityWeight, O: 0.72, N: 0.58, C: 0.82 }
+    case 'storyline_callback':
+      return { F: 0.72, S: 0.74, R: 0.68, D: visibilityWeight, O: 0.64, N: 0.56, C: 0.78 }
+    case 'aftershow_published':
+      return { F: 0.7, S: 0.72, R: 0.64, D: visibilityWeight, O: 0.62, N: 0.5, C: 0.74 }
+    case 'proactive_session_success':
+      return { F: 0.58, S: 0.6, R: 0.52, D: visibilityWeight, O: 0.55, N: 0.42, C: 0.7 }
     default:
       return { F: 0.5, S: 0.45, R: 0.35, D: visibilityWeight, O: 0.3, N: 0.2, C: 0.4 }
   }
@@ -125,6 +137,10 @@ export class AchievementsOrchestrator {
     'private_digest',
     'relation_change',
     'governance',
+    'highlight_featured',
+    'aftershow_published',
+    'storyline_callback',
+    'proactive_session_success',
   ]
 
   constructor(private readonly deps: AchievementsOrchestratorDeps) {
@@ -202,6 +218,31 @@ export class AchievementsOrchestrator {
             },
           })
         }
+      } else if (event.event_type === 'AFTERSHOW_PUBLISHED') {
+        const authorId = typeof payload.author_agent_id === 'string' ? payload.author_agent_id : ''
+        const artifactId = typeof payload.artifact_id === 'string' ? payload.artifact_id : ''
+        const postId = typeof payload.post_id === 'string'
+          ? payload.post_id
+          : typeof event.post_id === 'string'
+            ? event.post_id
+            : ''
+        const communityId = typeof payload.community_id === 'string'
+          ? payload.community_id
+          : typeof event.community_id === 'string'
+            ? event.community_id
+            : ''
+        const publishShape = typeof payload.publish_shape === 'string' ? payload.publish_shape : null
+        if (authorId && artifactId && postId) {
+          await this.processAftershowPublished({
+            agent_id: authorId,
+            community_id: communityId,
+            post_id: postId,
+            artifact_id: artifactId,
+            publish_shape: publishShape,
+          })
+        }
+      } else if (event.event_type === 'HOME_EDITORIAL_SHELF_PUBLISHED') {
+        await this.processHomeEditorialShelfPublished(event)
       }
     } catch (error) {
       console.error('[AchievementsOrchestrator] processDomainEvent failed:', error)
@@ -222,6 +263,7 @@ export class AchievementsOrchestrator {
       ],
       metadata: {
         peer_agent_id: OWNER_SCOPE_KEY,
+        source_ref: input.session_id,
       },
     })
   }
@@ -246,17 +288,25 @@ export class AchievementsOrchestrator {
         peer_agent_id: input.to_agent_id,
         previous_state: input.previous_state,
         next_state: input.next_state,
+        source_ref: input.relation_id,
       },
     })
   }
 
   async processGovernanceResult(input: {
     target_agent_id: string
+    target_type: string
     action: string
     source_ref_id: string
     admin_user_id: string
+    result_success: boolean
+    new_visibility?: string | null
+    new_state?: string | null
   }): Promise<void> {
     if (!config.features.achievementChronicleV1) return
+    if (!input.result_success) return
+    if (input.target_type !== 'post' && input.target_type !== 'thread_turn') return
+    if (input.action !== 'approve' && input.action !== 'fold') return
 
     await this.processSignal({
       kind: 'governance',
@@ -266,6 +316,65 @@ export class AchievementsOrchestrator {
       metadata: {
         action: input.action,
         admin_user_id: input.admin_user_id,
+        target_type: input.target_type,
+        result_success: input.result_success,
+        new_visibility: input.new_visibility ?? null,
+        new_state: input.new_state ?? null,
+        source_ref: input.source_ref_id,
+      },
+    })
+  }
+
+  async processAftershowPublished(input: {
+    agent_id: string
+    community_id?: string | null
+    post_id: string
+    artifact_id: string
+    publish_shape?: string | null
+  }): Promise<void> {
+    if (!config.features.achievementChronicleV1) return
+
+    await this.processSignal({
+      kind: 'aftershow_published',
+      agent_id: input.agent_id,
+      dedup_key: `aftershow:${input.artifact_id}`,
+      evidence: [
+        { kind: 'aftershow', ref_id: input.artifact_id },
+        { kind: 'post', ref_id: input.post_id },
+      ],
+      metadata: {
+        ...(input.community_id ? { community_id: input.community_id } : {}),
+        post_id: input.post_id,
+        artifact_id: input.artifact_id,
+        publish_shape: input.publish_shape ?? null,
+        source_ref: input.artifact_id,
+      },
+    })
+  }
+
+  async processProactiveSessionSuccess(input: {
+    agent_id: string
+    session_id: string
+    human_message_id?: string | null
+    opening_message_id?: string | null
+  }): Promise<void> {
+    if (!config.features.achievementChronicleV1) return
+
+    await this.processSignal({
+      kind: 'proactive_session_success',
+      agent_id: input.agent_id,
+      dedup_key: `proactive:${input.session_id}`,
+      evidence: [
+        { kind: 'private_session', ref_id: input.session_id },
+        ...(input.human_message_id ? [{ kind: 'private_message', ref_id: input.human_message_id }] : []),
+        ...(input.opening_message_id ? [{ kind: 'private_message', ref_id: input.opening_message_id }] : []),
+      ],
+      metadata: {
+        peer_agent_id: OWNER_SCOPE_KEY,
+        session_id: input.session_id,
+        human_message_id: input.human_message_id ?? null,
+        opening_message_id: input.opening_message_id ?? null,
+        source_ref: input.session_id,
       },
     })
   }
@@ -384,6 +493,8 @@ export class AchievementsOrchestrator {
       scope: signalScope.scope,
       scope_key: signalScope.scope_key,
       signal_visibility_reason: effectiveSignalReason,
+      dedup_key: signal.dedup_key ?? null,
+      source_ref: this.getPrimarySourceRef(signal.evidence),
     }
 
     await this.deps.chronicleService.recordChronicle({
@@ -444,6 +555,8 @@ export class AchievementsOrchestrator {
       const providedKinds = new Set(evidence.map((item) => item.kind))
       const evidenceSatisfied = Array.from(requiredKinds).every((kind) => providedKinds.has(kind))
       const visibility = evidenceSatisfied ? definition.visibility : 'OWNER_ONLY'
+      const signalMetadata = signal.metadata ?? {}
+      const triggerKind = this.getMetaString(signalMetadata, 'trigger_kind') ?? signal.kind
 
       const granted = await this.deps.achievementRepo.grant({
         agent_id: signal.agent_id,
@@ -458,13 +571,18 @@ export class AchievementsOrchestrator {
         achieved_at: occurredAt,
         evidence: evidence.slice(0, definition.evidencePolicy.maxEvidence),
         meta: {
-          trigger_kind: signal.kind,
+          ...signalMetadata,
+          trigger_kind: triggerKind,
+          trigger_mode: definition.triggerMode,
           scope: scopeContext.scope,
           scope_key: scopeContext.scope_key,
-          metric: definition.metric,
+          metric_name: definition.metric,
+          metric_value: value,
           threshold: definition.threshold,
-          value,
+          dedup_key: signal.dedup_key ?? null,
           evidence_satisfied: evidenceSatisfied,
+          visibility_reason: visibility === 'PUBLIC' ? 'public_evidence_satisfied' : 'missing_required_evidence',
+          source_ref: this.getPrimarySourceRef(evidence),
         },
       })
 
@@ -498,11 +616,19 @@ export class AchievementsOrchestrator {
         occurred_at: occurredAt,
         maxEvidence: definition.evidencePolicy.maxEvidence,
         meta: {
+          ...signalMetadata,
           code: definition.code,
           tier: definition.tier,
           scope: scopeContext.scope,
           scope_key: scopeContext.scope_key,
-          trigger_kind: signal.kind,
+          trigger_kind: triggerKind,
+          trigger_mode: definition.triggerMode,
+          metric_name: definition.metric,
+          metric_value: value,
+          threshold: definition.threshold,
+          dedup_key: signal.dedup_key ?? null,
+          visibility_reason: visibility === 'PUBLIC' ? 'public_evidence_satisfied' : 'missing_required_evidence',
+          source_ref: this.getPrimarySourceRef(evidence),
         },
       })
     }
@@ -571,8 +697,12 @@ export class AchievementsOrchestrator {
       governance_actions: signalSummary.signal_counts.governance ?? 0,
       public_entries: summary.public_entries,
       activity_days: summary.activity_days,
-      cross_scene: signalSummary.cross_scene,
+      cross_scene: this.computeCrossSceneCount(signalSummary.signal_counts, effectiveRelations),
       chronicle_entries: summary.narrative_entries,
+      featured_highlights: signalSummary.signal_counts.highlight_featured ?? 0,
+      aftershow_exports: signalSummary.signal_counts.aftershow_published ?? 0,
+      storyline_continuations: signalSummary.signal_counts.storyline_callback ?? 0,
+      proactive_sessions_responded: signalSummary.signal_counts.proactive_session_success ?? 0,
     }
 
     if (config.features.chronicleMetricsCacheV1) {
@@ -623,7 +753,7 @@ export class AchievementsOrchestrator {
       }
     }
 
-    if (signal.kind === 'private_digest' || signal.kind === 'relation_change') {
+    if (signal.kind === 'private_digest' || signal.kind === 'relation_change' || signal.kind === 'proactive_session_success') {
       return {
         scope: 'peer',
         scope_key: peerAgentId || OWNER_SCOPE_KEY,
@@ -666,5 +796,88 @@ export class AchievementsOrchestrator {
   private getMetaString(meta: Record<string, unknown>, key: string): string | null {
     const value = meta[key]
     return typeof value === 'string' && value.trim().length > 0 ? value : null
+  }
+
+  private getPrimarySourceRef(evidence: EvidenceRef[] | undefined): string | null {
+    const ref = evidence?.find((item) => typeof item.ref_id === 'string' && item.ref_id.trim().length > 0)
+    return ref?.ref_id ?? null
+  }
+
+  private computeCrossSceneCount(signalCounts: Record<string, number>, effectiveRelations: number): number {
+    const buckets = [
+      (signalCounts.forum_post ?? 0) + (signalCounts.forum_thread ?? 0) + (signalCounts.forum_turn ?? 0) + (signalCounts.vote_received ?? 0) > 0,
+      (signalCounts.highlight_featured ?? 0) + (signalCounts.storyline_callback ?? 0) > 0,
+      (signalCounts.aftershow_published ?? 0) > 0,
+      (signalCounts.private_digest ?? 0) + (signalCounts.proactive_session_success ?? 0) > 0,
+      effectiveRelations > 0 || (signalCounts.relation_change ?? 0) > 0,
+      (signalCounts.governance ?? 0) > 0,
+    ]
+    return buckets.filter(Boolean).length
+  }
+
+  private async processHomeEditorialShelfPublished(event: DomainEvent): Promise<void> {
+    const payload = event.payload_json
+    const shelfId = this.getMetaString(payload, 'shelf_id')
+    const authorId = this.getMetaString(payload, 'author_agent_id')
+    const postId = this.getMetaString(payload, 'post_id') ?? event.post_id
+    if (!shelfId || !authorId || !postId) return
+
+    const communityId = this.getMetaString(payload, 'community_id') ?? event.community_id
+    const storylineId = this.getMetaString(payload, 'storyline_id') ?? postId
+    const contentKind = this.getMetaString(payload, 'content_kind')
+    const generatedAt = this.getMetaString(payload, 'generated_at')
+    const snapshotDate = this.getMetaString(payload, 'snapshot_date')
+    const sourceMode = this.getMetaString(payload, 'source_mode')
+
+    if (shelfId === 'must_watch_today') {
+      const dedupKey = `highlight:${postId}:must_watch_today`
+      await this.processSignal({
+        kind: 'highlight_featured',
+        agent_id: authorId,
+        dedup_key: dedupKey,
+        evidence: [
+          { kind: 'post', ref_id: postId },
+          { kind: 'highlight_projection', ref_id: `must_watch_today:${postId}` },
+        ],
+        metadata: {
+          trigger_kind: 'home_editorial_shelf_published',
+          source_event_id: event.id,
+          ...(communityId ? { community_id: communityId } : {}),
+          ...(contentKind ? { content_kind: contentKind } : {}),
+          ...(generatedAt ? { generated_at: generatedAt } : {}),
+          ...(snapshotDate ? { snapshot_date: snapshotDate } : {}),
+          ...(sourceMode ? { source_mode: sourceMode } : {}),
+          shelf_id: shelfId,
+          storyline_id: storylineId,
+          dedup_key: dedupKey,
+        },
+      })
+      return
+    }
+
+    if (shelfId === 'continue_storyline') {
+      const dedupKey = `storyline:${postId}:continue_storyline`
+      await this.processSignal({
+        kind: 'storyline_callback',
+        agent_id: authorId,
+        dedup_key: dedupKey,
+        evidence: [
+          { kind: 'post', ref_id: postId },
+          { kind: 'storyline', ref_id: `continue_storyline:${storylineId}` },
+        ],
+        metadata: {
+          trigger_kind: 'home_editorial_shelf_published',
+          source_event_id: event.id,
+          ...(communityId ? { community_id: communityId } : {}),
+          ...(contentKind ? { content_kind: contentKind } : {}),
+          ...(generatedAt ? { generated_at: generatedAt } : {}),
+          ...(snapshotDate ? { snapshot_date: snapshotDate } : {}),
+          ...(sourceMode ? { source_mode: sourceMode } : {}),
+          shelf_id: shelfId,
+          storyline_id: storylineId,
+          dedup_key: dedupKey,
+        },
+      })
+    }
   }
 }

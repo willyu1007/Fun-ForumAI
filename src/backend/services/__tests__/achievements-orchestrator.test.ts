@@ -6,6 +6,7 @@ import { InMemoryAgentSignalLogRepository } from '../../repos/agent-signal-log-r
 import { AchievementChronicleService } from '../achievement-chronicle-service.js'
 import { AchievementsOrchestrator } from '../achievements-orchestrator.js'
 import { config } from '../../lib/config.js'
+import { ACHIEVEMENT_DEFINITIONS_V1 } from '../achievements/definitions.js'
 
 describe('AchievementsOrchestrator', () => {
   const features = config.features as unknown as Record<string, boolean>
@@ -262,11 +263,11 @@ describe('AchievementsOrchestrator', () => {
       agent_id: agent.id,
       visibility: 'PUBLIC',
       type: 'HIGHLIGHT',
-      title: 'Cross Scene Signal',
-      summary: '另一条全局公共 chronicle，用于满足 cross-scene 指标。',
+      title: 'Aftershow Signal',
+      summary: '另一条全局公共 chronicle，用于点亮 aftershow 场景桶。',
       importance_score: 0.91,
-      evidence: [{ kind: 'cross_scene', ref_id: 'cross-scene-1' }],
-      tags: ['signal:forum_turn'],
+      evidence: [{ kind: 'aftershow', ref_id: 'aftershow-1' }],
+      tags: ['signal:aftershow_published'],
       meta: { scope: 'global', scope_key: '__global__' },
       occurred_at: now,
     })
@@ -285,6 +286,267 @@ describe('AchievementsOrchestrator', () => {
     expect(dailySpotlight?.visibility).toBe('PUBLIC')
     expect(weeklyCrossScene).toBeTruthy()
     expect(weeklyCrossScene?.visibility).toBe('PUBLIC')
+  })
+
+  it('ships launch definitions with 45 achievement rows', () => {
+    expect(ACHIEVEMENT_DEFINITIONS_V1).toHaveLength(45)
+    expect(ACHIEVEMENT_DEFINITIONS_V1.some((item) => item.code === 'highlight_headliner')).toBe(true)
+    expect(ACHIEVEMENT_DEFINITIONS_V1.some((item) => item.code === 'aftershow_recapper')).toBe(true)
+    expect(ACHIEVEMENT_DEFINITIONS_V1.some((item) => item.code === 'storyline_driver')).toBe(true)
+    expect(ACHIEVEMENT_DEFINITIONS_V1.some((item) => item.code === 'proactive_confidant')).toBe(true)
+  })
+
+  it('counts only stage-preserving governance for governance_steadfast', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: '治理样本' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processGovernanceResult({
+      target_agent_id: agent.id,
+      target_type: 'agent',
+      action: 'limit_agent',
+      source_ref_id: 'agent-1',
+      admin_user_id: 'admin-1',
+      result_success: true,
+      new_visibility: null,
+      new_state: null,
+    })
+    await orchestrator.processGovernanceResult({
+      target_agent_id: agent.id,
+      target_type: 'post',
+      action: 'approve',
+      source_ref_id: 'post-1',
+      admin_user_id: 'admin-1',
+      result_success: true,
+      new_visibility: 'PUBLIC',
+      new_state: 'APPROVED',
+    })
+
+    const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    const governanceTier1 = achievements.items.find((item) => item.code === 'governance_steadfast' && item.tier === 1)
+
+    expect(governanceTier1).toBeTruthy()
+    expect(achievements.items.filter((item) => item.code === 'governance_steadfast')).toHaveLength(1)
+  })
+
+  it('does not grant launch home badges from post-time editorial intent anymore', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'Intent Agent' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processDomainEvent({
+      id: 'evt-post-created-1',
+      event_type: 'POST_CREATED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      room_id: null,
+      actor_type: 'agent',
+      actor_id: agent.id,
+      cause_event_id: null,
+      correlation_id: null,
+      payload_json: {
+        author_agent_id: agent.id,
+        post_id: 'post-1',
+        community_id: 'community-1',
+        public_scene: {
+          launch_programming: {
+            editorial_intent: {
+              primary_shelf_id: 'must_watch_today',
+              content_kind: 'highlight_hero',
+            },
+            storyline: {
+              id: 'story-1',
+            },
+          },
+          episode_brief: {
+            episode_id: 'story-1',
+          },
+        },
+      },
+      idempotency_key: null,
+      created_at: new Date('2026-04-07T08:00:00.000Z'),
+    })
+
+    const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    expect(achievements.items.find((item) => item.code === 'forum_post_crafter' && item.tier === 1)).toBeTruthy()
+    expect(achievements.items.find((item) => item.code === 'highlight_headliner')).toBeFalsy()
+    expect(achievements.items.find((item) => item.code === 'storyline_driver')).toBeFalsy()
+  })
+
+  it('grants launch home badges from HOME_EDITORIAL_SHELF_PUBLISHED events with canonical metadata', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'Home Agent' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processDomainEvent({
+      id: 'evt-home-highlight-1',
+      event_type: 'HOME_EDITORIAL_SHELF_PUBLISHED',
+      plane: 'RUNTIME',
+      schema_version: 'v1',
+      community_id: 'community-1',
+      post_id: 'post-highlight-1',
+      room_id: null,
+      actor_type: 'system',
+      actor_id: 'home-programming-snapshot',
+      cause_event_id: null,
+      correlation_id: 'home-snapshot:2026-04-07',
+      payload_json: {
+        snapshot_date: '2026-04-07',
+        generated_at: '2026-04-07T08:00:00.000Z',
+        source_mode: 'editorial_baseline',
+        shelf_id: 'must_watch_today',
+        post_id: 'post-highlight-1',
+        author_agent_id: agent.id,
+        community_id: 'community-1',
+        storyline_id: 'story-1',
+        content_kind: 'highlight_hero',
+        surface_kind: 'highlight_card',
+        card_mode: 'cover',
+        thumbnail_policy: 'required',
+        hero_reason: '今日高光',
+        next_jump_target: '/posts/post-highlight-1',
+      },
+      idempotency_key: 'home-shelf:2026-04-07:must_watch_today:post-highlight-1',
+      created_at: new Date('2026-04-07T08:00:00.000Z'),
+    })
+    await orchestrator.processDomainEvent({
+      id: 'evt-home-story-1',
+      event_type: 'HOME_EDITORIAL_SHELF_PUBLISHED',
+      plane: 'RUNTIME',
+      schema_version: 'v1',
+      community_id: 'community-1',
+      post_id: 'post-story-1',
+      room_id: null,
+      actor_type: 'system',
+      actor_id: 'home-programming-snapshot',
+      cause_event_id: null,
+      correlation_id: 'home-snapshot:2026-04-07',
+      payload_json: {
+        snapshot_date: '2026-04-07',
+        generated_at: '2026-04-07T08:00:00.000Z',
+        source_mode: 'editorial_baseline',
+        shelf_id: 'continue_storyline',
+        post_id: 'post-story-1',
+        author_agent_id: agent.id,
+        community_id: 'community-1',
+        storyline_id: 'story-2',
+        content_kind: 'aftershow_recap',
+        surface_kind: 'aftershow_card',
+        card_mode: 'compact',
+        thumbnail_policy: 'optional',
+        hero_reason: null,
+        next_jump_target: '/posts/post-story-1',
+      },
+      idempotency_key: 'home-shelf:2026-04-07:continue_storyline:post-story-1',
+      created_at: new Date('2026-04-07T08:05:00.000Z'),
+    })
+
+    const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    const highlightTier1 = achievements.items.find((item) => item.code === 'highlight_headliner' && item.tier === 1)
+    const storylineTier1 = achievements.items.find((item) => item.code === 'storyline_driver' && item.tier === 1)
+
+    expect(highlightTier1).toBeTruthy()
+    expect(highlightTier1?.meta).toMatchObject({
+      trigger_kind: 'home_editorial_shelf_published',
+      source_event_id: 'evt-home-highlight-1',
+      shelf_id: 'must_watch_today',
+      content_kind: 'highlight_hero',
+      storyline_id: 'story-1',
+      dedup_key: 'highlight:post-highlight-1:must_watch_today',
+      scope: 'global',
+      scope_key: '__global__',
+    })
+    expect(storylineTier1).toBeTruthy()
+    expect(storylineTier1?.meta).toMatchObject({
+      trigger_kind: 'home_editorial_shelf_published',
+      source_event_id: 'evt-home-story-1',
+      shelf_id: 'continue_storyline',
+      content_kind: 'aftershow_recap',
+      storyline_id: 'story-2',
+      dedup_key: 'storyline:post-story-1:continue_storyline',
+      scope: 'global',
+      scope_key: '__global__',
+    })
+  })
+
+  it('grants aftershow and proactive launch families through dedicated success hooks', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'Launch Agent' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processAftershowPublished({
+      agent_id: agent.id,
+      community_id: 'community-1',
+      post_id: 'post-aftershow-1',
+      artifact_id: 'artifact-1',
+      publish_shape: 'aftershow_block',
+    })
+    await orchestrator.processProactiveSessionSuccess({
+      agent_id: agent.id,
+      session_id: 'session-1',
+      human_message_id: 'message-human-1',
+      opening_message_id: 'message-agent-1',
+    })
+
+    const achievements = await achievementRepo.findByAgent(agent.id, { limit: 50 })
+    expect(achievements.items.find((item) => item.code === 'aftershow_recapper' && item.tier === 1)).toBeTruthy()
+    const proactiveTier1 = achievements.items.find((item) => item.code === 'proactive_confidant' && item.tier === 1)
+    expect(proactiveTier1).toBeTruthy()
+    expect(proactiveTier1?.visibility).toBe('OWNER_ONLY')
   })
 
   it('dual-writes signal logs and forces signal chronicle owner-only when signal log v1 is enabled', async () => {

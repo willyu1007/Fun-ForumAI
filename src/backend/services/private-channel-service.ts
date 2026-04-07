@@ -112,12 +112,29 @@ export interface PrivateChannelServiceDeps {
   sseHub?: SseHub | null
   policyGatewayService?: PolicyGatewayService | null
   identityGateService?: IdentityGateService | null
+  onProactiveSessionSuccess?: (input: {
+    agent_id: string
+    session_id: string
+    human_message_id?: string | null
+    opening_message_id?: string | null
+  }) => Promise<void> | void
 }
 
 export class PrivateChannelService {
   private readonly pendingReplyTasks = new Map<string, Promise<CompletedPrivateReplyResult>>()
 
   constructor(private readonly deps: PrivateChannelServiceDeps) {}
+
+  setProactiveSessionSuccessHook(
+    hook: (input: {
+      agent_id: string
+      session_id: string
+      human_message_id?: string | null
+      opening_message_id?: string | null
+    }) => Promise<void> | void,
+  ): void {
+    this.deps.onProactiveSessionSuccess = hook
+  }
 
   bindPromptOrchestrator(promptEngine: PromptEngine, promptOrchestrator: PromptOrchestrator): void {
     void promptEngine
@@ -212,6 +229,10 @@ export class PrivateChannelService {
       await this.deps.identityGateService.assertVerified(humanUserId, 'private_message_send')
     }
 
+    const proactiveReplyContext = session.initiator === 'AGENT'
+      ? await this.inspectProactiveReplyContext(session.id)
+      : null
+
     const agent = this.deps.agentService.getAgent(session.agent_id)
     if (!agent) throw new NotFoundError('Agent', session.agent_id)
 
@@ -274,6 +295,18 @@ export class PrivateChannelService {
     }
 
     try {
+      if (
+        proactiveReplyContext
+        && !proactiveReplyContext.hadHumanReplyBefore
+      ) {
+        await this.notifyProactiveSessionSuccess({
+          agent_id: session.agent_id,
+          session_id: session.id,
+          human_message_id: humanMsg.id,
+          opening_message_id: proactiveReplyContext.openingMessageId,
+        })
+      }
+
       const prepared = attachmentAssetIds.length > 0
         ? await this.preparePrivateReplyContext({
             session,
@@ -696,6 +729,30 @@ export class PrivateChannelService {
     })
     if (cleanupErrors.length > 0) {
       console.error('[PrivateChannel] attachment rollback cleanup failed:', cleanupErrors)
+    }
+  }
+
+  private async inspectProactiveReplyContext(sessionId: string): Promise<{
+    hadHumanReplyBefore: boolean
+    openingMessageId: string | null
+  }> {
+    const history = await this.deps.channelRepo.listMessages(sessionId, { limit: 500 })
+    return {
+      hadHumanReplyBefore: history.items.some((item) => item.author_type === 'HUMAN'),
+      openingMessageId: history.items.find((item) => item.author_type === 'AGENT')?.id ?? null,
+    }
+  }
+
+  private async notifyProactiveSessionSuccess(input: {
+    agent_id: string
+    session_id: string
+    human_message_id?: string | null
+    opening_message_id?: string | null
+  }): Promise<void> {
+    try {
+      await this.deps.onProactiveSessionSuccess?.(input)
+    } catch (err) {
+      console.error('[PrivateChannel] proactive session success hook failed:', err)
     }
   }
 

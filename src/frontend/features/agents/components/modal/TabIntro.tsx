@@ -51,7 +51,7 @@ import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redi
 import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import {
-  readPrimaryIdentityChip,
+  readAuthorBadgeChips,
   readProofBadgeLabels,
   readProjectionText,
 } from '@/shared/utils/public-author'
@@ -254,7 +254,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
   }
 
   const safeAgent = data.data
-  const identityChip = readPrimaryIdentityChip(safeAgent)
+  const { identityChip, proofChips: headerProofBadges } = readAuthorBadgeChips(safeAgent, {
+    maxProofChips: 2,
+  })
   const proofBadges = readProofBadgeLabels(safeAgent)
   const publicBio =
     normalizeBio(publicHighlights?.public_bio)
@@ -376,7 +378,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     {identityChip && (
                       <Badge variant="outline">{identityChip}</Badge>
                     )}
-                    {proofBadges.map((badge) => (
+                    {headerProofBadges.map((badge) => (
                       <Badge key={badge} variant="secondary">
                         {badge}
                       </Badge>

@@ -14,6 +14,10 @@ import {
   type IdentityRoleId,
   type IdentityVisibilityRoleId,
 } from '../../shared/semantic-taxonomy.js'
+import {
+  normalizeSystemDisplayBadgeLabel,
+  type CanonicalSystemBadgeLabel,
+} from '../../shared/badges/catalog.js'
 import { ValidationError } from '../lib/errors.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
@@ -23,9 +27,12 @@ const DEFAULT_LAUNCH_SYSTEM_ROSTER_PATH = resolveLaunchContractPath({
 })
 
 export const LAUNCH_SYSTEM_IDENTITY_KEY = 'launch_system_identity'
-const ALLOWED_BADGE_LABELS = ['Resident', 'Host', '常驻', '节目位'] as const
+const CANONICAL_BADGE_LABELS = ['节目位', '常驻席', '主持席'] as const
 
-const launchBadgeLabelSchema = z.enum(ALLOWED_BADGE_LABELS)
+const launchBadgeLabelSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return normalizeSystemDisplayBadgeLabel(value) ?? value.trim()
+}, z.enum(CANONICAL_BADGE_LABELS))
 const surfaceDisplayModeSchema = z.literal('program_seat_only')
 const canonicalProgramRoleSchema = z.enum([
   'anchor',
@@ -162,7 +169,7 @@ const launchSystemIdentityConfigSchema = z.object({
   identity_scaffold: identityScaffoldSchema,
 })
 
-export type LaunchBadgeLabel = z.infer<typeof launchBadgeLabelSchema>
+export type LaunchBadgeLabel = CanonicalSystemBadgeLabel
 export type LaunchProgramRole = z.infer<typeof programRoleSchema>
 export type LaunchVisibilityRole = z.infer<typeof visibilityRoleSchema>
 export type LaunchImageAffinity = z.infer<typeof imageAffinitySchema>

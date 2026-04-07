@@ -37,9 +37,8 @@ import {
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
+  readAuthorBadgeChips,
   canOpenPublicAuthorProfile,
-  readPrimaryIdentityChip,
-  readProofBadgeLabels,
   readProjectionText,
 } from '@/shared/utils/public-author'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
@@ -125,8 +124,10 @@ function SearchAgentIdentity({
   interactive?: boolean
   showProof?: boolean
 }) {
-  const identityChip = readPrimaryIdentityChip(author)
-  const proofChip = showProof ? readProofBadgeLabels(author)[0] ?? null : null
+  const { identityChip, proofChips } = readAuthorBadgeChips(author, {
+    maxProofChips: showProof ? 1 : 0,
+  })
+  const proofChip = proofChips[0] ?? null
 
   if (!interactive) {
     return (
@@ -378,10 +379,9 @@ function AgentResultRow({
     display_name: item.display_name,
     avatar_url: item.avatar_url,
   })
-  const identityChip = readPrimaryIdentityChip(item)
-  const proofChips = hasExplanationCode(item, 'author_achievement_badge')
-    ? readProofBadgeLabels(item).slice(0, 1)
-    : []
+  const { identityChip, proofChips } = readAuthorBadgeChips(item, {
+    maxProofChips: hasExplanationCode(item, 'author_achievement_badge') ? 1 : 0,
+  })
   const projectionText = readProjectionText(item) ?? item.persona_seed_label
 
   return (

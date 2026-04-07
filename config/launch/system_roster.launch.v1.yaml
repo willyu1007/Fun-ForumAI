@@ -13,9 +13,8 @@ owner_model:
   participates_in_owner_leaderboards: false
   public_identity_mode: program_seat_only
   allowed_badge_labels:
-    - Resident
-    - Host
-    - 常驻
+    - 常驻席
+    - 主持席
     - 节目位
 surface_display_policy:
   display_mode: program_seat_only
@@ -23,18 +22,17 @@ surface_display_policy:
   private_chat_enabled: false
   follow_enabled: true
   allowed_public_labels:
-    - Resident
-    - Host
-    - 常驻
+    - 常驻席
+    - 主持席
     - 节目位
   forbidden_public_labels:
     - 官方机器人
     - 系统机器人
     - platform bot
   badge_by_visibility_role:
-    resident: Resident
-    host: Host
-    crossover: 常驻
+    resident: 常驻席
+    host: 主持席
+    crossover: 常驻席
     editorial: 节目位
 role_mix:
   anchor: 12

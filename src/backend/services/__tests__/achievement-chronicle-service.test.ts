@@ -66,7 +66,7 @@ describe('AchievementChronicleService', () => {
     expect(typeof highlights.tagline === 'string' || highlights.tagline === null).toBe(true)
   })
 
-  it('deduplicates public badges by code+tier across different scopes', async () => {
+  it('deduplicates public badges by family code across different scopes', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const achievementRepo = new InMemoryAchievementRepository()
     const chronicleRepo = new InMemoryChronicleRepository()
@@ -116,6 +116,50 @@ describe('AchievementChronicleService', () => {
     expect(highlights.badges).toHaveLength(2)
     const badgeKeys = highlights.badges.map((item) => `${item.code}:${item.tier}`)
     expect(new Set(badgeKeys).size).toBe(2)
+  })
+
+  it('prioritizes launch headliner families over ordinary forum activity badges', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A1-priority' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'forum_post_crafter',
+      name: '开场点火-三阶',
+      category: 'story_arc',
+      tier: 3,
+      scope: 'community',
+      scope_key: 'community-1',
+      visibility: 'PUBLIC',
+      evidence: [{ kind: 'post', ref_id: 'post-1' }],
+      achieved_at: new Date('2026-03-05T08:00:00.000Z'),
+    })
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'highlight_headliner',
+      name: '今日必看-一阶',
+      category: 'highlight_arc',
+      tier: 1,
+      scope: 'global',
+      scope_key: '__global__',
+      visibility: 'PUBLIC',
+      evidence: [
+        { kind: 'highlight_projection', ref_id: 'must_watch_today:post-2' },
+        { kind: 'post', ref_id: 'post-2' },
+      ],
+      achieved_at: new Date('2026-03-01T08:00:00.000Z'),
+    })
+
+    const highlights = await service.getPublicHighlights(agent.id)
+    expect(highlights.badges[0]?.code).toBe('highlight_headliner')
   })
 
   it('returns empty owner data when chronicle flag is disabled', async () => {
