@@ -11,6 +11,7 @@ import type {
 } from '../repos/index.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
+import type { ViewerWriteSourceContext } from '../../shared/forum-orchestration.js'
 
 export { HUMAN_VOTE_WEIGHT }
 
@@ -42,6 +43,8 @@ export class HumanParticipationService {
     actor_user_id: string
     post_id: string
     body: string
+    idempotency_key?: string | null
+    source_context?: ViewerWriteSourceContext | null
   }): Promise<{
     thread: Awaited<ReturnType<PublicStageThreadRepository['create']>>
     event: Awaited<ReturnType<EventRepository['create']>>
@@ -74,6 +77,7 @@ export class HumanParticipationService {
       actor_type: 'human',
       actor_id: input.actor_user_id,
       correlation_id: `post:${post.id}`,
+      idempotency_key: input.idempotency_key ?? null,
       payload_json: {
         post_id: post.id,
         community_id: post.community_id,
@@ -87,6 +91,7 @@ export class HumanParticipationService {
         state: thread.state,
         channel: 'STAGE',
         chain_depth: 0,
+        source_context: input.source_context ?? null,
       },
     })
 
@@ -98,6 +103,11 @@ export class HumanParticipationService {
     thread_id: string
     body: string
     anchor_turn_id?: string | null
+    quoted_excerpt?: string | null
+    idempotency_key?: string | null
+    source_context?: ViewerWriteSourceContext | null
+    focused_turn_id?: string | null
+    actual_anchor_turn_id?: string | null
   }): Promise<{
     turn: Awaited<ReturnType<PublicStageTurnRepository['create']>>
     event: Awaited<ReturnType<EventRepository['create']>>
@@ -142,6 +152,7 @@ export class HumanParticipationService {
       author_user_id: input.actor_user_id,
       turn_index: currentTurnCount + 1,
       anchor_turn_id: anchorTurn?.id ?? null,
+      quoted_excerpt: input.quoted_excerpt ?? null,
       body,
       visibility: 'PUBLIC',
       state: 'APPROVED',
@@ -156,6 +167,7 @@ export class HumanParticipationService {
       actor_type: 'human',
       actor_id: input.actor_user_id,
       correlation_id: `post:${post.id}`,
+      idempotency_key: input.idempotency_key ?? null,
       payload_json: {
         post_id: post.id,
         community_id: post.community_id,
@@ -169,6 +181,11 @@ export class HumanParticipationService {
         state: turn.state,
         channel: 'STAGE',
         chain_depth: 0,
+        anchor_turn_id: anchorTurn?.id ?? null,
+        focused_turn_id: input.focused_turn_id ?? null,
+        actual_anchor_turn_id: input.actual_anchor_turn_id ?? anchorTurn?.id ?? null,
+        quoted_excerpt: input.quoted_excerpt ?? null,
+        source_context: input.source_context ?? null,
       },
     })
 

@@ -519,6 +519,8 @@ const alloc = createAllocator({
   statsServiceRef: () => core.statsService,
   relationServiceRef: () => nurture.relationService,
   pprRefreshLeaderElector: infra.leaderElectors.pprRefresh,
+  attentionOpportunityBroker: core.attentionOpportunityBroker,
+  recallPolicyService: core.recallPolicyService,
 })
 
 // ─── 7. Agent Runtime ───────────────────────────────────────
@@ -535,6 +537,10 @@ const rt = createRuntime({
   publicSceneSelectorService: core.publicSceneSelectorService,
   forumSceneContinuityService: core.forumSceneContinuityService,
   chatroomRuntimeContextBuilder: core.chatroomRuntimeContextBuilder,
+  semanticProjectionService: core.semanticProjectionService,
+  displayProjectionService: core.displayProjectionService,
+  agentPerceptionService: core.agentPerceptionService,
+  runtimeContextAssembler: core.runtimeContextAssembler,
   promptOrchestrator: nurture.promptOrchestrator,
   mediaProjectionService: llm.mediaProjectionService,
   mediaWriteBridge: llm.mediaWriteBridge,
@@ -718,6 +724,15 @@ export const aftershowService = core.aftershowService
 export const communityConfigService = core.communityConfigService
 export const communityGovernanceService = core.communityGovernanceService
 export const viewerPublicViewService = core.viewerPublicViewService
+export const viewerPublicWriteService = core.viewerPublicWriteService
+export const threadLifecycleService = core.threadLifecycleService
+export const semanticProjectionService = core.semanticProjectionService
+export const displayProjectionService = core.displayProjectionService
+export const participationContractService = core.participationContractService
+export const attentionOpportunityBroker = core.attentionOpportunityBroker
+export const recallPolicyService = core.recallPolicyService
+export const agentPerceptionService = core.agentPerceptionService
+export const runtimeContextAssembler = core.runtimeContextAssembler
 export const roleAssignmentService = core.roleAssignmentService
 export const forumWriteService = core.forumWriteService
 export const globalHighlightsService = core.globalHighlightsService

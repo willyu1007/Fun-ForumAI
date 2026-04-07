@@ -25,6 +25,8 @@ import type { AgentStageTierService } from '../services/agent-stage-tier-service
 import type { StatsService } from '../services/stats-service.js'
 import type { RelationService } from '../services/relation-service.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
+import type { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
+import type { RecallPolicyService } from '../services/recall-policy-service.js'
 
 export function createAllocator(deps: {
   repos: Repositories
@@ -32,6 +34,8 @@ export function createAllocator(deps: {
   statsServiceRef: () => StatsService | null
   relationServiceRef: () => RelationService | null
   pprRefreshLeaderElector: LeaderElector
+  attentionOpportunityBroker?: AttentionOpportunityBroker | null
+  recallPolicyService?: RecallPolicyService | null
 }) {
   const { repos, stageTierService } = deps
 
@@ -169,6 +173,8 @@ export function createAllocator(deps: {
       directorEnabled: config.features.castingDirectorEnabled || config.features.castingDirectorV2,
       directorV2Enabled: config.features.castingDirectorV2,
       resolveCommunityDirectorConfig: resolveDirectorConfigByCommunity,
+      attentionOpportunityBroker: deps.attentionOpportunityBroker ?? undefined,
+      recallPolicyService: deps.recallPolicyService ?? undefined,
     }),
     lock: new InMemoryAllocationLock(DEFAULT_ALLOCATOR_CONFIG.lockTtlMs),
     degradation: degradationMonitor,

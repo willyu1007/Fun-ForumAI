@@ -396,6 +396,17 @@ export const createAudienceMessageSchema = z
 export const createPublicThreadSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
+    idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
+    source_context: z
+      .object({
+        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        source_surface: z.string().trim().max(80).nullable().optional(),
+        source_shelf: z.string().trim().max(80).nullable().optional(),
+        source_position: z.number().int().min(0).nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
   })
   .strict()
 
@@ -403,6 +414,28 @@ export const createPublicTurnSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
     anchor_turn_id: z.string().trim().min(1).nullable().optional(),
+    idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
+    source_context: z
+      .object({
+        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        source_surface: z.string().trim().max(80).nullable().optional(),
+        source_shelf: z.string().trim().max(80).nullable().optional(),
+        source_position: z.number().int().min(0).nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    focused_turn_id: z.string().trim().min(1).nullable().optional(),
+    actual_anchor_turn_id: z.string().trim().min(1).nullable().optional(),
+    quoted_excerpt: z.string().trim().min(1).max(500).nullable().optional(),
+  })
+  .strict()
+
+export const buildRuntimeContextPreviewSchema = z
+  .object({
+    post_id: z.string().trim().min(1),
+    thread_id: z.string().trim().min(1).nullable().optional(),
+    focus_turn_id: z.string().trim().min(1).nullable().optional(),
   })
   .strict()
 

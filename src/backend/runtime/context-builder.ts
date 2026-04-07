@@ -14,6 +14,10 @@ import type { CommunityCultureDigestService } from '../services/community-cultur
 import type { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import type { ChatService } from '../services/chat-service.js'
 import type { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime-context-builder.js'
+import type { SemanticProjectionService } from '../services/semantic-projection-service.js'
+import type { DisplayProjectionService } from '../services/display-projection-service.js'
+import type { AgentPerceptionService } from '../services/agent-perception-service.js'
+import type { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 
 export interface ContextBuilderDeps {
@@ -25,6 +29,10 @@ export interface ContextBuilderDeps {
   forumSceneContinuityService?: ForumSceneContinuityService | null
   chatService?: ChatService | null
   chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
+  semanticProjectionService?: Pick<SemanticProjectionService, 'buildPostSemanticCapsule' | 'buildReadingGuide' | 'buildThreadCapsule'> | null
+  displayProjectionService?: Pick<DisplayProjectionService, 'buildDiscussionForest'> | null
+  agentPerceptionService?: Pick<AgentPerceptionService, 'buildSlice'> | null
+  runtimeContextAssembler?: Pick<RuntimeContextAssembler, 'build'> | null
 }
 
 const DEFAULT_PERSONA: AgentPersona = {
@@ -52,7 +60,11 @@ export class ContextBuilder {
         ctx.threadMeta = await this.loadThreadMeta(targetThreadId)
         if (
           (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded')
-          && (ctx.threadMeta?.thread_state === 'CLOSED' || ctx.threadMeta?.thread_state === 'SPINOFF')
+          && (
+            ctx.threadMeta?.thread_state === 'CLOSED'
+            || ctx.threadMeta?.thread_state === 'HANDOFFED'
+            || ctx.threadMeta?.thread_state === 'SPINOFFED'
+          )
         ) {
           ctx.skip_reason = `thread_${ctx.threadMeta.thread_state.toLowerCase()}_no_followup`
         }
@@ -96,6 +108,49 @@ export class ContextBuilder {
           ...continuity.payload,
           continuity_source: continuity.source,
         }
+      }
+    }
+
+    const runtimePreviewBuilder = this.deps.forumReadService as unknown as {
+      buildRuntimeContextPreview?: (
+        input: {
+          post_id: string
+          thread_id?: string | null
+          focus_turn_id?: string | null
+        },
+      ) => Promise<{
+        post_capsule: ExecutionContext['semantic_post_capsule']
+        thread_capsule: ExecutionContext['semantic_thread_capsule']
+        perceived_slice: ExecutionContext['perceived_context_slice']
+        runtime_context: ExecutionContext['forum_runtime_context']
+      }>
+    }
+
+    if (event.post_id && typeof runtimePreviewBuilder.buildRuntimeContextPreview === 'function') {
+      try {
+        const preview = await runtimePreviewBuilder.buildRuntimeContextPreview({
+          post_id: event.post_id,
+          thread_id: event.thread_id ?? null,
+          focus_turn_id: event.turn_id ?? null,
+        })
+
+        ctx.semantic_post_capsule = preview.post_capsule ?? null
+        ctx.semantic_thread_capsule = preview.thread_capsule ?? null
+        ctx.perceived_context_slice = preview.perceived_slice ?? null
+        ctx.forum_runtime_context = preview.runtime_context ?? null
+
+        if (preview.perceived_slice && ctx.threadTurns?.length) {
+          const visibleIds = new Set(preview.perceived_slice.visible_node_ids)
+          const filtered = ctx.threadTurns.filter((item) => visibleIds.has(item.id))
+          if (filtered.length > 0) {
+            ctx.threadTurns = filtered
+          }
+        }
+      } catch (error) {
+        console.error(
+          `[ContextBuilder] forum semantic context build failed for post=${event.post_id} thread=${event.thread_id ?? 'none'} agent=${agent.agent_id}:`,
+          error,
+        )
       }
     }
 
@@ -290,10 +345,42 @@ export class ContextBuilder {
 
   private async loadThreadMeta(threadId: string): Promise<ExecutionContext['threadMeta'] | undefined> {
     try {
+      const lifecycleLoader = this.deps.forumReadService as unknown as {
+        getThreadLifecycle?: (threadId: string) => Promise<{
+          thread_id: string
+          thread_state: NonNullable<ExecutionContext['threadMeta']>['thread_state']
+          reply_budget: {
+            hard_cap_turns: number | null
+            remaining_turns: number | null
+            limit: number
+            remaining: number
+          }
+          active_route: {
+            route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
+            route_state: string
+          } | null
+        }>
+      }
+      if (typeof lifecycleLoader.getThreadLifecycle === 'function') {
+        const lifecycle = await lifecycleLoader.getThreadLifecycle(threadId)
+        return {
+          thread_id: lifecycle.thread_id,
+          thread_state: lifecycle.thread_state,
+          reply_budget: lifecycle.reply_budget.hard_cap_turns ?? lifecycle.reply_budget.limit,
+          reply_budget_remaining: lifecycle.reply_budget.remaining_turns ?? lifecycle.reply_budget.remaining,
+          active_route: lifecycle.active_route
+            ? {
+                route_type: lifecycle.active_route.route_type,
+                route_state: lifecycle.active_route.route_state,
+              }
+            : null,
+        }
+      }
+
       const thread = await this.deps.forumReadService.getThread(threadId)
       return {
         thread_id: thread.id,
-        thread_state: thread.thread_state,
+        thread_state: thread.thread_state as NonNullable<ExecutionContext['threadMeta']>['thread_state'],
         reply_budget: thread.reply_budget,
         reply_budget_remaining: Math.max(thread.reply_budget - thread.turn_count, 0),
         active_route: thread.active_route

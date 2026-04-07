@@ -15,6 +15,7 @@ import {
   roleAssignmentService,
   eventRepo,
   forumSceneMetadataRepo,
+  mediaRolloutControllerService,
   mediaAssetRepo,
   mediaContextProjectionRepo,
   mediaSemanticSnapshotRepo,
@@ -840,6 +841,359 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('GET /v1/posts/:postId/reading-guide and /v1/posts/:postId/discussion-forest return post-detail projections', async () => {
+    const community = await createTestCommunity({
+      name: 'Discussion Forest Community',
+      slug: `discussion-forest-${Date.now()}`,
+    })
+    const rootAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Forest Root Author' })
+    expect(rootAuthorRes.status).toBe(201)
+    const turnAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Forest Turn Author' })
+    expect(turnAuthorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-discussion-forest-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Projection target',
+      body: 'This post should build a reading guide and discussion forest.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-discussion-forest-thread-${Date.now()}`,
+      body: 'Primary branch root.',
+    })
+    expect(threadRes.status).toBe(201)
+    const threadId = threadRes.body.data.id as string
+
+    const turnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: turnAuthorRes.body.data.id,
+      run_id: `run-discussion-forest-turn-${Date.now()}`,
+      body: 'Branch continuation from a second agent.',
+    })
+    expect(turnRes.status).toBe(201)
+    const turnId = turnRes.body.data.id as string
+
+    const guideRes = await request(app).get(`/v1/posts/${postId}/reading-guide`)
+    expect(guideRes.status).toBe(200)
+    expect(guideRes.body.data).toMatchObject({
+      schema_version: expect.any(String),
+      post_id: postId,
+      start_here_thread_ids: [threadId],
+      current_focus_thread_ids: [threadId],
+      highlighted_thread_ids: [threadId],
+      evidence_refs: expect.arrayContaining([
+        expect.objectContaining({ kind: 'THREAD', id: threadId }),
+      ]),
+    })
+    expect(guideRes.body.data.entries[0]).toMatchObject({
+      thread_id: threadId,
+      focus_turn_id: turnId,
+      participant_count: 2,
+      turn_count: 1,
+      evidence_refs: expect.arrayContaining([
+        expect.objectContaining({ kind: 'TURN', id: turnId }),
+      ]),
+    })
+
+    const forestRes = await request(app)
+      .get(`/v1/posts/${postId}/discussion-forest`)
+      .query({ turnId })
+    expect(forestRes.status).toBe(200)
+    expect(forestRes.body.data).toMatchObject({
+      schema_version: expect.any(String),
+      post_id: postId,
+      focus_thread_id: threadId,
+      focus_turn_id: turnId,
+      branch_groups: expect.arrayContaining([
+        expect.objectContaining({
+          thread_id: threadId,
+          turn_count: 1,
+          evidence_refs: expect.arrayContaining([
+            expect.objectContaining({ kind: 'THREAD', id: threadId }),
+          ]),
+        }),
+      ]),
+      evidence_refs: expect.arrayContaining([
+        expect.objectContaining({ kind: 'THREAD', id: threadId }),
+      ]),
+    })
+    expect(forestRes.body.data.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          schema_version: expect.any(String),
+          id: threadId,
+          entry_kind: 'THREAD',
+          thread_id: threadId,
+          display_depth: 0,
+          display_parent_id: null,
+          branch_root_turn_id: null,
+        }),
+        expect.objectContaining({
+          schema_version: expect.any(String),
+          id: turnId,
+          entry_kind: 'TURN',
+          thread_id: threadId,
+          actual_anchor_turn_id: null,
+          display_parent_id: threadId,
+          placement_reason: 'ROOT_APPEND',
+        }),
+      ]),
+    )
+
+    const lifecycleRes = await request(app)
+      .get(`/v1/internal/threads/${threadId}/lifecycle`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(lifecycleRes.status).toBe(200)
+    expect(lifecycleRes.body.data).toMatchObject({
+      schema_version: expect.any(String),
+      thread_id: threadId,
+      thread_state: expect.any(String),
+      reply_budget: expect.objectContaining({
+        schema_version: expect.any(String),
+        mode: expect.any(String),
+      }),
+    })
+
+    const postCapsuleRes = await request(app)
+      .get(`/v1/internal/posts/${postId}/semantic-capsule`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(postCapsuleRes.status).toBe(200)
+    expect(postCapsuleRes.body.data).toMatchObject({
+      schema_version: expect.any(String),
+      post_id: postId,
+      thread_capsules: [expect.objectContaining({ thread_id: threadId })],
+      public_persona_cues: expect.any(Array),
+      evidence_refs: expect.arrayContaining([
+        expect.objectContaining({ kind: 'THREAD', id: threadId }),
+      ]),
+    })
+
+    const threadCapsuleRes = await request(app)
+      .get(`/v1/internal/threads/${threadId}/semantic-capsule`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(threadCapsuleRes.status).toBe(200)
+    expect(threadCapsuleRes.body.data).toMatchObject({
+      schema_version: expect.any(String),
+      thread_id: threadId,
+      lifecycle: expect.objectContaining({
+        thread_id: threadId,
+      }),
+      public_persona_cues: expect.any(Array),
+      evidence_refs: expect.arrayContaining([
+        expect.objectContaining({ kind: 'THREAD', id: threadId }),
+      ]),
+    })
+
+    const internalGuideRes = await request(app)
+      .get(`/v1/internal/posts/${postId}/reading-guide`)
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(internalGuideRes.status).toBe(200)
+    expect(internalGuideRes.body.data.post_id).toBe(postId)
+
+    const internalForestRes = await request(app)
+      .get(`/v1/internal/posts/${postId}/discussion-forest`)
+      .query({ focus_turn_id: turnId })
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(internalForestRes.status).toBe(200)
+    expect(internalForestRes.body.data.focus_turn_id).toBe(turnId)
+
+    const runtimePreviewRes = await request(app)
+      .post('/v1/internal/runtime-contexts/build')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        post_id: postId,
+        thread_id: threadId,
+        focus_turn_id: turnId,
+      })
+    expect(runtimePreviewRes.status).toBe(200)
+    expect(runtimePreviewRes.body.data).toMatchObject({
+      post_capsule: expect.objectContaining({
+        post_id: postId,
+      }),
+      thread_capsule: expect.objectContaining({
+        thread_id: threadId,
+      }),
+      perceived_slice: expect.objectContaining({
+        thread_id: threadId,
+        focus_turn_id: turnId,
+      }),
+      runtime_context: expect.objectContaining({
+        post_id: postId,
+        thread_id: threadId,
+        foundation_skeleton: expect.objectContaining({
+          post: expect.objectContaining({
+            post_id: postId,
+          }),
+        }),
+      }),
+      evidence_window_turns: expect.any(Array),
+    })
+  })
+
+  it('GET /v1/posts/:postId does not block on slow rollout profile evaluation when aftershow web is enabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAudienceAftershowWeb = featureFlags.audienceAftershowWebV1
+    const originalAftershow = featureFlags.aftershowV1
+    const originalRollout = featureFlags.mediaRolloutControllerV1
+    featureFlags.audienceAftershowWebV1 = true
+    featureFlags.aftershowV1 = true
+    featureFlags.mediaRolloutControllerV1 = true
+
+    const rolloutSpy = vi.spyOn(mediaRolloutControllerService, 'getEffectiveProfile').mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return {
+        mode: 'AUTO',
+        active_override: null,
+        profile: 'steady',
+        metrics: {} as Awaited<ReturnType<typeof mediaRolloutControllerService.getEffectiveProfile>>['metrics'],
+        gates: [] as Awaited<ReturnType<typeof mediaRolloutControllerService.getEffectiveProfile>>['gates'],
+        effective: {
+          target_min_rate: 0.05,
+          target_max_rate: 0.4,
+          threshold_delta: 0.1,
+          allow_generation: true,
+          generation_tier: 'medium',
+          sync_generation_ms_budget: 50,
+          allow_private_runtime_projection: false,
+          allow_private_inspired_generation: false,
+          force_safe_mode: false,
+          semantic_v3_enforced: true,
+          strict_audit_enforced: true,
+          lineage_required: true,
+        },
+        reason: 'test',
+      }
+    })
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Post Detail Timeout Guard Community',
+        slug: `post-detail-timeout-guard-${Date.now()}`,
+      })
+      const agentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Post Detail Timeout Guard Agent' })
+      expect(agentRes.status).toBe(201)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentRes.body.data.id,
+        run_id: `run-post-detail-timeout-guard-${Date.now()}`,
+        community_id: community.id,
+        title: 'Post detail timeout guard',
+        body: 'This post should not block on slow rollout profile reads.',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const startedAt = Date.now()
+      const race = await Promise.race([
+        request(app)
+          .get(`/v1/posts/${postId}`)
+          .then((res) => ({ kind: 'resolved' as const, res })),
+        new Promise<{ kind: 'timeout' }>((resolve) => setTimeout(() => resolve({ kind: 'timeout' }), 400)),
+      ])
+
+      expect(race.kind).toBe('resolved')
+      expect(Date.now() - startedAt).toBeLessThan(450)
+      expect(rolloutSpy).toHaveBeenCalledTimes(2)
+
+      if (race.kind === 'resolved') {
+        expect(race.res.status).toBe(200)
+        expect(race.res.body.data).toMatchObject({
+          id: postId,
+          aftershow_summary: null,
+          aftershow_callouts: [],
+        })
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 550))
+      const secondRes = await request(app).get(`/v1/posts/${postId}`)
+      expect(secondRes.status).toBe(200)
+      expect(rolloutSpy).toHaveBeenCalledTimes(2)
+    } finally {
+      rolloutSpy.mockRestore()
+      featureFlags.audienceAftershowWebV1 = originalAudienceAftershowWeb
+      featureFlags.aftershowV1 = originalAftershow
+      featureFlags.mediaRolloutControllerV1 = originalRollout
+    }
+  })
+
+  it('GET participation contract endpoints derive community defaults and post effective contract', async () => {
+    const community = await createTestCommunity({
+      name: 'Participation Contract Community',
+      slug: `participation-contract-${Date.now()}`,
+      rules_json: {
+        stage_spec_v1: {
+          human_participation: {
+            public_participation_mode: 'open_reply',
+            audience_signal_ingestion: 'direct_read',
+            agent_human_response_mode: 'direct_reply',
+          },
+        },
+      },
+    })
+    const authorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Participation Contract Author' })
+    expect(authorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: authorRes.body.data.id,
+      run_id: `run-participation-contract-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Participation contract target',
+      body: 'Contract payload should mirror community interaction rules.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const communityContractRes = await request(app).get(
+      `/v1/communities/${community.id}/participation-contract`,
+    )
+    expect(communityContractRes.status).toBe(200)
+    expect(communityContractRes.body.data).toMatchObject({
+      scope_type: 'COMMUNITY',
+      scope_id: community.id,
+      source: 'community_rules',
+      public_participation_mode: 'open_reply',
+      audience_signal_ingestion: 'direct_read',
+      agent_human_response_mode: 'direct_reply',
+      audience_lane_enabled: true,
+      stage_thread_entry_enabled: true,
+      stage_turn_reply_enabled: true,
+    })
+
+    const postContractRes = await request(app).get(`/v1/posts/${postId}/participation-contract`)
+    expect(postContractRes.status).toBe(200)
+    expect(postContractRes.body.data).toMatchObject({
+      scope_type: 'POST',
+      scope_id: postId,
+      public_participation_mode: 'open_reply',
+      audience_signal_ingestion: 'direct_read',
+      agent_human_response_mode: 'direct_reply',
+      audience_lane_enabled: true,
+      stage_thread_entry_enabled: true,
+      stage_turn_reply_enabled: true,
+      community_default: expect.objectContaining({
+        scope_type: 'COMMUNITY',
+        scope_id: community.id,
+      }),
+      post_override: null,
+    })
+  })
+
   it('POST /v1/posts/:postId/public-threads and /v1/threads/:threadId/public-turns allow human open_reply on the main thread', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalHumanParticipation = featureFlags.humanParticipationV1
@@ -903,6 +1257,134 @@ describe('E2E: Read API (public)', () => {
     } finally {
       featureFlags.humanParticipationV1 = originalHumanParticipation
     }
+  })
+
+  it('POST /v1/viewer/posts/:postId/public-threads and /v1/viewer/threads/:threadId/public-turns return auditable envelopes and honor idempotency', async () => {
+    const community = await createTestCommunity({
+      name: 'Viewer Write Community',
+      slug: `viewer-write-${Date.now()}`,
+      rules_json: {
+        stage_spec_v1: {
+          human_participation: {
+            public_participation_mode: 'open_reply',
+            audience_signal_ingestion: 'direct_read',
+            agent_human_response_mode: 'direct_reply',
+          },
+        },
+      },
+    })
+    const rootAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Viewer Write Root Author' })
+    expect(rootAuthorRes.status).toBe(201)
+    const turnAuthorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Viewer Write Turn Author' })
+    expect(turnAuthorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: rootAuthorRes.body.data.id,
+      run_id: `run-viewer-write-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Viewer write target',
+      body: 'New viewer write plane should expose audit ids and dedupe by idempotency key.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const createThreadPayload = {
+      body: 'Viewer thread root.',
+      idempotency_key: `viewer-thread-${Date.now()}`,
+      source_context: {
+        discovered_via: 'discussion_forest',
+        source_surface: 'post_detail',
+        source_shelf: 'forest',
+      },
+    }
+
+    const viewerThreadRes = await request(app)
+      .post(`/v1/viewer/posts/${postId}/public-threads`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(createThreadPayload)
+    expect(viewerThreadRes.status).toBe(201)
+    expect(viewerThreadRes.body.data).toMatchObject({
+      result: 'CREATED',
+      audit_id: expect.any(String),
+      data: {
+        post_id: postId,
+        author_actor_type: 'human',
+        author_user_id: 'user1',
+        author_agent_id: null,
+        body: 'Viewer thread root.',
+      },
+    })
+
+    const duplicateViewerThreadRes = await request(app)
+      .post(`/v1/viewer/posts/${postId}/public-threads`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(createThreadPayload)
+    expect(duplicateViewerThreadRes.status).toBe(201)
+    expect(duplicateViewerThreadRes.body.data.audit_id).toBe(viewerThreadRes.body.data.audit_id)
+    expect(duplicateViewerThreadRes.body.data.data.id).toBe(viewerThreadRes.body.data.data.id)
+
+    const threadId = viewerThreadRes.body.data.data.id as string
+    const agentTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: turnAuthorRes.body.data.id,
+      run_id: `run-viewer-write-turn-${Date.now()}`,
+      body: 'Agent turn for viewer anchor.',
+    })
+    expect(agentTurnRes.status).toBe(201)
+    const anchorTurnId = agentTurnRes.body.data.id as string
+
+    const createTurnPayload = {
+      body: 'Viewer anchored reply.',
+      focused_turn_id: anchorTurnId,
+      actual_anchor_turn_id: anchorTurnId,
+      quoted_excerpt: 'Agent turn for viewer anchor.',
+      idempotency_key: `viewer-turn-${Date.now()}`,
+      source_context: {
+        discovered_via: 'discussion_forest',
+        source_surface: 'post_detail',
+        source_shelf: 'forest',
+      },
+    }
+
+    const viewerTurnRes = await request(app)
+      .post(`/v1/viewer/threads/${threadId}/public-turns`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(createTurnPayload)
+    expect(viewerTurnRes.status).toBe(201)
+    expect(viewerTurnRes.body.data).toMatchObject({
+      result: 'CREATED',
+      audit_id: expect.any(String),
+      data: {
+        id: threadId,
+      },
+    })
+    expect(viewerTurnRes.body.data.data.turns.at(-1)).toMatchObject({
+      thread_id: threadId,
+      author_actor_type: 'human',
+      author_user_id: 'user1',
+      author_agent_id: null,
+      anchor_turn_id: anchorTurnId,
+      quoted_excerpt: 'Agent turn for viewer anchor.',
+      body: 'Viewer anchored reply.',
+    })
+
+    const duplicateViewerTurnRes = await request(app)
+      .post(`/v1/viewer/threads/${threadId}/public-turns`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(createTurnPayload)
+    expect(duplicateViewerTurnRes.status).toBe(201)
+    expect(duplicateViewerTurnRes.body.data.audit_id).toBe(viewerTurnRes.body.data.audit_id)
+    expect(duplicateViewerTurnRes.body.data.data.turns).toHaveLength(
+      viewerTurnRes.body.data.data.turns.length,
+    )
+    expect(duplicateViewerTurnRes.body.data.data.turns.at(-1).id).toBe(
+      viewerTurnRes.body.data.data.turns.at(-1).id,
+    )
   })
 
   it('GET /v1/posts/:postId/threads exposes all route handoff variants with CTA payloads', async () => {

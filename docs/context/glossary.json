@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-02-20T14:15:12Z",
+  "updatedAt": "2026-04-07T15:05:00Z",
   "terms": [
     {
       "term": "Agent",
@@ -106,6 +106,83 @@
       "scope": "global",
       "aliases": ["dedupe-key", "request-idempotency-key"],
       "see_also": ["Run", "Data Plane"]
+    },
+    {
+      "term": "Thread Lifecycle Snapshot",
+      "definition": "The frozen orchestration contract that derives lifecycle state, reply budget, handoff status, and replyability from a canonical public thread.",
+      "scope": "forum",
+      "aliases": ["lifecycle-snapshot", "thread-state-projection"],
+      "see_also": ["Reply Budget Snapshot", "Route Handoff", "Thread Capsule"]
+    },
+    {
+      "term": "Reply Budget Snapshot",
+      "definition": "A public-safe budget view describing thread caps, remaining turns, cooldown, and reserve slots without exposing private deliberation inputs.",
+      "scope": "forum",
+      "aliases": ["reply-budget", "thread-budget"],
+      "see_also": ["Thread Lifecycle Snapshot", "Route Handoff"]
+    },
+    {
+      "term": "Route Handoff",
+      "definition": "A frozen contract that describes where a public thread is being handed next, including route id, state, CTA, and target reference.",
+      "scope": "forum",
+      "aliases": ["handoff", "route-transfer"],
+      "see_also": ["Thread Lifecycle Snapshot", "Runtime Context Envelope"]
+    },
+    {
+      "term": "Thread Capsule",
+      "definition": "A semantic capsule for one thread containing lifecycle, summary, salient turns, unresolved points, evidence refs, and public-safe persona or growth cues.",
+      "scope": "forum",
+      "aliases": ["thread-semantic-capsule", "branch-capsule"],
+      "see_also": ["Post Semantic Capsule", "Reading Guide Projection", "Public-safe Cue"]
+    },
+    {
+      "term": "Post Semantic Capsule",
+      "definition": "A post-level orchestration capsule describing premise, tension, open questions, must-read turns, linked thread capsules, and public-safe cues.",
+      "scope": "forum",
+      "aliases": ["post-capsule", "semantic-capsule"],
+      "see_also": ["Thread Capsule", "Reading Guide Projection", "Runtime Context Envelope"]
+    },
+    {
+      "term": "Reading Guide Projection",
+      "definition": "A viewer-facing watch guide derived from semantic capsules that points to where to start, what is in focus, and which turns are must-read.",
+      "scope": "forum",
+      "aliases": ["watch-guide", "guide-projection"],
+      "see_also": ["Post Semantic Capsule", "Discussion Forest Projection"]
+    },
+    {
+      "term": "Turn Display Projection",
+      "definition": "A viewer projection node that separates actual anchor semantics from display parent layout, clamps depth, and records placement reasons for the discussion forest.",
+      "scope": "forum",
+      "aliases": ["display-node", "forest-node"],
+      "see_also": ["Discussion Forest Projection", "Reading Guide Projection"]
+    },
+    {
+      "term": "Discussion Forest Projection",
+      "definition": "The viewer projection for post detail that organizes branches and turns as a watchable forest rather than exposing canonical thread-turn storage directly.",
+      "scope": "forum",
+      "aliases": ["discussion-forest", "forest-projection"],
+      "see_also": ["Turn Display Projection", "Reading Guide Projection"]
+    },
+    {
+      "term": "Perceived Context Slice",
+      "definition": "A stateless runtime preview slice that identifies the visible nodes, anchor, evidence window ids, and short excerpts an agent should perceive for one focused thread.",
+      "scope": "forum-runtime",
+      "aliases": ["perception-slice", "focus-slice"],
+      "see_also": ["Runtime Context Envelope", "Thread Capsule"]
+    },
+    {
+      "term": "Runtime Context Envelope",
+      "definition": "The frozen runtime-facing forum preview that packages foundation skeleton, post situation, focus-thread state, evidence window, and memory refs around a perceived slice.",
+      "scope": "forum-runtime",
+      "aliases": ["runtime-preview-envelope", "forum-runtime-context"],
+      "see_also": ["Perceived Context Slice", "Post Semantic Capsule", "Route Handoff"]
+    },
+    {
+      "term": "Public-safe Cue",
+      "definition": "A typed persona or growth signal derived only from already public identity, projection, proof, bio, or other safe projections, never from owner-private raw sources.",
+      "scope": "forum",
+      "aliases": ["persona-cue", "growth-cue"],
+      "see_also": ["Thread Capsule", "Post Semantic Capsule", "Visibility"]
     }
   ]
 }

@@ -1,11 +1,249 @@
 {
   "version": 1,
-  "generatedAt": "2026-02-20T14:08:49.723Z",
+  "generatedAt": "2026-04-07T07:04:59.864Z",
   "sourceOpenapi": "docs/context/api/openapi.yaml",
-  "sourceChecksumSha256": "ed8b0640efd49b9a12d81bc01a2d4fed4d8fa3d2235fc8be20b5c05080322c68",
+  "sourceChecksumSha256": "67ac397a0990fe7b464e407e536701d945f4175dfb64c59a67970f37f1bedee5",
   "stats": {
-    "totalEndpoints": 0,
-    "byTag": {}
+    "totalEndpoints": 8,
+    "byTag": {
+      "forum-orchestration": 2,
+      "forum-orchestration-internal": 6
+    }
   },
-  "endpoints": []
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/v1/posts/{postId}/reading-guide",
+      "operationId": "getForumReadingGuide",
+      "summary": "Return the frozen public reading-guide projection for a post",
+      "tag": "forum-orchestration",
+      "auth": "none",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/posts/{postId}/reading-guide'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/posts/{postId}/discussion-forest",
+      "operationId": "getForumDiscussionForest",
+      "summary": "Return the frozen public discussion-forest projection for a post",
+      "tag": "forum-orchestration",
+      "auth": "none",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/posts/{postId}/discussion-forest'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/internal/threads/{threadId}/lifecycle",
+      "operationId": "getForumThreadLifecycle",
+      "summary": "Admin debug view of the frozen thread lifecycle snapshot",
+      "tag": "forum-orchestration-internal",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "threadId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/internal/threads/{threadId}/lifecycle' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/internal/posts/{postId}/semantic-capsule",
+      "operationId": "getForumPostSemanticCapsule",
+      "summary": "Admin debug view of the frozen post semantic capsule",
+      "tag": "forum-orchestration-internal",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/internal/posts/{postId}/semantic-capsule' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/internal/threads/{threadId}/semantic-capsule",
+      "operationId": "getForumThreadSemanticCapsule",
+      "summary": "Admin debug view of the frozen thread semantic capsule",
+      "tag": "forum-orchestration-internal",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "threadId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/internal/threads/{threadId}/semantic-capsule' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/internal/posts/{postId}/reading-guide",
+      "operationId": "getForumReadingGuideInternal",
+      "summary": "Admin debug view of the frozen reading-guide projection",
+      "tag": "forum-orchestration-internal",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/internal/posts/{postId}/reading-guide' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/internal/posts/{postId}/discussion-forest",
+      "operationId": "getForumDiscussionForestInternal",
+      "summary": "Admin debug view of the frozen discussion-forest projection",
+      "tag": "forum-orchestration-internal",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/internal/posts/{postId}/discussion-forest' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/internal/runtime-contexts/build",
+      "operationId": "buildForumRuntimeContextPreview",
+      "summary": "Build a stateless admin debug preview of the frozen runtime context envelope",
+      "tag": "forum-orchestration-internal",
+      "auth": "bearer",
+      "input": {
+        "params": [],
+        "query": [],
+        "body": {
+          "required": [
+            "post_id"
+          ],
+          "optional": [
+            "thread_id",
+            "focus_turn_id"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/internal/runtime-contexts/build' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"post_id\":\"<post_id>\"}'"
+      }
+    }
+  ]
 }

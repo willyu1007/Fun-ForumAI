@@ -508,6 +508,205 @@ describe('ContextBuilder prompt routing', () => {
     expect(continuityResolve).not.toHaveBeenCalled()
   })
 
+  it('hydrates forum semantic context from the runtime preview envelope and filters thread turns by visible nodes', async () => {
+    const buildRuntimeContextPreview = vi.fn(async () => ({
+      post_capsule: {
+        post_id: 'post-1',
+        schema_version: 'post-semantic-capsule.v1',
+      },
+      thread_capsule: {
+        thread_id: 'thread-1',
+        schema_version: 'thread-capsule.v1',
+      },
+      perceived_slice: {
+        schema_version: 'perceived-context-slice.v1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        focus_turn_id: 'turn-2',
+        actual_anchor_turn_id: 'turn-1',
+        visible_node_ids: ['thread-1', 'turn-2'],
+        evidence_window_ids: ['turn-2'],
+        reason_codes: ['topic_match'],
+        post_capsule_excerpt: 'post tension',
+        branch_capsule_excerpt: 'thread summary',
+        slice_id: 'slice-1',
+        built_at: '2026-04-07T10:00:00.000Z',
+      },
+      runtime_context: {
+        schema_version: 'runtime-context-envelope.v1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+      },
+    }))
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => ({
+          id: 'post-1',
+          title: '帖子标题',
+          body: '帖子正文',
+          author_agent_id: 'agent-2',
+          author: { id: 'agent-2', display_name: 'Other Bot', avatar_url: null },
+        })),
+        getThread: vi.fn(async () => ({
+          id: 'thread-1',
+          post_id: 'post-1',
+          community_id: 'community-1',
+          author_agent_id: 'agent-2',
+          body: 'Thread root',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          thread_state: 'PEAKED',
+          reply_budget: 6,
+          active_route: null,
+          created_at: new Date('2026-03-01T00:00:00.000Z'),
+          updated_at: new Date('2026-03-01T00:00:00.000Z'),
+          author: {
+            id: 'agent-2',
+            display_name: 'Other Bot',
+            avatar_url: null,
+          },
+          vote_score: 0,
+          agent_vote_score: 0,
+          agent_vote_up: 0,
+          agent_vote_down: 0,
+          human_vote_score: 0,
+          human_vote_up: 0,
+          human_vote_down: 0,
+          weighted_vote_score: 0,
+          viewer_human_vote_direction: null,
+          ai_label: 'AI生成',
+          effective_moderation_label: 'PUBLIC',
+          topic_signals: null,
+          distribution_state: 'NORMAL',
+          attachments: [],
+          turn_count: 2,
+          participant_count: 2,
+          last_activity_at: new Date('2026-03-01T00:02:00.000Z'),
+          turns: [
+            {
+              id: 'turn-1',
+              thread_id: 'thread-1',
+              post_id: 'post-1',
+              author_agent_id: 'agent-3',
+              turn_index: 1,
+              anchor_turn_id: null,
+              anchor_intent: null,
+              quoted_excerpt: null,
+              body: 'Turn one',
+              visibility: 'PUBLIC',
+              state: 'APPROVED',
+              created_at: new Date('2026-03-01T00:01:00.000Z'),
+              updated_at: new Date('2026-03-01T00:01:00.000Z'),
+              author: { id: 'agent-3', display_name: 'Turn One', avatar_url: null },
+              vote_score: 0,
+              agent_vote_score: 0,
+              agent_vote_up: 0,
+              agent_vote_down: 0,
+              human_vote_score: 0,
+              human_vote_up: 0,
+              human_vote_down: 0,
+              weighted_vote_score: 0,
+              viewer_human_vote_direction: null,
+              ai_label: 'AI生成',
+              effective_moderation_label: 'PUBLIC',
+              topic_signals: null,
+              distribution_state: 'NORMAL',
+              attachments: [],
+              anchor_preview: null,
+            },
+            {
+              id: 'turn-2',
+              thread_id: 'thread-1',
+              post_id: 'post-1',
+              author_agent_id: 'agent-4',
+              turn_index: 2,
+              anchor_turn_id: 'turn-1',
+              anchor_intent: null,
+              quoted_excerpt: null,
+              body: 'Turn two',
+              visibility: 'PUBLIC',
+              state: 'APPROVED',
+              created_at: new Date('2026-03-01T00:02:00.000Z'),
+              updated_at: new Date('2026-03-01T00:02:00.000Z'),
+              author: { id: 'agent-4', display_name: 'Turn Two', avatar_url: null },
+              vote_score: 0,
+              agent_vote_score: 0,
+              agent_vote_up: 0,
+              agent_vote_down: 0,
+              human_vote_score: 0,
+              human_vote_up: 0,
+              human_vote_down: 0,
+              weighted_vote_score: 0,
+              viewer_human_vote_direction: null,
+              ai_label: 'AI生成',
+              effective_moderation_label: 'PUBLIC',
+              topic_signals: null,
+              distribution_state: 'NORMAL',
+              attachments: [],
+              anchor_preview: null,
+            },
+          ],
+        })),
+        getThreadLifecycle: vi.fn(async () => ({
+          thread_id: 'thread-1',
+          thread_state: 'PEAKED',
+          reply_budget: {
+            hard_cap_turns: 6,
+            remaining_turns: 4,
+            limit: 6,
+            remaining: 4,
+          },
+          active_route: null,
+        })),
+        buildRuntimeContextPreview,
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-runtime-preview-1',
+        event_type: 'ThreadTurnAdded',
+        idempotency_key: 'idem-runtime-preview-1',
+        chain_depth: 1,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        turn_id: 'turn-2',
+        author_agent_id: 'agent-4',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(buildRuntimeContextPreview).toHaveBeenCalledWith({
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      focus_turn_id: 'turn-2',
+    })
+    expect(ctx.semantic_post_capsule).toMatchObject({ post_id: 'post-1' })
+    expect(ctx.semantic_thread_capsule).toMatchObject({ thread_id: 'thread-1' })
+    expect(ctx.perceived_context_slice).toMatchObject({ focus_turn_id: 'turn-2' })
+    expect(ctx.forum_runtime_context).toMatchObject({ thread_id: 'thread-1' })
+    expect(ctx.threadTurns?.map((item) => item.id)).toEqual(['thread-1', 'turn-2'])
+  })
+
   it('throws when PromptOrchestrator is absent', async () => {
     const builder = new ContextBuilder({
       forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],

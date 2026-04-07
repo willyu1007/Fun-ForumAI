@@ -17,6 +17,12 @@ import type { MediaRolloutControllerProfile } from '../../media/media-rollout-co
 import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
 import { config } from '../../lib/config.js'
+import { ThreadLifecycleService } from '../thread-lifecycle-service.js'
+import { SemanticProjectionService } from '../semantic-projection-service.js'
+import { DisplayProjectionService } from '../display-projection-service.js'
+import { ParticipationContractService } from '../participation-contract-service.js'
+import { AgentPerceptionService } from '../agent-perception-service.js'
+import { RuntimeContextAssembler } from '../runtime-context-assembler.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
@@ -94,6 +100,40 @@ function setupWithObservability(record: (input: CreateMediaObservabilityEventInp
   return {
     ...base,
     svc,
+  }
+}
+
+function attachProjectionDeps(ctx: ReturnType<typeof setup>) {
+  const threadLifecycleService = new ThreadLifecycleService()
+  const semanticProjectionService = new SemanticProjectionService({
+    threadLifecycleService,
+  })
+  const displayProjectionService = new DisplayProjectionService({
+    semanticProjectionService,
+  })
+  const participationContractService = new ParticipationContractService({
+    communityRepo: ctx.communityRepo,
+    postRepo: ctx.postRepo,
+  })
+  const agentPerceptionService = new AgentPerceptionService()
+  const runtimeContextAssembler = new RuntimeContextAssembler()
+
+  ctx.svc.attachRuntimeDeps({
+    threadLifecycleService,
+    semanticProjectionService,
+    displayProjectionService,
+    participationContractService,
+    agentPerceptionService,
+    runtimeContextAssembler,
+  })
+
+  return {
+    threadLifecycleService,
+    semanticProjectionService,
+    displayProjectionService,
+    participationContractService,
+    agentPerceptionService,
+    runtimeContextAssembler,
   }
 }
 
@@ -326,6 +366,92 @@ describe('ForumReadService', () => {
           thumbnail_policy: 'required_if_available',
           hero_eligible: true,
         })
+      } finally {
+        ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
+      }
+    })
+
+    it('does not block public post reads on slow rollout profile evaluation and reuses the pending fetch', async () => {
+      const originalFlag = config.features.mediaRolloutControllerV1
+      ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = true
+
+      try {
+        const getEffectiveProfile = vi.fn(async (): Promise<MediaRolloutControllerProfile> => {
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          return {
+            mode: 'AUTO',
+            active_override: null,
+            profile: 'steady',
+            metrics: {} as MediaRolloutControllerProfile['metrics'],
+            gates: [] as MediaRolloutControllerProfile['gates'],
+            effective: {
+              target_min_rate: 0.05,
+              target_max_rate: 0.4,
+              threshold_delta: 0.1,
+              allow_generation: true,
+              generation_tier: 'medium',
+              sync_generation_ms_budget: 50,
+              allow_private_runtime_projection: false,
+              allow_private_inspired_generation: false,
+              force_safe_mode: false,
+              semantic_v3_enforced: true,
+              strict_audit_enforced: true,
+              lineage_required: true,
+            },
+            reason: 'test',
+          }
+        })
+
+        const localCtx = setup()
+        localCtx.svc = new ForumReadService({
+          postRepo: localCtx.postRepo,
+          publicStageThreadRepo: localCtx.publicStageThreadRepo,
+          publicStageTurnRepo: localCtx.publicStageTurnRepo,
+          voteRepo: localCtx.voteRepo,
+          humanVoteRepo: localCtx.humanVoteRepo,
+          postMediaRepo: localCtx.postMediaRepo,
+          sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
+          mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
+          communityRepo: localCtx.communityRepo,
+          membershipRepo: localCtx.membershipRepo,
+          agentRepo: localCtx.agentRepo,
+          agentConfigRepo: localCtx.agentConfigRepo,
+          riskRepo: localCtx.riskRepo,
+          mediaRolloutControllerService: {
+            getEffectiveProfile,
+          },
+        })
+
+        const post = await localCtx.postRepo.create({
+          community_id: 'c1',
+          author_agent_id: 'a1',
+          title: 'Slow rollout profile target',
+          body: 'Body',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+        })
+
+        const startedAt = Date.now()
+        const [feedRace, postRace] = await Promise.all([
+          Promise.race([
+            localCtx.svc.getFeed({}).then(() => 'resolved' as const),
+            new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 400)),
+          ]),
+          Promise.race([
+            localCtx.svc.getPost(post.id).then(() => 'resolved' as const),
+            new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 400)),
+          ]),
+        ])
+
+        expect(feedRace).toBe('resolved')
+        expect(postRace).toBe('resolved')
+        expect(Date.now() - startedAt).toBeLessThan(450)
+        expect(getEffectiveProfile).toHaveBeenCalledTimes(1)
+
+        await new Promise((resolve) => setTimeout(resolve, 550))
+        await localCtx.svc.getPost(post.id)
+
+        expect(getEffectiveProfile).toHaveBeenCalledTimes(1)
       } finally {
         ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
       }
@@ -894,6 +1020,210 @@ describe('ForumReadService', () => {
       ctx.voteRepo.upsert({ voter_agent_id: 'a2', target_type: 'POST', target_id: 'p1', direction: 'DOWN' })
       const result = ctx.svc.getVoteSummary('POST', 'p1')
       expect(result.score).toBe(0)
+    })
+  })
+
+  describe('forum orchestration projections', () => {
+    it('does not trigger agent bio bootstrap while building public projections', async () => {
+      attachProjectionDeps(ctx)
+      const getProjection = vi.fn().mockResolvedValue(null)
+      ctx.svc.attachRuntimeDeps({
+        agentBioService: {
+          getProjection,
+        },
+      })
+      const community = ctx.communityRepo.create({ name: 'Projection', slug: 'projection' })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-root', display_name: 'Root Author' })
+      const replyAuthor = ctx.agentRepo.create({ owner_id: 'owner-reply', display_name: 'Reply Author' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Projection target',
+        body: 'Body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const thread = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        body: 'Visible thread root',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      await ctx.publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: post.id,
+        author_agent_id: replyAuthor.id,
+        turn_index: 1,
+        anchor_turn_id: null,
+        quoted_excerpt: null,
+        body: 'Visible reply body.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      await ctx.svc.getReadingGuide(post.id)
+
+      expect(getProjection).toHaveBeenCalled()
+      expect(getProjection).toHaveBeenCalledWith(rootAuthor.id, {
+        build_if_missing: false,
+        allow_minor_refresh: false,
+      })
+      expect(getProjection).toHaveBeenCalledWith(replyAuthor.id, {
+        build_if_missing: false,
+        allow_minor_refresh: false,
+      })
+    })
+
+    it('uses stored quoted excerpts when the anchor turn is not publicly visible', async () => {
+      attachProjectionDeps(ctx)
+      const community = ctx.communityRepo.create({ name: 'Projection', slug: 'projection' })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-root', display_name: 'Root Author' })
+      const replyAuthor = ctx.agentRepo.create({ owner_id: 'owner-reply', display_name: 'Reply Author' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Projection target',
+        body: 'Body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const thread = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        body: 'Visible thread root',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const hiddenAnchor = await ctx.publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        turn_index: 1,
+        anchor_turn_id: null,
+        quoted_excerpt: null,
+        body: 'Hidden anchor body should never leak.',
+        visibility: 'QUARANTINE',
+        state: 'APPROVED',
+      })
+
+      const visibleReply = await ctx.publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: post.id,
+        author_agent_id: replyAuthor.id,
+        turn_index: 2,
+        anchor_turn_id: hiddenAnchor.id,
+        quoted_excerpt: 'Stored public-safe quote.',
+        body: 'Visible reply body.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const result = await ctx.svc.getThread(thread.id)
+
+      expect(result.turns).toHaveLength(1)
+      expect(result.turns[0]).toMatchObject({
+        id: visibleReply.id,
+        anchor_preview: {
+          turn_id: hiddenAnchor.id,
+          author_display_name: 'Quoted context',
+          body_excerpt: 'Stored public-safe quote.',
+        },
+      })
+      expect(result.turns[0]?.anchor_preview?.body_excerpt).not.toContain('Hidden anchor body')
+    })
+
+    it('builds runtime context previews from frozen capsules and public-safe evidence windows', async () => {
+      attachProjectionDeps(ctx)
+      const community = ctx.communityRepo.create({
+        name: 'Runtime Preview',
+        slug: 'runtime-preview',
+        rules_json: {
+          stage_spec_v1: {
+            human_participation: {
+              public_participation_mode: 'open_reply',
+              audience_signal_ingestion: 'direct_read',
+              agent_human_response_mode: 'direct_reply',
+            },
+          },
+        },
+      })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-a', display_name: 'Preview Root' })
+      const turnAuthor = ctx.agentRepo.create({ owner_id: 'owner-b', display_name: 'Preview Turn' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Preview target',
+        body: 'This body should feed the runtime preview envelope.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const thread = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        body: 'Thread root for runtime preview.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const turn = await ctx.publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: post.id,
+        author_agent_id: turnAuthor.id,
+        turn_index: 1,
+        anchor_turn_id: null,
+        quoted_excerpt: null,
+        body: 'A follow-up turn that becomes the focus.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const preview = await ctx.svc.buildRuntimeContextPreview({
+        post_id: post.id,
+        thread_id: thread.id,
+        focus_turn_id: turn.id,
+      })
+
+      expect(preview.post_capsule).toMatchObject({
+        post_id: post.id,
+        schema_version: expect.any(String),
+      })
+      expect(preview.thread_capsule).toMatchObject({
+        thread_id: thread.id,
+        schema_version: expect.any(String),
+      })
+      expect(preview.perceived_slice).toMatchObject({
+        thread_id: thread.id,
+        focus_turn_id: turn.id,
+        schema_version: expect.any(String),
+      })
+      expect(preview.runtime_context).toMatchObject({
+        post_id: post.id,
+        thread_id: thread.id,
+        schema_version: expect.any(String),
+        foundation_skeleton: {
+          post: expect.objectContaining({
+            post_id: post.id,
+            community_id: community.id,
+          }),
+          participation_contract: expect.objectContaining({
+            audience_lane_enabled: true,
+            stage_open_reply_enabled: true,
+          }),
+          route_snapshot: null,
+        },
+      })
+      expect(preview.evidence_window_turns).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            turn_id: turn.id,
+            thread_id: thread.id,
+          }),
+        ]),
+      )
     })
   })
 })

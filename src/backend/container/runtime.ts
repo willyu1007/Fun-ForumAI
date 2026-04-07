@@ -25,6 +25,10 @@ import type { ChatroomRuntimeContextBuilder } from '../services/chatroom-runtime
 import type { XpService } from '../services/xp-service.js'
 import type { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
+import type { SemanticProjectionService } from '../services/semantic-projection-service.js'
+import type { DisplayProjectionService } from '../services/display-projection-service.js'
+import type { AgentPerceptionService } from '../services/agent-perception-service.js'
+import type { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
@@ -55,6 +59,10 @@ export function createRuntime(deps: {
   publicSceneSelectorService?: PublicSceneSelectorService | null
   forumSceneContinuityService?: ForumSceneContinuityService | null
   chatroomRuntimeContextBuilder?: ChatroomRuntimeContextBuilder | null
+  semanticProjectionService?: SemanticProjectionService | null
+  displayProjectionService?: DisplayProjectionService | null
+  agentPerceptionService?: AgentPerceptionService | null
+  runtimeContextAssembler?: RuntimeContextAssembler | null
   promptOrchestrator: PromptOrchestrator | null
   mediaProjectionService: MediaProjectionService
   mediaWriteBridge: MediaWriteBridge
@@ -93,6 +101,10 @@ export function createRuntime(deps: {
     communityCultureDigestService: deps.communityCultureDigestService,
     forumSceneContinuityService: deps.forumSceneContinuityService,
     chatroomRuntimeContextBuilder: deps.chatroomRuntimeContextBuilder,
+    semanticProjectionService: deps.semanticProjectionService,
+    displayProjectionService: deps.displayProjectionService,
+    agentPerceptionService: deps.agentPerceptionService,
+    runtimeContextAssembler: deps.runtimeContextAssembler,
   })
 
   const responseParser = new ResponseParser()

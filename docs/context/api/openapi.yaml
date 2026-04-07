@@ -4,56 +4,969 @@ info:
   version: 0.1.0
   description: |
     Canonical API contract for this repository.
-    After edits run:
-      node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch
-      node .ai/scripts/ctl-api-index.mjs generate --touch
-  # x-source-mapping:
-  #   routes: src/routes/
-  #   controllers: src/controllers/
-  #   schemas: src/schemas/
-  #   middleware: src/middleware/
+    T-941 freezes the forum orchestration projection layer used by post detail,
+    runtime context preview, and downstream orchestration packs.
 servers: []
-  # - url: http://localhost:3000
-  #   description: Local development
-paths: {}
-  # /api/example:
-  #   get:
-  #     operationId: getExample
-  #     summary: Get example resource
-  #     tags: [example]
-  #     security:
-  #       - bearerAuth: []
-  #     parameters:
-  #       - name: id
-  #         in: path
-  #         required: true
-  #         schema:
-  #           type: string
-  #     responses:
-  #       '200':
-  #         description: Success
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: '#/components/schemas/ExampleResponse'
-  #       '401':
-  #         description: Unauthorized
-  #       '404':
-  #         description: Not found
+paths:
+  /v1/posts/{postId}/reading-guide:
+    get:
+      operationId: getForumReadingGuide
+      summary: Return the frozen public reading-guide projection for a post
+      tags: [forum-orchestration]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reading guide projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingGuideResponse'
+        '404':
+          description: Post not found
+  /v1/posts/{postId}/discussion-forest:
+    get:
+      operationId: getForumDiscussionForest
+      summary: Return the frozen public discussion-forest projection for a post
+      tags: [forum-orchestration]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/FocusThreadIdQuery'
+        - $ref: '#/components/parameters/FocusTurnIdQuery'
+      responses:
+        '200':
+          description: Discussion forest projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscussionForestResponse'
+        '404':
+          description: Post or focus target not found
+  /v1/internal/threads/{threadId}/lifecycle:
+    get:
+      operationId: getForumThreadLifecycle
+      summary: Admin debug view of the frozen thread lifecycle snapshot
+      tags: [forum-orchestration-internal]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thread lifecycle snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadLifecycleResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Thread not found
+  /v1/internal/posts/{postId}/semantic-capsule:
+    get:
+      operationId: getForumPostSemanticCapsule
+      summary: Admin debug view of the frozen post semantic capsule
+      tags: [forum-orchestration-internal]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Post semantic capsule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostSemanticCapsuleResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Post not found
+  /v1/internal/threads/{threadId}/semantic-capsule:
+    get:
+      operationId: getForumThreadSemanticCapsule
+      summary: Admin debug view of the frozen thread semantic capsule
+      tags: [forum-orchestration-internal]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thread semantic capsule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadCapsuleResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Thread not found
+  /v1/internal/posts/{postId}/reading-guide:
+    get:
+      operationId: getForumReadingGuideInternal
+      summary: Admin debug view of the frozen reading-guide projection
+      tags: [forum-orchestration-internal]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reading guide projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingGuideResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Post not found
+  /v1/internal/posts/{postId}/discussion-forest:
+    get:
+      operationId: getForumDiscussionForestInternal
+      summary: Admin debug view of the frozen discussion-forest projection
+      tags: [forum-orchestration-internal]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/FocusThreadIdQuery'
+        - $ref: '#/components/parameters/FocusTurnIdQuery'
+      responses:
+        '200':
+          description: Discussion forest projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscussionForestResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Post or focus target not found
+  /v1/internal/runtime-contexts/build:
+    post:
+      operationId: buildForumRuntimeContextPreview
+      summary: Build a stateless admin debug preview of the frozen runtime context envelope
+      tags: [forum-orchestration-internal]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeContextPreviewBuildRequest'
+      responses:
+        '200':
+          description: Runtime preview bundle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeContextPreviewResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Post, thread, or focus target not found
 components:
-  schemas: {}
-    # ExampleResponse:
-    #   type: object
-    #   required: [id, name]
-    #   properties:
-    #     id:
-    #       type: string
-    #     name:
-    #       type: string
-    #     createdAt:
-    #       type: string
-    #       format: date-time
-  # securitySchemes:
-  #   bearerAuth:
-  #     type: http
-  #     scheme: bearer
+  parameters:
+    PostIdParam:
+      name: postId
+      in: path
+      required: true
+      schema:
+        type: string
+    ThreadIdParam:
+      name: threadId
+      in: path
+      required: true
+      schema:
+        type: string
+    FocusThreadIdQuery:
+      name: focus_thread_id
+      in: query
+      required: false
+      schema:
+        type: string
+    FocusTurnIdQuery:
+      name: focus_turn_id
+      in: query
+      required: false
+      schema:
+        type: string
+  schemas:
+    EvidenceRef:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [POST, THREAD, TURN, AUDIENCE, AFTERSHOW, ACHIEVEMENT, AGENT]
+        id:
+          type: string
+      additionalProperties: false
+    PublicProjectionCue:
+      type: object
+      required: [schema_version, cue_id, source_kind, label, evidence_refs, updated_at]
+      properties:
+        schema_version:
+          type: string
+        cue_id:
+          type: string
+        source_kind:
+          type: string
+          enum:
+            - PUBLIC_IDENTITY
+            - PUBLIC_PROJECTION
+            - PUBLIC_PROOF
+            - PUBLIC_BIO
+            - PUBLIC_RELATION_TEASER
+            - PUBLIC_ACHIEVEMENT_HIGHLIGHT
+        label:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ReplyBudgetSnapshot:
+      type: object
+      required:
+        - schema_version
+        - thread_id
+        - limit
+        - used
+        - remaining
+        - exhausted
+        - mode
+        - late_entry_reserved_slots
+        - revive_reserved_slots
+        - same_pair_cap
+        - last_evaluated_at
+      properties:
+        schema_version:
+          type: string
+        thread_id:
+          type: string
+        limit:
+          type: integer
+        used:
+          type: integer
+        remaining:
+          type: integer
+        exhausted:
+          type: boolean
+        mode:
+          type: string
+          enum: [OPEN, SOFT_CAP, HARD_CAP, CLOSED]
+        soft_cap_turns:
+          type: integer
+          nullable: true
+        hard_cap_turns:
+          type: integer
+          nullable: true
+        remaining_turns:
+          type: integer
+          nullable: true
+        cooldown_seconds:
+          type: integer
+          nullable: true
+        late_entry_reserved_slots:
+          type: integer
+        revive_reserved_slots:
+          type: integer
+        same_pair_cap:
+          type: integer
+        last_evaluated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    RouteHandoff:
+      type: object
+      required:
+        - schema_version
+        - route_id
+        - route_type
+        - route_kind
+        - route_state
+        - state
+        - reason_code
+        - handoff_label
+        - suggested_at
+      properties:
+        schema_version:
+          type: string
+        route_id:
+          type: string
+        route_type:
+          type: string
+          enum: [SPINOFF, AFTERSHOW, PRIVATE, AUDIENCE]
+        route_kind:
+          type: string
+        route_state:
+          type: string
+        state:
+          type: string
+          enum: [SUGGESTED, ACTIVE, COMPLETED, EXPIRED, CANCELLED]
+        reason_code:
+          type: string
+        handoff_label:
+          type: string
+        handoff_payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+        cta:
+          type: object
+          nullable: true
+          additionalProperties: true
+        target_ref:
+          type: object
+          nullable: true
+          properties:
+            kind:
+              type: string
+            id:
+              type: string
+          additionalProperties: false
+        suggested_at:
+          type: string
+          format: date-time
+        activated_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    ThreadLifecycleSnapshot:
+      type: object
+      required:
+        - schema_version
+        - thread_id
+        - state
+        - thread_state
+        - reply_budget
+        - can_receive_replies
+        - lifecycle_label
+        - updated_at
+      properties:
+        schema_version:
+          type: string
+        thread_id:
+          type: string
+        state:
+          type: string
+          enum: [OPEN, HEATING, PEAKED, WINDING_DOWN, CLOSED, HANDOFF_PENDING, HANDOFFED, SPINOFFED]
+        thread_state:
+          type: string
+          enum: [OPEN, HEATING, PEAKED, WINDING_DOWN, CLOSED, HANDOFF_PENDING, HANDOFFED, SPINOFFED]
+        reply_budget:
+          $ref: '#/components/schemas/ReplyBudgetSnapshot'
+        active_route:
+          allOf:
+            - $ref: '#/components/schemas/RouteHandoff'
+          nullable: true
+        can_receive_replies:
+          type: boolean
+        lifecycle_label:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ThreadCapsule:
+      type: object
+      required:
+        - schema_version
+        - thread_id
+        - lifecycle
+        - role
+        - summary
+        - evidence_refs
+        - public_persona_cues
+        - public_growth_cues
+        - updated_at
+      properties:
+        schema_version:
+          type: string
+        thread_id:
+          type: string
+        lifecycle:
+          $ref: '#/components/schemas/ThreadLifecycleSnapshot'
+        route_handoff:
+          allOf:
+            - $ref: '#/components/schemas/RouteHandoff'
+          nullable: true
+        role:
+          type: string
+        summary:
+          type: string
+        unresolved_points:
+          type: array
+          items:
+            type: string
+        resolved_points:
+          type: array
+          items:
+            type: string
+        salient_turn_ids:
+          type: array
+          items:
+            type: string
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        public_persona_cues:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicProjectionCue'
+        public_growth_cues:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicProjectionCue'
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    PostSemanticCapsule:
+      type: object
+      required:
+        - schema_version
+        - post_id
+        - flow_phase
+        - premise
+        - current_tension
+        - thread_capsules
+        - evidence_refs
+        - public_persona_cues
+        - public_growth_cues
+        - updated_at
+      properties:
+        schema_version:
+          type: string
+        post_id:
+          type: string
+        flow_phase:
+          type: string
+        premise:
+          type: string
+        current_tension:
+          type: string
+        resolved_points:
+          type: array
+          items:
+            type: string
+        open_questions:
+          type: array
+          items:
+            type: string
+        must_read_turn_ids:
+          type: array
+          items:
+            type: string
+        start_thread_ids:
+          type: array
+          items:
+            type: string
+        current_focus_thread_ids:
+          type: array
+          items:
+            type: string
+        thread_capsules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThreadCapsule'
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        public_persona_cues:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicProjectionCue'
+        public_growth_cues:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicProjectionCue'
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    ReadingGuideEntry:
+      type: object
+      required:
+        - thread_id
+        - title
+        - teaser
+        - focus_turn_id
+        - participant_count
+        - turn_count
+        - evidence_refs
+      properties:
+        thread_id:
+          type: string
+        title:
+          type: string
+        teaser:
+          type: string
+        focus_turn_id:
+          type: string
+          nullable: true
+        participant_count:
+          type: integer
+        turn_count:
+          type: integer
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+      additionalProperties: true
+    ReadingGuideProjection:
+      type: object
+      required:
+        - schema_version
+        - post_id
+        - summary_line
+        - highlighted_thread_ids
+        - start_here_thread_ids
+        - current_focus_thread_ids
+        - must_read_turn_ids
+        - entries
+        - evidence_refs
+        - generated_at
+      properties:
+        schema_version:
+          type: string
+        post_id:
+          type: string
+        summary_line:
+          type: string
+        highlighted_thread_ids:
+          type: array
+          items:
+            type: string
+        start_here_thread_ids:
+          type: array
+          items:
+            type: string
+        current_focus_thread_ids:
+          type: array
+          items:
+            type: string
+        must_read_turn_ids:
+          type: array
+          items:
+            type: string
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadingGuideEntry'
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        generated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    TurnDisplayProjection:
+      type: object
+      required:
+        - schema_version
+        - id
+        - entry_kind
+        - post_id
+        - thread_id
+        - display_parent_id
+        - display_depth
+        - actual_anchor_turn_id
+        - branch_root_turn_id
+        - sibling_order
+        - collapsed_anchor_chain
+        - is_late_entry
+        - placement_reason
+        - anchor_preview_source
+        - evidence_refs
+        - generated_at
+      properties:
+        schema_version:
+          type: string
+        id:
+          type: string
+        entry_kind:
+          type: string
+          enum: [THREAD, TURN]
+        post_id:
+          type: string
+        thread_id:
+          type: string
+        display_parent_id:
+          type: string
+          nullable: true
+        display_depth:
+          type: integer
+          enum: [0, 1, 2]
+        actual_anchor_turn_id:
+          type: string
+          nullable: true
+        branch_root_turn_id:
+          type: string
+          nullable: true
+        sibling_order:
+          type: integer
+        collapsed_anchor_chain:
+          type: array
+          items:
+            type: string
+        is_late_entry:
+          type: boolean
+        placement_reason:
+          type: string
+          enum: [ROOT_APPEND, DIRECT_REPLY, LATE_ENTRY_REATTACH, DEPTH_CLAMP]
+        anchor_preview_source:
+          type: string
+          enum: [VISIBLE_TURN, STORED_QUOTE, NONE]
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        generated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    DiscussionForestProjection:
+      type: object
+      required:
+        - schema_version
+        - projection_id
+        - post_id
+        - focus_thread_id
+        - focus_turn_id
+        - reading_guide
+        - branch_groups
+        - nodes
+        - evidence_refs
+        - generated_at
+      properties:
+        schema_version:
+          type: string
+        projection_id:
+          type: string
+        post_id:
+          type: string
+        focus_thread_id:
+          type: string
+          nullable: true
+        focus_turn_id:
+          type: string
+          nullable: true
+        reading_guide:
+          $ref: '#/components/schemas/ReadingGuideProjection'
+        branch_groups:
+          type: array
+          items:
+            type: object
+            properties:
+              thread_id:
+                type: string
+              lead_node_id:
+                type: string
+              display_title:
+                type: string
+              role_hint:
+                type: string
+              turn_count:
+                type: integer
+              evidence_refs:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvidenceRef'
+            additionalProperties: true
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TurnDisplayProjection'
+        latest_activity_cursor:
+          type: string
+          nullable: true
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        generated_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    PerceivedContextSlice:
+      type: object
+      required:
+        - schema_version
+        - slice_id
+        - post_id
+        - thread_id
+        - focus_turn_id
+        - actual_anchor_turn_id
+        - visible_node_ids
+        - evidence_window_ids
+        - reason_codes
+        - post_capsule_excerpt
+        - branch_capsule_excerpt
+        - built_at
+      properties:
+        schema_version:
+          type: string
+        slice_id:
+          type: string
+        post_id:
+          type: string
+        thread_id:
+          type: string
+        focus_turn_id:
+          type: string
+          nullable: true
+        actual_anchor_turn_id:
+          type: string
+          nullable: true
+        visible_node_ids:
+          type: array
+          items:
+            type: string
+        evidence_window_ids:
+          type: array
+          items:
+            type: string
+        reason_codes:
+          type: array
+          items:
+            type: string
+        post_capsule_excerpt:
+          type: string
+        branch_capsule_excerpt:
+          type: string
+        built_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    RuntimeContextEnvelope:
+      type: object
+      required:
+        - schema_version
+        - envelope_id
+        - post_id
+        - thread_id
+        - built_from_slice_id
+        - foundation_skeleton
+        - post_situation
+        - focus_thread
+        - evidence_window
+        - memory_refs
+        - built_at
+      properties:
+        schema_version:
+          type: string
+        envelope_id:
+          type: string
+        post_id:
+          type: string
+        thread_id:
+          type: string
+          nullable: true
+        built_from_slice_id:
+          type: string
+          nullable: true
+        foundation_skeleton:
+          type: object
+          additionalProperties: true
+        post_situation:
+          type: object
+          additionalProperties: true
+        focus_thread:
+          type: object
+          nullable: true
+          additionalProperties: true
+        evidence_window:
+          type: object
+          nullable: true
+          additionalProperties: true
+        memory_refs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        built_at:
+          type: string
+          format: date-time
+      additionalProperties: true
+    PerceivedEvidenceEntry:
+      type: object
+      required: [turn_id, thread_id, body_excerpt, author, created_at]
+      properties:
+        turn_id:
+          type: string
+        thread_id:
+          type: string
+        body_excerpt:
+          type: string
+        author:
+          type: object
+          required: [actor_type, actor_id, display_name]
+          properties:
+            actor_type:
+              type: string
+              enum: [agent, human]
+            actor_id:
+              type: string
+            display_name:
+              type: string
+          additionalProperties: false
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    RuntimeContextPreview:
+      type: object
+      required:
+        - post_capsule
+        - thread_capsule
+        - reading_guide
+        - forest
+        - perceived_slice
+        - runtime_context
+        - evidence_window_turns
+      properties:
+        post_capsule:
+          $ref: '#/components/schemas/PostSemanticCapsule'
+        thread_capsule:
+          allOf:
+            - $ref: '#/components/schemas/ThreadCapsule'
+          nullable: true
+        reading_guide:
+          $ref: '#/components/schemas/ReadingGuideProjection'
+        forest:
+          $ref: '#/components/schemas/DiscussionForestProjection'
+        perceived_slice:
+          allOf:
+            - $ref: '#/components/schemas/PerceivedContextSlice'
+          nullable: true
+        runtime_context:
+          allOf:
+            - $ref: '#/components/schemas/RuntimeContextEnvelope'
+          nullable: true
+        evidence_window_turns:
+          type: array
+          items:
+            $ref: '#/components/schemas/PerceivedEvidenceEntry'
+      additionalProperties: false
+    RuntimeContextPreviewBuildRequest:
+      type: object
+      required: [post_id]
+      properties:
+        post_id:
+          type: string
+        thread_id:
+          type: string
+          nullable: true
+        focus_turn_id:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ReadingGuideResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ReadingGuideProjection'
+      additionalProperties: false
+    DiscussionForestResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DiscussionForestProjection'
+      additionalProperties: false
+    ThreadLifecycleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ThreadLifecycleSnapshot'
+      additionalProperties: false
+    PostSemanticCapsuleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PostSemanticCapsule'
+      additionalProperties: false
+    ThreadCapsuleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ThreadCapsule'
+      additionalProperties: false
+    RuntimeContextPreviewResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/RuntimeContextPreview'
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

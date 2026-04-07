@@ -21,6 +21,7 @@ import {
   agentBioRefreshService,
   viewerPublicViewService,
   publicAgentRelationSummaryService,
+  viewerPublicWriteService,
   guidanceOrchestrator,
   guidanceStateService,
   publicStageThreadRepo,
@@ -28,7 +29,7 @@ import {
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
-import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
+import { requireAdmin, requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
 import type { CreateViewerPublicViewEventInput } from '../repos/index.js'
 import type { PostWithMeta as ForumPostWithMeta } from '../services/forum-read-service.js'
@@ -42,6 +43,7 @@ import {
 import { validate } from '../validation/validate.js'
 import {
   createAudienceMessageSchema,
+  buildRuntimeContextPreviewSchema,
   createPublicThreadSchema,
   createPublicTurnSchema,
   createFeedbackSchema,
@@ -63,12 +65,20 @@ import {
   normalizePublicParticipationMode,
   normalizeStorylineState,
 } from '../../shared/semantic-taxonomy.js'
+import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 3 },
 })
+const READ_MEDIA_ROLLOUT_PROFILE_TIMEOUT_MS = 150
+const READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS = 30_000
+let readMediaRolloutProfileCache: {
+  expires_at: number
+  value: MediaRolloutControllerProfile | null
+} | null = null
+let readMediaRolloutProfilePending: Promise<MediaRolloutControllerProfile | null> | null = null
 
 function isAttachmentInput(item: unknown): item is { ref: string; type: string } {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return false
@@ -197,6 +207,49 @@ async function recordPublicViewEvents(entries: CreateViewerPublicViewEventInput[
     return
   }
   await viewerPublicViewService.record(entries)
+}
+
+async function resolveReadMediaRolloutProfile(): Promise<MediaRolloutControllerProfile | null> {
+  if (!config.features.mediaRolloutControllerV1) {
+    return null
+  }
+
+  const now = Date.now()
+  if (readMediaRolloutProfileCache && readMediaRolloutProfileCache.expires_at > now) {
+    return readMediaRolloutProfileCache.value
+  }
+
+  if (!readMediaRolloutProfilePending) {
+    readMediaRolloutProfilePending = mediaRolloutControllerService.getEffectiveProfile()
+      .then((profile) => {
+        readMediaRolloutProfileCache = {
+          expires_at: Date.now() + READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS,
+          value: profile,
+        }
+        return profile
+      })
+      .catch(() => {
+        readMediaRolloutProfileCache = {
+          expires_at: Date.now() + READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS,
+          value: null,
+        }
+        return null
+      })
+      .finally(() => {
+        readMediaRolloutProfilePending = null
+      })
+  }
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      resolve(readMediaRolloutProfileCache?.value ?? null)
+    }, READ_MEDIA_ROLLOUT_PROFILE_TIMEOUT_MS)
+
+    void readMediaRolloutProfilePending!.then((profile) => {
+      clearTimeout(timeout)
+      resolve(profile)
+    })
+  })
 }
 
 async function assertOpenReplyEnabled(input: {
@@ -350,10 +403,7 @@ async function buildAftershowSnapshot(postId: string, input: {
     aftershowService.getLatestByPost(postId),
     config.features.audienceZoneV1 ? audienceService.getThreadByPost(postId) : null,
   ])
-  const rolloutProfile = config.features.mediaRolloutControllerV1
-    ? await mediaRolloutControllerService.getEffectiveProfile()
-      .catch(() => null)
-    : null
+  const rolloutProfile = await resolveReadMediaRolloutProfile()
   const community = communityRepo.findById(post.community_id)
   const visualConfig = resolveLaunchCommunityVisualConfig({
     community_rules_json: community?.rules_json ?? null,
@@ -647,9 +697,110 @@ readApiRouter.get('/posts/:postId/threads', async (req, res) => {
   res.json({ data: result.items, meta: { cursor: result.next_cursor } })
 })
 
+readApiRouter.get('/posts/:postId/reading-guide', async (req, res) => {
+  const user = tryAuthenticateHuman(req)
+  const data = await forumReadService.getReadingGuide(req.params.postId, user?.userId)
+  res.json({ data })
+})
+
+readApiRouter.get('/posts/:postId/discussion-forest', async (req, res) => {
+  const user = tryAuthenticateHuman(req)
+  const data = await forumReadService.getDiscussionForest(
+    req.params.postId,
+    {
+      focus_thread_id: readQueryString(req.query.focus_thread_id) ?? readQueryString(req.query.threadId),
+      focus_turn_id: readQueryString(req.query.focus_turn_id) ?? readQueryString(req.query.turnId),
+    },
+    user?.userId,
+  )
+  res.json({ data })
+})
+
+readApiRouter.get(
+  '/internal/threads/:threadId/lifecycle',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const data = await forumReadService.getThreadLifecycle(String(req.params.threadId))
+    res.json({ data })
+  },
+)
+
+readApiRouter.get(
+  '/internal/posts/:postId/semantic-capsule',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const data = await forumReadService.getPostSemanticCapsule(String(req.params.postId), req.user?.userId)
+    res.json({ data })
+  },
+)
+
+readApiRouter.get(
+  '/internal/threads/:threadId/semantic-capsule',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const data = await forumReadService.getThreadSemanticCapsule(String(req.params.threadId), req.user?.userId)
+    res.json({ data })
+  },
+)
+
+readApiRouter.get(
+  '/internal/posts/:postId/reading-guide',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const data = await forumReadService.getReadingGuide(String(req.params.postId), req.user?.userId)
+    res.json({ data })
+  },
+)
+
+readApiRouter.get(
+  '/internal/posts/:postId/discussion-forest',
+  requireHumanAuth,
+  requireAdmin,
+  async (req, res) => {
+    const data = await forumReadService.getDiscussionForest(
+      String(req.params.postId),
+      {
+        focus_thread_id: readQueryString(req.query.focus_thread_id) ?? readQueryString(req.query.threadId),
+        focus_turn_id: readQueryString(req.query.focus_turn_id) ?? readQueryString(req.query.turnId),
+      },
+      req.user?.userId,
+    )
+    res.json({ data })
+  },
+)
+
 readApiRouter.get('/threads/:threadId', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const data = await forumReadService.getThread(req.params.threadId, user?.userId)
+  res.json({ data })
+})
+
+readApiRouter.post(
+  '/internal/runtime-contexts/build',
+  requireHumanAuth,
+  requireAdmin,
+  validate(buildRuntimeContextPreviewSchema),
+  async (req, res) => {
+    const data = await forumReadService.buildRuntimeContextPreview({
+      post_id: req.body.post_id,
+      thread_id: req.body.thread_id ?? null,
+      focus_turn_id: req.body.focus_turn_id ?? null,
+    }, req.user?.userId)
+    res.json({ data })
+  },
+)
+
+readApiRouter.get('/communities/:communityId/participation-contract', async (req, res) => {
+  const data = await forumReadService.getCommunityParticipationContract(req.params.communityId)
+  res.json({ data })
+})
+
+readApiRouter.get('/posts/:postId/participation-contract', async (req, res) => {
+  const data = await forumReadService.getPostParticipationContract(req.params.postId)
   res.json({ data })
 })
 
@@ -659,17 +810,18 @@ readApiRouter.post(
   validate(createPublicThreadSchema),
   async (req, res) => {
     await assertOpenReplyEnabled({ post_id: String(req.params.postId) })
-    const result = await humanParticipationService.createPublicThread({
+    const result = await viewerPublicWriteService.createPublicThread({
       actor_user_id: req.user!.userId,
       post_id: String(req.params.postId),
       body: req.body.body,
+      idempotency_key: req.body.idempotency_key ?? null,
+      source_context: req.body.source_context ?? null,
     })
     await Promise.all([
-      searchProjectionService.refreshThread(result.thread.id),
+      searchProjectionService.refreshThread(result.data.id),
       searchProjectionService.refreshPost(String(req.params.postId)),
     ])
-    const data = await forumReadService.getThread(result.thread.id, req.user!.userId)
-    res.status(201).json({ data })
+    res.status(201).json({ data: result.data })
   },
 )
 
@@ -679,18 +831,68 @@ readApiRouter.post(
   validate(createPublicTurnSchema),
   async (req, res) => {
     await assertOpenReplyEnabled({ thread_id: String(req.params.threadId) })
-    const result = await humanParticipationService.createPublicTurn({
+    const thread = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
+    const result = await viewerPublicWriteService.createPublicTurn({
       actor_user_id: req.user!.userId,
+      post_id: thread.post_id,
       thread_id: String(req.params.threadId),
       body: req.body.body,
-      anchor_turn_id: req.body.anchor_turn_id ?? null,
+      idempotency_key: req.body.idempotency_key ?? null,
+      source_context: req.body.source_context ?? null,
+      focused_turn_id: req.body.focused_turn_id ?? req.body.anchor_turn_id ?? null,
+      actual_anchor_turn_id: req.body.actual_anchor_turn_id ?? req.body.anchor_turn_id ?? null,
+      quoted_excerpt: req.body.quoted_excerpt ?? null,
     })
     await Promise.all([
       searchProjectionService.refreshThread(String(req.params.threadId)),
-      searchProjectionService.refreshPost(result.turn.post_id),
+      searchProjectionService.refreshPost(thread.post_id),
     ])
-    const data = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
-    res.status(201).json({ data })
+    res.status(201).json({ data: result.data })
+  },
+)
+
+readApiRouter.post(
+  '/viewer/posts/:postId/public-threads',
+  requireHumanAuth,
+  validate(createPublicThreadSchema),
+  async (req, res) => {
+    const result = await viewerPublicWriteService.createPublicThread({
+      actor_user_id: req.user!.userId,
+      post_id: String(req.params.postId),
+      body: req.body.body,
+      idempotency_key: req.body.idempotency_key ?? null,
+      source_context: req.body.source_context ?? null,
+    })
+    await Promise.all([
+      searchProjectionService.refreshThread(result.data.id),
+      searchProjectionService.refreshPost(String(req.params.postId)),
+    ])
+    res.status(201).json({ data: result })
+  },
+)
+
+readApiRouter.post(
+  '/viewer/threads/:threadId/public-turns',
+  requireHumanAuth,
+  validate(createPublicTurnSchema),
+  async (req, res) => {
+    const thread = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
+    const result = await viewerPublicWriteService.createPublicTurn({
+      actor_user_id: req.user!.userId,
+      post_id: thread.post_id,
+      thread_id: String(req.params.threadId),
+      body: req.body.body,
+      idempotency_key: req.body.idempotency_key ?? null,
+      source_context: req.body.source_context ?? null,
+      focused_turn_id: req.body.focused_turn_id ?? req.body.anchor_turn_id ?? null,
+      actual_anchor_turn_id: req.body.actual_anchor_turn_id ?? req.body.anchor_turn_id ?? null,
+      quoted_excerpt: req.body.quoted_excerpt ?? null,
+    })
+    await Promise.all([
+      searchProjectionService.refreshThread(String(req.params.threadId)),
+      searchProjectionService.refreshPost(thread.post_id),
+    ])
+    res.status(201).json({ data: result })
   },
 )
 

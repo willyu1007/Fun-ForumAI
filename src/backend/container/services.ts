@@ -69,6 +69,15 @@ import { HomeProgrammingSnapshotService } from '../services/home-programming-sna
 import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
 import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
 import { PublicAgentRelationSummaryService } from '../services/public-agent-relation-summary-service.js'
+import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
+import { SemanticProjectionService } from '../services/semantic-projection-service.js'
+import { DisplayProjectionService } from '../services/display-projection-service.js'
+import { ParticipationContractService } from '../services/participation-contract-service.js'
+import { ViewerPublicWriteService } from '../services/viewer-public-write-service.js'
+import { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
+import { RecallPolicyService } from '../services/recall-policy-service.js'
+import { AgentPerceptionService } from '../services/agent-perception-service.js'
+import { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
@@ -165,6 +174,7 @@ export function createCoreServices(deps: {
     membershipRepo: repos.agentCommunityMembershipRepo,
     agentRepo: repos.agentRepo,
     agentConfigRepo: repos.agentConfigRepo,
+    audienceRepo: repos.audienceRepo,
     userRepo: repos.userRepo,
     achievementChronicleService,
     riskRepo: repos.riskGovernanceRepo,
@@ -229,6 +239,21 @@ export function createCoreServices(deps: {
     communityConfigService,
   })
   const viewerPublicViewService = new ViewerPublicViewService(repos.viewerPublicViewEventRepo)
+  const threadLifecycleService = new ThreadLifecycleService()
+  const semanticProjectionService = new SemanticProjectionService({
+    threadLifecycleService,
+  })
+  const displayProjectionService = new DisplayProjectionService({
+    semanticProjectionService,
+  })
+  const participationContractService = new ParticipationContractService({
+    communityRepo: repos.communityRepo,
+    postRepo: repos.postRepo,
+  })
+  const attentionOpportunityBroker = new AttentionOpportunityBroker()
+  const recallPolicyService = new RecallPolicyService()
+  const agentPerceptionService = new AgentPerceptionService()
+  const runtimeContextAssembler = new RuntimeContextAssembler()
 
   const roleAssignmentService = new RoleAssignmentService({
     roleAssignmentRepo: repos.roleAssignmentRepo,
@@ -376,6 +401,12 @@ export function createCoreServices(deps: {
 
   forumReadService.attachRuntimeDeps({
     agentBioService: agentBioRefreshService,
+    threadLifecycleService,
+    semanticProjectionService,
+    displayProjectionService,
+    participationContractService,
+    agentPerceptionService,
+    runtimeContextAssembler,
   })
   globalHighlightsService.attachRuntimeDeps({
     agentBioService: agentBioRefreshService,
@@ -552,6 +583,12 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     eventRepo: repos.eventRepo,
   })
+  const viewerPublicWriteService = new ViewerPublicWriteService({
+    eventRepo: repos.eventRepo,
+    humanParticipationService,
+    forumReadService,
+    participationContractService,
+  })
 
   const achievementsOrchestrator = new AchievementsOrchestrator({
     agentRepo: repos.agentRepo,
@@ -612,6 +649,15 @@ export function createCoreServices(deps: {
     communityConfigService,
     communityGovernanceService,
     viewerPublicViewService,
+    viewerPublicWriteService,
+    threadLifecycleService,
+    semanticProjectionService,
+    displayProjectionService,
+    participationContractService,
+    attentionOpportunityBroker,
+    recallPolicyService,
+    agentPerceptionService,
+    runtimeContextAssembler,
     roleAssignmentService,
     forumWriteService,
     globalHighlightsService,

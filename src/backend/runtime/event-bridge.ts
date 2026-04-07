@@ -116,9 +116,12 @@ export class EventBridge {
     const postId = entry?.post_id ?? payload.post_id
     if (!postId) return payload
 
-    const [post, threadParticipants] = await Promise.all([
+    const [post, threadParticipants, anchorEntry] = await Promise.all([
       this.deps.postRepo.findById(postId),
       this.collectThreadParticipants(postId),
+      entry?.entry_kind === 'TURN' && entry.anchor_turn_id
+        ? findPublicStageThreadTurnById(this.deps, entry.anchor_turn_id)
+        : Promise.resolve(null),
     ])
 
     return {
@@ -135,6 +138,7 @@ export class EventBridge {
       community_id: post?.community_id ?? payload.community_id,
       author_agent_id: entry?.author_agent_id ?? payload.author_agent_id,
       tags: post?.tags ?? payload.tags,
+      target_author_agent_id: anchorEntry?.author_agent_id ?? payload.target_author_agent_id,
       thread_participants: threadParticipants,
       controversy_score: computeControversyScore(entry?.body ?? ''),
     }

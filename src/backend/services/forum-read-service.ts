@@ -19,6 +19,7 @@ import type {
   RouteHandoff,
   SurfaceMediaAttachmentView,
   ForumSceneMetadataRepository,
+  AudienceRepository,
 } from '../repos/index.js'
 import { NotFoundError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
@@ -71,6 +72,25 @@ import {
   buildAgentPublicAuthorPresentation,
   buildHumanPublicAuthorPresentation,
 } from '../identity/public-author-presentation.js'
+import type {
+  AudienceSignalCapsule,
+  DiscussionForestProjection,
+  EffectiveParticipationContract,
+  PerceivedContextSlice,
+  PerceivedEvidenceEntry,
+  ParticipationContract,
+  PostSemanticCapsule,
+  ReadingGuideProjection,
+  RuntimeContextEnvelope,
+  ThreadCapsule,
+  ThreadLifecycleSnapshot,
+} from '../../shared/forum-orchestration.js'
+import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
+import type { SemanticProjectionService } from './semantic-projection-service.js'
+import type { DisplayProjectionService } from './display-projection-service.js'
+import type { ParticipationContractService } from './participation-contract-service.js'
+import type { AgentPerceptionService } from './agent-perception-service.js'
+import type { RuntimeContextAssembler } from './runtime-context-assembler.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -86,12 +106,19 @@ export interface ForumReadServiceDeps {
   membershipRepo?: Pick<AgentCommunityMembershipRepository, 'findActiveByCommunity'> | null
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
+  audienceRepo?: AudienceRepository | null
   userRepo?: UserRepository | null
   achievementChronicleService?: AchievementChronicleService
   agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
   riskRepo?: RiskGovernanceRepository
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
   mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
+  threadLifecycleService?: ThreadLifecycleService | null
+  semanticProjectionService?: SemanticProjectionService | null
+  displayProjectionService?: DisplayProjectionService | null
+  participationContractService?: ParticipationContractService | null
+  agentPerceptionService?: AgentPerceptionService | null
+  runtimeContextAssembler?: RuntimeContextAssembler | null
 }
 
 export interface PostMediaSummary {
@@ -191,6 +218,16 @@ export interface CommunityReadModel extends Community {
   default_editorial_shelf_ids?: CommunitySemanticContract['default_editorial_shelf_ids']
 }
 
+export interface RuntimeContextPreview {
+  post_capsule: PostSemanticCapsule
+  thread_capsule: ThreadCapsule | null
+  reading_guide: ReadingGuideProjection
+  forest: DiscussionForestProjection
+  perceived_slice: PerceivedContextSlice | null
+  runtime_context: RuntimeContextEnvelope | null
+  evidence_window_turns: PerceivedEvidenceEntry[]
+}
+
 export interface PublicStageThreadTurnWithAuthor extends PublicStageThreadTurn {
   author: AuthorSummary
   vote_score: number
@@ -264,6 +301,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const READ_MEDIA_ROLLOUT_PROFILE_TIMEOUT_MS = 150
+const READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS = 30_000
+
 function isPubliclyVisibleContent(
   value: Pick<Post, 'visibility' | 'state'> | Pick<PublicStageThreadTurn, 'visibility' | 'state'>,
 ): boolean {
@@ -271,6 +311,11 @@ function isPubliclyVisibleContent(
 }
 
 export class ForumReadService {
+  private mediaRolloutProfileCache:
+    | { expires_at: number; value: MediaRolloutControllerProfile | null }
+    | null = null
+  private mediaRolloutProfilePending: Promise<MediaRolloutControllerProfile | null> | null = null
+
   constructor(private readonly deps: ForumReadServiceDeps) {}
 
   private buildAuthorCacheKey(input: {
@@ -295,10 +340,77 @@ export class ForumReadService {
 
   attachRuntimeDeps(input: {
     agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
+    threadLifecycleService?: ThreadLifecycleService | null
+    semanticProjectionService?: SemanticProjectionService | null
+    displayProjectionService?: DisplayProjectionService | null
+    participationContractService?: ParticipationContractService | null
+    agentPerceptionService?: AgentPerceptionService | null
+    runtimeContextAssembler?: RuntimeContextAssembler | null
   }): void {
     if (input.agentBioService !== undefined) {
       this.deps.agentBioService = input.agentBioService
     }
+    if (input.threadLifecycleService !== undefined) {
+      this.deps.threadLifecycleService = input.threadLifecycleService
+    }
+    if (input.semanticProjectionService !== undefined) {
+      this.deps.semanticProjectionService = input.semanticProjectionService
+    }
+    if (input.displayProjectionService !== undefined) {
+      this.deps.displayProjectionService = input.displayProjectionService
+    }
+    if (input.participationContractService !== undefined) {
+      this.deps.participationContractService = input.participationContractService
+    }
+    if (input.agentPerceptionService !== undefined) {
+      this.deps.agentPerceptionService = input.agentPerceptionService
+    }
+    if (input.runtimeContextAssembler !== undefined) {
+      this.deps.runtimeContextAssembler = input.runtimeContextAssembler
+    }
+  }
+
+  private async resolveReadMediaRolloutProfile(): Promise<MediaRolloutControllerProfile | null> {
+    if (!config.features.mediaRolloutControllerV1 || !this.deps.mediaRolloutControllerService) {
+      return null
+    }
+
+    const now = Date.now()
+    if (this.mediaRolloutProfileCache && this.mediaRolloutProfileCache.expires_at > now) {
+      return this.mediaRolloutProfileCache.value
+    }
+
+    if (!this.mediaRolloutProfilePending) {
+      this.mediaRolloutProfilePending = this.deps.mediaRolloutControllerService.getEffectiveProfile()
+        .then((profile) => {
+          this.mediaRolloutProfileCache = {
+            expires_at: Date.now() + READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS,
+            value: profile,
+          }
+          return profile
+        })
+        .catch(() => {
+          this.mediaRolloutProfileCache = {
+            expires_at: Date.now() + READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS,
+            value: null,
+          }
+          return null
+        })
+        .finally(() => {
+          this.mediaRolloutProfilePending = null
+        })
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve(this.mediaRolloutProfileCache?.value ?? null)
+      }, READ_MEDIA_ROLLOUT_PROFILE_TIMEOUT_MS)
+
+      void this.mediaRolloutProfilePending!.then((profile) => {
+        clearTimeout(timeout)
+        resolve(profile)
+      })
+    })
   }
 
   private clampLimit(limit: number | undefined, fallback: number, max: number): number {
@@ -395,7 +507,9 @@ export class ForumReadService {
         ? this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
         : Promise.resolve(emptyIdentity),
       this.deps.agentBioService?.getProjection(agentId, {
-        build_if_missing: true,
+        // Public forum read paths must stay projection-only and never trigger
+        // synchronous bio generation/refresh work.
+        build_if_missing: false,
         allow_minor_refresh: false,
       }).catch(() => null) ?? Promise.resolve(null),
     ])
@@ -554,6 +668,170 @@ export class ForumReadService {
       merged.set(id, attachments)
     }
     return merged
+  }
+
+  private async buildAudienceSignalCapsule(postId: string): Promise<AudienceSignalCapsule | null> {
+    if (!this.deps.audienceRepo || !this.deps.semanticProjectionService) {
+      return null
+    }
+    const audienceThread = await this.deps.audienceRepo.findThreadByPost(postId)
+    if (!audienceThread) {
+      return this.deps.semanticProjectionService.buildAudienceSignalCapsule({ post_id: postId })
+    }
+    const [messages, latestSummary] = await Promise.all([
+      this.deps.audienceRepo.listMessagesByThread(audienceThread.id),
+      this.deps.audienceRepo.findLatestSummaryByThread(audienceThread.id),
+    ])
+    return this.deps.semanticProjectionService.buildAudienceSignalCapsule({
+      post_id: postId,
+      messages,
+      highlights: [],
+      aftershow_summary: latestSummary
+        ? { published_at: latestSummary.created_at.toISOString() }
+        : null,
+    })
+  }
+
+  private requireProjectionServices(): {
+    semanticProjectionService: SemanticProjectionService
+    displayProjectionService: DisplayProjectionService
+  } {
+    if (!this.deps.semanticProjectionService || !this.deps.displayProjectionService) {
+      throw new Error('Forum orchestration projection services are not attached')
+    }
+    return {
+      semanticProjectionService: this.deps.semanticProjectionService,
+      displayProjectionService: this.deps.displayProjectionService,
+    }
+  }
+
+  private resolveFocusThreadId(
+    threads: PublicStageThreadWithAuthor[],
+    input?: {
+      focus_thread_id?: string | null
+      focus_turn_id?: string | null
+    },
+  ): string | null {
+    if (input?.focus_thread_id) {
+      return input.focus_thread_id
+    }
+    if (!input?.focus_turn_id) {
+      return null
+    }
+    const matchedThread = threads.find((thread) =>
+      thread.id === input.focus_turn_id
+      || thread.turns.some((turn) => turn.id === input.focus_turn_id))
+    return matchedThread?.id ?? null
+  }
+
+  private buildEvidenceWindowTurns(
+    thread: PublicStageThreadWithAuthor | null,
+    perceivedSlice: PerceivedContextSlice | null,
+  ): PerceivedEvidenceEntry[] {
+    if (!thread) {
+      return []
+    }
+
+    const visibleTurns = thread.turns.filter((turn) => isPubliclyVisibleContent(turn))
+    const turnsById = new Map(visibleTurns.map((turn) => [turn.id, turn] as const))
+    const orderedTurnIds = [
+      ...(perceivedSlice?.evidence_window_ids ?? []),
+      ...(perceivedSlice?.visible_node_ids ?? []),
+      thread.turns[thread.turns.length - 1]?.id ?? null,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0)
+
+    const seen = new Set<string>()
+    const entries: PerceivedEvidenceEntry[] = []
+    for (const turnId of orderedTurnIds) {
+      if (seen.has(turnId)) {
+        continue
+      }
+      seen.add(turnId)
+      const turn = turnsById.get(turnId)
+      if (!turn) {
+        continue
+      }
+      entries.push({
+        turn_id: turn.id,
+        thread_id: turn.thread_id,
+        body_excerpt: turn.body.slice(0, 240),
+        author: {
+          actor_type: turn.author.actor_type,
+          actor_id: turn.author.id,
+          display_name: turn.author.display_name,
+        },
+        created_at: turn.created_at instanceof Date ? turn.created_at.toISOString() : turn.created_at,
+      })
+      if (entries.length >= 6) {
+        break
+      }
+    }
+
+    return entries
+  }
+
+  private async buildProjectionBundle(
+    postId: string,
+    input?: {
+      focus_thread_id?: string | null
+      focus_turn_id?: string | null
+    },
+    viewerUserId?: string,
+  ): Promise<{
+    post: PostWithMeta
+    threads: PublicStageThreadWithAuthor[]
+    post_capsule: PostSemanticCapsule
+    reading_guide: ReadingGuideProjection
+    forest: DiscussionForestProjection
+    thread_capsule: ThreadCapsule | null
+    focus_thread_id: string | null
+    selected_thread: PublicStageThreadWithAuthor | null
+  }> {
+    const { semanticProjectionService, displayProjectionService } = this.requireProjectionServices()
+    const post = await this.getPost(postId, viewerUserId)
+    const threads = (await this.getThreads(postId, { limit: 500 }, viewerUserId)).items
+    if (input?.focus_thread_id && !threads.some((thread) => thread.id === input.focus_thread_id)) {
+      throw new NotFoundError('Thread', input.focus_thread_id)
+    }
+    if (input?.focus_turn_id) {
+      const focusTurnExists = threads.some((thread) =>
+        thread.id === input.focus_turn_id
+        || thread.turns.some((turn) => turn.id === input.focus_turn_id))
+      if (!focusTurnExists) {
+        throw new NotFoundError('Turn', input.focus_turn_id)
+      }
+    }
+    const audienceSignals = await this.buildAudienceSignalCapsule(postId)
+    const postCapsule = semanticProjectionService.buildPostSemanticCapsule(post, threads, audienceSignals)
+    const resolvedFocusThreadId = this.resolveFocusThreadId(threads, input)
+      ?? postCapsule.start_thread_ids[0]
+      ?? postCapsule.thread_capsules[0]?.thread_id
+      ?? null
+    const readingGuide = semanticProjectionService.buildReadingGuide(post, postCapsule)
+    const forest = displayProjectionService.buildDiscussionForest({
+      post_id: postId,
+      threads,
+      reading_guide: readingGuide,
+      focus_thread_id: resolvedFocusThreadId,
+      focus_turn_id: input?.focus_turn_id ?? null,
+    })
+    const threadCapsule = resolvedFocusThreadId
+      ? postCapsule.thread_capsules.find((item) => item.thread_id === resolvedFocusThreadId) ?? null
+      : null
+    const selectedThread = resolvedFocusThreadId
+      ? threads.find((thread) => thread.id === resolvedFocusThreadId) ?? null
+      : null
+
+    return {
+      post,
+      threads,
+      post_capsule: postCapsule,
+      reading_guide: readingGuide,
+      forest,
+      thread_capsule: threadCapsule,
+      focus_thread_id: resolvedFocusThreadId,
+      selected_thread: selectedThread,
+    }
   }
 
   private calculateHeatScore(input: {
@@ -820,10 +1098,7 @@ export class ForumReadService {
       authorAgentIds: opts.authorAgentIds,
     })
     const nowMs = Date.now()
-    const rolloutProfile = config.features.mediaRolloutControllerV1
-      ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
-        .catch(() => null) ?? null
-      : null
+    const rolloutProfile = await this.resolveReadMediaRolloutProfile()
 
     const mediaByPost = await this.resolvePostMediaViews(result.items.map((post) => post.id))
     const items: PostWithMeta[] = await Promise.all(
@@ -867,10 +1142,7 @@ export class ForumReadService {
     if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
 
     const media = (await this.resolvePostMediaViews([post.id]))[post.id] ?? []
-    const rolloutProfile = config.features.mediaRolloutControllerV1
-      ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
-        .catch(() => null) ?? null
-      : null
+    const rolloutProfile = await this.resolveReadMediaRolloutProfile()
 
     return this.toPostWithMeta(post, Date.now(), viewerUserId, media, rolloutProfile)
   }
@@ -880,13 +1152,13 @@ export class ForumReadService {
     opts: {
       viewerUserId?: string
       authorCache: Map<string, Promise<AuthorSummary>>
-      turnById: Map<string, PublicStageTurn>
+      visibleTurnById: Map<string, PublicStageTurn>
       attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
     },
   ): Promise<PublicStageTurnWithAuthor> {
     const votes = this.getDetailedVoteSummary('TURN', turn.id, opts.viewerUserId)
     const topicPresentation = await this.resolveThreadTurnTopicSignals(turn.id)
-    const anchorTurn = turn.anchor_turn_id ? opts.turnById.get(turn.anchor_turn_id) ?? null : null
+    const anchorTurn = turn.anchor_turn_id ? opts.visibleTurnById.get(turn.anchor_turn_id) ?? null : null
     const anchorAuthor = anchorTurn
       ? await this.resolveAuthorCached(opts.authorCache, anchorTurn)
       : null
@@ -914,7 +1186,13 @@ export class ForumReadService {
             author_display_name: anchorAuthor.display_name,
             body_excerpt: (turn.quoted_excerpt ?? anchorTurn.body).slice(0, 180),
           }
-        : null,
+        : turn.anchor_turn_id && turn.quoted_excerpt
+          ? {
+              turn_id: turn.anchor_turn_id,
+              author_display_name: 'Quoted context',
+              body_excerpt: turn.quoted_excerpt.slice(0, 180),
+            }
+          : null,
     }
   }
 
@@ -924,7 +1202,7 @@ export class ForumReadService {
     opts: {
       viewerUserId?: string
       authorCache: Map<string, Promise<AuthorSummary>>
-      turnById: Map<string, PublicStageTurn>
+      visibleTurnById: Map<string, PublicStageTurn>
       attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
     },
   ): Promise<PublicStageThreadWithAuthor> {
@@ -986,13 +1264,11 @@ export class ForumReadService {
       ...turns.map((turn) => ({ id: turn.id, entry_kind: 'TURN' as const })),
     ])
     const turnsByThreadId = new Map<string, PublicStageTurn[]>()
-    const turnById = new Map<string, PublicStageTurn>()
     for (const turn of turns) {
       if (!turnsByThreadId.has(turn.thread_id)) {
         turnsByThreadId.set(turn.thread_id, [])
       }
       turnsByThreadId.get(turn.thread_id)!.push(turn)
-      turnById.set(turn.id, turn)
     }
     const authorCache = new Map<string, Promise<AuthorSummary>>()
 
@@ -1001,7 +1277,11 @@ export class ForumReadService {
         this.toPublicStageThreadWithAuthor(thread, turnsByThreadId.get(thread.id) ?? [], {
           viewerUserId,
           authorCache,
-          turnById,
+          visibleTurnById: new Map(
+            (turnsByThreadId.get(thread.id) ?? [])
+              .filter((turn) => isPubliclyVisibleContent(turn))
+              .map((turn) => [turn.id, turn] as const),
+          ),
           attachmentMap,
         })),
     )
@@ -1026,15 +1306,132 @@ export class ForumReadService {
       { id: thread.id, entry_kind: 'THREAD' as const },
       ...turns.map((turn) => ({ id: turn.id, entry_kind: 'TURN' as const })),
     ])
-    const turnById = new Map(turns.map((turn) => [turn.id, turn]))
+    const visibleTurnById = new Map(
+      turns
+        .filter((turn) => isPubliclyVisibleContent(turn))
+        .map((turn) => [turn.id, turn] as const),
+    )
     const authorCache = new Map<string, Promise<AuthorSummary>>()
 
     return this.toPublicStageThreadWithAuthor(thread, turns, {
       viewerUserId,
       authorCache,
-      turnById,
+      visibleTurnById,
       attachmentMap,
     })
+  }
+
+  async getThreadLifecycle(threadId: string): Promise<ThreadLifecycleSnapshot> {
+    const thread = await this.deps.publicStageThreadRepo.findById(threadId)
+    if (!thread) throw new NotFoundError('Thread', threadId)
+    const turnCount = await this.deps.publicStageTurnRepo.countByThread(threadId)
+    if (!this.deps.threadLifecycleService) {
+      throw new Error('ThreadLifecycleService is not attached')
+    }
+    return this.deps.threadLifecycleService.buildThreadLifecycle(thread, turnCount)
+  }
+
+  async getPostSemanticCapsule(postId: string, viewerUserId?: string): Promise<PostSemanticCapsule> {
+    const bundle = await this.buildProjectionBundle(postId, undefined, viewerUserId)
+    return bundle.post_capsule
+  }
+
+  async getThreadSemanticCapsule(threadId: string, viewerUserId?: string): Promise<ThreadCapsule> {
+    const thread = await this.getThread(threadId, viewerUserId)
+    const bundle = await this.buildProjectionBundle(
+      thread.post_id,
+      { focus_thread_id: threadId },
+      viewerUserId,
+    )
+    if (!bundle.thread_capsule) {
+      throw new NotFoundError('Thread capsule', threadId)
+    }
+    return bundle.thread_capsule
+  }
+
+  async getReadingGuide(postId: string, viewerUserId?: string): Promise<ReadingGuideProjection> {
+    const bundle = await this.buildProjectionBundle(postId, undefined, viewerUserId)
+    return bundle.reading_guide
+  }
+
+  async getDiscussionForest(
+    postId: string,
+    input?: {
+      focus_thread_id?: string | null
+      focus_turn_id?: string | null
+    },
+    viewerUserId?: string,
+  ): Promise<DiscussionForestProjection> {
+    const bundle = await this.buildProjectionBundle(postId, input, viewerUserId)
+    return bundle.forest
+  }
+
+  async buildRuntimeContextPreview(input: {
+    post_id: string
+    thread_id?: string | null
+    focus_turn_id?: string | null
+  }, viewerUserId?: string): Promise<RuntimeContextPreview> {
+    if (!this.deps.agentPerceptionService || !this.deps.runtimeContextAssembler) {
+      throw new Error('Runtime preview services are not attached')
+    }
+
+    const bundle = await this.buildProjectionBundle(
+      input.post_id,
+      {
+        focus_thread_id: input.thread_id ?? null,
+        focus_turn_id: input.focus_turn_id ?? null,
+      },
+      viewerUserId,
+    )
+    const perceivedSlice = this.deps.agentPerceptionService.buildSlice({
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
+      forest: bundle.forest,
+      focus_turn_id: input.focus_turn_id ?? null,
+    })
+    const evidenceWindowTurns = this.buildEvidenceWindowTurns(bundle.selected_thread, perceivedSlice)
+    const participationContract = this.deps.participationContractService
+      ? await this.deps.participationContractService.getPostContract(input.post_id)
+      : null
+    const runtimeContext = this.deps.runtimeContextAssembler.build({
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
+      perceived_slice: perceivedSlice,
+      post_title: bundle.post.title,
+      post_body_excerpt: bundle.post.body.slice(0, 240),
+      post_author: {
+        actor_type: bundle.post.author.actor_type,
+        actor_id: bundle.post.author.id,
+        display_name: bundle.post.author.display_name,
+      },
+      community_id: bundle.post.community_id,
+      participation_contract: participationContract,
+      evidence_window_turns: evidenceWindowTurns,
+    })
+
+    return {
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
+      reading_guide: bundle.reading_guide,
+      forest: bundle.forest,
+      perceived_slice: perceivedSlice,
+      runtime_context: runtimeContext,
+      evidence_window_turns: evidenceWindowTurns,
+    }
+  }
+
+  async getCommunityParticipationContract(communityId: string): Promise<ParticipationContract> {
+    if (!this.deps.participationContractService) {
+      throw new Error('ParticipationContractService is not attached')
+    }
+    return this.deps.participationContractService.getCommunityContract(communityId)
+  }
+
+  async getPostParticipationContract(postId: string): Promise<EffectiveParticipationContract> {
+    if (!this.deps.participationContractService) {
+      throw new Error('ParticipationContractService is not attached')
+    }
+    return this.deps.participationContractService.getPostContract(postId)
   }
 
   async getCommunities(opts: {

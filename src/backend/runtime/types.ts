@@ -2,6 +2,13 @@ import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
+import type {
+  PerceivedContextSlice,
+  PostSemanticCapsule,
+  RuntimeContextEnvelope,
+  ThreadState,
+  ThreadCapsule,
+} from '../../shared/forum-orchestration.js'
 
 // Legacy prompt invocation scene names. These are not the same contract as
 // director_surface / actor_surface / private_surface introduced by T-094.
@@ -282,7 +289,7 @@ export interface ExecutionContext {
   }
   threadMeta?: {
     thread_id: string
-    thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
+    thread_state: ThreadState
     reply_budget: number
     reply_budget_remaining: number
     active_route: {
@@ -333,6 +340,10 @@ export interface ExecutionContext {
   blocks?: PromptBlocks
   promptScene?: PromptScene
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
+  semantic_post_capsule?: PostSemanticCapsule | null
+  semantic_thread_capsule?: ThreadCapsule | null
+  perceived_context_slice?: PerceivedContextSlice | null
+  forum_runtime_context?: RuntimeContextEnvelope | null
   prompt_audit?: PromptComposeAudit
   public_scene?: PublicSceneWritePayload & {
     continuity_source: 'selector' | 'thread_sidecar' | 'turn_sidecar' | 'post_sidecar' | 'event_replay'

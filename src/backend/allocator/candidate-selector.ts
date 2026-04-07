@@ -11,6 +11,8 @@ import type {
 import type { AllocatorConfig } from './config.js'
 import { deriveTopicKey } from './ppr-topic-key.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
+import type { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
+import type { RecallPolicyService } from '../services/recall-policy-service.js'
 
 const PPR_SCORE_SCALE = 2
 
@@ -21,6 +23,8 @@ export interface DefaultCandidateSelectorDeps {
   directorEnabled?: boolean
   directorV2Enabled?: boolean
   resolveCommunityDirectorConfig?: (communityId: string) => CastingDirectorCommunityConfig | undefined
+  attentionOpportunityBroker?: Pick<AttentionOpportunityBroker, 'discoverFromEvent'>
+  recallPolicyService?: Pick<RecallPolicyService, 'evaluate'>
 }
 
 /**
@@ -165,9 +169,36 @@ export class DefaultCandidateSelector implements CandidateSelector {
       return topScored
     }
 
-    const directorCandidates = this.deps.directorV2Enabled
+    let directorCandidates = this.deps.directorV2Enabled
       ? this.applyDirectorGuards(event, scored, now, communityDirectorConfig)
       : scored
+
+    if (this.deps.directorV2Enabled && this.deps.attentionOpportunityBroker && this.deps.recallPolicyService) {
+      const [opportunity] = this.deps.attentionOpportunityBroker.discoverFromEvent({
+        event,
+        scored_candidates: directorCandidates,
+      })
+      if (opportunity) {
+        const boosted = directorCandidates.map((candidate) => {
+          if (!opportunity.priority_agent_ids.includes(candidate.agent_id)) {
+            return candidate
+          }
+          return {
+            ...candidate,
+            score: candidate.score + 1.25,
+            reasons: [...candidate.reasons, `attention_opportunity=${opportunity.source.toLowerCase()}`],
+          }
+        })
+        const evaluation = this.deps.recallPolicyService.evaluate({
+          event,
+          opportunity,
+          candidates: boosted,
+        })
+        if (evaluation.granted.length > 0) {
+          directorCandidates = evaluation.granted
+        }
+      }
+    }
 
     const selected = this.deps.castingDirectorPolicy.select({
       event,
