@@ -21,6 +21,7 @@ describe('DevFrontendFlagsPanel', () => {
 
     expect(screen.getByText('Frontend Flags')).toBeTruthy()
     expect(screen.getByText('Home Programming')).toBeTruthy()
+    expect(screen.getByText('Chatroom Hold')).toBeTruthy()
     expect(screen.getByText(/首页是否采用节目编排入口/)).toBeTruthy()
   })
 })

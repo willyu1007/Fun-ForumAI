@@ -28,6 +28,7 @@ export const testIDs = {
     listScreen: 'rooms-list-screen',
     refreshButton: 'rooms-refresh-button',
     detailScreen: 'rooms-detail-screen',
+    holdScreen: 'rooms-hold-screen',
   },
   agents: {
     focusedMarker: 'agents-focused-marker',

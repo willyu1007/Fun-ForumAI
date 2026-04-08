@@ -2,18 +2,92 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useIsFocused } from '@react-navigation/native'
 import { useCallback, useEffect, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
+import { colors, radius, spacing, typography } from '@fun-forum/ui-mobile/theme'
 import { apiGet } from '../api/client'
 import type { ChatMessage, Room } from '../api/types'
 import { openSseStream } from '../realtime/sse'
 import { isRoomEvent } from '../events'
 import { shared } from '../components/shared-styles'
+import { isMobileChatroomStagingHoldEnabled } from '../config/mobile-flags'
 import { testIDs } from '../testing/test-ids'
 import type { RoomsStackParams } from './types'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
 const Stack = createNativeStackNavigator<RoomsStackParams>()
+const CHATROOM_HIGHLIGHTS = [
+  '流式实时感',
+  '稳定组局密度',
+  '直播型 UI/UX',
+  '可验证的模型时延',
+] as const
 
-function RoomsListScreen({ navigation }: NativeStackScreenProps<RoomsStackParams, 'RoomsList'>) {
+function ChatroomHoldScreen() {
+  return (
+    <ScrollView contentContainerStyle={shared.card} testID={testIDs.rooms.holdScreen}>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: colors.primary,
+          borderRadius: radius.md,
+          padding: spacing[4],
+          backgroundColor: colors.surfaceElevated,
+          gap: spacing[3],
+        }}
+      >
+        <Text
+          style={{
+            fontSize: typography.size.caption,
+            color: colors.primary,
+            fontWeight: '700',
+            letterSpacing: 0.4,
+          }}
+        >
+          STAGING · 敬请期待
+        </Text>
+        <Text style={shared.cardTitle}>聊天室正在做重开前打磨</Text>
+        <Text style={[shared.metaText, { marginTop: 0, lineHeight: 20 }]}>
+          当前 staging 暂不开放 Mobile 聊天室主功能。我们会先补齐实时感、组局密度、围观体验和模型时延验证，再重新开放灰度。
+        </Text>
+      </View>
+
+      <View style={{ gap: spacing[2] }}>
+        {CHATROOM_HIGHLIGHTS.map((item) => (
+          <View
+            key={item}
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.sm,
+              paddingHorizontal: spacing[3],
+              paddingVertical: spacing[3],
+              backgroundColor: colors.surface,
+            }}
+          >
+            <Text style={[shared.itemText, { fontWeight: '600' }]}>{item}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View
+        style={{
+          borderWidth: 1,
+          borderStyle: 'dashed',
+          borderColor: colors.border,
+          borderRadius: radius.sm,
+          padding: spacing[3],
+          gap: spacing[2],
+        }}
+      >
+        <Text style={[shared.itemText, { fontWeight: '600' }]}>当前阶段只保留内部验证链路</Text>
+        <Text style={[shared.metaText, { marginTop: 0, lineHeight: 20 }]}>
+          等聊天室体验达到重开标准后，会再次开放给 staging 用户预览。
+        </Text>
+      </View>
+    </ScrollView>
+  )
+}
+
+function RoomsListLiveScreen({ navigation }: NativeStackScreenProps<RoomsStackParams, 'RoomsList'>) {
   const isFocused = useIsFocused()
   const [rooms, setRooms] = useState<Room[]>([])
   const [busy, setBusy] = useState(false)
@@ -60,7 +134,7 @@ function RoomsListScreen({ navigation }: NativeStackScreenProps<RoomsStackParams
   )
 }
 
-function RoomDetailScreen({ route }: NativeStackScreenProps<RoomsStackParams, 'RoomDetail'>) {
+function RoomDetailLiveScreen({ route }: NativeStackScreenProps<RoomsStackParams, 'RoomDetail'>) {
   const { roomId } = route.params
   const [messages, setMessages] = useState<ChatMessage[]>([])
 
@@ -95,13 +169,17 @@ function RoomDetailScreen({ route }: NativeStackScreenProps<RoomsStackParams, 'R
 }
 
 export function RoomsStack() {
+  const chatroomHoldEnabled = isMobileChatroomStagingHoldEnabled()
+  const roomsListComponent = chatroomHoldEnabled ? ChatroomHoldScreen : RoomsListLiveScreen
+  const roomDetailComponent = chatroomHoldEnabled ? ChatroomHoldScreen : RoomDetailLiveScreen
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen name="RoomsList" component={RoomsListScreen} options={{ title: '聊天室' }} />
+      <Stack.Screen name="RoomsList" component={roomsListComponent} options={{ title: '聊天室' }} />
       <Stack.Screen
         name="RoomDetail"
-        component={RoomDetailScreen}
-        options={({ route }) => ({ title: route.params.roomName })}
+        component={roomDetailComponent}
+        options={({ route }) => ({ title: chatroomHoldEnabled ? '聊天室' : route.params.roomName })}
       />
     </Stack.Navigator>
   )

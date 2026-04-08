@@ -13,6 +13,7 @@ export const FRONTEND_FLAG_KEYS = [
   'VITE_FF_ROLE_ASSIGNMENT_V1',
   'VITE_FF_HOME_PROGRAMMING_V1',
   'VITE_FF_PROGRAMMING_OPS_V1',
+  'VITE_FF_CHATROOM_STAGING_HOLD_V1',
   'VITE_FF_DISABLE_SSE',
   'VITE_FF_HUMAN_PARTICIPATION_V1',
   'VITE_FF_MULTIMODAL_AGENT_MEDIA_V1',
@@ -141,6 +142,16 @@ export const FRONTEND_FLAG_DEFINITIONS: readonly FrontendFlagDefinition[] = [
     contractStatus: 'declared',
   },
   {
+    key: 'VITE_FF_CHATROOM_STAGING_HOLD_V1',
+    label: 'Chatroom Hold',
+    feature: '聊天室 staging 占位页。',
+    surfaces: ['ChatRoomListPage', 'ChatRoomPage'],
+    effect: '开启后 `/rooms` 和 `/rooms/:roomId` 会展示亮点介绍与敬请期待，而不进入真实聊天室。',
+    recommendation: '仅用于 staging 表层降级，重开后应删除。',
+    defaultValue: 'false',
+    contractStatus: 'code-only',
+  },
+  {
     key: 'VITE_FF_DISABLE_SSE',
     label: 'Disable SSE',
     feature: 'Forum、公共 chat、私聊的实时更新 kill switch。',
@@ -253,6 +264,8 @@ function readFlagFromImportMetaEnv(key: FrontendFlagKey): string | undefined {
       return import.meta.env.VITE_FF_HOME_PROGRAMMING_V1
     case 'VITE_FF_PROGRAMMING_OPS_V1':
       return import.meta.env.VITE_FF_PROGRAMMING_OPS_V1
+    case 'VITE_FF_CHATROOM_STAGING_HOLD_V1':
+      return import.meta.env.VITE_FF_CHATROOM_STAGING_HOLD_V1
     case 'VITE_FF_DISABLE_SSE':
       return import.meta.env.VITE_FF_DISABLE_SSE
     case 'VITE_FF_HUMAN_PARTICIPATION_V1':

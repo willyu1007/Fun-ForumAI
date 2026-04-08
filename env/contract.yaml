@@ -228,6 +228,13 @@ variables:
     required: false
     description: Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000.
 
+  EXPO_PUBLIC_FF_CHATROOM_STAGING_HOLD_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Mobile toggle for replacing the chatroom tab stack with a staging hold / coming-soon surface.
+
   EXPO_EAS_PROJECT_ID:
     type: string
     required: false
@@ -302,6 +309,13 @@ variables:
     required: false
     default: "false"
     description: Frontend toggle for loading the Admin Programming tab and its launch ops read model.
+
+  VITE_FF_CHATROOM_STAGING_HOLD_V1:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "false"
+    description: Frontend toggle for replacing chatroom routes with a staging hold / coming-soon surface.
 
   DASHSCOPE_API_KEY:
     type: string

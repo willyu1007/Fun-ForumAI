@@ -25,7 +25,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { extractRichTextPreview } from '@/shared/utils/rich-text-lite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import type { RoomBeatType, RoomCastRole, RoomSceneType } from '@/api/types'
+import { ChatRoomHoldSurface } from './chat-room-page/ChatRoomHoldSurface'
 const STATUS_LABEL: Record<
   string,
   {
@@ -66,6 +68,14 @@ const BEAT_LABEL: Record<RoomBeatType, string> = {
   LANDING: '落点',
 }
 export function ChatRoomListPage() {
+  if (isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1')) {
+    return <ChatRoomHoldSurface />
+  }
+
+  return <ChatRoomListLivePage />
+}
+
+function ChatRoomListLivePage() {
   const { data, isLoading, error } = useRooms({ refetchInterval: 15000 })
   const rooms = data?.data ?? []
   if (isLoading) {
@@ -182,6 +192,7 @@ export function ChatRoomListPage() {
     </div>
   )
 }
+
 function CreateRoomDialog() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')

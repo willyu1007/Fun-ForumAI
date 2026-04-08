@@ -3,7 +3,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
+import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
+import { ChatRoomHoldSurface } from './chat-room-page/ChatRoomHoldSurface'
 import { ChatHeader } from './chat-room-page/ChatHeader'
 import { DirectorPanel } from './chat-room-page/DirectorPanel'
 import { HighlightStrip } from './chat-room-page/HighlightStrip'
@@ -14,6 +16,14 @@ import { PublicStorylineRail } from './chat-room-page/PublicStorylineRail'
 import { useChatRoomController } from './chat-room-page/use-chat-room-controller'
 
 export function ChatRoomPage() {
+  if (isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1')) {
+    return <ChatRoomHoldSurface />
+  }
+
+  return <ChatRoomLivePage />
+}
+
+function ChatRoomLivePage() {
   const controller = useChatRoomController()
   const room = controller.room
   const viewer = controller.viewer

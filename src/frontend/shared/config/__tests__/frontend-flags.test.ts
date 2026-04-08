@@ -54,6 +54,17 @@ describe('frontend-flags', () => {
     const { isFrontendFlagEnabled, readLaunchPresetOverrides } = await import('../frontend-flags')
 
     expect(readLaunchPresetOverrides().VITE_FF_MULTIMODAL_AGENT_MEDIA_V1).toBe('true')
+    expect(readLaunchPresetOverrides().VITE_FF_CHATROOM_STAGING_HOLD_V1).toBeUndefined()
+    expect(isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1')).toBe(false)
     expect(isFrontendFlagEnabled('VITE_FF_MULTIMODAL_AGENT_MEDIA_V1')).toBe(true)
+  })
+
+  it('reads the chatroom hold flag from imported VITE env values', async () => {
+    vi.stubEnv('VITE_FF_CHATROOM_STAGING_HOLD_V1', 'true')
+    import.meta.env.VITE_FF_CHATROOM_STAGING_HOLD_V1 = 'true'
+
+    const { isFrontendFlagEnabled } = await import('../frontend-flags')
+
+    expect(isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1')).toBe(true)
   })
 })
