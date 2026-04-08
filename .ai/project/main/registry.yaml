@@ -1765,8 +1765,8 @@ tasks:
     updated: 2026-04-07
   - id: T-944
     slug: forum-attention-opportunity-and-perception-full-cutover-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1
-    updated: 2026-04-07
+    dev_docs_path: dev-docs/archive/forum-attention-opportunity-and-perception-full-cutover-v1
+    updated: 2026-04-08

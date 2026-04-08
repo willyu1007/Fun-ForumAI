@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 183 (planned: 1, in-progress: 17, blocked: 0, done: 8, archived: 157)
+- Tasks: 183 (planned: 1, in-progress: 16, blocked: 0, done: 8, archived: 158)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | archived | F-000 | dev-docs/archive/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-080 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
@@ -22,7 +23,6 @@ Project: `main`
 | T-941 forum-semantic-lifecycle-projection-foundation-v1 | in-progress | F-000 | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
 | T-942 forum-post-detail-discussion-forest-v1 | in-progress | F-000 | dev-docs/active/forum-post-detail-discussion-forest-v1 |
 | T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
-| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | in-progress | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | done | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-142 forum-semantic-convergence-governance-program | done | F-100 | dev-docs/active/forum-semantic-convergence-governance-program |
