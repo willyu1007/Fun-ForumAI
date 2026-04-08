@@ -18,6 +18,13 @@ export interface ImagePlanRepository {
   create(input: CreateImagePlanInput): Promise<PersistedImagePlan>
   findById(id: string): Promise<PersistedImagePlan | null>
   listByGenerationJobId(jobId: string): Promise<PersistedImagePlan[]>
+  listRecentBySelectedSourceAssetId(
+    assetId: string,
+    options?: {
+      since?: Date
+      limit?: number
+    },
+  ): Promise<PersistedImagePlan[]>
   update(id: string, patch: UpdateImagePlanPatch): Promise<PersistedImagePlan | null>
 }
 
@@ -68,6 +75,25 @@ export class InMemoryImagePlanRepository implements ImagePlanRepository {
     return Array.from(this.store.values())
       .filter((plan) => plan.generation.job_id === jobId)
       .sort((left, right) => right.created_at.getTime() - left.created_at.getTime())
+  }
+
+  async listRecentBySelectedSourceAssetId(
+    assetId: string,
+    options?: {
+      since?: Date
+      limit?: number
+    },
+  ): Promise<PersistedImagePlan[]> {
+    const sorted = Array.from(this.store.values())
+      .filter((plan) =>
+        plan.selected_sources.some((source) => source.asset_id === assetId))
+      .filter((plan) =>
+        options?.since ? plan.created_at.getTime() >= options.since.getTime() : true)
+      .sort((left, right) => right.created_at.getTime() - left.created_at.getTime())
+
+    return typeof options?.limit === 'number' && options.limit > 0
+      ? sorted.slice(0, options.limit)
+      : sorted
   }
 
   async update(id: string, patch: UpdateImagePlanPatch): Promise<PersistedImagePlan | null> {

@@ -897,4 +897,489 @@ describe('ImagePlannerService', () => {
     expect(plan.generation.mode).toBe('none')
     expect(plan.display.attachments).toEqual([])
   })
+
+  it('suppresses repeated generation from the same source asset', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-repeat-source',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'private_only',
+      lifecycle_status: 'active',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-repeat-source',
+    })
+    const snapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildMediaSemanticSummary({
+        theme: 'night city',
+        scene: 'neon alley',
+        mood: 'moody',
+        discussion_points: ['雨夜霓虹'],
+        salient_entities: ['alley'],
+        public_safe_summary: 'A moody neon alley at night.',
+        internal_full_summary: 'Prior generation already used this source asset.',
+      }),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId('agent-1'),
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+    await imagePlanRepo.create({
+      directive_id: 'directive-prior-generation',
+      scene_ref: {
+        ...buildDirective().scene_ref,
+        request_id: 'selection-prior-generation',
+        selection_id: 'selection-prior-generation',
+        local_intent_id: 'intent-prior-generation',
+      },
+      status: 'pending_generation',
+      decision: 'generate_from_private_projection',
+      reason: 'selected_owner_private_pool_for_generation',
+      runtime: {
+        enabled: true,
+        influence_level: 'medium',
+        cards: [],
+      },
+      display: {
+        enabled: false,
+        attachments: [],
+      },
+      generation: {
+        mode: 'async',
+        input_mode: 'reference',
+        status: 'queued',
+        request_fingerprint: 'fp-prior-generation',
+        aspect_ratio_hint: '4:5',
+        based_on_projection_ids: ['projection-prior-generation'],
+        prompt_brief: 'prior generation',
+        attempt_count: 1,
+      },
+      selected_sources: [
+        {
+          source_kind: 'owner_private_pool',
+          asset_id: asset.id,
+          binding_id: 'binding-prior-generation',
+          projection_id: 'projection-prior-generation',
+          selection_reason: 'selected_owner_private_pool',
+          reuse_mode: 'derive_new',
+          selection_score: 3.9,
+          rejection_reason: null,
+        },
+      ],
+      planner_audit: {
+        evaluated_candidates: 1,
+        score_breakdown: {
+          relevance: 0.7,
+          continuity: 0.65,
+          novelty: 0.95,
+          privacy_safety: 0.8,
+          display_fitness: 0.8,
+          cost_fitness: 0.85,
+          fatigue_penalty: 0,
+          repeat_penalty: 0,
+          risk_penalty: 0,
+          total: 4.75,
+        },
+        fallback_action: 'runtime_only_no_display',
+      },
+    })
+
+    const directive = buildDirective()
+    directive.id = 'directive-repeat-check'
+    directive.sourcing_policy.allow_sources = ['owner_private_pool']
+    directive.sourcing_policy.prefer_order = ['owner_private_pool']
+    directive.sourcing_policy.allow_generation = true
+    directive.sourcing_policy.allow_private_inspired_generation = true
+    directive.budget.generation_tier = 'medium'
+    directive.budget.max_generation_attempts = 2
+    directive.budget.sync_generation_ms_budget = 2200
+    directive.budget.async_generation_allowed = true
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('degraded')
+    expect(plan.decision).toBe('reuse_public_projection')
+    expect(plan.generation.mode).toBe('none')
+    expect(plan.display.attachments).toHaveLength(0)
+    expect(plan.runtime.cards).toHaveLength(1)
+  })
+
+  it('still allows quoting the same asset after a prior derived-generation use', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+      storage: createStorageStub(['archive/quote-ok.png']),
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-quote-ok',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: 'archive/quote-ok.png',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-quote-ok',
+    })
+    const snapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildMediaSemanticSummary({
+        theme: 'library',
+        scene: 'window seat',
+        mood: 'quiet',
+        discussion_points: ['旧图引用'],
+        salient_entities: ['books'],
+        public_safe_summary: 'A quiet library window seat.',
+        internal_full_summary: 'Quote path should stay available.',
+      }),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'media_pool',
+      scene_id: 'self_public_archive:agent-1',
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'reference',
+      relation_to_scene: 'quoted_public',
+      display_policy: 'original_allowed',
+      created_by_type: 'system',
+      created_by_id: 'agent-1',
+    })
+    await imagePlanRepo.create({
+      directive_id: 'directive-prior-derived-public',
+      scene_ref: {
+        ...buildDirective().scene_ref,
+        request_id: 'selection-prior-derived-public',
+        selection_id: 'selection-prior-derived-public',
+        local_intent_id: 'intent-prior-derived-public',
+      },
+      status: 'ready',
+      decision: 'generate_from_public_reference',
+      reason: 'selected_self_public_archive_for_generation',
+      runtime: {
+        enabled: true,
+        influence_level: 'medium',
+        cards: [],
+      },
+      display: {
+        enabled: false,
+        attachments: [],
+      },
+      generation: {
+        mode: 'sync',
+        input_mode: 'reference',
+        status: 'succeeded',
+        request_fingerprint: 'fp-prior-derived-public',
+        aspect_ratio_hint: '4:5',
+        based_on_projection_ids: ['projection-prior-derived-public'],
+        prompt_brief: 'prior derived public',
+        attempt_count: 1,
+        output_asset_id: 'asset-output-prior-derived-public',
+      },
+      selected_sources: [
+        {
+          source_kind: 'self_public_archive',
+          asset_id: asset.id,
+          binding_id: 'binding-prior-derived-public',
+          projection_id: 'projection-prior-derived-public',
+          selection_reason: 'selected_self_public_archive',
+          reuse_mode: 'derive_new',
+          selection_score: 4.1,
+          rejection_reason: null,
+        },
+      ],
+      planner_audit: {
+        evaluated_candidates: 1,
+        score_breakdown: {
+          relevance: 0.7,
+          continuity: 0.8,
+          novelty: 0.65,
+          privacy_safety: 0.95,
+          display_fitness: 0.8,
+          cost_fitness: 0.85,
+          fatigue_penalty: 0,
+          repeat_penalty: 0.18,
+          risk_penalty: 0,
+          total: 4.57,
+        },
+        fallback_action: null,
+      },
+    })
+
+    const directive = buildDirective()
+    directive.id = 'directive-quote-ok'
+    directive.sourcing_policy.allow_sources = ['self_public_archive']
+    directive.sourcing_policy.prefer_order = ['self_public_archive']
+    directive.sourcing_policy.allow_generation = true
+    directive.budget.generation_tier = 'medium'
+    directive.budget.max_generation_attempts = 2
+    directive.budget.sync_generation_ms_budget = 2200
+    directive.budget.async_generation_allowed = true
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('ready')
+    expect(plan.decision).toBe('reuse_public_original')
+    expect(plan.display.attachments).toHaveLength(1)
+    expect(plan.generation.mode).toBe('none')
+  })
+
+  it('falls back to scratch generation when repeat-suppressed derive candidates leave no reusable path', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService: {
+        evaluateCandidate: async () => ({
+          policy: {
+            id: 'policy-derive-only',
+            subject_type: 'asset',
+            subject_id: 'asset-repeat-scratch',
+            source_kind: 'owner_private_pool',
+            community_id: null,
+            steward_agent_id: 'agent-1',
+            allowed_reuse_modes: ['derive_new'],
+            cross_agent_quote_allowed: false,
+            disclose_origin_policy: 'never',
+            copyright_state: 'internal_owned',
+            status: 'active',
+            revoked_at: null,
+            revoked_reason: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+          allowed_reuse_modes: ['derive_new'],
+          policy_reason: 'asset_policy_active',
+          rejection_reason: null,
+        }),
+      } as unknown as MediaReuseGovernanceService,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-repeat-scratch',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'private_only',
+      lifecycle_status: 'active',
+      mime_type: 'image/png',
+      file_size_bytes: 1024,
+      sha256: 'sha-repeat-scratch',
+    })
+    const snapshot = await mediaSemanticSnapshotRepo.create({
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildMediaSemanticSummary({
+        theme: 'desert',
+        scene: 'dune ridge',
+        mood: 'windy',
+        discussion_points: ['沙丘风线'],
+        salient_entities: ['dune'],
+        public_safe_summary: 'A windy dune ridge.',
+        internal_full_summary: 'Repeat-suppressed source should trigger scratch.',
+      }),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId('agent-1'),
+      asset_id: asset.id,
+      semantic_snapshot_id: snapshot.id,
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+    await imagePlanRepo.create({
+      directive_id: 'directive-prior-repeat-scratch',
+      scene_ref: {
+        ...buildDirective().scene_ref,
+        request_id: 'selection-prior-repeat-scratch',
+        selection_id: 'selection-prior-repeat-scratch',
+        local_intent_id: 'intent-prior-repeat-scratch',
+      },
+      status: 'pending_generation',
+      decision: 'generate_from_private_projection',
+      reason: 'selected_owner_private_pool_for_generation',
+      runtime: {
+        enabled: true,
+        influence_level: 'medium',
+        cards: [],
+      },
+      display: {
+        enabled: false,
+        attachments: [],
+      },
+      generation: {
+        mode: 'async',
+        input_mode: 'reference',
+        status: 'queued',
+        request_fingerprint: 'fp-prior-repeat-scratch',
+        aspect_ratio_hint: '4:5',
+        based_on_projection_ids: ['projection-prior-repeat-scratch'],
+        prompt_brief: 'prior repeat scratch',
+        attempt_count: 1,
+      },
+      selected_sources: [
+        {
+          source_kind: 'owner_private_pool',
+          asset_id: asset.id,
+          binding_id: 'binding-prior-repeat-scratch',
+          projection_id: 'projection-prior-repeat-scratch',
+          selection_reason: 'selected_owner_private_pool',
+          reuse_mode: 'derive_new',
+          selection_score: 3.6,
+          rejection_reason: null,
+        },
+      ],
+      planner_audit: {
+        evaluated_candidates: 1,
+        score_breakdown: {
+          relevance: 0.7,
+          continuity: 0.65,
+          novelty: 0.95,
+          privacy_safety: 0.8,
+          display_fitness: 0.8,
+          cost_fitness: 0.65,
+          fatigue_penalty: 0,
+          repeat_penalty: 0,
+          risk_penalty: 0,
+          total: 4.55,
+        },
+        fallback_action: 'runtime_only_no_display',
+      },
+    })
+
+    const directive = buildDirective()
+    directive.id = 'directive-repeat-scratch'
+    directive.sourcing_policy.allow_sources = ['owner_private_pool']
+    directive.sourcing_policy.prefer_order = ['owner_private_pool']
+    directive.sourcing_policy.allow_generation = true
+    directive.sourcing_policy.allow_private_inspired_generation = true
+    directive.budget.generation_tier = 'medium'
+    directive.budget.max_generation_attempts = 2
+    directive.budget.sync_generation_ms_budget = 2200
+    directive.budget.async_generation_allowed = true
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.status).toBe('pending_generation')
+    expect(plan.decision).toBe('generate_from_scratch')
+    expect(plan.generation.input_mode).toBe('scratch')
+    expect(plan.generation.based_on_projection_ids).toEqual([])
+  })
 })

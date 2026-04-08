@@ -59,6 +59,46 @@ export class PgImagePlanRepository implements ImagePlanRepository {
     return rows.map((row) => this.toDomain(row))
   }
 
+  async listRecentBySelectedSourceAssetId(
+    assetId: string,
+    options?: {
+      since?: Date
+      limit?: number
+    },
+  ): Promise<PersistedImagePlan[]> {
+    const clauses = [
+      Prisma.sql`
+        EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(selected_sources) AS source
+          WHERE source ->> 'asset_id' = ${assetId}
+        )
+      `,
+    ]
+    if (options?.since) {
+      clauses.push(Prisma.sql`created_at >= ${options.since}`)
+    }
+    const whereClause = Prisma.sql`WHERE ${Prisma.join(clauses, Prisma.sql` AND `)}`
+    const limitClause = typeof options?.limit === 'number' && options.limit > 0
+      ? Prisma.sql`LIMIT ${options.limit}`
+      : Prisma.empty
+    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT id
+      FROM image_plans
+      ${whereClause}
+      ORDER BY created_at DESC
+      ${limitClause}
+    `)
+    if (ids.length === 0) return []
+    const rows = await this.prisma.imagePlanRecord.findMany({
+      where: {
+        id: { in: ids.map((row) => row.id) },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
   async update(id: string, patch: UpdateImagePlanPatch): Promise<PersistedImagePlan | null> {
     const row = await this.prisma.imagePlanRecord.update({
       where: { id },

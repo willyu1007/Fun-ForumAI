@@ -45,6 +45,8 @@ import {
 } from './media-contract-utils.js'
 
 const MAX_SAME_THREAD_PUBLIC_BINDINGS = 48
+const RECENT_GENERATION_SOURCE_REUSE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
+const RECENT_GENERATION_SOURCE_REUSE_SCAN_LIMIT = 12
 
 interface CandidateSummary {
   theme: string
@@ -195,10 +197,12 @@ export class ImagePlannerService {
       requireDisplayable: true,
       readableStorageCache,
     })
-    const deriveCandidate = ranked.find((item) =>
-      !item.rejection_reason
-      && item.allowed_reuse_modes.includes('derive_new')
-      && item.score.total >= thresholds.derive_new) ?? null
+    const recentGenerationReuseCache = new Map<string, boolean>()
+    const deriveCandidate = await this.findFirstRankedDeriveCandidate(ranked, {
+      directive: input.directive,
+      minimumScore: thresholds.derive_new,
+      recentGenerationReuseCache,
+    })
     const referenceCandidate = ranked.find((item) =>
       !item.rejection_reason
       && item.allowed_reuse_modes.includes('reference_only')
@@ -372,7 +376,13 @@ export class ImagePlannerService {
       })
     }
 
-    if (allowGeneration && shouldUseScratchGeneration(input.directive, ranked, thresholds)) {
+    if (allowGeneration && shouldUseScratchGeneration({
+      directive: input.directive,
+      rankedCount: ranked.length,
+      quoteCandidate,
+      deriveCandidate,
+      referenceCandidate,
+    })) {
       return this.planScratchGeneration({
         agent_id: input.agent_id,
         ranked,
@@ -765,6 +775,30 @@ export class ImagePlannerService {
     return null
   }
 
+  private async findFirstRankedDeriveCandidate(
+    ranked: EvaluatedCandidate[],
+    input: {
+      directive: PersistedVisualDirective
+      minimumScore: number
+      recentGenerationReuseCache: Map<string, boolean>
+    },
+  ): Promise<EvaluatedCandidate | null> {
+    for (const item of ranked) {
+      if (item.rejection_reason) continue
+      if (!item.allowed_reuse_modes.includes('derive_new')) continue
+      if (item.score.total < input.minimumScore) continue
+      if (await this.hasRecentGenerationSourceReuse(
+        item.candidate,
+        input.directive,
+        input.recentGenerationReuseCache,
+      )) {
+        continue
+      }
+      return item
+    }
+    return null
+  }
+
   private async isCandidateDisplayable(
     candidate: PlannerCandidate,
     cache: Map<string, boolean>,
@@ -773,6 +807,27 @@ export class ImagePlannerService {
       return false
     }
     return this.isAssetDisplayable(candidate.asset, cache)
+  }
+
+  private async hasRecentGenerationSourceReuse(
+    candidate: PlannerCandidate,
+    directive: PersistedVisualDirective,
+    cache: Map<string, boolean>,
+  ): Promise<boolean> {
+    const assetId = candidate.asset?.id
+    if (!assetId) return false
+    if (cache.has(assetId)) {
+      return cache.get(assetId) ?? false
+    }
+
+    const recentPlans = await this.deps.imagePlanRepo.listRecentBySelectedSourceAssetId(assetId, {
+      since: new Date(Date.now() - RECENT_GENERATION_SOURCE_REUSE_WINDOW_MS),
+      limit: RECENT_GENERATION_SOURCE_REUSE_SCAN_LIMIT,
+    })
+    const reused = recentPlans.some((plan) =>
+      plan.directive_id !== directive.id && isRecentGenerationSourceReusePlan(plan, assetId))
+    cache.set(assetId, reused)
+    return reused
   }
 
   private async planScratchGeneration(input: {
@@ -1220,21 +1275,40 @@ function sourcePriority(directive: PersistedVisualDirective, sourceKind: VisualS
   return idx >= 0 ? idx : directive.sourcing_policy.prefer_order.length
 }
 
-function shouldUseScratchGeneration(
-  directive: PersistedVisualDirective,
-  ranked: EvaluatedCandidate[],
-  thresholds: ReturnType<typeof resolveSelectionThresholds>,
+function shouldUseScratchGeneration(input: {
+  directive: PersistedVisualDirective
+  rankedCount: number
+  quoteCandidate: EvaluatedCandidate | null
+  deriveCandidate: EvaluatedCandidate | null
+  referenceCandidate: EvaluatedCandidate | null
+}): boolean {
+  if (input.directive.guardrails.safe_mode === true) return false
+  if (input.directive.goal.need_image === 'avoid') return false
+  if (input.rankedCount === 0) return true
+  return !input.quoteCandidate && !input.deriveCandidate && !input.referenceCandidate
+}
+
+function isRecentGenerationSourceReusePlan(
+  plan: PersistedImagePlan,
+  assetId: string,
 ): boolean {
-  if (directive.guardrails.safe_mode === true) return false
-  if (directive.goal.need_image === 'avoid') return false
-  if (ranked.length === 0) return true
-  return !ranked.some((item) =>
-    !item.rejection_reason
-    && (
-      (item.allowed_reuse_modes.includes('quote_original') && item.score.total >= thresholds.quote_original)
-      || (item.allowed_reuse_modes.includes('derive_new') && item.score.total >= thresholds.derive_new)
-      || (item.allowed_reuse_modes.includes('reference_only') && item.score.total >= thresholds.reference_only)
-    ))
+  if (
+    plan.decision !== 'generate_from_public_reference'
+    && plan.decision !== 'generate_from_private_projection'
+  ) {
+    return false
+  }
+  if (
+    plan.generation.status === 'failed'
+    || plan.generation.status === 'timed_out'
+    || plan.generation.status === 'cancelled'
+  ) {
+    return false
+  }
+  return plan.selected_sources.some((source) =>
+    source.asset_id === assetId
+    && source.reuse_mode === 'derive_new'
+    && !source.rejection_reason)
 }
 
 function buildWhyNow(
