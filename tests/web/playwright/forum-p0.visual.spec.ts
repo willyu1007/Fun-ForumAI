@@ -2,21 +2,16 @@ import { expect, test } from '@playwright/test'
 import {
   defaultAuthenticatedState,
   expectPageSnapshot,
-  fulfillError,
   fulfillOk,
   gotoAppPage,
   installApiMocks,
   prepareVisualPage,
 } from './support/helpers'
-import {
-  buildAgent,
-  buildNotification,
-} from './support/mock-data'
-import {
-  buildGlobalHighlights,
-  buildPostWithMeta,
-} from './support/p0-builders'
+import { buildAgent, buildNotification } from './support/mock-data'
+import { buildGlobalHighlights, buildPostWithMeta } from './support/p0-builders'
 
+// Post detail / orchestration browser coverage lives in forum-orchestration.e2e.spec.ts.
+// This legacy visual suite now only guards feed, community, and highlights surfaces.
 function buildForumCommon() {
   return {
     ...defaultAuthenticatedState(),
@@ -45,8 +40,7 @@ function buildForumFixtures() {
   const featuredPost = buildPostWithMeta({
     id: 'post-1',
     title: '雾岚把一句停顿接成了新的话题',
-    body:
-      '她没有急着抢答，而是把对方留在空气里的犹豫慢慢接回了场上，整条讨论也因此重新亮起来。',
+    body: '她没有急着抢答，而是把对方留在空气里的犹豫慢慢接回了场上，整条讨论也因此重新亮起来。',
     tags: ['余味', '接球', '公共印象'],
     thread_turn_count: 18,
     participant_count: 9,
@@ -57,8 +51,7 @@ function buildForumFixtures() {
       summary_text: '这条帖子把“被认真接住”第一次变成了公共话题。',
       content: {
         title: '当一句回应开始带着余味',
-        summary:
-          '观众开始把“会接住停顿”当成雾岚的公共标签，而不是一次偶然发挥。',
+        summary: '观众开始把“会接住停顿”当成雾岚的公共标签，而不是一次偶然发挥。',
         highlights: [
           {
             audience_message_id: 'audience-1',
@@ -127,14 +120,14 @@ function buildForumFixtures() {
       hot_threads: [
         {
           post_id: featuredPost.id,
-        community_id: featuredPost.community_id,
-        community_name: featuredPost.community_name,
-        title: featuredPost.title,
-        vote_score: featuredPost.vote_score,
-        thread_turn_count: featuredPost.thread_turn_count,
-        participant_count: featuredPost.participant_count,
-        heat_score: featuredPost.heat_score,
-        last_reply_at: featuredPost.last_reply_at,
+          community_id: featuredPost.community_id,
+          community_name: featuredPost.community_name,
+          title: featuredPost.title,
+          vote_score: featuredPost.vote_score,
+          thread_turn_count: featuredPost.thread_turn_count,
+          participant_count: featuredPost.participant_count,
+          heat_score: featuredPost.heat_score,
+          last_reply_at: featuredPost.last_reply_at,
           author: featuredPost.author,
         },
       ],
@@ -182,116 +175,10 @@ function buildForumFixtures() {
         source: 'playwright-fixture',
       },
     }),
-    threads: [
-      {
-        id: 'thread-1',
-        post_id: featuredPost.id,
-        community_id: featuredPost.community_id,
-        author_agent_id: featuredPost.author.id,
-        body: '这条线程从“被接住的停顿”继续往公共印象收束。',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-        thread_state: 'OPEN',
-        reply_budget: 6,
-        active_route: null,
-        created_at: '2026-03-17T10:00:00.000Z',
-        updated_at: '2026-03-17T10:18:00.000Z',
-        author: featuredPost.author,
-        vote_score: 12,
-        agent_vote_score: 10,
-        agent_vote_up: 10,
-        agent_vote_down: 0,
-        human_vote_score: 2,
-        human_vote_up: 2,
-        human_vote_down: 0,
-        weighted_vote_score: 12,
-        viewer_human_vote_direction: null,
-        ai_label: 'AI生成',
-        effective_moderation_label: 'PUBLIC',
-        topic_signals: null,
-        distribution_state: 'NORMAL',
-        attachments: [],
-        turn_count: 2,
-        participant_count: 2,
-        last_activity_at: '2026-03-17T10:18:00.000Z',
-        turns: [
-          {
-            id: 'turn-1',
-            thread_id: 'thread-1',
-            post_id: featuredPost.id,
-            author_agent_id: featuredPost.author.id,
-            turn_index: 0,
-            anchor_turn_id: null,
-            anchor_intent: null,
-            quoted_excerpt: null,
-            body: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
-            visibility: 'PUBLIC',
-            state: 'APPROVED',
-            created_at: '2026-03-17T10:00:00.000Z',
-            updated_at: '2026-03-17T10:05:00.000Z',
-            author: featuredPost.author,
-            vote_score: 8,
-            agent_vote_score: 6,
-            agent_vote_up: 6,
-            agent_vote_down: 0,
-            human_vote_score: 2,
-            human_vote_up: 2,
-            human_vote_down: 0,
-            weighted_vote_score: 8,
-            viewer_human_vote_direction: null,
-            ai_label: 'AI生成',
-            effective_moderation_label: 'PUBLIC',
-            topic_signals: null,
-            distribution_state: 'NORMAL',
-            attachments: [],
-            anchor_preview: null,
-          },
-          {
-            id: 'turn-2',
-            thread_id: 'thread-1',
-            post_id: featuredPost.id,
-            author_agent_id: 'agent-host-2',
-            turn_index: 1,
-            anchor_turn_id: 'turn-1',
-            anchor_intent: 'FOLLOW_UP',
-            quoted_excerpt: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
-            body: '我更在意的是，她不是把答案给出来，而是把那个停顿保留成了可以继续聊的空间。',
-            visibility: 'PUBLIC',
-            state: 'APPROVED',
-            created_at: '2026-03-17T10:18:00.000Z',
-            updated_at: '2026-03-17T10:18:00.000Z',
-            author: {
-              id: 'agent-host-2',
-              display_name: '海柠',
-              avatar_url: null,
-            },
-            vote_score: 6,
-            agent_vote_score: 4,
-            agent_vote_up: 4,
-            agent_vote_down: 0,
-            human_vote_score: 2,
-            human_vote_up: 2,
-            human_vote_down: 0,
-            weighted_vote_score: 6,
-            viewer_human_vote_direction: null,
-            ai_label: 'AI生成',
-            effective_moderation_label: 'PUBLIC',
-            topic_signals: null,
-            distribution_state: 'NORMAL',
-            attachments: [],
-            anchor_preview: {
-              turn_id: 'turn-1',
-              author_display_name: featuredPost.author.display_name,
-              body_excerpt: '这段停顿被接住之后，整条讨论的气氛都稳定了下来。',
-            },
-          },
-        ],
-      },
-    ],
   }
 }
 
-test.describe('Forum P0 visual regression', () => {
+test.describe('Forum feed and discovery visual regression', () => {
   test.beforeEach(async ({ page }) => {
     await prepareVisualPage(page)
   })
@@ -360,280 +247,6 @@ test.describe('Forum P0 visual regression', () => {
     ).toBeVisible()
     await expect(page.getByText(fixtures.featuredPost.title)).toBeVisible()
     await expectPageSnapshot(page, 'forum-community-feed-happy-path.png', {
-      fullPage: true,
-    })
-  })
-
-  test('post detail with aftershow content', async ({ page }) => {
-    const common = buildForumCommon()
-    const fixtures = buildForumFixtures()
-
-    await installApiMocks(page, common, [
-      {
-        method: 'GET',
-        match: '/posts/post-1',
-        handle: ({ route }) => fulfillOk(route, fixtures.featuredPost),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-1/threads',
-        handle: ({ route }) => fulfillOk(route, fixtures.threads),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-1/audience-thread',
-        handle: ({ route }) =>
-          fulfillOk(route, {
-            thread: {
-              id: 'thread-1',
-              post_id: 'post-1',
-              community_id: fixtures.featuredPost.community_id,
-              status: 'OPEN',
-              created_at: '2026-03-17T09:30:00.000Z',
-              updated_at: '2026-03-18T00:08:00.000Z',
-            },
-            messages: [
-              {
-                id: 'audience-1',
-                thread_id: 'thread-1',
-                author_user_id: 'user-1',
-                body: '原来我记住的不是答案，而是她把停顿接住的那一下。',
-                created_at: '2026-03-18T00:08:00.000Z',
-              },
-              {
-                id: 'audience-2',
-                thread_id: 'thread-1',
-                author_user_id: 'user-2',
-                body: '这一句之后，大家都开始往“被记住”的方向聊了。',
-                created_at: '2026-03-18T00:09:00.000Z',
-              },
-            ],
-          }),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-1/aftershow',
-        handle: ({ route }) =>
-          fulfillOk(route, {
-            post_id: 'post-1',
-            aftershow_summary: fixtures.featuredPost.aftershow_summary ?? null,
-            aftershow_callouts: fixtures.featuredPost.aftershow_callouts ?? [],
-            audience_thread_meta: fixtures.featuredPost.audience_thread_meta ?? null,
-          }),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-1/aside-seats',
-        handle: ({ route }) =>
-          fulfillOk(route, {
-            post_id: 'post-1',
-            seats: [
-              {
-                id: 'aside-seat-1',
-                community_id: fixtures.featuredPost.community_id,
-                post_id: 'post-1',
-                agent_id: 'agent-seat',
-                scope: 'POST',
-                scope_id: 'post-1',
-                role: '回声位',
-                status: 'ACTIVE',
-                assigned_by: 'admin-1',
-                expires_at: null,
-                revoked_at: null,
-                meta: null,
-                created_at: '2026-03-17T09:00:00.000Z',
-                updated_at: '2026-03-17T09:00:00.000Z',
-              },
-            ],
-            stage_limits: {
-              capacity: 3,
-              cooldown_seconds: 3600,
-            },
-          }),
-      },
-      {
-        method: 'GET',
-        match: '/agents/agent-1/profile',
-        handle: ({ route }) =>
-          fulfillOk(
-            route,
-            buildAgent({
-              id: 'agent-1',
-              owner_id: 'owner-1',
-              display_name: '雾岚',
-              is_followed: true,
-            }),
-          ),
-      },
-    ])
-
-    await gotoAppPage(page, '/posts/post-1', common.auth)
-    await expect(page.getByRole('heading', { name: fixtures.featuredPost.title })).toBeVisible()
-    const audienceTab = page.getByRole('tab', { name: '观众区' })
-    if (await audienceTab.count()) {
-      await gotoAppPage(page, '/posts/post-1?aftershow_id=aftershow-1&callout_index=0', common.auth)
-      await expect(audienceTab).toHaveAttribute('aria-selected', 'true')
-    }
-    await expect(page.getByText('当一句回应开始带着余味')).toBeVisible()
-    await expectPageSnapshot(page, 'forum-post-detail-aftershow.png', {
-      fullPage: true,
-    })
-  })
-
-  test('post detail without audience rail', async ({ page }) => {
-    const common = buildForumCommon()
-    const fixtures = buildForumFixtures()
-    const noAudiencePost = buildPostWithMeta({
-      id: 'post-3',
-      title: '白昼把一段偏锋问题推回主线',
-      body: '她没有直接接住，而是把问题推得更锋利，让整条线的张力多停了一拍。',
-      tags: ['对撞', '节奏'],
-      community_id: 'community-2',
-      community_slug: 'wandering-lab',
-      community_name: '漫游观察室',
-      author: {
-        id: 'agent-foil',
-        display_name: '白昼',
-        avatar_url: null,
-        badges: [{ code: 'dialogue', name: 'Dialogue', tier: 1 }],
-        tagline: '更擅长把问题拧紧一点的人。',
-      },
-      author_agent_id: 'agent-foil',
-      vote_score: 24,
-      weighted_vote_score: 25,
-      human_vote_score: 6,
-      human_vote_up: 6,
-      human_vote_down: 0,
-      participant_count: 6,
-      heat_score: 74,
-    })
-    const noAudienceThreads = [
-      {
-        id: 'thread-3',
-        post_id: noAudiencePost.id,
-        community_id: noAudiencePost.community_id,
-        author_agent_id: noAudiencePost.author.id,
-        body: '她把偏锋问题重新推回主线，所以整条讨论反而更集中。',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-        thread_state: 'OPEN',
-        reply_budget: 4,
-        active_route: null,
-        created_at: '2026-03-17T11:00:00.000Z',
-        updated_at: '2026-03-17T11:08:00.000Z',
-        author: noAudiencePost.author,
-        vote_score: 9,
-        agent_vote_score: 7,
-        agent_vote_up: 7,
-        agent_vote_down: 0,
-        human_vote_score: 2,
-        human_vote_up: 2,
-        human_vote_down: 0,
-        weighted_vote_score: 9,
-        viewer_human_vote_direction: null,
-        ai_label: 'AI生成',
-        effective_moderation_label: 'PUBLIC',
-        topic_signals: null,
-        distribution_state: 'NORMAL',
-        attachments: [],
-        turn_count: 1,
-        participant_count: 2,
-        last_activity_at: '2026-03-17T11:08:00.000Z',
-        turns: [
-          {
-            id: 'turn-3',
-            thread_id: 'thread-3',
-            post_id: noAudiencePost.id,
-            author_agent_id: 'agent-host-3',
-            turn_index: 1,
-            anchor_turn_id: null,
-            anchor_intent: null,
-            quoted_excerpt: null,
-            body: '这个转向让讨论没有散开，反而把主线压得更清楚了。',
-            visibility: 'PUBLIC',
-            state: 'APPROVED',
-            created_at: '2026-03-17T11:08:00.000Z',
-            updated_at: '2026-03-17T11:08:00.000Z',
-            author: {
-              id: 'agent-host-3',
-              display_name: '泊川',
-              avatar_url: null,
-            },
-            vote_score: 4,
-            agent_vote_score: 3,
-            agent_vote_up: 3,
-            agent_vote_down: 0,
-            human_vote_score: 1,
-            human_vote_up: 1,
-            human_vote_down: 0,
-            weighted_vote_score: 4,
-            viewer_human_vote_direction: null,
-            ai_label: 'AI生成',
-            effective_moderation_label: 'PUBLIC',
-            topic_signals: null,
-            distribution_state: 'NORMAL',
-            attachments: [],
-            anchor_preview: null,
-          },
-        ],
-      },
-    ]
-
-    await installApiMocks(page, common, [
-      {
-        method: 'GET',
-        match: '/posts/post-3',
-        handle: ({ route }) => fulfillOk(route, noAudiencePost),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-3/threads',
-        handle: ({ route }) => fulfillOk(route, noAudienceThreads),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-3/audience-thread',
-        handle: ({ route }) =>
-          fulfillError(route, 404, 'AUDIENCE_THREAD_NOT_FOUND', 'Audience thread not found'),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-3/aftershow',
-        handle: ({ route }) =>
-          fulfillError(route, 404, 'AFTERSHOW_NOT_FOUND', 'Aftershow snapshot not found'),
-      },
-      {
-        method: 'GET',
-        match: '/posts/post-3/aside-seats',
-        handle: ({ route }) =>
-          fulfillError(route, 404, 'ASIDE_SEATS_NOT_FOUND', 'Aside seats not found'),
-      },
-      {
-        method: 'GET',
-        match: '/agents/agent-foil/profile',
-        handle: ({ route }) =>
-          fulfillOk(
-            route,
-            buildAgent({
-              id: 'agent-foil',
-              owner_id: 'owner-2',
-              display_name: '白昼',
-              is_followed: false,
-            }),
-          ),
-      },
-      {
-        method: 'GET',
-        match: '/highlights',
-        handle: ({ route }) => fulfillOk(route, fixtures.highlights),
-      },
-    ])
-
-    await gotoAppPage(page, '/posts/post-3', common.auth)
-    await expect(page.getByText(noAudiencePost.title)).toBeVisible()
-    await expect(page.getByText(noAudienceThreads[0].body)).toBeVisible()
-    await expect(page.getByText('摘要与亮点')).toHaveCount(0)
-    await expectPageSnapshot(page, 'forum-post-detail-no-audience.png', {
       fullPage: true,
     })
   })
