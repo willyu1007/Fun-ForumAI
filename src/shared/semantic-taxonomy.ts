@@ -136,6 +136,18 @@ export interface CommunityInteractionContract {
   agent_human_response_mode: AgentHumanResponseMode
 }
 
+export const DEFAULT_COMMUNITY_INTERACTION_CONTRACT: CommunityInteractionContract = {
+  public_participation_mode: 'audience_sidecar',
+  audience_signal_ingestion: 'summary_only',
+  agent_human_response_mode: 'aftershow_only',
+}
+
+export const CREATOR_MAIN_THREAD_INTERACTION_CONTRACT: CommunityInteractionContract = {
+  public_participation_mode: 'open_reply',
+  audience_signal_ingestion: 'none',
+  agent_human_response_mode: 'direct_reply',
+}
+
 export interface ContentSemanticProjection {
   scene_runtime: {
     scene_template_id?: string
@@ -520,19 +532,23 @@ export function deriveFormatKindFromContentKind(contentKind: ContentKind | null 
   }
 }
 
+export function isCreatorCommunityFamily(
+  communityFamily: string | null | undefined,
+): communityFamily is CommunityFamily {
+  return communityFamily === 'creator_recommendation' || communityFamily === 'creator_relationship'
+}
 
 export function resolveCommunityInteractionContract(input: {
-  mode?: string | null
   public_participation_mode?: string | null
   audience_signal_ingestion?: string | null
   agent_human_response_mode?: string | null
-  audience_zone_enabled?: boolean | null
-  agent_reads_audience_zone?: boolean | null
-  agent_reply_via_aftershow?: boolean | null
-}): CommunityInteractionContract {
-  const publicParticipationMode = normalizeString(input.public_participation_mode)
-  const audienceSignalIngestion = normalizeString(input.audience_signal_ingestion)
-  const agentHumanResponseMode = normalizeString(input.agent_human_response_mode)
+} | null | undefined, fallback: CommunityInteractionContract = DEFAULT_COMMUNITY_INTERACTION_CONTRACT): CommunityInteractionContract {
+  const publicParticipationMode =
+    normalizeString(input?.public_participation_mode) ?? fallback.public_participation_mode
+  const audienceSignalIngestion =
+    normalizeString(input?.audience_signal_ingestion) ?? fallback.audience_signal_ingestion
+  const agentHumanResponseMode =
+    normalizeString(input?.agent_human_response_mode) ?? fallback.agent_human_response_mode
 
   if (
     publicParticipationMode
@@ -549,50 +565,13 @@ export function resolveCommunityInteractionContract(input: {
     }
   }
 
-  const legacyMode = normalizeString(input.mode)
-  const legacyDefaults = legacyMode === 'A'
-    ? {
-        audience_zone_enabled: true,
-        agent_reads_audience_zone: false,
-        agent_reply_via_aftershow: true,
-      }
-    : legacyMode === 'B'
-      ? {
-          audience_zone_enabled: true,
-          agent_reads_audience_zone: true,
-          agent_reply_via_aftershow: true,
-        }
-      : legacyMode === 'C'
-        ? {
-            audience_zone_enabled: true,
-            agent_reads_audience_zone: true,
-            agent_reply_via_aftershow: false,
-          }
-        : {
-            audience_zone_enabled: false,
-            agent_reads_audience_zone: false,
-            agent_reply_via_aftershow: false,
-          }
+  return { ...fallback }
+}
 
-  const audienceZoneEnabled = input.audience_zone_enabled ?? legacyDefaults.audience_zone_enabled
-  const agentReadsAudienceZone =
-    input.agent_reads_audience_zone ?? legacyDefaults.agent_reads_audience_zone
-  const agentReplyViaAftershow =
-    input.agent_reply_via_aftershow ?? legacyDefaults.agent_reply_via_aftershow
-
-  return {
-    public_participation_mode: audienceZoneEnabled ? 'audience_sidecar' : 'llm_only',
-    audience_signal_ingestion: !audienceZoneEnabled
-      ? 'none'
-      : agentReadsAudienceZone
-        ? 'direct_read'
-        : 'summary_only',
-    agent_human_response_mode: !audienceZoneEnabled
-      ? 'none'
-      : agentReplyViaAftershow
-        ? 'aftershow_only'
-        : agentReadsAudienceZone
-          ? 'direct_reply'
-          : 'none',
-  }
+export function deriveDefaultCommunityInteractionContract(
+  communityFamily: string | null | undefined,
+): CommunityInteractionContract {
+  return isCreatorCommunityFamily(communityFamily)
+    ? { ...CREATOR_MAIN_THREAD_INTERACTION_CONTRACT }
+    : { ...DEFAULT_COMMUNITY_INTERACTION_CONTRACT }
 }

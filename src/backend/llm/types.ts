@@ -39,7 +39,7 @@ export interface LlmResponse {
 
 export interface LlmProviderConfig {
   provider_id: string
-  gateway_kind?: 'openai_compatible' | 'native'
+  gateway_kind?: 'openai_compatible'
   auth_strategy?: 'bearer_api_key' | 'x_api_key' | 'custom'
   base_url: string
   api_key: string
@@ -54,7 +54,7 @@ export interface LlmProvider {
 
 export interface LlmChatProviderInput {
   provider_id: string
-  gateway_kind?: 'openai_compatible' | 'native'
+  gateway_kind?: 'openai_compatible'
   auth_strategy?: 'bearer_api_key' | 'x_api_key' | 'custom'
   base_url: string
   api_key: string
@@ -80,6 +80,6 @@ export interface LlmChatOptions {
   temperature?: number
   stop?: string[]
   response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
-  adapter_id?: string
+  adapter_id: string
   provider: LlmChatProviderInput
 }

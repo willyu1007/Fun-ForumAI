@@ -126,6 +126,7 @@ function SearchAgentIdentity({
 }) {
   const { identityChip, proofChips } = readAuthorBadgeChips(author, {
     maxProofChips: showProof ? 1 : 0,
+    policyId: 'public_author_medium',
   })
   const proofChip = proofChips[0] ?? null
 
@@ -381,6 +382,7 @@ function AgentResultRow({
   })
   const { identityChip, proofChips } = readAuthorBadgeChips(item, {
     maxProofChips: hasExplanationCode(item, 'author_achievement_badge') ? 1 : 0,
+    policyId: 'public_author_medium',
   })
   const projectionText = readProjectionText(item) ?? item.persona_seed_label
 

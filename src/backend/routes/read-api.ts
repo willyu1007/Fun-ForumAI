@@ -447,9 +447,12 @@ async function buildAftershowSnapshot(postId: string, input: {
   relation_teaser?: Awaited<ReturnType<typeof buildRelationTeaser>>
 }> {
   const post = input.post ?? await forumReadService.getPost(postId)
+  const participationContract = await participationContractService.getPostContract(postId)
   const [aftershow, thread] = await Promise.all([
     aftershowService.getLatestByPost(postId),
-    config.features.audienceZoneV1 ? audienceService.getThreadByPost(postId) : null,
+    config.features.audienceZoneV1 && participationContract.audience_lane.enabled
+      ? audienceService.getThreadByPost(postId)
+      : null,
   ])
   const rolloutProfile = await resolveReadMediaRolloutProfile()
   const community = communityRepo.findById(post.community_id)
@@ -493,7 +496,7 @@ async function buildAftershowSnapshot(postId: string, input: {
         }
       : null,
     aftershow_callouts: callouts,
-    audience_thread_meta: thread
+    audience_thread_meta: thread?.thread
       ? {
           thread_id: thread.thread.id,
           status: thread.thread.status,
@@ -719,7 +722,9 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
       relation_teaser: relationTeaser,
       aftershow_summary: aftershow.aftershow_summary,
       aftershow_callouts: aftershow.aftershow_callouts,
-      audience_thread_meta: aftershow.audience_thread_meta,
+      ...(aftershow.audience_thread_meta
+        ? { audience_thread_meta: aftershow.audience_thread_meta }
+        : {}),
     },
   })
 })
@@ -1303,6 +1308,14 @@ readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
     return
   }
 
+  const contract = await participationContractService.getPostContract(String(req.params.postId))
+  if (!contract.audience_lane.enabled) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Audience lane is not enabled for this post.' },
+    })
+    return
+  }
+
   const result = await audienceService.getThreadByPost(String(req.params.postId))
   res.json({ data: result })
 })
@@ -1570,9 +1583,21 @@ readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
   const publicPresentation = buildAgentPublicAuthorPresentation({
     agent,
     latest_config: latestConfig,
-    tagline: highlights.tagline,
-    public_bio: projection?.public_bio ?? null,
-    badges: highlights.badges,
+    public_projection: highlights.tagline || projection?.public_bio
+      ? {
+          ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
+          ...(projection?.public_bio ? { public_bio: projection.public_bio } : {}),
+        }
+      : null,
+    public_proof: highlights.badges.length > 0
+      ? {
+          achievement_badges: highlights.badges.map((badge) => ({
+            code: badge.code,
+            name: badge.name,
+            level: badge.tier,
+          })),
+        }
+      : null,
   })
   res.json({
     data: {
@@ -1580,10 +1605,6 @@ readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
       public_identity: publicPresentation.public_identity,
       public_projection: publicPresentation.public_projection,
       public_proof: publicPresentation.public_proof,
-      badges: highlights.badges,
-      ...(publicPresentation.display_badges ? { display_badges: publicPresentation.display_badges } : {}),
-      tagline: publicPresentation.tagline ?? null,
-      public_bio: publicPresentation.public_bio ?? null,
       top_chronicle: highlights.top_chronicle,
     },
   })
@@ -1623,17 +1644,27 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
   const publicPresentation = buildAgentPublicAuthorPresentation({
     agent,
     latest_config: latestConfig,
-    tagline: highlights.tagline,
-    public_bio: socialBio?.public_bio ?? null,
-    badges: highlights.badges,
+    public_projection: highlights.tagline || socialBio?.public_bio
+      ? {
+          ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
+          ...(socialBio?.public_bio ? { public_bio: socialBio.public_bio } : {}),
+        }
+      : null,
+    public_proof: highlights.badges.length > 0
+      ? {
+          achievement_badges: highlights.badges.map((badge) => ({
+            code: badge.code,
+            name: badge.name,
+            level: badge.tier,
+          })),
+        }
+      : null,
   })
   const {
-    display_badges: _legacyDisplayBadges,
-    public_identity: _legacyPublicIdentity,
+    public_identity: _basePublicIdentity,
     ...publicPayload
   } = buildPublicAgentReadPayload(agent, latestConfig)
-  void _legacyDisplayBadges
-  void _legacyPublicIdentity
+  void _basePublicIdentity
 
   res.json({
     data: {
@@ -1641,12 +1672,6 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
       public_identity: publicPresentation.public_identity,
       public_projection: publicPresentation.public_projection,
       public_proof: publicPresentation.public_proof,
-      ...(publicPresentation.display_badges
-        ? { display_badges: publicPresentation.display_badges }
-        : {}),
-      ...(publicPresentation.badges ? { badges: publicPresentation.badges } : {}),
-      tagline: publicPresentation.tagline ?? null,
-      public_bio: publicPresentation.public_bio ?? null,
       is_followed,
       public_stats: publicStats,
       social_bio: {

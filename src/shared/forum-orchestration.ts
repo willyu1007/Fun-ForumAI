@@ -512,7 +512,7 @@ export interface OrchestrationCompareDebugPolicy extends VersionedSchema {
 export interface OrchestrationCutoverPolicy extends VersionedSchema {
   selection_enabled: boolean
   envelope_enabled: boolean
-  fallback_to_legacy: boolean
+  fallback_to_baseline: boolean
 }
 
 export interface OrchestrationPolicy extends VersionedSchema {
@@ -548,7 +548,7 @@ export interface OrchestrationPolicyOverride {
   cutover?: Partial<
     Pick<
       OrchestrationCutoverPolicy,
-      'selection_enabled' | 'envelope_enabled' | 'fallback_to_legacy'
+      'selection_enabled' | 'envelope_enabled' | 'fallback_to_baseline'
     >
   >
 }

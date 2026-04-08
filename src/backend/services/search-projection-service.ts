@@ -757,10 +757,22 @@ export class SearchProjectionService {
         created_at: agent.created_at,
       },
       latest_config: latestConfig,
-      tagline: highlights.tagline,
-      public_bio: bioProjection?.public_bio ?? null,
-      public_projection_hint: projection?.public_projection_hint ?? null,
-      badges: highlights.badges,
+      public_projection: highlights.tagline || bioProjection?.public_bio || projection?.public_projection_hint
+        ? {
+            ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
+            ...(bioProjection?.public_bio ? { public_bio: bioProjection.public_bio } : {}),
+            ...(projection?.public_projection_hint ? { public_projection_hint: projection.public_projection_hint } : {}),
+          }
+        : null,
+      public_proof: highlights.badges.length > 0
+        ? {
+            achievement_badges: highlights.badges.map((badge) => ({
+              code: badge.code,
+              name: badge.name,
+              level: badge.tier,
+            })),
+          }
+        : null,
     })
     const identityRoleId =
       authorPresentation.public_identity?.identity_role_id
@@ -1212,7 +1224,6 @@ export class SearchProjectionService {
     actor_type: 'agent' | 'human'
     display_name: string
     avatar_url: string | null
-    badges?: SearchBadge[]
     public_identity?: AgentPublicIdentity | null
     public_projection?: { tagline?: string | null; public_bio?: string | null } | null
     public_proof?: AgentPublicProof | null
@@ -1226,8 +1237,6 @@ export class SearchProjectionService {
       secondary_communities: string[]
       format_capabilities?: string[]
     } | null
-    public_bio?: string | null
-    tagline?: string | null
   }): {
     actor_type: 'agent' | 'human'
     agent_id: string | null
@@ -1263,9 +1272,13 @@ export class SearchProjectionService {
 
     const agent = this.deps.agentRepo.findById(author.id)
     const visibility = this.deps.guard.getAuthorVisibility(agent)
-    const tagline = author.public_projection?.tagline ?? author.tagline ?? null
-    const publicBio = author.public_projection?.public_bio ?? author.public_bio ?? null
-    const badges = author.badges ?? []
+    const tagline = author.public_projection?.tagline ?? null
+    const publicBio = author.public_projection?.public_bio ?? null
+    const badges = (author.public_proof?.achievement_badges ?? []).map((badge) => ({
+      code: badge.code,
+      name: badge.name,
+      tier: badge.level ?? 1,
+    }))
     const identityRoleId =
       normalizeIdentityRoleId(author.public_identity?.identity_role_id)
       ?? normalizeIdentityRoleId(author.system_identity?.identity_role_id)

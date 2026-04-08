@@ -433,9 +433,9 @@ describe('E2E: Read API (public)', () => {
       community_family: 'creator_recommendation',
       community_shell_category: 'creator',
       publication_review_profile_id: 'creator_strict_publication',
-      public_participation_mode: 'audience_sidecar',
-      audience_signal_ingestion: 'summary_only',
-      agent_human_response_mode: 'aftershow_only',
+      public_participation_mode: 'open_reply',
+      audience_signal_ingestion: 'none',
+      agent_human_response_mode: 'direct_reply',
       default_editorial_shelf_ids: ['notes_today'],
     })
   })
@@ -547,7 +547,7 @@ describe('E2E: Read API (public)', () => {
       private_chat_enabled: false,
       follow_enabled: true,
     })
-    expect(res.body.data.display_badges).toEqual(expect.any(Array))
+    expect(res.body.data.public_identity.identity_badges).toEqual(expect.any(Array))
   })
 
   it('GET /v1/highlights returns empty', async () => {
@@ -1347,6 +1347,93 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('does not materialize audience-thread read stubs and blocks audience-thread reads for open-reply posts', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAudienceZone = featureFlags.audienceZoneV1
+    const originalAftershow = featureFlags.aftershowV1
+    featureFlags.audienceZoneV1 = true
+    featureFlags.aftershowV1 = true
+
+    try {
+      const audienceCommunity = await createTestCommunity({
+        name: 'Read Only Audience Community',
+        slug: `read-only-audience-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: {
+            human_participation: {
+              public_participation_mode: 'audience_sidecar',
+              audience_signal_ingestion: 'direct_read',
+              agent_human_response_mode: 'aftershow_only',
+            },
+          },
+        },
+      })
+      const openReplyCommunity = await createTestCommunity({
+        name: 'Read Only Open Reply Community',
+        slug: `read-only-open-reply-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: {
+            human_participation: {
+              public_participation_mode: 'open_reply',
+              audience_signal_ingestion: 'none',
+              agent_human_response_mode: 'direct_reply',
+            },
+          },
+        },
+      })
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Audience Stub Guard Author' })
+      expect(authorRes.status).toBe(201)
+
+      const audiencePostRes = await servicePost('/v1/posts', {
+        actor_agent_id: authorRes.body.data.id,
+        run_id: `run-audience-read-stub-${Date.now()}`,
+        community_id: audienceCommunity.id,
+        title: 'Audience read stub target',
+        body: 'Reading the audience thread should stay read-only until the first audience message.',
+      })
+      expect(audiencePostRes.status).toBe(201)
+      const audiencePostId = audiencePostRes.body.data.id as string
+
+      const emptyAudienceThreadRes = await request(app).get(`/v1/posts/${audiencePostId}/audience-thread`)
+      expect(emptyAudienceThreadRes.status).toBe(200)
+      expect(emptyAudienceThreadRes.body.data).toEqual({
+        thread: null,
+        messages: [],
+      })
+
+      const audiencePostReadRes = await request(app).get(`/v1/posts/${audiencePostId}`)
+      expect(audiencePostReadRes.status).toBe(200)
+      expect(audiencePostReadRes.body.data).not.toHaveProperty('audience_thread_meta')
+
+      const openReplyPostRes = await servicePost('/v1/posts', {
+        actor_agent_id: authorRes.body.data.id,
+        run_id: `run-open-reply-read-guard-${Date.now()}`,
+        community_id: openReplyCommunity.id,
+        title: 'Open reply audience thread guard',
+        body: 'Audience-thread reads should be rejected when the lane is disabled.',
+      })
+      expect(openReplyPostRes.status).toBe(201)
+      const openReplyPostId = openReplyPostRes.body.data.id as string
+
+      const openReplyAudienceThreadRes = await request(app).get(`/v1/posts/${openReplyPostId}/audience-thread`)
+      expect(openReplyAudienceThreadRes.status).toBe(403)
+      expect(openReplyAudienceThreadRes.body.error).toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'Audience lane is not enabled for this post.',
+      })
+
+      const openReplyPostReadRes = await request(app).get(`/v1/posts/${openReplyPostId}`)
+      expect(openReplyPostReadRes.status).toBe(200)
+      expect(openReplyPostReadRes.body.data).not.toHaveProperty('audience_thread_meta')
+    } finally {
+      featureFlags.audienceZoneV1 = originalAudienceZone
+      featureFlags.aftershowV1 = originalAftershow
+    }
+  })
+
   it('GET/PUT/DELETE orchestration policy endpoints derive defaults and allow post owner overrides', async () => {
     const community = await createTestCommunity({
       name: 'Orchestration Policy Community',
@@ -1373,7 +1460,7 @@ describe('E2E: Read API (public)', () => {
               cutover: {
                 selection_enabled: true,
                 envelope_enabled: true,
-                fallback_to_legacy: true,
+                fallback_to_baseline: true,
               },
             },
           },

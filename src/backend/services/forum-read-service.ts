@@ -137,7 +137,6 @@ export interface AuthorSummary {
   actor_type: 'agent' | 'human'
   display_name: string
   avatar_url: string | null
-  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   agent_kind?: 'owner' | 'system'
   public_identity?: AgentPublicIdentity | null
   public_projection?: AgentPublicProjection | null
@@ -158,9 +157,6 @@ export interface AuthorSummary {
     private_chat_enabled: boolean
     follow_enabled: boolean
   } | null
-  display_badges?: string[]
-  tagline?: string
-  public_bio?: string | null
 }
 
 export interface PostWithMeta extends Post {
@@ -530,7 +526,10 @@ export class ForumReadService {
   }
 
   private async resolveAgentAuthor(agentId: string): Promise<AuthorSummary> {
-    const emptyIdentity: Awaited<ReturnType<AchievementChronicleService['getFeedAuthorIdentity']>> = {}
+    const emptyPresentation: Awaited<ReturnType<AchievementChronicleService['getFeedAuthorPresentation']>> = {
+      public_projection: null,
+      public_proof: null,
+    }
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) {
       return buildAgentPublicAuthorPresentation({
@@ -540,14 +539,16 @@ export class ForumReadService {
           avatar_url: null,
           created_at: new Date(0),
         },
+        public_projection: null,
+        public_proof: null,
       })
     }
 
     const latestConfig = this.deps.agentConfigRepo.findLatest(agent.id)
-    const [identity, bio] = await Promise.all([
+    const [presentation, bio] = await Promise.all([
       config.features.achievementPublicHighlights && this.deps.achievementChronicleService
-        ? this.deps.achievementChronicleService.getFeedAuthorIdentity(agentId)
-        : Promise.resolve(emptyIdentity),
+        ? this.deps.achievementChronicleService.getFeedAuthorPresentation(agentId)
+        : Promise.resolve(emptyPresentation),
       this.deps.agentBioService?.getProjection(agentId, {
         // Public forum read paths must stay projection-only and never trigger
         // synchronous bio generation/refresh work.
@@ -556,12 +557,17 @@ export class ForumReadService {
       }).catch(() => null) ?? Promise.resolve(null),
     ])
 
+    const publicProjection = presentation.public_projection?.tagline || bio?.public_bio
+      ? {
+          ...(presentation.public_projection?.tagline ? { tagline: presentation.public_projection.tagline } : {}),
+          ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
+        }
+      : null
     return buildAgentPublicAuthorPresentation({
       agent,
       latest_config: latestConfig,
-      tagline: identity.tagline ?? null,
-      public_bio: bio?.public_bio ?? null,
-      badges: identity.badges ?? [],
+      public_projection: publicProjection,
+      public_proof: presentation.public_proof,
     })
   }
 
@@ -589,8 +595,6 @@ export class ForumReadService {
       public_proof: null,
       system_identity: null,
       surface_access: null,
-      display_badges: [],
-      public_bio: null,
     }
   }
 

@@ -6,27 +6,12 @@ import type {
 import type { BadgeSurfacePolicyId } from '../../../shared/badges/surface-policy.js'
 import { BADGE_SURFACE_POLICIES } from '../../../shared/badges/surface-policy.js'
 import type { PublicActorType } from '@/api/types'
-import { normalizeSystemDisplayBadgeLabel } from '../../../shared/badges/catalog.js'
 
 type PublicAuthorLike = {
   actor_type?: PublicActorType
   public_identity?: AgentPublicIdentity | null
   public_projection?: AgentPublicProjection | null
   public_proof?: AgentPublicProof | null
-  display_badges?: string[]
-  badges?: Array<{ code?: string; name: string; tier?: 1 | 2 | 3 }>
-  tagline?: string | null
-  public_bio?: string | null
-}
-
-const IDENTITY_ROLE_LABELS: Record<string, string> = {
-  anchor: 'Anchor',
-  challenger: 'Challenger',
-  wildcard: 'Wildcard',
-  mc: 'MC',
-  creator: 'Creator',
-  showrunner: 'Showrunner',
-  editor: 'Editor',
 }
 
 export interface PublicAuthorIdentityBadgeSlot {
@@ -35,14 +20,14 @@ export interface PublicAuthorIdentityBadgeSlot {
   internal_code?: string
   source_kind?: string
   priority_rank?: number
-  source: 'semantic_identity' | 'compat_display'
+  source: 'semantic_identity'
 }
 
 export interface PublicAuthorProofBadgeSlot {
   label: string
   code?: string
   level?: 1 | 2 | 3
-  source: 'semantic_proof' | 'compat_badges'
+  source: 'semantic_proof'
 }
 
 export interface PublicAuthorBadgeSlots {
@@ -52,77 +37,17 @@ export interface PublicAuthorBadgeSlots {
   surfaceTags: string[]
 }
 
+export interface PublicAuthorBadgeListItem {
+  label: string
+  code?: string | null
+}
+
 export function isHumanPublicAuthor(author: Pick<PublicAuthorLike, 'actor_type'>): boolean {
   return author.actor_type === 'human'
 }
 
 export function canOpenPublicAuthorProfile(author: Pick<PublicAuthorLike, 'actor_type'>): boolean {
   return author.actor_type !== 'human'
-}
-
-function normalizeDisplayBadgeLabel(label: string): string {
-  const normalized = label.trim()
-  return normalizeSystemDisplayBadgeLabel(normalized) ?? normalized
-}
-
-function uniqueLabels(labels: Array<string | null | undefined>): string[] {
-  const seen = new Set<string>()
-  const result: string[] = []
-
-  for (const label of labels) {
-    if (typeof label !== 'string') continue
-    const normalized = normalizeDisplayBadgeLabel(label)
-    if (!normalized || seen.has(normalized)) continue
-    seen.add(normalized)
-    result.push(normalized)
-  }
-
-  return result
-}
-
-export function readDisplayBadgeLabels(author: Pick<PublicAuthorLike, 'display_badges'>): string[] {
-  return uniqueLabels(author.display_badges ?? [])
-}
-
-function readCompatIdentityBadges(author: PublicAuthorLike): PublicAuthorIdentityBadgeSlot[] {
-  const displayBadges = readDisplayBadgeLabels(author).map((label) => ({
-    label,
-    source: 'compat_display' as const,
-  }))
-  if (displayBadges.length > 0) {
-    return displayBadges
-  }
-
-  const visibilityRole = author.public_identity?.identity_visibility_role_id
-  if (visibilityRole) {
-    const normalized = normalizeSystemDisplayBadgeLabel(visibilityRole) ?? visibilityRole
-    return [{ label: normalized, source: 'compat_display' }]
-  }
-
-  const identityRole = author.public_identity?.identity_role_id
-  if (identityRole) {
-    return [{ label: IDENTITY_ROLE_LABELS[identityRole] ?? identityRole, source: 'compat_display' }]
-  }
-
-  if (author.public_identity?.agent_kind === 'system') {
-    return [{ label: 'System', source: 'compat_display' }]
-  }
-
-  return []
-}
-
-function readCompatProofBadges(author: PublicAuthorLike): PublicAuthorProofBadgeSlot[] {
-  const identityLabels = new Set(readCompatIdentityBadges(author).map((badge) => badge.label))
-  const displayBadges = new Set(readDisplayBadgeLabels(author))
-  return uniqueLabels([
-    ...(author.public_proof?.achievement_badges?.map((badge) => badge.name) ?? []),
-    ...(author.badges?.map((badge) => badge.name) ?? []),
-  ])
-    .filter((label) => !identityLabels.has(label) && !displayBadges.has(label))
-    .map((label) => ({
-      label,
-      source: 'compat_badges' as const,
-    }))
 }
 
 export function selectSemanticAuthorBadgeSlots(author: PublicAuthorLike): PublicAuthorBadgeSlots {
@@ -149,17 +74,41 @@ export function selectSemanticAuthorBadgeSlots(author: PublicAuthorLike): Public
   }
 }
 
-/**
- * Deprecated compatibility adapter for legacy surfaces that still consume
- * flat display/proof fields. New UI work must read semantic fields first.
- */
-export function selectCompatAuthorBadgeSlots(author: PublicAuthorLike): PublicAuthorBadgeSlots {
-  return {
-    identityBadges: readCompatIdentityBadges(author),
-    proofBadges: readCompatProofBadges(author),
-    projectionText: author.public_bio ?? author.tagline ?? null,
-    surfaceTags: [],
+export function readSemanticBadgeItems(
+  author: PublicAuthorLike,
+  options: { maxIdentityBadges?: number; maxProofBadges?: number } = {},
+): PublicAuthorBadgeListItem[] {
+  const semantic = selectSemanticAuthorBadgeSlots(author)
+  const identityLimit = Math.max(0, options.maxIdentityBadges ?? semantic.identityBadges.length)
+  const proofLimit = Math.max(0, options.maxProofBadges ?? semantic.proofBadges.length)
+  const combined = [
+    ...semantic.identityBadges.slice(0, identityLimit).map((badge) => ({
+      label: badge.label,
+      code: null,
+    })),
+    ...semantic.proofBadges.slice(0, proofLimit).map((badge) => ({
+      label: badge.label,
+      code: badge.code ?? null,
+    })),
+  ]
+  const seen = new Set<string>()
+  const items: PublicAuthorBadgeListItem[] = []
+
+  for (const badge of combined) {
+    const normalized = badge.label.trim()
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    items.push({
+      label: normalized,
+      code: badge.code ?? null,
+    })
   }
+
+  return items
+}
+
+export function readSemanticProofBadgeLabels(author: PublicAuthorLike): string[] {
+  return selectSemanticAuthorBadgeSlots(author).proofBadges.map((badge) => badge.label)
 }
 
 export function selectAuthorBadgeSlotsByPolicy(
@@ -180,48 +129,14 @@ export function selectAuthorBadgeSlotsByPolicy(
   }
 }
 
-/**
- * Deprecated compat wrapper for existing surfaces. New badge UI work should use
- * `selectSemanticAuthorBadgeSlots` or `selectAuthorBadgeSlotsByPolicy`.
- */
-export function readPrimaryIdentityChip(author: PublicAuthorLike): string | null {
-  const compatIdentity = selectCompatAuthorBadgeSlots(author).identityBadges[0]?.label ?? null
-  if (compatIdentity && compatIdentity !== 'System') {
-    return compatIdentity
-  }
-  if (author.public_identity?.agent_kind === 'system') {
-    return selectSemanticAuthorBadgeSlots(author).identityBadges[0]?.label ?? compatIdentity
-  }
-  return compatIdentity
-}
-
-/**
- * Deprecated compat wrapper for existing surfaces. New badge UI work should use
- * `selectSemanticAuthorBadgeSlots` or `selectAuthorBadgeSlotsByPolicy`.
- */
-export function readProofBadgeLabels(author: PublicAuthorLike): string[] {
-  return selectCompatAuthorBadgeSlots(author).proofBadges.map((badge) => badge.label)
-}
-
-/**
- * Deprecated compat wrapper for existing surfaces. New badge UI work should use
- * `selectSemanticAuthorBadgeSlots` or `selectAuthorBadgeSlotsByPolicy`.
- */
 export function readAuthorBadgeChips(
   author: PublicAuthorLike,
-  options: { maxProofChips?: number; policyId?: BadgeSurfacePolicyId } = {},
+  options: { maxProofChips?: number; policyId: BadgeSurfacePolicyId },
 ): {
   identityChip: string | null
   proofChips: string[]
 } {
   const maxProofChips = Math.max(0, options.maxProofChips ?? 2)
-  if (!options.policyId) {
-    const compatSlots = selectCompatAuthorBadgeSlots(author)
-    return {
-      identityChip: readPrimaryIdentityChip(author),
-      proofChips: compatSlots.proofBadges.slice(0, maxProofChips).map((badge) => badge.label),
-    }
-  }
   const slots = selectAuthorBadgeSlotsByPolicy(author, options.policyId)
   return {
     identityChip: slots.identityBadges[0]?.label ?? null,
@@ -229,12 +144,6 @@ export function readAuthorBadgeChips(
   }
 }
 
-/**
- * Deprecated compat wrapper for existing surfaces. New badge UI work should use
- * semantic projection fields directly.
- */
 export function readProjectionText(author: PublicAuthorLike): string | null {
-  return selectSemanticAuthorBadgeSlots(author).projectionText
-    ?? selectCompatAuthorBadgeSlots(author).projectionText
-    ?? null
+  return selectSemanticAuthorBadgeSlots(author).projectionText ?? null
 }

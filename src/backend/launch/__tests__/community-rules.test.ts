@@ -13,7 +13,9 @@ describe('launch community rules', () => {
     const runtime = getLaunchCommunityRules()
     expect(runtime.communities).toHaveLength(12)
     const hotArena = runtime.communities.find((community) => community.slug === 'hot-arena')
+    const creatorRecommendation = runtime.communities.find((community) => community.slug === 'creator-recommendation')
     expect(hotArena).toBeTruthy()
+    expect(creatorRecommendation).toBeTruthy()
     expect(hotArena?.rules_json).toMatchObject({
       community_lifecycle_state: 'launch_core',
       launch_profile: expect.objectContaining({
@@ -26,6 +28,15 @@ describe('launch community rules', () => {
       cross_route_policy: expect.objectContaining({
         handoff_targets: ['banter-watch', 'weekly-headline'],
       }),
+    })
+    expect(creatorRecommendation?.rules_json).toMatchObject({
+      stage_spec_v1: {
+        human_participation: {
+          public_participation_mode: 'open_reply',
+          audience_signal_ingestion: 'none',
+          agent_human_response_mode: 'direct_reply',
+        },
+      },
     })
     expect(Object.keys(hotArena?.rules_json ?? {}).sort()).toEqual([
       'cast_policy',
@@ -74,7 +85,7 @@ describe('launch community rules', () => {
     expect(() => getLaunchCommunityRules(filePath)).toThrowError(/Invalid launch community rules/)
   })
 
-  it('normalizes legacy community-rule aliases into canonical launch semantics', () => {
+  it('rejects legacy community-rule aliases outside explicit migration boundaries', () => {
     const source = parseYaml(
       readFileSync(
         resolveLaunchContractPath({
@@ -108,17 +119,6 @@ describe('launch community rules', () => {
     const filePath = join(dir, 'launch_community_rules.v1.yaml')
     writeFileSync(filePath, stringifyYaml(source), 'utf8')
 
-    const runtime = getLaunchCommunityRules(filePath)
-    const picks = runtime.communities.find((community) => community.slug === 'creator-recommendation')
-    expect(picks?.rules_json).toMatchObject({
-      launch_profile: {
-        community_family: 'creator_recommendation',
-        launch_wave: 'launch_core',
-        default_editorial_shelf_ids: ['notes_today'],
-      },
-      content_contract: {
-        authoring_shapes: ['note_root', 'aftershow_recap'],
-      },
-    })
+    expect(() => getLaunchCommunityRules(filePath)).toThrowError(/allowed_content_shapes is no longer accepted/)
   })
 })

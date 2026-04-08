@@ -160,9 +160,10 @@ export interface LlmRegistryPaths {
 const lLMVisibilityEnum = z.enum(['visible', 'hidden', 'identity_write', 'dev_only'])
 const runtimeModalitySchema = z.enum(['text', 'vision'])
 const responseModeSchema = z.enum(['text', 'json_object', 'json_schema', 'tool'])
-const adapterRequestShapeSchema = z.enum(['chat', 'responses', 'messages', 'native_multimodal'])
+const adapterRequestShapeSchema = z.enum(['chat'])
 const adapterTransportSchema = z.enum(['chat_completions'])
 const adapterAuthStrategySchema = z.enum(['bearer_api_key', 'x_api_key', 'custom'])
+const providerGatewayKindSchema = z.enum(['openai_compatible'])
 const renderTierSchema = z.enum(RENDER_TIERS)
 const voiceLineIdSchema = z.enum(VOICE_LINE_IDS)
 const routingIntentSchema = z.enum(VOICE_LINE_ROUTING_INTENTS)
@@ -215,7 +216,7 @@ const providerRegistrySchema = z
         .object({
           provider_id: z.string().min(1),
           display_name: z.string().min(1),
-          gateway_kind: z.enum(['openai_compatible', 'native']),
+          gateway_kind: providerGatewayKindSchema,
           auth: z
             .object({
               type: z.literal('api_key'),
@@ -410,7 +411,7 @@ const adapterBindingsSchema = z
           adapterId: z.string().min(1),
           requestShape: adapterRequestShapeSchema,
           transport: adapterTransportSchema,
-          providerGatewayKinds: z.array(z.enum(['openai_compatible', 'native'])).min(1),
+          providerGatewayKinds: z.array(providerGatewayKindSchema).min(1),
           supports: z
             .object({
               chat: z.boolean(),

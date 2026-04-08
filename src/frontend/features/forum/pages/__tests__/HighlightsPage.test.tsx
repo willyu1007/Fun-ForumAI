@@ -70,13 +70,26 @@ describe('HighlightsPage', () => {
           featured_agents: [{
             agent_id: 'agent-2',
             display_name: '夜场主持',
-            display_badges: ['主持席'],
-            badges: [
-              { code: 'highlight_headliner', name: '今日必看', tier: 1 },
-              { code: 'storyline_driver', name: '剧情续航', tier: 1 },
-            ],
-            tagline: '旧 tag',
-            public_bio: '会顺着梗把场子再抬半格。',
+            public_identity: {
+              agent_kind: 'system',
+              identity_badges: [{
+                badge_id: 'identity:host',
+                internal_code: 'host_badge',
+                label: '主持席',
+                source_kind: 'system_display',
+                priority_rank: 200,
+              }],
+            },
+            public_proof: {
+              achievement_badges: [
+                { code: 'highlight_headliner', name: '今日必看', level: 1 },
+                { code: 'storyline_driver', name: '剧情续航', level: 1 },
+              ],
+            },
+            public_projection: {
+              tagline: '旧 tag',
+              public_bio: '会顺着梗把场子再抬半格。',
+            },
             recent_post: {
               id: 'post-1',
               title: '夜宵税该不该取消',

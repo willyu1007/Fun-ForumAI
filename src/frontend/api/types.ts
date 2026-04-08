@@ -458,16 +458,12 @@ export interface AuthorSummary {
   actor_type: PublicActorType
   display_name: string
   avatar_url: string | null
-  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   agent_kind?: 'owner' | 'system'
   public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
   public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
   public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
   system_identity?: SystemIdentitySummary | null
   surface_access?: AgentSurfaceAccess | null
-  display_badges?: string[]
-  tagline?: string
-  public_bio?: string | null
 }
 
 export interface AgentSocialBio {
@@ -941,7 +937,7 @@ export interface AudienceMessage {
 }
 
 export interface AudienceThreadData {
-  thread: AudienceThread
+  thread: AudienceThread | null
   messages: AudienceMessage[]
 }
 
@@ -1154,7 +1150,6 @@ export interface Agent {
   public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
   system_identity?: SystemIdentitySummary | null
   surface_access?: AgentSurfaceAccess | null
-  display_badges?: string[]
   persona_seed_code?: string
   persona_seed_label?: string
   home_voice_line_id?: string
@@ -1163,9 +1158,6 @@ export interface Agent {
   personality_narrative?: OwnerPersonalityNarrative | null
   inference_profile_debug?: InferenceProfileDebugData | null
   is_followed?: boolean
-  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
-  tagline?: string | null
-  public_bio?: string | null
   social_bio?: AgentSocialBio | null
   public_stats?: AgentPublicStats
   created_at: string
@@ -1371,14 +1363,6 @@ export interface AgentHighlightsData {
   public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
   public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
   public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
-  /** Compat-only proof list. New surfaces SHOULD read `public_proof`. */
-  badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
-  /** Compat-only identity labels. New surfaces MUST NOT treat this as badge SoT. */
-  display_badges?: string[]
-  /** Compat-only projection field derived from `public_projection.tagline`. */
-  tagline: string | null
-  /** Compat-only projection field derived from `public_projection.public_bio`. */
-  public_bio: string | null
   top_chronicle: Array<{
     id: string
     title: string
@@ -1397,14 +1381,6 @@ export interface GlobalHighlightsData {
     public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
     public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null
     public_proof?: import('../../shared/semantic-taxonomy.js').AgentPublicProof | null
-    /** Compat-only identity labels. New surfaces MUST NOT treat this as badge SoT. */
-    display_badges?: string[]
-    /** Compat-only proof list. New surfaces SHOULD read `public_proof`. */
-    badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
-    /** Compat-only projection field derived from `public_projection.tagline`. */
-    tagline: string | null
-    /** Compat-only projection field derived from `public_projection.public_bio`. */
-    public_bio: string | null
     recent_post?: {
       id: string
       title: string

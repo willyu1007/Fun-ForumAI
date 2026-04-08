@@ -17,6 +17,7 @@ import {
   type StageSpecV1,
 } from '../stage/index.js'
 import {
+  deriveDefaultCommunityInteractionContract,
   deriveCommunityShellCategory,
   derivePublicationReviewProfileId,
   normalizeAuthoringShapeId,
@@ -56,7 +57,6 @@ const contentContractSchema = z.object({
   title_style: z.string().trim().min(1),
   hook_style: z.array(z.string().trim().min(1)).min(1),
   authoring_shapes: z.array(z.string().trim().min(1)).optional(),
-  allowed_content_shapes: z.array(z.string().trim().min(1)).optional(),
   avoid_patterns: z.array(z.string().trim().min(1)).default([]),
   creator_note_policy: z.string().trim().min(1).optional().nullable(),
 }).passthrough()
@@ -187,6 +187,12 @@ function buildCommunitySemanticContract(input: {
   launch_profile: Record<string, unknown>
   content_contract: Record<string, unknown>
 }): CommunitySemanticContract {
+  if (Object.prototype.hasOwnProperty.call(input.content_contract, 'allowed_content_shapes')) {
+    throw new ValidationError(
+      'Invalid launch community rules: content_contract.allowed_content_shapes is no longer accepted; use authoring_shapes',
+    )
+  }
+
   const communityFamily = normalizeCommunityFamily(
     readTrimmedString(input.launch_profile.community_family),
   )
@@ -217,13 +223,23 @@ function buildCommunitySemanticContract(input: {
     launch_wave: readTrimmedString(input.launch_profile.launch_wave),
     default_editorial_shelf_ids: defaultEditorialShelfIds,
     authoring_shapes: readStringArray(input.content_contract.authoring_shapes)
-      .concat(readStringArray(input.content_contract.allowed_content_shapes))
       .map((item) => normalizeAuthoringShapeId(item))
       .filter((item): item is string => item !== null),
     creator_note_policy:
       readTrimmedString(input.launch_profile.creator_note_policy)
       ?? readTrimmedString(input.content_contract.creator_note_policy),
   }
+}
+
+function resolveDefaultInteractionContractFromRules(
+  rulesJson: Record<string, unknown> | null | undefined,
+): CommunityInteractionContract {
+  const launchProfile = rulesJson?.launch_profile
+  const communityFamily =
+    launchProfile && typeof launchProfile === 'object' && !Array.isArray(launchProfile)
+      ? readTrimmedString((launchProfile as Record<string, unknown>).community_family)
+      : null
+  return deriveDefaultCommunityInteractionContract(communityFamily)
 }
 
 export function resolveLaunchCommunitySemanticContract(
@@ -264,24 +280,21 @@ export function resolveLaunchCommunityInteractionContract(
 ): CommunityInteractionContract | null {
   if (!rulesJson) return null
   const stageSpec = rulesJson.stage_spec_v1
+  const fallback = resolveDefaultInteractionContractFromRules(rulesJson)
   if (!stageSpec || typeof stageSpec !== 'object' || Array.isArray(stageSpec)) {
-    return null
+    return fallback
   }
   const humanParticipation = (stageSpec as Record<string, unknown>).human_participation
   if (!humanParticipation || typeof humanParticipation !== 'object' || Array.isArray(humanParticipation)) {
-    return resolveCommunityInteractionContract({})
+    return fallback
   }
 
   const record = humanParticipation as Record<string, unknown>
   return resolveCommunityInteractionContract({
-    mode: readTrimmedString(record.mode),
     public_participation_mode: readTrimmedString(record.public_participation_mode),
     audience_signal_ingestion: readTrimmedString(record.audience_signal_ingestion),
     agent_human_response_mode: readTrimmedString(record.agent_human_response_mode),
-    audience_zone_enabled: record.audience_zone_enabled === true,
-    agent_reads_audience_zone: record.agent_reads_audience_zone === true,
-    agent_reply_via_aftershow: record.agent_reply_via_aftershow === true,
-  })
+  }, fallback)
 }
 
 function normalizeCrossRouteTargets(
@@ -371,6 +384,13 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
     }
 
     const creatorNoteRuntimeEnabled = community.rules_json.creator_note_runtime.enabled
+    for (const forbiddenLegacyKey of ['note_templates', 'cover_modes', 'creator_slots', 'feed_bias']) {
+      if (Object.prototype.hasOwnProperty.call(community.rules_json.creator_note_runtime, forbiddenLegacyKey)) {
+        throw new ValidationError(
+          `Invalid launch community rules: ${community.slug} creator_note_runtime must not carry legacy ${forbiddenLegacyKey}`,
+        )
+      }
+    }
     const usesCreatorStageTemplate = community.stage_template_ref.startsWith('stage-creator-')
     if (creatorNoteRuntimeEnabled && !usesCreatorStageTemplate) {
       throw new ValidationError(
@@ -431,10 +451,6 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       content_contract: {
         ...community.rules_json.content_contract,
         authoring_shapes: communitySemanticContract.authoring_shapes ?? [],
-        allowed_content_shapes:
-          readStringArray(community.rules_json.content_contract.allowed_content_shapes).length > 0
-            ? readStringArray(community.rules_json.content_contract.allowed_content_shapes)
-            : communitySemanticContract.authoring_shapes ?? [],
         creator_note_policy: communitySemanticContract.creator_note_policy ?? null,
       },
       stage_spec_v1: stageSpec,
@@ -527,7 +543,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
     ?? derivePublicationReviewProfileId(input.proposed_community_family)
   const interactionContract =
     input.interaction_contract
-    ?? resolveCommunityInteractionContract({})
+    ?? deriveDefaultCommunityInteractionContract(input.proposed_community_family)
   const strictPublication =
     publicationReviewProfileId === 'creator_strict_publication'
     || input.proposed_community_family.startsWith('creator_')

@@ -35,6 +35,10 @@ stage_spec:
     periodic:
       enabled: false
       interval_hours: 24
+  human_participation:
+    public_participation_mode: open_reply
+    audience_signal_ingestion: none
+    agent_human_response_mode: direct_reply
   moderation:
     premod_required: true
     require_strong_redaction: true

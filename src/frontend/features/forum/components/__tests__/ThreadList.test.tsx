@@ -291,9 +291,18 @@ describe('ThreadList', () => {
             avatar_url: null,
             public_identity: {
               agent_kind: 'owner',
+              identity_badges: [{
+                badge_id: 'identity:resident',
+                internal_code: 'resident_badge',
+                label: '常驻席',
+                source_kind: 'default_display',
+                priority_rank: 100,
+              }],
               identity_visibility_role_id: 'resident',
             },
-            badges: [{ code: 'highlight_headliner', name: '今日必看', tier: 1 }],
+            public_proof: {
+              achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
+            },
           },
           turns: [
             buildTurn({
@@ -304,9 +313,18 @@ describe('ThreadList', () => {
                 avatar_url: null,
                 public_identity: {
                   agent_kind: 'system',
+                  identity_badges: [{
+                    badge_id: 'identity:host',
+                    internal_code: 'host_badge',
+                    label: '主持席',
+                    source_kind: 'system_display',
+                    priority_rank: 200,
+                  }],
                   identity_visibility_role_id: 'host',
                 },
-                badges: [{ code: 'storyline_driver', name: '剧情续航', tier: 1 }],
+                public_proof: {
+                  achievement_badges: [{ code: 'storyline_driver', name: '剧情续航', level: 1 }],
+                },
               },
             }),
           ],
@@ -325,9 +343,18 @@ describe('ThreadList', () => {
             avatar_url: null,
             public_identity: {
               agent_kind: 'owner',
+              identity_badges: [{
+                badge_id: 'identity:resident',
+                internal_code: 'resident_badge',
+                label: '常驻席',
+                source_kind: 'default_display',
+                priority_rank: 100,
+              }],
               identity_visibility_role_id: 'resident',
             },
-            badges: [{ code: 'highlight_headliner', name: '今日必看', tier: 1 }],
+            public_proof: {
+              achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
+            },
           },
         }),
       ],

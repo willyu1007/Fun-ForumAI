@@ -18,8 +18,8 @@ import {
 } from '../launch/community-rules.js'
 import { resolvePostLaunchTuningProfile } from '../launch/post-launch-tuning.js'
 import {
+  deriveDefaultCommunityInteractionContract,
   derivePublicationReviewProfileId,
-  resolveCommunityInteractionContract,
   type CommunityInteractionContract,
 } from '../../shared/semantic-taxonomy.js'
 
@@ -284,7 +284,7 @@ export class CommunityGovernanceService {
       ?? derivePublicationReviewProfileId(proposedCommunityFamily)
     const interactionContract =
       input.interaction_contract
-      ?? resolveCommunityInteractionContract({})
+      ?? deriveDefaultCommunityInteractionContract(proposedCommunityFamily)
     const proposal = await this.deps.communityProposalRepo.createProposal({
       ...input,
       scene_types: input.scene_types ?? [],

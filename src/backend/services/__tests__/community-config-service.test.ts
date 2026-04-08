@@ -120,7 +120,9 @@ describe('CommunityConfigService', () => {
       patch: {
         stage_spec_v1: {
           human_participation: {
-            agent_reads_audience_zone: true,
+            public_participation_mode: 'audience_sidecar',
+            audience_signal_ingestion: 'direct_read',
+            agent_human_response_mode: 'aftershow_only',
           },
         },
       },
@@ -139,7 +141,9 @@ describe('CommunityConfigService', () => {
       patch: {
         stage_spec_v1: {
           human_participation: {
-            agent_reads_audience_zone: true,
+            public_participation_mode: 'audience_sidecar',
+            audience_signal_ingestion: 'direct_read',
+            agent_human_response_mode: 'aftershow_only',
           },
         },
       },

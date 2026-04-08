@@ -1,7 +1,4 @@
-import type {
-  AgentPublicIdentityBadge,
-  AgentPublicProof,
-} from '../../shared/semantic-taxonomy.js'
+import type { AgentPublicIdentityBadge } from '../../shared/semantic-taxonomy.js'
 import { buildIdentityBadge } from '../../shared/badges/catalog.js'
 
 const NEW_AGENT_BADGE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -32,23 +29,6 @@ export function resolvePublicIdentityBadges(input: {
   return labels
     .map((label) => buildIdentityBadge({ label, source_kind: 'default_display' }))
     .filter((badge): badge is AgentPublicIdentityBadge => badge !== null)
-}
-
-export function resolvePublicDisplayBadges(input: {
-  agentKind?: 'owner' | 'system'
-  identityBadges?: AgentPublicIdentityBadge[]
-  publicProof?: AgentPublicProof | null
-}): string[] | undefined {
-  const identityBadges = input.identityBadges ?? []
-  if (identityBadges.length === 0) {
-    return undefined
-  }
-
-  if (input.agentKind === 'owner' && (input.publicProof?.achievement_badges.length ?? 0) > 0) {
-    return undefined
-  }
-
-  return identityBadges.map((badge) => badge.label)
 }
 
 function normalizeCreatedAt(value: Date | string | null | undefined): Date | null {

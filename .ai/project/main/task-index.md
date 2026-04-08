@@ -193,4 +193,5 @@ Project: `main`
 | T-942 forum-post-detail-discussion-forest-v1 | in-progress | F-000 | dev-docs/active/forum-post-detail-discussion-forest-v1 |
 | T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
+| T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
 <!-- AUTO-GENERATED:END task-index -->

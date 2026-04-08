@@ -1,4 +1,9 @@
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import {
   VOICE_LINE_CATALOG,
   type VoiceLineRoutingIntent,
@@ -10,11 +15,71 @@ import {
   loadPromptTemplatesRegistry,
   validateLlmRegistryBundle,
 } from '../registry-loader.js'
+import { LLMGatewayContractError } from '../gateway-contract.js'
 import {
   resolveIdentityWriteProfileRef,
   resolveVoiceLineTierProfileRef,
 } from '../voice-line-routing.js'
 import { PROMPT_TEMPLATE_REFS } from '../prompt-template-refs.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const REGISTRY_DIR = resolve(__dirname, '../../../../.ai/llm-config/registry')
+
+function createTempRegistry(mutator: (files: Map<string, unknown>) => void): Record<string, string> {
+  const dir = mkdtempSync(join(tmpdir(), 'llm-registry-'))
+  const files = new Map<string, unknown>()
+
+  for (const fileName of readdirSync(REGISTRY_DIR)) {
+    if (!fileName.endsWith('.yaml')) continue
+    const filePath = join(REGISTRY_DIR, fileName)
+    files.set(fileName, parseYaml(readFileSync(filePath, 'utf8')))
+  }
+
+  mutator(files)
+
+  for (const [fileName, contents] of files.entries()) {
+    writeFileSync(join(dir, fileName), stringifyYaml(contents), 'utf8')
+  }
+
+  return {
+    providers: join(dir, 'providers.yaml'),
+    modelProfiles: join(dir, 'model_profiles.yaml'),
+    promptTemplates: join(dir, 'prompt_templates.yaml'),
+    credentialPools: join(dir, 'credential_pools.yaml'),
+    routingPolicies: join(dir, 'routing_policies.yaml'),
+    executionPolicies: join(dir, 'execution_policies.yaml'),
+    adapterBindings: join(dir, 'adapter_bindings.yaml'),
+    providerAdmission: join(dir, 'provider_admission.yaml'),
+    modelPricing: join(dir, 'model_pricing.yaml'),
+    modelCapabilities: join(dir, 'model_capabilities.yaml'),
+  }
+}
+
+function expectRegistryIssue(
+  run: () => unknown,
+  options: { message: RegExp; issuePath: string; issueMessage: RegExp },
+): void {
+  try {
+    run()
+    expect.unreachable('Expected registry loading to fail')
+  } catch (error) {
+    expect(error).toBeInstanceOf(LLMGatewayContractError)
+    const contractError = error as LLMGatewayContractError
+    expect(contractError.code).toBe('RegistryResolutionError')
+    expect(contractError.message).toMatch(options.message)
+
+    const issues = contractError.details?.issues
+    expect(Array.isArray(issues)).toBe(true)
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: options.issuePath,
+          message: expect.stringMatching(options.issueMessage),
+        }),
+      ]),
+    )
+  }
+}
 
 describe('LLM registry contract', () => {
   it('loads the full llm registry bundle under strict runtime validation', () => {
@@ -27,6 +92,51 @@ describe('LLM registry contract', () => {
     expect(bundle.routingPolicies.policies.length).toBeGreaterThan(0)
     expect(bundle.executionPolicies.policies.length).toBeGreaterThan(0)
     expect(bundle.providerAdmission.pools.length).toBeGreaterThan(0)
+  })
+
+  it('rejects adapter bindings that declare unimplemented request shapes', () => {
+    const paths = createTempRegistry((files) => {
+      const adapterBindings = files.get('adapter_bindings.yaml') as {
+        bindings: Array<Record<string, unknown>>
+      }
+      adapterBindings.bindings[0]!.requestShape = 'responses'
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid adapter bindings registry/,
+      issuePath: 'bindings.0.requestShape',
+      issueMessage: /expected "chat"/,
+    })
+  })
+
+  it('rejects adapter bindings that declare unimplemented transports', () => {
+    const paths = createTempRegistry((files) => {
+      const adapterBindings = files.get('adapter_bindings.yaml') as {
+        bindings: Array<Record<string, unknown>>
+      }
+      adapterBindings.bindings[0]!.transport = 'responses_api'
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid adapter bindings registry/,
+      issuePath: 'bindings.0.transport',
+      issueMessage: /expected "chat_completions"/,
+    })
+  })
+
+  it('rejects providers that declare unimplemented gateway runtimes', () => {
+    const paths = createTempRegistry((files) => {
+      const providers = files.get('providers.yaml') as {
+        providers: Array<Record<string, unknown>>
+      }
+      providers.providers[0]!.gateway_kind = 'native'
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid providers registry/,
+      issuePath: 'providers.0.gateway_kind',
+      issueMessage: /expected "openai_compatible"/,
+    })
   })
 
   it('resolves intent-aware voice-line tier profile refs from the shared voice-line catalog', () => {

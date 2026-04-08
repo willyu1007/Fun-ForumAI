@@ -19,7 +19,10 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js
 import { validate } from '../validation/validate.js'
 import { parseStageSpecV1, resolveStageSpecFromRules } from '../stage/index.js'
 import { applySeasonRotationAtomic, StageTemplateValidationError } from '../stage/stage-template-ops.js'
-import { resolveCommunityInteractionContract } from '../../shared/semantic-taxonomy.js'
+import {
+  deriveDefaultCommunityInteractionContract,
+  resolveCommunityInteractionContract,
+} from '../../shared/semantic-taxonomy.js'
 import {
   patchCommunityStageSpecSchema,
   triggerAftershowSchema,
@@ -247,7 +250,10 @@ stageIncubationRouter.post(
   validate(createCommunityProposalSchema),
   async (req, res) => {
     const interactionContract = req.body.human_participation
-      ? resolveCommunityInteractionContract(req.body.human_participation)
+      ? resolveCommunityInteractionContract(
+        req.body.human_participation,
+        deriveDefaultCommunityInteractionContract(req.body.proposed_community_family),
+      )
       : null
     const detail = await communityGovernanceService.submitProposal({
       submitted_by_user_id: req.user!.userId,

@@ -6,14 +6,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
-import { readAllAuthorBadgeItems } from '@/features/forum/lib/author-identity'
-import type { AuthorBadgeItem } from '@/features/forum/lib/author-identity'
-import { readAuthorBadgeVisual } from '@/features/forum/lib/author-badge-icons'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
+import { readKnownBadgeVisual } from '../../../../shared/badges/catalog'
+import {
+  readAuthorBadgeChips,
+  readProjectionText,
+  readSemanticBadgeItems,
+  type PublicAuthorBadgeListItem,
+} from '@/shared/utils/public-author'
 
 interface AgentHoverCardProps {
   agentId: string
@@ -37,9 +40,9 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
       })
     : undefined
 
-  const hoverBadgeItems = agent ? readAllAuthorBadgeItems(agent) : []
+  const hoverBadgeItems = agent ? readSemanticBadgeItems(agent) : []
   const { identityChip, proofChips } = agent
-    ? readAuthorBadgeChips(agent, { maxProofChips: 2 })
+    ? readAuthorBadgeChips(agent, { maxProofChips: 2, policyId: 'public_agent_header' })
     : { identityChip: null, proofChips: [] }
   const description =
     agent?.social_bio?.public_bio
@@ -178,7 +181,7 @@ function formatAgentJoinDate(createdAt: string | null | undefined) {
   return `${year}年${month}月${day}日`
 }
 
-function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: AuthorBadgeItem[] }) {
+function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: PublicAuthorBadgeListItem[] }) {
   const visibleBadges = badges.slice(0, 6)
   const overflowCount = Math.max(badges.length - visibleBadges.length, 0)
   const badgeSummary = visibleBadges
@@ -192,7 +195,10 @@ function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: Auth
       <div className="flex items-center gap-3">
         <div className="flex w-[58%] items-center pr-1">
           {visibleBadges.map((badge, index) => {
-            const visual = readAuthorBadgeVisual(badge)
+            const visual = readKnownBadgeVisual({
+              label: badge.label,
+              code: badge.code ?? null,
+            })
             return (
               <span
                 key={`${badge.code ?? 'display'}:${badge.label}`}
@@ -204,7 +210,7 @@ function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: Auth
                 )}
               >
                 {visual ? (
-                  <img src={visual.src} alt="" aria-hidden="true" className="size-[88%] rounded-full object-contain" />
+                  <img src={visual.icon_src ?? undefined} alt="" aria-hidden="true" className="size-[88%] rounded-full object-contain" />
                 ) : (
                   <span className="text-[11px] font-medium leading-none text-primary">
                     {badge.label.slice(0, 1).toUpperCase()}

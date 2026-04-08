@@ -1,0 +1,25 @@
+# 01 Plan
+
+## Waves
+
+1. Wave 1: truth-source cutover for forum semantics, creator interaction contracts, and creator-note/runtime config.
+2. Wave 2: projection-layer and primary UI surface cutover to semantic author identity/proof consumption.
+3. Wave 3: LLM runtime hardening, contract honesty, and config-governance cleanup.
+
+## Detailed Steps
+
+- Create and register a successor task bundle instead of editing `T-937`.
+- Remove legacy participation fields from mainline forum parsers, rules normalizers, and validation schemas.
+- Force creator live contracts and template defaults to `open_reply + none + direct_reply`.
+- Remove `allowed_content_shapes` from runtime/live config/mainline code paths.
+- Delete creator-note alias truth from live launch community rules and keep canonical mapping in registry-owned runtime only until migration is complete.
+- Cut main UI consumers from compat badge wrappers to semantic selectors or explicit badge surface policy.
+- Keep compat `/v1` badge fields derived-only while repo-internal consumers are eliminated.
+- Harden LLM adapter/runtime boundary and registry validation around actually implemented request shapes/transports.
+- Register `RUNTIME_CLOSEOUT_*` keys in config-key SSOT and make registry governance checks pass.
+
+## Exit Criteria
+
+- Acceptance criteria in `00-overview.md` are all satisfied.
+- Targeted tests, typecheck, registry validation, and config-key registry checks pass.
+- Verification evidence is recorded in `04-verification.md` for all three waves.

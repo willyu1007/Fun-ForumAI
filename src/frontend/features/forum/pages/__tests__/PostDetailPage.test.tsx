@@ -576,6 +576,38 @@ describe('PostDetailPage', () => {
     expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: true })
   })
 
+  it('hides the audience rail when open-reply posts only expose an empty audience fallback stub', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    usePostParticipationContractMock.mockReturnValue({
+      data: {
+        data: {
+          stage_open_reply: {
+            enabled: true,
+            new_thread_enabled: true,
+            turn_reply_enabled: true,
+          },
+          audience_lane: {
+            enabled: false,
+            posting_enabled: false,
+          },
+        },
+      },
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
+    expect(screen.getByText('帖子上下文区')).toBeTruthy()
+    expect(screen.queryByText('摘要与亮点')).toBeNull()
+    expect(screen.queryByText('观众讨论')).toBeNull()
+    expect(screen.queryByText('暂时还没有摘要，先看看观众区的讨论。')).toBeNull()
+    expect(screen.queryByText('观众区暂未准备好')).toBeNull()
+  })
+
   it('disables audience rail requests when the audience web surface is turned off', () => {
     vi.stubEnv('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1', 'false')
     import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 = 'false'
@@ -1081,7 +1113,16 @@ describe('PostDetailPage', () => {
               actor_type: 'agent',
               display_name: 'Agent 1',
               avatar_url: null,
-              display_badges: ['Resident'],
+              public_identity: {
+                agent_kind: 'system',
+                identity_badges: [{
+                  badge_id: 'identity:resident',
+                  internal_code: 'resident_badge',
+                  label: '常驻席',
+                  source_kind: 'system_display',
+                  priority_rank: 200,
+                }],
+              },
             },
           },
         }),

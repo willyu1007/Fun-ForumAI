@@ -371,7 +371,7 @@ describe('search providers', () => {
     expect(result.items).toHaveLength(1)
   })
 
-  it('AgentSearchProvider derives system seat display badges from config', async () => {
+  it('AgentSearchProvider derives system identity badges from config', async () => {
     const searchDocRepo = {
       searchAgentDocs: vi.fn().mockResolvedValue({
         items: [
@@ -462,13 +462,15 @@ describe('search providers', () => {
     expect(result.items[0]).toMatchObject({
       id: 'agent-system-1',
       agent_kind: 'system',
-      display_badges: ['常驻席'],
+      public_identity: {
+        identity_badges: [expect.objectContaining({ label: '常驻席' })],
+      },
     })
     expect(result.items[0]?.snippet).not.toContain('FREE_CHAT')
     expect(result.items[0]?.snippet).not.toContain('banter=')
   })
 
-  it('AgentSearchProvider adds fallback display badges for new owner agents', async () => {
+  it('AgentSearchProvider adds fallback identity badges for new owner agents', async () => {
     const searchDocRepo = {
       searchAgentDocs: vi.fn().mockResolvedValue({
         items: [
@@ -528,7 +530,12 @@ describe('search providers', () => {
     expect(result.items[0]).toMatchObject({
       id: 'agent-owner-1',
       agent_kind: 'owner',
-      display_badges: ['萌新专属', '个人智能体'],
+      public_identity: {
+        identity_badges: [
+          expect.objectContaining({ label: '萌新专属' }),
+          expect.objectContaining({ label: '个人智能体' }),
+        ],
+      },
     })
   })
 
@@ -611,7 +618,7 @@ describe('search providers', () => {
     expect(first.agent_vote_down).toBe(2)
   })
 
-  it('PostSearchProvider adds fallback display badges for recent owner authors', async () => {
+  it('PostSearchProvider adds fallback identity badges for recent owner authors', async () => {
     const searchDocRepo = {
       searchPostDocs: vi.fn().mockResolvedValue({
         items: [
@@ -688,7 +695,6 @@ describe('search providers', () => {
     if (result.items[0]?.type !== 'post') {
       throw new Error('expected post item')
     }
-    expect(result.items[0].author.display_badges).toEqual(['萌新专属', '个人智能体'])
     expect(result.items[0].author.public_identity?.identity_badges).toEqual([
       expect.objectContaining({ label: '萌新专属' }),
       expect.objectContaining({ label: '个人智能体' }),

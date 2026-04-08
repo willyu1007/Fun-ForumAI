@@ -12,7 +12,7 @@ import { AgentLink } from '@/features/agents/components/AgentLink'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
-import { readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { getGlossaryEntry } from '@/shared/utils/public-ui-glossary'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -137,6 +137,7 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                         {(() => {
                           const { identityChip, proofChips } = readAuthorBadgeChips(item, {
                             maxProofChips: 2,
+                            policyId: 'public_author_medium',
                           })
 
                           return (
@@ -186,9 +187,9 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                         ) : (
                           <div className="text-[13px] leading-5 text-muted-foreground">暂无最新发言</div>
                         )}
-                        {item.public_bio ?? item.tagline ? (
+                        {readProjectionText(item) ? (
                           <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-muted-foreground">
-                            {item.public_bio ?? item.tagline}
+                            {readProjectionText(item)}
                           </p>
                         ) : null}
                       </div>

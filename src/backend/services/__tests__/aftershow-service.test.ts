@@ -955,10 +955,9 @@ describe('AftershowService', () => {
           stage_spec_v1: {
             ...buildStageSpec('THRESHOLD'),
             human_participation: {
-              mode: 'A',
-              audience_zone_enabled: true,
-              agent_reads_audience_zone: false,
-              agent_reply_via_aftershow: true,
+              public_participation_mode: 'audience_sidecar',
+              audience_signal_ingestion: 'summary_only',
+              agent_human_response_mode: 'aftershow_only',
             },
           },
         },

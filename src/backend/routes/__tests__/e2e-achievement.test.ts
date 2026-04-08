@@ -58,7 +58,7 @@ describe('E2E: Achievement Chronicle V1', () => {
     expect(outsider.status).toBe(403)
   })
 
-  it('public highlights + feed author badges/tagline are backward compatible', async () => {
+  it('public highlights + read/search surfaces expose semantic author presentation', async () => {
     const createRes = await request(app)
       .post('/v1/agents')
       .set('Authorization', `Bearer ${userToken}`)
@@ -78,64 +78,73 @@ describe('E2E: Achievement Chronicle V1', () => {
     const highlightsRes = await waitFor(
       () => request(app).get(`/v1/agents/${agentId}/highlights`),
       {
-        pass: (res) => res.status === 200 && Array.isArray(res.body?.data?.badges) && res.body.data.badges.length > 0,
+        pass: (res) =>
+          res.status === 200
+          && Array.isArray(res.body?.data?.public_proof?.achievement_badges)
+          && res.body.data.public_proof.achievement_badges.length > 0,
       },
     )
     expect(highlightsRes.status).toBe(200)
-    expect(Array.isArray(highlightsRes.body.data.badges)).toBe(true)
-    expect(highlightsRes.body.data).toHaveProperty('public_bio')
+    expect(Array.isArray(highlightsRes.body.data.public_proof.achievement_badges)).toBe(true)
+    expect(highlightsRes.body.data.public_projection).toEqual(expect.any(Object))
 
     const profileRes = await waitFor(
       () => request(app).get(`/v1/agents/${agentId}/profile`),
       {
-        pass: (res) => res.status === 200 && Array.isArray(res.body?.data?.badges) && res.body.data.badges.length > 0,
+        pass: (res) =>
+          res.status === 200
+          && Array.isArray(res.body?.data?.public_proof?.achievement_badges)
+          && res.body.data.public_proof.achievement_badges.length > 0,
       },
     )
-    expect(profileRes.body.data.badges.length).toBeGreaterThan(0)
-    expect(profileRes.body.data.display_badges).toBeUndefined()
+    expect(profileRes.body.data.public_proof.achievement_badges.length).toBeGreaterThan(0)
+    expect(profileRes.body.data.public_identity.identity_badges.length).toBeGreaterThan(0)
 
     const feedRes = await waitFor(
       () => request(app).get('/v1/feed'),
       {
         pass: (res) => {
           if (res.status !== 200 || !Array.isArray(res.body?.data)) return false
-          const target = (res.body.data as Array<{ id: string; author?: { badges?: unknown[]; tagline?: string } }>)
+          const target = (res.body.data as Array<{ id: string; author?: { public_proof?: { achievement_badges?: unknown[] } } }>)
             .find((item) => item.id === postId)
-          return Boolean(target?.author?.badges?.length)
+          return Boolean(target?.author?.public_proof?.achievement_badges?.length)
         },
       },
     )
 
     const feedItem = (feedRes.body.data as Array<{
       id: string
-      author: { badges?: Array<{ code: string }>; tagline?: string }
+      author: {
+        public_projection?: { tagline?: string | null }
+        public_proof?: { achievement_badges?: Array<{ code: string }> }
+      }
     }>).find((item) => item.id === postId)
     expect(feedItem).toBeTruthy()
-    expect(feedItem?.author.badges?.length).toBeGreaterThan(0)
-    expect(typeof feedItem?.author.tagline === 'string' || feedItem?.author.tagline === undefined).toBe(true)
+    expect(feedItem?.author.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
+    expect(typeof feedItem?.author.public_projection?.tagline === 'string' || feedItem?.author.public_projection?.tagline === undefined).toBe(true)
 
     const searchRes = await waitFor(
       () => request(app).get('/v1/search').query({ q: 'Highlights Agent', tab: 'agents' }),
       {
         pass: (res) => {
           if (res.status !== 200 || !Array.isArray(res.body?.data?.items)) return false
-          const target = (res.body.data.items as Array<{ id: string; badges?: unknown[] }>)
+          const target = (res.body.data.items as Array<{ id: string; public_proof?: { achievement_badges?: unknown[] } }>)
             .find((item) => item.id === agentId)
-          return Boolean(target?.badges?.length)
+          return Boolean(target?.public_proof?.achievement_badges?.length)
         },
       },
     )
     const searchItem = (searchRes.body.data.items as Array<{
       id: string
-      badges?: Array<{ code: string }>
+      public_proof?: { achievement_badges?: Array<{ code: string }> }
       persona_seed_label?: string
       home_voice_line_label?: string
-      public_bio?: string | null
+      public_projection?: { public_bio?: string | null }
     }>).find((item) => item.id === agentId)
-    expect(searchItem?.badges?.length).toBeGreaterThan(0)
+    expect(searchItem?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
     expect(typeof searchItem?.persona_seed_label).toBe('string')
     expect(typeof searchItem?.home_voice_line_label).toBe('string')
-    expect(searchItem).toHaveProperty('public_bio')
+    expect(searchItem).toHaveProperty('public_projection')
 
     const myAgentsRes = await waitFor(
       () =>
@@ -145,16 +154,20 @@ describe('E2E: Achievement Chronicle V1', () => {
       {
         pass: (res) => {
           if (res.status !== 200 || !Array.isArray(res.body?.data)) return false
-          const target = (res.body.data as Array<{ id: string; badges?: unknown[] }>)
+          const target = (res.body.data as Array<{ id: string; public_proof?: { achievement_badges?: unknown[] } }>)
             .find((item) => item.id === agentId)
-          return Boolean(target?.badges?.length)
+          return Boolean(target?.public_proof?.achievement_badges?.length)
         },
       },
     )
-    const myAgent = (myAgentsRes.body.data as Array<{ id: string; badges?: Array<{ code: string }>; public_bio?: string | null }>)
+    const myAgent = (myAgentsRes.body.data as Array<{
+      id: string
+      public_proof?: { achievement_badges?: Array<{ code: string }> }
+      public_projection?: { public_bio?: string | null; tagline?: string | null }
+    }>)
       .find((item) => item.id === agentId)
-    expect(myAgent?.badges?.length).toBeGreaterThan(0)
-    expect(myAgent).toHaveProperty('public_bio')
+    expect(myAgent?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
+    expect(myAgent).toHaveProperty('public_projection')
 
     const highlightsResponse = await request(app).get('/v1/highlights')
     expect(highlightsResponse.status).toBe(200)

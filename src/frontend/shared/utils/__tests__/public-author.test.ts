@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   readAuthorBadgeChips,
-  readDisplayBadgeLabels,
-  readPrimaryIdentityChip,
   readProjectionText,
-  readProofBadgeLabels,
-  selectCompatAuthorBadgeSlots,
+  readSemanticProofBadgeLabels,
   selectAuthorBadgeSlotsByPolicy,
   selectSemanticAuthorBadgeSlots,
 } from '../public-author'
 
 describe('public-author helpers', () => {
-  it('reads identity badges from public_identity.identity_badges before compat display fields', () => {
+  it('reads identity badges from public_identity.identity_badges only', () => {
     const slots = selectSemanticAuthorBadgeSlots({
-      display_badges: ['主持席'],
       public_identity: {
         agent_kind: 'system',
         identity_badges: [
@@ -55,8 +51,6 @@ describe('public-author helpers', () => {
           { code: 'storyline_driver', name: '剧情续航', level: 1 },
         ],
       },
-      display_badges: ['主持席'],
-      badges: [{ code: 'legacy', name: '旧兼容徽章', tier: 1 }],
     })
 
     expect(slots).toEqual({
@@ -75,18 +69,8 @@ describe('public-author helpers', () => {
     })
   })
 
-  it('compat adapter still normalizes legacy display badge aliases', () => {
-    expect(readDisplayBadgeLabels({
-      display_badges: ['Resident', 'Host', 'Resident'],
-    })).toEqual(['常驻席', '主持席'])
-
-    expect(selectCompatAuthorBadgeSlots({
-      display_badges: ['Resident', 'Host'],
-    }).identityBadges.map((badge) => badge.label)).toEqual(['常驻席', '主持席'])
-  })
-
   it('preserves backend proof ordering and only truncates at the caller boundary', () => {
-    const proofBadges = readProofBadgeLabels({
+    const proofBadges = readSemanticProofBadgeLabels({
       public_identity: {
         agent_kind: 'system',
         identity_badges: [
@@ -127,14 +111,17 @@ describe('public-author helpers', () => {
           { code: 'storyline_driver', name: '剧情续航', level: 1 },
         ],
       },
-    }, { maxProofChips: 1 })).toEqual({
+    }, {
+      maxProofChips: 1,
+      policyId: 'public_author_medium',
+    })).toEqual({
       identityChip: '节目位',
       proofChips: ['今日必看'],
     })
   })
 
-  it('keeps legacy wrapper behavior on existing pages until a surface explicitly opts into semantic policy', () => {
-    expect(readPrimaryIdentityChip({
+  it('returns semantic identity/proof chips when a surface opts into a public policy', () => {
+    expect(readAuthorBadgeChips({
       public_identity: {
         agent_kind: 'owner',
         identity_badges: [
@@ -150,7 +137,13 @@ describe('public-author helpers', () => {
       public_proof: {
         achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
       },
-    })).toBeNull()
+    }, {
+      maxProofChips: 1,
+      policyId: 'public_author_medium',
+    })).toEqual({
+      identityChip: '个人智能体',
+      proofChips: ['今日必看'],
+    })
   })
 
   it('applies frozen surface policy limits without re-sorting semantic badges', () => {
@@ -186,16 +179,13 @@ describe('public-author helpers', () => {
     expect(slots.proofBadges.map((badge) => badge.label)).toEqual(['今日必看'])
   })
 
-  it('falls back to compat projection text only when semantic projection is absent', () => {
+  it('reads projection text from semantic projection only', () => {
     expect(readProjectionText({
       public_projection: {
         public_bio: '公开投影优先',
       },
-      public_bio: '兼容文案',
     })).toBe('公开投影优先')
 
-    expect(readProjectionText({
-      public_bio: '兼容文案',
-    })).toBe('兼容文案')
+    expect(readProjectionText({})).toBeNull()
   })
 })

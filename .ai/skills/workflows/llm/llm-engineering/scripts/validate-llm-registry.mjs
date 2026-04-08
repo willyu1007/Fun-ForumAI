@@ -58,9 +58,10 @@ const VALID_COMPARE_DIMENSIONS = new Set([
   'callback_fidelity',
 ])
 const VALID_CORE_FAMILIES = new Set(['hearth', 'blade', 'spark', 'sage', 'anchor'])
-const VALID_ADAPTER_REQUEST_SHAPES = new Set(['chat', 'responses', 'messages', 'native_multimodal'])
+const VALID_ADAPTER_REQUEST_SHAPES = new Set(['chat'])
 const VALID_ADAPTER_TRANSPORTS = new Set(['chat_completions'])
 const VALID_ADAPTER_AUTH_STRATEGIES = new Set(['bearer_api_key', 'x_api_key', 'custom'])
+const VALID_PROVIDER_GATEWAY_KINDS = new Set(['openai_compatible'])
 const VALID_OVERRIDE_FIELDS = new Set([
   'temperature',
   'maxTokens',
@@ -225,7 +226,7 @@ function validateProviders(doc) {
     requireNonEmptyString(provider.display_name, `providers.${providerId}.display_name`)
     requireOneOf(
       provider.gateway_kind,
-      ['openai_compatible', 'native'],
+      Array.from(VALID_PROVIDER_GATEWAY_KINDS),
       `providers.${providerId}.gateway_kind`,
     )
 
@@ -569,7 +570,7 @@ function validateExecutionPolicies(doc, profilesDoc) {
 function validateAdapterBindings(doc, providersDoc) {
   assertArray(doc.bindings, 'adapter_bindings.yaml bindings')
   const adapterIds = []
-  const providerGatewayKinds = new Set(['openai_compatible', 'native'])
+  const providerGatewayKinds = VALID_PROVIDER_GATEWAY_KINDS
 
   for (const binding of doc.bindings) {
     assertObject(binding, 'adapter binding entry')

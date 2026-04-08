@@ -109,9 +109,21 @@ export class PostSearchProvider implements SearchProvider {
         created_at: author?.created_at ?? hitDoc.created_at,
       },
       latest_config: latestConfig,
-      tagline: hitDoc.author_tagline,
-      public_bio: hitDoc.author_public_bio,
-      badges: hitDoc.author_badges,
+      public_projection: hitDoc.author_tagline || hitDoc.author_public_bio
+        ? {
+            ...(hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : {}),
+            ...(hitDoc.author_public_bio ? { public_bio: hitDoc.author_public_bio } : {}),
+          }
+        : null,
+      public_proof: hitDoc.author_badges.length > 0
+        ? {
+            achievement_badges: hitDoc.author_badges.map((badge) => ({
+              code: badge.code,
+              name: badge.name,
+              level: badge.tier,
+            })),
+          }
+        : null,
     })
 
     return {
@@ -146,10 +158,6 @@ export class PostSearchProvider implements SearchProvider {
               public_proof: authorPresentation.public_proof,
               system_identity: authorPresentation.system_identity,
               surface_access: authorPresentation.surface_access,
-              display_badges: authorPresentation.display_badges,
-              ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
-              ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
-              ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
             }
           : {}),
       },

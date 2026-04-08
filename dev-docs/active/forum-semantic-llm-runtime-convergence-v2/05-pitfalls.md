@@ -1,0 +1,42 @@
+# 05 Pitfalls
+
+## Active notes
+
+- `creator_note_runtime` could not be made globally strict without breaking unrelated communities that still carry extra runtime metadata such as `observer_mode`.
+  - Resolution: keep the object permissive, but explicitly reject legacy creator-note alias keys at live-rule validation boundaries.
+- Grepping for generic `mode` created false positives from unrelated domains such as aftershow triggering and media rollout controllers.
+  - Resolution: acceptance checks use only the actual legacy participation keys, not the generic token `mode`.
+- Zod v4 error text differs from older enum wording.
+  - Resolution: registry negative tests assert `RegistryResolutionError.details.issues` with exact field paths instead of brittle message-only regexes.
+- `creator_note_feed_bias` in feed-distribution config is not the removed legacy `feed_bias:` alias key.
+  - Resolution: legacy-key checks use anchored YAML key patterns to avoid misclassifying canonical feed-distribution fields.
+- Static launch rules being correct does not prove seeded runtime behavior is correct.
+  - Symptom: creator communities looked correct in `launch_community_rules.v1.yaml`, but real kind + curl still showed `audience_sidecar + summary_only + aftershow_only`, blocked `/public-threads`, and allowed `/audience-messages`.
+  - Root cause: `src/backend/dev/dev-seed-fixtures.ts` reapplied a full default `stage_spec_v1`, which silently replaced creator `human_participation`.
+  - Fix/workaround: preserve the existing resolved stage spec and relax only the dev-seed gate fields.
+  - Prevention: every semantic cutover that touches launch rules must be retested through `/v1/dev/seed` or local kind, not just static config review.
+- Empty fallback payloads can create UI semantic drift.
+  - Symptom: creator post detail still rendered a disabled `观众讨论` rail even after creator participation became main-thread-only.
+  - Root cause: `PostDetailPage` treated the mere presence of fallback aftershow/audience fields as enough to show the rail, even when the snapshot contained no meaningful content and `audience_lane.enabled=false`.
+  - Fix/workaround: gate the rail on meaningful aftershow data or an actually enabled audience lane with fetched thread data.
+  - Prevention: UI visibility conditions should key off contract state plus meaningful data, not empty stubs.
+- Semantic helper layers must not keep compat fallbacks after the main surfaces are cut over.
+  - Symptom: `public-author.ts` still exported semantic-facing helpers, but some of those helpers silently fell back to `display_badges` / `badges` / `tagline` / `public_bio`.
+  - Root cause: the migration removed most repo-internal compat consumers, but left the shared helper layer straddling both models.
+  - Fix/workaround: collapse the shared helper layer to semantic-only reads and keep compat bridges only at the API payload edge.
+  - Prevention: once primary UI surfaces are migrated, remove compat fallback logic from shared selectors instead of merely “discouraging” its use in comments.
+- Tests can preserve deleted compatibility contracts if fixtures are not migrated with the code.
+  - Symptom: Search and Shell UI tests failed immediately after semantic helper cleanup because their fixtures still populated only `tagline` / `public_bio`.
+  - Root cause: fixture data had drifted behind the active read contract and was still encoding the old compat path.
+  - Fix/workaround: rewrite fixtures to supply canonical `public_projection` payloads.
+  - Prevention: when a shared selector or read-model contract is tightened, audit test fixtures for legacy fields in the same change; otherwise the suite will either fail noisily or, worse, keep asserting the wrong contract.
+- Route-local bridge layers can hide missing semantic fields and prolong dual-track development.
+  - Symptom: `/v1/me/agents` still looked “enriched”, but the route was only grafting `badges` / `tagline` / `public_bio` through `agent-badge-view.ts`, so owner surfaces never truly received semantic `public_projection` / `public_proof`.
+  - Root cause: the cleanup removed most primary compat consumers but left one route-scoped enrichment helper outside the shared migration checklist.
+  - Fix/workaround: delete the bridge file, enrich the route directly with `buildAgentPublicAuthorPresentation()`, and assert semantic fields in route/e2e tests.
+  - Prevention: when a surface is marked migrated, grep for route-local enrichers and decorators as well as shared helpers; otherwise hidden per-route bridges can keep the old contract alive.
+- Helper signatures can preserve conceptual drift even after runtime truth is canonical.
+  - Symptom: `buildAgentPublicAuthorPresentation()` still accepted flat `tagline` / `public_bio` / `badges` inputs, which made canonical call sites look like they were still feeding a compat contract.
+  - Root cause: the builder evolved incrementally during migration and its call signature was never tightened after downstream consumers were updated.
+  - Fix/workaround: change the helper to accept only `public_projection` / `public_proof`, then update every active caller in the same pass.
+  - Prevention: once canonical fields exist, tighten helper signatures promptly; otherwise names alone will keep inviting accidental backslides into pseudo-compat assembly.

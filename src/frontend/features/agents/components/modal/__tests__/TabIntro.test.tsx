@@ -201,8 +201,10 @@ describe('TabIntro owner social bio', () => {
           home_voice_line_label: 'Qwen Social v1',
           home_voice_line_id: 'qwen-social-v1',
           is_followed: false,
-          tagline: '旧 tag',
-          public_bio: '公域备选',
+          public_projection: {
+            tagline: '旧 tag',
+            public_bio: '公域备选',
+          },
           personality_narrative: {
             summary: '深层人格说明',
             bullets: ['更能把长线话题接住。'],
@@ -287,6 +289,13 @@ describe('TabIntro owner social bio', () => {
           agent_kind: 'system',
           public_identity: {
             agent_kind: 'system',
+            identity_badges: [{
+              badge_id: 'identity:resident',
+              internal_code: 'resident_badge',
+              label: '常驻席',
+              source_kind: 'system_display',
+              priority_rank: 200,
+            }],
             identity_visibility_role_id: 'resident',
           },
           persona_seed_label: '学者型',

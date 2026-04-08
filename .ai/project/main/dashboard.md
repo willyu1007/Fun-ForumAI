@@ -8,13 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 183 (planned: 1, in-progress: 16, blocked: 0, done: 9, archived: 157)
+- Tasks: 184 (planned: 1, in-progress: 17, blocked: 0, done: 9, archived: 157)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
+| T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-080 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
 | T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
 | T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
-| T-920 backend-typecheck-baseline-repair-v1 | archived | F-000 | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

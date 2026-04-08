@@ -65,11 +65,7 @@ export type RoutingOrderStep =
   | 'headroom'
   | 'health'
 
-export type AdapterRequestShape =
-  | 'chat'
-  | 'responses'
-  | 'messages'
-  | 'native_multimodal'
+export type AdapterRequestShape = 'chat'
 
 export type AdapterTransport = 'chat_completions'
 
@@ -87,7 +83,7 @@ export type LLMGatewayOverrideField =
 export interface ProviderRegistryEntry {
   provider_id: string
   display_name: string
-  gateway_kind: 'openai_compatible' | 'native'
+  gateway_kind: 'openai_compatible'
   auth: {
     type: 'api_key'
     source: 'credential_pool'

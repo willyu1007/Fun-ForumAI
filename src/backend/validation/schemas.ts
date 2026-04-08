@@ -122,13 +122,9 @@ const communitySlugSchema = z
 
 const humanParticipationInputSchema = z
   .object({
-    mode: z.enum(['A', 'B', 'C']).optional(),
     public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
     audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
     agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
-    audience_zone_enabled: z.boolean().optional(),
-    agent_reads_audience_zone: z.boolean().optional(),
-    agent_reply_via_aftershow: z.boolean().optional(),
   })
   .strict()
 
@@ -343,7 +339,7 @@ export const patchCommunityStageSpecSchema = z
               .object({
                 selection_enabled: z.boolean().optional(),
                 envelope_enabled: z.boolean().optional(),
-                fallback_to_legacy: z.boolean().optional(),
+                fallback_to_baseline: z.boolean().optional(),
               })
               .strict()
               .optional(),
@@ -352,17 +348,7 @@ export const patchCommunityStageSpecSchema = z
           .optional(),
       })
       .optional(),
-    human_participation: z
-      .object({
-        mode: z.enum(['A', 'B', 'C']).optional(),
-        public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
-        audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
-        agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
-        audience_zone_enabled: z.boolean().optional(),
-        agent_reads_audience_zone: z.boolean().optional(),
-        agent_reply_via_aftershow: z.boolean().optional(),
-      })
-      .optional(),
+    human_participation: humanParticipationInputSchema.optional(),
     incubation: z
       .object({
         enabled: z.boolean().optional(),
@@ -548,7 +534,7 @@ export const updateOrchestrationPolicyOverrideSchema = z
       .object({
         selection_enabled: z.boolean().optional(),
         envelope_enabled: z.boolean().optional(),
-        fallback_to_legacy: z.boolean().optional(),
+        fallback_to_baseline: z.boolean().optional(),
       })
       .strict()
       .optional(),

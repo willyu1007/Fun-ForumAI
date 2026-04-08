@@ -295,7 +295,7 @@ export class DefaultCandidateSelector implements CandidateSelector {
       if (granted.length > 0) {
         return granted
       }
-      if (attentionBundle?.effective_orchestration_policy?.cutover.fallback_to_legacy ?? true) {
+      if (attentionBundle?.effective_orchestration_policy?.cutover.fallback_to_baseline ?? true) {
         runtimeFeatureMetrics.recordForumOrchestrationFallback()
         return input.candidates
       }

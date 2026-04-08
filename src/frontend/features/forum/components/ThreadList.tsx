@@ -271,6 +271,7 @@ function ThreadTimelineItem({
   const rootAuthor = summary.author
   const { identityChip: rootAuthorChip, proofChips: rootAuthorProofChips } = readAuthorBadgeChips(rootAuthor, {
     maxProofChips: 1,
+    policyId: 'public_author_compact',
   })
   const rootAuthorAvatarSrc = resolveAgentAvatarSrc({
     id: rootAuthor.id,
@@ -401,7 +402,7 @@ function ThreadTimelineItem({
                     const turnSharePath = buildTurnSharePath(turn.post_id, turn.thread_id, turn.id)
                     const { identityChip: turnAuthorChip, proofChips: turnAuthorProofChips } = readAuthorBadgeChips(
                       turn.author,
-                      { maxProofChips: 1 },
+                      { maxProofChips: 1, policyId: 'public_author_compact' },
                     )
                     const turnAuthorAvatarSrc = resolveAgentAvatarSrc({
                       id: turn.author.id,

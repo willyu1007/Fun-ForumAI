@@ -197,7 +197,7 @@ describe('ForumReadService', () => {
       expect(result.items[0].community_name).toBe('c1')
     })
 
-    it('adds default owner display badges for newly created agents when no public badges exist', async () => {
+    it('adds default owner identity badges for newly created agents when no public proof exists', async () => {
       const agent = ctx.agentRepo.create({
         owner_id: 'owner-1',
         display_name: 'Fresh Agent',
@@ -214,15 +214,14 @@ describe('ForumReadService', () => {
       const result = await ctx.svc.getFeed({})
       const item = result.items.find((entry) => entry.id === post.id)
 
-      expect(item?.author.display_badges).toEqual(['萌新专属', '个人智能体'])
       expect(item?.author.public_identity?.identity_badges).toEqual([
         expect.objectContaining({ label: '萌新专属' }),
         expect.objectContaining({ label: '个人智能体' }),
       ])
-      expect(item?.author.badges).toBeUndefined()
+      expect(item?.author.public_proof).toBeNull()
     })
 
-    it('keeps real public badges as the primary author badge source', async () => {
+    it('keeps real public proof badges as the primary author proof source', async () => {
       const originalFlag = config.features.achievementPublicHighlights
       ;(config.features as Record<string, unknown>).achievementPublicHighlights = true
 
@@ -243,8 +242,11 @@ describe('ForumReadService', () => {
         agentConfigRepo: localCtx.agentConfigRepo,
         riskRepo: localCtx.riskRepo,
         achievementChronicleService: {
-          getFeedAuthorIdentity: vi.fn(async () => ({
-            badges: [{ code: 'spotlight', name: '聚光时刻', tier: 2 }],
+          getFeedAuthorPresentation: vi.fn(async () => ({
+            public_projection: null,
+            public_proof: {
+              achievement_badges: [{ code: 'spotlight', name: '聚光时刻', level: 2 }],
+            },
           })),
         } as never,
       })
@@ -265,12 +267,13 @@ describe('ForumReadService', () => {
       const result = await localCtx.svc.getFeed({})
       const item = result.items.find((entry) => entry.id === post.id)
 
-      expect(item?.author.badges).toEqual([{ code: 'spotlight', name: '聚光时刻', tier: 2 }])
+      expect(item?.author.public_proof?.achievement_badges).toEqual([
+        { code: 'spotlight', name: '聚光时刻', level: 2 },
+      ])
       expect(item?.author.public_identity?.identity_badges).toEqual([
         expect.objectContaining({ label: '萌新专属' }),
         expect.objectContaining({ label: '个人智能体' }),
       ])
-      expect(item?.author.display_badges).toBeUndefined()
       } finally {
         ;(config.features as Record<string, unknown>).achievementPublicHighlights = originalFlag
       }
@@ -1345,7 +1348,7 @@ describe('ForumReadService', () => {
       )
     })
 
-    it('falls back to legacy compare output when the post policy disables envelope cutover', async () => {
+    it('falls back to baseline compare output when the post policy disables envelope cutover', async () => {
       const deps = attachProjectionDeps(ctx)
       const community = ctx.communityRepo.create({
         name: 'Runtime Preview Rollback',
@@ -1357,7 +1360,7 @@ describe('ForumReadService', () => {
                 cutover: {
                   selection_enabled: true,
                   envelope_enabled: true,
-                  fallback_to_legacy: true,
+                  fallback_to_baseline: true,
                 },
               },
             },
@@ -1370,7 +1373,7 @@ describe('ForumReadService', () => {
         community_id: community.id,
         author_agent_id: rootAuthor.id,
         title: 'Rollback target',
-        body: 'Envelope-disabled preview should keep only legacy compare output.',
+        body: 'Envelope-disabled preview should keep only baseline compare output.',
         visibility: 'PUBLIC',
         state: 'APPROVED',
       })

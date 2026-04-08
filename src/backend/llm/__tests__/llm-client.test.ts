@@ -66,4 +66,29 @@ describe('LlmClient', () => {
     expect(response.provider_id).toBe('moonshot-openai')
     expect(response.model).toBe('kimi-k2-0905-preview')
   })
+
+  it('rejects provider runtimes that are not implemented by the client', async () => {
+    const client = new LlmClient({
+      defaults: {
+        max_tokens: 512,
+        temperature: 0.7,
+        timeout_ms: 30_000,
+        max_retries: 0,
+      },
+    })
+
+    await expect(client.chat({
+      messages: [{ role: 'user', content: 'hello' }],
+      model: 'kimi-k2-0905-preview',
+      adapter_id: 'openai-chat-completions-v1',
+      provider: {
+        provider_id: 'future-native-provider',
+        gateway_kind: 'native' as never,
+        base_url: 'https://example.invalid/v1',
+        api_key: 'secret',
+        timeout_ms: 30_000,
+        max_retries: 0,
+      },
+    })).rejects.toThrow('Unsupported LLM provider runtime')
+  })
 })

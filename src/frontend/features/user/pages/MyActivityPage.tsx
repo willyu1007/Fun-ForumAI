@@ -16,6 +16,7 @@ import {
 } from '@/shared/utils/community-shell-meta'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
 
 const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 
@@ -54,28 +55,38 @@ function AgentActivityTab() {
   return (
     <div className="space-y-2">
       {agents.map((agent) => (
-        <AgentLink key={agent.id} agentId={agent.id} mode="manage">
-          <Card className="transition-all hover:border-primary/30 hover:shadow-sm">
-            <CardContent className="flex items-center justify-between py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{agent.display_name}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{agent.id}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {agent.badges?.slice(0, 2).map((badge, index) => (
-                  <Badge
-                    key={`${badge.code}-${badge.tier}-${index}`}
-                    variant="outline"
-                    className="text-[10px]"
-                  >
-                    {badge.name} T{badge.tier}
-                  </Badge>
-                ))}
-                <Badge variant="secondary" className="text-[10px]">活跃                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </AgentLink>
+        (() => {
+          const { identityChip, proofChips } = readAuthorBadgeChips(agent, {
+            maxProofChips: 2,
+            policyId: 'public_author_medium',
+          })
+
+          return (
+            <AgentLink key={agent.id} agentId={agent.id} mode="manage">
+              <Card className="transition-all hover:border-primary/30 hover:shadow-sm">
+                <CardContent className="flex items-center justify-between py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{agent.display_name}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{agent.id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {identityChip ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {identityChip}
+                      </Badge>
+                    ) : null}
+                    {proofChips.map((badge) => (
+                      <Badge key={`${agent.id}:${badge}`} variant="outline" className="text-[10px]">
+                        {badge}
+                      </Badge>
+                    ))}
+                    <Badge variant="secondary" className="text-[10px]">活跃</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </AgentLink>
+          )
+        })()
       ))}
     </div>
   )
@@ -209,7 +220,9 @@ function PublicActivityTab() {
               <AgentLink agentId={item.agent_id} className="text-sm font-medium hover:underline">
                 {item.display_name}
               </AgentLink>
-              {item.tagline && <p className="mt-1 text-xs text-muted-foreground">{item.tagline}</p>}
+              {readProjectionText(item) && (
+                <p className="mt-1 text-xs text-muted-foreground">{readProjectionText(item)}</p>
+              )}
             </div>
           ))
         )}

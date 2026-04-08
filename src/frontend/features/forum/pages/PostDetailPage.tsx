@@ -127,6 +127,16 @@ function toAftershowContentV1(
   }
 }
 
+function hasMeaningfulAftershowSnapshot(snapshot: AftershowSnapshot | null | undefined) {
+  if (!snapshot) return false
+  return Boolean(
+    snapshot.aftershow_summary
+    || snapshot.relation_teaser
+    || snapshot.aftershow_callouts.length > 0
+    || ((snapshot.audience_thread_meta?.message_count ?? 0) > 0),
+  )
+}
+
 function readIsDesktopLayout() {
   if (typeof window === 'undefined') return true
   return window.innerWidth >= DESKTOP_BREAKPOINT
@@ -189,11 +199,9 @@ export function PostDetailPage() {
   const postPayload = postData?.data ?? null
   const authorAgentId = postPayload?.author.id ?? ''
   const authorProfile = useAgentProfile(authorAgentId)
-  const hasAudiencePayloadFallback =
-    postPayload !== null &&
-    (Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_summary') ||
-      Object.prototype.hasOwnProperty.call(postPayload, 'aftershow_callouts') ||
-      Object.prototype.hasOwnProperty.call(postPayload, 'audience_thread_meta'))
+  const { data: participationContractData } = usePostParticipationContract(postId ?? '', {
+    enabled: postPayload !== null,
+  })
   const focusedThreadIdFromQuery = searchParams.get('threadId')
   const focusedTurnIdFromQuery = searchParams.get('turnId')
   const { data: forestData, isLoading: forestLoading } = useDiscussionForest(
@@ -209,11 +217,11 @@ export function PostDetailPage() {
     { limit: 100 },
     { enabled: stageView === 'timeline' },
   )
-  const { data: participationContractData } = usePostParticipationContract(postId ?? '', {
-    enabled: postPayload !== null,
-  })
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
-    enabled: postPayload !== null && audienceZoneEnabled,
+    enabled:
+      postPayload !== null
+      && audienceZoneEnabled
+      && Boolean(participationContractData?.data?.audience_lane?.enabled),
   })
   const { data: aftershowData } = useAftershow(
     postId ?? '',
@@ -239,39 +247,17 @@ export function PostDetailPage() {
   const previousStageViewRef = useRef<'forest' | 'timeline'>('forest')
   const { newThreadTurnCounts, clearNewThreadTurns } = useSseNewCounts()
   const newThreadTurnCount = (postId && newThreadTurnCounts[postId]) || 0
-  const audienceThreadResult = audienceZoneEnabled ? audienceThreadData?.data : null
-  const audienceThread = audienceZoneEnabled ? audienceThreadData?.data ?? null : null
+  const audienceThread =
+    audienceZoneEnabled && Boolean(participationContractData?.data?.audience_lane?.enabled)
+      ? audienceThreadData?.data ?? null
+      : null
   const audienceThreadMessages = audienceThread?.messages
   const asideSeatsPayload = asideSeatsEnabled ? asideSeatsData?.data ?? null : null
   const asideSeatItems = asideSeatsPayload?.seats
-  const postAudienceFallback = useMemo<AftershowSnapshot | null>(() => {
-    if (!audienceAftershowWebEnabled || !postPayload || !hasAudiencePayloadFallback) return null
-    return {
-      post_id: postPayload.id,
-      aftershow_summary: postPayload.aftershow_summary ?? null,
-      aftershow_callouts: postPayload.aftershow_callouts ?? [],
-      audience_thread_meta: postPayload.audience_thread_meta ?? null,
-      surface_kind: postPayload.surface_kind,
-      card_mode: postPayload.card_mode,
-      thumbnail_policy: postPayload.thumbnail_policy,
-      hero_eligible: postPayload.hero_eligible,
-      storyline_id: postPayload.storyline_id,
-      storyline_title: postPayload.storyline_title,
-      storyline_state: postPayload.storyline_state,
-      storyline_hook: postPayload.storyline_hook,
-      content_kind: postPayload.content_kind === 'aftershow_recap' ? 'aftershow_recap' : undefined,
-      editorial_shelf_id: postPayload.editorial_shelf_id,
-      aftershow_export_bias: postPayload.aftershow_export_bias,
-      note_template_id: postPayload.note_template_id,
-      cover_mode: postPayload.cover_mode,
-      relation_teaser: postPayload.relation_teaser ?? null,
-    }
-  }, [audienceAftershowWebEnabled, hasAudiencePayloadFallback, postPayload])
   const aftershow = useMemo(() => {
     if (!audienceAftershowWebEnabled) return null
-    if (aftershowData?.data) return aftershowData.data
-    return postAudienceFallback
-  }, [aftershowData?.data, audienceAftershowWebEnabled, postAudienceFallback])
+    return hasMeaningfulAftershowSnapshot(aftershowData?.data) ? aftershowData.data : null
+  }, [aftershowData?.data, audienceAftershowWebEnabled])
   const audienceMessages = useMemo(() => {
     return audienceThreadMessages ?? []
   }, [audienceThreadMessages])
@@ -507,10 +493,9 @@ export function PostDetailPage() {
   const topicSignals = readTopicSignals(post.topic_signals)
   const topicTransparencyCopy = describeTopicSignals(topicSignals, post.distribution_state)
   const hasAudienceRail =
-    audienceAftershowWebEnabled && Boolean(audienceThread || aftershow || asideSeatsPayload)
+    audienceAftershowWebEnabled && Boolean(audienceThread || aftershow || asideSeats.length > 0)
   const canUseAudienceComposer =
     audienceZoneEnabled
-    && Boolean(audienceThreadResult)
     && Boolean(audienceLanePolicy?.posting_enabled)
   const summaryTitle = aftershowContent?.title ?? null
   const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
@@ -518,6 +503,7 @@ export function PostDetailPage() {
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
   const { identityChip: authorIdentityChip, proofChips: authorProofChips } = readAuthorBadgeChips(author, {
     maxProofChips: 2,
+    policyId: 'public_author_medium',
   })
   const distributionNotice =
     post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag

@@ -248,7 +248,9 @@ describe('E2E: Community Config Control Plane', () => {
         patch: {
           stage_spec_v1: {
             human_participation: {
-              agent_reads_audience_zone: true,
+              public_participation_mode: 'audience_sidecar',
+              audience_signal_ingestion: 'direct_read',
+              agent_human_response_mode: 'aftershow_only',
             },
           },
         },
@@ -295,8 +297,12 @@ describe('E2E: Community Config Control Plane', () => {
       .set('Authorization', `Bearer ${adminToken}`)
     expect(configRes.status).toBe(200)
     expect(
-      configRes.body.data.rules_json.stage_spec_v1.human_participation.agent_reads_audience_zone,
-    ).toBe(true)
+      configRes.body.data.rules_json.stage_spec_v1.human_participation,
+    ).toEqual({
+      public_participation_mode: 'audience_sidecar',
+      audience_signal_ingestion: 'direct_read',
+      agent_human_response_mode: 'aftershow_only',
+    })
   })
 
   it('Control Plane config apply rejects non-admin callers even for validated low-risk patch', async () => {

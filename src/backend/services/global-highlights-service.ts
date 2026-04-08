@@ -37,10 +37,6 @@ interface FeaturedAgentItem {
   public_identity?: AgentPublicIdentity | null
   public_projection?: AgentPublicProjection | null
   public_proof?: AgentPublicProof | null
-  display_badges?: string[]
-  badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
-  tagline: string | null
-  public_bio: string | null
   recent_post?: {
     id: string
     title: string
@@ -115,9 +111,6 @@ export class GlobalHighlightsService {
       limit: 30,
       viewerUserId: input?.viewerUserId,
     })
-    const displayBadgesByAgentId = new Map(
-      hot.items.map((item) => [item.author.id, item.author.display_badges ?? []] as const),
-    )
     const rolloutProfile = config.features.mediaRolloutControllerV1
       ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
         .catch(() => null) ?? null
@@ -130,7 +123,7 @@ export class GlobalHighlightsService {
       .slice(0, 12)
       .map((item) => this.applyHighlightPackaging(item, packagingByPostId))
 
-    const featuredAgents = await this.collectFeaturedAgents(hotThreads, displayBadgesByAgentId)
+    const featuredAgents = await this.collectFeaturedAgents(hotThreads)
     const controversy = this.collectControversy(hot.items, packagingByPostId)
     const wildcardCameos = await this.collectWildcardCameos(featuredAgents)
 
@@ -175,7 +168,6 @@ export class GlobalHighlightsService {
 
   private async collectFeaturedAgents(
     threads: HighlightPostItem[],
-    displayBadgesByAgentId: ReadonlyMap<string, string[]>,
   ): Promise<FeaturedAgentItem[]> {
     const uniqueAgentIds = Array.from(
       new Set(threads.map((item) => item.author.id).filter((id) => id.trim().length > 0)),
@@ -225,12 +217,6 @@ export class GlobalHighlightsService {
               })),
             }
           : null,
-        ...(displayBadgesByAgentId.get(agentId)?.length
-          ? { display_badges: displayBadgesByAgentId.get(agentId) }
-          : {}),
-        badges: highlights.badges,
-        tagline: highlights.tagline,
-        public_bio: bio?.public_bio ?? null,
         recent_post: latestPost ? {
           id: latestPost.id,
           title: latestPost.title,

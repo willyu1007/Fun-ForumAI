@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { readProjectionText } from '@/shared/utils/public-author'
 
 type AgentListSidebarProps = {
   className?: string
@@ -49,7 +50,7 @@ export function AgentListSidebar({ className }: AgentListSidebarProps) {
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm truncate">{agent.display_name}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {agent.public_bio || agent.tagline || '暂无简介'}
+                  {readProjectionText(agent) || '暂无简介'}
                 </div>
               </div>
             </button>

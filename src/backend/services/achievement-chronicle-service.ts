@@ -14,6 +14,7 @@ import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-r
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import { resolveSurfaceMediaAttachmentFromEvidence } from '../media/surface-media-view.js'
 import { resolveAchievementBadgePriorityRank } from '../../shared/badges/catalog.js'
+import type { AgentPublicProjection, AgentPublicProof } from '../../shared/semantic-taxonomy.js'
 
 export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
@@ -298,16 +299,25 @@ export class AchievementChronicleService {
     }
   }
 
-  async getFeedAuthorIdentity(agentId: string): Promise<{ badges?: PublicBadge[]; tagline?: string }> {
+  async getFeedAuthorPresentation(agentId: string): Promise<{
+    public_projection: AgentPublicProjection | null
+    public_proof: AgentPublicProof | null
+  }> {
     const highlights = await this.getPublicHighlights(agentId)
-    const identity: { badges?: PublicBadge[]; tagline?: string } = {}
-    if (highlights.badges.length > 0) {
-      identity.badges = highlights.badges
+    return {
+      public_projection: highlights.tagline
+        ? { tagline: highlights.tagline } satisfies AgentPublicProjection
+        : null,
+      public_proof: highlights.badges.length > 0
+        ? {
+            achievement_badges: highlights.badges.map((badge) => ({
+              code: badge.code,
+              name: badge.name,
+              level: badge.tier,
+            })),
+          } satisfies AgentPublicProof
+        : null,
     }
-    if (highlights.tagline) {
-      identity.tagline = highlights.tagline
-    }
-    return identity
   }
 
   async recordChronicle(input: {

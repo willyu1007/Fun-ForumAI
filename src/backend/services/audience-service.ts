@@ -10,17 +10,18 @@ export interface AudienceServiceDeps {
 export class AudienceService {
   constructor(private readonly deps: AudienceServiceDeps) {}
 
-  async getThreadByPost(postId: string) {
+  async getThreadByPost(postId: string, options?: { create_if_missing?: boolean }) {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
 
-    const thread = await this.deps.audienceRepo.upsertThreadByPost({
-      post_id: post.id,
-      community_id: post.community_id,
-      status: 'OPEN',
-    })
-
-    const messages = await this.deps.audienceRepo.listMessagesByThread(thread.id)
+    const thread = options?.create_if_missing
+      ? await this.deps.audienceRepo.upsertThreadByPost({
+        post_id: post.id,
+        community_id: post.community_id,
+        status: 'OPEN',
+      })
+      : await this.deps.audienceRepo.findThreadByPost(post.id)
+    const messages = thread ? await this.deps.audienceRepo.listMessagesByThread(thread.id) : []
     return {
       thread,
       messages,

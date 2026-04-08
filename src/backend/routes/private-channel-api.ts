@@ -6,10 +6,10 @@ import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
+import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import type { SourceDimension } from '../../shared/owner-life-overview.js'
 import type { Agent } from '../repos/types.js'
-import { attachPublicAgentBadges } from './agent-badge-view.js'
 
 const DEV_SEED_AGENT_KEYS = new Set([
   'dev-user-001::苏格拉底-7B',
@@ -648,12 +648,45 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
     const rawAgents = container.agentRepo.findByOwner(req.user!.userId)
     const agents = collapseManagedSeedAgentDuplicates(rawAgents)
     await Promise.all(agents.map((agent) => container.agentService.getLatestConfigPersisted(agent.id)))
-    const items = await attachPublicAgentBadges(
-      agents.map((agent) => ({
-        id: agent.id,
-        ...buildAgentReadPayload(agent, container.agentService.getLatestConfig(agent.id)),
-      })),
-    )
+    const items = await Promise.all(agents.map(async (agent) => {
+      const latestConfig = container.agentService.getLatestConfig(agent.id)
+      const [highlights, projection] = await Promise.all([
+        container.achievementChronicleService.getPublicHighlights(agent.id).catch(() => ({
+          badges: [],
+          tagline: null,
+          top_chronicle: [],
+        })),
+        container.agentBioRefreshService.getProjection(agent.id, {
+          build_if_missing: true,
+          allow_minor_refresh: false,
+        }).catch(() => null),
+      ])
+      const publicPresentation = buildAgentPublicAuthorPresentation({
+        agent,
+        latest_config: latestConfig,
+        public_projection: highlights.tagline || projection?.public_bio
+          ? {
+              ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
+              ...(projection?.public_bio ? { public_bio: projection.public_bio } : {}),
+            }
+          : null,
+        public_proof: highlights.badges.length > 0
+          ? {
+              achievement_badges: highlights.badges.map((badge) => ({
+                code: badge.code,
+                name: badge.name,
+                level: badge.tier,
+              })),
+            }
+          : null,
+      })
+      return {
+        ...buildAgentReadPayload(agent, latestConfig),
+        public_identity: publicPresentation.public_identity,
+        public_projection: publicPresentation.public_projection,
+        public_proof: publicPresentation.public_proof,
+      }
+    }))
     res.json({
       data: items,
     })

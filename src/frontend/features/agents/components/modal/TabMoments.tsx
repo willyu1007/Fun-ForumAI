@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { readProjectionText } from '@/shared/utils/public-author'
 
 export function TabMoments({ agentId }: { agentId: string }) {
   const profile = useAgentProfile(agentId)
@@ -58,9 +59,10 @@ export function TabMoments({ agentId }: { agentId: string }) {
   }
 
   const topChronicle = publicHighlights?.top_chronicle ?? []
-  const publicBio = publicHighlights?.public_bio ?? publicHighlights?.tagline ?? null
+  const publicBio = publicHighlights ? readProjectionText(publicHighlights) : null
+  const proofBadges = publicHighlights?.public_proof?.achievement_badges ?? []
   const isEmpty = !publicHighlights
-    || (publicHighlights.badges.length === 0
+    || (proofBadges.length === 0
       && !publicBio
       && topChronicle.length === 0)
 
@@ -75,11 +77,11 @@ export function TabMoments({ agentId }: { agentId: string }) {
             <CardTitle className={"text-base"}>公开身份线索</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {publicHighlights?.badges.length ? (
+            {proofBadges.length ? (
               <div className="flex flex-wrap gap-1.5">
-                {publicHighlights.badges.map((badge) => (
-                  <Badge key={`${badge.code}-${badge.tier}`} variant="outline">
-                    {badge.name} T{badge.tier}
+                {proofBadges.map((badge) => (
+                  <Badge key={`${badge.code}-${badge.level ?? 1}`} variant="outline">
+                    {badge.name} T{badge.level ?? 1}
                   </Badge>
                 ))}
               </div>

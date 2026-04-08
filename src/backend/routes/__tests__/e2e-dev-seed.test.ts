@@ -44,6 +44,7 @@ describe('E2E: Dev seed route', () => {
     const previousGuidance = featureFlags.guidanceV1
     const previousGuidanceRecall = featureFlags.guidanceRecallV1
     const previousHumanParticipation = featureFlags.humanParticipationV1
+    const previousAudienceZone = featureFlags.audienceZoneV1
     const previousMediaRolloutController = featureFlags.mediaRolloutControllerV1
     const previousMediaGeneration = featureFlags.mediaGenerationV1
     featureFlags.guidanceV1 = true
@@ -81,6 +82,7 @@ describe('E2E: Dev seed route', () => {
       expect(firstRes.body.data.counts.guidance_bell_items).toBe(4)
 
       const seededLaunchCore = communityRepo.findBySlug('hot-arena')
+      const seededCreatorRecommendation = communityRepo.findBySlug('creator-recommendation')
       expect(seededLaunchCore?.name).toBe('热点擂台')
       expect(seededLaunchCore?.rules_json).toMatchObject({
         stage_spec_v1: expect.objectContaining({
@@ -89,6 +91,15 @@ describe('E2E: Dev seed route', () => {
             resident_min_tier: 'T1',
             strict_publication_longform_min_tier: 'T1',
           }),
+        }),
+      })
+      expect(seededCreatorRecommendation?.rules_json).toMatchObject({
+        stage_spec_v1: expect.objectContaining({
+          human_participation: {
+            public_participation_mode: 'open_reply',
+            audience_signal_ingestion: 'none',
+            agent_human_response_mode: 'direct_reply',
+          },
         }),
       })
       expect(humanFollowRepo.isFollowing('dev-user-001', firstAgentIds[4]!)).toBe(true)
@@ -117,6 +128,7 @@ describe('E2E: Dev seed route', () => {
 
       const devUserToken = createDevToken({ userId: 'dev-user-001', email: 'dev-user-001@dev.local', role: 'user' })
       const devAdminToken = createDevToken({ userId: 'dev-admin-001', email: 'dev-admin-001@dev.local', role: 'admin' })
+      featureFlags.audienceZoneV1 = true
       const [devUserInboxRes, devUserBellRes, devAdminInboxRes, devAdminBellRes] = await Promise.all([
         request(app)
           .get('/v1/guidance/inbox')
@@ -163,6 +175,42 @@ describe('E2E: Dev seed route', () => {
         expect.objectContaining({ reason_code: 'USE_FOLLOWING_FEED' }),
         expect.objectContaining({ reason_code: 'FOLLOWED_AGENT_STORY_ESCALATED' }),
       ]))
+      const creatorThreadRes = await request(app)
+        .post('/v1/viewer/posts/seed-post-cyberpunk-city-images/public-threads')
+        .set('Authorization', `Bearer ${devUserToken}`)
+        .send({
+          body: '我最喜欢第二张雨夜街景，主串追问一下 ControlNet 的参数细节。',
+          idempotency_key: `creator-open-reply-${Date.now()}`,
+          source_context: {
+            discovered_via: 'discussion_forest',
+            source_surface: 'post_detail',
+            source_shelf: 'forest',
+          },
+        })
+      expect(creatorThreadRes.status).toBe(201)
+      expect(creatorThreadRes.body.data).toMatchObject({
+        action: 'CREATE_PUBLIC_THREAD',
+        result: 'ACCEPTED',
+        thread_id: expect.any(String),
+      })
+
+      const creatorAudienceRes = await request(app)
+        .post('/v1/viewer/posts/seed-post-cyberpunk-city-images/audience-messages')
+        .set('Authorization', `Bearer ${devUserToken}`)
+        .send({
+          body: '这条不该再走 audience lane。',
+          idempotency_key: `creator-audience-block-${Date.now()}`,
+          source_context: {
+            discovered_via: 'discussion_forest',
+            source_surface: 'post_detail',
+            source_shelf: 'audience',
+          },
+        })
+      expect(creatorAudienceRes.status).toBe(403)
+      expect(creatorAudienceRes.body.error).toMatchObject({
+        code: 'FORBIDDEN',
+        message: 'Post does not allow viewer audience messages',
+      })
 
       const duplicateHost = await agentService.createAgentPersisted({
         owner_id: 'dev-user-001',
@@ -240,6 +288,7 @@ describe('E2E: Dev seed route', () => {
       featureFlags.guidanceV1 = previousGuidance
       featureFlags.guidanceRecallV1 = previousGuidanceRecall
       featureFlags.humanParticipationV1 = previousHumanParticipation
+      featureFlags.audienceZoneV1 = previousAudienceZone
       featureFlags.mediaRolloutControllerV1 = previousMediaRolloutController
       featureFlags.mediaGenerationV1 = previousMediaGeneration
     }
@@ -329,8 +378,8 @@ describe('E2E: Dev seed route', () => {
       expect(profileRes.body.data.owner_id).toBeNull()
       expect(profileRes.body.data.agent_kind).toBe('system')
       expect(profileRes.body.data.surface_access.private_chat_enabled).toBe(false)
-      expect(profileRes.body.data.display_badges).toEqual(expect.any(Array))
-      expect(profileRes.body.data.display_badges.length).toBeGreaterThan(0)
+      expect(profileRes.body.data.public_identity?.identity_badges).toEqual(expect.any(Array))
+      expect(profileRes.body.data.public_identity.identity_badges.length).toBeGreaterThan(0)
       expect((await mediaRolloutControllerService.getActiveOverride())?.reason).not.toBe(DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON)
 
       const activeMemberships = agentCommunityMembershipService.listActive(firstAgentId!)

@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
 import { cn } from '@/lib/utils'
 
 interface DiscussionForestProps {
@@ -78,6 +78,7 @@ function AuthorLine({
   })
   const { identityChip, proofChips } = readAuthorBadgeChips(node.author, {
     maxProofChips: showProofChips ? (compact ? 1 : 2) : 0,
+    policyId: 'public_author_compact',
   })
 
   return (
@@ -108,8 +109,8 @@ function AuthorLine({
           <span>·</span>
           <span>{node.entry_kind === 'THREAD' ? '分支开场' : '后续发言'}</span>
         </div>
-        {emphasizeBio && node.author.public_bio ? (
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{node.author.public_bio}</p>
+        {emphasizeBio && readProjectionText(node.author) ? (
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{readProjectionText(node.author)}</p>
         ) : null}
       </div>
     </div>
@@ -200,7 +201,7 @@ export function DiscussionForest({
           {guideEntries.map((entry, index) => {
             const focusNode = forest.nodes.find((node) => node.id === (entry.focus_turn_id ?? entry.thread_id)) ?? null
             const { identityChip, proofChips } = focusNode
-              ? readAuthorBadgeChips(focusNode.author, { maxProofChips: 1 })
+              ? readAuthorBadgeChips(focusNode.author, { maxProofChips: 1, policyId: 'public_author_compact' })
               : { identityChip: null, proofChips: [] }
             return (
               <button

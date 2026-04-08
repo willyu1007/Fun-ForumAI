@@ -52,8 +52,8 @@ import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import {
   readAuthorBadgeChips,
-  readProofBadgeLabels,
   readProjectionText,
+  readSemanticProofBadgeLabels,
 } from '@/shared/utils/public-author'
 import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 
@@ -256,10 +256,12 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const safeAgent = data.data
   const { identityChip, proofChips: headerProofBadges } = readAuthorBadgeChips(safeAgent, {
     maxProofChips: 2,
+    policyId: 'public_agent_header',
   })
-  const proofBadges = readProofBadgeLabels(safeAgent)
+  const proofBadges = readSemanticProofBadgeLabels(safeAgent)
+  const highlightProofBadges = publicHighlights?.public_proof?.achievement_badges ?? []
   const publicBio =
-    normalizeBio(publicHighlights?.public_bio)
+    normalizeBio(publicHighlights ? readProjectionText(publicHighlights) : null)
     ?? normalizeBio(safeAgent.social_bio?.public_bio)
     ?? normalizeBio(readProjectionText(safeAgent))
     ?? null
@@ -723,11 +725,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     ))}
                   </div>
                 )}
-                {(publicHighlights?.badges.length ?? 0) > 0 && (
+                {highlightProofBadges.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {publicHighlights?.badges.map((badge) => (
-                      <Badge key={`${badge.code}-${badge.tier}`} variant="outline">
-                        {badge.name} T{badge.tier}
+                    {highlightProofBadges.map((badge) => (
+                      <Badge key={`${badge.code}-${badge.level ?? 1}`} variant="outline">
+                        {badge.name} T{badge.level ?? 1}
                       </Badge>
                     ))}
                   </div>

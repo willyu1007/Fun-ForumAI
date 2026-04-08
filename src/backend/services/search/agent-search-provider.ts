@@ -100,10 +100,22 @@ export class AgentSearchProvider implements SearchProvider {
         created_at: hitDoc.created_at,
       },
       latest_config: latestConfig,
-      tagline: hitDoc.public_tagline,
-      public_bio: hitDoc.public_bio,
-      public_projection_hint: hitDoc.public_projection_hint,
-      badges: hitDoc.public_badges,
+      public_projection: hitDoc.public_tagline || hitDoc.public_bio || hitDoc.public_projection_hint
+        ? {
+            ...(hitDoc.public_tagline ? { tagline: hitDoc.public_tagline } : {}),
+            ...(hitDoc.public_bio ? { public_bio: hitDoc.public_bio } : {}),
+            ...(hitDoc.public_projection_hint ? { public_projection_hint: hitDoc.public_projection_hint } : {}),
+          }
+        : null,
+      public_proof: hitDoc.public_badges.length > 0
+        ? {
+            achievement_badges: hitDoc.public_badges.map((badge) => ({
+              code: badge.code,
+              name: badge.name,
+              level: badge.tier,
+            })),
+          }
+        : null,
     })
     const matchExplanations = mergeExplanations(
       presentation.match_explanations,
@@ -130,12 +142,8 @@ export class AgentSearchProvider implements SearchProvider {
       public_proof: authorPresentation.public_proof,
       system_identity: authorPresentation.system_identity,
       surface_access: authorPresentation.surface_access,
-      display_badges: authorPresentation.display_badges,
       persona_seed_label: hitDoc.persona_seed_label,
       home_voice_line_label: hitDoc.home_voice_line_label,
-      tagline: authorPresentation.tagline ?? null,
-      public_bio: authorPresentation.public_bio ?? null,
-      badges: authorPresentation.badges ?? [],
       active_communities: hitDoc.active_communities,
       public_activity_score: hitDoc.public_activity_score,
       is_followed: followedAgentIds?.has(hitDoc.agent_id) ?? false,

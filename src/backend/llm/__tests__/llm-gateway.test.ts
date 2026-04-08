@@ -356,7 +356,7 @@ function buildBundle(): LlmRegistryBundle {
           adapterId: 'openai-chat-completions-v1',
           requestShape: 'chat',
           transport: 'chat_completions',
-          providerGatewayKinds: ['openai_compatible', 'native'],
+          providerGatewayKinds: ['openai_compatible'],
           supports: {
             chat: true,
             vision: true,

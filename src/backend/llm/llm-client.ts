@@ -69,7 +69,7 @@ export class LlmClient {
       timeout_ms: opts.provider.timeout_ms ?? this.cfg.defaults.timeout_ms,
       max_retries: opts.provider.max_retries ?? this.cfg.defaults.max_retries,
     }
-    const adapterId = opts.adapter_id ?? defaultAdapterIdForProvider(providerConfig)
+    const adapterId = opts.adapter_id
     const adapter = adapterRuntimes.get(adapterId)
     if (!adapter) {
       throw new Error(`Unknown LLM adapter runtime: adapter_id=${adapterId}`)
@@ -108,20 +108,10 @@ export class LlmClient {
   }
 }
 
-function defaultAdapterIdForProvider(config: LlmProviderConfig): string {
-  const providerKey = resolveProviderKey(config)
-  if (providerKey === 'openai_compatible') {
-    return 'openai-chat-completions-v1'
-  }
-  return config.provider_id
-}
-
 function resolveProviderKey(config: LlmProviderConfig): string {
-  if (config.gateway_kind) {
-    return config.gateway_kind
+  const gatewayKind = config.gateway_kind ?? 'openai_compatible'
+  if (gatewayKind !== 'openai_compatible') {
+    throw new Error(`Unsupported LLM provider runtime: gateway_kind=${gatewayKind}`)
   }
-  if (config.provider_id === 'openai-compatible' || config.provider_id.endsWith('-openai')) {
-    return 'openai_compatible'
-  }
-  return config.provider_id
+  return gatewayKind
 }

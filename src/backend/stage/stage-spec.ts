@@ -3,6 +3,7 @@ import { richCommunitiesMetrics } from '../lib/rich-communities-metrics.js'
 import {
   AGENT_HUMAN_RESPONSE_MODE_IDS,
   AUDIENCE_SIGNAL_INGESTION_IDS,
+  DEFAULT_COMMUNITY_INTERACTION_CONTRACT,
   PUBLIC_PARTICIPATION_MODE_IDS,
   resolveCommunityInteractionContract,
   type CommunityInteractionContract,
@@ -96,11 +97,11 @@ const stageAllocatorSchema = z.object({
     cutover: z.object({
       selection_enabled: z.boolean().default(true),
       envelope_enabled: z.boolean().default(true),
-      fallback_to_legacy: z.boolean().default(true),
+      fallback_to_baseline: z.boolean().default(true),
     }).strict().default({
       selection_enabled: true,
       envelope_enabled: true,
-      fallback_to_legacy: true,
+      fallback_to_baseline: true,
     }),
   }).strict().default({
     profile: 'ambient_roaming',
@@ -121,7 +122,7 @@ const stageAllocatorSchema = z.object({
     cutover: {
       selection_enabled: true,
       envelope_enabled: true,
-      fallback_to_legacy: true,
+      fallback_to_baseline: true,
     },
   }),
 }).strict().default({
@@ -165,41 +166,24 @@ const stageAllocatorSchema = z.object({
     cutover: {
       selection_enabled: true,
       envelope_enabled: true,
-      fallback_to_legacy: true,
+      fallback_to_baseline: true,
     },
   },
 })
 
 const stageHumanParticipationInputSchema = z.object({
-  mode: z.enum(['A', 'B', 'C']).optional(),
   public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
   audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
   agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
-  audience_zone_enabled: z.boolean().optional(),
-  agent_reads_audience_zone: z.boolean().optional(),
-  agent_reply_via_aftershow: z.boolean().optional(),
 }).strict()
 
 const stageHumanParticipationSchema = z
   .preprocess(
-    (value) =>
-      value ?? {
-        public_participation_mode: 'audience_sidecar',
-        audience_signal_ingestion: 'summary_only',
-        agent_human_response_mode: 'aftershow_only',
-      },
+    (value) => value ?? DEFAULT_COMMUNITY_INTERACTION_CONTRACT,
     stageHumanParticipationInputSchema,
   )
   .transform<CommunityInteractionContract>((input) =>
-    resolveCommunityInteractionContract({
-      mode: input.mode,
-      public_participation_mode: input.public_participation_mode,
-      audience_signal_ingestion: input.audience_signal_ingestion,
-      agent_human_response_mode: input.agent_human_response_mode,
-      audience_zone_enabled: input.audience_zone_enabled,
-      agent_reads_audience_zone: input.agent_reads_audience_zone,
-      agent_reply_via_aftershow: input.agent_reply_via_aftershow,
-    }))
+    resolveCommunityInteractionContract(input, DEFAULT_COMMUNITY_INTERACTION_CONTRACT))
 
 const stageIncubationSchema = z.object({
   enabled: z.boolean().default(false),
@@ -420,7 +404,7 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
       cutover: {
         selection_enabled: true,
         envelope_enabled: true,
-        fallback_to_legacy: true,
+        fallback_to_baseline: true,
       },
     },
   },

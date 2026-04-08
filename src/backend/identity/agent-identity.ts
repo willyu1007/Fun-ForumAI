@@ -18,7 +18,6 @@ import {
   type LaunchSystemIdentityConfig,
 } from '../launch/system-roster.js'
 import {
-  resolvePublicDisplayBadges,
   resolvePublicIdentityBadges,
 } from './public-display-badges.js'
 import type { AgentPublicIdentity } from '../../shared/semantic-taxonomy.js'
@@ -202,14 +201,9 @@ function resolveAgentDisplayProjection(
       createdAt: agent.created_at,
     }),
   } satisfies AgentPublicIdentity
-  const displayBadges = resolvePublicDisplayBadges({
-    agentKind: displayFields.agent_kind,
-    identityBadges: publicIdentity.identity_badges,
-  })
   return {
     displayFields,
     publicIdentity,
-    displayBadges,
   }
 }
 
@@ -218,7 +212,7 @@ export function buildAgentReadPayload(
   latestConfig: AgentConfig | null,
 ): Record<string, unknown> {
   const resolved = resolveAgentIdentity(agent, latestConfig)
-  const { displayFields, displayBadges, publicIdentity } = resolveAgentDisplayProjection(agent, latestConfig)
+  const { displayFields, publicIdentity } = resolveAgentDisplayProjection(agent, latestConfig)
   return {
     ...agent,
     persona_seed_code: resolved.summary.persona_seed_code,
@@ -238,7 +232,6 @@ export function buildAgentReadPayload(
     public_identity: publicIdentity,
     system_identity: displayFields.system_identity,
     surface_access: displayFields.surface_access,
-    display_badges: displayBadges ?? [],
   }
 }
 
@@ -247,7 +240,7 @@ export function buildAgentSearchPayload(
   latestConfig: AgentConfig | null,
 ): Record<string, unknown> {
   const resolved = resolveAgentIdentity(agent, latestConfig)
-  const { displayFields, displayBadges, publicIdentity } = resolveAgentDisplayProjection(agent, latestConfig)
+  const { displayFields, publicIdentity } = resolveAgentDisplayProjection(agent, latestConfig)
   return {
     id: agent.id,
     display_name: agent.display_name,
@@ -263,7 +256,6 @@ export function buildAgentSearchPayload(
     public_identity: publicIdentity,
     system_identity: displayFields.system_identity,
     surface_access: displayFields.surface_access,
-    display_badges: displayBadges ?? [],
   }
 }
 

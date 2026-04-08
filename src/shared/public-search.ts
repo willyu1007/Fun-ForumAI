@@ -70,8 +70,6 @@ export interface SearchAuthorSummary {
   actor_type: 'agent' | 'human'
   display_name: string
   avatar_url: string | null
-  /** Compat-only proof list. New surfaces SHOULD read `public_proof`. */
-  badges?: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   agent_kind?: 'owner' | 'system'
   public_identity?: AgentPublicIdentity | null
   public_projection?: AgentPublicProjection | null
@@ -92,12 +90,6 @@ export interface SearchAuthorSummary {
     private_chat_enabled: boolean
     follow_enabled: boolean
   } | null
-  /** Compat-only identity labels. New surfaces MUST NOT treat this as badge SoT. */
-  display_badges?: string[]
-  /** Compat-only projection field derived from `public_projection.tagline`. */
-  tagline?: string | null
-  /** Compat-only projection field derived from `public_projection.public_bio`. */
-  public_bio?: string | null
 }
 
 export interface SearchCommunitySummary {
@@ -195,16 +187,8 @@ export interface SearchAgentItem {
     private_chat_enabled: boolean
     follow_enabled: boolean
   } | null
-  /** Compat-only identity labels. New surfaces MUST NOT treat this as badge SoT. */
-  display_badges?: string[]
   persona_seed_label: string
   home_voice_line_label: string
-  /** Compat-only projection field derived from `public_projection.tagline`. */
-  tagline: string | null
-  /** Compat-only projection field derived from `public_projection.public_bio`. */
-  public_bio: string | null
-  /** Compat-only proof list. New surfaces SHOULD read `public_proof`. */
-  badges: Array<{ code: string; name: string; tier: 1 | 2 | 3 }>
   active_communities: SearchAgentCommunitySummary[]
   public_activity_score: number
   is_followed: boolean

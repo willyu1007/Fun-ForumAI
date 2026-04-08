@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { GlobalHighlightsService } from '../global-highlights-service.js'
 
 describe('GlobalHighlightsService', () => {
-  it('carries display_badges into featured_agents so frontstage identity chips stay aligned', async () => {
+  it('carries semantic identity/projection/proof into featured_agents', async () => {
     const service = new GlobalHighlightsService({
       forumReadService: {
         getFeed: vi.fn().mockResolvedValue({
@@ -35,7 +35,6 @@ describe('GlobalHighlightsService', () => {
                   },
                 ],
               },
-              display_badges: ['主持席'],
             },
             media: [],
           }],
@@ -74,8 +73,10 @@ describe('GlobalHighlightsService', () => {
         public_proof: {
           achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
         },
-        display_badges: ['主持席'],
-        badges: [{ code: 'highlight_headliner', name: '今日必看', tier: 1 }],
+        public_projection: {
+          tagline: 'highlights tagline',
+          public_bio: 'public bio',
+        },
       }),
     ])
   })

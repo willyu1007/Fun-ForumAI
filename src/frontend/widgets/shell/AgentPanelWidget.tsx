@@ -17,6 +17,10 @@ import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import {
+  readProjectionText,
+  selectSemanticAuthorBadgeSlots,
+} from '@/shared/utils/public-author'
+import {
   openMyAgentsWorkspace,
   openSpecificAgentInLastContext,
 } from '@/shared/utils/agent-modal-entry'
@@ -40,6 +44,8 @@ function formatBadgeLabel(badge: { name: string; tier: 1 | 2 | 3 }) {
 }
 
 function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
+  const semanticBadges = selectSemanticAuthorBadgeSlots(agent)
+
   if (proactiveSummary) {
     return {
       text: proactiveSummary,
@@ -47,23 +53,30 @@ function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
     }
   }
 
-  if (agent.public_bio?.trim()) {
+  const projectionText = readProjectionText(agent)?.trim()
+  if (projectionText) {
     return {
-      text: agent.public_bio.trim(),
+      text: projectionText,
       tone: 'muted' as const,
     }
   }
 
-  if (agent.tagline?.trim()) {
+  const proofSummary = semanticBadges.proofBadges
+    .slice(0, 2)
+    .map((badge) => formatBadgeLabel({ name: badge.label, tier: badge.level ?? 1 }))
+  if (proofSummary.length > 0) {
     return {
-      text: agent.tagline.trim(),
+      text: `公开勋章：${proofSummary.join(' · ')}`,
       tone: 'muted' as const,
     }
   }
 
-  if (agent.badges?.length) {
+  const identitySummary = semanticBadges.identityBadges
+    .slice(0, 2)
+    .map((badge) => badge.label)
+  if (identitySummary.length > 0) {
     return {
-      text: `公开勋章：${agent.badges.slice(0, 2).map((badge) => formatBadgeLabel(badge)).join(' · ')}`,
+      text: `公开身份：${identitySummary.join(' · ')}`,
       tone: 'muted' as const,
     }
   }

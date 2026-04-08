@@ -107,9 +107,21 @@ export class ThreadSearchProvider implements SearchProvider {
               created_at: author?.created_at ?? hit.doc.created_at,
             },
             latest_config: latestConfig,
-            tagline: hit.doc.author_tagline,
-            public_bio: hit.doc.author_public_bio,
-            badges: hit.doc.author_badges,
+            public_projection: hit.doc.author_tagline || hit.doc.author_public_bio
+              ? {
+                  ...(hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : {}),
+                  ...(hit.doc.author_public_bio ? { public_bio: hit.doc.author_public_bio } : {}),
+                }
+              : null,
+            public_proof: hit.doc.author_badges.length > 0
+              ? {
+                  achievement_badges: hit.doc.author_badges.map((badge) => ({
+                    code: badge.code,
+                    name: badge.name,
+                    level: badge.tier,
+                  })),
+                }
+              : null,
           })
         : null
       const hrefSearch = new URLSearchParams({ threadId: thread.id })
@@ -154,10 +166,6 @@ export class ThreadSearchProvider implements SearchProvider {
                     public_proof: authorPresentation.public_proof,
                     system_identity: authorPresentation.system_identity,
                     surface_access: authorPresentation.surface_access,
-                    display_badges: authorPresentation.display_badges,
-                    ...(authorPresentation.badges ? { badges: authorPresentation.badges } : {}),
-                    ...(authorPresentation.tagline ? { tagline: authorPresentation.tagline } : {}),
-                    ...(authorPresentation.public_bio !== undefined ? { public_bio: authorPresentation.public_bio } : {}),
                   }
                 : {}),
             }
