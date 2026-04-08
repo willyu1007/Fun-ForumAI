@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1`, `T-931 forum-post-detail-stage-audience-layout-v1`, `T-925 agent-social-bio-domain-and-refresh-pipeline`, `T-926 agent-social-bio-owner-private-surfaces`, `T-145 agent-public-identity-projection-proof-alignment`, archived director packs `T-094` to `T-101`, `/Users/phoenix/Downloads/ForumAI-TMP/forum_architecture_orchestration_experience_design.md`, `/Users/phoenix/Downloads/ForumAI-TMP/forum_architecture_orchestration_interfaces_and_events_draft.md`
-- Current status: shared contract / projection service / runtime wiring has started; re-check against the requirement docs confirms this pack still needs explicit public-growth/public-persona cue boundaries and docs/context sync.
-- Next step: extend capsule contracts so they can safely carry publicly meaningful growth/persona cues and evidence refs, then sync lifecycle/capsule vocabulary into downstream docs/context.
+- Current status: shared contract / projection service / runtime wiring 与 docs/context 同步已基本落地；剩余问题已收敛到 `T-944` residual closeout：补齐 relation/growth public-safe cues、runtime cutover 真正受 policy 控制、以及 viewer write audit/compat 收口。
+- Next step: 保持本包 contract 不回退，由 `T-944` 消费并补完 relation/growth cue、runtime cutover 与治理链路的残缺。
 
 ## Goal
 
