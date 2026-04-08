@@ -1,24 +1,18 @@
-import type { EventRepository } from '../repos/event-repository.js'
-import type {
-  PublicStageThreadWithAuthor,
-} from './forum-read-service.js'
-import type { ForumReadService } from './forum-read-service.js'
+import type { AudienceService } from './audience-service.js'
 import type { HumanParticipationService } from './human-participation-service.js'
-import type { ParticipationContractService } from './participation-contract-service.js'
-import { ForbiddenError } from '../lib/errors.js'
+import type { PublicWriteGovernanceService } from './public-write-governance-service.js'
 import type {
-  ViewerWriteResult,
+  PublicWriteResult,
   ViewerWriteSourceContext,
 } from '../../shared/forum-orchestration.js'
 
 export interface ViewerPublicWriteServiceDeps {
-  eventRepo: EventRepository
   humanParticipationService: Pick<
     HumanParticipationService,
     'createPublicThread' | 'createPublicTurn'
   >
-  forumReadService: Pick<ForumReadService, 'getThread'>
-  participationContractService: Pick<ParticipationContractService, 'getPostContract'>
+  audienceService: Pick<AudienceService, 'createAcceptedMessage'>
+  publicWriteGovernanceService: Pick<PublicWriteGovernanceService, 'handleWrite'>
 }
 
 export class ViewerPublicWriteService {
@@ -26,36 +20,44 @@ export class ViewerPublicWriteService {
 
   async createPublicThread(input: {
     actor_user_id: string
+    actor_role: 'user' | 'admin'
+    client_ip: string | null
     post_id: string
     body: string
     idempotency_key?: string | null
     source_context?: ViewerWriteSourceContext | null
-  }): Promise<ViewerWriteResult<PublicStageThreadWithAuthor>> {
-    const contract = await this.deps.participationContractService.getPostContract(input.post_id)
-    if (!contract.stage_thread_entry_enabled) {
-      throw new ForbiddenError('Post does not allow viewer thread entry on the main stage')
-    }
-
-    const existing = await this.resolveExistingResult(input.idempotency_key, input.actor_user_id)
-    if (existing) return existing
-
-    const result = await this.deps.humanParticipationService.createPublicThread({
+  }): Promise<PublicWriteResult> {
+    return this.deps.publicWriteGovernanceService.handleWrite({
+      action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: input.actor_user_id,
+      actor_role: input.actor_role,
+      client_ip: input.client_ip,
       post_id: input.post_id,
       body: input.body,
       idempotency_key: input.idempotency_key ?? null,
       source_context: input.source_context ?? null,
+      executeAcceptedWrite: async () => {
+        const result = await this.deps.humanParticipationService.createPublicThread({
+          actor_user_id: input.actor_user_id,
+          post_id: input.post_id,
+          body: input.body,
+          idempotency_key: null,
+          source_context: input.source_context ?? null,
+        })
+
+        return {
+          thread_id: result.thread.id,
+          turn_id: null,
+          audience_message_id: null,
+        }
+      },
     })
-    const data = await this.deps.forumReadService.getThread(result.thread.id, input.actor_user_id)
-    return {
-      result: 'CREATED',
-      audit_id: result.event.id,
-      data,
-    }
   }
 
   async createPublicTurn(input: {
     actor_user_id: string
+    actor_role: 'user' | 'admin'
+    client_ip: string | null
     post_id: string
     thread_id: string
     body: string
@@ -64,53 +66,70 @@ export class ViewerPublicWriteService {
     focused_turn_id?: string | null
     actual_anchor_turn_id?: string | null
     quoted_excerpt?: string | null
-  }): Promise<ViewerWriteResult<PublicStageThreadWithAuthor>> {
-    const contract = await this.deps.participationContractService.getPostContract(input.post_id)
-    if (!contract.stage_turn_reply_enabled) {
-      throw new ForbiddenError('Post does not allow viewer turn replies on the main stage')
-    }
-
-    const existing = await this.resolveExistingResult(input.idempotency_key, input.actor_user_id)
-    if (existing) return existing
-
-    const result = await this.deps.humanParticipationService.createPublicTurn({
+  }): Promise<PublicWriteResult> {
+    return this.deps.publicWriteGovernanceService.handleWrite({
+      action: 'CREATE_PUBLIC_TURN',
       actor_user_id: input.actor_user_id,
+      actor_role: input.actor_role,
+      client_ip: input.client_ip,
+      post_id: input.post_id,
       thread_id: input.thread_id,
       body: input.body,
-      anchor_turn_id: input.actual_anchor_turn_id ?? input.focused_turn_id ?? null,
-      quoted_excerpt: input.quoted_excerpt ?? null,
       idempotency_key: input.idempotency_key ?? null,
       source_context: input.source_context ?? null,
-      focused_turn_id: input.focused_turn_id ?? null,
-      actual_anchor_turn_id: input.actual_anchor_turn_id ?? null,
+      executeAcceptedWrite: async () => {
+        const result = await this.deps.humanParticipationService.createPublicTurn({
+          actor_user_id: input.actor_user_id,
+          thread_id: input.thread_id,
+          body: input.body,
+          anchor_turn_id: input.actual_anchor_turn_id ?? input.focused_turn_id ?? null,
+          quoted_excerpt: input.quoted_excerpt ?? null,
+          idempotency_key: null,
+          source_context: input.source_context ?? null,
+          focused_turn_id: input.focused_turn_id ?? null,
+          actual_anchor_turn_id: input.actual_anchor_turn_id ?? null,
+        })
+
+        return {
+          thread_id: input.thread_id,
+          turn_id: result.turn.id,
+          audience_message_id: null,
+        }
+      },
     })
-    const data = await this.deps.forumReadService.getThread(input.thread_id, input.actor_user_id)
-    return {
-      result: 'CREATED',
-      audit_id: result.event.id,
-      data,
-    }
   }
 
-  private async resolveExistingResult(
-    idempotencyKey: string | null | undefined,
-    viewerUserId: string,
-  ): Promise<ViewerWriteResult<PublicStageThreadWithAuthor> | null> {
-    if (!idempotencyKey) {
-      return null
-    }
-    const existing = this.deps.eventRepo.findByIdempotencyKey(idempotencyKey)
-    const threadId = typeof existing?.payload_json?.thread_id === 'string'
-      ? existing.payload_json.thread_id
-      : null
-    if (!existing || !threadId) {
-      return null
-    }
-    const data = await this.deps.forumReadService.getThread(threadId, viewerUserId)
-    return {
-      result: 'CREATED',
-      audit_id: existing.id,
-      data,
-    }
+  async createAudienceMessage(input: {
+    actor_user_id: string
+    actor_role: 'user' | 'admin'
+    client_ip: string | null
+    post_id: string
+    body: string
+    idempotency_key?: string | null
+    source_context?: ViewerWriteSourceContext | null
+  }): Promise<PublicWriteResult> {
+    return this.deps.publicWriteGovernanceService.handleWrite({
+      action: 'CREATE_AUDIENCE_MESSAGE',
+      actor_user_id: input.actor_user_id,
+      actor_role: input.actor_role,
+      client_ip: input.client_ip,
+      post_id: input.post_id,
+      body: input.body,
+      idempotency_key: input.idempotency_key ?? null,
+      source_context: input.source_context ?? null,
+      executeAcceptedWrite: async () => {
+        const result = await this.deps.audienceService.createAcceptedMessage({
+          post_id: input.post_id,
+          actor_user_id: input.actor_user_id,
+          body: input.body,
+        })
+
+        return {
+          thread_id: result.thread.id,
+          turn_id: null,
+          audience_message_id: result.message.id,
+        }
+      },
+    })
   }
 }

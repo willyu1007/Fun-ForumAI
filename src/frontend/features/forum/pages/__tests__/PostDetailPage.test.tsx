@@ -438,7 +438,19 @@ describe('PostDetailPage', () => {
     } as never)
 
     usePostParticipationContractMock.mockReturnValue({
-      data: undefined,
+      data: {
+        data: {
+          stage_open_reply: {
+            enabled: true,
+            new_thread_enabled: true,
+            turn_reply_enabled: true,
+          },
+          audience_lane: {
+            enabled: true,
+            posting_enabled: true,
+          },
+        },
+      },
     } as never)
 
     useRecordForumWatchTelemetryMock.mockReturnValue({
@@ -840,8 +852,11 @@ describe('PostDetailPage', () => {
     usePostParticipationContractMock.mockReturnValue({
       data: {
         data: {
-          stage_thread_entry_enabled: true,
-          stage_turn_reply_enabled: false,
+          stage_open_reply: {
+            enabled: true,
+            new_thread_enabled: true,
+            turn_reply_enabled: false,
+          },
         },
       },
     } as never)
@@ -858,6 +873,107 @@ describe('PostDetailPage', () => {
         replyActionLabel: null,
       }),
     )
+  })
+
+  it('keeps forest focus separate from the explicit composer anchor when both stage write modes are open', async () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useDiscussionForestMock.mockReturnValue({
+      data: {
+        data: {
+          generated_at: '2026-03-01T00:00:00.000Z',
+          focus_thread_id: 'thread-1',
+          focus_turn_id: null,
+          reading_guide: {
+            entries: [
+              {
+                id: 'guide-1',
+                thread_id: 'thread-1',
+                focus_turn_id: null,
+                title: '先看这里',
+                teaser: 'guide teaser',
+                participant_count: 2,
+                turn_count: 2,
+                latest_activity_at: '2026-03-01T00:00:00.000Z',
+              },
+            ],
+          },
+          branch_groups: [],
+          nodes: [
+            {
+              id: 'thread-1',
+              thread_id: 'thread-1',
+              entry_kind: 'THREAD',
+              body: '主分支开场',
+              actual_anchor_turn_id: null,
+              author: {
+                id: 'agent-1',
+                actor_type: 'agent',
+                display_name: 'Agent 1',
+                avatar_url: null,
+              },
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    await waitFor(() => {
+      expect(screen.getByText('发起新的公开分支')).toBeTruthy()
+    })
+    expect(screen.getByText('当前聚焦节点 · Agent 1')).toBeTruthy()
+    expect(screen.getByText('当前聚焦节点仅用于观看；如需沿着它继续，请点击“回应这里”，否则你的发言会作为新的公开分支发布。')).toBeTruthy()
+    expect(screen.queryByText('当前锚点 · Agent 1')).toBeNull()
+    expect(screen.queryByRole('button', { name: '清除锚点' })).toBeNull()
+
+    const lastForestCall = discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]
+    const lastForestProps = lastForestCall?.[0] as {
+      onSelectNode: (
+        node: {
+          id: string
+          thread_id: string
+          entry_kind: 'THREAD' | 'TURN'
+          body: string
+          actual_anchor_turn_id?: string | null
+          author: { display_name: string }
+        },
+        source: 'guide' | 'reply' | 'node',
+      ) => void
+    }
+    act(() => {
+      lastForestProps.onSelectNode(
+        {
+          id: 'thread-1',
+          thread_id: 'thread-1',
+          entry_kind: 'THREAD',
+          body: '主分支开场',
+          actual_anchor_turn_id: null,
+          author: { display_name: 'Agent 1' },
+        },
+        'reply',
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('回应当前节点')).toBeTruthy()
+    })
+    expect(screen.getByText('当前锚点 · Agent 1')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '清除锚点' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除锚点' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('发起新的公开分支')).toBeTruthy()
+    })
+    expect(screen.queryByText('当前锚点 · Agent 1')).toBeNull()
+    expect(screen.queryByRole('button', { name: '清除锚点' })).toBeNull()
+    expect(screen.getByText('当前聚焦节点 · Agent 1')).toBeTruthy()
   })
 
   it('records watch telemetry and only enables timeline summaries after the viewer opens timeline', async () => {

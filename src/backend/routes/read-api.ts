@@ -27,16 +27,16 @@ import {
   guidanceStateService,
   publicStageThreadRepo,
   publicStageTurnRepo,
+  participationContractService,
 } from '../container.js'
 import { config } from '../lib/config.js'
-import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
+import { ValidationError } from '../lib/errors.js'
 import { requireAdmin, requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import { buildEmptyGlobalHighlightsPayload } from '../services/global-highlights-service.js'
 import type { ForumWatchTelemetryEventType } from '../services/forum-watch-telemetry-service.js'
 import type { CreateViewerPublicViewEventInput } from '../repos/index.js'
 import type { PostWithMeta as ForumPostWithMeta } from '../services/forum-read-service.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
-import { resolveLaunchCommunityInteractionContract } from '../launch/community-rules.js'
 import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
@@ -52,6 +52,7 @@ import {
   feedbackCategorySchema,
   feedbackStatusSchema,
   forumWatchTelemetrySchema,
+  updateParticipationContractOverrideSchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
 import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
@@ -69,6 +70,7 @@ import {
   normalizeStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
+import type { PublicWriteResult } from '../../shared/forum-orchestration.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -116,6 +118,35 @@ function readSourceContext(req: Request): {
     source_shelf: readQueryString(req.query.source_shelf),
     source_position: readQueryNumber(req.query.source_position),
   }
+}
+
+function getClientIp(req: Request): string | null {
+  const forwardedFor = req.headers['x-forwarded-for']
+  if (typeof forwardedFor === 'string') {
+    const first = forwardedFor.split(',')[0]?.trim()
+    if (first) return first
+  }
+  return req.ip || null
+}
+
+function getViewerWriteStatus(result: PublicWriteResult): number {
+  if (result.result === 'ACCEPTED') return 201
+  if (result.result === 'PENDING_MODERATION') return 202
+  if (result.result === 'RATE_LIMITED') return 429
+  return 200
+}
+
+async function refreshSearchProjectionForWrite(result: PublicWriteResult, postId: string): Promise<void> {
+  if (result.result !== 'ACCEPTED') {
+    return
+  }
+
+  await Promise.all([
+    result.action !== 'CREATE_AUDIENCE_MESSAGE' && result.thread_id
+      ? searchProjectionService.refreshThread(result.thread_id)
+      : Promise.resolve(),
+    searchProjectionService.refreshPost(postId),
+  ])
 }
 
 function readViewerSemanticFields(input: {
@@ -260,34 +291,6 @@ async function resolveReadMediaRolloutProfile(): Promise<MediaRolloutControllerP
       resolve(profile)
     })
   })
-}
-
-async function assertOpenReplyEnabled(input: {
-  post_id?: string
-  thread_id?: string
-}) {
-  if (!config.features.humanParticipationV1) {
-    throw new ForbiddenError('Human participation is disabled by feature flag')
-  }
-
-  const postId = input.post_id ?? (input.thread_id
-    ? (await forumReadService.getThread(input.thread_id).catch(() => null))?.post_id ?? null
-    : null)
-  if (!postId) {
-    throw new NotFoundError('Post', input.post_id ?? input.thread_id ?? '')
-  }
-
-  const post = await forumReadService.getPost(postId).catch(() => null)
-  if (!post) {
-    throw new NotFoundError('Post', postId)
-  }
-  const community = communityRepo.findById(post.community_id)
-  const interactionContract = resolveLaunchCommunityInteractionContract(community?.rules_json ?? null)
-  if (!interactionContract || interactionContract.public_participation_mode !== 'open_reply') {
-    throw new ForbiddenError('Community does not allow public human replies on the main thread')
-  }
-
-  return { post, interactionContract }
 }
 
 async function buildRelationTeaser(
@@ -883,24 +886,55 @@ readApiRouter.get('/posts/:postId/participation-contract', async (req, res) => {
   res.json({ data })
 })
 
+readApiRouter.put(
+  '/posts/:postId/participation-contract-override',
+  requireHumanAuth,
+  validate(updateParticipationContractOverrideSchema),
+  async (req, res) => {
+    const data = await participationContractService.setPostOverride({
+      post_id: String(req.params.postId),
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      override: req.body,
+    })
+    res.json({ data })
+  },
+)
+
+readApiRouter.delete(
+  '/posts/:postId/participation-contract-override',
+  requireHumanAuth,
+  async (req, res) => {
+    const data = await participationContractService.clearPostOverride({
+      post_id: String(req.params.postId),
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+    })
+    res.json({ data })
+  },
+)
+
 readApiRouter.post(
   '/posts/:postId/public-threads',
   requireHumanAuth,
   validate(createPublicThreadSchema),
   async (req, res) => {
-    await assertOpenReplyEnabled({ post_id: String(req.params.postId) })
     const result = await viewerPublicWriteService.createPublicThread({
       actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      client_ip: getClientIp(req),
       post_id: String(req.params.postId),
       body: req.body.body,
       idempotency_key: req.body.idempotency_key ?? null,
       source_context: req.body.source_context ?? null,
     })
-    await Promise.all([
-      searchProjectionService.refreshThread(result.data.id),
-      searchProjectionService.refreshPost(String(req.params.postId)),
-    ])
-    res.status(201).json({ data: result.data })
+    if (result.result !== 'ACCEPTED' || !result.thread_id) {
+      res.status(getViewerWriteStatus(result)).json({ data: result })
+      return
+    }
+    await refreshSearchProjectionForWrite(result, String(req.params.postId))
+    const data = await forumReadService.getThread(result.thread_id, req.user!.userId)
+    res.status(201).json({ data })
   },
 )
 
@@ -909,10 +943,11 @@ readApiRouter.post(
   requireHumanAuth,
   validate(createPublicTurnSchema),
   async (req, res) => {
-    await assertOpenReplyEnabled({ thread_id: String(req.params.threadId) })
     const thread = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
     const result = await viewerPublicWriteService.createPublicTurn({
       actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      client_ip: getClientIp(req),
       post_id: thread.post_id,
       thread_id: String(req.params.threadId),
       body: req.body.body,
@@ -922,11 +957,13 @@ readApiRouter.post(
       actual_anchor_turn_id: req.body.actual_anchor_turn_id ?? req.body.anchor_turn_id ?? null,
       quoted_excerpt: req.body.quoted_excerpt ?? null,
     })
-    await Promise.all([
-      searchProjectionService.refreshThread(String(req.params.threadId)),
-      searchProjectionService.refreshPost(thread.post_id),
-    ])
-    res.status(201).json({ data: result.data })
+    if (result.result !== 'ACCEPTED' || !result.thread_id) {
+      res.status(getViewerWriteStatus(result)).json({ data: result })
+      return
+    }
+    await refreshSearchProjectionForWrite(result, thread.post_id)
+    const data = await forumReadService.getThread(result.thread_id, req.user!.userId)
+    res.status(201).json({ data })
   },
 )
 
@@ -937,16 +974,15 @@ readApiRouter.post(
   async (req, res) => {
     const result = await viewerPublicWriteService.createPublicThread({
       actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      client_ip: getClientIp(req),
       post_id: String(req.params.postId),
       body: req.body.body,
       idempotency_key: req.body.idempotency_key ?? null,
       source_context: req.body.source_context ?? null,
     })
-    await Promise.all([
-      searchProjectionService.refreshThread(result.data.id),
-      searchProjectionService.refreshPost(String(req.params.postId)),
-    ])
-    res.status(201).json({ data: result })
+    await refreshSearchProjectionForWrite(result, String(req.params.postId))
+    res.status(getViewerWriteStatus(result)).json({ data: result })
   },
 )
 
@@ -958,6 +994,8 @@ readApiRouter.post(
     const thread = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
     const result = await viewerPublicWriteService.createPublicTurn({
       actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      client_ip: getClientIp(req),
       post_id: thread.post_id,
       thread_id: String(req.params.threadId),
       body: req.body.body,
@@ -967,11 +1005,8 @@ readApiRouter.post(
       actual_anchor_turn_id: req.body.actual_anchor_turn_id ?? req.body.anchor_turn_id ?? null,
       quoted_excerpt: req.body.quoted_excerpt ?? null,
     })
-    await Promise.all([
-      searchProjectionService.refreshThread(String(req.params.threadId)),
-      searchProjectionService.refreshPost(thread.post_id),
-    ])
-    res.status(201).json({ data: result })
+    await refreshSearchProjectionForWrite(result, thread.post_id)
+    res.status(getViewerWriteStatus(result)).json({ data: result })
   },
 )
 
@@ -1191,27 +1226,46 @@ readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
 })
 
 readApiRouter.post(
+  '/viewer/posts/:postId/audience-messages',
+  requireHumanAuth,
+  validate(createAudienceMessageSchema),
+  async (req, res) => {
+    const result = await viewerPublicWriteService.createAudienceMessage({
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      client_ip: getClientIp(req),
+      post_id: String(req.params.postId),
+      body: req.body.body,
+      idempotency_key: req.body.idempotency_key ?? null,
+      source_context: req.body.source_context ?? null,
+    })
+    await refreshSearchProjectionForWrite(result, String(req.params.postId))
+    res.status(getViewerWriteStatus(result)).json({ data: result })
+  },
+)
+
+readApiRouter.post(
   '/posts/:postId/audience-messages',
   requireHumanAuth,
   validate(createAudienceMessageSchema),
   async (req, res) => {
-    if (!config.features.audienceZoneV1) {
-      res.status(403).json({
-        error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
-      })
-      return
-    }
-
-    const body = req.body.body
-
-    const result = await audienceService.createMessage({
+    const result = await viewerPublicWriteService.createAudienceMessage({
       post_id: String(req.params.postId),
       actor_user_id: req.user!.userId,
-      body,
+      actor_role: req.user!.role,
+      client_ip: getClientIp(req),
+      body: req.body.body,
+      idempotency_key: req.body.idempotency_key ?? null,
+      source_context: req.body.source_context ?? null,
     })
-    await searchProjectionService.refreshPost(String(req.params.postId))
-
-    res.status(201).json({ data: result })
+    if (result.result !== 'ACCEPTED' || !result.audience_message_id) {
+      res.status(getViewerWriteStatus(result)).json({ data: result })
+      return
+    }
+    await refreshSearchProjectionForWrite(result, String(req.params.postId))
+    const audienceThread = await audienceService.getThreadByPost(String(req.params.postId))
+    const message = audienceThread.messages.find((item) => item.id === result.audience_message_id) ?? null
+    res.status(201).json({ data: { thread: audienceThread.thread, message } })
   },
 )
 

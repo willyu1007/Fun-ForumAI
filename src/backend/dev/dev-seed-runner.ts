@@ -26,6 +26,7 @@ import {
   postMediaRepo,
   postRepo,
   publicStageThreadRepo,
+  publicStageTurnRepo,
   roomRepo,
   sceneMediaBindingRepo,
   searchProjectionService,
@@ -714,6 +715,7 @@ async function rebuildSeedThreads(
   const existingThreadRows = existingRegistryRows.filter((row) => row.entity_type === 'thread')
 
   for (const entry of existingThreadRows) {
+    await publicStageTurnRepo.deleteByThread(entry.entity_id)
     await publicStageThreadRepo.delete(entry.entity_id)
   }
 
@@ -1169,6 +1171,7 @@ async function cleanupStaleProfileEntries(
     .filter((entry) => entry.entity_type === 'thread')
     .map((entry) => entry.entity_id)
   for (const threadId of staleThreadIds) {
+    await publicStageTurnRepo.deleteByThread(threadId)
     await publicStageThreadRepo.delete(threadId)
   }
 

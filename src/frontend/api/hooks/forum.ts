@@ -21,7 +21,6 @@ import type {
   PaginationParams,
   ThreadDetailParams,
   AudienceThreadData,
-  AudienceMessageCreateResult,
   AftershowSnapshot,
   AsideSeatsData,
   ForumWatchTelemetryEventType,
@@ -159,9 +158,18 @@ export function useThread(
 export function useCreateAudienceMessage(postId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: string) =>
-      api.post(`posts/${postId}/audience-messages`, { json: { body } }).json<ApiResponse<AudienceMessageCreateResult>>(),
-    onSuccess: () => {
+    mutationFn: (input: string | {
+      body: string
+      idempotency_key?: string | null
+      source_context?: ViewerWriteSourceContext | null
+    }) => {
+      const payload = typeof input === 'string' ? { body: input } : input
+      return api
+        .post(`viewer/posts/${postId}/audience-messages`, { json: payload })
+        .json<ApiResponse<ViewerWriteResult>>()
+    },
+    onSuccess: (response) => {
+      if (response.data.result !== 'ACCEPTED') return
       qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
       qc.invalidateQueries({ queryKey: queryKeys.aftershow(postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
@@ -180,15 +188,18 @@ export function useCreatePublicThread(postId: string) {
       const payload = typeof input === 'string' ? { body: input } : input
       return api
         .post(`viewer/posts/${postId}/public-threads`, { json: payload })
-        .json<ApiResponse<ViewerWriteResult<PublicStageThreadData>>>()
+        .json<ApiResponse<ViewerWriteResult>>()
     },
     onSuccess: (response) => {
+      if (response.data.result !== 'ACCEPTED') return
       qc.invalidateQueries({ queryKey: ['threads', postId] })
       qc.invalidateQueries({ queryKey: ['threadSummaries', postId] })
       qc.invalidateQueries({ queryKey: ['discussionForest', postId] })
       qc.invalidateQueries({ queryKey: queryKeys.readingGuide(postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
-      qc.invalidateQueries({ queryKey: ['thread', response.data.data.id] })
+      if (response.data.thread_id) {
+        qc.invalidateQueries({ queryKey: ['thread', response.data.thread_id] })
+      }
     },
   })
 }
@@ -217,8 +228,9 @@ export function useCreatePublicTurn() {
           idempotency_key: input.idempotency_key ?? null,
           source_context: input.source_context ?? null,
         },
-      }).json<ApiResponse<ViewerWriteResult<PublicStageThreadData>>>(),
-    onSuccess: (_response, input) => {
+      }).json<ApiResponse<ViewerWriteResult>>(),
+    onSuccess: (response, input) => {
+      if (response.data.result !== 'ACCEPTED') return
       qc.invalidateQueries({ queryKey: ['thread', input.threadId] })
       qc.invalidateQueries({ queryKey: ['threads', input.postId] })
       qc.invalidateQueries({ queryKey: ['threadSummaries', input.postId] })

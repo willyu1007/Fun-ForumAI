@@ -1347,7 +1347,7 @@ export class ForumReadService {
       }
       const halfWindow = Math.floor((input.turn_limit - 1) / 2)
       let start = Math.max(0, focusIndex - halfWindow)
-      let end = Math.min(turns.length, start + input.turn_limit)
+      const end = Math.min(turns.length, start + input.turn_limit)
       if (end - start < input.turn_limit) {
         start = Math.max(0, end - input.turn_limit)
       }

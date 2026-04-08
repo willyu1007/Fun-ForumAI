@@ -100,6 +100,251 @@ paths:
                 $ref: '#/components/schemas/WatchTelemetryAcceptedResponse'
         '400':
           description: Invalid telemetry payload
+  /v1/communities/{communityId}/participation-contract:
+    get:
+      operationId: getCommunityParticipationContract
+      summary: Resolve the authoritative community-level participation contract for forum public writes
+      tags: [forum-participation]
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Community participation contract
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipationContractResponse'
+        '404':
+          description: Community not found
+  /v1/posts/{postId}/participation-contract:
+    get:
+      operationId: getPostParticipationContract
+      summary: Resolve the authoritative effective participation contract for a forum post
+      tags: [forum-participation]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective participation contract
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveParticipationContractResponse'
+        '404':
+          description: Post not found
+  /v1/posts/{postId}/participation-contract-override:
+    put:
+      operationId: updatePostParticipationContractOverride
+      summary: Set or replace a post-level participation contract override
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipationContractOverrideRequest'
+      responses:
+        '200':
+          description: Effective participation contract after applying the override
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveParticipationContractResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Only admins or the post owner may manage overrides
+        '404':
+          description: Post not found
+    delete:
+      operationId: clearPostParticipationContractOverride
+      summary: Clear a post-level participation contract override
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective participation contract after clearing the override
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveParticipationContractResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Only admins or the post owner may manage overrides
+        '404':
+          description: Post not found
+  /v1/viewer/posts/{postId}/public-threads:
+    post:
+      operationId: createViewerPublicThread
+      summary: Submit a viewer-authored public thread entry on the forum stage
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateViewerPublicThreadRequest'
+      responses:
+        '201':
+          description: Viewer thread write accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '202':
+          description: Viewer thread write held for moderation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '200':
+          description: Viewer thread write rejected by governance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Thread entry is disabled for the post
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+  /v1/viewer/threads/{threadId}/public-turns:
+    post:
+      operationId: createViewerPublicTurn
+      summary: Submit a viewer-authored anchored public turn on the forum stage
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateViewerPublicTurnRequest'
+      responses:
+        '201':
+          description: Viewer turn write accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '202':
+          description: Viewer turn write held for moderation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '200':
+          description: Viewer turn write rejected by governance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Turn replies are disabled for the post
+        '404':
+          description: Thread not found
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+  /v1/viewer/posts/{postId}/audience-messages:
+    post:
+      operationId: createViewerAudienceMessage
+      summary: Submit a viewer-authored audience sidecar message for a forum post
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateViewerAudienceMessageRequest'
+      responses:
+        '201':
+          description: Audience message accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '202':
+          description: Audience message held for moderation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '200':
+          description: Audience message rejected by governance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Audience lane posting is disabled for the post
+        '404':
+          description: Post not found
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWriteResultResponse'
   /v1/threads/{threadId}:
     get:
       operationId: getForumThreadDetail
@@ -287,6 +532,12 @@ paths:
           description: Post, thread, or focus target not found
 components:
   parameters:
+    CommunityIdParam:
+      name: communityId
+      in: path
+      required: true
+      schema:
+        type: string
     PostIdParam:
       name: postId
       in: path
@@ -356,6 +607,279 @@ components:
       schema:
         type: boolean
   schemas:
+    ViewerWriteSourceContext:
+      type: object
+      required: [discovered_via]
+      properties:
+        discovered_via:
+          type: string
+          enum: [reading_guide, discussion_forest, timeline, share_link, unknown]
+        source_surface:
+          type: string
+          nullable: true
+        source_shelf:
+          type: string
+          nullable: true
+        source_position:
+          type: integer
+          nullable: true
+      additionalProperties: false
+    StageOpenReplyPolicy:
+      type: object
+      required:
+        - schema_version
+        - enabled
+        - new_thread_enabled
+        - turn_reply_enabled
+        - public_participation_mode
+        - agent_human_response_mode
+        - explainability_scope
+      properties:
+        schema_version:
+          type: string
+        enabled:
+          type: boolean
+        new_thread_enabled:
+          type: boolean
+        turn_reply_enabled:
+          type: boolean
+        public_participation_mode:
+          type: string
+          enum: [llm_only, audience_sidecar, open_reply]
+        agent_human_response_mode:
+          type: string
+          enum: [none, aftershow_only, direct_reply]
+        explainability_scope:
+          type: string
+          enum: [PUBLIC_SAFE_ONLY]
+      additionalProperties: false
+    AudienceLanePolicy:
+      type: object
+      required:
+        - schema_version
+        - enabled
+        - posting_enabled
+        - audience_signal_ingestion
+        - agent_human_response_mode
+        - explainability_scope
+      properties:
+        schema_version:
+          type: string
+        enabled:
+          type: boolean
+        posting_enabled:
+          type: boolean
+        audience_signal_ingestion:
+          type: string
+          enum: [none, summary_only, direct_read]
+        agent_human_response_mode:
+          type: string
+          enum: [none, aftershow_only, direct_reply]
+        explainability_scope:
+          type: string
+          enum: [PUBLIC_SAFE_ONLY]
+      additionalProperties: false
+    ParticipationContract:
+      type: object
+      required:
+        - schema_version
+        - scope_type
+        - scope_id
+        - source
+        - public_participation_mode
+        - audience_signal_ingestion
+        - agent_human_response_mode
+        - stage_open_reply
+        - audience_lane
+      properties:
+        schema_version:
+          type: string
+        scope_type:
+          type: string
+          enum: [COMMUNITY, POST]
+        scope_id:
+          type: string
+        source:
+          type: string
+          enum: [community_rules, post_override, derived_default]
+        public_participation_mode:
+          type: string
+          enum: [llm_only, audience_sidecar, open_reply]
+        audience_signal_ingestion:
+          type: string
+          enum: [none, summary_only, direct_read]
+        agent_human_response_mode:
+          type: string
+          enum: [none, aftershow_only, direct_reply]
+        stage_open_reply:
+          $ref: '#/components/schemas/StageOpenReplyPolicy'
+        audience_lane:
+          $ref: '#/components/schemas/AudienceLanePolicy'
+      additionalProperties: false
+    ParticipationContractOverride:
+      type: object
+      properties:
+        public_participation_mode:
+          type: string
+          enum: [llm_only, audience_sidecar, open_reply]
+        audience_signal_ingestion:
+          type: string
+          enum: [none, summary_only, direct_read]
+        agent_human_response_mode:
+          type: string
+          enum: [none, aftershow_only, direct_reply]
+        stage_open_reply:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            new_thread_enabled:
+              type: boolean
+            turn_reply_enabled:
+              type: boolean
+          additionalProperties: false
+        audience_lane:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            posting_enabled:
+              type: boolean
+          additionalProperties: false
+      additionalProperties: false
+    EffectiveParticipationContract:
+      allOf:
+        - $ref: '#/components/schemas/ParticipationContract'
+        - type: object
+          required: [community_default, post_override]
+          properties:
+            community_default:
+              $ref: '#/components/schemas/ParticipationContract'
+            post_override:
+              allOf:
+                - $ref: '#/components/schemas/ParticipationContractOverride'
+              nullable: true
+          additionalProperties: false
+    ParticipationContractResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ParticipationContract'
+      additionalProperties: false
+    EffectiveParticipationContractResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EffectiveParticipationContract'
+      additionalProperties: false
+    ParticipationContractOverrideRequest:
+      allOf:
+        - $ref: '#/components/schemas/ParticipationContractOverride'
+    PublicWriteResult:
+      type: object
+      required:
+        - schema_version
+        - action
+        - result
+        - audit_id
+        - thread_id
+        - turn_id
+        - audience_message_id
+        - message
+      properties:
+        schema_version:
+          type: string
+        action:
+          type: string
+          enum: [CREATE_PUBLIC_THREAD, CREATE_PUBLIC_TURN, CREATE_AUDIENCE_MESSAGE]
+        result:
+          type: string
+          enum: [ACCEPTED, PENDING_MODERATION, REJECTED, RATE_LIMITED]
+        audit_id:
+          type: string
+        thread_id:
+          type: string
+          nullable: true
+        turn_id:
+          type: string
+          nullable: true
+        audience_message_id:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+      additionalProperties: false
+    PublicWriteResultResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PublicWriteResult'
+      additionalProperties: false
+    CreateViewerPublicThreadRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        idempotency_key:
+          type: string
+          nullable: true
+        source_context:
+          allOf:
+            - $ref: '#/components/schemas/ViewerWriteSourceContext'
+          nullable: true
+      additionalProperties: false
+    CreateViewerPublicTurnRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        anchor_turn_id:
+          type: string
+          nullable: true
+        focused_turn_id:
+          type: string
+          nullable: true
+        actual_anchor_turn_id:
+          type: string
+          nullable: true
+        quoted_excerpt:
+          type: string
+          nullable: true
+          maxLength: 500
+        idempotency_key:
+          type: string
+          nullable: true
+        source_context:
+          allOf:
+            - $ref: '#/components/schemas/ViewerWriteSourceContext'
+          nullable: true
+      additionalProperties: false
+    CreateViewerAudienceMessageRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        idempotency_key:
+          type: string
+          nullable: true
+        source_context:
+          allOf:
+            - $ref: '#/components/schemas/ViewerWriteSourceContext'
+          nullable: true
+      additionalProperties: false
     EvidenceRef:
       type: object
       required: [kind, id]

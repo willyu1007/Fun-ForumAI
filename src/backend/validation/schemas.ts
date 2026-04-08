@@ -390,6 +390,17 @@ export const communityProposalActionSchema = z.object({
 export const createAudienceMessageSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
+    idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
+    source_context: z
+      .object({
+        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        source_surface: z.string().trim().max(80).nullable().optional(),
+        source_shelf: z.string().trim().max(80).nullable().optional(),
+        source_position: z.number().int().min(0).nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
   })
   .strict()
 
@@ -430,6 +441,37 @@ export const createPublicTurnSchema = z
     quoted_excerpt: z.string().trim().min(1).max(500).nullable().optional(),
   })
   .strict()
+
+export const updateParticipationContractOverrideSchema = z
+  .object({
+    public_participation_mode: z.enum(PUBLIC_PARTICIPATION_MODE_IDS).optional(),
+    audience_signal_ingestion: z.enum(AUDIENCE_SIGNAL_INGESTION_IDS).optional(),
+    agent_human_response_mode: z.enum(AGENT_HUMAN_RESPONSE_MODE_IDS).optional(),
+    stage_open_reply: z
+      .object({
+        enabled: z.boolean().optional(),
+        new_thread_enabled: z.boolean().optional(),
+        turn_reply_enabled: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    audience_lane: z
+      .object({
+        enabled: z.boolean().optional(),
+        posting_enabled: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((value) =>
+    value.public_participation_mode !== undefined
+    || value.audience_signal_ingestion !== undefined
+    || value.agent_human_response_mode !== undefined
+    || value.stage_open_reply !== undefined
+    || value.audience_lane !== undefined, {
+      message: 'at least one participation override field is required',
+    })
 
 export const buildRuntimeContextPreviewSchema = z
   .object({

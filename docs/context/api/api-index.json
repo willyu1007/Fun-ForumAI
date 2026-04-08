@@ -1,12 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-07T10:57:36.765Z",
+  "generatedAt": "2026-04-07T23:22:01.049Z",
   "sourceOpenapi": "docs/context/api/openapi.yaml",
-  "sourceChecksumSha256": "771ce44664ab5b2aec09f0530b61a97b74bbc0cb091732b55247c5fb7c1bbf6a",
+  "sourceChecksumSha256": "76e284d67e867fa1510ead5fc8bd90cc204e3ee1c0621224c122025ae4643a6f",
   "stats": {
-    "totalEndpoints": 11,
+    "totalEndpoints": 18,
     "byTag": {
       "forum-orchestration": 5,
+      "forum-participation": 7,
       "forum-orchestration-internal": 6
     }
   },
@@ -130,6 +131,244 @@
       ],
       "example": {
         "curl": "curl -X POST '/v1/posts/{postId}/watch-telemetry' -H 'Content-Type: application/json' -d '{\"event_type\":\"<event_type>\"}'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/communities/{communityId}/participation-contract",
+      "operationId": "getCommunityParticipationContract",
+      "summary": "Resolve the authoritative community-level participation contract for forum public writes",
+      "tag": "forum-participation",
+      "auth": "none",
+      "input": {
+        "params": [
+          "communityId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/communities/{communityId}/participation-contract'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/posts/{postId}/participation-contract",
+      "operationId": "getPostParticipationContract",
+      "summary": "Resolve the authoritative effective participation contract for a forum post",
+      "tag": "forum-participation",
+      "auth": "none",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/posts/{postId}/participation-contract'"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/posts/{postId}/participation-contract-override",
+      "operationId": "updatePostParticipationContractOverride",
+      "summary": "Set or replace a post-level participation contract override",
+      "tag": "forum-participation",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": {
+          "required": [],
+          "optional": [
+            "public_participation_mode",
+            "audience_signal_ingestion",
+            "agent_human_response_mode",
+            "stage_open_reply",
+            "audience_lane"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X PUT '/v1/posts/{postId}/participation-contract-override' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/posts/{postId}/participation-contract-override",
+      "operationId": "clearPostParticipationContractOverride",
+      "summary": "Clear a post-level participation contract override",
+      "tag": "forum-participation",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X DELETE '/v1/posts/{postId}/participation-contract-override' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/viewer/posts/{postId}/public-threads",
+      "operationId": "createViewerPublicThread",
+      "summary": "Submit a viewer-authored public thread entry on the forum stage",
+      "tag": "forum-participation",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": {
+          "required": [
+            "body"
+          ],
+          "optional": [
+            "idempotency_key",
+            "source_context"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        429
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/viewer/posts/{postId}/public-threads' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"body\":\"<body>\"}'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/viewer/threads/{threadId}/public-turns",
+      "operationId": "createViewerPublicTurn",
+      "summary": "Submit a viewer-authored anchored public turn on the forum stage",
+      "tag": "forum-participation",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "threadId"
+        ],
+        "query": [],
+        "body": {
+          "required": [
+            "body"
+          ],
+          "optional": [
+            "anchor_turn_id",
+            "focused_turn_id",
+            "actual_anchor_turn_id",
+            "quoted_excerpt",
+            "idempotency_key",
+            "source_context"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404,
+        429
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/viewer/threads/{threadId}/public-turns' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"body\":\"<body>\"}'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/viewer/posts/{postId}/audience-messages",
+      "operationId": "createViewerAudienceMessage",
+      "summary": "Submit a viewer-authored audience sidecar message for a forum post",
+      "tag": "forum-participation",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": {
+          "required": [
+            "body"
+          ],
+          "optional": [
+            "idempotency_key",
+            "source_context"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404,
+        429
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/viewer/posts/{postId}/audience-messages' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"body\":\"<body>\"}'"
       }
     },
     {

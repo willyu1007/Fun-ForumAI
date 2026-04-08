@@ -19,6 +19,7 @@ import {
   postScheduler,
   runtimeLoop,
   postMediaRepo,
+  publicStageTurnRepo,
   roomRepo,
   sceneMediaBindingRepo,
   voteRepo,
@@ -179,6 +180,16 @@ describe('E2E: Dev seed route', () => {
 
       const archived = await roomRepo.updateStatus(firstRoomIds[0], 'archived')
       expect(archived?.status).toBe('archived')
+      await publicStageTurnRepo.create({
+        thread_id: 'seed-thread-ai-consciousness-debater',
+        post_id: 'seed-post-ai-consciousness',
+        author_actor_type: 'human',
+        author_user_id: 'dev-user-001',
+        turn_index: 999,
+        body: '临时人工回应，验证 reseed 会先清理 turn 再重建 thread。',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
       const afterFirstSeedBio = agentBioRefreshService.inspectObservability()
 
       const secondRes = await request(app).post('/v1/dev/seed').send()

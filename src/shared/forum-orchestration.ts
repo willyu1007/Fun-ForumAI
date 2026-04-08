@@ -24,6 +24,9 @@ export const FORUM_TURN_DISPLAY_PROJECTION_SCHEMA_VERSION = 'forum-turn-display-
 export const FORUM_DISCUSSION_FOREST_SCHEMA_VERSION = 'forum-discussion-forest.v1'
 export const FORUM_PERCEIVED_CONTEXT_SLICE_SCHEMA_VERSION = 'forum-perceived-context-slice.v1'
 export const FORUM_RUNTIME_CONTEXT_ENVELOPE_SCHEMA_VERSION = 'forum-runtime-context-envelope.v1'
+export const FORUM_PARTICIPATION_CONTRACT_SCHEMA_VERSION = 'forum-participation-contract.v2'
+export const FORUM_PUBLIC_WRITE_AUDIT_SCHEMA_VERSION = 'forum-public-write-audit.v1'
+export const FORUM_PUBLIC_WRITE_RESULT_SCHEMA_VERSION = 'forum-public-write-result.v1'
 
 export type ThreadState =
   | 'OPEN'
@@ -333,21 +336,45 @@ export interface DiscussionForestProjection extends VersionedSchema {
   generated_at: string
 }
 
-export interface ParticipationContract {
+export interface AudienceLanePolicy extends VersionedSchema {
+  enabled: boolean
+  posting_enabled: boolean
+  audience_signal_ingestion: AudienceSignalIngestion
+  agent_human_response_mode: AgentHumanResponseMode
+  explainability_scope: 'PUBLIC_SAFE_ONLY'
+}
+
+export interface StageOpenReplyPolicy extends VersionedSchema {
+  enabled: boolean
+  new_thread_enabled: boolean
+  turn_reply_enabled: boolean
+  public_participation_mode: PublicParticipationMode
+  agent_human_response_mode: AgentHumanResponseMode
+  explainability_scope: 'PUBLIC_SAFE_ONLY'
+}
+
+export interface ParticipationContract extends VersionedSchema {
   scope_type: 'COMMUNITY' | 'POST'
   scope_id: string
   source: 'community_rules' | 'post_override' | 'derived_default'
   public_participation_mode: PublicParticipationMode
   audience_signal_ingestion: AudienceSignalIngestion
   agent_human_response_mode: AgentHumanResponseMode
-  audience_lane_enabled: boolean
-  stage_thread_entry_enabled: boolean
-  stage_turn_reply_enabled: boolean
+  stage_open_reply: StageOpenReplyPolicy
+  audience_lane: AudienceLanePolicy
+}
+
+export interface ParticipationContractOverride {
+  public_participation_mode?: PublicParticipationMode
+  audience_signal_ingestion?: AudienceSignalIngestion
+  agent_human_response_mode?: AgentHumanResponseMode
+  stage_open_reply?: Partial<Pick<StageOpenReplyPolicy, 'enabled' | 'new_thread_enabled' | 'turn_reply_enabled'>>
+  audience_lane?: Partial<Pick<AudienceLanePolicy, 'enabled' | 'posting_enabled'>>
 }
 
 export interface EffectiveParticipationContract extends ParticipationContract {
   community_default: ParticipationContract
-  post_override: Partial<ParticipationContract> | null
+  post_override: ParticipationContractOverride | null
 }
 
 export interface ViewerWriteSourceContext {
@@ -357,11 +384,85 @@ export interface ViewerWriteSourceContext {
   source_position?: number | null
 }
 
-export interface ViewerWriteResult<T> {
-  result: 'CREATED'
-  audit_id: string
-  data: T
+export type PublicWriteAction =
+  | 'CREATE_PUBLIC_THREAD'
+  | 'CREATE_PUBLIC_TURN'
+  | 'CREATE_AUDIENCE_MESSAGE'
+
+export type PublicWriteOutcome =
+  | 'ACCEPTED'
+  | 'PENDING_MODERATION'
+  | 'REJECTED'
+  | 'RATE_LIMITED'
+
+export type PublicWriteActorRole = 'ADMIN' | 'POST_OWNER' | 'VIEWER'
+export type PublicWriteModerationMode = 'AUTO_APPROVE' | 'AUTO_HOLD' | 'RULE_BASED'
+export type PublicWriteModerationState =
+  | 'SKIPPED'
+  | 'AUTO_APPROVED'
+  | 'HELD'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'RATE_LIMITED'
+
+export interface PublicWriteFeatureFlagSnapshot {
+  humanParticipationV1: boolean
+  audienceZoneV1: boolean
+  riskControlV1: boolean
+  riskControlPublicEnforce: boolean
 }
+
+export interface PublicWriteAuditRecord extends VersionedSchema {
+  audit_id: string
+  action: PublicWriteAction
+  result: PublicWriteOutcome
+  actor_user_id: string
+  actor_role: PublicWriteActorRole
+  community_id: string
+  post_id: string
+  thread_id: string | null
+  turn_id: string | null
+  audience_message_id: string | null
+  session_id: string | null
+  client_ip_hash: string | null
+  source_context: ViewerWriteSourceContext | null
+  feature_flag_snapshot: PublicWriteFeatureFlagSnapshot
+  moderation_mode: PublicWriteModerationMode
+  moderation_state: PublicWriteModerationState
+  contract_source: ParticipationContract['source']
+  reason: string | null
+  created_at: string
+}
+
+export interface PublicWriteResultBase extends VersionedSchema {
+  action: PublicWriteAction
+  result: PublicWriteOutcome
+  audit_id: string
+  thread_id: string | null
+  turn_id: string | null
+  audience_message_id: string | null
+  message: string | null
+}
+
+export interface PublicThreadWriteResult extends PublicWriteResultBase {
+  action: 'CREATE_PUBLIC_THREAD'
+}
+
+export interface PublicTurnWriteResult extends PublicWriteResultBase {
+  action: 'CREATE_PUBLIC_TURN'
+}
+
+export interface AudienceMessageWriteResult extends PublicWriteResultBase {
+  action: 'CREATE_AUDIENCE_MESSAGE'
+}
+
+export type PublicWriteResult =
+  | PublicThreadWriteResult
+  | PublicTurnWriteResult
+  | AudienceMessageWriteResult
+
+export type ViewerWriteResult = PublicWriteResult
+export type ViewerWriteAuditRecord = PublicWriteAuditRecord
 
 export const ATTENTION_OPPORTUNITY_SOURCE_IDS = [
   'NEW_TURN',
@@ -440,8 +541,8 @@ export interface FoundationSkeletonContext {
     community_id: string
   }
   participation_contract: {
-    audience_lane_enabled: boolean
-    stage_open_reply_enabled: boolean
+    stage_open_reply: Pick<StageOpenReplyPolicy, 'enabled' | 'new_thread_enabled' | 'turn_reply_enabled'>
+    audience_lane: Pick<AudienceLanePolicy, 'enabled' | 'posting_enabled'>
     identity_policy: string | null
   }
   route_snapshot: RouteHandoff | null

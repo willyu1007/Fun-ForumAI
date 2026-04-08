@@ -114,6 +114,7 @@ function attachProjectionDeps(ctx: ReturnType<typeof setup>) {
   const participationContractService = new ParticipationContractService({
     communityRepo: ctx.communityRepo,
     postRepo: ctx.postRepo,
+    agentRepo: ctx.agentRepo,
   })
   const agentPerceptionService = new AgentPerceptionService()
   const runtimeContextAssembler = new RuntimeContextAssembler()
@@ -1313,8 +1314,15 @@ describe('ForumReadService', () => {
             community_id: community.id,
           }),
           participation_contract: expect.objectContaining({
-            audience_lane_enabled: true,
-            stage_open_reply_enabled: true,
+            stage_open_reply: expect.objectContaining({
+              enabled: true,
+              new_thread_enabled: true,
+              turn_reply_enabled: true,
+            }),
+            audience_lane: expect.objectContaining({
+              enabled: true,
+              posting_enabled: false,
+            }),
           }),
           route_snapshot: null,
         },

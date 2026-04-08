@@ -1311,9 +1311,15 @@ describe('E2E: Read API (public)', () => {
       public_participation_mode: 'open_reply',
       audience_signal_ingestion: 'direct_read',
       agent_human_response_mode: 'direct_reply',
-      audience_lane_enabled: true,
-      stage_thread_entry_enabled: true,
-      stage_turn_reply_enabled: true,
+      stage_open_reply: {
+        enabled: true,
+        new_thread_enabled: true,
+        turn_reply_enabled: true,
+      },
+      audience_lane: {
+        enabled: true,
+        posting_enabled: false,
+      },
     })
 
     const postContractRes = await request(app).get(`/v1/posts/${postId}/participation-contract`)
@@ -1324,9 +1330,15 @@ describe('E2E: Read API (public)', () => {
       public_participation_mode: 'open_reply',
       audience_signal_ingestion: 'direct_read',
       agent_human_response_mode: 'direct_reply',
-      audience_lane_enabled: true,
-      stage_thread_entry_enabled: true,
-      stage_turn_reply_enabled: true,
+      stage_open_reply: {
+        enabled: true,
+        new_thread_enabled: true,
+        turn_reply_enabled: true,
+      },
+      audience_lane: {
+        enabled: true,
+        posting_enabled: false,
+      },
       community_default: expect.objectContaining({
         scope_type: 'COMMUNITY',
         scope_id: community.id,
@@ -1451,15 +1463,12 @@ describe('E2E: Read API (public)', () => {
       .send(createThreadPayload)
     expect(viewerThreadRes.status).toBe(201)
     expect(viewerThreadRes.body.data).toMatchObject({
-      result: 'CREATED',
+      action: 'CREATE_PUBLIC_THREAD',
+      result: 'ACCEPTED',
       audit_id: expect.any(String),
-      data: {
-        post_id: postId,
-        author_actor_type: 'human',
-        author_user_id: 'user1',
-        author_agent_id: null,
-        body: 'Viewer thread root.',
-      },
+      thread_id: expect.any(String),
+      turn_id: null,
+      audience_message_id: null,
     })
 
     const duplicateViewerThreadRes = await request(app)
@@ -1468,9 +1477,9 @@ describe('E2E: Read API (public)', () => {
       .send(createThreadPayload)
     expect(duplicateViewerThreadRes.status).toBe(201)
     expect(duplicateViewerThreadRes.body.data.audit_id).toBe(viewerThreadRes.body.data.audit_id)
-    expect(duplicateViewerThreadRes.body.data.data.id).toBe(viewerThreadRes.body.data.data.id)
+    expect(duplicateViewerThreadRes.body.data.thread_id).toBe(viewerThreadRes.body.data.thread_id)
 
-    const threadId = viewerThreadRes.body.data.data.id as string
+    const threadId = viewerThreadRes.body.data.thread_id as string
     const agentTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
       actor_agent_id: turnAuthorRes.body.data.id,
       run_id: `run-viewer-write-turn-${Date.now()}`,
@@ -1498,20 +1507,11 @@ describe('E2E: Read API (public)', () => {
       .send(createTurnPayload)
     expect(viewerTurnRes.status).toBe(201)
     expect(viewerTurnRes.body.data).toMatchObject({
-      result: 'CREATED',
+      action: 'CREATE_PUBLIC_TURN',
+      result: 'ACCEPTED',
       audit_id: expect.any(String),
-      data: {
-        id: threadId,
-      },
-    })
-    expect(viewerTurnRes.body.data.data.turns.at(-1)).toMatchObject({
       thread_id: threadId,
-      author_actor_type: 'human',
-      author_user_id: 'user1',
-      author_agent_id: null,
-      anchor_turn_id: anchorTurnId,
-      quoted_excerpt: 'Agent turn for viewer anchor.',
-      body: 'Viewer anchored reply.',
+      turn_id: expect.any(String),
     })
 
     const duplicateViewerTurnRes = await request(app)
@@ -1520,12 +1520,100 @@ describe('E2E: Read API (public)', () => {
       .send(createTurnPayload)
     expect(duplicateViewerTurnRes.status).toBe(201)
     expect(duplicateViewerTurnRes.body.data.audit_id).toBe(viewerTurnRes.body.data.audit_id)
-    expect(duplicateViewerTurnRes.body.data.data.turns).toHaveLength(
-      viewerTurnRes.body.data.data.turns.length,
-    )
-    expect(duplicateViewerTurnRes.body.data.data.turns.at(-1).id).toBe(
-      viewerTurnRes.body.data.data.turns.at(-1).id,
-    )
+    expect(duplicateViewerTurnRes.body.data.turn_id).toBe(viewerTurnRes.body.data.turn_id)
+
+    const threadDetailRes = await request(app).get(`/v1/threads/${threadId}`)
+    expect(threadDetailRes.status).toBe(200)
+    expect(threadDetailRes.body.data.turns.at(-1)).toMatchObject({
+      thread_id: threadId,
+      author_actor_type: 'human',
+      author_user_id: 'user1',
+      author_agent_id: null,
+      anchor_turn_id: anchorTurnId,
+      quoted_excerpt: 'Agent turn for viewer anchor.',
+      body: 'Viewer anchored reply.',
+    })
+  })
+
+  it('POST /v1/viewer/posts/:postId/audience-messages returns auditable envelopes and honors idempotency', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalAudienceZone = featureFlags.audienceZoneV1
+    const originalHumanParticipation = featureFlags.humanParticipationV1
+    featureFlags.audienceZoneV1 = true
+    featureFlags.humanParticipationV1 = true
+
+    try {
+      const community = await createTestCommunity({
+        name: 'Viewer Audience Community',
+        slug: `viewer-audience-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: {
+            human_participation: {
+              public_participation_mode: 'audience_sidecar',
+              audience_signal_ingestion: 'direct_read',
+              agent_human_response_mode: 'aftershow_only',
+            },
+          },
+        },
+      })
+      const authorRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Viewer Audience Author' })
+      expect(authorRes.status).toBe(201)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: authorRes.body.data.id,
+        run_id: `run-viewer-audience-post-${Date.now()}`,
+        community_id: community.id,
+        title: 'Viewer audience target',
+        body: 'Audience envelope target.',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const payload = {
+        body: 'Audience sidecar message.',
+        idempotency_key: `viewer-audience-${Date.now()}`,
+        source_context: {
+          discovered_via: 'discussion_forest',
+          source_surface: 'post_detail',
+          source_shelf: 'audience',
+        },
+      }
+
+      const firstRes = await request(app)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send(payload)
+      expect(firstRes.status).toBe(201)
+      expect(firstRes.body.data).toMatchObject({
+        action: 'CREATE_AUDIENCE_MESSAGE',
+        result: 'ACCEPTED',
+        audit_id: expect.any(String),
+        thread_id: expect.any(String),
+        audience_message_id: expect.any(String),
+      })
+
+      const duplicateRes = await request(app)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send(payload)
+      expect(duplicateRes.status).toBe(201)
+      expect(duplicateRes.body.data.audit_id).toBe(firstRes.body.data.audit_id)
+      expect(duplicateRes.body.data.audience_message_id).toBe(firstRes.body.data.audience_message_id)
+
+      const audienceThreadRes = await request(app).get(`/v1/posts/${postId}/audience-thread`)
+      expect(audienceThreadRes.status).toBe(200)
+      expect(audienceThreadRes.body.data.messages.at(-1)).toMatchObject({
+        id: firstRes.body.data.audience_message_id,
+        author_user_id: 'user1',
+        body: 'Audience sidecar message.',
+      })
+    } finally {
+      featureFlags.audienceZoneV1 = originalAudienceZone
+      featureFlags.humanParticipationV1 = originalHumanParticipation
+    }
   })
 
   it('GET /v1/posts/:postId/threads exposes all route handoff variants with CTA payloads', async () => {
@@ -2050,12 +2138,23 @@ describe('E2E: Read API (public)', () => {
   it('POST /v1/posts/:postId/audience-messages validates body length and accepts valid message', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
+    const originalHumanParticipation = featureFlags.humanParticipationV1
     featureFlags.audienceZoneV1 = true
+    featureFlags.humanParticipationV1 = true
 
     try {
       const community = await createTestCommunity({
         name: 'Audience Message Community',
         slug: `audience-message-${Date.now()}`,
+        rules_json: {
+          stage_spec_v1: {
+            human_participation: {
+              public_participation_mode: 'audience_sidecar',
+              audience_signal_ingestion: 'direct_read',
+              agent_human_response_mode: 'aftershow_only',
+            },
+          },
+        },
       })
       const agentRes = await request(app)
         .post('/v1/agents')
@@ -2076,8 +2175,20 @@ describe('E2E: Read API (public)', () => {
       const validRes = await request(app)
         .post(`/v1/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ body: 'Great show, keep it going.' })
+        .send({
+          body: 'Great show, keep it going.',
+          idempotency_key: `audience-${Date.now()}`,
+          source_context: {
+            discovered_via: 'discussion_forest',
+            source_surface: 'post_detail',
+            source_shelf: 'audience',
+          },
+        })
       expect(validRes.status).toBe(201)
+      expect(validRes.body.data.message).toMatchObject({
+        body: 'Great show, keep it going.',
+        author_user_id: 'user1',
+      })
 
       const blankRes = await request(app)
         .post(`/v1/posts/${postId}/audience-messages`)
@@ -2095,6 +2206,7 @@ describe('E2E: Read API (public)', () => {
       expect(longRes.body.error.code).toBe('VALIDATION_ERROR')
     } finally {
       featureFlags.audienceZoneV1 = originalAudienceZone
+      featureFlags.humanParticipationV1 = originalHumanParticipation
     }
   })
 

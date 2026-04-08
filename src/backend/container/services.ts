@@ -73,6 +73,7 @@ import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
 import { SemanticProjectionService } from '../services/semantic-projection-service.js'
 import { DisplayProjectionService } from '../services/display-projection-service.js'
 import { ParticipationContractService } from '../services/participation-contract-service.js'
+import { PublicWriteGovernanceService } from '../services/public-write-governance-service.js'
 import { ViewerPublicWriteService } from '../services/viewer-public-write-service.js'
 import { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
 import { RecallPolicyService } from '../services/recall-policy-service.js'
@@ -249,6 +250,7 @@ export function createCoreServices(deps: {
   const participationContractService = new ParticipationContractService({
     communityRepo: repos.communityRepo,
     postRepo: repos.postRepo,
+    agentRepo: repos.agentRepo,
   })
   const attentionOpportunityBroker = new AttentionOpportunityBroker()
   const recallPolicyService = new RecallPolicyService()
@@ -583,11 +585,18 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
     eventRepo: repos.eventRepo,
   })
-  const viewerPublicWriteService = new ViewerPublicWriteService({
-    eventRepo: repos.eventRepo,
-    humanParticipationService,
-    forumReadService,
+  const publicWriteGovernanceService = new PublicWriteGovernanceService({
+    postRepo: repos.postRepo,
+    agentRepo: repos.agentRepo,
     participationContractService,
+    moderator,
+    riskRepo: repos.riskGovernanceRepo,
+    eventRepo: repos.eventRepo,
+  })
+  const viewerPublicWriteService = new ViewerPublicWriteService({
+    humanParticipationService,
+    audienceService,
+    publicWriteGovernanceService,
   })
 
   const achievementsOrchestrator = new AchievementsOrchestrator({

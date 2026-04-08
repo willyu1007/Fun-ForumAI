@@ -27,7 +27,7 @@ export class AudienceService {
     }
   }
 
-  async createMessage(input: {
+  async createAcceptedMessage(input: {
     post_id: string
     actor_user_id: string
     body: string

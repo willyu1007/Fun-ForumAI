@@ -51,11 +51,15 @@ export class RuntimeContextAssembler {
           community_id: input.community_id,
         },
         participation_contract: {
-          audience_lane_enabled: input.participation_contract?.audience_lane_enabled ?? false,
-          stage_open_reply_enabled:
-            input.participation_contract?.stage_thread_entry_enabled
-            || input.participation_contract?.stage_turn_reply_enabled
-            || false,
+          stage_open_reply: {
+            enabled: input.participation_contract?.stage_open_reply.enabled ?? false,
+            new_thread_enabled: input.participation_contract?.stage_open_reply.new_thread_enabled ?? false,
+            turn_reply_enabled: input.participation_contract?.stage_open_reply.turn_reply_enabled ?? false,
+          },
+          audience_lane: {
+            enabled: input.participation_contract?.audience_lane.enabled ?? false,
+            posting_enabled: input.participation_contract?.audience_lane.posting_enabled ?? false,
+          },
           identity_policy: null,
         },
         route_snapshot: input.thread_capsule?.route_handoff ?? null,
