@@ -64,6 +64,33 @@ describe('ParticipationContractService', () => {
     })
   })
 
+  it('uses audience-sidecar defaults when the community has no explicit human participation rules', async () => {
+    const community = ctx.communityRepo.create({
+      name: 'Derived Default',
+      slug: 'derived-default',
+    })
+
+    const contract = await ctx.service.getCommunityContract(community.id)
+
+    expect(contract).toMatchObject({
+      scope_type: 'COMMUNITY',
+      scope_id: community.id,
+      source: 'derived_default',
+      public_participation_mode: 'audience_sidecar',
+      audience_signal_ingestion: 'summary_only',
+      agent_human_response_mode: 'aftershow_only',
+      stage_open_reply: {
+        enabled: false,
+        new_thread_enabled: false,
+        turn_reply_enabled: false,
+      },
+      audience_lane: {
+        enabled: true,
+        posting_enabled: true,
+      },
+    })
+  })
+
   it('merges post overrides into the effective contract and stores them on the v1 override key', async () => {
     const owner = ctx.agentRepo.create({
       owner_id: 'owner-1',

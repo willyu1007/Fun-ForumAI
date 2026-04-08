@@ -8,6 +8,7 @@ import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-re
 import type { ModerationResult } from '../../moderation/types.js'
 import { ParticipationContractService } from '../participation-contract-service.js'
 import { PublicWriteGovernanceService } from '../public-write-governance-service.js'
+import type { PublicWriteCommunityRole } from '../../../shared/forum-orchestration.js'
 
 function setup(options?: {
   public_participation_mode?: 'llm_only' | 'audience_sidecar' | 'open_reply'
@@ -68,6 +69,18 @@ function setup(options?: {
   }
 }
 
+function buildWriteAuthContext(overrides?: {
+  community_role?: PublicWriteCommunityRole
+  session_id?: string | null
+  user_agent_hash?: string | null
+}) {
+  return {
+    community_role: overrides?.community_role ?? 'VIEWER',
+    session_id: overrides?.session_id ?? 'session-hash',
+    user_agent_hash: overrides?.user_agent_hash ?? 'ua-hash',
+  }
+}
+
 describe('PublicWriteGovernanceService', () => {
   const featureFlags = config.features as unknown as Record<string, boolean>
   let originalFlags: Record<string, boolean>
@@ -107,6 +120,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-1',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '1.2.3.4',
       post_id: post.id,
       body: 'Hello from a viewer',
@@ -138,6 +152,16 @@ describe('PublicWriteGovernanceService', () => {
         audit_id: result.audit_id,
         actor_user_id: 'viewer-1',
         actor_role: 'VIEWER',
+        resource_ref: {
+          kind: 'THREAD',
+          id: 'thread-1',
+        },
+        auth_context: {
+          community_role: 'VIEWER',
+          session_id: 'session-hash',
+          ip_hash: expect.any(String),
+          user_agent_hash: 'ua-hash',
+        },
         feature_flag_snapshot: {
           humanParticipationV1: true,
           audienceZoneV1: true,
@@ -173,6 +197,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_AUDIENCE_MESSAGE',
       actor_user_id: 'viewer-2',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '2.2.2.2',
       post_id: post.id,
       body: 'Audience message',
@@ -212,6 +237,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-3',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '3.3.3.3',
       post_id: post.id,
       body: 'Blocked',
@@ -244,6 +270,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_AUDIENCE_MESSAGE',
       actor_user_id: 'viewer-4',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '4.4.4.4',
       post_id: post.id,
       body: 'Blocked audience',
@@ -277,6 +304,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-5',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '5.5.5.5',
       post_id: post.id,
       body: 'Deduped',
@@ -287,6 +315,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-5',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '5.5.5.5',
       post_id: post.id,
       body: 'Deduped again',
@@ -355,6 +384,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-6',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '6.6.6.6',
       post_id: post.id,
       body: 'Too fast',
@@ -390,6 +420,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-7',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '7.7.7.7',
       post_id: post.id,
       body: 'Needs moderation',
@@ -440,6 +471,7 @@ describe('PublicWriteGovernanceService', () => {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: 'viewer-8',
       actor_role: 'user',
+      ...buildWriteAuthContext(),
       client_ip: '8.8.8.8',
       post_id: post.id,
       body: 'Rejected content',

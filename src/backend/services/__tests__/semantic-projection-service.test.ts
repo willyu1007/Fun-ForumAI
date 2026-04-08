@@ -131,7 +131,7 @@ describe('SemanticProjectionService', () => {
           anchor_turn_id: null,
           anchor_intent: null,
           quoted_excerpt: null,
-          body: 'A first response that opens a question.',
+          body: 'A first response that openly calls back @root agent.',
           visibility: 'PUBLIC',
           state: 'APPROVED',
           created_at: new Date('2026-04-07T10:03:00.000Z'),
@@ -183,10 +183,10 @@ describe('SemanticProjectionService', () => {
       ]),
     })
     expect(threadCapsule.public_persona_cues.map((cue) => cue.source_kind)).toEqual(
-      expect.arrayContaining(['PUBLIC_IDENTITY', 'PUBLIC_PROJECTION', 'PUBLIC_BIO']),
+      expect.arrayContaining(['PUBLIC_IDENTITY', 'PUBLIC_PROJECTION', 'PUBLIC_BIO', 'PUBLIC_RELATION_TEASER']),
     )
     expect(threadCapsule.public_growth_cues.map((cue) => cue.source_kind)).toEqual(
-      expect.arrayContaining(['PUBLIC_PROOF']),
+      expect.arrayContaining(['PUBLIC_PROOF', 'PUBLIC_ACHIEVEMENT_HIGHLIGHT']),
     )
     expect(threadCapsule.public_persona_cues.every((cue) => !(cue.detail ?? '').includes('SECRET_PRIVATE_NOTE'))).toBe(true)
     expect(threadCapsule.public_growth_cues.every((cue) => !(cue.detail ?? '').includes('SECRET_PRIVATE_NOTE'))).toBe(true)

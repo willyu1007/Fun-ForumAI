@@ -23,6 +23,7 @@ import { DisplayProjectionService } from '../display-projection-service.js'
 import { ParticipationContractService } from '../participation-contract-service.js'
 import { AgentPerceptionService } from '../agent-perception-service.js'
 import { RuntimeContextAssembler } from '../runtime-context-assembler.js'
+import { ForumOrchestrationPolicyService } from '../forum-orchestration-policy-service.js'
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
@@ -116,6 +117,11 @@ function attachProjectionDeps(ctx: ReturnType<typeof setup>) {
     postRepo: ctx.postRepo,
     agentRepo: ctx.agentRepo,
   })
+  const orchestrationPolicyService = new ForumOrchestrationPolicyService({
+    communityRepo: ctx.communityRepo,
+    postRepo: ctx.postRepo,
+    agentRepo: ctx.agentRepo,
+  })
   const agentPerceptionService = new AgentPerceptionService()
   const runtimeContextAssembler = new RuntimeContextAssembler()
 
@@ -124,6 +130,7 @@ function attachProjectionDeps(ctx: ReturnType<typeof setup>) {
     semanticProjectionService,
     displayProjectionService,
     participationContractService,
+    orchestrationPolicyService,
     agentPerceptionService,
     runtimeContextAssembler,
   })
@@ -133,6 +140,7 @@ function attachProjectionDeps(ctx: ReturnType<typeof setup>) {
     semanticProjectionService,
     displayProjectionService,
     participationContractService,
+    orchestrationPolicyService,
     agentPerceptionService,
     runtimeContextAssembler,
   }
@@ -1335,6 +1343,81 @@ describe('ForumReadService', () => {
           }),
         ]),
       )
+    })
+
+    it('falls back to legacy compare output when the post policy disables envelope cutover', async () => {
+      const deps = attachProjectionDeps(ctx)
+      const community = ctx.communityRepo.create({
+        name: 'Runtime Preview Rollback',
+        slug: 'runtime-preview-rollback',
+        rules_json: {
+          stage_spec_v1: {
+            allocator: {
+              orchestration_v1: {
+                cutover: {
+                  selection_enabled: true,
+                  envelope_enabled: true,
+                  fallback_to_legacy: true,
+                },
+              },
+            },
+          },
+        },
+      })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-c', display_name: 'Rollback Root' })
+      const turnAuthor = ctx.agentRepo.create({ owner_id: 'owner-d', display_name: 'Rollback Turn' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Rollback target',
+        body: 'Envelope-disabled preview should keep only legacy compare output.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      await deps.orchestrationPolicyService.setPostOverride({
+        post_id: post.id,
+        actor_user_id: 'owner-c',
+        actor_role: 'user',
+        override: {
+          cutover: {
+            envelope_enabled: false,
+          },
+        },
+      })
+      const thread = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        body: 'Rollback thread root.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const turn = await ctx.publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: post.id,
+        author_agent_id: turnAuthor.id,
+        turn_index: 1,
+        anchor_turn_id: null,
+        quoted_excerpt: null,
+        body: 'Rollback turn body.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const preview = await ctx.svc.buildRuntimeContextPreview({
+        post_id: post.id,
+        thread_id: thread.id,
+        focus_turn_id: turn.id,
+        compare_debug: true,
+      })
+
+      expect(preview.orchestration_policy?.cutover.envelope_enabled).toBe(false)
+      expect(preview.perceived_slice).toBeNull()
+      expect(preview.runtime_context).toBeNull()
+      expect(preview.evidence_window_turns).toEqual([])
+      expect(preview.debug_compare).toMatchObject({
+        compare_debug_enabled: true,
+        legacy_thread_excerpt: expect.stringContaining('Rollback thread root.'),
+      })
     })
   })
 })
