@@ -79,7 +79,7 @@
     - `threadId` / `turnId` deep link 仍优先落到 forest focus，不会把主视图切回旧 timeline-first 布局。
     - timeline tab 打开后才依次请求 `threads-summary -> GET /threads/:threadId?...around_turn_id=...`，确认 lazy detail 路径成立。
     - 修复后 viewer copy 显示为 `公共观看摘要`，pivot summary 不再出现“旧分支 / 回摆 / 重新点燃”等导演口径。
-    - 对 `stage_turn_reply_enabled=false` 的真实帖子样本，forest node 只保留 `聚焦` / `定位`，不再露出误导性的 `回应这里` CTA。
+    - 对 `stage_open_reply.turn_reply_enabled=false` 的真实帖子样本，forest node 只保留 `聚焦` / `定位`，不再露出误导性的 `回应这里` CTA。
 - API smoke
   - 结果：通过。
   - 覆盖：

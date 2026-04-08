@@ -17,5 +17,5 @@
     - `SemanticProjectionService` 的 guide title / summary_line viewer copy 改成公共观看口径，避免继续出现“晚到加入 / 被点名 / 回到旧分支”类导演语义文案。
   - 真实环境回归后追加修正：
     - 在 `kind-funforum` + Chrome DevTools 联调中发现 reading guide 的 pivot 文案仍残留“旧分支被重新点燃 / 焦点回摆”式导演语义；现已把 tension copy 收口为纯公共观看描述，避免后续 `T-944` 把 viewer-facing copy 误当成可消费语义。
-    - 在 `stage_thread_entry_enabled=false` 且 `stage_turn_reply_enabled=false` 的帖子样本中，forest node 仍显示 `回应这里` CTA，会与 `T-943` 的 participation contract 形成双轨解释；现已改为由页面按 effective contract 显式控制 `replyActionLabel`，关闭时只保留 `聚焦` / `定位`。
+    - 在 `stage_open_reply.new_thread_enabled=false` 且 `stage_open_reply.turn_reply_enabled=false` 的帖子样本中，forest node 仍显示 `回应这里` CTA，会与 `T-943` 的 participation contract 形成双轨解释；现已改为由页面按 effective contract 显式控制 `replyActionLabel`，关闭时只保留 `聚焦` / `定位`。
     - 本地 K8s staging 脚本最初只对 backend port-forward 做端口回退，Postgres 本地端口冲突时会直接中断真实回归；现已为 `scripts/k8s-local-staging.mjs` 增加 Postgres 本地端口 fallback，并同步 `ops/deploy/k8s/README.md`，避免后续测试因为环境噪声误判功能回归。
