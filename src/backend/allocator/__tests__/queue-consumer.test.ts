@@ -68,60 +68,60 @@ describe('QueueConsumer', () => {
     stack = buildStack(pool)
   })
 
-  it('processOne returns null on empty queue', () => {
-    expect(stack.consumer.processOne()).toBeNull()
+  it('processOne returns null on empty queue', async () => {
+    await expect(stack.consumer.processOne()).resolves.toBeNull()
   })
 
-  it('processOne consumes one event and returns result', () => {
+  it('processOne consumes one event and returns result', async () => {
     stack.queue.enqueue(makeEvent())
-    const result = stack.consumer.processOne()
+    const result = await stack.consumer.processOne()
     expect(result).not.toBeNull()
     expect(result!.agents.length).toBeGreaterThan(0)
     expect(stack.queue.size()).toBe(0)
   })
 
-  it('processBatch handles multiple events', () => {
+  it('processBatch handles multiple events', async () => {
     for (let i = 0; i < 5; i++) stack.queue.enqueue(makeEvent())
-    const batch = stack.consumer.processBatch(5)
+    const batch = await stack.consumer.processBatch(5)
     expect(batch.stats.processed).toBe(5)
     expect(batch.results).toHaveLength(5)
     expect(stack.queue.size()).toBe(0)
   })
 
-  it('processBatch stops when queue is empty', () => {
+  it('processBatch stops when queue is empty', async () => {
     stack.queue.enqueue(makeEvent())
     stack.queue.enqueue(makeEvent())
-    const batch = stack.consumer.processBatch(100)
+    const batch = await stack.consumer.processBatch(100)
     expect(batch.stats.processed).toBe(2)
   })
 
-  it('drain processes all remaining events', () => {
+  it('drain processes all remaining events', async () => {
     for (let i = 0; i < 8; i++) stack.queue.enqueue(makeEvent())
-    const batch = stack.consumer.drain()
+    const batch = await stack.consumer.drain()
     expect(batch.stats.processed).toBe(8)
     expect(stack.queue.size()).toBe(0)
   })
 
-  it('tracks thread quota across batch', () => {
+  it('tracks thread quota across batch', async () => {
     const postId = 'hot-post'
     for (let i = 0; i < 10; i++) {
       stack.queue.enqueue(makeEvent({ post_id: postId }))
     }
-    const batch = stack.consumer.drain()
+    const batch = await stack.consumer.drain()
     const totalAllocated = batch.stats.allocated_agents
     expect(totalAllocated).toBeLessThanOrEqual(DEFAULT_ALLOCATOR_CONFIG.defaultThreadMaxAgents)
   })
 
   describe('lag-driven degradation', () => {
-    it('reports lag based on oldest event timestamp', () => {
+    it('reports lag based on oldest event timestamp', async () => {
       const old = new Date(Date.now() - 200_000).toISOString()
       stack.queue.enqueue(makeEvent({ created_at: old }))
-      stack.consumer.processOne()
+      await stack.consumer.processOne()
       const state = stack.degradation.getState()
       expect(state.level).toBe('normal')
     })
 
-    it('triggers moderate degradation for stale events', () => {
+    it('triggers moderate degradation for stale events', async () => {
       const stale = new Date(Date.now() - 150_000).toISOString()
       for (let i = 0; i < 5; i++) {
         stack.queue.enqueue(makeEvent({ created_at: stale }))
@@ -129,7 +129,7 @@ describe('QueueConsumer', () => {
 
       // First processOne will updateLag before dequeue
       // The oldest event is ~150s old → moderate
-      const result = stack.consumer.processOne()
+      const result = await stack.consumer.processOne()
       expect(result).not.toBeNull()
       // Quota should have been tightened during this call
       expect(result!.quota_applied).toBeLessThanOrEqual(

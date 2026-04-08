@@ -32,7 +32,7 @@ export class QueueConsumer {
    * Before each dequeue, the consumer updates the degradation monitor with
    * the current queue lag (now − oldest event timestamp).
    */
-  processBatch(maxBatch: number): BatchResult {
+  async processBatch(maxBatch: number): Promise<BatchResult> {
     const results: AllocationResult[] = []
     const stats: ConsumerStats = {
       processed: 0,
@@ -47,7 +47,7 @@ export class QueueConsumer {
       const event = this.queue.dequeue()
       if (!event) break
 
-      const result = this.allocator.allocate(event)
+      const result = await this.allocator.allocate(event)
       results.push(result)
       stats.processed++
       stats.allocated_agents += result.agents.length
@@ -65,12 +65,12 @@ export class QueueConsumer {
   }
 
   /** Process a single event. Returns null if queue is empty. */
-  processOne(): AllocationResult | null {
+  async processOne(): Promise<AllocationResult | null> {
     this.updateLag()
     const event = this.queue.dequeue()
     if (!event) return null
 
-    const result = this.allocator.allocate(event)
+    const result = await this.allocator.allocate(event)
 
     if (result.agents.length > 0 && event.post_id) {
       this.quotaCalc.recordThreadAllocation(event.post_id, result.agents.length)
@@ -81,7 +81,7 @@ export class QueueConsumer {
   }
 
   /** Drain: process all remaining events in the queue. */
-  drain(): BatchResult {
+  async drain(): Promise<BatchResult> {
     const size = this.queue.size()
     if (size === 0) return { results: [], stats: { processed: 0, allocated_agents: 0, rejected_admission: 0, rejected_quota: 0 } }
     return this.processBatch(size)

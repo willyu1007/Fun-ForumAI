@@ -77,7 +77,7 @@ function buildStack(agents: AgentCandidate[], cfgOverride?: Partial<AllocatorCon
 // ─── Phase 3 Tests ──────────────────────────────────────────
 
 describe('[Phase 3] Hot-spot post stress test', () => {
-  it('100 agents, single hot post: total allocated ≤ thread_max (20)', () => {
+  it('100 agents, single hot post: total allocated ≤ thread_max (20)', async () => {
     const agents = Array.from({ length: 100 }, (_, i) => makeAgent(`agent-${i}`))
     const { queue, consumer } = buildStack(agents)
 
@@ -86,14 +86,14 @@ describe('[Phase 3] Hot-spot post stress test', () => {
       queue.enqueue(makeEvent({ post_id: postId }))
     }
 
-    const batch = consumer.drain()
+    const batch = await consumer.drain()
     const totalAllocated = batch.results.reduce((sum, r) => sum + r.agents.length, 0)
 
     expect(totalAllocated).toBeLessThanOrEqual(DEFAULT_ALLOCATOR_CONFIG.defaultThreadMaxAgents)
     expect(totalAllocated).toBeGreaterThan(0)
   })
 
-  it('per-event allocation never exceeds event_base quota (5)', () => {
+  it('per-event allocation never exceeds event_base quota (5)', async () => {
     const agents = Array.from({ length: 100 }, (_, i) => makeAgent(`agent-${i}`))
     const { queue, consumer } = buildStack(agents)
 
@@ -101,7 +101,7 @@ describe('[Phase 3] Hot-spot post stress test', () => {
       queue.enqueue(makeEvent({ post_id: 'post-x' }))
     }
 
-    const batch = consumer.drain()
+    const batch = await consumer.drain()
     for (const result of batch.results) {
       expect(result.agents.length).toBeLessThanOrEqual(
         DEFAULT_ALLOCATOR_CONFIG.eventBaseQuota.NewPostCreated,
@@ -109,7 +109,7 @@ describe('[Phase 3] Hot-spot post stress test', () => {
     }
   })
 
-  it('community override cap is respected', () => {
+  it('community override cap is respected', async () => {
     const agents = Array.from({ length: 50 }, (_, i) => makeAgent(`agent-${i}`))
     const { queue, consumer, quota } = buildStack(agents)
     quota.setCommunityOverride('comm-1', 2)
@@ -118,7 +118,7 @@ describe('[Phase 3] Hot-spot post stress test', () => {
       queue.enqueue(makeEvent())
     }
 
-    const batch = consumer.drain()
+    const batch = await consumer.drain()
     for (const result of batch.results) {
       expect(result.agents.length).toBeLessThanOrEqual(2)
     }
@@ -126,7 +126,7 @@ describe('[Phase 3] Hot-spot post stress test', () => {
 })
 
 describe('[Phase 3] Causal chain truncation', () => {
-  it('chain stops propagating at depth > maxChainDepth (5)', () => {
+  it('chain stops propagating at depth > maxChainDepth (5)', async () => {
     const agents = Array.from({ length: 20 }, (_, i) => makeAgent(`agent-${i}`))
     const cfg: AllocatorConfig = {
       ...DEFAULT_ALLOCATOR_CONFIG,
@@ -146,7 +146,7 @@ describe('[Phase 3] Causal chain truncation', () => {
       const peeked = queue.peek()
       if (!peeked) break
 
-      const result = consumer.processOne()
+      const result = await consumer.processOne()
       if (!result) break
 
       if (result.agents.length > 0) {
@@ -160,17 +160,17 @@ describe('[Phase 3] Causal chain truncation', () => {
     expect(maxAllocatedDepth).toBeLessThanOrEqual(cfg.maxChainDepth)
   })
 
-  it('explicit depth=6 event is rejected at admission', () => {
+  it('explicit depth=6 event is rejected at admission', async () => {
     const agents = [makeAgent('a1')]
     const { allocator } = buildStack(agents)
-    const result = allocator.allocate(makeEvent({ chain_depth: 6 }))
+    const result = await allocator.allocate(makeEvent({ chain_depth: 6 }))
     expect(result.agents).toHaveLength(0)
     expect(result.skipped_reasons._admission).toMatch(/chain_depth/)
   })
 })
 
 describe('[Phase 3] Concurrent dedup — (event_id, agent_id) lock', () => {
-  it('same event_id never allocates the same agent twice across multiple calls', () => {
+  it('same event_id never allocates the same agent twice across multiple calls', async () => {
     const agents = Array.from({ length: 5 }, (_, i) => makeAgent(`agent-${i}`))
     const { allocator } = buildStack(agents)
 
@@ -178,7 +178,7 @@ describe('[Phase 3] Concurrent dedup — (event_id, agent_id) lock', () => {
     const allAllocated: string[] = []
 
     for (let i = 0; i < 10; i++) {
-      const result = allocator.allocate(
+      const result = await allocator.allocate(
         makeEvent({ event_id: eventId, idempotency_key: `idem-run-${i}` }),
       )
       allAllocated.push(...result.agents.map((a) => a.agent_id))
@@ -188,12 +188,12 @@ describe('[Phase 3] Concurrent dedup — (event_id, agent_id) lock', () => {
     expect(unique.size).toBe(allAllocated.length)
   })
 
-  it('different event_ids can allocate overlapping agents', () => {
+  it('different event_ids can allocate overlapping agents', async () => {
     const agents = [makeAgent('shared-agent')]
     const { allocator } = buildStack(agents)
 
-    const r1 = allocator.allocate(makeEvent({ event_id: 'evt-A' }))
-    const r2 = allocator.allocate(makeEvent({ event_id: 'evt-B' }))
+    const r1 = await allocator.allocate(makeEvent({ event_id: 'evt-A' }))
+    const r2 = await allocator.allocate(makeEvent({ event_id: 'evt-B' }))
 
     expect(r1.agents.map((a) => a.agent_id)).toContain('shared-agent')
     expect(r2.agents.map((a) => a.agent_id)).toContain('shared-agent')
@@ -208,41 +208,41 @@ describe('[Phase 3] Degradation lifecycle', () => {
     stack = buildStack(pool)
   })
 
-  it('normal → moderate → critical → recovery', () => {
+  it('normal → moderate → critical → recovery', async () => {
     // Normal: full quota
-    const r1 = stack.allocator.allocate(makeEvent())
+    const r1 = await stack.allocator.allocate(makeEvent())
     expect(r1.degradation_level).toBe('normal')
     expect(r1.quota_applied).toBe(5)
 
     // Moderate: quota halved
     stack.degradation.reportLag(150)
-    const r2 = stack.allocator.allocate(makeEvent())
+    const r2 = await stack.allocator.allocate(makeEvent())
     expect(r2.degradation_level).toBe('moderate')
     expect(r2.quota_applied).toBe(2) // floor(5 * 0.5)
 
     // Critical: quota near zero
     stack.degradation.reportLag(400)
-    const r3 = stack.allocator.allocate(makeEvent())
+    const r3 = await stack.allocator.allocate(makeEvent())
     expect(r3.degradation_level).toBe('critical')
     expect(r3.quota_applied).toBe(0) // floor(5 * 0.1)
     expect(r3.agents).toHaveLength(0)
 
     // Recovery: lag drops, quota restores
     stack.degradation.reportLag(10)
-    const r4 = stack.allocator.allocate(makeEvent())
+    const r4 = await stack.allocator.allocate(makeEvent())
     expect(r4.degradation_level).toBe('normal')
     expect(r4.quota_applied).toBe(5)
     expect(r4.agents.length).toBeGreaterThan(0)
   })
 
-  it('queue-driven degradation: stale events trigger tightened quota', () => {
+  it('queue-driven degradation: stale events trigger tightened quota', async () => {
     const staleTs = new Date(Date.now() - 200_000).toISOString() // 200s old → moderate
 
     for (let i = 0; i < 5; i++) {
       stack.queue.enqueue(makeEvent({ created_at: staleTs }))
     }
 
-    const batch = stack.consumer.processBatch(5)
+    const batch = await stack.consumer.processBatch(5)
     const moderateResults = batch.results.filter((r) => r.degradation_level === 'moderate')
     expect(moderateResults.length).toBeGreaterThan(0)
 
@@ -251,27 +251,27 @@ describe('[Phase 3] Degradation lifecycle', () => {
     }
   })
 
-  it('critical stale events almost completely suppress allocation', () => {
+  it('critical stale events almost completely suppress allocation', async () => {
     const veryStaleTs = new Date(Date.now() - 400_000).toISOString() // 400s → critical
 
     for (let i = 0; i < 5; i++) {
       stack.queue.enqueue(makeEvent({ created_at: veryStaleTs }))
     }
 
-    const batch = stack.consumer.processBatch(5)
+    const batch = await stack.consumer.processBatch(5)
     for (const r of batch.results) {
       expect(r.agents).toHaveLength(0)
     }
   })
 
-  it('fresh events after stale batch recover to normal', () => {
+  it('fresh events after stale batch recover to normal', async () => {
     // First: stale events
     const staleTs = new Date(Date.now() - 400_000).toISOString()
     stack.queue.enqueue(makeEvent({ created_at: staleTs }))
-    stack.consumer.processOne()
+    await stack.consumer.processOne()
 
     // After draining stale events, queue is empty → lag = 0
-    const freshResult = stack.consumer.processOne()
+    const freshResult = await stack.consumer.processOne()
     expect(freshResult).toBeNull()
 
     // Now the degradation should have recovered
@@ -279,14 +279,14 @@ describe('[Phase 3] Degradation lifecycle', () => {
     expect(state.level).toBe('normal')
 
     // Fresh event should get full quota
-    const r = stack.allocator.allocate(makeEvent())
+    const r = await stack.allocator.allocate(makeEvent())
     expect(r.degradation_level).toBe('normal')
     expect(r.quota_applied).toBe(5)
   })
 })
 
 describe('[Phase 3] Full pipeline chain simulation', () => {
-  it('simulates A posts → agents reply → chain propagates → truncates', () => {
+  it('simulates A posts → agents reply → chain propagates → truncates', async () => {
     const agents = Array.from({ length: 15 }, (_, i) =>
       makeAgent(`agent-${i}`),
     )
@@ -312,7 +312,7 @@ describe('[Phase 3] Full pipeline chain simulation', () => {
       const peeked = queue.peek()
       if (!peeked) break
 
-      const result = consumer.processOne()
+      const result = await consumer.processOne()
       if (!result) break
 
       allResults.push({

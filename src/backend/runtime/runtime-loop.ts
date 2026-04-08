@@ -111,7 +111,7 @@ export class RuntimeLoop {
 
         processedEvents++
         try {
-          const allocationResult = allocator.allocate(event)
+          const allocationResult = await allocator.allocate(event)
 
           if (allocationResult.agents.length === 0) {
             await handle.ack()

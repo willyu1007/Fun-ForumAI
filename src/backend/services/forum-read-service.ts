@@ -75,6 +75,7 @@ import {
 import type {
   AudienceSignalCapsule,
   DiscussionForestProjection,
+  EffectiveOrchestrationPolicy,
   EffectiveParticipationContract,
   PerceivedContextSlice,
   PerceivedEvidenceEntry,
@@ -90,6 +91,7 @@ import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
 import type { SemanticProjectionService } from './semantic-projection-service.js'
 import type { DisplayProjectionService } from './display-projection-service.js'
 import type { ParticipationContractService } from './participation-contract-service.js'
+import type { ForumOrchestrationPolicyService } from './forum-orchestration-policy-service.js'
 import type { AgentPerceptionService } from './agent-perception-service.js'
 import type { RuntimeContextAssembler } from './runtime-context-assembler.js'
 
@@ -118,6 +120,7 @@ export interface ForumReadServiceDeps {
   semanticProjectionService?: SemanticProjectionService | null
   displayProjectionService?: DisplayProjectionService | null
   participationContractService?: ParticipationContractService | null
+  orchestrationPolicyService?: ForumOrchestrationPolicyService | null
   agentPerceptionService?: AgentPerceptionService | null
   runtimeContextAssembler?: RuntimeContextAssembler | null
 }
@@ -227,6 +230,20 @@ export interface RuntimeContextPreview {
   perceived_slice: PerceivedContextSlice | null
   runtime_context: RuntimeContextEnvelope | null
   evidence_window_turns: PerceivedEvidenceEntry[]
+  orchestration_policy?: EffectiveOrchestrationPolicy | null
+  debug_compare?: {
+    compare_debug_enabled: boolean
+    legacy_thread_excerpt: string | null
+  } | null
+}
+
+export interface ForumOrchestrationReadBundle {
+  post_capsule: PostSemanticCapsule
+  thread_capsule: ThreadCapsule | null
+  reading_guide: ReadingGuideProjection
+  forest: DiscussionForestProjection
+  participation_contract: EffectiveParticipationContract | null
+  orchestration_policy: EffectiveOrchestrationPolicy | null
 }
 
 export interface PublicStageThreadTurnWithAuthor extends PublicStageThreadTurn {
@@ -365,6 +382,7 @@ export class ForumReadService {
     semanticProjectionService?: SemanticProjectionService | null
     displayProjectionService?: DisplayProjectionService | null
     participationContractService?: ParticipationContractService | null
+    orchestrationPolicyService?: ForumOrchestrationPolicyService | null
     agentPerceptionService?: AgentPerceptionService | null
     runtimeContextAssembler?: RuntimeContextAssembler | null
   }): void {
@@ -382,6 +400,9 @@ export class ForumReadService {
     }
     if (input.participationContractService !== undefined) {
       this.deps.participationContractService = input.participationContractService
+    }
+    if (input.orchestrationPolicyService !== undefined) {
+      this.deps.orchestrationPolicyService = input.orchestrationPolicyService
     }
     if (input.agentPerceptionService !== undefined) {
       this.deps.agentPerceptionService = input.agentPerceptionService
@@ -853,6 +874,17 @@ export class ForumReadService {
       focus_thread_id: resolvedFocusThreadId,
       selected_thread: selectedThread,
     }
+  }
+
+  private buildLegacyThreadExcerpt(thread: PublicStageThreadWithAuthor | null): string | null {
+    if (!thread) {
+      return null
+    }
+
+    return [
+      `${thread.author.display_name}：${thread.body}`,
+      ...thread.turns.slice(-5).map((turn) => `${turn.author.display_name}：${turn.body}`),
+    ].join('\n')
   }
 
   private calculateHeatScore(input: {
@@ -1592,15 +1624,52 @@ export class ForumReadService {
     return bundle.forest
   }
 
+  async buildOrchestrationReadBundle(input: {
+    post_id: string
+    thread_id?: string | null
+    focus_turn_id?: string | null
+  }, viewerUserId?: string): Promise<ForumOrchestrationReadBundle> {
+    const bundle = await this.buildProjectionBundle(
+      input.post_id,
+      {
+        focus_thread_id: input.thread_id ?? null,
+        focus_turn_id: input.focus_turn_id ?? null,
+      },
+      viewerUserId,
+    )
+    const participationContract = this.deps.participationContractService
+      ? await this.deps.participationContractService.getPostContract(input.post_id)
+      : null
+    const orchestrationPolicy = this.deps.orchestrationPolicyService
+      ? await this.deps.orchestrationPolicyService.getPostPolicy(input.post_id)
+      : null
+
+    return {
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
+      reading_guide: bundle.reading_guide,
+      forest: bundle.forest,
+      participation_contract: participationContract,
+      orchestration_policy: orchestrationPolicy,
+    }
+  }
+
   async buildRuntimeContextPreview(input: {
     post_id: string
     thread_id?: string | null
     focus_turn_id?: string | null
+    agent_id?: string | null
+    compare_debug?: boolean
   }, viewerUserId?: string): Promise<RuntimeContextPreview> {
     if (!this.deps.agentPerceptionService || !this.deps.runtimeContextAssembler) {
       throw new Error('Runtime preview services are not attached')
     }
 
+    const readBundle = await this.buildOrchestrationReadBundle({
+      post_id: input.post_id,
+      thread_id: input.thread_id ?? null,
+      focus_turn_id: input.focus_turn_id ?? null,
+    }, viewerUserId)
     const bundle = await this.buildProjectionBundle(
       input.post_id,
       {
@@ -1610,18 +1679,21 @@ export class ForumReadService {
       viewerUserId,
     )
     const perceivedSlice = this.deps.agentPerceptionService.buildSlice({
-      post_capsule: bundle.post_capsule,
-      thread_capsule: bundle.thread_capsule,
-      forest: bundle.forest,
+      agent_id: input.agent_id ?? 'preview-agent',
+      post_capsule: readBundle.post_capsule,
+      thread_capsule: readBundle.thread_capsule,
+      forest: readBundle.forest,
+      participation_contract: readBundle.participation_contract,
       focus_turn_id: input.focus_turn_id ?? null,
     })
     const evidenceWindowTurns = this.buildEvidenceWindowTurns(bundle.selected_thread, perceivedSlice)
-    const participationContract = this.deps.participationContractService
-      ? await this.deps.participationContractService.getPostContract(input.post_id)
-      : null
+    if (perceivedSlice) {
+      perceivedSlice.evidence_window = evidenceWindowTurns
+    }
     const runtimeContext = this.deps.runtimeContextAssembler.build({
-      post_capsule: bundle.post_capsule,
-      thread_capsule: bundle.thread_capsule,
+      agent_id: input.agent_id ?? 'preview-agent',
+      post_capsule: readBundle.post_capsule,
+      thread_capsule: readBundle.thread_capsule,
       perceived_slice: perceivedSlice,
       post_title: bundle.post.title,
       post_body_excerpt: bundle.post.body.slice(0, 240),
@@ -1631,18 +1703,28 @@ export class ForumReadService {
         display_name: bundle.post.author.display_name,
       },
       community_id: bundle.post.community_id,
-      participation_contract: participationContract,
+      participation_contract: readBundle.participation_contract,
       evidence_window_turns: evidenceWindowTurns,
     })
+    const legacyThreadExcerpt = input.compare_debug
+      ? this.buildLegacyThreadExcerpt(bundle.selected_thread)
+      : null
 
     return {
-      post_capsule: bundle.post_capsule,
-      thread_capsule: bundle.thread_capsule,
-      reading_guide: bundle.reading_guide,
-      forest: bundle.forest,
+      post_capsule: readBundle.post_capsule,
+      thread_capsule: readBundle.thread_capsule,
+      reading_guide: readBundle.reading_guide,
+      forest: readBundle.forest,
       perceived_slice: perceivedSlice,
       runtime_context: runtimeContext,
       evidence_window_turns: evidenceWindowTurns,
+      orchestration_policy: readBundle.orchestration_policy,
+      debug_compare: input.compare_debug
+        ? {
+            compare_debug_enabled: true,
+            legacy_thread_excerpt: legacyThreadExcerpt,
+          }
+        : null,
     }
   }
 
@@ -1658,6 +1740,13 @@ export class ForumReadService {
       throw new Error('ParticipationContractService is not attached')
     }
     return this.deps.participationContractService.getPostContract(postId)
+  }
+
+  async getPostOrchestrationPolicy(postId: string): Promise<EffectiveOrchestrationPolicy> {
+    if (!this.deps.orchestrationPolicyService) {
+      throw new Error('ForumOrchestrationPolicyService is not attached')
+    }
+    return this.deps.orchestrationPolicyService.getPostPolicy(postId)
   }
 
   async getCommunities(opts: {

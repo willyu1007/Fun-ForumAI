@@ -31,4 +31,6 @@ export type {
   GraphRelevanceSnapshot,
   CastingDirectorPolicy,
   CastingDirectorCommunityConfig,
+  ForumAttentionInputBundle,
+  AttentionTelemetrySnapshot,
 } from './types.js'

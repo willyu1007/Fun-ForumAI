@@ -1194,6 +1194,11 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
           scenes: config.features.personaRuntimeScenes,
           writeback_enabled: config.features.personaWritebackV1,
         },
+        forum_orchestration: {
+          shadow: config.features.forumOrchestrationShadow,
+          selection_cutover: config.features.forumOrchestrationSelectionCutover,
+          envelope_cutover: config.features.forumOrchestrationEnvelopeCutover,
+        },
         lightweight_personalization: lightweightPersonalization
           ? {
               enabled: true,

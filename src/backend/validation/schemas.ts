@@ -10,6 +10,10 @@ import {
   PUBLIC_PARTICIPATION_MODE_IDS,
   PUBLICATION_REVIEW_PROFILE_IDS,
 } from '../../shared/semantic-taxonomy.js'
+import {
+  ORCHESTRATION_PROFILE_IDS,
+  REACTIVE_RECALL_DECAY_IDS,
+} from '../../shared/forum-orchestration.js'
 
 const httpsUrlSchema = z
   .string()
@@ -312,6 +316,40 @@ export const patchCommunityStageSpecSchema = z
             thread_cooldown_seconds: z.number().int().min(0).max(3600).optional(),
           })
           .optional(),
+        orchestration_v1: z
+          .object({
+            profile: z.enum(ORCHESTRATION_PROFILE_IDS).optional(),
+            recall_control: z
+              .object({
+                pair_window_minutes: z.number().int().min(1).max(240).optional(),
+                pair_max_exchanges: z.number().int().min(1).max(16).optional(),
+                post_thread_share_cap: z.number().min(0).max(1).optional(),
+                reactive_recall_decay: z.enum(REACTIVE_RECALL_DECAY_IDS).optional(),
+                newcomer_min_share: z.number().min(0).max(1).optional(),
+                late_entry_min_share: z.number().min(0).max(1).optional(),
+                revive_old_branch_budget: z.number().int().min(0).max(16).optional(),
+              })
+              .strict()
+              .optional(),
+            compare_debug: z
+              .object({
+                shadow_enabled: z.boolean().optional(),
+                record_metrics: z.boolean().optional(),
+                include_viewer_telemetry: z.boolean().optional(),
+              })
+              .strict()
+              .optional(),
+            cutover: z
+              .object({
+                selection_enabled: z.boolean().optional(),
+                envelope_enabled: z.boolean().optional(),
+                fallback_to_legacy: z.boolean().optional(),
+              })
+              .strict()
+              .optional(),
+          })
+          .strict()
+          .optional(),
       })
       .optional(),
     human_participation: z
@@ -478,8 +516,51 @@ export const buildRuntimeContextPreviewSchema = z
     post_id: z.string().trim().min(1),
     thread_id: z.string().trim().min(1).nullable().optional(),
     focus_turn_id: z.string().trim().min(1).nullable().optional(),
+    agent_id: z.string().trim().min(1).nullable().optional(),
+    compare_debug: z.boolean().optional(),
   })
   .strict()
+
+export const updateOrchestrationPolicyOverrideSchema = z
+  .object({
+    profile: z.enum(ORCHESTRATION_PROFILE_IDS).optional(),
+    recall_control: z
+      .object({
+        pair_window_minutes: z.number().int().min(1).max(240).optional(),
+        pair_max_exchanges: z.number().int().min(1).max(16).optional(),
+        post_thread_share_cap: z.number().min(0).max(1).optional(),
+        reactive_recall_decay: z.enum(REACTIVE_RECALL_DECAY_IDS).optional(),
+        newcomer_min_share: z.number().min(0).max(1).optional(),
+        late_entry_min_share: z.number().min(0).max(1).optional(),
+        revive_old_branch_budget: z.number().int().min(0).max(16).optional(),
+      })
+      .strict()
+      .optional(),
+    compare_debug: z
+      .object({
+        shadow_enabled: z.boolean().optional(),
+        record_metrics: z.boolean().optional(),
+        include_viewer_telemetry: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    cutover: z
+      .object({
+        selection_enabled: z.boolean().optional(),
+        envelope_enabled: z.boolean().optional(),
+        fallback_to_legacy: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((value) =>
+    value.profile !== undefined
+    || value.recall_control !== undefined
+    || value.compare_debug !== undefined
+    || value.cutover !== undefined, {
+      message: 'at least one orchestration override field is required',
+    })
 
 export const forumWatchTelemetrySchema = z
   .object({

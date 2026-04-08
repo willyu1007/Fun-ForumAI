@@ -24,6 +24,19 @@ export interface RuntimeFeatureMetricsSnapshot {
     blocked_runs: number
     approved_reanchors: number
   }
+  forum_orchestration: {
+    shadow_runs: number
+    selection_cutover_runs: number
+    envelope_cutover_runs: number
+    late_entry_ratio: number
+    dominant_thread_share: number
+    newcomer_share: number
+    recall_diversity: number
+    same_pair_exchange_rate: number
+    runtime_context_token_count_p95: number
+    fallback_count: number
+    shadow_overlap_ratio: number
+  }
   persona: PersonaObservationCounters
   updated_at: string
 }
@@ -53,6 +66,19 @@ class RuntimeFeatureMetrics {
       blocked_runs: 0,
       approved_reanchors: 0,
     },
+    forum_orchestration: {
+      shadow_runs: 0,
+      selection_cutover_runs: 0,
+      envelope_cutover_runs: 0,
+      late_entry_ratio: 0,
+      dominant_thread_share: 0,
+      newcomer_share: 0,
+      recall_diversity: 0,
+      same_pair_exchange_rate: 0,
+      runtime_context_token_count_p95: 0,
+      fallback_count: 0,
+      shadow_overlap_ratio: 0,
+    },
     persona: {
       observed_runs_total: 0,
       observed_visible_runs_total: 0,
@@ -74,6 +100,15 @@ class RuntimeFeatureMetrics {
       rare_reanchor_total: 0,
     },
     updated_at: new Date(0).toISOString(),
+  }
+  private readonly forumOrchestrationSamples = {
+    late_entry_ratio: [] as number[],
+    dominant_thread_share: [] as number[],
+    newcomer_share: [] as number[],
+    recall_diversity: [] as number[],
+    same_pair_exchange_rate: [] as number[],
+    shadow_overlap_ratio: [] as number[],
+    runtime_context_token_count: [] as number[],
   }
 
   recordPpr(hit: boolean): void {
@@ -131,6 +166,44 @@ class RuntimeFeatureMetrics {
 
   recordInferenceProfileReanchor(): void {
     this.snapshotState.inference_profile.approved_reanchors += 1
+    this.touch()
+  }
+
+  recordForumOrchestrationSelection(input: {
+    late_entry_ratio: number
+    dominant_thread_share: number
+    newcomer_share: number
+    recall_diversity: number
+    same_pair_exchange_rate: number
+    selection_cutover: boolean
+  }): void {
+    if (input.selection_cutover) {
+      this.snapshotState.forum_orchestration.selection_cutover_runs += 1
+    }
+    this.pushForumSample('late_entry_ratio', input.late_entry_ratio)
+    this.pushForumSample('dominant_thread_share', input.dominant_thread_share)
+    this.pushForumSample('newcomer_share', input.newcomer_share)
+    this.pushForumSample('recall_diversity', input.recall_diversity)
+    this.pushForumSample('same_pair_exchange_rate', input.same_pair_exchange_rate)
+  }
+
+  recordForumOrchestrationShadow(overlapRatio: number): void {
+    this.snapshotState.forum_orchestration.shadow_runs += 1
+    this.pushForumSample('shadow_overlap_ratio', overlapRatio)
+  }
+
+  recordForumRuntimeContext(input: {
+    token_count: number
+    envelope_cutover: boolean
+  }): void {
+    if (input.envelope_cutover) {
+      this.snapshotState.forum_orchestration.envelope_cutover_runs += 1
+    }
+    this.pushForumSample('runtime_context_token_count', input.token_count)
+  }
+
+  recordForumOrchestrationFallback(): void {
+    this.snapshotState.forum_orchestration.fallback_count += 1
     this.touch()
   }
 
@@ -195,9 +268,54 @@ class RuntimeFeatureMetrics {
     return JSON.parse(JSON.stringify(this.snapshotState)) as RuntimeFeatureMetricsSnapshot
   }
 
+  private pushForumSample(
+    key: keyof RuntimeFeatureMetrics['forumOrchestrationSamples'],
+    value: number,
+  ): void {
+    const boundedValue = Number.isFinite(value) ? value : 0
+    const bucket = this.forumOrchestrationSamples[key]
+    bucket.push(boundedValue)
+    if (bucket.length > 200) {
+      bucket.shift()
+    }
+
+    if (key === 'runtime_context_token_count') {
+      this.snapshotState.forum_orchestration.runtime_context_token_count_p95 = percentile(bucket, 0.95)
+    } else {
+      const nextValue = average(bucket)
+      if (key === 'late_entry_ratio') {
+        this.snapshotState.forum_orchestration.late_entry_ratio = nextValue
+      } else if (key === 'dominant_thread_share') {
+        this.snapshotState.forum_orchestration.dominant_thread_share = nextValue
+      } else if (key === 'newcomer_share') {
+        this.snapshotState.forum_orchestration.newcomer_share = nextValue
+      } else if (key === 'recall_diversity') {
+        this.snapshotState.forum_orchestration.recall_diversity = nextValue
+      } else if (key === 'same_pair_exchange_rate') {
+        this.snapshotState.forum_orchestration.same_pair_exchange_rate = nextValue
+      } else if (key === 'shadow_overlap_ratio') {
+        this.snapshotState.forum_orchestration.shadow_overlap_ratio = nextValue
+      }
+    }
+
+    this.touch()
+  }
+
   private touch(): void {
     this.snapshotState.updated_at = new Date().toISOString()
   }
 }
 
 export const runtimeFeatureMetrics = new RuntimeFeatureMetrics()
+
+function average(values: number[]): number {
+  if (values.length === 0) return 0
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+function percentile(values: number[], ratio: number): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((left, right) => left - right)
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1))
+  return sorted[index] ?? 0
+}

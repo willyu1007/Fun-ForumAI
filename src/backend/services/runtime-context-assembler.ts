@@ -12,6 +12,7 @@ import { FORUM_RUNTIME_CONTEXT_ENVELOPE_SCHEMA_VERSION as RUNTIME_CONTEXT_ENVELO
 
 export class RuntimeContextAssembler {
   build(input: {
+    agent_id: string
     post_capsule: PostSemanticCapsule
     thread_capsule: ThreadCapsule | null
     perceived_slice: PerceivedContextSlice | null
@@ -30,8 +31,16 @@ export class RuntimeContextAssembler {
     const builtAt = new Date().toISOString()
     const evidenceWindow: EvidenceWindowContext | null = input.thread_capsule
       ? {
-          anchor_turn_id: input.perceived_slice?.actual_anchor_turn_id ?? input.perceived_slice?.focus_turn_id ?? null,
-          window_strategy: input.perceived_slice?.actual_anchor_turn_id ? 'AROUND_ANCHOR' : 'SALIENT_ONLY',
+          anchor_turn_id:
+            input.perceived_slice?.actual_anchor_turn_id
+            ?? input.perceived_slice?.selected_anchor_turn_id
+            ?? input.perceived_slice?.focus_turn_id
+            ?? null,
+          window_strategy: input.perceived_slice?.selected_anchor_turn_id
+            ? 'AROUND_ANCHOR'
+            : input.perceived_slice?.visible_node_ids.length
+              ? 'LATEST_VISIBLE'
+              : 'SALIENT_ONLY',
           turns: input.evidence_window_turns ?? [],
         }
       : null
@@ -39,6 +48,7 @@ export class RuntimeContextAssembler {
     return {
       schema_version: RUNTIME_CONTEXT_ENVELOPE_SCHEMA_VERSION,
       envelope_id: `runtime:${input.post_capsule.post_id}:${input.thread_capsule?.thread_id ?? 'post'}:${builtAt}`,
+      agent_id: input.agent_id,
       post_id: input.post_capsule.post_id,
       thread_id: input.thread_capsule?.thread_id ?? null,
       built_from_slice_id: input.perceived_slice?.slice_id ?? null,

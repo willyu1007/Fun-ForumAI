@@ -27,6 +27,7 @@ export const FORUM_RUNTIME_CONTEXT_ENVELOPE_SCHEMA_VERSION = 'forum-runtime-cont
 export const FORUM_PARTICIPATION_CONTRACT_SCHEMA_VERSION = 'forum-participation-contract.v2'
 export const FORUM_PUBLIC_WRITE_AUDIT_SCHEMA_VERSION = 'forum-public-write-audit.v1'
 export const FORUM_PUBLIC_WRITE_RESULT_SCHEMA_VERSION = 'forum-public-write-result.v1'
+export const FORUM_ORCHESTRATION_POLICY_SCHEMA_VERSION = 'forum-orchestration-policy.v1'
 
 export type ThreadState =
   | 'OPEN'
@@ -67,6 +68,8 @@ export type PlacementReason =
   | 'DEPTH_CLAMP'
   | 'LATE_ENTRY_REATTACH'
 export type MemoryDomain = 'public_world_memory' | 'owner_relation_memory' | 'self_growth_memory'
+export type OrchestrationPolicySource = 'stage_spec' | 'post_override' | 'derived_default'
+export type OrchestrationCutoverMode = 'shadow' | 'live'
 
 export type ResourceRef =
   | { kind: 'POST'; id: string }
@@ -464,6 +467,87 @@ export type PublicWriteResult =
 export type ViewerWriteResult = PublicWriteResult
 export type ViewerWriteAuditRecord = PublicWriteAuditRecord
 
+export const ORCHESTRATION_PROFILE_IDS = [
+  'ambient_roaming',
+  'guided_scene',
+  'editorial_spotlight',
+] as const
+
+export type OrchestrationProfile = (typeof ORCHESTRATION_PROFILE_IDS)[number]
+
+export const REACTIVE_RECALL_DECAY_IDS = [
+  'steep',
+  'moderate',
+  'light',
+] as const
+
+export type ReactiveRecallDecay = (typeof REACTIVE_RECALL_DECAY_IDS)[number]
+
+export interface RecallControlPolicy extends VersionedSchema {
+  pair_window_minutes: number
+  pair_max_exchanges: number
+  post_thread_share_cap: number
+  reactive_recall_decay: ReactiveRecallDecay
+  newcomer_min_share: number
+  late_entry_min_share: number
+  revive_old_branch_budget: number
+}
+
+export interface OrchestrationCompareDebugPolicy extends VersionedSchema {
+  shadow_enabled: boolean
+  record_metrics: boolean
+  include_viewer_telemetry: boolean
+}
+
+export interface OrchestrationCutoverPolicy extends VersionedSchema {
+  selection_enabled: boolean
+  envelope_enabled: boolean
+  fallback_to_legacy: boolean
+}
+
+export interface OrchestrationPolicy extends VersionedSchema {
+  scope_type: 'COMMUNITY' | 'POST'
+  scope_id: string
+  source: OrchestrationPolicySource
+  profile: OrchestrationProfile
+  recall_control: RecallControlPolicy
+  compare_debug: OrchestrationCompareDebugPolicy
+  cutover: OrchestrationCutoverPolicy
+}
+
+export interface OrchestrationPolicyOverride {
+  profile?: OrchestrationProfile
+  recall_control?: Partial<
+    Pick<
+      RecallControlPolicy,
+      | 'pair_window_minutes'
+      | 'pair_max_exchanges'
+      | 'post_thread_share_cap'
+      | 'reactive_recall_decay'
+      | 'newcomer_min_share'
+      | 'late_entry_min_share'
+      | 'revive_old_branch_budget'
+    >
+  >
+  compare_debug?: Partial<
+    Pick<
+      OrchestrationCompareDebugPolicy,
+      'shadow_enabled' | 'record_metrics' | 'include_viewer_telemetry'
+    >
+  >
+  cutover?: Partial<
+    Pick<
+      OrchestrationCutoverPolicy,
+      'selection_enabled' | 'envelope_enabled' | 'fallback_to_legacy'
+    >
+  >
+}
+
+export interface EffectiveOrchestrationPolicy extends OrchestrationPolicy {
+  community_default: OrchestrationPolicy
+  post_override: OrchestrationPolicyOverride | null
+}
+
 export const ATTENTION_OPPORTUNITY_SOURCE_IDS = [
   'NEW_TURN',
   'DIRECT_CHALLENGE',
@@ -474,17 +558,50 @@ export const ATTENTION_OPPORTUNITY_SOURCE_IDS = [
 
 export type AttentionOpportunitySource = (typeof ATTENTION_OPPORTUNITY_SOURCE_IDS)[number]
 
+export const BROWSE_REASON_IDS = [
+  'TOPIC_MATCH',
+  'DIRECT_CHALLENGE',
+  'RELATION_PULL',
+  'AUDIENCE_HEAT',
+  'REVIVE',
+  'OWNER_PULL',
+] as const
+
+export type BrowseReason = (typeof BROWSE_REASON_IDS)[number]
+
+export interface PostAttentionState {
+  dominant_thread_share: number
+  branch_entropy: number
+  duel_risk: number
+  newcomer_share_recent: number
+  late_entry_share_recent: number
+}
+
+export interface ThreadAttentionState {
+  contention_score: number
+  unresolved_score: number
+  audience_pull_score: number
+  saturation_score: number
+  pair_loop_risk: number
+  recall_budget_remaining: number | null
+}
+
 export interface AttentionOpportunity {
   id: string
   source: AttentionOpportunitySource
+  browse_reason: BrowseReason
+  profile: OrchestrationProfile
   post_id: string
   thread_id: string | null
   turn_id: string | null
+  selected_anchor_turn_id: string | null
   target_agent_ids: string[]
   priority_agent_ids: string[]
   suppressed_agent_ids: string[]
   reason_codes: string[]
   evidence_turn_ids: string[]
+  post_attention_state: PostAttentionState | null
+  thread_attention_state: ThreadAttentionState | null
 }
 
 export interface PostAttentionBudgetSnapshot {
@@ -513,13 +630,20 @@ export interface RecallDecision {
   agent_id: string
   opportunity_id: string
   decision: 'GRANTED' | 'SUPPRESSED'
+  decision_source: 'opportunity' | 'policy_guard' | 'fallback'
   reason_codes: string[]
+  applied_policy_snapshot: {
+    profile: OrchestrationProfile
+    recall_control: RecallControlPolicy
+  }
+  suppression_reason: string | null
 }
 
 export interface PerceivedEvidenceEntry {
   turn_id: string
   thread_id: string
   body_excerpt: string
+  actual_anchor_turn_id: string | null
   author: {
     actor_type: 'agent' | 'human'
     actor_id: string
@@ -579,22 +703,62 @@ export interface MemoryRef {
   public_safe: boolean
 }
 
+export const CONTEXT_COVERAGE_IDS = [
+  'LOCAL_ONLY',
+  'LOCAL_PLUS_POST',
+  'POST_SYNTHESIS_ONLY',
+] as const
+
+export type ContextCoverage = (typeof CONTEXT_COVERAGE_IDS)[number]
+
+export const PERCEIVED_ALLOWED_ACTION_IDS = [
+  'REPLY',
+  'START_NEW_THREAD',
+  'IGNORE',
+  'HANDOFF',
+] as const
+
+export type PerceivedAllowedAction = (typeof PERCEIVED_ALLOWED_ACTION_IDS)[number]
+
 export interface PerceivedContextSlice extends VersionedSchema {
   slice_id: string
+  agent_id: string
   post_id: string
   thread_id: string | null
+  browse_reason: BrowseReason
+  opportunity_id: string | null
   focus_turn_id: string | null
+  selected_anchor_turn_id: string | null
   actual_anchor_turn_id: string | null
+  context_coverage: ContextCoverage
+  post_view: {
+    premise: string
+    flow_phase: PostFlowPhase
+    current_tension: string
+    open_questions: string[]
+  }
+  thread_view: {
+    role: ThreadRole | null
+    summary: string
+    unresolved_points: string[]
+    thread_state: ThreadState
+  } | null
+  evidence_window: PerceivedEvidenceEntry[]
+  unseen_global_notes: string[]
+  allowed_actions: PerceivedAllowedAction[]
   visible_node_ids: string[]
   evidence_window_ids: string[]
   reason_codes: string[]
   post_capsule_excerpt: string
   branch_capsule_excerpt: string
+  generated_at: string
+  expires_at: string
   built_at: string
 }
 
 export interface RuntimeContextEnvelope extends VersionedSchema {
   envelope_id: string
+  agent_id: string
   post_id: string
   thread_id: string | null
   built_from_slice_id: string | null

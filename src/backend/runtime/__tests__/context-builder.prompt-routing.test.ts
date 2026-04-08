@@ -3,6 +3,7 @@ import { buildAgentTarget } from '../../../shared/agent-target.js'
 import { ContextBuilder } from '../context-builder.js'
 import type { ExecutionContext } from '../types.js'
 import type { ContextBuilderDeps } from '../context-builder.js'
+import { config } from '../../lib/config.js'
 
 function buildBaseContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   return {
@@ -188,6 +189,141 @@ describe('ContextBuilder prompt routing', () => {
       memory_block: 'memory',
       soft_expression_block: 'soft',
     })
+  })
+
+  it('prefers forum_runtime_context over raw thread excerpts when envelope cutover is enabled', async () => {
+    const featureFlags = config.features as unknown as Record<string, boolean>
+    const originalEnvelopeCutover = featureFlags.forumOrchestrationEnvelopeCutover
+    featureFlags.forumOrchestrationEnvelopeCutover = true
+
+    const compose = vi.fn(async () => ({
+      persona: {
+        name: 'Orchestrated Bot',
+        style: '直接',
+        interests: ['prompt'],
+        language: 'zh-CN',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      audit: {
+        version: 'v2',
+        scene: 'forum_thread' as const,
+        includedBlockIds: ['current_context_block'],
+        promptContract: 'compiled_blocks_v2',
+        tokenEstimates: { current_context_block: 1 },
+        lintWarnings: [],
+        trimReasons: [],
+      },
+      runtimeEnvelope: null,
+    }))
+
+    try {
+      const builder = new ContextBuilder({
+        forumReadService: {} as unknown as ContextBuilderDeps['forumReadService'],
+        agentService: {} as unknown as ContextBuilderDeps['agentService'],
+        promptOrchestrator: {
+          isSceneEnabled: vi.fn(() => true),
+          compose,
+        } as unknown as ContextBuilderDeps['promptOrchestrator'],
+      })
+
+      await builder.enrichWithLayers(buildBaseContext({
+        targetThreadTurn: {
+          id: 'turn-1',
+          post_id: 'post-1',
+          thread_id: 'thread-1',
+          entry_kind: 'TURN',
+          anchor_turn_id: 'thread-1',
+          body: '最新回复',
+          author_agent_id: 'agent-2',
+          author_name: 'Other Bot',
+        },
+        threadTurns: [
+          {
+            id: 'thread-1',
+            post_id: 'post-1',
+            thread_id: 'thread-1',
+            entry_kind: 'THREAD',
+            anchor_turn_id: null,
+            body: 'Thread root',
+            author_agent_id: 'agent-2',
+            author_name: 'Other Bot',
+          },
+        ],
+        forum_runtime_context: {
+          schema_version: 'forum-runtime-context-envelope.v1',
+          envelope_id: 'runtime-1',
+          agent_id: 'agent-1',
+          post_id: 'post-1',
+          thread_id: 'thread-1',
+          built_from_slice_id: 'slice-1',
+          foundation_skeleton: {
+            post: {
+              post_id: 'post-1',
+              title: '帖子标题',
+              body_excerpt: '帖子正文',
+              author: {
+                actor_type: 'agent',
+                actor_id: 'agent-2',
+                display_name: 'Other Bot',
+              },
+              community_id: 'community-1',
+            },
+            participation_contract: {
+              stage_open_reply: {
+                enabled: true,
+                new_thread_enabled: true,
+                turn_reply_enabled: true,
+              },
+              audience_lane: {
+                enabled: true,
+                posting_enabled: false,
+              },
+              identity_policy: null,
+            },
+            route_snapshot: null,
+          },
+          post_situation: {
+            flow_phase: 'ESCALATION',
+            premise: 'Premise',
+            current_tension: 'Tension',
+            open_questions: ['Q1'],
+            start_here_thread_ids: ['thread-1'],
+            must_read_turn_ids: ['turn-1'],
+          },
+          focus_thread: {
+            thread_id: 'thread-1',
+            role: 'COUNTERPOINT',
+            summary: 'Thread summary',
+            unresolved_points: ['Q1'],
+            thread_state: 'HEATING',
+            active_route: null,
+            salient_turn_ids: ['turn-1'],
+          },
+          evidence_window: {
+            anchor_turn_id: 'turn-1',
+            window_strategy: 'AROUND_ANCHOR',
+            turns: [],
+          },
+          memory_refs: [],
+          built_at: new Date().toISOString(),
+          post_capsule: null as never,
+          thread_capsule: null,
+          perceived_slice: null,
+        },
+      }))
+
+      const currentContextSources = compose.mock.calls[0]?.[0]?.currentContextSources ?? []
+      expect(currentContextSources.some((source: { kind: string }) => source.kind === 'forum_runtime_context')).toBe(true)
+      expect(currentContextSources.some((source: { kind: string }) => source.kind === 'thread_excerpt')).toBe(false)
+    } finally {
+      featureFlags.forumOrchestrationEnvelopeCutover = originalEnvelopeCutover
+    }
   })
 
   it('loads only the target thread capsule for ThreadTurnAdded and records thread state metadata', async () => {
@@ -696,6 +832,7 @@ describe('ContextBuilder prompt routing', () => {
     )
 
     expect(buildRuntimeContextPreview).toHaveBeenCalledWith({
+      agent_id: 'agent-1',
       post_id: 'post-1',
       thread_id: 'thread-1',
       focus_turn_id: 'turn-2',

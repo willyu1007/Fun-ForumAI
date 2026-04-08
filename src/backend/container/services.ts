@@ -73,6 +73,7 @@ import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
 import { SemanticProjectionService } from '../services/semantic-projection-service.js'
 import { DisplayProjectionService } from '../services/display-projection-service.js'
 import { ParticipationContractService } from '../services/participation-contract-service.js'
+import { ForumOrchestrationPolicyService } from '../services/forum-orchestration-policy-service.js'
 import { PublicWriteGovernanceService } from '../services/public-write-governance-service.js'
 import { ViewerPublicWriteService } from '../services/viewer-public-write-service.js'
 import { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
@@ -252,6 +253,11 @@ export function createCoreServices(deps: {
     postRepo: repos.postRepo,
     agentRepo: repos.agentRepo,
   })
+  const orchestrationPolicyService = new ForumOrchestrationPolicyService({
+    communityRepo: repos.communityRepo,
+    postRepo: repos.postRepo,
+    agentRepo: repos.agentRepo,
+  })
   const attentionOpportunityBroker = new AttentionOpportunityBroker()
   const recallPolicyService = new RecallPolicyService()
   const agentPerceptionService = new AgentPerceptionService()
@@ -407,6 +413,7 @@ export function createCoreServices(deps: {
     semanticProjectionService,
     displayProjectionService,
     participationContractService,
+    orchestrationPolicyService,
     agentPerceptionService,
     runtimeContextAssembler,
   })
@@ -663,6 +670,7 @@ export function createCoreServices(deps: {
     semanticProjectionService,
     displayProjectionService,
     participationContractService,
+    orchestrationPolicyService,
     attentionOpportunityBroker,
     recallPolicyService,
     agentPerceptionService,

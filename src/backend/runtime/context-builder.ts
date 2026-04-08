@@ -19,6 +19,7 @@ import type { DisplayProjectionService } from '../services/display-projection-se
 import type { AgentPerceptionService } from '../services/agent-perception-service.js'
 import type { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
+import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
 
 export interface ContextBuilderDeps {
   forumReadService: ForumReadService
@@ -131,7 +132,8 @@ export class ContextBuilder {
         const preview = await runtimePreviewBuilder.buildRuntimeContextPreview({
           post_id: event.post_id,
           thread_id: event.thread_id ?? null,
-          focus_turn_id: event.turn_id ?? null,
+          focus_turn_id: agent.selected_anchor_turn_id ?? event.turn_id ?? null,
+          agent_id: agent.agent_id,
         })
 
         ctx.semantic_post_capsule = preview.post_capsule ?? null
@@ -491,6 +493,10 @@ export class ContextBuilder {
     scene: import('./types.js').PromptScene,
   ): CurrentContextSource[] {
     const sources: CurrentContextSource[] = []
+    const hasForumRuntimeContext = Boolean(
+      config.features.forumOrchestrationEnvelopeCutover
+      && ctx.forum_runtime_context,
+    )
     if (ctx.post) {
       sources.push({
         kind: 'post_body',
@@ -499,7 +505,19 @@ export class ContextBuilder {
         source_id: ctx.post.id,
       })
     }
-    if (ctx.threadTurns?.length) {
+    if (hasForumRuntimeContext && ctx.forum_runtime_context) {
+      const text = this.serializeForumRuntimeContext(ctx.forum_runtime_context)
+      sources.push({
+        kind: 'forum_runtime_context',
+        text,
+        priority: 'critical',
+        source_id: ctx.forum_runtime_context.envelope_id,
+      })
+      runtimeFeatureMetrics.recordForumRuntimeContext({
+        token_count: Math.max(1, Math.ceil(text.length / 4)),
+        envelope_cutover: true,
+      })
+    } else if (ctx.threadTurns?.length) {
       sources.push({
         kind: 'thread_excerpt',
         text: ctx.threadTurns
@@ -509,6 +527,9 @@ export class ContextBuilder {
         priority: scene === 'forum_thread' ? 'high' : 'medium',
         source_id: ctx.post?.id,
       })
+      if (config.features.forumOrchestrationEnvelopeCutover) {
+        runtimeFeatureMetrics.recordForumOrchestrationFallback()
+      }
     }
     if (ctx.targetThreadTurn) {
       sources.push({
@@ -584,6 +605,27 @@ export class ContextBuilder {
       sources.push(ctx.surface_media_plan.current_context_source)
     }
     return sources
+  }
+
+  private serializeForumRuntimeContext(runtimeContext: NonNullable<ExecutionContext['forum_runtime_context']>): string {
+    return [
+      '## Forum Runtime Context',
+      `post=${runtimeContext.post_id}`,
+      runtimeContext.thread_id ? `thread=${runtimeContext.thread_id}` : null,
+      `flow_phase=${runtimeContext.post_situation?.flow_phase ?? 'UNKNOWN'}`,
+      runtimeContext.foundation_skeleton.post.title
+        ? `title=${runtimeContext.foundation_skeleton.post.title}`
+        : null,
+      runtimeContext.post_situation?.current_tension
+        ? `tension=${runtimeContext.post_situation.current_tension}`
+        : null,
+      runtimeContext.focus_thread?.summary
+        ? `focus_summary=${runtimeContext.focus_thread.summary}`
+        : null,
+      runtimeContext.evidence_window?.turns.length
+        ? `evidence_window=${runtimeContext.evidence_window.turns.map((turn) => `${turn.author.display_name}：${turn.body_excerpt}`).join(' | ')}`
+        : null,
+    ].filter((value): value is string => Boolean(value)).join('\n')
   }
 
   private buildRequestEnvelope(

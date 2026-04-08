@@ -521,6 +521,8 @@ const alloc = createAllocator({
   statsServiceRef: () => core.statsService,
   relationServiceRef: () => nurture.relationService,
   pprRefreshLeaderElector: infra.leaderElectors.pprRefresh,
+  forumReadService: core.forumReadService,
+  forumWatchTelemetryService,
   attentionOpportunityBroker: core.attentionOpportunityBroker,
   recallPolicyService: core.recallPolicyService,
 })
@@ -731,6 +733,7 @@ export const threadLifecycleService = core.threadLifecycleService
 export const semanticProjectionService = core.semanticProjectionService
 export const displayProjectionService = core.displayProjectionService
 export const participationContractService = core.participationContractService
+export const forumOrchestrationPolicyService = core.orchestrationPolicyService
 export const attentionOpportunityBroker = core.attentionOpportunityBroker
 export const recallPolicyService = core.recallPolicyService
 export const agentPerceptionService = core.agentPerceptionService

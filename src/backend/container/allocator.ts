@@ -27,6 +27,8 @@ import type { RelationService } from '../services/relation-service.js'
 import type { LeaderElector } from '../runtime/leader-elector.js'
 import type { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
 import type { RecallPolicyService } from '../services/recall-policy-service.js'
+import type { ForumReadService } from '../services/forum-read-service.js'
+import type { ForumWatchTelemetryService } from '../services/forum-watch-telemetry-service.js'
 
 export function createAllocator(deps: {
   repos: Repositories
@@ -34,6 +36,8 @@ export function createAllocator(deps: {
   statsServiceRef: () => StatsService | null
   relationServiceRef: () => RelationService | null
   pprRefreshLeaderElector: LeaderElector
+  forumReadService: ForumReadService
+  forumWatchTelemetryService: ForumWatchTelemetryService
   attentionOpportunityBroker?: AttentionOpportunityBroker | null
   recallPolicyService?: RecallPolicyService | null
 }) {
@@ -175,6 +179,28 @@ export function createAllocator(deps: {
       resolveCommunityDirectorConfig: resolveDirectorConfigByCommunity,
       attentionOpportunityBroker: deps.attentionOpportunityBroker ?? undefined,
       recallPolicyService: deps.recallPolicyService ?? undefined,
+      resolveAttentionInputBundle: async (event) => {
+        if (!event.post_id) {
+          return null
+        }
+        const bundle = await deps.forumReadService.buildOrchestrationReadBundle({
+          post_id: event.post_id,
+          thread_id: event.thread_id ?? null,
+          focus_turn_id: event.turn_id ?? null,
+        })
+        return {
+          post_capsule: bundle.post_capsule,
+          thread_capsule: bundle.thread_capsule,
+          forest: bundle.forest,
+          participation_contract: bundle.participation_contract,
+          effective_orchestration_policy: bundle.orchestration_policy,
+          watch_telemetry_snapshot: deps.forumWatchTelemetryService.snapshot(),
+        }
+      },
+      forumOrchestrationFlags: {
+        shadow: config.features.forumOrchestrationShadow,
+        selectionCutover: config.features.forumOrchestrationSelectionCutover,
+      },
     }),
     lock: new InMemoryAllocationLock(DEFAULT_ALLOCATOR_CONFIG.lockTtlMs),
     degradation: degradationMonitor,

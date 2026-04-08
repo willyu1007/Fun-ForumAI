@@ -93,6 +93,13 @@ describe('E2E: Governance Control Plane', () => {
           writeback_enabled: expect.any(Boolean),
         }),
       )
+      expect(res.body.data.runtime.forum_orchestration).toEqual(
+        expect.objectContaining({
+          shadow: expect.any(Boolean),
+          selection_cutover: expect.any(Boolean),
+          envelope_cutover: expect.any(Boolean),
+        }),
+      )
       expect(res.body.data.guidance).toEqual(
         expect.objectContaining({
           flags: {

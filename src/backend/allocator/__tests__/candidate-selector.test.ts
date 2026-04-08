@@ -38,106 +38,106 @@ function makeAgent(id: string, overrides: Partial<AgentCandidate> = {}): AgentCa
 describe('DefaultCandidateSelector', () => {
   const selector = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG)
 
-  it('returns empty when quota is 0', () => {
-    const result = selector.select(makeEvent(), [makeAgent('a1')], 0, NORMAL)
+  it('returns empty when quota is 0', async () => {
+    const result = await selector.select(makeEvent(), [makeAgent('a1')], 0, NORMAL)
     expect(result).toHaveLength(0)
   })
 
-  it('excludes inactive agents', () => {
+  it('excludes inactive agents', async () => {
     const agents = [makeAgent('a1', { status: 'banned' }), makeAgent('a2', { status: 'quarantined' })]
-    const result = selector.select(makeEvent(), agents, 5, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 5, NORMAL)
     expect(result).toHaveLength(0)
   })
 
-  it('excludes the event author (self-response prevention)', () => {
+  it('excludes the event author (self-response prevention)', async () => {
     const agents = [makeAgent('agent-author')]
-    const result = selector.select(makeEvent(), agents, 5, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 5, NORMAL)
     expect(result).toHaveLength(0)
   })
 
-  it('excludes agents exceeding actions_per_hour budget', () => {
+  it('excludes agents exceeding actions_per_hour budget', async () => {
     const agents = [makeAgent('a1', { actions_last_hour: 999 })]
-    const result = selector.select(makeEvent(), agents, 5, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 5, NORMAL)
     expect(result).toHaveLength(0)
   })
 
-  it('excludes agents exceeding tokens_per_day budget', () => {
+  it('excludes agents exceeding tokens_per_day budget', async () => {
     const agents = [makeAgent('a1', { tokens_last_day: 200_000 })]
-    const result = selector.select(makeEvent(), agents, 5, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 5, NORMAL)
     expect(result).toHaveLength(0)
   })
 
-  it('excludes agents within cooldown', () => {
+  it('excludes agents within cooldown', async () => {
     const recentAction = new Date(Date.now() - 10_000).toISOString() // 10s ago
     const agents = [makeAgent('a1', { last_action_at: recentAction })]
-    const result = selector.select(makeEvent(), agents, 5, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 5, NORMAL)
     expect(result).toHaveLength(0)
   })
 
-  it('includes agents past cooldown', () => {
+  it('includes agents past cooldown', async () => {
     const oldAction = new Date(Date.now() - 120_000).toISOString() // 2min ago
     const agents = [makeAgent('a1', { last_action_at: oldAction })]
-    const result = selector.select(makeEvent(), agents, 5, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 5, NORMAL)
     expect(result).toHaveLength(1)
   })
 
-  it('community membership boosts score (+3)', () => {
+  it('community membership boosts score (+3)', async () => {
     const member = makeAgent('a1', { community_ids: ['comm-1'] })
     const nonMember = makeAgent('a2', { community_ids: ['comm-other'] })
-    const result = selector.select(makeEvent(), [member, nonMember], 5, NORMAL)
+    const result = await selector.select(makeEvent(), [member, nonMember], 5, NORMAL)
     const memberScore = result.find((r) => r.agent_id === 'a1')!.score
     const nonMemberScore = result.find((r) => r.agent_id === 'a2')!.score
     expect(memberScore).toBeGreaterThan(nonMemberScore)
   })
 
-  it('thread repeat participation penalizes score (-1)', () => {
+  it('thread repeat participation penalizes score (-1)', async () => {
     const event = makeEvent({ post_id: 'post-1' })
     const repeat = makeAgent('a1', { recent_thread_post_ids: ['post-1'], community_ids: ['comm-1'] })
     const fresh = makeAgent('a2', { recent_thread_post_ids: [], community_ids: ['comm-1'] })
-    const result = selector.select(event, [repeat, fresh], 5, NORMAL)
+    const result = await selector.select(event, [repeat, fresh], 5, NORMAL)
     const repeatScore = result.find((r) => r.agent_id === 'a1')!.score
     const freshScore = result.find((r) => r.agent_id === 'a2')!.score
     expect(freshScore).toBeGreaterThanOrEqual(repeatScore)
   })
 
-  it('respects quota limit (takes top-K)', () => {
+  it('respects quota limit (takes top-K)', async () => {
     const agents = Array.from({ length: 10 }, (_, i) => makeAgent(`a${i}`))
-    const result = selector.select(makeEvent(), agents, 3, NORMAL)
+    const result = await selector.select(makeEvent(), agents, 3, NORMAL)
     expect(result).toHaveLength(3)
   })
 
-  it('no exploration noise in critical degradation', () => {
+  it('no exploration noise in critical degradation', async () => {
     const agents = [makeAgent('a1', { community_ids: [] })]
-    const results = Array.from({ length: 20 }, () =>
+    const results = await Promise.all(Array.from({ length: 20 }, () =>
       selector.select(makeEvent(), agents, 1, CRITICAL),
-    )
+    ))
     const scores = results.map((r) => r[0].score)
     const allSame = scores.every((s) => s === scores[0])
     expect(allSame).toBe(true)
   })
 
-  it('hard-excludes blocked relation hint', () => {
+  it('hard-excludes blocked relation hint', async () => {
     const agents = [
       makeAgent('a1', { relation_hint_to_author: 'blocked' }),
       makeAgent('a2', { relation_hint_to_author: 'none' }),
     ]
-    const result = selector.select(makeEvent(), agents, 5, CRITICAL)
+    const result = await selector.select(makeEvent(), agents, 5, CRITICAL)
     expect(result.map((row) => row.agent_id)).toEqual(['a2'])
   })
 
-  it('relation bonus ranks friend over following over follower', () => {
+  it('relation bonus ranks friend over following over follower', async () => {
     const agents = [
       makeAgent('friend', { relation_hint_to_author: 'friend', community_ids: [] }),
       makeAgent('following', { relation_hint_to_author: 'following', community_ids: [] }),
       makeAgent('follower', { relation_hint_to_author: 'follower', community_ids: [] }),
     ]
-    const result = selector.select(makeEvent(), agents, 5, CRITICAL)
+    const result = await selector.select(makeEvent(), agents, 5, CRITICAL)
     expect(result[0].agent_id).toBe('friend')
     expect(result[1].agent_id).toBe('following')
     expect(result[2].agent_id).toBe('follower')
   })
 
-  it('consumes typed tags + controversy_score to influence scoring', () => {
+  it('consumes typed tags + controversy_score to influence scoring', async () => {
     const event = makeEvent({
       tags: ['ai'],
       controversy_score: 1,
@@ -163,12 +163,12 @@ describe('DefaultCandidateSelector', () => {
       },
     })
 
-    const result = selector.select(event, [lowAppetite, highAppetite], 5, CRITICAL)
+    const result = await selector.select(event, [lowAppetite, highAppetite], 5, CRITICAL)
     expect(result[0].agent_id).toBe('high')
     expect(result[1].agent_id).toBe('low')
   })
 
-  it('adds PPR bonus from snapshot when enabled', () => {
+  it('adds PPR bonus from snapshot when enabled', async () => {
     const computedAt = new Date()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
     const provider = new SnapshotGraphRelevanceProvider()
@@ -201,13 +201,13 @@ describe('DefaultCandidateSelector', () => {
     })
 
     const agents = [makeAgent('a1', { community_ids: ['comm-1'] }), makeAgent('a2', { community_ids: ['comm-1'] })]
-    const result = selectorWithPpr.select(makeEvent(), agents, 5, CRITICAL)
+    const result = await selectorWithPpr.select(makeEvent(), agents, 5, CRITICAL)
 
     expect(result[0].agent_id).toBe('a2')
     expect(result[0].reasons.some((reason) => reason.startsWith('ppr_bonus='))).toBe(true)
   })
 
-  it('bypasses director policy when quota <= 2', () => {
+  it('bypasses director policy when quota <= 2', async () => {
     const directorSpy = {
       select: vi.fn(() => []),
     }
@@ -217,11 +217,11 @@ describe('DefaultCandidateSelector', () => {
       castingDirectorPolicy: directorSpy,
     })
 
-    selectorWithDirector.select(makeEvent(), [makeAgent('a1'), makeAgent('a2')], 2, CRITICAL)
+    await selectorWithDirector.select(makeEvent(), [makeAgent('a1'), makeAgent('a2')], 2, CRITICAL)
     expect(directorSpy.select).not.toHaveBeenCalled()
   })
 
-  it('applies director role allocation when enabled and quota > 2', () => {
+  it('applies director role allocation when enabled and quota > 2', async () => {
     const selectorWithDirector = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
       directorEnabled: true,
       castingDirectorPolicy: new DefaultCastingDirectorPolicy(),
@@ -241,7 +241,7 @@ describe('DefaultCandidateSelector', () => {
       makeAgent('a5', { tags: [], community_ids: ['comm-1'] }),
     ]
 
-    const result = selectorWithDirector.select(event, agents, 4, CRITICAL)
+    const result = await selectorWithDirector.select(event, agents, 4, CRITICAL)
     const roleReasons = result.flatMap((item) => item.reasons).filter((reason) => reason.startsWith('director_role='))
 
     expect(result).toHaveLength(4)
@@ -250,7 +250,7 @@ describe('DefaultCandidateSelector', () => {
     expect(roleReasons).toContain('director_role=wildcard')
   })
 
-  it('applies director v2 thread cooldown guard to avoid immediate repeat speakers', () => {
+  it('applies director v2 thread cooldown guard to avoid immediate repeat speakers', async () => {
     const selectorWithDirector = new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
       directorEnabled: true,
       directorV2Enabled: true,
@@ -274,10 +274,10 @@ describe('DefaultCandidateSelector', () => {
       makeAgent('a6', { tags: ['x'], community_ids: ['comm-1'] }),
     ]
 
-    const firstResult = selectorWithDirector.select(event, firstWave, 3, CRITICAL)
+    const firstResult = await selectorWithDirector.select(event, firstWave, 3, CRITICAL)
     expect(firstResult).toHaveLength(3)
 
-    const secondResult = selectorWithDirector.select(event, secondWave, 3, CRITICAL)
+    const secondResult = await selectorWithDirector.select(event, secondWave, 3, CRITICAL)
     const secondIds = new Set(secondResult.map((item) => item.agent_id))
 
     expect(secondIds.has(firstResult[0].agent_id)).toBe(false)

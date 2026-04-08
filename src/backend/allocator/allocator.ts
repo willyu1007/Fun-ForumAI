@@ -31,7 +31,7 @@ export interface AllocatorDeps {
 export class EventAllocator {
   constructor(private readonly deps: AllocatorDeps) {}
 
-  allocate(event: EventPayload): AllocationResult {
+  async allocate(event: EventPayload): Promise<AllocationResult> {
     const { admission, quota, candidates, lock, degradation, agentRepo } = this.deps
 
     // Stage 1: Admission
@@ -66,7 +66,7 @@ export class EventAllocator {
 
     // Stage 3: Candidate selection
     const pool = agentRepo.getCandidates(event.community_id, event.author_agent_id, event.post_id)
-    const scored = candidates.select(event, pool, effectiveQuota, degradationState)
+    const scored = await candidates.select(event, pool, effectiveQuota, degradationState)
 
     // Stage 4: Lock acquisition
     const selected: SelectedAgent[] = []
@@ -80,6 +80,9 @@ export class EventAllocator {
           agent_id: c.agent_id,
           score: c.score,
           priority: i + 1,
+          opportunity_id: c.opportunity_id,
+          browse_reason: c.browse_reason,
+          selected_anchor_turn_id: c.selected_anchor_turn_id ?? null,
         })
       } else {
         skipped[c.agent_id] = 'lock_conflict'

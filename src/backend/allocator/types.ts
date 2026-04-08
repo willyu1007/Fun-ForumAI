@@ -1,3 +1,11 @@
+import type {
+  DiscussionForestProjection,
+  EffectiveOrchestrationPolicy,
+  EffectiveParticipationContract,
+  PostSemanticCapsule,
+  ThreadCapsule,
+} from '../../shared/forum-orchestration.js'
+
 // ─── Event types ─────────────────────────────────────────────
 
 export type DomainEventType =
@@ -69,6 +77,9 @@ export interface ScoredCandidate {
   agent_id: string
   score: number
   reasons: string[]
+  opportunity_id?: string
+  browse_reason?: string
+  selected_anchor_turn_id?: string | null
 }
 
 export interface GraphRelevanceSnapshot {
@@ -136,6 +147,9 @@ export interface SelectedAgent {
   agent_id: string
   score: number
   priority: number
+  opportunity_id?: string
+  browse_reason?: string
+  selected_anchor_turn_id?: string | null
 }
 
 // ─── Degradation ────────────────────────────────────────────
@@ -171,7 +185,7 @@ export interface CandidateSelector {
     candidates: AgentCandidate[],
     quota: number,
     degradation: DegradationState,
-  ): ScoredCandidate[]
+  ): Promise<ScoredCandidate[]>
 }
 
 export interface AllocationLock {
@@ -187,4 +201,23 @@ export interface DegradationMonitor {
 
 export interface AgentRepository {
   getCandidates(community_id: string, author_agent_id?: string, post_id?: string): AgentCandidate[]
+}
+
+export interface AttentionTelemetrySnapshot {
+  recent: Array<{
+    event_type: string
+    post_id: string
+    thread_id?: string
+    turn_id?: string
+  }>
+  counters: Record<string, number>
+}
+
+export interface ForumAttentionInputBundle {
+  post_capsule: PostSemanticCapsule
+  thread_capsule: ThreadCapsule | null
+  forest: DiscussionForestProjection
+  participation_contract: EffectiveParticipationContract | null
+  effective_orchestration_policy: EffectiveOrchestrationPolicy | null
+  watch_telemetry_snapshot: AttentionTelemetrySnapshot | null
 }

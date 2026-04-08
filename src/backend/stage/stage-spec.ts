@@ -7,6 +7,10 @@ import {
   resolveCommunityInteractionContract,
   type CommunityInteractionContract,
 } from '../../shared/semantic-taxonomy.js'
+import {
+  ORCHESTRATION_PROFILE_IDS,
+  REACTIVE_RECALL_DECAY_IDS,
+} from '../../shared/forum-orchestration.js'
 
 export type AgentStageTier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
 
@@ -61,6 +65,65 @@ const stageAllocatorSchema = z.object({
     thread_max_agent_occurrences: 2,
     thread_cooldown_seconds: 600,
   }),
+  orchestration_v1: z.object({
+    profile: z.enum(ORCHESTRATION_PROFILE_IDS).default('ambient_roaming'),
+    recall_control: z.object({
+      pair_window_minutes: z.number().int().min(1).max(240).default(30),
+      pair_max_exchanges: z.number().int().min(1).max(16).default(2),
+      post_thread_share_cap: z.number().min(0).max(1).default(0.7),
+      reactive_recall_decay: z.enum(REACTIVE_RECALL_DECAY_IDS).default('moderate'),
+      newcomer_min_share: z.number().min(0).max(1).default(0.2),
+      late_entry_min_share: z.number().min(0).max(1).default(0.1),
+      revive_old_branch_budget: z.number().int().min(0).max(16).default(2),
+    }).strict().default({
+      pair_window_minutes: 30,
+      pair_max_exchanges: 2,
+      post_thread_share_cap: 0.7,
+      reactive_recall_decay: 'moderate',
+      newcomer_min_share: 0.2,
+      late_entry_min_share: 0.1,
+      revive_old_branch_budget: 2,
+    }),
+    compare_debug: z.object({
+      shadow_enabled: z.boolean().default(false),
+      record_metrics: z.boolean().default(true),
+      include_viewer_telemetry: z.boolean().default(true),
+    }).strict().default({
+      shadow_enabled: false,
+      record_metrics: true,
+      include_viewer_telemetry: true,
+    }),
+    cutover: z.object({
+      selection_enabled: z.boolean().default(true),
+      envelope_enabled: z.boolean().default(true),
+      fallback_to_legacy: z.boolean().default(true),
+    }).strict().default({
+      selection_enabled: true,
+      envelope_enabled: true,
+      fallback_to_legacy: true,
+    }),
+  }).strict().default({
+    profile: 'ambient_roaming',
+    recall_control: {
+      pair_window_minutes: 30,
+      pair_max_exchanges: 2,
+      post_thread_share_cap: 0.7,
+      reactive_recall_decay: 'moderate',
+      newcomer_min_share: 0.2,
+      late_entry_min_share: 0.1,
+      revive_old_branch_budget: 2,
+    },
+    compare_debug: {
+      shadow_enabled: false,
+      record_metrics: true,
+      include_viewer_telemetry: true,
+    },
+    cutover: {
+      selection_enabled: true,
+      envelope_enabled: true,
+      fallback_to_legacy: true,
+    },
+  }),
 }).strict().default({
   community_max_agents: 20,
   thread_max_agents: 20,
@@ -82,6 +145,28 @@ const stageAllocatorSchema = z.object({
     thread_window: 6,
     thread_max_agent_occurrences: 2,
     thread_cooldown_seconds: 600,
+  },
+  orchestration_v1: {
+    profile: 'ambient_roaming',
+    recall_control: {
+      pair_window_minutes: 30,
+      pair_max_exchanges: 2,
+      post_thread_share_cap: 0.7,
+      reactive_recall_decay: 'moderate',
+      newcomer_min_share: 0.2,
+      late_entry_min_share: 0.1,
+      revive_old_branch_budget: 2,
+    },
+    compare_debug: {
+      shadow_enabled: false,
+      record_metrics: true,
+      include_viewer_telemetry: true,
+    },
+    cutover: {
+      selection_enabled: true,
+      envelope_enabled: true,
+      fallback_to_legacy: true,
+    },
   },
 })
 
@@ -315,6 +400,28 @@ export const AVAILABILITY_FALLBACK_STAGE_SPEC_V1: StageSpecV1 = stageSpecV1Schem
       thread_window: 6,
       thread_max_agent_occurrences: 2,
       thread_cooldown_seconds: 600,
+    },
+    orchestration_v1: {
+      profile: 'ambient_roaming',
+      recall_control: {
+        pair_window_minutes: 30,
+        pair_max_exchanges: 2,
+        post_thread_share_cap: 0.7,
+        reactive_recall_decay: 'moderate',
+        newcomer_min_share: 0.2,
+        late_entry_min_share: 0.1,
+        revive_old_branch_budget: 2,
+      },
+      compare_debug: {
+        shadow_enabled: false,
+        record_metrics: true,
+        include_viewer_telemetry: true,
+      },
+      cutover: {
+        selection_enabled: true,
+        envelope_enabled: true,
+        fallback_to_legacy: true,
+      },
     },
   },
   human_participation: {

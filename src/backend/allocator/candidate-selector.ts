@@ -7,6 +7,7 @@ import type {
   GraphRelevanceProvider,
   CastingDirectorPolicy,
   CastingDirectorCommunityConfig,
+  ForumAttentionInputBundle,
 } from './types.js'
 import type { AllocatorConfig } from './config.js'
 import { deriveTopicKey } from './ppr-topic-key.js'
@@ -23,8 +24,13 @@ export interface DefaultCandidateSelectorDeps {
   directorEnabled?: boolean
   directorV2Enabled?: boolean
   resolveCommunityDirectorConfig?: (communityId: string) => CastingDirectorCommunityConfig | undefined
-  attentionOpportunityBroker?: Pick<AttentionOpportunityBroker, 'discoverFromEvent'>
+  attentionOpportunityBroker?: Pick<AttentionOpportunityBroker, 'discover' | 'discoverFromEvent'>
   recallPolicyService?: Pick<RecallPolicyService, 'evaluate'>
+  resolveAttentionInputBundle?: (event: EventPayload) => Promise<ForumAttentionInputBundle | null>
+  forumOrchestrationFlags?: {
+    shadow: boolean
+    selectionCutover: boolean
+  }
 }
 
 /**
@@ -43,12 +49,12 @@ export class DefaultCandidateSelector implements CandidateSelector {
     private readonly deps: DefaultCandidateSelectorDeps = {},
   ) {}
 
-  select(
+  async select(
     event: EventPayload,
     candidates: AgentCandidate[],
     quota: number,
     degradation: DegradationState,
-  ): ScoredCandidate[] {
+  ): Promise<ScoredCandidate[]> {
     if (quota <= 0) return []
 
     const eventTags = this.extractTags(event)
@@ -165,56 +171,141 @@ export class DefaultCandidateSelector implements CandidateSelector {
     scored.sort((a, b) => b.score - a.score)
     const topScored = scored.slice(0, quota)
 
-    if (!this.deps.directorEnabled || quota <= 2 || !this.deps.castingDirectorPolicy) {
-      return topScored
-    }
-
     let directorCandidates = this.deps.directorV2Enabled
       ? this.applyDirectorGuards(event, scored, now, communityDirectorConfig)
       : scored
-
-    if (this.deps.directorV2Enabled && this.deps.attentionOpportunityBroker && this.deps.recallPolicyService) {
-      const [opportunity] = this.deps.attentionOpportunityBroker.discoverFromEvent({
-        event,
-        scored_candidates: directorCandidates,
-      })
-      if (opportunity) {
-        const boosted = directorCandidates.map((candidate) => {
-          if (!opportunity.priority_agent_ids.includes(candidate.agent_id)) {
-            return candidate
-          }
-          return {
-            ...candidate,
-            score: candidate.score + 1.25,
-            reasons: [...candidate.reasons, `attention_opportunity=${opportunity.source.toLowerCase()}`],
-          }
-        })
-        const evaluation = this.deps.recallPolicyService.evaluate({
-          event,
-          opportunity,
-          candidates: boosted,
-        })
-        if (evaluation.granted.length > 0) {
-          directorCandidates = evaluation.granted
-        }
-      }
-    }
-
-    const selected = this.deps.castingDirectorPolicy.select({
+    directorCandidates = await this.applyForumOrchestration({
       event,
-      scored: directorCandidates,
       quota,
-      community_config: communityDirectorConfig,
+      candidates: directorCandidates,
+      legacyTop: topScored,
     })
 
-    const roleReasons = selected.flatMap((item) => item.reasons).filter((reason) => reason.startsWith('director_role='))
-    runtimeFeatureMetrics.recordDirectorRoles(roleReasons)
+    const selected = this.deps.directorEnabled && quota > 2 && this.deps.castingDirectorPolicy
+      ? this.deps.castingDirectorPolicy.select({
+          event,
+          scored: directorCandidates,
+          quota,
+          community_config: communityDirectorConfig,
+        })
+      : directorCandidates.slice(0, quota)
+
+    if (this.deps.directorEnabled && quota > 2 && this.deps.castingDirectorPolicy) {
+      const roleReasons = selected
+        .flatMap((item) => item.reasons)
+        .filter((reason) => reason.startsWith('director_role='))
+      runtimeFeatureMetrics.recordDirectorRoles(roleReasons)
+    }
 
     if (this.deps.directorV2Enabled && event.post_id) {
       this.recordThreadSelections(event.post_id, selected, now)
     }
 
     return selected
+  }
+
+  private async applyForumOrchestration(input: {
+    event: EventPayload
+    quota: number
+    candidates: ScoredCandidate[]
+    legacyTop: ScoredCandidate[]
+  }): Promise<ScoredCandidate[]> {
+    if (!this.deps.attentionOpportunityBroker || !this.deps.recallPolicyService) {
+      return input.candidates
+    }
+
+    try {
+      const attentionBundle = input.event.post_id
+        ? await this.deps.resolveAttentionInputBundle?.(input.event) ?? null
+        : null
+      const opportunities = attentionBundle
+        ? this.deps.attentionOpportunityBroker.discover({
+            event: input.event,
+            post_capsule: attentionBundle.post_capsule,
+            thread_capsule: attentionBundle.thread_capsule,
+            forest: attentionBundle.forest,
+            effective_orchestration_policy: attentionBundle.effective_orchestration_policy,
+            watch_telemetry_snapshot: attentionBundle.watch_telemetry_snapshot,
+            scored_candidates: input.candidates,
+          })
+        : this.deps.attentionOpportunityBroker.discoverFromEvent({
+            event: input.event,
+            scored_candidates: input.candidates,
+          })
+      const [opportunity] = opportunities
+      if (!opportunity) {
+        return input.candidates
+      }
+
+      const boosted = input.candidates.map((candidate) => {
+        if (!opportunity.priority_agent_ids.includes(candidate.agent_id)) {
+          return candidate
+        }
+        return {
+          ...candidate,
+          score: candidate.score + 1.25,
+          reasons: [...candidate.reasons, `attention_opportunity=${opportunity.source.toLowerCase()}`],
+        }
+      })
+      const evaluation = this.deps.recallPolicyService.evaluate({
+        event: input.event,
+        opportunity,
+        candidates: boosted,
+        policy: attentionBundle?.effective_orchestration_policy ?? null,
+      })
+      const granted = evaluation.granted.map((candidate) => ({
+        ...candidate,
+        opportunity_id: opportunity.id,
+        browse_reason: opportunity.browse_reason,
+        selected_anchor_turn_id: opportunity.selected_anchor_turn_id,
+      }))
+      const selectionCutover =
+        this.deps.forumOrchestrationFlags?.selectionCutover
+        && Boolean(attentionBundle?.effective_orchestration_policy?.cutover.selection_enabled)
+      const shadowEnabled =
+        this.deps.forumOrchestrationFlags?.shadow
+        || Boolean(attentionBundle?.effective_orchestration_policy?.compare_debug.shadow_enabled)
+      const recordMetrics = attentionBundle?.effective_orchestration_policy?.compare_debug.record_metrics ?? true
+
+      if (recordMetrics) {
+        runtimeFeatureMetrics.recordForumOrchestrationSelection({
+          late_entry_ratio: opportunity.post_attention_state?.late_entry_share_recent ?? 0,
+          dominant_thread_share: opportunity.post_attention_state?.dominant_thread_share ?? 0,
+          newcomer_share: opportunity.post_attention_state?.newcomer_share_recent ?? 0,
+          recall_diversity: granted.length > 0
+            ? new Set(granted.map((candidate) => candidate.agent_id)).size / granted.length
+            : 0,
+          same_pair_exchange_rate: evaluation.decisions.length > 0
+            ? evaluation.decisions.filter((decision) => decision.suppression_reason === 'pair_window_cap').length / evaluation.decisions.length
+            : 0,
+          selection_cutover: selectionCutover,
+        })
+      }
+
+      if (shadowEnabled) {
+        runtimeFeatureMetrics.recordForumOrchestrationShadow(overlapRatio(
+          input.legacyTop.slice(0, input.quota).map((candidate) => candidate.agent_id),
+          granted.slice(0, input.quota).map((candidate) => candidate.agent_id),
+        ))
+      }
+
+      if (!selectionCutover) {
+        return input.candidates
+      }
+      if (granted.length > 0) {
+        return granted
+      }
+      if (attentionBundle?.effective_orchestration_policy?.cutover.fallback_to_legacy ?? true) {
+        runtimeFeatureMetrics.recordForumOrchestrationFallback()
+        return input.candidates
+      }
+      return []
+    } catch {
+      if (this.deps.forumOrchestrationFlags?.selectionCutover || this.deps.forumOrchestrationFlags?.shadow) {
+        runtimeFeatureMetrics.recordForumOrchestrationFallback()
+      }
+      return input.candidates
+    }
   }
 
   private extractTags(event: EventPayload): Set<string> {
@@ -324,4 +415,11 @@ function clamp(value: number, min: number, max: number): number {
 function toNumber(value: unknown): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function overlapRatio(left: string[], right: string[]): number {
+  if (left.length === 0 || right.length === 0) return 0
+  const rightSet = new Set(right)
+  const overlap = left.filter((item) => rightSet.has(item)).length
+  return overlap / Math.max(left.length, right.length)
 }

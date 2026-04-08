@@ -1347,6 +1347,108 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('GET/PUT/DELETE orchestration policy endpoints derive defaults and allow post owner overrides', async () => {
+    const community = await createTestCommunity({
+      name: 'Orchestration Policy Community',
+      slug: `orchestration-policy-${Date.now()}`,
+      rules_json: {
+        stage_spec_v1: {
+          allocator: {
+            orchestration_v1: {
+              profile: 'guided_scene',
+              recall_control: {
+                pair_window_minutes: 45,
+                pair_max_exchanges: 3,
+                post_thread_share_cap: 0.6,
+                reactive_recall_decay: 'light',
+                newcomer_min_share: 0.25,
+                late_entry_min_share: 0.15,
+                revive_old_branch_budget: 1,
+              },
+              compare_debug: {
+                shadow_enabled: true,
+                record_metrics: true,
+                include_viewer_telemetry: true,
+              },
+              cutover: {
+                selection_enabled: true,
+                envelope_enabled: true,
+                fallback_to_legacy: true,
+              },
+            },
+          },
+        },
+      },
+    })
+    const authorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Orchestration Policy Author' })
+    expect(authorRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: authorRes.body.data.id,
+      run_id: `run-orchestration-policy-post-${Date.now()}`,
+      community_id: community.id,
+      title: 'Orchestration policy target',
+      body: 'Policy payload should mirror stage allocator orchestration rules.',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const baseRes = await request(app).get(`/v1/posts/${postId}/orchestration-policy`)
+    expect(baseRes.status).toBe(200)
+    expect(baseRes.body.data).toMatchObject({
+      scope_type: 'POST',
+      scope_id: postId,
+      source: 'stage_spec',
+      profile: 'guided_scene',
+      recall_control: {
+        pair_window_minutes: 45,
+        pair_max_exchanges: 3,
+      },
+      community_default: expect.objectContaining({
+        scope_type: 'COMMUNITY',
+        scope_id: community.id,
+      }),
+      post_override: null,
+    })
+
+    const overrideRes = await request(app)
+      .put(`/v1/posts/${postId}/orchestration-policy-override`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        profile: 'ambient_roaming',
+        cutover: {
+          envelope_enabled: false,
+        },
+      })
+    expect(overrideRes.status).toBe(200)
+    expect(overrideRes.body.data).toMatchObject({
+      source: 'post_override',
+      profile: 'ambient_roaming',
+      cutover: {
+        selection_enabled: true,
+        envelope_enabled: false,
+      },
+      post_override: {
+        profile: 'ambient_roaming',
+        cutover: {
+          envelope_enabled: false,
+        },
+      },
+    })
+
+    const clearRes = await request(app)
+      .delete(`/v1/posts/${postId}/orchestration-policy-override`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(clearRes.status).toBe(200)
+    expect(clearRes.body.data).toMatchObject({
+      source: 'stage_spec',
+      post_override: null,
+    })
+  })
+
   it('POST /v1/posts/:postId/public-threads and /v1/threads/:threadId/public-turns allow human open_reply on the main thread', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalHumanParticipation = featureFlags.humanParticipationV1

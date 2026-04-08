@@ -28,6 +28,7 @@ import {
   publicStageThreadRepo,
   publicStageTurnRepo,
   participationContractService,
+  forumOrchestrationPolicyService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
@@ -52,6 +53,7 @@ import {
   feedbackCategorySchema,
   feedbackStatusSchema,
   forumWatchTelemetrySchema,
+  updateOrchestrationPolicyOverrideSchema,
   updateParticipationContractOverrideSchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
@@ -871,6 +873,8 @@ readApiRouter.post(
       post_id: req.body.post_id,
       thread_id: req.body.thread_id ?? null,
       focus_turn_id: req.body.focus_turn_id ?? null,
+      agent_id: req.body.agent_id ?? null,
+      compare_debug: req.body.compare_debug ?? false,
     }, req.user?.userId)
     res.json({ data })
   },
@@ -883,6 +887,11 @@ readApiRouter.get('/communities/:communityId/participation-contract', async (req
 
 readApiRouter.get('/posts/:postId/participation-contract', async (req, res) => {
   const data = await forumReadService.getPostParticipationContract(req.params.postId)
+  res.json({ data })
+})
+
+readApiRouter.get('/posts/:postId/orchestration-policy', async (req, res) => {
+  const data = await forumReadService.getPostOrchestrationPolicy(req.params.postId)
   res.json({ data })
 })
 
@@ -906,6 +915,34 @@ readApiRouter.delete(
   requireHumanAuth,
   async (req, res) => {
     const data = await participationContractService.clearPostOverride({
+      post_id: String(req.params.postId),
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+    })
+    res.json({ data })
+  },
+)
+
+readApiRouter.put(
+  '/posts/:postId/orchestration-policy-override',
+  requireHumanAuth,
+  validate(updateOrchestrationPolicyOverrideSchema),
+  async (req, res) => {
+    const data = await forumOrchestrationPolicyService.setPostOverride({
+      post_id: String(req.params.postId),
+      actor_user_id: req.user!.userId,
+      actor_role: req.user!.role,
+      override: req.body,
+    })
+    res.json({ data })
+  },
+)
+
+readApiRouter.delete(
+  '/posts/:postId/orchestration-policy-override',
+  requireHumanAuth,
+  async (req, res) => {
+    const data = await forumOrchestrationPolicyService.clearPostOverride({
       post_id: String(req.params.postId),
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
