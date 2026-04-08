@@ -80,6 +80,29 @@ const feedbackDetail: FeedbackTicketDetail = {
   ],
 }
 
+function setupAuthenticatedMocks(overrides?: { mutateAsync?: ReturnType<typeof vi.fn> }) {
+  const mutateAsync = overrides?.mutateAsync ?? vi.fn().mockResolvedValue({
+    data: { ...feedbackDetail, id: 'feedback-2' },
+  })
+
+  useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+  useMyFeedbackMock.mockReturnValue({
+    data: { data: [feedbackSummary] },
+    isLoading: false,
+  } as never)
+  useMyFeedbackDetailMock.mockReturnValue({
+    data: { data: feedbackDetail },
+    isLoading: false,
+    isError: false,
+  } as never)
+  useCreateFeedbackMock.mockReturnValue({
+    mutateAsync,
+    isPending: false,
+  } as never)
+
+  return mutateAsync
+}
+
 function renderPage(search = '?ticketId=feedback-1') {
   return render(
     <MemoryRouter
@@ -105,81 +128,47 @@ describe('FeedbackPage', () => {
   })
 
   it('shows the login gate for unauthenticated users', () => {
-    useAuthMock.mockReturnValue({
-      isAuthenticated: false,
-    } as never)
-    useMyFeedbackMock.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-    } as never)
-    useMyFeedbackDetailMock.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      isError: false,
-    } as never)
-    useCreateFeedbackMock.mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-    } as never)
+    useAuthMock.mockReturnValue({ isAuthenticated: false } as never)
+    useMyFeedbackMock.mockReturnValue({ data: undefined, isLoading: false } as never)
+    useMyFeedbackDetailMock.mockReturnValue({ data: undefined, isLoading: false, isError: false } as never)
+    useCreateFeedbackMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never)
 
     renderPage()
 
     expect(screen.getByRole('heading', { name: '意见反馈' })).toBeTruthy()
     expect(screen.getByRole('link', { name: '登录' })).toBeTruthy()
-    expect(screen.getByText(/游客不能使用该入口/)).toBeTruthy()
+    expect(screen.getByText(/登录后可保留反馈记录和处理进度/)).toBeTruthy()
   })
 
-  it('renders feedback history and submits new feedback with route context', async () => {
-    const mutateAsync = vi.fn().mockResolvedValue({
-      data: {
-        ...feedbackDetail,
-        id: 'feedback-2',
-      },
-    })
+  it('renders submit tab by default with form and guidelines', () => {
+    setupAuthenticatedMocks()
+    renderPage()
 
-    useAuthMock.mockReturnValue({
-      isAuthenticated: true,
-    } as never)
-    useMyFeedbackMock.mockReturnValue({
-      data: { data: [feedbackSummary] },
-      isLoading: false,
-    } as never)
-    useMyFeedbackDetailMock.mockReturnValue({
-      data: { data: feedbackDetail },
-      isLoading: false,
-      isError: false,
-    } as never)
-    useCreateFeedbackMock.mockReturnValue({
-      mutateAsync,
-      isPending: false,
-    } as never)
+    expect(screen.getByLabelText('反馈主题')).toBeTruthy()
+    expect(screen.getByLabelText('详细描述')).toBeTruthy()
+    expect(screen.getByText('提交指引')).toBeTruthy()
+    expect(screen.getByText(/隐私保障/)).toBeTruthy()
+    expect(screen.getByText('来自 帖子详情')).toBeTruthy()
 
-    const view = renderPage()
+    expect(screen.getByText('已提交')).toBeTruthy()
+    expect(screen.getByText('处理中')).toBeTruthy()
+    expect(screen.getByText('已规划')).toBeTruthy()
 
-    expect(screen.getByText('公开处理结论')).toBeTruthy()
-    expect(screen.getAllByText('已纳入下个迭代。').length).toBeGreaterThan(0)
-    expect(screen.getByText('处理时间线')).toBeTruthy()
-    expect(screen.getByText('来源：/posts/post-1')).toBeTruthy()
-    expect(screen.getAllByText('体验问题').length).toBeGreaterThan(0)
-    expect(screen.getByText('1 张截图')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '提交意见' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '反馈记录' })).toBeTruthy()
+  })
 
-    fireEvent.change(
-      screen.getByLabelText('标题'),
-      { target: { value: '新的体验反馈' } },
-    )
-    fireEvent.change(
-      screen.getByLabelText('详细描述'),
-      { target: { value: '步骤一，步骤二，然后出现异常。' } },
-    )
+  it('submits feedback with route context', async () => {
+    const mutateAsync = setupAuthenticatedMocks()
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText('反馈主题'), { target: { value: '新的体验反馈' } })
+    fireEvent.change(screen.getByLabelText('详细描述'), { target: { value: '步骤一，步骤二，然后出现异常。' } })
 
     const file = new File(['png-binary'], 'capture.png', { type: 'image/png' })
-    fireEvent.change(screen.getByLabelText('截图上传'), {
-      target: {
-        files: [file],
-      },
-    })
+    fireEvent.change(screen.getByLabelText('截图上传'), { target: { files: [file] } })
 
-    fireEvent.click(screen.getByRole('button', { name: '提交反馈' }))
+    fireEvent.click(screen.getByRole('button', { name: /提交反馈/ }))
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({
@@ -191,59 +180,50 @@ describe('FeedbackPage', () => {
         attachments: [file],
       })
     })
-
-    expect(view.container.querySelector('[aria-pressed="true"]')).toBeTruthy()
   })
 
-  it('preserves route context after auto-selecting the first ticket from history', async () => {
-    const mutateAsync = vi.fn().mockResolvedValue({
-      data: {
-        ...feedbackDetail,
-        id: 'feedback-3',
-      },
-    })
+  it('switches to history tab and shows ticket list with progress', () => {
+    setupAuthenticatedMocks()
+    renderPage()
 
-    useAuthMock.mockReturnValue({
-      isAuthenticated: true,
-    } as never)
-    useMyFeedbackMock.mockReturnValue({
-      data: { data: [feedbackSummary] },
-      isLoading: false,
-    } as never)
-    useMyFeedbackDetailMock.mockReturnValue({
-      data: { data: feedbackDetail },
-      isLoading: false,
-      isError: false,
-    } as never)
-    useCreateFeedbackMock.mockReturnValue({
-      mutateAsync,
-      isPending: false,
-    } as never)
+    fireEvent.click(screen.getByRole('tab', { name: '反馈记录' }))
 
-    renderPage('')
+    expect(screen.getByText('帖子页切图会闪烁')).toBeTruthy()
+    expect(screen.getByText('体验问题')).toBeTruthy()
+    expect(screen.getAllByText('已规划').length).toBeGreaterThan(0)
+    expect(screen.getByText('1 张截图')).toBeTruthy()
+
+    expect(screen.getByRole('button', { name: '全部' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '处理中' })).toBeTruthy()
+  })
+
+  it('expands a ticket to show detail and timeline', async () => {
+    setupAuthenticatedMocks()
+    renderPage()
+
+    fireEvent.click(screen.getByRole('tab', { name: '反馈记录' }))
+
+    const ticketButton = screen.getByRole('button', { name: /帖子页切图会闪烁/ })
+    fireEvent.click(ticketButton)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /帖子页切图会闪烁/i }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByText('切换第二张图时会出现闪烁。')).toBeTruthy()
     })
 
-    fireEvent.change(screen.getByLabelText('标题'), {
-      target: { value: '自动选中后仍应保留来源路由' },
-    })
-    fireEvent.change(screen.getByLabelText('详细描述'), {
-      target: { value: '这里验证 setSearchParams 不会清掉来源上下文。' },
-    })
+    expect(screen.getByText('处理结果')).toBeTruthy()
+    expect(screen.getAllByText('已纳入下个迭代。').length).toBeGreaterThan(0)
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: '提交反馈' }))
+  it('preserves stats across tab switches', () => {
+    setupAuthenticatedMocks()
+    renderPage()
 
-    await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith({
-        category: 'PRODUCT_SUGGESTION',
-        title: '自动选中后仍应保留来源路由',
-        body: '这里验证 setSearchParams 不会清掉来源上下文。',
-        entry_surface: 'post_detail',
-        source_route: '/posts/post-1',
-        attachments: [],
-      })
-    })
+    expect(screen.getByText('已提交')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: '反馈记录' }))
+    expect(screen.getByText('已提交')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: '提交意见' }))
+    expect(screen.getByText('已提交')).toBeTruthy()
   })
 })

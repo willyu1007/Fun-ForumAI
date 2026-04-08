@@ -140,3 +140,15 @@
 - Net effect for `T-128`:
   - the remaining staging blocker is no longer “repo lacks a viable admin-login path”
   - the unresolved part is now purely environment-side: wiring real SMTP/SMS providers if delivery-backed login/reset flows are required instead of the operator bootstrap script
+
+## 2026-04-07 (launch readiness + auth delivery cross-check)
+
+- Re-ran the repo-side deployment gates after fixing unrelated lint / metadata drift:
+  - `pnpm verify:launch` is back to green
+  - `node .ai/skills/features/deployment/scripts/ctl-deploy.mjs verify` no longer warns about a missing `llm-forum` service descriptor
+  - `ops/deploy/http_services/llm-forum.yaml` now exists as the canonical HTTP service descriptor for the ECS/Docker Compose mainline
+- Added `node scripts/auth-delivery-smoke.mjs` as the reusable provider check for staging/prod auth delivery.
+- Cross-package outcome:
+  - deployment mainline itself is repo-ready
+  - auth delivery has been narrowed from “missing env keys” to one concrete staging secret drift: SMS is config-ready, SMTP reaches real auth but fails with the current Bitwarden-backed creds
+  - therefore the remaining `T-128` blocker is no longer “deployment chain ambiguous”, but “staging SMTP secret pair must be corrected in operator secret storage”

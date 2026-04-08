@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Depends on: none
-- Next step: 在 staging / prod 配置 bootstrap admin 环境变量，并联调后台的管理员授予/撤销链路。
+- Next step: staging 已补齐非 secret 投递参数；现在只剩校正 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` 这组 SMTP secret，然后用 `node scripts/auth-delivery-smoke.mjs` 做真实发信验证。
 
 ## Goal
 
@@ -26,8 +26,8 @@
 
 任务推进后，当前仓库状态：
 
-- `/v1/auth/register` 已切换为 challenge 两步注册，SMTP 已完成真实接入
-- `/v1/auth/sms/send` 与 `/v1/auth/sms/verify` 已实现，但还缺真实阿里云联调
+- `/v1/auth/register` 已切换为 challenge 两步注册，staging 现已补齐 `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_FROM_EMAIL`，并确认当前剩余问题收敛到 SMTP secret 认证失败
+- `/v1/auth/sms/send` 与 `/v1/auth/sms/verify` 已实现，staging 现已补齐 `ALIYUN_SMS_SIGN_NAME` / `ALIYUN_SMS_TEMPLATE_CODE`，SMS dry-run 已通过
 - Web 的手机登录/注册表单已接到验证码流程
 - `HumanUser` 已支持手机号-only、无密码账号
 - 邮箱验证码邮件已从传输层中拆出独立模板，并补强 `from/sender/envelope`，为后续邀请函模板预留结构

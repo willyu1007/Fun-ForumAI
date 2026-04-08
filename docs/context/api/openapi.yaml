@@ -887,7 +887,7 @@ components:
       additionalProperties: false
     OrchestrationCutoverPolicy:
       type: object
-      required: [schema_version, selection_enabled, envelope_enabled, fallback_to_legacy]
+      required: [schema_version, selection_enabled, envelope_enabled, fallback_to_baseline]
       properties:
         schema_version:
           type: string
@@ -895,7 +895,7 @@ components:
           type: boolean
         envelope_enabled:
           type: boolean
-        fallback_to_legacy:
+        fallback_to_baseline:
           type: boolean
       additionalProperties: false
     OrchestrationPolicy:
@@ -969,7 +969,7 @@ components:
               type: boolean
             envelope_enabled:
               type: boolean
-            fallback_to_legacy:
+            fallback_to_baseline:
               type: boolean
           additionalProperties: false
       additionalProperties: false

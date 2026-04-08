@@ -36,11 +36,34 @@ describe('setDevAuth', () => {
   it('throws when cookie sync fails', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,
+      status: 400,
       json: async () => ({ error: { message: 'boom' } }),
     }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(setDevAuth('admin')).rejects.toThrow('boom')
     expect(localStorage.getItem('dev_auth_token')).toBeNull()
+  })
+
+  it('surfaces a clearer message when the dev backend is unavailable', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error('not json')
+      },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(setDevAuth('admin')).rejects.toThrow('开发后端未连接，请先启动本地后端服务。')
+  })
+
+  it('surfaces a clearer message when the dev auth request cannot reach the backend', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError('Failed to fetch')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(setDevAuth('admin')).rejects.toThrow('开发后端未连接，请先启动本地后端服务。')
   })
 })

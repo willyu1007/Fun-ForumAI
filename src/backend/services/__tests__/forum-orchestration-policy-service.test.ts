@@ -55,7 +55,7 @@ describe('ForumOrchestrationPolicyService', () => {
               cutover: {
                 selection_enabled: true,
                 envelope_enabled: true,
-                fallback_to_legacy: true,
+                fallback_to_baseline: true,
               },
             },
           },

@@ -46,7 +46,7 @@ function makePolicy(overrides: Partial<EffectiveOrchestrationPolicy> = {}): Effe
       schema_version: 'forum-orchestration-policy.v1',
       selection_enabled: true,
       envelope_enabled: true,
-      fallback_to_legacy: true,
+      fallback_to_baseline: true,
     },
   }
   return {

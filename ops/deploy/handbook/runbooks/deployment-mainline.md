@@ -166,6 +166,18 @@ Minimal presence check without revealing values:
 grep -nE '^(APP_ENV|DATABASE_URL|JWT_SECRET|SERVICE_AUTH_SECRET|MEDIA_S3_BUCKET|RUNTIME_REDIS_URL|SSE_REDIS_URL)=' /srv/apps/fun-forum/.env | sed 's/=.*/=<redacted>/'
 ```
 
+Auth delivery readiness check before the first staging/prod auth rollout:
+
+```bash
+node scripts/auth-delivery-smoke.mjs --mode smtp --env-file ops/deploy/env-files/staging.env --smtp-verify-only
+node scripts/auth-delivery-smoke.mjs --mode sms --env-file ops/deploy/env-files/staging.env --dry-run
+```
+
+Required auth-delivery variables for cloud rollout:
+
+- SMTP: `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`
+- SMS: `ALIYUN_SMS_ACCESS_KEY_ID`, `ALIYUN_SMS_ACCESS_KEY_SECRET`, `ALIYUN_SMS_SIGN_NAME`, `ALIYUN_SMS_TEMPLATE_CODE`
+
 ## Phase 4: Record desired release
 
 Before replacing ECS or ECI, record the approved immutable image:

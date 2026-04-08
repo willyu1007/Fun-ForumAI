@@ -29,6 +29,7 @@ export function AppShellContainer() {
   const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search' || pathname === '/communities' || pathname === '/highlights'
   const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
   const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
+  const useFullWidthPageFrame = pathname.startsWith('/help') || pathname === '/terms' || pathname === '/privacy' || pathname === '/feedback' || pathname === '/safety'
   const contentSafeAreaClass = getAppShellContentSafeAreaClass(
     SHOULD_RENDER_DEV_AUTH_TOOLBAR,
     isDevAuthToolbarCollapsed,
@@ -60,13 +61,16 @@ export function AppShellContainer() {
         <div
           data-testid="shell-page-frame"
           className={cn(
-            'mx-auto px-4 pb-4 transition-[max-width] duration-200 md:px-3',
-            useWidePageFrame ? 'pt-0' : 'pt-4',
-            useWidePageFrame
-              ? useCompactStretchFrame
-                ? 'max-w-[96rem] 2xl:max-w-[108rem]'
-                : 'max-w-6xl'
-              : 'max-w-3xl',
+            'mx-auto pb-4 transition-all duration-200',
+            useFullWidthPageFrame ? 'px-4 sm:px-8 lg:px-12' : 'px-4 md:px-3',
+            (useWidePageFrame || useFullWidthPageFrame) ? 'pt-0' : 'pt-4',
+            useFullWidthPageFrame
+              ? 'max-w-5xl'
+              : useWidePageFrame
+                ? useCompactStretchFrame
+                  ? 'max-w-[96rem] 2xl:max-w-[108rem]'
+                  : 'max-w-6xl'
+                : 'max-w-3xl',
           )}
         >
           <Outlet />

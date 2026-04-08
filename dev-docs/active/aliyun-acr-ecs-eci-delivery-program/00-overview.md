@@ -4,11 +4,12 @@
 
 - State: in-progress
 - Phase: Phase B — 子任务重排与全链路交接
-- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧主线已推进到：`T-901` 把 execution-plan contract、candidate capability/pricing coverage、以及 explicit modality/response-mode contract 一并加硬；`T-935` 把 `api -> envfile`、`worker -> aliyun-eci-container-group` 固化为唯一云注入边界；`T-936` 则把 override evidence 收口到 recent ledger + process env，并已在 kind-staging 上跑通 `verify:launch:staging` 与 `verify:runtime:closeout:staging`。部署侧已有一条真实的 staging web operator 流程被跑通：`main@6341cd28` 的 immutable image 已发布到 ACR，ECS web 侧也已验证过 `.env` 安装、`deploy.sh`、`/health`、`/v1/health` 与 `/v1/admin/runtime/*` 的基本链路。当前剩余待收口项已收敛为“是否还需要对云 staging 再拿一轮 promote/backout 证据”，而不再是 `T-936` 缺少 live closeout 结果。
+- Current status: `T-128` 已从原来的 “T-129~T-131 三子任务” 扩展为五包编排入口：既保留 `T-129/T-130/T-131` 的历史交付基线，也新增 `T-935`（云环境全链路）与 `T-936`（runtime cutover/staging close-out）承接超出旧边界的工作。当前 repo 侧主线已推进到：`T-901` 把 execution-plan contract、candidate capability/pricing coverage、以及 explicit modality/response-mode contract 一并加硬；`T-935` 把 `api -> envfile`、`worker -> aliyun-eci-container-group` 固化为唯一云注入边界；`T-936` 则把 override evidence 收口到 recent ledger + process env，并已在 kind-staging 上跑通 `verify:launch:staging` 与 `verify:runtime:closeout:staging`。截至 2026-04-07，repo 侧 `pnpm verify:launch` 与 deployment metadata verify 已恢复全绿，staging desired release 也已记录为 fulfilled；当前剩余待收口项不再是 repo gate，而是外部执行与配置输入：prod desired release 尚未建立，staging SMS 配置已就绪，但 SMTP 仍存在 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` secret drift。
 - Current environment: 当前 repo 已明确 `ECS web + ECI worker` 目标拓扑，但真实云环境 readiness、ALB / DNS / SSL / ICP / Redis / RDS / 对象存储闭环由 `T-935` 承接。
 - Coverage review: 对照 `/Users/phoenix/Downloads/llm_runtime_routing_and_injection_design.md` 后，repo 侧已无未承接的高信号设计缺口；当前剩余的是外部验证与输入缺口：
   - `T-935` 仍需落位正式 deploy workspace；在此之前，staging 允许由 operator 本机完成 `bws` compile 并手工导入 ECS `.env`，但该路径不得升级为长期正式控制面。
   - `T-936` 的 kind-staging live closeout 已完成；若后续仍要求云 staging 再跑一轮同名 gate，应明确视为 `T-128/T-935` 的 promote/backout 证据补充，而不是 `T-936` repo/blocker。
+  - `T-930` 的 auth delivery 真实联调已完成一轮收口：4 个非 secret env 值已落位，SMS 已不再阻塞；当前只剩 staging SMTP secret 漂移需要 operator 修正。
   - 需求文档中 “接入 visibleProviderPin” 已被当前方案替换为“移除 visible pins 主路径语义”，并已在现行任务合同中作为 superseded 决策保留。
 
 ## Goal

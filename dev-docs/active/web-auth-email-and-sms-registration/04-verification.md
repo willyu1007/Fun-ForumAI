@@ -80,6 +80,29 @@
   - `git diff --check`
     - 结果：通过，无空白或冲突标记问题
 
+- 2026-04-07 auth delivery smoke
+  - `node scripts/auth-delivery-smoke.mjs --help`
+    - 结果：通过；联调脚本可执行，usage 已落仓
+  - `node scripts/auth-delivery-smoke.mjs --mode smtp --env-file ops/deploy/env-files/staging.env --smtp-verify-only`
+    - 结果：失败；脚本成功识别出 staging env 缺 `SMTP_HOST`、`SMTP_FROM_EMAIL`
+  - `node scripts/auth-delivery-smoke.mjs --mode sms --env-file ops/deploy/env-files/staging.env --dry-run`
+    - 结果：失败；脚本成功识别出 staging env 缺 `ALIYUN_SMS_SIGN_NAME`、`ALIYUN_SMS_TEMPLATE_CODE`
+  - `pnpm exec vitest run src/backend/services/__tests__/auth-delivery.test.ts src/backend/services/__tests__/auth-service.test.ts src/backend/routes/__tests__/auth-api.test.ts src/backend/services/__tests__/admin-user-access-service.test.ts`
+    - 结果：通过；`4` 个 test files，`28` 个 tests 全部通过
+  - `pnpm exec tsc --noEmit`
+    - 结果：通过
+  - `pnpm lint`
+    - 结果：通过
+  - `node scripts/auth-delivery-smoke.mjs --mode smtp --env-file .env.local --smtp-verify-only`
+    - 结果：通过；本地开发环境里的 SMTP 参数组合可以真实握手
+  - `node scripts/auth-delivery-smoke.mjs --mode smtp --env-file ops/deploy/env-files/staging.env --smtp-verify-only`
+    - 结果：首次因缺 `SMTP_HOST` / `SMTP_FROM_EMAIL` 失败；补齐后继续失败并进入 `535 Authentication failure`
+  - `node scripts/auth-delivery-smoke.mjs --mode sms --env-file ops/deploy/env-files/staging.env --dry-run`
+    - 结果：补齐 `ALIYUN_SMS_SIGN_NAME` / `ALIYUN_SMS_TEMPLATE_CODE` 后通过
+  - `SMTP_USER='<local-working-user>' SMTP_PASS='<local-working-pass>' node scripts/auth-delivery-smoke.mjs --mode smtp --env-file ops/deploy/env-files/staging.env --smtp-verify-only`
+    - 结果：通过
+    - 备注：说明 staging 剩余问题收敛为 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` secret drift，而不是 host/port/TLS 或业务代码问题
+
 ## Not Run
 
 - `pnpm test` 全量测试未跑；本轮只跑了 auth / redirect / environment 相关验证

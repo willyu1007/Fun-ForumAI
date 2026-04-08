@@ -45,6 +45,19 @@ function renderPage() {
   )
 }
 
+function setupEmptyMocks(opts?: { markAllRead?: ReturnType<typeof vi.fn> }) {
+  const markAllRead = opts?.markAllRead ?? vi.fn()
+  useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+  useMyReportsMock.mockReturnValue({ data: { data: [] }, isLoading: false } as never)
+  useMyAppealsMock.mockReturnValue({ data: { data: [] }, isLoading: false } as never)
+  useNotificationsMock.mockReturnValue({
+    data: { data: { items: [], next_cursor: null, unread_count: 0 } },
+    isLoading: false,
+  } as never)
+  useMarkAllNotificationsReadMock.mockReturnValue({ mutate: markAllRead, isPending: false } as never)
+  return { markAllRead }
+}
+
 describe('SafetyCenterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -111,17 +124,9 @@ describe('SafetyCenterPage', () => {
       created_at: '2026-03-12T09:00:00.000Z',
     }
 
-    useAuthMock.mockReturnValue({
-      isAuthenticated: true,
-    } as never)
-    useMyReportsMock.mockReturnValue({
-      data: { data: [complaint] },
-      isLoading: false,
-    } as never)
-    useMyAppealsMock.mockReturnValue({
-      data: { data: [appeal] },
-      isLoading: false,
-    } as never)
+    useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+    useMyReportsMock.mockReturnValue({ data: { data: [complaint] }, isLoading: false } as never)
+    useMyAppealsMock.mockReturnValue({ data: { data: [appeal] }, isLoading: false } as never)
     useNotificationsMock.mockReturnValue({
       data: {
         data: {
@@ -132,30 +137,31 @@ describe('SafetyCenterPage', () => {
       },
       isLoading: false,
     } as never)
-    useMarkAllNotificationsReadMock.mockReturnValue({
-      mutate: markAllRead,
-      isPending: false,
-    } as never)
+    useMarkAllNotificationsReadMock.mockReturnValue({ mutate: markAllRead, isPending: false } as never)
 
     renderPage()
 
-    expect(screen.getByText('状态时间线')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '状态时间线' })).toBeTruthy()
     expect(screen.getByText('你的举报已处理')).toBeTruthy()
     expect(screen.getByText('你的帖子已进入热点复核')).toBeTruthy()
     expect(screen.getByText('已提交隐私请求')).toBeTruthy()
     expect(screen.getByText('已提交账号限制申诉')).toBeTruthy()
-    expect(screen.getByText('2 条未读治理更新')).toBeTruthy()
-    expect(screen.getByText(/当前受理入口已覆盖帖子、公共舞台发言、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请/)).toBeTruthy()
-    expect(screen.getByText(/热点内容如果发生话题漂移/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: '查看完整流程说明' }).getAttribute('href')).toBe('/help/report-appeal-delete')
-    expect(screen.getByRole('link', { name: '查看热点规则' }).getAttribute('href')).toBe('/help/hot-topic-rules')
-    expect(screen.getByText('举报已处理，结果和治理动作已经回写到你的记录里。')).toBeTruthy()
-    expect(screen.getByText('热点内容已进入复核队列，系统会继续核对允许域、漂移风险和分发范围。')).toBeTruthy()
-    expect(screen.getByText('提交入口 · 隐私请求入口')).toBeTruthy()
-    expect(screen.getByText('目标对象 · 论坛帖子 · post-1')).toBeTruthy()
+    expect(screen.getByText('2 条未读更新')).toBeTruthy()
+
+    expect(screen.getByRole('link', { name: /流程说明/ }).getAttribute('href')).toBe('/help/report-appeal-delete')
+    expect(screen.getByRole('link', { name: /热点规则/ }).getAttribute('href')).toBe('/help/hot-topic-rules')
+
+    expect(screen.getByText('举报已处理，你可以查看最新结果。')).toBeTruthy()
+    expect(screen.getByText('相关内容正在复核中，结果更新后会通知你。')).toBeTruthy()
+
+    expect(screen.getByText(/入口：隐私请求入口/)).toBeTruthy()
+    expect(screen.getByText(/目标：论坛帖子 · post-1/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '全部标记已读' }))
     expect(markAllRead).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('tab', { name: '举报' }))
+    expect(screen.getByText(/来源：隐私请求入口 · 对象：论坛帖子 · post-1/)).toBeTruthy()
   })
 
   it('renders private-session governance requests without leaking internal complaint labels', () => {
@@ -177,40 +183,26 @@ describe('SafetyCenterPage', () => {
       updated_at: '2026-03-13T09:00:00.000Z',
     }
 
-    useAuthMock.mockReturnValue({
-      isAuthenticated: true,
-    } as never)
-    useMyReportsMock.mockReturnValue({
-      data: { data: [complaint] },
-      isLoading: false,
-    } as never)
-    useMyAppealsMock.mockReturnValue({
-      data: { data: [] },
-      isLoading: false,
-    } as never)
+    useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+    useMyReportsMock.mockReturnValue({ data: { data: [complaint] }, isLoading: false } as never)
+    useMyAppealsMock.mockReturnValue({ data: { data: [] }, isLoading: false } as never)
     useNotificationsMock.mockReturnValue({
-      data: {
-        data: {
-          items: [],
-          next_cursor: null,
-          unread_count: 0,
-        },
-      },
+      data: { data: { items: [], next_cursor: null, unread_count: 0 } },
       isLoading: false,
     } as never)
-    useMarkAllNotificationsReadMock.mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as never)
+    useMarkAllNotificationsReadMock.mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
 
     renderPage()
 
     expect(screen.getByText('已提交私聊治理')).toBeTruthy()
-    expect(screen.getByText('私聊治理申请已挂到人工审核队列，结案或重开会继续沿同一条 case 链路同步。')).toBeTruthy()
-    expect(screen.getByText('私聊治理 · 私聊治理入口')).toBeTruthy()
+    expect(screen.getByText('私聊治理申请处理中，结果更新后会通知你。')).toBeTruthy()
+    expect(screen.getByText(/入口：私聊治理入口/)).toBeTruthy()
     expect(screen.getAllByText('治理申请').length).toBeGreaterThan(0)
     expect(screen.queryByText(/HARASSMENT_REPORT/)).toBeNull()
     expect(screen.queryByText(/private_session_report/)).toBeNull()
+
+    fireEvent.click(screen.getByRole('tab', { name: '举报' }))
+    expect(screen.getByText(/来源：私聊治理入口 · 对象：私聊会话 · session-1/)).toBeTruthy()
   })
 
   it('opens agent targets through the modal handler in both timeline and ticket lists', () => {
@@ -232,44 +224,28 @@ describe('SafetyCenterPage', () => {
       updated_at: '2026-03-11T09:00:00.000Z',
     }
 
-    useAuthMock.mockReturnValue({
-      isAuthenticated: true,
-    } as never)
-    useMyReportsMock.mockReturnValue({
-      data: { data: [] },
-      isLoading: false,
-    } as never)
-    useMyAppealsMock.mockReturnValue({
-      data: { data: [appeal] },
-      isLoading: false,
-    } as never)
+    useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
+    useMyReportsMock.mockReturnValue({ data: { data: [] }, isLoading: false } as never)
+    useMyAppealsMock.mockReturnValue({ data: { data: [appeal] }, isLoading: false } as never)
     useNotificationsMock.mockReturnValue({
-      data: {
-        data: {
-          items: [],
-          next_cursor: null,
-          unread_count: 0,
-        },
-      },
+      data: { data: { items: [], next_cursor: null, unread_count: 0 } },
       isLoading: false,
     } as never)
-    useMarkAllNotificationsReadMock.mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as never)
+    useMarkAllNotificationsReadMock.mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
 
     renderPage()
 
     expect(screen.queryByRole('link', { name: '查看目标' })).toBeNull()
 
-    const openButtons = screen.getAllByRole('button', { name: '查看目标' })
-    expect(openButtons).toHaveLength(2)
+    const timelineButton = screen.getByRole('button', { name: '查看目标' })
+    fireEvent.click(timelineButton)
+    expect(tryOpenAgentModalMock).toHaveBeenCalledTimes(1)
 
-    for (const button of openButtons) {
-      fireEvent.click(button)
-    }
-
+    fireEvent.click(screen.getByRole('tab', { name: '申诉' }))
+    const appealButton = screen.getByRole('button', { name: '查看目标' })
+    fireEvent.click(appealButton)
     expect(tryOpenAgentModalMock).toHaveBeenCalledTimes(2)
+
     expect(tryOpenAgentModalMock).toHaveBeenCalledWith(
       buildAgentTarget({
         agentId: 'agent-1',

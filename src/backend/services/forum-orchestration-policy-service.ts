@@ -290,8 +290,8 @@ function normalizeCutover(
   const next: OrchestrationPolicyOverride['cutover'] = {
     ...(typeof value.selection_enabled === 'boolean' ? { selection_enabled: value.selection_enabled } : {}),
     ...(typeof value.envelope_enabled === 'boolean' ? { envelope_enabled: value.envelope_enabled } : {}),
-    ...(typeof value.fallback_to_legacy === 'boolean'
-      ? { fallback_to_legacy: value.fallback_to_legacy }
+    ...(typeof value.fallback_to_baseline === 'boolean'
+      ? { fallback_to_baseline: value.fallback_to_baseline }
       : {}),
   }
 

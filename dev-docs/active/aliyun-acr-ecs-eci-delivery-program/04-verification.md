@@ -183,3 +183,22 @@
   - `node scripts/bootstrap-admin-account.mjs --help`
     - Result: passed.
     - Note: operator fallback for bootstrap-admin account creation is executable under plain `node`.
+- 2026-04-07:
+  - `node .ai/skills/features/deployment/scripts/ctl-deploy.mjs verify`
+    - Result: passed.
+    - Note: `ops/deploy/http_services/llm-forum.yaml` 已补齐，deployment metadata verify 不再有 warning。
+  - `node ops/deploy/scripts/release-intent.mjs show --env staging`
+    - Result: passed.
+    - Note: staging desired release 当前为 `fulfilled`，`ecs_web` 与 `eci_worker` 均已标记 `applied`。
+  - `node ops/deploy/scripts/release-intent.mjs show --env prod`
+    - Result: failed with `[error] No desired release recorded for prod.`
+    - Note: prod 仍未进入 promote preparation。
+  - `node scripts/auth-delivery-smoke.mjs --mode smtp --env-file ops/deploy/env-files/staging.env --smtp-verify-only`
+    - Result: failed.
+    - Note: 在补齐非 secret 值之前，staging env 缺 `SMTP_HOST` 与 `SMTP_FROM_EMAIL`；补齐后进一步收敛为 SMTP 535 鉴权失败。
+  - `node scripts/auth-delivery-smoke.mjs --mode sms --env-file ops/deploy/env-files/staging.env --dry-run`
+    - Result: passed after adding `ALIYUN_SMS_SIGN_NAME` and `ALIYUN_SMS_TEMPLATE_CODE`.
+    - Note: SMS config is no longer the staging blocker.
+  - `SMTP_USER='<local-working-user>' SMTP_PASS='<local-working-pass>' node scripts/auth-delivery-smoke.mjs --mode smtp --env-file ops/deploy/env-files/staging.env --smtp-verify-only`
+    - Result: passed.
+    - Note: staging SMTP blocker is narrowed to the Bitwarden-backed `smtp_user` / `smtp_pass` secret values rather than network or TLS settings.

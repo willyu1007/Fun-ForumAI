@@ -3,8 +3,8 @@ import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import {
   useMarkAllNotificationsRead,
   useMyAppeals,
@@ -15,6 +15,30 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import type { AppealRequest, ComplaintTicket, Notification } from '@/api/types'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { buildAgentTarget } from '../../../../shared/agent-target.js'
+import { useState } from 'react'
+
+/* ------------------------------------------------------------------ */
+/*  Page-local palette (warm graphite)                                */
+/* ------------------------------------------------------------------ */
+
+const c = {
+  page: 'bg-[#f7f7f6]',
+  title: 'text-[#1c1917]',
+  accent: 'text-[#57534e]',
+  accentBg: 'bg-[#57534e]',
+  btn: 'bg-[#292524] hover:bg-[#1c1917] text-white',
+  pillOn: 'border-[#292524] bg-[#292524] text-white',
+  pillOff: 'border-[#d6d3d1] bg-transparent text-[#78716c] hover:border-[#a8a29e] hover:bg-[#292524]/5',
+  muted: 'text-[#a8a29e]',
+  sub: 'text-[#78716c]',
+  line: 'border-[#e7e5e4]',
+  lineBg: 'bg-[#e7e5e4]',
+  dot: 'bg-[#d6d3d1]',
+} as const
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                         */
+/* ------------------------------------------------------------------ */
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: '已提交',
@@ -80,14 +104,17 @@ type TimelineEntry = {
   unread: boolean
 }
 
+type ActiveTab = 'timeline' | 'reports' | 'appeals'
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+
 function targetHref(targetType: string, targetId: string): string | null {
   const normalized = normalizeTargetType(targetType)
   if (normalized === 'post') return `/posts/${targetId}`
   if (normalized === 'agent') {
-    return buildAgentTarget({
-      agentId: targetId,
-      mode: 'readonly',
-    })
+    return buildAgentTarget({ agentId: targetId, mode: 'readonly' })
   }
   return null
 }
@@ -95,14 +122,13 @@ function targetHref(targetType: string, targetId: string): string | null {
 function TargetActionButton({ href }: { href: string }) {
   if (isAgentTargetString(href)) {
     return (
-      <Button size="sm" variant="outline" onClick={() => tryOpenAgentModal(href, 'readonly')}>
+      <Button size="sm" variant="outline" className={cn('rounded-full', c.line)} onClick={() => tryOpenAgentModal(href, 'readonly')}>
         查看目标
       </Button>
     )
   }
-
   return (
-    <Button size="sm" variant="outline" asChild>
+    <Button size="sm" variant="outline" className={cn('rounded-full', c.line)} asChild>
       <Link to={href}>查看目标</Link>
     </Button>
   )
@@ -160,21 +186,14 @@ function entrySurfaceLabel(input: {
   if (input.notificationType === 'GOVERNANCE') return '治理状态同步'
 
   switch (normalizeTargetType(input.targetType)) {
-    case 'post':
-      return '帖子详情页'
-    case 'thread_turn':
-      return '公共舞台'
-    case 'message':
-      return '聊天室 live 对话'
-    case 'private_session':
-      return '私聊会话'
-    case 'agent':
-      return '智能体主页'
-    case 'config_revision':
-      return '配置审核页'
+    case 'post': return '帖子详情页'
+    case 'thread_turn': return '公共舞台'
+    case 'message': return '聊天室 live 对话'
+    case 'private_session': return '私聊会话'
+    case 'agent': return '智能体主页'
+    case 'config_revision': return '配置审核页'
     case 'complaint_ticket':
     case 'appeal_request':
-      return 'Safety Center'
     default:
       return 'Safety Center'
   }
@@ -182,31 +201,21 @@ function entrySurfaceLabel(input: {
 
 function complaintPhase(status: ComplaintTicket['status']): TimelinePhase {
   switch (status) {
-    case 'OPEN':
-      return 'SUBMITTED'
-    case 'LINKED':
-      return 'QUEUED'
-    case 'RESOLVED':
-      return 'RESOLVED'
-    case 'REJECTED':
-      return 'CLOSED'
-    default:
-      return 'UPDATE'
+    case 'OPEN': return 'SUBMITTED'
+    case 'LINKED': return 'QUEUED'
+    case 'RESOLVED': return 'RESOLVED'
+    case 'REJECTED': return 'CLOSED'
+    default: return 'UPDATE'
   }
 }
 
 function appealPhase(status: AppealRequest['status']): TimelinePhase {
   switch (status) {
-    case 'OPEN':
-      return 'SUBMITTED'
-    case 'LINKED':
-      return 'QUEUED'
-    case 'RESOLVED':
-      return 'RESOLVED'
-    case 'REJECTED':
-      return 'CLOSED'
-    default:
-      return 'UPDATE'
+    case 'OPEN': return 'SUBMITTED'
+    case 'LINKED': return 'QUEUED'
+    case 'RESOLVED': return 'RESOLVED'
+    case 'REJECTED': return 'CLOSED'
+    default: return 'UPDATE'
   }
 }
 
@@ -222,9 +231,7 @@ function governancePhase(item: Notification): TimelinePhase {
     || body.includes('进入审核')
     || body.includes('进入复核')
     || body.includes('热点复核')
-  ) {
-    return 'QUEUED'
-  }
+  ) return 'QUEUED'
   if (title.includes('已驳回') || title.includes('已结案')) return 'CLOSED'
   if (title.includes('已处理')) return 'RESOLVED'
   return 'UPDATE'
@@ -232,12 +239,7 @@ function governancePhase(item: Notification): TimelinePhase {
 
 function isHotTopicUpdate(value: { title?: string | null; body?: string | null }): boolean {
   const text = `${value.title ?? ''} ${value.body ?? ''}`.toLowerCase()
-  return (
-    text.includes('热点')
-    || text.includes('漂移')
-    || text.includes('no_recommend')
-    || text.includes('不参与推荐')
-  )
+  return text.includes('热点') || text.includes('漂移') || text.includes('no_recommend') || text.includes('不参与推荐')
 }
 
 function phaseCopy(
@@ -245,104 +247,61 @@ function phaseCopy(
 ): string {
   if (entry.hot_topic) {
     switch (entry.phase) {
-      case 'QUEUED':
-        return '热点内容已进入复核队列，系统会继续核对允许域、漂移风险和分发范围。'
-      case 'REOPENED':
-        return '热点内容因漂移或分发限制被重新打开，复核会沿原 case 继续追加证据。'
-      case 'RESOLVED':
-        return '热点内容的分发结果已经更新，直达访问、推荐限制或恢复放行都会同步回这里。'
-      case 'CLOSED':
-        return '热点复核流程已结束，当前没有追加的限制动作。'
-      case 'SUBMITTED':
-      case 'UPDATE':
-      default:
-        return '这里会持续同步热点复核、漂移提醒和限制传播的状态回执。'
+      case 'QUEUED': return '相关内容正在复核中，结果更新后会通知你。'
+      case 'REOPENED': return '相关内容已重新进入复核，处理结果可能调整。'
+      case 'RESOLVED': return '相关内容的处理结果已更新。'
+      case 'CLOSED': return '这次复核已结束。'
+      default: return '复核进度更新后会显示在这里。'
     }
   }
-
   if (entry.source === 'REPORT' && entry.governance_label) {
     switch (entry.phase) {
-      case 'SUBMITTED':
-        return `${entry.governance_label}已登记，系统会先建 case 并补齐证据快照。`
-      case 'QUEUED':
-        return `${entry.governance_label}已挂到人工审核队列，结案或重开会继续沿同一条 case 链路同步。`
-      case 'RESOLVED':
-        return `${entry.governance_label}已处理，结果和治理动作已经回写到你的记录里。`
-      case 'CLOSED':
-        return `${entry.governance_label}已结案，当前没有追加动作。`
-      case 'REOPENED':
-        return `${entry.governance_label}关联的 case 已重新打开，审核会继续追加证据。`
-      case 'UPDATE':
-      default:
-        return `${entry.governance_label}流程仍在推进，新的治理回执会继续出现在这里。`
+      case 'SUBMITTED': return `${entry.governance_label}已提交，我们会核实相关内容和材料。`
+      case 'QUEUED': return `${entry.governance_label}处理中，结果更新后会通知你。`
+      case 'RESOLVED': return `${entry.governance_label}已处理，你可以查看最新结果。`
+      case 'CLOSED': return `${entry.governance_label}已结束。`
+      case 'REOPENED': return `${entry.governance_label}已重新进入审核。`
+      default: return `${entry.governance_label}有新的进展。`
     }
   }
-
   if (entry.source === 'REPORT') {
     switch (entry.phase) {
-      case 'SUBMITTED':
-        return '举报已登记，系统会先建 case 并补齐证据快照。'
-      case 'QUEUED':
-        return '举报已挂到人工审核队列，结案或重开会继续沿同一条 case 链路同步。'
-      case 'RESOLVED':
-        return '举报已处理，结果和治理动作已经回写到你的记录里。'
-      case 'CLOSED':
-        return '举报已结案，当前没有追加动作。'
-      case 'REOPENED':
-        return '举报关联的 case 已重新打开，审核会继续追加证据。'
-      case 'UPDATE':
-      default:
-        return '举报流程仍在推进，新的治理回执会继续出现在这里。'
+      case 'SUBMITTED': return '举报已提交，我们会核实相关内容和材料。'
+      case 'QUEUED': return '举报处理中，结果更新后会通知你。'
+      case 'RESOLVED': return '举报已处理，你可以查看最新结果。'
+      case 'CLOSED': return '举报已结束。'
+      case 'REOPENED': return '举报已重新进入审核。'
+      default: return '举报有新的进展。'
     }
   }
-
   if (entry.source === 'APPEAL') {
     switch (entry.phase) {
-      case 'SUBMITTED':
-        return '申诉已登记，后续会和原始 evidence package 一起进入人工复核。'
-      case 'QUEUED':
-        return '申诉已进入复核队列，资深审核会继续比对原 case 的处理依据。'
-      case 'RESOLVED':
-        return '申诉已处理，新的治理结果已经同步回这条记录。'
-      case 'CLOSED':
-        return '申诉已结束，当前维持既有治理结论。'
-      case 'REOPENED':
-        return '申诉关联的 case 已重新打开，之前的结果会被重新审看。'
-      case 'UPDATE':
-      default:
-        return '申诉流程仍在推进，新的复核回执会继续出现在这里。'
+      case 'SUBMITTED': return '申诉已提交，我们会结合原处理结果继续复核。'
+      case 'QUEUED': return '申诉处理中，结果更新后会通知你。'
+      case 'RESOLVED': return '申诉已处理，你可以查看最新结果。'
+      case 'CLOSED': return '申诉已结束。'
+      case 'REOPENED': return '申诉已重新进入审核。'
+      default: return '申诉有新的进展。'
     }
   }
-
   switch (entry.phase) {
-    case 'QUEUED':
-      return '系统已把 case 状态变更同步给你，这类更新也会出现在通知 bell。'
-    case 'REOPENED':
-      return '原 case 已重新打开，之前的举报单或申诉单会继续沿用同一条审查链路。'
-    case 'RESOLVED':
-      return '治理动作已经执行完毕，处理结果会同步回对应的举报单或申诉单。'
-    case 'CLOSED':
-      return '治理流程已结束，当前没有追加的处理动作。'
-    case 'SUBMITTED':
-    case 'UPDATE':
-    default:
-      return '这里会持续收集人工审核和 case 流转过程中的状态回执。'
+    case 'QUEUED': return '处理中，结果更新后会通知你。'
+    case 'REOPENED': return '该事项已重新进入审核。'
+    case 'RESOLVED': return '处理结果已更新。'
+    case 'CLOSED': return '本次处理已结束。'
+    default: return '状态更新后会显示在这里。'
   }
 }
 
 function complaintDetail(item: ComplaintTicket): string {
-  const resolutionAction = readString(item.resolution, 'resolution_action')
   const linkedCaseId = item.linked_case_id ?? readString(item.resolution, 'linked_case_id')
-  if (resolutionAction && linkedCaseId) return `已关联 case ${linkedCaseId} · 动作 ${resolutionAction}`
-  if (linkedCaseId) return `已关联 case ${linkedCaseId}`
-  return '等待 case 建档'
+  if (linkedCaseId) return `处理单号：${linkedCaseId}`
+  return '等待受理'
 }
 
 function appealDetail(item: AppealRequest): string {
-  const resolutionAction = readString(item.result, 'resolution_action')
   const linkedCaseId = item.linked_case_id ?? readString(item.result, 'linked_case_id')
-  if (resolutionAction && linkedCaseId) return `已关联 case ${linkedCaseId} · 动作 ${resolutionAction}`
-  if (linkedCaseId) return `已关联 case ${linkedCaseId}`
+  if (linkedCaseId) return `处理单号：${linkedCaseId}`
   return item.reason
 }
 
@@ -352,23 +311,20 @@ function buildTimelineEntries(
   governanceUpdates: Notification[],
 ): TimelineEntry[] {
   const reportEntries: TimelineEntry[] = reports.map((item) => {
-    const governanceLabel = governanceRequestLabel(item.reason_code)
+    const gl = governanceRequestLabel(item.reason_code)
     return {
       id: `report-${item.id}`,
       source: 'REPORT',
-      source_label: governanceLabel ? '治理申请' : '举报单',
+      source_label: gl ? '治理申请' : '举报单',
       phase: complaintPhase(item.status),
       title: `已提交${complaintDisplayLabel(item.complaint_type, item.reason_code)}`,
       body: complaintDetail(item),
       phase_copy: phaseCopy({
         source: 'REPORT',
         phase: complaintPhase(item.status),
-        governance_label: governanceLabel ? `${governanceLabel}申请` : null,
+        governance_label: gl ? `${gl}申请` : null,
       }),
-      surface_label: entrySurfaceLabel({
-        targetType: item.target_type,
-        reasonCode: item.reason_code,
-      }),
+      surface_label: entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code }),
       target_label: targetLabel(item.target_type, item.target_id),
       created_at: item.created_at,
       status: item.status,
@@ -385,9 +341,7 @@ function buildTimelineEntries(
     title: `已提交${APPEAL_TYPE_LABELS[item.appeal_type] ?? item.appeal_type}`,
     body: appealDetail(item),
     phase_copy: phaseCopy({ source: 'APPEAL', phase: appealPhase(item.status) }),
-    surface_label: entrySurfaceLabel({
-      targetType: item.target_type,
-    }),
+    surface_label: entrySurfaceLabel({ targetType: item.target_type }),
     target_label: targetLabel(item.target_type, item.target_id),
     created_at: item.created_at,
     status: item.status,
@@ -407,10 +361,7 @@ function buildTimelineEntries(
       phase: governancePhase(item),
       hot_topic: isHotTopicUpdate({ title: item.title, body: item.body }),
     }),
-    surface_label: entrySurfaceLabel({
-      targetType: item.target_type,
-      notificationType: item.type,
-    }),
+    surface_label: entrySurfaceLabel({ targetType: item.target_type, notificationType: item.type }),
     target_label: targetLabel(item.target_type, item.target_id ?? item.id),
     created_at: item.created_at,
     status: item.read ? 'READ' : 'UNREAD',
@@ -422,6 +373,285 @@ function buildTimelineEntries(
     .sort((a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       || b.id.localeCompare(a.id))
+}
+
+/* ------------------------------------------------------------------ */
+/*  Phase badge color                                                 */
+/* ------------------------------------------------------------------ */
+
+function phaseBadgeClass(phase: TimelinePhase): string {
+  switch (phase) {
+    case 'QUEUED': return 'bg-[#57534e]/10 text-[#57534e]'
+    case 'REOPENED': return 'bg-amber-500/10 text-amber-700'
+    case 'RESOLVED': return 'bg-emerald-500/10 text-emerald-700'
+    case 'CLOSED': return 'bg-[#e7e5e4] text-[#78716c]'
+    case 'UPDATE': return 'bg-[#e7e5e4] text-[#78716c]'
+    default: return 'bg-[#e7e5e4] text-[#78716c]'
+  }
+}
+
+function statusBadgeClass(status: string): string {
+  if (status === 'LINKED' || status === 'UNREAD') return 'bg-[#57534e]/10 text-[#57534e]'
+  if (status === 'RESOLVED') return 'bg-emerald-500/10 text-emerald-700'
+  if (status === 'REJECTED') return 'bg-red-500/10 text-red-700'
+  return 'bg-[#e7e5e4] text-[#78716c]'
+}
+
+function sourceBadgeClass(source: string): string {
+  if (source === 'REPORT') return 'bg-amber-500/10 text-amber-700'
+  if (source === 'APPEAL') return 'bg-[#57534e]/10 text-[#57534e]'
+  return 'bg-[#57534e]/10 text-[#57534e]'
+}
+
+/* ------------------------------------------------------------------ */
+/*  Unauthenticated Gate                                              */
+/* ------------------------------------------------------------------ */
+
+function SafetyGate() {
+  return (
+    <div className={cn('min-h-screen', c.page)}>
+      <div className="mx-auto max-w-3xl space-y-10 px-4 pt-10 pb-24">
+        <div className="space-y-3">
+          <h1 className={cn('text-2xl font-bold tracking-tight', c.title)}>举报与申诉</h1>
+          <p className={cn('text-sm', c.sub)}>登录后可查看处理进度。</p>
+        </div>
+        <div className={cn('flex flex-col items-center justify-center gap-6 border-t pt-12 text-center', c.line)}>
+          <Button asChild size="lg" className={cn('rounded-full px-8', c.btn)}>
+            <Link to="/login">去登录</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Title bar: title + tabs + guide links                             */
+/* ------------------------------------------------------------------ */
+
+function SafetyTitleBar({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: ActiveTab
+  onTabChange: (tab: ActiveTab) => void
+}) {
+  const tabs: { id: ActiveTab; label: string }[] = [
+    { id: 'timeline', label: '时间线' },
+    { id: 'reports', label: '举报' },
+    { id: 'appeals', label: '申诉' },
+  ]
+
+  return (
+    <div className={cn('border-b pb-3', c.line)}>
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        <h1 className={cn('mr-2 text-xl font-semibold tracking-tight', c.title)}>
+          举报与申诉
+        </h1>
+
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={cn(
+              'border-b-2 pb-2.5 text-sm font-medium transition-colors',
+              activeTab === tab.id
+                ? cn('border-[#292524]', c.title)
+                : cn('border-transparent', c.sub, 'hover:text-[#1c1917] hover:border-[#d6d3d1]'),
+            )}
+            onClick={() => onTabChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+
+        <div className="ml-auto flex items-baseline gap-4">
+          <Link to="/help/report-appeal-delete" className={cn('text-xs underline-offset-4 hover:underline', c.muted, 'hover:text-[#57534e]')}>
+            流程说明
+          </Link>
+          <Link to="/help/hot-topic-rules" className={cn('text-xs underline-offset-4 hover:underline', c.muted, 'hover:text-[#57534e]')}>
+            热点规则
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatItem({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-baseline gap-1.5">
+      <span className={cn('text-[11px] font-medium uppercase tracking-widest', c.muted)}>{label}</span>
+      <span className={cn('text-xl font-semibold tabular-nums', c.title)}>{value}</span>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Timeline Tab                                                      */
+/* ------------------------------------------------------------------ */
+
+function TimelineTab({
+  entries,
+  unreadCount,
+  loading,
+  onMarkAllRead,
+  isMarkingAllRead,
+}: {
+  entries: TimelineEntry[]
+  unreadCount: number
+  loading: boolean
+  onMarkAllRead: () => void
+  isMarkingAllRead: boolean
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className={cn('text-lg font-semibold', c.title)}>状态时间线</h2>
+        <div className="flex items-center gap-3">
+          <span className={cn('text-xs', unreadCount > 0 ? c.accent : c.muted)}>
+            {unreadCount > 0 ? `${unreadCount} 条未读更新` : '更新已读完'}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn('rounded-full text-xs', c.line)}
+            disabled={unreadCount === 0 || isMarkingAllRead}
+            onClick={onMarkAllRead}
+          >
+            全部标记已读
+          </Button>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="space-y-4">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      )}
+
+      {!loading && entries.length === 0 && (
+        <div className={cn('flex min-h-[200px] items-center justify-center border-t pt-12 text-center', c.line)}>
+          <p className={cn('text-sm', c.sub)}>还没有治理记录。</p>
+        </div>
+      )}
+
+      {!loading && entries.length > 0 && (
+        <div className="space-y-0">
+          {entries.map((entry, index) => (
+            <div key={entry.id} className={cn(index < entries.length - 1 && 'border-b', c.line)}>
+              <div className="py-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className={cn('text-base font-medium', c.title)}>{entry.title}</p>
+                      <Badge className={cn('rounded-full border-transparent px-2 py-0.5 text-[11px]', sourceBadgeClass(entry.source))}>
+                        {entry.source_label}
+                      </Badge>
+                      <Badge className={cn('rounded-full border-transparent px-2 py-0.5 text-[11px]', phaseBadgeClass(entry.phase))}>
+                        {TIMELINE_PHASE_LABELS[entry.phase]}
+                      </Badge>
+                      <Badge className={cn('rounded-full border-transparent px-2 py-0.5 text-[11px]', statusBadgeClass(entry.status))}>
+                        {STATUS_LABELS[entry.status] ?? entry.status}
+                      </Badge>
+                      {entry.unread && (
+                        <Badge className="rounded-full bg-[#292524] px-2 py-0.5 text-[11px] text-white border-transparent">
+                          未读
+                        </Badge>
+                      )}
+                    </div>
+                    <p className={cn('text-sm', c.title)}>{entry.phase_copy}</p>
+                    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-1 text-xs', c.muted)}>
+                      <span>入口：{entry.surface_label}</span>
+                      <span>目标：{entry.target_label}</span>
+                      <span>{entry.body}</span>
+                    </div>
+                    <p className={cn('text-xs', c.muted)}>{relativeTime(entry.created_at)}</p>
+                  </div>
+                  {entry.href ? <TargetActionButton href={entry.href} /> : null}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reports / Appeals Tab                                             */
+/* ------------------------------------------------------------------ */
+
+function TicketListTab({
+  title,
+  items,
+  loading,
+  emptyText,
+  renderRow,
+}: {
+  title: string
+  items: unknown[]
+  loading: boolean
+  emptyText: string
+  renderRow: () => React.ReactNode
+}) {
+  return (
+    <div className="space-y-6">
+      <h2 className={cn('text-lg font-semibold', c.title)}>{title}</h2>
+
+      {loading && (
+        <div className="space-y-4">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      )}
+
+      {!loading && items.length === 0 && (
+        <div className={cn('flex min-h-[200px] items-center justify-center border-t pt-12 text-center', c.line)}>
+          <p className={cn('text-sm', c.sub)}>{emptyText}</p>
+        </div>
+      )}
+
+      {!loading && items.length > 0 && (
+        <div className="space-y-0">{renderRow()}</div>
+      )}
+    </div>
+  )
+}
+
+function ComplaintRow({ item }: { item: ComplaintTicket }) {
+  const gl = governanceRequestLabel(item.reason_code)
+  const rowTitle = gl
+    ? `${gl} · ${entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code })}`
+    : `${complaintDisplayLabel(item.complaint_type, item.reason_code)} · ${item.reason_code}`
+
+  return (
+    <TicketRow
+      title={rowTitle}
+      status={item.status}
+      createdAt={item.created_at}
+      contextLine={`来源：${entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code })} · 对象：${targetLabel(item.target_type, item.target_id)}`}
+      detail={complaintDetail(item)}
+      href={targetHref(item.target_type, item.target_id)}
+    />
+  )
+}
+
+function AppealRow({ item }: { item: AppealRequest }) {
+  return (
+    <TicketRow
+      title={APPEAL_TYPE_LABELS[item.appeal_type] ?? item.appeal_type}
+      status={item.status}
+      createdAt={item.created_at}
+      contextLine={`对象：${targetLabel(item.target_type, item.target_id)}`}
+      detail={appealDetail(item)}
+      href={targetHref(item.target_type, item.target_id)}
+    />
+  )
 }
 
 function TicketRow({
@@ -440,186 +670,28 @@ function TicketRow({
   href: string | null
 }) {
   return (
-    <div className={"flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3"}>
-      <div className="min-w-0 space-y-1">
-        <p className={"text-xs font-medium"}>{title}</p>
-        <p className={"text-[10px] text-muted-foreground"}>{contextLine}</p>
-        {detail ? <p className={"text-[10px] text-muted-foreground"}>{detail}</p> : null}
-        <p className={"text-[10px] mt-1 block"}>{relativeTime(createdAt)}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Badge
-          variant="outline"
-          className={
-            status === 'LINKED' || status === 'UNREAD'
-              ? 'bg-primary/10 text-primary'
-              : status === 'RESOLVED'
-                ? 'bg-success/10 text-success'
-                : status === 'REJECTED'
-                  ? 'bg-destructive/10 text-destructive'
-                  : 'bg-secondary text-secondary-foreground'
-          }
-        >
-          {STATUS_LABELS[status] ?? status}
-        </Badge>
+    <div className={cn('border-b py-5', c.line)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={cn('text-base font-medium', c.title)}>{title}</p>
+            <Badge className={cn('rounded-full border-transparent px-2 py-0.5 text-[11px]', statusBadgeClass(status))}>
+              {STATUS_LABELS[status] ?? status}
+            </Badge>
+          </div>
+          <p className={cn('text-sm', c.sub)}>{contextLine}</p>
+          {detail ? <p className={cn('text-sm', c.sub)}>{detail}</p> : null}
+          <p className={cn('text-xs', c.muted)}>{relativeTime(createdAt)}</p>
+        </div>
         {href ? <TargetActionButton href={href} /> : null}
       </div>
     </div>
   )
 }
 
-function TimelineCard({
-  entries,
-  unreadCount,
-  loading,
-  onMarkAllRead,
-  isMarkingAllRead,
-}: {
-  entries: TimelineEntry[]
-  unreadCount: number
-  loading: boolean
-  onMarkAllRead: () => void
-  isMarkingAllRead: boolean
-}) {
-  return (
-    <Card>
-      <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className={"text-sm"}>状态时间线</CardTitle>
-            <p className={"text-[10px] text-muted-foreground"}>
-              Safety Center 会把“从哪儿发起、挂到哪个 case、现在卡在哪一步”连成一条可读的治理时间线。
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={unreadCount > 0 ? 'bg-primary/10 text-primary' : ''}>
-              {unreadCount > 0 ? `${unreadCount} 条未读治理更新` : '治理更新已读完'}
-            </Badge>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={unreadCount === 0 || isMarkingAllRead}
-              onClick={onMarkAllRead}
-            >
-              全部标记已读
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {loading && (
-          <>
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </>
-        )}
-        {!loading && entries.length === 0 && (
-          <p className={"text-[10px] text-muted-foreground"}>还没有治理记录，后续举报、申诉和审核通知会汇总在这里。</p>
-        )}
-        {entries.map((entry) => (
-          <div
-            key={entry.id}
-            className={"rounded-2xl border border-border bg-background px-4 py-3 shadow-sm"}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className={"text-xs font-medium"}>{entry.title}</p>
-                  <Badge
-                    variant="outline"
-                    className={
-                      entry.source === 'REPORT'
-                        ? 'bg-warning/10 text-warning'
-                        : entry.source === 'APPEAL'
-                          ? 'bg-accent/10 text-accent'
-                          : 'bg-primary/10 text-primary'
-                    }
-                  >
-                    {entry.source_label}
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className={
-                      entry.phase === 'QUEUED'
-                        ? 'bg-primary/10 text-primary'
-                        : entry.phase === 'REOPENED'
-                          ? 'bg-warning/10 text-warning'
-                          : entry.phase === 'RESOLVED'
-                            ? 'bg-success/10 text-success'
-                            : entry.phase === 'CLOSED'
-                              ? 'bg-destructive/10 text-destructive'
-                              : entry.phase === 'UPDATE'
-                                ? 'bg-accent/10 text-accent'
-                                : 'bg-secondary text-secondary-foreground'
-                    }
-                  >
-                    {TIMELINE_PHASE_LABELS[entry.phase]}
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className={
-                      entry.status === 'LINKED' || entry.status === 'UNREAD'
-                        ? 'bg-primary/10 text-primary'
-                        : entry.status === 'RESOLVED'
-                          ? 'bg-success/10 text-success'
-                          : entry.status === 'REJECTED'
-                            ? 'bg-destructive/10 text-destructive'
-                            : 'bg-secondary text-secondary-foreground'
-                    }
-                  >
-                    {STATUS_LABELS[entry.status] ?? entry.status}
-                  </Badge>
-                  {entry.unread && (
-                    <Badge variant="outline" className={"bg-primary/10 text-primary"}>
-                      未读
-                    </Badge>
-                  )}
-                </div>
-                <p className={"text-[10px] text-muted-foreground"}>{entry.phase_copy}</p>
-                <p className={"text-[10px] text-muted-foreground"}>提交入口 · {entry.surface_label}</p>
-                <p className={"text-[10px] text-muted-foreground"}>目标对象 · {entry.target_label}</p>
-                <p className={"text-[10px] text-muted-foreground"}>{entry.body}</p>
-                <p className={"text-[10px] mt-1 block"}>{relativeTime(entry.created_at)}</p>
-              </div>
-              {entry.href ? <TargetActionButton href={entry.href} /> : null}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
-
-function renderComplaintRow(item: ComplaintTicket) {
-  const governanceLabel = governanceRequestLabel(item.reason_code)
-  return (
-    <TicketRow
-      key={item.id}
-      title={governanceLabel
-        ? `${governanceLabel} · ${entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code })}`
-        : `${complaintDisplayLabel(item.complaint_type, item.reason_code)} · ${item.reason_code}`}
-      status={item.status}
-      createdAt={item.created_at}
-      contextLine={`提交入口 · ${entrySurfaceLabel({ targetType: item.target_type, reasonCode: item.reason_code })} · 目标对象 · ${targetLabel(item.target_type, item.target_id)}`}
-      detail={complaintDetail(item)}
-      href={targetHref(item.target_type, item.target_id)}
-    />
-  )
-}
-
-function renderAppealRow(item: AppealRequest) {
-  return (
-    <TicketRow
-      key={item.id}
-      title={APPEAL_TYPE_LABELS[item.appeal_type] ?? item.appeal_type}
-      status={item.status}
-      createdAt={item.created_at}
-      contextLine={`复核对象 · ${targetLabel(item.target_type, item.target_id)}`}
-      detail={appealDetail(item)}
-      href={targetHref(item.target_type, item.target_id)}
-    />
-  )
-}
+/* ------------------------------------------------------------------ */
+/*  Main Page                                                         */
+/* ------------------------------------------------------------------ */
 
 export function SafetyCenterPage() {
   const { isAuthenticated } = useAuth()
@@ -627,21 +699,10 @@ export function SafetyCenterPage() {
   const appeals = useMyAppeals(undefined, isAuthenticated)
   const notifications = useNotifications(undefined, isAuthenticated)
   const markAllNotificationsRead = useMarkAllNotificationsRead()
+  const [activeTab, setActiveTab] = useState<ActiveTab>('timeline')
 
   if (!isAuthenticated) {
-    return (
-      <div className="space-y-4">
-        <h1 className={"text-lg font-bold"}>举报与申诉</h1>
-        <Card>
-          <CardContent className={"space-y-3 pt-6"}>
-            <p className={"text-sm"}>登录后可以查看自己的举报和申诉处理状态。</p>
-            <Button asChild>
-              <Link to="/login">去登录</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <SafetyGate />
   }
 
   const reportsData = reports.data?.data ?? []
@@ -653,93 +714,40 @@ export function SafetyCenterPage() {
   const loading = reports.isLoading || appeals.isLoading || notifications.isLoading
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className={"text-lg font-bold"}>举报与申诉</h1>
-        <p className={"text-xs text-muted-foreground"}>
-          查看你提交过的举报、申诉和私聊治理申请。被风控拦截、折叠或需要人工复核的内容，会在这里留下状态轨迹。
-        </p>
-      </div>
+    <div className={cn('min-h-screen', c.page)}>
+    <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pt-8 pb-20 md:pt-12">
+      <SafetyTitleBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className={"rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground"}>
-        当前受理入口已覆盖帖子、公共舞台发言、聊天室发言，以及 Owner 私聊会话、主动私信的治理申请。
-        流程会按“已提交 → 建 case → 进入审核/复核 → 重开或结案”逐步回写到这里。
-        私聊与主动私信仍默认受实名门槛约束。
-        {' '}
-        <Link to="/help/report-appeal-delete" className="underline underline-offset-4">
-          查看完整流程说明
-        </Link>
-      </div>
+      {activeTab === 'timeline' && (
+        <TimelineTab
+          entries={timelineEntries}
+          unreadCount={unreadGovernanceCount}
+          loading={loading}
+          onMarkAllRead={() => markAllNotificationsRead.mutate()}
+          isMarkingAllRead={markAllNotificationsRead.isPending}
+        />
+      )}
 
-      <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
-        热点内容如果发生话题漂移，可能被改成“可直达，不参与推荐”，也可能重新进入 HOT_TOPIC 队列复核。
-        这类限制传播和恢复放行的回执，同样会出现在时间线里。
-        {' '}
-        <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
-          查看热点规则
-        </Link>
-      </div>
+      {activeTab === 'reports' && (
+        <TicketListTab
+          title="我的举报"
+          items={reportsData}
+          loading={loading}
+          emptyText="还没有提交过举报。"
+          renderRow={() => reportsData.map((item) => <ComplaintRow key={item.id} item={item} />)}
+        />
+      )}
 
-      <div className={"rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-foreground"}>
-        产品建议、Bug 和体验问题不走举报申诉链路，已经拆到独立的意见反馈页。
-        {' '}
-        <Link
-          to="/feedback"
-          state={{
-            feedbackSourceRoute: '/safety',
-            feedbackEntrySurface: 'safety_cross_link',
-          }}
-          className="underline underline-offset-4"
-        >
-          前往意见反馈
-        </Link>
-      </div>
-
-      <TimelineCard
-        entries={timelineEntries}
-        unreadCount={unreadGovernanceCount}
-        loading={loading}
-        onMarkAllRead={() => markAllNotificationsRead.mutate()}
-        isMarkingAllRead={markAllNotificationsRead.isPending}
-      />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className={"text-sm"}>我的举报</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loading && (
-              <>
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </>
-            )}
-            {!loading && reportsData.length === 0 && (
-              <p className={"text-[10px] text-muted-foreground"}>还没有提交过举报。</p>
-            )}
-            {reportsData.map(renderComplaintRow)}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className={"text-sm"}>我的申诉</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loading && (
-              <>
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </>
-            )}
-            {!loading && appealsData.length === 0 && (
-              <p className={"text-[10px] text-muted-foreground"}>还没有提交过申诉。</p>
-            )}
-            {appealsData.map(renderAppealRow)}
-          </CardContent>
-        </Card>
-      </div>
+      {activeTab === 'appeals' && (
+        <TicketListTab
+          title="我的申诉"
+          items={appealsData}
+          loading={loading}
+          emptyText="还没有提交过申诉。"
+          renderRow={() => appealsData.map((item) => <AppealRow key={item.id} item={item} />)}
+        />
+      )}
+    </div>
     </div>
   )
 }

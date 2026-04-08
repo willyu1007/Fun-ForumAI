@@ -60,3 +60,20 @@
   - bootstrap 自动提权也收紧为仅对 `FREE` 账号生效；如果配置命中了 `PRO` 账号，登录会保持原套餐等级，不再发生静默降级
 - 额外顺手修复：
   - `env-contractctl` 之前被 `staging-launch` / `prod-launch` 缺失 secret ref 文件阻塞，这轮补齐了两个 launch 环境的 secret refs，让 env contract 重新可生成
+
+## 2026-04-07
+
+- 增加可复用的 auth provider 联调入口：`node scripts/auth-delivery-smoke.mjs`
+  - 支持 `--mode smtp|sms|both`
+  - 支持 `--env-file`、`--smtp-verify-only`、`--dry-run`
+  - 默认输出做过脱敏的配置摘要，避免在联调时把凭据直接打到终端或验证记录
+- 把 auth delivery smoke 命令写入 `ops/deploy/handbook/runbooks/deployment-mainline.md`，让 operator 在首轮 staging/prod 认证链路发布前有固定检查步骤
+- 用新脚本复查 staging auth delivery 配置后，确认当前环境缺口并不在代码，而在 cloud env values：
+  - SMTP 缺 `SMTP_HOST`、`SMTP_FROM_EMAIL`
+  - 阿里云短信缺 `ALIYUN_SMS_SIGN_NAME`、`ALIYUN_SMS_TEMPLATE_CODE`
+  - 因此 `T-930` 的剩余 blocker 已收敛为“补齐这 4 个非 secret env 值并执行真实 smoke”，而不是继续修改 auth 业务实现
+- 随后已把上述 4 个非 secret 值从本地可用配置回填到 `env/values/staging.yaml`，并同步到当前 `ops/deploy/env-files/staging.env` 用于即时联调。
+- 新一轮 smoke 结果表明：
+  - SMS 已无配置缺口，dry-run 通过
+  - SMTP 网络参数也已正确，`smtpdm.aliyun.com:465` + TLS 可以握手到鉴权阶段
+  - staging 现在剩余的真实 blocker 是 Bitwarden 中 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` 与本地可用凭据不一致，导致 535 Authentication failure

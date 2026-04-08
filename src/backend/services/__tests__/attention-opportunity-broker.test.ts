@@ -122,7 +122,7 @@ function buildPolicy(): EffectiveOrchestrationPolicy {
       schema_version: 'cutover.v1',
       selection_enabled: true,
       envelope_enabled: true,
-      fallback_to_legacy: true,
+      fallback_to_baseline: true,
     },
     community_default: null as never,
     post_override: null,

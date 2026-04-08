@@ -23,29 +23,53 @@ interface DevAuthSwitchResponse {
   }
 }
 
+const DEV_AUTH_BACKEND_UNAVAILABLE_MESSAGE = '开发后端未连接，请先启动本地后端服务。'
+
+function resolveDevAuthFailureMessage(input: {
+  response: Response
+  payload: DevAuthSwitchResponse | null
+}): string {
+  const { response, payload } = input
+  if (payload?.error?.message) {
+    return payload.error.message
+  }
+
+  if (response.status === 404) {
+    return '开发身份切换入口不可用，请确认当前处于本地开发环境。'
+  }
+
+  if (response.status >= 500) {
+    return DEV_AUTH_BACKEND_UNAVAILABLE_MESSAGE
+  }
+
+  return '开发身份切换失败'
+}
+
 async function syncDevAuthCookie(identity: 'anonymous' | 'user' | 'admin'): Promise<void> {
-  const response = await fetch('/v1/auth/dev/switch', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'same-origin',
-    body: JSON.stringify({ identity }),
-  })
+  let response: Response
+  try {
+    response = await fetch('/v1/auth/dev/switch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ identity }),
+    })
+  } catch {
+    throw new Error(DEV_AUTH_BACKEND_UNAVAILABLE_MESSAGE)
+  }
 
   if (response.ok) return
 
-  let message = '开发身份切换失败'
+  let payload: DevAuthSwitchResponse | null = null
   try {
-    const payload = (await response.json()) as DevAuthSwitchResponse
-    if (payload.error?.message) {
-      message = payload.error.message
-    }
+    payload = (await response.json()) as DevAuthSwitchResponse
   } catch {
     // ignore non-json errors
   }
 
-  throw new Error(message)
+  throw new Error(resolveDevAuthFailureMessage({ response, payload }))
 }
 
 export async function setDevAuth(identity: 'anonymous' | 'user' | 'admin'): Promise<DevUser | null> {

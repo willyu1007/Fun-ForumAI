@@ -1,0 +1,15 @@
+# Primary HTTP service descriptor for the ECS/Docker Compose deployment path.
+
+id: llm-forum
+kind: http_service
+description: Fun Forum AI web/API service deployed on ECS hosts via Docker Compose.
+packaging_target: llm-forum
+health_path: /health
+port: 4000
+deployment:
+  model: vm-compose
+  app_dir: /srv/apps/fun-forum
+  compose_file: compose.yaml
+  deploy_script: deploy.sh
+  rollback_script: rollback.sh
+  smoke_script: smoke.sh
