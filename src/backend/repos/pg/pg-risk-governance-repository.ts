@@ -234,6 +234,7 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
           ...(input.room_id !== undefined ? { roomId: input.room_id } : {}),
           ...(input.session_id !== undefined ? { sessionId: input.session_id } : {}),
           ...(input.message_id !== undefined ? { messageId: input.message_id } : {}),
+          ...(input.payload !== undefined ? { payloadJson: toNullableJsonInput(input.payload) } : {}),
         },
       })
       return this.toRiskEvent(row)

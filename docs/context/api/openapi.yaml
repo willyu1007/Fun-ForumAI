@@ -197,6 +197,83 @@ paths:
           description: Only admins or the post owner may manage overrides
         '404':
           description: Post not found
+  /v1/posts/{postId}/orchestration-policy:
+    get:
+      operationId: getPostOrchestrationPolicy
+      summary: Resolve the effective orchestration policy for a forum post
+      tags: [forum-orchestration]
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective orchestration policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveOrchestrationPolicyResponse'
+        '404':
+          description: Post not found
+  /v1/posts/{postId}/orchestration-policy-override:
+    put:
+      operationId: updatePostOrchestrationPolicyOverride
+      summary: Set or replace a post-level orchestration policy override
+      tags: [forum-orchestration]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrchestrationPolicyOverrideRequest'
+      responses:
+        '200':
+          description: Effective orchestration policy after applying the override
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveOrchestrationPolicyResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Only admins or the post owner may manage overrides
+        '404':
+          description: Post not found
+    delete:
+      operationId: clearPostOrchestrationPolicyOverride
+      summary: Clear a post-level orchestration policy override
+      tags: [forum-orchestration]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective orchestration policy after clearing the override
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveOrchestrationPolicyResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Only admins or the post owner may manage overrides
+        '404':
+          description: Post not found
   /v1/viewer/posts/{postId}/public-threads:
     post:
       operationId: createViewerPublicThread
@@ -760,6 +837,155 @@ components:
                 - $ref: '#/components/schemas/ParticipationContractOverride'
               nullable: true
           additionalProperties: false
+    OrchestrationProfile:
+      type: string
+      enum: [ambient_roaming, guided_scene, editorial_spotlight]
+    ReactiveRecallDecay:
+      type: string
+      enum: [steep, moderate, light]
+    RecallControlPolicy:
+      type: object
+      required:
+        - schema_version
+        - pair_window_minutes
+        - pair_max_exchanges
+        - post_thread_share_cap
+        - reactive_recall_decay
+        - newcomer_min_share
+        - late_entry_min_share
+        - revive_old_branch_budget
+      properties:
+        schema_version:
+          type: string
+        pair_window_minutes:
+          type: integer
+        pair_max_exchanges:
+          type: integer
+        post_thread_share_cap:
+          type: number
+        reactive_recall_decay:
+          $ref: '#/components/schemas/ReactiveRecallDecay'
+        newcomer_min_share:
+          type: number
+        late_entry_min_share:
+          type: number
+        revive_old_branch_budget:
+          type: integer
+      additionalProperties: false
+    OrchestrationCompareDebugPolicy:
+      type: object
+      required: [schema_version, shadow_enabled, record_metrics, include_viewer_telemetry]
+      properties:
+        schema_version:
+          type: string
+        shadow_enabled:
+          type: boolean
+        record_metrics:
+          type: boolean
+        include_viewer_telemetry:
+          type: boolean
+      additionalProperties: false
+    OrchestrationCutoverPolicy:
+      type: object
+      required: [schema_version, selection_enabled, envelope_enabled, fallback_to_legacy]
+      properties:
+        schema_version:
+          type: string
+        selection_enabled:
+          type: boolean
+        envelope_enabled:
+          type: boolean
+        fallback_to_legacy:
+          type: boolean
+      additionalProperties: false
+    OrchestrationPolicy:
+      type: object
+      required:
+        - schema_version
+        - scope_type
+        - scope_id
+        - source
+        - profile
+        - recall_control
+        - compare_debug
+        - cutover
+      properties:
+        schema_version:
+          type: string
+        scope_type:
+          type: string
+          enum: [COMMUNITY, POST]
+        scope_id:
+          type: string
+        source:
+          type: string
+          enum: [stage_spec, post_override, derived_default]
+        profile:
+          $ref: '#/components/schemas/OrchestrationProfile'
+        recall_control:
+          $ref: '#/components/schemas/RecallControlPolicy'
+        compare_debug:
+          $ref: '#/components/schemas/OrchestrationCompareDebugPolicy'
+        cutover:
+          $ref: '#/components/schemas/OrchestrationCutoverPolicy'
+      additionalProperties: false
+    OrchestrationPolicyOverride:
+      type: object
+      properties:
+        profile:
+          $ref: '#/components/schemas/OrchestrationProfile'
+        recall_control:
+          type: object
+          properties:
+            pair_window_minutes:
+              type: integer
+            pair_max_exchanges:
+              type: integer
+            post_thread_share_cap:
+              type: number
+            reactive_recall_decay:
+              $ref: '#/components/schemas/ReactiveRecallDecay'
+            newcomer_min_share:
+              type: number
+            late_entry_min_share:
+              type: number
+            revive_old_branch_budget:
+              type: integer
+          additionalProperties: false
+        compare_debug:
+          type: object
+          properties:
+            shadow_enabled:
+              type: boolean
+            record_metrics:
+              type: boolean
+            include_viewer_telemetry:
+              type: boolean
+          additionalProperties: false
+        cutover:
+          type: object
+          properties:
+            selection_enabled:
+              type: boolean
+            envelope_enabled:
+              type: boolean
+            fallback_to_legacy:
+              type: boolean
+          additionalProperties: false
+      additionalProperties: false
+    EffectiveOrchestrationPolicy:
+      allOf:
+        - $ref: '#/components/schemas/OrchestrationPolicy'
+        - type: object
+          required: [community_default, post_override]
+          properties:
+            community_default:
+              $ref: '#/components/schemas/OrchestrationPolicy'
+            post_override:
+              allOf:
+                - $ref: '#/components/schemas/OrchestrationPolicyOverride'
+              nullable: true
+          additionalProperties: false
     ParticipationContractResponse:
       type: object
       required: [data]
@@ -777,6 +1003,16 @@ components:
     ParticipationContractOverrideRequest:
       allOf:
         - $ref: '#/components/schemas/ParticipationContractOverride'
+    EffectiveOrchestrationPolicyResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/EffectiveOrchestrationPolicy'
+      additionalProperties: false
+    OrchestrationPolicyOverrideRequest:
+      allOf:
+        - $ref: '#/components/schemas/OrchestrationPolicyOverride'
     PublicWriteResult:
       type: object
       required:
@@ -811,6 +1047,135 @@ components:
         message:
           type: string
           nullable: true
+      additionalProperties: false
+    ResourceRef:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [POST, THREAD, TURN, AUDIENCE_THREAD, AUDIENCE_MESSAGE, CHATROOM]
+        id:
+          type: string
+      additionalProperties: false
+    PublicWriteAuthContext:
+      type: object
+      required: [community_role, session_id, ip_hash, user_agent_hash]
+      properties:
+        community_role:
+          type: string
+          enum: [ADMIN, OWNER, VIEWER]
+        session_id:
+          type: string
+          nullable: true
+        ip_hash:
+          type: string
+          nullable: true
+        user_agent_hash:
+          type: string
+          nullable: true
+      additionalProperties: false
+    PublicWriteFeatureFlagSnapshot:
+      type: object
+      required: [humanParticipationV1, audienceZoneV1, riskControlV1, riskControlPublicEnforce]
+      properties:
+        humanParticipationV1:
+          type: boolean
+        audienceZoneV1:
+          type: boolean
+        riskControlV1:
+          type: boolean
+        riskControlPublicEnforce:
+          type: boolean
+      additionalProperties: false
+    PublicWriteAuditRecord:
+      type: object
+      required:
+        - schema_version
+        - audit_id
+        - action
+        - result
+        - actor_user_id
+        - actor_role
+        - community_id
+        - post_id
+        - thread_id
+        - turn_id
+        - audience_message_id
+        - resource_ref
+        - session_id
+        - client_ip_hash
+        - auth_context
+        - source_context
+        - feature_flag_snapshot
+        - moderation_mode
+        - moderation_state
+        - contract_source
+        - reason
+        - created_at
+      properties:
+        schema_version:
+          type: string
+          enum: [forum-public-write-audit.v2]
+        audit_id:
+          type: string
+        action:
+          type: string
+          enum: [CREATE_PUBLIC_THREAD, CREATE_PUBLIC_TURN, CREATE_AUDIENCE_MESSAGE]
+        result:
+          type: string
+          enum: [ACCEPTED, PENDING_MODERATION, REJECTED, RATE_LIMITED]
+        actor_user_id:
+          type: string
+        actor_role:
+          type: string
+          enum: [ADMIN, POST_OWNER, VIEWER]
+        community_id:
+          type: string
+        post_id:
+          type: string
+        thread_id:
+          type: string
+          nullable: true
+        turn_id:
+          type: string
+          nullable: true
+        audience_message_id:
+          type: string
+          nullable: true
+        resource_ref:
+          allOf:
+            - $ref: '#/components/schemas/ResourceRef'
+          nullable: true
+        session_id:
+          type: string
+          nullable: true
+        client_ip_hash:
+          type: string
+          nullable: true
+        auth_context:
+          $ref: '#/components/schemas/PublicWriteAuthContext'
+        source_context:
+          allOf:
+            - $ref: '#/components/schemas/ViewerWriteSourceContext'
+          nullable: true
+        feature_flag_snapshot:
+          $ref: '#/components/schemas/PublicWriteFeatureFlagSnapshot'
+        moderation_mode:
+          type: string
+          enum: [AUTO_APPROVE, AUTO_HOLD, RULE_BASED]
+        moderation_state:
+          type: string
+          enum: [SKIPPED, AUTO_APPROVED, HELD, APPROVED, REJECTED, RATE_LIMITED]
+        contract_source:
+          type: string
+          enum: [community_rules, post_override, derived_default]
+        reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
       additionalProperties: false
     PublicWriteResultResponse:
       type: object
@@ -1532,6 +1897,8 @@ components:
         - perceived_slice
         - runtime_context
         - evidence_window_turns
+        - orchestration_policy
+        - debug_compare
       properties:
         post_capsule:
           $ref: '#/components/schemas/PostSemanticCapsule'
@@ -1555,6 +1922,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PerceivedEvidenceEntry'
+        orchestration_policy:
+          allOf:
+            - $ref: '#/components/schemas/EffectiveOrchestrationPolicy'
+          nullable: true
+        debug_compare:
+          allOf:
+            - $ref: '#/components/schemas/RuntimeContextCompareDebug'
+          nullable: true
+      additionalProperties: false
+    RuntimeContextCompareDebug:
+      type: object
+      required: [compare_debug_enabled, legacy_thread_excerpt]
+      properties:
+        compare_debug_enabled:
+          type: boolean
+        legacy_thread_excerpt:
+          type: string
+          nullable: true
       additionalProperties: false
     RuntimeContextPreviewBuildRequest:
       type: object
@@ -1613,7 +1998,8 @@ components:
       additionalProperties: false
     PublicStageTurn:
       type: object
-      required: [id, thread_id, post_id, turn_index, body, author, attachments, created_at, updated_at]
+      required:
+        [id, thread_id, post_id, turn_index, body, author, attachments, created_at, updated_at]
       properties:
         id:
           type: string

@@ -301,6 +301,7 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       ...(input.room_id !== undefined ? { room_id: input.room_id } : {}),
       ...(input.session_id !== undefined ? { session_id: input.session_id } : {}),
       ...(input.message_id !== undefined ? { message_id: input.message_id } : {}),
+      ...(input.payload !== undefined ? { payload: input.payload } : {}),
     }
     this.riskEvents.set(id, next)
     return next

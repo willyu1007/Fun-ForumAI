@@ -12,11 +12,13 @@ import {
   type PublicWriteAction,
   type PublicWriteActorRole,
   type PublicWriteAuditRecord,
+  type PublicWriteCommunityRole,
   type PublicWriteFeatureFlagSnapshot,
   type PublicWriteModerationMode,
   type PublicWriteModerationState,
   type PublicWriteOutcome,
   type PublicWriteResult,
+  type ResourceRef,
   type ViewerWriteSourceContext,
 } from '../../shared/forum-orchestration.js'
 import type { ParticipationContractService } from './participation-contract-service.js'
@@ -43,11 +45,14 @@ interface GovernWriteInput {
   action: PublicWriteAction
   actor_user_id: string
   actor_role: 'user' | 'admin'
+  community_role: PublicWriteCommunityRole
   post_id: string
   thread_id?: string | null
   body: string
   idempotency_key?: string | null
   client_ip: string | null
+  session_id: string | null
+  user_agent_hash: string | null
   source_context?: ViewerWriteSourceContext | null
   executeAcceptedWrite: () => Promise<{
     thread_id: string | null
@@ -72,6 +77,7 @@ export class PublicWriteGovernanceService {
     this.assertActionAllowed(input.action, contract)
 
     const actorRole = this.resolveActorRole(post, input.actor_user_id, input.actor_role)
+    const communityRole = this.resolveCommunityRole(actorRole, input.community_role)
     const featureFlagSnapshot = this.snapshotFeatureFlags()
     const clientIpHash = hashClientIp(input.client_ip)
 
@@ -83,7 +89,10 @@ export class PublicWriteGovernanceService {
         contract,
         actor_user_id: input.actor_user_id,
         actor_role: actorRole,
+        community_role: communityRole,
         client_ip_hash: clientIpHash,
+        session_id: input.session_id,
+        user_agent_hash: input.user_agent_hash,
         thread_id: input.thread_id ?? null,
         turn_id: null,
         audience_message_id: null,
@@ -105,7 +114,10 @@ export class PublicWriteGovernanceService {
         contract,
         actor_user_id: input.actor_user_id,
         actor_role: actorRole,
+        community_role: communityRole,
         client_ip_hash: clientIpHash,
+        session_id: input.session_id,
+        user_agent_hash: input.user_agent_hash,
         thread_id: input.thread_id ?? null,
         turn_id: null,
         audience_message_id: null,
@@ -135,7 +147,10 @@ export class PublicWriteGovernanceService {
         contract,
         actor_user_id: input.actor_user_id,
         actor_role: actorRole,
+        community_role: communityRole,
         client_ip_hash: clientIpHash,
+        session_id: input.session_id,
+        user_agent_hash: input.user_agent_hash,
         thread_id: input.thread_id ?? null,
         turn_id: null,
         audience_message_id: null,
@@ -156,7 +171,10 @@ export class PublicWriteGovernanceService {
         contract,
         actor_user_id: input.actor_user_id,
         actor_role: actorRole,
+        community_role: communityRole,
         client_ip_hash: clientIpHash,
+        session_id: input.session_id,
+        user_agent_hash: input.user_agent_hash,
         thread_id: input.thread_id ?? null,
         turn_id: null,
         audience_message_id: null,
@@ -177,7 +195,10 @@ export class PublicWriteGovernanceService {
       contract,
       actor_user_id: input.actor_user_id,
       actor_role: actorRole,
+      community_role: communityRole,
       client_ip_hash: clientIpHash,
+      session_id: input.session_id,
+      user_agent_hash: input.user_agent_hash,
       thread_id: created.thread_id,
       turn_id: created.turn_id,
       audience_message_id: created.audience_message_id,
@@ -213,6 +234,19 @@ export class PublicWriteGovernanceService {
     }
 
     return 'VIEWER'
+  }
+
+  private resolveCommunityRole(
+    actorRole: PublicWriteActorRole,
+    hintedRole: PublicWriteCommunityRole,
+  ): PublicWriteCommunityRole {
+    if (actorRole === 'ADMIN') {
+      return 'ADMIN'
+    }
+    if (actorRole === 'POST_OWNER') {
+      return 'OWNER'
+    }
+    return hintedRole === 'ADMIN' ? 'ADMIN' : 'VIEWER'
   }
 
   private assertFeatureEnabled(action: PublicWriteAction): void {
@@ -316,7 +350,10 @@ export class PublicWriteGovernanceService {
     contract: EffectiveParticipationContract
     actor_user_id: string
     actor_role: PublicWriteActorRole
+    community_role: PublicWriteCommunityRole
     client_ip_hash: string | null
+    session_id: string | null
+    user_agent_hash: string | null
     thread_id: string | null
     turn_id: string | null
     audience_message_id: string | null
@@ -337,11 +374,18 @@ export class PublicWriteGovernanceService {
       community_id: input.post.community_id,
       agent_id: input.post.author_agent_id,
       user_id: input.actor_user_id,
-      session_id: null,
+      session_id: input.session_id,
       detail_text: input.reason,
       payload: null,
     })
 
+    const resourceRef = resolveAuditResourceRef({
+      result: input.result,
+      post_id: input.post.id,
+      thread_id: input.thread_id,
+      turn_id: input.turn_id,
+      audience_message_id: input.audience_message_id,
+    })
     const auditRecord: PublicWriteAuditRecord = {
       schema_version: PUBLIC_WRITE_AUDIT_SCHEMA_VERSION,
       audit_id: riskEvent.id,
@@ -354,8 +398,15 @@ export class PublicWriteGovernanceService {
       thread_id: input.thread_id,
       turn_id: input.turn_id,
       audience_message_id: input.audience_message_id,
-      session_id: null,
+      resource_ref: resourceRef,
+      session_id: input.session_id,
       client_ip_hash: input.client_ip_hash,
+      auth_context: {
+        community_role: input.community_role,
+        session_id: input.session_id,
+        ip_hash: input.client_ip_hash,
+        user_agent_hash: input.user_agent_hash,
+      },
       source_context: input.source_context,
       feature_flag_snapshot: input.feature_flag_snapshot,
       moderation_mode: input.moderation_mode,
@@ -416,6 +467,32 @@ function auditTargetType(action: PublicWriteAction): string {
   if (action === 'CREATE_PUBLIC_THREAD') return 'viewer_public_thread'
   if (action === 'CREATE_PUBLIC_TURN') return 'viewer_public_turn'
   return 'viewer_audience_message'
+}
+
+function resolveAuditResourceRef(input: {
+  result: PublicWriteOutcome
+  post_id: string
+  thread_id: string | null
+  turn_id: string | null
+  audience_message_id: string | null
+}): ResourceRef {
+  if (input.result === 'ACCEPTED') {
+    if (input.turn_id) {
+      return { kind: 'TURN', id: input.turn_id }
+    }
+    if (input.audience_message_id) {
+      return { kind: 'AUDIENCE_MESSAGE', id: input.audience_message_id }
+    }
+    if (input.thread_id) {
+      return { kind: 'THREAD', id: input.thread_id }
+    }
+  }
+
+  if (input.thread_id) {
+    return { kind: 'THREAD', id: input.thread_id }
+  }
+
+  return { kind: 'POST', id: input.post_id }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

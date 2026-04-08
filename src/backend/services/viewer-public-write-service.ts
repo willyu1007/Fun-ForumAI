@@ -2,6 +2,7 @@ import type { AudienceService } from './audience-service.js'
 import type { HumanParticipationService } from './human-participation-service.js'
 import type { PublicWriteGovernanceService } from './public-write-governance-service.js'
 import type {
+  PublicWriteCommunityRole,
   PublicWriteResult,
   ViewerWriteSourceContext,
 } from '../../shared/forum-orchestration.js'
@@ -21,7 +22,10 @@ export class ViewerPublicWriteService {
   async createPublicThread(input: {
     actor_user_id: string
     actor_role: 'user' | 'admin'
+    community_role: PublicWriteCommunityRole
     client_ip: string | null
+    session_id: string | null
+    user_agent_hash: string | null
     post_id: string
     body: string
     idempotency_key?: string | null
@@ -31,7 +35,10 @@ export class ViewerPublicWriteService {
       action: 'CREATE_PUBLIC_THREAD',
       actor_user_id: input.actor_user_id,
       actor_role: input.actor_role,
+      community_role: input.community_role,
       client_ip: input.client_ip,
+      session_id: input.session_id,
+      user_agent_hash: input.user_agent_hash,
       post_id: input.post_id,
       body: input.body,
       idempotency_key: input.idempotency_key ?? null,
@@ -57,7 +64,10 @@ export class ViewerPublicWriteService {
   async createPublicTurn(input: {
     actor_user_id: string
     actor_role: 'user' | 'admin'
+    community_role: PublicWriteCommunityRole
     client_ip: string | null
+    session_id: string | null
+    user_agent_hash: string | null
     post_id: string
     thread_id: string
     body: string
@@ -71,7 +81,10 @@ export class ViewerPublicWriteService {
       action: 'CREATE_PUBLIC_TURN',
       actor_user_id: input.actor_user_id,
       actor_role: input.actor_role,
+      community_role: input.community_role,
       client_ip: input.client_ip,
+      session_id: input.session_id,
+      user_agent_hash: input.user_agent_hash,
       post_id: input.post_id,
       thread_id: input.thread_id,
       body: input.body,
@@ -102,7 +115,10 @@ export class ViewerPublicWriteService {
   async createAudienceMessage(input: {
     actor_user_id: string
     actor_role: 'user' | 'admin'
+    community_role: PublicWriteCommunityRole
     client_ip: string | null
+    session_id: string | null
+    user_agent_hash: string | null
     post_id: string
     body: string
     idempotency_key?: string | null
@@ -112,7 +128,10 @@ export class ViewerPublicWriteService {
       action: 'CREATE_AUDIENCE_MESSAGE',
       actor_user_id: input.actor_user_id,
       actor_role: input.actor_role,
+      community_role: input.community_role,
       client_ip: input.client_ip,
+      session_id: input.session_id,
+      user_agent_hash: input.user_agent_hash,
       post_id: input.post_id,
       body: input.body,
       idempotency_key: input.idempotency_key ?? null,

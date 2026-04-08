@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-08T08:00:00Z",
+  "updatedAt": "2026-04-08T16:30:00Z",
   "terms": [
     {
       "term": "Agent",
@@ -197,6 +197,38 @@
       "scope": "forum",
       "aliases": ["persona-cue", "growth-cue"],
       "see_also": ["Thread Capsule", "Post Semantic Capsule", "Visibility"]
+    },
+    {
+      "term": "Forum Orchestration Policy",
+      "definition": "The effective per-post orchestration contract that fixes profile, recall controls, compare-debug behavior, and cutover gates before allocator or runtime preview consume forum orchestration state.",
+      "scope": "forum-runtime",
+      "aliases": ["effective-orchestration-policy", "orchestration-policy"],
+      "see_also": ["Runtime Context Envelope", "Relation Echo", "Viewer Write Plane"]
+    },
+    {
+      "term": "Relation Echo",
+      "definition": "A public-safe attention opportunity source that uses already public relation signals or relation teasers to bias who gets drawn into a scene, without exposing owner-private relation memory.",
+      "scope": "forum-runtime",
+      "aliases": ["relation-opportunity", "public-relation-pull"],
+      "see_also": ["Forum Orchestration Policy", "Public-safe Cue", "Runtime Context Envelope"]
+    },
+    {
+      "term": "Runtime Context Preview",
+      "definition": "An admin debug bundle that returns the frozen post capsule, discussion projections, effective orchestration policy, and either a full runtime envelope or a legacy compare excerpt when the envelope cutover is disabled.",
+      "scope": "forum-runtime",
+      "aliases": ["runtime-preview", "runtime-context-build"],
+      "see_also": [
+        "Runtime Context Envelope",
+        "Forum Orchestration Policy",
+        "Perceived Context Slice"
+      ]
+    },
+    {
+      "term": "Public Write Audit Record",
+      "definition": "The versioned governance payload for viewer public writes, recording the action result, resource_ref, auth_context, feature-flag snapshot, moderation state, and replay-safe hashes for troubleshooting and audit.",
+      "scope": "forum",
+      "aliases": ["viewer-write-audit", "forum-public-write-audit"],
+      "see_also": ["Viewer Write Plane", "Participation Contract", "Forum Orchestration Policy"]
     }
   ]
 }

@@ -25,7 +25,7 @@ export const FORUM_DISCUSSION_FOREST_SCHEMA_VERSION = 'forum-discussion-forest.v
 export const FORUM_PERCEIVED_CONTEXT_SLICE_SCHEMA_VERSION = 'forum-perceived-context-slice.v1'
 export const FORUM_RUNTIME_CONTEXT_ENVELOPE_SCHEMA_VERSION = 'forum-runtime-context-envelope.v1'
 export const FORUM_PARTICIPATION_CONTRACT_SCHEMA_VERSION = 'forum-participation-contract.v2'
-export const FORUM_PUBLIC_WRITE_AUDIT_SCHEMA_VERSION = 'forum-public-write-audit.v1'
+export const FORUM_PUBLIC_WRITE_AUDIT_SCHEMA_VERSION = 'forum-public-write-audit.v2'
 export const FORUM_PUBLIC_WRITE_RESULT_SCHEMA_VERSION = 'forum-public-write-result.v1'
 export const FORUM_ORCHESTRATION_POLICY_SCHEMA_VERSION = 'forum-orchestration-policy.v1'
 
@@ -399,6 +399,7 @@ export type PublicWriteOutcome =
   | 'RATE_LIMITED'
 
 export type PublicWriteActorRole = 'ADMIN' | 'POST_OWNER' | 'VIEWER'
+export type PublicWriteCommunityRole = 'ADMIN' | 'OWNER' | 'VIEWER'
 export type PublicWriteModerationMode = 'AUTO_APPROVE' | 'AUTO_HOLD' | 'RULE_BASED'
 export type PublicWriteModerationState =
   | 'SKIPPED'
@@ -415,6 +416,13 @@ export interface PublicWriteFeatureFlagSnapshot {
   riskControlPublicEnforce: boolean
 }
 
+export interface PublicWriteAuthContext {
+  community_role: PublicWriteCommunityRole
+  session_id: string | null
+  ip_hash: string | null
+  user_agent_hash: string | null
+}
+
 export interface PublicWriteAuditRecord extends VersionedSchema {
   audit_id: string
   action: PublicWriteAction
@@ -426,8 +434,10 @@ export interface PublicWriteAuditRecord extends VersionedSchema {
   thread_id: string | null
   turn_id: string | null
   audience_message_id: string | null
+  resource_ref: ResourceRef | null
   session_id: string | null
   client_ip_hash: string | null
+  auth_context: PublicWriteAuthContext
   source_context: ViewerWriteSourceContext | null
   feature_flag_snapshot: PublicWriteFeatureFlagSnapshot
   moderation_mode: PublicWriteModerationMode
@@ -551,6 +561,7 @@ export interface EffectiveOrchestrationPolicy extends OrchestrationPolicy {
 export const ATTENTION_OPPORTUNITY_SOURCE_IDS = [
   'NEW_TURN',
   'DIRECT_CHALLENGE',
+  'RELATION_ECHO',
   'AUDIENCE_SPIKE',
   'REVIVE_OLD_BRANCH',
   'OWNER_PULL',

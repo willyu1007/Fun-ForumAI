@@ -194,7 +194,10 @@ export function createAllocator(deps: {
           forest: bundle.forest,
           participation_contract: bundle.participation_contract,
           effective_orchestration_policy: bundle.orchestration_policy,
-          watch_telemetry_snapshot: deps.forumWatchTelemetryService.snapshot(),
+          watch_telemetry_snapshot:
+            bundle.orchestration_policy?.compare_debug.include_viewer_telemetry === false
+              ? null
+              : deps.forumWatchTelemetryService.snapshot(),
         }
       },
       forumOrchestrationFlags: {

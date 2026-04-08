@@ -92,10 +92,12 @@ export class SemanticProjectionService {
       {
         author: thread.author,
         evidence_refs: [{ kind: 'THREAD', id: thread.id }],
+        relation_signal: buildPublicRelationSignal(thread),
       },
       ...thread.turns.slice(-2).map((turn) => ({
         author: turn.author,
         evidence_refs: [{ kind: 'TURN', id: turn.id }] satisfies EvidenceRef[],
+        relation_signal: null,
       })),
     ])
 
@@ -166,11 +168,16 @@ export class SemanticProjectionService {
         evidence_refs: threadCapsules[0]
           ? [{ kind: 'THREAD', id: threadCapsules[0].thread_id }]
           : [],
+        relation_signal: null,
       },
-      ...threadCapsules.slice(0, 2).map((threadCapsule) => ({
-        author: threads.find((thread) => thread.id === threadCapsule.thread_id)?.author ?? post.author,
-        evidence_refs: [{ kind: 'THREAD', id: threadCapsule.thread_id }] satisfies EvidenceRef[],
-      })),
+      ...threadCapsules.slice(0, 2).map((threadCapsule) => {
+        const sourceThread = threads.find((thread) => thread.id === threadCapsule.thread_id) ?? null
+        return {
+          author: sourceThread?.author ?? post.author,
+          evidence_refs: [{ kind: 'THREAD', id: threadCapsule.thread_id }] satisfies EvidenceRef[],
+          relation_signal: sourceThread ? buildPublicRelationSignal(sourceThread) : null,
+        }
+      }),
     ])
 
     return {
@@ -479,6 +486,10 @@ function hasMention(body: string, names: string[]): boolean {
 function buildProjectionCues(inputs: Array<{
   author: AuthorSummary
   evidence_refs: EvidenceRef[]
+  relation_signal?: {
+    label: string
+    detail: string | null
+  } | null
 }>): {
   persona: PublicProjectionCue[]
   growth: PublicProjectionCue[]
@@ -552,6 +563,21 @@ function buildProjectionCues(inputs: Array<{
       }
     }
 
+    if (input.relation_signal) {
+      const cue = buildProjectionCue({
+        cue_id: `persona:relation:${author.id}:${input.relation_signal.label}`,
+        source_kind: 'PUBLIC_RELATION_TEASER',
+        label: input.relation_signal.label,
+        detail: input.relation_signal.detail,
+        evidence_refs: input.evidence_refs,
+        updated_at: now,
+      })
+      if (!seen.has(cue.cue_id)) {
+        seen.add(cue.cue_id)
+        persona.push(cue)
+      }
+    }
+
     for (const badge of author.public_proof?.achievement_badges ?? []) {
       const cue = buildProjectionCue({
         cue_id: `growth:proof:${author.id}:${badge.code}`,
@@ -566,12 +592,55 @@ function buildProjectionCues(inputs: Array<{
         growth.push(cue)
       }
     }
+
+    const topBadge = author.public_proof?.achievement_badges[0]
+    if (topBadge) {
+      const cue = buildProjectionCue({
+        cue_id: `growth:achievement:${author.id}:${topBadge.code}`,
+        source_kind: 'PUBLIC_ACHIEVEMENT_HIGHLIGHT',
+        label: topBadge.name,
+        detail: topBadge.level >= 2
+          ? `公开成就 ${topBadge.name} 已在舞台上形成辨识度。`
+          : `公开成就 ${topBadge.name} 正在积累公共印象。`,
+        evidence_refs: input.evidence_refs,
+        updated_at: now,
+      })
+      if (!seen.has(cue.cue_id)) {
+        seen.add(cue.cue_id)
+        growth.push(cue)
+      }
+    }
   }
 
   return {
-    persona: persona.slice(0, 4),
-    growth: growth.slice(0, 4),
+    persona: persona.slice(0, 5),
+    growth: growth.slice(0, 5),
   }
+}
+
+function buildPublicRelationSignal(thread: PublicStageThreadWithAuthor): {
+  label: string
+  detail: string | null
+} | null {
+  const recentCallout = thread.turns
+    .slice(-3)
+    .some((turn) => hasMention(turn.body, [thread.author.display_name]))
+  if (recentCallout) {
+    return {
+      label: '公开点名仍在继续',
+      detail: '最近的公开回应还在把话头递回给这位作者。',
+    }
+  }
+  if (thread.turns.length >= 2 && thread.turns.some((turn) => turn.anchor_turn_id === null)) {
+    const returnedToRoot = thread.turns.some((turn) => turn.anchor_turn_id === thread.turns[0]?.id)
+    if (returnedToRoot) {
+      return {
+        label: '这条话头仍被接续',
+        detail: '公开支线还在继续顺着这位作者抛出的线索推进。',
+      }
+    }
+  }
+  return null
 }
 
 function buildProjectionCue(input: {

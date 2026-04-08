@@ -13,7 +13,7 @@ export class AttentionOpportunityBroker {
     event: EventPayload
     scored_candidates?: ScoredCandidate[]
   }): AttentionOpportunity[] {
-    const source = resolveFallbackSource(input.event)
+    const source = resolveFallbackSource(input.event, input.scored_candidates)
     return [this.buildOpportunity({
       event: input.event,
       source,
@@ -22,6 +22,7 @@ export class AttentionOpportunityBroker {
       thread: null,
       policy: null,
       telemetry: null,
+      scored_candidates: input.scored_candidates ?? [],
     })]
   }
 
@@ -42,6 +43,7 @@ export class AttentionOpportunityBroker {
       event: input.event,
       thread,
       telemetry: input.watch_telemetry_snapshot ?? null,
+      scored_candidates: input.scored_candidates ?? [],
     })
 
     if (source === 'OWNER_PULL') {
@@ -56,6 +58,7 @@ export class AttentionOpportunityBroker {
       thread,
       policy: input.effective_orchestration_policy ?? null,
       telemetry: input.watch_telemetry_snapshot ?? null,
+      scored_candidates: input.scored_candidates ?? [],
     })]
   }
 
@@ -67,9 +70,15 @@ export class AttentionOpportunityBroker {
     thread: ThreadCapsule | null
     policy: EffectiveOrchestrationPolicy | null
     telemetry: AttentionTelemetrySnapshot | null
+    scored_candidates: ScoredCandidate[]
   }): AttentionOpportunity {
     const targetAgentIds = input.thread?.participant_ids ?? input.event.thread_participants ?? []
-    const priorityAgentIds = resolvePriorityAgentIds(input.event, input.thread, input.source)
+    const priorityAgentIds = resolvePriorityAgentIds(
+      input.event,
+      input.thread,
+      input.source,
+      input.scored_candidates,
+    )
     const selectedAnchorTurnId =
       input.event.turn_id
       ?? input.thread?.latest_turn_id
@@ -112,8 +121,12 @@ export class AttentionOpportunityBroker {
   }
 }
 
-function resolveFallbackSource(event: EventPayload): AttentionOpportunitySource {
+function resolveFallbackSource(
+  event: EventPayload,
+  scoredCandidates: ScoredCandidate[] = [],
+): AttentionOpportunitySource {
   if (event.target_author_agent_id) return 'DIRECT_CHALLENGE'
+  if (hasRelationSignal(null, scoredCandidates)) return 'RELATION_ECHO'
   if ((event.thread_participants?.length ?? 0) >= 4) return 'AUDIENCE_SPIKE'
   if (event.chain_depth > 0) return 'REVIVE_OLD_BRANCH'
   return 'NEW_TURN'
@@ -123,9 +136,14 @@ function resolveSource(input: {
   event: EventPayload
   thread: ThreadCapsule | null
   telemetry: AttentionTelemetrySnapshot | null
+  scored_candidates: ScoredCandidate[]
 }): AttentionOpportunitySource {
   if (input.event.target_author_agent_id || input.thread?.reason_badges.includes('MENTIONED')) {
     return 'DIRECT_CHALLENGE'
+  }
+
+  if (hasRelationSignal(input.thread, input.scored_candidates)) {
+    return 'RELATION_ECHO'
   }
 
   const telemetryPressure = readAudienceTelemetryPressure(
@@ -151,9 +169,13 @@ function resolvePriorityAgentIds(
   event: EventPayload,
   thread: ThreadCapsule | null,
   source: AttentionOpportunitySource,
+  scoredCandidates: ScoredCandidate[],
 ): string[] {
   if (source === 'DIRECT_CHALLENGE' && event.target_author_agent_id) {
     return [event.target_author_agent_id]
+  }
+  if (source === 'RELATION_ECHO') {
+    return extractRelationPriorityAgentIds(scoredCandidates)
   }
   if (source === 'AUDIENCE_SPIKE') {
     return thread?.participant_ids.slice(0, 2) ?? []
@@ -183,6 +205,8 @@ function mapBrowseReason(source: AttentionOpportunitySource): AttentionOpportuni
   switch (source) {
     case 'DIRECT_CHALLENGE':
       return 'DIRECT_CHALLENGE'
+    case 'RELATION_ECHO':
+      return 'RELATION_PULL'
     case 'AUDIENCE_SPIKE':
       return 'AUDIENCE_HEAT'
     case 'REVIVE_OLD_BRANCH':
@@ -193,6 +217,27 @@ function mapBrowseReason(source: AttentionOpportunitySource): AttentionOpportuni
     default:
       return 'TOPIC_MATCH'
   }
+}
+
+function hasRelationSignal(
+  thread: ThreadCapsule | null,
+  scoredCandidates: ScoredCandidate[],
+): boolean {
+  if (thread?.public_persona_cues.some((cue) => cue.source_kind === 'PUBLIC_RELATION_TEASER')) {
+    return true
+  }
+  return extractRelationPriorityAgentIds(scoredCandidates).length > 0
+}
+
+function extractRelationPriorityAgentIds(scoredCandidates: ScoredCandidate[]): string[] {
+  return scoredCandidates
+    .filter((candidate) =>
+      candidate.reasons.some((reason) =>
+        reason === 'relation_hint=friend'
+        || reason === 'relation_hint=following'
+        || reason === 'relation_hint=follower'))
+    .map((candidate) => candidate.agent_id)
+    .slice(0, 2)
 }
 
 function buildPostAttentionState(

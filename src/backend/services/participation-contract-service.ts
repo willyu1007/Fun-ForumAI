@@ -166,9 +166,9 @@ export class ParticipationContractService {
     stage_open_reply_override?: ParticipationContractOverride['stage_open_reply']
     audience_lane_override?: ParticipationContractOverride['audience_lane']
   }): ParticipationContract {
-    const publicParticipationMode = input.public_participation_mode ?? 'llm_only'
-    const audienceSignalIngestion = input.audience_signal_ingestion ?? 'none'
-    const agentHumanResponseMode = input.agent_human_response_mode ?? 'none'
+    const publicParticipationMode = input.public_participation_mode ?? 'audience_sidecar'
+    const audienceSignalIngestion = input.audience_signal_ingestion ?? 'summary_only'
+    const agentHumanResponseMode = input.agent_human_response_mode ?? 'aftershow_only'
 
     const defaultStageEnabled = publicParticipationMode === 'open_reply'
     const defaultAudienceLaneEnabled =

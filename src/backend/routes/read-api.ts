@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { Router, type IRouter, type Request, type Response } from 'express'
 import multer from 'multer'
 import {
@@ -72,7 +73,10 @@ import {
   normalizeStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
-import type { PublicWriteResult } from '../../shared/forum-orchestration.js'
+import type {
+  PublicWriteCommunityRole,
+  PublicWriteResult,
+} from '../../shared/forum-orchestration.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -129,6 +133,35 @@ function getClientIp(req: Request): string | null {
     if (first) return first
   }
   return req.ip || null
+}
+
+function resolveRequestCredential(req: Request): string | null {
+  const authHeader = req.headers.authorization
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7)
+  }
+  const cookie = req.cookies?.auth_token
+  return typeof cookie === 'string' && cookie.trim().length > 0 ? cookie : null
+}
+
+function hashNullableValue(value: string | null): string | null {
+  if (!value) return null
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function getViewerSessionId(req: Request): string | null {
+  return hashNullableValue(resolveRequestCredential(req))
+}
+
+function getUserAgentHash(req: Request): string | null {
+  const header = req.headers['user-agent']
+  return typeof header === 'string' && header.trim().length > 0
+    ? hashNullableValue(header.trim())
+    : null
+}
+
+function getViewerCommunityRole(req: Request): PublicWriteCommunityRole {
+  return req.user?.role === 'admin' ? 'ADMIN' : 'VIEWER'
 }
 
 function getViewerWriteStatus(result: PublicWriteResult): number {
@@ -959,7 +992,10 @@ readApiRouter.post(
     const result = await viewerPublicWriteService.createPublicThread({
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      community_role: getViewerCommunityRole(req),
       client_ip: getClientIp(req),
+      session_id: getViewerSessionId(req),
+      user_agent_hash: getUserAgentHash(req),
       post_id: String(req.params.postId),
       body: req.body.body,
       idempotency_key: req.body.idempotency_key ?? null,
@@ -984,7 +1020,10 @@ readApiRouter.post(
     const result = await viewerPublicWriteService.createPublicTurn({
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      community_role: getViewerCommunityRole(req),
       client_ip: getClientIp(req),
+      session_id: getViewerSessionId(req),
+      user_agent_hash: getUserAgentHash(req),
       post_id: thread.post_id,
       thread_id: String(req.params.threadId),
       body: req.body.body,
@@ -1012,7 +1051,10 @@ readApiRouter.post(
     const result = await viewerPublicWriteService.createPublicThread({
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      community_role: getViewerCommunityRole(req),
       client_ip: getClientIp(req),
+      session_id: getViewerSessionId(req),
+      user_agent_hash: getUserAgentHash(req),
       post_id: String(req.params.postId),
       body: req.body.body,
       idempotency_key: req.body.idempotency_key ?? null,
@@ -1032,7 +1074,10 @@ readApiRouter.post(
     const result = await viewerPublicWriteService.createPublicTurn({
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      community_role: getViewerCommunityRole(req),
       client_ip: getClientIp(req),
+      session_id: getViewerSessionId(req),
+      user_agent_hash: getUserAgentHash(req),
       post_id: thread.post_id,
       thread_id: String(req.params.threadId),
       body: req.body.body,
@@ -1270,7 +1315,10 @@ readApiRouter.post(
     const result = await viewerPublicWriteService.createAudienceMessage({
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      community_role: getViewerCommunityRole(req),
       client_ip: getClientIp(req),
+      session_id: getViewerSessionId(req),
+      user_agent_hash: getUserAgentHash(req),
       post_id: String(req.params.postId),
       body: req.body.body,
       idempotency_key: req.body.idempotency_key ?? null,
@@ -1290,7 +1338,10 @@ readApiRouter.post(
       post_id: String(req.params.postId),
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
+      community_role: getViewerCommunityRole(req),
       client_ip: getClientIp(req),
+      session_id: getViewerSessionId(req),
+      user_agent_hash: getUserAgentHash(req),
       body: req.body.body,
       idempotency_key: req.body.idempotency_key ?? null,
       source_context: req.body.source_context ?? null,

@@ -1670,14 +1670,46 @@ export class ForumReadService {
       thread_id: input.thread_id ?? null,
       focus_turn_id: input.focus_turn_id ?? null,
     }, viewerUserId)
-    const bundle = await this.buildProjectionBundle(
-      input.post_id,
-      {
-        focus_thread_id: input.thread_id ?? null,
-        focus_turn_id: input.focus_turn_id ?? null,
-      },
-      viewerUserId,
-    )
+    const envelopeEnabled =
+      readBundle.orchestration_policy?.cutover.envelope_enabled
+      ?? config.features.forumOrchestrationEnvelopeCutover
+    const bundle = envelopeEnabled || input.compare_debug
+      ? await this.buildProjectionBundle(
+          input.post_id,
+          {
+            focus_thread_id: input.thread_id ?? null,
+            focus_turn_id: input.focus_turn_id ?? null,
+          },
+          viewerUserId,
+        )
+      : null
+    const legacyThreadExcerpt = input.compare_debug
+      ? this.buildLegacyThreadExcerpt(bundle?.selected_thread ?? null)
+      : null
+
+    if (!envelopeEnabled) {
+      return {
+        post_capsule: readBundle.post_capsule,
+        thread_capsule: readBundle.thread_capsule,
+        reading_guide: readBundle.reading_guide,
+        forest: readBundle.forest,
+        perceived_slice: null,
+        runtime_context: null,
+        evidence_window_turns: [],
+        orchestration_policy: readBundle.orchestration_policy,
+        debug_compare: input.compare_debug
+          ? {
+              compare_debug_enabled: true,
+              legacy_thread_excerpt: legacyThreadExcerpt,
+            }
+          : null,
+      }
+    }
+
+    if (!bundle) {
+      throw new Error('Projection bundle is required when orchestration envelope is enabled')
+    }
+
     const perceivedSlice = this.deps.agentPerceptionService.buildSlice({
       agent_id: input.agent_id ?? 'preview-agent',
       post_capsule: readBundle.post_capsule,
@@ -1706,9 +1738,6 @@ export class ForumReadService {
       participation_contract: readBundle.participation_contract,
       evidence_window_turns: evidenceWindowTurns,
     })
-    const legacyThreadExcerpt = input.compare_debug
-      ? this.buildLegacyThreadExcerpt(bundle.selected_thread)
-      : null
 
     return {
       post_capsule: readBundle.post_capsule,

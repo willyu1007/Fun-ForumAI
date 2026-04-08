@@ -324,6 +324,7 @@ export interface UpdateRiskEventLogInput {
   room_id?: string | null
   session_id?: string | null
   message_id?: string | null
+  payload?: Record<string, unknown> | null
 }
 
 export interface CreateModerationCaseInput {
