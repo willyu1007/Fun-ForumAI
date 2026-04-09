@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAgentProfile } from '@/api/hooks'
+import { useMyAgents } from '@/api/hooks/user'
+import { useAuth } from '@/shared/hooks/use-auth'
 import {
   useAgentModalStore,
   type AgentModalRect,
@@ -11,15 +14,25 @@ import { Button } from '@/components/ui/button'
 import {
   User,
   MessageSquare,
-  History,
+  BookOpen,
   Users,
-  Activity,
+  Compass,
+  Bot,
   LocateFixed,
+  Ellipsis,
   Plus,
   Square,
   X,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { getInitials } from '@/shared/utils/get-initials'
+import { resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
 import { AgentListSidebar } from './AgentListSidebar'
 import { LeftRailAgentDisplayEditor } from '@/widgets/shell/LeftRailAgentDisplayEditor'
 import { TabIntro } from '@/features/agents/components/modal/TabIntro'
@@ -37,8 +50,8 @@ import {
 const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
   { id: 'intro', icon: User, label: '介绍与管理' },
   { id: 'chat', icon: MessageSquare, label: '主聊天' },
-  { id: 'moments', icon: Activity, label: '动态' },
-  { id: 'history', icon: History, label: '成长编年史' },
+  { id: 'moments', icon: Compass, label: '动态' },
+  { id: 'history', icon: BookOpen, label: '成长编年史' },
   { id: 'social', icon: Users, label: '社会关系' },
 ]
 
@@ -326,6 +339,8 @@ export function AgentInteractionModal() {
   const activeAgentId = useAgentModalStore((state) => state.activeAgentId)
   const setActiveAgent = useAgentModalStore((state) => state.setActiveAgent)
   const viewMode = useAgentModalStore((state) => state.viewMode)
+  const pendingCreateWizard = useAgentModalStore((state) => state.pendingCreateWizard)
+  const setPendingCreateWizard = useAgentModalStore((state) => state.setPendingCreateWizard)
   const setLastModalRect = useAgentModalStore((state) => state.setLastModalRect)
   const lastModalRect = useAgentModalStore.getState().lastModalRect
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -340,7 +355,14 @@ export function AgentInteractionModal() {
     lastModalRect,
     setLastModalRect,
   )
-  const { data: activeAgentData } = useAgentProfile(activeAgentId ?? '')
+  const { user } = useAuth()
+  const ownerAvatarSrc = user ? resolveUserAvatarSrc(user) : null
+  const { data: myAgentsData } = useMyAgents(isOpen)
+  const myAgentIds = useMemo(() => myAgentsData?.data?.map((a) => a.id), [myAgentsData])
+  const validActiveAgentId = activeAgentId && myAgentIds
+    ? (myAgentIds.includes(activeAgentId) ? activeAgentId : null)
+    : activeAgentId
+  const { data: activeAgentData } = useAgentProfile(validActiveAgentId ?? '', !!validActiveAgentId)
   const headerAgentName = activeAgentData?.data?.display_name ?? ''
   const isCropperActive = Boolean(screenshotDraft)
   const shouldBlockDialogDismiss = isCaptureHidden || isCropperActive
@@ -363,8 +385,13 @@ export function AgentInteractionModal() {
       screenshotResolverRef.current = null
       setScreenshotDraft(null)
       setScreenshotErrorMessage(null)
+      return
     }
-  }, [isOpen])
+    if (pendingCreateWizard) {
+      setPendingCreateWizard(false)
+      setWizardOpen(true)
+    }
+  }, [isOpen, pendingCreateWizard, setPendingCreateWizard])
 
   useEffect(() => {
     if (!isOpen) return
@@ -411,7 +438,7 @@ export function AgentInteractionModal() {
     showAfterCapture()
   }, [showAfterCapture])
 
-  if (!activeAgentId && viewMode === 'readonly') {
+  if (!validActiveAgentId && viewMode === 'readonly') {
     return null
   }
 
@@ -450,7 +477,25 @@ export function AgentInteractionModal() {
           className="flex h-10 shrink-0 cursor-grab select-none touch-none active:cursor-grabbing"
           onPointerDown={(e) => onPointerDown(e, 'drag')}
         >
-          <div className="h-full w-14 shrink-0 border-r border-primary/12 bg-primary/12 backdrop-blur-xl" />
+          <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-border/60 bg-muted/50">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Avatar className="h-6 w-6">
+                  <AvatarImage
+                    src={ownerAvatarSrc ?? undefined}
+                    alt={user?.displayName ?? ''}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-primary/15 text-[10px] font-medium text-primary">
+                    {getInitials(user?.displayName ?? '')}
+                  </AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                {user?.displayName ?? '我'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
 
           {showSidebar && (
             <div className="flex h-full w-64 shrink-0 items-center justify-between border-r border-border/70 bg-background/75 px-4 backdrop-blur-xl">
@@ -480,29 +525,37 @@ export function AgentInteractionModal() {
               )}
             </div>
 
-            <div className="z-20 flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="视觉居中"
-                title="视觉居中"
-                data-testid="agent-modal-center-button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={centerCurrent}
-                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success text-success-foreground transition-transform hover:scale-105 hover:bg-success/90"
-              >
-                <LocateFixed className="h-[8px] w-[8px] opacity-0 transition-opacity group-hover:opacity-75" strokeWidth={2.25} />
-              </button>
-              <button
-                type="button"
-                aria-label="恢复默认尺寸"
-                title="恢复默认尺寸"
-                data-testid="agent-modal-restore-button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={restoreDefaultSize}
-                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-warning-foreground transition-transform hover:scale-105 hover:bg-warning/90"
-              >
-                <Square className="h-[7px] w-[7px] opacity-0 transition-opacity group-hover:opacity-70" strokeWidth={2.5} />
-              </button>
+            <div className="z-20 flex items-center gap-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="更多操作"
+                    title="更多操作"
+                    data-testid="agent-modal-more-button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <Ellipsis className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={6}>
+                  <DropdownMenuItem
+                    data-testid="agent-modal-center-button"
+                    onClick={centerCurrent}
+                  >
+                    <LocateFixed className="h-4 w-4" />
+                    视觉居中
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    data-testid="agent-modal-restore-button"
+                    onClick={restoreDefaultSize}
+                  >
+                    <Square className="h-4 w-4" />
+                    恢复默认尺寸
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <button
                 type="button"
                 aria-label="关闭弹窗"
@@ -510,9 +563,9 @@ export function AgentInteractionModal() {
                 data-testid="agent-modal-close-button"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={handleModalClose}
-                className="group flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground transition-transform hover:scale-105 hover:bg-destructive/90"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <X className="h-[8px] w-[8px] opacity-0 transition-opacity group-hover:opacity-75" strokeWidth={2.5} />
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -521,7 +574,7 @@ export function AgentInteractionModal() {
         {/* Body: icon rail + sidebar + content */}
         <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
           {/* Icon rail */}
-          <nav className="flex w-14 shrink-0 flex-col items-center border-r border-primary/12 bg-primary/12 py-3 backdrop-blur-xl">
+          <nav className="flex w-12 shrink-0 flex-col items-center border-r border-border/60 bg-muted/50 py-2.5">
             <div className="flex flex-col items-center gap-1">
               {TABS.map((tab) => {
                 const Icon = tab.icon
@@ -535,13 +588,16 @@ export function AgentInteractionModal() {
                         title={tab.label}
                         data-testid={`agent-modal-tab-${tab.id}`}
                         className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                          'relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
                           isActive
-                            ? 'bg-background/95 text-foreground shadow-sm ring-1 ring-border/70'
-                            : 'text-muted-foreground hover:bg-background/70 hover:text-foreground',
+                            ? 'text-foreground'
+                            : 'text-muted-foreground hover:text-foreground',
                         )}
                       >
-                        <Icon className="h-[18px] w-[18px]" />
+                        {isActive && (
+                          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-primary" />
+                        )}
+                        <Icon className="h-[17px] w-[17px]" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" sideOffset={6}>
@@ -551,31 +607,42 @@ export function AgentInteractionModal() {
                 )
               })}
             </div>
+
             <div className="mt-auto flex w-full justify-center pt-3">
-              <LeftRailAgentDisplayEditor />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div><LeftRailAgentDisplayEditor /></div>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={6}>
+                  编辑左下角展示的智能体
+                </TooltipContent>
+              </Tooltip>
             </div>
           </nav>
 
           {/* Agent list (manage mode only) */}
-          {showSidebar && <AgentListSidebar />}
+          {showSidebar && <AgentListSidebar onCreateAgent={() => setWizardOpen(true)} />}
 
           {/* Main content */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background relative">
-            {!activeAgentId ? (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                请选择一个智能体
+            {!validActiveAgentId ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-border/70 text-muted-foreground/40">
+                  <Bot className="h-7 w-7" />
+                </span>
+                <span className="text-xs text-muted-foreground/60">我还没来到这个世界，但已经迫不及待了</span>
               </div>
             ) : (
               <>
                 {activeTab === 'intro' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabIntro agentId={activeAgentId} />
+                    <TabIntro agentId={validActiveAgentId} />
                   </div>
                 )}
                 {activeTab === 'chat' && (
                   <div className="flex-1 overflow-hidden">
                     <TabChat
-                      agentId={activeAgentId}
+                      agentId={validActiveAgentId}
                       onCaptureScreenshot={handleCaptureScreenshot}
                       captureErrorMessage={screenshotErrorMessage}
                     />
@@ -583,17 +650,17 @@ export function AgentInteractionModal() {
                 )}
                 {activeTab === 'moments' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabMoments agentId={activeAgentId} />
+                    <TabMoments agentId={validActiveAgentId} />
                   </div>
                 )}
                 {activeTab === 'history' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabHistory agentId={activeAgentId} />
+                    <TabHistory agentId={validActiveAgentId} />
                   </div>
                 )}
                 {activeTab === 'social' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabSocial agentId={activeAgentId} />
+                    <TabSocial agentId={validActiveAgentId} />
                   </div>
                 )}
               </>
@@ -619,7 +686,7 @@ export function AgentInteractionModal() {
         />
         <div
           data-testid="agent-modal-resize-s-handle"
-          className="absolute bottom-0 left-14 right-5 h-3 cursor-s-resize z-10 touch-none"
+          className="absolute bottom-0 left-12 right-5 h-3 cursor-s-resize z-10 touch-none"
           onPointerDown={(e) => onPointerDown(e, 'resize-s')}
         />
       </DialogContent>

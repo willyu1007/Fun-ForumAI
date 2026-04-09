@@ -91,11 +91,37 @@ export function useAuth() {
   })
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: { displayName?: string; avatarUrl?: string | null }) =>
+    mutationFn: (data: { displayName?: string; avatarUrl?: string | null; birthDate?: string | null }) =>
       authApi.updateProfile(data),
     onSuccess: (res) => {
       queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
     },
+  })
+
+  const emailChangeStartMutation = useMutation({
+    mutationFn: (data: { newEmail: string }) => authApi.startEmailChange(data),
+  })
+
+  const emailChangeVerifyMutation = useMutation({
+    mutationFn: (data: { challengeId: string; code: string }) => authApi.verifyEmailChange(data),
+    onSuccess: (res) => {
+      queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
+    },
+  })
+
+  const phoneChangeStartMutation = useMutation({
+    mutationFn: (data: { newPhone: string }) => authApi.startPhoneChange(data),
+  })
+
+  const phoneChangeVerifyMutation = useMutation({
+    mutationFn: (data: { challengeId: string; code: string }) => authApi.verifyPhoneChange(data),
+    onSuccess: (res) => {
+      queryClient.setQueryData(AUTH_QUERY_KEY, res.data.user)
+    },
+  })
+
+  const contactChangeResendMutation = useMutation({
+    mutationFn: (data: { challengeId: string }) => authApi.resendContactChange(data),
   })
 
   const login = useCallback(
@@ -183,11 +209,51 @@ export function useAuth() {
   const logout = useCallback(() => logoutMutation.mutateAsync(), [logoutMutation])
 
   const updateProfile = useCallback(
-    async (data: { displayName?: string; avatarUrl?: string | null }): Promise<UserProfile> => {
+    async (data: { displayName?: string; avatarUrl?: string | null; birthDate?: string | null }): Promise<UserProfile> => {
       const res = await updateProfileMutation.mutateAsync(data)
       return res.data.user
     },
     [updateProfileMutation],
+  )
+
+  const startEmailChange = useCallback(
+    async (data: { newEmail: string }): Promise<AuthChallengeResult> => {
+      const res = await emailChangeStartMutation.mutateAsync(data)
+      return res.data
+    },
+    [emailChangeStartMutation],
+  )
+
+  const verifyEmailChange = useCallback(
+    async (data: { challengeId: string; code: string }): Promise<UserProfile> => {
+      const res = await emailChangeVerifyMutation.mutateAsync(data)
+      return res.data.user
+    },
+    [emailChangeVerifyMutation],
+  )
+
+  const startPhoneChange = useCallback(
+    async (data: { newPhone: string }): Promise<AuthChallengeResult> => {
+      const res = await phoneChangeStartMutation.mutateAsync(data)
+      return res.data
+    },
+    [phoneChangeStartMutation],
+  )
+
+  const verifyPhoneChange = useCallback(
+    async (data: { challengeId: string; code: string }): Promise<UserProfile> => {
+      const res = await phoneChangeVerifyMutation.mutateAsync(data)
+      return res.data.user
+    },
+    [phoneChangeVerifyMutation],
+  )
+
+  const resendContactChange = useCallback(
+    async (data: { challengeId: string }): Promise<AuthChallengeResult> => {
+      const res = await contactChangeResendMutation.mutateAsync(data)
+      return res.data
+    },
+    [contactChangeResendMutation],
   )
 
   const switchIdentity = useCallback(
@@ -221,6 +287,11 @@ export function useAuth() {
     resendSmsCode,
     logout,
     updateProfile,
+    startEmailChange,
+    verifyEmailChange,
+    startPhoneChange,
+    verifyPhoneChange,
+    resendContactChange,
     switchIdentity,
     isLoginPending: loginMutation.isPending,
     isEmailRegisterStartPending: emailRegisterStartMutation.isPending,
@@ -234,5 +305,10 @@ export function useAuth() {
     isSmsResendPending: smsResendMutation.isPending,
     isLogoutPending: logoutMutation.isPending,
     isUpdateProfilePending: updateProfileMutation.isPending,
+    isEmailChangeStartPending: emailChangeStartMutation.isPending,
+    isEmailChangeVerifyPending: emailChangeVerifyMutation.isPending,
+    isPhoneChangeStartPending: phoneChangeStartMutation.isPending,
+    isPhoneChangeVerifyPending: phoneChangeVerifyMutation.isPending,
+    isContactChangeResendPending: contactChangeResendMutation.isPending,
   }
 }

@@ -611,7 +611,7 @@ export interface PublicAgentRelationSummary extends RelationSummaryTeaser {
   recent_ppr_candidates: string[]
 }
 
-export interface PostWithMeta extends Post, LaunchVisualPackagingFields, StorylineProjection, CreatorNoteProjection {
+export interface PostWithMeta extends Post {
   thread_turn_count: number
   vote_score: number
   vote_up: number
@@ -638,12 +638,6 @@ export interface PostWithMeta extends Post, LaunchVisualPackagingFields, Storyli
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
   interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
   content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
-  scene_phase?: import('../../shared/semantic-taxonomy.js').ScenePhase
-  surface_kind_id?: import('../../shared/semantic-taxonomy.js').LaunchSurfaceKindId
-  content_kind?: LaunchContentKind
-  format_kind?: import('../../shared/semantic-taxonomy.js').FormatKind
-  editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
-  aftershow_export_bias?: number
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
   audience_thread_meta?: AudienceThreadMeta | null
@@ -684,7 +678,7 @@ export interface AftershowCalloutItem {
   deep_link: string
 }
 
-export interface AftershowSnapshot extends LaunchVisualPackagingFields, StorylineProjection, CreatorNoteProjection {
+export interface AftershowSnapshot {
   post_id: string
   aftershow_summary: AftershowSummary | null
   aftershow_callouts: AftershowCalloutItem[]
@@ -692,12 +686,6 @@ export interface AftershowSnapshot extends LaunchVisualPackagingFields, Storylin
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
   interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
   content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
-  scene_phase?: import('../../shared/semantic-taxonomy.js').ScenePhase
-  surface_kind_id?: import('../../shared/semantic-taxonomy.js').LaunchSurfaceKindId
-  content_kind?: 'aftershow_recap'
-  format_kind?: import('../../shared/semantic-taxonomy.js').FormatKind
-  editorial_shelf_id?: import('../../shared/semantic-taxonomy.js').EditorialShelfId
-  aftershow_export_bias?: number
   relation_teaser?: RelationSummaryTeaser | null
 }
 
@@ -1147,7 +1135,6 @@ export interface Agent {
   owner_id: string | null
   display_name: string
   avatar_url: string | null
-  model: string
   persona_version: number
   reputation_score: number
   status: AgentStatus
@@ -1527,14 +1514,6 @@ export interface Community {
   active_member_count: number
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
   interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
-  community_family?: import('../../shared/semantic-taxonomy.js').CommunityFamily
-  community_shell_category?: import('../../shared/semantic-taxonomy.js').CommunityShellCategory
-  publication_review_profile_id?: import('../../shared/semantic-taxonomy.js').PublicationReviewProfileId
-  public_participation_mode?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract['public_participation_mode']
-  audience_signal_ingestion?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract['audience_signal_ingestion']
-  agent_human_response_mode?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract['agent_human_response_mode']
-  launch_wave?: string | null
-  default_editorial_shelf_ids?: import('../../shared/semantic-taxonomy.js').EditorialShelfId[]
   visibility_default: ContentVisibility
   created_at: string
   updated_at: string
@@ -1602,7 +1581,6 @@ export interface CommunityMergeRecommendation {
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
   incubation_visibility_mode: CommunityIncubationVisibilityMode
-  recommended_visibility: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
   meta: Record<string, unknown> | null

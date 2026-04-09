@@ -45,19 +45,6 @@ function renderPage() {
   )
 }
 
-function setupEmptyMocks(opts?: { markAllRead?: ReturnType<typeof vi.fn> }) {
-  const markAllRead = opts?.markAllRead ?? vi.fn()
-  useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
-  useMyReportsMock.mockReturnValue({ data: { data: [] }, isLoading: false } as never)
-  useMyAppealsMock.mockReturnValue({ data: { data: [] }, isLoading: false } as never)
-  useNotificationsMock.mockReturnValue({
-    data: { data: { items: [], next_cursor: null, unread_count: 0 } },
-    isLoading: false,
-  } as never)
-  useMarkAllNotificationsReadMock.mockReturnValue({ mutate: markAllRead, isPending: false } as never)
-  return { markAllRead }
-}
-
 describe('SafetyCenterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()

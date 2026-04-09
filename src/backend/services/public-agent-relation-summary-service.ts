@@ -1,4 +1,5 @@
 import { buildAgentTarget } from '../../shared/agent-target.js'
+import { readStorylineId } from '../../shared/semantic-taxonomy.js'
 import { getLightweightPersonalizationRuntime } from '../launch/lightweight-personalization.js'
 import type {
   AchievementChronicleService,
@@ -72,7 +73,7 @@ export class PublicAgentRelationSummaryService {
     const runtime = getLightweightPersonalizationRuntime()
     const recentCutoff = Date.now() - runtime.public_view_events.recent_window_days * 24 * 60 * 60 * 1000
 
-    const targetStorylineIds = uniqueRecent(recentPosts.items.map((item) => item.storyline_id))
+    const targetStorylineIds = uniqueRecent(recentPosts.items.map((item) => readStorylineId(item)))
     const sharedStorylineCount = targetStorylineIds
       .filter((storylineId) => recentSignals.recent_storyline_ids.includes(storylineId))
       .length

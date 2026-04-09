@@ -192,7 +192,6 @@ export async function generateMessage(
       })
     : {
         homeVoiceLineId: resolvedIdentity.homeVoiceLineId,
-        preferredModelId: undefined,
         requestedTier: renderDecision?.requestedTier ?? 'lite',
       }
   const response = await context.deps.llmGateway.generateVisibleText({
@@ -202,7 +201,6 @@ export async function generateMessage(
     responseMode: 'text',
     agentId,
     homeVoiceLineId: routing.homeVoiceLineId,
-    preferredModelId: routing.preferredModelId,
     promptRef,
     variables,
     budgetClass: 'visible_standard',

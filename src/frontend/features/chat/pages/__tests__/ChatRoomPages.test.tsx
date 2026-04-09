@@ -948,7 +948,6 @@ describe('chat room pages', () => {
             owner_id: 'dev-user-001',
             display_name: '真实 Agent',
             avatar_url: null,
-            model: 'qwen-flash',
             config_json: {},
             status: 'ACTIVE',
             created_at: '2026-03-10T10:00:00.000Z',

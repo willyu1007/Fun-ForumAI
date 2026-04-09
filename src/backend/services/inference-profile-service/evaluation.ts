@@ -150,8 +150,6 @@ export async function evaluateInferenceProfile(
       consecutive_lead_windows: consecutiveLeadWindows,
       challenger_score_delta: scoreDelta,
       manual_voice_line_lock: manualLock,
-      visible_provider_pin: null,
-      visible_model_pin: null,
       candidate_since: candidateSince,
       shadow_started_at: shadowStartedAt,
       effective_at: existing?.effective_at ?? null,

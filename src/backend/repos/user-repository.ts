@@ -3,6 +3,7 @@ import type { HumanUser, CreateHumanUserInput, UpsertDevHumanIdentityInput } fro
 export interface UpdateHumanUserProfileInput {
   display_name?: string
   avatar_url?: string | null
+  birth_date?: Date | null
 }
 
 export interface UserRepository {
@@ -15,6 +16,8 @@ export interface UserRepository {
   updatePlanTier(id: string, planTier: HumanUser['plan_tier']): Promise<HumanUser | null>
   updateProfile(id: string, input: UpdateHumanUserProfileInput): Promise<HumanUser | null>
   updatePassword(id: string, password_hash: string): Promise<HumanUser | null>
+  updateEmail(id: string, email: string): Promise<HumanUser | null>
+  updatePhone(id: string, phone: string): Promise<HumanUser | null>
   updateLastLogin(id: string): Promise<void>
 }
 
@@ -63,6 +66,7 @@ export class InMemoryUserRepository implements UserRepository {
       password_hash: input.password_hash ?? null,
       display_name: input.display_name,
       avatar_url: input.avatar_url ?? null,
+      birth_date: null,
       phone: input.phone ?? null,
       wechat_open_id: null,
       email_verified: input.email_verified ?? false,
@@ -112,6 +116,7 @@ export class InMemoryUserRepository implements UserRepository {
       password_hash: '__dev_token__',
       display_name: input.role === 'admin' ? '开发管理员' : '开发用户',
       avatar_url: null,
+      birth_date: null,
       phone: null,
       wechat_open_id: null,
       email_verified: true,
@@ -137,6 +142,7 @@ export class InMemoryUserRepository implements UserRepository {
       ...existing,
       display_name: input.display_name ?? existing.display_name,
       avatar_url: input.avatar_url !== undefined ? input.avatar_url : existing.avatar_url,
+      birth_date: input.birth_date !== undefined ? input.birth_date : existing.birth_date,
       updated_at: new Date(),
     }
     this.store.set(id, updated)
@@ -167,6 +173,45 @@ export class InMemoryUserRepository implements UserRepository {
       updated_at: new Date(),
     }
     this.store.set(id, updated)
+    return updated
+  }
+
+  async updateEmail(id: string, email: string): Promise<HumanUser | null> {
+    const existing = this.store.get(id)
+    if (!existing) return null
+
+    if (existing.email) {
+      this.byEmail.delete(normalizeEmail(existing.email))
+    }
+
+    const normalized = normalizeEmail(email)
+    const updated: HumanUser = {
+      ...existing,
+      email: normalized,
+      email_verified: true,
+      updated_at: new Date(),
+    }
+    this.store.set(id, updated)
+    this.byEmail.set(normalized, id)
+    return updated
+  }
+
+  async updatePhone(id: string, phone: string): Promise<HumanUser | null> {
+    const existing = this.store.get(id)
+    if (!existing) return null
+
+    if (existing.phone) {
+      this.byPhone.delete(existing.phone)
+    }
+
+    const updated: HumanUser = {
+      ...existing,
+      phone,
+      phone_verified: true,
+      updated_at: new Date(),
+    }
+    this.store.set(id, updated)
+    this.byPhone.set(phone, id)
     return updated
   }
 

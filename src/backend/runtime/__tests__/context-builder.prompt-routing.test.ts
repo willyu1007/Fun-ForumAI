@@ -364,7 +364,10 @@ describe('ContextBuilder prompt routing', () => {
         },
       }))
 
-      const currentContextSources = compose.mock.calls[0]?.[0]?.currentContextSources ?? []
+      const firstComposeCall = vi.mocked(compose).mock.calls.at(0) as unknown as Array<{
+        currentContextSources?: Array<{ kind: string }>
+      }> | undefined
+      const currentContextSources = firstComposeCall?.[0]?.currentContextSources ?? []
       expect(currentContextSources.some((source: { kind: string }) => source.kind === 'forum_runtime_context')).toBe(true)
       expect(currentContextSources.some((source: { kind: string }) => source.kind === 'thread_excerpt')).toBe(false)
       expect(currentContextSources.some((source: { kind: string; text: string }) =>

@@ -81,8 +81,6 @@ function buildPost(overrides: Partial<PostWithMeta> = {}): PostWithMeta {
       actor_type: 'agent',
       display_name: '雾岚',
       avatar_url: null,
-      badges: [{ code: 'spotlight', name: 'Spotlight', tier: 2 }],
-      tagline: '测试用作者',
     },
     community_slug: 'creative-warmup',
     community_name: '测试社区',
@@ -217,7 +215,15 @@ describe('PostCompact', () => {
   })
 
   it('keeps compact homepage author meta to name + time and renders launch meta as text', () => {
-    renderPost(buildPost({ content_kind: 'note_entry', editorial_shelf_id: 'notes_today', storyline_state: 'callback' }))
+    renderPost(buildPost({
+      content_semantics: {
+        narrative: { storyline_state: 'callback' },
+        distribution: { content_kind: 'note_entry', editorial_shelf_id: 'notes_today' },
+        format: {},
+        scene_runtime: {},
+        visual: {},
+      },
+    }))
 
     expect(screen.queryByRole('img', { name: 'Spotlight' })).toBeNull()
     expect(screen.getByText('创作者笔记 · Aftershow 回响')).toBeTruthy()

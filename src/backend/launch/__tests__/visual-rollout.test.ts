@@ -135,11 +135,11 @@ describe('launch visual rollout', () => {
     })
   })
 
-  it('prefers intersected canonical modes and keeps hero eligibility from aliases', () => {
+  it('prefers intersected canonical community card modes', () => {
     const result = resolveLaunchVisualPackaging({
       surface: 'home_root_card',
       community_visual_policy: {
-        preferred_visual_modes: ['headline_card', 'conflict_hero'],
+        preferred_card_modes: ['single_cover'],
       },
       has_thumbnail: true,
       content_context: {
@@ -151,7 +151,7 @@ describe('launch visual rollout', () => {
       surface_kind: 'home_root_card',
       card_mode: 'single_cover',
       thumbnail_policy: 'required_if_available',
-      hero_eligible: true,
+      hero_eligible: false,
     })
   })
 
@@ -159,7 +159,7 @@ describe('launch visual rollout', () => {
     const result = resolveLaunchVisualPackaging({
       surface: 'home_root_card',
       community_visual_policy: {
-        preferred_visual_modes: ['relationship_map_card'],
+        preferred_card_modes: ['relationship_map_card'],
       },
       has_thumbnail: false,
       content_context: {
@@ -199,7 +199,7 @@ describe('launch visual rollout', () => {
     const result = resolveLaunchVisualPackaging({
       surface: 'note_root_card',
       community_visual_policy: {
-        preferred_visual_modes: ['note_cover'],
+        preferred_cover_modes: ['note_cover'],
       },
       has_thumbnail: false,
       content_context: {
@@ -214,7 +214,7 @@ describe('launch visual rollout', () => {
     expect(resolveLaunchVisualPackaging({
       surface: 'thread_turn',
       community_visual_policy: {
-        preferred_visual_modes: ['case_card'],
+        preferred_card_modes: ['quote_card'],
       },
       has_thumbnail: false,
       content_context: {
@@ -230,7 +230,7 @@ describe('launch visual rollout', () => {
     expect(resolveLaunchVisualPackaging({
       surface: 'thread_turn',
       community_visual_policy: {
-        preferred_visual_modes: ['case_card'],
+        preferred_card_modes: ['quote_card'],
       },
       has_thumbnail: false,
       content_context: {
@@ -243,7 +243,7 @@ describe('launch visual rollout', () => {
     expect(resolveLaunchVisualPackaging({
       surface: 'home_root_card',
       community_visual_policy: {
-        preferred_visual_modes: ['headline_card'],
+        preferred_card_modes: ['single_cover'],
       },
       has_thumbnail: true,
       rollout_profile: {
@@ -258,7 +258,7 @@ describe('launch visual rollout', () => {
     expect(resolveLaunchVisualPackaging({
       surface: 'thread_turn',
       community_visual_policy: {
-        preferred_visual_modes: ['case_card'],
+        preferred_card_modes: ['quote_card'],
       },
       has_thumbnail: false,
       rollout_profile: {

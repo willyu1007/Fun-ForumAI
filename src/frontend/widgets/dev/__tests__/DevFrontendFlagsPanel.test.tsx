@@ -8,20 +8,24 @@ describe('DevFrontendFlagsPanel', () => {
     localStorage.clear()
     useDevFrontendFlagsStore.setState((state) => ({
       ...state,
-      panelOpen: false,
       draftConfig: { preset: 'inherit', overrides: {} },
       activeConfig: { preset: 'inherit', overrides: {} },
     }))
   })
 
-  it('opens the sheet and shows flag explanations', () => {
-    render(<DevFrontendFlagsPanel />)
-
-    fireEvent.click(screen.getByRole('button', { name: /VITE 功能/i }))
+  it('renders flag list with toggle switches when open', () => {
+    render(<DevFrontendFlagsPanel open onOpenChange={() => {}} />)
 
     expect(screen.getByText('Frontend Flags')).toBeTruthy()
     expect(screen.getByText('Home Programming')).toBeTruthy()
     expect(screen.getByText('Chatroom Hold')).toBeTruthy()
+  })
+
+  it('expands a flag to show details', () => {
+    render(<DevFrontendFlagsPanel open onOpenChange={() => {}} />)
+
+    fireEvent.click(screen.getByText('Home Programming'))
+
     expect(screen.getByText(/首页是否采用节目编排入口/)).toBeTruthy()
   })
 })

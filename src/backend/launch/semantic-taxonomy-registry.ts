@@ -4,6 +4,7 @@ import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import { ValidationError } from '../lib/errors.js'
 import {
+  AUTHORING_SHAPE_IDS,
   COMMUNITY_FAMILY_IDS,
   COMMUNITY_FAMILY_TO_PUBLICATION_REVIEW_PROFILE,
   COMMUNITY_FAMILY_TO_SHELL_CATEGORY,
@@ -126,6 +127,11 @@ function validateRuntime(runtime: SemanticTaxonomyRegistryRuntime): SemanticTaxo
     runtime.content_formats.content_kinds.map((entry) => entry.id),
     CONTENT_KIND_IDS,
     'content kind',
+  )
+  assertExactCoverage(
+    runtime.content_formats.authoring_shapes.map((entry) => entry.id),
+    AUTHORING_SHAPE_IDS,
+    'authoring shape',
   )
 
   for (const family of runtime.community_families.families) {

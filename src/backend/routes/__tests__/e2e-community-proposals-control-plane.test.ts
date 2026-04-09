@@ -79,4 +79,28 @@ describe('E2E: Community Proposal Control Plane', () => {
       expect.arrayContaining(['PROPOSAL_SUBMITTED', 'RECOMMENDATION_REFRESHED', 'ACTION_APPLIED']),
     )
   })
+
+  it('rejects legacy visibility_mode in proposal actions', async () => {
+    const submitRes = await request(app)
+      .post('/v1/community-proposals')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        name: '灰测可见性别名',
+        slug_candidate: `gray-visibility-${Date.now()}`,
+        description: '验证治理控制面不再接受旧字段别名。',
+        premise_text: '仅允许 incubation_visibility_mode。',
+        proposed_community_family: 'weekly_program',
+      })
+    expect(submitRes.status).toBe(201)
+
+    const res = await request(app)
+      .post(`/v1/community-proposals/${submitRes.body.data.proposal.id as string}/actions`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        action: 'incubate',
+        visibility_mode: 'WHITELIST_ONLY',
+      })
+
+    expect(res.status).toBe(400)
+  })
 })

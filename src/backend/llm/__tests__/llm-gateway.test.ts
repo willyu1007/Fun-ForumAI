@@ -49,12 +49,14 @@ function buildBundle(): LlmRegistryBundle {
           tier: 'base',
           intent: 'proactive_opening',
           visibility: 'visible',
+          policy_id: 'visible-proactive_opening-base',
           candidates: [
             {
               provider_id: 'dashscope-openai',
               model_id: 'qwen-plus-character',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 100,
               quality_class: 'balanced',
             },
@@ -63,6 +65,7 @@ function buildBundle(): LlmRegistryBundle {
               model_id: 'qwen-flash-character',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 80,
               quality_class: 'fast',
             },
@@ -81,12 +84,14 @@ function buildBundle(): LlmRegistryBundle {
           tier: 'premium',
           intent: 'proactive_opening',
           visibility: 'visible',
+          policy_id: 'visible-proactive_opening-premium',
           candidates: [
             {
               provider_id: 'dashscope-openai',
               model_id: 'qwen-max',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 100,
               quality_class: 'premium',
             },
@@ -99,12 +104,14 @@ function buildBundle(): LlmRegistryBundle {
           tier: 'base',
           intent: 'identity_write',
           visibility: 'identity_write',
+          policy_id: 'identity_write-identity_write-base',
           candidates: [
             {
               provider_id: 'dashscope-openai',
               model_id: 'qwen-plus-character',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 100,
               quality_class: 'balanced',
             },
@@ -113,6 +120,7 @@ function buildBundle(): LlmRegistryBundle {
               model_id: 'qwen-flash-character',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 60,
               quality_class: 'fast',
             },
@@ -125,12 +133,14 @@ function buildBundle(): LlmRegistryBundle {
           tier: 'premium',
           intent: 'identity_write',
           visibility: 'identity_write',
+          policy_id: 'identity_write-identity_write-premium',
           candidates: [
             {
               provider_id: 'dashscope-openai',
               model_id: 'qwen-max',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 100,
               quality_class: 'premium',
             },
@@ -139,6 +149,7 @@ function buildBundle(): LlmRegistryBundle {
               model_id: 'qwen-plus-character',
               region: 'cn-beijing',
               endpoint_id: 'dashscope-cn-beijing',
+              adapter_id: 'openai-chat-completions-v1',
               weight: 80,
               quality_class: 'balanced',
             },
@@ -747,12 +758,14 @@ describe('LLMGateway', () => {
       tier: 'base',
       intent: 'vision_summary',
       visibility: 'hidden',
+      policy_id: 'hidden-vision_summary-base',
       candidates: [
         {
           provider_id: 'dashscope-openai',
           model_id: 'qwen-plus-character',
           region: 'cn-beijing',
           endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
           weight: 120,
           quality_class: 'balanced',
         },
@@ -761,6 +774,7 @@ describe('LLMGateway', () => {
           model_id: 'qwen-vl-plus',
           region: 'cn-beijing',
           endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
           weight: 80,
           quality_class: 'balanced',
         },
@@ -833,6 +847,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-beijing',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -841,6 +856,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-shanghai',
         endpoint_id: 'dashscope-cn-shanghai',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -890,6 +906,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-a',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 120,
         quality_class: 'balanced',
       },
@@ -898,6 +915,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-b',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 80,
         quality_class: 'balanced',
       },
@@ -947,6 +965,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-a',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -955,6 +974,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-b',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1004,6 +1024,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-a',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1012,6 +1033,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-b',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1062,6 +1084,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-a',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1070,6 +1093,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-b',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1119,6 +1143,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-a',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1127,6 +1152,7 @@ describe('LLMGateway', () => {
         model_id: 'qwen-plus-character',
         region: 'cn-beijing',
         endpoint_id: 'dashscope-cn-b',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'balanced',
       },
@@ -1305,6 +1331,7 @@ describe('LLMGateway', () => {
       model_id: 'qwen-plus-character',
       region: 'cn-beijing',
       endpoint_id: 'dashscope-cn-beijing',
+      adapter_id: 'openai-chat-completions-v1',
       weight: 120,
       quality_class: 'balanced',
     })
@@ -1346,7 +1373,7 @@ describe('LLMGateway', () => {
     expect(response.renderDecision.reasons).toContain('direct_fallback_candidate')
   })
 
-  it('prioritizes a preferred model inside the resolved profile before falling back by weight', async () => {
+  it('orders candidates by the registry route order without compatibility model hints', async () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = [
       'qwen-plus-character',
@@ -1374,18 +1401,17 @@ describe('LLMGateway', () => {
     })
 
     const response = await gateway.generateVisibleText(buildVisibleTextRequest({
-      preferredModelId: 'qwen-flash-character',
-      traceId: 'trace-preferred',
+      traceId: 'trace-registry-order',
     }))
 
     expect(chatSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'qwen-flash-character',
+        model: 'qwen-plus-character',
       }),
     )
-    expect(response.renderDecision.modelId).toBe('qwen-flash-character')
-    expect(response.renderDecision.reasons).toContain('preferred_model_hint')
-    expect(usageLedger.list()[0]?.model_id).toBe('qwen-flash-character')
+    expect(response.renderDecision.modelId).toBe('qwen-plus-character')
+    expect(response.renderDecision.reasons).not.toContain('preferred_model_hint')
+    expect(usageLedger.list()[0]?.model_id).toBe('qwen-plus-character')
   })
 
   it('resolves identity-write requests from the requested tier before falling back to the voice-line default', async () => {
@@ -1472,7 +1498,6 @@ describe('LLMGateway', () => {
     })
 
     const response = await gateway.generateVisibleText(buildVisibleTextRequest({
-      preferredModelId: 'qwen-flash-character',
       traceId: 'trace-admission',
     }))
 
@@ -1518,12 +1543,14 @@ describe('LLMGateway', () => {
       tier: 'premium',
       intent: 'private_digest',
       visibility: 'hidden',
+      policy_id: 'hidden-private_digest-premium',
       candidates: [
         {
           provider_id: 'deepseek-openai',
           model_id: 'deepseek-reasoner',
           region: 'cn',
           endpoint_id: 'deepseek-cn',
+          adapter_id: 'openai-chat-completions-v1',
           weight: 100,
           quality_class: 'premium',
         },
@@ -1532,6 +1559,7 @@ describe('LLMGateway', () => {
           model_id: 'qwen-max',
           region: 'cn-beijing',
           endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
           weight: 60,
           quality_class: 'premium',
         },
@@ -1611,6 +1639,147 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()[1]?.success).toBe(true)
   })
 
+  it('does not misclassify LLM API 400 payloads as auth fallback errors when request IDs contain 403-like substrings', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools = [
+      {
+        credential_id: 'dashscope-visible-default',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:llm_api_default',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character'],
+      },
+    ]
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockImplementation(async (input) => {
+      if (input.model === 'qwen-plus-character') {
+        throw new Error(
+          'LLM API 400: {"error":{"message":"input data may contain inappropriate content","type":"data_inspection_failed","code":"data_inspection_failed"},"request_id":"93ad0fd6-4034-9c0c-ad69-83c500892d03"}',
+        )
+      }
+      return {
+        content: 'should not fallback',
+        usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+        model: 'qwen-flash-character',
+        finish_reason: 'stop',
+      }
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    await expect(
+      gateway.generateVisibleText(buildVisibleTextRequest({
+        traceId: 'trace-visible-400',
+      })),
+    ).rejects.toMatchObject({
+      code: 'InvalidRequestError',
+    })
+
+    expect(chatSpy).toHaveBeenCalledTimes(1)
+    expect(usageLedger.list()).toHaveLength(1)
+    expect(usageLedger.list()[0]?.success).toBe(false)
+    expect(usageLedger.list()[0]?.error_code).toBe('InvalidRequestError')
+    expect(usageLedger.list()[0]?.fallback_history?.[0]?.errorCode).toBe('InvalidRequestError')
+  })
+
+  it('does not reuse a credential that already failed auth within the same fallback chain', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools = [
+      {
+        credential_id: 'dashscope-bad-shared',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:bad',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character', 'qwen-max'],
+      },
+      {
+        credential_id: 'dashscope-good-shared',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:good',
+        priority: 20,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character', 'qwen-max'],
+      },
+    ]
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockImplementation(async (input) => {
+      if (input.provider.api_key === 'bad-secret') {
+        throw new Error('LLM API 401: {"error":{"message":"invalid api key"}}')
+      }
+      return {
+        content: 'ok',
+        usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+        model: input.model,
+        finish_reason: 'stop',
+      }
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn((ref: string) => (
+            ref === 'secret-ref:bad' ? 'bad-secret' : 'good-secret'
+          )),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      traceId: 'trace-visible-auth-skip',
+    }))
+
+    expect(response.renderDecision.modelId).toBe('qwen-flash-character')
+    expect(response.renderDecision.credentialId).toBe('dashscope-good-shared')
+    expect(chatSpy).toHaveBeenCalledTimes(2)
+    expect(chatSpy.mock.calls[0]?.[0]).toMatchObject({
+      model: 'qwen-plus-character',
+      provider: { api_key: 'bad-secret' },
+    })
+    expect(chatSpy.mock.calls[1]?.[0]).toMatchObject({
+      model: 'qwen-flash-character',
+      provider: { api_key: 'good-secret' },
+    })
+    expect(usageLedger.list()).toHaveLength(2)
+    expect(usageLedger.list()[0]?.success).toBe(false)
+    expect(usageLedger.list()[0]?.error_code).toBe('AuthError')
+    expect(usageLedger.list()[1]?.success).toBe(true)
+  })
+
   it('falls back from llm_api_vision to llm_api_default for hidden multimodal routing', async () => {
     const bundle = buildBundle()
     bundle.modelProfiles.profiles.push({
@@ -1619,12 +1788,14 @@ describe('LLMGateway', () => {
       tier: 'base',
       intent: 'vision_summary',
       visibility: 'hidden',
+      policy_id: 'hidden-vision_summary-base',
       candidates: [
         {
           provider_id: 'dashscope-openai',
           model_id: 'qwen-vl-plus',
           region: 'cn-beijing',
           endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
           weight: 100,
           quality_class: 'balanced',
         },

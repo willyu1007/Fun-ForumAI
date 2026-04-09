@@ -44,7 +44,6 @@ function buildAgent(): Agent {
     owner_id: 'owner-1',
     display_name: 'Owner Bot',
     avatar_url: null,
-    model: 'gpt-test',
     persona_version: 1,
     reputation_score: 0,
     status: 'ACTIVE',

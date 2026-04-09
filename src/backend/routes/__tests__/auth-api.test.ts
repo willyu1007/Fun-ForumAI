@@ -29,6 +29,7 @@ describe('Auth API', () => {
     expect(switchRes.status).toBe(200)
     expect(switchRes.body.data.user).toMatchObject({
       email: 'dev-admin@llm-forum.test',
+      birthDate: null,
       role: 'admin',
     })
 
@@ -42,6 +43,7 @@ describe('Auth API', () => {
     expect(meRes.status).toBe(200)
     expect(meRes.body.data.user).toMatchObject({
       email: 'dev-admin@llm-forum.test',
+      birthDate: null,
       role: 'admin',
     })
   })
@@ -151,6 +153,7 @@ describe('Auth API', () => {
       .send({
         displayName: 'Profile After',
         avatarUrl: '/user-avatars/avatar-wizard.png',
+        birthDate: '1999-12-31',
       })
 
     expect(patchRes.status).toBe(200)
@@ -158,6 +161,7 @@ describe('Auth API', () => {
       email,
       displayName: 'Profile After',
       avatarUrl: '/user-avatars/avatar-wizard.png',
+      birthDate: '1999-12-31',
     })
 
     const meRes = await request(app)
@@ -169,7 +173,39 @@ describe('Auth API', () => {
       email,
       displayName: 'Profile After',
       avatarUrl: '/user-avatars/avatar-wizard.png',
+      birthDate: '1999-12-31',
     })
+  })
+
+  it('rejects invalid calendar birth dates when updating the authenticated profile', async () => {
+    const email = `guidance-auth-invalid-birth-${Date.now()}@example.com`
+
+    const startRes = await request(app)
+      .post('/v1/auth/register')
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'Invalid Birth',
+        inviteCode: '100001',
+      })
+
+    const verifyRes = await request(app)
+      .post('/v1/auth/register/verify')
+      .send({
+        challengeId: startRes.body.data.challengeId,
+        code: startRes.body.data.debugCode,
+      })
+
+    const cookies = verifyRes.headers['set-cookie']
+    const patchRes = await request(app)
+      .patch('/v1/auth/profile')
+      .set('Cookie', cookies)
+      .send({
+        birthDate: '2024-02-31',
+      })
+
+    expect(patchRes.status).toBe(400)
+    expect(patchRes.body.error.code).toBe('VALIDATION_ERROR')
   })
 
   it('persists dev toolbar profile edits instead of falling back to hardcoded auth/me values', async () => {
@@ -362,6 +398,138 @@ describe('Auth API', () => {
     } finally {
       otpConfig.resendCooldownSeconds = originalCooldown
     }
+  })
+
+  it('changes the authenticated email through challenge verification and invalidates the old resend challenge', async () => {
+    const { config } = await import('../../lib/config.js')
+    const otpConfig = config.auth.otp as {
+      resendCooldownSeconds: number
+    }
+    const originalCooldown = otpConfig.resendCooldownSeconds
+    otpConfig.resendCooldownSeconds = 0
+
+    const email = `guidance-auth-contact-${Date.now()}@example.com`
+    const nextEmail = `guidance-auth-contact-next-${Date.now()}@example.com`
+
+    try {
+      const startRegisterRes = await request(app)
+        .post('/v1/auth/register')
+        .send({
+          email,
+          password: 'password123',
+          displayName: 'Contact Change Tester',
+          inviteCode: '100001',
+        })
+
+      const verifyRegisterRes = await request(app)
+        .post('/v1/auth/register/verify')
+        .send({
+          challengeId: startRegisterRes.body.data.challengeId,
+          code: startRegisterRes.body.data.debugCode,
+        })
+
+      const cookies = verifyRegisterRes.headers['set-cookie']
+
+      const startChangeRes = await request(app)
+        .post('/v1/auth/email/change')
+        .set('Cookie', cookies)
+        .send({ newEmail: nextEmail })
+
+      expect(startChangeRes.status).toBe(200)
+      expect(startChangeRes.body.data).toMatchObject({
+        challengeId: expect.any(String),
+        debugCode: expect.any(String),
+      })
+
+      const resendRes = await request(app)
+        .post('/v1/auth/contact/change/resend')
+        .set('Cookie', cookies)
+        .send({
+          challengeId: startChangeRes.body.data.challengeId,
+        })
+
+      expect(resendRes.status).toBe(200)
+      expect(resendRes.body.data.challengeId).not.toBe(startChangeRes.body.data.challengeId)
+
+      const oldVerifyRes = await request(app)
+        .post('/v1/auth/email/change/verify')
+        .set('Cookie', cookies)
+        .send({
+          challengeId: startChangeRes.body.data.challengeId,
+          code: startChangeRes.body.data.debugCode,
+        })
+
+      expect(oldVerifyRes.status).toBe(400)
+      expect(oldVerifyRes.body.error.code).toBe('CODE_EXPIRED')
+
+      const latestVerifyRes = await request(app)
+        .post('/v1/auth/email/change/verify')
+        .set('Cookie', cookies)
+        .send({
+          challengeId: resendRes.body.data.challengeId,
+          code: resendRes.body.data.debugCode,
+        })
+
+      expect(latestVerifyRes.status).toBe(200)
+      expect(latestVerifyRes.body.data.user).toMatchObject({
+        email: nextEmail,
+      })
+
+      const meRes = await request(app)
+        .get('/v1/auth/me')
+        .set('Cookie', cookies)
+
+      expect(meRes.status).toBe(200)
+      expect(meRes.body.data.user.email).toBe(nextEmail)
+    } finally {
+      otpConfig.resendCooldownSeconds = originalCooldown
+    }
+  })
+
+  it('changes the authenticated phone through challenge verification', async () => {
+    const email = `guidance-auth-phone-change-${Date.now()}@example.com`
+    const nextPhone = `13${(Date.now() + 3).toString().slice(-9)}`
+
+    const startRegisterRes = await request(app)
+      .post('/v1/auth/register')
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'Phone Change Tester',
+        inviteCode: '100001',
+      })
+
+    const verifyRegisterRes = await request(app)
+      .post('/v1/auth/register/verify')
+      .send({
+        challengeId: startRegisterRes.body.data.challengeId,
+        code: startRegisterRes.body.data.debugCode,
+      })
+
+    const cookies = verifyRegisterRes.headers['set-cookie']
+    const startChangeRes = await request(app)
+      .post('/v1/auth/phone/change')
+      .set('Cookie', cookies)
+      .send({ newPhone: nextPhone })
+
+    expect(startChangeRes.status).toBe(200)
+    expect(startChangeRes.body.data).toMatchObject({
+      challengeId: expect.any(String),
+      debugCode: expect.any(String),
+    })
+
+    const verifyChangeRes = await request(app)
+      .post('/v1/auth/phone/change/verify')
+      .set('Cookie', cookies)
+      .send({
+        challengeId: startChangeRes.body.data.challengeId,
+        code: startChangeRes.body.data.debugCode,
+      })
+
+    expect(verifyChangeRes.status).toBe(200)
+    expect(verifyChangeRes.body.data.user).toMatchObject({
+      phone: nextPhone,
+    })
   })
 
   it('creates a phone-only account on first sms verification and reuses it on later logins', async () => {

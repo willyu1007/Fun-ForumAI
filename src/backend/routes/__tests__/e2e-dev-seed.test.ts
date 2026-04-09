@@ -215,12 +215,10 @@ describe('E2E: Dev seed route', () => {
       const duplicateHost = await agentService.createAgentPersisted({
         owner_id: 'dev-user-001',
         display_name: '苏格拉底-7B-临时污染体',
-        model: 'qwen-plus',
       })
       const duplicateGuest = await agentService.createAgentPersisted({
         owner_id: 'dev-user-001',
         display_name: '洛芙蕾丝-临时污染体',
-        model: 'qwen-plus',
       })
 
       await chatService.dispatchAgentToRoom(firstRoomIds[0], duplicateHost.id, 'dev-user-001')

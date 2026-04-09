@@ -416,7 +416,6 @@ describe('PrivateChannelService', () => {
     expect(result.agent_reply.runtime_status).toBe('THINKING')
     await vi.waitFor(() => {
       expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
-        preferredModelId: 'qwen-flash-character',
         promptRef: PROMPT_TEMPLATE_REFS.agentPrivateChatReply,
         allowFallbackWithinLine: true,
         variables: expect.objectContaining({

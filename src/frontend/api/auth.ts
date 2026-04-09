@@ -7,6 +7,7 @@ export interface UserProfile {
   phone: string | null
   displayName: string
   avatarUrl: string | null
+  birthDate: string | null
   planTier: string
   role: 'user' | 'admin'
 }
@@ -77,7 +78,27 @@ export const authApi = {
     return api.get('auth/me').json<ApiResponse<{ user: UserProfile }>>()
   },
 
-  updateProfile(data: { displayName?: string; avatarUrl?: string | null }) {
+  updateProfile(data: { displayName?: string; avatarUrl?: string | null; birthDate?: string | null }) {
     return api.patch('auth/profile', { json: data }).json<ApiResponse<{ user: UserProfile }>>()
+  },
+
+  startEmailChange(data: { newEmail: string }) {
+    return api.post('auth/email/change', { json: data }).json<ApiResponse<AuthChallengeResult>>()
+  },
+
+  verifyEmailChange(data: { challengeId: string; code: string }) {
+    return api.post('auth/email/change/verify', { json: data }).json<ApiResponse<{ user: UserProfile }>>()
+  },
+
+  startPhoneChange(data: { newPhone: string }) {
+    return api.post('auth/phone/change', { json: data }).json<ApiResponse<AuthChallengeResult>>()
+  },
+
+  verifyPhoneChange(data: { challengeId: string; code: string }) {
+    return api.post('auth/phone/change/verify', { json: data }).json<ApiResponse<{ user: UserProfile }>>()
+  },
+
+  resendContactChange(data: { challengeId: string }) {
+    return api.post('auth/contact/change/resend', { json: data }).json<ApiResponse<AuthChallengeResult>>()
   },
 }

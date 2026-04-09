@@ -553,12 +553,13 @@ function buildProjectionCues(inputs: Array<{
       }
     }
 
-    if (author.public_bio) {
+    const publicBio = author.public_projection?.public_bio ?? null
+    if (publicBio) {
       const cue = buildProjectionCue({
         cue_id: `persona:bio:${author.id}`,
         source_kind: 'PUBLIC_BIO',
-        label: truncateText(author.public_bio, 24),
-        detail: truncateText(author.public_bio, 96),
+        label: truncateText(publicBio, 24),
+        detail: truncateText(publicBio, 96),
         evidence_refs: input.evidence_refs,
         updated_at: now,
       })

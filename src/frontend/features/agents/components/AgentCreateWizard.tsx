@@ -1,9 +1,27 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Upload, Check } from 'lucide-react'
 import { useCreateAgent } from '@/api/hooks'
 import type { Agent, StyleSettings } from '@/api/types'
+import { AGENT_AVATAR_PRESETS } from '@/shared/utils/preset-avatars'
+import { cn } from '@/lib/utils'
 import { PERSONA_SEED_OPTIONS } from '../persona-seeds'
+
+const MAX_UPLOAD_SIZE = 512 * 1024
+
+function readImageAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (file.size > MAX_UPLOAD_SIZE) {
+      reject(new Error('图片不能超过 512 KB'))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('读取文件失败'))
+    reader.readAsDataURL(file)
+  })
+}
 interface AgentCreateWizardProps {
   open: boolean
   onClose: () => void
@@ -36,11 +54,30 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
   const [interests, setInterests] = useState<string[]>([])
   const [style, setStyle] = useState<StyleSettings>(DEFAULT_STYLE)
   const [creating, setCreating] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const createAgent = useCreateAgent()
+
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploadError(null)
+    try {
+      const dataUrl = await readImageAsDataUrl(file)
+      setAvatarUrl(dataUrl)
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : '上传失败')
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [])
+
   const reset = () => {
     setStep(0)
     setName('')
     setAvatarUrl('')
+    setUploadError(null)
+    setPreviewSrc(null)
     setSelectedPersona(null)
     setInterests([])
     setStyle(DEFAULT_STYLE)
@@ -85,6 +122,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
     setInterests((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
   }
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-lg" data-testid="agent-create-wizard">
         <DialogHeader>
@@ -104,24 +142,74 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
           {step === 0 && (
             <div className="space-y-4">
               <div>
-                <label className={"mb-1 block text-sm font-medium"}>名称 *</label>
+                <label className="mb-1 block text-sm font-medium">名称 *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="给你的 Agent 起个名字"
-                  className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>
               <div>
-                <label className={"mb-1 block text-sm font-medium"}>头像 URL（可选）</label>
-                <input
-                  type="text"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://..."
-                  className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
-                />
+                <label className="mb-1.5 block text-sm font-medium">头像</label>
+                <div className="grid grid-cols-8 gap-1.5 max-h-[120px] overflow-y-auto rounded-lg border border-border/60 p-2">
+                  {AGENT_AVATAR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.src}
+                      type="button"
+                      onClick={() => { setAvatarUrl(preset.src); setUploadError(null) }}
+                      onDoubleClick={() => setPreviewSrc(preset.src)}
+                      className={cn(
+                        'relative flex items-center justify-center rounded-lg p-0.5 transition-all',
+                        avatarUrl === preset.src
+                          ? 'ring-2 ring-primary ring-offset-1'
+                          : 'hover:bg-muted',
+                      )}
+                    >
+                      <img
+                        src={preset.src}
+                        alt={preset.label}
+                        className="h-9 w-9 rounded-md object-cover"
+                        draggable={false}
+                      />
+                      {avatarUrl === preset.src && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    上传图片
+                  </button>
+                  {avatarUrl.startsWith('data:') && (
+                    <img
+                      src={avatarUrl}
+                      alt="自定义头像"
+                      className="h-8 w-8 cursor-pointer rounded-md object-cover ring-2 ring-primary ring-offset-1"
+                      draggable={false}
+                      onDoubleClick={() => setPreviewSrc(avatarUrl)}
+                    />
+                  )}
+                  {uploadError && (
+                    <span className="text-xs text-destructive">{uploadError}</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -230,5 +318,21 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!previewSrc} onOpenChange={(o) => { if (!o) setPreviewSrc(null) }}>
+      <DialogContent
+        className="border-none bg-transparent p-0 shadow-none max-w-[70vw]"
+        showCloseButton={false}
+        onEscapeKeyDown={() => setPreviewSrc(null)}
+      >
+        <DialogTitle className="sr-only">头像预览</DialogTitle>
+        <img
+          src={previewSrc ?? ''}
+          alt="头像预览"
+          className="h-[min(70vh,70vw)] w-[min(70vh,70vw)] rounded-2xl object-cover shadow-2xl"
+        />
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

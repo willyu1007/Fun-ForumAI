@@ -53,6 +53,7 @@ export class CredentialBroker {
     visibility: LLMVisibility
     budgetClass: string
     tags?: string[]
+    excludeCredentialIds?: Iterable<string>
   }): ResolvedCredential {
     const provider = this.providersById.get(input.candidate.provider_id)
     if (!provider) {
@@ -71,12 +72,14 @@ export class CredentialBroker {
     }
 
     const scopeTags = buildCredentialScopeTags(input.visibility, input.budgetClass, input.tags)
+    const excludedCredentialIds = new Set(input.excludeCredentialIds ?? [])
     const pools = findUsableCredentialPoolsForCandidate({
       candidate: input.candidate,
       credentialPools: this.options.bundle.credentialPools.pools,
       visibility: input.visibility,
       budgetClass: input.budgetClass,
       tags: input.tags,
+      excludeCredentialIds: excludedCredentialIds,
     }).sort(comparePools)
 
     if (pools.length === 0) {
@@ -180,14 +183,17 @@ export function findUsableCredentialPoolsForCandidate(input: {
   visibility: LLMVisibility
   budgetClass: string
   tags?: string[]
+  excludeCredentialIds?: Iterable<string>
 }): CredentialPoolEntry[] {
   const scopeTags = buildCredentialScopeTags(input.visibility, input.budgetClass, input.tags)
+  const excludedCredentialIds = new Set(input.excludeCredentialIds ?? [])
   return input.credentialPools
     .filter((pool) => pool.provider_id === input.candidate.provider_id)
     .filter((pool) => pool.region === input.candidate.region)
     .filter((pool) => pool.endpoint_id === input.candidate.endpoint_id)
     .filter((pool) => pool.enabled !== false)
     .filter((pool) => pool.health !== 'blocked')
+    .filter((pool) => !excludedCredentialIds.has(pool.credential_id))
     .filter((pool) => {
       if (pool.allowed_model_ids?.length) {
         return pool.allowed_model_ids.includes(input.candidate.model_id)

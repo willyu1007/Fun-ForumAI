@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { api } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ChevronLeft, ChevronRight, Wrench, Database, Medal, SlidersHorizontal } from 'lucide-react'
 import {
   DEV_AUTH_TOOLBAR_HEIGHT_CLASS,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
@@ -24,8 +25,12 @@ export function DevAuthToolbar() {
   const { currentIdentity, switchIdentity, user } = useAuth()
   const collapsed = useDevAuthToolbarStore((state) => state.collapsed)
   const setCollapsed = useDevAuthToolbarStore((state) => state.setCollapsed)
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [badgePanelOpen, setBadgePanelOpen] = useState(false)
+  const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
 
   const handleSeed = async () => {
+    setToolsOpen(false)
     try {
       const res = await api.post('dev/seed').json<{
         data: {
@@ -64,29 +69,31 @@ export function DevAuthToolbar() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div
-        className={`mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 ${DEV_AUTH_TOOLBAR_HEIGHT_CLASS}`}
-      >
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            aria-label="收起开发模式工具栏"
-            onClick={() => setCollapsed(true)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+    <>
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div
+          className={`mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 ${DEV_AUTH_TOOLBAR_HEIGHT_CLASS}`}
+        >
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">身份切换：</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-muted-foreground"
+              aria-label="收起开发模式工具栏"
+              onClick={() => setCollapsed(true)}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">
+              DEV
+            </Badge>
             {IDENTITIES.map(({ id, label }) => (
               <Button
                 key={id}
-                variant={currentIdentity === id ? 'default' : 'outline'}
+                variant={currentIdentity === id ? 'default' : 'ghost'}
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 px-2.5 text-xs"
                 onClick={() => {
                   void switchIdentity(id).catch((err: unknown) => {
                     alert(`身份切换失败：${err instanceof Error ? err.message : '未知错误'}`)
@@ -97,30 +104,61 @@ export function DevAuthToolbar() {
               </Button>
             ))}
           </div>
-        </div>
 
-        <div className="ml-auto flex items-center gap-3">
-          {user && (
-            <Badge variant="secondary" className="max-w-[22rem] truncate text-xs">
-              {user.email ?? user.phone ?? user.id}（{user.role === 'admin' ? '管理员' : '用户'}）
-            </Badge>
-          )}
-          <Separator orientation="vertical" className="h-6" />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 shrink-0 text-xs"
-            onClick={handleSeed}
-          >
-            填充测试数据
-          </Button>
-          <DevBadgeDebugPanel />
-          <DevFrontendFlagsPanel />
-          <Badge variant="outline" className="text-[10px] text-muted-foreground">
-            开发模式
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            {user && (
+              <span className="max-w-[18rem] truncate text-xs text-muted-foreground">
+                {user.email ?? user.phone ?? user.id}
+              </span>
+            )}
+
+            <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2.5 text-xs"
+                  aria-label="开发工具"
+                >
+                  <Wrench className="size-3.5" />
+                  工具
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" side="top" sideOffset={8} className="w-52 p-1.5">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={handleSeed}
+                >
+                  <Database className="size-3.5 text-muted-foreground" />
+                  填充测试数据
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => { setToolsOpen(false); setBadgePanelOpen(true) }}
+                >
+                  <Medal className="size-3.5 text-muted-foreground" />
+                  勋章调试
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => { setToolsOpen(false); setFlagsPanelOpen(true) }}
+                >
+                  <SlidersHorizontal className="size-3.5 text-muted-foreground" />
+                  VITE 功能门
+                </button>
+              </PopoverContent>
+            </Popover>
+
+          </div>
         </div>
       </div>
-    </div>
+
+      <DevBadgeDebugPanel open={badgePanelOpen} onOpenChange={setBadgePanelOpen} />
+      <DevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
+    </>
   )
 }

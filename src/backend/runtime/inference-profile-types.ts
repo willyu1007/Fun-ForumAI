@@ -129,7 +129,6 @@ export interface AgentInferenceProfile {
 
 export interface InferenceRouteDecision {
   homeVoiceLineId: VoiceLineId
-  preferredModelId?: string
   requestedTier: RenderTier
   profile: AgentInferenceProfile
   snapshot: InferenceProfileSnapshot

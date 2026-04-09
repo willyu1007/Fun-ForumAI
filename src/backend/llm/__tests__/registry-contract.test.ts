@@ -9,18 +9,18 @@ import {
   type VoiceLineRoutingIntent,
 } from '../../../shared/agent-persona-catalog.js'
 import {
-  defaultAdapterId,
-  defaultExecutionPolicyId,
   loadLlmRegistryBundle,
   loadPromptTemplatesRegistry,
   validateLlmRegistryBundle,
 } from '../registry-loader.js'
 import { LLMGatewayContractError } from '../gateway-contract.js'
+import { GENERATED_VOICE_LINE_ROUTING } from '../generated/voice-line-routing.generated.js'
 import {
   resolveIdentityWriteProfileRef,
   resolveVoiceLineTierProfileRef,
 } from '../voice-line-routing.js'
 import { PROMPT_TEMPLATE_REFS } from '../prompt-template-refs.js'
+import { buildVoiceLineRoutingArtifact } from '../voice-line-routing-artifact.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REGISTRY_DIR = resolve(__dirname, '../../../../.ai/llm-config/registry')
@@ -139,26 +139,28 @@ describe('LLM registry contract', () => {
     })
   })
 
-  it('resolves intent-aware voice-line tier profile refs from the shared voice-line catalog', () => {
+  it('keeps the generated voice-line routing artifact aligned with the model profile registry', () => {
     const bundle = loadLlmRegistryBundle()
     const profilesById = new Map(
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
     )
+    const expectedArtifact = buildVoiceLineRoutingArtifact(bundle.modelProfiles.profiles)
 
-    for (const line of Object.values(VOICE_LINE_CATALOG)) {
-      for (const [intent, tierMap] of Object.entries(line.intentProfileRefs)) {
+    expect(GENERATED_VOICE_LINE_ROUTING).toEqual(expectedArtifact)
+
+    for (const [voiceLineId, intentMap] of Object.entries(expectedArtifact)) {
+      for (const [intent, tierMap] of Object.entries(intentMap ?? {})) {
         for (const [tier, expectedProfileId] of Object.entries(tierMap ?? {})) {
           const resolved = resolveVoiceLineTierProfileRef(
-            line.id,
+            voiceLineId as keyof typeof VOICE_LINE_CATALOG,
             intent as VoiceLineRoutingIntent,
             tier as 'lite' | 'base' | 'premium',
           )
 
           expect(resolved).toBe(expectedProfileId)
-
           const profile = profilesById.get(expectedProfileId)
           expect(profile).toBeDefined()
-          expect(profile?.voice_line_id).toBe(line.id)
+          expect(profile?.voice_line_id).toBe(voiceLineId)
           expect(profile?.intent).toBe(intent)
           expect(profile?.tier).toBe(tier)
         }
@@ -172,7 +174,9 @@ describe('LLM registry contract', () => {
     for (const line of visibleLines) {
       const profileId = resolveIdentityWriteProfileRef(line.id, 'premium')
       expect(profileId).toBeTruthy()
-      expect(profileId).toBe(line.intentProfileRefs.identity_write?.premium)
+      expect(profileId).toBe(
+        GENERATED_VOICE_LINE_ROUTING[line.id]?.identity_write?.premium,
+      )
     }
 
     const directorLine = VOICE_LINE_CATALOG['deepseek-director-v1']
@@ -215,6 +219,51 @@ describe('LLM registry contract', () => {
         .get('qwen-social-identity-write-premium')
         ?.candidates.every((candidate) => candidate.adapter_id === 'openai-chat-completions-v1'),
     ).toBe(true)
+  })
+
+  it('keeps qwen hidden digest profiles multi-homed for saturation resilience', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+
+    for (const profileId of [
+      'qwen-social-public-observation-base',
+      'qwen-social-private-digest-base',
+    ] as const) {
+      const profile = profilesById.get(profileId)
+      const candidateKeys = profile?.candidates.map(
+        (candidate) => `${candidate.provider_id}/${candidate.model_id}`,
+      ) ?? []
+
+      expect(profile?.candidates[0]).toMatchObject({
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen-plus-character',
+      })
+      expect(candidateKeys).toEqual(
+        expect.arrayContaining([
+          'dashscope-openai/qwen-plus-character',
+          'tencent-openai/hunyuan-2.0-instruct-20251111',
+          'ark-openai/doubao-seed-2-0-lite-260215',
+          'dashscope-openai/qwen-flash-character',
+        ]),
+      )
+      expect(
+        profile?.candidates.some((candidate) => candidate.provider_id !== 'dashscope-openai'),
+      ).toBe(true)
+    }
+  })
+
+  it('falls back to the nearest available tier when a requested tier is not explicitly defined', () => {
+    expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'scheduled_post', 'premium')).toBe(
+      'qwen-social-scheduled-post-base',
+    )
+    expect(resolveVoiceLineTierProfileRef('kimi-deep-v1', 'scheduled_post', 'premium')).toBe(
+      'kimi-deep-scheduled-post-base',
+    )
+    expect(resolveIdentityWriteProfileRef('kimi-deep-v1', 'base')).toBe(
+      'kimi-deep-identity-write-premium',
+    )
   })
 
   it('keeps visible prompt refs registered in the prompt template registry', () => {
@@ -296,7 +345,7 @@ describe('LLM registry contract', () => {
     )
 
     for (const profile of bundle.modelProfiles.profiles) {
-      const policy = policiesById.get(profile.policy_id ?? defaultExecutionPolicyId(profile))
+      const policy = policiesById.get(profile.policy_id)
       expect(policy).toBeDefined()
       if (!policy) continue
 
@@ -304,7 +353,7 @@ describe('LLM registry contract', () => {
         const capability = capabilitiesByKey.get(`${candidate.provider_id}/${candidate.model_id}`)
         const pricing = pricingByKey.get(`${candidate.provider_id}/${candidate.model_id}`)
         const provider = providersById.get(candidate.provider_id)
-        const adapter = adaptersById.get(candidate.adapter_id ?? defaultAdapterId(candidate))
+        const adapter = adaptersById.get(candidate.adapter_id)
 
         expect(capability, `${profile.profile_id}:${candidate.provider_id}/${candidate.model_id}`).toBeDefined()
         expect(pricing, `${profile.profile_id}:${candidate.provider_id}/${candidate.model_id}:pricing`).toBeDefined()
@@ -321,6 +370,37 @@ describe('LLM registry contract', () => {
         }
       }
     }
+  })
+
+  it('rejects profiles that omit explicit execution policy bindings', () => {
+    const paths = createTempRegistry((files) => {
+      const profiles = files.get('model_profiles.yaml') as {
+        profiles: Array<Record<string, unknown>>
+      }
+      delete profiles.profiles[0]!.policy_id
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid model profiles registry/,
+      issuePath: 'profiles.0.policy_id',
+      issueMessage: /expected string/,
+    })
+  })
+
+  it('rejects candidates that omit explicit adapter bindings', () => {
+    const paths = createTempRegistry((files) => {
+      const profiles = files.get('model_profiles.yaml') as {
+        profiles: Array<Record<string, unknown>>
+      }
+      const candidates = profiles.profiles[0]!.candidates as Array<Record<string, unknown>>
+      delete candidates[0]!.adapter_id
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid model profiles registry/,
+      issuePath: 'profiles.0.candidates.0.adapter_id',
+      issueMessage: /expected string/,
+    })
   })
 
   it('rejects fallback direct targets that are not declared on the target profile', () => {

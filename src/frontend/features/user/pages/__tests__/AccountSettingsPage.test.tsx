@@ -9,14 +9,6 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
-vi.mock('@/shared/stores/agent-modal-store', () => ({
-  useAgentModalStore: {
-    getState: () => ({
-      openModal: vi.fn(),
-    }),
-  },
-}))
-
 vi.mock('@/shared/components/PresetAvatarDialog', () => ({
   PresetAvatarDialog: () => null,
 }))
@@ -30,6 +22,7 @@ function buildUser(overrides: Partial<UserProfile> = {}): UserProfile {
     phone: null,
     displayName: 'Default User',
     avatarUrl: null,
+    birthDate: null,
     planTier: 'FREE',
     role: 'user',
   }
@@ -54,6 +47,11 @@ function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): Ret
     resendSmsCode: vi.fn(),
     logout: vi.fn(),
     updateProfile: vi.fn(),
+    startEmailChange: vi.fn(),
+    verifyEmailChange: vi.fn(),
+    startPhoneChange: vi.fn(),
+    verifyPhoneChange: vi.fn(),
+    resendContactChange: vi.fn(),
     switchIdentity: vi.fn(),
     isLoginPending: false,
     isEmailRegisterStartPending: false,
@@ -67,6 +65,11 @@ function buildAuthMock(overrides: Partial<ReturnType<typeof useAuth>> = {}): Ret
     isSmsResendPending: false,
     isLogoutPending: false,
     isUpdateProfilePending: false,
+    isEmailChangeStartPending: false,
+    isEmailChangeVerifyPending: false,
+    isPhoneChangeStartPending: false,
+    isPhoneChangeVerifyPending: false,
+    isContactChangeResendPending: false,
     ...overrides,
   }
 }
@@ -92,7 +95,7 @@ describe('AccountSettingsPage', () => {
     useAuthMock.mockImplementation(() => authState)
 
     const view = renderPage()
-    expect(screen.getByText('需要登录')).toBeTruthy()
+    expect(screen.getByText(/请先/)).toBeTruthy()
 
     authState = buildAuthMock({
       user: buildUser({ displayName: 'Hydrated User' }),
@@ -124,9 +127,10 @@ describe('AccountSettingsPage', () => {
       expect(updateProfile).toHaveBeenCalledWith({
         displayName: 'Renamed User',
         avatarUrl: null,
+        birthDate: null,
       })
     })
-    expect(screen.getByText('资料已保存。')).toBeTruthy()
+    expect(screen.getByText('已保存')).toBeTruthy()
   })
 
   it('resets the password through the account settings email verification flow', async () => {
@@ -175,6 +179,6 @@ describe('AccountSettingsPage', () => {
       })
     })
 
-    expect(screen.getByText('密码已更新。')).toBeTruthy()
+    expect(screen.getByText('密码已更新')).toBeTruthy()
   })
 })

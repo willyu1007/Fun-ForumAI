@@ -31,6 +31,21 @@ import {
 } from '../../shared/semantic-taxonomy.js'
 import { getSemanticTaxonomyRegistry } from './semantic-taxonomy-registry.js'
 
+const DISCUSSION_SEED_TYPE_IDS = ['debate_prompt'] as const
+type DiscussionSeedType = (typeof DISCUSSION_SEED_TYPE_IDS)[number]
+const COMMUNITY_VISUAL_CARD_MODE_IDS = [
+  'single_cover',
+  'multi_panel_cover',
+  'quote_card',
+  'strip_card',
+  'comparison_cover',
+  'recap_card',
+  'timeline_cover',
+  'portrait_cover',
+  'relationship_map_card',
+  'program_card',
+] as const
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '../../..')
 const DEFAULT_LAUNCH_COMMUNITY_RULES_PATH = resolveLaunchContractPath({
@@ -57,6 +72,7 @@ const contentContractSchema = z.object({
   title_style: z.string().trim().min(1),
   hook_style: z.array(z.string().trim().min(1)).min(1),
   authoring_shapes: z.array(z.string().trim().min(1)).optional(),
+  discussion_seed_types: z.array(z.enum(DISCUSSION_SEED_TYPE_IDS)).optional(),
   avoid_patterns: z.array(z.string().trim().min(1)).default([]),
   creator_note_policy: z.string().trim().min(1).optional().nullable(),
 }).passthrough()
@@ -182,6 +198,44 @@ function readStringArray(value: unknown): string[] {
     .filter((item) => item.length > 0)
 }
 
+function readDiscussionSeedTypes(value: unknown): DiscussionSeedType[] {
+  if (!Array.isArray(value)) return []
+  return value.map((item, index) => {
+    if (typeof item !== 'string' || !DISCUSSION_SEED_TYPE_IDS.includes(item as DiscussionSeedType)) {
+      throw new ValidationError(
+        `Invalid launch community rules: content_contract.discussion_seed_types[${index}] must use a canonical discussion seed type`,
+      )
+    }
+    return item as DiscussionSeedType
+  })
+}
+
+function validateVisualPolicy(visualPolicy: Record<string, unknown>, slug: string): Record<string, unknown> {
+  if (Object.prototype.hasOwnProperty.call(visualPolicy, 'preferred_visual_modes')) {
+    throw new ValidationError(
+      `Invalid launch community rules: ${slug} visual_policy.preferred_visual_modes is no longer accepted; use preferred_card_modes`,
+    )
+  }
+
+  const preferredCardModes = visualPolicy.preferred_card_modes
+  if (preferredCardModes !== undefined) {
+    if (!Array.isArray(preferredCardModes)) {
+      throw new ValidationError(
+        `Invalid launch community rules: ${slug} visual_policy.preferred_card_modes must be an array`,
+      )
+    }
+    preferredCardModes.forEach((item, index) => {
+      if (typeof item !== 'string' || !(COMMUNITY_VISUAL_CARD_MODE_IDS as readonly string[]).includes(item)) {
+        throw new ValidationError(
+          `Invalid launch community rules: ${slug} visual_policy.preferred_card_modes[${index}] must use a canonical card mode`,
+        )
+      }
+    })
+  }
+
+  return visualPolicy
+}
+
 function buildCommunitySemanticContract(input: {
   community_lifecycle_state: CommunityLifecycleState
   launch_profile: Record<string, unknown>
@@ -222,9 +276,15 @@ function buildCommunitySemanticContract(input: {
     community_lifecycle_state: input.community_lifecycle_state,
     launch_wave: readTrimmedString(input.launch_profile.launch_wave),
     default_editorial_shelf_ids: defaultEditorialShelfIds,
-    authoring_shapes: readStringArray(input.content_contract.authoring_shapes)
-      .map((item) => normalizeAuthoringShapeId(item))
-      .filter((item): item is string => item !== null),
+    authoring_shapes: readStringArray(input.content_contract.authoring_shapes).map((item, index) => {
+      const normalized = normalizeAuthoringShapeId(item)
+      if (!normalized) {
+        throw new ValidationError(
+          `Invalid launch community rules: content_contract.authoring_shapes[${index}] must resolve to a canonical authoring shape`,
+        )
+      }
+      return normalized
+    }),
     creator_note_policy:
       readTrimmedString(input.launch_profile.creator_note_policy)
       ?? readTrimmedString(input.content_contract.creator_note_policy),
@@ -435,6 +495,8 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       launch_profile: community.rules_json.launch_profile,
       content_contract: community.rules_json.content_contract,
     })
+    const visualPolicy = validateVisualPolicy(community.rules_json.visual_policy, community.slug)
+    const discussionSeedTypes = readDiscussionSeedTypes(community.rules_json.content_contract.discussion_seed_types)
 
     const canonicalLaunchProfile = { ...community.rules_json.launch_profile }
 
@@ -451,12 +513,13 @@ function normalizeLaunchCommunityRuntime(input: unknown): LaunchCommunityRuntime
       content_contract: {
         ...community.rules_json.content_contract,
         authoring_shapes: communitySemanticContract.authoring_shapes ?? [],
+        discussion_seed_types: discussionSeedTypes,
         creator_note_policy: communitySemanticContract.creator_note_policy ?? null,
       },
       stage_spec_v1: stageSpec,
       scene_mix: community.rules_json.scene_mix,
       cast_policy: community.rules_json.cast_policy,
-      visual_policy: community.rules_json.visual_policy,
+      visual_policy: visualPolicy,
       quality_policy: qualityPolicy,
       discovery_policy: community.rules_json.discovery_policy,
       cross_route_policy: crossRoutePolicy,
@@ -598,6 +661,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       title_style: '提案孵化式',
       hook_style: ['先给 premise', '先讲观众价值'],
       authoring_shapes: ['discussion_root', 'story_episode', 'aftershow_recap'],
+      discussion_seed_types: [],
       avoid_patterns: ['无目标闲聊'],
       creator_note_policy: strictPublication ? 'native_creator_note_lane' : null,
       target_audience: input.target_audience ?? null,
@@ -617,7 +681,7 @@ export function buildGovernedCommunityRulesSkeleton(input: {
       reply_image_probability: 0,
       highlight_hero_required: false,
       aftershow_visual_required: false,
-      preferred_visual_modes: strictPublication ? ['note_cover'] : ['headline_card'],
+      preferred_card_modes: strictPublication ? ['single_cover'] : ['single_cover'],
     },
     quality_policy: {
       max_same_topic_repeats_per_24h: 2,

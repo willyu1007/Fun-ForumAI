@@ -45,6 +45,7 @@ import type {
 } from '../launch/creator-note-templates.js'
 import { isCommunityVisibleInDirectory } from '../community/community-lifecycle.js'
 import {
+  mergeContentSemantics,
   normalizeLaunchSurfaceKindId,
   type AgentPublicIdentity,
   type AgentPublicProjection,
@@ -830,6 +831,7 @@ export class ForumReadService {
         turn_id: turn.id,
         thread_id: turn.thread_id,
         body_excerpt: turn.body.slice(0, 240),
+        actual_anchor_turn_id: turn.anchor_turn_id ?? null,
         author: {
           actor_type: turn.author.actor_type,
           actor_id: turn.author.id,
@@ -1127,6 +1129,18 @@ export class ForumReadService {
     const surfaceKindId = launchPackaging?.surface_kind
       ? normalizeLaunchSurfaceKindId(launchPackaging.surface_kind)
       : null
+    const contentSemantics = mergeContentSemantics(launchProjection.content_semantics, {
+      distribution: {
+        ...(typeof launchPackaging?.hero_eligible === 'boolean'
+          ? { hero_eligible: launchPackaging.hero_eligible }
+          : {}),
+      },
+      visual: {
+        ...(surfaceKindId ? { surface_kind: surfaceKindId } : {}),
+        ...(launchPackaging?.card_mode ? { card_mode: launchPackaging.card_mode } : {}),
+        ...(launchPackaging?.thumbnail_policy ? { thumbnail_policy: launchPackaging.thumbnail_policy } : {}),
+      },
+    })
 
     return {
       ...post,
@@ -1164,6 +1178,7 @@ export class ForumReadService {
       ...(launchPackaging ?? {}),
       ...(surfaceKindId ? { surface_kind_id: surfaceKindId } : {}),
       ...launchProjection,
+      content_semantics: contentSemantics,
     }
   }
 

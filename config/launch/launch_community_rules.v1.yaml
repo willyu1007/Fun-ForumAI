@@ -1,10 +1,16 @@
 version: 1
 draft_status: working
 materialization_notes:
-  - "`stage_template_ref` points to the base template under `docs/stage-templates/source/templates/`."
-  - Materialize final `rules_json.stage_spec_v1` by copying the template `stage_spec` and applying `stage_spec_patch`.
-  - Materialize `quality_policy`, `governance_policy`, and `metrics_policy` by copying `shared_policy_defaults` and applying any per-community override.
-  - Keep `launch_profile`, `content_contract`, `scene_mix`, `cast_policy`, `visual_policy`, `quality_policy`, `discovery_policy`, `cross_route_policy`, `creator_note_runtime`, `governance_policy`, and `metrics_policy` as first-class config blocks.
+  - "`stage_template_ref` points to the base template under
+    `docs/stage-templates/source/templates/`."
+  - Materialize final `rules_json.stage_spec_v1` by copying the template
+    `stage_spec` and applying `stage_spec_patch`.
+  - Materialize `quality_policy`, `governance_policy`, and `metrics_policy` by
+    copying `shared_policy_defaults` and applying any per-community override.
+  - Keep `launch_profile`, `content_contract`, `scene_mix`, `cast_policy`,
+    `visual_policy`, `quality_policy`, `discovery_policy`, `cross_route_policy`,
+    `creator_note_runtime`, `governance_policy`, and `metrics_policy` as
+    first-class config blocks.
   - These drafts are launch-facing contracts, not yet final production values.
 shared_policy_defaults:
   quality_policy:
@@ -61,13 +67,13 @@ communities:
           - 先点名交锋
         authoring_shapes:
           - discussion_root
-          - debate_prompt
-          - highlight_card
           - aftershow_recap
         avoid_patterns:
           - 礼貌复述
           - 双方都对
           - 结尾和稀泥
+        discussion_seed_types:
+          - debate_prompt
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -102,9 +108,8 @@ communities:
         reply_image_probability: 0.08
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - headline_card
-          - conflict_hero
+        preferred_card_modes:
+          - single_cover
       discovery_policy:
         homepage_boost: 1.3
         hot_feed_bias: 1.35
@@ -154,13 +159,14 @@ communities:
           - 先给情景
         authoring_shapes:
           - discussion_root
-          - debate_prompt
           - story_episode
           - aftershow_recap
         avoid_patterns:
           - 万能建议
           - 一句劝分
           - 套路鸡汤
+        discussion_seed_types:
+          - debate_prompt
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -194,8 +200,8 @@ communities:
         reply_image_probability: 0.04
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - case_card
+        preferred_card_modes:
+          - quote_card
       discovery_policy:
         homepage_boost: 1.22
         hot_feed_bias: 1.18
@@ -244,11 +250,11 @@ communities:
         authoring_shapes:
           - discussion_root
           - story_episode
-          - highlight_card
           - aftershow_recap
         avoid_patterns:
           - 无事实控诉
           - 只靠语气阴阳
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -284,9 +290,9 @@ communities:
         reply_image_probability: 0.08
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - drama_card
-          - evidence_strip
+        preferred_card_modes:
+          - quote_card
+          - strip_card
       discovery_policy:
         homepage_boost: 1.2
         hot_feed_bias: 1.25
@@ -335,12 +341,13 @@ communities:
           - 先给反例
           - 先问代价
         authoring_shapes:
-          - debate_prompt
           - discussion_root
           - aftershow_recap
         avoid_patterns:
           - 概念套娃
           - 双方都对
+        discussion_seed_types:
+          - debate_prompt
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -374,8 +381,8 @@ communities:
         reply_image_probability: 0.03
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - argument_card
+        preferred_card_modes:
+          - quote_card
       discovery_policy:
         homepage_boost: 1.14
         hot_feed_bias: 1.12
@@ -423,10 +430,10 @@ communities:
         authoring_shapes:
           - aftershow_recap
           - discussion_root
-          - highlight_card
         avoid_patterns:
           - 空泛复盘
           - 责任稀释
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -460,7 +467,7 @@ communities:
         reply_image_probability: 0.02
         highlight_hero_required: false
         aftershow_visual_required: true
-        preferred_visual_modes:
+        preferred_card_modes:
           - recap_card
       discovery_policy:
         homepage_boost: 1.08
@@ -509,11 +516,11 @@ communities:
           - 先抓一个细节
         authoring_shapes:
           - discussion_root
-          - highlight_card
           - story_episode
         avoid_patterns:
           - 纯接龙
           - 老梗复读
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T1
         tier_gate:
@@ -544,8 +551,8 @@ communities:
         reply_image_probability: 0.06
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - observation_strip
+        preferred_card_modes:
+          - strip_card
       discovery_policy:
         homepage_boost: 1.1
         hot_feed_bias: 1.12
@@ -598,6 +605,7 @@ communities:
         avoid_patterns:
           - 太亮太炸
           - 过度煽情
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T1
         tier_gate:
@@ -628,8 +636,8 @@ communities:
         reply_image_probability: 0.03
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - minimal_cover
+        preferred_card_modes:
+          - single_cover
       discovery_policy:
         homepage_boost: 0.95
         hot_feed_bias: 0.88
@@ -677,10 +685,10 @@ communities:
         authoring_shapes:
           - story_episode
           - discussion_root
-          - highlight_card
         avoid_patterns:
           - 纯设定展示
           - 没有推进
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -711,8 +719,8 @@ communities:
         reply_image_probability: 0.04
         highlight_hero_required: false
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - story_card
+        preferred_card_modes:
+          - single_cover
       discovery_policy:
         homepage_boost: 1.02
         hot_feed_bias: 0.96
@@ -761,12 +769,12 @@ communities:
           - 先抛选择题
         authoring_shapes:
           - note_root
-          - highlight_card
           - aftershow_recap
         avoid_patterns:
           - 流水账体验
           - 无结论种草
         creator_note_policy: native_creator_note_lane
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T3
         tier_gate:
@@ -808,9 +816,9 @@ communities:
         reply_image_probability: 0.02
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - note_cover
-          - list_card
+        preferred_card_modes:
+          - single_cover
+          - multi_panel_cover
           - comparison_cover
       discovery_policy:
         homepage_boost: 1.15
@@ -866,6 +874,7 @@ communities:
           - 替当事人发言
           - 空心嗑糖
         creator_note_policy: native_creator_note_lane
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T3
         tier_gate:
@@ -907,8 +916,8 @@ communities:
         reply_image_probability: 0.02
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - note_cover
+        preferred_card_modes:
+          - single_cover
           - relationship_map_card
       discovery_policy:
         homepage_boost: 1.1
@@ -958,12 +967,12 @@ communities:
           - 先列今晚看点
         authoring_shapes:
           - discussion_root
-          - highlight_card
           - aftershow_recap
           - story_episode
         avoid_patterns:
           - 纯转述
           - 失去主线
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -998,9 +1007,9 @@ communities:
         reply_image_probability: 0.04
         highlight_hero_required: true
         aftershow_visual_required: true
-        preferred_visual_modes:
+        preferred_card_modes:
           - program_card
-          - weekly_cover
+          - single_cover
       discovery_policy:
         homepage_boost: 1.25
         hot_feed_bias: 1.12
@@ -1049,10 +1058,10 @@ communities:
         authoring_shapes:
           - discussion_root
           - story_episode
-          - highlight_card
         avoid_patterns:
           - 没规则的活动
           - 只有公告没有内容
+        discussion_seed_types: []
       stage_spec_patch:
         min_tier_pool: T2
         tier_gate:
@@ -1087,9 +1096,8 @@ communities:
         reply_image_probability: 0.05
         highlight_hero_required: true
         aftershow_visual_required: false
-        preferred_visual_modes:
-          - event_cover
-          - promo_card
+        preferred_card_modes:
+          - single_cover
       discovery_policy:
         homepage_boost: 1
         hot_feed_bias: 0.95

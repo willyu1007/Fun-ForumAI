@@ -55,22 +55,27 @@ import type {
   StorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import {
-  normalizeAgentHumanResponseMode,
-  normalizeAudienceSignalIngestion,
-  normalizeCommunityFamily,
-  normalizeCommunityLifecycleState,
-  normalizeCommunityShellCategory,
-  normalizeContentKind,
-  normalizeEditorialShelfId,
   normalizeFormatCapabilityId,
-  normalizeFormatKind,
   normalizeIdentityRoleId,
   normalizeIdentityVisibilityRoleId,
-  normalizeLaunchSurfaceKindId,
-  normalizePublicParticipationMode,
-  normalizePublicationReviewProfileId,
   normalizeScenePhase,
-  normalizeStorylineState,
+  readAgentHumanResponseMode,
+  readAudienceSignalIngestion,
+  readCardMode,
+  readCommunityFamily,
+  readCommunityLifecycleState,
+  readCommunityShellCategory,
+  readContentKind,
+  readEditorialShelfId,
+  readFormatKind,
+  readLaunchSurfaceKindId,
+  readLaunchWave,
+  readNoteTemplateId,
+  readCoverMode,
+  readPublicationReviewProfileId,
+  readPublicParticipationMode,
+  readScenePhase,
+  readStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import {
   findPublicStageThreadTurnById,
@@ -186,28 +191,19 @@ function readCommunitySemanticFields(input: {
   launch_wave: string | null
 } {
   return {
-    community_family: normalizeCommunityFamily(input.community_semantics?.community_family ?? null),
-    community_shell_category: normalizeCommunityShellCategory(input.community_semantics?.community_shell_category ?? null),
-    publication_review_profile_id: normalizePublicationReviewProfileId(input.community_semantics?.publication_review_profile_id ?? null),
-    public_participation_mode: normalizePublicParticipationMode(input.interaction_contract?.public_participation_mode ?? null),
-    audience_signal_ingestion: normalizeAudienceSignalIngestion(input.interaction_contract?.audience_signal_ingestion ?? null),
-    agent_human_response_mode: normalizeAgentHumanResponseMode(input.interaction_contract?.agent_human_response_mode ?? null),
-    community_lifecycle_state: normalizeCommunityLifecycleState(input.community_semantics?.community_lifecycle_state ?? null),
-    launch_wave: input.community_semantics?.launch_wave ?? null,
+    community_family: readCommunityFamily(input),
+    community_shell_category: readCommunityShellCategory(input),
+    publication_review_profile_id: readPublicationReviewProfileId(input),
+    public_participation_mode: readPublicParticipationMode(input),
+    audience_signal_ingestion: readAudienceSignalIngestion(input),
+    agent_human_response_mode: readAgentHumanResponseMode(input),
+    community_lifecycle_state: readCommunityLifecycleState(input),
+    launch_wave: readLaunchWave(input),
   }
 }
 
 function readContentSemanticFields(input: {
   content_semantics?: ContentSemanticProjection | null
-  scene_phase?: string | null
-  storyline_state?: string | null
-  content_kind?: string | null
-  format_kind?: string | null
-  editorial_shelf_id?: string | null
-  note_template_id?: string | null
-  cover_mode?: string | null
-  surface_kind_id?: string | null
-  card_mode?: string | null
 }): {
   scene_phase: ScenePhase | null
   storyline_state: StorylineState | null
@@ -220,15 +216,15 @@ function readContentSemanticFields(input: {
   card_mode: string | null
 } {
   return {
-    scene_phase: normalizeScenePhase(input.content_semantics?.scene_runtime.phase ?? input.scene_phase ?? null),
-    storyline_state: normalizeStorylineState(input.content_semantics?.narrative.storyline_state ?? input.storyline_state ?? null),
-    content_kind: normalizeContentKind(input.content_semantics?.distribution.content_kind ?? input.content_kind ?? null),
-    format_kind: normalizeFormatKind(input.content_semantics?.format.format_kind ?? input.format_kind ?? null),
-    editorial_shelf_id: normalizeEditorialShelfId(input.content_semantics?.distribution.editorial_shelf_id ?? input.editorial_shelf_id ?? null),
-    note_template_id: input.content_semantics?.format.note_template_id ?? input.note_template_id ?? null,
-    cover_mode: input.content_semantics?.format.cover_mode ?? input.cover_mode ?? null,
-    surface_kind: normalizeLaunchSurfaceKindId(input.content_semantics?.visual.surface_kind ?? input.surface_kind_id ?? null),
-    card_mode: input.content_semantics?.visual.card_mode ?? input.card_mode ?? null,
+    scene_phase: readScenePhase(input),
+    storyline_state: readStorylineState(input),
+    content_kind: readContentKind(input),
+    format_kind: readFormatKind(input),
+    editorial_shelf_id: readEditorialShelfId(input),
+    note_template_id: readNoteTemplateId(input),
+    cover_mode: readCoverMode(input),
+    surface_kind: readLaunchSurfaceKindId(input),
+    card_mode: readCardMode(input),
   }
 }
 
@@ -377,15 +373,6 @@ export class SearchProjectionService {
     })
     const contentFields = readContentSemanticFields({
       content_semantics: postMeta.content_semantics,
-      scene_phase: sceneFields.scene_phase ?? postMeta.scene_phase ?? null,
-      storyline_state: postMeta.storyline_state ?? null,
-      content_kind: postMeta.content_kind ?? null,
-      format_kind: postMeta.format_kind ?? null,
-      editorial_shelf_id: postMeta.editorial_shelf_id ?? null,
-      note_template_id: postMeta.note_template_id ?? null,
-      cover_mode: postMeta.cover_mode ?? null,
-      surface_kind_id: postMeta.surface_kind_id ?? null,
-      card_mode: postMeta.card_mode ?? null,
     })
     const authorBadgesText = formatBadgeText(projectedAuthor.badges)
     const watchabilityScore = Number((
@@ -511,15 +498,6 @@ export class SearchProjectionService {
     })
     const contentFields = readContentSemanticFields({
       content_semantics: postMeta.content_semantics,
-      scene_phase: sceneFields.scene_phase ?? postMeta.scene_phase ?? null,
-      storyline_state: postMeta.storyline_state ?? null,
-      content_kind: postMeta.content_kind ?? null,
-      format_kind: postMeta.format_kind ?? null,
-      editorial_shelf_id: postMeta.editorial_shelf_id ?? null,
-      note_template_id: postMeta.note_template_id ?? null,
-      cover_mode: postMeta.cover_mode ?? null,
-      surface_kind_id: postMeta.surface_kind_id ?? null,
-      card_mode: postMeta.card_mode ?? null,
     })
     const threadSignalScore = projectedAuthor.actor_type === 'agent' && projectedAuthor.visibility === 'full'
       ? Number((followerCount + projectedAuthor.badges.length * 2 + threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
@@ -805,7 +783,6 @@ export class SearchProjectionService {
       display_name: agent.display_name,
       avatar_url: agent.avatar_url,
       status: agent.status,
-      model: agent.model,
       identity_role_id: identityRoleId,
       identity_visibility_role_id: identityVisibilityRoleId,
       format_capabilities: formatCapabilities,

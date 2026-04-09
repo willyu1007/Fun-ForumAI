@@ -24,7 +24,11 @@ import {
 } from '../launch/visual-rollout.js'
 import {
   isCreatorNoteEntry,
-  normalizeEditorialShelfId,
+  readAftershowExportBias,
+  readContentKind,
+  readEditorialShelfId,
+  readHeroEligible,
+  readStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import type {
   CommunityProposalRepository,
@@ -583,13 +587,13 @@ function buildPublicProgrammingItem(input: {
 
 function buildObservedCounts(posts: PostWithMeta[], highlightPostIds: Set<string>): ProgrammingObservedCounts {
   return {
-    root_posts: posts.filter((post) => post.content_kind !== 'aftershow_recap').length,
+    root_posts: posts.filter((post) => readContentKind(post) !== 'aftershow_recap').length,
     creator_note_entries: posts.filter((post) => isCreatorNoteEntry(post)).length,
     priority_threads: posts.filter((post) => post.thread_turn_count >= 6).length,
     highlight_candidates: posts.filter((post) => highlightPostIds.has(post.id)).length,
     continuity_callbacks: posts.filter((post) =>
-      post.content_kind === 'continuity_callback' || post.storyline_state === 'callback').length,
-    aftershow_candidates: posts.filter((post) => (post.aftershow_export_bias ?? 0) > 0).length,
+      readContentKind(post) === 'continuity_callback' || readStorylineState(post) === 'callback').length,
+    aftershow_candidates: posts.filter((post) => (readAftershowExportBias(post) ?? 0) > 0).length,
   }
 }
 
@@ -644,7 +648,6 @@ function summarizeMergeRecommendation(input: {
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
   incubation_visibility_mode?: string | null
-  recommended_visibility: string
 }): string | null {
   if (input.duplicate_of_community_id) {
     return `merge -> ${input.duplicate_of_community_id}`
@@ -653,7 +656,7 @@ function summarizeMergeRecommendation(input: {
     return `incubate beside ${input.recommended_as_lane_community_id}`
   }
   if (input.recommended_as_seasonal) {
-    return `seasonal / ${input.incubation_visibility_mode ?? input.recommended_visibility}`
+    return `seasonal / ${input.incubation_visibility_mode ?? 'GRAY'}`
   }
   return null
 }
@@ -873,8 +876,8 @@ export class LaunchProgrammingOpsService {
         community_name: item.community_name,
         community_slug: backingPost?.community_slug ?? '',
         shelf_target:
-          normalizeEditorialShelfId(item.editorial_shelf_id) ?? (isCreatorNoteEntry(item) ? 'notes_today' : 'must_watch_today'),
-        hero_reason: item.hero_eligible ? 'hero_candidate_ready' : null,
+          readEditorialShelfId(item) ?? (isCreatorNoteEntry(item) ? 'notes_today' : 'must_watch_today'),
+        hero_reason: readHeroEligible(item) ? 'hero_candidate_ready' : null,
         rejected_reason:
           item.thumbnail_policy === 'required' && !hasVisual
             ? 'missing_required_thumbnail'
@@ -883,7 +886,7 @@ export class LaunchProgrammingOpsService {
     })
 
     const aftershowSourcePosts = todayPosts
-      .filter((post) => (post.aftershow_export_bias ?? 0) > 0 || post.storyline_state === 'callback')
+      .filter((post) => (readAftershowExportBias(post) ?? 0) > 0 || readStorylineState(post) === 'callback')
       .slice(0, 8)
     const aftershowArtifacts = await Promise.all(aftershowSourcePosts.map(async (post) => ({
       post,
@@ -892,9 +895,9 @@ export class LaunchProgrammingOpsService {
     const aftershowObservations: LaunchProgrammingOpsPayload['observations']['aftershow'] = aftershowArtifacts.map(
       ({ post, aftershow }) => {
         const triggerStatus: LaunchProgrammingOpsPayload['observations']['aftershow'][number]['trigger_status'] =
-          (post.aftershow_export_bias ?? 0) >= 0.6
+          (readAftershowExportBias(post) ?? 0) >= 0.6
             ? 'ready'
-            : (post.aftershow_export_bias ?? 0) > 0
+            : (readAftershowExportBias(post) ?? 0) > 0
               ? 'watch'
               : 'none'
         const publishedStatus: LaunchProgrammingOpsPayload['observations']['aftershow'][number]['published_status'] =
@@ -1056,7 +1059,6 @@ export class LaunchProgrammingOpsService {
                 recommended_as_lane_community_id: recommendation.recommended_as_lane_community_id,
                 recommended_as_seasonal: recommendation.recommended_as_seasonal,
                 incubation_visibility_mode: recommendation.incubation_visibility_mode,
-                recommended_visibility: recommendation.recommended_visibility,
               })
             : null,
           last_admin_action: lastAdminAction?.event_type ?? null,
@@ -1073,7 +1075,7 @@ export class LaunchProgrammingOpsService {
         highlight_candidates: highlightCandidates.filter((item) => item.rejected_reason === null).length,
         creator_note_entries: todayPosts.filter((post) => isCreatorNoteEntry(post)).length,
         continuity_callbacks: todayPosts.filter((post) =>
-          post.content_kind === 'continuity_callback' || post.storyline_state === 'callback').length,
+          readContentKind(post) === 'continuity_callback' || readStorylineState(post) === 'callback').length,
       },
       daypart_readiness: daypartReadiness,
       community_supply_floor: communitySupplyFloor,

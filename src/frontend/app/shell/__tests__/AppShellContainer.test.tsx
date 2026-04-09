@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_SHELL_CONTENT_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { AppShellContainer } from '../AppShellContainer'
 
@@ -44,9 +45,35 @@ const useSidebarStoreMock = vi.mocked(useSidebarStore)
 const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
 const useDevAuthToolbarStoreMock = vi.mocked(useDevAuthToolbarStore)
 
+function resetAgentModalState() {
+  useAgentModalStore.setState({
+    isOpen: false,
+    isCaptureHidden: false,
+    activeAgentId: null,
+    viewMode: 'readonly',
+    activeTab: 'intro',
+    introSection: null,
+    agentContextsById: {},
+    sourceSessionId: null,
+    sourceSurface: null,
+    sourceShelf: null,
+    sourcePosition: null,
+    prefillMessage: null,
+    pendingCreateWizard: false,
+    lastModalRect: null,
+  })
+}
+
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location-probe">{location.pathname}</div>
+}
+
 describe('AppShellContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
+    resetAgentModalState()
     useFeedViewStoreMock.mockReturnValue({
       view: 'card',
       setView: vi.fn(),
@@ -119,12 +146,12 @@ describe('AppShellContainer', () => {
     expect(screen.getByTestId('shell-page-frame').parentElement?.className).not.toContain('pb-16')
   })
 
-  it('keeps a narrower page frame on non-feed, non-community routes', () => {
+  it('keeps a narrower page frame on standard utility pages', () => {
     render(
-      <MemoryRouter initialEntries={['/highlights']}>
+      <MemoryRouter initialEntries={['/my/activity']}>
         <Routes>
           <Route element={<AppShellContainer />}>
-            <Route path="highlights" element={<div>highlights</div>} />
+            <Route path="my/activity" element={<div>activity</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,
@@ -232,5 +259,52 @@ describe('AppShellContainer', () => {
     )
 
     expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[96rem]')
+  })
+
+  it('opens the agent modal when the user lands on an agent route directly', async () => {
+    render(
+      <MemoryRouter initialEntries={['/agents/agent-42/chat']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route path="agents/:agentId/:tab" element={<div>agent route entry</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-interaction-modal')).toBeTruthy()
+    })
+
+    const state = useAgentModalStore.getState()
+    expect(state.isOpen).toBe(true)
+    expect(state.activeAgentId).toBe('agent-42')
+    expect(state.activeTab).toBe('chat')
+    expect(state.viewMode).toBe('readonly')
+  })
+
+  it('returns to home after closing a route-backed agent modal', async () => {
+    render(
+      <MemoryRouter initialEntries={['/agents/agent-7/history']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route index element={<LocationProbe />} />
+            <Route path="agents/:agentId/:tab" element={<LocationProbe />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(useAgentModalStore.getState().isOpen).toBe(true)
+    })
+
+    act(() => {
+      useAgentModalStore.getState().closeModal()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-probe').textContent).toBe('/')
+    })
   })
 })

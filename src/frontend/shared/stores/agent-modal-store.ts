@@ -32,6 +32,7 @@ export interface AgentModalState {
   sourceShelf: string | null
   sourcePosition: number | null
   prefillMessage: string | null
+  pendingCreateWizard: boolean
   lastModalRect: AgentModalRect | null
 
   openModal: (
@@ -54,6 +55,7 @@ export interface AgentModalState {
   setIntroSection: (introSection: AgentIntroSection | null) => void
   setActiveAgent: (agentId: string | null) => void
   setLastModalRect: (rect: AgentModalRect) => void
+  setPendingCreateWizard: (pending: boolean) => void
 }
 
 function getAgentContext(
@@ -92,6 +94,7 @@ export const useAgentModalStore = create<AgentModalState>()(
       sourceShelf: null,
       sourcePosition: null,
       prefillMessage: null,
+      pendingCreateWizard: false,
       lastModalRect: null,
 
       openModal: (agentId, mode, tab = 'intro', opts) =>
@@ -210,6 +213,11 @@ export const useAgentModalStore = create<AgentModalState>()(
       setLastModalRect: (rect) =>
         set({
           lastModalRect: rect,
+        }),
+
+      setPendingCreateWizard: (pending) =>
+        set({
+          pendingCreateWizard: pending,
         }),
     }),
     {

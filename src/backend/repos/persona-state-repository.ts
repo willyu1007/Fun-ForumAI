@@ -123,8 +123,6 @@ export class InMemoryPersonaStateRepository implements PersonaStateRepository {
       consecutive_lead_windows: input.consecutive_lead_windows,
       challenger_score_delta: input.challenger_score_delta ?? null,
       manual_voice_line_lock: input.manual_voice_line_lock,
-      visible_provider_pin: input.visible_provider_pin ?? null,
-      visible_model_pin: input.visible_model_pin ?? null,
       candidate_since: input.candidate_since ?? null,
       shadow_started_at: input.shadow_started_at ?? null,
       effective_at: input.effective_at ?? null,

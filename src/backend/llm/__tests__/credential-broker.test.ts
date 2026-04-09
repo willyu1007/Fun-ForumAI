@@ -132,6 +132,7 @@ describe('CredentialBroker', () => {
         model_id: 'kimi-k2-0905-preview',
         region: 'cn',
         endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'premium',
       },
@@ -162,6 +163,7 @@ describe('CredentialBroker', () => {
         model_id: 'kimi-k2-0905-preview',
         region: 'cn',
         endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'premium',
       },
@@ -171,6 +173,33 @@ describe('CredentialBroker', () => {
 
     expect(resolved.pool.credential_id).toBe('moonshot-secondary')
     expect(resolved.apiKey).toBe('secondary-key')
+  })
+
+  it('skips credential pools explicitly excluded by the caller', () => {
+    const bundle = buildBundle()
+    const broker = new CredentialBroker({
+      bundle,
+      secretResolver: {
+        resolve: vi.fn((ref: string) => `${ref}-value`),
+      } as never,
+    })
+
+    const resolved = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+      excludeCredentialIds: ['moonshot-primary'],
+    })
+
+    expect(resolved.pool.credential_id).toBe('moonshot-secondary')
   })
 
   it('routes around a saturated primary pool before falling back to a higher-capacity secondary pool', () => {
@@ -193,6 +222,7 @@ describe('CredentialBroker', () => {
         model_id: 'kimi-k2-0905-preview',
         region: 'cn',
         endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'premium',
       },
@@ -206,6 +236,7 @@ describe('CredentialBroker', () => {
         model_id: 'kimi-k2-0905-preview',
         region: 'cn',
         endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'premium',
       },
@@ -240,6 +271,7 @@ describe('CredentialBroker', () => {
         model_id: 'kimi-k2-0905-preview',
         region: 'cn',
         endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'premium',
       },
@@ -252,6 +284,7 @@ describe('CredentialBroker', () => {
         model_id: 'kimi-k2-0905-preview',
         region: 'cn',
         endpoint_id: 'moonshot-cn',
+        adapter_id: 'openai-chat-completions-v1',
         weight: 100,
         quality_class: 'premium',
       },
@@ -266,6 +299,7 @@ describe('CredentialBroker', () => {
           model_id: 'kimi-k2-0905-preview',
           region: 'cn',
           endpoint_id: 'moonshot-cn',
+          adapter_id: 'openai-chat-completions-v1',
           weight: 100,
           quality_class: 'premium',
         },

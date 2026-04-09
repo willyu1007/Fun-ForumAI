@@ -185,7 +185,7 @@ Project: `main`
 | T-934 launch-gray-release-runtime-and-publish-hardening | archived | F-000 | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
 | T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
-| T-937 forum-semantic-and-llm-runtime-residual-closeout | done | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
+| T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | F-000 | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | F-000 | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
 | T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | F-100 | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |

@@ -53,7 +53,6 @@ export class AgentService {
     owner_id: string
     display_name: string
     avatar_url?: string | null
-    model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
     launch_system_identity?: LaunchSystemIdentityConfig
@@ -64,7 +63,6 @@ export class AgentService {
       owner_id: normalized.owner_id,
       display_name: normalized.display_name,
       avatar_url: normalized.avatar_url,
-      model: normalized.model,
     })
   }
 
@@ -72,7 +70,6 @@ export class AgentService {
     owner_id: string
     display_name: string
     avatar_url?: string | null
-    model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
     launch_system_identity?: LaunchSystemIdentityConfig
@@ -83,7 +80,6 @@ export class AgentService {
       owner_id: normalized.owner_id,
       display_name: normalized.display_name,
       avatar_url: normalized.avatar_url,
-      model: normalized.model,
     }
 
     const agent = this.deps.agentRepo.createPersisted
@@ -266,7 +262,6 @@ export class AgentService {
     owner_id: string
     display_name: string
     avatar_url?: string | null
-    model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
     launch_system_identity?: LaunchSystemIdentityConfig
@@ -274,7 +269,6 @@ export class AgentService {
     owner_id: string
     display_name: string
     avatar_url?: string | null
-    model?: string
     persona_seed_code?: string
     owner_style_pins?: OwnerStylePins
     launch_system_identity?: LaunchSystemIdentityConfig
@@ -283,16 +277,10 @@ export class AgentService {
     if (!displayName) {
       throw new ValidationError('display_name is required')
     }
-    const model = typeof input.model === 'string' ? input.model.trim() : undefined
-    const normalizedModel =
-      !model || model.toLowerCase() === 'default'
-        ? undefined
-        : model
 
     return {
       ...input,
       display_name: displayName,
-      model: normalizedModel,
     }
   }
 }

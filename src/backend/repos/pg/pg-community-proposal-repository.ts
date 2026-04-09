@@ -98,7 +98,6 @@ function toRecommendation(row: {
   recommendedAsLaneCommunityId: string | null
   recommendedAsSeasonal: boolean
   incubationVisibilityMode: CommunityMergeRecommendation['incubation_visibility_mode'] | null
-  recommendedVisibility: CommunityMergeRecommendation['recommended_visibility']
   overlapScore: number
   rationale: string[]
   metaJson: Prisma.JsonValue | null
@@ -111,8 +110,7 @@ function toRecommendation(row: {
     duplicate_of_community_id: row.duplicateOfCommunityId,
     recommended_as_lane_community_id: row.recommendedAsLaneCommunityId,
     recommended_as_seasonal: row.recommendedAsSeasonal,
-    incubation_visibility_mode: row.incubationVisibilityMode ?? row.recommendedVisibility,
-    recommended_visibility: row.recommendedVisibility,
+    incubation_visibility_mode: row.incubationVisibilityMode ?? 'GRAY',
     overlap_score: row.overlapScore,
     rationale: row.rationale,
     meta: row.metaJson as Record<string, unknown> | null,
@@ -247,8 +245,7 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         duplicateOfCommunityId: input.duplicate_of_community_id ?? null,
         recommendedAsLaneCommunityId: input.recommended_as_lane_community_id ?? null,
         recommendedAsSeasonal: input.recommended_as_seasonal ?? true,
-        incubationVisibilityMode: input.incubation_visibility_mode ?? input.recommended_visibility ?? 'GRAY',
-        recommendedVisibility: input.recommended_visibility ?? input.incubation_visibility_mode ?? 'GRAY',
+        incubationVisibilityMode: input.incubation_visibility_mode ?? 'GRAY',
         overlapScore: input.overlap_score ?? 0,
         rationale: input.rationale ?? [],
         metaJson: toNullableJsonInput(input.meta),
@@ -259,8 +256,7 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         duplicateOfCommunityId: input.duplicate_of_community_id ?? null,
         recommendedAsLaneCommunityId: input.recommended_as_lane_community_id ?? null,
         recommendedAsSeasonal: input.recommended_as_seasonal ?? true,
-        incubationVisibilityMode: input.incubation_visibility_mode ?? input.recommended_visibility ?? 'GRAY',
-        recommendedVisibility: input.recommended_visibility ?? input.incubation_visibility_mode ?? 'GRAY',
+        incubationVisibilityMode: input.incubation_visibility_mode ?? 'GRAY',
         overlapScore: input.overlap_score ?? 0,
         rationale: input.rationale ?? [],
         metaJson: toNullableJsonInput(input.meta),

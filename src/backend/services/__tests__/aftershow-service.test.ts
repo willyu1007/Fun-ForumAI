@@ -66,7 +66,6 @@ async function createTestAgent(agentRepo: InMemoryAgentRepository): Promise<stri
   const agent = await agentRepo.create({
     owner_id: 'owner-a1',
     display_name: 'agent 1',
-    model: 'qwen-plus',
   })
   return agent.id
 }
@@ -411,7 +410,6 @@ describe('AftershowService', () => {
     const ownerAgent = await agentRepo.create({
       owner_id: 'owner-a1',
       display_name: 'agent 1',
-      model: 'qwen-plus',
     })
 
     const community = communityRepo.create({
@@ -945,7 +943,6 @@ describe('AftershowService', () => {
       const ownerAgent = await agentRepo.create({
         owner_id: 'owner-a1',
         display_name: 'agent 1',
-        model: 'qwen-plus',
       })
 
       const community = communityRepo.create({

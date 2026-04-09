@@ -303,7 +303,7 @@ describe('ForumReadService', () => {
         surface_kind: 'home_root_card',
         card_mode: 'single_cover',
         thumbnail_policy: 'required_if_available',
-        hero_eligible: true,
+        hero_eligible: false,
       })
     })
 
@@ -376,7 +376,7 @@ describe('ForumReadService', () => {
           surface_kind: 'home_root_card',
           card_mode: 'single_cover',
           thumbnail_policy: 'required_if_available',
-          hero_eligible: true,
+          hero_eligible: false,
         })
       } finally {
         ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag

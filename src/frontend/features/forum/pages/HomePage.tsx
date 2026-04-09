@@ -25,7 +25,14 @@ import type {
   PostWithMeta,
 } from '@/api/types'
 import { FeedPage } from './FeedPage'
-import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
+import {
+  isCreatorNoteEntry,
+  readEditorialShelfId,
+  readNoteTemplateId,
+  readStorylineHook,
+  readStorylineState,
+  readStorylineTitle,
+} from '../../../../shared/semantic-taxonomy.js'
 
 const HOME_PROGRAMMING_ENABLED = isFrontendFlagEnabled('VITE_FF_HOME_PROGRAMMING_V1')
 
@@ -53,15 +60,16 @@ function buildHotFeedPath(cursor?: string | null) {
 
 function readContentBadge(item: HomeProgrammingPostItem) {
   const isNoteEntry = isCreatorNoteEntry(item)
+  const storylineState = readStorylineState(item)
   if (item.item_kind === 'aftershow_recap') return 'Aftershow'
   if (isNoteEntry) return '创作者笔记'
-  if (item.storyline_state === 'callback') return '回访线'
-  if (item.storyline_state === 'escalating') return '升级中'
+  if (storylineState === 'callback') return '回访线'
+  if (storylineState === 'escalating') return '升级中'
   return item.community_name
 }
 
 function readPreviewText(item: HomeProgrammingPostItem) {
-  return item.summary_text ?? item.storyline_hook ?? item.body
+  return item.summary_text ?? readStorylineHook(item) ?? item.body
 }
 
 function appendSourceContext(target: string, input: {
@@ -133,9 +141,10 @@ function HomeProgrammingCard({
   sourcePosition: number
 }) {
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
-  const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(item.note_template_id)
+  const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(readNoteTemplateId(item))
   const isNoteCard = isCreatorNoteEntry(item)
-  const creatorNotesLabel = readEditorialShelfLabel(item.editorial_shelf_id) ?? '创作者笔记'
+  const creatorNotesLabel = readEditorialShelfLabel(readEditorialShelfId(item)) ?? '创作者笔记'
+  const storylineTitle = readStorylineTitle(item)
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
     sourceShelf,
@@ -167,8 +176,8 @@ function HomeProgrammingCard({
               {creatorNoteTemplateLabel ? (
                 <Badge variant="outline" className="text-[10px]">{creatorNoteTemplateLabel}</Badge>
               ) : null}
-              {item.storyline_title ? (
-                <span className="text-[11px] text-muted-foreground">{item.storyline_title}</span>
+              {storylineTitle ? (
+                <span className="text-[11px] text-muted-foreground">{storylineTitle}</span>
               ) : null}
             </div>
 

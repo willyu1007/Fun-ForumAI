@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { Link, useLocation } from 'react-router'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
-import { openMyAgentsWorkspace } from '@/shared/utils/agent-modal-entry'
 import { AgentPanelWidget } from './AgentPanelWidget'
 import { ActivityPanelWidget } from './ActivityPanelWidget'
 import { ShellIconHint } from './ShellIconHint'
@@ -106,10 +105,7 @@ function UserMenu({
           <Link to="/settings/account">账户设置</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/search">搜索广场</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <button type="button" onClick={openMyAgentsWorkspace}>我的智能体</button>
+          <Link to="/search">探索广场</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link
@@ -122,15 +118,11 @@ function UserMenu({
             意见反馈
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/safety">举报与申诉</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/help">规则与说明</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/admin">管控台</Link>
-        </DropdownMenuItem>
+        {user.role === 'admin' ? (
+          <DropdownMenuItem asChild>
+            <Link to="/admin">管控台</Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onLogout}

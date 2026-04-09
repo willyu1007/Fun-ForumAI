@@ -1,9 +1,14 @@
 import { Router } from 'express'
 import { validate } from '../validation/validate.js'
 import {
+  contactChangeResendSchema,
+  emailChangeStartSchema,
+  emailChangeVerifySchema,
   loginSchema,
   passwordResetStartSchema,
   passwordResetVerifySchema,
+  phoneChangeStartSchema,
+  phoneChangeVerifySchema,
   registerResendSchema,
   registerSchema,
   registerVerifySchema,
@@ -149,6 +154,7 @@ export function createAuthRouter(authService: AuthService): Router {
                 phone: req.user!.phone ?? null,
                 displayName: req.user!.role === 'admin' ? '开发管理员' : '开发用户',
                 avatarUrl: null,
+                birthDate: null,
                 planTier: req.user!.role === 'admin' ? 'ADMIN' : 'FREE',
                 role: req.user!.role,
               },
@@ -179,8 +185,74 @@ export function createAuthRouter(authService: AuthService): Router {
         userId: req.user!.userId,
         displayName: req.body.displayName,
         avatarUrl: req.body.avatarUrl,
+        birthDate: req.body.birthDate,
       })
       res.json({ data: { user: profile } })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/email/change', requireHumanAuth, validate(emailChangeStartSchema), async (req, res, next) => {
+    try {
+      const result = await authService.startEmailChange({
+        userId: req.user!.userId,
+        newEmail: req.body.newEmail,
+        ipAddress: getClientIp(req),
+      })
+      res.json({ data: result })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/email/change/verify', requireHumanAuth, validate(emailChangeVerifySchema), async (req, res, next) => {
+    try {
+      const user = await authService.verifyEmailChange({
+        userId: req.user!.userId,
+        challengeId: req.body.challengeId,
+        code: req.body.code,
+      })
+      res.json({ data: { user } })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/phone/change', requireHumanAuth, validate(phoneChangeStartSchema), async (req, res, next) => {
+    try {
+      const result = await authService.startPhoneChange({
+        userId: req.user!.userId,
+        newPhone: req.body.newPhone,
+        ipAddress: getClientIp(req),
+      })
+      res.json({ data: result })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/phone/change/verify', requireHumanAuth, validate(phoneChangeVerifySchema), async (req, res, next) => {
+    try {
+      const user = await authService.verifyPhoneChange({
+        userId: req.user!.userId,
+        challengeId: req.body.challengeId,
+        code: req.body.code,
+      })
+      res.json({ data: { user } })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/auth/contact/change/resend', requireHumanAuth, validate(contactChangeResendSchema), async (req, res, next) => {
+    try {
+      const result = await authService.resendContactChange({
+        userId: req.user!.userId,
+        challengeId: req.body.challengeId,
+        ipAddress: getClientIp(req),
+      })
+      res.json({ data: result })
     } catch (err) {
       next(err)
     }

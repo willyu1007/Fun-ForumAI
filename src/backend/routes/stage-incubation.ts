@@ -326,10 +326,7 @@ stageIncubationRouter.post(
       actor_user_id: req.user!.userId,
       actor_role: req.user!.role,
       target_community_id: req.body.target_community_id ?? null,
-      incubation_visibility_mode:
-        req.body.incubation_visibility_mode
-        ?? req.body.visibility_mode
-        ?? null,
+      incubation_visibility_mode: req.body.incubation_visibility_mode ?? null,
       reason: req.body.reason ?? null,
     })
     res.json({ data })

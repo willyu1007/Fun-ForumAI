@@ -77,3 +77,15 @@
   - SMS 已无配置缺口，dry-run 通过
   - SMTP 网络参数也已正确，`smtpdm.aliyun.com:465` + TLS 可以握手到鉴权阶段
   - staging 现在剩余的真实 blocker 是 Bitwarden 中 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` 与本地可用凭据不一致，导致 535 Authentication failure
+
+## 2026-04-09
+
+- 按未推送的 auth/contact-change review 结果做了一轮本地 hardening，不新开任务包，继续记在 `T-930`：
+  - 新增 migration `20260409213000_t930_contact_change_birth_date_hardening`，补上 `AuthVerificationPurpose` 的 `EMAIL_CHANGE` / `PHONE_CHANGE` 枚举值，以及 `human_users.birth_date`
+  - `AuthService.updateProfile()` 改为显式解析并校验真实生日；`2024-02-31` 这类输入现在会稳定返回 `INVALID_BIRTH_DATE`，不再被 JS `Date` 静默归一化成别的日期
+  - 联系方式变更 verify 路径补上晚到唯一约束冲突映射：`userRepo.updateEmail()` / `updatePhone()` 如果在竞争窗口里抛出 `P2002`，现在会被翻译成稳定的 409 业务错误，而不是全局 500
+  - dev auth fallback（`app.ts` 的 dev-only `/auth/me` 与 `auth-api.ts` 的 `_devToken` fallback）补齐 `birthDate: null`，避免 `UserProfile` contract 再次出现分支漂移
+- 补齐后端回归：
+  - `auth-service.test.ts` 新增 `birthDate` 非法日期拒绝用例
+  - `auth-service.test.ts` 新增联系方式变更 verify 的晚到唯一冲突映射用例
+  - `auth-api.test.ts` 新增 authenticated `birthDate` 持久化、非法日历日期拒绝、邮箱变更 resend/旧 challenge 失效、手机号变更成功、dev `/auth/me` contract 对齐等用例

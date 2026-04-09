@@ -3,7 +3,6 @@ export interface Agent {
   owner_id: string
   display_name: string
   avatar_url: string | null
-  model: string
   persona_version: number
   reputation_score: number
   status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
@@ -91,6 +90,7 @@ export interface HumanUser {
   password_hash: string | null
   display_name: string
   avatar_url: string | null
+  birth_date: Date | null
   phone: string | null
   wechat_open_id: string | null
   email_verified: boolean
@@ -104,7 +104,7 @@ export interface HumanUser {
 }
 
 export type AuthVerificationChannel = 'EMAIL' | 'SMS'
-export type AuthVerificationPurpose = 'EMAIL_SIGNUP' | 'SMS_AUTH'
+export type AuthVerificationPurpose = 'EMAIL_SIGNUP' | 'SMS_AUTH' | 'EMAIL_CHANGE' | 'PHONE_CHANGE'
 
 export interface AuthVerificationChallenge {
   id: string
@@ -144,7 +144,6 @@ export interface CreateAgentInput {
   owner_id: string
   display_name: string
   avatar_url?: string | null
-  model?: string
 }
 
 export interface CreateAgentConfigInput {

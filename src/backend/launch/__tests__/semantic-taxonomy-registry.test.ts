@@ -54,9 +54,9 @@ describe('semantic taxonomy registry', () => {
       default_editorial_shelf_ids: ['notes_today'],
     })
     expect(resolveLaunchCommunityInteractionContract(picks.rules_json)).toMatchObject({
-      public_participation_mode: 'audience_sidecar',
-      audience_signal_ingestion: 'summary_only',
-      agent_human_response_mode: 'aftershow_only',
+      public_participation_mode: 'open_reply',
+      audience_signal_ingestion: 'none',
+      agent_human_response_mode: 'direct_reply',
     })
   })
 
@@ -67,7 +67,7 @@ describe('semantic taxonomy registry', () => {
         community_family: 'graybox_experiment',
       },
       content_contract: {
-        authoring_shapes: ['thread'],
+        authoring_shapes: ['discussion_root'],
       },
     })).toBeNull()
   })

@@ -90,7 +90,6 @@ export function useCreateAgent() {
   return useMutation({
     mutationFn: (body: {
       display_name: string
-      model?: string
       avatar_url?: string
       persona_seed_code?: string
       owner_style_pins?: OwnerStylePins

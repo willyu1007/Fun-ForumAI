@@ -13,10 +13,20 @@ const renderCounts = vi.hoisted(() => ({
 }))
 
 const useAgentProfileMock = vi.fn()
+const useMyAgentsMock = vi.fn()
+const useAuthMock = vi.fn()
 const captureDisplayFrameMock = vi.fn()
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
+}))
+
+vi.mock('@/api/hooks/user', () => ({
+  useMyAgents: (enabled: boolean) => useMyAgentsMock(enabled),
+}))
+
+vi.mock('@/shared/hooks/use-auth', () => ({
+  useAuth: () => useAuthMock(),
 }))
 
 vi.mock('@/features/private-chat/lib/capture-display-frame', () => ({
@@ -72,6 +82,21 @@ vi.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipContent: () => null,
+}))
+
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({
+    children,
+    onClick,
+    ...props
+  }: ComponentProps<'button'>) => (
+    <button type="button" onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock('../AgentListSidebar', () => ({
@@ -192,6 +217,27 @@ describe('AgentInteractionModal geometry updates', () => {
         },
       },
     }))
+    useMyAgentsMock.mockImplementation(() => ({
+      data: {
+        data: [
+          { id: 'agent-1' },
+          { id: 'agent-2' },
+        ],
+      },
+    }))
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        displayName: '测试用户',
+        avatarUrl: null,
+        email: 'test@example.com',
+        phone: null,
+        birthDate: null,
+        planTier: 'FREE',
+        role: 'user',
+      },
+      isLoading: false,
+    })
     captureDisplayFrameMock.mockResolvedValue({
       dataUrl: 'data:image/png;base64,stub',
       width: 640,
@@ -480,14 +526,17 @@ describe('AgentInteractionModal geometry updates', () => {
   it('keeps the close signal at the far right of the title-bar controls', () => {
     renderOpenModal()
 
+    const moreButton = screen.getByTestId('agent-modal-more-button')
     const centerButton = screen.getByTestId('agent-modal-center-button')
     const restoreButton = screen.getByTestId('agent-modal-restore-button')
     const closeButton = screen.getByTestId('agent-modal-close-button')
     const controls = closeButton.parentElement
 
-    expect(controls?.firstElementChild).toBe(centerButton)
-    expect(centerButton.nextElementSibling).toBe(restoreButton)
+    expect(controls?.firstElementChild).toBe(moreButton)
     expect(controls?.lastElementChild).toBe(closeButton)
+    expect(centerButton.parentElement).not.toBe(controls)
+    expect(restoreButton.parentElement).toBe(centerButton.parentElement)
+    expect(centerButton.nextElementSibling).toBe(restoreButton)
   })
 
   it('resets the create wizard when the parent modal closes and reopens', () => {

@@ -225,6 +225,7 @@ describe('MediaGenerationService', () => {
         create: vi.fn(),
         findById: vi.fn(async () => null),
         listByGenerationJobId: vi.fn(async () => []),
+        listRecentBySelectedSourceAssetId: vi.fn(async () => []),
         update: vi.fn(async () => null),
       },
       mediaGenerationJobRepo: mediaGenerationJobRepo as never,

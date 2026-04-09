@@ -42,7 +42,7 @@ import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import { personaObservability } from '../runtime/persona-observability.js'
 import { readPersonaObservation } from '../runtime/persona-observation.js'
 import { summarizeProviderAdmission } from '../llm/provider-admission.js'
-import { buildRuntimeOverrideState } from '../llm/runtime-override-state.js'
+import { buildRuntimeAuthorityState } from '../llm/runtime-authority-state.js'
 import {
   startRolloutEvidenceWindow,
   getActiveRolloutWindow,
@@ -1088,7 +1088,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
   const queueSize = await runtimeLoop.getQueueSize()
   const eventQueueSize = await eventQueue.size()
   const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
-  const overrideState = buildRuntimeOverrideState({
+  const authorityState = buildRuntimeAuthorityState({
     routingMode: config.llm.routingMode,
     recentLedgerEntries,
   })
@@ -1105,7 +1105,7 @@ adminApiRouter.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
         routing_mode: config.llm.routingMode,
-        override_state: overrideState,
+        authority_state: authorityState,
         identity_gate: identityGate,
       },
       scheduler: postScheduler.stats,
@@ -1166,7 +1166,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   const providerAdmission = summarizeProviderAdmission(llmRegistryBundle)
   const attributionSummary = summarizeLedgerAttribution(recentLedgerEntries)
   const fallbackEntries = collectFallbackOrDegradedEntries(recentLedgerEntries)
-  const overrideState = buildRuntimeOverrideState({
+  const authorityState = buildRuntimeAuthorityState({
     routingMode: config.llm.routingMode,
     recentLedgerEntries,
   })
@@ -1247,7 +1247,7 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
           entries: fallbackEntries.slice(0, 20),
         },
         attribution_summary: attributionSummary,
-        override_state: overrideState,
+        authority_state: authorityState,
       },
     },
   })
