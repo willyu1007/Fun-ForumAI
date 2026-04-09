@@ -19,20 +19,20 @@ import {
 setupFeatureFlagGuard()
 
 describe('E2E: Governance Control Plane', () => {
-  it('GET /v1/admin/runtime/stats returns runtime override and identity gate state for admin', async () => {
+  it('GET /v1/admin/runtime/stats returns runtime authority and identity gate state for admin', async () => {
     const res = await request(app)
       .get('/v1/admin/runtime/stats')
       .set('Authorization', `Bearer ${adminToken}`)
 
     expect(res.status).toBe(200)
     expect(res.body.data.runtime.routing_mode).toBe('policy_driven')
-    expect(res.body.data.runtime.override_state).toEqual(
+    expect(res.body.data.runtime.authority_state).toEqual(
       expect.objectContaining({
         routing_mode: 'policy_driven',
-        deprecated_env_pins: expect.any(Array),
-        deprecated_env_pins_present: expect.any(Boolean),
-        debug_override_sources: expect.any(Array),
-        unapproved_debug_overrides_present: expect.any(Boolean),
+        env_pins: expect.any(Array),
+        env_pins_present: expect.any(Boolean),
+        debug_signal_sources: expect.any(Array),
+        debug_signals_present: expect.any(Boolean),
       }),
     )
     expect(res.body.data.runtime.identity_gate).toEqual(
@@ -126,13 +126,13 @@ describe('E2E: Governance Control Plane', () => {
       expect(Array.isArray(res.body.data.observability.execution_plan_preview)).toBe(true)
       expect(res.body.data.observability).toHaveProperty('fallback_or_degraded_preview.total')
       expect(res.body.data.observability).toHaveProperty('attribution_summary.by_callsite')
-      expect(res.body.data.observability.override_state).toEqual(
+      expect(res.body.data.observability.authority_state).toEqual(
         expect.objectContaining({
           routing_mode: 'policy_driven',
-          deprecated_env_pins: expect.any(Array),
-          deprecated_env_pins_present: expect.any(Boolean),
-          debug_override_sources: expect.any(Array),
-          unapproved_debug_overrides_present: expect.any(Boolean),
+          env_pins: expect.any(Array),
+          env_pins_present: expect.any(Boolean),
+          debug_signal_sources: expect.any(Array),
+          debug_signals_present: expect.any(Boolean),
         }),
       )
       expect(res.body.data.agent_bio).toEqual(

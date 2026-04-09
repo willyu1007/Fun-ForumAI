@@ -81,7 +81,7 @@ describe('PromptEngine', () => {
     }
   })
 
-  it('does not require legacy layer placeholders on private compiled block templates', () => {
+  it('does not require removed layer placeholders on private compiled block templates', () => {
     const engine = new PromptEngine()
     const variables = buildVariables()
 

@@ -556,7 +556,10 @@ function validateExecutionPolicies(doc, profilesDoc) {
 
   assertUnique(policyIds, 'execution policy policy_id')
   for (const profile of profilesDoc.profiles ?? []) {
-    const expectedPolicyId = profile.policy_id ?? defaultExecutionPolicyIdForProfile(profile)
+    const expectedPolicyId = requireNonEmptyString(
+      profile.policy_id,
+      `profiles.${profile.profile_id}.policy_id`,
+    )
     if (!policyIds.includes(expectedPolicyId)) {
       die(`model profile ${profile.profile_id} is missing execution policy ${expectedPolicyId}`)
     }
@@ -734,7 +737,10 @@ function validateProfileCapabilityCoverage(
   )
 
   for (const profile of profilesDoc.profiles ?? []) {
-    const policyId = profile.policy_id ?? defaultExecutionPolicyIdForProfile(profile)
+    const policyId = requireNonEmptyString(
+      profile.policy_id,
+      `profiles.${profile.profile_id}.policy_id`,
+    )
     const policy = executionPoliciesById.get(policyId)
     if (!policy) {
       die(`model profile ${profile.profile_id} is missing execution policy ${policyId}`)
@@ -751,7 +757,10 @@ function validateProfileCapabilityCoverage(
       }
 
       const provider = providersById.get(candidate.provider_id)
-      const adapterId = candidate.adapter_id ?? defaultAdapterIdForCandidate(candidate)
+      const adapterId = requireNonEmptyString(
+        candidate.adapter_id,
+        `profiles.${profile.profile_id}.candidates.${candidate.provider_id}/${candidate.model_id}.adapter_id`,
+      )
       const adapter = adaptersById.get(adapterId)
       if (!provider) {
         die(`profiles.${profile.profile_id} candidate ${candidateKey} references unknown provider ${candidate.provider_id}`)
@@ -1095,19 +1104,11 @@ function validateOverrideFields(values, label) {
   assertUnique(values, label)
 }
 
-function defaultExecutionPolicyIdForProfile(profile) {
-  return `${profile.visibility}-${profile.intent}-${profile.tier}`
-}
-
 function defaultExecutionLaneForProfile(profile) {
   if (profile.visibility === 'identity_write' && profile.intent === 'identity_write') {
     return 'identity_write'
   }
   return `${profile.visibility}_${profile.intent}`
-}
-
-function defaultAdapterIdForCandidate(_candidate) {
-  return 'openai-chat-completions-v1'
 }
 
 function supportsCapabilityModality(capability, modality) {

@@ -65,9 +65,10 @@ describe('MediaSemanticService', () => {
       uploadBuffer: Buffer.from([1, 2, 3]),
     })
 
-    expect(generateHiddenArtifact).toHaveBeenCalledWith(expect.not.objectContaining({
-      preferredModelId: expect.anything(),
-    }))
+    const request = (generateHiddenArtifact as { mock: { calls: Array<[Record<string, unknown>]> } }).mock
+      .calls[0]?.[0]
+    expect(request).toBeDefined()
+    expect('preferredModelId' in (request ?? {})).toBe(false)
   })
 
   it('inlines upload bytes even for large images before falling back to remote URLs', async () => {

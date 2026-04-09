@@ -63,9 +63,6 @@ export interface VoiceLineCatalogEntry {
   family: 'qwen' | 'glm' | 'deepseek' | 'minimax' | 'moonshot'
   visible: boolean
   directorOnly: boolean
-  tierProfileRefs: Partial<Record<RenderTier, string>>
-  intentProfileRefs: Partial<Record<VoiceLineRoutingIntent, Partial<Record<RenderTier, string>>>>
-  identityWriteProfileRef?: string
 }
 
 export const DEFAULT_PERSONA_SEED_CODE: PersonaSeedCode = 'scholar'
@@ -240,40 +237,6 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     family: 'qwen',
     visible: true,
     directorOnly: false,
-    tierProfileRefs: {
-      lite: 'qwen-social-chat-reply-lite',
-      base: 'qwen-social-forum-reply-base',
-      premium: 'qwen-social-proactive-opening-premium',
-    },
-    intentProfileRefs: {
-      chat_reply: {
-        lite: 'qwen-social-chat-reply-lite',
-      },
-      forum_reply: {
-        base: 'qwen-social-forum-reply-base',
-      },
-      scheduled_post: {
-        base: 'qwen-social-scheduled-post-base',
-      },
-      private_reply: {
-        base: 'qwen-social-private-reply-base',
-      },
-      proactive_opening: {
-        base: 'qwen-social-proactive-opening-base',
-        premium: 'qwen-social-proactive-opening-premium',
-      },
-      identity_write: {
-        base: 'qwen-social-identity-write-base',
-        premium: 'qwen-social-identity-write-premium',
-      },
-      public_observation_digest: {
-        base: 'qwen-social-public-observation-base',
-      },
-      private_digest: {
-        base: 'qwen-social-private-digest-base',
-      },
-    },
-    identityWriteProfileRef: 'qwen-social-identity-write-premium',
   },
   'glm-deep-v1': {
     id: 'glm-deep-v1',
@@ -281,39 +244,6 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     family: 'glm',
     visible: true,
     directorOnly: false,
-    tierProfileRefs: {
-      lite: 'glm-deep-chat-reply-lite',
-      base: 'glm-deep-private-reply-base',
-      premium: 'glm-deep-scheduled-post-premium',
-    },
-    intentProfileRefs: {
-      chat_reply: {
-        lite: 'glm-deep-chat-reply-lite',
-      },
-      forum_reply: {
-        base: 'glm-deep-forum-reply-base',
-      },
-      scheduled_post: {
-        base: 'glm-deep-scheduled-post-base',
-        premium: 'glm-deep-scheduled-post-premium',
-      },
-      private_reply: {
-        base: 'glm-deep-private-reply-base',
-      },
-      proactive_opening: {
-        base: 'glm-deep-proactive-opening-base',
-      },
-      identity_write: {
-        premium: 'glm-deep-identity-write-premium',
-      },
-      public_observation_digest: {
-        base: 'glm-deep-public-observation-base',
-      },
-      private_digest: {
-        base: 'glm-deep-private-digest-base',
-      },
-    },
-    identityWriteProfileRef: 'glm-deep-identity-write-premium',
   },
   'deepseek-director-v1': {
     id: 'deepseek-director-v1',
@@ -321,26 +251,6 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     family: 'deepseek',
     visible: false,
     directorOnly: true,
-    tierProfileRefs: {
-      base: 'deepseek-director-director-plan-base',
-      premium: 'deepseek-director-director-plan-premium',
-    },
-    intentProfileRefs: {
-      public_observation_digest: {
-        base: 'deepseek-director-public-observation-base',
-      },
-      private_digest: {
-        base: 'deepseek-director-private-digest-base',
-        premium: 'deepseek-director-private-digest-premium',
-      },
-      vision_summary: {
-        base: 'deepseek-director-vision-summary-base',
-      },
-      director_plan: {
-        base: 'deepseek-director-director-plan-base',
-        premium: 'deepseek-director-director-plan-premium',
-      },
-    },
   },
   'minimax-her-v1': {
     id: 'minimax-her-v1',
@@ -348,37 +258,6 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     family: 'minimax',
     visible: true,
     directorOnly: false,
-    tierProfileRefs: {
-      lite: 'minimax-her-chat-reply-lite',
-      base: 'minimax-her-forum-reply-base',
-    },
-    intentProfileRefs: {
-      chat_reply: {
-        lite: 'minimax-her-chat-reply-lite',
-      },
-      forum_reply: {
-        base: 'minimax-her-forum-reply-base',
-      },
-      scheduled_post: {
-        base: 'minimax-her-scheduled-post-base',
-      },
-      private_reply: {
-        base: 'minimax-her-private-reply-base',
-      },
-      proactive_opening: {
-        base: 'minimax-her-proactive-opening-base',
-      },
-      identity_write: {
-        premium: 'minimax-her-identity-write-premium',
-      },
-      public_observation_digest: {
-        base: 'minimax-her-public-observation-base',
-      },
-      private_digest: {
-        base: 'minimax-her-private-digest-base',
-      },
-    },
-    identityWriteProfileRef: 'minimax-her-identity-write-premium',
   },
   'kimi-deep-v1': {
     id: 'kimi-deep-v1',
@@ -386,36 +265,5 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     family: 'moonshot',
     visible: true,
     directorOnly: false,
-    tierProfileRefs: {
-      lite: 'kimi-deep-chat-reply-lite',
-      base: 'kimi-deep-forum-reply-base',
-    },
-    intentProfileRefs: {
-      chat_reply: {
-        lite: 'kimi-deep-chat-reply-lite',
-      },
-      forum_reply: {
-        base: 'kimi-deep-forum-reply-base',
-      },
-      scheduled_post: {
-        base: 'kimi-deep-scheduled-post-base',
-      },
-      private_reply: {
-        base: 'kimi-deep-private-reply-base',
-      },
-      proactive_opening: {
-        base: 'kimi-deep-proactive-opening-base',
-      },
-      identity_write: {
-        premium: 'kimi-deep-identity-write-premium',
-      },
-      public_observation_digest: {
-        base: 'kimi-deep-public-observation-base',
-      },
-      private_digest: {
-        base: 'kimi-deep-private-digest-base',
-      },
-    },
-    identityWriteProfileRef: 'kimi-deep-identity-write-premium',
   },
 }

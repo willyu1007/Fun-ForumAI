@@ -32,7 +32,7 @@ import type {
   ModelProfileEntry,
   RoutingPoliciesRegistryFile,
 } from './registry-loader.js'
-import { defaultAdapterId, defaultExecutionLane, defaultExecutionPolicyId } from './registry-loader.js'
+import { defaultExecutionLane } from './registry-loader.js'
 import { filterVisibleProfileCandidates } from './provider-admission.js'
 import {
   resolveIdentityWriteProfileRef,
@@ -182,6 +182,7 @@ export class LLMGateway {
     const routePlan = this.buildRoutePlan(request)
     const fallbackChain = buildFallbackChain(routePlan)
     const fallbackHistory: FallbackHistoryEntry[] = []
+    const excludedCredentialIds = new Set<string>()
     let lastError: unknown = new LLMGatewayContractError(
       'RegistryResolutionError',
       'No gateway route could satisfy the request',
@@ -212,7 +213,6 @@ export class LLMGateway {
 
       const orderedCandidates = prioritizeCandidates({
         candidates: candidateResolution.candidates,
-        preferredModelId: request.preferredModelId,
         routeOrder: route.routingPolicy.route_order,
         route,
         request,
@@ -224,7 +224,7 @@ export class LLMGateway {
       })
 
       for (const candidate of orderedCandidates) {
-        const adapterId = candidate.adapter_id ?? defaultAdapterId(candidate)
+        const adapterId = candidate.adapter_id
         const adapterBinding = this.resolveAdapterBinding(adapterId)
         const provider = this.resolveProvider(candidate.provider_id)
         const modelCapability = this.resolveModelCapability(candidate.provider_id, candidate.model_id)
@@ -238,11 +238,7 @@ export class LLMGateway {
         })
         const estimatedUsage = estimateUsage(messages, resolvedParams.maxTokens)
         const estimatedCost = this.estimateCost(candidate.provider_id, candidate.model_id, estimatedUsage)
-        const renderReasons = buildRenderReasons(
-          [...route.reasons, ...candidateResolution.reasons],
-          request.preferredModelId,
-          candidate.model_id,
-        )
+        const renderReasons = buildRenderReasons([...route.reasons, ...candidateResolution.reasons])
         const gatewayWarnings = this.validatePromptBudgetSummary(
           measuredPromptBudgetSummary,
           candidate.provider_id,
@@ -268,6 +264,7 @@ export class LLMGateway {
             visibility: request.visibility,
             budgetClass: request.budgetClass,
             tags: request.providerTags,
+            excludeCredentialIds: excludedCredentialIds,
           })
           if (!adapterBinding.providerGatewayKinds.includes(credential.provider.gateway_kind)) {
             throw new LLMGatewayContractError(
@@ -390,6 +387,14 @@ export class LLMGateway {
           const code = classifyGatewayError(error)
           lastError = error
           const errorMessage = error instanceof Error ? error.message : 'Unknown gateway error'
+
+          if (code === 'AuthError') {
+            const failedCredentialId =
+              credential?.pool.credential_id ?? readFailedCredentialId(error)
+            if (failedCredentialId) {
+              excludedCredentialIds.add(failedCredentialId)
+            }
+          }
 
           fallbackHistory.push({
             profileId: route.profile.profile_id,
@@ -623,7 +628,7 @@ export class LLMGateway {
     }
 
     const provider = this.resolveProvider(candidate.provider_id)
-    const adapterBinding = this.resolveAdapterBinding(candidate.adapter_id ?? defaultAdapterId(candidate))
+    const adapterBinding = this.resolveAdapterBinding(candidate.adapter_id)
     const modelCapability = this.resolveModelCapability(candidate.provider_id, candidate.model_id)
     const candidateKey = `${candidate.provider_id}/${candidate.model_id}`
     const warnings: string[] = []
@@ -725,13 +730,12 @@ export class LLMGateway {
     profile: ModelProfileEntry,
     request: LLMGatewayRequest,
   ): ExecutionPolicyEntry {
-    const defaultPolicyId = profile.policy_id ?? defaultExecutionPolicyId(profile)
-    const defaultPolicy = this.executionPoliciesById.get(defaultPolicyId)
+    const defaultPolicy = this.executionPoliciesById.get(profile.policy_id)
     if (!defaultPolicy) {
       throw new LLMGatewayContractError(
         'RegistryResolutionError',
-        `Execution policy ${defaultPolicyId} not found in registry bundle`,
-        { profile_id: profile.profile_id, policy_id: defaultPolicyId },
+        `Execution policy ${profile.policy_id} not found in registry bundle`,
+        { profile_id: profile.profile_id, policy_id: profile.policy_id },
       )
     }
 
@@ -1086,18 +1090,18 @@ function classifyGatewayError(error: unknown): LLMGatewayErrorCode {
   }
 
   const message = error.message.toLowerCase()
-  if (message.includes('401') || message.includes('403') || message.includes('api key')) {
-    return 'AuthError'
+  const httpStatus = parseGatewayHttpStatus(message)
+  if (httpStatus !== null) {
+    if (httpStatus === 400) return 'InvalidRequestError'
+    if (httpStatus === 401 || httpStatus === 403) return 'AuthError'
+    if (httpStatus === 408) return 'TimeoutError'
+    if (httpStatus === 429) return 'RateLimitError'
+    if (httpStatus >= 500) return 'UpstreamError'
   }
-  if (message.includes('429') || message.includes('rate limit')) {
-    return 'RateLimitError'
-  }
-  if (message.includes('timeout') || message.includes('abort')) {
-    return 'TimeoutError'
-  }
-  if (message.includes('400') || message.includes('invalid')) {
-    return 'InvalidRequestError'
-  }
+  if (message.includes('api key') || message.includes('invalid_api_key')) return 'AuthError'
+  if (message.includes('rate limit')) return 'RateLimitError'
+  if (message.includes('timeout') || message.includes('abort')) return 'TimeoutError'
+  if (message.includes('invalid')) return 'InvalidRequestError'
   if (message.includes('budget')) {
     return 'BudgetExceededError'
   }
@@ -1109,6 +1113,19 @@ function classifyGatewayError(error: unknown): LLMGatewayErrorCode {
     return 'TransientError'
   }
   return 'UpstreamError'
+}
+
+function parseGatewayHttpStatus(message: string): number | null {
+  const match = message.match(/\bllm api\s+(\d{3})\b/)
+  if (!match) return null
+  const status = Number.parseInt(match[1] ?? '', 10)
+  return Number.isFinite(status) ? status : null
+}
+
+function readFailedCredentialId(error: unknown): string | null {
+  if (!(error instanceof LLMGatewayContractError)) return null
+  const lastPoolId = error.details?.last_pool_id
+  return typeof lastPoolId === 'string' && lastPoolId.trim() ? lastPoolId : null
 }
 
 function toGatewayError(error: unknown, code: LLMGatewayErrorCode): LLMGatewayContractError {
@@ -1134,11 +1151,9 @@ function requestDetails(request: LLMGatewayRequest): Record<string, unknown> {
     budgetClass: request.budgetClass,
     traceId: request.traceId,
     requestedTier: request.requestedTier,
-    preferredModelId: request.preferredModelId,
     allowFallbackWithinLine: request.allowFallbackWithinLine,
     allowCrossFamily: request.allowCrossFamily,
     providerTags: request.providerTags,
-    policyTags: request.policyTags,
     localOverrides: request.localOverrides,
     debug: request.debug,
   }
@@ -1157,8 +1172,6 @@ function buildRouteContext(request: LLMGatewayRequest): RouteContext {
     budgetClass: request.budgetClass,
     traceId: request.traceId,
     providerTags: request.providerTags,
-    policyTags: request.policyTags,
-    preferredModelId: request.preferredModelId,
     regionHint: request.debug?.regionHint ?? request.localOverrides?.regionHint,
     debug: request.debug,
   }
@@ -1170,7 +1183,6 @@ function buildFallbackChain(routePlan: RouteCandidate[]): FallbackStep[] {
 
 function prioritizeCandidates(input: {
   candidates: ModelProfileEntry['candidates']
-  preferredModelId: string | undefined
   routeOrder: RouteCandidate['routingPolicy']['route_order']
   route: RouteCandidate
   request: LLMGatewayRequest
@@ -1180,14 +1192,8 @@ function prioritizeCandidates(input: {
   credentialPools: LlmRegistryBundle['credentialPools']['pools']
   regionHint?: string
 }): ModelProfileEntry['candidates'] {
-  const { candidates, preferredModelId, routeOrder } = input
+  const { candidates, routeOrder } = input
   return [...candidates].sort((a, b) => {
-    const aPreferred = preferredModelId !== undefined && a.model_id === preferredModelId
-    const bPreferred = preferredModelId !== undefined && b.model_id === preferredModelId
-    if (aPreferred !== bPreferred) {
-      return aPreferred ? -1 : 1
-    }
-
     for (const step of routeOrder) {
       const comparison = compareCandidatesByStep(a, b, step, input)
       if (comparison !== 0) {
@@ -1205,16 +1211,8 @@ function prioritizeCandidates(input: {
 
 function buildRenderReasons(
   routeReasons: string[],
-  preferredModelId: string | undefined,
-  candidateModelId: string,
 ): string[] {
-  if (!preferredModelId || preferredModelId !== candidateModelId) {
-    return routeReasons
-  }
-  if (routeReasons.includes('preferred_model_hint')) {
-    return routeReasons
-  }
-  return [...routeReasons, 'preferred_model_hint']
+  return routeReasons
 }
 
 function compareCandidatesByStep(
@@ -1274,7 +1272,7 @@ function candidateIntentSceneFitScore(
   },
 ): number {
   const provider = input.providersById.get(candidate.provider_id)
-  const adapter = input.adapterBindingsById.get(candidate.adapter_id ?? defaultAdapterId(candidate))
+  const adapter = input.adapterBindingsById.get(candidate.adapter_id)
   const capability = input.modelCapabilitiesByKey.get(`${candidate.provider_id}/${candidate.model_id}`)
   let score = 0
 
@@ -1426,7 +1424,7 @@ function buildExecutionPlan(input: {
 function mapExecutionPlanCandidate(
   candidate: ModelProfileEntry['candidates'][number],
 ): InferenceExecutionPlan['orderedCandidates'][number] {
-  const adapterId = candidate.adapter_id ?? defaultAdapterId(candidate)
+  const adapterId = candidate.adapter_id
   return {
     candidateId: `${candidate.provider_id}/${candidate.model_id}/${candidate.region}/${candidate.endpoint_id}/${adapterId}`,
     providerId: candidate.provider_id,
@@ -1463,7 +1461,7 @@ function matchesDebugPins(
   debug: LLMGatewayRequest['debug'],
 ): boolean {
   if (!debug) return true
-  const adapterId = candidate.adapter_id ?? defaultAdapterId(candidate)
+  const adapterId = candidate.adapter_id
   if (debug.providerPin && candidate.provider_id !== debug.providerPin) return false
   if (debug.modelPin && candidate.model_id !== debug.modelPin) return false
   if (debug.adapterPin && adapterId !== debug.adapterPin) return false

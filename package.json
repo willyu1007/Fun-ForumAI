@@ -61,6 +61,7 @@
     "db:local:down": "node scripts/db-local.mjs down",
     "db:local:migrate": "pnpm db:local:up && pnpm db:local:wait && pnpm db:migrate:dev",
     "search:rebuild-docs": "tsx src/backend/dev/rebuild-search-docs.ts",
+    "llm:routing:generate": "tsx scripts/generate-voice-line-routing-artifact.mjs",
     "media:backfill-lineage": "tsx src/backend/dev/backfill-media-lineage.ts",
     "agent-bio:backfill": "tsx src/backend/dev/backfill-agent-social-bio.ts",
     "agent-bio:measure": "tsx src/backend/dev/measure-agent-social-bio.ts",

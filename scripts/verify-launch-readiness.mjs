@@ -222,17 +222,17 @@ async function runStagingChecks() {
       : `status=${webRuntimeStats.status}`,
   );
   pushResult(
-    'API deprecated env pins absent',
-    webRuntimeStats.status === 200 && webRuntime?.override_state?.deprecated_env_pins_present !== true,
+    'API env pins absent',
+    webRuntimeStats.status === 200 && webRuntime?.authority_state?.env_pins_present !== true,
     webRuntimeStats.status === 200
-      ? `deprecated_env_pins_present=${String(webRuntime?.override_state?.deprecated_env_pins_present)}`
+      ? `env_pins_present=${String(webRuntime?.authority_state?.env_pins_present)}`
       : `status=${webRuntimeStats.status}`,
   );
   pushResult(
-    'API debug overrides absent',
-    webRuntimeStats.status === 200 && webRuntime?.override_state?.unapproved_debug_overrides_present !== true,
+    'API debug signals absent',
+    webRuntimeStats.status === 200 && webRuntime?.authority_state?.debug_signals_present !== true,
     webRuntimeStats.status === 200
-      ? `unapproved_debug_overrides_present=${String(webRuntime?.override_state?.unapproved_debug_overrides_present)}`
+      ? `debug_signals_present=${String(webRuntime?.authority_state?.debug_signals_present)}`
       : `status=${webRuntimeStats.status}`,
   );
 
@@ -256,17 +256,17 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   );
   pushResult(
-    'Worker deprecated env pins absent',
-    runtimeStats.status === 200 && workerRuntime?.override_state?.deprecated_env_pins_present !== true,
+    'Worker env pins absent',
+    runtimeStats.status === 200 && workerRuntime?.authority_state?.env_pins_present !== true,
     runtimeStats.status === 200
-      ? `deprecated_env_pins_present=${String(workerRuntime?.override_state?.deprecated_env_pins_present)}`
+      ? `env_pins_present=${String(workerRuntime?.authority_state?.env_pins_present)}`
       : `status=${runtimeStats.status}`,
   );
   pushResult(
-    'Worker debug overrides absent',
-    runtimeStats.status === 200 && workerRuntime?.override_state?.unapproved_debug_overrides_present !== true,
+    'Worker debug signals absent',
+    runtimeStats.status === 200 && workerRuntime?.authority_state?.debug_signals_present !== true,
     runtimeStats.status === 200
-      ? `unapproved_debug_overrides_present=${String(workerRuntime?.override_state?.unapproved_debug_overrides_present)}`
+      ? `debug_signals_present=${String(workerRuntime?.authority_state?.debug_signals_present)}`
       : `status=${runtimeStats.status}`,
   );
 

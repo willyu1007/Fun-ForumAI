@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { UsageLedgerEntry } from '../gateway-contract.js'
-import { buildRuntimeOverrideState } from '../runtime-override-state.js'
+import { buildRuntimeAuthorityState } from '../runtime-authority-state.js'
 
 function buildEntry(
   traceId: string,
@@ -13,14 +13,14 @@ function buildEntry(
     visibility: 'visible',
     scene: 'private_chat',
     prompt_ref: { id: 'agent-private-chat-reply', version: 2 },
-      render_decision: {
-        voiceLineId: 'qwen-social-v1',
-        tier: 'base',
-        profileId: 'qwen-social-private-reply-base',
-        policyId: 'visible-private_reply-realtime',
-        providerId: 'dashscope-openai',
-        modelId: 'qwen-plus-character',
-        adapterId: 'openai-chat-completions-v1',
+    render_decision: {
+      voiceLineId: 'qwen-social-v1',
+      tier: 'base',
+      profileId: 'qwen-social-private-reply-base',
+      policyId: 'visible-private_reply-realtime',
+      providerId: 'dashscope-openai',
+      modelId: 'qwen-plus-character',
+      adapterId: 'openai-chat-completions-v1',
       region: 'cn-beijing',
       endpointId: 'dashscope-cn-beijing',
       credentialId: 'dashscope-primary',
@@ -49,12 +49,12 @@ function buildEntry(
   }
 }
 
-describe('buildRuntimeOverrideState', () => {
-  it('marks deprecated env pins and recent debug override evidence as unapproved overrides', () => {
-    const state = buildRuntimeOverrideState({
+describe('buildRuntimeAuthorityState', () => {
+  it('surfaces env pins and recent debug signals without old naming', () => {
+    const state = buildRuntimeAuthorityState({
       routingMode: 'policy_driven',
       env: {
-        LLM_MODEL: 'legacy-pinned-model',
+        LLM_MODEL: 'manual-env-pin',
       } as NodeJS.ProcessEnv,
       recentLedgerEntries: [
         buildEntry('trace-debug-field', {
@@ -72,16 +72,16 @@ describe('buildRuntimeOverrideState', () => {
     })
 
     expect(state.routing_mode).toBe('policy_driven')
-    expect(state.deprecated_env_pins).toEqual(['LLM_MODEL'])
-    expect(state.unapproved_debug_overrides_present).toBe(true)
-    expect(state.debug_override_sources).toEqual(
+    expect(state.env_pins).toEqual(['LLM_MODEL'])
+    expect(state.debug_signals_present).toBe(true)
+    expect(state.debug_signal_sources).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          source: 'deprecated_env_pin',
+          source: 'env_pin',
           key: 'LLM_MODEL',
         }),
         expect.objectContaining({
-          source: 'debug_override_field',
+          source: 'debug_field',
           key: 'temperature',
           trace_id: 'trace-debug-field',
         }),

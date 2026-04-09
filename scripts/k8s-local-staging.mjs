@@ -610,6 +610,13 @@ async function main() {
     existingSecretData.DASHSCOPE_API_KEY ||
     ''
   )
+  const explicitDashscopeApiKey = process.env[String(args.dashscopeApiKeyEnv)] || ''
+  const dashscopeSecondaryApiKey = (
+    process.env.DASHSCOPE_API_KEY_SECONDARY ||
+    (explicitDashscopeApiKey ? explicitDashscopeApiKey : '') ||
+    existingSecretData.DASHSCOPE_API_KEY_SECONDARY ||
+    ''
+  )
   const mediaGenerationApiKey = (
     process.env[String(args.mediaGenerationApiKeyEnv)] ||
     process.env.ARK_API_KEY ||
@@ -666,8 +673,7 @@ async function main() {
     SERVICE_AUTH_SECRET:
       process.env.SERVICE_AUTH_SECRET || existingSecretData.SERVICE_AUTH_SECRET || 'local-dev-service-auth-secret',
     DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || existingSecretData.DASHSCOPE_API_KEY || dashscopeApiKey,
-    DASHSCOPE_API_KEY_SECONDARY:
-      process.env.DASHSCOPE_API_KEY_SECONDARY || existingSecretData.DASHSCOPE_API_KEY_SECONDARY || '',
+    DASHSCOPE_API_KEY_SECONDARY: dashscopeSecondaryApiKey,
     ZAI_API_KEY: process.env.ZAI_API_KEY || existingSecretData.ZAI_API_KEY || '',
     ZAI_API_KEY_SECONDARY:
       process.env.ZAI_API_KEY_SECONDARY || existingSecretData.ZAI_API_KEY_SECONDARY || '',
