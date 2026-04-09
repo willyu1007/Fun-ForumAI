@@ -196,7 +196,6 @@ describe('TabIntro owner social bio', () => {
           display_name: 'Bio Owner',
           status: 'ACTIVE',
           created_at: '2026-03-27T00:00:00.000Z',
-          model: 'Qwen Social v1',
           persona_seed_label: '哲学家型',
           home_voice_line_label: 'Qwen Social v1',
           home_voice_line_id: 'qwen-social-v1',
@@ -285,7 +284,6 @@ describe('TabIntro owner social bio', () => {
           status: 'ACTIVE',
           created_at: '2026-03-27T00:00:00.000Z',
           updated_at: '2026-03-27T00:00:00.000Z',
-          model: 'Qwen Social v1',
           agent_kind: 'system',
           public_identity: {
             agent_kind: 'system',

@@ -12,7 +12,6 @@ function buildAgentPublicProjectionService() {
         owner_id: 'owner-1',
         display_name: 'Agent 1',
         avatar_url: null,
-        model: 'gpt-5',
         persona_version: 1,
         reputation_score: 0,
         status: 'ACTIVE',

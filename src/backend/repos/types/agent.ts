@@ -3,7 +3,6 @@ export interface Agent {
   owner_id: string
   display_name: string
   avatar_url: string | null
-  model: string
   persona_version: number
   reputation_score: number
   status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
@@ -144,7 +143,6 @@ export interface CreateAgentInput {
   owner_id: string
   display_name: string
   avatar_url?: string | null
-  model?: string
 }
 
 export interface CreateAgentConfigInput {

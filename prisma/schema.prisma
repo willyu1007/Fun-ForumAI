@@ -142,7 +142,7 @@ model Agent {
   ownerId         String      @map("owner_id")
   displayName     String      @map("display_name")
   avatarUrl       String?     @map("avatar_url")
-  model           String      @default("gpt-4o")
+  model           String?
   personaVersion  Int         @default(1) @map("persona_version")
   reputationScore Float       @default(0) @map("reputation_score")
   status          AgentStatus @default(ACTIVE)
@@ -514,7 +514,7 @@ model AgentSearchDoc {
   displayName                  String   @map("display_name")
   avatarUrl                    String?  @map("avatar_url")
   status                       String
-  model                        String
+  model                        String?
   identityRoleId               String?  @map("identity_role_id")
   identityVisibilityRoleId     String?  @map("identity_visibility_role_id")
   formatCapabilities           String[] @default([]) @map("format_capabilities")
@@ -1648,18 +1648,17 @@ model CommunityProposal {
 }
 
 model CommunityMergeRecommendation {
-  id                           String                             @id @default(cuid())
-  proposalId                   String                             @unique @map("proposal_id")
-  duplicateOfCommunityId       String?                            @map("duplicate_of_community_id")
-  recommendedAsLaneCommunityId String?                            @map("recommended_as_lane_community_id")
-  recommendedAsSeasonal        Boolean                            @default(true) @map("recommended_as_seasonal")
-  incubationVisibilityMode     CommunityIncubationVisibilityMode? @map("incubation_visibility_mode")
-  recommendedVisibility        CommunityIncubationVisibilityMode  @default(GRAY) @map("recommended_visibility")
-  overlapScore                 Float                              @default(0) @map("overlap_score")
-  rationale                    String[]                           @default([])
-  metaJson                     Json?                              @map("meta_json")
-  createdAt                    DateTime                           @default(now()) @map("created_at")
-  updatedAt                    DateTime                           @updatedAt @map("updated_at")
+  id                           String                            @id @default(cuid())
+  proposalId                   String                            @unique @map("proposal_id")
+  duplicateOfCommunityId       String?                           @map("duplicate_of_community_id")
+  recommendedAsLaneCommunityId String?                           @map("recommended_as_lane_community_id")
+  recommendedAsSeasonal        Boolean                           @default(true) @map("recommended_as_seasonal")
+  incubationVisibilityMode     CommunityIncubationVisibilityMode @default(GRAY) @map("incubation_visibility_mode")
+  overlapScore                 Float                             @default(0) @map("overlap_score")
+  rationale                    String[]                          @default([])
+  metaJson                     Json?                             @map("meta_json")
+  createdAt                    DateTime                          @default(now()) @map("created_at")
+  updatedAt                    DateTime                          @updatedAt @map("updated_at")
 
   proposal                   CommunityProposal @relation(fields: [proposalId], references: [id])
   duplicateOfCommunity       Community?        @relation("CommunityMergeDuplicateOf", fields: [duplicateOfCommunityId], references: [id])
@@ -3154,8 +3153,6 @@ model AgentInferenceProfile {
   consecutiveLeadWindows Int       @default(0) @map("consecutive_lead_windows")
   challengerScoreDelta   Float?    @map("challenger_score_delta")
   manualVoiceLineLock    Boolean   @default(false) @map("manual_voice_line_lock")
-  visibleProviderPin     String?   @map("visible_provider_pin")
-  visibleModelPin        String?   @map("visible_model_pin")
   candidateSince         DateTime? @map("candidate_since")
   shadowStartedAt        DateTime? @map("shadow_started_at")
   effectiveAt            DateTime? @map("effective_at")

@@ -290,7 +290,6 @@ export function TabIntro({ agentId }: { agentId: string }) {
     .toUpperCase()
   const managementMeta = [
     { label: '创建于', value: relativeTime(safeAgent.created_at), monospace: false },
-    { label: '兼容模型', value: safeAgent.model, monospace: false },
     { label: 'Agent ID', value: safeAgent.id, monospace: true },
     ...(isAdmin && safeAgent.owner_id
       ? [{ label: '所有者', value: safeAgent.owner_id, monospace: false }]
@@ -298,7 +297,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   ]
   const pageSubtitle = [
     safeAgent.persona_seed_label,
-    safeAgent.home_voice_line_label ?? safeAgent.model,
+    safeAgent.home_voice_line_label,
   ]
     .filter(Boolean)
     .join(' · ')

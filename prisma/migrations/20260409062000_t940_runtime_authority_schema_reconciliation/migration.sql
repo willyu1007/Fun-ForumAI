@@ -1,0 +1,8 @@
+ALTER TABLE "agents"
+ALTER COLUMN "model" DROP DEFAULT;
+
+ALTER TABLE "agents"
+ALTER COLUMN "model" DROP NOT NULL;
+
+ALTER TABLE "agent_search_docs"
+ALTER COLUMN "model" DROP NOT NULL;

@@ -13,7 +13,6 @@ describe('InMemoryAgentRepository', () => {
     expect(a.id).toBeTruthy()
     expect(a.status).toBe('ACTIVE')
     expect(a.reputation_score).toBe(0)
-    expect(a.model).toBe('gpt-4o')
   })
 
   it('findById returns the agent', () => {

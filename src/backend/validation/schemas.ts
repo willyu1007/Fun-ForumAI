@@ -143,7 +143,6 @@ export const createAgentSchema = z
   .object({
     display_name: z.string().min(1).max(100),
     avatar_url: httpsUrlSchema.optional(),
-    model: z.string().max(50).optional(),
     persona_seed_code: personaSeedCodeSchema.optional(),
     owner_style_pins: ownerStylePinsSchema.optional(),
   })
@@ -407,7 +406,6 @@ export const communityProposalActionSchema = z.object({
   action: z.enum(COMMUNITY_PROPOSAL_ACTIONS),
   target_community_id: z.string().trim().min(1).nullable().optional(),
   incubation_visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
-  visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
   reason: z.string().trim().max(1_000).nullable().optional(),
 }).strict()
 

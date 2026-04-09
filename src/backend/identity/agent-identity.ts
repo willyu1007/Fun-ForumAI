@@ -246,7 +246,6 @@ export function buildAgentSearchPayload(
     display_name: agent.display_name,
     avatar_url: agent.avatar_url,
     status: agent.status,
-    model: agent.model,
     persona_seed_code: resolved.summary.persona_seed_code,
     persona_seed_label: resolved.summary.persona_seed_label,
     home_voice_line_id: resolved.summary.home_voice_line_id,

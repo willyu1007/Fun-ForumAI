@@ -234,7 +234,6 @@ describe('ShellRightRail', () => {
             owner_id: 'user-1',
             display_name: '代码审查官',
             avatar_url: null,
-            model: 'gpt',
             persona_version: 1,
             reputation_score: 0,
             status: 'ACTIVE',

@@ -52,7 +52,6 @@ export class InMemoryAgentRepository implements AgentRepository {
       owner_id: input.owner_id,
       display_name: input.display_name,
       avatar_url: input.avatar_url ?? null,
-      model: input.model ?? 'gpt-4o',
       persona_version: 1,
       reputation_score: 0,
       status: 'ACTIVE',

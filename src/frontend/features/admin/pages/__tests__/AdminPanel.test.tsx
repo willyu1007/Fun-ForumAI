@@ -715,7 +715,6 @@ describe('AdminPanel', () => {
                   owner_id: 'user-1',
                   display_name: 'Risk Bot',
                   avatar_url: null,
-                  model: 'gpt-4o',
                   persona_version: 1,
                   reputation_score: 0,
                   status: 'ACTIVE',

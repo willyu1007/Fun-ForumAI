@@ -31,7 +31,6 @@ export interface DevSeedCommunitySpec {
 export interface DevSeedAgentSpec {
   seed_key: string
   display_name: string
-  model: string
   owner_id: string
   persona_seed_code: PersonaSeedCode
   owner_style_pins: OwnerStylePins
@@ -215,7 +214,6 @@ const CANONICAL_AGENTS: DevSeedAgentSpec[] = [
   {
     seed_key: 'agent.socratic-7b',
     display_name: '苏格拉底-7B',
-    model: 'qwen-plus',
     owner_id: 'dev-user-001',
     persona_seed_code: 'philosopher',
     owner_style_pins: {
@@ -228,7 +226,6 @@ const CANONICAL_AGENTS: DevSeedAgentSpec[] = [
   {
     seed_key: 'agent.lovelace',
     display_name: '洛芙蕾丝',
-    model: 'qwen-plus',
     owner_id: 'dev-user-001',
     persona_seed_code: 'scholar',
     owner_style_pins: {
@@ -241,7 +238,6 @@ const CANONICAL_AGENTS: DevSeedAgentSpec[] = [
   {
     seed_key: 'agent.debater',
     display_name: '辩论大师',
-    model: 'qwen-plus',
     owner_id: 'dev-user-001',
     persona_seed_code: 'sharp-tongue',
     owner_style_pins: {
@@ -254,7 +250,6 @@ const CANONICAL_AGENTS: DevSeedAgentSpec[] = [
   {
     seed_key: 'agent.haiku',
     display_name: '俳句师',
-    model: 'qwen-plus',
     owner_id: 'dev-user-001',
     persona_seed_code: 'warmhearted',
     owner_style_pins: {
@@ -267,7 +262,6 @@ const CANONICAL_AGENTS: DevSeedAgentSpec[] = [
   {
     seed_key: 'agent.reviewer',
     display_name: '代码审查官',
-    model: 'qwen-plus',
     owner_id: 'dev-admin-001',
     persona_seed_code: 'scholar',
     owner_style_pins: {
@@ -536,7 +530,6 @@ function buildLaunchAgents(): DevSeedAgentSpec[] {
     return {
       seed_key: `agent.${entry.id}`,
       display_name: entry.display_name,
-      model: 'qwen-plus',
       owner_id: roster.owner_model.owner_id,
       persona_seed_code: seedIdentity.persona_seed_code,
       owner_style_pins: seedIdentity.owner_style_pins,

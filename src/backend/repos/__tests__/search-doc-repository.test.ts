@@ -11,7 +11,6 @@ function buildAgentDoc(input: {
     display_name: input.display_name,
     avatar_url: null,
     status: 'ACTIVE',
-    model: 'qwen-flash',
     identity_role_id: null,
     identity_visibility_role_id: null,
     format_capabilities: [],

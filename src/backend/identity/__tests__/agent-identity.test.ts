@@ -10,7 +10,6 @@ const baseAgent = {
   owner_id: 'user-1',
   display_name: 'Identity Bot',
   avatar_url: null,
-  model: 'mock-model',
   persona_version: 1,
   reputation_score: 0,
   status: 'ACTIVE' as const,
