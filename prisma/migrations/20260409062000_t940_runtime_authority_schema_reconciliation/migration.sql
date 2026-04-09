@@ -1,6 +1,3 @@
-ALTER TABLE "human_users"
-ADD COLUMN IF NOT EXISTS "birth_date" DATE;
-
 ALTER TABLE "agents"
 ALTER COLUMN "model" DROP DEFAULT;
 

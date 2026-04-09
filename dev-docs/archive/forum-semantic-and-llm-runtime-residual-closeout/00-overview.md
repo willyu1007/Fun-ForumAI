@@ -4,7 +4,7 @@
 
 - State: done
 - Depends on: `T-142`, `T-145`, `T-146`, `T-901`
-- Next step: archive the task after downstream monitoring
+- Next step: archived; open a separate follow-on only if new residuals appear
 
 ## Goal
 
@@ -49,3 +49,7 @@ Close the residual real issues left after the earlier semantic/governance and pr
   - governance control-plane compatibility for `visibility_mode` / `recommended_visibility` has been removed
 - The follow-on repo-wide TypeScript cleanup has also been completed:
   - `pnpm exec tsc -b` now passes after aligning auth test fixtures, allocator async tests, media/runtime mock shapes, and stale forum-read visual assertions with current canonical behavior
+- The April 9 runtime-authority hard-cut has also been implemented:
+  - visible/private route planning now resolves only through `registry -> generated routing artifact -> gateway`
+  - `preferredModelId`, `policyTags`, `agent.model`, deprecated runtime override state, and dead visible pins were removed from active runtime control paths
+  - agent create/read/public-search contracts no longer expose compatibility-model semantics
