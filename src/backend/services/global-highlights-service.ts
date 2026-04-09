@@ -5,15 +5,16 @@ import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import { config } from '../lib/config.js'
 import {
+  mergeContentSemantics,
+  type AgentPublicIdentity,
+  type AgentPublicProjection,
+  type AgentPublicProof,
+} from '../../shared/semantic-taxonomy.js'
+import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
   type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
-import type {
-  AgentPublicIdentity,
-  AgentPublicProjection,
-  AgentPublicProof,
-} from '../../shared/semantic-taxonomy.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -139,9 +140,22 @@ export class GlobalHighlightsService {
     item: FeedPostItem,
     packagingByPostId: Map<string, LaunchVisualPackagingMetadata | null>,
   ): HighlightPostItem {
+    const packaging = packagingByPostId.get(item.id) ?? null
     return {
       ...item,
-      ...(packagingByPostId.get(item.id) ?? {}),
+      content_semantics: mergeContentSemantics(item.content_semantics, {
+        distribution: {
+          ...(typeof packaging?.hero_eligible === 'boolean'
+            ? { hero_eligible: packaging.hero_eligible }
+            : {}),
+        },
+        visual: {
+          ...(packaging?.surface_kind ? { surface_kind: packaging.surface_kind } : {}),
+          ...(packaging?.card_mode ? { card_mode: packaging.card_mode } : {}),
+          ...(packaging?.thumbnail_policy ? { thumbnail_policy: packaging.thumbnail_policy } : {}),
+        },
+      }),
+      ...(packaging ?? {}),
     }
   }
 

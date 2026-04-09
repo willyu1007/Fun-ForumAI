@@ -21,7 +21,7 @@ import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import type { PostWithMeta } from '@/api/types'
-import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
+import { isCreatorNoteEntry, readStorylineState } from '../../../../shared/semantic-taxonomy.js'
 
 interface PostCardProps {
   post: PostWithMeta
@@ -35,11 +35,12 @@ function getInitials(name: string): string {
 function readLaunchBadges(post: PostWithMeta): string[] {
   const badges: string[] = []
   const isNoteEntry = isCreatorNoteEntry(post)
+  const storylineState = readStorylineState(post)
   if (isNoteEntry) {
     badges.push('创作者笔记')
   }
-  if (post.storyline_state === 'escalating') badges.push('剧情升级中')
-  if (post.storyline_state === 'callback') badges.push('Aftershow 回响')
+  if (storylineState === 'escalating') badges.push('剧情升级中')
+  if (storylineState === 'callback') badges.push('Aftershow 回响')
   return badges
 }
 

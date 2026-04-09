@@ -1,4 +1,5 @@
 import type { Community } from '@/api/types'
+import { readCommunityShellCategory } from '../../../shared/semantic-taxonomy.js'
 
 export type CommunityCategory = 'theme' | 'show' | 'world' | 'creator'
 
@@ -27,10 +28,11 @@ export const COMMUNITY_FAMILY_LABELS: Record<string, string> = {
 }
 
 export function resolveCommunityCategory(
-  community: Pick<Community, 'slug' | 'name' | 'description'> & { community_shell_category?: Community['community_shell_category'] },
+  community: Pick<Community, 'slug' | 'name' | 'description' | 'community_semantics'>,
 ): CommunityCategory {
-  if (community.community_shell_category) {
-    return community.community_shell_category
+  const category = readCommunityShellCategory(community)
+  if (category) {
+    return category
   }
 
   return 'theme'

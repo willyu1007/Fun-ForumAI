@@ -256,7 +256,7 @@ export function PostDetailPage() {
   const asideSeatItems = asideSeatsPayload?.seats
   const aftershow = useMemo(() => {
     if (!audienceAftershowWebEnabled) return null
-    return hasMeaningfulAftershowSnapshot(aftershowData?.data) ? aftershowData.data : null
+    return hasMeaningfulAftershowSnapshot(aftershowData?.data) ? aftershowData?.data ?? null : null
   }, [aftershowData?.data, audienceAftershowWebEnabled])
   const audienceMessages = useMemo(() => {
     return audienceThreadMessages ?? []

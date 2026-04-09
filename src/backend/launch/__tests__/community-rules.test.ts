@@ -30,6 +30,13 @@ describe('launch community rules', () => {
       }),
     })
     expect(creatorRecommendation?.rules_json).toMatchObject({
+      content_contract: {
+        authoring_shapes: ['note_root', 'aftershow_recap'],
+        discussion_seed_types: [],
+      },
+      visual_policy: {
+        preferred_card_modes: ['single_cover', 'multi_panel_cover', 'comparison_cover'],
+      },
       stage_spec_v1: {
         human_participation: {
           public_participation_mode: 'open_reply',
@@ -120,5 +127,57 @@ describe('launch community rules', () => {
     writeFileSync(filePath, stringifyYaml(source), 'utf8')
 
     expect(() => getLaunchCommunityRules(filePath)).toThrowError(/allowed_content_shapes is no longer accepted/)
+  })
+
+  it('rejects legacy preferred_visual_modes in community visual policy', () => {
+    const source = parseYaml(
+      readFileSync(
+        resolveLaunchContractPath({
+          bundle_slug: 'launch-communities-and-rules-pack',
+          file_name: 'launch_community_rules.v1.yaml',
+        }),
+        'utf8',
+      ),
+    ) as Record<string, unknown> & {
+      communities: Array<Record<string, unknown>>
+    }
+    const first = source.communities[0]!
+    const rulesJson = first.rules_json as Record<string, unknown>
+    rulesJson.visual_policy = {
+      ...(rulesJson.visual_policy as Record<string, unknown>),
+      preferred_visual_modes: ['headline_card'],
+    }
+
+    const dir = mkdtempSync(join(tmpdir(), 'launch-community-rules-'))
+    const filePath = join(dir, 'launch_community_rules.v1.yaml')
+    writeFileSync(filePath, stringifyYaml(source), 'utf8')
+
+    expect(() => getLaunchCommunityRules(filePath)).toThrowError(/preferred_visual_modes is no longer accepted/)
+  })
+
+  it('rejects unknown authoring_shapes instead of silently filtering them', () => {
+    const source = parseYaml(
+      readFileSync(
+        resolveLaunchContractPath({
+          bundle_slug: 'launch-communities-and-rules-pack',
+          file_name: 'launch_community_rules.v1.yaml',
+        }),
+        'utf8',
+      ),
+    ) as Record<string, unknown> & {
+      communities: Array<Record<string, unknown>>
+    }
+    const first = source.communities[0]!
+    const rulesJson = first.rules_json as Record<string, unknown>
+    rulesJson.content_contract = {
+      ...(rulesJson.content_contract as Record<string, unknown>),
+      authoring_shapes: ['discussion_root', 'highlight_card'],
+    }
+
+    const dir = mkdtempSync(join(tmpdir(), 'launch-community-rules-'))
+    const filePath = join(dir, 'launch_community_rules.v1.yaml')
+    writeFileSync(filePath, stringifyYaml(source), 'utf8')
+
+    expect(() => getLaunchCommunityRules(filePath)).toThrowError(/authoring_shapes\[1\] must resolve to a canonical authoring shape/)
   })
 })

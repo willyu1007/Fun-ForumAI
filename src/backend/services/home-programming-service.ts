@@ -6,6 +6,7 @@ import type { LaunchContentKind } from '../launch/programming-projection.js'
 import {
   LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS,
   isLaunchNativeCreatorNoteCommunity,
+  normalizeLaunchCreatorNoteTemplateId,
 } from '../launch/creator-note-templates.js'
 import {
   resolveLaunchCommunityVisualConfig,
@@ -14,7 +15,14 @@ import {
 import {
   EDITORIAL_SHELF_LABELS,
   isCreatorNoteEntry,
+  mergeContentSemantics,
   normalizeEditorialShelfId,
+  readAftershowExportBias,
+  readContentKind,
+  readHeroEligible,
+  readNoteTemplateId,
+  readStorylineId,
+  readStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import type {
   CommunityRepository,
@@ -185,7 +193,7 @@ export class HomeProgrammingService {
     ])
 
     const aftershowCandidates = await this.collectAftershowCandidates(
-      hotFeed.items.filter((item) => (item.aftershow_export_bias ?? 0) > 0).slice(0, 12),
+      hotFeed.items.filter((item) => (readAftershowExportBias(item) ?? 0) > 0).slice(0, 12),
       rolloutProfile,
     )
     const notesTodayCandidates = await this.collectNotesTodayCandidates(hotFeed.items, input.viewerUserId)
@@ -350,14 +358,14 @@ export class HomeProgrammingService {
     const rankedHotFeed = this.sortByViewerContext(hotFeed, viewerRuntime, {
       preferStorylineRevisit: true,
     })
-    const highlightHero = rankedHighlights.find((item) => item.hero_eligible)
-    const hotHero = rankedHotFeed.find((item) => item.hero_eligible)
+    const highlightHero = rankedHighlights.find((item) => readHeroEligible(item))
+    const hotHero = rankedHotFeed.find((item) => readHeroEligible(item))
     const chosen = highlightHero
       ? this.asPostShelfItem(highlightHero, { heroReason: '今日高光', contentKind: 'highlight_hero' })
       : hotHero
         ? this.asPostShelfItem(hotHero, {
             heroReason: '热帖主线',
-            contentKind: hotHero.content_kind ?? 'mainline_root',
+            contentKind: readContentKind(hotHero) ?? 'mainline_root',
           })
         : aftershowCandidates[0] ?? null
     if (!chosen) {
@@ -380,7 +388,7 @@ export class HomeProgrammingService {
     const items = primaryPool
       .filter((item) => !usedPostIds.has(item.id))
       .filter((item) => !isCreatorNoteEntry(item))
-      .filter((item) => item.storyline_state === 'escalating')
+      .filter((item) => readStorylineState(item) === 'escalating')
       .slice(0, 4)
       .map((item) => this.asPostShelfItem(item))
 
@@ -390,7 +398,10 @@ export class HomeProgrammingService {
         .filter((item) => !usedPostIds.has(item.id))
         .filter((item) => !isCreatorNoteEntry(item))
       const reservedForContinuation = viewerRuntime.enabled
-        ? fallbackPool.filter((item) => item.storyline_id && recentStorylines.has(item.storyline_id))
+        ? fallbackPool.filter((item) => {
+            const storylineId = readStorylineId(item)
+            return Boolean(storylineId && recentStorylines.has(storylineId))
+          })
         : []
       const prioritizedFallbackPool = fallbackPool.filter((item) => !reservedForContinuation.includes(item))
       const fallbackSource = prioritizedFallbackPool.length > 0
@@ -469,11 +480,11 @@ export class HomeProgrammingService {
   }
 
   private isNotesTodayCandidate(
-    item: Pick<PostWithMeta, 'community_slug' | 'content_kind' | 'note_template_id'>,
+    item: Pick<PostWithMeta, 'community_slug' | 'content_semantics'>,
   ): boolean {
     return isCreatorNoteEntry(item)
       && isLaunchNativeCreatorNoteCommunity(item.community_slug)
-      && Boolean(item.note_template_id)
+      && Boolean(readNoteTemplateId(item))
   }
 
   private pickContinueStoryline(
@@ -500,7 +511,7 @@ export class HomeProgrammingService {
     const continuityItems = this.sortByViewerContext(
       hotFeed
         .filter((item) => !usedPostIds.has(item.id))
-        .filter((item) => Boolean(item.storyline_id))
+        .filter((item) => Boolean(readStorylineId(item)))
         .filter((item) => !isCreatorNoteEntry(item) || item.community_slug === 'creator-relationship'),
       viewerRuntime,
       { preferStorylineRevisit: true },
@@ -589,20 +600,34 @@ export class HomeProgrammingService {
 
       return {
         ...post,
+        content_semantics: mergeContentSemantics(post.content_semantics, {
+          distribution: {
+            content_kind: 'aftershow_recap',
+            aftershow_export_bias: Math.max(readAftershowExportBias(post) ?? 0, 1),
+          },
+          format: {
+            format_kind: 'recap',
+          },
+          visual: {
+            ...(packaging?.surface_kind ? { surface_kind: packaging.surface_kind } : {}),
+            ...(packaging?.card_mode ? { card_mode: packaging.card_mode } : {}),
+            ...(packaging?.thumbnail_policy ? { thumbnail_policy: packaging.thumbnail_policy } : {}),
+          },
+        }),
         ...(packaging ?? {}),
         item_kind: 'aftershow_recap',
         content_kind: 'aftershow_recap',
         summary_text: artifact.summary_text,
         published_at: artifact.published_at?.toISOString() ?? null,
         next_jump_target: `/posts/${post.id}?aftershow_id=${artifact.id}`,
-        aftershow_export_bias: Math.max(post.aftershow_export_bias ?? 0, 1),
+        aftershow_export_bias: Math.max(readAftershowExportBias(post) ?? 0, 1),
       }
     }))
 
     const aftershowItems = candidates.filter((item): item is HomeProgrammingPostItem => item !== null)
     return aftershowItems
       .sort((a, b) =>
-        (b.aftershow_export_bias ?? 0) - (a.aftershow_export_bias ?? 0)
+        (readAftershowExportBias(b) ?? 0) - (readAftershowExportBias(a) ?? 0)
         || this.toMillis(b.published_at) - this.toMillis(a.published_at),
       )
   }
@@ -703,6 +728,15 @@ export class HomeProgrammingService {
   ): HomeProgrammingPostItem {
     return {
       ...post,
+      ...(options?.contentKind
+        ? {
+            content_semantics: mergeContentSemantics(post.content_semantics, {
+              distribution: {
+                content_kind: options.contentKind,
+              },
+            }),
+          }
+        : {}),
       ...(options?.contentKind ? { content_kind: options.contentKind } : {}),
       item_kind: 'post',
       next_jump_target: `/posts/${post.id}`,
@@ -776,7 +810,7 @@ export class HomeProgrammingService {
   }
 
   private computeViewerScore(
-    item: Pick<PostWithMeta, 'author' | 'storyline_id' | 'note_template_id' | 'heat_score'>,
+    item: Pick<PostWithMeta, 'author' | 'content_semantics' | 'heat_score'>,
     viewerRuntime: HomeViewerRuntime,
     options?: {
       preferStorylineRevisit?: boolean
@@ -786,16 +820,18 @@ export class HomeProgrammingService {
     if (!viewerRuntime.enabled) return 0
     let score = 0
     const recentSignals = viewerRuntime.recentSignals
+    const storylineId = readStorylineId(item)
+    const noteTemplateId = readNoteTemplateId(item)
     if (viewerRuntime.followedAgentIds.has(item.author.id)) score += 30
     if (viewerRuntime.pprCandidateAgentIds.has(item.author.id)) score += 12
     if (recentSignals?.recent_target_agent_ids.includes(item.author.id)) score += 8
-    if (options?.preferStorylineRevisit && item.storyline_id && recentSignals?.recent_storyline_ids.includes(item.storyline_id)) {
+    if (options?.preferStorylineRevisit && storylineId && recentSignals?.recent_storyline_ids.includes(storylineId)) {
       score += 40
     }
     if (
       options?.preferCreatorNoteRevisit
-      && item.note_template_id
-      && recentSignals?.recent_note_template_ids.includes(item.note_template_id)
+      && noteTemplateId
+      && recentSignals?.recent_note_template_ids.includes(noteTemplateId)
     ) {
       score += 20
     }
@@ -803,14 +839,15 @@ export class HomeProgrammingService {
   }
 
   private readCreatorNoteTemplateRank(
-    item: Pick<PostWithMeta, 'community_slug' | 'note_template_id'>,
+    item: Pick<PostWithMeta, 'community_slug' | 'content_semantics'>,
     tuningProfile?: PostLaunchTuningProfile,
   ): number {
-    if (!tuningProfile || !isLaunchNativeCreatorNoteCommunity(item.community_slug) || !item.note_template_id) {
+    const noteTemplateId = normalizeLaunchCreatorNoteTemplateId(readNoteTemplateId(item))
+    if (!tuningProfile || !isLaunchNativeCreatorNoteCommunity(item.community_slug) || !noteTemplateId) {
       return 0
     }
     const preferred = tuningProfile.creator_note.preferred_templates_by_community[item.community_slug] ?? []
-    const index = preferred.indexOf(item.note_template_id)
+    const index = preferred.indexOf(noteTemplateId)
     return index >= 0 ? preferred.length - index : 0
   }
 
@@ -820,7 +857,7 @@ export class HomeProgrammingService {
   ): HomeProgrammingPostItem[] {
     if (items.length === 0 || !tuningProfile) return items
     const [first, ...rest] = items
-    const heroReason = tuningProfile.home.hero_slot_copy[first.content_kind ?? '']
+    const heroReason = tuningProfile.home.hero_slot_copy[readContentKind(first) ?? '']
       ?? tuningProfile.home.hero_slot_copy.must_watch_today
       ?? first.hero_reason
     return [{

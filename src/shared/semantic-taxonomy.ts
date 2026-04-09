@@ -57,6 +57,15 @@ export type ContentKind = (typeof CONTENT_KIND_IDS)[number]
 export const FORMAT_KIND_IDS = ['thread', 'note', 'recap', 'schedule'] as const
 export type FormatKind = (typeof FORMAT_KIND_IDS)[number]
 
+export const AUTHORING_SHAPE_IDS = [
+  'discussion_root',
+  'story_episode',
+  'aftershow_recap',
+  'note_root',
+  'programming_slot',
+] as const
+export type AuthoringShapeId = (typeof AUTHORING_SHAPE_IDS)[number]
+
 export const EDITORIAL_SHELF_IDS = [
   'must_watch_today',
   'conflict_rising',
@@ -126,7 +135,7 @@ export interface CommunitySemanticContract {
   community_lifecycle_state?: CommunityLifecycleState
   launch_wave?: LaunchWaveId | null
   default_editorial_shelf_ids: EditorialShelfId[]
-  authoring_shapes?: string[]
+  authoring_shapes?: AuthoringShapeId[]
   creator_note_policy?: string | null
 }
 
@@ -305,6 +314,14 @@ export const FORMAT_KIND_ALIASES: Record<string, FormatKind> = {
   schedule: 'schedule',
 }
 
+export const AUTHORING_SHAPE_ALIASES: Record<string, AuthoringShapeId> = {
+  discussion_root: 'discussion_root',
+  story_episode: 'story_episode',
+  aftershow_recap: 'aftershow_recap',
+  note_root: 'note_root',
+  programming_slot: 'programming_slot',
+}
+
 export const LAUNCH_SURFACE_KIND_ALIASES: Record<string, LaunchSurfaceKindId> = {
   home_root_card: 'home_root_card',
   note_root_card: 'note_root_card',
@@ -457,16 +474,6 @@ export function normalizeContentKind(value: string | null | undefined): ContentK
   return CONTENT_KIND_ALIASES[normalized] ?? null
 }
 
-export function isCreatorNoteEntry(input: {
-  content_kind?: string | null
-  editorial_shelf_id?: string | null
-  note_template_id?: string | null
-}): boolean {
-  const contentKind = normalizeContentKind(input.content_kind)
-  const shelfId = normalizeEditorialShelfId(input.editorial_shelf_id)
-  return contentKind === 'note_entry' || shelfId === 'notes_today' || Boolean(input.note_template_id)
-}
-
 export function normalizeFormatKind(value: string | null | undefined): FormatKind | null {
   const normalized = normalizeString(value)
   if (!normalized) return null
@@ -507,10 +514,10 @@ export function derivePublicationReviewProfileId(family: CommunityFamily): Publi
   return COMMUNITY_FAMILY_TO_PUBLICATION_REVIEW_PROFILE[family]
 }
 
-export function normalizeAuthoringShapeId(value: string | null | undefined): string | null {
+export function normalizeAuthoringShapeId(value: string | null | undefined): AuthoringShapeId | null {
   const normalized = normalizeString(value)
   if (!normalized) return null
-  return normalized
+  return AUTHORING_SHAPE_ALIASES[normalized] ?? null
 }
 
 export function deriveFormatKindFromContentKind(contentKind: ContentKind | null | undefined): FormatKind | null {
@@ -574,4 +581,177 @@ export function deriveDefaultCommunityInteractionContract(
   return isCreatorCommunityFamily(communityFamily)
     ? { ...CREATOR_MAIN_THREAD_INTERACTION_CONTRACT }
     : { ...DEFAULT_COMMUNITY_INTERACTION_CONTRACT }
+}
+
+type CommunitySemanticCarrier = {
+  community_semantics?: CommunitySemanticContract | null
+  interaction_contract?: CommunityInteractionContract | null
+}
+
+type ContentSemanticCarrier = {
+  content_semantics?: ContentSemanticProjection | null
+}
+
+export function readCommunityFamily(input: CommunitySemanticCarrier | null | undefined): CommunityFamily | null {
+  return normalizeCommunityFamily(input?.community_semantics?.community_family ?? null)
+}
+
+export function readCommunityShellCategory(
+  input: CommunitySemanticCarrier | null | undefined,
+): CommunityShellCategory | null {
+  return normalizeCommunityShellCategory(input?.community_semantics?.community_shell_category ?? null)
+}
+
+export function readPublicationReviewProfileId(
+  input: CommunitySemanticCarrier | null | undefined,
+): PublicationReviewProfileId | null {
+  return normalizePublicationReviewProfileId(input?.community_semantics?.publication_review_profile_id ?? null)
+}
+
+export function readPublicParticipationMode(
+  input: CommunitySemanticCarrier | null | undefined,
+): PublicParticipationMode | null {
+  return normalizePublicParticipationMode(input?.interaction_contract?.public_participation_mode ?? null)
+}
+
+export function readAudienceSignalIngestion(
+  input: CommunitySemanticCarrier | null | undefined,
+): AudienceSignalIngestion | null {
+  return normalizeAudienceSignalIngestion(input?.interaction_contract?.audience_signal_ingestion ?? null)
+}
+
+export function readAgentHumanResponseMode(
+  input: CommunitySemanticCarrier | null | undefined,
+): AgentHumanResponseMode | null {
+  return normalizeAgentHumanResponseMode(input?.interaction_contract?.agent_human_response_mode ?? null)
+}
+
+export function readCommunityLifecycleState(
+  input: CommunitySemanticCarrier | null | undefined,
+): CommunityLifecycleState | null {
+  return normalizeCommunityLifecycleState(input?.community_semantics?.community_lifecycle_state ?? null)
+}
+
+export function readLaunchWave(input: CommunitySemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.community_semantics?.launch_wave ?? null)
+}
+
+export function readDefaultEditorialShelfIds(
+  input: CommunitySemanticCarrier | null | undefined,
+): EditorialShelfId[] {
+  return (input?.community_semantics?.default_editorial_shelf_ids ?? [])
+    .map((item) => normalizeEditorialShelfId(item))
+    .filter((item): item is EditorialShelfId => item !== null)
+}
+
+export function readStorylineId(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.narrative.storyline_id ?? null)
+}
+
+export function readStorylineTitle(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.narrative.storyline_title ?? null)
+}
+
+export function readStorylineState(input: ContentSemanticCarrier | null | undefined): StorylineState | null {
+  return normalizeStorylineState(input?.content_semantics?.narrative.storyline_state ?? null)
+}
+
+export function readStorylineHook(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.narrative.storyline_hook ?? null)
+}
+
+export function readScenePhase(input: ContentSemanticCarrier | null | undefined): ScenePhase | null {
+  return normalizeScenePhase(input?.content_semantics?.scene_runtime.phase ?? null)
+}
+
+export function readContentKind(input: ContentSemanticCarrier | null | undefined): ContentKind | null {
+  return normalizeContentKind(input?.content_semantics?.distribution.content_kind ?? null)
+}
+
+export function readEditorialShelfId(input: ContentSemanticCarrier | null | undefined): EditorialShelfId | null {
+  return normalizeEditorialShelfId(input?.content_semantics?.distribution.editorial_shelf_id ?? null)
+}
+
+export function readHeroEligible(input: ContentSemanticCarrier | null | undefined): boolean {
+  return input?.content_semantics?.distribution.hero_eligible === true
+}
+
+export function readAftershowExportBias(input: ContentSemanticCarrier | null | undefined): number | null {
+  const value = input?.content_semantics?.distribution.aftershow_export_bias
+  return typeof value === 'number' ? value : null
+}
+
+export function readFormatKind(input: ContentSemanticCarrier | null | undefined): FormatKind | null {
+  return normalizeFormatKind(input?.content_semantics?.format.format_kind ?? null)
+}
+
+export function readNoteTemplateId(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.format.note_template_id ?? null)
+}
+
+export function readCoverMode(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.format.cover_mode ?? null)
+}
+
+export function readLaunchSurfaceKindId(input: ContentSemanticCarrier | null | undefined): LaunchSurfaceKindId | null {
+  return normalizeLaunchSurfaceKindId(input?.content_semantics?.visual.surface_kind ?? null)
+}
+
+export function readCardMode(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.visual.card_mode ?? null)
+}
+
+export function readThumbnailPolicy(input: ContentSemanticCarrier | null | undefined): string | null {
+  return normalizeString(input?.content_semantics?.visual.thumbnail_policy ?? null)
+}
+
+export function isCreatorNoteEntry(input: ContentSemanticCarrier | {
+  content_kind?: string | null
+  editorial_shelf_id?: string | null
+  note_template_id?: string | null
+} | null | undefined): boolean {
+  const contentKind = 'content_semantics' in (input ?? {})
+    ? readContentKind(input as ContentSemanticCarrier)
+    : normalizeContentKind((input as { content_kind?: string | null } | null | undefined)?.content_kind ?? null)
+  const shelfId = 'content_semantics' in (input ?? {})
+    ? readEditorialShelfId(input as ContentSemanticCarrier)
+    : normalizeEditorialShelfId((input as { editorial_shelf_id?: string | null } | null | undefined)?.editorial_shelf_id ?? null)
+  const noteTemplateId = 'content_semantics' in (input ?? {})
+    ? readNoteTemplateId(input as ContentSemanticCarrier)
+    : normalizeString((input as { note_template_id?: string | null } | null | undefined)?.note_template_id ?? null)
+  return contentKind === 'note_entry' || shelfId === 'notes_today' || Boolean(noteTemplateId)
+}
+
+export function mergeContentSemantics(
+  base: ContentSemanticProjection | null | undefined,
+  patch: {
+    scene_runtime?: Partial<ContentSemanticProjection['scene_runtime']>
+    narrative?: Partial<ContentSemanticProjection['narrative']>
+    distribution?: Partial<ContentSemanticProjection['distribution']>
+    format?: Partial<ContentSemanticProjection['format']>
+    visual?: Partial<ContentSemanticProjection['visual']>
+  },
+): ContentSemanticProjection {
+  return {
+    scene_runtime: {
+      ...(base?.scene_runtime ?? {}),
+      ...(patch.scene_runtime ?? {}),
+    },
+    narrative: {
+      ...(base?.narrative ?? {}),
+      ...(patch.narrative ?? {}),
+    },
+    distribution: {
+      ...(base?.distribution ?? {}),
+      ...(patch.distribution ?? {}),
+    },
+    format: {
+      ...(base?.format ?? {}),
+      ...(patch.format ?? {}),
+    },
+    visual: {
+      ...(base?.visual ?? {}),
+      ...(patch.visual ?? {}),
+    },
+  }
 }

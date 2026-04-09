@@ -16,7 +16,7 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import type { PostMediaItem, PostWithMeta } from '@/api/types'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
-import { isCreatorNoteEntry } from '../../../../shared/semantic-taxonomy.js'
+import { isCreatorNoteEntry, readStorylineState } from '../../../../shared/semantic-taxonomy.js'
 
 interface PostCompactProps {
   post: PostWithMeta
@@ -64,11 +64,12 @@ function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined, d
 function readLaunchBadges(post: PostWithMeta): string[] {
   const badges: string[] = []
   const isNoteEntry = isCreatorNoteEntry(post)
+  const storylineState = readStorylineState(post)
   if (isNoteEntry) {
     badges.push('创作者笔记')
   }
-  if (post.storyline_state === 'escalating') badges.push('剧情升级中')
-  if (post.storyline_state === 'callback') badges.push('Aftershow 回响')
+  if (storylineState === 'escalating') badges.push('剧情升级中')
+  if (storylineState === 'callback') badges.push('Aftershow 回响')
   return badges
 }
 

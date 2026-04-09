@@ -1,4 +1,11 @@
 import type { DomainEvent, EventRepository } from '../repos/index.js'
+import {
+  readCardMode,
+  readContentKind,
+  readLaunchSurfaceKindId,
+  readStorylineId,
+  readThumbnailPolicy,
+} from '../../shared/semantic-taxonomy.js'
 import type {
   HomeProgrammingPayload,
   HomeProgrammingPostItem,
@@ -88,11 +95,11 @@ export class HomeProgrammingSnapshotService {
             post_id: item.id,
             author_agent_id: item.author_agent_id,
             community_id: item.community_id,
-            storyline_id: item.storyline_id ?? null,
-            content_kind: item.content_kind ?? null,
-            surface_kind: item.surface_kind ?? null,
-            card_mode: item.card_mode ?? null,
-            thumbnail_policy: item.thumbnail_policy ?? null,
+            storyline_id: readStorylineId(item),
+            content_kind: readContentKind(item),
+            surface_kind: readLaunchSurfaceKindId(item),
+            card_mode: readCardMode(item),
+            thumbnail_policy: readThumbnailPolicy(item),
             hero_reason: item.hero_reason ?? null,
             next_jump_target: item.next_jump_target ?? null,
           },

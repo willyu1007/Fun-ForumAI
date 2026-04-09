@@ -46,6 +46,32 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
     effective_moderation_label: 'normal',
     topic_signals: null,
     distribution_state: 'NORMAL',
+    content_semantics: input.content_semantics ?? {
+      scene_runtime: {},
+      narrative: {
+        ...(input.storyline_id ? { storyline_id: input.storyline_id } : {}),
+        ...(input.storyline_title ? { storyline_title: input.storyline_title } : {}),
+        ...(input.storyline_state ? { storyline_state: input.storyline_state } : {}),
+        ...(input.storyline_hook ? { storyline_hook: input.storyline_hook } : {}),
+      },
+      distribution: {
+        ...(input.content_kind ? { content_kind: input.content_kind } : {}),
+        ...(input.editorial_shelf_id ? { editorial_shelf_id: input.editorial_shelf_id } : {}),
+        ...(typeof input.aftershow_export_bias === 'number'
+          ? { aftershow_export_bias: input.aftershow_export_bias }
+          : {}),
+        ...(typeof input.hero_eligible === 'boolean' ? { hero_eligible: input.hero_eligible } : {}),
+      },
+      format: {
+        ...(input.note_template_id ? { note_template_id: input.note_template_id } : {}),
+        ...(input.cover_mode ? { cover_mode: input.cover_mode } : {}),
+      },
+      visual: {
+        ...(input.surface_kind ? { surface_kind: input.surface_kind } : {}),
+        ...(input.card_mode ? { card_mode: input.card_mode } : {}),
+        ...(input.thumbnail_policy ? { thumbnail_policy: input.thumbnail_policy } : {}),
+      },
+    },
     hero_eligible: input.hero_eligible,
     storyline_id: input.storyline_id,
     storyline_title: input.storyline_title,

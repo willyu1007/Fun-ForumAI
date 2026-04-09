@@ -32,7 +32,6 @@ import {
   getCommunityAvatarTheme,
   getCommunityAvatarToneClassName,
   getCommunityCategoryGlyph,
-  resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
@@ -550,12 +549,7 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
       <div className="space-y-4 pl-4">
         {displayItems.map((item) => {
           const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
-          const category = resolveCommunityCategory({
-            slug: item.slug,
-            name: item.name,
-            description: item.description,
-            community_shell_category: item.community_shell_category,
-          })
+          const category = item.community_shell_category ?? 'theme'
           return (
             <Link
               key={item.id}

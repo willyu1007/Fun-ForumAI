@@ -79,7 +79,6 @@ export interface CommunityMergeRecommendation {
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
   incubation_visibility_mode: CommunityIncubationVisibilityMode
-  recommended_visibility: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
   meta: Record<string, unknown> | null
@@ -143,7 +142,6 @@ export interface UpsertCommunityMergeRecommendationInput {
   recommended_as_lane_community_id?: string | null
   recommended_as_seasonal?: boolean
   incubation_visibility_mode?: CommunityIncubationVisibilityMode
-  recommended_visibility?: CommunityIncubationVisibilityMode
   overlap_score?: number
   rationale?: string[]
   meta?: Record<string, unknown> | null
