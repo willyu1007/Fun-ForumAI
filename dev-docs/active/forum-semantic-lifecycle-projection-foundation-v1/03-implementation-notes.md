@@ -16,3 +16,14 @@
     - `forum-read-service.test.ts` 覆盖 public projection 不再触发 bio bootstrap。
     - `forum-read-service.test.ts` 覆盖 slow rollout profile 不阻塞 `getFeed/getPost`，且复用 pending fetch。
     - `e2e-read-api.test.ts` 覆盖 aftershow web 打开时 `GET /v1/posts/:postId` 不被 slow rollout profile 阻塞。
+- 2026-04-09
+  - `src/shared/forum-orchestration.ts` 将 `ThreadLifecycleSnapshot` 冻结为唯一 thread interaction contract：新增 `writeability(reply_mode/reply_allowed/preferred_action/reason_code)`，并把 `can_receive_replies` 降级为 derived compat bool。
+  - `src/backend/services/thread-lifecycle-service.ts` 回退为只产出 lifecycle core truth；新增 `src/backend/services/thread-interaction-resolver.ts` 统一组合 lifecycle core + participation contract，冻结 `HANDOFF_PENDING => SOFT_CLOSE`、`HANDOFFED/SPINOFFED/CLOSED => hard-close/route-only`。
+  - `forum-read-service` 已将 lifecycle/writeability 前置到 `GET /v1/posts/:postId/threads`、`GET /v1/posts/:postId/threads-summary`、`GET /v1/threads/:threadId`、discussion forest `branch_groups`、runtime preview `focus_thread.lifecycle`，确保 summary/detail/forest/runtime 不再各自拼 thread truth。
+  - `semantic-projection-service` / `display-projection-service` 已切到复用冻结后的 thread lifecycle；`DiscussionBranchGroup` 不再只给 raw counter，而是直接携带 branch lifecycle snapshot。
+  - `human-participation-service` 与 `forum-write-service` 已停止直接使用 raw `thread_state/reply_budget` 做 turn gating，统一改为消费 lifecycle.writeability；下游若发现 contract 不稳，应回写 `T-946` adjudication，而不是继续猜解释。
+  - `forum-write-service` 的 `THREAD_ROUTE_UPDATED` payload 已补齐 `lifecycle` 与 `writeability` excerpt，至少让 `T-943/T-945/T-942` 消费者不必再次猜“当前还能不能继续回、应该往哪里继续”。
+  - `agent-perception-service` 已改成优先消费 `thread_capsule.lifecycle.writeability` 推导 allowed actions，避免 runtime preview 继续靠 participation contract 单独猜 `REPLY/HANDOFF/START_NEW_THREAD`。
+  - `docs/context/api/openapi.yaml` 已同步 `ThreadWriteabilitySnapshot`、public thread `lifecycle`、discussion forest branch `lifecycle`、runtime `focus_thread.lifecycle`，保持对外 contract 与代码一致。
+  - 真实浏览器回归暴露了一个 consumer drift：discussion forest / timeline / post detail composer 仍把 route-only thread 当成可沿原线程回复；现已统一改为消费 `lifecycle.writeability.reply_allowed + preferred_action + active_route.cta`，route-only 只展示续接 CTA，soft-close 则同时保留自然续写入口与 route handoff 提示。
+  - 深度清理已收掉剩余 permissive fallback：`ContextBuilder` 在旧 `getThread()` fallback 下会重新通过 shared lifecycle resolver 补齐 `threadMeta.writeability`，不再因缺 `lifecycle` 静默丢失 skip/meta；timeline / post detail / runtime allowed-actions 也已停止“缺 writeability 默认放行”的兼容猜测。

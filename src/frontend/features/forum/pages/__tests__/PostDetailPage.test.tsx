@@ -430,7 +430,21 @@ describe('PostDetailPage', () => {
           reading_guide: {
             entries: [],
           },
-          branch_groups: [],
+          branch_groups: [
+            {
+              id: 'branch-1',
+              thread_id: 'thread-1',
+              display_title: '主分支',
+              participant_count: 2,
+              turn_count: 2,
+              latest_activity_at: '2026-03-01T00:00:00.000Z',
+              lifecycle: {
+                writeability: {
+                  reply_allowed: true,
+                },
+              },
+            },
+          ],
           nodes: [],
         },
       },
@@ -907,6 +921,93 @@ describe('PostDetailPage', () => {
     )
   })
 
+  it('stops suggesting in-thread replies when the selected forest node has already routed away', async () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useDiscussionForestMock.mockReturnValue({
+      data: {
+        data: {
+          generated_at: '2026-03-01T00:00:00.000Z',
+          focus_thread_id: 'thread-route',
+          focus_turn_id: null,
+          reading_guide: {
+            entries: [
+              {
+                id: 'guide-1',
+                thread_id: 'thread-route',
+                focus_turn_id: null,
+                title: '先看这里',
+                teaser: 'guide teaser',
+                participant_count: 1,
+                turn_count: 0,
+                latest_activity_at: '2026-03-01T00:00:00.000Z',
+              },
+            ],
+            start_here_thread_ids: ['thread-route'],
+          },
+          branch_groups: [
+            {
+              id: 'branch-route',
+              thread_id: 'thread-route',
+              display_title: '已经转去私聊的分支',
+              participant_count: 1,
+              turn_count: 0,
+              latest_activity_at: '2026-03-01T00:00:00.000Z',
+              lifecycle: {
+                active_route: {
+                  cta: {
+                    label: '转入私聊',
+                  },
+                },
+                writeability: {
+                  reply_allowed: false,
+                },
+              },
+            },
+          ],
+          nodes: [
+            {
+              id: 'thread-route',
+              thread_id: 'thread-route',
+              entry_kind: 'THREAD',
+              body: '这条分支已经转去私聊。',
+              actual_anchor_turn_id: null,
+              author: {
+                id: 'agent-1',
+                actor_type: 'agent',
+                display_name: 'Agent 1',
+                avatar_url: null,
+              },
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    } as never)
+    usePostParticipationContractMock.mockReturnValue({
+      data: {
+        data: {
+          stage_open_reply: {
+            enabled: true,
+            new_thread_enabled: true,
+            turn_reply_enabled: true,
+          },
+        },
+      },
+    } as never)
+
+    renderPage('/posts/post-1?threadId=thread-route')
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“转入私聊”，或者直接发起新的公开分支。'),
+      ).toBeTruthy()
+    })
+  })
+
   it('keeps forest focus separate from the explicit composer anchor when both stage write modes are open', async () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
@@ -933,7 +1034,21 @@ describe('PostDetailPage', () => {
               },
             ],
           },
-          branch_groups: [],
+          branch_groups: [
+            {
+              id: 'branch-1',
+              thread_id: 'thread-1',
+              display_title: '主分支',
+              participant_count: 2,
+              turn_count: 2,
+              latest_activity_at: '2026-03-01T00:00:00.000Z',
+              lifecycle: {
+                writeability: {
+                  reply_allowed: true,
+                },
+              },
+            },
+          ],
           nodes: [
             {
               id: 'thread-1',

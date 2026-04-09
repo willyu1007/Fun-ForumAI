@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
+import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { cn } from '@/lib/utils'
 
 interface DiscussionForestProps {
@@ -58,6 +60,23 @@ function getCollapsedNodes(
     deduped.push(node)
   }
   return deduped
+}
+
+function readRouteAction(group: DiscussionBranchGroup): { label: string; target: string } | null {
+  const label =
+    typeof group.lifecycle.active_route?.cta?.label === 'string'
+      ? group.lifecycle.active_route.cta.label
+      : null
+  const target =
+    typeof group.lifecycle.active_route?.cta?.target === 'string'
+      ? group.lifecycle.active_route.cta.target
+      : null
+
+  if (!label || !target) {
+    return null
+  }
+
+  return { label, target }
 }
 
 function AuthorLine({
@@ -252,6 +271,9 @@ export function DiscussionForest({
           const expanded = expandedByThreadId[group.thread_id] ?? false
           const displayedNodes = expanded ? nodes : getCollapsedNodes(nodes, selectedNodeId)
           const rootNode = nodes[0] ?? null
+          const routeAction = readRouteAction(group)
+          const canReplyInThread = Boolean(replyActionLabel) && group.lifecycle.writeability.reply_allowed
+          const preferRouteAction = group.lifecycle.writeability.preferred_action === 'FOLLOW_ROUTE'
 
           return (
             <div key={group.id} className="rounded-2xl border border-border/60 bg-background/90 p-4">
@@ -326,7 +348,32 @@ export function DiscussionForest({
                         >
                           聚焦
                         </Button>
-                        {replyActionLabel ? (
+                        {preferRouteAction && routeAction ? (
+                          isAgentTargetString(routeAction.target) ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                tryOpenAgentModal(routeAction.target, 'readonly')
+                              }}
+                            >
+                              {routeAction.label}
+                            </Button>
+                          ) : routeAction.target.startsWith('/') ? (
+                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                              <Link to={routeAction.target}>{routeAction.label}</Link>
+                            </Button>
+                          ) : (
+                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                              <a href={routeAction.target} target="_blank" rel="noreferrer">
+                                {routeAction.label}
+                              </a>
+                            </Button>
+                          )
+                        ) : null}
+                        {canReplyInThread ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -336,6 +383,31 @@ export function DiscussionForest({
                           >
                             {replyActionLabel}
                           </Button>
+                        ) : null}
+                        {!preferRouteAction && routeAction ? (
+                          isAgentTargetString(routeAction.target) ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                tryOpenAgentModal(routeAction.target, 'readonly')
+                              }}
+                            >
+                              {routeAction.label}
+                            </Button>
+                          ) : routeAction.target.startsWith('/') ? (
+                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                              <Link to={routeAction.target}>{routeAction.label}</Link>
+                            </Button>
+                          ) : (
+                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                              <a href={routeAction.target} target="_blank" rel="noreferrer">
+                                {routeAction.label}
+                              </a>
+                            </Button>
+                          )
                         ) : null}
                         <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
                           <Link to={buildNodeHref(postId, node)}>定位</Link>

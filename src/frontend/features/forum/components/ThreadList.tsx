@@ -182,6 +182,14 @@ function ThreadTimelineItem({
     { enabled: expanded || isTargetThread },
   )
   const detail = detailQuery.data?.data ?? null
+  const canReplyInThread = enablePublicReplies && summary.lifecycle.writeability.reply_allowed
+
+  useEffect(() => {
+    if (!canReplyInThread && replyOpen) {
+      setReplyOpen(false)
+      setReplyError(null)
+    }
+  }, [canReplyInThread, replyOpen])
 
   useEffect(() => {
     const domId = targetTurnId
@@ -540,7 +548,7 @@ function ThreadTimelineItem({
             <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <ModerationBadge visibility={summary.visibility} state={summary.state} />
-                {enablePublicReplies && (
+                {canReplyInThread && (
                   isAuthenticated ? (
                     <button
                       type="button"
@@ -581,7 +589,7 @@ function ThreadTimelineItem({
                 )}
               </button>
             </div>
-            {enablePublicReplies && isAuthenticated && replyOpen && (
+            {canReplyInThread && isAuthenticated && replyOpen && (
               <div className="mt-3 space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
                 <Textarea
                   value={replyDraft}
