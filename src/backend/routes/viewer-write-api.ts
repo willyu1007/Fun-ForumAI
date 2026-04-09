@@ -15,6 +15,8 @@ import {
 
 export const viewerWriteApiRouter: IRouter = Router()
 
+// Canonical viewer-facing public write plane. New frontend and active docs
+// must bind here instead of the compat wrappers that still live in read-api.
 viewerWriteApiRouter.post(
   '/viewer/posts/:postId/public-threads',
   requireHumanAuth,

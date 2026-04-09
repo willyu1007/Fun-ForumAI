@@ -280,4 +280,57 @@ describe('CredentialBroker', () => {
     first.release()
     second.release()
   })
+
+  it('keeps saturation classified as rate-limit even when a lower-priority fallback pool has broken auth', () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools = bundle.credentialPools.pools.map((pool) => ({
+      ...pool,
+      max_concurrency: pool.credential_id === 'moonshot-primary' ? 1 : 3,
+    }))
+    const broker = new CredentialBroker({
+      bundle,
+      secretResolver: {
+        resolve: vi.fn((ref: string) => {
+          if (ref === 'secret-ref:moonshot_secondary') {
+            throw new Error('missing secondary key')
+          }
+          return `${ref}-value`
+        }),
+      } as never,
+      admissionController: new PoolAdmissionController(),
+    })
+
+    const primaryLease = broker.resolve({
+      candidate: {
+        provider_id: 'moonshot-openai',
+        model_id: 'kimi-k2-0905-preview',
+        region: 'cn',
+        endpoint_id: 'moonshot-cn',
+        weight: 100,
+        quality_class: 'premium',
+      },
+      visibility: 'visible',
+      budgetClass: 'visible_standard',
+    })
+
+    try {
+      broker.resolve({
+        candidate: {
+          provider_id: 'moonshot-openai',
+          model_id: 'kimi-k2-0905-preview',
+          region: 'cn',
+          endpoint_id: 'moonshot-cn',
+          weight: 100,
+          quality_class: 'premium',
+        },
+        visibility: 'visible',
+        budgetClass: 'visible_standard',
+      })
+      throw new Error('expected saturated primary plus broken fallback to raise a rate-limit error')
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'RateLimitError' })
+    }
+
+    primaryLease.release()
+  })
 })

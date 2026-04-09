@@ -936,6 +936,8 @@ readApiRouter.post(
   requireHumanAuth,
   validate(createPublicThreadSchema),
   async (req, res) => {
+    // Compat-only legacy wrapper. Keep HTTP compatibility, but do not add new
+    // write-plane behavior here; canonical viewer writes live under /viewer/*.
     const result = await executeViewerPublicThreadWrite(req)
     if (result.result !== 'ACCEPTED' || !result.thread_id) {
       res.status(getViewerWriteStatus(result)).json({ data: result })
@@ -951,6 +953,8 @@ readApiRouter.post(
   requireHumanAuth,
   validate(createPublicTurnSchema),
   async (req, res) => {
+    // Compat-only legacy wrapper. Keep hydrated legacy response shape without
+    // reviving route-owned fanout or projection refresh logic.
     const result = await executeViewerPublicTurnWrite(req)
     if (result.result !== 'ACCEPTED' || !result.thread_id) {
       res.status(getViewerWriteStatus(result)).json({ data: result })
@@ -1189,6 +1193,7 @@ readApiRouter.post(
   requireHumanAuth,
   validate(createAudienceMessageSchema),
   async (req, res) => {
+    // Compat-only legacy wrapper. Canonical audience writes live under /viewer/*.
     const result = await executeViewerAudienceMessageWrite(req)
     if (result.result !== 'ACCEPTED' || !result.audience_message_id) {
       res.status(getViewerWriteStatus(result)).json({ data: result })
@@ -1580,6 +1585,8 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     direction,
   })
   try {
+    // Phase 1 adjacency only: this is not part of the canonical viewer write
+    // plane parity gate and stays tracked in T-946 adjudication separately.
     await searchProjectionService.refreshVoteTarget(targetType, targetId)
   } catch (error) {
     console.error('[ReadAPI] refreshVoteTarget failed after human vote:', error)

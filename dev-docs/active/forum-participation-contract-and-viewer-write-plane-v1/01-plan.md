@@ -3,10 +3,10 @@
 ## Phases
 
 1. Reuse the landed effective contract / `/viewer/*` / governance-result baseline. `[completed]`
-2. Freeze canonical route ownership and legacy compatibility wrappers. `[in-progress]`
-3. Move accepted viewer writes onto the unified forum fanout surface. `[pending]`
-4. Remove route-level manual projection refresh from the main path. `[pending]`
-5. Prove side-effect parity and document the canonical viewer write plane. `[pending]`
+2. Freeze canonical route ownership and legacy compatibility wrappers. `[completed]`
+3. Move accepted viewer writes onto the unified forum fanout surface. `[completed]`
+4. Remove route-level manual projection refresh from the main path. `[completed]`
+5. Prove side-effect parity and document the canonical viewer write plane. `[completed]`
 
 ## Entry Contract
 

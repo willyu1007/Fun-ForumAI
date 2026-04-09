@@ -1777,3 +1777,31 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-semantic-llm-runtime-convergence-v2
     updated: 2026-04-08
+  - id: T-946
+    slug: forum-orchestration-experience-closeout-program-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-orchestration-experience-closeout-program-v1
+    updated: 2026-04-09
+  - id: T-947
+    slug: forum-attention-and-recall-hardening-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-attention-and-recall-hardening-v1
+    updated: 2026-04-09
+  - id: T-948
+    slug: forum-read-model-and-search-projection-slimming-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-read-model-and-search-projection-slimming-v1
+    updated: 2026-04-09
+  - id: T-949
+    slug: forum-product-narrative-and-context-alignment-v1
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-product-narrative-and-context-alignment-v1
+    updated: 2026-04-09

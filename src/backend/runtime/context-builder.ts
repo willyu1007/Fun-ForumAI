@@ -75,6 +75,8 @@ export class ContextBuilder {
     if ((event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded') && ctx.threadTurns?.length) {
       const targetId = event.turn_id ?? event.thread_id
       if (targetId) {
+        // Compat-only raw event target. Prompt/write truth is frozen later into
+        // focusThreadTurn + forum_targeting.
         ctx.targetThreadTurn = ctx.threadTurns.find((entry) => entry.id === targetId)
       } else {
         ctx.targetThreadTurn = ctx.threadTurns[ctx.threadTurns.length - 1]
@@ -398,6 +400,8 @@ export class ContextBuilder {
       return
     }
 
+    // Gate 1 freeze: focusThreadTurn/forum_targeting carry prompt + write truth;
+    // targetThreadTurn remains an event-target compat bridge only.
     const focusTurnId = ctx.perceived_context_slice?.focus_turn_id
       ?? ctx.targetThreadTurn?.id
       ?? null

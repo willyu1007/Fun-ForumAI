@@ -96,6 +96,7 @@ export class CredentialBroker {
     let saturatedPoolCount = 0
     let lastAuthFailure: unknown = null
     let lastAuthFailurePoolId: string | null = null
+    const authFailures: Array<{ credential_id: string; cause: string }> = []
 
     for (const pool of pools) {
       const lease = this.admissionController.tryAcquire(pool)
@@ -117,21 +118,12 @@ export class CredentialBroker {
       } catch (error) {
         lastAuthFailure = error
         lastAuthFailurePoolId = pool.credential_id
+        authFailures.push({
+          credential_id: pool.credential_id,
+          cause: error instanceof Error ? error.message : 'Unknown credential resolution error',
+        })
         lease.release()
       }
-    }
-
-    if (lastAuthFailure) {
-      throw new LLMGatewayContractError(
-        'AuthError',
-        `Failed to resolve any credential for ${input.candidate.provider_id}/${input.candidate.model_id}`,
-        {
-          provider_id: input.candidate.provider_id,
-          model_id: input.candidate.model_id,
-          last_pool_id: lastAuthFailurePoolId,
-          cause: lastAuthFailure instanceof Error ? lastAuthFailure.message : 'Unknown credential resolution error',
-        },
-      )
     }
 
     if (saturatedPoolCount > 0) {
@@ -148,6 +140,21 @@ export class CredentialBroker {
             max_concurrency: pool.max_concurrency ?? null,
             active_count: this.admissionController.getActiveCount(pool.credential_id),
           })),
+          auth_failures: authFailures,
+        },
+      )
+    }
+
+    if (lastAuthFailure) {
+      throw new LLMGatewayContractError(
+        'AuthError',
+        `Failed to resolve any credential for ${input.candidate.provider_id}/${input.candidate.model_id}`,
+        {
+          provider_id: input.candidate.provider_id,
+          model_id: input.candidate.model_id,
+          last_pool_id: lastAuthFailurePoolId,
+          cause: lastAuthFailure instanceof Error ? lastAuthFailure.message : 'Unknown credential resolution error',
+          auth_failures: authFailures,
         },
       )
     }

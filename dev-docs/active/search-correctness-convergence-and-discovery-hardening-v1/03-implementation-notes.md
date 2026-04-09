@@ -121,3 +121,12 @@
 ## Pitfalls / dead ends (do not repeat)
 
 - Keep the detailed log in `05-pitfalls.md` (append-only).
+
+## 2026-04-09 scope realignment
+
+- Under `T-946`, `T-915` keeps ownership of search-side consumer closeout only.
+- New non-owner area:
+  - forum read-model slimming
+  - projection-internal bounded-window refactor
+  - lean bundle definition
+- Those now move to `T-948`; `T-915` resumes once the handoff bundle exists.

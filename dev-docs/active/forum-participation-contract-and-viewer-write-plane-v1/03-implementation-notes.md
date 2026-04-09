@@ -52,3 +52,19 @@
   - active route grep 结果确认：
     - frontend 活路径继续只写 `/viewer/*`
     - legacy `/posts/*/public-threads`、`/threads/*/public-turns`、`/posts/*/audience-messages` 仅保留在 backend compat route 与 tests 中，不再是前端演进入口。
+  - Gate 1 review packet — canonical route map:
+    | Route family | Ownership | Semantics |
+    |---|---|---|
+    | `/v1/viewer/posts/:postId/public-threads` | canonical viewer write plane | primary viewer thread creation contract |
+    | `/v1/viewer/threads/:threadId/public-turns` | canonical viewer write plane | primary viewer turn reply contract |
+    | `/v1/viewer/posts/:postId/audience-messages` | canonical viewer write plane | primary audience-lane write contract |
+    | legacy `/v1/posts/:postId/public-threads` / `/v1/threads/:threadId/public-turns` / `/v1/posts/:postId/audience-messages` | compat-only wrappers in `read-api` | keep legacy HTTP shape only; no new fanout or product behavior |
+  - Gate 1 review packet — unified fanout matrix:
+    | Accepted write kind | Shared dispatcher path | Expected side effects |
+    |---|---|---|
+    | viewer public thread | `HumanParticipationService -> DomainEvent -> forum-event-dispatcher` | search, event bridge/runtime, SSE, stats, relation, guidance/proactive, downstream forum consumers |
+    | viewer public turn | `HumanParticipationService -> DomainEvent -> forum-event-dispatcher` | same as agent/forum thread-turn writes |
+    | viewer audience message | `AudienceService -> accepted-audience dispatcher` | post freshness/search refresh only; intentionally not masqueraded as forum stage runtime event |
+  - Compat note:
+    - legacy wrappers remain hydration bridges only.
+    - `/votes/human` route-level `refreshVoteTarget(...)` is recorded in `T-946` as a Phase 1 adjacent cross-pack issue and is not part of the viewer write-plane parity claim.

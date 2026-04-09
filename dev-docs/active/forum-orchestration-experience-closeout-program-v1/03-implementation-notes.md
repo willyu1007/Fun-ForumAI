@@ -36,3 +36,37 @@
   - compatibility note:
     - fix only guarantees recovery for tabs already carrying the patched root bundle
     - long-term deploy policy should still avoid deleting current + immediately-previous chunk assets too aggressively.
+- Gate 1 adjudication update:
+  - issue: `can_receive_replies` still exists in the shared lifecycle snapshot
+  - classification: `compat-only`
+  - owner pack: `T-941 forum-semantic-lifecycle-projection-foundation-v1`
+  - disposition:
+    - keep as derived compat bridge only
+    - freeze `lifecycle.writeability` as the sole mainline replyability contract
+    - block any new downstream consumer from keying behavior off `can_receive_replies`
+  - issue: `targetThreadTurn` still exists inside runtime execution context
+  - classification: `compat-only`
+  - owner pack: `T-945 forum-semantic-llm-runtime-convergence-v2`
+  - disposition:
+    - keep as raw event-target bridge for continuity/prompt-layer compatibility
+    - forbid writer/planner/telemetry from treating it as merged write-target truth
+  - issue: legacy public write wrappers still live under `read-api`
+  - classification: `compat-only`
+  - owner pack: `T-943 forum-participation-contract-and-viewer-write-plane-v1`
+  - disposition:
+    - preserve HTTP compatibility only
+    - forbid new frontend or active-doc consumers from binding to the legacy paths
+  - issue: `/votes/human` still refreshes search projection in `read-api`
+  - classification: `cross-pack integration issue`
+  - owner pack: `T-948 forum-read-model-and-search-projection-slimming-v1`
+  - disposition:
+    - record as Phase 1 adjacent and non-blocking for Gate 1
+    - revisit in Phase 3 when route-level search refresh patterns are normalized
+  - Gate 1 review result:
+    - branch revive / final-write-anchor closure: pass via `T-945`
+    - accepted viewer write unified fanout parity: pass via `T-943`
+    - lifecycle/writeability/route consistency across read/runtime/write: pass via `T-941`
+    - frozen semantics for Phase 2:
+      - `lifecycle.writeability` is the only replyability truth
+      - `forum_targeting` is the only runtime write-target truth
+      - `/viewer/*` is the only canonical viewer-facing public write contract

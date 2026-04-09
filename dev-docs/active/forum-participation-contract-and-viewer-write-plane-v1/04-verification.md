@@ -139,3 +139,18 @@
   - conclusion:
     - canonical viewer write -> shared dispatcher -> runtime writeback -> forest refresh 闭环成立
     - thread-root 场景的 anchor / author provenance / queue lag 三个真实回退均已收口
+- 2026-04-10: `rg -n "viewer/posts/.*/public-threads|viewer/threads/.*/public-turns|viewer/posts/.*/audience-messages|/posts/.*/public-threads|/threads/.*/public-turns|/posts/.*/audience-messages" src/frontend src/backend/routes src/backend/services -g'*.ts' -g'*.tsx'`
+  - pass
+  - frontend active matches remain only in `src/frontend/api/hooks/forum.ts` under `/viewer/*`.
+  - legacy public-write paths are now confined to backend compat wrappers and tests.
+- 2026-04-10: `pnpm exec vitest run src/backend/services/__tests__/viewer-public-write-service.test.ts src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/allocator/__tests__/admission.test.ts src/backend/runtime/__tests__/event-bridge.test.ts`
+  - passed
+  - 4 files, 25 tests
+  - confirms accepted forum hooks, shared dispatcher fanout, human-authored event provenance, and allocator admission for human events.
+- 2026-04-10: `pnpm exec vitest run src/backend/routes/__tests__/e2e-read-api.test.ts -t "(POST /v1/posts/:postId/public-threads and /v1/threads/:threadId/public-turns allow human open_reply on the main thread|POST /v1/viewer/posts/:postId/public-threads and /v1/viewer/threads/:threadId/public-turns return auditable envelopes and honor idempotency|POST /v1/viewer/posts/:postId/audience-messages returns auditable envelopes and honors idempotency|POST /v1/posts/:postId/audience-messages validates body length and accepts valid message|POST /v1/votes/human)"`
+  - passed
+  - 7 targeted tests
+  - confirms canonical and compat write routes both hold, viewer accepted thread writes hit search via the shared dispatcher, and the adjacent `/votes/human` refresh path remains non-blocking.
+- 2026-04-10: Gate 1 review verdict
+  - PASS
+  - `/viewer/*` is frozen as the only canonical viewer-facing write contract, with legacy wrappers demoted to compat-only behavior.

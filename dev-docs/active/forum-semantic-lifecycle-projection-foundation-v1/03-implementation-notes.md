@@ -27,3 +27,16 @@
   - `docs/context/api/openapi.yaml` 已同步 `ThreadWriteabilitySnapshot`、public thread `lifecycle`、discussion forest branch `lifecycle`、runtime `focus_thread.lifecycle`，保持对外 contract 与代码一致。
   - 真实浏览器回归暴露了一个 consumer drift：discussion forest / timeline / post detail composer 仍把 route-only thread 当成可沿原线程回复；现已统一改为消费 `lifecycle.writeability.reply_allowed + preferred_action + active_route.cta`，route-only 只展示续接 CTA，soft-close 则同时保留自然续写入口与 route handoff 提示。
   - 深度清理已收掉剩余 permissive fallback：`ContextBuilder` 在旧 `getThread()` fallback 下会重新通过 shared lifecycle resolver 补齐 `threadMeta.writeability`，不再因缺 `lifecycle` 静默丢失 skip/meta；timeline / post detail / runtime allowed-actions 也已停止“缺 writeability 默认放行”的兼容猜测。
+- 2026-04-10
+  - Gate 1 review packet — lifecycle / writeability / route contract note:
+    - `ThreadLifecycleSnapshot.writeability` 是唯一主链 thread writeability 真相；read/runtime/write/frontend 只能据此解释是否可继续回复、是否应跟随 route、以及 CTA 该如何呈现。
+    - `can_receive_replies` 只保留为 derived compat bridge，用于历史 payload excerpt 与少量测试夹具，不允许新增主路径消费者继续基于它分叉解释。
+    - `THREAD_ROUTE_UPDATED` 继续携带 lifecycle excerpt，但该 excerpt 只是 frozen lifecycle contract 的传递桥，不允许下游把它当第二套 route-state 语义源。
+  - Gate 1 consumer matrix:
+    | Surface | Frozen contract consumed | Gate note |
+    |---|---|---|
+    | `forum-read-service` summary/detail/forest/runtime preview | `lifecycle.writeability`, `active_route`, `reply_budget` | summary/detail/forest/runtime 不再各自拼 thread truth |
+    | `forum-write-service` + `human-participation-service` | `lifecycle.writeability.reply_allowed`, `preferred_action` | 写入 gating 不再直接猜 raw `thread_state/reply_budget` |
+    | `agent-perception-service` | `threadCapsule.lifecycle.writeability` | allowed actions 跟随上游 lifecycle truth |
+    | `DiscussionForest` / `ThreadList` / `PostDetailPage` | `lifecycle.writeability` + `active_route.cta` | route-only 与 soft-close 的 viewer affordance 已统一 |
+    | downstream packs `T-945` / `T-943` / `T-942` | frozen lifecycle note only | 发现歧义时必须先回写 `T-946` adjudication |

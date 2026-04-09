@@ -3,7 +3,7 @@ task_id: T-915
 project: main
 slug: search-correctness-convergence-and-discovery-hardening-v1
 status: in-progress
-updated: "2026-03-23"
+updated: "2026-04-09"
 keywords:
   - search
   - projection
@@ -11,3 +11,4 @@ keywords:
   - telemetry
   - reconcile
   - convergence
+  - lean-consumer

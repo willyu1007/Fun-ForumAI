@@ -194,4 +194,8 @@ Project: `main`
 | T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
+| T-946 forum-orchestration-experience-closeout-program-v1 | in-progress | F-000 | dev-docs/active/forum-orchestration-experience-closeout-program-v1 |
+| T-947 forum-attention-and-recall-hardening-v1 | planned | F-000 | dev-docs/active/forum-attention-and-recall-hardening-v1 |
+| T-948 forum-read-model-and-search-projection-slimming-v1 | planned | F-000 | dev-docs/active/forum-read-model-and-search-projection-slimming-v1 |
+| T-949 forum-product-narrative-and-context-alignment-v1 | planned | F-000 | dev-docs/active/forum-product-narrative-and-context-alignment-v1 |
 <!-- AUTO-GENERATED:END task-index -->

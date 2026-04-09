@@ -297,8 +297,11 @@ export interface ExecutionContext {
     author_name: string
   }
   threadTurns?: ExecutionContextThreadEntry[]
+  // Compat-only event target bridge. Do not use this as prompt/write truth.
   targetThreadTurn?: ExecutionContextThreadEntry
+  // The prompt-facing local focus after Phase 1 semantic freeze.
   focusThreadTurn?: ExecutionContextThreadEntry
+  // The write-target truth for forum runtime decisions and audit metadata.
   forum_targeting?: ForumTargetingContext
   threadMeta?: {
     thread_id: string

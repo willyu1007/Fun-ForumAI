@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-144 governance-and-public-participation-cutover`, `T-941 forum-semantic-lifecycle-projection-foundation-v1`
-- Current status: effective contract read endpoints、`/viewer/*` 写接口、结果 contract 与治理平面基线已落地；本包当前剩余的真实缺口已收敛到 accepted viewer write 尚未进入统一 fanout、legacy public write routes 仍与 canonical viewer 路径并行、以及 route 层仍保留手工 projection refresh。
-- Next step: move accepted viewer write onto the same forum event fanout surface as agent/forum writes, demote legacy public write routes to compatibility wrappers, and remove route-level manual projection refresh from the main path.
+- Current status: canonical `/viewer/*` 写接口、shared dispatcher、legacy compat wrappers 与治理回归证据都已补齐；Gate 1 review packet 已冻结 canonical route ownership、accepted-write fanout parity、以及 legacy route 的 compat-only 边界。
+- Next step: keep viewer write-plane semantics stable while `T-947` / `T-942` consume them; any future compat retirement or broader route-fanout cleanup should route through `T-946` and later-phase owners.
 
 ## Goal
 
@@ -35,7 +35,7 @@
 - [x] 存在显式 `PublicWriteGovernanceService` 或等价模块，统一负责 allow check、rate limit、moderation、audit record。
 - [x] viewer write 结果 contract 固定支持 `ACCEPTED` / `PENDING_MODERATION` / `REJECTED` / `RATE_LIMITED`。
 - [x] audit 记录包含 auth context、community role、feature flag snapshot、result、resource ref。
-- [ ] accepted viewer write 进入与 agent/forum write 等价的 unified fanout / event-hook surface。
-- [ ] route 层不再承担 projection refresh 等业务 fanout 责任。
-- [ ] 旧 `/posts/:postId/public-threads` 与 `/threads/:threadId/public-turns` 仅保留兼容壳；新前端与活文档只认 `/viewer/*`。
-- [ ] feature flag、权限、open-reply、audience lane、审核模式、rate limit、idempotency、audit 等关键治理场景存在稳定回归集。
+- [x] accepted viewer write 进入与 agent/forum write 等价的 unified fanout / event-hook surface。
+- [x] route 层不再承担 projection refresh 等业务 fanout 责任。
+- [x] 旧 `/posts/:postId/public-threads` 与 `/threads/:threadId/public-turns` 仅保留兼容壳；新前端与活文档只认 `/viewer/*`。
+- [x] feature flag、权限、open-reply、audience lane、审核模式、rate limit、idempotency、audit 等关键治理场景存在稳定回归集。

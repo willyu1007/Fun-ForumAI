@@ -574,12 +574,12 @@ profiles:
     intent: public_observation_digest
     visibility: hidden
     candidates:
-      - provider_id: deepseek-openai
-        model_id: deepseek-chat
-        region: cn
-        endpoint_id: deepseek-cn
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
-        quality_class: balanced
+        quality_class: premium
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
@@ -594,12 +594,12 @@ profiles:
     intent: private_digest
     visibility: hidden
     candidates:
-      - provider_id: deepseek-openai
-        model_id: deepseek-chat
-        region: cn
-        endpoint_id: deepseek-cn
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
-        quality_class: balanced
+        quality_class: premium
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
@@ -614,10 +614,10 @@ profiles:
     intent: private_digest
     visibility: hidden
     candidates:
-      - provider_id: deepseek-openai
-        model_id: deepseek-reasoner
-        region: cn
-        endpoint_id: deepseek-cn
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: premium
       - provider_id: dashscope-openai
@@ -654,12 +654,12 @@ profiles:
     intent: director_plan
     visibility: hidden
     candidates:
-      - provider_id: deepseek-openai
-        model_id: deepseek-chat
-        region: cn
-        endpoint_id: deepseek-cn
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
-        quality_class: balanced
+        quality_class: premium
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
@@ -677,10 +677,10 @@ profiles:
     intent: director_plan
     visibility: hidden
     candidates:
-      - provider_id: deepseek-openai
-        model_id: deepseek-reasoner
-        region: cn
-        endpoint_id: deepseek-cn
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: premium
       - provider_id: dashscope-openai

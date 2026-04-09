@@ -69,3 +69,18 @@
   - `pnpm k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-seed` 通过，镜像重建、迁移、secret 复用、backend rollout 均成功。
   - 对 `seed-post-ai-consciousness` 与 `seed-post-cyberpunk-city-images` 真实线程执行 `/v1/posts/:postId/threads-summary`、`/v1/threads/:threadId`、`/v1/posts/:postId/discussion-forest`、`/v1/internal/runtime-contexts/build`、`/v1/viewer/threads/:threadId/public-turns` 回归，确认 `HANDOFF_PENDING => SOFT_CLOSE + reply_allowed=true + preferred_action=FOLLOW_ROUTE`，`HANDOFFED => ROUTE_ONLY + reply_allowed=false + preferred_action=FOLLOW_ROUTE`，且 summary/detail/forest/runtime/viewer write plane 一致。
   - Chrome DevTools MCP 实测 `http://127.0.0.1:4100/posts/seed-post-cyberpunk-city-images`：route-only 分支现只显示 `转入私聊` CTA，不再显示 `回应这里`；选中该节点时顶部 composer 引导会提示改走新的续接入口；timeline 中 route-only thread 也已隐藏回复按钮，而 soft-close thread 继续保留回复入口。
+- 2026-04-10: `rg -n "can_receive_replies\\b" src/backend src/frontend src/shared`
+  - pass
+  - live matches now limit the field to:
+    - shared lifecycle contract declaration
+    - resolver derivation
+    - route-event compat excerpt
+    - tests / comment guards
+  - no mainline UI/service consumer reads `can_receive_replies` instead of `lifecycle.writeability.reply_allowed`.
+- 2026-04-10: `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - passed
+  - 10 files, 119 tests
+  - confirms lifecycle/writeability/route semantics stay aligned across read/runtime/write/frontend consumers after the Gate 1 compat sweep.
+- 2026-04-10: Gate 1 review verdict
+  - PASS
+  - `T-941` exits Phase 1 as the frozen lifecycle / writeability / route truth owner for downstream `T-947` and `T-942`.

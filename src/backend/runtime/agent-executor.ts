@@ -408,7 +408,7 @@ export class AgentExecutor {
   }
 
   private resolveForumPlanningFocusEntry(ctx: ExecutionContext): ExecutionContext['focusThreadTurn'] {
-    return ctx.focusThreadTurn ?? ctx.targetThreadTurn
+    return ctx.focusThreadTurn
   }
 
   private async resolveVisibleRouting(
