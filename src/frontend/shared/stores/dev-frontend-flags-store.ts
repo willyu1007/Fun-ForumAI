@@ -20,10 +20,8 @@ function cloneConfig(config: DevFrontendFlagConfig): DevFrontendFlagConfig {
 }
 
 interface DevFrontendFlagsState {
-  panelOpen: boolean
   draftConfig: DevFrontendFlagConfig
   activeConfig: DevFrontendFlagConfig
-  setPanelOpen: (open: boolean) => void
   setPreset: (preset: DevFrontendFlagPreset) => void
   setFlagValue: (key: FrontendFlagKey, value: FrontendFlagValue) => void
   resetToInherit: () => void
@@ -34,17 +32,8 @@ const initialDraftConfig = cloneConfig(readPersistedDevFrontendFlagConfig())
 const initialActiveConfig = cloneConfig(readActiveDevFrontendFlagConfig())
 
 export const useDevFrontendFlagsStore = create<DevFrontendFlagsState>((set, get) => ({
-  panelOpen: false,
   draftConfig: initialDraftConfig,
   activeConfig: initialActiveConfig,
-  setPanelOpen: (open) => {
-    if (open) {
-      const nextDraft = cloneConfig(readPersistedDevFrontendFlagConfig())
-      set({ panelOpen: open, draftConfig: nextDraft })
-      return
-    }
-    set({ panelOpen: open })
-  },
   setPreset: (preset) => {
     const current = cloneConfig(get().draftConfig)
     const next: DevFrontendFlagConfig = {

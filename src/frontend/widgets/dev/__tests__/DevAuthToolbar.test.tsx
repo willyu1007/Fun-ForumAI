@@ -5,7 +5,13 @@ import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { DevAuthToolbar } from '../DevAuthToolbar'
 
 vi.mock('../DevBadgeDebugPanel', () => ({
-  DevBadgeDebugPanel: () => <button type="button">勋章调试</button>,
+  DevBadgeDebugPanel: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="badge-debug-panel" /> : null,
+}))
+
+vi.mock('../DevFrontendFlagsPanel', () => ({
+  DevFrontendFlagsPanel: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="flags-panel" /> : null,
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -42,7 +48,7 @@ describe('DevAuthToolbar', () => {
     render(<DevAuthToolbar />)
 
     expect(screen.getByRole('button', { name: '展开开发模式工具栏' })).toBeTruthy()
-    expect(screen.queryByText('身份切换：')).toBeNull()
+    expect(screen.queryByText('游客')).toBeNull()
   })
 
   it('collapses the full toolbar when the collapse button is clicked', () => {
@@ -60,10 +66,9 @@ describe('DevAuthToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: '收起开发模式工具栏' }))
 
     expect(setCollapsed).toHaveBeenCalledWith(true)
-    expect(screen.getByText('身份切换：')).toBeTruthy()
   })
 
-  it('renders a badge debug entry in the expanded toolbar', () => {
+  it('renders identity buttons and tools menu in the expanded toolbar', () => {
     useDevAuthToolbarStoreMock.mockImplementation((selector) =>
       selector({
         collapsed: false,
@@ -74,7 +79,9 @@ describe('DevAuthToolbar', () => {
 
     render(<DevAuthToolbar />)
 
-    expect(screen.getByRole('button', { name: '勋章调试' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /VITE 功能/i })).toBeTruthy()
+    expect(screen.getByText('游客')).toBeTruthy()
+    expect(screen.getByText('用户')).toBeTruthy()
+    expect(screen.getByText('管理员')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '开发工具' })).toBeTruthy()
   })
 })
