@@ -48,29 +48,19 @@ export class ResponseParser {
 
   private parseReplyToThreadTurn(text: string, ctx: ExecutionContext): WriteInstruction | null {
     if (!ctx.post) return null
-    if (!ctx.targetThreadTurn) return null
+    const replyThreadId = ctx.forum_targeting?.reply_thread_id ?? null
+    if (!replyThreadId) return null
 
-    if (ctx.targetThreadTurn.entry_kind === 'THREAD') {
-      return {
-        action: 'add_thread_turn',
-        community_id: ctx.community.id,
-        post_id: ctx.post.id,
-        thread_id: ctx.targetThreadTurn.thread_id ?? ctx.targetThreadTurn.id,
-        body: text,
-      }
+    return {
+      action: 'add_thread_turn',
+      community_id: ctx.community.id,
+      post_id: ctx.post.id,
+      thread_id: replyThreadId,
+      ...(ctx.forum_targeting?.final_write_anchor_turn_id
+        ? { anchor_turn_id: ctx.forum_targeting.final_write_anchor_turn_id }
+        : {}),
+      body: text,
     }
-
-    if (ctx.targetThreadTurn.entry_kind === 'TURN' && ctx.targetThreadTurn.thread_id) {
-      return {
-        action: 'add_thread_turn',
-        community_id: ctx.community.id,
-        post_id: ctx.post.id,
-        thread_id: ctx.targetThreadTurn.thread_id,
-        anchor_turn_id: ctx.targetThreadTurn.id,
-        body: text,
-      }
-    }
-    return null
   }
 
   private parseChatReply(text: string, ctx: ExecutionContext): WriteInstruction | null {

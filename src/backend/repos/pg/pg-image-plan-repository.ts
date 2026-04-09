@@ -66,26 +66,18 @@ export class PgImagePlanRepository implements ImagePlanRepository {
       limit?: number
     },
   ): Promise<PersistedImagePlan[]> {
-    const clauses = [
-      Prisma.sql`
-        EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(selected_sources) AS source
-          WHERE source ->> 'asset_id' = ${assetId}
-        )
-      `,
-    ]
-    if (options?.since) {
-      clauses.push(Prisma.sql`created_at >= ${options.since}`)
-    }
-    const whereClause = Prisma.sql`WHERE ${Prisma.join(clauses, Prisma.sql` AND `)}`
     const limitClause = typeof options?.limit === 'number' && options.limit > 0
       ? Prisma.sql`LIMIT ${options.limit}`
       : Prisma.empty
     const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       SELECT id
       FROM image_plans
-      ${whereClause}
+      WHERE EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(selected_sources) AS source(value)
+        WHERE value ->> 'asset_id' = ${assetId}
+      )
+      ${options?.since ? Prisma.sql`AND created_at >= ${options.since}` : Prisma.empty}
       ORDER BY created_at DESC
       ${limitClause}
     `)

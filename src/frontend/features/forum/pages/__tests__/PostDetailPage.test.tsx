@@ -963,7 +963,8 @@ describe('PostDetailPage', () => {
                   },
                 },
                 writeability: {
-                  reply_allowed: false,
+                  reply_allowed: true,
+                  preferred_action: 'FOLLOW_ROUTE',
                 },
               },
             },

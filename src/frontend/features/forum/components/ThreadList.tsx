@@ -32,6 +32,7 @@ import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { cn } from '@/lib/utils'
 import { canOpenPublicAuthorProfile, readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { allowsDirectThreadReply } from '../lib/thread-writeability'
 
 interface ThreadListProps {
   summaries: PublicStageThreadSummaryData[]
@@ -182,7 +183,7 @@ function ThreadTimelineItem({
     { enabled: expanded || isTargetThread },
   )
   const detail = detailQuery.data?.data ?? null
-  const canReplyInThread = enablePublicReplies && summary.lifecycle.writeability.reply_allowed
+  const canReplyInThread = enablePublicReplies && allowsDirectThreadReply(summary.lifecycle.writeability)
 
   useEffect(() => {
     if (!canReplyInThread && replyOpen) {

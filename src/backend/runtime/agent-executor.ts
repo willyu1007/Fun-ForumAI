@@ -15,6 +15,7 @@ import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
+import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -65,10 +66,17 @@ export class AgentExecutor {
         && this.deps.surfaceMediaPlanningService
       ) {
         try {
-          const postId = ctx.targetThreadTurn?.post_id ?? event.post_id ?? null
-          const threadId = ctx.targetThreadTurn?.entry_kind === 'THREAD'
-            ? ctx.targetThreadTurn.id
-            : ctx.targetThreadTurn?.thread_id ?? null
+          const forumPlanningFocus = this.resolveForumPlanningFocusEntry(ctx)
+          const postId = ctx.post?.id ?? forumPlanningFocus?.post_id ?? event.post_id ?? null
+          const threadId = ctx.forum_targeting?.reply_thread_id
+            ?? (forumPlanningFocus?.entry_kind === 'THREAD'
+              ? forumPlanningFocus.id
+              : forumPlanningFocus?.thread_id ?? null)
+            ?? event.thread_id
+            ?? null
+          const turnId = forumPlanningFocus?.entry_kind === 'TURN'
+            ? forumPlanningFocus.id
+            : null
           if (!postId) {
             throw new Error('forum_thread_media_plan_missing_post_id')
           }
@@ -77,9 +85,9 @@ export class AgentExecutor {
             community_id: ctx.community.id,
             post_id: postId,
             thread_id: threadId,
-            turn_id: ctx.targetThreadTurn?.entry_kind === 'TURN' ? ctx.targetThreadTurn.id : null,
-            surface: threadId ? 'forum_turn' : 'forum_thread',
-            focus_hint: ctx.targetThreadTurn?.body ?? ctx.public_scene.local_intent_block,
+            turn_id: turnId,
+            surface: turnId ? 'forum_turn' : 'forum_thread',
+            focus_hint: forumPlanningFocus?.body ?? ctx.public_scene.local_intent_block,
             payload: ctx.public_scene,
           })
           if (plan) {
@@ -269,6 +277,30 @@ export class AgentExecutor {
           instruction.display_attachment_refs = ctx.surface_media_plan.display_attachment_refs
         }
       }
+      if (ctx.forum_targeting && instruction.action === 'add_thread_turn') {
+        const forumTargetingAudit = {
+          event_target_entry_id: ctx.forum_targeting.event_target_entry_id,
+          event_target_thread_id: ctx.forum_targeting.event_target_thread_id,
+          focus_turn_id: ctx.forum_targeting.focus_turn_id,
+          selected_anchor_turn_id: ctx.forum_targeting.selected_anchor_turn_id,
+          actual_anchor_turn_id: ctx.forum_targeting.actual_anchor_turn_id,
+          final_write_anchor_turn_id: ctx.forum_targeting.final_write_anchor_turn_id,
+          reply_thread_id: ctx.forum_targeting.reply_thread_id,
+          browse_reason: ctx.forum_targeting.browse_reason,
+          allowed_actions: ctx.forum_targeting.allowed_actions,
+          written_anchor_turn_id: instruction.anchor_turn_id ?? null,
+        }
+        instruction.audit_metadata = {
+          ...(instruction.audit_metadata ?? {}),
+          forum_targeting: forumTargetingAudit,
+        }
+        runtimeFeatureMetrics.recordForumAnchorResolution({
+          selected_anchor_turn_id: ctx.forum_targeting.selected_anchor_turn_id,
+          actual_anchor_turn_id: ctx.forum_targeting.actual_anchor_turn_id,
+          final_write_anchor_turn_id: ctx.forum_targeting.final_write_anchor_turn_id,
+          written_anchor_turn_id: instruction.anchor_turn_id ?? null,
+        })
+      }
 
       const writeResult = await this.deps.dataplaneWriter.write(
         instruction,
@@ -373,6 +405,10 @@ export class AgentExecutor {
       memory_block: ctx.blocks?.memory_block ?? '',
       soft_expression_block: ctx.blocks?.soft_expression_block ?? '',
     }
+  }
+
+  private resolveForumPlanningFocusEntry(ctx: ExecutionContext): ExecutionContext['focusThreadTurn'] {
+    return ctx.focusThreadTurn ?? ctx.targetThreadTurn
   }
 
   private async resolveVisibleRouting(

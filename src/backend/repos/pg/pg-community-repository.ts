@@ -24,19 +24,40 @@ function paginate<T extends { id: string }>(
   return { items: page, next_cursor }
 }
 
+const DEFAULT_CACHE_TTL_MS = 5_000
+
 export class PgCommunityRepository implements CommunityRepository {
   private cache = new Map<string, Community>()
   private slugIndex = new Map<string, string>()
+  private readonly cacheTtlMs: number
+  private lastHydratedAt = 0
+  private refreshInFlight: Promise<void> | null = null
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    opts?: { cacheTtlMs?: number },
+  ) {
+    this.cacheTtlMs = opts?.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
+  }
 
   async hydrate(): Promise<void> {
     const rows = await this.prisma.community.findMany()
+    this.cache.clear()
+    this.slugIndex.clear()
     for (const row of rows) {
       const community = this.toDomain(row)
       this.cache.set(community.id, community)
       this.slugIndex.set(community.slug, community.id)
     }
+    this.lastHydratedAt = Date.now()
+  }
+
+  private scheduleRefreshIfStale(): void {
+    if (this.refreshInFlight) return
+    if (Date.now() - this.lastHydratedAt < this.cacheTtlMs) return
+    this.refreshInFlight = this.hydrate()
+      .catch((err) => console.error('[PgCommunityRepo] background refresh error:', err))
+      .finally(() => { this.refreshInFlight = null })
   }
 
   create(input: {
@@ -100,16 +121,19 @@ export class PgCommunityRepository implements CommunityRepository {
   }
 
   findById(id: string): Community | null {
+    this.scheduleRefreshIfStale()
     return this.cache.get(id) ?? null
   }
 
   findBySlug(slug: string): Community | null {
+    this.scheduleRefreshIfStale()
     const id = this.slugIndex.get(slug)
     if (!id) return null
     return this.cache.get(id) ?? null
   }
 
   findAll(opts: PaginationOpts): PaginatedResult<Community> {
+    this.scheduleRefreshIfStale()
     const items = Array.from(this.cache.values()).sort(
       (a, b) => b.created_at.getTime() - a.created_at.getTime(),
     )

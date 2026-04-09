@@ -1,11 +1,16 @@
 import type { AudienceService } from './audience-service.js'
+import type { AcceptedAudienceWriteEvent } from './forum-event-dispatcher.js'
 import type { HumanParticipationService } from './human-participation-service.js'
 import type { PublicWriteGovernanceService } from './public-write-governance-service.js'
+import type { DomainEvent } from '../repos/index.js'
 import type {
   PublicWriteCommunityRole,
   PublicWriteResult,
   ViewerWriteSourceContext,
 } from '../../shared/forum-orchestration.js'
+
+type AcceptedForumEventHook = (event: DomainEvent) => Promise<void> | void
+type AcceptedAudienceWriteHook = (event: AcceptedAudienceWriteEvent) => Promise<void> | void
 
 export interface ViewerPublicWriteServiceDeps {
   humanParticipationService: Pick<
@@ -14,10 +19,20 @@ export interface ViewerPublicWriteServiceDeps {
   >
   audienceService: Pick<AudienceService, 'createAcceptedMessage'>
   publicWriteGovernanceService: Pick<PublicWriteGovernanceService, 'handleWrite'>
+  onAcceptedForumEvent?: AcceptedForumEventHook
+  onAcceptedAudienceWrite?: AcceptedAudienceWriteHook
 }
 
 export class ViewerPublicWriteService {
   constructor(private readonly deps: ViewerPublicWriteServiceDeps) {}
+
+  setAcceptedForumEventHook(hook: AcceptedForumEventHook): void {
+    this.deps.onAcceptedForumEvent = hook
+  }
+
+  setAcceptedAudienceWriteHook(hook: AcceptedAudienceWriteHook): void {
+    this.deps.onAcceptedAudienceWrite = hook
+  }
 
   async createPublicThread(input: {
     actor_user_id: string
@@ -51,6 +66,7 @@ export class ViewerPublicWriteService {
           idempotency_key: null,
           source_context: input.source_context ?? null,
         })
+        await this.deps.onAcceptedForumEvent?.(result.event)
 
         return {
           thread_id: result.thread.id,
@@ -102,6 +118,7 @@ export class ViewerPublicWriteService {
           focused_turn_id: input.focused_turn_id ?? null,
           actual_anchor_turn_id: input.actual_anchor_turn_id ?? null,
         })
+        await this.deps.onAcceptedForumEvent?.(result.event)
 
         return {
           thread_id: input.thread_id,
@@ -141,6 +158,11 @@ export class ViewerPublicWriteService {
           post_id: input.post_id,
           actor_user_id: input.actor_user_id,
           body: input.body,
+        })
+        await this.deps.onAcceptedAudienceWrite?.({
+          post_id: input.post_id,
+          thread_id: result.thread.id,
+          audience_message_id: result.message.id,
         })
 
         return {

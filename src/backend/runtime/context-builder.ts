@@ -6,6 +6,8 @@ import type {
   AgentPersona,
   CurrentContextSource,
   ExecutionContext,
+  ExecutionContextThreadEntry,
+  ForumTargetingContext,
   PromptRequestEnvelope,
 } from './types.js'
 import { config } from '../lib/config.js'
@@ -89,10 +91,10 @@ export class ContextBuilder {
       )
     ) {
       const targetThreadAuthorAgentId = ctx.targetThreadTurn?.entry_kind === 'THREAD'
-        ? ctx.targetThreadTurn.author_agent_id
+        ? ctx.targetThreadTurn.author_agent_id ?? undefined
         : undefined
       const targetTurnAuthorAgentId = ctx.targetThreadTurn?.entry_kind === 'TURN'
-        ? ctx.targetThreadTurn.author_agent_id
+        ? ctx.targetThreadTurn.author_agent_id ?? undefined
         : undefined
       const continuity = await this.deps.forumSceneContinuityService.resolve({
         event,
@@ -116,6 +118,7 @@ export class ContextBuilder {
           post_id: string
           thread_id?: string | null
           focus_turn_id?: string | null
+          agent_id?: string | null
         },
       ) => Promise<{
         post_capsule: ExecutionContext['semantic_post_capsule']
@@ -154,6 +157,8 @@ export class ContextBuilder {
       }
     }
 
+    this.finalizeForumTargeting(ctx)
+
     if (
       event.event_type === 'NewMessageCreated'
       && event.room_id
@@ -190,11 +195,12 @@ export class ContextBuilder {
   }
 
   async enrichWithLayers(ctx: ExecutionContext): Promise<ExecutionContext> {
+    const promptFocusEntry = this.getPromptFocusEntry(ctx)
     const scene: import('./types.js').PromptScene = ctx.event.event_type === 'NewMessageCreated'
       ? 'chat_room'
       : ctx.chatContext
       ? 'chat_room'
-      : ctx.targetThreadTurn
+      : promptFocusEntry
         ? 'forum_thread'
         : 'forum_post'
     ctx.promptScene = scene
@@ -219,7 +225,7 @@ export class ContextBuilder {
       topicHints,
       currentContextSources: this.buildCurrentContextSources(ctx, scene),
       requestEnvelope: this.buildRequestEnvelope(scene, {
-        currentUserText: ctx.targetThreadTurn?.body,
+        currentUserText: promptFocusEntry?.body,
       }),
       communityHardRule,
       communitySoftCulture,
@@ -235,7 +241,7 @@ export class ContextBuilder {
         ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
         : ctx.event.event_type === 'NewMessageCreated'
           ? '你正在聊天室中继续群聊'
-        : ctx.targetThreadTurn
+        : promptFocusEntry
           ? '你正在公共 thread 中继续推进当前回合'
           : '你正在论坛帖子下参与公开讨论',
       shortTermState: ctx.chatContext
@@ -252,7 +258,7 @@ export class ContextBuilder {
         author_agent_id: entry.author_agent_id,
         body: entry.body,
       })),
-      targetThreadTurnId: ctx.targetThreadTurn?.id,
+      targetThreadTurnId: promptFocusEntry?.id,
     })
     ctx.persona = composed.persona
     ctx.blocks = composed.blocks
@@ -262,12 +268,13 @@ export class ContextBuilder {
   }
 
   private composeConversationText(ctx: ExecutionContext): string {
+    const promptFocusEntry = this.getPromptFocusEntry(ctx)
     if (ctx.chatContext?.recent_messages?.length) {
       return ctx.chatContext.recent_messages.map((m) => m.body).join(' ')
     }
-    if (ctx.targetThreadTurn) {
+    if (promptFocusEntry) {
       const thread = ctx.threadTurns?.map((entry) => entry.body).join(' ') ?? ''
-      return `${thread} ${ctx.targetThreadTurn.body}`.trim()
+      return `${thread} ${promptFocusEntry.body}`.trim()
     }
     if (ctx.post) {
       return `${ctx.post.title} ${ctx.post.body}`.trim()
@@ -386,6 +393,100 @@ export class ContextBuilder {
     }
   }
 
+  private finalizeForumTargeting(ctx: ExecutionContext): void {
+    if (!isForumThreadEvent(ctx.event)) {
+      return
+    }
+
+    const focusTurnId = ctx.perceived_context_slice?.focus_turn_id
+      ?? ctx.targetThreadTurn?.id
+      ?? null
+    ctx.focusThreadTurn = this.resolveThreadEntryById(ctx.threadTurns, focusTurnId) ?? ctx.targetThreadTurn
+    ctx.forum_targeting = this.buildForumTargetingContext(ctx)
+  }
+
+  private buildForumTargetingContext(ctx: ExecutionContext): ForumTargetingContext {
+    const eventTargetEntryId = ctx.event.turn_id
+      ?? ctx.event.thread_id
+      ?? ctx.targetThreadTurn?.id
+      ?? null
+    const eventTargetThreadId = ctx.event.thread_id
+      ?? (ctx.targetThreadTurn?.entry_kind === 'THREAD'
+        ? ctx.targetThreadTurn.id
+        : ctx.targetThreadTurn?.thread_id ?? null)
+    const focusTurnId = ctx.perceived_context_slice?.focus_turn_id
+      ?? ctx.focusThreadTurn?.id
+      ?? null
+    const focusEntry = this.resolveThreadEntryById(ctx.threadTurns, focusTurnId)
+      ?? ctx.focusThreadTurn
+      ?? ctx.targetThreadTurn
+    const selectedAnchorTurnId = this.normalizeAnchorTurnId(
+      ctx,
+      ctx.perceived_context_slice?.selected_anchor_turn_id ?? null,
+    )
+    const actualAnchorTurnId = this.normalizeAnchorTurnId(
+      ctx,
+      ctx.perceived_context_slice?.actual_anchor_turn_id ?? null,
+    )
+    const fallbackFocusAnchorTurnId = focusEntry?.entry_kind === 'TURN'
+      ? focusEntry.id
+      : null
+
+    return {
+      event_target_entry_id: eventTargetEntryId,
+      event_target_thread_id: eventTargetThreadId,
+      focus_turn_id: focusTurnId,
+      selected_anchor_turn_id: selectedAnchorTurnId,
+      actual_anchor_turn_id: actualAnchorTurnId,
+      final_write_anchor_turn_id:
+        actualAnchorTurnId
+        ?? selectedAnchorTurnId
+        ?? fallbackFocusAnchorTurnId,
+      reply_thread_id: ctx.forum_runtime_context?.thread_id
+        ?? ctx.perceived_context_slice?.thread_id
+        ?? ctx.semantic_thread_capsule?.thread_id
+        ?? ctx.event.thread_id
+        ?? null,
+      browse_reason: ctx.perceived_context_slice?.browse_reason ?? null,
+      allowed_actions: ctx.perceived_context_slice?.allowed_actions ?? [],
+    }
+  }
+
+  private resolveThreadEntryById(
+    threadTurns: ExecutionContext['threadTurns'],
+    entryId: string | null | undefined,
+  ): ExecutionContextThreadEntry | undefined {
+    if (!threadTurns || !entryId) {
+      return undefined
+    }
+    return threadTurns.find((entry) => entry.id === entryId)
+  }
+
+  private normalizeAnchorTurnId(
+    ctx: ExecutionContext,
+    entryId: string | null | undefined,
+  ): string | null {
+    const entry = this.resolveThreadEntryById(ctx.threadTurns, entryId)
+    if (!entryId) {
+      return null
+    }
+    return (entry?.entry_kind === 'TURN' ? entry.id : null)
+      ?? (this.isKnownThreadId(ctx, entryId) ? null : entryId)
+  }
+
+  private isKnownThreadId(ctx: ExecutionContext, entryId: string): boolean {
+    return entryId === (ctx.event.thread_id ?? null)
+      || entryId === (ctx.forum_runtime_context?.thread_id ?? null)
+      || entryId === (ctx.perceived_context_slice?.thread_id ?? null)
+      || entryId === (ctx.semantic_thread_capsule?.thread_id ?? null)
+      || ctx.threadTurns?.some((entry) => entry.entry_kind === 'THREAD' && entry.id === entryId)
+      || false
+  }
+
+  private getPromptFocusEntry(ctx: ExecutionContext): ExecutionContextThreadEntry | undefined {
+    return ctx.focusThreadTurn ?? ctx.targetThreadTurn
+  }
+
   private resolveThreadSkipReason(
     threadMeta: ExecutionContext['threadMeta'] | undefined,
   ): string | null {
@@ -419,15 +520,16 @@ export class ContextBuilder {
     }>,
   ): ExecutionContext['threadTurns'] {
     return threads.flatMap((thread) => {
-      const threadAuthorId = thread.author_agent_id ?? thread.author.id
       const root = {
         id: thread.id,
         post_id: thread.post_id,
         thread_id: thread.id,
         entry_kind: 'THREAD' as const,
         anchor_turn_id: null,
+        author_actor_type: thread.author_actor_type,
         body: thread.body,
-        author_agent_id: threadAuthorId,
+        author_agent_id: thread.author_agent_id,
+        author_user_id: thread.author_user_id,
         author_name: thread.author.display_name,
       }
       const turns = thread.turns.map((turn) => ({
@@ -435,10 +537,12 @@ export class ContextBuilder {
         post_id: turn.post_id,
         thread_id: turn.thread_id,
         entry_kind: 'TURN' as const,
-        anchor_turn_id: turn.anchor_turn_id ?? thread.id,
+        anchor_turn_id: turn.anchor_turn_id ?? null,
         turn_index: turn.turn_index,
+        author_actor_type: turn.author_actor_type,
         body: turn.body,
-        author_agent_id: turn.author_agent_id ?? turn.author.id,
+        author_agent_id: turn.author_agent_id,
+        author_user_id: turn.author_user_id,
         author_name: turn.author.display_name,
       }))
       return [root, ...turns]
@@ -456,6 +560,7 @@ export class ContextBuilder {
 
   private extractTopicHints(ctx: ExecutionContext): string[] {
     const hints: string[] = []
+    const promptFocusEntry = this.getPromptFocusEntry(ctx)
 
     if (ctx.post) {
       const titleWords = ctx.post.title.split(/[\s,，、；;：:]+/).filter((w) => w.length >= 2)
@@ -479,8 +584,8 @@ export class ContextBuilder {
       }
     }
 
-    if (ctx.targetThreadTurn) {
-      const entryWords = ctx.targetThreadTurn.body
+    if (promptFocusEntry) {
+      const entryWords = promptFocusEntry.body
         .split(/[\s,，、；;：:。.!！?？]+/)
         .filter((w) => w.length >= 2)
         .slice(0, 3)
@@ -495,6 +600,7 @@ export class ContextBuilder {
     scene: import('./types.js').PromptScene,
   ): CurrentContextSource[] {
     const sources: CurrentContextSource[] = []
+    const promptFocusEntry = this.getPromptFocusEntry(ctx)
     const hasForumRuntimeContext = Boolean(
       config.features.forumOrchestrationEnvelopeCutover
       && ctx.forum_runtime_context,
@@ -508,7 +614,7 @@ export class ContextBuilder {
       })
     }
     if (hasForumRuntimeContext && ctx.forum_runtime_context) {
-      const text = this.serializeForumRuntimeContext(ctx.forum_runtime_context)
+      const text = this.serializeForumRuntimeContext(ctx.forum_runtime_context, ctx.forum_targeting)
       sources.push({
         kind: 'forum_runtime_context',
         text,
@@ -533,12 +639,12 @@ export class ContextBuilder {
         runtimeFeatureMetrics.recordForumOrchestrationFallback()
       }
     }
-    if (ctx.targetThreadTurn) {
+    if (promptFocusEntry) {
       sources.push({
-        kind: 'target_thread_turn',
-        text: `${ctx.targetThreadTurn.author_name}：${ctx.targetThreadTurn.body}`,
-        priority: 'critical',
-        source_id: ctx.targetThreadTurn.id,
+        kind: 'focus_thread_turn',
+        text: `${promptFocusEntry.author_name}：${promptFocusEntry.body}`,
+        priority: scene === 'forum_thread' ? 'high' : 'medium',
+        source_id: promptFocusEntry.id,
       })
     }
     if (ctx.community.description) {
@@ -609,12 +715,28 @@ export class ContextBuilder {
     return sources
   }
 
-  private serializeForumRuntimeContext(runtimeContext: NonNullable<ExecutionContext['forum_runtime_context']>): string {
+  private serializeForumRuntimeContext(
+    runtimeContext: NonNullable<ExecutionContext['forum_runtime_context']>,
+    forumTargeting?: ForumTargetingContext,
+  ): string {
+    const routeSnapshot = runtimeContext.foundation_skeleton.route_snapshot
+    const writeability = runtimeContext.focus_thread?.lifecycle.writeability
     return [
       '## Forum Runtime Context',
       `post=${runtimeContext.post_id}`,
       runtimeContext.thread_id ? `thread=${runtimeContext.thread_id}` : null,
       `flow_phase=${runtimeContext.post_situation?.flow_phase ?? 'UNKNOWN'}`,
+      forumTargeting?.browse_reason ? `browse_reason=${forumTargeting.browse_reason}` : null,
+      forumTargeting?.event_target_entry_id ? `event_target=${forumTargeting.event_target_entry_id}` : null,
+      forumTargeting?.focus_turn_id ? `focus_turn=${forumTargeting.focus_turn_id}` : null,
+      forumTargeting?.selected_anchor_turn_id ? `selected_anchor=${forumTargeting.selected_anchor_turn_id}` : null,
+      forumTargeting?.actual_anchor_turn_id ? `actual_anchor=${forumTargeting.actual_anchor_turn_id}` : null,
+      forumTargeting?.final_write_anchor_turn_id ? `final_write_anchor=${forumTargeting.final_write_anchor_turn_id}` : null,
+      forumTargeting?.allowed_actions.length ? `allowed_actions=${forumTargeting.allowed_actions.join('|')}` : null,
+      writeability
+        ? `writeability=${writeability.reply_mode}:${writeability.preferred_action}:${writeability.reason_code}`
+        : null,
+      routeSnapshot ? `route_snapshot=${routeSnapshot.route_type}:${routeSnapshot.route_state}` : null,
       runtimeContext.foundation_skeleton.post.title
         ? `title=${runtimeContext.foundation_skeleton.post.title}`
         : null,
@@ -623,6 +745,15 @@ export class ContextBuilder {
         : null,
       runtimeContext.focus_thread?.summary
         ? `focus_summary=${runtimeContext.focus_thread.summary}`
+        : null,
+      runtimeContext.evidence_window?.anchor_turn_id
+        ? `evidence_anchor=${runtimeContext.evidence_window.anchor_turn_id}`
+        : null,
+      runtimeContext.evidence_window?.window_strategy
+        ? `evidence_window_strategy=${runtimeContext.evidence_window.window_strategy}`
+        : null,
+      runtimeContext.perceived_slice?.visible_node_ids.length
+        ? `visible_scope=${runtimeContext.perceived_slice.visible_node_ids.join('|')}`
         : null,
       runtimeContext.evidence_window?.turns.length
         ? `evidence_window=${runtimeContext.evidence_window.turns.map((turn) => `${turn.author.display_name}：${turn.body_excerpt}`).join(' | ')}`
@@ -678,4 +809,8 @@ function toThreadMeta(lifecycle: {
       : null,
     writeability: lifecycle.writeability,
   }
+}
+
+function isForumThreadEvent(event: ExecutionContext['event']): boolean {
+  return event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded'
 }

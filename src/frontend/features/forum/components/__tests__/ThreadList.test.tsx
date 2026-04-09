@@ -441,6 +441,39 @@ describe('ThreadList', () => {
     )
   })
 
+  it('hides timeline reply controls when the thread prefers route handoff despite reply_allowed staying true', () => {
+    renderThreadList({
+      enablePublicReplies: true,
+      summaries: [
+        buildSummary({
+          active_route: {
+            route_type: 'AFTERSHOW',
+            route_state: 'READY',
+            reason_code: 'THREAD_HANDOFFED',
+            handoff_label: '这条线已经转去 Aftershow。',
+            handoff_payload: null,
+            cta: {
+              label: '查看 Aftershow',
+              target: '/posts/post-1#aftershow-panel',
+            },
+          } as PublicStageThreadSummaryData['active_route'],
+          lifecycle: {
+            writeability: {
+              reply_allowed: true,
+              preferred_action: 'FOLLOW_ROUTE',
+            },
+          } as PublicStageThreadSummaryData['lifecycle'],
+        }),
+      ],
+    })
+
+    expect(screen.queryByRole('button', { name: '回复' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '登录后回复' })).toBeNull()
+    expect(screen.getByRole('link', { name: '查看 Aftershow' }).getAttribute('href')).toBe(
+      '/posts/post-1#aftershow-panel',
+    )
+  })
+
   it('renders route handoff notes and clears report feedback after a short delay', async () => {
     renderThreadList({
       summaries: [

@@ -6,10 +6,20 @@ import type {
 } from '../types.js'
 import type { AgentStageTierSnapshotRepository } from '../agent-stage-tier-snapshot-repository.js'
 
+const DEFAULT_CACHE_TTL_MS = 5_000
+
 export class PgAgentStageTierSnapshotRepository implements AgentStageTierSnapshotRepository {
   private readonly cache = new Map<string, AgentStageTierSnapshot>()
+  private readonly cacheTtlMs: number
+  private lastHydratedAt = 0
+  private refreshInFlight: Promise<void> | null = null
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    opts?: { cacheTtlMs?: number },
+  ) {
+    this.cacheTtlMs = opts?.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
+  }
 
   async hydrate(): Promise<void> {
     const rows = await this.prisma.agentStageTierSnapshot.findMany()
@@ -18,6 +28,15 @@ export class PgAgentStageTierSnapshotRepository implements AgentStageTierSnapsho
       const mapped = this.toDomain(row)
       this.cache.set(mapped.agent_id, mapped)
     }
+    this.lastHydratedAt = Date.now()
+  }
+
+  private scheduleRefreshIfStale(): void {
+    if (this.refreshInFlight) return
+    if (Date.now() - this.lastHydratedAt < this.cacheTtlMs) return
+    this.refreshInFlight = this.hydrate()
+      .catch((err) => console.error('[PgAgentStageTierSnapshotRepo] background refresh error:', err))
+      .finally(() => { this.refreshInFlight = null })
   }
 
   async upsert(input: UpsertAgentStageTierSnapshotInput): Promise<AgentStageTierSnapshot> {
@@ -54,10 +73,12 @@ export class PgAgentStageTierSnapshotRepository implements AgentStageTierSnapsho
   }
 
   findLatestByAgent(agentId: string): AgentStageTierSnapshot | null {
+    this.scheduleRefreshIfStale()
     return this.cache.get(agentId) ?? null
   }
 
   findLatestByAgents(agentIds: string[]): Map<string, AgentStageTierSnapshot> {
+    this.scheduleRefreshIfStale()
     const result = new Map<string, AgentStageTierSnapshot>()
     for (const id of agentIds) {
       const hit = this.cache.get(id)

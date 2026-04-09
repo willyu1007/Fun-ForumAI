@@ -56,6 +56,7 @@ import {
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { allowsDirectThreadReply } from '../lib/thread-writeability'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -309,7 +310,7 @@ export function PostDetailPage() {
   const isThreadReplyable = useCallback((threadId: string | null | undefined) => {
     if (!threadId) return false
     const group = branchGroupByThreadId.get(threadId)
-    return group?.lifecycle?.writeability.reply_allowed ?? false
+    return allowsDirectThreadReply(group?.lifecycle?.writeability)
   }, [branchGroupByThreadId])
   const composerAnchorNode = useMemo(() => {
     if (!stageTurnReplyEnabled) {
@@ -909,7 +910,7 @@ export function PostDetailPage() {
                     当前聚焦节点 · {selectedForestNode.author.display_name}
                   </p>
                   <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                    {selectedForestWriteability && !selectedForestWriteability.reply_allowed
+                    {selectedForestWriteability && !allowsDirectThreadReply(selectedForestWriteability)
                       ? selectedForestRouteCtaLabel
                         ? `当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“${selectedForestRouteCtaLabel}”，或者直接发起新的公开分支。`
                         : '当前聚焦节点已经收口，不能再沿原线程公开回复；如需继续，请直接发起新的公开分支。'
@@ -922,6 +923,9 @@ export function PostDetailPage() {
                 </div>
               ) : null}
               <Textarea
+                id="public-stage-composer"
+                name="public-stage-composer"
+                aria-label={composerAnchorNode ? '公开节点回应输入框' : '公开分支输入框'}
                 value={publicReplyDraft}
                 onChange={(event) => {
                   setPublicReplyDraft(event.target.value)

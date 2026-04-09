@@ -103,6 +103,8 @@ export class EventBridge {
       community_id: post.community_id,
       post_id: post.id,
       author_agent_id: post.author_agent_id,
+      author_actor_type: 'agent',
+      author_user_id: undefined,
       tags: post.tags,
       controversy_score: computeControversyScore(`${post.title}\n${post.body}`),
     }
@@ -137,6 +139,8 @@ export class EventBridge {
       post_id: postId,
       community_id: post?.community_id ?? payload.community_id,
       author_agent_id: entry?.author_agent_id ?? payload.author_agent_id,
+      author_actor_type: entry?.author_actor_type ?? payload.author_actor_type,
+      author_user_id: entry?.author_user_id ?? payload.author_user_id,
       tags: post?.tags ?? payload.tags,
       target_author_agent_id: anchorEntry?.author_agent_id ?? payload.target_author_agent_id,
       thread_participants: threadParticipants,
@@ -209,6 +213,17 @@ export class EventBridge {
   private toBasePayload(event: DomainEvent, eventType: DomainEventType): EventPayload {
     const payload = event.payload_json
     const chainDepth = this.toNumber(payload.chain_depth)
+    const authorActorType = this.toActorType(payload.author_actor_type) ?? event.actor_type
+    const payloadAuthorAgentId =
+      this.toString(payload.author_agent_id)
+      ?? this.toString(payload.voter_agent_id)
+    const fallbackAuthorAgentId = authorActorType === 'agent'
+      ? this.toString(event.actor_id)
+      : undefined
+    const fallbackAuthorUserId =
+      authorActorType === 'human'
+        ? this.toString(event.actor_id)
+        : undefined
 
     return {
       event_id: event.id,
@@ -218,10 +233,9 @@ export class EventBridge {
       community_id: this.toString(payload.community_id) ?? event.community_id ?? '',
       post_id: this.toString(payload.post_id) ?? event.post_id ?? undefined,
       room_id: this.toString(payload.room_id) ?? event.room_id ?? undefined,
-      author_agent_id: this.toString(payload.author_agent_id)
-        ?? this.toString(payload.voter_agent_id)
-        ?? event.actor_id
-        ?? '',
+      author_agent_id: payloadAuthorAgentId ?? fallbackAuthorAgentId,
+      author_actor_type: authorActorType,
+      author_user_id: this.toString(payload.author_user_id) ?? fallbackAuthorUserId,
       tags: this.toStringArray(payload.tags),
       thread_id: this.toString(payload.thread_id),
       turn_id: this.toString(payload.turn_id),
@@ -241,6 +255,12 @@ export class EventBridge {
     if (!Array.isArray(value)) return undefined
     const normalized = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     return normalized.length > 0 ? normalized : undefined
+  }
+
+  private toActorType(value: unknown): 'agent' | 'human' | 'system' | undefined {
+    return value === 'agent' || value === 'human' || value === 'system'
+      ? value
+      : undefined
   }
 
   private toNumber(value: unknown): number {

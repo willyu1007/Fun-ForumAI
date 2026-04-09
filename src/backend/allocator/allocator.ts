@@ -49,6 +49,7 @@ export class EventAllocator {
         event_type: event.event_type,
         community_id: event.community_id,
         post_id: event.post_id,
+        thread_id: event.thread_id,
         room_id: event.room_id,
       },
       degradationState,

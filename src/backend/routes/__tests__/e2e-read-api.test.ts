@@ -1658,8 +1658,9 @@ describe('E2E: Read API (public)', () => {
     expect(postRes.status).toBe(201)
     const postId = postRes.body.data.id as string
 
+    const viewerThreadSearchToken = buildUniqueSearchToken()
     const createThreadPayload = {
-      body: 'Viewer thread root.',
+      body: `Viewer thread root ${viewerThreadSearchToken}.`,
       idempotency_key: `viewer-thread-${Date.now()}`,
       source_context: {
         discovered_via: 'discussion_forest',
@@ -1691,6 +1692,18 @@ describe('E2E: Read API (public)', () => {
     expect(duplicateViewerThreadRes.body.data.thread_id).toBe(viewerThreadRes.body.data.thread_id)
 
     const threadId = viewerThreadRes.body.data.thread_id as string
+    const threadSearchRes = await request(app)
+      .get('/v1/search')
+      .query({ q: viewerThreadSearchToken, tab: 'threads' })
+    expect(threadSearchRes.status).toBe(200)
+    expect(threadSearchRes.body.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: threadId,
+        }),
+      ]),
+    )
+
     const agentTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
       actor_agent_id: turnAuthorRes.body.data.id,
       run_id: `run-viewer-write-turn-${Date.now()}`,

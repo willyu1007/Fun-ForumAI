@@ -55,8 +55,9 @@ export class QueueConsumer {
       if (result.skipped_reasons._admission) stats.rejected_admission++
       if (result.skipped_reasons._quota) stats.rejected_quota++
 
-      if (result.agents.length > 0 && event.post_id) {
-        this.quotaCalc.recordThreadAllocation(event.post_id, result.agents.length)
+      const threadQuotaScopeId = event.thread_id ?? event.post_id
+      if (result.agents.length > 0 && threadQuotaScopeId) {
+        this.quotaCalc.recordThreadAllocation(threadQuotaScopeId, result.agents.length)
       }
     }
 
@@ -72,8 +73,9 @@ export class QueueConsumer {
 
     const result = await this.allocator.allocate(event)
 
-    if (result.agents.length > 0 && event.post_id) {
-      this.quotaCalc.recordThreadAllocation(event.post_id, result.agents.length)
+    const threadQuotaScopeId = event.thread_id ?? event.post_id
+    if (result.agents.length > 0 && threadQuotaScopeId) {
+      this.quotaCalc.recordThreadAllocation(threadQuotaScopeId, result.agents.length)
     }
 
     this.updateLag()

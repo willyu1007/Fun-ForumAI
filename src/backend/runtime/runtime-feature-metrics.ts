@@ -33,6 +33,8 @@ export interface RuntimeFeatureMetricsSnapshot {
     newcomer_share: number
     recall_diversity: number
     same_pair_exchange_rate: number
+    selected_vs_actual_anchor_mismatch: number
+    resolved_vs_written_anchor_mismatch: number
     runtime_context_token_count_p95: number
     fallback_count: number
     shadow_overlap_ratio: number
@@ -41,7 +43,7 @@ export interface RuntimeFeatureMetricsSnapshot {
   updated_at: string
 }
 
-class RuntimeFeatureMetrics {
+export class RuntimeFeatureMetrics {
   private snapshotState: RuntimeFeatureMetricsSnapshot = {
     allocator: {
       ppr_hits: 0,
@@ -75,6 +77,8 @@ class RuntimeFeatureMetrics {
       newcomer_share: 0,
       recall_diversity: 0,
       same_pair_exchange_rate: 0,
+      selected_vs_actual_anchor_mismatch: 0,
+      resolved_vs_written_anchor_mismatch: 0,
       runtime_context_token_count_p95: 0,
       fallback_count: 0,
       shadow_overlap_ratio: 0,
@@ -107,6 +111,8 @@ class RuntimeFeatureMetrics {
     newcomer_share: [] as number[],
     recall_diversity: [] as number[],
     same_pair_exchange_rate: [] as number[],
+    selected_vs_actual_anchor_mismatch: [] as number[],
+    resolved_vs_written_anchor_mismatch: [] as number[],
     shadow_overlap_ratio: [] as number[],
     runtime_context_token_count: [] as number[],
   }
@@ -202,6 +208,22 @@ class RuntimeFeatureMetrics {
     this.pushForumSample('runtime_context_token_count', input.token_count)
   }
 
+  recordForumAnchorResolution(input: {
+    selected_anchor_turn_id?: string | null
+    actual_anchor_turn_id?: string | null
+    final_write_anchor_turn_id?: string | null
+    written_anchor_turn_id?: string | null
+  }): void {
+    this.pushForumSample(
+      'selected_vs_actual_anchor_mismatch',
+      normalizeAnchorId(input.selected_anchor_turn_id) === normalizeAnchorId(input.actual_anchor_turn_id) ? 0 : 1,
+    )
+    this.pushForumSample(
+      'resolved_vs_written_anchor_mismatch',
+      normalizeAnchorId(input.final_write_anchor_turn_id) === normalizeAnchorId(input.written_anchor_turn_id) ? 0 : 1,
+    )
+  }
+
   recordForumOrchestrationFallback(): void {
     this.snapshotState.forum_orchestration.fallback_count += 1
     this.touch()
@@ -293,6 +315,10 @@ class RuntimeFeatureMetrics {
         this.snapshotState.forum_orchestration.recall_diversity = nextValue
       } else if (key === 'same_pair_exchange_rate') {
         this.snapshotState.forum_orchestration.same_pair_exchange_rate = nextValue
+      } else if (key === 'selected_vs_actual_anchor_mismatch') {
+        this.snapshotState.forum_orchestration.selected_vs_actual_anchor_mismatch = nextValue
+      } else if (key === 'resolved_vs_written_anchor_mismatch') {
+        this.snapshotState.forum_orchestration.resolved_vs_written_anchor_mismatch = nextValue
       } else if (key === 'shadow_overlap_ratio') {
         this.snapshotState.forum_orchestration.shadow_overlap_ratio = nextValue
       }
@@ -307,6 +333,10 @@ class RuntimeFeatureMetrics {
 }
 
 export const runtimeFeatureMetrics = new RuntimeFeatureMetrics()
+
+function normalizeAnchorId(value: string | null | undefined): string {
+  return typeof value === 'string' && value.length > 0 ? value : ''
+}
 
 function average(values: number[]): number {
   if (values.length === 0) return 0

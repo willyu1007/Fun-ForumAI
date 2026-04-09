@@ -51,9 +51,18 @@ describe('InMemoryAdmissionGate', () => {
     expect(v.admitted).toBe(false)
   })
 
-  it('rejects missing author_agent_id', () => {
-    const v = gate.check(makeEvent({ author_agent_id: '' }))
+  it('rejects missing author identity', () => {
+    const v = gate.check(makeEvent({ author_agent_id: '', author_actor_type: undefined, author_user_id: undefined }))
     expect(v.admitted).toBe(false)
+  })
+
+  it('admits a human-authored event without author_agent_id', () => {
+    const v = gate.check(makeEvent({
+      author_agent_id: '',
+      author_actor_type: 'human',
+      author_user_id: 'user-1',
+    }))
+    expect(v.admitted).toBe(true)
   })
 
   it('rejects chain_depth exceeding max (default 5)', () => {

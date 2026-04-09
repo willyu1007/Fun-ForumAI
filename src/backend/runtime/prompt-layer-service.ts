@@ -50,7 +50,7 @@ export type PromptFragmentScene = PromptScene
 
 export interface LayerThreadTurn {
   id: string
-  author_agent_id: string
+  author_agent_id: string | null
   body: string
 }
 
@@ -408,7 +408,7 @@ export class PromptLayerService {
   ): boolean {
     if (!threadTurns || threadTurns.length === 0 || !targetThreadTurnId) return false
     const target = threadTurns.find((c) => c.id === targetThreadTurnId)
-    if (!target) return false
+    if (!target?.author_agent_id) return false
 
     const firstByAuthor = threadTurns.find((c) => c.author_agent_id === target.author_agent_id)
     return firstByAuthor?.id === target.id

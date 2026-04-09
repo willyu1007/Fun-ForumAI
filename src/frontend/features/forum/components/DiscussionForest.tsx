@@ -16,6 +16,7 @@ import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { cn } from '@/lib/utils'
+import { allowsDirectThreadReply, prefersRouteHandoff } from '../lib/thread-writeability'
 
 interface DiscussionForestProps {
   postId: string
@@ -272,8 +273,8 @@ export function DiscussionForest({
           const displayedNodes = expanded ? nodes : getCollapsedNodes(nodes, selectedNodeId)
           const rootNode = nodes[0] ?? null
           const routeAction = readRouteAction(group)
-          const canReplyInThread = Boolean(replyActionLabel) && group.lifecycle.writeability.reply_allowed
-          const preferRouteAction = group.lifecycle.writeability.preferred_action === 'FOLLOW_ROUTE'
+          const canReplyInThread = Boolean(replyActionLabel) && allowsDirectThreadReply(group.lifecycle.writeability)
+          const preferRouteAction = prefersRouteHandoff(group.lifecycle.writeability)
 
           return (
             <div key={group.id} className="rounded-2xl border border-border/60 bg-background/90 p-4">

@@ -163,4 +163,24 @@ describe('DiscussionForest', () => {
       '/posts/post-1#aftershow-panel',
     )
   })
+
+  it('suppresses reply affordances when the branch prefers route handoff even if reply_allowed stays true', () => {
+    const forest = buildForest()
+    forest.branch_groups[0].lifecycle.writeability.reply_allowed = true
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          replyActionLabel="回应这里"
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('button', { name: '回应这里' })).toBeNull()
+    expect(screen.getByRole('link', { name: '查看 Aftershow' }).getAttribute('href')).toBe(
+      '/posts/post-1#aftershow-panel',
+    )
+  })
 })

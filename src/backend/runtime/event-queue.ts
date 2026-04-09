@@ -78,6 +78,17 @@ interface StreamMessage {
   retryCount: number
 }
 
+interface RedisGroupInfo {
+  lag: number | null
+  lastDeliveredId: string | null
+  pending: number
+}
+
+interface RedisPendingSummary {
+  count: number
+  smallestId: string | null
+}
+
 const DEFAULT_QUEUE_CONFIG: RedisEventQueueConfig = {
   streamKey: 'llm-forum:runtime:events',
   deadLetterStreamKey: 'llm-forum:runtime:events:dlq',
@@ -168,17 +179,43 @@ export class RedisStreamRuntimeEventQueue implements RuntimeEventQueue {
 
   async size(): Promise<number> {
     await this.initPromise
-    return this.redis.xlen(this.cfg.streamKey)
+    const groupInfo = await this.getGroupInfo()
+    if (!groupInfo) {
+      return this.redis.xlen(this.cfg.streamKey)
+    }
+
+    return groupInfo.pending + Math.max(0, groupInfo.lag ?? 0)
   }
 
   async oldestTimestampMs(): Promise<number | null> {
     await this.initPromise
+    const candidates: number[] = []
+    const pendingSummary = await this.getPendingSummary()
+    const pendingMs = timestampFromRedisId(pendingSummary.smallestId)
+    if (pendingMs !== null) {
+      candidates.push(pendingMs)
+    }
+
+    const groupInfo = await this.getGroupInfo()
+    const unreadMs = groupInfo
+      ? await this.getOldestUnreadTimestampMs(groupInfo)
+      : null
+    if (unreadMs !== null) {
+      candidates.push(unreadMs)
+    }
+
+    if (candidates.length > 0) {
+      return Math.min(...candidates)
+    }
+
+    if (groupInfo) {
+      return null
+    }
+
     const raw = await this.redis.xrange(this.cfg.streamKey, '-', '+', 'COUNT', 1)
     const rows = Array.isArray(raw) ? raw as Array<[string, string[]]> : []
     if (!rows.length) return null
-    const [id] = rows[0]
-    const ms = parseInt(id.split('-')[0], 10)
-    return Number.isFinite(ms) ? ms : null
+    return timestampFromRedisId(rows[0]?.[0])
   }
 
   async clear(): Promise<void> {
@@ -262,4 +299,78 @@ export class RedisStreamRuntimeEventQueue implements RuntimeEventQueue {
       retryCount: Number.isFinite(retryCount) ? retryCount : 0,
     }
   }
+
+  private async getGroupInfo(): Promise<RedisGroupInfo | null> {
+    const raw = await this.redis.call('XINFO', 'GROUPS', this.cfg.streamKey)
+    if (!Array.isArray(raw)) return null
+
+    for (const entry of raw) {
+      const info = parseRedisInfoEntry(entry)
+      if (info.get('name') !== this.cfg.consumerGroup) {
+        continue
+      }
+
+      return {
+        lag: toFiniteNumber(info.get('lag')),
+        lastDeliveredId: toStringValue(info.get('last-delivered-id')),
+        pending: toFiniteNumber(info.get('pending')) ?? 0,
+      }
+    }
+
+    return null
+  }
+
+  private async getPendingSummary(): Promise<RedisPendingSummary> {
+    const raw = await this.redis.call('XPENDING', this.cfg.streamKey, this.cfg.consumerGroup)
+    if (!Array.isArray(raw) || raw.length < 2) {
+      return { count: 0, smallestId: null }
+    }
+
+    return {
+      count: toFiniteNumber(raw[0]) ?? 0,
+      smallestId: toStringValue(raw[1]),
+    }
+  }
+
+  private async getOldestUnreadTimestampMs(groupInfo: RedisGroupInfo): Promise<number | null> {
+    const start = groupInfo.lastDeliveredId ? `(${groupInfo.lastDeliveredId}` : '-'
+    const raw = await this.redis.xrange(this.cfg.streamKey, start, '+', 'COUNT', 1)
+    const rows = Array.isArray(raw) ? raw as Array<[string, string[]]> : []
+    if (!rows.length) {
+      return null
+    }
+    return timestampFromRedisId(rows[0]?.[0])
+  }
+}
+
+function parseRedisInfoEntry(value: unknown): Map<string, unknown> {
+  const map = new Map<string, unknown>()
+  if (!Array.isArray(value)) {
+    return map
+  }
+
+  for (let i = 0; i < value.length; i += 2) {
+    const key = toStringValue(value[i])
+    if (!key) continue
+    map.set(key, value[i + 1])
+  }
+
+  return map
+}
+
+function toStringValue(value: unknown): string | null {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return null
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function timestampFromRedisId(id: string | null | undefined): number | null {
+  if (!id) return null
+  const ms = parseInt(id.split('-')[0] ?? '', 10)
+  return Number.isFinite(ms) ? ms : null
 }

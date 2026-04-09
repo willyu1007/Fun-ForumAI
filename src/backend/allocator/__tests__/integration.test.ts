@@ -109,6 +109,39 @@ describe('[Phase 3] Hot-spot post stress test', () => {
     }
   })
 
+  it('thread events on different threads of the same post do not exhaust each other', async () => {
+    const agents = Array.from({ length: 100 }, (_, i) => makeAgent(`agent-${i}`))
+    const { queue, consumer } = buildStack(agents)
+
+    for (let i = 0; i < 5; i++) {
+      queue.enqueue(makeEvent({
+        event_type: 'ThreadTurnAdded',
+        post_id: 'shared-post',
+        thread_id: 'thread-a',
+      }))
+    }
+    for (let i = 0; i < 5; i++) {
+      queue.enqueue(makeEvent({
+        event_type: 'ThreadTurnAdded',
+        post_id: 'shared-post',
+        thread_id: 'thread-b',
+      }))
+    }
+
+    const batch = await consumer.drain()
+    const threadAAllocated = batch.results
+      .slice(0, 5)
+      .reduce((sum, result) => sum + result.agents.length, 0)
+    const threadBAllocated = batch.results
+      .slice(5)
+      .reduce((sum, result) => sum + result.agents.length, 0)
+
+    expect(threadAAllocated).toBeGreaterThan(0)
+    expect(threadBAllocated).toBeGreaterThan(0)
+    expect(threadAAllocated).toBeLessThanOrEqual(DEFAULT_ALLOCATOR_CONFIG.defaultThreadMaxAgents)
+    expect(threadBAllocated).toBeLessThanOrEqual(DEFAULT_ALLOCATOR_CONFIG.defaultThreadMaxAgents)
+  })
+
   it('community override cap is respected', async () => {
     const agents = Array.from({ length: 50 }, (_, i) => makeAgent(`agent-${i}`))
     const { queue, consumer, quota } = buildStack(agents)

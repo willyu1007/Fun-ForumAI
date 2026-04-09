@@ -25,8 +25,12 @@ import {
   GuidanceRecallScheduler,
   GuidanceStateService,
 } from '../guidance/index.js'
-import { handleGuidanceDigestHook, handleGuidanceForumFanout } from '../guidance/feature-gates.js'
+import { handleGuidanceDigestHook } from '../guidance/feature-gates.js'
 import { OwnerLifeOverviewService } from '../services/owner-life-overview-service.js'
+import {
+  createAudienceWriteDispatcher,
+  createForumEventDispatcher,
+} from '../services/forum-event-dispatcher.js'
 import { SearchGuard } from '../services/search/search-guard.js'
 import { PostSearchProvider } from '../services/search/post-search-provider.js'
 import { CommunitySearchProvider } from '../services/search/community-search-provider.js'
@@ -590,84 +594,33 @@ core.homeProgrammingSnapshotService.setEventHook(async (event) => {
   }
 })
 
-core.forumWriteService.setEventHook(async (event) => {
-  await searchProjectionService.handleForumEvent(event)
-
-  rt.eventBridge.bridge(event)
-
-  if (core.achievementsOrchestrator) {
-    core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
-      console.error('[Container] Achievement orchestrator event ingest failed:', err)
-    })
-  }
-
-  infra.sseHub.broadcast({
-    type: event.event_type,
-    payload: event.payload_json,
-  })
-
-  if (nurture.proactiveEventHandler) {
-    nurture.proactiveEventHandler.handle(event)
-  }
-  if (config.features.agentStatsV1 && core.statsService) {
-    core.statsService.onDomainEvent(event).catch((err) => {
-      console.error('[Container] Stats state update failed:', err)
-    })
-  }
-  if (event.event_type === 'VOTE_CAST') {
-    const payload = event.payload_json
-    const direction = typeof payload.direction === 'string' ? payload.direction : ''
-    const targetAgentId =
-      typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
-    const voteId = typeof payload.vote_id === 'string' ? payload.vote_id : ''
-    if (direction === 'UP' && targetAgentId) {
-      if (nurture.nurtureOrchestrator) {
-        nurture.nurtureOrchestrator
-          .onContentProduced(targetAgentId, 'vote_received', 1, {
-            dedup_key: voteId ? `vote:${voteId}` : undefined,
-          })
-          .catch((err) => {
-            console.error('[Container] vote_received XP award failed:', err)
-          })
-      } else if (nurture.xpService) {
-        nurture.xpService
-          .awardXP(targetAgentId, 'vote_received', 1, {
-            dedup_key: voteId ? `vote:${voteId}` : undefined,
-          })
-          .catch((err) => {
-            console.error('[Container] vote_received XP award failed:', err)
-          })
-      }
-    }
-  }
-  if (
-    nurture.relationService
-    && (event.event_type === 'THREAD_OPENED' || event.event_type === 'THREAD_TURN_ADDED')
-  ) {
-    nurture.relationService.onForumStageEvent(event).catch((err) => {
-      console.error('[Container] Relation forum signal failed:', err)
-    })
-  }
-  if (
-    config.features.agentStatsVotePolicy &&
-    nurture.relationService &&
-    event.event_type === 'VOTE_CAST'
-  ) {
-    nurture.relationService.onVoteEvent(event).catch((err) => {
-      console.error('[Container] Relation vote signal failed:', err)
-    })
-  }
-  if (config.features.publicObservationMemory && nurture.publicObservationEventHandler) {
-    nurture.publicObservationEventHandler.handle(event)
-  }
-  handleGuidanceForumFanout(event, {
-    guidanceEnabled: config.features.guidanceV1,
-    orchestrator: guidanceOrchestrator,
-    onError: (err) => {
-      console.error('[Container] Guidance forum event ingest failed:', err)
-    },
-  })
+const forumEventDispatcher = createForumEventDispatcher({
+  searchProjectionService,
+  eventBridge: rt.eventBridge,
+  sseHub: infra.sseHub,
+  achievementsOrchestrator: core.achievementsOrchestrator,
+  proactiveEventHandler: nurture.proactiveEventHandler,
+  statsService: config.features.agentStatsV1 ? core.statsService : null,
+  nurtureOrchestrator: nurture.nurtureOrchestrator,
+  xpService: nurture.xpService,
+  relationService: nurture.relationService,
+  publicObservationEventHandler: nurture.publicObservationEventHandler,
+  guidanceEnabled: config.features.guidanceV1,
+  guidanceOrchestrator,
+  agentStatsVotePolicyEnabled: config.features.agentStatsVotePolicy,
+  publicObservationMemoryEnabled: config.features.publicObservationMemory,
+  onError: (message, err) => {
+    console.error(message, err)
+  },
 })
+
+core.forumWriteService.setEventHook(forumEventDispatcher)
+core.viewerPublicWriteService.setAcceptedForumEventHook(forumEventDispatcher)
+core.viewerPublicWriteService.setAcceptedAudienceWriteHook(
+  createAudienceWriteDispatcher({
+    searchProjectionService,
+  }),
+)
 
 // ─── Exports (preserving original container.ts public API) ──
 

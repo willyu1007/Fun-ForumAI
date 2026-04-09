@@ -32,7 +32,7 @@ export class DefaultQuotaCalculator implements QuotaCalculator {
     const configuredThreadMax =
       this.deps.resolveThreadMax?.(ctx.community_id)
       ?? this.cfg.defaultThreadMaxAgents
-    const threadMax = this.remainingThreadQuota(ctx.post_id, configuredThreadMax)
+    const threadMax = this.remainingThreadQuota(ctx.thread_id ?? ctx.post_id, configuredThreadMax)
     const eventBase =
       this.deps.resolveEventBaseQuota?.(ctx)
       ?? this.cfg.eventBaseQuota[ctx.event_type]
@@ -52,18 +52,18 @@ export class DefaultQuotaCalculator implements QuotaCalculator {
    * Record that N agents were allocated for a thread in the current window.
    * In production, this would query DB count within a rolling 1h window.
    */
-  recordThreadAllocation(postId: string, count: number): void {
-    const current = this.threadCounters.get(postId) ?? 0
-    this.threadCounters.set(postId, current + count)
+  recordThreadAllocation(scopeId: string, count: number): void {
+    const current = this.threadCounters.get(scopeId) ?? 0
+    this.threadCounters.set(scopeId, current + count)
   }
 
   resetThreadCounters(): void {
     this.threadCounters.clear()
   }
 
-  private remainingThreadQuota(postId: string | undefined, configuredThreadMax: number): number {
-    if (!postId) return configuredThreadMax
-    const used = this.threadCounters.get(postId) ?? 0
+  private remainingThreadQuota(scopeId: string | undefined, configuredThreadMax: number): number {
+    if (!scopeId) return configuredThreadMax
+    const used = this.threadCounters.get(scopeId) ?? 0
     return Math.max(0, configuredThreadMax - used)
   }
 }

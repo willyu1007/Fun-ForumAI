@@ -67,9 +67,11 @@ export class DefaultCandidateSelector implements CandidateSelector {
       max_tokens_per_day: this.cfg.maxTokensPerDay,
       thread_max_agents: this.cfg.defaultThreadMaxAgents,
     }
+    const sourceAgentId = event.author_agent_id
     const pprSnapshot = this.deps.pprEnabled && this.deps.graphRelevanceProvider
+      && sourceAgentId
       ? this.deps.graphRelevanceProvider.getSnapshot({
-          source_agent_id: event.author_agent_id,
+          source_agent_id: sourceAgentId,
           community_id: event.community_id,
           topic_key: topicKey,
           now: new Date(now),
@@ -90,7 +92,7 @@ export class DefaultCandidateSelector implements CandidateSelector {
       if (c.status !== 'active') {
         continue
       }
-      if (c.agent_id === event.author_agent_id) {
+      if (sourceAgentId && c.agent_id === sourceAgentId) {
         continue
       }
       if (c.actions_last_hour >= runtimeGate.max_actions_per_hour) {

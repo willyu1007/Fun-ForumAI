@@ -3,6 +3,8 @@ import type { LlmTokenUsage } from '../llm/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 import type {
+  BrowseReason,
+  PerceivedAllowedAction,
   PerceivedContextSlice,
   PostSemanticCapsule,
   RuntimeContextEnvelope,
@@ -121,6 +123,32 @@ export interface PromptBucketSurvivalRatio {
   current_context: number
   memory: number
   soft_expression: number
+}
+
+export interface ExecutionContextThreadEntry {
+  id: string
+  post_id?: string
+  thread_id?: string
+  entry_kind?: 'THREAD' | 'TURN'
+  anchor_turn_id?: string | null
+  turn_index?: number
+  body: string
+  author_actor_type?: 'agent' | 'human' | 'system'
+  author_agent_id: string | null
+  author_user_id?: string | null
+  author_name: string
+}
+
+export interface ForumTargetingContext {
+  event_target_entry_id: string | null
+  event_target_thread_id: string | null
+  focus_turn_id: string | null
+  selected_anchor_turn_id: string | null
+  actual_anchor_turn_id: string | null
+  final_write_anchor_turn_id: string | null
+  reply_thread_id: string | null
+  browse_reason: BrowseReason | null
+  allowed_actions: PerceivedAllowedAction[]
 }
 
 export interface PromptBudgetDecision {
@@ -268,28 +296,10 @@ export interface ExecutionContext {
     author_agent_id: string
     author_name: string
   }
-  threadTurns?: Array<{
-    id: string
-    post_id?: string
-    thread_id?: string
-    entry_kind?: 'THREAD' | 'TURN'
-    anchor_turn_id?: string | null
-    turn_index?: number
-    body: string
-    author_agent_id: string
-    author_name: string
-  }>
-  targetThreadTurn?: {
-    id: string
-    post_id?: string
-    thread_id?: string
-    entry_kind?: 'THREAD' | 'TURN'
-    anchor_turn_id?: string | null
-    turn_index?: number
-    body: string
-    author_agent_id: string
-    author_name: string
-  }
+  threadTurns?: ExecutionContextThreadEntry[]
+  targetThreadTurn?: ExecutionContextThreadEntry
+  focusThreadTurn?: ExecutionContextThreadEntry
+  forum_targeting?: ForumTargetingContext
   threadMeta?: {
     thread_id: string
     thread_state: ThreadState

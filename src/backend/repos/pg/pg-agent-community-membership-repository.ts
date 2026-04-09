@@ -26,12 +26,22 @@ function isUniqueViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
 
+const DEFAULT_CACHE_TTL_MS = 5_000
+
 export class PgAgentCommunityMembershipRepository implements AgentCommunityMembershipRepository {
   private readonly cache = new Map<string, AgentCommunityMembership>()
   private readonly activeByAgent = new Map<string, Set<string>>()
   private readonly activeByCommunity = new Map<string, Set<string>>()
+  private readonly cacheTtlMs: number
+  private lastHydratedAt = 0
+  private refreshInFlight: Promise<void> | null = null
 
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    opts?: { cacheTtlMs?: number },
+  ) {
+    this.cacheTtlMs = opts?.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
+  }
 
   async hydrate(): Promise<void> {
     const rows = await this.prisma.agentCommunityMembership.findMany({
@@ -49,6 +59,15 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
         pushIndex(this.activeByCommunity, membership.community_id, membership.id)
       }
     }
+    this.lastHydratedAt = Date.now()
+  }
+
+  private scheduleRefreshIfStale(): void {
+    if (this.refreshInFlight) return
+    if (Date.now() - this.lastHydratedAt < this.cacheTtlMs) return
+    this.refreshInFlight = this.hydrate()
+      .catch((err) => console.error('[PgAgentCommunityMembershipRepo] background refresh error:', err))
+      .finally(() => { this.refreshInFlight = null })
   }
 
   async create(input: CreateAgentCommunityMembershipInput): Promise<AgentCommunityMembership> {
@@ -207,6 +226,7 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
   }
 
   findCurrent(agentId: string, communityId: string): AgentCommunityMembership | null {
+    this.scheduleRefreshIfStale()
     const members = Array.from(this.cache.values())
       .filter((item) => item.agent_id === agentId && item.community_id === communityId && item.left_at === null)
       .sort((a, b) => b.joined_at.getTime() - a.joined_at.getTime())
@@ -214,12 +234,14 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
   }
 
   findCurrentByCommunity(communityId: string): AgentCommunityMembership[] {
+    this.scheduleRefreshIfStale()
     return Array.from(this.cache.values())
       .filter((item) => item.community_id === communityId && item.left_at === null)
       .sort((a, b) => b.joined_at.getTime() - a.joined_at.getTime())
   }
 
   findActiveByAgent(agentId: string): AgentCommunityMembership[] {
+    this.scheduleRefreshIfStale()
     const ids = this.activeByAgent.get(agentId)
     if (!ids || ids.size === 0) return []
 
@@ -230,6 +252,7 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
   }
 
   findActiveByCommunity(communityId: string): AgentCommunityMembership[] {
+    this.scheduleRefreshIfStale()
     const ids = this.activeByCommunity.get(communityId)
     if (!ids || ids.size === 0) return []
 
@@ -252,11 +275,13 @@ export class PgAgentCommunityMembershipRepository implements AgentCommunityMembe
   }
 
   countActiveByAgent(agentId: string): number {
+    this.scheduleRefreshIfStale()
     const ids = this.activeByAgent.get(agentId)
     return ids ? ids.size : 0
   }
 
   countActiveTotal(): number {
+    this.scheduleRefreshIfStale()
     let total = 0
     for (const ids of this.activeByAgent.values()) {
       total += ids.size

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { AppShell } from '@fun-forum/ui-web/shell'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
@@ -13,11 +13,13 @@ import { cn } from '@/lib/utils'
 import { DevAuthToolbar } from '@/widgets/dev/DevAuthToolbar'
 import { ShellLeftRail } from '@/widgets/shell/ShellLeftRail'
 import { ShellTopBarContainer } from '@/widgets/shell/ShellTopBarContainer'
+import { lazyWithDynamicImportRecovery } from '../lazy-import-recovery'
 
-const LazyAgentInteractionModal = lazy(() =>
+const LazyAgentInteractionModal = lazyWithDynamicImportRecovery(() =>
   import('@/widgets/agent-modal/AgentInteractionModal').then((module) => ({
     default: module.AgentInteractionModal,
   })),
+  'widget:agent-interaction-modal',
 )
 
 export function AppShellContainer() {
