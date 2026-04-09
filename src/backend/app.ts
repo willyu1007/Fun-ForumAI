@@ -59,6 +59,7 @@ function buildDevAuthProfile(user: AuthenticatedUser) {
     phone: user.phone,
     displayName: user.role === 'admin' ? '开发管理员' : '开发用户',
     avatarUrl: null,
+    birthDate: null,
     planTier: user.role === 'admin' ? 'ADMIN' : 'FREE',
     role: user.role,
   }

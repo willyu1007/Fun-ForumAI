@@ -13,7 +13,6 @@ import type { InferenceProfileService } from '../services/inference-profile-serv
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
-import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
 import {
   attachPersonaObservation,
@@ -186,7 +185,6 @@ export class AgentExecutor {
         responseMode: 'text',
         agentId: agent.agent_id,
         homeVoiceLineId: routing.homeVoiceLineId,
-        preferredModelId: routing.preferredModelId,
         promptRef: templateId,
         variables: this.buildVariables(ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
         budgetClass: 'visible_standard',
@@ -381,7 +379,6 @@ export class AgentExecutor {
     requestedTierCeiling?: import('../../shared/agent-persona-catalog.js').RenderTier,
   ): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
-    preferredModelId?: string
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }> {
     if (this.deps.inferenceProfileService) {
@@ -397,7 +394,6 @@ export class AgentExecutor {
     const homeVoiceLineId = resolved.summary.home_voice_line_id
     return {
       homeVoiceLineId,
-      preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
       requestedTier,
     }
   }

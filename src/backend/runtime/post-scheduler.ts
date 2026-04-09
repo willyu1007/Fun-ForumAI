@@ -28,7 +28,6 @@ import type { MediaObservabilityService } from '../media/media-observability-ser
 import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
-import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
 import {
   resolveStageSpecFromRules,
@@ -376,7 +375,6 @@ export class PostScheduler {
         responseMode: 'text',
         agentId: selected.id,
         homeVoiceLineId: routing.homeVoiceLineId,
-        preferredModelId: routing.preferredModelId,
         promptRef,
         variables,
         budgetClass: 'visible_standard',
@@ -780,7 +778,6 @@ export class PostScheduler {
 
   private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
-    preferredModelId?: string
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }> {
     if (this.deps.inferenceProfileService) {
@@ -792,7 +789,6 @@ export class PostScheduler {
     const homeVoiceLineId = resolved.summary.home_voice_line_id
     return {
       homeVoiceLineId,
-      preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
       requestedTier,
     }
   }

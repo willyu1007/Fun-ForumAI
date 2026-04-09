@@ -55,6 +55,7 @@ describe('community governance service', () => {
 
     expect(detail.proposal.status).toBe('SUBMITTED')
     expect(detail.recommendation).toBeTruthy()
+    expect(detail.recommendation).not.toHaveProperty('recommended_visibility')
     expect(detail.events.map((event) => event.event_type)).toEqual([
       'PROPOSAL_SUBMITTED',
       'RECOMMENDATION_REFRESHED',
@@ -126,6 +127,7 @@ describe('community governance service', () => {
         publication_review_profile_id: 'creator_strict_publication',
       })
 
+      expect(detail.recommendation).not.toHaveProperty('recommended_visibility')
       expect(detail.recommendation?.meta).toMatchObject({
         thresholds: {
           merge_threshold: 4.2,

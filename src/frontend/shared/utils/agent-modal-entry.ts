@@ -43,6 +43,12 @@ export function openMyAgentsWorkspace(): void {
   useAgentModalStore.getState().openModal(null, 'manage', 'chat')
 }
 
+export function openMyAgentsWorkspaceWithCreate(): void {
+  const store = useAgentModalStore.getState()
+  store.openModal(null, 'manage', 'chat')
+  store.setPendingCreateWizard(true)
+}
+
 export function openSpecificAgentInLastContext(
   agentId: string,
   openModal?: OpenModalFn,

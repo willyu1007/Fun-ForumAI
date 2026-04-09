@@ -117,8 +117,6 @@ export interface RouteContext {
   budgetClass: LLMBudgetClass
   traceId: string
   providerTags?: string[]
-  policyTags?: string[]
-  preferredModelId?: string
   regionHint?: string
   debug?: LLMGatewayDebugOverrides
 }
@@ -261,7 +259,7 @@ export interface ModelProfileCandidate {
   model_id: string
   region: string
   endpoint_id: string
-  adapter_id?: string
+  adapter_id: string
   weight: number
   quality_class: 'fast' | 'balanced' | 'premium'
 }
@@ -398,8 +396,6 @@ export interface LLMGatewayRequest {
   responseMode: ResponseMode
   agentId: string
   homeVoiceLineId: VoiceLineId
-  preferredModelId?: string
-  policyTags?: string[]
   promptRef: PromptTemplateRef
   variables: Record<string, string>
   budgetClass: LLMBudgetClass

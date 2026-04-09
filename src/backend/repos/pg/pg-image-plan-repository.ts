@@ -66,29 +66,33 @@ export class PgImagePlanRepository implements ImagePlanRepository {
       limit?: number
     },
   ): Promise<PersistedImagePlan[]> {
-    const clauses = [
-      Prisma.sql`
-        EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(selected_sources) AS source
-          WHERE source ->> 'asset_id' = ${assetId}
-        )
-      `,
-    ]
-    if (options?.since) {
-      clauses.push(Prisma.sql`created_at >= ${options.since}`)
-    }
-    const whereClause = Prisma.sql`WHERE ${Prisma.join(clauses, Prisma.sql` AND `)}`
     const limitClause = typeof options?.limit === 'number' && options.limit > 0
       ? Prisma.sql`LIMIT ${options.limit}`
       : Prisma.empty
-    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-      SELECT id
-      FROM image_plans
-      ${whereClause}
-      ORDER BY created_at DESC
-      ${limitClause}
-    `)
+    const ids = options?.since
+      ? await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT id
+          FROM image_plans
+          WHERE EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(selected_sources) AS source
+            WHERE source ->> 'asset_id' = ${assetId}
+          )
+            AND created_at >= ${options.since}
+          ORDER BY created_at DESC
+          ${limitClause}
+        `)
+      : await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT id
+          FROM image_plans
+          WHERE EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(selected_sources) AS source
+            WHERE source ->> 'asset_id' = ${assetId}
+          )
+          ORDER BY created_at DESC
+          ${limitClause}
+        `)
     if (ids.length === 0) return []
     const rows = await this.prisma.imagePlanRecord.findMany({
       where: {

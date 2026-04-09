@@ -4,7 +4,7 @@
 
 - State: in-progress
 - Depends on: none
-- Next step: staging 已补齐非 secret 投递参数；现在只剩校正 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` 这组 SMTP secret，然后用 `node scripts/auth-delivery-smoke.mjs` 做真实发信验证。
+- Next step: 本地 auth/contact-change 与 `birthDate` hardening 已完成；外部剩余 blocker 仍是校正 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` 这组 SMTP secret，然后用 `node scripts/auth-delivery-smoke.mjs` 做真实发信验证。
 
 ## Goal
 
@@ -30,6 +30,7 @@
 - `/v1/auth/sms/send` 与 `/v1/auth/sms/verify` 已实现，staging 现已补齐 `ALIYUN_SMS_SIGN_NAME` / `ALIYUN_SMS_TEMPLATE_CODE`，SMS dry-run 已通过
 - Web 的手机登录/注册表单已接到验证码流程
 - `HumanUser` 已支持手机号-only、无密码账号
+- 2026-04-09 已补齐 auth/contact-change 残余代码缺口：新增 `EMAIL_CHANGE` / `PHONE_CHANGE` enum migration、`birthDate` 真日期校验、联系方式 verify 的唯一约束竞争映射、以及 dev auth fallback 的 `birthDate` contract 对齐
 - 邮箱验证码邮件已从传输层中拆出独立模板，并补强 `from/sender/envelope`，为后续邀请函模板预留结构
 - 管控台已有邀请码页与反馈/治理入口，但还缺“管理员管理管理员”的最小操作面板
 - 现已补上 bootstrap admin 配置、管理员列表与授予/撤销入口，继续沿用 `plan_tier = ADMIN` 权限模型

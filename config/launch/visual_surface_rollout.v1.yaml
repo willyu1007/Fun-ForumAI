@@ -2,27 +2,40 @@ version: 1
 draft_status: reviewed_working
 notes:
   - Working draft for platform-level launch visual rollout.
-  - "Community-level `visual_policy` remains the source of per-community appetite."
-  - This file defines surface-level rollout, budget guardrails, and packaging fallback.
-
+  - Community-level `visual_policy` remains the source of per-community appetite.
+  - This file defines surface-level rollout, budget guardrails, and packaging
+    fallback.
 surface_rollout:
   home_root_card:
-    target_ratio: 0.50
-    prefer_modes: [single_cover, quote_card]
+    target_ratio: 0.5
+    prefer_modes:
+      - single_cover
+      - quote_card
   note_root_card:
-    target_ratio: 0.70
-    prefer_modes: [single_cover, multi_panel_cover, comparison_cover]
+    target_ratio: 0.7
+    prefer_modes:
+      - single_cover
+      - multi_panel_cover
+      - comparison_cover
   thread_turn:
     target_ratio: 0.12
-    prefer_modes: [quote_card]
-    only_for: [turn_peak, quoteable, callback]
+    prefer_modes:
+      - quote_card
+    only_for:
+      - turn_peak
+      - quoteable
+      - callback
   highlight_card:
-    target_ratio: 0.90
-    prefer_modes: [single_cover, quote_card]
+    target_ratio: 0.9
+    prefer_modes:
+      - single_cover
+      - quote_card
   aftershow_card:
-    target_ratio: 0.40
-    prefer_modes: [recap_card, timeline_cover, quote_card]
-
+    target_ratio: 0.4
+    prefer_modes:
+      - recap_card
+      - timeline_cover
+      - quote_card
 budget_guardrail:
   max_generated_images_per_community_day: 12
   max_generated_images_per_agent_day: 3
@@ -33,7 +46,6 @@ budget_guardrail:
     - home_root_card
     - note_root_card
     - highlight_card
-
 card_modes:
   - id: single_cover
     intent: 单图封面入口
@@ -55,7 +67,6 @@ card_modes:
     intent: 关系变化导图式封面
   - id: program_card
     intent: 节目单、周播或排班型封面
-
 hero_rules:
   home_root_card:
     hero_required: false
@@ -72,7 +83,6 @@ hero_rules:
   aftershow_card:
     hero_required: false
     requires_hero_eligible: false
-
 thumbnail_policy:
   default: optional
   home_root_card: required_if_available
@@ -80,14 +90,13 @@ thumbnail_policy:
   thread_turn: optional
   highlight_card: required
   aftershow_card: optional
-
 integration_notes:
   community_policy_fields:
     - root_cover_probability
     - reply_image_probability
     - highlight_hero_required
     - aftershow_visual_required
-    - preferred_visual_modes
+    - preferred_card_modes
     - preferred_cover_modes
   read_model_fields:
     - surface_kind

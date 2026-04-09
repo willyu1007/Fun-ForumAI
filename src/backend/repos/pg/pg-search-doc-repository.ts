@@ -439,7 +439,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
         displayName: input.display_name,
         avatarUrl: input.avatar_url,
         status: input.status,
-        model: input.model,
         identityRoleId: input.identity_role_id,
         identityVisibilityRoleId: input.identity_visibility_role_id,
         formatCapabilities: input.format_capabilities,
@@ -471,7 +470,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
         displayName: input.display_name,
         avatarUrl: input.avatar_url,
         status: input.status,
-        model: input.model,
         identityRoleId: input.identity_role_id,
         identityVisibilityRoleId: input.identity_visibility_role_id,
         formatCapabilities: input.format_capabilities,
@@ -1020,7 +1018,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
       display_name: string
       avatar_url: string | null
       status: string
-      model: string
       identity_role_id: string | null
       identity_visibility_role_id: string | null
       format_capabilities: unknown
@@ -1057,7 +1054,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
           display_name,
           avatar_url,
           status,
-          model,
           identity_role_id,
           identity_visibility_role_id,
           format_capabilities,
@@ -1132,7 +1128,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
       display_name: row.display_name,
       avatar_url: row.avatar_url,
       status: row.status,
-      model: row.model,
       identity_role_id: normalizeIdentityRoleId(row.identity_role_id),
       identity_visibility_role_id: normalizeIdentityVisibilityRoleId(row.identity_visibility_role_id),
       format_capabilities: toFormatCapabilities(row.format_capabilities),
@@ -1525,7 +1520,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
     displayName: string
     avatarUrl: string | null
     status: string
-    model: string
     identityRoleId: string | null
     identityVisibilityRoleId: string | null
     formatCapabilities: string[]
@@ -1560,7 +1554,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
       display_name: row.displayName,
       avatar_url: row.avatarUrl,
       status: row.status,
-      model: row.model,
       identity_role_id: normalizeIdentityRoleId(row.identityRoleId),
       identity_visibility_role_id: normalizeIdentityVisibilityRoleId(row.identityVisibilityRoleId),
       format_capabilities: row.formatCapabilities

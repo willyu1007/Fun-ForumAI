@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react'
-import { Outlet, useLocation } from 'react-router'
+import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router'
 import { AppShell } from '@fun-forum/ui-web/shell'
 import { useSidebarStore } from '@/shared/stores/sidebar-store'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { parseAgentTarget } from '../../../shared/agent-target.js'
 import {
   getAppShellContentSafeAreaClass,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
@@ -23,9 +24,19 @@ const LazyAgentInteractionModal = lazy(() =>
 export function AppShellContainer() {
   const { leftOpen, toggleLeft } = useSidebarStore()
   const { view } = useFeedViewStore()
+  const navigate = useNavigate()
+  const openModal = useAgentModalStore((state) => state.openModal)
+  const isAgentModalOpen = useAgentModalStore((state) => state.isOpen)
   const shouldMountAgentModal = useAgentModalStore((state) => state.isOpen || state.activeAgentId !== null)
   const isDevAuthToolbarCollapsed = useDevAuthToolbarStore((state) => state.collapsed)
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
+  const routeBackedModalKeyRef = useRef<string | null>(null)
+  const routeBackedModalWasOpenedRef = useRef(false)
+  const routeBackedTarget = useMemo(
+    () => parseAgentTarget(`${pathname}${search}`),
+    [pathname, search],
+  )
+  const routeBackedTargetKey = routeBackedTarget ? `${pathname}${search}` : null
   const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search' || pathname === '/communities' || pathname === '/highlights'
   const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
   const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
@@ -34,6 +45,50 @@ export function AppShellContainer() {
     SHOULD_RENDER_DEV_AUTH_TOOLBAR,
     isDevAuthToolbarCollapsed,
   )
+
+  useEffect(() => {
+    if (!routeBackedTarget || !routeBackedTargetKey) {
+      routeBackedModalKeyRef.current = null
+      routeBackedModalWasOpenedRef.current = false
+      return
+    }
+
+    routeBackedModalKeyRef.current = routeBackedTargetKey
+
+    if (routeBackedTarget.kind === 'manage') {
+      openModal(null, routeBackedTarget.mode ?? 'manage', 'intro')
+      return
+    }
+
+    openModal(
+      routeBackedTarget.agentId,
+      routeBackedTarget.mode ?? 'readonly',
+      routeBackedTarget.tab ?? 'intro',
+      {
+        introSection: routeBackedTarget.introSection ?? null,
+        sourceSessionId: routeBackedTarget.sourceSessionId ?? null,
+      },
+    )
+  }, [openModal, routeBackedTarget, routeBackedTargetKey])
+
+  useEffect(() => {
+    if (routeBackedModalKeyRef.current !== routeBackedTargetKey) {
+      routeBackedModalWasOpenedRef.current = false
+      return
+    }
+
+    if (isAgentModalOpen) {
+      routeBackedModalWasOpenedRef.current = true
+      return
+    }
+
+    if (!routeBackedModalWasOpenedRef.current) {
+      return
+    }
+
+    routeBackedModalWasOpenedRef.current = false
+    navigate('/', { replace: true })
+  }, [isAgentModalOpen, navigate, routeBackedTargetKey])
 
   return (
     <AppShell

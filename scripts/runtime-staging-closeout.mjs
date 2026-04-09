@@ -12,7 +12,7 @@ Usage:
     [--agent-id <id>] [--human-user-id <id>] \\
     [--poll-ms <ms>] [--timeout-ms <ms>] \\
     [--stale-minutes <minutes>] [--message-count <count>] \\
-    [--allow-deprecated-env-pins] [--allow-debug-overrides]
+    [--allow-env-pins] [--allow-debug-signals]
 
 Environment fallbacks:
   RUNTIME_CLOSEOUT_BASE_URL or LAUNCH_WEB_BASE_URL or LAUNCH_WORKER_BASE_URL
@@ -36,8 +36,8 @@ function parseArgs(argv) {
     devAuth: false,
     devUserId: 'admin-dev',
     devEmail: 'admin-dev@local.test',
-    allowDeprecatedEnvPins: false,
-    allowDebugOverrides: false,
+    allowEnvPins: false,
+    allowDebugSignals: false,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -45,7 +45,7 @@ function parseArgs(argv) {
     if (token === '--help' || token === '-h') usage(0)
     if (!token.startsWith('--')) continue
     const key = token.slice(2)
-    if (['dev-auth', 'allow-deprecated-env-pins', 'allow-debug-overrides'].includes(key)) {
+    if (['dev-auth', 'allow-env-pins', 'allow-debug-signals'].includes(key)) {
       out[toCamel(key)] = true
       continue
     }
@@ -221,19 +221,19 @@ async function main() {
 
   const runtimeStats = await fetchAdminJson(baseUrl, adminToken, '/v1/admin/runtime/stats')
   const runtimeFeatures = await fetchAdminJson(baseUrl, adminToken, '/v1/admin/runtime/features')
-  const overrideState = runtimeFeatures?.observability?.override_state ?? runtimeStats?.runtime?.override_state
+  const authorityState = runtimeFeatures?.observability?.authority_state ?? runtimeStats?.runtime?.authority_state
 
   assertCondition(runtimeStats?.runtime?.routing_mode === 'policy_driven', 'Runtime stats routing_mode must be policy_driven', runtimeStats?.runtime)
   assertCondition(runtimeFeatures?.runtime?.routing_mode === 'policy_driven', 'Runtime features routing_mode must be policy_driven', runtimeFeatures?.runtime)
   assertCondition(
-    args.allowDeprecatedEnvPins || !overrideState?.deprecated_env_pins_present,
-    'Deprecated env model pins are present',
-    overrideState,
+    args.allowEnvPins || !authorityState?.env_pins_present,
+    'Runtime env pins are present',
+    authorityState,
   )
   assertCondition(
-    args.allowDebugOverrides || !overrideState?.unapproved_debug_overrides_present,
-    'Unapproved debug/emergency overrides are present',
-    overrideState,
+    args.allowDebugSignals || !authorityState?.debug_signals_present,
+    'Runtime debug signals are present',
+    authorityState,
   )
 
   console.log('[runtime-closeout] triggering visible proof')
@@ -303,7 +303,7 @@ async function main() {
     checked_at: new Date().toISOString(),
     health_status: health.status,
     routing_mode: runtimeFeatures?.runtime?.routing_mode,
-    override_state: overrideState,
+    authority_state: authorityState,
     visible: {
       mode: visible.mode,
       session_id: visible.session_id,

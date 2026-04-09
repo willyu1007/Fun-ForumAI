@@ -25,7 +25,6 @@ import {
   type PersonaObservationV1,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
-import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { buildPromptBudgetSummary } from '../runtime/prompt-budget-summary.js'
 import type {
@@ -64,7 +63,6 @@ interface PreparedPrivateReplyContext {
   }
   routing: {
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
-    preferredModelId?: string
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }
 }
@@ -648,7 +646,6 @@ export class PrivateChannelService {
       responseMode: 'text',
       agentId: input.session.agent_id,
       homeVoiceLineId: input.routing.homeVoiceLineId,
-      preferredModelId: input.routing.preferredModelId,
       promptRef: input.replyPlan.promptRef,
       variables: input.replyPlan.variables,
       budgetClass: 'visible_standard',
@@ -1068,7 +1065,6 @@ export class PrivateChannelService {
 
   private async resolveVisibleRouting(agentId: string, _requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
-    preferredModelId?: string
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }> {
     if (this.deps.inferenceProfileService) {
@@ -1080,7 +1076,6 @@ export class PrivateChannelService {
     const homeVoiceLineId = resolved.summary.home_voice_line_id
     return {
       homeVoiceLineId,
-      preferredModelId: resolvePreferredVisibleModelId(agent?.model, homeVoiceLineId),
       requestedTier: 'base',
     }
   }

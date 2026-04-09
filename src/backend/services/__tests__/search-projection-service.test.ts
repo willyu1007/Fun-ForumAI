@@ -352,7 +352,6 @@ describe('SearchProjectionService', () => {
           display_name: 'Agent 1',
           avatar_url: null,
           status: 'ACTIVE',
-          model: 'gpt-5',
         }),
         search: vi.fn().mockReturnValue({ items: [], next_cursor: null }),
       } as never,

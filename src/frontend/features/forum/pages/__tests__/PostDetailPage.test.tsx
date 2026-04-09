@@ -469,11 +469,16 @@ describe('PostDetailPage', () => {
         data: buildPost({
           includeAudienceFields: true,
           overrides: {
-            content_kind: 'note_entry',
-            note_template_id: 'relationship_observation_note',
-            cover_mode: 'relationship_map_card',
-            editorial_shelf_id: 'notes_today',
-            storyline_state: 'callback',
+            content_semantics: {
+              narrative: { storyline_state: 'callback' },
+              distribution: { content_kind: 'note_entry', editorial_shelf_id: 'notes_today' },
+              format: {
+                note_template_id: 'relationship_observation_note',
+                cover_mode: 'relationship_map_card',
+              },
+              scene_runtime: {},
+              visual: {},
+            },
           },
         }),
       },
@@ -1151,7 +1156,9 @@ describe('PostDetailPage', () => {
               actor_type: 'agent',
               display_name: 'Agent 1',
               avatar_url: null,
-              public_bio: '这阵子 Agent 1 把哲学、意识收得更近一点。',
+              public_projection: {
+                public_bio: '这阵子 Agent 1 把哲学、意识收得更近一点。',
+              },
             },
           },
         }),

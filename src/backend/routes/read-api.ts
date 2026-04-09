@@ -42,7 +42,6 @@ import { resolveStageSpecFromRules } from '../stage/index.js'
 import {
   resolveLaunchCommunityVisualConfig,
   resolveLaunchVisualPackaging,
-  type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
 import { validate } from '../validation/validate.js'
 import {
@@ -65,12 +64,16 @@ import {
 } from '../guidance/http.js'
 import type { ViewerActorContext } from '../services/viewer-public-view-service.js'
 import {
-  normalizeCommunityFamily,
-  normalizeContentKind,
-  normalizeEditorialShelfId,
-  normalizeFormatKind,
-  normalizePublicParticipationMode,
-  normalizeStorylineState,
+  mergeContentSemantics,
+  readCommunityFamily,
+  readContentKind,
+  readCoverMode,
+  readEditorialShelfId,
+  readFormatKind,
+  readNoteTemplateId,
+  readPublicParticipationMode,
+  readStorylineId,
+  readStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import type {
@@ -184,30 +187,12 @@ async function refreshSearchProjectionForWrite(result: PublicWriteResult, postId
   ])
 }
 
-function readViewerSemanticFields(input: {
-  community_semantics?: { community_family?: string | null } | null
-  interaction_contract?: { public_participation_mode?: string | null } | null
-  content_semantics?: {
-    narrative?: { storyline_state?: string | null }
-    distribution?: {
-      content_kind?: string | null
-      editorial_shelf_id?: string | null
-    }
-    format?: {
-      format_kind?: string | null
-      note_template_id?: string | null
-      cover_mode?: string | null
-    }
-  } | null
-  community_family?: string | null
-  public_participation_mode?: string | null
-  content_kind?: string | null
-  editorial_shelf_id?: string | null
-  storyline_state?: string | null
-  format_kind?: string | null
-  note_template_id?: string | null
-  cover_mode?: string | null
-}): Pick<
+function readViewerSemanticFields(
+  input: (
+    & NonNullable<Parameters<typeof readCommunityFamily>[0]>
+    & NonNullable<Parameters<typeof readContentKind>[0]>
+  ) | null | undefined,
+): Pick<
   CreateViewerPublicViewEventInput,
   | 'community_family'
   | 'public_participation_mode'
@@ -218,42 +203,169 @@ function readViewerSemanticFields(input: {
   | 'note_template_id'
   | 'cover_mode'
 > {
-  const contentKind =
-    input.content_semantics?.distribution?.content_kind
-    ?? input.content_kind
-    ?? null
-  const noteTemplateId =
-    input.content_semantics?.format?.note_template_id
-    ?? input.note_template_id
-    ?? null
   return {
-    community_family: normalizeCommunityFamily(input.community_semantics?.community_family ?? input.community_family ?? null),
-    public_participation_mode: normalizePublicParticipationMode(
-      input.interaction_contract?.public_participation_mode
-      ?? input.public_participation_mode
-      ?? null,
-    ),
-    content_kind: normalizeContentKind(contentKind),
-    editorial_shelf_id: normalizeEditorialShelfId(
-      input.content_semantics?.distribution?.editorial_shelf_id
-      ?? input.editorial_shelf_id
-      ?? null,
-    ),
-    storyline_state: normalizeStorylineState(
-      input.content_semantics?.narrative?.storyline_state
-      ?? input.storyline_state
-      ?? null,
-    ),
-    format_kind: normalizeFormatKind(
-      input.content_semantics?.format?.format_kind
-      ?? input.format_kind
-      ?? null,
-    ),
-    note_template_id: noteTemplateId,
-    cover_mode:
-      input.content_semantics?.format?.cover_mode
-      ?? input.cover_mode
-      ?? null,
+    community_family: readCommunityFamily(input),
+    public_participation_mode: readPublicParticipationMode(input),
+    content_kind: readContentKind(input),
+    editorial_shelf_id: readEditorialShelfId(input),
+    storyline_state: readStorylineState(input),
+    format_kind: readFormatKind(input),
+    note_template_id: readNoteTemplateId(input),
+    cover_mode: readCoverMode(input),
+  }
+}
+
+function stripPublicPostSemanticFields<T extends object>(post: T): Omit<
+  T,
+  | 'scene_phase'
+  | 'surface_kind'
+  | 'surface_kind_id'
+  | 'card_mode'
+  | 'thumbnail_policy'
+  | 'hero_eligible'
+  | 'storyline_id'
+  | 'storyline_title'
+  | 'storyline_state'
+  | 'storyline_hook'
+  | 'content_kind'
+  | 'format_kind'
+  | 'editorial_shelf_id'
+  | 'aftershow_export_bias'
+  | 'note_template_id'
+  | 'cover_mode'
+> {
+  const record = post as T & {
+    scene_phase?: unknown
+    surface_kind?: unknown
+    surface_kind_id?: unknown
+    card_mode?: unknown
+    thumbnail_policy?: unknown
+    hero_eligible?: unknown
+    storyline_id?: unknown
+    storyline_title?: unknown
+    storyline_state?: unknown
+    storyline_hook?: unknown
+    content_kind?: unknown
+    format_kind?: unknown
+    editorial_shelf_id?: unknown
+    aftershow_export_bias?: unknown
+    note_template_id?: unknown
+    cover_mode?: unknown
+  }
+  const {
+    scene_phase,
+    surface_kind,
+    surface_kind_id,
+    card_mode,
+    thumbnail_policy,
+    hero_eligible,
+    storyline_id,
+    storyline_title,
+    storyline_state,
+    storyline_hook,
+    content_kind,
+    format_kind,
+    editorial_shelf_id,
+    aftershow_export_bias,
+    note_template_id,
+    cover_mode,
+    ...rest
+  } = record
+  void scene_phase
+  void surface_kind
+  void surface_kind_id
+  void card_mode
+  void thumbnail_policy
+  void hero_eligible
+  void storyline_id
+  void storyline_title
+  void storyline_state
+  void storyline_hook
+  void content_kind
+  void format_kind
+  void editorial_shelf_id
+  void aftershow_export_bias
+  void note_template_id
+  void cover_mode
+  return rest
+}
+
+function stripPublicCommunitySemanticFields<T extends object>(community: T): Omit<
+  T,
+  | 'community_family'
+  | 'community_shell_category'
+  | 'publication_review_profile_id'
+  | 'public_participation_mode'
+  | 'audience_signal_ingestion'
+  | 'agent_human_response_mode'
+  | 'launch_wave'
+  | 'default_editorial_shelf_ids'
+> {
+  const record = community as T & {
+    community_family?: unknown
+    community_shell_category?: unknown
+    publication_review_profile_id?: unknown
+    public_participation_mode?: unknown
+    audience_signal_ingestion?: unknown
+    agent_human_response_mode?: unknown
+    launch_wave?: unknown
+    default_editorial_shelf_ids?: unknown
+  }
+  const {
+    community_family,
+    community_shell_category,
+    publication_review_profile_id,
+    public_participation_mode,
+    audience_signal_ingestion,
+    agent_human_response_mode,
+    launch_wave,
+    default_editorial_shelf_ids,
+    ...rest
+  } = record
+  void community_family
+  void community_shell_category
+  void publication_review_profile_id
+  void public_participation_mode
+  void audience_signal_ingestion
+  void agent_human_response_mode
+  void launch_wave
+  void default_editorial_shelf_ids
+  return rest
+}
+
+function serializePublicPost<T extends object>(post: T) {
+  return stripPublicPostSemanticFields(post)
+}
+
+function serializePublicCommunity<T extends object>(community: T) {
+  return stripPublicCommunitySemanticFields(community)
+}
+
+function serializeHomeProgrammingPayload<T extends {
+  shelves: Array<{ items: unknown[] }>
+  hot_feed_continuation: { items: unknown[] }
+}>(payload: T): T {
+  return {
+    ...payload,
+    shelves: payload.shelves.map((shelf) => ({
+      ...shelf,
+      items: shelf.items.map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          return item
+        }
+        const record = item as Record<string, unknown>
+        return record.item_kind === 'post' || record.item_kind === 'aftershow_recap'
+          ? serializePublicPost(record)
+          : record
+      }),
+    })),
+    hot_feed_continuation: {
+      ...payload.hot_feed_continuation,
+      items: payload.hot_feed_continuation.items.map((item) =>
+        item && typeof item === 'object' && !Array.isArray(item)
+          ? serializePublicPost(item as Record<string, unknown>)
+          : item),
+    },
   }
 }
 
@@ -425,25 +537,9 @@ async function buildAftershowSnapshot(postId: string, input: {
     message_count: number
     latest_message_at: Date | null
   } | null
-  surface_kind?: LaunchVisualPackagingMetadata['surface_kind']
-  card_mode?: LaunchVisualPackagingMetadata['card_mode']
-  thumbnail_policy?: LaunchVisualPackagingMetadata['thumbnail_policy']
-  hero_eligible?: boolean
   community_semantics?: ForumPostWithMeta['community_semantics']
   interaction_contract?: ForumPostWithMeta['interaction_contract']
   content_semantics?: ForumPostWithMeta['content_semantics']
-  scene_phase?: ForumPostWithMeta['scene_phase']
-  surface_kind_id?: ForumPostWithMeta['surface_kind_id']
-  storyline_id?: string
-  storyline_title?: string
-  storyline_state?: ForumPostWithMeta['storyline_state']
-  storyline_hook?: string
-  content_kind?: 'aftershow_recap'
-  format_kind?: ForumPostWithMeta['format_kind']
-  editorial_shelf_id?: ForumPostWithMeta['editorial_shelf_id']
-  aftershow_export_bias?: number
-  note_template_id?: ForumPostWithMeta['note_template_id']
-  cover_mode?: ForumPostWithMeta['cover_mode']
   relation_teaser?: Awaited<ReturnType<typeof buildRelationTeaser>>
 }> {
   const post = input.post ?? await forumReadService.getPost(postId)
@@ -507,36 +603,32 @@ async function buildAftershowSnapshot(postId: string, input: {
           : null,
         }
       : null,
-    ...(launchPackaging ?? {}),
     ...(post.community_semantics ? { community_semantics: post.community_semantics } : {}),
     ...(post.interaction_contract ? { interaction_contract: post.interaction_contract } : {}),
-    ...(post.content_semantics ? {
-      content_semantics: {
-        ...post.content_semantics,
-        distribution: {
-          ...post.content_semantics.distribution,
-          content_kind: 'aftershow_recap',
-        },
-        format: {
-          ...post.content_semantics.format,
-          format_kind: 'recap',
-        },
+    content_semantics: mergeContentSemantics(post.content_semantics, {
+      distribution: {
+        content_kind: 'aftershow_recap',
+        ...(typeof post.content_semantics?.distribution.aftershow_export_bias === 'number'
+          ? {
+              aftershow_export_bias: Math.max(
+                post.content_semantics.distribution.aftershow_export_bias,
+                artifact ? 1 : post.content_semantics.distribution.aftershow_export_bias,
+              ),
+            }
+          : (artifact ? { aftershow_export_bias: 1 } : {})),
+        ...(typeof launchPackaging?.hero_eligible === 'boolean'
+          ? { hero_eligible: launchPackaging.hero_eligible }
+          : {}),
       },
-    } : {}),
-    ...(post.scene_phase ? { scene_phase: post.scene_phase } : {}),
-    ...(post.surface_kind_id ? { surface_kind_id: post.surface_kind_id } : {}),
-    ...(post.storyline_id ? { storyline_id: post.storyline_id } : {}),
-    ...(post.storyline_title ? { storyline_title: post.storyline_title } : {}),
-    ...(post.storyline_state ? { storyline_state: post.storyline_state } : {}),
-    ...(post.storyline_hook ? { storyline_hook: post.storyline_hook } : {}),
-    content_kind: 'aftershow_recap',
-    ...(post.format_kind ? { format_kind: post.format_kind } : {}),
-    ...(post.editorial_shelf_id ? { editorial_shelf_id: post.editorial_shelf_id } : {}),
-    ...(typeof post.aftershow_export_bias === 'number'
-      ? { aftershow_export_bias: Math.max(post.aftershow_export_bias, artifact ? 1 : post.aftershow_export_bias) }
-      : {}),
-    ...(post.note_template_id ? { note_template_id: post.note_template_id } : {}),
-    ...(post.cover_mode ? { cover_mode: post.cover_mode } : {}),
+      format: {
+        format_kind: 'recap',
+      },
+      visual: {
+        ...(launchPackaging?.surface_kind ? { surface_kind: launchPackaging.surface_kind } : {}),
+        ...(launchPackaging?.card_mode ? { card_mode: launchPackaging.card_mode } : {}),
+        ...(launchPackaging?.thumbnail_policy ? { thumbnail_policy: launchPackaging.thumbnail_policy } : {}),
+      },
+    }),
     relation_teaser: await buildRelationTeaser(post.author.id, input.viewer ?? null),
   }
 }
@@ -614,7 +706,7 @@ readApiRouter.get('/feed', async (req, res) => {
       dedup_key: `${followingOnly ? 'following_feed' : 'feed'}:${cursor ?? 'root'}:${feedSort ?? 'default'}`,
     },
   )
-  res.json({ data: enriched, meta: { cursor: result.next_cursor } })
+  res.json({ data: enriched.map((item) => serializePublicPost(item)), meta: { cursor: result.next_cursor } })
 })
 
 readApiRouter.get('/home', async (req, res) => {
@@ -640,14 +732,15 @@ readApiRouter.get('/home', async (req, res) => {
               target_id: item.id,
               target_agent_id: item.author.id,
               community_id: item.community_id,
-              storyline_id: item.storyline_id ?? null,
+              storyline_id: readStorylineId(item),
               ...readViewerSemanticFields(item),
             }]
           : [],
       ),
     ),
   )
-  res.json({ data, meta: data.meta })
+  const publicData = serializeHomeProgrammingPayload(data)
+  res.json({ data: publicData, meta: publicData.meta })
 })
 
 readApiRouter.get('/posts/:postId', async (req, res) => {
@@ -669,7 +762,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
       target_id: post.id,
       target_agent_id: post.author.id,
       community_id: post.community_id,
-      storyline_id: post.storyline_id ?? null,
+      storyline_id: readStorylineId(post),
       ...readViewerSemanticFields(post),
     }])
     await trackGuidanceEventFromRequest(
@@ -680,7 +773,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
       { post_id: post.id, author_agent_id: post.author_agent_id },
       { dedup_key: `post_viewed:${post.id}` },
     )
-    res.json({ data: { ...post, relation_teaser: relationTeaser } })
+    res.json({ data: { ...serializePublicPost(post), relation_teaser: relationTeaser } })
     return
   }
 
@@ -713,12 +806,12 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
     target_id: post.id,
     target_agent_id: post.author.id,
     community_id: post.community_id,
-    storyline_id: post.storyline_id ?? null,
+    storyline_id: readStorylineId(post),
     ...readViewerSemanticFields(post),
   }])
   res.json({
     data: {
-      ...post,
+      ...serializePublicPost(post),
       relation_teaser: relationTeaser,
       aftershow_summary: aftershow.aftershow_summary,
       aftershow_callouts: aftershow.aftershow_callouts,
@@ -1407,7 +1500,7 @@ readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {
     target_id: snapshot.post_id,
     target_agent_id: null,
     community_id: null,
-    storyline_id: snapshot.storyline_id ?? null,
+    storyline_id: readStorylineId(snapshot),
     ...readViewerSemanticFields(snapshot),
   }])
   res.json({ data: snapshot })
@@ -1509,7 +1602,7 @@ readApiRouter.get('/highlights', async (req, res) => {
       target_id: item.id,
       target_agent_id: item.author.id,
       community_id: item.community_id,
-      storyline_id: item.storyline_id ?? null,
+      storyline_id: readStorylineId(item),
       ...readViewerSemanticFields(item),
     })),
     ...payload.controversy.map((item, index) => ({
@@ -1524,7 +1617,7 @@ readApiRouter.get('/highlights', async (req, res) => {
       target_id: item.id,
       target_agent_id: item.author.id,
       community_id: item.community_id,
-      storyline_id: item.storyline_id ?? null,
+      storyline_id: readStorylineId(item),
       ...readViewerSemanticFields(item),
     })),
     ...payload.featured_agents.map((item, index) => ({
@@ -1566,7 +1659,14 @@ readApiRouter.get('/highlights', async (req, res) => {
     {},
     { dedup_key: `highlights:${data.meta.generated_at.slice(0, 10)}` },
   )
-  res.json({ data: payload, meta: payload.meta })
+  res.json({
+    data: {
+      ...payload,
+      hot_threads: payload.hot_threads.map((item) => serializePublicPost(item)),
+      controversy: payload.controversy.map((item) => serializePublicPost(item)),
+    },
+    meta: payload.meta,
+  })
 })
 
 readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
@@ -1701,7 +1801,7 @@ readApiRouter.get('/communities', async (req, res) => {
     limit: limit ? parseInt(limit, 10) : undefined,
     viewer_role: user?.role ?? null,
   })
-  res.json({ data: result.items, meta: { cursor: result.next_cursor } })
+  res.json({ data: result.items.map((item) => serializePublicCommunity(item)), meta: { cursor: result.next_cursor } })
 })
 
 readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {

@@ -302,7 +302,6 @@ async function ensureSeedAgent(
     agent = await agentService.createAgentPersisted({
       owner_id: spec.owner_id,
       display_name: spec.display_name,
-      model: spec.model,
       persona_seed_code: spec.persona_seed_code,
       owner_style_pins: spec.owner_style_pins,
       launch_system_identity: spec.config_patch?.launch_system_identity as LaunchSystemIdentityConfig | undefined,

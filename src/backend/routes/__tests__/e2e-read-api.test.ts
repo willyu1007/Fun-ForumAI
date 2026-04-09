@@ -395,20 +395,40 @@ describe('E2E: Read API (public)', () => {
     expect(feedRes.status).toBe(200)
     const feedItem = feedRes.body.data.find((item: { id: string }) => item.id === postId)
     expect(feedItem).toMatchObject({
-      surface_kind: 'home_root_card',
-      card_mode: 'single_cover',
-      thumbnail_policy: 'required_if_available',
-      hero_eligible: true,
+      content_semantics: {
+        distribution: {
+          hero_eligible: false,
+        },
+        visual: {
+          surface_kind: 'home_root_card',
+          card_mode: 'single_cover',
+          thumbnail_policy: 'required_if_available',
+        },
+      },
     })
+    expect(feedItem.surface_kind).toBeUndefined()
+    expect(feedItem.card_mode).toBeUndefined()
+    expect(feedItem.thumbnail_policy).toBeUndefined()
+    expect(feedItem.hero_eligible).toBeUndefined()
 
     const postReadRes = await request(app).get(`/v1/posts/${postId}`)
     expect(postReadRes.status).toBe(200)
     expect(postReadRes.body.data).toMatchObject({
-      surface_kind: 'home_root_card',
-      card_mode: 'single_cover',
-      thumbnail_policy: 'required_if_available',
-      hero_eligible: true,
+      content_semantics: {
+        distribution: {
+          hero_eligible: false,
+        },
+        visual: {
+          surface_kind: 'home_root_card',
+          card_mode: 'single_cover',
+          thumbnail_policy: 'required_if_available',
+        },
+      },
     })
+    expect(postReadRes.body.data.surface_kind).toBeUndefined()
+    expect(postReadRes.body.data.card_mode).toBeUndefined()
+    expect(postReadRes.body.data.thumbnail_policy).toBeUndefined()
+    expect(postReadRes.body.data.hero_eligible).toBeUndefined()
   })
 
   it('GET /v1/communities returns empty list', async () => {
@@ -430,14 +450,72 @@ describe('E2E: Read API (public)', () => {
     const item = res.body.data.find((entry: { id: string }) => entry.id === community.id)
     expect(item).toMatchObject({
       active_member_count: 0,
-      community_family: 'creator_recommendation',
-      community_shell_category: 'creator',
-      publication_review_profile_id: 'creator_strict_publication',
-      public_participation_mode: 'open_reply',
-      audience_signal_ingestion: 'none',
-      agent_human_response_mode: 'direct_reply',
-      default_editorial_shelf_ids: ['notes_today'],
+      community_semantics: {
+        community_family: 'creator_recommendation',
+        community_shell_category: 'creator',
+        publication_review_profile_id: 'creator_strict_publication',
+        default_editorial_shelf_ids: ['notes_today'],
+      },
+      interaction_contract: {
+        public_participation_mode: 'open_reply',
+        audience_signal_ingestion: 'none',
+        agent_human_response_mode: 'direct_reply',
+      },
     })
+    expect(item.community_family).toBeUndefined()
+    expect(item.community_shell_category).toBeUndefined()
+    expect(item.public_participation_mode).toBeUndefined()
+    expect(item.default_editorial_shelf_ids).toBeUndefined()
+  })
+
+  it('GET /v1/feed and /v1/posts/:id expose nested semantics without flat duplicates', async () => {
+    const launchCommunity = getLaunchCommunityBySlug('creator-recommendation')
+    const community = await createTestCommunity({
+      name: 'Nested Only Read Community',
+      slug: `nested-only-${Date.now()}`,
+      rules_json: launchCommunity?.rules_json,
+    })
+    const authorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Nested Read Author' })
+    expect(authorRes.status).toBe(201)
+    const agentId = authorRes.body.data.id as string
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentId,
+      run_id: `run-nested-only-${Date.now()}`,
+      community_id: community.id,
+      title: 'Nested semantics only',
+      body: 'nested semantic body',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    const feedRes = await request(app).get('/v1/feed').query({ community_id: community.id })
+    expect(feedRes.status).toBe(200)
+    const feedItem = feedRes.body.data.find((entry: { id: string }) => entry.id === postId)
+    expect(feedItem.content_semantics).toMatchObject({
+      distribution: {
+        content_kind: expect.any(String),
+      },
+      format: {
+        format_kind: expect.any(String),
+      },
+    })
+    expect(feedItem.content_kind).toBeUndefined()
+    expect(feedItem.storyline_state).toBeUndefined()
+    expect(feedItem.note_template_id).toBeUndefined()
+    expect(feedItem.surface_kind_id).toBeUndefined()
+
+    const detailRes = await request(app).get(`/v1/posts/${postId}`)
+    expect(detailRes.status).toBe(200)
+    expect(detailRes.body.data.content_semantics).toBeTruthy()
+    expect(detailRes.body.data.content_kind).toBeUndefined()
+    expect(detailRes.body.data.storyline_state).toBeUndefined()
+    expect(detailRes.body.data.editorial_shelf_id).toBeUndefined()
+    expect(detailRes.body.data.note_template_id).toBeUndefined()
+    expect(detailRes.body.data.surface_kind_id).toBeUndefined()
   })
 
   it('GET /v1/communities exposes active member counts', async () => {
@@ -527,7 +605,6 @@ describe('E2E: Read API (public)', () => {
     const agent = await agentService.createAgentPersisted({
       owner_id: 'platform-system-owner',
       display_name: `系统席位-${Date.now()}`,
-      model: 'qwen-plus',
       persona_seed_code: seedIdentity.persona_seed_code,
       owner_style_pins: seedIdentity.owner_style_pins,
       launch_system_identity: buildLaunchSystemConfigSlice(rosterEntry).launch_system_identity as never,
@@ -728,11 +805,21 @@ describe('E2E: Read API (public)', () => {
       expect(highlightsRes.status).toBe(200)
       const hotThread = highlightsRes.body.data.hot_threads.find((item: { id: string }) => item.id === postId)
       expect(hotThread).toMatchObject({
-        surface_kind: 'highlight_card',
-        card_mode: 'single_cover',
-        thumbnail_policy: 'required',
-        hero_eligible: true,
+        content_semantics: {
+          distribution: {
+            hero_eligible: true,
+          },
+          visual: {
+            surface_kind: 'highlight_card',
+            card_mode: 'single_cover',
+            thumbnail_policy: 'required',
+          },
+        },
       })
+      expect(hotThread.surface_kind).toBeUndefined()
+      expect(hotThread.card_mode).toBeUndefined()
+      expect(hotThread.thumbnail_policy).toBeUndefined()
+      expect(hotThread.hero_eligible).toBeUndefined()
     } finally {
       featureFlags.globalHighlightsV1 = originalHighlights
       featureFlags.mediaRolloutControllerV1 = originalRolloutController
@@ -2451,11 +2538,25 @@ describe('E2E: Read API (public)', () => {
       expect(readRes.body.data.aftershow_summary).toBeTruthy()
       expect(Array.isArray(readRes.body.data.aftershow_callouts)).toBe(true)
       expect(readRes.body.data).toMatchObject({
-        surface_kind: 'aftershow_card',
-        card_mode: 'recap_card',
-        thumbnail_policy: 'optional',
-        hero_eligible: false,
+        content_semantics: {
+          distribution: {
+            content_kind: 'aftershow_recap',
+            hero_eligible: false,
+          },
+          format: {
+            format_kind: 'recap',
+          },
+          visual: {
+            surface_kind: 'aftershow_card',
+            card_mode: 'recap_card',
+            thumbnail_policy: 'optional',
+          },
+        },
       })
+      expect(readRes.body.data.surface_kind).toBeUndefined()
+      expect(readRes.body.data.card_mode).toBeUndefined()
+      expect(readRes.body.data.thumbnail_policy).toBeUndefined()
+      expect(readRes.body.data.hero_eligible).toBeUndefined()
       if (readRes.body.data.aftershow_callouts.length > 0) {
         expect(readRes.body.data.aftershow_callouts[0].deep_link).toContain(
           `/posts/${postId}?aftershow_id=`,

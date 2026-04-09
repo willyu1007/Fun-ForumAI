@@ -42,6 +42,12 @@ interface InviteChallengePayload extends Record<string, unknown> {
   inviteCodeId: string
 }
 
+interface ContactChangeChallengePayload extends Record<string, unknown> {
+  kind: 'email_change' | 'phone_change'
+  userId: string
+  newContact: string
+}
+
 export interface AuthResult {
   user: UserProfile
   token: string
@@ -65,6 +71,7 @@ export interface UserProfile {
   phone: string | null
   displayName: string
   avatarUrl: string | null
+  birthDate: string | null
   planTier: string
   role: 'user' | 'admin'
 }
@@ -76,6 +83,7 @@ function toProfile(user: HumanUser): UserProfile {
     phone: user.phone,
     displayName: user.display_name,
     avatarUrl: user.avatar_url,
+    birthDate: user.birth_date ? user.birth_date.toISOString().slice(0, 10) : null,
     planTier: user.plan_tier,
     role: user.plan_tier === 'ADMIN' ? 'admin' : 'user',
   }
@@ -95,6 +103,28 @@ function normalizePhone(phone: string): string {
 
 function normalizeInviteCode(inviteCode: string): string {
   return inviteCode.trim()
+}
+
+function parseBirthDateInput(birthDate: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate)
+  if (!match) {
+    throw new AppError(400, '出生日期格式无效', 'INVALID_BIRTH_DATE')
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  if (
+    Number.isNaN(parsed.getTime())
+    || parsed.getUTCFullYear() !== year
+    || parsed.getUTCMonth() !== month - 1
+    || parsed.getUTCDate() !== day
+  ) {
+    throw new AppError(400, '出生日期格式无效', 'INVALID_BIRTH_DATE')
+  }
+
+  return parsed
 }
 
 function maskEmail(email: string): string {
@@ -807,15 +837,228 @@ export class AuthService {
     userId: string
     displayName?: string
     avatarUrl?: string | null
+    birthDate?: string | null
   }): Promise<UserProfile> {
     const user = await this.userRepo.updateProfile(input.userId, {
       ...(input.displayName !== undefined ? { display_name: input.displayName.trim() } : {}),
       ...(input.avatarUrl !== undefined ? { avatar_url: input.avatarUrl } : {}),
+      ...(input.birthDate !== undefined
+        ? { birth_date: input.birthDate ? parseBirthDateInput(input.birthDate) : null }
+        : {}),
     })
     if (!user) {
       throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
     }
     return toProfile(user)
+  }
+
+  async startEmailChange(input: {
+    userId: string
+    newEmail: string
+    ipAddress?: string | null
+  }): Promise<AuthChallengeResult> {
+    const newEmail = normalizeEmail(input.newEmail)
+    const user = await this.userRepo.findById(input.userId)
+    if (!user) throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
+    if (user.status === 'SUSPENDED') throw new UnauthorizedError('账号已被停用')
+    if (user.email === newEmail) throw new AppError(400, '新邮箱与当前邮箱相同', 'SAME_EMAIL')
+
+    const conflict = await this.userRepo.findByEmail(newEmail)
+    if (conflict) throw new AppError(409, '该邮箱已被其他账号使用', 'EMAIL_ALREADY_REGISTERED')
+
+    const now = new Date()
+    await this.ensureChallengeRateLimit({
+      channel: 'EMAIL',
+      purpose: 'EMAIL_CHANGE',
+      target: newEmail,
+      ipAddress: input.ipAddress ?? null,
+      now,
+    })
+
+    const code = createVerificationCode()
+    const challenge = await this.challengeRepo.createReplacingActive({
+      channel: 'EMAIL',
+      purpose: 'EMAIL_CHANGE',
+      target: newEmail,
+      code_hash: hashVerificationCode({ channel: 'EMAIL', purpose: 'EMAIL_CHANGE', target: newEmail, code }),
+      payload_json: { kind: 'email_change', userId: user.id, newContact: newEmail } satisfies ContactChangeChallengePayload,
+      requested_from_ip: input.ipAddress ?? null,
+      expires_at: this.getExpiry(now),
+      last_sent_at: now,
+      resend_count: 0,
+    })
+
+    await this.emailSender.sendVerificationCode({ to: newEmail, code, expiresInSec: config.auth.otp.ttlSeconds })
+    return this.toChallengeResult(challenge, maskEmail(newEmail), code)
+  }
+
+  async verifyEmailChange(input: {
+    userId: string
+    challengeId: string
+    code: string
+  }): Promise<UserProfile> {
+    const challenge = await this.challengeRepo.findById(input.challengeId)
+    if (!challenge || challenge.purpose !== 'EMAIL_CHANGE') {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    const payload = challenge.payload_json as ContactChangeChallengePayload | null
+    if (!payload || payload.kind !== 'email_change' || payload.userId !== input.userId) {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    const consumed = await this.challengeRepo.consume({
+      id: challenge.id,
+      code_hash: hashVerificationCode({ channel: challenge.channel, purpose: challenge.purpose, target: challenge.target, code: input.code.trim() }),
+      now: new Date(),
+      max_attempts: config.auth.otp.maxAttempts,
+    })
+    this.assertConsumeResult(consumed)
+
+    const conflict = await this.userRepo.findByEmail(normalizeEmail(payload.newContact))
+    if (conflict) throw new AppError(409, '该邮箱已被其他账号使用', 'EMAIL_ALREADY_REGISTERED')
+
+    let updated: HumanUser | null
+    try {
+      updated = await this.userRepo.updateEmail(input.userId, payload.newContact)
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new AppError(409, '该邮箱已被其他账号使用', 'EMAIL_ALREADY_REGISTERED')
+      }
+      throw error
+    }
+    if (!updated) throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
+    return toProfile(updated)
+  }
+
+  async startPhoneChange(input: {
+    userId: string
+    newPhone: string
+    ipAddress?: string | null
+  }): Promise<AuthChallengeResult> {
+    const newPhone = normalizePhone(input.newPhone)
+    const user = await this.userRepo.findById(input.userId)
+    if (!user) throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
+    if (user.status === 'SUSPENDED') throw new UnauthorizedError('账号已被停用')
+    if (user.phone === newPhone) throw new AppError(400, '新手机号与当前手机号相同', 'SAME_PHONE')
+
+    const conflict = await this.userRepo.findByPhone(newPhone)
+    if (conflict) throw new AppError(409, '该手机号已被其他账号使用', 'PHONE_ALREADY_REGISTERED')
+
+    const now = new Date()
+    await this.ensureChallengeRateLimit({
+      channel: 'SMS',
+      purpose: 'PHONE_CHANGE',
+      target: newPhone,
+      ipAddress: input.ipAddress ?? null,
+      now,
+    })
+
+    const code = createVerificationCode()
+    const challenge = await this.challengeRepo.createReplacingActive({
+      channel: 'SMS',
+      purpose: 'PHONE_CHANGE',
+      target: newPhone,
+      code_hash: hashVerificationCode({ channel: 'SMS', purpose: 'PHONE_CHANGE', target: newPhone, code }),
+      payload_json: { kind: 'phone_change', userId: user.id, newContact: newPhone } satisfies ContactChangeChallengePayload,
+      requested_from_ip: input.ipAddress ?? null,
+      expires_at: this.getExpiry(now),
+      last_sent_at: now,
+      resend_count: 0,
+    })
+
+    await this.smsSender.sendVerificationCode({ phone: newPhone, code, expiresInSec: config.auth.otp.ttlSeconds })
+    return this.toChallengeResult(challenge, maskPhone(newPhone), code)
+  }
+
+  async verifyPhoneChange(input: {
+    userId: string
+    challengeId: string
+    code: string
+  }): Promise<UserProfile> {
+    const challenge = await this.challengeRepo.findById(input.challengeId)
+    if (!challenge || challenge.purpose !== 'PHONE_CHANGE') {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    const payload = challenge.payload_json as ContactChangeChallengePayload | null
+    if (!payload || payload.kind !== 'phone_change' || payload.userId !== input.userId) {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    const consumed = await this.challengeRepo.consume({
+      id: challenge.id,
+      code_hash: hashVerificationCode({ channel: challenge.channel, purpose: challenge.purpose, target: challenge.target, code: input.code.trim() }),
+      now: new Date(),
+      max_attempts: config.auth.otp.maxAttempts,
+    })
+    this.assertConsumeResult(consumed)
+
+    const conflict = await this.userRepo.findByPhone(normalizePhone(payload.newContact))
+    if (conflict) throw new AppError(409, '该手机号已被其他账号使用', 'PHONE_ALREADY_REGISTERED')
+
+    let updated: HumanUser | null
+    try {
+      updated = await this.userRepo.updatePhone(input.userId, payload.newContact)
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new AppError(409, '该手机号已被其他账号使用', 'PHONE_ALREADY_REGISTERED')
+      }
+      throw error
+    }
+    if (!updated) throw new AppError(404, '用户不存在', 'USER_NOT_FOUND')
+    return toProfile(updated)
+  }
+
+  async resendContactChange(input: {
+    userId: string
+    challengeId: string
+    ipAddress?: string | null
+  }): Promise<AuthChallengeResult> {
+    const existing = await this.challengeRepo.findById(input.challengeId)
+    if (!existing || (existing.purpose !== 'EMAIL_CHANGE' && existing.purpose !== 'PHONE_CHANGE')) {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+    if (existing.consumed_at) {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    const payload = existing.payload_json as ContactChangeChallengePayload | null
+    if (!payload || payload.userId !== input.userId) {
+      throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
+    }
+
+    const now = new Date()
+    this.assertResendCooldown(existing, now)
+    await this.ensureChallengeRateLimit({
+      channel: existing.channel,
+      purpose: existing.purpose,
+      target: existing.target,
+      ipAddress: input.ipAddress ?? null,
+      now,
+    })
+
+    const code = createVerificationCode()
+    const challenge = await this.challengeRepo.createReplacingActive({
+      channel: existing.channel,
+      purpose: existing.purpose,
+      target: existing.target,
+      code_hash: hashVerificationCode({ channel: existing.channel, purpose: existing.purpose, target: existing.target, code }),
+      payload_json: existing.payload_json,
+      requested_from_ip: input.ipAddress ?? null,
+      expires_at: this.getExpiry(now),
+      last_sent_at: now,
+      resend_count: existing.resend_count + 1,
+    })
+
+    const masked = existing.channel === 'EMAIL' ? maskEmail(existing.target) : maskPhone(existing.target)
+    if (existing.channel === 'EMAIL') {
+      await this.emailSender.sendVerificationCode({ to: existing.target, code, expiresInSec: config.auth.otp.ttlSeconds })
+    } else {
+      await this.smsSender.sendVerificationCode({ phone: existing.target, code, expiresInSec: config.auth.otp.ttlSeconds })
+    }
+
+    return this.toChallengeResult(challenge, masked, code)
   }
 
   async ensureDevIdentity(input: {

@@ -11,7 +11,7 @@ import {
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
-import { COMMUNITY_FAMILY_IDS, type CommunityFamily } from '../../../../shared/semantic-taxonomy'
+import { COMMUNITY_FAMILY_IDS, readCommunityFamily, type CommunityFamily } from '../../../../shared/semantic-taxonomy'
 import { cn } from '@/lib/utils'
 import type { Community } from '@/api/types'
 
@@ -79,7 +79,7 @@ export function CommunitiesPage() {
   
   const filteredCommunities = useMemo(() => {
     if (!activeFamily) return allCommunities
-    return allCommunities.filter((c) => c.community_family === activeFamily)
+    return allCommunities.filter((c) => readCommunityFamily(c) === activeFamily)
   }, [allCommunities, activeFamily])
 
   // For Strategy A: "Featured" section when "all" is selected

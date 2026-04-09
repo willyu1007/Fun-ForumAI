@@ -103,6 +103,27 @@
     - 结果：通过
     - 备注：说明 staging 剩余问题收敛为 `talkshow-stag/smtp_user` / `talkshow-stag/smtp_pass` secret drift，而不是 host/port/TLS 或业务代码问题
 
+- 2026-04-09 auth/contact-change hardening
+  - `pnpm exec vitest run src/backend/routes/__tests__/auth-api.test.ts src/backend/services/__tests__/auth-service.test.ts src/frontend/features/user/pages/__tests__/AccountSettingsPage.test.tsx src/frontend/widgets/shell/__tests__/ShellTopBarContainer.test.tsx`
+    - 结果：`4` 个 test files，`43` 个 tests 全部通过
+    - 覆盖：
+      - dev `/auth/me` 的 `birthDate` contract 对齐
+      - authenticated profile 的 `birthDate` 持久化
+      - 非法日历日期拒绝
+      - email change resend 后旧 challenge 失效
+      - email / phone change verify 成功路径
+      - 晚到唯一约束冲突映射为稳定 409
+  - `pnpm exec tsc --noEmit --pretty false`
+    - 结果：通过
+  - `pnpm exec prisma validate`
+    - 结果：通过；`prisma/schema.prisma` 合法
+  - `pnpm exec prisma format`
+    - 结果：通过；schema 已格式化
+  - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+    - 结果：通过；`docs/context/db/schema.json` 已刷新
+  - `git diff --check`
+    - 结果：通过，无空白或冲突标记问题
+
 ## Not Run
 
 - `pnpm test` 全量测试未跑；本轮只跑了 auth / redirect / environment 相关验证

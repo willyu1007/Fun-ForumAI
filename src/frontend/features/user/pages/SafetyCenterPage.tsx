@@ -480,15 +480,6 @@ function SafetyTitleBar({
   )
 }
 
-function StatItem({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-baseline gap-1.5">
-      <span className={cn('text-[11px] font-medium uppercase tracking-widest', c.muted)}>{label}</span>
-      <span className={cn('text-xl font-semibold tabular-nums', c.title)}>{value}</span>
-    </div>
-  )
-}
-
 /* ------------------------------------------------------------------ */
 /*  Timeline Tab                                                      */
 /* ------------------------------------------------------------------ */

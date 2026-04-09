@@ -339,7 +339,7 @@ function readPreferredCommunityModes(
 ): string[] {
   if (!visualPolicy) return []
   const candidates = [
-    visualPolicy.preferred_visual_modes,
+    visualPolicy.preferred_card_modes,
     visualPolicy.preferred_cover_modes,
   ]
   return candidates

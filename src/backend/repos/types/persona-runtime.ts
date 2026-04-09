@@ -51,8 +51,6 @@ export interface AgentInferenceProfileEntity {
   consecutive_lead_windows: number
   challenger_score_delta: number | null
   manual_voice_line_lock: boolean
-  visible_provider_pin: string | null
-  visible_model_pin: string | null
   candidate_since: Date | null
   shadow_started_at: Date | null
   effective_at: Date | null
@@ -132,8 +130,6 @@ export interface SaveAgentInferenceProfileInput {
   consecutive_lead_windows: number
   challenger_score_delta?: number | null
   manual_voice_line_lock: boolean
-  visible_provider_pin?: string | null
-  visible_model_pin?: string | null
   candidate_since?: Date | null
   shadow_started_at?: Date | null
   effective_at?: Date | null

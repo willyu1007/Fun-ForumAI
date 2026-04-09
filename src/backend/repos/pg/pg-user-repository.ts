@@ -14,6 +14,7 @@ function toDomain(row: PrismaHumanUser): HumanUser {
     password_hash: row.passwordHash,
     display_name: row.displayName,
     avatar_url: row.avatarUrl,
+    birth_date: row.birthDate,
     phone: row.phone,
     wechat_open_id: row.wechatOpenId,
     email_verified: row.emailVerified,
@@ -161,6 +162,7 @@ export class PgUserRepository implements UserRepository {
       data: {
         ...(input.display_name !== undefined ? { displayName: input.display_name } : {}),
         ...(input.avatar_url !== undefined ? { avatarUrl: input.avatar_url } : {}),
+        ...(input.birth_date !== undefined ? { birthDate: input.birth_date } : {}),
       },
     })
     return toDomain(row)
@@ -190,6 +192,34 @@ export class PgUserRepository implements UserRepository {
       data: {
         passwordHash: password_hash,
         emailVerified: true,
+      },
+    })
+    return toDomain(row)
+  }
+
+  async updateEmail(id: string, email: string): Promise<HumanUser | null> {
+    const existing = await this.prisma.humanUser.findUnique({ where: { id } })
+    if (!existing) return null
+
+    const row = await this.prisma.humanUser.update({
+      where: { id },
+      data: {
+        email: normalizeEmail(email),
+        emailVerified: true,
+      },
+    })
+    return toDomain(row)
+  }
+
+  async updatePhone(id: string, phone: string): Promise<HumanUser | null> {
+    const existing = await this.prisma.humanUser.findUnique({ where: { id } })
+    if (!existing) return null
+
+    const row = await this.prisma.humanUser.update({
+      where: { id },
+      data: {
+        phone,
+        phoneVerified: true,
       },
     })
     return toDomain(row)

@@ -1,6 +1,7 @@
 import { useMyAgents } from '@/api/hooks/user'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -8,9 +9,10 @@ import { readProjectionText } from '@/shared/utils/public-author'
 
 type AgentListSidebarProps = {
   className?: string
+  onCreateAgent?: () => void
 }
 
-export function AgentListSidebar({ className }: AgentListSidebarProps) {
+export function AgentListSidebar({ className, onCreateAgent }: AgentListSidebarProps) {
   const { data } = useMyAgents()
   const agents = data?.data ?? []
   const { activeAgentId, setActiveAgent } = useAgentModalStore()
@@ -19,8 +21,20 @@ export function AgentListSidebar({ className }: AgentListSidebarProps) {
     <div className={cn('flex h-full w-64 flex-col border-r bg-muted/10', className)}>
       <div className="flex-1 space-y-1 overflow-y-auto p-2 pt-3">
         {agents.length === 0 ? (
-          <div className="text-center text-xs text-muted-foreground py-8">
-            还没有智能体
+          <div className="flex flex-col items-center px-4 py-10">
+            <button
+              type="button"
+              onClick={onCreateAgent}
+              className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border/70 px-4 py-8 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Plus className="h-5 w-5" />
+              </span>
+              <div>
+                <div className="text-sm font-medium text-foreground">创建你的第一个智能体</div>
+                <div className="mt-1 text-xs text-muted-foreground">它会自己探索这个世界，丰富阅历不断成长，是有脾气也有性格的好伙伴</div>
+              </div>
+            </button>
           </div>
         ) : (
           agents.map((agent) => (

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-06T16:16:47.669Z",
+  "updatedAt": "2026-04-09T08:22:57.656Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -115,7 +115,9 @@
       "name": "AuthVerificationPurpose",
       "values": [
         "EMAIL_SIGNUP",
-        "SMS_AUTH"
+        "SMS_AUTH",
+        "EMAIL_CHANGE",
+        "PHONE_CHANGE"
       ]
     },
     {
@@ -1628,11 +1630,11 @@
         {
           "name": "model",
           "type": "String",
-          "nullable": false,
+          "nullable": true,
           "list": false,
           "dbName": null,
           "dbType": null,
-          "default": "\"gpt-4o\"",
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -3750,28 +3752,6 @@
           "default": null,
           "primaryKey": false,
           "unique": false
-        },
-        {
-          "name": "visibleModelPin",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "visible_model_pin",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "visibleProviderPin",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "visible_provider_pin",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
         }
       ],
       "relations": [
@@ -5671,7 +5651,7 @@
         {
           "name": "model",
           "type": "String",
-          "nullable": false,
+          "nullable": true,
           "list": false,
           "dbName": null,
           "dbType": null,
@@ -9103,11 +9083,11 @@
         {
           "name": "incubationVisibilityMode",
           "type": "CommunityIncubationVisibilityMode",
-          "nullable": true,
+          "nullable": false,
           "list": false,
           "dbName": "incubation_visibility_mode",
           "dbType": null,
-          "default": null,
+          "default": "GRAY",
           "primaryKey": false,
           "unique": false
         },
@@ -9174,17 +9154,6 @@
           "dbName": "recommended_as_seasonal",
           "dbType": null,
           "default": "true",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "recommendedVisibility",
-          "type": "CommunityIncubationVisibilityMode",
-          "nullable": false,
-          "list": false,
-          "dbName": "recommended_visibility",
-          "dbType": null,
-          "default": "GRAY",
           "primaryKey": false,
           "unique": false
         },
@@ -13536,6 +13505,17 @@
           "list": false,
           "dbName": "avatar_url",
           "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "birthDate",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "birth_date",
+          "dbType": "Date",
           "default": null,
           "primaryKey": false,
           "unique": false

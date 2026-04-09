@@ -119,13 +119,12 @@ describe('AgentExecutor', () => {
       dataplaneWriter: { write } as never,
       agentRunRepo: { create: vi.fn() } as never,
       agentService: {
-        getAgent: vi.fn(() => ({ id: 'agent-1', model: 'qwen-plus' })),
+        getAgent: vi.fn(() => ({ id: 'agent-1' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async () => ({
           homeVoiceLineId: 'qwen-social-v1',
-          preferredModelId: 'qwen-plus',
           requestedTier: 'base',
         })),
       } as never,

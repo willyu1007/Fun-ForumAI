@@ -4,6 +4,7 @@ import { config } from '../../lib/config.js'
 import { InMemoryInviteCodeRepository } from '../../repos/invite-code-repository.js'
 import { InMemoryAuthVerificationChallengeRepository } from '../../repos/auth-verification-challenge-repository.js'
 import { InMemoryUserRepository } from '../../repos/user-repository.js'
+import type { HumanUser } from '../../repos/types.js'
 import { AdminUserAccessService } from '../admin-user-access-service.js'
 import { AuthService } from '../auth-service.js'
 
@@ -16,6 +17,12 @@ function setBootstrapAdmins(input: Partial<MutableBootstrapAdmins> = {}): void {
   const bootstrapAdmins = config.auth.bootstrapAdmins as MutableBootstrapAdmins
   bootstrapAdmins.emails = [...(input.emails ?? [])]
   bootstrapAdmins.phones = [...(input.phones ?? [])]
+}
+
+class ConflictOnEmailUpdateUserRepository extends InMemoryUserRepository {
+  override async updateEmail(_id: string, _email: string): Promise<HumanUser | null> {
+    throw { code: 'P2002' }
+  }
 }
 
 describe('AuthService', () => {
@@ -271,6 +278,67 @@ describe('AuthService', () => {
         role: 'admin',
         planTier: 'ADMIN',
       },
+    })
+  })
+
+  it('rejects invalid birth dates when updating profile directly through the service', async () => {
+    const userRepo = new InMemoryUserRepository()
+    const user = await userRepo.create({
+      email: 'birthdate@example.com',
+      display_name: 'Birth Date User',
+      email_verified: true,
+    })
+
+    const service = new AuthService(
+      userRepo,
+      new InMemoryInviteCodeRepository(userRepo),
+      new InMemoryAuthVerificationChallengeRepository(),
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+    )
+
+    await expect(
+      service.updateProfile({
+        userId: user.id,
+        birthDate: '2024-02-31',
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'INVALID_BIRTH_DATE',
+    })
+  })
+
+  it('maps late email uniqueness conflicts during contact change verification to EMAIL_ALREADY_REGISTERED', async () => {
+    const userRepo = new ConflictOnEmailUpdateUserRepository()
+    const challengeRepo = new InMemoryAuthVerificationChallengeRepository()
+    const user = await userRepo.create({
+      email: 'owner@example.com',
+      display_name: 'Owner User',
+      email_verified: true,
+    })
+
+    const service = new AuthService(
+      userRepo,
+      new InMemoryInviteCodeRepository(userRepo),
+      challengeRepo,
+      { sendVerificationCode: async () => {} },
+      { sendVerificationCode: async () => {} },
+    )
+
+    const start = await service.startEmailChange({
+      userId: user.id,
+      newEmail: 'replacement@example.com',
+    })
+
+    await expect(
+      service.verifyEmailChange({
+        userId: user.id,
+        challengeId: start.challengeId,
+        code: start.debugCode!,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'EMAIL_ALREADY_REGISTERED',
     })
   })
 })

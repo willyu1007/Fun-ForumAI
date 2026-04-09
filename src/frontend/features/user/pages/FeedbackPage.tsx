@@ -308,7 +308,6 @@ function SubmitTab({
   setTitle,
   body,
   setBody,
-  files,
   setFiles,
   previewUrls,
   isPending,
@@ -320,7 +319,6 @@ function SubmitTab({
   setTitle: (v: string) => void
   body: string
   setBody: (v: string) => void
-  files: File[]
   setFiles: (fn: (prev: File[]) => File[]) => void
   previewUrls: Array<{ name: string; url: string }>
   isPending: boolean
@@ -739,7 +737,6 @@ export function FeedbackPage() {
           setTitle={setTitle}
           body={body}
           setBody={setBody}
-          files={files}
           setFiles={setFiles}
           previewUrls={previewUrls}
           isPending={createFeedback.isPending}

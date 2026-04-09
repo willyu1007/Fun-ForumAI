@@ -113,10 +113,18 @@ describe('HomePage', () => {
                 topic_signals: null,
                 distribution_state: 'NORMAL',
                 hero_reason: '今日高光',
-                storyline_title: '热点主线',
-                content_kind: 'note_entry',
-                editorial_shelf_id: 'notes_today',
-                note_template_id: 'review_note',
+                content_semantics: {
+                  narrative: {
+                    storyline_title: '热点主线',
+                  },
+                  distribution: {
+                    content_kind: 'note_entry',
+                    editorial_shelf_id: 'notes_today',
+                  },
+                  format: {
+                    note_template_id: 'review_note',
+                  },
+                },
               }],
             },
             {

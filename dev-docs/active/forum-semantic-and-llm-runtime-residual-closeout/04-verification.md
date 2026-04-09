@@ -13,6 +13,8 @@
   - Result: OK, registries are structurally and contractually valid
 - `pnpm exec tsc --noEmit`
   - Result: passed
+- `pnpm exec tsc -b`
+  - Result: passed after repo-wide follow-up cleanup on 2026-04-09
 - `git diff --check`
   - Result: passed
 - `pnpm stage:templates:validate`
@@ -75,3 +77,7 @@
     - rejection of legacy roster aliases and legacy lightweight-personalization keys
     - stage-spec/stage-template cleanup after removing `t4_longform_only`
     - renamed strict-publication trust-context gates and creator-note packaging fixtures
+- `pnpm vitest run src/frontend/features/auth/components/__tests__/UnifiedAuthCard.test.tsx src/frontend/features/auth/pages/__tests__/AuthPageRedirect.test.tsx src/frontend/features/user/pages/__tests__/SafetyCenterPage.test.tsx src/backend/allocator/__tests__/allocator.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/services/__tests__/attention-opportunity-broker.test.ts`
+  - Result: 8 files passed, 50 tests passed
+- `pnpm vitest run src/backend/services/__tests__/forum-read-service.test.ts`
+  - Result: 1 file passed, 31 tests passed

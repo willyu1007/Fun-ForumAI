@@ -1,10 +1,4 @@
-# Model routing profiles registry
-#
-# Profiles are runtime-authoritative business intents resolved from:
-#   voice line -> intent -> tier -> profile -> provider/model candidate set
-
 version: 1
-
 profiles:
   - profile_id: qwen-social-chat-reply-lite
     voice_line_id: qwen-social-v1
@@ -18,20 +12,23 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 85
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 80
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-chat_reply-lite
   - profile_id: qwen-social-forum-reply-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -44,26 +41,30 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-forum_reply-base
   - profile_id: qwen-social-scheduled-post-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -76,26 +77,30 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-scheduled_post-base
   - profile_id: qwen-social-private-reply-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -109,26 +114,29 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
   - profile_id: qwen-social-proactive-opening-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -141,29 +149,33 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback:
       - level: same-line
         profile_id: qwen-social-proactive-opening-premium
         reason: proactive openings may raise quality within the same line
-
+    policy_id: visible-proactive_opening-base
   - profile_id: qwen-social-proactive-opening-premium
     voice_line_id: qwen-social-v1
     tier: premium
@@ -176,11 +188,12 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback:
       - level: same-line
         profile_id: qwen-social-proactive-opening-base
         reason: degrade within the same line before any family escape
-
+    policy_id: visible-proactive_opening-premium
   - profile_id: qwen-social-identity-write-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -193,26 +206,30 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-flash-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: identity_write-identity_write-base
   - profile_id: qwen-social-identity-write-premium
     voice_line_id: qwen-social-v1
     tier: premium
@@ -225,14 +242,16 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 85
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: identity_write-identity_write-premium
   - profile_id: qwen-social-public-observation-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -245,8 +264,30 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 70
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-public_observation_digest-base
   - profile_id: qwen-social-private-digest-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -259,8 +300,30 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 88
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 70
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-private_digest-base
   - profile_id: glm-deep-chat-reply-lite
     voice_line_id: glm-deep-v1
     tier: lite
@@ -273,14 +336,16 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-turbo-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 88
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-chat_reply-lite
   - profile_id: glm-deep-forum-reply-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -293,32 +358,37 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-4-air
         region: cn
         endpoint_id: zai-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-forum_reply-base
   - profile_id: glm-deep-scheduled-post-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -331,35 +401,40 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-4-air
         region: cn
         endpoint_id: zai-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback:
       - level: same-line
         profile_id: glm-deep-scheduled-post-premium
         reason: scheduled posting may raise quality inside the same line
-
+    policy_id: visible-scheduled_post-base
   - profile_id: glm-deep-scheduled-post-premium
     voice_line_id: glm-deep-v1
     tier: premium
@@ -372,29 +447,33 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback:
       - level: same-line
         profile_id: glm-deep-scheduled-post-base
         reason: degrade within the same line before any family escape
-
+    policy_id: visible-scheduled_post-premium
   - profile_id: glm-deep-private-reply-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -408,32 +487,36 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-4-air
         region: cn
         endpoint_id: zai-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
   - profile_id: glm-deep-proactive-opening-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -446,32 +529,37 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-4-air
         region: cn
         endpoint_id: zai-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-proactive_opening-base
   - profile_id: glm-deep-identity-write-premium
     voice_line_id: glm-deep-v1
     tier: premium
@@ -484,26 +572,30 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-thinking
         region: cn
         endpoint_id: moonshot-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: identity_write-identity_write-premium
   - profile_id: glm-deep-public-observation-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -516,26 +608,30 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 90
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 84
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 80
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-public_observation_digest-base
   - profile_id: glm-deep-private-digest-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -548,26 +644,30 @@ profiles:
         endpoint_id: zai-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-0905-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 90
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 84
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 80
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-private_digest-base
   - profile_id: deepseek-director-public-observation-base
     voice_line_id: deepseek-director-v1
     tier: base
@@ -580,14 +680,16 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 60
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-public_observation_digest-base
   - profile_id: deepseek-director-private-digest-base
     voice_line_id: deepseek-director-v1
     tier: base
@@ -600,14 +702,16 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 60
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-private_digest-base
   - profile_id: deepseek-director-private-digest-premium
     voice_line_id: deepseek-director-v1
     tier: premium
@@ -620,14 +724,16 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-max
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 60
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-private_digest-premium
   - profile_id: deepseek-director-vision-summary-base
     voice_line_id: deepseek-director-v1
     tier: base
@@ -640,14 +746,16 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-vl-max
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-vision_summary-base
   - profile_id: deepseek-director-director-plan-base
     voice_line_id: deepseek-director-v1
     tier: base
@@ -660,17 +768,19 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-plus-character
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 60
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback:
       - level: same-line
         profile_id: deepseek-director-director-plan-premium
         reason: raise hidden director work inside the same line only
-
+    policy_id: hidden-director_plan-base
   - profile_id: deepseek-director-director-plan-premium
     voice_line_id: deepseek-director-v1
     tier: premium
@@ -683,17 +793,19 @@ profiles:
         endpoint_id: deepseek-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen-max
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
         weight: 60
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback:
       - level: same-line
         profile_id: deepseek-director-director-plan-base
         reason: degrade inside the hidden director line only
-
+    policy_id: hidden-director_plan-premium
   - profile_id: minimax-her-chat-reply-lite
     voice_line_id: minimax-her-v1
     tier: lite
@@ -706,20 +818,23 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 88
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 82
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-chat_reply-lite
   - profile_id: minimax-her-forum-reply-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -732,26 +847,30 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: minimax-openai
         model_id: MiniMax-M2.5-highspeed
         region: cn
         endpoint_id: minimax-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-forum_reply-base
   - profile_id: minimax-her-scheduled-post-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -764,26 +883,30 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: minimax-openai
         model_id: MiniMax-M2.5-highspeed
         region: cn
         endpoint_id: minimax-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-scheduled_post-base
   - profile_id: minimax-her-private-reply-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -797,26 +920,29 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: minimax-openai
         model_id: MiniMax-M2.5-highspeed
         region: cn
         endpoint_id: minimax-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
   - profile_id: minimax-her-proactive-opening-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -829,26 +955,30 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: minimax-openai
         model_id: MiniMax-M2.5-highspeed
         region: cn
         endpoint_id: minimax-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-proactive_opening-base
   - profile_id: minimax-her-identity-write-premium
     voice_line_id: minimax-her-v1
     tier: premium
@@ -861,20 +991,23 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 88
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: identity_write-identity_write-premium
   - profile_id: minimax-her-public-observation-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -887,20 +1020,23 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 80
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-public_observation_digest-base
   - profile_id: minimax-her-private-digest-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -913,20 +1049,23 @@ profiles:
         endpoint_id: minimax-cn
         weight: 100
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-instruct-20251111
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 80
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-private_digest-base
   - profile_id: kimi-deep-chat-reply-lite
     voice_line_id: kimi-deep-v1
     tier: lite
@@ -939,14 +1078,16 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-4-air
         region: cn
         endpoint_id: zai-cn
         weight: 88
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-chat_reply-lite
   - profile_id: kimi-deep-forum-reply-base
     voice_line_id: kimi-deep-v1
     tier: base
@@ -959,32 +1100,37 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-turbo-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-forum_reply-base
   - profile_id: kimi-deep-scheduled-post-base
     voice_line_id: kimi-deep-v1
     tier: base
@@ -997,32 +1143,37 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-turbo-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-scheduled_post-base
   - profile_id: kimi-deep-private-reply-base
     voice_line_id: kimi-deep-v1
     tier: base
@@ -1036,32 +1187,36 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-turbo-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
   - profile_id: kimi-deep-proactive-opening-base
     voice_line_id: kimi-deep-v1
     tier: base
@@ -1074,32 +1229,37 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2-turbo-preview
         region: cn
         endpoint_id: moonshot-cn
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: visible-proactive_opening-base
   - profile_id: kimi-deep-identity-write-premium
     voice_line_id: kimi-deep-v1
     tier: premium
@@ -1112,26 +1272,30 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 92
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 86
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 82
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: identity_write-identity_write-premium
   - profile_id: kimi-deep-public-observation-base
     voice_line_id: kimi-deep-v1
     tier: base
@@ -1144,26 +1308,30 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 90
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 84
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 80
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
-
+    policy_id: hidden-public_observation_digest-base
   - profile_id: kimi-deep-private-digest-base
     voice_line_id: kimi-deep-v1
     tier: base
@@ -1176,22 +1344,27 @@ profiles:
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: zai-openai
         model_id: glm-5
         region: cn
         endpoint_id: zai-cn
         weight: 90
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: tencent-openai
         model_id: hunyuan-2.0-thinking-20251109
         region: cn
         endpoint_id: tencent-cn
         weight: 84
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-pro-260215
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 80
         quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
+    policy_id: hidden-private_digest-base

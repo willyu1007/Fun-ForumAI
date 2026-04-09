@@ -14,7 +14,6 @@ import type { PersonaStateService } from './persona-state-service.js'
 import type { InferenceProfileService } from './inference-profile-service.js'
 import type { PromptComposeAudit } from '../runtime/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
-import { resolvePreferredVisibleModelId } from '../llm/model-preference.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -374,7 +373,6 @@ export class ProactiveInteractionService {
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
     const defaultHomeVoiceLineId = identity.summary.home_voice_line_id
-    const defaultPreferredModelId = resolvePreferredVisibleModelId(agent.model, defaultHomeVoiceLineId)
 
     if (!this.deps.promptOrchestrator) {
       throw new Error('PromptOrchestrator is not configured for proactive DM')
@@ -431,7 +429,6 @@ export class ProactiveInteractionService {
         })
       : {
           homeVoiceLineId: defaultHomeVoiceLineId,
-          preferredModelId: defaultPreferredModelId,
           requestedTier: composed.runtimeEnvelope?.renderTierDecision.requestedTier ?? 'base',
         }
     const startMs = Date.now()
@@ -443,7 +440,6 @@ export class ProactiveInteractionService {
       responseMode: 'text',
       agentId,
       homeVoiceLineId: routing.homeVoiceLineId,
-      preferredModelId: routing.preferredModelId,
       promptRef: PROMPT_TEMPLATE_REFS.agentProactiveDmOpening,
       variables,
       budgetClass: 'visible_standard',

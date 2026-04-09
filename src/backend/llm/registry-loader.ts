@@ -26,6 +26,11 @@ import type {
   RoutingPolicyEntry,
 } from './gateway-contract.js'
 import { LLMGatewayContractError } from './gateway-contract.js'
+import { GENERATED_VOICE_LINE_ROUTING } from './generated/voice-line-routing.generated.js'
+import {
+  buildVoiceLineRoutingArtifact,
+  normalizeVoiceLineRoutingArtifact,
+} from './voice-line-routing-artifact.js'
 
 export interface PromptVariableSchemaProperty {
   type: 'string'
@@ -57,7 +62,7 @@ export interface ModelProfileEntry {
   tier: RenderTier
   intent: VoiceLineRoutingIntent
   visibility: LLMVisibility
-  policy_id?: string
+  policy_id: string
   candidates: ModelProfileCandidate[]
   fallback: ModelProfileFallback[]
 }
@@ -269,14 +274,14 @@ const modelProfileSchema = z
                   model_id: z.string().min(1),
                   region: z.string().min(1),
                   endpoint_id: z.string().min(1),
-                  adapter_id: z.string().min(1).optional(),
+                  adapter_id: z.string().min(1),
                   weight: z.number().positive(),
                   quality_class: qualityClassSchema,
                 })
                 .strict(),
             )
             .min(1),
-          policy_id: z.string().min(1).optional(),
+          policy_id: z.string().min(1),
           fallback: z.array(
             z
               .object({
@@ -551,7 +556,7 @@ export function loadModelCapabilitiesRegistry(
 export function loadLlmRegistryBundle(paths: LlmRegistryPaths = {}): LlmRegistryBundle {
   const bundle: LlmRegistryBundle = {
     providers: loadProvidersRegistry(paths.providers),
-    modelProfiles: normalizeModelProfilesRegistry(loadModelProfilesRegistry(paths.modelProfiles)),
+    modelProfiles: loadModelProfilesRegistry(paths.modelProfiles),
     promptTemplates: loadPromptTemplatesRegistry(paths.promptTemplates),
     credentialPools: loadCredentialPoolsRegistry(paths.credentialPools),
     routingPolicies: loadRoutingPoliciesRegistry(paths.routingPolicies),
@@ -651,12 +656,11 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         profile_id: profile.profile_id,
       })
     }
-    const executionPolicyId = profile.policy_id ?? defaultExecutionPolicyId(profile)
-    const executionPolicy = executionPolicyById.get(executionPolicyId)
+    const executionPolicy = executionPolicyById.get(profile.policy_id)
     if (!executionPolicy) {
       throw registryError(`Profile ${profile.profile_id} references unknown execution policy`, {
         profile_id: profile.profile_id,
-        policy_id: executionPolicyId,
+        policy_id: profile.policy_id,
       })
     }
     if (executionPolicy.lane !== defaultExecutionLane(profile)) {
@@ -719,7 +723,7 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
         )
       }
 
-      const adapterBinding = adapterBindingById.get(candidate.adapter_id ?? defaultAdapterId(candidate))
+      const adapterBinding = adapterBindingById.get(candidate.adapter_id)
       if (!adapterBinding) {
         throw registryError(
           `Profile ${profile.profile_id} candidate ${candidate.provider_id}/${candidate.model_id} references unknown adapter`,
@@ -727,7 +731,7 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
             profile_id: profile.profile_id,
             provider_id: candidate.provider_id,
             model_id: candidate.model_id,
-            adapter_id: candidate.adapter_id ?? defaultAdapterId(candidate),
+            adapter_id: candidate.adapter_id,
           },
         )
       }
@@ -1020,82 +1024,17 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     }
   }
 
-  for (const line of Object.values(VOICE_LINE_CATALOG)) {
-    for (const [tier, profileId] of Object.entries(line.tierProfileRefs)) {
-      const profile = profilesById.get(profileId)
-      if (!profile) {
-        throw registryError(
-          `Voice line catalog tierProfileRefs references unknown profile ${profileId}`,
-          { voice_line_id: line.id, tier, profile_id: profileId },
-        )
-      }
-      if (profile.voice_line_id !== line.id || profile.tier !== tier) {
-        throw registryError(`Voice line catalog tierProfileRefs mismatch for ${line.id}/${tier}`, {
-          voice_line_id: line.id,
-          tier,
-          profile_id: profileId,
-          profile_voice_line_id: profile.voice_line_id,
-          profile_tier: profile.tier,
-        })
-      }
-    }
+  const expectedVoiceLineRouting = buildVoiceLineRoutingArtifact(bundle.modelProfiles.profiles)
+  const actualVoiceLineRouting = normalizeVoiceLineRoutingArtifact(GENERATED_VOICE_LINE_ROUTING)
 
-    for (const [intent, tierMap] of Object.entries(line.intentProfileRefs)) {
-      for (const [tier, profileId] of Object.entries(tierMap ?? {})) {
-        const profile = profilesById.get(profileId)
-        if (!profile) {
-          throw registryError(`Voice line catalog references unknown profile ${profileId}`, {
-            voice_line_id: line.id,
-            intent,
-            tier,
-            profile_id: profileId,
-          })
-        }
-        if (
-          profile.voice_line_id !== line.id ||
-          profile.intent !== intent ||
-          profile.tier !== tier
-        ) {
-          throw registryError(
-            `Voice line catalog mapping mismatch for ${line.id}/${intent}/${tier}`,
-            {
-              voice_line_id: line.id,
-              intent,
-              tier,
-              profile_id: profileId,
-              profile_voice_line_id: profile.voice_line_id,
-              profile_intent: profile.intent,
-              profile_tier: profile.tier,
-            },
-          )
-        }
-      }
-    }
-
-    if (line.identityWriteProfileRef) {
-      const profile = profilesById.get(line.identityWriteProfileRef)
-      if (!profile) {
-        throw registryError(
-          `Voice line ${line.id} identityWriteProfileRef points to unknown profile ${line.identityWriteProfileRef}`,
-          { voice_line_id: line.id, profile_id: line.identityWriteProfileRef },
-        )
-      }
-      if (
-        profile.voice_line_id !== line.id ||
-        profile.intent !== 'identity_write' ||
-        profile.visibility !== 'identity_write'
-      ) {
-        throw registryError(
-          `Voice line ${line.id} identityWriteProfileRef must resolve to an identity_write profile`,
-          {
-            voice_line_id: line.id,
-            profile_id: line.identityWriteProfileRef,
-            profile_intent: profile.intent,
-            profile_visibility: profile.visibility,
-          },
-        )
-      }
-    }
+  if (JSON.stringify(actualVoiceLineRouting) !== JSON.stringify(expectedVoiceLineRouting)) {
+    throw registryError(
+      'Generated voice-line routing artifact is out of sync with model profiles registry',
+      {
+        generated_artifact_path: 'src/backend/llm/generated/voice-line-routing.generated.ts',
+        registry_path: '.ai/llm-config/registry/model_profiles.yaml',
+      },
+    )
   }
 }
 
@@ -1164,26 +1103,6 @@ function defaultRegistryPath(fileName: string): string {
   return resolve(here, '../../../.ai/llm-config/registry', fileName)
 }
 
-function normalizeModelProfilesRegistry(
-  registry: ModelProfilesRegistryFile,
-): ModelProfilesRegistryFile {
-  return {
-    ...registry,
-    profiles: registry.profiles.map((profile) => ({
-      ...profile,
-      policy_id: profile.policy_id ?? defaultExecutionPolicyId(profile),
-      candidates: profile.candidates.map((candidate) => ({
-        ...candidate,
-        adapter_id: candidate.adapter_id ?? defaultAdapterId(candidate),
-      })),
-    })),
-  }
-}
-
-export function defaultExecutionPolicyId(profile: Pick<ModelProfileEntry, 'intent' | 'visibility' | 'tier'>): string {
-  return `${profile.visibility}-${profile.intent}-${profile.tier}`
-}
-
 export function defaultExecutionLane(
   profile: Pick<ModelProfileEntry, 'intent' | 'visibility'>,
 ): string {
@@ -1191,10 +1110,6 @@ export function defaultExecutionLane(
     return 'identity_write'
   }
   return `${profile.visibility}_${profile.intent}`
-}
-
-export function defaultAdapterId(_candidate: Pick<ModelProfileCandidate, 'provider_id' | 'model_id'>): string {
-  return 'openai-chat-completions-v1'
 }
 
 function supportsRegistryModality(

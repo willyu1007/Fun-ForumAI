@@ -109,7 +109,6 @@ export class AttentionOpportunityBroker {
         ...input.thread?.salient_turn_ids.slice(0, 2) ?? [],
       ].filter((value, index, array): value is string => Boolean(value) && array.indexOf(value) === index),
       post_attention_state: buildPostAttentionState(
-        input.post_id,
         input.thread,
         input.policy,
         input.post_capsule,
@@ -241,10 +240,9 @@ function extractRelationPriorityAgentIds(scoredCandidates: ScoredCandidate[]): s
 }
 
 function buildPostAttentionState(
-  postId: string,
   thread: ThreadCapsule | null,
   policy: EffectiveOrchestrationPolicy | null,
-  postCapsule?: PostSemanticCapsule,
+  postCapsule?: PostSemanticCapsule | null,
 ): AttentionOpportunity['post_attention_state'] {
   if (!thread) {
     return {

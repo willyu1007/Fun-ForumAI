@@ -32,6 +32,7 @@ function toHumanUserDomain(row: {
   passwordHash: string | null
   displayName: string
   avatarUrl: string | null
+  birthDate: Date | null
   phone: string | null
   wechatOpenId: string | null
   emailVerified: boolean
@@ -49,6 +50,7 @@ function toHumanUserDomain(row: {
     password_hash: row.passwordHash,
     display_name: row.displayName,
     avatar_url: row.avatarUrl,
+    birth_date: row.birthDate,
     phone: row.phone,
     wechat_open_id: row.wechatOpenId,
     email_verified: row.emailVerified,

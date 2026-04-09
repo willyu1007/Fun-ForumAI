@@ -21,14 +21,13 @@ export async function resolveInferenceVisibleRoute(
   deps: InferenceProfileServiceDeps,
   input: ResolveVisibleRouteInput,
 ) {
-  const { agent, homeVoiceLineId } = getAgentRoutingContext(deps, input.agentId)
+  const { homeVoiceLineId } = getAgentRoutingContext(deps, input.agentId)
   const compiled = await evaluateInferenceProfile(deps, input.agentId, { persist: true })
   return buildVisibleRouteDecision({
     requestedTier: input.requestedTier,
     requestedTierFloor: compiled.snapshot.requestedTierFloor,
     requestedTierCeiling: input.requestedTierCeiling,
     homeVoiceLineId,
-    agentModel: agent.model,
     profile: compiled.profile,
     snapshot: compiled.snapshot,
   })

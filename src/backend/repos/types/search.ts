@@ -134,7 +134,6 @@ export interface AgentSearchDoc {
   display_name: string
   avatar_url: string | null
   status: string
-  model: string
   identity_role_id: IdentityRoleId | null
   identity_visibility_role_id: IdentityVisibilityRoleId | null
   format_capabilities: FormatCapabilityId[]

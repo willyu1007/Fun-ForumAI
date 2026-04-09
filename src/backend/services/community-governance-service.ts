@@ -138,7 +138,7 @@ function computeRecommendation(
   duplicate_of_community_id: string | null
   recommended_as_lane_community_id: string | null
   recommended_as_seasonal: boolean
-  recommended_visibility: CommunityIncubationVisibilityMode
+  incubation_visibility_mode: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
   meta: Record<string, unknown>
@@ -186,7 +186,7 @@ function computeRecommendation(
       duplicate_of_community_id: null,
       recommended_as_lane_community_id: null,
       recommended_as_seasonal: true,
-      recommended_visibility: 'WHITELIST_ONLY',
+      incubation_visibility_mode: 'WHITELIST_ONLY',
       overlap_score: 0,
       rationale,
       meta: { basis: 'empty_catalog' },
@@ -215,14 +215,14 @@ function computeRecommendation(
     : best.overlap_score >= laneThreshold
       ? best.entry.id
       : null
-  const recommendedVisibility: CommunityIncubationVisibilityMode =
+  const incubationVisibilityMode: CommunityIncubationVisibilityMode =
     best.overlap_score >= grayVisibilityThreshold ? 'GRAY' : 'WHITELIST_ONLY'
 
   return {
     duplicate_of_community_id: duplicateOf,
     recommended_as_lane_community_id: recommendedLane,
     recommended_as_seasonal: true,
-    recommended_visibility: recommendedVisibility,
+    incubation_visibility_mode: incubationVisibilityMode,
     overlap_score: best.overlap_score,
     rationale,
       meta: {
@@ -432,7 +432,6 @@ export class CommunityGovernanceService {
       input.incubation_visibility_mode
       ?? proposal.incubation_visibility_mode
       ?? recommendation?.incubation_visibility_mode
-      ?? recommendation?.recommended_visibility
       ?? 'GRAY'
     let mergedIntoCommunityId: string | null = null
 
@@ -490,7 +489,7 @@ export class CommunityGovernanceService {
         proposal,
         proposal_status: nextStatus,
         lifecycle_state: lifecycleState,
-        visibility_mode: visibilityMode,
+        incubation_visibility_mode: visibilityMode,
         merged_into_community_id: mergedIntoCommunityId,
       })
       const result = await this.applyCommunityPatch({
@@ -585,7 +584,7 @@ export class CommunityGovernanceService {
     proposal: CommunityProposal
     proposal_status: CommunityProposal['status']
     lifecycle_state: CommunityLifecycleState
-    visibility_mode: CommunityIncubationVisibilityMode | null
+    incubation_visibility_mode: CommunityIncubationVisibilityMode | null
     merged_into_community_id?: string | null
   }): Record<string, unknown> {
     const currentRules = input.community.rules_json ?? {}
@@ -607,7 +606,7 @@ export class CommunityGovernanceService {
           agent_human_response_mode: input.proposal.agent_human_response_mode,
         },
         lifecycle_state: input.lifecycle_state,
-        incubation_visibility_mode: input.visibility_mode,
+        incubation_visibility_mode: input.incubation_visibility_mode,
       })
       const governancePolicy = toRecord(skeleton.governance_policy) ?? {}
       return {
@@ -616,7 +615,7 @@ export class CommunityGovernanceService {
           ...governancePolicy,
           proposal_id: input.proposal.id,
           proposal_status: input.proposal_status,
-          incubation_visibility_mode: input.visibility_mode,
+          incubation_visibility_mode: input.incubation_visibility_mode,
           lifecycle_state: input.lifecycle_state,
           merged_into_community_id: input.merged_into_community_id ?? null,
         },
@@ -629,7 +628,7 @@ export class CommunityGovernanceService {
       input.proposal,
       input.proposal_status,
       input.lifecycle_state,
-      input.visibility_mode,
+      input.incubation_visibility_mode,
       input.merged_into_community_id,
     )
 

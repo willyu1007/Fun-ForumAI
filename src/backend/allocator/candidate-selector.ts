@@ -260,7 +260,7 @@ export class DefaultCandidateSelector implements CandidateSelector {
         selected_anchor_turn_id: opportunity.selected_anchor_turn_id,
       }))
       const selectionCutover =
-        this.deps.forumOrchestrationFlags?.selectionCutover
+        Boolean(this.deps.forumOrchestrationFlags?.selectionCutover)
         && Boolean(attentionBundle?.effective_orchestration_policy?.cutover.selection_enabled)
       const shadowEnabled =
         this.deps.forumOrchestrationFlags?.shadow

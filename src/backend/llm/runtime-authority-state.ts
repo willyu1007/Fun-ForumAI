@@ -3,61 +3,61 @@ import type {
   UsageLedgerEntry,
 } from './gateway-contract.js'
 
-export interface RuntimeOverrideSource {
-  source: 'deprecated_env_pin' | 'debug_override_field' | 'debug_pin'
+export interface RuntimeAuthoritySignal {
+  source: 'env_pin' | 'debug_field' | 'debug_pin'
   key: string
   trace_id?: string
   created_at?: string
   value?: string
 }
 
-export interface RuntimeOverrideState {
+export interface RuntimeAuthorityState {
   routing_mode: string
-  deprecated_env_pins: string[]
-  deprecated_env_pins_present: boolean
-  debug_override_sources: RuntimeOverrideSource[]
-  unapproved_debug_overrides_present: boolean
+  env_pins: string[]
+  env_pins_present: boolean
+  debug_signal_sources: RuntimeAuthoritySignal[]
+  debug_signals_present: boolean
 }
 
-export function buildRuntimeOverrideState(input: {
+export function buildRuntimeAuthorityState(input: {
   routingMode: string
   env?: NodeJS.ProcessEnv
   recentLedgerEntries?: UsageLedgerEntry[]
-}): RuntimeOverrideState {
+}): RuntimeAuthorityState {
   const env = input.env ?? process.env
-  const deprecatedEnvPins = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
+  const envPins = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
     .filter((key) => Boolean(env[key]?.trim()))
-  const envSources = deprecatedEnvPins.map((key) => ({
-    source: 'deprecated_env_pin' as const,
+  const envSignals = envPins.map((key) => ({
+    source: 'env_pin' as const,
     key,
     value: env[key]?.trim(),
   }))
-  const debugOverrideSources = dedupeOverrideSources([
-    ...envSources,
-    ...collectLedgerDebugOverrideSources(input.recentLedgerEntries ?? []),
+  const debugSignalSources = dedupeSignals([
+    ...envSignals,
+    ...collectLedgerDebugSignals(input.recentLedgerEntries ?? []),
   ])
 
   return {
     routing_mode: input.routingMode,
-    deprecated_env_pins: deprecatedEnvPins,
-    deprecated_env_pins_present: deprecatedEnvPins.length > 0,
-    debug_override_sources: debugOverrideSources,
-    unapproved_debug_overrides_present: debugOverrideSources.length > 0,
+    env_pins: envPins,
+    env_pins_present: envPins.length > 0,
+    debug_signal_sources: debugSignalSources,
+    debug_signals_present: debugSignalSources.length > 0,
   }
 }
 
-function collectLedgerDebugOverrideSources(entries: UsageLedgerEntry[]): RuntimeOverrideSource[] {
-  const sources: RuntimeOverrideSource[] = []
+function collectLedgerDebugSignals(entries: UsageLedgerEntry[]): RuntimeAuthoritySignal[] {
+  const signals: RuntimeAuthoritySignal[] = []
 
   for (const entry of entries) {
     const mergeTrace = entry.merge_trace
     if (!mergeTrace) continue
 
     const debugFields = mergeTrace.appliedDebugOverrideFields
-      ?? inferDebugOverrideFields(mergeTrace.debugOverrides)
+      ?? inferDebugFields(mergeTrace.debugOverrides)
     for (const field of debugFields) {
-      sources.push({
-        source: 'debug_override_field',
+      signals.push({
+        source: 'debug_field',
         key: field,
         trace_id: entry.trace_id,
         created_at: entry.created_at,
@@ -66,7 +66,7 @@ function collectLedgerDebugOverrideSources(entries: UsageLedgerEntry[]): Runtime
 
     const debugPins = mergeTrace.debugRoutingOverrides
     if (debugPins?.providerPin) {
-      sources.push({
+      signals.push({
         source: 'debug_pin',
         key: 'providerPin',
         value: debugPins.providerPin,
@@ -75,7 +75,7 @@ function collectLedgerDebugOverrideSources(entries: UsageLedgerEntry[]): Runtime
       })
     }
     if (debugPins?.modelPin) {
-      sources.push({
+      signals.push({
         source: 'debug_pin',
         key: 'modelPin',
         value: debugPins.modelPin,
@@ -84,7 +84,7 @@ function collectLedgerDebugOverrideSources(entries: UsageLedgerEntry[]): Runtime
       })
     }
     if (debugPins?.adapterPin) {
-      sources.push({
+      signals.push({
         source: 'debug_pin',
         key: 'adapterPin',
         value: debugPins.adapterPin,
@@ -94,10 +94,10 @@ function collectLedgerDebugOverrideSources(entries: UsageLedgerEntry[]): Runtime
     }
   }
 
-  return sources
+  return signals
 }
 
-function inferDebugOverrideFields(
+function inferDebugFields(
   debugOverrides: ExecutionParamMergeTrace['debugOverrides'] | undefined,
 ): string[] {
   if (!debugOverrides) return []
@@ -112,21 +112,21 @@ function inferDebugOverrideFields(
   return fields
 }
 
-function dedupeOverrideSources(sources: RuntimeOverrideSource[]): RuntimeOverrideSource[] {
+function dedupeSignals(signals: RuntimeAuthoritySignal[]): RuntimeAuthoritySignal[] {
   const seen = new Set<string>()
-  const deduped: RuntimeOverrideSource[] = []
+  const deduped: RuntimeAuthoritySignal[] = []
 
-  for (const source of sources) {
+  for (const signal of signals) {
     const key = [
-      source.source,
-      source.key,
-      source.trace_id ?? '',
-      source.created_at ?? '',
-      source.value ?? '',
+      signal.source,
+      signal.key,
+      signal.trace_id ?? '',
+      signal.created_at ?? '',
+      signal.value ?? '',
     ].join('::')
     if (seen.has(key)) continue
     seen.add(key)
-    deduped.push(source)
+    deduped.push(signal)
   }
 
   return deduped

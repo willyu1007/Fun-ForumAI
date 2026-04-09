@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../client'
+import { api, getApiErrorCode } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
   ApiResponse,
@@ -71,6 +71,19 @@ export function useSendPrivateMessage(agentId: string, sessionId: string) {
       api
         .post(`agents/${agentId}/chat/sessions/${sessionId}/messages`, { json: input })
         .json<ApiResponse<SendMessageResult>>(),
+    onError: (error) => {
+      const isInactiveSession =
+        getApiErrorCode(error) === 'VALIDATION_ERROR'
+        && error instanceof Error
+        && error.message.includes('Session is not active')
+
+      if (!isInactiveSession) {
+        return
+      }
+
+      qc.invalidateQueries({ queryKey: queryKeys.privateSessions(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.privateMessages(agentId, sessionId) })
+    },
     onSuccess: (response) => {
       qc.setQueryData<ApiResponse<PaginatedList<PrivateMessage>> | undefined>(
         queryKeys.privateMessages(agentId, sessionId),

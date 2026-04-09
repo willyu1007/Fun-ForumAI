@@ -118,6 +118,7 @@ export class ContextBuilder {
           post_id: string
           thread_id?: string | null
           focus_turn_id?: string | null
+          agent_id?: string | null
         },
       ) => Promise<{
         post_capsule: ExecutionContext['semantic_post_capsule']

@@ -12,6 +12,7 @@ import {
   Lock,
   FileText,
   Flame,
+  Plus,
   Sparkles as SparklesIcon,
   Bot,
   Component,
@@ -32,6 +33,7 @@ import {
 } from '@/shared/utils/left-rail-agent-display'
 import {
   openMyAgentsWorkspace,
+  openMyAgentsWorkspaceWithCreate,
   openSpecificAgentInLastContext,
 } from '@/shared/utils/agent-modal-entry'
 import {
@@ -514,7 +516,16 @@ export function ShellLeftRail() {
         <div className="flex flex-1 flex-col justify-start px-3 pb-3">
           <div className="space-y-0.5 px-4">
             {displayedAgents.length === 0 ? (
-              <div className="py-2 text-xs text-muted-foreground">还没有智能体</div>
+              <button
+                type="button"
+                onClick={openMyAgentsWorkspaceWithCreate}
+                className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border/60 px-3 py-5 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Plus className="h-4 w-4" />
+                </span>
+                <div className="text-xs font-medium text-foreground/80">创建你的第一个智能体</div>
+              </button>
             ) : (
               displayedAgents.map((agent) => (
                 <button

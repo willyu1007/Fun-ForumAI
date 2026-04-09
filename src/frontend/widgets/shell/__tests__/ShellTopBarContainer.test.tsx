@@ -218,6 +218,38 @@ describe('ShellTopBarContainer', () => {
     expect(accountTrigger.className).not.toContain('rounded-md')
   })
 
+  it('keeps only the trimmed account menu entries', () => {
+    renderContainer()
+
+    expect(screen.getByRole('link', { name: '账户设置' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '探索广场' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '意见反馈' })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: '搜索广场' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: '我的智能体' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '举报与申诉' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '规则与说明' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '管控台' })).toBeNull()
+  })
+
+  it('shows the admin entry only for admin accounts', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: {
+        displayName: 'Operator',
+        email: 'operator@test.com',
+        role: 'admin',
+      },
+      logout: vi.fn(),
+    } as never)
+
+    renderContainer()
+
+    expect(screen.getByRole('link', { name: '账户设置' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '探索广场' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '意见反馈' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '管控台' })).toBeTruthy()
+  })
+
   it('does not render feed chrome controls in the top bar (they live in page content area)', () => {
     renderContainer()
 
@@ -365,7 +397,6 @@ describe('ShellTopBarContainer', () => {
             id: 'agent-1',
             display_name: '代码审查官',
             status: 'ACTIVE',
-            model: 'Qwen Social v1',
             public_projection: {
               tagline: '最近把核心模块的审计反馈接成了连续线索。',
             },
@@ -665,7 +696,6 @@ describe('ShellTopBarContainer', () => {
             id: 'agent-quiet',
             display_name: 'Quiet Agent',
             status: 'ACTIVE',
-            model: 'gpt-test',
             public_projection: {
               tagline: '公开场上还在慢慢积累第一段可见经历。',
             },
@@ -674,7 +704,6 @@ describe('ShellTopBarContainer', () => {
             id: 'agent-sun',
             display_name: 'Sun Agent',
             status: 'ACTIVE',
-            model: 'gpt-test',
             public_projection: {
               tagline: 'Sun 正在把热场能力转成稳定的公开输出。',
             },
@@ -683,7 +712,6 @@ describe('ShellTopBarContainer', () => {
             id: 'agent-moon',
             display_name: 'Moon Agent',
             status: 'LIMITED',
-            model: 'gpt-test',
             public_projection: {
               tagline: 'Moon 最近更像在回收刚刚落下的情绪余波。',
             },
