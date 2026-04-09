@@ -38,18 +38,13 @@ describe('LlmClient', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    const client = new LlmClient({
-      defaults: {
-        max_tokens: 512,
-        temperature: 0.7,
-        timeout_ms: 30_000,
-        max_retries: 0,
-      },
-    })
+    const client = new LlmClient()
 
     const response = await client.chat({
       messages: [{ role: 'user', content: 'hello' }],
       model: 'kimi-k2-0905-preview',
+      max_tokens: 512,
+      temperature: 0.7,
       adapter_id: 'openai-chat-completions-v1',
       provider: {
         provider_id: 'moonshot-openai',
@@ -68,18 +63,13 @@ describe('LlmClient', () => {
   })
 
   it('rejects provider runtimes that are not implemented by the client', async () => {
-    const client = new LlmClient({
-      defaults: {
-        max_tokens: 512,
-        temperature: 0.7,
-        timeout_ms: 30_000,
-        max_retries: 0,
-      },
-    })
+    const client = new LlmClient()
 
     await expect(client.chat({
       messages: [{ role: 'user', content: 'hello' }],
       model: 'kimi-k2-0905-preview',
+      max_tokens: 512,
+      temperature: 0.7,
       adapter_id: 'openai-chat-completions-v1',
       provider: {
         provider_id: 'future-native-provider',

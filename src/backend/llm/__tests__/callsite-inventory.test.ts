@@ -163,7 +163,7 @@ function collectRawOverrideCounts(rootDir: string): Record<string, number> {
     const content = readFileSync(file, 'utf-8')
     const matches = Array.from(content.matchAll(/localOverrides\s*:\s*\{([\s\S]*?)\n\s*}/g))
       .filter(([, block]) =>
-        /\b(temperature|maxTokens|stop|timeoutMs|maxRetries|regionHint)\s*:/.test(block))
+        /\b(timeoutMs|maxRetries|regionHint)\s*:/.test(block))
     if (matches.length === 0) continue
     const relative = file.slice(process.cwd().length + 1).replace(/\\/g, '/')
     counts[relative] = matches.length

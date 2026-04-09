@@ -52,10 +52,6 @@ interface RouteCandidate {
   fallbackLevel: RoutingFallbackLevel
   reasons: string[]
   fallbackStep?: FallbackStep
-  directCandidate?: {
-    providerId: string
-    modelId: string
-  }
 }
 
 interface CandidateResolution {
@@ -194,7 +190,6 @@ export class LLMGateway {
         route.profile,
         request,
         route.executionPolicy,
-        route.directCandidate,
       )
       const routeWarnings = dedupeWarnings(candidateResolution.warnings)
 
@@ -266,7 +261,7 @@ export class LLMGateway {
             tags: request.providerTags,
             excludeCredentialIds: excludedCredentialIds,
           })
-          if (!adapterBinding.providerGatewayKinds.includes(credential.provider.gateway_kind)) {
+          if (!adapterSupportsProvider(adapterBinding, credential.provider)) {
             throw new LLMGatewayContractError(
               'RegistryResolutionError',
               `Adapter ${adapterId} does not support provider gateway kind ${credential.provider.gateway_kind}`,
@@ -302,7 +297,6 @@ export class LLMGateway {
             model: candidate.model_id,
             temperature: resolvedParams.temperature,
             max_tokens: resolvedParams.maxTokens,
-            stop: resolvedParams.stop,
             response_mode: resolvedParams.responseMode,
             adapter_id: adapterBinding.adapterId,
             provider: {
@@ -471,10 +465,6 @@ export class LLMGateway {
       fallbackLevel: RoutingFallbackLevel
       reasons: string[]
       fallbackStep?: FallbackStep
-      directCandidate?: {
-        providerId: string
-        modelId: string
-      }
     }> = [
       {
         profileId: initialProfileId,
@@ -487,9 +477,7 @@ export class LLMGateway {
 
     while (queue.length > 0) {
       const next = queue.shift()
-      const visitedKey = next
-        ? `${next.profileId}|${next.directCandidate?.providerId ?? '*'}|${next.directCandidate?.modelId ?? '*'}`
-        : null
+      const visitedKey = next?.profileId ?? null
       if (!next || (visitedKey && visited.has(visitedKey))) continue
       if (visitedKey) visited.add(visitedKey)
 
@@ -518,7 +506,6 @@ export class LLMGateway {
         fallbackLevel: next.fallbackLevel,
         reasons: next.reasons,
         fallbackStep: next.fallbackStep,
-        directCandidate: next.directCandidate,
       })
 
       for (const fallback of profile.fallback) {
@@ -526,23 +513,14 @@ export class LLMGateway {
           continue
         }
         queue.push({
-          profileId: fallback.profile_id ?? profile.profile_id,
+          profileId: fallback.profile_id,
           fallbackLevel: fallback.level,
           reasons: [...next.reasons, fallback.reason],
           fallbackStep: {
             level: fallback.level,
             targetProfileId: fallback.profile_id,
-            targetProviderId: fallback.provider_id,
-            targetModelId: fallback.model_id,
             reason: fallback.reason,
           },
-          directCandidate:
-            fallback.provider_id && fallback.model_id
-              ? {
-                  providerId: fallback.provider_id,
-                  modelId: fallback.model_id,
-                }
-              : undefined,
         })
       }
     }
@@ -554,22 +532,10 @@ export class LLMGateway {
     profile: ModelProfileEntry,
     request: LLMGatewayRequest,
     executionPolicy: ExecutionPolicyEntry,
-    directCandidate?: RouteCandidate['directCandidate'],
   ): CandidateResolution {
     const reasons: string[] = []
     const warnings: string[] = []
-
-    let candidates = directCandidate
-      ? profile.candidates.filter(
-          (candidate) =>
-            candidate.provider_id === directCandidate.providerId &&
-            candidate.model_id === directCandidate.modelId,
-        )
-      : profile.candidates
-
-    if (directCandidate) {
-      reasons.push('direct_fallback_candidate')
-    }
+    let candidates = profile.candidates
 
     if (request.visibility === 'visible') {
       const filtered = filterVisibleProfileCandidates(this.options.bundle, {
@@ -633,10 +599,10 @@ export class LLMGateway {
     const candidateKey = `${candidate.provider_id}/${candidate.model_id}`
     const warnings: string[] = []
 
-    if (!adapterBinding.providerGatewayKinds.includes(provider.gateway_kind)) {
+    if (!adapterSupportsProvider(adapterBinding, provider)) {
       warnings.push(`candidate_filtered_adapter_gateway_kind:${candidateKey}`)
     }
-    if (!provider.capabilities.chat || !adapterBinding.supports.chat) {
+    if (!provider.capabilities.chat || !adapterSupportsModality(adapterBinding, 'text')) {
       warnings.push(`candidate_filtered_chat_capability:${candidateKey}`)
     }
     if (!supportsModality(modelCapability, request.modality)) {
@@ -831,7 +797,10 @@ export class LLMGateway {
     } = input
     const callsiteFields = collectPresentOverrideFields(request.localOverrides)
     const debugFields = collectPresentOverrideFields(request.debug)
-    const disallowedCallsiteFields = callsiteFields.filter(
+    const mergeValidatedCallsiteFields = callsiteFields.filter(
+      (field) => field !== 'executionPolicyId',
+    )
+    const disallowedCallsiteFields = mergeValidatedCallsiteFields.filter(
       (field) => !executionPolicy.merge.allow_callsite_override_fields.includes(field),
     )
     const disallowedDebugFields = debugFields.filter(
@@ -858,7 +827,7 @@ export class LLMGateway {
         },
       )
     }
-    if (!adapterBinding.providerGatewayKinds.includes(provider.gateway_kind)) {
+    if (!adapterSupportsProvider(adapterBinding, provider)) {
       throw new LLMGatewayContractError(
         'RegistryResolutionError',
         `Adapter ${adapterBinding.adapterId} does not support provider gateway kind ${provider.gateway_kind}`,
@@ -875,22 +844,11 @@ export class LLMGateway {
       responseMode: executionPolicy.response_mode,
       temperature: executionPolicy.defaults.temperature,
       maxTokens: executionPolicy.defaults.max_tokens,
-      stop: executionPolicy.defaults.stop,
-      timeoutMs: executionPolicy.defaults.timeout_ms ?? provider.defaults.timeout_ms,
-      maxRetries: executionPolicy.defaults.max_retries ?? provider.defaults.max_retries,
+      timeoutMs: executionPolicy.defaults.timeout_ms,
+      maxRetries: executionPolicy.defaults.max_retries,
     }
-    const callsiteOverrides = sanitizeResolvedOverrides({
-      temperature: request.localOverrides?.temperature,
-      maxTokens: request.localOverrides?.maxTokens,
-      stop: request.localOverrides?.stop,
-      timeoutMs: request.localOverrides?.timeoutMs,
-      maxRetries: request.localOverrides?.maxRetries,
-      regionHint: request.localOverrides?.regionHint,
-    })
+    const callsiteOverrides = sanitizeResolvedOverrides({})
     const debugOverrides = sanitizeResolvedOverrides({
-      temperature: request.debug?.temperature,
-      maxTokens: request.debug?.maxTokens,
-      stop: request.debug?.stop,
       timeoutMs: request.debug?.timeoutMs,
       maxRetries: request.debug?.maxRetries,
       regionHint: request.debug?.regionHint,
@@ -909,23 +867,16 @@ export class LLMGateway {
       responseMode: request.responseMode,
       temperature: policyDefaults.temperature,
       maxTokens: policyDefaults.maxTokens,
-      stop: policyDefaults.stop,
       timeoutMs: policyDefaults.timeoutMs ?? provider.defaults.timeout_ms,
       maxRetries: policyDefaults.maxRetries ?? provider.defaults.max_retries,
       regionHint: undefined,
     }
     const warnings: string[] = []
 
-    if (callsiteOverrides.temperature !== undefined) resolvedParams.temperature = callsiteOverrides.temperature
-    if (callsiteOverrides.maxTokens !== undefined) resolvedParams.maxTokens = callsiteOverrides.maxTokens
-    if (callsiteOverrides.stop !== undefined) resolvedParams.stop = callsiteOverrides.stop
     if (callsiteOverrides.timeoutMs !== undefined) resolvedParams.timeoutMs = callsiteOverrides.timeoutMs
     if (callsiteOverrides.maxRetries !== undefined) resolvedParams.maxRetries = callsiteOverrides.maxRetries
     if (callsiteOverrides.regionHint !== undefined) resolvedParams.regionHint = callsiteOverrides.regionHint
 
-    if (debugOverrides.temperature !== undefined) resolvedParams.temperature = debugOverrides.temperature
-    if (debugOverrides.maxTokens !== undefined) resolvedParams.maxTokens = debugOverrides.maxTokens
-    if (debugOverrides.stop !== undefined) resolvedParams.stop = debugOverrides.stop
     if (debugOverrides.timeoutMs !== undefined) resolvedParams.timeoutMs = debugOverrides.timeoutMs
     if (debugOverrides.maxRetries !== undefined) resolvedParams.maxRetries = debugOverrides.maxRetries
     if (debugOverrides.regionHint !== undefined) resolvedParams.regionHint = debugOverrides.regionHint
@@ -1039,12 +990,6 @@ export class LLMGateway {
       executionPolicy.merge.allow_debug_override_fields.includes('regionHint')
     ) {
       return request.debug.regionHint
-    }
-    if (
-      request.localOverrides?.regionHint !== undefined &&
-      executionPolicy.merge.allow_callsite_override_fields.includes('regionHint')
-    ) {
-      return request.localOverrides.regionHint
     }
     return undefined
   }
@@ -1172,7 +1117,7 @@ function buildRouteContext(request: LLMGatewayRequest): RouteContext {
     budgetClass: request.budgetClass,
     traceId: request.traceId,
     providerTags: request.providerTags,
-    regionHint: request.debug?.regionHint ?? request.localOverrides?.regionHint,
+    regionHint: request.debug?.regionHint,
     debug: request.debug,
   }
 }
@@ -1277,11 +1222,11 @@ function candidateIntentSceneFitScore(
   let score = 0
 
   if (provider?.capabilities.chat) score += 2
-  if (adapter?.supports.chat) score += 2
-  if (provider && adapter?.providerGatewayKinds.includes(provider.gateway_kind)) score += 2
+  if (adapterSupportsModality(adapter, 'text')) score += 2
+  if (adapterSupportsProvider(adapter, provider)) score += 2
 
   if (input.request.modality === 'vision') {
-    if (adapter?.supports.vision) score += 4
+    if (adapterSupportsModality(adapter, 'vision')) score += 4
     if (capability?.modalities?.includes('vision')) score += 4
   } else {
     if (supportsModality(capability, 'text')) score += 3
@@ -1290,17 +1235,8 @@ function candidateIntentSceneFitScore(
   switch (input.request.responseMode) {
     case 'json_object':
       if (provider?.capabilities.json_mode) score += 3
-      if (adapter?.supports.jsonMode) score += 3
+      if (adapterSupportsResponseMode(adapter, 'json_object')) score += 3
       if (supportsResponseMode(provider, adapter, capability, 'json_object')) score += 3
-      break
-    case 'json_schema':
-      if (adapter?.supports.structuredOutput) score += 3
-      if (supportsResponseMode(provider, adapter, capability, 'json_schema')) score += 3
-      break
-    case 'tool':
-      if (provider?.capabilities.tool_calling) score += 3
-      if (adapter?.supports.toolCalling) score += 3
-      if (supportsResponseMode(provider, adapter, capability, 'tool')) score += 3
       break
     case 'text':
     default:
@@ -1485,15 +1421,41 @@ function supportsResponseMode(
 
   switch (responseMode) {
     case 'json_object':
-      return Boolean(provider?.capabilities.json_mode && adapter?.supports.jsonMode && capabilitySupports)
-    case 'json_schema':
-      return Boolean(adapter?.supports.structuredOutput && capabilitySupports)
-    case 'tool':
-      return Boolean(provider?.capabilities.tool_calling && adapter?.supports.toolCalling && capabilitySupports)
+      return Boolean(provider?.capabilities.json_mode && adapterSupportsResponseMode(adapter, responseMode) && capabilitySupports)
     case 'text':
     default:
-      return capabilitySupports
+      return Boolean(adapterSupportsResponseMode(adapter, responseMode) && capabilitySupports)
   }
+}
+
+function adapterSupportsProvider(
+  adapter: AdapterBinding | undefined,
+  provider: ProviderRegistryEntry | undefined,
+): boolean {
+  return Boolean(
+    adapter?.runtime === 'openai_chat_completions'
+      && provider?.gateway_kind === 'openai_compatible',
+  )
+}
+
+function adapterSupportsModality(
+  adapter: AdapterBinding | undefined,
+  modality: LLMGatewayRequest['modality'],
+): boolean {
+  if (adapter?.runtime !== 'openai_chat_completions') {
+    return false
+  }
+  return modality === 'text' || modality === 'vision'
+}
+
+function adapterSupportsResponseMode(
+  adapter: AdapterBinding | undefined,
+  responseMode: LLMGatewayRequest['responseMode'],
+): boolean {
+  if (adapter?.runtime !== 'openai_chat_completions') {
+    return false
+  }
+  return responseMode === 'text' || responseMode === 'json_object'
 }
 
 function collectPresentOverrideFields(
@@ -1504,9 +1466,6 @@ function collectPresentOverrideFields(
   if ('executionPolicyId' in overrides && overrides.executionPolicyId !== undefined) {
     fields.push('executionPolicyId')
   }
-  if (overrides.temperature !== undefined) fields.push('temperature')
-  if (overrides.maxTokens !== undefined) fields.push('maxTokens')
-  if (overrides.stop !== undefined) fields.push('stop')
   if (overrides.timeoutMs !== undefined) fields.push('timeoutMs')
   if (overrides.maxRetries !== undefined) fields.push('maxRetries')
   if (overrides.regionHint !== undefined) fields.push('regionHint')
@@ -1517,9 +1476,6 @@ function sanitizeResolvedOverrides(
   overrides: Partial<ResolvedExecutionParams>,
 ): Partial<ResolvedExecutionParams> {
   const output: Partial<ResolvedExecutionParams> = {}
-  if (overrides.temperature !== undefined) output.temperature = overrides.temperature
-  if (overrides.maxTokens !== undefined) output.maxTokens = overrides.maxTokens
-  if (overrides.stop !== undefined) output.stop = overrides.stop
   if (overrides.timeoutMs !== undefined) output.timeoutMs = overrides.timeoutMs
   if (overrides.maxRetries !== undefined) output.maxRetries = overrides.maxRetries
   if (overrides.regionHint !== undefined) output.regionHint = overrides.regionHint

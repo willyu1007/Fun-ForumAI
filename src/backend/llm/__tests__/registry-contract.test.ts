@@ -94,7 +94,7 @@ describe('LLM registry contract', () => {
     expect(bundle.providerAdmission.pools.length).toBeGreaterThan(0)
   })
 
-  it('rejects adapter bindings that declare unimplemented request shapes', () => {
+  it('rejects adapter bindings that retain removed request-shape fields', () => {
     const paths = createTempRegistry((files) => {
       const adapterBindings = files.get('adapter_bindings.yaml') as {
         bindings: Array<Record<string, unknown>>
@@ -104,12 +104,12 @@ describe('LLM registry contract', () => {
 
     expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
       message: /Invalid adapter bindings registry/,
-      issuePath: 'bindings.0.requestShape',
-      issueMessage: /expected "chat"/,
+      issuePath: 'bindings.0',
+      issueMessage: /unrecognized key/i,
     })
   })
 
-  it('rejects adapter bindings that declare unimplemented transports', () => {
+  it('rejects adapter bindings that retain removed transport fields', () => {
     const paths = createTempRegistry((files) => {
       const adapterBindings = files.get('adapter_bindings.yaml') as {
         bindings: Array<Record<string, unknown>>
@@ -119,8 +119,53 @@ describe('LLM registry contract', () => {
 
     expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
       message: /Invalid adapter bindings registry/,
-      issuePath: 'bindings.0.transport',
-      issueMessage: /expected "chat_completions"/,
+      issuePath: 'bindings.0',
+      issueMessage: /unrecognized key/i,
+    })
+  })
+
+  it('rejects adapter bindings that retain removed auth strategy fields', () => {
+    const paths = createTempRegistry((files) => {
+      const adapterBindings = files.get('adapter_bindings.yaml') as {
+        bindings: Array<Record<string, unknown>>
+      }
+      adapterBindings.bindings[0]!.authStrategy = 'bearer_api_key'
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid adapter bindings registry/,
+      issuePath: 'bindings.0',
+      issueMessage: /unrecognized key/i,
+    })
+  })
+
+  it('rejects adapter bindings that retain removed capability-matrix fields', () => {
+    const paths = createTempRegistry((files) => {
+      const adapterBindings = files.get('adapter_bindings.yaml') as {
+        bindings: Array<Record<string, unknown>>
+      }
+      adapterBindings.bindings[0]!.providerGatewayKinds = ['openai_compatible']
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid adapter bindings registry/,
+      issuePath: 'bindings.0',
+      issueMessage: /unrecognized key/i,
+    })
+  })
+
+  it('rejects adapter bindings that retain removed supports fields', () => {
+    const paths = createTempRegistry((files) => {
+      const adapterBindings = files.get('adapter_bindings.yaml') as {
+        bindings: Array<Record<string, unknown>>
+      }
+      adapterBindings.bindings[0]!.supports = { json_object: true }
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid adapter bindings registry/,
+      issuePath: 'bindings.0',
+      issueMessage: /unrecognized key/i,
     })
   })
 
@@ -366,7 +411,7 @@ describe('LLM registry contract', () => {
 
         if (policy?.response_mode === 'json_object') {
           expect(provider?.capabilities.json_mode).toBe(true)
-          expect(adapter?.supports.jsonMode).toBe(true)
+          expect(adapter?.runtime).toBe('openai_chat_completions')
         }
       }
     }
@@ -387,6 +432,36 @@ describe('LLM registry contract', () => {
     })
   })
 
+  it('rejects execution policies that omit explicit temperature defaults', () => {
+    const paths = createTempRegistry((files) => {
+      const policies = files.get('execution_policies.yaml') as {
+        policies: Array<{ defaults: Record<string, unknown> }>
+      }
+      delete policies.policies[0]!.defaults.temperature
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid execution policies registry/,
+      issuePath: 'policies.0.defaults.temperature',
+      issueMessage: /expected number/,
+    })
+  })
+
+  it('rejects execution policies that omit explicit max token defaults', () => {
+    const paths = createTempRegistry((files) => {
+      const policies = files.get('execution_policies.yaml') as {
+        policies: Array<{ defaults: Record<string, unknown> }>
+      }
+      delete policies.policies[0]!.defaults.max_tokens
+    })
+
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid execution policies registry/,
+      issuePath: 'policies.0.defaults.max_tokens',
+      issueMessage: /expected number/,
+    })
+  })
+
   it('rejects candidates that omit explicit adapter bindings', () => {
     const paths = createTempRegistry((files) => {
       const profiles = files.get('model_profiles.yaml') as {
@@ -403,24 +478,28 @@ describe('LLM registry contract', () => {
     })
   })
 
-  it('rejects fallback direct targets that are not declared on the target profile', () => {
-    const bundle = loadLlmRegistryBundle()
-    const profile = bundle.modelProfiles.profiles[0]
-
-    expect(profile).toBeDefined()
-    if (!profile) return
-
-    profile.fallback.push({
-      level: 'same-line',
-      profile_id: profile.profile_id,
-      provider_id: 'dashscope-openai',
-      model_id: 'missing-model',
-      reason: 'invalid_direct_target',
+  it('rejects fallback entries that retain removed direct provider/model targets', () => {
+    const paths = createTempRegistry((files) => {
+      const profiles = files.get('model_profiles.yaml') as {
+        profiles: Array<Record<string, unknown>>
+      }
+      profiles.profiles[0]!.fallback = [
+        {
+          level: 'same-line',
+          profile_id: profiles.profiles[0]!.profile_id,
+          reason: 'invalid_direct_target',
+        },
+      ]
+      const fallback = (profiles.profiles[0]!.fallback as Array<Record<string, unknown>>)[0]!
+      fallback.provider_id = 'dashscope-openai'
+      fallback.model_id = 'missing-model'
     })
 
-    expect(() => validateLlmRegistryBundle(bundle)).toThrow(
-      /fallback direct target .* is not present on profile/i,
-    )
+    expectRegistryIssue(() => loadLlmRegistryBundle(paths), {
+      message: /Invalid model profiles registry/,
+      issuePath: 'profiles.0.fallback.0',
+      issueMessage: /unrecognized key/i,
+    })
   })
 
   it('requires all five compiled V2 blocks on visible token-budget templates', () => {

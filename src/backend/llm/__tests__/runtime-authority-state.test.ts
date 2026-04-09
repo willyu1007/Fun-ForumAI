@@ -58,9 +58,9 @@ describe('buildRuntimeAuthorityState', () => {
       } as NodeJS.ProcessEnv,
       recentLedgerEntries: [
         buildEntry('trace-debug-field', {
-          debugOverrides: { temperature: 1.1, timeoutMs: 60000 },
-          appliedDebugOverrideFields: ['temperature', 'timeoutMs'],
-          appliedOverrideFields: ['temperature', 'timeoutMs'],
+          debugOverrides: { timeoutMs: 60000, regionHint: 'cn-beijing' },
+          appliedDebugOverrideFields: ['timeoutMs', 'regionHint'],
+          appliedOverrideFields: ['timeoutMs', 'regionHint'],
         }),
         buildEntry('trace-debug-pin', {
           debugRoutingOverrides: {
@@ -82,7 +82,12 @@ describe('buildRuntimeAuthorityState', () => {
         }),
         expect.objectContaining({
           source: 'debug_field',
-          key: 'temperature',
+          key: 'timeoutMs',
+          trace_id: 'trace-debug-field',
+        }),
+        expect.objectContaining({
+          source: 'debug_field',
+          key: 'regionHint',
           trace_id: 'trace-debug-field',
         }),
         expect.objectContaining({

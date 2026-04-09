@@ -12,7 +12,7 @@ export type LLMGenerationIntent = VoiceLineRoutingIntent | 'dev_prompt_render'
 
 export type RuntimeModality = 'text' | 'vision'
 
-export type ResponseMode = 'text' | 'json_object' | 'json_schema' | 'tool'
+export type ResponseMode = 'text' | 'json_object'
 
 export type LLMBudgetClass =
   | 'bootstrap'
@@ -65,16 +65,9 @@ export type RoutingOrderStep =
   | 'headroom'
   | 'health'
 
-export type AdapterRequestShape = 'chat'
-
-export type AdapterTransport = 'chat_completions'
-
 export type AdapterAuthStrategy = 'bearer_api_key' | 'x_api_key' | 'custom'
 
 export type LLMGatewayOverrideField =
-  | 'temperature'
-  | 'maxTokens'
-  | 'stop'
   | 'timeoutMs'
   | 'maxRetries'
   | 'executionPolicyId'
@@ -96,8 +89,6 @@ export interface ProviderRegistryEntry {
   capabilities: {
     chat: boolean
     json_mode: boolean
-    tool_calling: boolean
-    streaming: boolean
   }
   defaults: {
     timeout_ms: number
@@ -123,21 +114,12 @@ export interface RouteContext {
 
 export interface LLMGatewayLocalOverrides {
   executionPolicyId?: string
-  temperature?: number
-  maxTokens?: number
-  stop?: string[]
-  timeoutMs?: number
-  maxRetries?: number
-  regionHint?: string
 }
 
 export interface LLMGatewayDebugOverrides {
   providerPin?: string | null
   modelPin?: string | null
   adapterPin?: string | null
-  temperature?: number
-  maxTokens?: number
-  stop?: string[]
   timeoutMs?: number
   maxRetries?: number
   regionHint?: string
@@ -171,11 +153,10 @@ export interface ExecutionPolicyEntry {
   modality: RuntimeModality
   response_mode: ResponseMode
   defaults: {
-    temperature?: number
-    max_tokens?: number
-    stop?: string[]
-    timeout_ms?: number
-    max_retries?: number
+    temperature: number
+    max_tokens: number
+    timeout_ms: number
+    max_retries: number
   }
   fallback: {
     allow_fallback_within_line: boolean
@@ -190,18 +171,7 @@ export interface ExecutionPolicyEntry {
 
 export interface AdapterBinding {
   adapterId: string
-  requestShape: AdapterRequestShape
-  transport: AdapterTransport
-  providerGatewayKinds: Array<ProviderRegistryEntry['gateway_kind']>
-  supports: {
-    chat: boolean
-    vision: boolean
-    jsonMode: boolean
-    structuredOutput: boolean
-    toolCalling: boolean
-    streaming: boolean
-  }
-  authStrategy: AdapterAuthStrategy
+  runtime: 'openai_chat_completions'
 }
 
 export interface CredentialBinding {
@@ -266,9 +236,7 @@ export interface ModelProfileCandidate {
 
 export interface ModelProfileFallback {
   level: Exclude<RoutingFallbackLevel, 'none'>
-  profile_id?: string
-  provider_id?: string
-  model_id?: string
+  profile_id: string
   reason: string
 }
 
@@ -316,9 +284,7 @@ export interface ExecutionPlanCandidate {
 
 export interface FallbackStep {
   level: Exclude<RoutingFallbackLevel, 'none'>
-  targetProfileId?: string
-  targetProviderId?: string
-  targetModelId?: string
+  targetProfileId: string
   reason: string
 }
 
@@ -335,9 +301,8 @@ export interface FallbackHistoryEntry {
 export interface ResolvedExecutionParams {
   modality: RuntimeModality
   responseMode: ResponseMode
-  temperature?: number
-  maxTokens?: number
-  stop?: string[]
+  temperature: number
+  maxTokens: number
   timeoutMs: number
   maxRetries: number
   regionHint?: string

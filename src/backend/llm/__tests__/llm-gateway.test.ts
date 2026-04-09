@@ -30,8 +30,6 @@ function buildBundle(): LlmRegistryBundle {
           capabilities: {
             chat: true,
             json_mode: true,
-            tool_calling: false,
-            streaming: false,
           },
           defaults: {
             timeout_ms: 30_000,
@@ -249,8 +247,8 @@ function buildBundle(): LlmRegistryBundle {
             allowed_fallback_levels: ['none', 'same-line'],
           },
           merge: {
-            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
-            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+            allow_callsite_override_fields: [],
+            allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
           },
         },
         {
@@ -270,8 +268,8 @@ function buildBundle(): LlmRegistryBundle {
             allowed_fallback_levels: ['none'],
           },
           merge: {
-            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
-            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+            allow_callsite_override_fields: [],
+            allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
           },
         },
         {
@@ -291,8 +289,8 @@ function buildBundle(): LlmRegistryBundle {
             allowed_fallback_levels: ['none'],
           },
           merge: {
-            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
-            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+            allow_callsite_override_fields: [],
+            allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
           },
         },
         {
@@ -312,8 +310,8 @@ function buildBundle(): LlmRegistryBundle {
             allowed_fallback_levels: ['none'],
           },
           merge: {
-            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
-            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+            allow_callsite_override_fields: [],
+            allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
           },
         },
         {
@@ -333,8 +331,8 @@ function buildBundle(): LlmRegistryBundle {
             allowed_fallback_levels: ['none'],
           },
           merge: {
-            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
-            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+            allow_callsite_override_fields: ['executionPolicyId'],
+            allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
           },
         },
         {
@@ -354,8 +352,8 @@ function buildBundle(): LlmRegistryBundle {
             allowed_fallback_levels: ['none'],
           },
           merge: {
-            allow_callsite_override_fields: ['executionPolicyId', 'temperature', 'maxTokens', 'stop', 'regionHint'],
-            allow_debug_override_fields: ['temperature', 'maxTokens', 'stop', 'timeoutMs', 'maxRetries', 'regionHint'],
+            allow_callsite_override_fields: [],
+            allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
           },
         },
       ],
@@ -365,18 +363,7 @@ function buildBundle(): LlmRegistryBundle {
       bindings: [
         {
           adapterId: 'openai-chat-completions-v1',
-          requestShape: 'chat',
-          transport: 'chat_completions',
-          providerGatewayKinds: ['openai_compatible'],
-          supports: {
-            chat: true,
-            vision: true,
-            jsonMode: true,
-            structuredOutput: false,
-            toolCalling: false,
-            streaming: false,
-          },
-          authStrategy: 'bearer_api_key',
+          runtime: 'openai_chat_completions',
         },
       ],
     },
@@ -461,14 +448,7 @@ function buildBundle(): LlmRegistryBundle {
 }
 
 function buildLlmClient(): LlmClient {
-  return new LlmClient({
-    defaults: {
-      max_tokens: 512,
-      temperature: 0.7,
-      timeout_ms: 30_000,
-      max_retries: 2,
-    },
-  })
+  return new LlmClient()
 }
 
 function buildVisibleTextRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
@@ -889,7 +869,7 @@ describe('LLMGateway', () => {
     })
 
     const response = await gateway.generateVisibleText(buildVisibleTextRequest({
-      localOverrides: {
+      debug: {
         regionHint: 'cn-shanghai',
       },
     }))
@@ -1204,7 +1184,7 @@ describe('LLMGateway', () => {
     expect(response.executionPlan.orderedCandidates[0]?.endpointId).toBe('dashscope-cn-a')
   })
 
-  it('merges policy defaults, local overrides, debug overrides, and hard caps with trace output', async () => {
+  it('merges policy defaults, allowed debug overrides, and hard caps with trace output', async () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
 
@@ -1219,14 +1199,7 @@ describe('LLMGateway', () => {
     })
 
     const response = await gateway.generateVisibleText(buildVisibleTextRequest({
-      localOverrides: {
-        temperature: 0.4,
-        maxTokens: 200,
-        regionHint: 'cn-beijing',
-      },
       debug: {
-        temperature: 1.2,
-        maxTokens: 300,
         timeoutMs: 50_000,
         maxRetries: 9,
         regionHint: 'cn-shanghai',
@@ -1238,32 +1211,24 @@ describe('LLMGateway', () => {
     expect(response.executionPlan.resolvedParams).toMatchObject({
       modality: 'text',
       responseMode: 'text',
-      temperature: 1.2,
-      maxTokens: 300,
+      temperature: 0.8,
+      maxTokens: 320,
       timeoutMs: 30_000,
       maxRetries: 2,
       regionHint: 'cn-shanghai',
     })
-    expect(response.executionPlan.mergeTrace.callsiteOverrides).toMatchObject({
-      temperature: 0.4,
-      maxTokens: 200,
-      regionHint: 'cn-beijing',
-    })
-    expect(response.executionPlan.mergeTrace.appliedCallsiteOverrideFields).toEqual(
-      expect.arrayContaining(['temperature', 'maxTokens', 'regionHint']),
-    )
+    expect(response.executionPlan.mergeTrace.callsiteOverrides).toEqual({})
+    expect(response.executionPlan.mergeTrace.appliedCallsiteOverrideFields).toEqual([])
     expect(response.executionPlan.mergeTrace.debugOverrides).toMatchObject({
-      temperature: 1.2,
-      maxTokens: 300,
       timeoutMs: 50_000,
       maxRetries: 9,
       regionHint: 'cn-shanghai',
     })
     expect(response.executionPlan.mergeTrace.appliedDebugOverrideFields).toEqual(
-      expect.arrayContaining(['temperature', 'maxTokens', 'timeoutMs', 'maxRetries', 'regionHint']),
+      expect.arrayContaining(['timeoutMs', 'maxRetries', 'regionHint']),
     )
     expect(response.executionPlan.mergeTrace.appliedOverrideFields).toEqual(
-      expect.arrayContaining(['temperature', 'maxTokens', 'regionHint', 'timeoutMs', 'maxRetries']),
+      expect.arrayContaining(['timeoutMs', 'maxRetries', 'regionHint']),
     )
     expect(response.warnings).toEqual(
       expect.arrayContaining(['timeout_ms_capped_to_provider_default', 'max_retries_capped_to_provider_default']),
@@ -1315,33 +1280,79 @@ describe('LLMGateway', () => {
     })
   })
 
-  it('supports direct provider/model fallback steps inside a fallback profile', async () => {
+  it('allows callsites to override execution policy only on explicit lanes', async () => {
     const bundle = buildBundle()
-    bundle.modelProfiles.profiles[0]!.fallback = [
-      {
-        level: 'same-line',
-        profile_id: 'qwen-social-proactive-opening-premium',
-        provider_id: 'dashscope-openai',
-        model_id: 'qwen-max',
-        reason: 'degrade to a known premium fallback candidate',
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'deepseek-director-private-digest-premium',
+      voice_line_id: 'deepseek-director-v1',
+      tier: 'premium',
+      intent: 'private_digest',
+      visibility: 'hidden',
+      policy_id: 'hidden-private_digest-premium',
+      candidates: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-plus-character',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 120,
+          quality_class: 'balanced',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'deepseek-director-private-digest-premium',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'hidden-private_digest-premium-override',
+      lane: 'hidden_private_digest',
+      modality: 'text',
+      response_mode: 'json_object',
+      defaults: {
+        temperature: 0.11,
+        max_tokens: 640,
+        timeout_ms: 15_000,
+        max_retries: 1,
       },
-    ]
-    bundle.modelProfiles.profiles[1]!.candidates.push({
+      fallback: {
+        allow_fallback_within_line: false,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none'],
+      },
+      merge: {
+        allow_callsite_override_fields: [],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.credentialPools.pools.push({
+      credential_id: 'dashscope-hidden-default',
       provider_id: 'dashscope-openai',
-      model_id: 'qwen-plus-character',
       region: 'cn-beijing',
       endpoint_id: 'dashscope-cn-beijing',
-      adapter_id: 'openai-chat-completions-v1',
-      weight: 120,
-      quality_class: 'balanced',
+      endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      credential_ref: 'secret-ref:llm_api_default',
+      priority: 10,
+      health: 'healthy',
+      enabled: true,
+      scope_tags: ['hidden'],
+      allowed_model_ids: ['qwen-plus-character'],
     })
-    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-max']
 
     const llmClient = buildLlmClient()
     const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
-      content: 'direct fallback',
+      content: '{"summary":"override"}',
       usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
-      model: 'qwen-max',
+      model: 'qwen-plus-character',
       finish_reason: 'stop',
     })
     const gateway = new LLMGateway({
@@ -1356,21 +1367,23 @@ describe('LLMGateway', () => {
       budgetGuard: new BudgetGuard(),
     })
 
-    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
-      traceId: 'trace-direct-fallback',
+    const response = await gateway.generateHiddenArtifact(buildHiddenJsonRequest({
+      traceId: 'trace-policy-override',
+      localOverrides: {
+        executionPolicyId: 'hidden-private_digest-premium-override',
+      },
     }))
 
     expect(chatSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'qwen-max',
+        model: 'qwen-plus-character',
+        temperature: 0.11,
+        max_tokens: 640,
       }),
     )
-    expect(response.executionPlan.orderedCandidates).toEqual([
-      expect.objectContaining({
-        modelId: 'qwen-max',
-      }),
-    ])
-    expect(response.renderDecision.reasons).toContain('direct_fallback_candidate')
+    expect(response.renderDecision.profileId).toBe('deepseek-director-private-digest-premium')
+    expect(response.renderDecision.policyId).toBe('hidden-private_digest-premium-override')
+    expect(response.executionPlan.policy.policy_id).toBe('hidden-private_digest-premium-override')
   })
 
   it('orders candidates by the registry route order without compatibility model hints', async () => {
@@ -1529,8 +1542,6 @@ describe('LLMGateway', () => {
       capabilities: {
         chat: true,
         json_mode: true,
-        tool_calling: false,
-        streaming: false,
       },
       defaults: {
         timeout_ms: 30_000,
@@ -1888,6 +1899,7 @@ describe('LLMGateway', () => {
   it('emits passive window warnings from prompt budget summary without blocking the request', async () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+    bundle.executionPolicies.policies[0]!.defaults.max_tokens = 9_000
 
     const usageLedger = new UsageLedgerWriter()
     const llmClient = buildLlmClient()
@@ -1911,9 +1923,6 @@ describe('LLMGateway', () => {
 
     const response = await gateway.generateVisibleText(buildVisibleTextRequest({
       traceId: 'trace-budget-summary',
-      localOverrides: {
-        maxTokens: 9_000,
-      },
       promptBudgetSummary: {
         scene: 'proactive_dm',
         prompt_template_id: 'agent-proactive-dm-opening',

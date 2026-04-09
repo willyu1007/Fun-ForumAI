@@ -3,6 +3,7 @@ import { LLMGateway } from '../llm/llm-gateway.js'
 import { PromptEngine } from '../llm/prompt-engine.js'
 import { loadLlmRegistryBundle } from '../llm/registry-loader.js'
 import { SecretResolver } from '../llm/secret-resolver.js'
+import { config } from '../lib/config.js'
 import { CredentialBroker } from '../llm/credential-broker.js'
 import { UsageLedgerWriter, InMemoryUsageLedgerRepository } from '../llm/usage-ledger.js'
 import type { UsageLedgerRepository } from '../llm/usage-ledger.js'
@@ -31,7 +32,6 @@ import {
   S3StorageAdapter,
   type StorageAdapter,
 } from '../services/storage-adapter.js'
-import { config } from '../lib/config.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentConfigRepository } from '../repos/agent-repository.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
@@ -73,14 +73,7 @@ export function createLlmServices(deps: {
 }) {
   const registryBundle = loadLlmRegistryBundle()
 
-  const llmClient = new LlmClient({
-    defaults: {
-      max_tokens: config.llm.maxTokens,
-      temperature: config.llm.temperature,
-      timeout_ms: config.llm.timeoutMs,
-      max_retries: config.llm.maxRetries,
-    },
-  })
+  const llmClient = new LlmClient()
 
   const promptEngine = new PromptEngine()
   const secretResolver = new SecretResolver()

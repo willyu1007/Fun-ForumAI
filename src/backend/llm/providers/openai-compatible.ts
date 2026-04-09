@@ -31,7 +31,6 @@ export class OpenAICompatibleProvider implements LlmProvider {
       messages: request.messages,
       max_tokens: request.max_tokens,
       temperature: request.temperature,
-      ...(request.stop?.length ? { stop: request.stop } : {}),
       ...(request.response_mode === 'json_object'
         ? { response_format: { type: 'json_object' } }
         : {}),

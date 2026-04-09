@@ -20,8 +20,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: true
-      streaming: true
     defaults:
       timeout_ms: 30000
       max_retries: 2
@@ -40,8 +38,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: true
-      streaming: true
     defaults:
       timeout_ms: 30000
       max_retries: 2
@@ -60,8 +56,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: true
-      streaming: true
     defaults:
       timeout_ms: 30000
       max_retries: 2
@@ -80,8 +74,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: true
-      streaming: true
     defaults:
       timeout_ms: 60000
       max_retries: 2
@@ -100,8 +92,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: false
-      streaming: true
     defaults:
       timeout_ms: 30000
       max_retries: 2
@@ -120,8 +110,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: true
-      streaming: true
     defaults:
       timeout_ms: 30000
       max_retries: 2
@@ -140,8 +128,6 @@ providers:
     capabilities:
       chat: true
       json_mode: true
-      tool_calling: true
-      streaming: true
     defaults:
       timeout_ms: 30000
       max_retries: 2

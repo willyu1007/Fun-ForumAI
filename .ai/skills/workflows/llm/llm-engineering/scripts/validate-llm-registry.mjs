@@ -40,7 +40,7 @@ const VALID_FALLBACK_LEVELS = new Set([
   'rare-reanchor',
 ])
 const VALID_MODALITIES = new Set(['text', 'vision'])
-const VALID_RESPONSE_MODES = new Set(['text', 'json_object', 'json_schema', 'tool'])
+const VALID_RESPONSE_MODES = new Set(['text', 'json_object'])
 const VALID_ROUTE_ORDER_STEPS = new Set([
   'intent_scene_fit',
   'voice_line_tier',
@@ -58,14 +58,10 @@ const VALID_COMPARE_DIMENSIONS = new Set([
   'callback_fidelity',
 ])
 const VALID_CORE_FAMILIES = new Set(['hearth', 'blade', 'spark', 'sage', 'anchor'])
-const VALID_ADAPTER_REQUEST_SHAPES = new Set(['chat'])
-const VALID_ADAPTER_TRANSPORTS = new Set(['chat_completions'])
+const VALID_ADAPTER_RUNTIMES = new Set(['openai_chat_completions'])
 const VALID_ADAPTER_AUTH_STRATEGIES = new Set(['bearer_api_key', 'x_api_key', 'custom'])
 const VALID_PROVIDER_GATEWAY_KINDS = new Set(['openai_compatible'])
 const VALID_OVERRIDE_FIELDS = new Set([
-  'temperature',
-  'maxTokens',
-  'stop',
   'executionPolicyId',
   'timeoutMs',
   'maxRetries',
@@ -270,14 +266,6 @@ function validateProviders(doc) {
       provider.capabilities.json_mode,
       `providers.${providerId}.capabilities.json_mode`,
     )
-    requireBoolean(
-      provider.capabilities.tool_calling,
-      `providers.${providerId}.capabilities.tool_calling`,
-    )
-    requireBoolean(
-      provider.capabilities.streaming,
-      `providers.${providerId}.capabilities.streaming`,
-    )
 
     assertObject(provider.defaults, `providers.${providerId}.defaults`)
     requirePositiveInteger(
@@ -383,30 +371,21 @@ function validateProfiles(doc, providersDoc, validVoiceLineIds) {
     assertArray(profile.fallback, `profiles.${profileId}.fallback`)
     for (const [index, fallback] of profile.fallback.entries()) {
       assertObject(fallback, `profiles.${profileId}.fallback[${index}]`)
+      assertOnlyKeys(
+        fallback,
+        ['level', 'profile_id', 'reason'],
+        `profiles.${profileId}.fallback[${index}]`,
+      )
       requireOneOf(
         fallback.level,
         Array.from(VALID_FALLBACK_LEVELS),
         `profiles.${profileId}.fallback[${index}].level`,
       )
       requireNonEmptyString(fallback.reason, `profiles.${profileId}.fallback[${index}].reason`)
-      if (fallback.profile_id !== undefined) {
-        requireNonEmptyString(
-          fallback.profile_id,
-          `profiles.${profileId}.fallback[${index}].profile_id`,
-        )
-      }
-      if (fallback.provider_id !== undefined) {
-        requireNonEmptyString(
-          fallback.provider_id,
-          `profiles.${profileId}.fallback[${index}].provider_id`,
-        )
-      }
-      if (fallback.model_id !== undefined) {
-        requireNonEmptyString(
-          fallback.model_id,
-          `profiles.${profileId}.fallback[${index}].model_id`,
-        )
-      }
+      requireNonEmptyString(
+        fallback.profile_id,
+        `profiles.${profileId}.fallback[${index}].profile_id`,
+      )
     }
   }
 
@@ -489,27 +468,11 @@ function validateExecutionPolicies(doc, profilesDoc) {
     )
 
     assertObject(policy.defaults, `execution_policies.${policyId}.defaults`)
-    if (policy.defaults.temperature !== undefined) {
-      requireNumber(policy.defaults.temperature, `execution_policies.${policyId}.defaults.temperature`)
-    }
-    if (policy.defaults.max_tokens !== undefined) {
-      requirePositiveInteger(
-        policy.defaults.max_tokens,
-        `execution_policies.${policyId}.defaults.max_tokens`,
-      )
-    }
-    if (policy.defaults.stop !== undefined) {
-      assertArray(policy.defaults.stop, `execution_policies.${policyId}.defaults.stop`)
-      if (policy.defaults.stop.length === 0) {
-        die(`execution_policies.${policyId}.defaults.stop must contain at least one string`)
-      }
-      for (const [index, stopToken] of policy.defaults.stop.entries()) {
-        requireNonEmptyString(
-          stopToken,
-          `execution_policies.${policyId}.defaults.stop[${index}]`,
-        )
-      }
-    }
+    requireNumber(policy.defaults.temperature, `execution_policies.${policyId}.defaults.temperature`)
+    requirePositiveInteger(
+      policy.defaults.max_tokens,
+      `execution_policies.${policyId}.defaults.max_tokens`,
+    )
     requirePositiveInteger(
       policy.defaults.timeout_ms,
       `execution_policies.${policyId}.defaults.timeout_ms`,
@@ -573,48 +536,20 @@ function validateExecutionPolicies(doc, profilesDoc) {
 function validateAdapterBindings(doc, providersDoc) {
   assertArray(doc.bindings, 'adapter_bindings.yaml bindings')
   const adapterIds = []
-  const providerGatewayKinds = VALID_PROVIDER_GATEWAY_KINDS
 
   for (const binding of doc.bindings) {
     assertObject(binding, 'adapter binding entry')
+    assertOnlyKeys(
+      binding,
+      ['adapterId', 'runtime'],
+      `adapter_bindings.${binding.adapterId ?? '<unknown>'}`,
+    )
     const adapterId = requireNonEmptyString(binding.adapterId, 'adapter_bindings.adapterId')
     adapterIds.push(adapterId)
     requireOneOf(
-      binding.requestShape,
-      Array.from(VALID_ADAPTER_REQUEST_SHAPES),
-      `adapter_bindings.${adapterId}.requestShape`,
-    )
-    requireOneOf(
-      binding.transport,
-      Array.from(VALID_ADAPTER_TRANSPORTS),
-      `adapter_bindings.${adapterId}.transport`,
-    )
-    assertArray(binding.providerGatewayKinds, `adapter_bindings.${adapterId}.providerGatewayKinds`)
-    if (binding.providerGatewayKinds.length === 0) {
-      die(`adapter_bindings.${adapterId}.providerGatewayKinds must contain at least one entry`)
-    }
-    for (const [index, gatewayKind] of binding.providerGatewayKinds.entries()) {
-      if (!providerGatewayKinds.has(gatewayKind)) {
-        die(`adapter_bindings.${adapterId}.providerGatewayKinds[${index}] references unknown gateway kind ${gatewayKind}`)
-      }
-    }
-    assertObject(binding.supports, `adapter_bindings.${adapterId}.supports`)
-    requireBoolean(binding.supports.chat, `adapter_bindings.${adapterId}.supports.chat`)
-    requireBoolean(binding.supports.vision, `adapter_bindings.${adapterId}.supports.vision`)
-    requireBoolean(binding.supports.jsonMode, `adapter_bindings.${adapterId}.supports.jsonMode`)
-    requireBoolean(
-      binding.supports.structuredOutput,
-      `adapter_bindings.${adapterId}.supports.structuredOutput`,
-    )
-    requireBoolean(
-      binding.supports.toolCalling,
-      `adapter_bindings.${adapterId}.supports.toolCalling`,
-    )
-    requireBoolean(binding.supports.streaming, `adapter_bindings.${adapterId}.supports.streaming`)
-    requireOneOf(
-      binding.authStrategy,
-      Array.from(VALID_ADAPTER_AUTH_STRATEGIES),
-      `adapter_bindings.${adapterId}.authStrategy`,
+      binding.runtime,
+      Array.from(VALID_ADAPTER_RUNTIMES),
+      `adapter_bindings.${adapterId}.runtime`,
     )
   }
 
@@ -1120,14 +1055,14 @@ function supportsCapabilityResponseMode(provider, adapter, capability, responseM
 
   switch (responseMode) {
     case 'json_object':
-      return Boolean(provider.capabilities.json_mode && adapter.supports.jsonMode && capabilitySupports)
-    case 'json_schema':
-      return Boolean(adapter.supports.structuredOutput && capabilitySupports)
-    case 'tool':
-      return Boolean(provider.capabilities.tool_calling && adapter.supports.toolCalling && capabilitySupports)
+      return Boolean(
+        provider.capabilities.json_mode
+          && adapter.runtime === 'openai_chat_completions'
+          && capabilitySupports,
+      )
     case 'text':
     default:
-      return capabilitySupports
+      return Boolean(adapter.runtime === 'openai_chat_completions' && capabilitySupports)
   }
 }
 
@@ -1193,6 +1128,13 @@ function assertArray(value, label) {
 function assertObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     die(`${label} must be an object`)
+  }
+}
+
+function assertOnlyKeys(value, allowedKeys, label) {
+  const unknownKeys = Object.keys(value).filter((key) => !allowedKeys.includes(key))
+  if (unknownKeys.length > 0) {
+    die(`${label} contains unrecognized key(s): ${unknownKeys.join(', ')}`)
   }
 }
 

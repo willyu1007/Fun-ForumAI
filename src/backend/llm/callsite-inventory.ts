@@ -33,9 +33,6 @@ export interface LlmCallsiteInventoryEntry {
   policy_binding_mode: 'profile-default' | 'callsite-execution-policy' | 'not-applicable'
   migration_status: 'migrated' | 'dual-track' | 'intentionally-retained'
   local_override_fields: Array<
-    'temperature' |
-    'maxTokens' |
-    'stop' |
     'timeoutMs' |
     'maxRetries' |
     'regionHint'

@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-06T07:22:55Z`
+Generated at (UTC): `2026-04-09T23:10:50Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -42,6 +42,7 @@ Generated at (UTC): `2026-04-06T07:22:55Z`
 | `DEEPSEEK_API_KEY` | `active` | `string` | yes | yes | `` | `deepseek_api_key` | `staging,prod` | `` | `` | `` | Primary DeepSeek provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
 | `EXPO_EAS_PROJECT_ID` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Expo EAS project id used for development builds and EAS metadata injection in the mobile app config. |
 | `EXPO_PUBLIC_API_BASE_URL` | `active` | `string` | no | no | `` | `` | `*` | `` | `` | `` | Mobile API base URL override. If unset, iOS simulator defaults to http://127.0.0.1:4000 and Android emulator defaults to http://10.0.2.2:4000. |
+| `EXPO_PUBLIC_FF_CHATROOM_STAGING_HOLD_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Mobile toggle for replacing the chatroom tab stack with a staging hold / coming-soon surface. |
 | `FF_ACHIEVEMENT_CHRONICLE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable achievement + chronicle write pipeline and owner/admin read surfaces. |
 | `FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable public highlights endpoint and feed/profile badge/tagline exposure. |
 | `FF_AFTERSHOW_AUDIENCE_SUMMARY_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable audience summary bridge for aftershow triggers. |
@@ -99,10 +100,6 @@ Generated at (UTC): `2026-04-06T07:22:55Z`
 | `IDENTITY_GATE_STAGING_MODE` | `active` | `enum` | no | no | `enforced` | `` | `staging` | `` | `` | `` | Staging-only identity gate mode. `admin_bypass` temporarily allows ACTIVE admin users through private/proactive identity checks without changing formal verification status. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
-| `LLM_MAX_RETRIES` | `active` | `int` | no | no | `2` | `` | `*` | `` | `` | `` | Max retry count for failed LLM calls. |
-| `LLM_MAX_TOKENS` | `active` | `int` | no | no | `512` | `` | `*` | `` | `` | `` | Maximum generation tokens per LLM call. |
-| `LLM_TEMPERATURE` | `active` | `string` | no | no | `0.8` | `` | `*` | `` | `` | `` | LLM generation temperature. |
-| `LLM_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout per LLM API call in milliseconds. |
 | `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to the primary DashScope credential when unavailable. |
 | `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_pics` | `dev,dev.local,staging,prod` | `` | `` | `` | API key for the dedicated image generation gateway. |
 | `MEDIA_GENERATION_BASE_URL` | `active` | `string` | no | no | `https://ark.cn-beijing.volces.com` | `` | `*` | `` | `` | `` | Base URL for the dedicated image generation API. |
@@ -114,8 +111,8 @@ Generated at (UTC): `2026-04-06T07:22:55Z`
 | `MEDIA_GENERATION_POLL_INTERVAL_MS` | `active` | `int` | no | no | `150` | `` | `*` | `` | `` | `` | Poll interval for waiting on generation job completion. |
 | `MEDIA_GENERATION_PROVIDER` | `active` | `string` | no | no | `ark-seedream` | `` | `*` | `` | `` | `` | Dedicated image generation provider identifier. |
 | `MEDIA_GENERATION_PROVIDER_CONCURRENCY` | `active` | `int` | no | no | `1` | `` | `*` | `` | `` | `` | Per-provider concurrent media generation job cap. |
-| `MEDIA_GENERATION_RUNNING_TIMEOUT_MS` | `active` | `int` | no | no | `180000` | `` | `*` | `` | `` | `` | Running job timeout before the worker reclaims and marks the job timed out. |
-| `MEDIA_GENERATION_TIMEOUT_MS` | `active` | `int` | no | no | `120000` | `` | `*` | `` | `` | `` | Timeout per image generation request in milliseconds. |
+| `MEDIA_GENERATION_RUNNING_TIMEOUT_MS` | `active` | `int` | no | no | `360000` | `` | `*` | `` | `` | `` | Running job timeout before the worker reclaims and marks the job timed out. This should stay comfortably above the provider request timeout. |
+| `MEDIA_GENERATION_TIMEOUT_MS` | `active` | `int` | no | no | `180000` | `` | `*` | `` | `` | `` | Timeout per image generation request in milliseconds. Raised for slower text-to-image providers in non-realtime surfaces. |
 | `MEDIA_GENERATION_WORKER_INTERVAL_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Background media generation worker scan interval. |
 | `MEDIA_GENERATION_WORKER_STARTUP_DELAY_MS` | `active` | `int` | no | no | `2000` | `` | `*` | `` | `` | `` | Startup delay before the background media generation worker first tick. |
 | `MEDIA_LIFECYCLE_EXPIRED_PROJECTION_RETENTION_HOURS` | `active` | `int` | no | no | `24` | `` | `*` | `` | `` | `` | How long expired non-display projections are retained before lifecycle cleanup. |
@@ -174,6 +171,7 @@ Generated at (UTC): `2026-04-06T07:22:55Z`
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |
 | `VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend master toggle for rendering the audience/aftershow rail on post detail. |
 | `VITE_FF_AUDIENCE_ZONE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post audience thread and composer surfaces. |
+| `VITE_FF_CHATROOM_STAGING_HOLD_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for replacing chatroom routes with a staging hold / coming-soon surface. |
 | `VITE_FF_GLOBAL_HIGHLIGHTS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Frontend toggle for showing the global highlights entry/page. |
 | `VITE_FF_GUIDANCE_BELL_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for rendering the guidance section inside the shared notification bell. |
 | `VITE_FF_GUIDANCE_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces. |

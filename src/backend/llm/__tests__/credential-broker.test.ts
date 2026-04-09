@@ -24,8 +24,6 @@ function buildBundle() : LlmRegistryBundle {
           capabilities: {
             chat: true,
             json_mode: true,
-            tool_calling: true,
-            streaming: true,
           },
           defaults: {
             timeout_ms: 30_000,
@@ -86,18 +84,7 @@ function buildBundle() : LlmRegistryBundle {
       bindings: [
         {
           adapterId: 'openai-chat-completions-v1',
-          requestShape: 'chat',
-          transport: 'chat_completions',
-          providerGatewayKinds: ['openai_compatible'],
-          supports: {
-            chat: true,
-            vision: false,
-            jsonMode: true,
-            structuredOutput: false,
-            toolCalling: true,
-            streaming: true,
-          },
-          authStrategy: 'bearer_api_key',
+          runtime: 'openai_chat_completions',
         },
       ],
     },
@@ -117,7 +104,7 @@ function buildBundle() : LlmRegistryBundle {
 }
 
 describe('CredentialBroker', () => {
-  it('keeps manual primary ordering even when the primary pool is degraded', () => {
+  it('prefers a healthy pool over a degraded higher-priority pool', () => {
     const bundle = buildBundle()
     const broker = new CredentialBroker({
       bundle,
@@ -140,7 +127,7 @@ describe('CredentialBroker', () => {
       budgetClass: 'visible_standard',
     })
 
-    expect(resolved.pool.credential_id).toBe('moonshot-primary')
+    expect(resolved.pool.credential_id).toBe('moonshot-secondary')
   })
 
   it('falls through to the secondary pool when the primary secret fails to resolve', () => {
@@ -206,6 +193,7 @@ describe('CredentialBroker', () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools = bundle.credentialPools.pools.map((pool) => ({
       ...pool,
+      health: 'healthy',
       max_concurrency: pool.credential_id === 'moonshot-primary' ? 1 : 3,
     }))
     const broker = new CredentialBroker({

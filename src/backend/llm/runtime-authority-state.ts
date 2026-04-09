@@ -103,9 +103,6 @@ function inferDebugFields(
   if (!debugOverrides) return []
 
   const fields: string[] = []
-  if (debugOverrides.temperature !== undefined) fields.push('temperature')
-  if (debugOverrides.maxTokens !== undefined) fields.push('maxTokens')
-  if (debugOverrides.stop !== undefined) fields.push('stop')
   if (debugOverrides.timeoutMs !== undefined) fields.push('timeoutMs')
   if (debugOverrides.maxRetries !== undefined) fields.push('maxRetries')
   if (debugOverrides.regionHint !== undefined) fields.push('regionHint')

@@ -1777,3 +1777,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-semantic-llm-runtime-convergence-v2
     updated: 2026-04-08
+  - id: T-946
+    slug: llm-runtime-authority-round4-closeout-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/llm-runtime-authority-round4-closeout-v1
+    updated: 2026-04-10
+  - id: T-947
+    slug: forum-semantic-and-llm-runtime-residual-closeout
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout
+    updated: 2026-04-10

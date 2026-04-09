@@ -300,6 +300,115 @@ describe('MediaAssetService', () => {
       .toBe('published old caption')
   })
 
+  it('treats stale binding projection races as background skips during semantic refresh', async () => {
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaObservabilityService = {
+      record: vi.fn(async () => {}),
+    }
+    const storage = createStorageStub({
+      'private/stale-binding.png': {
+        data: Buffer.from('image-bytes'),
+        contentType: 'image/png',
+      },
+    })
+    const service = new MediaAssetService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      storage,
+      mediaSemanticService: {
+        extract: vi.fn(async () => ({
+          schema_version: 'visual_core.v2',
+          model_provider: 'test',
+          model_name: 'vision',
+          model_version: '2',
+          extraction_status: 'completed' as const,
+          quality_grade: 'rich' as const,
+          summary: buildSummary('fresh-public', 'fresh internal summary'),
+        })),
+      } as never,
+      mediaBindingService: new MediaBindingService({ sceneMediaBindingRepo }),
+      mediaProjectionService: new MediaProjectionService({
+        mediaContextProjectionRepo: {
+          create: vi.fn(async () => {
+            const err = new Error(
+              'Foreign key constraint violated on the constraint: `media_context_projections_binding_id_fkey`',
+            )
+            ;(err as Error & { code: string }).code = 'P2003'
+            throw err
+          }),
+        } as never,
+      }),
+      mediaWriteBridge: {} as never,
+      mediaObservabilityService: mediaObservabilityService as never,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-stale-binding',
+      steward_agent_id: 'agent-1',
+      owner_user_id: 'owner-1',
+      source_kind: 'owner_console_upload',
+      visibility_policy: 'private_only',
+      lifecycle_status: 'active',
+      storage_key: 'private/stale-binding.png',
+      mime_type: 'image/png',
+      file_size_bytes: 256,
+      sha256: 'sha-stale-binding',
+    })
+    const oldSnapshot = await mediaSemanticSnapshotRepo.create({
+      id: 'snapshot-stale-old',
+      asset_id: asset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'vision',
+      model_version: '1',
+      summary: buildSummary('old-public', 'old internal summary'),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+    })
+    await sceneMediaBindingRepo.create({
+      id: 'binding-stale-owner',
+      scene_type: 'memory_card',
+      scene_id: buildOwnerPrivatePoolSceneId('agent-1'),
+      asset_id: asset.id,
+      semantic_snapshot_id: oldSnapshot.id,
+      binding_role: 'memory',
+      relation_to_scene: 'uploaded_by_owner',
+      binding_note_text: 'owner-note',
+      display_policy: 'runtime_only_no_display',
+      created_by_type: 'owner',
+      created_by_id: 'owner-1',
+    })
+
+    const refreshed = await service.refreshSemanticSnapshot(asset.id)
+
+    expect(refreshed?.snapshot).not.toBeNull()
+    expect(await mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)).toMatchObject({
+      id: refreshed?.snapshot?.id,
+      schema_version: 'visual_core.v2',
+    })
+    expect(mediaObservabilityService.record).toHaveBeenCalledWith(expect.objectContaining({
+      event_type: 'projection_recompiled',
+      surface: 'lifecycle',
+      asset_id: asset.id,
+      payload_json: expect.objectContaining({
+        binding_count: 1,
+        projection_count: 0,
+        skipped_binding_count: 1,
+      }),
+    }))
+    expect(mediaObservabilityService.record).not.toHaveBeenCalledWith(expect.objectContaining({
+      event_type: 'semantic_snapshot_failed',
+      asset_id: asset.id,
+    }))
+  })
+
   it('does not return owner-pool attachment candidates when the stored object is missing', async () => {
     const mediaAssetRepo = new InMemoryMediaAssetRepository()
     const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()

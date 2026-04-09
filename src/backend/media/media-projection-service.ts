@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type {
   MediaAsset,
+  CreateMediaContextProjectionInput,
   MediaContextProjection,
   MediaSourceKind,
   MediaSemanticSummary,
@@ -78,6 +79,22 @@ function buildDefaultPrivateAuditContext(): import('../repos/types.js').MediaAud
   }
 }
 
+export class ProjectionBindingMissingError extends Error {
+  constructor(readonly bindingId: string) {
+    super(`Scene media binding ${bindingId} no longer exists`)
+    this.name = 'ProjectionBindingMissingError'
+  }
+}
+
+function isProjectionBindingForeignKeyError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = 'code' in error ? error.code : null
+  const message = 'message' in error && typeof error.message === 'string'
+    ? error.message
+    : ''
+  return code === 'P2003' && message.includes('media_context_projections_binding_id_fkey')
+}
+
 export function buildRetrievalCaptionText(input: {
   summary: MediaSemanticSummary
   ownerNote: string | null
@@ -97,6 +114,17 @@ export function buildRetrievalCaptionText(input: {
 export class MediaProjectionService {
   constructor(private readonly deps: MediaProjectionServiceDeps) {}
 
+  private async createProjection(input: CreateMediaContextProjectionInput): Promise<MediaContextProjection> {
+    try {
+      return await this.deps.mediaContextProjectionRepo.create(input)
+    } catch (error) {
+      if (isProjectionBindingForeignKeyError(error)) {
+        throw new ProjectionBindingMissingError(input.binding_id)
+      }
+      throw error
+    }
+  }
+
   async createRetrievalCaptionProjection(input: {
     binding: SceneMediaBinding
     asset: MediaAsset
@@ -109,7 +137,7 @@ export class MediaProjectionService {
       ownerNote: input.ownerNote,
     })
 
-    const projection = await this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.createProjection({
       binding_id: input.binding.id,
       projection_surface: 'retrieval',
       projection_kind: 'retrieval_caption',
@@ -141,7 +169,7 @@ export class MediaProjectionService {
     displayVariant?: 'original' | 'generated_derivative'
   }): Promise<MediaContextProjection> {
     const altText = input.altText ?? input.snapshot.summary.public_safe_summary
-    const projection = await this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.createProjection({
       binding_id: input.binding.id,
       projection_surface: 'public_display',
       projection_kind: 'display_attachment',
@@ -250,7 +278,7 @@ export class MediaProjectionService {
       summary_schema_version: input.snapshot.schema_version,
       enforcement: input.enforcement,
     })
-    const projection = await this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.createProjection({
       id: projectionId,
       binding_id: input.binding.id,
       projection_surface: 'public_runtime',
@@ -326,7 +354,7 @@ export class MediaProjectionService {
       summary_schema_version: input.snapshot.schema_version,
       enforcement: input.enforcement,
     })
-    const projection = await this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.createProjection({
       id: projectionId,
       binding_id: input.binding.id,
       projection_surface: 'private_runtime',
@@ -435,7 +463,7 @@ export class MediaProjectionService {
       message_id: input.binding.scene_id,
       why_relevant_hint: input.why_relevant_hint,
     })
-    const projection = await this.deps.mediaContextProjectionRepo.create({
+    const projection = await this.createProjection({
       binding_id: input.binding.id,
       projection_surface: 'memory',
       projection_kind: 'private_media_memory_projection',

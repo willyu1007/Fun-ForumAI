@@ -547,30 +547,6 @@ variables:
     default: 1
     description: Per-provider concurrent media generation job cap.
 
-  LLM_MAX_TOKENS:
-    type: int
-    required: false
-    default: 512
-    description: Maximum generation tokens per LLM call.
-
-  LLM_TEMPERATURE:
-    type: string
-    required: false
-    default: "0.8"
-    description: LLM generation temperature.
-
-  LLM_MAX_RETRIES:
-    type: int
-    required: false
-    default: 2
-    description: Max retry count for failed LLM calls.
-
-  LLM_TIMEOUT_MS:
-    type: int
-    required: false
-    default: 45000
-    description: Timeout per LLM API call in milliseconds. Tuned for lower realtime pressure and occasional slower provider responses.
-
   RUNTIME_ENABLED:
     type: enum
     enum: ["true", "false"]

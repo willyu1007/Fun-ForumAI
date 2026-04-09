@@ -171,10 +171,6 @@ export const config = {
   },
   llm: {
     routingMode: 'policy_driven' as const,
-    maxTokens: safeInt(env.LLM_MAX_TOKENS, 512),
-    temperature: safeFloat(env.LLM_TEMPERATURE, 0.8),
-    maxRetries: safeInt(env.LLM_MAX_RETRIES, 2),
-    timeoutMs: safeInt(env.LLM_TIMEOUT_MS, 45000),
   },
   mediaGeneration: {
     apiKey: env.MEDIA_GENERATION_API_KEY || '',

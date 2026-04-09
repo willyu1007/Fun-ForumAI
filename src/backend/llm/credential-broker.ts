@@ -222,8 +222,21 @@ export function buildCredentialScopeTags(
 }
 
 function comparePools(a: CredentialPoolEntry, b: CredentialPoolEntry): number {
+  const healthScore = (pool: CredentialPoolEntry) => {
+    switch (pool.health) {
+      case 'healthy':
+        return 3
+      case 'degraded':
+        return 2
+      case 'blocked':
+        return 1
+      default:
+        return 0
+    }
+  }
   const headroom = (pool: CredentialPoolEntry) => (pool.rpm_headroom ?? 0) + (pool.tpm_headroom ?? 0)
   return (
+    healthScore(b) - healthScore(a) ||
     a.priority - b.priority ||
     headroom(b) - headroom(a) ||
     a.credential_id.localeCompare(b.credential_id)

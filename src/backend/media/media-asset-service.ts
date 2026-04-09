@@ -26,6 +26,7 @@ import { MediaSemanticService, buildFallbackMediaSemanticSummary } from './media
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-binding-service.js'
 import {
   MediaProjectionService,
+  ProjectionBindingMissingError,
   buildPrivateMediaMemoryProjection,
   buildRetrievalCaptionText,
 } from './media-projection-service.js'
@@ -407,7 +408,7 @@ export class MediaAssetService {
         surface: 'lifecycle',
       })
       const recompiled = await this.recompileFutureUseProjections({ asset, snapshot })
-      if (recompiled.projection_count > 0) {
+      if (recompiled.projection_count > 0 || recompiled.skipped_binding_count > 0) {
         await this.deps.mediaObservabilityService?.record({
           event_type: 'projection_recompiled',
           surface: 'lifecycle',
@@ -415,6 +416,7 @@ export class MediaAssetService {
           payload_json: {
             binding_count: recompiled.binding_count,
             projection_count: recompiled.projection_count,
+            skipped_binding_count: recompiled.skipped_binding_count,
             snapshot_id: snapshot.id,
           },
         })
@@ -447,17 +449,20 @@ export class MediaAssetService {
   }): Promise<{
     binding_count: number
     projection_count: number
+    skipped_binding_count: number
   }> {
     const bindings = await this.deps.sceneMediaBindingRepo.findByAssetId(input.asset.id)
     if (bindings.length === 0) {
       return {
         binding_count: 0,
         projection_count: 0,
+        skipped_binding_count: 0,
       }
     }
 
     const mediaUrl = resolveMediaAssetUrl(input.asset, this.deps.storage)
     let projectionCount = 0
+    let skippedBindingCount = 0
 
     for (const binding of bindings) {
       if (binding.semantic_snapshot_id !== input.snapshot.id) {
@@ -468,41 +473,49 @@ export class MediaAssetService {
         binding.semantic_snapshot_id = updated?.semantic_snapshot_id ?? input.snapshot.id
       }
       const projections = await this.deps.mediaContextProjectionRepo.findByBindingId(binding.id)
-      projectionCount += await this.refreshRetrievalProjection({
-        binding,
-        projections,
-        asset: input.asset,
-        snapshot: input.snapshot,
-        mediaUrl,
-      })
-      projectionCount += await this.refreshPublicRuntimeProjection({
-        projections,
-        asset: input.asset,
-        snapshot: input.snapshot,
-      })
-      projectionCount += await this.refreshPrivateRuntimeProjection({
-        binding,
-        projections,
-        asset: input.asset,
-        snapshot: input.snapshot,
-      })
-      projectionCount += await this.refreshPrivateMemoryProjection({
-        binding,
-        projections,
-        asset: input.asset,
-        snapshot: input.snapshot,
-      })
-      projectionCount += await this.refreshPublicReuseHandoffProjection({
-        binding,
-        projections,
-        asset: input.asset,
-        snapshot: input.snapshot,
-      })
+      try {
+        projectionCount += await this.refreshRetrievalProjection({
+          binding,
+          projections,
+          asset: input.asset,
+          snapshot: input.snapshot,
+          mediaUrl,
+        })
+        projectionCount += await this.refreshPublicRuntimeProjection({
+          projections,
+          asset: input.asset,
+          snapshot: input.snapshot,
+        })
+        projectionCount += await this.refreshPrivateRuntimeProjection({
+          binding,
+          projections,
+          asset: input.asset,
+          snapshot: input.snapshot,
+        })
+        projectionCount += await this.refreshPrivateMemoryProjection({
+          binding,
+          projections,
+          asset: input.asset,
+          snapshot: input.snapshot,
+        })
+        projectionCount += await this.refreshPublicReuseHandoffProjection({
+          binding,
+          projections,
+          asset: input.asset,
+          snapshot: input.snapshot,
+        })
+      } catch (error) {
+        if (!(error instanceof ProjectionBindingMissingError)) {
+          throw error
+        }
+        skippedBindingCount += 1
+      }
     }
 
     return {
       binding_count: bindings.length,
       projection_count: projectionCount,
+      skipped_binding_count: skippedBindingCount,
     }
   }
 

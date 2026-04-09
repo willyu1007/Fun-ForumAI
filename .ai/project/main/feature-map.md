@@ -111,6 +111,8 @@ Project: `main`
 | T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
+| T-946 llm-runtime-authority-round4-closeout-v1 | in-progress | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
+| T-947 forum-semantic-and-llm-runtime-residual-closeout | planned | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 
 ### F-010 Agent Stats System
 

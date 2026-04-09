@@ -1,6 +1,5 @@
 import type {
   LlmChatOptions,
-  LlmClientConfig,
   LlmProvider,
   LlmProviderConfig,
   LlmRequest,
@@ -56,8 +55,6 @@ adapterRuntimes.set('openai-chat-completions-v1', new OpenAIChatCompletionsAdapt
 export class LlmClient {
   private readonly providerRuntimeRegistry = new ProviderRuntimeRegistry(providerRuntimes)
 
-  constructor(private readonly cfg: LlmClientConfig) {}
-
   /**
    * Send a chat completion request.
    * Adapter selection is request-owned so gateway planning remains the source
@@ -66,8 +63,6 @@ export class LlmClient {
   async chat(opts: LlmChatOptions): Promise<LlmResponse> {
     const providerConfig: LlmProviderConfig = {
       ...opts.provider,
-      timeout_ms: opts.provider.timeout_ms ?? this.cfg.defaults.timeout_ms,
-      max_retries: opts.provider.max_retries ?? this.cfg.defaults.max_retries,
     }
     const adapterId = opts.adapter_id
     const adapter = adapterRuntimes.get(adapterId)
@@ -81,9 +76,8 @@ export class LlmClient {
       {
         model: opts.model,
         messages: opts.messages,
-        max_tokens: opts.max_tokens ?? this.cfg.defaults.max_tokens,
-        temperature: opts.temperature ?? this.cfg.defaults.temperature,
-        stop: opts.stop,
+        max_tokens: opts.max_tokens,
+        temperature: opts.temperature,
         response_mode: opts.response_mode,
       },
       {

@@ -1,0 +1,14 @@
+version: 1
+task_id: T-946
+project: main
+slug: llm-runtime-authority-round4-closeout-v1
+status: in-progress
+updated: "2026-04-10"
+keywords:
+  - llm
+  - runtime
+  - authority
+  - registry
+  - gateway
+  - adapter
+  - closeout

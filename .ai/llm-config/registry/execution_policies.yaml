@@ -20,8 +20,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-forum_reply-base
     lane: visible_forum_reply
@@ -37,8 +37,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-scheduled_post-base
     lane: visible_scheduled_post
@@ -54,8 +54,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none, same-line]
     merge:
-      allow_callsite_override_fields: [temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-scheduled_post-premium
     lane: visible_scheduled_post
@@ -71,8 +71,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none, same-line]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-private_reply-realtime
     lane: visible_private_reply
@@ -88,8 +88,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none, same-line]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-proactive_opening-base
     lane: visible_proactive_opening
@@ -105,8 +105,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none, same-line]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: visible-proactive_opening-premium
     lane: visible_proactive_opening
@@ -122,8 +122,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none, same-line]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: identity_write-identity_write-base
     lane: identity_write
@@ -139,8 +139,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: identity_write-identity_write-premium
     lane: identity_write
@@ -156,8 +156,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-public_observation_digest-base
     lane: hidden_public_observation_digest
@@ -173,8 +173,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-public_observation_digest-agent-owned-base
     lane: hidden_public_observation_digest
@@ -190,8 +190,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: [executionPolicyId]
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-public_observation_digest-agent-bio-base
     lane: hidden_public_observation_digest
@@ -207,8 +207,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-private_digest-base
     lane: hidden_private_digest
@@ -224,8 +224,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-private_digest-premium
     lane: hidden_private_digest
@@ -241,8 +241,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-vision_summary-base
     lane: hidden_vision_summary
@@ -258,8 +258,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: [executionPolicyId]
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-director_plan-base
     lane: hidden_director_plan
@@ -275,8 +275,8 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: [executionPolicyId]
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-director_plan-premium
     lane: hidden_director_plan
@@ -292,5 +292,5 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: [executionPolicyId, temperature, maxTokens, stop]
-      allow_debug_override_fields: [temperature, maxTokens, stop, timeoutMs, maxRetries, regionHint]
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]

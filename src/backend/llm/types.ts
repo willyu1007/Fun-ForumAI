@@ -12,10 +12,9 @@ export type LlmMessageContentPart =
 export interface LlmRequest {
   model: string
   messages: LlmMessage[]
-  max_tokens?: number
-  temperature?: number
-  stop?: string[]
-  response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
+  max_tokens: number
+  temperature: number
+  response_mode?: 'text' | 'json_object'
 }
 
 export interface LlmTokenUsage {
@@ -58,28 +57,16 @@ export interface LlmChatProviderInput {
   auth_strategy?: 'bearer_api_key' | 'x_api_key' | 'custom'
   base_url: string
   api_key: string
-  timeout_ms?: number
-  max_retries?: number
-}
-
-// ─── Client-level config ────────────────────────────────────
-
-export interface LlmClientConfig {
-  defaults: {
-    max_tokens: number
-    temperature: number
-    timeout_ms: number
-    max_retries: number
-  }
+  timeout_ms: number
+  max_retries: number
 }
 
 export interface LlmChatOptions {
   messages: LlmMessage[]
   model: string
-  max_tokens?: number
-  temperature?: number
-  stop?: string[]
-  response_mode?: 'text' | 'json_object' | 'json_schema' | 'tool'
+  max_tokens: number
+  temperature: number
+  response_mode?: 'text' | 'json_object'
   adapter_id: string
   provider: LlmChatProviderInput
 }

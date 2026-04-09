@@ -164,11 +164,10 @@ export interface LlmRegistryPaths {
 
 const lLMVisibilityEnum = z.enum(['visible', 'hidden', 'identity_write', 'dev_only'])
 const runtimeModalitySchema = z.enum(['text', 'vision'])
-const responseModeSchema = z.enum(['text', 'json_object', 'json_schema', 'tool'])
-const adapterRequestShapeSchema = z.enum(['chat'])
-const adapterTransportSchema = z.enum(['chat_completions'])
+const responseModeSchema = z.enum(['text', 'json_object'])
 const adapterAuthStrategySchema = z.enum(['bearer_api_key', 'x_api_key', 'custom'])
 const providerGatewayKindSchema = z.enum(['openai_compatible'])
+const adapterRuntimeSchema = z.enum(['openai_chat_completions'])
 const renderTierSchema = z.enum(RENDER_TIERS)
 const voiceLineIdSchema = z.enum(VOICE_LINE_IDS)
 const routingIntentSchema = z.enum(VOICE_LINE_ROUTING_INTENTS)
@@ -196,9 +195,6 @@ const routeOrderSchema = z.enum([
   'health',
 ])
 const overrideFieldSchema = z.enum([
-  'temperature',
-  'maxTokens',
-  'stop',
   'timeoutMs',
   'maxRetries',
   'executionPolicyId',
@@ -239,8 +235,6 @@ const providerRegistrySchema = z
             .object({
               chat: z.boolean(),
               json_mode: z.boolean(),
-              tool_calling: z.boolean(),
-              streaming: z.boolean(),
             })
             .strict(),
           defaults: z
@@ -286,9 +280,7 @@ const modelProfileSchema = z
             z
               .object({
                 level: modelProfileFallbackLevelSchema,
-                profile_id: z.string().min(1).optional(),
-                provider_id: z.string().min(1).optional(),
-                model_id: z.string().min(1).optional(),
+                profile_id: z.string().min(1),
                 reason: z.string().min(1),
               })
               .strict(),
@@ -381,11 +373,10 @@ const executionPoliciesSchema = z
           response_mode: responseModeSchema,
           defaults: z
             .object({
-              temperature: z.number().min(0).max(2).optional(),
-              max_tokens: z.number().int().positive().optional(),
-              stop: z.array(z.string().min(1)).min(1).optional(),
-              timeout_ms: z.number().int().positive().optional(),
-              max_retries: z.number().int().min(0).optional(),
+              temperature: z.number().min(0).max(2),
+              max_tokens: z.number().int().positive(),
+              timeout_ms: z.number().int().positive(),
+              max_retries: z.number().int().min(0),
             })
             .strict(),
           fallback: z
@@ -414,20 +405,7 @@ const adapterBindingsSchema = z
       z
         .object({
           adapterId: z.string().min(1),
-          requestShape: adapterRequestShapeSchema,
-          transport: adapterTransportSchema,
-          providerGatewayKinds: z.array(providerGatewayKindSchema).min(1),
-          supports: z
-            .object({
-              chat: z.boolean(),
-              vision: z.boolean(),
-              jsonMode: z.boolean(),
-              structuredOutput: z.boolean(),
-              toolCalling: z.boolean(),
-              streaming: z.boolean(),
-            })
-            .strict(),
-          authStrategy: adapterAuthStrategySchema,
+          runtime: adapterRuntimeSchema,
         })
         .strict(),
     ),
@@ -735,18 +713,6 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
           },
         )
       }
-      if (!adapterBinding.providerGatewayKinds.includes(provider.gateway_kind)) {
-        throw registryError(
-          `Adapter ${adapterBinding.adapterId} does not support provider gateway kind ${provider.gateway_kind}`,
-          {
-            profile_id: profile.profile_id,
-            provider_id: candidate.provider_id,
-            model_id: candidate.model_id,
-            adapter_id: adapterBinding.adapterId,
-            gateway_kind: provider.gateway_kind,
-          },
-        )
-      }
       if (!provider.routing.regions.includes(candidate.region)) {
         throw registryError(
           `Profile ${profile.profile_id} uses unsupported region ${candidate.region} for provider ${candidate.provider_id}`,
@@ -867,43 +833,11 @@ export function validateLlmRegistryBundle(bundle: LlmRegistryBundle): void {
     }
 
     for (const fallback of profile.fallback) {
-      if (fallback.profile_id && !profilesById.has(fallback.profile_id)) {
+      if (!profilesById.has(fallback.profile_id)) {
         throw registryError(
           `Profile ${profile.profile_id} fallback references unknown profile ${fallback.profile_id}`,
           { profile_id: profile.profile_id, fallback_profile_id: fallback.profile_id },
         )
-      }
-      const usesDirectTarget = Boolean(fallback.provider_id || fallback.model_id)
-      if (usesDirectTarget && !(fallback.provider_id && fallback.model_id)) {
-        throw registryError(
-          `Profile ${profile.profile_id} fallback direct target must declare both provider_id and model_id`,
-          {
-            profile_id: profile.profile_id,
-            fallback_profile_id: fallback.profile_id ?? profile.profile_id,
-            provider_id: fallback.provider_id,
-            model_id: fallback.model_id,
-          },
-        )
-      }
-      if (fallback.provider_id && fallback.model_id) {
-        const targetProfileId = fallback.profile_id ?? profile.profile_id
-        const targetProfile = profilesById.get(targetProfileId)
-        const matchingCandidate = targetProfile?.candidates.find(
-          (candidate) =>
-            candidate.provider_id === fallback.provider_id
-            && candidate.model_id === fallback.model_id,
-        )
-        if (!matchingCandidate) {
-          throw registryError(
-            `Profile ${profile.profile_id} fallback direct target ${fallback.provider_id}/${fallback.model_id} is not present on profile ${targetProfileId}`,
-            {
-              profile_id: profile.profile_id,
-              fallback_profile_id: targetProfileId,
-              provider_id: fallback.provider_id,
-              model_id: fallback.model_id,
-            },
-          )
-        }
       }
     }
   }
@@ -1126,20 +1060,13 @@ function supportsRegistryResponseMode(
   responseMode: ResponseMode,
 ): boolean {
   const capabilitySupports = capability.response_modes.includes(responseMode)
+  const adapterSupportsJsonMode = adapterBinding.runtime === 'openai_chat_completions'
 
   switch (responseMode) {
     case 'json_object':
       return Boolean(
         provider.capabilities.json_mode
-          && adapterBinding.supports.jsonMode
-          && capabilitySupports,
-      )
-    case 'json_schema':
-      return Boolean(adapterBinding.supports.structuredOutput && capabilitySupports)
-    case 'tool':
-      return Boolean(
-        provider.capabilities.tool_calling
-          && adapterBinding.supports.toolCalling
+          && adapterSupportsJsonMode
           && capabilitySupports,
       )
     case 'text':

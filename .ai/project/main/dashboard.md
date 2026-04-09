@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 184 (planned: 1, in-progress: 17, blocked: 0, done: 8, archived: 158)
+- Tasks: 186 (planned: 2, in-progress: 18, blocked: 0, done: 8, archived: 158)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-946 llm-runtime-authority-round4-closeout-v1 | in-progress | F-000 | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
+| T-947 forum-semantic-and-llm-runtime-residual-closeout | planned | F-000 | dev-docs/active/forum-semantic-and-llm-runtime-residual-closeout |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | F-000 | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
@@ -32,6 +34,4 @@ Project: `main`
 | T-146 search-analytics-backfill-and-compat-cleanup | done | F-100 | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
 | T-143 semantic-taxonomy-spine-and-loader-cutover | archived | F-100 | dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover |
 | T-130 ecs-web-compose-delivery | archived | F-000 | dev-docs/archive/ecs-web-compose-delivery |
-| T-935 cloud-environment-go-live-chain-v1 | in-progress | F-000 | dev-docs/active/cloud-environment-go-live-chain-v1 |
-| T-131 eci-worker-runtime-delivery | archived | F-000 | dev-docs/archive/eci-worker-runtime-delivery |
 <!-- AUTO-GENERATED:END dashboard -->
