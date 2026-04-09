@@ -18,6 +18,8 @@ import type { SemanticProjectionService } from '../services/semantic-projection-
 import type { DisplayProjectionService } from '../services/display-projection-service.js'
 import type { AgentPerceptionService } from '../services/agent-perception-service.js'
 import type { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
+import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
+import { ThreadInteractionResolver } from '../services/thread-interaction-resolver.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
 
@@ -43,6 +45,9 @@ const DEFAULT_PERSONA: AgentPersona = {
   language: 'zh-CN',
 }
 
+const DEFAULT_THREAD_LIFECYCLE_SERVICE = new ThreadLifecycleService()
+const DEFAULT_THREAD_INTERACTION_RESOLVER = new ThreadInteractionResolver()
+
 export class ContextBuilder {
   constructor(private readonly deps: ContextBuilderDeps) {}
 
@@ -59,15 +64,8 @@ export class ContextBuilder {
       const targetThreadId = event.thread_id
       if (targetThreadId) {
         ctx.threadMeta = await this.loadThreadMeta(targetThreadId)
-        if (
-          (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded')
-          && (
-            ctx.threadMeta?.thread_state === 'CLOSED'
-            || ctx.threadMeta?.thread_state === 'HANDOFFED'
-            || ctx.threadMeta?.thread_state === 'SPINOFFED'
-          )
-        ) {
-          ctx.skip_reason = `thread_${ctx.threadMeta.thread_state.toLowerCase()}_no_followup`
+        if (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded') {
+          ctx.skip_reason = this.resolveThreadSkipReason(ctx.threadMeta) ?? undefined
         }
       }
     }
@@ -245,10 +243,10 @@ export class ContextBuilder {
         : ctx.event.event_type === 'NewMessageCreated'
           ? 'recent_messages=0'
         : ctx.threadMeta
-          ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
-        : ctx.threadTurns
-          ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
-          : '',
+          ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_mode=${ctx.threadMeta.writeability.reply_mode};preferred_action=${ctx.threadMeta.writeability.preferred_action};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
+          : ctx.threadTurns
+            ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
+            : '',
       threadTurns: ctx.threadTurns?.map((entry) => ({
         id: entry.id,
         author_agent_id: entry.author_agent_id,
@@ -361,40 +359,44 @@ export class ContextBuilder {
             route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
             route_state: string
           } | null
+          writeability: NonNullable<ExecutionContext['threadMeta']>['writeability']
         }>
       }
       if (typeof lifecycleLoader.getThreadLifecycle === 'function') {
         const lifecycle = await lifecycleLoader.getThreadLifecycle(threadId)
-        return {
-          thread_id: lifecycle.thread_id,
-          thread_state: lifecycle.thread_state,
-          reply_budget: lifecycle.reply_budget.hard_cap_turns ?? lifecycle.reply_budget.limit,
-          reply_budget_remaining: lifecycle.reply_budget.remaining_turns ?? lifecycle.reply_budget.remaining,
-          active_route: lifecycle.active_route
-            ? {
-                route_type: lifecycle.active_route.route_type,
-                route_state: lifecycle.active_route.route_state,
-              }
-            : null,
-        }
+        return toThreadMeta(lifecycle)
       }
 
       const thread = await this.deps.forumReadService.getThread(threadId)
-      return {
-        thread_id: thread.id,
-        thread_state: thread.thread_state as NonNullable<ExecutionContext['threadMeta']>['thread_state'],
-        reply_budget: thread.reply_budget,
-        reply_budget_remaining: Math.max(thread.reply_budget - thread.turn_count, 0),
-        active_route: thread.active_route
-          ? {
-              route_type: thread.active_route.route_type,
-              route_state: thread.active_route.route_state,
-            }
-          : null,
+      if (thread.lifecycle?.writeability) {
+        return toThreadMeta(thread.lifecycle)
       }
+
+      const turnCount = typeof thread.turn_count === 'number'
+        ? thread.turn_count
+        : Array.isArray(thread.turns)
+          ? thread.turns.length
+          : 0
+      const lifecycle = DEFAULT_THREAD_INTERACTION_RESOLVER.resolveLifecycleSnapshot(
+        DEFAULT_THREAD_LIFECYCLE_SERVICE.buildThreadLifecycle(thread, turnCount),
+      )
+      return toThreadMeta(lifecycle)
     } catch {
       return undefined
     }
+  }
+
+  private resolveThreadSkipReason(
+    threadMeta: ExecutionContext['threadMeta'] | undefined,
+  ): string | null {
+    if (!threadMeta?.writeability || threadMeta.writeability.reply_allowed) {
+      return null
+    }
+
+    const reasonSuffix = threadMeta.writeability.reason_code
+      .toLowerCase()
+      .replace(/^thread_/, '')
+    return `thread_${reasonSuffix}_no_followup`
   }
 
   private flattenThreadTurns(
@@ -645,5 +647,35 @@ export class ContextBuilder {
       output_reserve: 0,
       model_capability_ref: null,
     }
+  }
+}
+
+function toThreadMeta(lifecycle: {
+  thread_id: string
+  thread_state: NonNullable<ExecutionContext['threadMeta']>['thread_state']
+  reply_budget: {
+    hard_cap_turns: number | null
+    remaining_turns: number | null
+    limit: number
+    remaining: number
+  }
+  active_route: {
+    route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
+    route_state: string
+  } | null
+  writeability: NonNullable<ExecutionContext['threadMeta']>['writeability']
+}): NonNullable<ExecutionContext['threadMeta']> {
+  return {
+    thread_id: lifecycle.thread_id,
+    thread_state: lifecycle.thread_state,
+    reply_budget: lifecycle.reply_budget.hard_cap_turns ?? lifecycle.reply_budget.limit,
+    reply_budget_remaining: lifecycle.reply_budget.remaining_turns ?? lifecycle.reply_budget.remaining,
+    active_route: lifecycle.active_route
+      ? {
+          route_type: lifecycle.active_route.route_type,
+          route_state: lifecycle.active_route.route_state,
+        }
+      : null,
+    writeability: lifecycle.writeability,
   }
 }

@@ -46,6 +46,11 @@ export type {
   EffectiveParticipationContract,
   ParticipationContract,
   ReadingGuideProjection,
+  ThreadLifecycleSnapshot,
+  ThreadPreferredAction,
+  ThreadReplyMode,
+  ThreadWriteabilityReasonCode,
+  ThreadWriteabilitySnapshot,
   TurnDisplayProjection,
   TurnReasonBadgeId,
   ViewerWriteResult,
@@ -1034,6 +1039,7 @@ export interface PublicStageThreadData {
   thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
   reply_budget: number
   active_route: RouteHandoff | null
+  lifecycle: import('../../shared/forum-orchestration.js').ThreadLifecycleSnapshot
   created_at: string
   updated_at: string
   author: AuthorSummary
@@ -1070,6 +1076,7 @@ export interface PublicStageThreadSummaryData {
   thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
   reply_budget: number
   active_route: RouteHandoff | null
+  lifecycle: import('../../shared/forum-orchestration.js').ThreadLifecycleSnapshot
   created_at: string
   updated_at: string
   author: AuthorSummary

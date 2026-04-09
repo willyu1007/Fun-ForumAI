@@ -489,19 +489,27 @@ describe('ContextBuilder prompt routing', () => {
     expect(getThreads).not.toHaveBeenCalled()
     expect(ctx.threadMeta).toEqual({
       thread_id: 'thread-1',
-      thread_state: 'PEAKED',
+      thread_state: 'HANDOFF_PENDING',
       reply_budget: 6,
       reply_budget_remaining: 4,
       active_route: {
         route_type: 'AFTERSHOW',
         route_state: 'SUGGESTED',
       },
+      writeability: {
+        schema_version: 'forum-thread-writeability.v1',
+        thread_id: 'thread-1',
+        reply_mode: 'SOFT_CLOSE',
+        reply_allowed: true,
+        preferred_action: 'FOLLOW_ROUTE',
+        reason_code: 'THREAD_HANDOFF_PENDING',
+      },
     })
     expect(ctx.threadTurns?.map((item) => item.id)).toEqual(['thread-1', 'turn-1', 'turn-2'])
     expect(ctx.targetThreadTurn?.id).toBe('turn-2')
   })
 
-  it('skips forum thread followup when the target thread is already closed', async () => {
+  it('keeps forum thread followup open when a closed raw thread still resolves to handoff-pending soft-close', async () => {
     const getThread = vi.fn(async () => ({
       id: 'thread-closed',
       post_id: 'post-1',
@@ -640,6 +648,121 @@ describe('ContextBuilder prompt routing', () => {
     )
 
     expect(getThread).toHaveBeenCalledWith('thread-closed')
+    expect(ctx.skip_reason).toBeUndefined()
+    expect(ctx.threadMeta).toEqual({
+      thread_id: 'thread-closed',
+      thread_state: 'HANDOFF_PENDING',
+      reply_budget: 3,
+      reply_budget_remaining: 0,
+      active_route: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+      },
+      writeability: {
+        schema_version: 'forum-thread-writeability.v1',
+        thread_id: 'thread-closed',
+        reply_mode: 'SOFT_CLOSE',
+        reply_allowed: true,
+        preferred_action: 'FOLLOW_ROUTE',
+        reason_code: 'THREAD_HANDOFF_PENDING',
+      },
+    })
+    expect(continuityResolve).toHaveBeenCalledTimes(1)
+  })
+
+  it('still skips forum thread followup when the resolved lifecycle is truly closed', async () => {
+    const getThread = vi.fn(async () => ({
+      id: 'thread-closed-hard',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_agent_id: 'agent-2',
+      body: 'Closed thread root',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+      thread_state: 'CLOSED',
+      reply_budget: 3,
+      active_route: null,
+      created_at: new Date('2026-03-01T00:00:00.000Z'),
+      updated_at: new Date('2026-03-01T00:00:00.000Z'),
+      author: {
+        id: 'agent-2',
+        display_name: 'Other Bot',
+        avatar_url: null,
+      },
+      vote_score: 0,
+      agent_vote_score: 0,
+      agent_vote_up: 0,
+      agent_vote_down: 0,
+      human_vote_score: 0,
+      human_vote_up: 0,
+      human_vote_down: 0,
+      weighted_vote_score: 0,
+      viewer_human_vote_direction: null,
+      ai_label: 'AI生成',
+      effective_moderation_label: 'PUBLIC',
+      topic_signals: null,
+      distribution_state: 'NORMAL',
+      attachments: [],
+      turn_count: 3,
+      participant_count: 2,
+      last_activity_at: new Date('2026-03-01T00:03:00.000Z'),
+      turns: [],
+    }))
+    const continuityResolve = vi.fn()
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => ({
+          id: 'post-1',
+          title: '帖子标题',
+          body: '帖子正文',
+          author_agent_id: 'agent-2',
+          author: { id: 'agent-2', display_name: 'Other Bot', avatar_url: null },
+        })),
+        getThread,
+        getThreads: vi.fn(async () => ({
+          items: [],
+          next_cursor: null,
+        })),
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+      forumSceneContinuityService: {
+        resolve: continuityResolve,
+      } as unknown as ContextBuilderDeps['forumSceneContinuityService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-thread-closed-hard',
+        event_type: 'ThreadTurnAdded',
+        idempotency_key: 'idem-thread-closed-hard',
+        chain_depth: 2,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-closed-hard',
+        turn_id: 'turn-3',
+        author_agent_id: 'agent-4',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(getThread).toHaveBeenCalledWith('thread-closed-hard')
     expect(ctx.skip_reason).toBe('thread_closed_no_followup')
     expect(continuityResolve).not.toHaveBeenCalled()
   })
@@ -802,6 +925,14 @@ describe('ContextBuilder prompt routing', () => {
             remaining: 4,
           },
           active_route: null,
+          writeability: {
+            schema_version: 'forum-thread-writeability.v1',
+            thread_id: 'thread-1',
+            reply_mode: 'OPEN',
+            reply_allowed: true,
+            preferred_action: 'REPLY_IN_THREAD',
+            reason_code: 'THREAD_OPEN',
+          },
         })),
         buildRuntimeContextPreview,
       } as unknown as ContextBuilderDeps['forumReadService'],

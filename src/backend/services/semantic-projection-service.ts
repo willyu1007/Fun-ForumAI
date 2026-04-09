@@ -26,9 +26,11 @@ import type {
   PublicStageTurnWithAuthor,
 } from './forum-read-service.js'
 import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
+import { ThreadInteractionResolver } from './thread-interaction-resolver.js'
 
 export interface SemanticProjectionServiceDeps {
   threadLifecycleService: ThreadLifecycleService
+  threadInteractionResolver?: ThreadInteractionResolver | null
 }
 
 export class SemanticProjectionService {
@@ -81,7 +83,10 @@ export class SemanticProjectionService {
       thread.author.id,
       ...thread.turns.map((turn) => turn.author.id),
     ]))
-    const lifecycle = this.deps.threadLifecycleService.buildThreadLifecycle(thread, thread.turns.length)
+    const lifecycle = thread.lifecycle
+      ?? (this.deps.threadInteractionResolver ?? new ThreadInteractionResolver()).resolveLifecycleSnapshot(
+        this.deps.threadLifecycleService.buildThreadLifecycle(thread, thread.turns.length),
+      )
     const salientTurnIds = chooseSalientTurnIds(marks, thread.turns)
     const evidenceRefs = dedupeEvidenceRefs([
       { kind: 'THREAD', id: thread.id } satisfies EvidenceRef,

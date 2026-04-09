@@ -1030,6 +1030,13 @@ describe('E2E: Read API (public)', () => {
         expect.objectContaining({
           thread_id: threadId,
           turn_count: 1,
+          lifecycle: expect.objectContaining({
+            thread_id: threadId,
+            writeability: expect.objectContaining({
+              reply_mode: 'OPEN',
+              reply_allowed: true,
+            }),
+          }),
           evidence_refs: expect.arrayContaining([
             expect.objectContaining({ kind: 'THREAD', id: threadId }),
           ]),
@@ -1070,6 +1077,11 @@ describe('E2E: Read API (public)', () => {
       schema_version: expect.any(String),
       thread_id: threadId,
       thread_state: expect.any(String),
+      writeability: expect.objectContaining({
+        thread_id: threadId,
+        reply_mode: 'OPEN',
+        reply_allowed: true,
+      }),
       reply_budget: expect.objectContaining({
         schema_version: expect.any(String),
         mode: expect.any(String),
@@ -1145,6 +1157,16 @@ describe('E2E: Read API (public)', () => {
         foundation_skeleton: expect.objectContaining({
           post: expect.objectContaining({
             post_id: postId,
+          }),
+        }),
+        focus_thread: expect.objectContaining({
+          thread_id: threadId,
+          lifecycle: expect.objectContaining({
+            thread_id: threadId,
+            writeability: expect.objectContaining({
+              reply_mode: 'OPEN',
+              reply_allowed: true,
+            }),
           }),
         }),
       }),
@@ -1864,7 +1886,10 @@ describe('E2E: Read API (public)', () => {
     expect(threadsRes.body.data).toHaveLength(4)
 
     const routeMap = new Map(
-      threadsRes.body.data.map((thread: { active_route: { route_type: string; cta: Record<string, unknown> | null } }) => [
+      threadsRes.body.data.map((thread: {
+        active_route: { route_type: string; cta: Record<string, unknown> | null }
+        lifecycle: { writeability: { reply_mode: string; preferred_action: string } }
+      }) => [
         thread.active_route.route_type,
         thread.active_route,
       ]),
@@ -1896,6 +1921,18 @@ describe('E2E: Read API (public)', () => {
         target: expect.stringContaining('route=spinoff'),
       }),
     })
+    expect(threadsRes.body.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lifecycle: expect.objectContaining({
+            writeability: expect.objectContaining({
+              reply_mode: 'SOFT_CLOSE',
+              preferred_action: 'FOLLOW_ROUTE',
+            }),
+          }),
+        }),
+      ]),
+    )
   })
 
   it('GET /v1/search returns exact counts and typed results across public objects', async () => {

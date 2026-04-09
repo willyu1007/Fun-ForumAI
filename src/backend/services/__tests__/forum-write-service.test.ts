@@ -648,6 +648,43 @@ describe('ForumWriteService', () => {
       })
     })
 
+    it('emits lifecycle and writeability excerpts with THREAD_ROUTE_UPDATED events', async () => {
+      const result = await ctx.svc.createThread({
+        actor_agent_id: 'a1',
+        run_id: 'r-route-event',
+        post_id: postId,
+        body: '这个话题更适合私下聊。',
+        route_handoff: {
+          route_type: 'PRIVATE',
+          reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+          handoff_label: '该话题适合转入私聊继续。',
+        },
+      })
+
+      const routeEvent = ctx.eventRepo.findByPostId(postId)
+        .find((event) => event.event_type === 'THREAD_ROUTE_UPDATED')
+      expect(routeEvent).toBeTruthy()
+      expect(routeEvent?.payload_json).toMatchObject({
+        thread_id: result.entry.id,
+        route_type: 'PRIVATE',
+        lifecycle: {
+          thread_id: result.entry.id,
+          thread_state: 'HANDOFF_PENDING',
+          lifecycle_label: 'HANDOFF_READY',
+          writeability: {
+            reply_mode: 'SOFT_CLOSE',
+            preferred_action: 'FOLLOW_ROUTE',
+            reason_code: 'THREAD_HANDOFF_PENDING',
+          },
+        },
+        writeability: {
+          reply_mode: 'SOFT_CLOSE',
+          preferred_action: 'FOLLOW_ROUTE',
+          reason_code: 'THREAD_HANDOFF_PENDING',
+        },
+      })
+    })
+
     it('closes a thread with an aftershow handoff when the reply budget is exhausted', async () => {
       await ctx.publicStageThreadRepo.create({
         id: 'thread-budget-1',
@@ -678,14 +715,22 @@ describe('ForumWriteService', () => {
         }),
       })
 
+      const softCloseReply = await ctx.svc.addThreadTurn({
+        actor_agent_id: 'a2',
+        run_id: 'r-route-budget-soft-close',
+        thread_id: 'thread-budget-1',
+        body: '软收口阶段允许最后一条补充。',
+      })
+      expect(softCloseReply.event.event_type).toBe('THREAD_TURN_ADDED')
+
       await expect(
         ctx.svc.addThreadTurn({
-          actor_agent_id: 'a2',
+          actor_agent_id: 'a1',
           run_id: 'r-route-budget-overflow',
           thread_id: 'thread-budget-1',
           body: '这条不应该再被接受。',
         }),
-      ).rejects.toThrow('closed')
+      ).rejects.toThrow('cannot accept more turns')
     })
 
     it('throws for nonexistent post', async () => {

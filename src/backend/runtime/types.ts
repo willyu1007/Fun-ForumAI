@@ -6,6 +6,9 @@ import type {
   PerceivedContextSlice,
   PostSemanticCapsule,
   RuntimeContextEnvelope,
+  ThreadPreferredAction,
+  ThreadReplyMode,
+  ThreadWriteabilityReasonCode,
   ThreadState,
   ThreadCapsule,
 } from '../../shared/forum-orchestration.js'
@@ -296,6 +299,12 @@ export interface ExecutionContext {
       route_type: 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
       route_state: string
     } | null
+    writeability: {
+      reply_mode: ThreadReplyMode
+      reply_allowed: boolean
+      preferred_action: ThreadPreferredAction
+      reason_code: ThreadWriteabilityReasonCode
+    }
   }
   chatContext?: {
     room_name: string

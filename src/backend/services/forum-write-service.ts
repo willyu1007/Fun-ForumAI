@@ -26,6 +26,8 @@ import {
 } from './forum-write-service/scene-write.js'
 import { normalizeChainDepth, resolveStageWriteContext } from './forum-write-service/stage-gates.js'
 import { notifyEvent } from './forum-write-service/shared.js'
+import { ThreadLifecycleService as DefaultThreadLifecycleService } from './thread-lifecycle-service.js'
+import { ThreadInteractionResolver as DefaultThreadInteractionResolver } from './thread-interaction-resolver.js'
 import type {
   EventHook,
   ForumSceneCarrierInput,
@@ -278,17 +280,15 @@ async function createThreadTurnEntry(
   if (!thread) {
     throw new NotFoundError('Thread', input.thread_id)
   }
-  if (thread.thread_state === 'CLOSED' || thread.thread_state === 'SPINOFF') {
-    throw new ValidationError(`Thread ${thread.thread_state.toLowerCase()} and cannot accept more turns`)
-  }
 
   const [post, currentTurnCount] = await Promise.all([
     context.deps.postRepo.findById(thread.post_id),
     context.deps.publicStageTurnRepo.countByThread(thread.id),
   ])
   if (!post) throw new NotFoundError('Post', thread.post_id)
-  if (currentTurnCount >= thread.reply_budget) {
-    throw new ValidationError('Thread reply budget exhausted')
+  const lifecycle = resolveThreadLifecycleSnapshot(context, thread, currentTurnCount)
+  if (!lifecycle.writeability.reply_allowed) {
+    throw new ValidationError(`Thread ${lifecycle.thread_state.toLowerCase()} and cannot accept more turns`)
   }
 
   const anchorTurn = input.anchor_turn_id
@@ -571,6 +571,7 @@ async function syncThreadRouting(
     active_route: nextActiveRoute,
   })
   if (!updatedThread || !nextActiveRoute) return
+  const lifecycle = resolveThreadLifecycleSnapshot(context, updatedThread, turnCount)
 
   const routeEvent = context.deps.eventRepo.create({
     event_type: 'THREAD_ROUTE_UPDATED',
@@ -590,7 +591,28 @@ async function syncThreadRouting(
       route_type: nextActiveRoute.route_type,
       route_state: nextActiveRoute.route_state,
       reason_code: nextActiveRoute.reason_code,
+      lifecycle: {
+        thread_id: lifecycle.thread_id,
+        thread_state: lifecycle.thread_state,
+        lifecycle_label: lifecycle.lifecycle_label,
+        active_route: lifecycle.active_route,
+        can_receive_replies: lifecycle.can_receive_replies,
+        writeability: lifecycle.writeability,
+      },
+      writeability: lifecycle.writeability,
     },
   })
   await notifyEvent(context, routeEvent)
+}
+
+function resolveThreadLifecycleSnapshot(
+  context: ForumWriteContext,
+  thread: Pick<PublicStageThread, 'id' | 'thread_state' | 'reply_budget' | 'active_route' | 'updated_at'>,
+  turnCount: number,
+) {
+  const lifecycleService = context.deps.threadLifecycleService ?? new DefaultThreadLifecycleService()
+  const interactionResolver = context.deps.threadInteractionResolver ?? new DefaultThreadInteractionResolver()
+  return interactionResolver.resolveLifecycleSnapshot(
+    lifecycleService.buildThreadLifecycle(thread, turnCount),
+  )
 }
