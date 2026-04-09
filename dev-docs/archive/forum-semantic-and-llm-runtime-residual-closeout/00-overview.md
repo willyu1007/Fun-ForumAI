@@ -4,7 +4,7 @@
 
 - State: done
 - Depends on: `T-142`, `T-145`, `T-146`, `T-901`
-- Next step: package the residual cleanup as reviewed commits and archive the task once downstream rollout notes are recorded.
+- Next step: archive the task after downstream monitoring, or open a separate follow-on for unrelated repo-wide typecheck debt
 
 ## Goal
 
@@ -41,6 +41,15 @@ Close the residual real issues left after the earlier semantic/governance and pr
 
 ## Current status
 
-- Task created from audit-confirmed residual drift.
 - Historical task bundles remain reference material; this task owns the final closeout implementation and verification.
 - Residual compatibility ingress and stale archive artifacts were removed in a final cleanup round on 2026-04-06.
+- The April 9 semantic convergence hard-cut has been implemented:
+  - public read-model/API/UI paths are nested-contract-first and no longer emit flat semantic duplicates
+  - launch authoring is constrained to canonical `authoring_shapes`, authoring-only `discussion_seed_types`, and `preferred_card_modes`
+  - governance control-plane compatibility for `visibility_mode` / `recommended_visibility` has been removed
+- The April 9 runtime-authority hard-cut has also been implemented:
+  - visible/private route planning now resolves only through `registry -> generated routing artifact -> gateway`
+  - `preferredModelId`, `policyTags`, `agent.model`, deprecated runtime override state, and dead visible pins were removed from active runtime control paths
+  - agent create/read/public-search contracts no longer expose compatibility-model semantics
+- Remaining repo-wide risk is no longer semantic-convergence-specific:
+  - `pnpm exec tsc -b` still reports unrelated pre-existing typing/test debt in allocator, auth mocks, media/runtime test fixtures, and several frontend files outside the T-937 slice

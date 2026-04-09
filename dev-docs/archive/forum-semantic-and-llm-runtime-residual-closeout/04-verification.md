@@ -9,8 +9,20 @@
   - Result: 7 files passed, 46 tests passed
 - `pnpm exec vitest run src/backend/llm/__tests__/llm-client.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts`
   - Result: 3 files passed, 34 tests passed
+- `pnpm test src/backend/launch/__tests__/community-rules.test.ts src/backend/launch/__tests__/semantic-taxonomy-registry.test.ts src/backend/launch/__tests__/visual-rollout.test.ts src/backend/routes/__tests__/e2e-community-proposals-control-plane.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/services/__tests__/community-governance-service.test.ts src/backend/services/__tests__/home-programming-service.test.ts src/backend/services/__tests__/home-programming-snapshot-service.test.ts`
+  - Result: 8 files passed, 84 tests passed
+- `pnpm test src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/llm/__tests__/credential-broker.test.ts src/backend/services/__tests__/inference-profile-service.test.ts`
+  - Result: 4 files passed, 53 tests passed
+- `pnpm test src/frontend/api/hooks/__tests__/private-chat.test.tsx src/frontend/app/shell/__tests__/AppShellContainer.test.tsx src/frontend/features/admin/pages/__tests__/AdminPanel.test.tsx src/frontend/features/agents/components/__tests__/AgentHoverCard.test.tsx src/frontend/features/agents/components/modal/__tests__/TabIntro.test.tsx src/frontend/features/chat/pages/__tests__/ChatRoomPages.test.tsx src/frontend/widgets/shell/__tests__/ShellRightRail.test.tsx src/frontend/features/forum/components/__tests__/PostCard.test.tsx src/frontend/features/forum/components/__tests__/PostCompact.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - Result: 10 files passed, 70 tests passed
 - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs --strict`
   - Result: OK, registries are structurally and contractually valid
+- `pnpm exec prisma format && pnpm exec prisma validate && pnpm llm:routing:generate`
+  - Result: passed
+- `node .ai/scripts/ctl-db-ssot.mjs sync-to-context`
+  - Result: passed, `docs/context/db/schema.json` refreshed from repo Prisma SSOT
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Result: passed, project registry/dashboard/task index refreshed after archiving T-937
 - `pnpm exec tsc --noEmit`
   - Result: passed
 - `git diff --check`
@@ -55,6 +67,14 @@
   - `/communities` and `/admin` only surfaced canonical creator slugs: `creator-recommendation` and `creator-relationship`
   - `/v1/posts/:id`, `/v1/communities`, and `/v1/search?tab=communities` no longer exposed `is_t4`, legacy `editorial_shelf`, `t4-picks`, or `t4-relations`
   - `/v1/admin/runtime/features` confirmed adapter-attributed LLM usage in live data
+- Chrome DevTools MCP against `http://127.0.0.1:4101`
+  - `/agents/:agentId/chat` now opens the agent modal directly instead of 404ing
+  - closing the route-backed modal returns the browser to `/`
+  - private chat send still succeeds after the route changes, and inactive-session refresh only triggers on the explicit validation error path
+  - create/read/profile payloads observed in-browser no longer expose `model`
+- kind staging runtime closeout on `kind-funforum`
+  - live admin runtime stats/features reported `routing_mode=policy_driven`, `env_pins_present=false`, `debug_signals_present=false`
+  - final verified runtime fingerprint after the authority closeout and UI/runtime hotfixes: `sha256:52b3dc7b1112c88f8d23c4d7c3c5215403a7c0f4eec181e690d161b42510701a`
 - Chrome console audit on `/admin`
   - Before frontend accessibility fix: DevTools reported unlabeled form controls and fields missing `id`/`name`
   - After fixing `GovernanceTab`, `AgentRiskProfileCard`, and `DisclosureCapCard`: only Vite/React DevTools informational messages remained; no form accessibility issues were reported
