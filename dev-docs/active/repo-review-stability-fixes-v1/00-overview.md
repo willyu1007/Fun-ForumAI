@@ -1,7 +1,7 @@
 # 00 Overview
 
 ## Status
-- State: completed
+- State: done
 - Next step: 向用户同步修复面、校验结果与剩余注意事项。
 
 ## Goal

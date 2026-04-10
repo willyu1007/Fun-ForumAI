@@ -2017,13 +2017,10 @@ components:
       additionalProperties: false
     RuntimeContextCompareDebug:
       type: object
-      required: [compare_debug_enabled, legacy_thread_excerpt]
+      required: [compare_debug_enabled]
       properties:
         compare_debug_enabled:
           type: boolean
-        legacy_thread_excerpt:
-          type: string
-          nullable: true
       additionalProperties: false
     RuntimeContextPreviewBuildRequest:
       type: object

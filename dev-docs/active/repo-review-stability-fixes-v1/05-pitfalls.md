@@ -24,3 +24,21 @@ This file exists to prevent repeating mistakes within this task.
   - 先建立“失败 -> 根因”映射，再进入改码。
 - References (paths/commands/log keywords):
   - `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm verify:launch:ci`
+
+### 2026-04-10 - Legacy cleanup must separate dead code from owned compat
+- Symptom:
+  - 全仓 grep 能同时扫出真正零引用模块、受控迁移 fallback、以及仍在 runbook / contract 中服役的 compat wrapper。
+- Context:
+  - 本轮目标包括“清理冗余/死代码”和“检查双轨语义”。
+- What we tried:
+  - 先做 consumer grep，再对照 runbook、OpenAPI、active task packet 判断是否仍有 owner / deprecation timeline。
+- Why it failed (or current hypothesis):
+  - 只看命名中的 `legacy` / `compat` 很容易误删仍在服役的兼容面，例如 `/v1/health` 或 metadata rewrite fallback。
+- Fix / workaround (if any):
+  - 仅删除“零引用且无 contract 责任”的文件，或“无消费者的过渡字段”；其余 compat 面只记录 owner 与保留理由。
+- Prevention (how to avoid repeating it):
+  - 对每个候选 legacy 面先回答三件事：有没有 consumer、有没有 contract、有没有 owner/deprecation timeline。
+- References (paths/commands/log keywords):
+  - `rg -n "rule-registry|prisma-singleton|legacy_thread_excerpt" src docs/context`
+  - `ops/deploy/handbook/runbooks/deployment-mainline.md`
+  - `src/backend/routes/read-api.ts`

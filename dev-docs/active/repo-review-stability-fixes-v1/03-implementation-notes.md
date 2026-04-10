@@ -1,7 +1,7 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: `completed`
+- Current status: `done`
 - Last updated: 2026-04-10
 
 ## What changed
@@ -44,7 +44,40 @@
 - `web-playwright` 失败面里有一部分并非当前代码回归，而是视觉基线已落后于现状 UI；在抽样确认界面输出合理后，采用更新快照而非继续追查伪失败。
 
 ## Known issues / follow-ups
-- `pnpm lint` 仍保留 `src/frontend/app/route-components.tsx` 上 `react-refresh/only-export-components` 的既有 warnings（共 `23` 条），不阻塞当前校验链，但后续可单独整理导出边界。
+- 本轮未新增必须阻塞的 follow-up；剩余 legacy/compat 面已按“保留理由 + owner 边界”记录在本页 addendum 中。
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep the detailed log in `05-pitfalls.md` (append-only).
+
+## 2026-04-10 Repo-wide legacy/debt review addendum
+
+### Confirmed removals
+- 已删除 `[src/backend/guidance/rule-registry.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/guidance/rule-registry.ts)`：
+  - 全仓无 import / export consumer。
+  - guidance runtime 真实事件枚举由 `guidance-events.ts` 维护，这个 registry 已经漂空。
+- 已删除 `[src/backend/persistence/prisma-singleton.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/persistence/prisma-singleton.ts)`：
+  - 全仓无引用。
+  - 当前 Prisma 生命周期统一走 `persistence/prisma-client.ts` 与局部 `globalThis.__forumPrisma` 读取，不再经过这层未接入 helper。
+- 已移除 runtime preview compare surface 中的 `legacy_thread_excerpt`：
+  - `[forum-read-service.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/services/forum-read-service.ts)` 不再构造旧 thread excerpt 字符串。
+  - `[openapi.yaml](/Users/phoenix/Desktop/project/Fun-ForumAI/docs/context/api/openapi.yaml)` 同步收窄 `RuntimeContextCompareDebug` 合同，只保留 `compare_debug_enabled`。
+  - 这个字段在清理前已经没有任何前端或其他 backend consumer，只剩 service 内部与单测。
+
+### Technical-debt cleanup landed with the review
+- 已在 `[eslint.config.mjs](/Users/phoenix/Desktop/project/Fun-ForumAI/eslint.config.mjs)` 为 `react-refresh/only-export-components` 增加 `extraHOCs: ['lazyWithDynamicImportRecovery']`：
+  - 消除 `route-components.tsx` 上 `23` 条 Fast Refresh 误报。
+  - 不改运行时行为，只修正 lint 对自定义 lazy HOC 的误判。
+
+### Explicitly retained compat / bridge surfaces
+- `[src/backend/routes/health.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/routes/health.ts)` 的 `/v1/health` legacy wrapper 保留：
+  - 部署 runbook 与运维文档仍明确要求 `/v1/health` 返回包裹后的 legacy contract。
+- `[src/backend/routes/read-api.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/routes/read-api.ts)` 中 legacy public write wrappers 保留：
+  - `/posts/:postId/public-threads`
+  - `/threads/:threadId/public-turns`
+  - `/posts/:postId/audience-messages`
+  - 这些 wrapper 已明确标注 compat-only，canonical write plane 仍是 `/viewer/*`。
+- `[src/backend/services/participation-contract-service.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/services/participation-contract-service.ts)` 对 legacy `participation_contract` metadata key 的读取保留：
+  - 当前行为是读取后自动重写到 `participation_contract_override_v1`，属于受控迁移，不是双轨主语义。
+- `[src/shared/forum-orchestration.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/shared/forum-orchestration.ts)` 中 `can_receive_replies` 与 `[src/backend/runtime/context-builder.ts](/Users/phoenix/Desktop/project/Fun-ForumAI/src/backend/runtime/context-builder.ts)` 中 `targetThreadTurn` 仍保留 compat bridge 角色：
+  - 前者继续派生自 `writeability`；
+  - 后者继续作为 event-target compat bridge，而不是 runtime write-target truth。

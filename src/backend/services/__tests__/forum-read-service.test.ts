@@ -1453,7 +1453,6 @@ describe('ForumReadService', () => {
       expect(preview.evidence_window_turns).toEqual([])
       expect(preview.debug_compare).toMatchObject({
         compare_debug_enabled: true,
-        legacy_thread_excerpt: expect.stringContaining('Rollback thread root.'),
       })
     })
   })

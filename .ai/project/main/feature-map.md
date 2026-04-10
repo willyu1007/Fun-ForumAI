@@ -116,7 +116,7 @@ Project: `main`
 | T-948 forum-read-model-and-search-projection-slimming-v1 | done | dev-docs/active/forum-read-model-and-search-projection-slimming-v1 |
 | T-949 forum-product-narrative-and-context-alignment-v1 | done | dev-docs/active/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | in-progress | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
-| T-951 repo-review-stability-fixes-v1 | in-progress | dev-docs/active/repo-review-stability-fixes-v1 |
+| T-951 repo-review-stability-fixes-v1 | done | dev-docs/active/repo-review-stability-fixes-v1 |
 | T-952 forum-gate2-real-e2e-regression-v1 | done | dev-docs/active/forum-gate2-real-e2e-regression-v1 |
 
 ### F-010 Agent Stats System

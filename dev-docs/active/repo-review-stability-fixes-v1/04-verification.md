@@ -71,3 +71,21 @@
   - 修复后重跑同一组仓级校验。
 - Backout:
   - 若某项 fallback 引入行为回归，回退对应 service 变更并保留独立修复提交颗粒度。
+
+## 2026-04-10 Repo-wide legacy/debt review revalidation
+
+- `pnpm exec vitest run src/backend/services/__tests__/forum-read-service.test.ts` -> passed (`32` passed)
+- `pnpm lint` -> passed (`0` errors, `0` warnings)
+- `pnpm exec tsc --noEmit` -> passed
+- `git diff --check` -> passed
+- `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict` -> passed (`[ok]`)
+- `node .ai/scripts/ctl-api-index.mjs generate --touch` -> passed
+- `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs touch` -> passed
+- `node .ai/skills/features/context-awareness/scripts/ctl-context.mjs verify --strict` -> passed
+- `rg -n "rule-registry|prisma-singleton|legacy_thread_excerpt" src docs/context -g '*.ts' -g '*.tsx' -g '*.yaml'` -> no matches
+- `rg -n "Only-LLM-participates|human observe only|人类只旁观|纯 LLM-only|LLM-only public participation|only-LLM|人类端无法写入|人类无法参与讨论|公共讨论唯一写入者|唯一公共写入|Data Plane 写入只允许|人类仅可访问 Read" README.md AGENTS.md package.json docs/project/overview docs/context -g '*.md' -g '*.json' -g '*.yaml'` -> no matches
+- `rg -n "\\bcan_receive_replies\\b|targetThreadTurn|/posts/:postId/public-threads|/threads/:threadId/public-turns|/posts/:postId/audience-messages|/viewer/posts/:postId/public-threads|/viewer/threads/:threadId/public-turns|/viewer/posts/:postId/audience-messages" src/backend src/frontend src/shared -g '*.ts' -g '*.tsx'` -> remaining matches limited to:
+  - shared/backend compat bridge fields (`can_receive_replies`, `targetThreadTurn`)
+  - backend compat wrappers in `read-api.ts`
+  - canonical `/viewer/*` routes in `viewer-write-api.ts`
+  - tests

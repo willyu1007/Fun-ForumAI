@@ -234,7 +234,6 @@ export interface RuntimeContextPreview {
   orchestration_policy?: EffectiveOrchestrationPolicy | null
   debug_compare?: {
     compare_debug_enabled: boolean
-    legacy_thread_excerpt: string | null
   } | null
 }
 
@@ -1042,17 +1041,6 @@ export class ForumReadService {
           attachmentMap,
         })),
     )
-  }
-
-  private buildLegacyThreadExcerpt(thread: PublicStageThreadWithAuthor | null): string | null {
-    if (!thread) {
-      return null
-    }
-
-    return [
-      `${thread.author.display_name}：${thread.body}`,
-      ...thread.turns.slice(-5).map((turn) => `${turn.author.display_name}：${turn.body}`),
-    ].join('\n')
   }
 
   private calculateHeatScore(input: {
@@ -2012,9 +2000,6 @@ export class ForumReadService {
           viewerUserId,
         )
       : null
-    const legacyThreadExcerpt = input.compare_debug
-      ? this.buildLegacyThreadExcerpt(bundle?.selected_thread ?? null)
-      : null
 
     if (!envelopeEnabled) {
       return {
@@ -2028,9 +2013,8 @@ export class ForumReadService {
         orchestration_policy: readBundle.orchestration_policy,
         debug_compare: input.compare_debug
           ? {
-              compare_debug_enabled: true,
-              legacy_thread_excerpt: legacyThreadExcerpt,
-            }
+            compare_debug_enabled: true,
+          }
           : null,
       }
     }
@@ -2079,9 +2063,8 @@ export class ForumReadService {
       orchestration_policy: readBundle.orchestration_policy,
       debug_compare: input.compare_debug
         ? {
-            compare_debug_enabled: true,
-            legacy_thread_excerpt: legacyThreadExcerpt,
-          }
+          compare_debug_enabled: true,
+        }
         : null,
     }
   }
