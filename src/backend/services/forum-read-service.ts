@@ -1441,24 +1441,6 @@ export class ForumReadService {
     }
   }
 
-  private async listAllVisibleTurnsByThread(threadId: string): Promise<PublicStageTurn[]> {
-    const turns: PublicStageTurn[] = []
-    let cursor: string | undefined
-
-    while (true) {
-      const page = await this.deps.publicStageTurnRepo.findByThread(threadId, {
-        cursor,
-        limit: 500,
-      })
-      if (page.items.length === 0) break
-      turns.push(...page.items)
-      if (!page.next_cursor || page.next_cursor === cursor) break
-      cursor = page.next_cursor
-    }
-
-    return turns
-  }
-
   private async findVisibleTurnWindowByThread(
     threadId: string,
     input: {
@@ -1505,7 +1487,7 @@ export class ForumReadService {
     const missingAnchorIds = Array.from(new Set(
       turns
         .map((turn) => turn.anchor_turn_id)
-        .filter((turnId): turnId is string => Boolean(turnId) && !visibleTurnById.has(turnId)),
+        .filter((turnId): turnId is string => typeof turnId === 'string' && turnId.length > 0 && !visibleTurnById.has(turnId)),
     ))
     if (missingAnchorIds.length === 0) {
       return visibleTurnById
@@ -1584,53 +1566,6 @@ export class ForumReadService {
         }
       }),
     )
-  }
-
-  private sliceThreadTurns(
-    turns: PublicStageTurn[],
-    input: {
-      turn_cursor?: string | null
-      turn_limit: number
-      around_turn_id?: string | null
-    },
-  ): {
-    items: PublicStageTurn[]
-    next_cursor: string | null
-    returned_mode: PublicStageThreadDetailTurnsMeta['returned_mode']
-  } {
-    if (input.around_turn_id) {
-      const focusIndex = turns.findIndex((turn) => turn.id === input.around_turn_id)
-      if (focusIndex < 0) {
-        throw new NotFoundError('Turn', input.around_turn_id)
-      }
-      const halfWindow = Math.floor((input.turn_limit - 1) / 2)
-      let start = Math.max(0, focusIndex - halfWindow)
-      const end = Math.min(turns.length, start + input.turn_limit)
-      if (end - start < input.turn_limit) {
-        start = Math.max(0, end - input.turn_limit)
-      }
-      const items = turns.slice(start, end)
-      return {
-        items,
-        next_cursor: end < turns.length ? items[items.length - 1]?.id ?? null : null,
-        returned_mode: 'around',
-      }
-    }
-
-    let start = 0
-    if (input.turn_cursor) {
-      const index = turns.findIndex((turn) => turn.id === input.turn_cursor)
-      start = index >= 0 ? index + 1 : 0
-    }
-    const items = turns.slice(start, start + input.turn_limit)
-    const next_cursor = items.length === input.turn_limit && start + input.turn_limit < turns.length
-      ? items[items.length - 1]?.id ?? null
-      : null
-    return {
-      items,
-      next_cursor,
-      returned_mode: input.turn_cursor ? 'cursor' : 'full',
-    }
   }
 
   async getThreads(

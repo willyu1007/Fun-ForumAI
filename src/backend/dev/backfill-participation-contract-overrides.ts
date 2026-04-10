@@ -118,7 +118,7 @@ function normalizeOverride(value: unknown): ParticipationContractOverride | null
   }
 }
 
-function serializeOverride(override: ParticipationContractOverride): Record<string, unknown> {
+function serializeOverride(override: ParticipationContractOverride): Prisma.InputJsonObject {
   return {
     ...(override.public_participation_mode
       ? { public_participation_mode: override.public_participation_mode }
@@ -134,9 +134,11 @@ function serializeOverride(override: ParticipationContractOverride): Record<stri
   }
 }
 
+type MutableJsonRecord = Record<string, Prisma.InputJsonValue>
+
 type PendingUpdate = {
   post_id: string
-  metadata: Record<string, unknown>
+  metadata: Prisma.InputJsonObject
 }
 
 async function main() {
@@ -228,13 +230,13 @@ async function main() {
       continue
     }
 
-    const nextMetadata = { ...row.moderationMetadataJson }
+    const nextMetadata = { ...row.moderationMetadataJson } as MutableJsonRecord
     nextMetadata[CANONICAL_METADATA_KEY] = serializedCanonical ?? serializedLegacy
     delete nextMetadata[LEGACY_METADATA_KEY]
 
     updates.push({
       post_id: row.id,
-      metadata: nextMetadata,
+      metadata: nextMetadata as Prisma.InputJsonObject,
     })
     rowsReadyForBackfill += 1
   }

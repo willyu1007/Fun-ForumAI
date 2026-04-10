@@ -2,7 +2,7 @@
 
 ## Status
 - State: done
-- Next step: 向用户同步修复面、校验结果与剩余注意事项。
+- Next step: 无 task-local 后续动作；本包已归档。
 
 ## Goal
 收敛本轮全仓审查暴露出的关键回归，使仓库重新回到可通过完整校验链的状态。

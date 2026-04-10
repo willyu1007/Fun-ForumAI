@@ -1744,11 +1744,11 @@ tasks:
     updated: 2026-04-07
   - id: T-941
     slug: forum-semantic-lifecycle-projection-foundation-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1
-    updated: 2026-04-07
+    updated: 2026-04-10
   - id: T-942
     slug: forum-post-detail-discussion-forest-v1
     status: done
@@ -1758,11 +1758,11 @@ tasks:
     updated: 2026-04-10
   - id: T-943
     slug: forum-participation-contract-and-viewer-write-plane-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1
-    updated: 2026-04-07
+    updated: 2026-04-10
   - id: T-944
     slug: forum-attention-opportunity-and-perception-full-cutover-v1
     status: done
@@ -1772,11 +1772,11 @@ tasks:
     updated: 2026-04-08
   - id: T-945
     slug: forum-semantic-llm-runtime-convergence-v2
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-semantic-llm-runtime-convergence-v2
-    updated: 2026-04-08
+    updated: 2026-04-10
   - id: T-946
     slug: forum-orchestration-experience-closeout-program-v1
     status: done
@@ -1814,15 +1814,15 @@ tasks:
     updated: 2026-04-10
   - id: T-951
     slug: repo-review-stability-fixes-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/repo-review-stability-fixes-v1
+    dev_docs_path: dev-docs/archive/repo-review-stability-fixes-v1
     updated: 2026-04-10
   - id: T-952
     slug: forum-gate2-real-e2e-regression-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-gate2-real-e2e-regression-v1
+    dev_docs_path: dev-docs/archive/forum-gate2-real-e2e-regression-v1
     updated: 2026-04-10

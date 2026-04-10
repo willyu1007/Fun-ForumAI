@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1`, `T-931 forum-post-detail-stage-audience-layout-v1`, `T-925 agent-social-bio-domain-and-refresh-pipeline`, `T-926 agent-social-bio-owner-private-surfaces`, `T-145 agent-public-identity-projection-proof-alignment`, archived director packs `T-094` to `T-101`, `/Users/phoenix/Downloads/ForumAI-TMP/forum_architecture_orchestration_experience_design.md`, `/Users/phoenix/Downloads/ForumAI-TMP/forum_architecture_orchestration_interfaces_and_events_draft.md`
 - Current status: shared contract / projection service / runtime wiring 与 docs/context 同步已落地；Gate 1 review packet 已补齐并明确冻结 `lifecycle.writeability` 为唯一主链真相，`can_receive_replies` 已从 active contract、event payload 与主源码树删除。
 - Next step: hold lifecycle / route / writeability semantics steady for downstream work and keep `can_receive_replies` grep at zero in active source; any future drift must be adjudicated through `T-946` before reopening this package.

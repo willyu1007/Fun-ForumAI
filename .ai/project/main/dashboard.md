@@ -8,30 +8,30 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 191 (planned: 1, in-progress: 16, blocked: 0, done: 16, archived: 158)
+- Tasks: 191 (planned: 1, in-progress: 13, blocked: 0, done: 17, archived: 160)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | done | F-000 | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
+| T-941 forum-semantic-lifecycle-projection-foundation-v1 | done | F-000 | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
 | T-942 forum-post-detail-discussion-forest-v1 | done | F-000 | dev-docs/active/forum-post-detail-discussion-forest-v1 |
+| T-943 forum-participation-contract-and-viewer-write-plane-v1 | done | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
+| T-945 forum-semantic-llm-runtime-convergence-v2 | done | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
 | T-946 forum-orchestration-experience-closeout-program-v1 | done | F-000 | dev-docs/active/forum-orchestration-experience-closeout-program-v1 |
 | T-947 forum-attention-and-recall-hardening-v1 | done | F-000 | dev-docs/active/forum-attention-and-recall-hardening-v1 |
 | T-948 forum-read-model-and-search-projection-slimming-v1 | done | F-000 | dev-docs/active/forum-read-model-and-search-projection-slimming-v1 |
 | T-949 forum-product-narrative-and-context-alignment-v1 | done | F-000 | dev-docs/active/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | in-progress | F-000 | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
-| T-951 repo-review-stability-fixes-v1 | done | F-000 | dev-docs/active/repo-review-stability-fixes-v1 |
-| T-952 forum-gate2-real-e2e-regression-v1 | done | F-000 | dev-docs/active/forum-gate2-real-e2e-regression-v1 |
+| T-951 repo-review-stability-fixes-v1 | archived | F-000 | dev-docs/archive/repo-review-stability-fixes-v1 |
+| T-952 forum-gate2-real-e2e-regression-v1 | archived | F-000 | dev-docs/archive/forum-gate2-real-e2e-regression-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | F-000 | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
-| T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | F-080 | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | F-020 | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | F-000 | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
 | T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | F-100 | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |
-| T-941 forum-semantic-lifecycle-projection-foundation-v1 | in-progress | F-000 | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
-| T-943 forum-participation-contract-and-viewer-write-plane-v1 | in-progress | F-000 | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 <!-- AUTO-GENERATED:END dashboard -->

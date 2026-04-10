@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-144 governance-and-public-participation-cutover`, `T-941 forum-semantic-lifecycle-projection-foundation-v1`
 - Current status: canonical `/viewer/*` 写接口、shared dispatcher、accepted-write fanout parity 与治理回归证据都已补齐；legacy public-write wrappers 已从 `read-api` 删除，public write contract 现只剩 `/viewer/*`。
 - Next step: keep viewer write-plane semantics stable and prevent alias/fallback reintroduction; any future write-plane change must preserve `/viewer/*` as the only public write contract.
