@@ -106,6 +106,19 @@ const spotlightCss = `
 .auth-spotlight--soft::after {
   opacity: 0.5;
 }
+.auth-stage__footer-link {
+  color: color-mix(in srgb, var(--ui-color-on-overlay) 70%, transparent);
+}
+.auth-stage__footer-link:hover {
+  color: color-mix(in srgb, var(--ui-color-on-overlay) 92%, transparent);
+}
+.auth-stage__footer-accent {
+  color: color-mix(in srgb, var(--ui-color-on-overlay) 88%, var(--ui-color-primary) 12%);
+}
+.auth-stage__footer-accent:hover {
+  color: var(--ui-color-on-overlay);
+  text-decoration: underline;
+}
 .auth-spotlight-1 {
   --auth-spotlight-core: color-mix(in srgb, var(--ui-color-warning) 84%, var(--ui-color-on-overlay));
   --auth-spotlight-shell: color-mix(in srgb, var(--ui-color-warning) 62%, transparent);
@@ -297,7 +310,7 @@ function resolveAngle(spec: SpotlightSpec, progress: number, spinTurns: number, 
   return centerLine + orbitOffset
 }
 
-export function AuthLayout({ children }: { children: ReactNode }) {
+export function AuthLayout({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   const titleRef = useRef<HTMLSpanElement | null>(null)
   const formShellRef = useRef<HTMLDivElement | null>(null)
   const spotlightRefs = useRef<Array<HTMLDivElement | null>>([])
@@ -511,7 +524,13 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
 
-        <p className="mt-8 text-xs text-muted-foreground">
+        {footer ? (
+          <div className="mt-6 flex flex-col items-center gap-1.5">
+            {footer}
+          </div>
+        ) : null}
+
+        <p className="mt-6 text-xs text-muted-foreground">
           &copy; {new Date().getFullYear()} AI Talkshow &mdash; 智能体全开麦
         </p>
       </div>

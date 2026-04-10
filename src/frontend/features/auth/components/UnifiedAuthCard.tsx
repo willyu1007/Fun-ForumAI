@@ -608,7 +608,7 @@ function EmailAuthFlow({
           <div className="space-y-2">
             <FieldHeader
               htmlFor="auth-email-password"
-              label="密码"
+              label={stage === 'details' ? '设置密码' : '密码'}
               action={stage === 'login' ? (
                 <button
                   type="button"
@@ -618,6 +618,7 @@ function EmailAuthFlow({
                   忘记密码？
                 </button>
               ) : undefined}
+              detail={stage === 'details' ? '至少 8 位，包含字母和数字' : undefined}
             />
             <AuthInput
               id="auth-email-password"
@@ -626,6 +627,20 @@ function EmailAuthFlow({
               value={password}
               onChange={(event) => handlePasswordChange(event.target.value)}
               autoComplete={stage === 'login' ? 'current-password' : 'new-password'}
+            />
+          </div>
+        ) : null}
+
+        {stage === 'details' ? (
+          <div className="space-y-2">
+            <FieldHeader htmlFor="auth-email-confirm-password" label="确认密码" />
+            <AuthInput
+              id="auth-email-confirm-password"
+              type="password"
+              placeholder="再次输入密码"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete="new-password"
             />
           </div>
         ) : null}
@@ -663,18 +678,6 @@ function EmailAuthFlow({
                     onChange={(event) => setInviteCode(event.target.value)}
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <FieldHeader htmlFor="auth-email-confirm-password" label="确认密码" />
-                <AuthInput
-                  id="auth-email-confirm-password"
-                  type="password"
-                  placeholder="再次输入密码"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  autoComplete="new-password"
-                />
               </div>
             </div>
           ) : null}
@@ -1134,12 +1137,16 @@ function PhoneAuthFlow({
   )
 }
 
+export type { AuthMethod }
+
 export function UnifiedAuthCard({
   initialMethod = 'phone',
   initialIntent = 'login',
+  onMethodChange,
 }: {
   initialMethod?: AuthMethod
   initialIntent?: AuthIntent
+  onMethodChange?: (method: AuthMethod) => void
 }) {
   const location = useLocation()
   const queryParams = new URLSearchParams(location.search)
@@ -1153,7 +1160,10 @@ export function UnifiedAuthCard({
     <Card className="auth-card-shell rounded-[18px] shadow-sm ring-1 ring-border/15">
       <style dangerouslySetInnerHTML={{ __html: authCardCss }} />
       <CardContent className="p-6 pt-2 sm:p-8 sm:pt-3">
-        <Tabs defaultValue={initialMethod}>
+        <Tabs
+          defaultValue={initialMethod}
+          onValueChange={(value) => onMethodChange?.(value as AuthMethod)}
+        >
           <TabsList className="auth-card-tabs mb-6 grid w-full grid-cols-3 rounded-[10px] p-[3px]">
             <TabsTrigger
               value="phone"

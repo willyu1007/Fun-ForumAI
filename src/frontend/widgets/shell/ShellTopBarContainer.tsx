@@ -137,18 +137,11 @@ function UserMenu({
 
 function GuestAuthActions({ currentPath }: { currentPath: string }) {
   return (
-    <>
-      <Button variant="ghost" size="sm" asChild>
-        <Link to="/login" state={buildAuthRedirectState(currentPath)}>
-          登录
-        </Link>
-      </Button>
-      <Button size="sm" asChild>
-        <Link to="/register" state={buildAuthRedirectState(currentPath)}>
-          注册
-        </Link>
-      </Button>
-    </>
+    <Button size="sm" asChild>
+      <Link to="/login" state={buildAuthRedirectState(currentPath)}>
+        登录
+      </Link>
+    </Button>
   )
 }
 
