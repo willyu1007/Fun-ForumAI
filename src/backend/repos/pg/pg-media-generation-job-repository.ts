@@ -193,7 +193,7 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
       ? Prisma.sql`COUNT(*) FILTER (WHERE status = 'running' AND provider = ${input.provider})::int`
       : Prisma.sql`0::int`
 
-    const rows = await this.prisma.$queryRaw<PrismaMediaGenerationJobRecord[]>(Prisma.sql`
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       WITH capacity AS (
         SELECT
           COUNT(*) FILTER (WHERE status = 'running')::int AS global_running,
@@ -223,11 +223,15 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
         attempt_count = job.attempt_count + 1,
         updated_at = NOW()
       WHERE job.id IN (SELECT id FROM next_job)
-      RETURNING job.*
+      RETURNING job.id
     `)
 
     const row = rows[0] ?? null
-    return row ? this.toDomain(row) : null
+    if (!row?.id) return null
+    const claimed = await this.prisma.mediaGenerationJobRecord.findUnique({
+      where: { id: row.id },
+    })
+    return claimed ? this.toDomain(claimed) : null
   }
 
   async cancelQueuedByProjectionIds(

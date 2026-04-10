@@ -313,9 +313,9 @@ function SectionDivider() {
 
 export function ShellLeftRail() {
   const { pathname, search } = useLocation()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const { data } = useCommunities()
-  const { data: myAgentsData } = useMyAgents()
+  const { data: myAgentsData } = useMyAgents(isAuthenticated)
   const communities = useMemo(() => data?.data ?? EMPTY_COMMUNITIES, [data])
   const myAgents = useMemo(() => myAgentsData?.data ?? [], [myAgentsData])
   const ownerId = useMemo(
@@ -486,71 +486,73 @@ export function ShellLeftRail() {
         </div>
       </ScrollArea>
 
-      {/* My Agents (Fixed at bottom) */}
-      <div
-        className={cn(
-          'mb-3 flex h-56 w-full shrink-0 flex-col',
-        )}
-      >
-        <div className="border-t border-primary/22" aria-hidden />
-        <div className="flex shrink-0 items-start px-3 pb-1.5 pt-2">
-          <button
-            type="button"
-            className="group block w-full text-left text-base transition-colors"
-            onClick={openMyAgentsWorkspace}
-          >
-            <span
-              className={cn(
-                'flex w-full items-center gap-4 rounded-[10px] px-4 py-2.5 transition-colors duration-200',
-                'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
-              )}
+      {/* My Agents (Fixed at bottom) — only for authenticated users */}
+      {isAuthenticated && (
+        <div
+          className={cn(
+            'mb-3 flex h-56 w-full shrink-0 flex-col',
+          )}
+        >
+          <div className="border-t border-primary/22" aria-hidden />
+          <div className="flex shrink-0 items-start px-3 pb-1.5 pt-2">
+            <button
+              type="button"
+              className="group block w-full text-left text-base transition-colors"
+              onClick={openMyAgentsWorkspace}
             >
-              <Bot
-                className="gradient-icon-flow h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200"
-                strokeWidth={2}
-              />
-              <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">我的智能体</span>
-            </span>
-          </button>
-        </div>
-        <div className="flex flex-1 flex-col justify-start px-3 pb-3">
-          <div className="space-y-0.5 px-4">
-            {displayedAgents.length === 0 ? (
-              <button
-                type="button"
-                onClick={openMyAgentsWorkspaceWithCreate}
-                className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border/60 px-3 py-5 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
+              <span
+                className={cn(
+                  'flex w-full items-center gap-4 rounded-[10px] px-4 py-2.5 transition-colors duration-200',
+                  'text-foreground/80 group-hover:bg-primary/6 group-hover:text-foreground',
+                )}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Plus className="h-4 w-4" />
-                </span>
-                <div className="text-xs font-medium text-foreground/80">创建你的第一个智能体</div>
-              </button>
-            ) : (
-              displayedAgents.map((agent) => (
+                <Bot
+                  className="gradient-icon-flow h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200"
+                  strokeWidth={2}
+                />
+                <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">我的智能体</span>
+              </span>
+            </button>
+          </div>
+          <div className="flex flex-1 flex-col justify-start px-3 pb-3">
+            <div className="space-y-0.5 px-4">
+              {displayedAgents.length === 0 ? (
                 <button
-                  key={agent.id}
                   type="button"
-                  className="group flex w-full items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm text-foreground/80 transition-colors duration-200 hover:bg-primary/6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                  onClick={() => openSpecificAgentInLastContext(agent.id)}
+                  onClick={openMyAgentsWorkspaceWithCreate}
+                  className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border/60 px-3 py-5 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
                 >
-                  <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarImage
-                      src={resolveAgentAvatarSrc(agent)}
-                      alt={agent.display_name}
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="bg-muted text-[10px] font-medium text-foreground/75">
-                      {getInitials(agent.display_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="truncate text-[13px] font-medium">{agent.display_name}</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Plus className="h-4 w-4" />
+                  </span>
+                  <div className="text-xs font-medium text-foreground/80">创建你的第一个智能体</div>
                 </button>
-              ))
-            )}
+              ) : (
+                displayedAgents.map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    className="group flex w-full items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm text-foreground/80 transition-colors duration-200 hover:bg-primary/6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    onClick={() => openSpecificAgentInLastContext(agent.id)}
+                  >
+                    <Avatar className="h-7 w-7 shrink-0">
+                      <AvatarImage
+                        src={resolveAgentAvatarSrc(agent)}
+                        alt={agent.display_name}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-muted text-[10px] font-medium text-foreground/75">
+                        {getInitials(agent.display_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-[13px] font-medium">{agent.display_name}</span>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -15,7 +15,6 @@ Project: `main`
 | T-003 runnable-core-baseline | archived | dev-docs/archive/runnable-core-baseline |
 | T-004 safe-agent-write-path | archived | dev-docs/archive/safe-agent-write-path |
 | T-005 delivery-pipeline-baseline | archived | dev-docs/archive/delivery-pipeline-baseline |
-| T-006 launch-readiness-validation | archived | dev-docs/archive/launch-readiness-validation |
 | T-007 data-plane-write-guard | archived | dev-docs/archive/data-plane-write-guard |
 | T-008 event-response-allocator | archived | dev-docs/archive/event-response-allocator |
 | T-009 moderation-pipeline-v1 | archived | dev-docs/archive/moderation-pipeline-v1 |
@@ -36,11 +35,9 @@ Project: `main`
 | T-024 pg-repository-consistency-hardening | archived | dev-docs/archive/pg-repository-consistency-hardening |
 | T-025 sse-cluster-broadcast-foundation | archived | dev-docs/archive/sse-cluster-broadcast-foundation |
 | T-026 k8s-local-cloud-overlays-bootstrap | archived | dev-docs/archive/k8s-local-cloud-overlays-bootstrap |
-| T-027 typecheck-remediation-baseline | archived | dev-docs/archive/typecheck-remediation-baseline |
 | T-028 app-adaptation-discussion | archived | dev-docs/archive/app-adaptation-discussion |
 | T-029 mobile-ux-hardening | archived | dev-docs/archive/mobile-ux-hardening |
 | T-030 mobile-navigation-and-routing | archived | dev-docs/archive/mobile-navigation-and-routing |
-| T-031 mobile-test-automation | archived | dev-docs/archive/mobile-test-automation |
 | T-032 frontend-sse-resilience | archived | dev-docs/archive/frontend-sse-resilience |
 | T-033 realtime-protocol-evaluation | archived | dev-docs/archive/realtime-protocol-evaluation |
 | T-034 abc-layer-stack-unification | archived | dev-docs/archive/abc-layer-stack-unification |
@@ -60,7 +57,6 @@ Project: `main`
 | T-055 aftershow-event-pipeline-and-callout | archived | dev-docs/archive/aftershow-event-pipeline-and-callout |
 | T-056 role-assignment-aside-seats | archived | dev-docs/archive/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | archived | dev-docs/archive/audience-aftershow-web-experience |
-| T-058 pr4-governance-blocker-fixes | archived | dev-docs/archive/pr4-governance-blocker-fixes |
 | T-073 chatroom-watchability-foundation | archived | dev-docs/archive/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | archived | dev-docs/archive/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | archived | dev-docs/archive/chatroom-persona-projection-and-ecosystem |
@@ -72,8 +68,6 @@ Project: `main`
 | T-109 compatibility-cleanup-wave1-wave2 | archived | dev-docs/archive/compatibility-cleanup-wave1-wave2 |
 | T-110 compatibility-cleanup-wave3-runtime-fallbacks | archived | dev-docs/archive/compatibility-cleanup-wave3-runtime-fallbacks |
 | T-111 compatibility-cleanup-final-pass | archived | dev-docs/archive/compatibility-cleanup-final-pass |
-| T-112 compatibility-cleanup-test-runtime-followup | archived | dev-docs/archive/compatibility-cleanup-test-runtime-followup |
-| T-113 compatibility-cleanup-pr-review-followup | archived | dev-docs/archive/compatibility-cleanup-pr-review-followup |
 | T-127 agent-modal-redesign | archived | dev-docs/archive/agent-modal-redesign |
 | T-128 aliyun-acr-ecs-eci-delivery-program | in-progress | dev-docs/active/aliyun-acr-ecs-eci-delivery-program |
 | T-129 github-actions-acr-image-publishing | archived | dev-docs/archive/github-actions-acr-image-publishing |
@@ -81,23 +75,19 @@ Project: `main`
 | T-131 eci-worker-runtime-delivery | archived | dev-docs/archive/eci-worker-runtime-delivery |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
-| T-904 code-review-audit-remediation | archived | dev-docs/archive/code-review-audit-remediation |
-| T-906 prompt-budget-v2-runtime-gap-remediation | archived | dev-docs/archive/prompt-budget-v2-runtime-gap-remediation |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
 | T-908 ui-preparation-foundation | archived | dev-docs/archive/ui-preparation-foundation |
-| T-909 uiux-manual-test-baseline | in-progress | dev-docs/active/uiux-manual-test-baseline |
 | T-912 public-search-system-v1 | archived | dev-docs/archive/public-search-system-v1 |
 | T-913 search-ecosystem-enrichment-v2 | archived | dev-docs/archive/search-ecosystem-enrichment-v2 |
-| T-915 search-correctness-convergence-and-discovery-hardening-v1 | done | dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1 |
+| T-915 search-correctness-convergence-and-discovery-hardening-v1 | archived | dev-docs/archive/search-correctness-convergence-and-discovery-hardening-v1 |
 | T-916 forum-public-stage-thread-turn-cutover-v1 | archived | dev-docs/archive/forum-public-stage-thread-turn-cutover-v1 |
-| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | done | dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
-| T-919 feedback-ticket-and-admin-inbox-v1 | in-progress | dev-docs/active/feedback-ticket-and-admin-inbox-v1 |
-| T-920 backend-typecheck-baseline-repair-v1 | archived | dev-docs/archive/backend-typecheck-baseline-repair-v1 |
+| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | archived | dev-docs/archive/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
+| T-919 feedback-ticket-and-admin-inbox-v1 | archived | dev-docs/archive/feedback-ticket-and-admin-inbox-v1 |
 | T-922 vote-target-migration-and-semantic-convergence-v1 | archived | dev-docs/archive/vote-target-migration-and-semantic-convergence-v1 |
 | T-923 agent-chat-screenshot-inline-search | archived | dev-docs/archive/agent-chat-screenshot-inline-search |
-| T-928 dev-seed-reset-and-bio-baseline-repair | done | dev-docs/active/dev-seed-reset-and-bio-baseline-repair |
+| T-928 dev-seed-reset-and-bio-baseline-repair | archived | dev-docs/archive/dev-seed-reset-and-bio-baseline-repair |
 | T-929 alb-health-readiness-upgrade | archived | dev-docs/archive/alb-health-readiness-upgrade |
-| T-930 web-auth-email-and-sms-registration | in-progress | dev-docs/active/web-auth-email-and-sms-registration |
+| T-930 web-auth-email-and-sms-registration | archived | dev-docs/archive/web-auth-email-and-sms-registration |
 | T-931 forum-post-detail-stage-audience-layout-v1 | archived | dev-docs/archive/forum-post-detail-stage-audience-layout-v1 |
 | T-932 invite-code-seed-registration-v1 | archived | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-933 launch-gray-release-gap-closure | archived | dev-docs/archive/launch-gray-release-gap-closure |
@@ -106,18 +96,16 @@ Project: `main`
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
-| T-941 forum-semantic-lifecycle-projection-foundation-v1 | done | dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1 |
-| T-942 forum-post-detail-discussion-forest-v1 | done | dev-docs/active/forum-post-detail-discussion-forest-v1 |
-| T-943 forum-participation-contract-and-viewer-write-plane-v1 | done | dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1 |
-| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
-| T-945 forum-semantic-llm-runtime-convergence-v2 | done | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |
-| T-946 forum-orchestration-experience-closeout-program-v1 | done | dev-docs/active/forum-orchestration-experience-closeout-program-v1 |
-| T-947 forum-attention-and-recall-hardening-v1 | done | dev-docs/active/forum-attention-and-recall-hardening-v1 |
-| T-948 forum-read-model-and-search-projection-slimming-v1 | done | dev-docs/active/forum-read-model-and-search-projection-slimming-v1 |
-| T-949 forum-product-narrative-and-context-alignment-v1 | done | dev-docs/active/forum-product-narrative-and-context-alignment-v1 |
-| T-950 llm-runtime-authority-round4-closeout-v1 | in-progress | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
-| T-951 repo-review-stability-fixes-v1 | archived | dev-docs/archive/repo-review-stability-fixes-v1 |
-| T-952 forum-gate2-real-e2e-regression-v1 | archived | dev-docs/archive/forum-gate2-real-e2e-regression-v1 |
+| T-941 forum-semantic-lifecycle-projection-foundation-v1 | archived | dev-docs/archive/forum-semantic-lifecycle-projection-foundation-v1 |
+| T-942 forum-post-detail-discussion-forest-v1 | archived | dev-docs/archive/forum-post-detail-discussion-forest-v1 |
+| T-943 forum-participation-contract-and-viewer-write-plane-v1 | archived | dev-docs/archive/forum-participation-contract-and-viewer-write-plane-v1 |
+| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | archived | dev-docs/archive/forum-attention-opportunity-and-perception-full-cutover-v1 |
+| T-945 forum-semantic-llm-runtime-convergence-v2 | archived | dev-docs/archive/forum-semantic-llm-runtime-convergence-v2 |
+| T-946 forum-orchestration-experience-closeout-program-v1 | archived | dev-docs/archive/forum-orchestration-experience-closeout-program-v1 |
+| T-947 forum-attention-and-recall-hardening-v1 | archived | dev-docs/archive/forum-attention-and-recall-hardening-v1 |
+| T-948 forum-read-model-and-search-projection-slimming-v1 | archived | dev-docs/archive/forum-read-model-and-search-projection-slimming-v1 |
+| T-949 forum-product-narrative-and-context-alignment-v1 | archived | dev-docs/archive/forum-product-narrative-and-context-alignment-v1 |
+| T-950 llm-runtime-authority-round4-closeout-v1 | archived | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
 
 ### F-010 Agent Stats System
 
@@ -144,28 +132,23 @@ Project: `main`
 | T-067 control-context-plane-alignment-program | archived | dev-docs/archive/control-context-plane-alignment-program |
 | T-068 llm-control-plane-runtime-v1 | archived | dev-docs/archive/llm-control-plane-runtime-v1 |
 | T-069 context-memory-plane-runtime-v1 | archived | dev-docs/archive/context-memory-plane-runtime-v1 |
-| T-070 persona-rollout-shadow-review | archived | dev-docs/archive/persona-rollout-shadow-review |
-| T-071 local-kind-runtime-consistency-remediation | archived | dev-docs/archive/local-kind-runtime-consistency-remediation |
-| T-072 persona-rollout-gate-evidence-remediation | archived | dev-docs/archive/persona-rollout-gate-evidence-remediation |
 | T-076 persona-runtime-integration-audit | archived | dev-docs/archive/persona-runtime-integration-audit |
 | T-103 personality-compiler-inference-profile-v1 | archived | dev-docs/archive/personality-compiler-inference-profile-v1 |
 | T-114 prompt-budget-v2-control-compiler-contract | archived | dev-docs/archive/prompt-budget-v2-control-compiler-contract |
 | T-115 prompt-budget-v2-memory-tiering-authority | archived | dev-docs/archive/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | archived | dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
-| T-905 prompt-budget-v2-cohort-signoff-followup | archived | dev-docs/archive/prompt-budget-v2-cohort-signoff-followup |
-| T-924 agent-social-bio-projection-program | in-progress | dev-docs/active/agent-social-bio-projection-program |
-| T-925 agent-social-bio-domain-and-refresh-pipeline | in-progress | dev-docs/active/agent-social-bio-domain-and-refresh-pipeline |
-| T-926 agent-social-bio-owner-private-surfaces | in-progress | dev-docs/active/agent-social-bio-owner-private-surfaces |
-| T-927 agent-social-bio-public-and-search-rollout | in-progress | dev-docs/active/agent-social-bio-public-and-search-rollout |
-| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | in-progress | dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1 |
+| T-924 agent-social-bio-projection-program | archived | dev-docs/archive/agent-social-bio-projection-program |
+| T-925 agent-social-bio-domain-and-refresh-pipeline | archived | dev-docs/archive/agent-social-bio-domain-and-refresh-pipeline |
+| T-926 agent-social-bio-owner-private-surfaces | archived | dev-docs/archive/agent-social-bio-owner-private-surfaces |
+| T-927 agent-social-bio-public-and-search-rollout | archived | dev-docs/archive/agent-social-bio-public-and-search-rollout |
+| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
 
 ### F-030 Mobile Runtime Delivery
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
 | T-060 expo-development-build-foundation | archived | dev-docs/archive/expo-development-build-foundation |
-| T-061 ios-android-runtime-smoke-kit | archived | dev-docs/archive/ios-android-runtime-smoke-kit |
 
 ### F-040 Guidance & Onboarding V1
 
@@ -187,7 +170,6 @@ Project: `main`
 | T-091 hot-topic-policy-and-user-transparency | archived | dev-docs/archive/hot-topic-policy-and-user-transparency |
 | T-092 public-policy-and-help-center-surfaces | archived | dev-docs/archive/public-policy-and-help-center-surfaces |
 | T-093 hot-topic-ops-dashboard-and-alerting | archived | dev-docs/archive/hot-topic-ops-dashboard-and-alerting |
-| T-097 mainland-launch-compliance-audit-followup | archived | dev-docs/archive/mainland-launch-compliance-audit-followup |
 
 ### F-060 Public Scene Pool & Director Orchestration
 
@@ -200,7 +182,6 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | archived | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | archived | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
-| T-102 pr-13-merge-readiness-remediation | archived | dev-docs/archive/pr-13-merge-readiness-remediation |
 
 ### F-070 Owner Nurture & Life Overview
 
@@ -224,7 +205,6 @@ Project: `main`
 | T-123 multi-surface-media-expansion-and-shared-adapters | archived | dev-docs/archive/multi-surface-media-expansion-and-shared-adapters |
 | T-124 media-observability-lifecycle-and-rollout-control | archived | dev-docs/archive/media-observability-lifecycle-and-rollout-control |
 | T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
-| T-911 highlights-visual-sample-and-k8s-e2e-regression | archived | dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression |
 | T-914 visual-media-framework-v1-closure | archived | dev-docs/archive/visual-media-framework-v1-closure |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
 
@@ -247,10 +227,10 @@ Project: `main`
 
 | Task | Status | Dev Docs |
 | --- | --- | --- |
-| T-142 forum-semantic-convergence-governance-program | done | dev-docs/active/forum-semantic-convergence-governance-program |
+| T-142 forum-semantic-convergence-governance-program | archived | dev-docs/archive/forum-semantic-convergence-governance-program |
 | T-143 semantic-taxonomy-spine-and-loader-cutover | archived | dev-docs/archive/semantic-taxonomy-spine-and-loader-cutover |
-| T-144 governance-and-public-participation-cutover | done | dev-docs/active/governance-and-public-participation-cutover |
-| T-145 agent-public-identity-projection-proof-alignment | done | dev-docs/active/agent-public-identity-projection-proof-alignment |
-| T-146 search-analytics-backfill-and-compat-cleanup | done | dev-docs/active/search-analytics-backfill-and-compat-cleanup |
-| T-940 badge-semantic-sot-and-surface-usage-governance-v1 | done | dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1 |
+| T-144 governance-and-public-participation-cutover | archived | dev-docs/archive/governance-and-public-participation-cutover |
+| T-145 agent-public-identity-projection-proof-alignment | archived | dev-docs/archive/agent-public-identity-projection-proof-alignment |
+| T-146 search-analytics-backfill-and-compat-cleanup | archived | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
+| T-940 badge-semantic-sot-and-surface-usage-governance-v1 | archived | dev-docs/archive/badge-semantic-sot-and-surface-usage-governance-v1 |
 <!-- AUTO-GENERATED:END feature-map -->

@@ -98,3 +98,7 @@
   - `node scripts/bootstrap-admin-account.mjs --help`
     - Result: passed.
     - Note: operator bootstrap-account script is executable under plain `node` and no longer depends on importing TS-only runtime modules.
+- 2026-04-10:
+  - Operator / user confirmation:
+    - Result: staging 真实 SMTP 已打通，staging 主流程已验证完成。
+    - Note: 此前 `staging api` bootstrap 发布链与 SMTP secret drift 相关阻塞已关闭；`T-935` 剩余责任不再包含 staging 首发验证。

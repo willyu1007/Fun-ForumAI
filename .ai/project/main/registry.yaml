@@ -330,13 +330,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/delivery-pipeline-baseline
     updated: 2026-02-22
-  - id: T-006
-    slug: launch-readiness-validation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/launch-readiness-validation
-    updated: 2026-02-23
   - id: T-007
     slug: data-plane-write-guard
     status: archived
@@ -477,13 +470,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/k8s-local-cloud-overlays-bootstrap
     updated: 2026-03-17
-  - id: T-027
-    slug: typecheck-remediation-baseline
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/typecheck-remediation-baseline
-    updated: 2026-02-26
   - id: T-028
     slug: app-adaptation-discussion
     status: archived
@@ -504,13 +490,6 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/mobile-navigation-and-routing
-    updated: 2026-03-12
-  - id: T-031
-    slug: mobile-test-automation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/mobile-test-automation
     updated: 2026-03-12
   - id: T-032
     slug: frontend-sse-resilience
@@ -706,13 +685,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/audience-aftershow-web-experience
     updated: 2026-03-12
-  - id: T-058
-    slug: pr4-governance-blocker-fixes
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/pr4-governance-blocker-fixes
-    updated: 2026-03-12
   - id: T-059
     slug: xp-deleveling-and-growth-points
     status: archived
@@ -730,15 +702,6 @@ tasks:
     requirement_ids:
       - R-024
     dev_docs_path: dev-docs/archive/expo-development-build-foundation
-    updated: 2026-03-12
-  - id: T-061
-    slug: ios-android-runtime-smoke-kit
-    status: archived
-    milestone_id: M-000
-    feature_id: F-030
-    requirement_ids:
-      - R-025
-    dev_docs_path: dev-docs/archive/ios-android-runtime-smoke-kit
     updated: 2026-03-12
   - id: T-062
     slug: persona-provider-alignment-program
@@ -816,33 +779,6 @@ tasks:
       - R-030
     dev_docs_path: dev-docs/archive/context-memory-plane-runtime-v1
     updated: 2026-03-12
-  - id: T-070
-    slug: persona-rollout-shadow-review
-    status: archived
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-029
-    dev_docs_path: dev-docs/archive/persona-rollout-shadow-review
-    updated: 2026-03-12
-  - id: T-071
-    slug: local-kind-runtime-consistency-remediation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-029
-    dev_docs_path: dev-docs/archive/local-kind-runtime-consistency-remediation
-    updated: 2026-03-12
-  - id: T-072
-    slug: persona-rollout-gate-evidence-remediation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-029
-    dev_docs_path: dev-docs/archive/persona-rollout-gate-evidence-remediation
-    updated: 2026-03-17
   - id: T-073
     slug: chatroom-watchability-foundation
     status: archived
@@ -1027,18 +963,6 @@ tasks:
       - R-062
     dev_docs_path: dev-docs/archive/director-runtime-state-and-chatroom-unification
     updated: 2026-03-17
-  - id: T-097
-    slug: mainland-launch-compliance-audit-followup
-    status: archived
-    milestone_id: M-010
-    feature_id: F-050
-    requirement_ids:
-      - R-050
-      - R-051
-      - R-052
-      - R-053
-    dev_docs_path: dev-docs/archive/mainland-launch-compliance-audit-followup
-    updated: 2026-03-17
   - id: T-098
     slug: director-orchestration-closure-audit-remediation
     status: archived
@@ -1077,15 +1001,6 @@ tasks:
       - R-064
     dev_docs_path: dev-docs/archive/director-report-history-lifecycle-and-segmentation
     updated: 2026-03-17
-  - id: T-102
-    slug: pr-13-merge-readiness-remediation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-060
-    requirement_ids:
-      - R-064
-    dev_docs_path: dev-docs/archive/pr-13-merge-readiness-remediation
-    updated: 2026-03-14
   - id: T-103
     slug: personality-compiler-inference-profile-v1
     status: archived
@@ -1163,20 +1078,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/compatibility-cleanup-final-pass
     updated: 2026-03-16
-  - id: T-112
-    slug: compatibility-cleanup-test-runtime-followup
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/compatibility-cleanup-test-runtime-followup
-    updated: 2026-03-16
-  - id: T-113
-    slug: compatibility-cleanup-pr-review-followup
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/compatibility-cleanup-pr-review-followup
-    updated: 2026-03-17
   - id: T-114
     slug: prompt-budget-v2-control-compiler-contract
     status: archived
@@ -1402,13 +1303,13 @@ tasks:
     updated: 2026-03-31
   - id: T-142
     slug: forum-semantic-convergence-governance-program
-    status: done
+    status: archived
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-101
-    dev_docs_path: dev-docs/active/forum-semantic-convergence-governance-program
-    updated: 2026-04-05
+    dev_docs_path: dev-docs/archive/forum-semantic-convergence-governance-program
+    updated: 2026-04-10
   - id: T-143
     slug: semantic-taxonomy-spine-and-loader-cutover
     status: archived
@@ -1420,31 +1321,31 @@ tasks:
     updated: 2026-04-04
   - id: T-144
     slug: governance-and-public-participation-cutover
-    status: done
+    status: archived
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-103
-    dev_docs_path: dev-docs/active/governance-and-public-participation-cutover
-    updated: 2026-04-05
+    dev_docs_path: dev-docs/archive/governance-and-public-participation-cutover
+    updated: 2026-04-10
   - id: T-145
     slug: agent-public-identity-projection-proof-alignment
-    status: done
+    status: archived
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-104
-    dev_docs_path: dev-docs/active/agent-public-identity-projection-proof-alignment
-    updated: 2026-04-05
+    dev_docs_path: dev-docs/archive/agent-public-identity-projection-proof-alignment
+    updated: 2026-04-10
   - id: T-146
     slug: search-analytics-backfill-and-compat-cleanup
-    status: done
+    status: archived
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-105
-    dev_docs_path: dev-docs/active/search-analytics-backfill-and-compat-cleanup
-    updated: 2026-04-05
+    dev_docs_path: dev-docs/archive/search-analytics-backfill-and-compat-cleanup
+    updated: 2026-04-10
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
@@ -1468,30 +1369,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/owner-mindset-residual-risk-closure
     updated: 2026-03-17
-  - id: T-904
-    slug: code-review-audit-remediation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/code-review-audit-remediation
-    updated: 2026-03-17
-  - id: T-905
-    slug: prompt-budget-v2-cohort-signoff-followup
-    status: archived
-    milestone_id: M-000
-    feature_id: F-020
-    requirement_ids:
-      - R-021
-      - R-030
-    dev_docs_path: dev-docs/archive/prompt-budget-v2-cohort-signoff-followup
-    updated: 2026-03-17
-  - id: T-906
-    slug: prompt-budget-v2-runtime-gap-remediation
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/prompt-budget-v2-runtime-gap-remediation
-    updated: 2026-03-17
   - id: T-907
     slug: confirmed-technical-debt-paydown
     status: archived
@@ -1506,29 +1383,12 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/ui-preparation-foundation
     updated: 2026-03-19
-  - id: T-909
-    slug: uiux-manual-test-baseline
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/uiux-manual-test-baseline
-    updated: 2026-03-20
   - id: T-910
     slug: media-framework-audit-and-remediation
     status: archived
     milestone_id: M-000
     feature_id: F-080
     dev_docs_path: dev-docs/archive/media-framework-audit-and-remediation
-    updated: 2026-03-23
-  - id: T-911
-    slug: highlights-visual-sample-and-k8s-e2e-regression
-    status: archived
-    milestone_id: M-000
-    feature_id: F-080
-    requirement_ids:
-      - R-085
-      - R-086
-    dev_docs_path: dev-docs/archive/highlights-visual-sample-and-k8s-e2e-regression
     updated: 2026-03-23
   - id: T-912
     slug: public-search-system-v1
@@ -1553,10 +1413,10 @@ tasks:
     updated: 2026-03-23
   - id: T-915
     slug: search-correctness-convergence-and-discovery-hardening-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1
+    dev_docs_path: dev-docs/archive/search-correctness-convergence-and-discovery-hardening-v1
     updated: 2026-04-10
   - id: T-916
     slug: forum-public-stage-thread-turn-cutover-v1
@@ -1567,11 +1427,11 @@ tasks:
     updated: 2026-03-23
   - id: T-917
     slug: forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
-    updated: 2026-03-23
+    dev_docs_path: dev-docs/archive/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1
+    updated: 2026-04-10
   - id: T-918
     slug: media-v1-hardening-contract-lineage-cutover
     status: in-progress
@@ -1585,18 +1445,11 @@ tasks:
     updated: 2026-04-07
   - id: T-919
     slug: feedback-ticket-and-admin-inbox-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/feedback-ticket-and-admin-inbox-v1
-    updated: 2026-03-27
-  - id: T-920
-    slug: backend-typecheck-baseline-repair-v1
     status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/archive/backend-typecheck-baseline-repair-v1
-    updated: 2026-04-01
+    dev_docs_path: dev-docs/archive/feedback-ticket-and-admin-inbox-v1
+    updated: 2026-04-10
   - id: T-922
     slug: vote-target-migration-and-semantic-convergence-v1
     status: archived
@@ -1613,47 +1466,47 @@ tasks:
     updated: 2026-03-27
   - id: T-924
     slug: agent-social-bio-projection-program
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-032
-    dev_docs_path: dev-docs/active/agent-social-bio-projection-program
-    updated: 2026-03-27
+    dev_docs_path: dev-docs/archive/agent-social-bio-projection-program
+    updated: 2026-04-10
   - id: T-925
     slug: agent-social-bio-domain-and-refresh-pipeline
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-032
-    dev_docs_path: dev-docs/active/agent-social-bio-domain-and-refresh-pipeline
-    updated: 2026-03-27
+    dev_docs_path: dev-docs/archive/agent-social-bio-domain-and-refresh-pipeline
+    updated: 2026-04-10
   - id: T-926
     slug: agent-social-bio-owner-private-surfaces
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-032
-    dev_docs_path: dev-docs/active/agent-social-bio-owner-private-surfaces
-    updated: 2026-03-27
+    dev_docs_path: dev-docs/archive/agent-social-bio-owner-private-surfaces
+    updated: 2026-04-10
   - id: T-927
     slug: agent-social-bio-public-and-search-rollout
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-032
-    dev_docs_path: dev-docs/active/agent-social-bio-public-and-search-rollout
-    updated: 2026-03-27
+    dev_docs_path: dev-docs/archive/agent-social-bio-public-and-search-rollout
+    updated: 2026-04-10
   - id: T-928
     slug: dev-seed-reset-and-bio-baseline-repair
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/dev-seed-reset-and-bio-baseline-repair
-    updated: 2026-03-28
+    dev_docs_path: dev-docs/archive/dev-seed-reset-and-bio-baseline-repair
+    updated: 2026-04-10
   - id: T-929
     slug: alb-health-readiness-upgrade
     status: archived
@@ -1663,11 +1516,11 @@ tasks:
     updated: 2026-03-30
   - id: T-930
     slug: web-auth-email-and-sms-registration
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/web-auth-email-and-sms-registration
-    updated: 2026-03-30
+    dev_docs_path: dev-docs/archive/web-auth-email-and-sms-registration
+    updated: 2026-04-10
   - id: T-931
     slug: forum-post-detail-stage-audience-layout-v1
     status: archived
@@ -1705,13 +1558,13 @@ tasks:
     updated: 2026-04-03
   - id: T-936
     slug: runtime-cutover-observability-and-live-staging-closeout-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-027
-    dev_docs_path: dev-docs/active/runtime-cutover-observability-and-live-staging-closeout-v1
-    updated: 2026-04-07
+    dev_docs_path: dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1
+    updated: 2026-04-10
   - id: T-937
     slug: forum-semantic-and-llm-runtime-residual-closeout
     status: archived
@@ -1735,94 +1588,80 @@ tasks:
     updated: 2026-04-07
   - id: T-940
     slug: badge-semantic-sot-and-surface-usage-governance-v1
-    status: done
+    status: archived
     milestone_id: M-030
     feature_id: F-100
     requirement_ids:
       - R-106
-    dev_docs_path: dev-docs/active/badge-semantic-sot-and-surface-usage-governance-v1
-    updated: 2026-04-07
+    dev_docs_path: dev-docs/archive/badge-semantic-sot-and-surface-usage-governance-v1
+    updated: 2026-04-10
   - id: T-941
     slug: forum-semantic-lifecycle-projection-foundation-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-semantic-lifecycle-projection-foundation-v1
+    dev_docs_path: dev-docs/archive/forum-semantic-lifecycle-projection-foundation-v1
     updated: 2026-04-10
   - id: T-942
     slug: forum-post-detail-discussion-forest-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-post-detail-discussion-forest-v1
+    dev_docs_path: dev-docs/archive/forum-post-detail-discussion-forest-v1
     updated: 2026-04-10
   - id: T-943
     slug: forum-participation-contract-and-viewer-write-plane-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-participation-contract-and-viewer-write-plane-v1
+    dev_docs_path: dev-docs/archive/forum-participation-contract-and-viewer-write-plane-v1
     updated: 2026-04-10
   - id: T-944
     slug: forum-attention-opportunity-and-perception-full-cutover-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1
-    updated: 2026-04-08
+    dev_docs_path: dev-docs/archive/forum-attention-opportunity-and-perception-full-cutover-v1
+    updated: 2026-04-10
   - id: T-945
     slug: forum-semantic-llm-runtime-convergence-v2
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-semantic-llm-runtime-convergence-v2
+    dev_docs_path: dev-docs/archive/forum-semantic-llm-runtime-convergence-v2
     updated: 2026-04-10
   - id: T-946
     slug: forum-orchestration-experience-closeout-program-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-orchestration-experience-closeout-program-v1
+    dev_docs_path: dev-docs/archive/forum-orchestration-experience-closeout-program-v1
     updated: 2026-04-10
   - id: T-947
     slug: forum-attention-and-recall-hardening-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-attention-and-recall-hardening-v1
+    dev_docs_path: dev-docs/archive/forum-attention-and-recall-hardening-v1
     updated: 2026-04-10
   - id: T-948
     slug: forum-read-model-and-search-projection-slimming-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-read-model-and-search-projection-slimming-v1
+    dev_docs_path: dev-docs/archive/forum-read-model-and-search-projection-slimming-v1
     updated: 2026-04-10
   - id: T-949
     slug: forum-product-narrative-and-context-alignment-v1
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/forum-product-narrative-and-context-alignment-v1
+    dev_docs_path: dev-docs/archive/forum-product-narrative-and-context-alignment-v1
     updated: 2026-04-10
   - id: T-950
     slug: llm-runtime-authority-round4-closeout-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/llm-runtime-authority-round4-closeout-v1
-    updated: 2026-04-10
-  - id: T-951
-    slug: repo-review-stability-fixes-v1
     status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/archive/repo-review-stability-fixes-v1
-    updated: 2026-04-10
-  - id: T-952
-    slug: forum-gate2-real-e2e-regression-v1
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/forum-gate2-real-e2e-regression-v1
+    dev_docs_path: dev-docs/archive/llm-runtime-authority-round4-closeout-v1
     updated: 2026-04-10

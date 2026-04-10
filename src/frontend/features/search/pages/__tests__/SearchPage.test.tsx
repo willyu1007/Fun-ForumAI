@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRecordSearchTelemetry, useSearch, useSearchInfinite } from '@/api/hooks'
@@ -129,6 +129,14 @@ function renderSearchPage(initialEntry: string) {
             <LocationProbe />
           </>
         ),
+      },
+      {
+        path: '/posts/:postId',
+        element: <LocationProbe />,
+      },
+      {
+        path: '/c/:communitySlug',
+        element: <LocationProbe />,
       },
     ],
     {
@@ -452,6 +460,94 @@ describe('SearchPage', () => {
     const thumbnail = screen.getByAltText('')
     expect(thumbnail.getAttribute('class') ?? '').toContain('h-[80px]')
     expect(thumbnail.getAttribute('class') ?? '').toContain('rounded-md')
+  })
+
+  it('exposes post result rows as keyboard-navigable links', () => {
+    mockSidebarCommunities()
+    mockInfiniteSearch({
+      query: 'rust',
+      normalized_query: 'rust',
+      current_tab: 'posts',
+      counts: { posts: 1, communities: 0, agents: 0, threads: 0 },
+      items: [
+        {
+          type: 'post',
+          id: 'post-1',
+          href: '/posts/post-1',
+          title: 'Rust 图搜索',
+          score: 1.4,
+          snippet: '只显示纯文本摘要',
+          highlights: [],
+          match_reasons: ['命中标题'],
+          match_reason_codes: ['title'],
+          community: { id: 'community-1', name: 'Rust Lab', slug: 'rust-lab' },
+          author: { id: 'agent-2', display_name: 'Agent 2', avatar_url: null },
+          author_visibility: 'full',
+          thread_turn_count: 3,
+          heat_score: 18,
+          last_activity_at: null,
+          thumbnail_url: null,
+          agent_vote_up: 9,
+          agent_vote_down: 4,
+        },
+      ],
+      discovery: null,
+      cursor: null,
+      took_ms: 9,
+    })
+
+    const router = renderSearchPage('/search?q=rust&tab=posts')
+
+    const row = screen.getByRole('link', { name: '打开帖子：Rust 图搜索' })
+    fireEvent.keyDown(row, { key: 'Enter' })
+
+    expect(router.state.location.pathname).toBe('/posts/post-1')
+  })
+
+  it('exposes thread results as keyboard-navigable deep links', () => {
+    mockSidebarCommunities()
+    mockInfiniteSearch({
+      query: '赛博朋克',
+      normalized_query: '赛博朋克',
+      current_tab: 'threads',
+      counts: { posts: 0, communities: 0, agents: 0, threads: 1 },
+      items: [
+        {
+          type: 'thread',
+          id: 'thread-1',
+          href: '/posts/post-1?threadId=thread-1&turnId=turn-9',
+          post_id: 'post-1',
+          post_title: '今天用 Stable Diffusion 生成了一组赛博朋克城市',
+          matched_turn_id: 'turn-9',
+          matched_turn_snippet: '命中回复内容',
+          matched_turn_anchor_preview: '回应 @开发用户',
+          score: 1.2,
+          snippet: '线程摘要',
+          highlights: [],
+          match_explanations: buildMatchExplanations('title'),
+          match_reasons: ['命中标题'],
+          match_reason_codes: ['title'],
+          community: { id: 'community-1', name: '种草研究所', slug: 'creator-recommendation' },
+          author: { id: 'agent-1', display_name: '代码审查官', avatar_url: null },
+          author_visibility: 'full',
+          created_at: null,
+          last_activity_at: null,
+          turn_count: 4,
+          parent_post_heat_score: 60,
+        },
+      ],
+      discovery: null,
+      cursor: null,
+      took_ms: 8,
+    })
+
+    const router = renderSearchPage('/search?q=%E8%B5%9B%E5%8D%9A%E6%9C%8B%E5%85%8B&tab=threads')
+
+    const row = screen.getByRole('link', { name: '打开回帖：今天用 Stable Diffusion 生成了一组赛博朋克城市' })
+    fireEvent.keyDown(row, { key: 'Enter' })
+
+    expect(router.state.location.pathname).toBe('/posts/post-1')
+    expect(router.state.location.search).toBe('?threadId=thread-1&turnId=turn-9')
   })
 
   it('does not render avatar or profile links for restricted authors in search results', () => {

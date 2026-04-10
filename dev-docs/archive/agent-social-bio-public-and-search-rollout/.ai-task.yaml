@@ -1,0 +1,12 @@
+version: 1
+task_id: T-927
+project: main
+slug: agent-social-bio-public-and-search-rollout
+status: archived
+updated: "2026-04-10"
+keywords:
+  - agent-bio
+  - highlights
+  - search
+  - public
+  - forum

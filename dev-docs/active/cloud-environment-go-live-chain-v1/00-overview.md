@@ -5,8 +5,8 @@
 - State: in-progress
 - Governance mapping: 保持挂在 `F-000 Inbox / Untriaged`，作为跨包云交付依赖；不直接映射到 `R-027`。
 - Depends on: `T-128 aliyun-acr-ecs-eci-delivery-program`, `T-130 ecs-compose-web-delivery`
-- Current status: `T-935` 代码层 closeout 已闭环：`policy.env.cloud.require_target=true` 已冻结 policy-only cloud routing；`api -> envfile`、`worker -> aliyun-eci-container-group` 已收口为唯一正常路径；worker secret surface、prod cloud baseline、Terraform stack wiring、workload-aware context artifacts 和 runbook 顺序已对齐。当前额外明确一个 staging-only bootstrap 例外：在正式 deploy workspace 未落位前，允许 operator 本机完成 `api` 的 env compile 并手工导入 ECS，但该路径不得推广到 `prod` 或 `worker`。
-- Next step: 先用上述 bootstrap 例外把 staging API 发布链路跑通，再将 frozen cloud contract handoff 给 `T-936` 承接 live gate、rollback/promote prerequisite 与业务 cutover 验收；与此同时继续收口正式 deploy workspace。
+- Current status: `T-935` 代码层 closeout 已闭环：`policy.env.cloud.require_target=true` 已冻结 policy-only cloud routing；`api -> envfile`、`worker -> aliyun-eci-container-group` 已收口为唯一正常路径；worker secret surface、prod cloud baseline、Terraform stack wiring、workload-aware context artifacts 和 runbook 顺序已对齐。根据 2026-04-10 的 operator/user 确认，staging 真实 SMTP 已打通，staging 主流程也已完成验证，因此此前 staging-only bootstrap 例外对应的首轮发布目标视为已完成。当前剩余责任收敛为正式 deploy workspace 与后续 prod/go-live 交接，而非 staging 首发阻塞。
+- Next step: 继续收口正式 deploy workspace，并把已冻结的 cloud contract 用于后续 prod promote/backout 与正式 operator handoff；本任务不再承接 staging SMTP 或 staging API 首发阻塞。
 
 ## Goal
 

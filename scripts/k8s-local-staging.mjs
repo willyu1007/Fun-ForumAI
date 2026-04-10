@@ -353,6 +353,50 @@ async function runDbMigrations({
   }
 }
 
+async function verifyDbMigrationStatus({
+  context,
+  namespace,
+  postgresLocalPort,
+  postgresServiceName = 'postgres',
+  postgresServicePort = 5432,
+  databaseName = 'llm_forum',
+}) {
+  const forwardResult = await startServicePortForwardWithFallback({
+    context,
+    namespace,
+    serviceName: postgresServiceName,
+    preferredLocalPort: Number(postgresLocalPort),
+    servicePort: Number(postgresServicePort),
+  })
+  const forward = forwardResult.child
+  try {
+    if (forwardResult.fellBackFromRequestedPort) {
+      console.warn(
+        `[staging] WARN: postgres local port ${postgresLocalPort} was unavailable, using ${forwardResult.localPort} instead`,
+      )
+    }
+    const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${forwardResult.localPort}/${databaseName}`
+    try {
+      await runCommandCapture('pnpm', ['db:migrate:status'], {
+        env: {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(
+        `--skip-db-migrate was requested, but the local-kind database is not migration-clean. `
+          + `Run the command again without --skip-db-migrate, or migrate the in-cluster Postgres first. `
+          + `Root cause: ${message}`,
+        { cause: error },
+      )
+    }
+  } finally {
+    await stopChildProcess(forward)
+  }
+}
+
 function defaultDatabaseUrl(namespace) {
   return `postgresql://postgres:postgres@postgres.${namespace}.svc.cluster.local:5432/llm_forum`
 }
@@ -656,6 +700,13 @@ async function main() {
   if (!args.skipDbMigrate) {
     console.log('[staging] Running database migrations (pnpm db:migrate:deploy)...')
     await runDbMigrations({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      postgresLocalPort: Number(args.postgresLocalPort),
+    })
+  } else {
+    console.log('[staging] Verifying database migration status because --skip-db-migrate was requested...')
+    await verifyDbMigrationStatus({
       context: args.k8sContext,
       namespace: args.k8sNamespace,
       postgresLocalPort: Number(args.postgresLocalPort),

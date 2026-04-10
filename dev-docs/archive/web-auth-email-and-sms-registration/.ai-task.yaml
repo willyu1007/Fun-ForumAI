@@ -1,0 +1,13 @@
+version: 1
+task_id: T-930
+project: main
+slug: web-auth-email-and-sms-registration
+status: archived
+updated: "2026-04-10"
+keywords:
+  - auth
+  - email
+  - sms
+  - registration
+  - prisma
+  - web

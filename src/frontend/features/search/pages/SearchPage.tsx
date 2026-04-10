@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentSentimentBar } from '@/features/forum/components/AgentSentimentBar'
@@ -100,6 +100,17 @@ function formatRelativeTime(value: string | null | undefined): string | null {
 }
 
 const HUMAN_PARTICIPATION_ENABLED = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
+
+function shouldSkipRowActivationTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest('[data-stop-row-click]'))
+}
+
+function handleResultRowKeyDown(event: KeyboardEvent<HTMLElement>, onActivate: () => void): void {
+  if (shouldSkipRowActivationTarget(event.target)) return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  onActivate()
+}
 
 function hasExplanationCode(
   item: Pick<PublicSearchItem, 'match_explanations' | 'match_reason_codes'>,
@@ -216,15 +227,22 @@ function PostResultRow({
   const time = formatRelativeTime(item.last_activity_at)
   const showProof = hasExplanationCode(item, 'author_achievement_badge')
   const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
+  const activate = () => {
+    onOpen(item)
+    navigate(item.href)
+  }
 
   return (
     <article
       className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      role="link"
+      tabIndex={0}
+      aria-label={`打开帖子：${item.title}`}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
-        onOpen(item)
-        navigate(item.href)
+        if (shouldSkipRowActivationTarget(e.target)) return
+        activate()
       }}
+      onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
       <div className={cn('gap-4', item.thumbnail_url ? 'grid items-start sm:grid-cols-[100px_minmax(0,1fr)]' : 'block')}>
         {item.thumbnail_url && (
@@ -284,14 +302,21 @@ function CommunityResultRow({
   onOpen: (item: SearchCommunityItem) => void
 }) {
   const navigate = useNavigate()
+  const activate = () => {
+    onOpen(item)
+    navigate(item.href)
+  }
   return (
     <article
       className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      role="link"
+      tabIndex={0}
+      aria-label={`打开社区：${item.name}`}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
-        onOpen(item)
-        navigate(item.href)
+        if (shouldSkipRowActivationTarget(e.target)) return
+        activate()
       }}
+      onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -379,6 +404,10 @@ function AgentResultRow({
     display_name: item.display_name,
     avatar_url: item.avatar_url,
   })
+  const activate = () => {
+    onOpen(item)
+    useAgentModalStore.getState().openModal(item.id, 'readonly', 'intro')
+  }
   const { identityChip, proofChips } = readAuthorBadgeChips(item, {
     maxProofChips: hasExplanationCode(item, 'author_achievement_badge') ? 1 : 0,
     policyId: 'public_author_medium',
@@ -388,11 +417,14 @@ function AgentResultRow({
   return (
     <article
       className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      role="button"
+      tabIndex={0}
+      aria-label={`打开智能体：${item.display_name}`}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
-        onOpen(item)
-        useAgentModalStore.getState().openModal(item.id, 'readonly', 'intro')
+        if (shouldSkipRowActivationTarget(e.target)) return
+        activate()
       }}
+      onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
       <div className="flex items-start gap-3">
         <AgentHoverCard agentId={item.id}>
@@ -463,15 +495,22 @@ function ThreadResultRow({
   const time = formatRelativeTime(item.last_activity_at ?? item.created_at)
   const showProof = hasExplanationCode(item, 'author_achievement_badge')
   const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
+  const activate = () => {
+    onOpen(item)
+    navigate(item.href)
+  }
 
   return (
     <article
       className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      role="link"
+      tabIndex={0}
+      aria-label={`打开回帖：${item.post_title}`}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('[data-stop-row-click]')) return
-        onOpen(item)
-        navigate(item.href)
+        if (shouldSkipRowActivationTarget(e.target)) return
+        activate()
       }}
+      onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
       <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
         <SearchAgentIdentity

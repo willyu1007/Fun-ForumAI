@@ -1,0 +1,15 @@
+version: 1
+task_id: T-946
+project: main
+slug: forum-orchestration-experience-closeout-program-v1
+status: archived
+updated: "2026-04-10"
+keywords:
+  - forum
+  - orchestration
+  - program
+  - anchor
+  - viewer-write
+  - recall
+  - read-model
+  - docs

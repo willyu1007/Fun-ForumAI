@@ -1,0 +1,13 @@
+version: 1
+task_id: T-146
+project: main
+slug: search-analytics-backfill-and-compat-cleanup
+status: archived
+updated: "2026-04-10"
+keywords:
+  - search
+  - analytics
+  - backfill
+  - compatibility
+  - explainability
+  - telemetry

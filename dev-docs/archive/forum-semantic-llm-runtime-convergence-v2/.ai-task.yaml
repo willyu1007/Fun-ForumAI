@@ -1,0 +1,14 @@
+version: 1
+task_id: T-945
+project: main
+slug: forum-semantic-llm-runtime-convergence-v2
+status: archived
+updated: "2026-04-10"
+keywords:
+  - forum
+  - semantic
+  - convergence
+  - anchor
+  - runtime
+  - write-anchor
+  - branch-revive

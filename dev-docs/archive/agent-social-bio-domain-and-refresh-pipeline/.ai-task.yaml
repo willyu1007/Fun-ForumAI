@@ -1,0 +1,13 @@
+version: 1
+task_id: T-925
+project: main
+slug: agent-social-bio-domain-and-refresh-pipeline
+status: archived
+updated: "2026-04-10"
+keywords:
+  - agent-bio
+  - worldview
+  - pipeline
+  - repository
+  - scheduler
+  - privacy

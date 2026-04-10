@@ -1,0 +1,13 @@
+version: 1
+task_id: T-948
+project: main
+slug: forum-read-model-and-search-projection-slimming-v1
+status: archived
+updated: "2026-04-10"
+keywords:
+  - forum
+  - read-model
+  - search
+  - projection
+  - performance
+  - bounded-window
