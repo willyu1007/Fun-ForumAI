@@ -1096,6 +1096,8 @@ describe('ForumReadService', () => {
         state: 'APPROVED',
       })
 
+      const findByThreadSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findByThread')
+      const findWindowByThreadSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findWindowByThread')
       const summaries = await ctx.svc.getThreadSummaries(post.id)
 
       expect(summaries.items).toHaveLength(1)
@@ -1151,6 +1153,11 @@ describe('ForumReadService', () => {
         thread_id: thread.id,
         latest_turn_id: secondTurn.id,
       })
+      expect(findWindowByThreadSpy).toHaveBeenCalledWith(
+        thread.id,
+        expect.objectContaining({ aroundTurnId: secondTurn.id, limit: 1 }),
+      )
+      expect(findByThreadSpy).not.toHaveBeenCalled()
     })
 
     it('builds runtime context previews from frozen capsules and public-safe evidence windows', async () => {
@@ -1296,6 +1303,8 @@ describe('ForumReadService', () => {
 
       const summaries = await ctx.svc.getThreadSummaries(post.id)
       const detail = await ctx.svc.getThread(thread.id)
+      const findByThreadsSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findByThreads')
+      const findRecentByThreadSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findRecentByThread')
       const forest = await ctx.svc.getDiscussionForest(post.id, { focus_thread_id: thread.id })
       const preview = await ctx.svc.buildRuntimeContextPreview({
         post_id: post.id,
@@ -1311,6 +1320,8 @@ describe('ForumReadService', () => {
       expect(summaryLifecycle).toEqual(detailLifecycle)
       expect(summaryLifecycle).toEqual(forestLifecycle)
       expect(summaryLifecycle).toEqual(previewLifecycle)
+      expect(findRecentByThreadSpy).toHaveBeenCalledWith(thread.id, expect.any(Number))
+      expect(findByThreadsSpy).not.toHaveBeenCalled()
       expect(summaryLifecycle?.writeability).toMatchObject({
         reply_mode: 'SOFT_CLOSE',
         reply_allowed: true,

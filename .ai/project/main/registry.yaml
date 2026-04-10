@@ -1553,11 +1553,11 @@ tasks:
     updated: 2026-03-23
   - id: T-915
     slug: search-correctness-convergence-and-discovery-hardening-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/search-correctness-convergence-and-discovery-hardening-v1
-    updated: 2026-03-23
+    updated: 2026-04-10
   - id: T-916
     slug: forum-public-stage-thread-turn-cutover-v1
     status: archived
@@ -1751,11 +1751,11 @@ tasks:
     updated: 2026-04-07
   - id: T-942
     slug: forum-post-detail-discussion-forest-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-post-detail-discussion-forest-v1
-    updated: 2026-04-07
+    updated: 2026-04-10
   - id: T-943
     slug: forum-participation-contract-and-viewer-write-plane-v1
     status: in-progress
@@ -1779,32 +1779,32 @@ tasks:
     updated: 2026-04-08
   - id: T-946
     slug: forum-orchestration-experience-closeout-program-v1
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-orchestration-experience-closeout-program-v1
-    updated: 2026-04-09
+    updated: 2026-04-10
   - id: T-947
     slug: forum-attention-and-recall-hardening-v1
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-attention-and-recall-hardening-v1
-    updated: 2026-04-09
+    updated: 2026-04-10
   - id: T-948
     slug: forum-read-model-and-search-projection-slimming-v1
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-read-model-and-search-projection-slimming-v1
-    updated: 2026-04-09
+    updated: 2026-04-10
   - id: T-949
     slug: forum-product-narrative-and-context-alignment-v1
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/forum-product-narrative-and-context-alignment-v1
-    updated: 2026-04-09
+    updated: 2026-04-10
   - id: T-950
     slug: llm-runtime-authority-round4-closeout-v1
     status: in-progress
@@ -1818,4 +1818,11 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/repo-review-stability-fixes-v1
+    updated: 2026-04-10
+  - id: T-952
+    slug: forum-gate2-real-e2e-regression-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/forum-gate2-real-e2e-regression-v1
     updated: 2026-04-10

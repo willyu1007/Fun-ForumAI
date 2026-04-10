@@ -672,7 +672,10 @@ export interface RecallDecision {
   agent_id: string
   opportunity_id: string
   decision: 'GRANTED' | 'SUPPRESSED'
-  decision_source: 'opportunity' | 'policy_guard' | 'fallback'
+  decision_source: 'opportunity' | 'policy_guard' | 'reactive_recall' | 'outsider_diversity' | 'baseline'
+  decision_scope: 'opportunity' | 'post' | 'thread' | 'thread_pair' | 'candidate'
+  decay_stage: 'fresh' | 'repeat' | 'decayed' | null
+  quota_kind: 'incumbent_reactive' | 'outsider_diversity' | 'neutral' | null
   reason_codes: string[]
   applied_policy_snapshot: {
     profile: OrchestrationProfile

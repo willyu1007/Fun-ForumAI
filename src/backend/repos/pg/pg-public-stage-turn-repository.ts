@@ -5,7 +5,11 @@ import type {
   PaginationOpts,
   PublicStageTurn,
 } from '../types.js'
-import type { PublicStageTurnRepository } from '../public-stage-turn-repository.js'
+import type {
+  PublicStageTurnRepository,
+  PublicStageTurnWindowOpts,
+  PublicStageTurnWindowResult,
+} from '../public-stage-turn-repository.js'
 import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 
 function isNotFoundError(error: unknown): boolean {
@@ -49,15 +53,103 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
 
   async findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
     const rows = await this.prisma.publicStageTurn.findMany({
-      where: {
-        threadId,
-        state: 'APPROVED',
-        visibility: { in: ['PUBLIC', 'GRAY'] },
-      },
+      where: this.visibleThreadWhere(threadId),
       orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       ...buildCursorPaginationQuery(opts),
     })
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
+  }
+
+  async findWindowByThread(threadId: string, opts: PublicStageTurnWindowOpts): Promise<PublicStageTurnWindowResult> {
+    if (!opts.aroundTurnId) {
+      const page = await this.findByThread(threadId, {
+        cursor: opts.cursor ?? undefined,
+        limit: opts.limit,
+      })
+      return {
+        ...page,
+        returned_mode: opts.cursor ? 'cursor' : 'full',
+      }
+    }
+
+    const focus = await this.prisma.publicStageTurn.findFirst({
+      where: {
+        ...this.visibleThreadWhere(threadId),
+        id: opts.aroundTurnId,
+      },
+    })
+    if (!focus) {
+      return { items: [], next_cursor: null, returned_mode: 'around' }
+    }
+
+    const halfWindow = Math.floor((opts.limit - 1) / 2)
+    const beforeRowsDesc = halfWindow > 0
+      ? await this.prisma.publicStageTurn.findMany({
+          where: {
+            ...this.visibleThreadWhere(threadId),
+            OR: [
+              { turnIndex: { lt: focus.turnIndex } },
+              { turnIndex: focus.turnIndex, createdAt: { lt: focus.createdAt } },
+              { turnIndex: focus.turnIndex, createdAt: focus.createdAt, id: { lt: focus.id } },
+            ],
+          },
+          orderBy: [{ turnIndex: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+          take: halfWindow,
+        })
+      : []
+    const beforeRows = [...beforeRowsDesc].reverse()
+    const afterLimit = Math.max(0, opts.limit - beforeRows.length)
+    const afterRowsRaw = afterLimit > 0
+      ? await this.prisma.publicStageTurn.findMany({
+          where: {
+            ...this.visibleThreadWhere(threadId),
+            OR: [
+              { turnIndex: { gt: focus.turnIndex } },
+              { turnIndex: focus.turnIndex, createdAt: { gt: focus.createdAt } },
+              { turnIndex: focus.turnIndex, createdAt: focus.createdAt, id: { gte: focus.id } },
+            ],
+          },
+          orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: afterLimit + 1,
+        })
+      : []
+    const hasMore = afterRowsRaw.length > afterLimit
+    const afterRows = afterRowsRaw.slice(0, afterLimit)
+    const rows = [...beforeRows, ...afterRows]
+
+    return {
+      items: rows.map((row) => this.toDomain(row)),
+      next_cursor: hasMore ? rows[rows.length - 1]?.id ?? null : null,
+      returned_mode: 'around',
+    }
+  }
+
+  async findRecentByThread(threadId: string, limit: number): Promise<PublicStageTurn[]> {
+    if (limit <= 0) return []
+    const rows = await this.prisma.publicStageTurn.findMany({
+      where: this.visibleThreadWhere(threadId),
+      orderBy: [{ turnIndex: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    })
+    return [...rows].reverse().map((row) => this.toDomain(row))
+  }
+
+  async findMatchingByThread(threadId: string, query: string, limit: number): Promise<PublicStageTurn[]> {
+    const normalizedQuery = query.trim()
+    if (!normalizedQuery || limit <= 0) return []
+    const tokens = Array.from(new Set(normalizedQuery.split(/\s+/).filter(Boolean))).slice(0, 8)
+    const rows = await this.prisma.publicStageTurn.findMany({
+      where: {
+        ...this.visibleThreadWhere(threadId),
+        OR: [
+          { body: { contains: normalizedQuery, mode: 'insensitive' } },
+          ...tokens.map((token) => ({ body: { contains: token, mode: 'insensitive' as const } })),
+        ],
+      },
+      orderBy: [{ turnIndex: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    })
+    return [...rows].reverse().map((row) => this.toDomain(row))
   }
 
   async findByThreads(threadIds: string[]): Promise<PublicStageTurn[]> {
@@ -166,6 +258,14 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
       state: row.state,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
+    }
+  }
+
+  private visibleThreadWhere(threadId: string): Prisma.PublicStageTurnWhereInput {
+    return {
+      threadId,
+      state: 'APPROVED',
+      visibility: { in: ['PUBLIC', 'GRAY'] },
     }
   }
 }

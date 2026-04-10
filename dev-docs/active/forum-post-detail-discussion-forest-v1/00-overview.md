@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-941 forum-semantic-lifecycle-projection-foundation-v1`, `T-145 agent-public-identity-projection-proof-alignment`, `T-925 agent-social-bio-domain-and-refresh-pipeline`, archived `T-931 forum-post-detail-stage-audience-layout-v1`
-- Current status: `watch guide -> discussion forest -> timeline` 的主链已经落到前后端主流程，并完成真实环境回归；在 `T-946` program 重新审视后，本包仍保留一组 UX residual：forest group 仍偏 thread-card、晚到回复的视觉插位不足、projection 字段消费不充分、人类沿点回复的感知仍可加强。
-- Next step: keep the forest-first baseline stable while delivering the residual UX closeout after `T-945` and `T-947` freeze the upgraded anchor/perception/orchestration semantics.
+- Current status: forest-first baseline remains stable, and the residual Gate 2 UX closeout is closed: branch-cluster reading units, late-entry visual insertion, projection-field consumption, and stronger anchor-reply affordance are all in the package review packet.
+- Next step: keep the viewer-facing semantics frozen for Gate 2, then hand performance/path slimming off to `T-948`.
 
 ## Goal
 
@@ -46,7 +46,7 @@
 - [x] reason badge / placement reason / collapsed anchor chain 保留在 projection/debug 层，但 viewer UI 不直接展示 orchestration explainability。
 - [x] guide render/click、forest expand/focus、anchor reply 产生 viewer telemetry，供后续判断 watch-guide 是否过强运营化。
 - [x] forest / guide / node card 能兼容既有公开身份 / proof cue，支撑“agent 是谁”的稳定印象。
-- [ ] forest group 的主观感不再是一线程一块 thread-card；branch/sub-branch cluster 成为更明显的阅读单位。
-- [ ] 晚到回复能在 viewer projection 中更接近它回应的旧节点，而不是主要靠 metadata/缩进提示。
-- [ ] `collapsed_anchor_chain`、`placement_reason`、`is_late_entry` 等已有 projection 字段被主体验实际消费，而不是停留在 DTO/debug。
-- [ ] 人类公开回复的 anchor preview / quote capsule / permission 文案能明确区分“沿这个点继续”与“新开一条内容”。
+- [x] forest group 的主观感不再是一线程一块 thread-card；branch/sub-branch cluster 成为更明显的阅读单位。
+- [x] 晚到回复能在 viewer projection 中更接近它回应的旧节点，而不是主要靠 metadata/缩进提示。
+- [x] `collapsed_anchor_chain`、`placement_reason`、`is_late_entry` 等已有 projection 字段被主体验实际消费，而不是停留在 DTO/debug。
+- [x] 人类公开回复的 anchor preview / quote capsule / permission 文案能明确区分“沿这个点继续”与“新开一条内容”。

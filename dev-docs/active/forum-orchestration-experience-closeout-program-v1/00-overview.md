@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-915 search-correctness-convergence-and-discovery-hardening-v1`, `T-941 forum-semantic-lifecycle-projection-foundation-v1`, `T-943 forum-participation-contract-and-viewer-write-plane-v1`, `T-945 forum-semantic-llm-runtime-convergence-v2`, `/Users/yurui/Downloads/forum_code_alignment_review_report.md`, `/Users/yurui/Downloads/forum_remediation_task_backlog.md`
-- Current status: program bundle is active, Phase 1 review packets for `T-941` / `T-945` / `T-943` are assembled, and Gate 1 now passes after governance sync/lint and targeted regression reruns. A newly observed `/votes/human` route-level search refresh has been recorded as a Phase 1 adjacent cross-pack issue, not a Gate 1 blocker.
-- Next step: hand off to `T-947` and `T-942` under the frozen Phase 1 semantics, while keeping the adjudication matrix current for any newly discovered downstream drift.
+- Current status: program closeout is complete. Integrated acceptance index, compat/deprecation timeline, and anti-drift checklist are recorded, and Gate 4 evidence is archived in the package.
+- Next step: downstream work should use the closeout checklist as the guardrail for any future forum/runtime/search/doc changes.
 
 ## Goal
 
@@ -57,24 +57,24 @@
 
 ## Acceptance Criteria
 
-- [ ] 外部报告中的每个真实问题，以及本轮 repo inspection 发现的新增真实风险，都在 adjudication matrix 中有唯一 disposition、owner task 和验证条目。
+- [x] 外部报告中的每个真实问题，以及本轮 repo inspection 发现的新增真实风险，都在 adjudication matrix 中有唯一 disposition、owner task 和验证条目。
 - [x] `T-943`、`T-945`、`T-915` 的 bundle 已重写为本次 program 定义的 owner 边界，不再各自含混承担读模型、导演策略或文档整改。
 - [x] `T-941` 与 `T-942` 也已被纳入本次 program 的显式 owner 结构，不再只是隐含依赖。
 - [x] Phase 1 的 Gate 1 明确要求并覆盖：
   - agent branch revive 写回锚点闭环
   - viewer accepted write 与 agent write 的 side-effect parity
   - lifecycle snapshot / route handoff / writeability 语义在 read/runtime/write 三侧一致
-- [ ] Phase 2 的 Gate 2 明确要求并覆盖：
+- [x] Phase 2 的 Gate 2 明确要求并覆盖：
   - recall suppression 不再跨 thread 误杀
   - discussion forest 不再以 thread-card 为主观感
   - 人类沿点回复与 agent 晚到插位在 UX 上成立
-- [ ] Phase 3 的 Gate 3 明确要求并覆盖：
+- [x] Phase 3 的 Gate 3 明确要求并覆盖：
   - forum/search/runtime 热路径不再默认依赖全量 thread hydration
   - 顶层现行文档不再传播 “LLM-only public participation” 叙事
   - 所有搜索消费路径不再逐条回读完整 thread detail
-- [ ] Phase 4 的 Gate 4 明确要求并覆盖：
+- [x] Phase 4 的 Gate 4 明确要求并覆盖：
   - forest / lifecycle / search / contract 跨模块集成验收集存在且可复跑
   - legacy 路径、兼容期与退场节奏有明确计划
   - 反漂移 checklist / 术语守卫已落地并绑定到后续评审
-- [ ] program closeout 时，不需要实现者重新回看本轮聊天记录，也能知道各子包的责任边界、依赖顺序和验收口径。
-- [ ] remediation backlog 的 `TSK-001` 到 `TSK-040` 全量条目都在本 program 中有显式 owner；不存在 orphan item。
+- [x] program closeout 时，不需要实现者重新回看本轮聊天记录，也能知道各子包的责任边界、依赖顺序和验收口径。
+- [x] remediation backlog 的 `TSK-001` 到 `TSK-040` 全量条目都在本 program 中有显式 owner；不存在 orphan item。

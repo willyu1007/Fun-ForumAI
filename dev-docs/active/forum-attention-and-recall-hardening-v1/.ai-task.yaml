@@ -2,8 +2,8 @@ version: 1
 task_id: T-947
 project: main
 slug: forum-attention-and-recall-hardening-v1
-status: planned
-updated: "2026-04-09"
+status: done
+updated: "2026-04-10"
 keywords:
   - forum
   - attention

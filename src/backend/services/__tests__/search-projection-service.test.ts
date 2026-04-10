@@ -432,4 +432,157 @@ describe('SearchProjectionService', () => {
     })
     expect(doc?.representative_thread_turn_text).toContain('代表性的评论金句')
   })
+
+  it('refreshThread uses the lean thread search card bundle instead of full thread detail', async () => {
+    const searchDocRepo = new InMemorySearchDocRepository()
+    const getThread = vi.fn()
+    const getThreadSearchCardBundle = vi.fn().mockResolvedValue({
+      id: 'thread-1',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      body: 'Thread root claim',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+      created_at: new Date('2026-03-23T00:00:00.000Z'),
+      updated_at: new Date('2026-03-23T00:00:00.000Z'),
+      author: {
+        id: 'agent-1',
+        actor_type: 'agent',
+        display_name: 'Agent 1',
+        avatar_url: null,
+        public_identity: null,
+        public_projection: null,
+        public_proof: null,
+        system_identity: null,
+        surface_access: null,
+      },
+      turn_count: 12,
+      participant_count: 3,
+      last_activity_at: new Date('2026-03-23T00:12:00.000Z'),
+      turns: [
+        {
+          id: 'turn-lean',
+          body: 'lean reply marker for search refresh',
+          author_display_name: 'Agent 2',
+          anchor_preview: null,
+        },
+      ],
+    })
+    const service = new SearchProjectionService({
+      searchDocRepo,
+      forumReadService: {
+        getThread,
+        getThreadSearchCardBundle,
+        getPost: vi.fn().mockResolvedValue({
+          id: 'post-1',
+          community_id: 'community-1',
+          community_slug: 'community-1',
+          community_name: 'Community 1',
+          title: 'Lean Post',
+          body: 'post body',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          created_at: new Date('2026-03-23T00:00:00.000Z'),
+          community_semantics: null,
+          interaction_contract: null,
+          content_semantics: null,
+        }),
+        getFeed: vi.fn(),
+      } as never,
+      postRepo: {
+        findById: vi.fn().mockResolvedValue({
+          id: 'post-1',
+          community_id: 'community-1',
+          author_agent_id: 'agent-1',
+          title: 'Lean Post',
+          body: 'post body',
+          tags: [],
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          moderation_metadata: null,
+          created_at: new Date('2026-03-23T00:00:00.000Z'),
+          updated_at: new Date('2026-03-23T00:00:00.000Z'),
+        }),
+        findPublic: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      publicStageThreadRepo: {
+        findById: vi.fn().mockResolvedValue({
+          id: 'thread-1',
+          post_id: 'post-1',
+          community_id: 'community-1',
+          author_actor_type: 'agent',
+          author_agent_id: 'agent-1',
+          author_user_id: null,
+          body: 'Thread root claim',
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+          thread_state: 'OPEN',
+          reply_budget: 6,
+          active_route: null,
+          created_at: new Date('2026-03-23T00:00:00.000Z'),
+          updated_at: new Date('2026-03-23T00:00:00.000Z'),
+        }),
+        findByPostsSince: vi.fn().mockResolvedValue([]),
+        findPublicByAuthorAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      publicStageTurnRepo: {
+        findById: vi.fn(),
+        findByPostsSince: vi.fn().mockResolvedValue([]),
+        findPublicByAuthorAgent: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+      } as never,
+      communityRepo: {
+        findById: vi.fn().mockReturnValue(null),
+        findAll: vi.fn().mockReturnValue({ items: [], next_cursor: null }),
+      } as never,
+      agentRepo: {
+        findById: vi.fn().mockReturnValue({
+          id: 'agent-1',
+          display_name: 'Agent 1',
+          avatar_url: null,
+          status: 'ACTIVE',
+        }),
+        search: vi.fn().mockReturnValue({ items: [], next_cursor: null }),
+      } as never,
+      agentConfigRepo: { findLatest: vi.fn() } as never,
+      humanFollowRepo: { listFollowerUserIds: vi.fn().mockReturnValue([]) } as never,
+      membershipRepo: {
+        findActiveByCommunity: vi.fn().mockReturnValue([]),
+        findActiveByAgent: vi.fn().mockReturnValue([]),
+      } as never,
+      chronicleRepo: { countByAgent: vi.fn().mockResolvedValue(0) } as never,
+      forumSceneMetadataRepo: {
+        findByPostId: vi.fn(),
+        findByThreadId: vi.fn().mockResolvedValue(null),
+        findByCommentId: vi.fn(),
+        findLatestByCommunityId: vi.fn(),
+      } as never,
+      audienceRepo: {
+        findThreadByPost: vi.fn(),
+        countMessagesByThread: vi.fn(),
+        findLatestSummaryByThread: vi.fn(),
+      } as never,
+      achievementChronicleService: {
+        getPublicAuthorPresentation: vi.fn().mockResolvedValue({
+          public_projection: null,
+          public_proof: null,
+          top_chronicle: [],
+        }),
+      } as never,
+      communityCultureDigestService: { getActiveDigest: vi.fn(), generateForCommunity: vi.fn() } as never,
+      agentPublicProjectionService: { getOrBuild: vi.fn() } as never,
+      agentBioService: { getProjection: vi.fn() } as never,
+      aftershowService: { getLatestByPost: vi.fn() } as never,
+      guard: new SearchGuard(),
+    })
+
+    await service.refreshThread('thread-1')
+
+    expect(getThreadSearchCardBundle).toHaveBeenCalledWith('thread-1')
+    expect(getThread).not.toHaveBeenCalled()
+    const result = await searchDocRepo.searchThreadDocs({
+      query: 'lean marker',
+      limit: 10,
+    })
+    expect(result.items[0]?.doc.thread_id).toBe('thread-1')
+  })
 })

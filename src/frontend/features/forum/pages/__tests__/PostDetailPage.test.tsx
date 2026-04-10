@@ -1081,8 +1081,8 @@ describe('PostDetailPage', () => {
       expect(screen.getByText('发起新的公开分支')).toBeTruthy()
     })
     expect(screen.getByText('当前聚焦节点 · Agent 1')).toBeTruthy()
-    expect(screen.getByText('当前聚焦节点仅用于观看；如需沿着它继续，请点击“回应这里”，否则你的发言会作为新的公开分支发布。')).toBeTruthy()
-    expect(screen.queryByText('当前锚点 · Agent 1')).toBeNull()
+    expect(screen.getByText('当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。')).toBeTruthy()
+    expect(screen.queryByText('公开回应锚点 · Agent 1')).toBeNull()
     expect(screen.queryByRole('button', { name: '清除锚点' })).toBeNull()
 
     const lastForestCall = discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]
@@ -1114,9 +1114,10 @@ describe('PostDetailPage', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('回应当前节点')).toBeTruthy()
+      expect(screen.getByText('沿这个点继续')).toBeTruthy()
     })
-    expect(screen.getByText('当前锚点 · Agent 1')).toBeTruthy()
+    expect(screen.getByText('公开回应锚点 · Agent 1')).toBeTruthy()
+    expect(screen.getByText('发送前引用预览')).toBeTruthy()
     expect(screen.getByRole('button', { name: '清除锚点' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '清除锚点' }))
@@ -1124,7 +1125,7 @@ describe('PostDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('发起新的公开分支')).toBeTruthy()
     })
-    expect(screen.queryByText('当前锚点 · Agent 1')).toBeNull()
+    expect(screen.queryByText('公开回应锚点 · Agent 1')).toBeNull()
     expect(screen.queryByRole('button', { name: '清除锚点' })).toBeNull()
     expect(screen.getByText('当前聚焦节点 · Agent 1')).toBeTruthy()
   })

@@ -5,12 +5,12 @@
 1. Phase 0: 建立总控包与 3 个新子包，并重写 `T-915` / `T-943` / `T-945` 边界。`[completed]`
 2. Phase 1: `T-941 + T-945 + T-943` 冻结 lifecycle/anchor/write-plane 基础真相。`[completed]`
 3. Gate 1: 验证 branch revive、fanout parity、lifecycle-driven writeability/route semantics。`[completed]`
-4. Phase 2: `T-947 + T-942` 收口导演自然度与 discussion forest 观看体验。`[pending]`
-5. Gate 2: 验证 thread-scoped recall、late-entry 视觉插位、人类沿点回复 UX。`[pending]`
-6. Phase 3: `T-948 + T-915 + T-949` 收口 read-model/search hot path、projection cache/versioning、顶层叙事。`[pending]`
-7. Gate 3: 验证 lean bundle adoption、搜索热路径收口、顶层文档对齐。`[pending]`
-8. Phase 4: `T-946` 组织跨包验收、兼容退场与反漂移治理。`[pending]`
-9. Gate 4: 验证 integrated acceptance、compat timeline、anti-drift guardrails。`[pending]`
+4. Phase 2: `T-947 + T-942` 收口导演自然度与 discussion forest 观看体验。`[completed]`
+5. Gate 2: 验证 thread-scoped recall、late-entry 视觉插位、人类沿点回复 UX。`[completed]`
+6. Phase 3: `T-948 + T-915 + T-949` 收口 read-model/search hot path、projection cache/versioning、顶层叙事。`[completed]`
+7. Gate 3: 验证 lean bundle adoption、搜索热路径收口、顶层文档对齐。`[completed]`
+8. Phase 4: `T-946` 组织跨包验收、兼容退场与反漂移治理。`[completed]`
+9. Gate 4: 验证 integrated acceptance、compat timeline、anti-drift guardrails。`[completed]`
 
 ## Package Execution Flow
 
@@ -81,7 +81,7 @@
 | viewer accepted write 没有进入统一 event hook / fanout | 审查报告 D + repo inspection | real/fix-now | `T-943` | side-effect parity e2e covering search/SSE/runtime/stats/proactive |
 | route 层手工刷新 projection | backlog `TSK-006` + repo inspection | real/fix-now | `T-943` | route-level manual refresh removal + replayable fanout evidence |
 | legacy public write routes 与 `/viewer/*` 双轨并存 | 审查报告 D + backlog `TSK-004` | real/fix-now | `T-943` | route inventory + compat/deprecation note |
-| `/votes/human` 仍在 `read-api` route 层直接 refresh search projection | Gate 1 repo inspection | cross-pack integration issue (Phase 1 adjacent, non-blocking) | `T-948` | adjudication note in `T-946` + explicit migration/retention decision before Gate 3 |
+| `/votes/human` 仍在 `read-api` route 层直接 refresh search projection | Gate 1 repo inspection | closed in Phase 3 | `T-948` | route-level refresh removed; service-owned hook wired in `HumanParticipationService`; route/service tests pass |
 | broker 没真正消费 forest/local branch 结构 | repo inspection | real/fix-now | `T-947` | broker unit/integration coverage with local branch targeting |
 | opportunity source 判定和 attention metrics 过粗 | repo inspection + backlog `TSK-015~017` | real/fix-now | `T-947` | source/metric telemetry assertions |
 | `reactive_recall_decay` 仅存在配置，不生效 | repo inspection + backlog `TSK-018` | real/fix-now | `T-947` | recall-policy tests proving decay behavior |
@@ -147,7 +147,7 @@
 
 ## Exit Criteria
 
-- `00-overview.md` 中的 acceptance criteria 全部满足。
-- 四个新 task bundle 已通过 governance sync/lint 注册进 project hub。
-- 五个复用包 `T-915/T-941/T-942/T-943/T-945` 的 owner 边界已完成改写或补强，并与本 program 的 phases / gates 保持一致。
-- backlog `TSK-001~040` 已全部映射到主 owner，不存在未分配条目。
+- `00-overview.md` 中的 acceptance criteria 全部满足。`[completed]`
+- 四个新 task bundle 已通过 governance sync/lint 注册进 project hub。`[completed]`
+- 五个复用包 `T-915/T-941/T-942/T-943/T-945` 的 owner 边界已完成改写或补强，并与本 program 的 phases / gates 保持一致。`[completed]`
+- backlog `TSK-001~040` 已全部映射到主 owner，不存在未分配条目。`[completed]`

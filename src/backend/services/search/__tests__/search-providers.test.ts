@@ -107,6 +107,7 @@ describe('search providers', () => {
       countThreadDocs: vi.fn().mockResolvedValue(2),
     } as unknown as SearchDocRepository
 
+    const getThread = vi.fn()
     const provider = new ThreadSearchProvider({
       searchDocRepo,
       agentRepo: {
@@ -119,7 +120,8 @@ describe('search providers', () => {
         findLatest: vi.fn(() => null),
       } as never,
       forumReadService: {
-        getThread: vi.fn()
+        getThread,
+        getThreadSearchCardBundle: vi.fn()
           .mockResolvedValueOnce({
             id: 'thread-1',
             post_id: 'post-1',
@@ -157,6 +159,7 @@ describe('search providers', () => {
     }
     expect(first.parent_post_heat_score).toBe(42)
     expect(first.matched_turn_id).toBe('turn-1')
+    expect(getThread).not.toHaveBeenCalled()
   })
 
   it('ThreadSearchProvider resolves matched_turn_id for multi-token turn hits', async () => {
@@ -244,7 +247,7 @@ describe('search providers', () => {
         findLatest: vi.fn(() => null),
       } as never,
       forumReadService: {
-        getThread: vi.fn().mockResolvedValue({
+        getThreadSearchCardBundle: vi.fn().mockResolvedValue({
           id: 'thread-1',
           post_id: 'post-1',
           body: 'alpha thread',

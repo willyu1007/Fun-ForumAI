@@ -99,7 +99,7 @@ const candidates: ScoredCandidate[] = [
 ]
 
 describe('RecallPolicyService', () => {
-  it('grants the first direct challenge and suppresses the second within the pair window', () => {
+  it('grants the first direct challenge and suppresses the second within the thread-local pair window', () => {
     const service = new RecallPolicyService()
     const event = makeEvent()
     const opportunity = makeOpportunity()
@@ -112,6 +112,13 @@ describe('RecallPolicyService', () => {
       policy,
     })
     expect(first.granted.map((candidate) => candidate.agent_id)).toEqual(['insider-1'])
+    expect(first.decisions[0]).toMatchObject({
+      decision: 'GRANTED',
+      decision_source: 'reactive_recall',
+      decision_scope: 'thread_pair',
+      decay_stage: 'fresh',
+      quota_kind: 'incumbent_reactive',
+    })
 
     const second = service.evaluate({
       event,
@@ -120,10 +127,77 @@ describe('RecallPolicyService', () => {
       policy,
     })
     expect(second.granted).toEqual([])
-    expect(second.decisions[0]?.suppression_reason).toBe('pair_window_cap')
+    expect(second.decisions[0]).toMatchObject({
+      suppression_reason: 'pair_window_cap',
+      decision_scope: 'thread_pair',
+      quota_kind: 'incumbent_reactive',
+    })
   })
 
-  it('prefers outsiders when the dominant thread share is above the cap', () => {
+  it('does not leak hot pair suppression across different threads', () => {
+    const service = new RecallPolicyService()
+    const policy = makePolicy()
+
+    const first = service.evaluate({
+      event: makeEvent({ thread_id: 'thread-a' }),
+      opportunity: makeOpportunity({ thread_id: 'thread-a' }),
+      candidates: [candidates[0]],
+      policy,
+    })
+    const second = service.evaluate({
+      event: makeEvent({ thread_id: 'thread-b' }),
+      opportunity: makeOpportunity({ thread_id: 'thread-b' }),
+      candidates: [candidates[0]],
+      policy,
+    })
+
+    expect(first.granted).toHaveLength(1)
+    expect(second.granted).toHaveLength(1)
+  })
+
+  it('applies reactive recall decay on repeated incumbent recalls before the hard cap', () => {
+    const service = new RecallPolicyService()
+    const policy = makePolicy({
+      recall_control: {
+        ...makePolicy().recall_control,
+        pair_max_exchanges: 5,
+        reactive_recall_decay: 'moderate',
+      },
+    })
+    const event = makeEvent()
+    const opportunity = makeOpportunity()
+
+    const first = service.evaluate({
+      event,
+      opportunity,
+      candidates: [candidates[0]],
+      policy,
+    })
+    const second = service.evaluate({
+      event,
+      opportunity,
+      candidates: [candidates[0]],
+      policy,
+    })
+    const third = service.evaluate({
+      event,
+      opportunity,
+      candidates: [candidates[0]],
+      policy,
+    })
+
+    expect(first.decisions[0]?.decay_stage).toBe('fresh')
+    expect(second.decisions[0]?.decay_stage).toBe('repeat')
+    expect(third.granted).toEqual([])
+    expect(third.decisions[0]).toMatchObject({
+      suppression_reason: 'reactive_recall_decay',
+      decision_scope: 'thread_pair',
+      decay_stage: 'decayed',
+      quota_kind: 'incumbent_reactive',
+    })
+  })
+
+  it('prefers outsiders without suppressing a directly challenged incumbent', () => {
     const service = new RecallPolicyService()
     const evaluation = service.evaluate({
       event: makeEvent(),
@@ -139,12 +213,25 @@ describe('RecallPolicyService', () => {
         },
       }),
       candidates,
-      policy: makePolicy(),
+      policy: makePolicy({
+        recall_control: {
+          ...makePolicy().recall_control,
+          pair_max_exchanges: 5,
+        },
+      }),
     })
 
-    expect(evaluation.granted.map((candidate) => candidate.agent_id)).toEqual(['outsider-1'])
-    expect(evaluation.decisions.find((decision) => decision.agent_id === 'insider-1')?.suppression_reason)
-      .toBe('dominant_thread_cap')
+    expect(evaluation.granted.map((candidate) => candidate.agent_id)).toEqual(['insider-1', 'outsider-1'])
+    expect(evaluation.decisions.find((decision) => decision.agent_id === 'insider-1')).toMatchObject({
+      decision: 'GRANTED',
+      quota_kind: 'incumbent_reactive',
+    })
+    expect(evaluation.decisions.find((decision) => decision.agent_id === 'outsider-1')).toMatchObject({
+      decision: 'GRANTED',
+      decision_source: 'outsider_diversity',
+      decision_scope: 'post',
+      quota_kind: 'outsider_diversity',
+    })
   })
 
   it('caps revive_old_branch opportunities with a per-thread budget', () => {
@@ -171,6 +258,9 @@ describe('RecallPolicyService', () => {
       policy,
     })
     expect(second.granted).toEqual([])
-    expect(second.decisions[0]?.suppression_reason).toBe('revive_budget_exhausted')
+    expect(second.decisions[0]).toMatchObject({
+      suppression_reason: 'revive_budget_exhausted',
+      decision_scope: 'thread',
+    })
   })
 })

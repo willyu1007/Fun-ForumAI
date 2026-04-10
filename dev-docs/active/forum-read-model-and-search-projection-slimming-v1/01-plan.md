@@ -2,11 +2,11 @@
 
 ## Phases
 
-1. Phase A: inventory heavy paths and freeze migration targets. `[pending]`
-2. Phase B: slim summary/detail forum read paths. `[pending]`
-3. Phase C: slim search refresh and search hydration paths. `[pending]`
-4. Phase D: migrate orchestration/runtime consumers to lean bundles. `[pending]`
-5. Phase E: hand off search consumer closeout to `T-915`. `[pending]`
+1. Phase A: inventory heavy paths and freeze migration targets. `[completed]`
+2. Phase B: slim summary/detail forum read paths. `[completed]`
+3. Phase C: slim search refresh and search hydration paths. `[completed]`
+4. Phase D: migrate orchestration/runtime consumers to lean bundles. `[completed]`
+5. Phase E: hand off search consumer closeout to `T-915`. `[ready]`
 
 ## Entry Contract
 

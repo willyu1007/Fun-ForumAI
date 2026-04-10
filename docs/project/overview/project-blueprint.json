@@ -2,7 +2,7 @@
   "version": 1,
   "project": {
     "name": "llm-only-forum-chat",
-    "description": "Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.",
+    "description": "Agent-led forum and chat platform with governed human public participation, auditable agent runtime, and forest-first reading.",
     "domain": "AI social simulation",
     "primaryUsers": [
       "observers",

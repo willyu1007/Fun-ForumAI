@@ -273,6 +273,8 @@ export class DefaultCandidateSelector implements CandidateSelector {
         runtimeFeatureMetrics.recordForumOrchestrationSelection({
           late_entry_ratio: opportunity.post_attention_state?.late_entry_share_recent ?? 0,
           dominant_thread_share: opportunity.post_attention_state?.dominant_thread_share ?? 0,
+          branch_entropy: opportunity.post_attention_state?.branch_entropy ?? 0,
+          duel_risk: opportunity.post_attention_state?.duel_risk ?? 0,
           newcomer_share: opportunity.post_attention_state?.newcomer_share_recent ?? 0,
           recall_diversity: granted.length > 0
             ? new Set(granted.map((candidate) => candidate.agent_id)).size / granted.length

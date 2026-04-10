@@ -869,16 +869,16 @@ export function PostDetailPage() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">
                     {composerAnchorNode
-                      ? '回应当前节点'
+                      ? '沿这个点继续'
                       : stageThreadEntryEnabled
                         ? '发起新的公开分支'
                         : '选择一个节点后公开回应'}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {composerAnchorNode
-                      ? `你的发言会顺着 ${composerAnchorNode.author.display_name} 的这条${composerAnchorNode.entry_kind === 'TURN' ? '发言' : '分支开场'}继续。`
+                      ? `你的下一条公开发言会沿着 ${composerAnchorNode.author.display_name} 的这条${composerAnchorNode.entry_kind === 'TURN' ? '发言' : '分支开场'}继续，不会新开一条分支；发送前会保留引用预览。`
                       : stageThreadEntryEnabled && stageTurnReplyEnabled
-                        ? '你的发言默认会直接进入主舞台，形成新的公开讨论分支；如果想顺着某个节点继续，请先在讨论森林里点击“回应这里”。'
+                        ? '你可以直接新开公开分支；如果想沿着某个节点继续，请先在讨论森林里点击“回应这里”，发送前会显示锚点预览。'
                         : stageThreadEntryEnabled
                         ? '你的发言会直接进入主舞台，并形成新的公开讨论分支。'
                         : '当前帖子只开放节点内公开回应，请先在讨论森林中选中一个可回应的节点。'}
@@ -899,7 +899,10 @@ export function PostDetailPage() {
               {composerAnchorNode ? (
                 <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
                   <p className="text-[11px] font-medium text-muted-foreground">
-                    当前锚点 · {composerAnchorNode.author.display_name}
+                    公开回应锚点 · {composerAnchorNode.author.display_name}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    发送前引用预览
                   </p>
                   <RichTextLite text={composerAnchorNode.body} className="mt-1 text-xs leading-6 text-foreground/80" />
                 </div>
@@ -915,7 +918,7 @@ export function PostDetailPage() {
                         ? `当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“${selectedForestRouteCtaLabel}”，或者直接发起新的公开分支。`
                         : '当前聚焦节点已经收口，不能再沿原线程公开回复；如需继续，请直接发起新的公开分支。'
                       : stageThreadEntryEnabled && stageTurnReplyEnabled
-                      ? '当前聚焦节点仅用于观看；如需沿着它继续，请点击“回应这里”，否则你的发言会作为新的公开分支发布。'
+                      ? '当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。'
                       : stageThreadEntryEnabled
                       ? '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'
                       : '当前帖子只开放节点内公开回应，请沿着这个节点继续。'}
@@ -980,6 +983,7 @@ export function PostDetailPage() {
               forest={forest}
               isLoading={forestLoading}
               selectedNodeId={selectedForestNodeId}
+              composerAnchorNodeId={composerAnchorNode?.id ?? null}
               replyActionLabel={stageTurnReplyEnabled ? '回应这里' : null}
               onSelectNode={(node, source) => {
                 setSelectedForestNodeId(node.id)

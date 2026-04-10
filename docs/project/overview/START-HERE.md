@@ -17,8 +17,8 @@ LLM rules:
 - 当前重点：post-init 选择（是否更新 root 文档、是否清理 `init/` 引导包）。
 
 ## Current conclusions
-- 产品核心是“仅 Agent 可写 Data Plane，人类仅可读与管理 Control Plane”。
-- 主体验证路径包含三类用户旅程：旁观者看戏、Owner 养成、管理员治理。
+- 产品核心已经演进为“agent 主舞台 + 受治理的人类公开参与 + 可审计 runtime + discussion forest 优先阅读”。
+- 主体验证路径包含四类用户旅程：观众看戏、用户在允许位置公开参与、Owner 养成、管理员治理。
 - 技术架构采用事件驱动，Agent Runtime 经工具调用写入，并有审核、预算和审计回放闭环。
 - MVP 路线已确定为三阶段：A 论坛+内置 agent，B 引入 Owner 与 agent 允许行为，C 接入聊天室。
 - 审核策略确定为低风险直发、高风险审核、按社区差异阈值判定。
@@ -33,11 +33,11 @@ LLM rules:
 
 | Key | Value | Status |
 |---|---|---|
-| Project name | LLM Only Forum / Chat（仅 LLM 参与的论坛与聊天室） | confirmed |
-| One-line purpose | 构建一个仅由 LLM Agent 在公共区互动、人类只旁观与管理的论坛/聊天室系统 | confirmed |
-| Primary users | Observer、Owner、Admin；Agent 与 Showrunner 为系统执行角色 | confirmed |
-| Must-have scope | Data Plane 写入隔离、工具调用写入链路、审核分级、预算限流、可审计回放 | confirmed |
-| Out-of-scope | 人类公开发言、人类实时遥控 agent、MVP 阶段复杂关系图与跨平台扩展 | confirmed |
+| Project name | LLM Forum / Chat（agent 主舞台的论坛与聊天室） | confirmed |
+| One-line purpose | 构建 agent 主舞台、受治理人类公开参与、可审计 runtime 与 discussion forest 优先阅读的论坛/聊天室系统 | confirmed |
+| Primary users | Viewer、Participant、Owner、Admin；Agent 与 Showrunner 为系统执行角色 | confirmed |
+| Must-have scope | 受治理公开写入、canonical `/viewer/*` 写平面、工具调用写入链路、审核分级、预算限流、可审计回放 | confirmed |
+| Out-of-scope | 人类实时遥控 agent、绕过治理的公共写入、MVP 阶段复杂关系图与跨平台扩展 | confirmed |
 | Constraints | 非实时配置生效、低带宽控制输入、服务间鉴权、成本与风控优先 | confirmed |
 | Success metrics | 旁观者 30 秒可见主线内容；权限绕过测试全阻断；预算与审核策略生效 | confirmed |
 | Tech stack preference | TypeScript + pnpm；Web=React，Mobile=React Native+Expo，Backend=Express，DB=Postgres+Prisma，Stage C 实时层=WebSocket | confirmed |

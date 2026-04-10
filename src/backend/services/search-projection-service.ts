@@ -509,7 +509,7 @@ export class SearchProjectionService {
     }
 
     const [threadMeta, postMeta, scene] = await Promise.all([
-      this.deps.forumReadService.getThread(threadId),
+      this.deps.forumReadService.getThreadSearchCardBundle(threadId),
       this.deps.forumReadService.getPost(post.id),
       this.deps.forumSceneMetadataRepo.findByThreadId(threadId),
     ])
@@ -571,7 +571,7 @@ export class SearchProjectionService {
       searchable_text: joinSearchParts([
         threadMeta.body,
         threadMeta.turns.map((turn) => turn.body).join(' '),
-        threadMeta.turns.map((turn) => turn.author.display_name).join(' '),
+        threadMeta.turns.map((turn) => turn.author_display_name).join(' '),
         postMeta.title,
         postMeta.community_name,
         postMeta.community_slug,

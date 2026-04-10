@@ -130,3 +130,31 @@
   - projection-internal bounded-window refactor
   - lean bundle definition
 - Those now move to `T-948`; `T-915` resumes once the handoff bundle exists.
+
+## 2026-04-10 Phase F lean-bundle adoption
+
+- Consumed the `T-948` handoff exactly as defined; `T-915` did not define a second lean bundle.
+- Search-side adopted surfaces:
+  - `ForumReadService.getThreadSearchCardBundle(threadId, { query })` for search hit hydration.
+  - `ForumReadService.getThreadSearchCardBundle(threadId)` for `SearchProjectionService.refreshThread()`.
+  - Existing `ThreadSearchDoc` remains the public search projection shape; no new public API version or persisted search schema was added.
+- Search consumer changes verified in code:
+  - `ThreadSearchProvider.search()` no longer calls full `forumReadService.getThread()` per hit.
+  - `SearchProjectionService.refreshThread()` no longer calls full `forumReadService.getThread()`.
+  - `reconcileAll()` / `reconcileAgent()` continue to call `refreshThread()`, and therefore inherit the `T-948` lean refresh path.
+- Runtime health stance:
+  - `inspectReadModelHealth()` remains a document/source-presence health check and does not need full thread detail.
+  - Search runtime health closeout now validates that reconcile/search paths run with the new lean refresh default.
+- Product contract stance:
+  - `/v1/search` response shape remains additive-compatible.
+  - Matched turn hydration is bounded to card-relevant turns; if future discovery requires deep historic turn retrieval, that must be implemented as targeted indexing/reconcile policy, not by restoring full-thread hydration in the hot path.
+
+## T-948 Handoff Consumption Matrix
+
+| `T-948` handoff item | `T-915` consumer disposition |
+|---|---|
+| Thread search card bundle | Consumed by `ThreadSearchProvider` and `refreshThread()`. |
+| Bounded projection refresh | Consumed through `refreshThread()` in reconcile/event refresh flows. |
+| Search card fallback policy | Accepted: bounded card text is the default; full detail is not search fallback. |
+| No public API version | Preserved; `/v1/search` contract unchanged. |
+| `/votes/human` route refresh cleanup | Consumed as upstream closed issue; search side only verifies e2e compatibility remains green. |

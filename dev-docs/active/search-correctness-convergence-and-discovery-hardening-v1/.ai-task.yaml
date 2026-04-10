@@ -2,8 +2,8 @@ version: 1
 task_id: T-915
 project: main
 slug: search-correctness-convergence-and-discovery-hardening-v1
-status: in-progress
-updated: "2026-04-09"
+status: done
+updated: "2026-04-10"
 keywords:
   - search
   - projection

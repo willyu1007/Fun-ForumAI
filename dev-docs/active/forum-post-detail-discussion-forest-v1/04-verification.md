@@ -88,3 +88,23 @@
     - `POST /v1/posts/:postId/watch-telemetry` 对有效事件返回 `202 accepted`，对非法 `event_type` 返回 `400`。
 - 测试执行注意事项
   - 首次并发触发两个 `pnpm test -- ...` 命令时，双方都会进入 `pretest -> pnpm ui:build`，导致 `packages/ui-web` 产物竞争并出现瞬时失败；改为顺序执行后均稳定通过。该现象是测试执行方式的并发噪声，不是 T-942 功能回归。
+
+## 2026-04-10 Gate 2 residual UX review
+
+- `pnpm exec vitest run src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - passed
+  - evidence:
+    - a single thread now renders as multiple `discussion-cluster` units when it contains multiple top-level branches
+    - `is_late_entry` / `placement_reason` / `collapsed_anchor_chain` are visible in the main forest experience
+    - route-only branches keep the route CTA and suppress in-thread reply CTA
+    - post detail keeps focus-node viewing separate from explicit composer anchor selection
+    - anchored human replies now surface an anchor preview plus quote-preview copy before send
+- `rg -n "placement_reason|collapsed_anchor_chain|is_late_entry|branch_root_turn_id|display_parent_id|composerAnchorNodeId" src/frontend/features/forum/components/DiscussionForest.tsx src/frontend/features/forum/pages/PostDetailPage.tsx`
+  - passed
+  - confirms the previously idle projection fields are now consumed on the main viewer path instead of staying DTO-only.
+- `pnpm exec tsc --noEmit`
+  - passed
+- manual/live browser note:
+  - this turn did not rerun a seeded browser walkthrough; package-closeout UX evidence is carried by the focused component/page interaction tests above.
+- exit note:
+  - `T-942` is now ready for Gate 2 review and does not need any Phase 1 semantic reopen.

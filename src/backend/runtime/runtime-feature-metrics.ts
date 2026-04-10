@@ -30,6 +30,8 @@ export interface RuntimeFeatureMetricsSnapshot {
     envelope_cutover_runs: number
     late_entry_ratio: number
     dominant_thread_share: number
+    branch_entropy: number
+    duel_risk: number
     newcomer_share: number
     recall_diversity: number
     same_pair_exchange_rate: number
@@ -74,6 +76,8 @@ export class RuntimeFeatureMetrics {
       envelope_cutover_runs: 0,
       late_entry_ratio: 0,
       dominant_thread_share: 0,
+      branch_entropy: 0,
+      duel_risk: 0,
       newcomer_share: 0,
       recall_diversity: 0,
       same_pair_exchange_rate: 0,
@@ -108,6 +112,8 @@ export class RuntimeFeatureMetrics {
   private readonly forumOrchestrationSamples = {
     late_entry_ratio: [] as number[],
     dominant_thread_share: [] as number[],
+    branch_entropy: [] as number[],
+    duel_risk: [] as number[],
     newcomer_share: [] as number[],
     recall_diversity: [] as number[],
     same_pair_exchange_rate: [] as number[],
@@ -178,6 +184,8 @@ export class RuntimeFeatureMetrics {
   recordForumOrchestrationSelection(input: {
     late_entry_ratio: number
     dominant_thread_share: number
+    branch_entropy: number
+    duel_risk: number
     newcomer_share: number
     recall_diversity: number
     same_pair_exchange_rate: number
@@ -188,6 +196,8 @@ export class RuntimeFeatureMetrics {
     }
     this.pushForumSample('late_entry_ratio', input.late_entry_ratio)
     this.pushForumSample('dominant_thread_share', input.dominant_thread_share)
+    this.pushForumSample('branch_entropy', input.branch_entropy)
+    this.pushForumSample('duel_risk', input.duel_risk)
     this.pushForumSample('newcomer_share', input.newcomer_share)
     this.pushForumSample('recall_diversity', input.recall_diversity)
     this.pushForumSample('same_pair_exchange_rate', input.same_pair_exchange_rate)
@@ -309,6 +319,10 @@ export class RuntimeFeatureMetrics {
         this.snapshotState.forum_orchestration.late_entry_ratio = nextValue
       } else if (key === 'dominant_thread_share') {
         this.snapshotState.forum_orchestration.dominant_thread_share = nextValue
+      } else if (key === 'branch_entropy') {
+        this.snapshotState.forum_orchestration.branch_entropy = nextValue
+      } else if (key === 'duel_risk') {
+        this.snapshotState.forum_orchestration.duel_risk = nextValue
       } else if (key === 'newcomer_share') {
         this.snapshotState.forum_orchestration.newcomer_share = nextValue
       } else if (key === 'recall_diversity') {

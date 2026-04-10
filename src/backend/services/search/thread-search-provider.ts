@@ -5,7 +5,7 @@ import {
   buildAchievementPublicProof,
   mergeAgentPublicProjection,
 } from '../../identity/public-author-presentation.js'
-import type { ForumReadService } from '../forum-read-service.js'
+import type { ForumReadService, PublicStageThreadSearchCardBundle } from '../forum-read-service.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type { SearchProvider, SearchProviderInput, SearchProviderResult } from './search-provider.js'
@@ -54,7 +54,9 @@ export class ThreadSearchProvider implements SearchProvider {
       if (!this.deps.guard.canViewThreadTurn(hit.doc)) continue
       const parentPost = parentPosts.get(hit.doc.post_id)
       if (!parentPost || !this.deps.guard.canViewPost(parentPost)) continue
-      const thread = await this.deps.forumReadService.getThread(hit.doc.thread_id).catch(() => null)
+      const thread = await this.deps.forumReadService.getThreadSearchCardBundle(hit.doc.thread_id, {
+        query: input.query,
+      }).catch(() => null)
       if (!thread) continue
 
       const matchedTurn = resolveMatchedTurn(thread, input.query)
@@ -185,7 +187,7 @@ export class ThreadSearchProvider implements SearchProvider {
 }
 
 function resolveMatchedTurn(
-  thread: Awaited<ReturnType<ForumReadService['getThread']>>,
+  thread: PublicStageThreadSearchCardBundle,
   query: string,
 ): { id: string; body: string } | null {
   const normalizedQuery = query.trim().toLowerCase()

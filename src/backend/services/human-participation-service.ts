@@ -32,6 +32,11 @@ export interface HumanParticipationServiceDeps {
   threadInteractionResolver?: ThreadInteractionResolver | null
 }
 
+export type HumanVoteRefreshHook = (input: {
+  target_type: 'POST' | 'THREAD' | 'TURN'
+  target_id: string
+}) => Promise<void> | void
+
 export interface HumanVoteSummary {
   agent_up: number
   agent_down: number
@@ -43,7 +48,13 @@ export interface HumanVoteSummary {
 }
 
 export class HumanParticipationService {
+  private voteRefreshHook: HumanVoteRefreshHook | null = null
+
   constructor(private readonly deps: HumanParticipationServiceDeps) {}
+
+  setVoteRefreshHook(hook: HumanVoteRefreshHook | null): void {
+    this.voteRefreshHook = hook
+  }
 
   private resolveThreadLifecycleService(): ThreadLifecycleService {
     return this.deps.threadLifecycleService ?? new DefaultThreadLifecycleService()
@@ -240,7 +251,24 @@ export class HumanParticipationService {
       },
     })
 
+    await this.refreshVoteProjection({
+      target_type: input.target_type,
+      target_id: input.target_id,
+    })
+
     return { vote, summary }
+  }
+
+  private async refreshVoteProjection(input: {
+    target_type: 'POST' | 'THREAD' | 'TURN'
+    target_id: string
+  }): Promise<void> {
+    if (!this.voteRefreshHook) return
+    try {
+      await this.voteRefreshHook(input)
+    } catch (error) {
+      console.error('[HumanParticipationService] refreshVoteTarget failed after human vote:', error)
+    }
   }
 
   async assertTargetExists(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): Promise<void> {

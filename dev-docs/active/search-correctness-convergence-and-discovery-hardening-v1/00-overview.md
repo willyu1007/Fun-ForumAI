@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: `T-912 public-search-system-v1`, `T-913 search-ecosystem-enrichment-v2`
-- Current status: the original correctness/discoverability work is effectively shipped; `T-915` remains active because search hit hydration and projection refresh still ride full forum thread detail in hot paths, and that consumer-side closeout now depends on `T-948`.
-- Next step: consume the lean bundles produced by `T-948`, then rerun reconcile/runtime health/search regression with the new internal path.
+- Current status: Phase F has consumed the `T-948` lean bundle handoff and is closed. Search hit hydration and thread projection refresh now use `getThreadSearchCardBundle()` instead of full forum thread detail, and reconcile/search regression evidence has been rerun.
+- Next step: proceed to `T-949` active-doc narrative alignment before Gate 3 review.
 
 ## Goal
 
@@ -30,6 +30,6 @@
 - [x] `/v1/search` 增加 `score`、`highlights`、`match_reason_codes`、`author_visibility`，且保持兼容旧字段。
 - [x] 空查询返回 lightweight discovery payload；comments thread-context 返回父链 + 近邻。
 - [x] 新增幂等 reconcile 命令、runtime health 检查、admin-first 搜索 telemetry，并完成针对性测试与文档回填。
-- [ ] search hit hydration 不再在热路径上逐条调用完整 `forumReadService.getThread()`。
-- [ ] search projection refresh/runtime health 默认消费 `T-948` 提供的 lean projection/read surfaces。
-- [ ] 完成一次基于 lean bundles 的 reconcile/runtime health/search regression closeout，并把证据记录到 `04-verification.md`。
+- [x] search hit hydration 不再在热路径上逐条调用完整 `forumReadService.getThread()`。
+- [x] search projection refresh/runtime health 默认消费 `T-948` 提供的 lean projection/read surfaces。
+- [x] 完成一次基于 lean bundles 的 reconcile/runtime health/search regression closeout，并把证据记录到 `04-verification.md`。

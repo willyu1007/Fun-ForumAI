@@ -28,6 +28,19 @@
     - passed; remaining mainline matches are limited to event-target assembly and prompt-layer compatibility.
   - `rg -n "viewer/posts/.*/public-threads|viewer/threads/.*/public-turns|viewer/posts/.*/audience-messages|/posts/.*/public-threads|/threads/.*/public-turns|/posts/.*/audience-messages" src/frontend src/backend/routes src/backend/services -g'*.ts' -g'*.tsx'`
     - passed; frontend active paths only bind `/viewer/*`, while legacy public-write routes stay in backend compat wrappers/tests.
+- 2026-04-10: Gate 2 preflight frozen-semantics grep audit
+  - `rg -n "\\bcan_receive_replies\\b|targetThreadTurn|/v1/posts/.+public-threads|/v1/threads/.+public-turns|/v1/posts/.+audience-messages|/v1/viewer/.+public-threads|/v1/viewer/.+public-turns|/v1/viewer/.+audience-messages" src/backend src/frontend src/shared -g'*.ts' -g'*.tsx'`
+    - passed
+    - confirmed:
+      - `can_receive_replies` live matches remain limited to shared contract, resolver derivation, compat excerpts, comments, and tests.
+      - `targetThreadTurn` live matches remain limited to runtime event-target assembly, focus fallback, prompt compat input, and tests.
+      - active frontend write hooks bind only `/viewer/*`; legacy public-write routes remain confined to backend compat wrappers and test coverage.
+  - `rg -n "人类只旁观|只旁观|仅由 LLM Agent 在公共区互动|仅由 LLM Agent 参与公共讨论|只允许 LLM 参与" docs/project/overview README.md -g'*.md'`
+    - passed as drift audit
+    - stale active-doc claims remain in `docs/project/overview/START-HERE.md`, `docs/project/overview/LLM_forum_PRD.md`, and `docs/project/overview/requirements.md`; ownership stays with `T-949`, not Gate 2.
+  - `ls docs/context/api && find docs/context -maxdepth 2 -type f | sort`
+    - passed
+    - confirms `docs/context/api/openapi.yaml`, `docs/context/api/api-index.json`, and `docs/context/glossary.json` already exist as live artifacts; no Phase 2 recreation work is needed.
 - 2026-04-10: Gate 1 regression packet
   - `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
     - passed; 10 files, 119 tests
@@ -41,3 +54,122 @@
   - accepted viewer write shares the same base fanout surface as agent/forum stage writes: PASS
   - lifecycle/writeability/route handoff semantics stay consistent across read/runtime/write: PASS
   - frozen semantics handed to `T-947` / `T-942` without open ambiguity: PASS
+
+- 2026-04-10: Gate 2 owner packet audit
+  - `pnpm exec vitest run src/backend/services/__tests__/attention-opportunity-broker.test.ts src/backend/services/__tests__/recall-policy-service.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+    - passed; 5 files, 37 tests
+  - `pnpm exec tsc --noEmit`
+    - passed
+  - `rg -n "\\bcan_receive_replies\\b|targetThreadTurn|/v1/posts/.+public-threads|/v1/threads/.+public-turns|/v1/posts/.+audience-messages|/v1/viewer/.+public-threads|/v1/viewer/.+public-turns|/v1/viewer/.+audience-messages" src/backend src/frontend src/shared -g '*.ts' -g '*.tsx'`
+    - passed after Phase 2 changes; frozen semantics remain compat-only in the same bounded locations recorded at preflight.
+  - `rg -n "placement_reason|collapsed_anchor_chain|is_late_entry|branch_root_turn_id|display_parent_id|composerAnchorNodeId" src/frontend/features/forum/components/DiscussionForest.tsx src/frontend/features/forum/pages/PostDetailPage.tsx`
+    - passed; confirms the formerly idle projection fields now feed the main forest/viewer experience.
+- 2026-04-10: Gate 2 checklist
+  - broker/recall
+    - thread-scoped recall isolation: PASS
+    - live reactive recall decay: PASS
+    - outsider/incumbent quota separation: PASS
+    - decision telemetry dictionary frozen in `T-947`: PASS
+  - forest / viewer insertion
+    - branch-cluster reading unit replaces one-thread-one-card default: PASS
+    - late-entry nodes visually attach near their older anchor: PASS
+  - human public reply UX
+    - focus node and composer anchor are distinct: PASS
+    - anchor preview / quote-preview / route-only copy are present: PASS
+  - frozen semantics
+    - no Phase 2 change reintroduced `can_receive_replies`, `targetThreadTurn`, or legacy public-write routes as mainline truth: PASS
+- 2026-04-10: Gate 2 verdict
+  - automated review evidence is green and owner packets for `T-947` / `T-942` are now archived in-package.
+  - Phase 3 blockers remain unchanged and correctly scoped:
+    - `T-948`: heavy read/search hydration and `/votes/human` route-level refresh
+    - `T-949`: active-doc narrative drift
+
+- 2026-04-10: T-948 owner packet audit
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts`
+    - passed; 41 tests
+  - `pnpm exec vitest run src/backend/services/__tests__/human-participation-service.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+    - passed; 101 tests
+  - `pnpm exec tsc --noEmit`
+    - passed
+  - `rg -n "refreshVoteTarget|searchProjectionService" src/backend/routes/read-api.ts src/backend/services/human-participation-service.ts src/backend/container/index.ts`
+    - passed
+    - confirms `read-api.ts` no longer owns `/votes/human` projection refresh; the hook is service-owned and container-wired.
+- 2026-04-10: T-948 checklist
+  - bounded thread detail window: PASS
+  - projection bundle exits 500-thread/all-turn default: PASS
+  - search hit hydration exits full `getThread()`: PASS
+  - `refreshThread()` exits full thread detail: PASS
+  - `/votes/human` route-level refresh owner issue closed: PASS
+  - no new public API version or persisted projection schema: PASS
+- 2026-04-10: Phase 3 handoff status
+  - `T-948` is ready for `T-915`.
+  - Gate 3 remains pending until `T-915` and `T-949` review packets are archived.
+
+- 2026-04-10: T-915 Phase F audit
+  - `pnpm exec vitest run src/backend/services/search/__tests__/search-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+    - passed; 62 tests
+  - `pnpm search:reconcile-docs --scope=all --dry-run`
+    - passed; exited with code 0
+  - `pnpm exec tsc --noEmit`
+    - passed
+  - grep evidence confirms search providers no longer call full `forumReadService.getThread()` and `read-api` no longer owns `/votes/human` projection refresh.
+- 2026-04-10: Phase 3 status
+  - `T-948`: PASS
+  - `T-915`: PASS
+  - `T-949`: pending
+  - Gate 3 remains pending until `T-949` review packet is archived.
+
+- 2026-04-10: T-949 owner packet audit
+  - `rg -n "人类只旁观|只旁观|仅由 LLM Agent|仅由LLM|只允许 LLM|LLM-only|only LLM|only-LLM|Only-LLM|Only-LLM-participates|人类端无法写入|人类无法参与讨论|人类永远不能|公共讨论唯一写入者|唯一公共写入|唯一允许写入|Data Plane 写入只允许|人类仅可访问 Read" README.md AGENTS.md docs/project/overview docs/context -g '*.md' -g '*.json' -g '*.yaml'`
+    - passed with no matches across active entry docs and live context docs.
+  - `test -f docs/context/api/openapi.yaml && test -f docs/context/api/api-index.json && test -f docs/context/glossary.json && printf 'context artifacts present\n'`
+    - passed; all three live context artifacts are present.
+  - `rg -n "openapi.yaml|api-index.json|glossary.json" docs/context/AGENTS.md docs/context/INDEX.md docs/context/registry.json docs/project/overview/START-HERE.md docs/project/overview/INIT-BOARD.md`
+    - passed; live context entry docs point to the current contract artifacts.
+  - `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict`
+    - passed.
+- 2026-04-10: Gate 3 checklist
+  - lean bundle adoption
+    - `ThreadSearchProvider` consumes `getThreadSearchCardBundle()` instead of full `getThread()`: PASS
+    - `SearchProjectionService.refreshThread()` consumes the same lean bundle: PASS
+    - reconcile dry-run completes through the lean refresh path: PASS
+  - search hot path
+    - search hit hydration no longer defaults to full-thread detail: PASS
+    - `/votes/human` route-level refresh moved out of `read-api`: PASS
+    - `/v1/search` public contract remains stable: PASS
+  - top-level narrative
+    - root and active overview docs no longer present current product truth as LLM-only / human observer-only: PASS
+    - context entry docs recognize existing `openapi.yaml`, `api-index.json`, and `glossary.json`: PASS
+  - frozen semantics
+    - Phase 3 did not reopen or rewrite `ThreadLifecycleSnapshot.writeability`, `forum_targeting`, or canonical `/viewer/*`: PASS
+- 2026-04-10: Gate 3 verdict
+  - `T-948`, `T-915`, and `T-949` owner packets are archived and green.
+  - Gate 3 passes.
+  - Proceed to `T-946` program closeout and Gate 4 review.
+
+- 2026-04-10: Gate 4 integrated acceptance suite
+  - `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/viewer-public-write-service.test.ts src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/allocator/__tests__/admission.test.ts src/backend/runtime/__tests__/event-bridge.test.ts src/backend/services/__tests__/attention-opportunity-broker.test.ts src/backend/services/__tests__/recall-policy-service.test.ts src/backend/services/__tests__/human-participation-service.test.ts src/backend/services/search/__tests__/search-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+    - passed; 21 files, 229 tests.
+  - `pnpm exec tsc --noEmit`
+    - passed.
+  - `pnpm search:reconcile-docs --scope=all --dry-run`
+    - passed; exited with code 0.
+  - `rg -n "\\bcan_receive_replies\\b|targetThreadTurn|/v1/posts/.+public-threads|/v1/threads/.+public-turns|/v1/posts/.+audience-messages|/v1/viewer/.+public-threads|/v1/viewer/.+public-turns|/v1/viewer/.+audience-messages" src/backend src/frontend src/shared -g '*.ts' -g '*.tsx'`
+    - passed; remaining matches are the frozen compat bridges/tests recorded in Gate 1 and Gate 2 audits.
+  - `rg -n "人类只旁观|只旁观|仅由 LLM Agent|仅由LLM|只允许 LLM|LLM-only|only LLM|only-LLM|Only-LLM|Only-LLM-participates|人类端无法写入|人类无法参与讨论|人类永远不能|公共讨论唯一写入者|唯一公共写入|唯一允许写入|Data Plane 写入只允许|人类仅可访问 Read" README.md AGENTS.md docs/project/overview docs/context -g '*.md' -g '*.json' -g '*.yaml'`
+    - passed with no matches.
+  - `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict`
+    - passed.
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+    - passed; refreshed owner package task metadata and regenerated project derived views.
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+    - passed with one pre-existing warning in `repo-review-stability-fixes-v1` (`State: completed` is not an allowed enum value); no `T-946` program package drift remains.
+- 2026-04-10: Gate 4 checklist
+  - integrated acceptance suite index exists and is replayable: PASS
+  - compat/deprecation timeline is explicit for `can_receive_replies`, `targetThreadTurn`, legacy public write routes, `/votes/human`, heavy read hydration, and old LLM-only narrative: PASS
+  - anti-drift checklist covers frozen semantics, broker/recall, forest/UX, read/search, and docs/context: PASS
+  - backlog `TSK-001~040` owner mapping exists in `01-plan.md`: PASS
+  - all owner packets through Gate 3 are archived in their package docs: PASS
+- 2026-04-10: Gate 4 verdict
+  - Gate 4 passes.
+  - `T-946` program closeout is complete.

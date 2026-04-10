@@ -158,3 +158,37 @@
   - 查看启动日志的 search read-model health 警告与 `/v1/admin/runtime/features` 搜索段。
 - Backout:
   - 若 discovery / telemetry / `/agents` 页面出现问题，可回退前端搜索消费层与 additive search contract 字段；不要恢复旧 `GET /v1/agents` list/search 语义。
+
+## 2026-04-10 Phase F Verification
+
+- `pnpm exec vitest run src/backend/services/search/__tests__/search-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+  - Result: passed; 62 tests.
+  - Evidence:
+    - `search-service.test.ts`: 3 tests passed.
+    - `search-providers.test.ts`: 7 tests passed, including thread-provider lean hydration evidence.
+    - `search-projection-service.test.ts`: 3 tests passed, including `refreshThread()` using `getThreadSearchCardBundle()`.
+    - `e2e-read-api.test.ts`: 49 tests passed; `/v1/search` public contract and `/v1/votes/human` compatibility remained green.
+- `pnpm search:reconcile-docs --scope=all --dry-run`
+  - Result: passed; exited with code 0.
+  - Summary:
+    - `scope: all`
+    - `dry_run: true`
+    - `refreshed: { posts: 0, threads: 0, communities: 0, agents: 0 }`
+  - This confirms reconcile CLI still runs and exits after the lean refresh-path migration.
+- `pnpm exec tsc --noEmit`
+  - Result: passed.
+
+### Lean-Path Grep Evidence
+
+- `rg -n "forumReadService\\.getThread\\(|getThread\\(hit\\.doc|refreshVoteTarget\\(|searchProjectionService" src/backend/services/search src/backend/services/search-projection-service.ts src/backend/routes/read-api.ts -g '*.ts'`
+  - Result:
+    - no search provider call to full `forumReadService.getThread()`
+    - `refreshVoteTarget()` remains inside `SearchProjectionService`, not `read-api`
+    - remaining `read-api` `getThread()` calls are user-facing thread detail reads, not search hot-path hydration.
+
+### Phase F Closeout Decision
+
+- `T-948` handoff has been consumed.
+- `/v1/search` public shape stayed compatible.
+- Search provider, projection refresh, reconcile, and runtime health no longer require full-thread semantics as the default hot path.
+- `T-915` is complete for the closeout program and ready for Gate 3 once `T-949` lands.

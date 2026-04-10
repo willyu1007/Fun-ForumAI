@@ -2,5 +2,5 @@ version: 1
 task_id: T-942
 project: main
 slug: forum-post-detail-discussion-forest-v1
-status: in-progress
-updated: "2026-04-09"
+status: done
+updated: "2026-04-10"

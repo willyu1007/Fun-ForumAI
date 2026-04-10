@@ -46,18 +46,27 @@ export class RecallPolicyService {
     const granted: ScoredCandidate[] = []
     const outsiderCandidates = input.candidates.filter((candidate) =>
       !input.opportunity.target_agent_ids.includes(candidate.agent_id))
-    const shouldPreferOutsiders = Boolean(
-      outsiderCandidates.length > 0
-      && (
-        (input.opportunity.post_attention_state?.dominant_thread_share ?? 0) > recallControl.post_thread_share_cap
-        || (input.opportunity.post_attention_state?.newcomer_share_recent ?? 1) < recallControl.newcomer_min_share
-        || (input.opportunity.post_attention_state?.late_entry_share_recent ?? 1) < recallControl.late_entry_min_share
-      ),
-    )
+    const diversityReason = resolveDiversityPressureReason(input.opportunity, recallControl)
 
     for (const candidate of input.candidates) {
-      const pairKey = buildPairKey(resolveEventAuthorKey(input.event), candidate.agent_id)
-      const currentWindow = this.getPairWindow(pairKey, budget.thread_id, now, budget.pair_window_seconds)
+      const isTargeted = input.opportunity.target_agent_ids.includes(candidate.agent_id)
+      const isPriority = input.opportunity.priority_agent_ids.includes(candidate.agent_id)
+      const isOutsider = !isTargeted
+      const quotaKind = resolveQuotaKind({
+        diversityReason,
+        isOutsider,
+        isTargeted,
+        isPriority,
+      })
+      const pairKey = buildPairKey(budget.thread_id, resolveEventAuthorKey(input.event), candidate.agent_id)
+      const currentWindow = this.getPairWindow(
+        pairKey,
+        budget.thread_id,
+        input.event.post_id ?? input.opportunity.post_id,
+        now,
+        budget.pair_window_seconds,
+      )
+      const decayStage = resolveDecayStage(currentWindow.exchange_count, recallControl.reactive_recall_decay)
       const appliedPolicySnapshot = {
         profile: input.policy?.profile ?? input.opportunity.profile,
         recall_control: recallControl,
@@ -69,6 +78,9 @@ export class RecallPolicyService {
           opportunity_id: input.opportunity.id,
           decision: 'SUPPRESSED',
           decision_source: 'opportunity',
+          decision_scope: 'opportunity',
+          decay_stage: null,
+          quota_kind: quotaKind,
           reason_codes: ['suppressed_by_opportunity'],
           applied_policy_snapshot: appliedPolicySnapshot,
           suppression_reason: 'suppressed_by_opportunity',
@@ -77,23 +89,22 @@ export class RecallPolicyService {
       }
 
       if (
-        shouldPreferOutsiders
-        && input.opportunity.target_agent_ids.includes(candidate.agent_id)
+        diversityReason
+        && outsiderCandidates.length > 0
+        && isTargeted
+        && !isPriority
       ) {
-        const reasonCode =
-          (input.opportunity.post_attention_state?.dominant_thread_share ?? 0) > recallControl.post_thread_share_cap
-            ? 'dominant_thread_cap'
-            : (input.opportunity.post_attention_state?.newcomer_share_recent ?? 1) < recallControl.newcomer_min_share
-              ? 'newcomer_floor'
-              : 'late_entry_floor'
         decisions.push({
           agent_id: candidate.agent_id,
           opportunity_id: input.opportunity.id,
           decision: 'SUPPRESSED',
           decision_source: 'policy_guard',
-          reason_codes: [reasonCode],
+          decision_scope: 'post',
+          decay_stage: null,
+          quota_kind: 'outsider_diversity',
+          reason_codes: [diversityReason],
           applied_policy_snapshot: appliedPolicySnapshot,
-          suppression_reason: reasonCode,
+          suppression_reason: diversityReason,
         })
         continue
       }
@@ -106,6 +117,9 @@ export class RecallPolicyService {
             opportunity_id: input.opportunity.id,
             decision: 'SUPPRESSED',
             decision_source: 'policy_guard',
+            decision_scope: 'thread',
+            decay_stage: null,
+            quota_kind: quotaKind,
             reason_codes: ['revive_budget_exhausted'],
             applied_policy_snapshot: appliedPolicySnapshot,
             suppression_reason: 'revive_budget_exhausted',
@@ -114,12 +128,31 @@ export class RecallPolicyService {
         }
       }
 
+      if (quotaKind === 'incumbent_reactive' && decayStage === 'decayed') {
+        decisions.push({
+          agent_id: candidate.agent_id,
+          opportunity_id: input.opportunity.id,
+          decision: 'SUPPRESSED',
+          decision_source: 'policy_guard',
+          decision_scope: 'thread_pair',
+          decay_stage: decayStage,
+          quota_kind: quotaKind,
+          reason_codes: ['reactive_recall_decay'],
+          applied_policy_snapshot: appliedPolicySnapshot,
+          suppression_reason: 'reactive_recall_decay',
+        })
+        continue
+      }
+
       if (currentWindow.exchange_count >= budget.pair_max_exchanges) {
         decisions.push({
           agent_id: candidate.agent_id,
           opportunity_id: input.opportunity.id,
           decision: 'SUPPRESSED',
           decision_source: 'policy_guard',
+          decision_scope: 'thread_pair',
+          decay_stage: decayStage,
+          quota_kind: quotaKind,
           reason_codes: ['pair_window_cap'],
           applied_policy_snapshot: appliedPolicySnapshot,
           suppression_reason: 'pair_window_cap',
@@ -139,31 +172,55 @@ export class RecallPolicyService {
         })
       }
 
-      granted.push(candidate)
+      const grantedCandidate = quotaKind === 'outsider_diversity'
+        ? {
+            ...candidate,
+            score: candidate.score + 0.75,
+            reasons: candidate.reasons.includes('recall_quota=outsider_diversity')
+              ? candidate.reasons
+              : [...candidate.reasons, 'recall_quota=outsider_diversity'],
+          }
+        : candidate
+      granted.push(grantedCandidate)
       decisions.push({
         agent_id: candidate.agent_id,
         opportunity_id: input.opportunity.id,
         decision: 'GRANTED',
-        decision_source: 'fallback',
+        decision_source:
+          quotaKind === 'outsider_diversity'
+            ? 'outsider_diversity'
+            : quotaKind === 'incumbent_reactive'
+              ? 'reactive_recall'
+              : 'baseline',
+        decision_scope:
+          quotaKind === 'outsider_diversity'
+            ? 'post'
+            : quotaKind === 'incumbent_reactive'
+              ? 'thread_pair'
+              : 'candidate',
+        decay_stage: quotaKind === 'incumbent_reactive' ? decayStage : null,
+        quota_kind: quotaKind,
         reason_codes: input.opportunity.reason_codes,
         applied_policy_snapshot: appliedPolicySnapshot,
         suppression_reason: null,
       })
     }
 
+    granted.sort((left, right) => right.score - left.score)
     return { decisions, granted }
   }
 
   private getPairWindow(
     pairKey: string,
     threadId: string,
+    postId: string,
     now: number,
     pairWindowSeconds: number,
   ): PairInteractionWindow {
     const existing = this.pairWindows.get(pairKey)
     if (!existing || !existing.last_exchanged_at) {
       return {
-        post_id: 'unknown',
+        post_id: postId,
         thread_id: threadId,
         pair_key: pairKey,
         exchange_count: 0,
@@ -175,8 +232,9 @@ export class RecallPolicyService {
     if (ageMs > pairWindowSeconds * 1000) {
       return {
         ...existing,
-        exchange_count: 0,
+        post_id: postId,
         thread_id: threadId,
+        exchange_count: 0,
       }
     }
     return existing
@@ -195,12 +253,57 @@ export class RecallPolicyService {
   }
 }
 
-function buildPairKey(left: string, right: string): string {
-  return [left, right].sort().join('::')
+function buildPairKey(threadId: string, left: string, right: string): string {
+  return [threadId, ...[left, right].sort()].join('::')
 }
 
 function resolveEventAuthorKey(event: EventPayload): string {
   return event.author_agent_id
     ?? event.author_user_id
     ?? `${event.author_actor_type ?? 'unknown'}:${event.event_id}`
+}
+
+function resolveDiversityPressureReason(
+  opportunity: AttentionOpportunity,
+  recallControl: NonNullable<EffectiveOrchestrationPolicy['recall_control']>,
+): string | null {
+  if ((opportunity.post_attention_state?.dominant_thread_share ?? 0) > recallControl.post_thread_share_cap) {
+    return 'dominant_thread_cap'
+  }
+  if ((opportunity.post_attention_state?.newcomer_share_recent ?? 1) < recallControl.newcomer_min_share) {
+    return 'newcomer_floor'
+  }
+  if ((opportunity.post_attention_state?.late_entry_share_recent ?? 1) < recallControl.late_entry_min_share) {
+    return 'late_entry_floor'
+  }
+  return null
+}
+
+function resolveQuotaKind(input: {
+  diversityReason: string | null
+  isOutsider: boolean
+  isTargeted: boolean
+  isPriority: boolean
+}): RecallDecision['quota_kind'] {
+  if (input.diversityReason && input.isOutsider) {
+    return 'outsider_diversity'
+  }
+  if (input.isTargeted || input.isPriority) {
+    return 'incumbent_reactive'
+  }
+  return 'neutral'
+}
+
+function resolveDecayStage(
+  exchangeCount: number,
+  mode: EffectiveOrchestrationPolicy['recall_control']['reactive_recall_decay'],
+): RecallDecision['decay_stage'] {
+  const threshold = mode === 'steep' ? 1 : mode === 'moderate' ? 2 : 3
+  if (exchangeCount <= 0) {
+    return 'fresh'
+  }
+  if (exchangeCount < threshold) {
+    return 'repeat'
+  }
+  return 'decayed'
 }

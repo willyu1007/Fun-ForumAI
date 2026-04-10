@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { AttentionOpportunityBroker } from '../attention-opportunity-broker.js'
 import type {
+  DiscussionForestProjection,
   EffectiveOrchestrationPolicy,
   PostSemanticCapsule,
   ThreadCapsule,
+  TurnDisplayProjection,
 } from '../../../shared/forum-orchestration.js'
 import type { EventPayload, ScoredCandidate } from '../../allocator/types.js'
 
@@ -30,10 +32,10 @@ function buildThreadCapsule(): ThreadCapsule {
     post_id: 'post-1',
     community_id: 'community-1',
     author_id: 'author-1',
-    participant_ids: ['author-1', 'agent-related'],
-    participant_count: 2,
+    participant_ids: ['author-1', 'agent-related', 'agent-branch'],
+    participant_count: 3,
     turn_count: 3,
-    latest_turn_id: 'turn-3',
+    latest_turn_id: 'turn-late',
     latest_activity_at: new Date('2026-04-08T10:00:00.000Z').toISOString(),
     lifecycle: {
       schema_version: 'lifecycle.v1',
@@ -75,7 +77,7 @@ function buildThreadCapsule(): ThreadCapsule {
     summary: 'Thread summary',
     unresolved_points: [],
     resolved_points: [],
-    salient_turn_ids: ['turn-1'],
+    salient_turn_ids: ['turn-root', 'turn-late'],
     reason_badges: [],
     semantic_marks: [],
     audience_signals: null,
@@ -94,15 +96,15 @@ function buildPostCapsule(threadCapsule: ThreadCapsule): PostSemanticCapsule {
     community_id: 'community-1',
     thread_count: 1,
     highlighted_thread_ids: ['thread-1'],
-    participant_ids: ['author-1', 'agent-related'],
-    participant_count: 2,
+    participant_ids: ['author-1', 'agent-related', 'agent-branch'],
+    participant_count: 3,
     latest_activity_at: new Date('2026-04-08T10:00:00.000Z').toISOString(),
     flow_phase: 'ESCALATION',
     premise: 'Premise',
     current_tension: 'Still escalating',
     resolved_points: [],
     open_questions: [],
-    must_read_turn_ids: ['turn-1'],
+    must_read_turn_ids: ['turn-root'],
     start_thread_ids: ['thread-1'],
     thread_capsules: [threadCapsule],
     thread_capsule_ids: ['thread-1'],
@@ -146,6 +148,119 @@ function buildPolicy(): EffectiveOrchestrationPolicy {
     },
     community_default: null as never,
     post_override: null,
+  }
+}
+
+function buildTurnNode(overrides: Partial<TurnDisplayProjection>): TurnDisplayProjection {
+  return {
+    schema_version: 'forum-turn-display-projection.v1',
+    id: 'turn-root',
+    entry_kind: 'TURN',
+    post_id: 'post-1',
+    thread_id: 'thread-1',
+    display_parent_id: 'thread-1',
+    display_depth: 1,
+    actual_anchor_turn_id: null,
+    branch_root_turn_id: 'turn-root',
+    sibling_order: 1,
+    collapsed_anchor_chain: [],
+    is_late_entry: false,
+    placement_reason: 'ROOT_APPEND',
+    anchor_preview_source: 'NONE',
+    reason_badges: [],
+    author: {
+      id: 'agent-related',
+      actor_type: 'agent',
+      display_name: 'Agent Related',
+      avatar_url: null,
+      public_identity: null,
+      public_projection: null,
+      public_proof: null,
+    },
+    body: 'Turn body',
+    quoted_excerpt: null,
+    evidence_refs: [{ kind: 'TURN', id: 'turn-root' }],
+    created_at: '2026-04-08T10:00:00.000Z',
+    generated_at: '2026-04-08T10:01:00.000Z',
+    ...overrides,
+  }
+}
+
+function buildForest(nodes: TurnDisplayProjection[]): DiscussionForestProjection {
+  return {
+    schema_version: 'forum-discussion-forest.v1',
+    projection_id: 'forest:post-1:2026-04-08T10:01:00.000Z',
+    post_id: 'post-1',
+    focus_thread_id: 'thread-1',
+    focus_turn_id: nodes.find((node) => node.entry_kind === 'TURN')?.id ?? null,
+    reading_guide: {
+      schema_version: 'forum-reading-guide.v1',
+      post_id: 'post-1',
+      entries: [],
+      highlighted_thread_ids: [],
+      summary_line: 'summary',
+      start_here_thread_ids: ['thread-1'],
+      current_focus_thread_ids: ['thread-1'],
+      must_read_turn_ids: [],
+      evidence_refs: [],
+      generated_at: '2026-04-08T10:01:00.000Z',
+    },
+    branch_groups: [
+      {
+        id: 'branch:thread-1',
+        branch_group_id: 'branch:thread-1',
+        thread_id: 'thread-1',
+        lead_node_id: 'thread-1',
+        display_title: 'Thread summary',
+        role_hint: 'COUNTERPOINT',
+        participant_count: 3,
+        turn_count: nodes.filter((node) => node.entry_kind === 'TURN').length,
+        latest_activity_at: '2026-04-08T10:00:00.000Z',
+        subtree_last_activity_at: '2026-04-08T10:00:00.000Z',
+        node_count: nodes.length,
+        unresolved_count: 0,
+        lifecycle: buildThreadCapsule().lifecycle,
+        reason_badges: [],
+        evidence_refs: [],
+      },
+    ],
+    nodes: [
+      {
+        schema_version: 'forum-turn-display-projection.v1',
+        id: 'thread-1',
+        entry_kind: 'THREAD',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        display_parent_id: null,
+        display_depth: 0,
+        actual_anchor_turn_id: null,
+        branch_root_turn_id: null,
+        sibling_order: 0,
+        collapsed_anchor_chain: [],
+        is_late_entry: false,
+        placement_reason: 'ROOT_APPEND',
+        anchor_preview_source: 'NONE',
+        reason_badges: [],
+        author: {
+          id: 'author-1',
+          actor_type: 'agent',
+          display_name: 'Author 1',
+          avatar_url: null,
+          public_identity: null,
+          public_projection: null,
+          public_proof: null,
+        },
+        body: 'Thread opener',
+        quoted_excerpt: null,
+        evidence_refs: [{ kind: 'THREAD', id: 'thread-1' }],
+        created_at: '2026-04-08T09:59:00.000Z',
+        generated_at: '2026-04-08T10:01:00.000Z',
+      },
+      ...nodes,
+    ],
+    latest_activity_cursor: null,
+    evidence_refs: [],
+    generated_at: '2026-04-08T10:01:00.000Z',
   }
 }
 
@@ -202,5 +317,117 @@ describe('AttentionOpportunityBroker', () => {
     expect(opportunity?.source).toBe('DIRECT_CHALLENGE')
     expect(opportunity?.browse_reason).toBe('DIRECT_CHALLENGE')
     expect(opportunity?.priority_agent_ids).toEqual(['agent-target'])
+  })
+
+  it('anchors revive decisions to the old branch instead of defaulting to the latest event turn', () => {
+    const threadCapsule = buildThreadCapsule()
+    const postCapsule = buildPostCapsule(threadCapsule)
+    const forest = buildForest([
+      buildTurnNode({
+        id: 'turn-root',
+        body: 'Original branch point',
+      }),
+      buildTurnNode({
+        id: 'turn-late',
+        display_parent_id: 'turn-root',
+        display_depth: 2,
+        actual_anchor_turn_id: 'turn-root',
+        branch_root_turn_id: 'turn-root',
+        sibling_order: 2,
+        collapsed_anchor_chain: ['turn-root'],
+        is_late_entry: true,
+        placement_reason: 'LATE_ENTRY_REATTACH',
+        reason_badges: ['RETURNED_TO_BRANCH'],
+        body: 'Late entry reply',
+      }),
+    ])
+
+    const [opportunity] = broker.discover({
+      event: buildEvent({ turn_id: 'turn-late', chain_depth: 2 }),
+      post_capsule: postCapsule,
+      thread_capsule: threadCapsule,
+      forest,
+      effective_orchestration_policy: buildPolicy(),
+      scored_candidates: [],
+      watch_telemetry_snapshot: null,
+    })
+
+    expect(opportunity?.source).toBe('REVIVE_OLD_BRANCH')
+    expect(opportunity?.selected_anchor_turn_id).toBe('turn-root')
+    expect(opportunity?.evidence_turn_ids).toEqual(expect.arrayContaining(['turn-root', 'turn-late']))
+  })
+
+  it('does not let historical thread badges override the current local event semantics', () => {
+    const threadCapsule = {
+      ...buildThreadCapsule(),
+      reason_badges: ['MENTIONED'] as ThreadCapsule['reason_badges'],
+      latest_turn_id: 'turn-clean',
+    }
+    const postCapsule = buildPostCapsule(threadCapsule)
+    const forest = buildForest([
+      buildTurnNode({
+        id: 'turn-clean',
+        body: 'Fresh turn without mention',
+        reason_badges: [],
+      }),
+    ])
+
+    const [opportunity] = broker.discover({
+      event: buildEvent({ turn_id: 'turn-clean' }),
+      post_capsule: postCapsule,
+      thread_capsule: threadCapsule,
+      forest,
+      effective_orchestration_policy: buildPolicy(),
+      scored_candidates: [],
+      watch_telemetry_snapshot: null,
+    })
+
+    expect(opportunity?.source).toBe('NEW_TURN')
+  })
+
+  it('uses branch-local audience pressure when classifying audience spikes', () => {
+    const threadCapsule = buildThreadCapsule()
+    const postCapsule = buildPostCapsule(threadCapsule)
+    const forest = buildForest([
+      buildTurnNode({
+        id: 'turn-root',
+        body: 'Original branch point',
+      }),
+      buildTurnNode({
+        id: 'turn-audience',
+        display_parent_id: 'turn-root',
+        display_depth: 2,
+        actual_anchor_turn_id: 'turn-root',
+        branch_root_turn_id: 'turn-root',
+        sibling_order: 2,
+        collapsed_anchor_chain: ['turn-root'],
+        is_late_entry: true,
+        placement_reason: 'LATE_ENTRY_REATTACH',
+        reason_badges: ['AUDIENCE_PUSHED'],
+        author: {
+          id: 'agent-branch',
+          actor_type: 'agent',
+          display_name: 'Agent Branch',
+          avatar_url: null,
+          public_identity: null,
+          public_projection: null,
+          public_proof: null,
+        },
+        body: 'Audience wanted this branch back',
+      }),
+    ])
+
+    const [opportunity] = broker.discover({
+      event: buildEvent({ turn_id: 'turn-audience' }),
+      post_capsule: postCapsule,
+      thread_capsule: threadCapsule,
+      forest,
+      effective_orchestration_policy: buildPolicy(),
+      scored_candidates: [],
+      watch_telemetry_snapshot: null,
+    })
+
+    expect(opportunity?.source).toBe('AUDIENCE_SPIKE')
+    expect(opportunity?.priority_agent_ids).toEqual(['agent-related', 'agent-branch'])
   })
 })

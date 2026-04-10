@@ -14,6 +14,7 @@ import {
   stopChildProcess,
 } from './k8s-smoke-utils.mjs'
 import { registerChildProcessCleanup } from './lib/k8s-process-cleanup.mjs'
+import { resolveDashscopeSecretData } from './lib/k8s-secret-resolution.mjs'
 import {
   loadFrontendBuildProfile,
   toDockerBuildArgs,
@@ -605,18 +606,14 @@ async function main() {
     ),
   )
 
-  const dashscopeApiKey = (
-    process.env[String(args.dashscopeApiKeyEnv)] ||
-    existingSecretData.DASHSCOPE_API_KEY ||
-    ''
-  )
-  const explicitDashscopeApiKey = process.env[String(args.dashscopeApiKeyEnv)] || ''
-  const dashscopeSecondaryApiKey = (
-    process.env.DASHSCOPE_API_KEY_SECONDARY ||
-    (explicitDashscopeApiKey ? explicitDashscopeApiKey : '') ||
-    existingSecretData.DASHSCOPE_API_KEY_SECONDARY ||
-    ''
-  )
+  const {
+    dashscopeApiKey,
+    dashscopeSecondaryApiKey,
+  } = resolveDashscopeSecretData({
+    existingSecretData,
+    dashscopeApiKeyEnv: args.dashscopeApiKeyEnv,
+    env: process.env,
+  })
   const mediaGenerationApiKey = (
     process.env[String(args.mediaGenerationApiKeyEnv)] ||
     process.env.ARK_API_KEY ||
@@ -672,7 +669,7 @@ async function main() {
     JWT_SECRET: process.env.JWT_SECRET || existingSecretData.JWT_SECRET || 'local-dev-jwt-secret',
     SERVICE_AUTH_SECRET:
       process.env.SERVICE_AUTH_SECRET || existingSecretData.SERVICE_AUTH_SECRET || 'local-dev-service-auth-secret',
-    DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || existingSecretData.DASHSCOPE_API_KEY || dashscopeApiKey,
+    DASHSCOPE_API_KEY: dashscopeApiKey,
     DASHSCOPE_API_KEY_SECONDARY: dashscopeSecondaryApiKey,
     ZAI_API_KEY: process.env.ZAI_API_KEY || existingSecretData.ZAI_API_KEY || '',
     ZAI_API_KEY_SECONDARY:

@@ -19,3 +19,30 @@
     - 在 `kind-funforum` + Chrome DevTools 联调中发现 reading guide 的 pivot 文案仍残留“旧分支被重新点燃 / 焦点回摆”式导演语义；现已把 tension copy 收口为纯公共观看描述，避免后续 `T-944` 把 viewer-facing copy 误当成可消费语义。
     - 在 `stage_open_reply.new_thread_enabled=false` 且 `stage_open_reply.turn_reply_enabled=false` 的帖子样本中，forest node 仍显示 `回应这里` CTA，会与 `T-943` 的 participation contract 形成双轨解释；现已改为由页面按 effective contract 显式控制 `replyActionLabel`，关闭时只保留 `聚焦` / `定位`。
     - 本地 K8s staging 脚本最初只对 backend port-forward 做端口回退，Postgres 本地端口冲突时会直接中断真实回归；现已为 `scripts/k8s-local-staging.mjs` 增加 Postgres 本地端口 fallback，并同步 `ops/deploy/k8s/README.md`，避免后续测试因为环境噪声误判功能回归。
+
+- 2026-04-10
+  - 本轮 residual closeout 只消费 `T-941` / `T-945` / `T-947` 的冻结语义，不改写 writeability / final anchor / viewer route contract。
+  - forest 主体验从“thread group 卡片”改为“branch cluster 阅读”：
+    - cluster 粒度由 `branch_root_turn_id` 切分；
+    - `display_parent_id` 驱动簇内树形阅读；
+    - thread 继续是后端/读模型容器，但不再是首要视觉单位。
+  - late-entry viewer insertion 不改 canonical timeline，只改展示：
+    - `display_parent_id` 决定晚到节点挂回哪里；
+    - `is_late_entry` / `placement_reason=LATE_ENTRY_REATTACH` 转成克制提示；
+    - `collapsed_anchor_chain` 转成“承接更早的 N 处上下文”说明。
+  - human anchor-reply affordance 收口为“focus node”与“composer anchor”分离：
+    - forest 中允许当前聚焦与准备回应同时存在；
+    - composer 标题、说明文案、锚点预览、引用预览都明确区分“沿这个点继续”与“新开公开分支”；
+    - reply CTA 仍完全受 `lifecycle.writeability` / route handoff 约束。
+
+### Projection field-consumption matrix
+
+| field | consumer | landed effect |
+| --- | --- | --- |
+| `branch_root_turn_id` | `DiscussionForest` cluster builder | 把一条 thread 内的不同主支线拆成多个阅读簇 |
+| `display_parent_id` | `DiscussionForest` tree renderer | 晚到节点贴回它回应的旧点附近，而不是只靠缩进 |
+| `placement_reason` | `DiscussionForest` placement badge | `LATE_ENTRY_REATTACH` / `DEPTH_CLAMP` 转成可感知但克制的 viewer cue |
+| `is_late_entry` | `DiscussionForest` badge + cluster emphasis | 明确“稍后接回”而不是继续隐藏在 metadata |
+| `collapsed_anchor_chain` | `DiscussionForest` context note | 主界面出现“承接更早的 N 处上下文” |
+| `actual_anchor_turn_id` | `PostDetailPage` reply payload + anchor preview | 人类沿点回复继续把真实锚点写入 canonical viewer turn contract |
+| `composerAnchorNodeId` (page state) | `DiscussionForest` + `PostDetailPage` | 观看焦点与发送锚点显式分离，避免“盲发到帖子”的心智 |

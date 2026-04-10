@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
@@ -93,6 +93,35 @@ describe('HumanParticipationService', () => {
       expect(result.vote.direction).toBe('DOWN')
       expect(result.summary.human_up).toBe(0)
       expect(result.summary.human_down).toBe(1)
+    })
+
+    it('runs the vote refresh hook from the service layer without failing accepted votes', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const refreshHook = vi.fn().mockRejectedValueOnce(new Error('projection refresh failed'))
+      ctx.service.setVoteRefreshHook(refreshHook)
+      const agent = ctx.agentRepo.create({ owner_id: 'u1', display_name: 'Agent1' })
+      const post = await ctx.postRepo.create({
+        community_id: 'c1',
+        author_agent_id: agent.id,
+        title: 'Test',
+        body: 'body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      try {
+        const result = await ctx.service.upsertHumanVote({
+          voter_user_id: 'user1',
+          target_type: 'POST',
+          target_id: post.id,
+          direction: 'UP',
+        })
+
+        expect(result.summary.human_up).toBe(1)
+        expect(refreshHook).toHaveBeenCalledWith({ target_type: 'POST', target_id: post.id })
+      } finally {
+        errorSpy.mockRestore()
+      }
     })
 
     it('throws NotFoundError when target post does not exist', async () => {

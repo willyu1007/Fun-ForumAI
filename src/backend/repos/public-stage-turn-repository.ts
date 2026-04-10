@@ -9,6 +9,9 @@ export interface PublicStageTurnRepository {
   create(input: CreatePublicStageTurnInput): Promise<PublicStageTurn>
   findById(id: string): Promise<PublicStageTurn | null>
   findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>>
+  findWindowByThread(threadId: string, opts: PublicStageTurnWindowOpts): Promise<PublicStageTurnWindowResult>
+  findRecentByThread(threadId: string, limit: number): Promise<PublicStageTurn[]>
+  findMatchingByThread(threadId: string, query: string, limit: number): Promise<PublicStageTurn[]>
   findByThreads(threadIds: string[]): Promise<PublicStageTurn[]>
   findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>>
   countPublicByAuthorAgent(agentId: string): Promise<number>
@@ -18,6 +21,16 @@ export interface PublicStageTurnRepository {
   deleteByThread(threadId: string): Promise<void>
   updateVisibility(id: string, visibility: PublicStageTurn['visibility']): Promise<PublicStageTurn | null>
   updateState(id: string, state: PublicStageTurn['state']): Promise<PublicStageTurn | null>
+}
+
+export interface PublicStageTurnWindowOpts {
+  cursor?: string | null
+  limit: number
+  aroundTurnId?: string | null
+}
+
+export type PublicStageTurnWindowResult = PaginatedResult<PublicStageTurn> & {
+  returned_mode: 'full' | 'cursor' | 'around'
 }
 
 let counter = 0
@@ -56,11 +69,52 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
   }
 
   async findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
-    const items = Array.from(this.store.values())
-      .filter((item) => item.thread_id === threadId && item.state === 'APPROVED')
-      .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
-      .sort((a, b) => a.turn_index - b.turn_index || a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
+    const items = this.listVisibleByThread(threadId)
     return paginate(items, opts)
+  }
+
+  async findWindowByThread(threadId: string, opts: PublicStageTurnWindowOpts): Promise<PublicStageTurnWindowResult> {
+    const items = this.listVisibleByThread(threadId)
+    if (opts.aroundTurnId) {
+      const focusIndex = items.findIndex((turn) => turn.id === opts.aroundTurnId)
+      if (focusIndex < 0) {
+        return { items: [], next_cursor: null, returned_mode: 'around' }
+      }
+      const halfWindow = Math.floor((opts.limit - 1) / 2)
+      let start = Math.max(0, focusIndex - halfWindow)
+      const end = Math.min(items.length, start + opts.limit)
+      if (end - start < opts.limit) {
+        start = Math.max(0, end - opts.limit)
+      }
+      const page = items.slice(start, end)
+      return {
+        items: page,
+        next_cursor: end < items.length ? page[page.length - 1]?.id ?? null : null,
+        returned_mode: 'around',
+      }
+    }
+
+    const page = paginate(items, { cursor: opts.cursor ?? undefined, limit: opts.limit })
+    return {
+      ...page,
+      returned_mode: opts.cursor ? 'cursor' : 'full',
+    }
+  }
+
+  async findRecentByThread(threadId: string, limit: number): Promise<PublicStageTurn[]> {
+    return this.listVisibleByThread(threadId).slice(-limit)
+  }
+
+  async findMatchingByThread(threadId: string, query: string, limit: number): Promise<PublicStageTurn[]> {
+    const normalizedQuery = query.trim().toLowerCase()
+    if (!normalizedQuery) return []
+    const tokens = Array.from(new Set(normalizedQuery.split(/\s+/).filter(Boolean)))
+    return this.listVisibleByThread(threadId)
+      .filter((turn) => {
+        const body = turn.body.toLowerCase()
+        return body.includes(normalizedQuery) || tokens.some((token) => body.includes(token))
+      })
+      .slice(-limit)
   }
 
   async findByThreads(threadIds: string[]): Promise<PublicStageTurn[]> {
@@ -131,6 +185,13 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
     current.state = state
     current.updated_at = new Date()
     return current
+  }
+
+  private listVisibleByThread(threadId: string): PublicStageTurn[] {
+    return Array.from(this.store.values())
+      .filter((item) => item.thread_id === threadId && item.state === 'APPROVED')
+      .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
+      .sort((a, b) => a.turn_index - b.turn_index || a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
   }
 }
 

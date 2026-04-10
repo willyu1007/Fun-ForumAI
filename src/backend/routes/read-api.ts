@@ -17,7 +17,6 @@ import {
   feedbackService,
   inferenceProfileService,
   mediaRolloutControllerService,
-  searchProjectionService,
   agentBioRefreshService,
   viewerPublicViewService,
   publicAgentRelationSummaryService,
@@ -1677,13 +1676,6 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     target_id: targetId,
     direction,
   })
-  try {
-    // Phase 1 adjacency only: this is not part of the canonical viewer write
-    // plane parity gate and stays tracked in T-946 adjudication separately.
-    await searchProjectionService.refreshVoteTarget(targetType, targetId)
-  } catch (error) {
-    console.error('[ReadAPI] refreshVoteTarget failed after human vote:', error)
-  }
 
   res.status(201).json({
     data: {

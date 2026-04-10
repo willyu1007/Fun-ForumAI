@@ -23,12 +23,25 @@ interface DiscussionForestProps {
   forest: DiscussionForestProjection | null
   isLoading?: boolean
   selectedNodeId?: string | null
+  composerAnchorNodeId?: string | null
   replyActionLabel?: string | null
   onSelectNode?: (
     node: TurnDisplayProjection,
     source: 'guide' | 'node' | 'reply',
   ) => void
   onBranchExpand?: (group: DiscussionBranchGroup) => void
+}
+
+interface DiscussionClusterView {
+  id: string
+  thread_id: string
+  group: DiscussionBranchGroup
+  root_node: TurnDisplayProjection | null
+  lead_node: TurnDisplayProjection
+  nodes: TurnDisplayProjection[]
+  participant_count: number
+  turn_count: number
+  latest_activity_at: string
 }
 
 function buildNodeHref(postId: string, node: TurnDisplayProjection): string {
@@ -38,8 +51,105 @@ function buildNodeHref(postId: string, node: TurnDisplayProjection): string {
   return `/posts/${postId}?threadId=${node.thread_id}&turnId=${node.id}`
 }
 
-function getGroupNodes(forest: DiscussionForestProjection, threadId: string): TurnDisplayProjection[] {
-  return forest.nodes.filter((node) => node.thread_id === threadId)
+function sortNodes(nodes: TurnDisplayProjection[]): TurnDisplayProjection[] {
+  return [...nodes].sort((left, right) => {
+    if (left.display_depth !== right.display_depth) {
+      return left.display_depth - right.display_depth
+    }
+    if (left.sibling_order !== right.sibling_order) {
+      return left.sibling_order - right.sibling_order
+    }
+    return left.created_at.localeCompare(right.created_at)
+  })
+}
+
+function collectSubtreeNodes(
+  leadNodeId: string,
+  threadNodes: TurnDisplayProjection[],
+): TurnDisplayProjection[] {
+  const descendants = new Set<string>([leadNodeId])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const node of threadNodes) {
+      if (!node.display_parent_id) continue
+      if (!descendants.has(node.display_parent_id)) continue
+      if (descendants.has(node.id)) continue
+      descendants.add(node.id)
+      changed = true
+    }
+  }
+  return threadNodes.filter((node) => descendants.has(node.id))
+}
+
+function buildClusterViews(forest: DiscussionForestProjection): {
+  clusters: DiscussionClusterView[]
+  clusterIdByNodeId: Map<string, string>
+} {
+  const clusterIdByNodeId = new Map<string, string>()
+  const clusters: DiscussionClusterView[] = []
+  const nodesByThreadId = new Map<string, TurnDisplayProjection[]>()
+
+  for (const node of forest.nodes) {
+    const existing = nodesByThreadId.get(node.thread_id) ?? []
+    existing.push(node)
+    nodesByThreadId.set(node.thread_id, existing)
+  }
+
+  for (const group of forest.branch_groups) {
+    const threadNodes = sortNodes(nodesByThreadId.get(group.thread_id) ?? [])
+    const rootNode = threadNodes.find((node) => node.entry_kind === 'THREAD') ?? null
+    const turnNodes = threadNodes.filter((node) => node.entry_kind === 'TURN')
+    const leadNodes = rootNode
+      ? turnNodes.filter((node) => node.display_parent_id === rootNode.id)
+      : turnNodes
+
+    if (leadNodes.length === 0 && rootNode) {
+      const clusterId = `cluster:${group.thread_id}:root`
+      clusterIdByNodeId.set(rootNode.id, clusterId)
+      clusters.push({
+        id: clusterId,
+        thread_id: group.thread_id,
+        group,
+        root_node: rootNode,
+        lead_node: rootNode,
+        nodes: [rootNode],
+        participant_count: 1,
+        turn_count: 0,
+        latest_activity_at: group.latest_activity_at,
+      })
+      continue
+    }
+
+    for (const [index, leadNode] of leadNodes.entries()) {
+      const clusterNodes = sortNodes(collectSubtreeNodes(leadNode.id, threadNodes))
+      const clusterId = `cluster:${group.thread_id}:${leadNode.id}`
+      clusterIdByNodeId.set(leadNode.id, clusterId)
+      if (index === 0 && rootNode) {
+        clusterIdByNodeId.set(rootNode.id, clusterId)
+      }
+      for (const node of clusterNodes) {
+        clusterIdByNodeId.set(node.id, clusterId)
+      }
+      const latestActivityAt =
+        [...clusterNodes]
+          .sort((left, right) => right.created_at.localeCompare(left.created_at))[0]?.created_at
+        ?? group.latest_activity_at
+      clusters.push({
+        id: clusterId,
+        thread_id: group.thread_id,
+        group,
+        root_node: rootNode,
+        lead_node: leadNode,
+        nodes: clusterNodes,
+        participant_count: new Set(clusterNodes.map((node) => node.author.id)).size,
+        turn_count: clusterNodes.filter((node) => node.entry_kind === 'TURN').length,
+        latest_activity_at: latestActivityAt,
+      })
+    }
+  }
+
+  return { clusters, clusterIdByNodeId }
 }
 
 function getCollapsedNodes(
@@ -47,12 +157,12 @@ function getCollapsedNodes(
   selectedNodeId: string | null | undefined,
 ): TurnDisplayProjection[] {
   if (nodes.length <= 2) return nodes
-  const root = nodes[0]
+  const lead = nodes[0]
   const latest = [...nodes].reverse().find((node) => node.entry_kind === 'TURN') ?? nodes[nodes.length - 1]
   const selected = selectedNodeId
     ? nodes.find((node) => node.id === selectedNodeId) ?? null
     : null
-  const visible = [root, selected, latest].filter((node): node is TurnDisplayProjection => Boolean(node))
+  const visible = [lead, selected, latest].filter((node): node is TurnDisplayProjection => Boolean(node))
   const deduped: TurnDisplayProjection[] = []
   const seen = new Set<string>()
   for (const node of visible) {
@@ -61,6 +171,20 @@ function getCollapsedNodes(
     deduped.push(node)
   }
   return deduped
+}
+
+function buildChildrenByParent(nodes: TurnDisplayProjection[]): Map<string, TurnDisplayProjection[]> {
+  const map = new Map<string, TurnDisplayProjection[]>()
+  for (const node of nodes) {
+    const parentId = node.display_parent_id ?? '__root__'
+    const bucket = map.get(parentId) ?? []
+    bucket.push(node)
+    map.set(parentId, bucket)
+  }
+  for (const [parentId, bucket] of map.entries()) {
+    map.set(parentId, sortNodes(bucket))
+  }
+  return map
 }
 
 function readRouteAction(group: DiscussionBranchGroup): { label: string; target: string } | null {
@@ -78,6 +202,48 @@ function readRouteAction(group: DiscussionBranchGroup): { label: string; target:
   }
 
   return { label, target }
+}
+
+function readPlacementBadge(node: TurnDisplayProjection): string | null {
+  if (node.is_late_entry || node.placement_reason === 'LATE_ENTRY_REATTACH') {
+    return '稍后接回'
+  }
+  if (node.placement_reason === 'DEPTH_CLAMP') {
+    return '承接上文'
+  }
+  return null
+}
+
+function renderRouteActionButton(routeAction: { label: string; target: string }) {
+  if (isAgentTargetString(routeAction.target)) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs"
+        onClick={() => {
+          tryOpenAgentModal(routeAction.target, 'readonly')
+        }}
+      >
+        {routeAction.label}
+      </Button>
+    )
+  }
+  if (routeAction.target.startsWith('/')) {
+    return (
+      <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+        <Link to={routeAction.target}>{routeAction.label}</Link>
+      </Button>
+    )
+  }
+  return (
+    <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+      <a href={routeAction.target} target="_blank" rel="noreferrer">
+        {routeAction.label}
+      </a>
+    </Button>
+  )
 }
 
 function AuthorLine({
@@ -142,47 +308,73 @@ export function DiscussionForest({
   forest,
   isLoading,
   selectedNodeId,
+  composerAnchorNodeId,
   replyActionLabel,
   onSelectNode,
   onBranchExpand,
 }: DiscussionForestProps) {
-  const [expandedByThreadId, setExpandedByThreadId] = useState<Record<string, boolean>>({})
+  const [expandedByClusterId, setExpandedByClusterId] = useState<Record<string, boolean>>({})
+  const guideEntries = forest?.reading_guide.entries ?? []
+
+  const { clusters, clusterIdByNodeId } = useMemo(() => {
+    if (!forest) {
+      return {
+        clusters: [] as DiscussionClusterView[],
+        clusterIdByNodeId: new Map<string, string>(),
+      }
+    }
+    return buildClusterViews(forest)
+  }, [forest])
 
   useEffect(() => {
-    if (!forest) return
-    const preferredThreadId =
-      (selectedNodeId
-        ? forest.nodes.find((node) => node.id === selectedNodeId)?.thread_id
+    if (!forest || clusters.length === 0) return
+    const preferredClusterId =
+      (selectedNodeId ? clusterIdByNodeId.get(selectedNodeId) : null)
+      ?? (forest.focus_turn_id ? clusterIdByNodeId.get(forest.focus_turn_id) : null)
+      ?? (forest.focus_thread_id ? clusterIdByNodeId.get(forest.focus_thread_id) : null)
+      ?? (forest.reading_guide.start_here_thread_ids[0]
+        ? clusterIdByNodeId.get(forest.reading_guide.start_here_thread_ids[0])
         : null)
-      ?? forest.focus_thread_id
-      ?? forest.reading_guide.start_here_thread_ids[0]
-      ?? forest.branch_groups[0]?.thread_id
+      ?? clusters[0]?.id
       ?? null
-    if (!preferredThreadId) return
-    setExpandedByThreadId((current) => (
+    if (!preferredClusterId) return
+    setExpandedByClusterId((current) => (
       Object.keys(current).length > 0
         ? current
-        : { [preferredThreadId]: true }
+        : { [preferredClusterId]: true }
     ))
-  }, [forest, selectedNodeId])
+  }, [clusterIdByNodeId, clusters, forest, selectedNodeId])
 
   useEffect(() => {
-    if (!forest || !selectedNodeId) return
-    const selectedThreadId = forest.nodes.find((node) => node.id === selectedNodeId)?.thread_id
-    if (!selectedThreadId) return
-    setExpandedByThreadId((current) => ({
+    if (!selectedNodeId) return
+    const clusterId = clusterIdByNodeId.get(selectedNodeId)
+    if (!clusterId) return
+    setExpandedByClusterId((current) => ({
       ...current,
-      [selectedThreadId]: true,
+      [clusterId]: true,
     }))
-  }, [forest, selectedNodeId])
+  }, [clusterIdByNodeId, selectedNodeId])
 
-  const guideEntries = forest?.reading_guide.entries ?? []
-  const groupNodesByThreadId = useMemo(() => {
-    if (!forest) return new Map<string, TurnDisplayProjection[]>()
-    return new Map(
-      forest.branch_groups.map((group) => [group.thread_id, getGroupNodes(forest, group.thread_id)]),
-    )
-  }, [forest])
+  const sortedClusters = useMemo(() => {
+    const selectedClusterId = selectedNodeId ? clusterIdByNodeId.get(selectedNodeId) ?? null : null
+    const composerClusterId = composerAnchorNodeId ? clusterIdByNodeId.get(composerAnchorNodeId) ?? null : null
+    return [...clusters].sort((left, right) => {
+      const leftPriority =
+        left.id === composerClusterId ? 0
+          : left.id === selectedClusterId ? 1
+            : left.thread_id === forest?.focus_thread_id ? 2
+              : 3
+      const rightPriority =
+        right.id === composerClusterId ? 0
+          : right.id === selectedClusterId ? 1
+            : right.thread_id === forest?.focus_thread_id ? 2
+              : 3
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority
+      }
+      return right.latest_activity_at.localeCompare(left.latest_activity_at)
+    })
+  }, [clusterIdByNodeId, clusters, composerAnchorNodeId, forest?.focus_thread_id, selectedNodeId])
 
   if (isLoading) {
     return (
@@ -193,7 +385,7 @@ export function DiscussionForest({
     )
   }
 
-  if (!forest || forest.branch_groups.length === 0) {
+  if (!forest || sortedClusters.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/60 bg-muted/15 p-5 text-sm text-muted-foreground">
         还没有可展开的公开讨论分支。
@@ -231,7 +423,10 @@ export function DiscussionForest({
                 onClick={() => {
                   const node = focusNode ?? forest.nodes.find((item) => item.id === entry.thread_id) ?? null
                   if (!node) return
-                  setExpandedByThreadId((current) => ({ ...current, [entry.thread_id]: true }))
+                  const clusterId = clusterIdByNodeId.get(node.id)
+                  if (clusterId) {
+                    setExpandedByClusterId((current) => ({ ...current, [clusterId]: true }))
+                  }
                   onSelectNode?.(node, 'guide')
                 }}
               >
@@ -267,30 +462,132 @@ export function DiscussionForest({
       </section>
 
       <section className="space-y-4">
-        {forest.branch_groups.map((group) => {
-          const nodes = groupNodesByThreadId.get(group.thread_id) ?? []
-          const expanded = expandedByThreadId[group.thread_id] ?? false
-          const displayedNodes = expanded ? nodes : getCollapsedNodes(nodes, selectedNodeId)
-          const rootNode = nodes[0] ?? null
-          const routeAction = readRouteAction(group)
+        {sortedClusters.map((cluster) => {
+          const expanded = expandedByClusterId[cluster.id] ?? false
+          const displayedNodes = expanded ? cluster.nodes : getCollapsedNodes(cluster.nodes, selectedNodeId)
+          const childrenByParent = buildChildrenByParent(displayedNodes)
+          const routeAction = readRouteAction(cluster.group)
           const canReplyInThread =
-            Boolean(replyActionLabel) && allowsDirectThreadReply(group.lifecycle?.writeability)
-          const preferRouteAction = prefersRouteHandoff(group.lifecycle?.writeability)
+            Boolean(replyActionLabel) && allowsDirectThreadReply(cluster.group.lifecycle?.writeability)
+          const preferRouteAction = prefersRouteHandoff(cluster.group.lifecycle?.writeability)
+          const rootNodes = displayedNodes.filter((node) =>
+            node.id === cluster.lead_node.id
+            || !displayedNodes.some((candidate) => candidate.id === node.display_parent_id))
+
+          const renderNode = (node: TurnDisplayProjection, depth: number) => {
+            const selected = selectedNodeId === node.id
+            const isComposerAnchor = composerAnchorNodeId === node.id
+            const showRouteAction = Boolean(routeAction) && node.id === cluster.lead_node.id
+            const placementBadge = readPlacementBadge(node)
+            const anchorChainCount = node.collapsed_anchor_chain.length
+
+            return (
+              <div key={node.id} className="space-y-3">
+                <article
+                  className={cn(
+                    'rounded-xl border border-border/50 bg-background/95 p-4',
+                    depth === 1 && 'ml-4',
+                    depth >= 2 && 'ml-8',
+                    selected && 'border-primary/40 bg-primary/5',
+                    isComposerAnchor && 'border-emerald-500/40 bg-emerald-500/5',
+                  )}
+                >
+                  <AuthorLine
+                    node={node}
+                    compact={!selected}
+                    emphasizeBio={selected}
+                    showProofChips={selected}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {node.entry_kind === 'THREAD' ? '分支开场' : '沿着这个点继续'}
+                    </span>
+                    {selected ? (
+                      <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                        当前聚焦
+                      </Badge>
+                    ) : null}
+                    {isComposerAnchor ? (
+                      <Badge variant="secondary" className="px-1 py-0 text-[9px]">
+                        准备回应
+                      </Badge>
+                    ) : null}
+                    {placementBadge ? (
+                      <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                        {placementBadge}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {node.quoted_excerpt ? (
+                    <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
+                      {node.quoted_excerpt}
+                    </div>
+                  ) : null}
+                  <RichTextLite text={node.body} className="mt-3 text-sm leading-7 text-foreground/85" />
+                  {anchorChainCount > 0 ? (
+                    <p className="mt-3 text-[11px] text-muted-foreground">
+                      承接更早的 {anchorChainCount} 处上下文
+                    </p>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="flex-1" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => onSelectNode?.(node, 'node')}
+                    >
+                      聚焦
+                    </Button>
+                    {preferRouteAction && routeAction && showRouteAction ? renderRouteActionButton(routeAction) : null}
+                    {canReplyInThread ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => onSelectNode?.(node, 'reply')}
+                      >
+                        {replyActionLabel}
+                      </Button>
+                    ) : null}
+                    {!preferRouteAction && routeAction && showRouteAction ? renderRouteActionButton(routeAction) : null}
+                    <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                      <Link to={buildNodeHref(postId, node)}>定位</Link>
+                    </Button>
+                  </div>
+                </article>
+                {(childrenByParent.get(node.id) ?? []).map((child) => renderNode(child, depth + 1))}
+              </div>
+            )
+          }
 
           return (
-            <div key={group.id} className="rounded-2xl border border-border/60 bg-background/90 p-4">
+            <div
+              key={cluster.id}
+              data-testid="discussion-cluster"
+              className="rounded-xl border border-border/60 bg-background/90 p-4"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-3">
                 <div className="min-w-0 space-y-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    {group.display_title?.trim() || '公开讨论分支'}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                      支线簇
+                    </Badge>
+                    {cluster.group.display_title?.trim() ? (
+                      <p className="text-sm font-semibold text-foreground">{cluster.group.display_title}</p>
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">公开讨论分支</p>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {group.participant_count} 位参与者 · {group.turn_count} 条后续发言 · 更新于 {relativeTime(group.latest_activity_at)}
+                    {cluster.participant_count} 位参与者 · {cluster.turn_count} 条节点发言 · 更新于 {relativeTime(cluster.latest_activity_at)}
                   </p>
-                  {rootNode ? (
-                    <div className="pt-1">
-                      <AuthorLine node={rootNode} compact showProofChips />
-                    </div>
+                  {cluster.root_node && cluster.root_node.id !== cluster.lead_node.id ? (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      同一条讨论会按不同支线靠近原点展开，方便沿点继续阅读。
+                    </p>
                   ) : null}
                 </div>
                 <Button
@@ -299,125 +596,20 @@ export function DiscussionForest({
                   size="sm"
                   className="h-7 px-2 text-xs"
                   onClick={() => {
-                    setExpandedByThreadId((current) => {
+                    setExpandedByClusterId((current) => {
                       const nextExpanded = !expanded
                       if (nextExpanded) {
-                        onBranchExpand?.(group)
+                        onBranchExpand?.(cluster.group)
                       }
-                      return { ...current, [group.thread_id]: nextExpanded }
+                      return { ...current, [cluster.id]: nextExpanded }
                     })
                   }}
                 >
-                  {expanded ? '收起分支' : `展开分支 (${Math.max(nodes.length - displayedNodes.length, 0)} 更多)`}
+                  {expanded ? '收起支线' : `展开支线 (${Math.max(cluster.nodes.length - displayedNodes.length, 0)} 更多)`}
                 </Button>
               </div>
               <div className="mt-4 space-y-3">
-                {displayedNodes.map((node) => {
-                  const selected = selectedNodeId === node.id
-                  return (
-                    <article
-                      key={node.id}
-                      className={cn(
-                        'rounded-xl border border-border/50 bg-background/95 p-4',
-                        node.display_depth === 1 && 'ml-4',
-                        node.display_depth === 2 && 'ml-8',
-                        selected && 'border-primary/40 bg-primary/5',
-                      )}
-                    >
-                      <AuthorLine
-                        node={node}
-                        compact={!selected}
-                        emphasizeBio={selected}
-                        showProofChips={selected}
-                      />
-                      {node.quoted_excerpt ? (
-                        <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-                          {node.quoted_excerpt}
-                        </div>
-                      ) : null}
-                      <RichTextLite text={node.body} className="mt-3 text-sm leading-7 text-foreground/85" />
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground">
-                          {node.entry_kind === 'THREAD' ? '分支开场' : '继续围绕这一点推进'}
-                        </span>
-                        <span className="flex-1" />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => onSelectNode?.(node, 'node')}
-                        >
-                          聚焦
-                        </Button>
-                        {preferRouteAction && routeAction ? (
-                          isAgentTargetString(routeAction.target) ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => {
-                                tryOpenAgentModal(routeAction.target, 'readonly')
-                              }}
-                            >
-                              {routeAction.label}
-                            </Button>
-                          ) : routeAction.target.startsWith('/') ? (
-                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-                              <Link to={routeAction.target}>{routeAction.label}</Link>
-                            </Button>
-                          ) : (
-                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-                              <a href={routeAction.target} target="_blank" rel="noreferrer">
-                                {routeAction.label}
-                              </a>
-                            </Button>
-                          )
-                        ) : null}
-                        {canReplyInThread ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => onSelectNode?.(node, 'reply')}
-                          >
-                            {replyActionLabel}
-                          </Button>
-                        ) : null}
-                        {!preferRouteAction && routeAction ? (
-                          isAgentTargetString(routeAction.target) ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => {
-                                tryOpenAgentModal(routeAction.target, 'readonly')
-                              }}
-                            >
-                              {routeAction.label}
-                            </Button>
-                          ) : routeAction.target.startsWith('/') ? (
-                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-                              <Link to={routeAction.target}>{routeAction.label}</Link>
-                            </Button>
-                          ) : (
-                            <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-                              <a href={routeAction.target} target="_blank" rel="noreferrer">
-                                {routeAction.label}
-                              </a>
-                            </Button>
-                          )
-                        ) : null}
-                        <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-                          <Link to={buildNodeHref(postId, node)}>定位</Link>
-                        </Button>
-                      </div>
-                    </article>
-                  )
-                })}
+                {rootNodes.map((node) => renderNode(node, node.id === cluster.lead_node.id ? 0 : 1))}
               </div>
             </div>
           )

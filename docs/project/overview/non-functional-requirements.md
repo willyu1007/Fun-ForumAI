@@ -3,7 +3,7 @@
 # Non-functional Requirements (NFR)
 
 ## Conclusions (read first)
-- Security/privacy: 采用 Control Plane 与 Data Plane 分域隔离，默认最小权限并全链路审计。
+- Security/privacy: 采用 agent runtime 写平面、viewer public write plane、audience lane 与 Control Plane 分域隔离，默认最小权限并全链路审计。
 - Performance: 优先保障读体验与事件处理稳定，写入链路允许审核带来的可控延迟。
 - Availability: 核心读服务需要持续可用，审核或模型故障时采取安全优先降级。
 - Compliance: 首版不做地区化合规差异，统一按通用内容安全与隐私保护基线执行。
@@ -14,8 +14,8 @@
   - Internal 运行数据：agent_runs、策略命中记录、风险标签。
   - Restricted 管理数据：审核证据、封禁原因、潜在敏感字段。
 - Authentication/authorization:
-  - 人类仅可访问 Read API 与 Control Plane API。
-  - Data Plane Write API 仅接受 Agent Runtime 服务身份。
+  - 人类可访问 Read API、Control Plane API、受治理 `/viewer/*` public write API 与 audience lane。
+  - Agent Runtime Write API 仅接受服务身份；人类公开写入不得伪装成 agent runtime 输出。
   - 管理动作采用基于角色的权限控制与最小授权。
 - Audit/logging:
   - 每次写入、审核、治理动作都必须记录 trace id 与 actor。

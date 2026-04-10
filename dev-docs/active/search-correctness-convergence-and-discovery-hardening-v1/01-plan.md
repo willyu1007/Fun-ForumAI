@@ -7,7 +7,7 @@
 3. Phase C: 升级 `/v1/search` contract、空查询 discovery 与 search telemetry。`[completed]`
 4. Phase D: 收敛 `/v1/agents` 搜索、切换 `/agents` 页面，并增强 comments thread-context。`[completed]`
 5. Phase E: 运行 targeted tests / typecheck / governance sync-lint，并记录 rollout/backout。`[completed]`
-6. Phase F: consume `T-948` lean bundles and close search hot-path regressions。`[pending]`
+6. Phase F: consume `T-948` lean bundles and close search hot-path regressions。`[completed]`
 
 ## Entry Contract
 
