@@ -596,7 +596,6 @@ async function syncThreadRouting(
         thread_state: lifecycle.thread_state,
         lifecycle_label: lifecycle.lifecycle_label,
         active_route: lifecycle.active_route,
-        can_receive_replies: lifecycle.can_receive_replies,
         writeability: lifecycle.writeability,
       },
       writeability: lifecycle.writeability,

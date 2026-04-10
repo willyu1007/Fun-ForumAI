@@ -3,8 +3,7 @@ interface ThreadWriteabilityLike {
   preferred_action?: string | null
 }
 
-// Gate 1 freeze: UI must consume lifecycle.writeability directly and not fall
-// back to legacy lifecycle booleans such as can_receive_replies.
+// Gate 1 freeze: UI must consume lifecycle.writeability directly.
 export function prefersRouteHandoff(
   writeability: ThreadWriteabilityLike | null | undefined,
 ): boolean {

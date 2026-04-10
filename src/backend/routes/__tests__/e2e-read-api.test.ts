@@ -1645,69 +1645,24 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
-  it('POST /v1/posts/:postId/public-threads and /v1/threads/:threadId/public-turns allow human open_reply on the main thread', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
-    const originalHumanParticipation = featureFlags.humanParticipationV1
-    featureFlags.humanParticipationV1 = true
+  it('POST legacy public-write routes return 404 after compat removal', async () => {
+    const legacyThreadRes = await request(app)
+      .post('/v1/posts/post-legacy/public-threads')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ body: 'legacy thread' })
+    expect(legacyThreadRes.status).toBe(404)
 
-    try {
-      const community = await createTestCommunity({
-        name: 'Open Reply Community',
-        slug: `open-reply-${Date.now()}`,
-        rules_json: {
-          stage_spec_v1: {
-            human_participation: {
-              public_participation_mode: 'open_reply',
-              audience_signal_ingestion: 'direct_read',
-              agent_human_response_mode: 'direct_reply',
-            },
-          },
-        },
-      })
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Open Reply Author' })
-      expect(authorRes.status).toBe(201)
+    const legacyTurnRes = await request(app)
+      .post('/v1/threads/thread-legacy/public-turns')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ body: 'legacy turn' })
+    expect(legacyTurnRes.status).toBe(404)
 
-      const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: authorRes.body.data.id,
-        run_id: `run-open-reply-post-${Date.now()}`,
-        community_id: community.id,
-        title: 'Open reply target',
-        body: 'Agent-authored root post.',
-      })
-      expect(postRes.status).toBe(201)
-      const postId = postRes.body.data.id as string
-
-      const threadRes = await request(app)
-        .post(`/v1/posts/${postId}/public-threads`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ body: 'Human public thread root.' })
-      expect(threadRes.status).toBe(201)
-      expect(threadRes.body.data).toMatchObject({
-        post_id: postId,
-        author_actor_type: 'human',
-        author_user_id: 'user1',
-        author_agent_id: null,
-      })
-
-      const threadId = threadRes.body.data.id as string
-      const turnRes = await request(app)
-        .post(`/v1/threads/${threadId}/public-turns`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ body: 'Human follow-up turn.' })
-      expect(turnRes.status).toBe(201)
-      expect(turnRes.body.data.turns.at(-1)).toMatchObject({
-        thread_id: threadId,
-        author_actor_type: 'human',
-        author_user_id: 'user1',
-        author_agent_id: null,
-        body: 'Human follow-up turn.',
-      })
-    } finally {
-      featureFlags.humanParticipationV1 = originalHumanParticipation
-    }
+    const legacyAudienceRes = await request(app)
+      .post('/v1/posts/post-legacy/audience-messages')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ body: 'legacy audience' })
+    expect(legacyAudienceRes.status).toBe(404)
   })
 
   it('POST /v1/viewer/posts/:postId/public-threads and /v1/viewer/threads/:threadId/public-turns return auditable envelopes and honor idempotency', async () => {
@@ -2461,7 +2416,7 @@ describe('E2E: Read API (public)', () => {
     expect(res.status).toBe(401)
   })
 
-  it('POST /v1/posts/:postId/audience-messages validates body length and accepts valid message', async () => {
+  it('POST /v1/viewer/posts/:postId/audience-messages validates body length and accepts valid message', async () => {
     const featureFlags = config.features as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
     const originalHumanParticipation = featureFlags.humanParticipationV1
@@ -2499,7 +2454,7 @@ describe('E2E: Read API (public)', () => {
       const postId = postRes.body.data.id as string
 
       const validRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({
           body: 'Great show, keep it going.',
@@ -2511,13 +2466,24 @@ describe('E2E: Read API (public)', () => {
           },
         })
       expect(validRes.status).toBe(201)
-      expect(validRes.body.data.message).toMatchObject({
-        body: 'Great show, keep it going.',
-        author_user_id: 'user1',
+      expect(validRes.body.data).toMatchObject({
+        action: 'CREATE_AUDIENCE_MESSAGE',
+        result: 'ACCEPTED',
+        audience_message_id: expect.any(String),
       })
 
+      const audienceThreadRes = await request(app)
+        .get(`/v1/posts/${postId}/audience-thread`)
+      expect(audienceThreadRes.status).toBe(200)
+      expect(audienceThreadRes.body.data.messages).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          body: 'Great show, keep it going.',
+          author_user_id: 'user1',
+        }),
+      ]))
+
       const blankRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ body: '   ' })
       expect(blankRes.status).toBe(400)
@@ -2525,7 +2491,7 @@ describe('E2E: Read API (public)', () => {
 
       const tooLongBody = 'a'.repeat(20_001)
       const longRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ body: tooLongBody })
       expect(longRes.status).toBe(400)
@@ -2571,7 +2537,7 @@ describe('E2E: Read API (public)', () => {
       const postId = postRes.body.data.id as string
 
       const messageRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ body: '请在 aftershow 里回应这个观点。' })
       expect(messageRes.status).toBe(201)
@@ -2652,7 +2618,7 @@ describe('E2E: Read API (public)', () => {
       const postId = postRes.body.data.id as string
 
       const messageRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ body: '请在 aftershow 里回应这个观点。' })
       expect(messageRes.status).toBe(201)

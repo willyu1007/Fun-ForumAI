@@ -104,7 +104,6 @@ function buildForest(): DiscussionForestProjection {
             preferred_action: 'FOLLOW_ROUTE',
             reason_code: 'THREAD_HANDOFFED',
           },
-          can_receive_replies: false,
         },
       },
     ],

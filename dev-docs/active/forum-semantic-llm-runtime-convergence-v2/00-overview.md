@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-144`, `T-145`, `T-901`, `T-937`, `T-940`
-- Current status: the original three convergence waves, the residual anchor-truth closure, and the strict-closure follow-up are all shipped and frozen. `forum_targeting` now carries write-target truth, `targetThreadTurn` is reduced to event-target compat semantics only, runtime alias ingress is closed, legacy-shaped author DTO exits and forum read dual-read leftovers are removed, and repo-level lint/typecheck/launch gates plus targeted browser/E2E coverage are green.
-- Next step: keep `T-945` frozen except for deployment-window evidence: execute migration/backfill/search rebuild on a rollout-ready database, record that environment-level evidence in `04-verification.md`, and route any future reinterpretation of focus/writeback semantics through `T-946` before reopening this package.
+- Current status: the original three convergence waves, the residual anchor-truth closure, the strict-closure follow-up, and the compat-removal pass are all shipped and frozen. `forum_targeting` plus `focusThreadTurn` now carry runtime focus/write truth, `targetThreadTurn` / `targetThreadTurnId` are removed from active runtime code, and repo-level lint/typecheck/launch gates plus targeted browser/E2E coverage are green.
+- Next step: keep `T-945` frozen; any future reinterpretation of focus/writeback semantics must route through `T-946` before reopening this package.
 
 ## Goal
 

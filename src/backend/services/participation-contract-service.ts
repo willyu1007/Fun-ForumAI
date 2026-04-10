@@ -18,7 +18,6 @@ import {
 } from '../../shared/forum-orchestration.js'
 
 const PARTICIPATION_OVERRIDE_METADATA_KEY = 'participation_contract_override_v1'
-const LEGACY_PARTICIPATION_OVERRIDE_METADATA_KEY = 'participation_contract'
 
 export interface ParticipationContractServiceDeps {
   communityRepo: CommunityRepository
@@ -59,28 +58,24 @@ export class ParticipationContractService {
     const communityDefault = await this.getCommunityContract(post.community_id)
     const storedOverride = readStoredPostOverride(post.moderation_metadata)
 
-    if (storedOverride.should_rewrite && storedOverride.override) {
-      await this.persistOverrideMetadata(post.id, post.moderation_metadata, storedOverride.override)
-    }
-
     const effective = this.buildContract({
       scope_type: 'POST',
       scope_id: postId,
-      source: storedOverride.override ? 'post_override' : communityDefault.source,
+      source: storedOverride ? 'post_override' : communityDefault.source,
       public_participation_mode:
-        storedOverride.override?.public_participation_mode ?? communityDefault.public_participation_mode,
+        storedOverride?.public_participation_mode ?? communityDefault.public_participation_mode,
       audience_signal_ingestion:
-        storedOverride.override?.audience_signal_ingestion ?? communityDefault.audience_signal_ingestion,
+        storedOverride?.audience_signal_ingestion ?? communityDefault.audience_signal_ingestion,
       agent_human_response_mode:
-        storedOverride.override?.agent_human_response_mode ?? communityDefault.agent_human_response_mode,
-      stage_open_reply_override: storedOverride.override?.stage_open_reply,
-      audience_lane_override: storedOverride.override?.audience_lane,
+        storedOverride?.agent_human_response_mode ?? communityDefault.agent_human_response_mode,
+      stage_open_reply_override: storedOverride?.stage_open_reply,
+      audience_lane_override: storedOverride?.audience_lane,
     })
 
     return {
       ...effective,
       community_default: communityDefault,
-      post_override: storedOverride.override,
+      post_override: storedOverride,
     }
   }
 
@@ -224,25 +219,12 @@ export class ParticipationContractService {
   }
 }
 
-function readStoredPostOverride(metadata: Record<string, unknown> | null): {
-  override: ParticipationContractOverride | null
-  should_rewrite: boolean
-} {
+function readStoredPostOverride(metadata: Record<string, unknown> | null): ParticipationContractOverride | null {
   if (!isRecord(metadata)) {
-    return { override: null, should_rewrite: false }
+    return null
   }
 
-  const nextOverride = normalizeOverride(metadata[PARTICIPATION_OVERRIDE_METADATA_KEY])
-  if (nextOverride) {
-    return { override: nextOverride, should_rewrite: false }
-  }
-
-  const legacyOverride = normalizeOverride(metadata[LEGACY_PARTICIPATION_OVERRIDE_METADATA_KEY])
-  if (legacyOverride) {
-    return { override: legacyOverride, should_rewrite: true }
-  }
-
-  return { override: null, should_rewrite: false }
+  return normalizeOverride(metadata[PARTICIPATION_OVERRIDE_METADATA_KEY])
 }
 
 function normalizeOverride(value: unknown): ParticipationContractOverride | null {
@@ -293,7 +275,6 @@ function writeOverrideMetadata(
 ): Record<string, unknown> {
   const base = isRecord(metadata) ? { ...metadata } : {}
   base[PARTICIPATION_OVERRIDE_METADATA_KEY] = serializeOverride(override)
-  delete base[LEGACY_PARTICIPATION_OVERRIDE_METADATA_KEY]
   return base
 }
 
@@ -304,7 +285,6 @@ function clearOverrideMetadata(metadata: Record<string, unknown> | null): Record
 
   const base = { ...metadata }
   delete base[PARTICIPATION_OVERRIDE_METADATA_KEY]
-  delete base[LEGACY_PARTICIPATION_OVERRIDE_METADATA_KEY]
   return Object.keys(base).length > 0 ? base : null
 }
 

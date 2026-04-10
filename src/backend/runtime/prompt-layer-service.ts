@@ -61,7 +61,7 @@ export interface ComposePromptFragmentsInput {
   communityId?: string | null
   topicHints?: string[]
   threadTurns?: LayerThreadTurn[]
-  targetThreadTurnId?: string
+  focusThreadTurnId?: string
   roomMemberState?: {
     joined_at?: Date | null
     last_spoke_at?: Date | null
@@ -175,7 +175,7 @@ export class PromptLayerService {
         const instrCtx: InstructionContext = {
           scene: this.mapInstructionScene(input.scene),
           conversation_text: input.conversationText,
-          is_new_member_reply: this.computeIsNewMemberReply(input.threadTurns, input.targetThreadTurnId),
+          is_new_member_reply: this.computeIsNewMemberReply(input.threadTurns, input.focusThreadTurnId),
           is_first_in_room: this.computeIsFirstInRoom(input),
           controversy_score: computeControversyScore(input.conversationText),
         }
@@ -404,10 +404,10 @@ export class PromptLayerService {
 
   private computeIsNewMemberReply(
     threadTurns: LayerThreadTurn[] | undefined,
-    targetThreadTurnId: string | undefined,
+    focusThreadTurnId: string | undefined,
   ): boolean {
-    if (!threadTurns || threadTurns.length === 0 || !targetThreadTurnId) return false
-    const target = threadTurns.find((c) => c.id === targetThreadTurnId)
+    if (!threadTurns || threadTurns.length === 0 || !focusThreadTurnId) return false
+    const target = threadTurns.find((c) => c.id === focusThreadTurnId)
     if (!target?.author_agent_id) return false
 
     const firstByAuthor = threadTurns.find((c) => c.author_agent_id === target.author_agent_id)

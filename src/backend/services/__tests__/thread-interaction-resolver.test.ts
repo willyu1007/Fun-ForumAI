@@ -105,7 +105,6 @@ describe('ThreadInteractionResolver', () => {
       preferred_action: 'FOLLOW_ROUTE',
       reason_code: 'THREAD_HANDOFF_PENDING',
     })
-    expect(lifecycle.can_receive_replies).toBe(true)
   })
 
   it('maps handoffed and closed threads into hard close or route-only states', () => {

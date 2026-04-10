@@ -72,17 +72,6 @@ export class ContextBuilder {
       }
     }
 
-    if ((event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded') && ctx.threadTurns?.length) {
-      const targetId = event.turn_id ?? event.thread_id
-      if (targetId) {
-        // Compat-only raw event target. Prompt/write truth is frozen later into
-        // focusThreadTurn + forum_targeting.
-        ctx.targetThreadTurn = ctx.threadTurns.find((entry) => entry.id === targetId)
-      } else {
-        ctx.targetThreadTurn = ctx.threadTurns[ctx.threadTurns.length - 1]
-      }
-    }
-
     if (
       !ctx.skip_reason
       && this.deps.forumSceneContinuityService
@@ -92,11 +81,12 @@ export class ContextBuilder {
         || event.event_type === 'ThreadTurnAdded'
       )
     ) {
-      const targetThreadAuthorAgentId = ctx.targetThreadTurn?.entry_kind === 'THREAD'
-        ? ctx.targetThreadTurn.author_agent_id ?? undefined
+      const eventTargetEntry = this.resolveEventTargetEntry(ctx)
+      const targetThreadAuthorAgentId = eventTargetEntry?.entry_kind === 'THREAD'
+        ? eventTargetEntry.author_agent_id ?? undefined
         : undefined
-      const targetTurnAuthorAgentId = ctx.targetThreadTurn?.entry_kind === 'TURN'
-        ? ctx.targetThreadTurn.author_agent_id ?? undefined
+      const targetTurnAuthorAgentId = eventTargetEntry?.entry_kind === 'TURN'
+        ? eventTargetEntry.author_agent_id ?? undefined
         : undefined
       const continuity = await this.deps.forumSceneContinuityService.resolve({
         event,
@@ -260,7 +250,7 @@ export class ContextBuilder {
         author_agent_id: entry.author_agent_id,
         body: entry.body,
       })),
-      targetThreadTurnId: promptFocusEntry?.id,
+      focusThreadTurnId: promptFocusEntry?.id,
     })
     ctx.persona = composed.persona
     ctx.blocks = composed.blocks
@@ -400,30 +390,32 @@ export class ContextBuilder {
       return
     }
 
-    // Gate 1 freeze: focusThreadTurn/forum_targeting carry prompt + write truth;
-    // targetThreadTurn remains an event-target compat bridge only.
+    const eventTargetEntry = this.resolveEventTargetEntry(ctx)
     const focusTurnId = ctx.perceived_context_slice?.focus_turn_id
-      ?? ctx.targetThreadTurn?.id
+      ?? eventTargetEntry?.id
       ?? null
-    ctx.focusThreadTurn = this.resolveThreadEntryById(ctx.threadTurns, focusTurnId) ?? ctx.targetThreadTurn
-    ctx.forum_targeting = this.buildForumTargetingContext(ctx)
+    ctx.focusThreadTurn = this.resolveThreadEntryById(ctx.threadTurns, focusTurnId) ?? eventTargetEntry
+    ctx.forum_targeting = this.buildForumTargetingContext(ctx, eventTargetEntry)
   }
 
-  private buildForumTargetingContext(ctx: ExecutionContext): ForumTargetingContext {
+  private buildForumTargetingContext(
+    ctx: ExecutionContext,
+    eventTargetEntry?: ExecutionContextThreadEntry,
+  ): ForumTargetingContext {
     const eventTargetEntryId = ctx.event.turn_id
       ?? ctx.event.thread_id
-      ?? ctx.targetThreadTurn?.id
+      ?? eventTargetEntry?.id
       ?? null
     const eventTargetThreadId = ctx.event.thread_id
-      ?? (ctx.targetThreadTurn?.entry_kind === 'THREAD'
-        ? ctx.targetThreadTurn.id
-        : ctx.targetThreadTurn?.thread_id ?? null)
+      ?? (eventTargetEntry?.entry_kind === 'THREAD'
+        ? eventTargetEntry.id
+        : eventTargetEntry?.thread_id ?? null)
     const focusTurnId = ctx.perceived_context_slice?.focus_turn_id
       ?? ctx.focusThreadTurn?.id
       ?? null
     const focusEntry = this.resolveThreadEntryById(ctx.threadTurns, focusTurnId)
       ?? ctx.focusThreadTurn
-      ?? ctx.targetThreadTurn
+      ?? eventTargetEntry
     const selectedAnchorTurnId = this.normalizeAnchorTurnId(
       ctx,
       ctx.perceived_context_slice?.selected_anchor_turn_id ?? null,
@@ -466,6 +458,16 @@ export class ContextBuilder {
     return threadTurns.find((entry) => entry.id === entryId)
   }
 
+  private resolveEventTargetEntry(ctx: ExecutionContext): ExecutionContextThreadEntry | undefined {
+    if (!isForumThreadEvent(ctx.event)) {
+      return undefined
+    }
+
+    const targetEntryId = ctx.event.turn_id ?? ctx.event.thread_id
+    return this.resolveThreadEntryById(ctx.threadTurns, targetEntryId)
+      ?? ctx.threadTurns?.at(-1)
+  }
+
   private normalizeAnchorTurnId(
     ctx: ExecutionContext,
     entryId: string | null | undefined,
@@ -488,7 +490,7 @@ export class ContextBuilder {
   }
 
   private getPromptFocusEntry(ctx: ExecutionContext): ExecutionContextThreadEntry | undefined {
-    return ctx.focusThreadTurn ?? ctx.targetThreadTurn
+    return ctx.focusThreadTurn
   }
 
   private resolveThreadSkipReason(

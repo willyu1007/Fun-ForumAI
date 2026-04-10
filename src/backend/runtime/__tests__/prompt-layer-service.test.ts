@@ -95,7 +95,7 @@ describe('PromptLayerService', () => {
         { id: 'c2', author_agent_id: 'old', body: '欢迎' },
         { id: 'c3', author_agent_id: 'newcomer', body: '谢谢' },
       ],
-      targetThreadTurnId: 'c1',
+      focusThreadTurnId: 'c1',
       roomMemberState: { last_spoke_at: null },
     })
 

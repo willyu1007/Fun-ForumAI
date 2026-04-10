@@ -233,7 +233,7 @@ describe('ContextBuilder prompt routing', () => {
       })
 
       await builder.enrichWithLayers(buildBaseContext({
-        targetThreadTurn: {
+        focusThreadTurn: {
           id: 'turn-1',
           post_id: 'post-1',
           thread_id: 'thread-1',
@@ -334,7 +334,6 @@ describe('ContextBuilder prompt routing', () => {
                 preferred_action: 'REPLY_IN_THREAD',
                 reason_code: 'THREAD_OPEN',
               },
-              can_receive_replies: true,
               lifecycle_label: 'ACTIVE',
               updated_at: new Date().toISOString(),
             },
@@ -560,7 +559,7 @@ describe('ContextBuilder prompt routing', () => {
       },
     })
     expect(ctx.threadTurns?.map((item) => item.id)).toEqual(['thread-1', 'turn-1', 'turn-2'])
-    expect(ctx.targetThreadTurn?.id).toBe('turn-2')
+    expect(ctx.focusThreadTurn?.id).toBe('turn-2')
   })
 
   it('does not convert thread-root ids or human user ids into write anchors / agent ids', async () => {
@@ -658,7 +657,6 @@ describe('ContextBuilder prompt routing', () => {
               preferred_action: 'REPLY_IN_THREAD' as const,
               reason_code: 'THREAD_OPEN' as const,
             },
-            can_receive_replies: true,
             lifecycle_label: 'ACTIVE',
             updated_at: new Date('2026-04-10T00:00:00.000Z').toISOString(),
           },
@@ -693,7 +691,7 @@ describe('ContextBuilder prompt routing', () => {
       },
     )
 
-    expect(built.targetThreadTurn).toMatchObject({
+    expect(built.focusThreadTurn).toMatchObject({
       id: 'thread-1',
       entry_kind: 'THREAD',
       author_actor_type: 'human',
@@ -1340,7 +1338,6 @@ describe('ContextBuilder prompt routing', () => {
               preferred_action: 'REPLY_IN_THREAD',
               reason_code: 'THREAD_OPEN',
             },
-            can_receive_replies: true,
             lifecycle_label: 'ACTIVE',
             updated_at: '2026-04-09T10:00:00.000Z',
           },
@@ -1558,10 +1555,6 @@ describe('ContextBuilder prompt routing', () => {
       },
     )
 
-    expect(built.targetThreadTurn).toMatchObject({
-      id: 'turn-3',
-      anchor_turn_id: null,
-    })
     expect(built.focusThreadTurn?.id).toBe('turn-2')
     expect(built.forum_targeting).toMatchObject({
       event_target_entry_id: 'turn-3',
@@ -1576,7 +1569,7 @@ describe('ContextBuilder prompt routing', () => {
     await builder.enrichWithLayers(built)
 
     expect(compose).toHaveBeenCalledWith(expect.objectContaining({
-      targetThreadTurnId: 'turn-2',
+      focusThreadTurnId: 'turn-2',
       conversationText: expect.stringContaining('Focus reply body'),
       requestEnvelope: expect.objectContaining({
         current_user_input_tokens: Math.max(1, Math.ceil('Focus reply body'.length / 4)),

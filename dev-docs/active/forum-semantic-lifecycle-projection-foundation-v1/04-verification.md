@@ -84,3 +84,16 @@
 - 2026-04-10: Gate 1 review verdict
   - PASS
   - `T-941` exits Phase 1 as the frozen lifecycle / writeability / route truth owner for downstream `T-947` and `T-942`.
+
+## 2026-04-10 Compat-removal revalidation
+
+- `rg -n "can_receive_replies\\b" src/backend src/frontend src/shared -g'*.ts' -g'*.tsx'`
+  - passed with zero matches in active source.
+- `pnpm exec vitest run src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx`
+  - passed
+  - confirms lifecycle/read/write/frontend consumers now assert only `writeability` semantics.
+- `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict`
+  - passed after removing `can_receive_replies` from `ThreadLifecycleSnapshot`.
+- Compat-removal verdict:
+  - PASS
+  - `ThreadLifecycleSnapshot.writeability` is now the only active replyability contract; `can_receive_replies` survives only in archived documentation history.

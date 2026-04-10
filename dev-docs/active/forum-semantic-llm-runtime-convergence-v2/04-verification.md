@@ -235,6 +235,19 @@
   - PASS
   - branch revive / triad separation / mismatch metric evidence remain sufficient for `T-947` and `T-942` to treat anchor semantics as frozen.
 
+## 2026-04-10 Compat-removal revalidation
+
+- `rg -n "targetThreadTurn|targetThreadTurnId" src/backend src/frontend src/shared -g'*.ts' -g'*.tsx'`
+  - passed with zero matches in active source.
+- `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+  - passed
+  - confirms context assembly, prompt-layer instruction signals, and executor audit metadata now all consume focus-target semantics only.
+- `pnpm exec tsc --noEmit`
+  - passed.
+- Compat-removal verdict:
+  - PASS
+  - `forum_targeting` plus `focusThreadTurn` remain the only runtime focus/write-target truth; no prompt/runtime compat alias remains live.
+
 ## Notes
 
 - 2026-04-09 the built-in desktop Chrome DevTools MCP transport remained closed (`Transport closed`), so browser verification used a standalone `chrome-devtools-mcp` session over stdio/newline JSON instead of the in-app bridge.

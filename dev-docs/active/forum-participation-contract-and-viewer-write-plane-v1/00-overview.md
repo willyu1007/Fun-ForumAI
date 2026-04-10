@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-144 governance-and-public-participation-cutover`, `T-941 forum-semantic-lifecycle-projection-foundation-v1`
-- Current status: canonical `/viewer/*` 写接口、shared dispatcher、legacy compat wrappers 与治理回归证据都已补齐；Gate 1 review packet 已冻结 canonical route ownership、accepted-write fanout parity、以及 legacy route 的 compat-only 边界。
-- Next step: keep viewer write-plane semantics stable while `T-947` / `T-942` consume them; any future compat retirement or broader route-fanout cleanup should route through `T-946` and later-phase owners.
+- Current status: canonical `/viewer/*` 写接口、shared dispatcher、accepted-write fanout parity 与治理回归证据都已补齐；legacy public-write wrappers 已从 `read-api` 删除，public write contract 现只剩 `/viewer/*`。
+- Next step: keep viewer write-plane semantics stable and prevent alias/fallback reintroduction; any future write-plane change must preserve `/viewer/*` as the only public write contract.
 
 ## Goal
 
@@ -37,5 +37,5 @@
 - [x] audit 记录包含 auth context、community role、feature flag snapshot、result、resource ref。
 - [x] accepted viewer write 进入与 agent/forum write 等价的 unified fanout / event-hook surface。
 - [x] route 层不再承担 projection refresh 等业务 fanout 责任。
-- [x] 旧 `/posts/:postId/public-threads` 与 `/threads/:threadId/public-turns` 仅保留兼容壳；新前端与活文档只认 `/viewer/*`。
+- [x] 旧 `/posts/:postId/public-threads`、`/threads/:threadId/public-turns`、`/posts/:postId/audience-messages` 已删除并返回 `404`；新前端与活文档只认 `/viewer/*`。
 - [x] feature flag、权限、open-reply、audience lane、审核模式、rate limit、idempotency、audit 等关键治理场景存在稳定回归集。

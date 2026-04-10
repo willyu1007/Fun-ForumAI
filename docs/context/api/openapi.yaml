@@ -1410,7 +1410,6 @@ components:
         - thread_state
         - reply_budget
         - writeability
-        - can_receive_replies
         - lifecycle_label
         - updated_at
       properties:
@@ -1432,8 +1431,6 @@ components:
           nullable: true
         writeability:
           $ref: '#/components/schemas/ThreadWriteabilitySnapshot'
-        can_receive_replies:
-          type: boolean
         lifecycle_label:
           type: string
         updated_at:

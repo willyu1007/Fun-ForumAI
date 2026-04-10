@@ -68,7 +68,6 @@ function buildThreadCapsule(): ThreadCapsule {
         preferred_action: 'REPLY_IN_THREAD',
         reason_code: 'THREAD_OPEN',
       },
-      can_receive_replies: true,
       lifecycle_label: 'ACTIVE',
       updated_at: new Date('2026-04-08T10:00:00.000Z').toISOString(),
     },

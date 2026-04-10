@@ -18,7 +18,6 @@ export class ThreadInteractionResolver {
     return {
       ...lifecycle,
       writeability,
-      can_receive_replies: writeability.reply_allowed,
     }
   }
 

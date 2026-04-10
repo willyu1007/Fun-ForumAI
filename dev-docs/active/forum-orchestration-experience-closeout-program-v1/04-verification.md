@@ -232,3 +232,45 @@
     - system-link closure remains covered by runtime targeting, fanout/write-plane, read-model/search projection, and telemetry/runtime tests.
     - top-level docs/context closure remains covered by active narrative grep, OpenAPI quality, and context artifact checks.
     - no new Phase 1 / Phase 2 semantic drift was introduced by the Phase 3 review landing.
+
+- 2026-04-10: Compat-removal batch revalidation
+  - `pnpm db:local:wait && pnpm db:migrate:deploy`
+    - passed; local Postgres schema prepared for metadata audit.
+  - `pnpm forum:audit:participation-contract-overrides`
+    - passed
+    - `rows_with_legacy_key=0`, `remaining_legacy_rows=0`
+  - `pnpm exec vitest run src/backend/runtime/__tests__/prompt-layer-service.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/participation-contract-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts`
+    - passed; 7 files, 88 tests.
+  - `pnpm exec tsc --noEmit`
+    - passed.
+  - `rg -n "can_receive_replies\\b|targetThreadTurn|targetThreadTurnId" src/backend src/frontend src/shared -g '*.ts' -g '*.tsx'`
+    - passed with zero matches.
+  - `rg -n "viewer/posts/.*/public-threads|viewer/threads/.*/public-turns|viewer/posts/.*/audience-messages|/posts/.*/public-threads|/threads/.*/public-turns|/posts/.*/audience-messages" src/frontend src/backend/routes src/backend/services -g '*.ts' -g '*.tsx'`
+    - passed; active matches are canonical `/viewer/*` plus explicit legacy-404 tests only.
+  - `pnpm k8s:staging:local -- --k8s-context kind-funforum --run-smoke`
+    - passed; runtime fingerprint matched workspace code fingerprint and canonical seed profile loaded.
+    - generic runtime smoke remained skipped because the local overlay exposes a single ready backend pod.
+  - live API replay through `kubectl --context kind-funforum -n funforum port-forward svc/backend 4100:80`
+    - `audience_sidecar` seed post `0550c340-afc2-42c5-98c7-e311b1599b28`
+      - `stage_open_reply.enabled=false`
+      - `audience_lane.enabled=true`
+      - canonical `POST /v1/viewer/posts/:postId/audience-messages` returned `201`
+      - follow-up `GET /v1/posts/:postId/audience-thread` showed the submitted body
+      - matching legacy `POST /v1/posts/:postId/audience-messages` returned `404`
+    - `open_reply` seed post `6b5e92a0-1f7c-4ae3-8ebb-9469d1ccc789`
+      - `stage_open_reply.enabled=true`
+      - `new_thread_enabled=true`
+      - `turn_reply_enabled=true`
+      - `audience_lane.enabled=false`
+      - `threads-summary` lifecycle payloads no longer expose `can_receive_replies`
+      - canonical `POST /v1/viewer/threads/e766aee9-86a3-4305-b7d0-0f3399908382/public-turns` returned `201`
+      - inserted turn preserved anchor `ca5c044a-ffb9-4911-af65-c410eff50266` on the follow-up thread-detail read
+      - matching legacy `POST /v1/threads/e766aee9-86a3-4305-b7d0-0f3399908382/public-turns` and `POST /v1/posts/:postId/public-threads` both returned `404`
+  - browser coverage note
+    - this batch did not rerun a live browser walkthrough
+    - retained browser baseline stays in `T-952`; this batch only changed backend compat/routing and shared contract surfaces, not production frontend behavior code
+  - compat-removal verdict:
+    - `T-941`: `can_receive_replies` removed from active lifecycle contract.
+    - `T-945`: `targetThreadTurn` / `targetThreadTurnId` removed from active runtime code.
+    - `T-943`: legacy public-write HTTP aliases removed; canonical public write contract is `/viewer/*` only.
+    - `T-946`: closeout timeline and anti-drift checklist updated from "compat retained" to "compat removed + grep guard".

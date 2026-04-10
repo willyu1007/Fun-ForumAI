@@ -154,7 +154,7 @@ describe('E2E: Community Config Control Plane', () => {
       expect(blockedAutoTriggerRes.body.data.audience_message_count).toBe(0)
 
       const audienceRes = await request(app)
-        .post(`/v1/posts/${postId}/audience-messages`)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ body: 'One audience message should now satisfy the aftershow threshold.' })
       expect(audienceRes.status).toBe(201)

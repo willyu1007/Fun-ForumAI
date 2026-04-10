@@ -154,3 +154,61 @@
 - 2026-04-10: Gate 1 review verdict
   - PASS
   - `/viewer/*` is frozen as the only canonical viewer-facing write contract, with legacy wrappers demoted to compat-only behavior.
+
+## 2026-04-10 Compat-removal revalidation
+
+- `pnpm db:local:wait && pnpm db:migrate:deploy`
+  - passed; local Postgres schema is rollout-ready for metadata audit.
+- `pnpm forum:audit:participation-contract-overrides`
+  - passed
+  - result: `rows_with_legacy_key=0`, `remaining_legacy_rows=0`
+- `pnpm exec vitest run src/backend/services/__tests__/participation-contract-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts`
+  - passed
+  - confirms:
+    - service no longer rewrites/consumes legacy metadata fallback
+    - canonical `/viewer/*` write routes remain green
+    - legacy public-write routes now return `404`
+    - control-plane/aftershow flow now uses canonical viewer audience writes
+- `rg -n "viewer/posts/.*/public-threads|viewer/threads/.*/public-turns|viewer/posts/.*/audience-messages|/posts/.*/public-threads|/threads/.*/public-turns|/posts/.*/audience-messages" src/frontend src/backend/routes src/backend/services -g'*.ts' -g'*.tsx'`
+  - passed
+  - active frontend matches remain only on `/viewer/*`; legacy path matches are limited to route-removal tests.
+- `pnpm k8s:staging:local -- --k8s-context kind-funforum --run-smoke`
+  - passed
+  - runtime fingerprint matched workspace code fingerprint
+  - canonical seed profile loaded
+  - generic runtime smoke was skipped by the script because the local overlay still exposes only one ready backend pod
+- `kubectl --context kind-funforum -n funforum port-forward svc/backend 4100:80`
+  - established a temporary live API tunnel for direct forum smoke checks
+- live API smoke against seeded posts
+  - `GET /v1/posts/0550c340-afc2-42c5-98c7-e311b1599b28/participation-contract`
+    - `stage_open_reply.enabled=false`
+    - `audience_lane.enabled=true`
+  - `GET /v1/posts/0550c340-afc2-42c5-98c7-e311b1599b28/discussion-forest`
+    - `branch_group_count=5`
+  - `POST /v1/viewer/posts/0550c340-afc2-42c5-98c7-e311b1599b28/audience-messages`
+    - returned `201`
+    - inserted `audience_message_id=7c5f9ae6-bee2-46ce-aa72-5589ca6db23a`
+    - follow-up `GET /v1/posts/:postId/audience-thread` showed the submitted body
+  - `GET /v1/posts/6b5e92a0-1f7c-4ae3-8ebb-9469d1ccc789/participation-contract`
+    - `stage_open_reply.enabled=true`
+    - `new_thread_enabled=true`
+    - `turn_reply_enabled=true`
+    - `audience_lane.enabled=false`
+  - `GET /v1/posts/6b5e92a0-1f7c-4ae3-8ebb-9469d1ccc789/threads-summary`
+    - thread lifecycle payloads no longer expose `can_receive_replies`
+  - `POST /v1/viewer/threads/e766aee9-86a3-4305-b7d0-0f3399908382/public-turns`
+    - returned `201`
+    - inserted `turn_id=cmnsxz3h00hm60mlpqxvmwhd0`
+    - request used `focused_turn_id=actual_anchor_turn_id=ca5c044a-ffb9-4911-af65-c410eff50266`
+    - follow-up `GET /v1/threads/:threadId` showed the submitted body with the same `anchor_turn_id`
+  - removed legacy routes on the live backend:
+    - `POST /v1/posts/6b5e92a0-1f7c-4ae3-8ebb-9469d1ccc789/public-threads` -> `404`
+    - `POST /v1/threads/e766aee9-86a3-4305-b7d0-0f3399908382/public-turns` -> `404`
+    - `POST /v1/posts/0550c340-afc2-42c5-98c7-e311b1599b28/audience-messages` -> `404`
+- browser replay note
+  - no live browser walkthrough was rerun in this compat-removal batch
+  - this batch changed backend compat/routing surfaces and shared contracts, but did not change production frontend behavior code beyond fixture/type alignment
+  - retained visual/browser baseline remains the earlier `T-952` packet
+- Compat-removal verdict:
+  - PASS
+  - `T-943` now owns a single public write contract (`/viewer/*`) plus explicit audit/backfill tooling for retired metadata keys; no legacy public-write HTTP alias remains live.

@@ -357,16 +357,6 @@ describe('AgentExecutor', () => {
         author_agent_id: 'agent-2',
         author_name: 'Other Bot',
       },
-      targetThreadTurn: {
-        id: 'turn-3',
-        post_id: 'post-1',
-        thread_id: 'thread-1',
-        entry_kind: 'TURN' as const,
-        anchor_turn_id: 'turn-2',
-        body: '这是事件刚命中的新回复。',
-        author_agent_id: 'agent-2',
-        author_name: 'Event Bot',
-      },
       focusThreadTurn: {
         id: 'turn-2',
         post_id: 'post-1',

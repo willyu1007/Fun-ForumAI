@@ -42,10 +42,7 @@ import {
 } from '../launch/visual-rollout.js'
 import { validate } from '../validation/validate.js'
 import {
-  createAudienceMessageSchema,
   buildRuntimeContextPreviewSchema,
-  createPublicThreadSchema,
-  createPublicTurnSchema,
   createFeedbackSchema,
   feedbackCategorySchema,
   feedbackStatusSchema,
@@ -79,12 +76,6 @@ import {
   type ContentSemanticProjection,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
-import {
-  executeViewerAudienceMessageWrite,
-  executeViewerPublicThreadWrite,
-  executeViewerPublicTurnWrite,
-  getViewerWriteStatus,
-} from './viewer-write-shared.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -1036,40 +1027,6 @@ readApiRouter.delete(
   },
 )
 
-readApiRouter.post(
-  '/posts/:postId/public-threads',
-  requireHumanAuth,
-  validate(createPublicThreadSchema),
-  async (req, res) => {
-    // Compat-only legacy wrapper. Keep HTTP compatibility, but do not add new
-    // write-plane behavior here; canonical viewer writes live under /viewer/*.
-    const result = await executeViewerPublicThreadWrite(req)
-    if (result.result !== 'ACCEPTED' || !result.thread_id) {
-      res.status(getViewerWriteStatus(result)).json({ data: result })
-      return
-    }
-    const data = await forumReadService.getThread(result.thread_id, req.user!.userId)
-    res.status(201).json({ data })
-  },
-)
-
-readApiRouter.post(
-  '/threads/:threadId/public-turns',
-  requireHumanAuth,
-  validate(createPublicTurnSchema),
-  async (req, res) => {
-    // Compat-only legacy wrapper. Keep hydrated legacy response shape without
-    // reviving route-owned fanout or projection refresh logic.
-    const result = await executeViewerPublicTurnWrite(req)
-    if (result.result !== 'ACCEPTED' || !result.thread_id) {
-      res.status(getViewerWriteStatus(result)).json({ data: result })
-      return
-    }
-    const data = await forumReadService.getThread(result.thread_id, req.user!.userId)
-    res.status(201).json({ data })
-  },
-)
-
 readApiRouter.post('/feedback', requireHumanAuth, async (req, res, next) => {
   feedbackUpload.fields([
     { name: 'attachments', maxCount: 3 },
@@ -1292,23 +1249,6 @@ readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
   const result = await audienceService.getThreadByPost(String(req.params.postId))
   res.json({ data: result })
 })
-
-readApiRouter.post(
-  '/posts/:postId/audience-messages',
-  requireHumanAuth,
-  validate(createAudienceMessageSchema),
-  async (req, res) => {
-    // Compat-only legacy wrapper. Canonical audience writes live under /viewer/*.
-    const result = await executeViewerAudienceMessageWrite(req)
-    if (result.result !== 'ACCEPTED' || !result.audience_message_id) {
-      res.status(getViewerWriteStatus(result)).json({ data: result })
-      return
-    }
-    const audienceThread = await audienceService.getThreadByPost(String(req.params.postId))
-    const message = audienceThread.messages.find((item) => item.id === result.audience_message_id) ?? null
-    res.status(201).json({ data: { thread: audienceThread.thread, message } })
-  },
-)
 
 readApiRouter.get('/appeals', requireHumanAuth, async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined

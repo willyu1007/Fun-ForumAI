@@ -4,8 +4,8 @@
 
 - State: done
 - Depends on: `T-915 search-correctness-convergence-and-discovery-hardening-v1`, `T-941 forum-semantic-lifecycle-projection-foundation-v1`, `T-943 forum-participation-contract-and-viewer-write-plane-v1`, `T-945 forum-semantic-llm-runtime-convergence-v2`, `/Users/yurui/Downloads/forum_code_alignment_review_report.md`, `/Users/yurui/Downloads/forum_remediation_task_backlog.md`
-- Current status: program closeout is complete. Integrated acceptance index, compat/deprecation timeline, and anti-drift checklist are recorded, and Gate 4 evidence is archived in the package.
-- Next step: downstream work should use the closeout checklist as the guardrail for any future forum/runtime/search/doc changes.
+- Current status: program closeout is complete, and the later compat-removal reopen is now also landed and revalidated. Integrated acceptance index, updated compat-removal timeline, and anti-drift checklist are recorded in the package.
+- Next step: downstream work should use the closeout checklist plus the compat-removal grep guards as the guardrail for any future forum/runtime/search/doc changes.
 
 ## Goal
 
@@ -30,7 +30,7 @@
 - Phase 3 固定包含 `T-948 + T-915 consumer closeout + T-949` 的热路径与文档收口。
 - Phase 4 由 `T-946` 负责集成验收、兼容退场与反漂移治理收口。
 - 不新增 public API version。
-- `/viewer/*` 保持 canonical viewer-facing public write contract；legacy public write routes 只保留兼容壳。
+- `/viewer/*` 保持 canonical viewer-facing public write contract；legacy public write routes 已退场并在旧路径上返回 `404`。
 - `selected_anchor_turn_id`、`actual_anchor_turn_id`、`quoted_excerpt`、`source_context` 继续作为唯一公开语义主链，不再发明并行字段。
 - `T-941` 继续作为 shared contract / projection 语义护栏；`T-942` 只承接小幅前端适配与手动 UX 验收。
 

@@ -155,9 +155,6 @@ export interface ThreadLifecycleCoreSnapshot extends VersionedSchema {
 
 export interface ThreadLifecycleSnapshot extends ThreadLifecycleCoreSnapshot {
   writeability: ThreadWriteabilitySnapshot
-  // Derived compat bridge only. New mainline consumers must read
-  // lifecycle.writeability.reply_allowed instead of reviving a second truth.
-  can_receive_replies: boolean
 }
 
 export const TURN_REASON_BADGE_IDS = [

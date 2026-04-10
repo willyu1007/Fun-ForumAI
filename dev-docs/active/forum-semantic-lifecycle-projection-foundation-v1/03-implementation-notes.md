@@ -40,3 +40,8 @@
     | `agent-perception-service` | `threadCapsule.lifecycle.writeability` | allowed actions 跟随上游 lifecycle truth |
     | `DiscussionForest` / `ThreadList` / `PostDetailPage` | `lifecycle.writeability` + `active_route.cta` | route-only 与 soft-close 的 viewer affordance 已统一 |
     | downstream packs `T-945` / `T-943` / `T-942` | frozen lifecycle note only | 发现歧义时必须先回写 `T-946` adjudication |
+- 2026-04-10 Compat-removal landing
+  - `ThreadLifecycleSnapshot` 已从 shared contract 中删除 `can_receive_replies`。
+  - `ThreadInteractionResolver` 现在只返回 `writeability` 真相，不再派生并携带 legacy bool。
+  - `forum-write-service` 的 `THREAD_ROUTE_UPDATED` payload 已删除 `can_receive_replies` excerpt，只保留 lifecycle/writeability。
+  - OpenAPI 与前端/后端测试夹具同步改为只断言 `writeability.reply_allowed`、`preferred_action`、`reason_code`。

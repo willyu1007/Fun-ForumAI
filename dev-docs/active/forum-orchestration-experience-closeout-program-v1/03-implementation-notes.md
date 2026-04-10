@@ -208,23 +208,25 @@
 ### Compat / Deprecation Timeline
 
 - `can_receive_replies`
-  - Current status: derived compat bridge only.
+  - Current status: removed from active contract, event payloads, and main source.
   - Owner: `T-941`.
-  - Allowed locations: shared lifecycle contract, lifecycle resolver derivation, compat event/read excerpts, tests.
-  - New behavior rule: no new runtime/write/frontend consumer may key mainline behavior off this field.
-  - Exit condition: remove only after all external/read clients have migrated to `ThreadLifecycleSnapshot.writeability`.
-- `targetThreadTurn`
-  - Current status: event-target / prompt-layer compat bridge only.
+  - Guardrail: `rg -n "can_receive_replies\\b" src/backend src/frontend src/shared -g'*.ts' -g'*.tsx'` must stay zero.
+- `targetThreadTurn` / `targetThreadTurnId`
+  - Current status: removed from active runtime code.
   - Owner: `T-945`.
-  - Allowed locations: runtime event-target assembly, prompt compat input, tests.
-  - New behavior rule: final write anchor and planner decisions must use `forum_targeting` / resolved focus, not this compat field.
-  - Exit condition: remove only after prompt/runtime consumers no longer need raw event-target compatibility.
+  - Canonical replacement: `focusThreadTurn`, `focusThreadTurnId`, and `forum_targeting`.
+  - Guardrail: `rg -n "targetThreadTurn|targetThreadTurnId" src/backend src/frontend src/shared -g'*.ts' -g'*.tsx'` must stay zero.
 - Legacy public write routes
-  - Current status: backend compat wrappers/tests only.
+  - Current status: removed from backend routing; legacy paths now return `404`.
   - Owner: `T-943`.
   - Canonical replacement: `/viewer/posts/:postId/public-threads`, `/viewer/threads/:threadId/public-turns`, `/viewer/posts/:postId/audience-messages`.
-  - New behavior rule: no frontend or active doc may introduce new usage of non-viewer public write routes.
-  - Exit condition: deprecate after external compatibility window and route usage audit.
+  - Guardrail: frontend and active docs may only bind `/viewer/*`; no alias/redirect/soft-forward may be reintroduced.
+- Legacy `participation_contract` metadata key
+  - Current status: removed from active service reads.
+  - Owner: `T-943`.
+  - Canonical replacement: `participation_contract_override_v1`.
+  - Tooling: `pnpm forum:audit:participation-contract-overrides`, `pnpm forum:backfill:participation-contract-overrides`.
+  - Guardrail: active service code must not read/write the legacy key; data cleanup happens only through explicit audit/backfill tooling.
 - `/votes/human` route-level projection refresh
   - Current status: closed; route-level refresh removed.
   - Owner: `T-948`.
@@ -242,9 +244,10 @@
 ### Anti-Drift Checklist
 
 - Frozen semantics:
-  - Does any new behavior treat `can_receive_replies` as more authoritative than `ThreadLifecycleSnapshot.writeability`?
-  - Does any new runtime/write path treat `targetThreadTurn` as final write target truth instead of compat event target?
-  - Does any frontend write hook bind to legacy public write routes instead of canonical `/viewer/*`?
+  - Did any main-source code reintroduce `can_receive_replies` instead of `ThreadLifecycleSnapshot.writeability`?
+  - Did any main-source runtime/write path reintroduce `targetThreadTurn*` instead of `focusThreadTurn*` / `forum_targeting`?
+  - Did any frontend write hook or active doc reintroduce legacy public write routes instead of canonical `/viewer/*`?
+  - Did any active service path reintroduce reads of legacy `participation_contract` metadata instead of `participation_contract_override_v1`?
 - Broker / recall:
   - Does broker targeting consume forest/local branch evidence before falling back to latest-turn heuristics?
   - Are recall pair windows thread-scoped?

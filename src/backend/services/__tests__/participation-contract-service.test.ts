@@ -161,7 +161,6 @@ describe('ParticipationContractService', () => {
         },
       },
     })
-    expect(stored?.moderation_metadata?.participation_contract).toBeUndefined()
   })
 
   it('clears post overrides for the post owner', async () => {
@@ -212,7 +211,7 @@ describe('ParticipationContractService', () => {
     expect(stored?.moderation_metadata?.participation_contract_override_v1).toBeUndefined()
   })
 
-  it('reads legacy post overrides and rewrites them onto the new metadata key', async () => {
+  it('ignores legacy post override metadata after compat fallback removal', async () => {
     const owner = ctx.agentRepo.create({
       owner_id: 'owner-3',
       display_name: 'Owner Agent',
@@ -240,23 +239,18 @@ describe('ParticipationContractService', () => {
 
     const effective = await ctx.service.getPostContract(post.id)
 
-    expect(effective.post_override).toMatchObject({
-      public_participation_mode: 'audience_sidecar',
-      audience_lane: {
-        posting_enabled: true,
-      },
-    })
+    expect(effective.source).toBe('derived_default')
+    expect(effective.post_override).toBeNull()
 
     const stored = await ctx.postRepo.findById(post.id)
     expect(stored?.moderation_metadata).toMatchObject({
-      participation_contract_override_v1: {
+      participation_contract: {
         public_participation_mode: 'audience_sidecar',
         audience_lane: {
           posting_enabled: true,
         },
       },
     })
-    expect(stored?.moderation_metadata?.participation_contract).toBeUndefined()
   })
 
   it('allows admins to manage overrides but rejects unrelated viewers', async () => {

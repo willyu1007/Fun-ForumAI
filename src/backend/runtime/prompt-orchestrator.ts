@@ -974,7 +974,7 @@ export class PromptOrchestrator {
       `topics:${(input.topicHints ?? []).join('|')}`,
       `sources:${JSON.stringify(input.currentContextSources ?? [])}`,
       `request:${JSON.stringify(input.requestEnvelope ?? {})}`,
-      `target:${input.targetThreadTurnId ?? ''}`,
+      `focus:${input.focusThreadTurnId ?? ''}`,
       `room_joined:${input.roomMemberState?.joined_at?.toISOString?.() ?? ''}`,
       `room_spoke:${input.roomMemberState?.last_spoke_at?.toISOString?.() ?? ''}`,
       `rule:${input.sceneRule ?? ''}`,

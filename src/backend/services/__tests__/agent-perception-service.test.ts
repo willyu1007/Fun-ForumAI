@@ -104,7 +104,6 @@ const threadCapsule: ThreadCapsule = {
       preferred_action: 'REPLY_IN_THREAD',
       reason_code: 'THREAD_OPEN',
     },
-    can_receive_replies: true,
     lifecycle_label: 'ACTIVE',
     updated_at: new Date().toISOString(),
   },

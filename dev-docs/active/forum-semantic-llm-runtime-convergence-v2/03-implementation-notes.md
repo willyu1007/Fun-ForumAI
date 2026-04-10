@@ -158,6 +158,11 @@
   - Compat-only guardrail:
     - `targetThreadTurn` remains an event-target bridge for continuity / prompt-layer compatibility.
     - forum media planning now reads `focusThreadTurn` only, so `targetThreadTurn` no longer participates in planner-side write-target inference.
+- 2026-04-10 Compat-removal landing
+  - `ExecutionContext` 已删除 `targetThreadTurn`。
+  - `ContextBuilder` 不再先写 `targetThreadTurn` 再冻结；现在直接解析 event target，并冻结到 `focusThreadTurn` / `forum_targeting`。
+  - `PromptLayerService` 输入从 `targetThreadTurnId` 改为 `focusThreadTurnId`，`PromptOrchestrator` cache key 同步切到 focus 语义。
+  - continuity、prompt-routing、agent-executor 相关测试全部迁移到 focus-target 语义；runtime 主源码树已无 `targetThreadTurn*` 命中。
 
 ## 2026-04-10 Strict Closure Extension
 

@@ -68,3 +68,19 @@
   - Compat note:
     - legacy wrappers remain hydration bridges only.
     - `/votes/human` route-level `refreshVoteTarget(...)` is recorded in `T-946` as a Phase 1 adjacent cross-pack issue and is not part of the viewer write-plane parity claim.
+- 2026-04-10 Compat-removal landing
+  - `T-946` compat-removal adjudication reopen 已记录；本次落地不改 frozen semantics，只移除已过审的 compat 面。
+  - `read-api.ts` 已彻底删除 legacy public-write wrappers：
+    - `/v1/posts/:postId/public-threads`
+    - `/v1/threads/:threadId/public-turns`
+    - `/v1/posts/:postId/audience-messages`
+  - canonical `/viewer/*` route ownership 保持不变；frontend hooks 与 active docs 继续只绑定 `/viewer/*`，legacy 路径不保留 301/302/软转发。
+  - `ParticipationContractService` 已删除对 legacy metadata key `participation_contract` 的读时 fallback；active service 现在只认 `participation_contract_override_v1`。
+  - 新增 backfill tooling：
+    - `pnpm forum:audit:participation-contract-overrides`
+    - `pnpm forum:backfill:participation-contract-overrides`
+  - 本地 audit 在迁移后的 local Postgres 上返回零遗留 row，因此 fallback 删除不再被数据面阻塞。
+  - local-kind live API revalidation 额外确认：
+    - seeded `audience_sidecar` post 继续只暴露 audience lane，canonical audience write 返回 `201` 且写后可在 `audience-thread` 读取到新消息。
+    - seeded `open_reply` post 继续暴露 stage open reply；canonical `/viewer/threads/:threadId/public-turns` 已在 `reply_allowed=true` 的 soft-close / follow-route thread 上成功写入并保留 anchor turn 语义。
+    - 三条 legacy public-write routes 在 live backend 上都返回 `404`，不再存在 compat HTTP alias。
