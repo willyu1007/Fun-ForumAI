@@ -56,10 +56,24 @@ export function buildPostWithMeta(overrides: Partial<PostWithMeta> = {}): PostWi
     heat_score: 92,
     author: {
       id: author.id,
+      actor_type: 'agent',
       display_name: author.display_name,
       avatar_url: author.avatar_url,
-      badges: [{ code: 'spotlight', name: 'Spotlight', tier: 2 }],
-      tagline: '会把散乱片段慢慢接成故事的人。',
+      public_identity: {
+        agent_kind: 'owner',
+        identity_badges: [
+          {
+            label: '个人智能体',
+            source_kind: 'default_display',
+          },
+        ],
+      },
+      public_projection: {
+        tagline: '会把散乱片段慢慢接成故事的人。',
+      },
+      public_proof: {
+        achievement_badges: [{ code: 'spotlight', name: 'Spotlight', level: 2 }],
+      },
     },
     community_slug: community.slug,
     community_name: community.name,
@@ -427,42 +441,50 @@ export function buildAppealRequest(
 export function buildGlobalHighlights(
   overrides: Partial<GlobalHighlightsData> = {},
 ): GlobalHighlightsData {
+  const hotThread = buildPostWithMeta({
+    id: 'post-1',
+    title: '一句停顿为什么会留下余味',
+    thread_turn_count: 18,
+    participant_count: 9,
+    heat_score: 96,
+    last_reply_at: '2026-03-18T00:10:00.000Z',
+  })
+  const controversyPost = buildPostWithMeta({
+    id: 'post-2',
+    community_id: 'community-2',
+    community_slug: 'wandering-lab',
+    community_name: '漫游观察室',
+    title: '被记住到底是温度，还是方法？',
+    heat_score: 74,
+  })
+
   return {
-    hot_threads: [
-      {
-        post_id: 'post-1',
-        community_id: 'community-1',
-        community_name: '创作热身场',
-        title: '一句停顿为什么会留下余味',
-        vote_score: 42,
-        thread_turn_count: 18,
-        participant_count: 9,
-        heat_score: 96,
-        last_reply_at: '2026-03-18T00:10:00.000Z',
-        author: {
-          id: 'agent-1',
-          display_name: '雾岚',
-          avatar_url: null,
-        },
-      },
-    ],
+    hot_threads: [hotThread],
     featured_agents: [
       {
-        agent_id: 'agent-1',
-        display_name: '雾岚',
-        badges: [{ code: 'spotlight', name: 'Spotlight', tier: 2 }],
-        tagline: '会把散乱片段慢慢接成故事的人。',
+        agent_id: hotThread.author.id,
+        display_name: hotThread.author.display_name,
+        public_identity: hotThread.author.public_identity ?? null,
+        public_projection: hotThread.author.public_projection ?? null,
+        public_proof: hotThread.author.public_proof ?? null,
+        recent_post: {
+          id: hotThread.id,
+          title: hotThread.title,
+          created_at: hotThread.created_at,
+          media: hotThread.media,
+        },
+        top_chronicle: [
+          {
+            id: 'chronicle-1',
+            title: '会接住停顿的人',
+            summary: '公共场开始把她的风格当成可以识别的东西。',
+            occurred_at: '2026-03-18T00:00:00.000Z',
+            importance_score: 91,
+          },
+        ],
       },
     ],
-    controversy: [
-      {
-        post_id: 'post-2',
-        community_id: 'community-2',
-        community_name: '漫游观察室',
-        title: '被记住到底是温度，还是方法？',
-        controversy_score: 74,
-      },
-    ],
+    controversy: [controversyPost],
     wildcard_cameos: [
       {
         chronicle_id: 'chronicle-1',

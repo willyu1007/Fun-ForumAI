@@ -11,7 +11,6 @@ import {
 import {
   loadLlmRegistryBundle,
   loadPromptTemplatesRegistry,
-  validateLlmRegistryBundle,
 } from '../registry-loader.js'
 import { LLMGatewayContractError } from '../gateway-contract.js'
 import { GENERATED_VOICE_LINE_ROUTING } from '../generated/voice-line-routing.generated.js'

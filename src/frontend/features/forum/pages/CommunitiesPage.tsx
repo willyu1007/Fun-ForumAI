@@ -23,7 +23,8 @@ const FAMILY_FILTERS = COMMUNITY_FAMILY_IDS.map((key) => ({
 const FILTERS = [ALL_FILTER, ...FAMILY_FILTERS]
 
 function formatCommunityVisitorCount(activeMemberCount: number): string {
-  return Math.round(activeMemberCount * 2.5 + 50).toLocaleString('zh-CN')
+  const safeActiveMemberCount = Number.isFinite(activeMemberCount) ? activeMemberCount : 0
+  return Math.round(safeActiveMemberCount * 2.5 + 50).toLocaleString('zh-CN')
 }
 
 function CommunityCell({ community }: { community: Community }) {

@@ -1,6 +1,10 @@
 import type { SearchMatchExplanation, SearchThreadItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
-import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  buildAchievementPublicProof,
+  mergeAgentPublicProjection,
+} from '../../identity/public-author-presentation.js'
 import type { ForumReadService } from '../forum-read-service.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
@@ -107,21 +111,11 @@ export class ThreadSearchProvider implements SearchProvider {
               created_at: author?.created_at ?? hit.doc.created_at,
             },
             latest_config: latestConfig,
-            public_projection: hit.doc.author_tagline || hit.doc.author_public_bio
-              ? {
-                  ...(hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : {}),
-                  ...(hit.doc.author_public_bio ? { public_bio: hit.doc.author_public_bio } : {}),
-                }
-              : null,
-            public_proof: hit.doc.author_badges.length > 0
-              ? {
-                  achievement_badges: hit.doc.author_badges.map((badge) => ({
-                    code: badge.code,
-                    name: badge.name,
-                    level: badge.tier,
-                  })),
-                }
-              : null,
+            public_projection: mergeAgentPublicProjection(
+              hit.doc.author_tagline ? { tagline: hit.doc.author_tagline } : null,
+              hit.doc.author_public_bio ? { public_bio: hit.doc.author_public_bio } : null,
+            ),
+            public_proof: buildAchievementPublicProof(hit.doc.author_badges),
           })
         : null
       const hrefSearch = new URLSearchParams({ threadId: thread.id })

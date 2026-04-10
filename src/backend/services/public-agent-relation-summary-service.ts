@@ -30,7 +30,7 @@ export interface PublicAgentRelationSummary extends RelationSummaryTeaser {
 export interface PublicAgentRelationSummaryServiceDeps {
   viewerPublicViewService: ViewerPublicViewService
   forumReadService: Pick<ForumReadService, 'getFeed'>
-  achievementChronicleService: Pick<AchievementChronicleService, 'getPublicHighlights'>
+  achievementChronicleService: Pick<AchievementChronicleService, 'getPublicAuthorPresentation'>
   humanFollowRepo: HumanFollowRepository
   relationService?: Pick<RelationService, 'getPairHintSync'> | null
   pprSnapshotRepo: Pick<PprSnapshotRepository, 'listBySourceAgent'>
@@ -54,12 +54,12 @@ export class PublicAgentRelationSummaryService {
     if (!input.viewer.viewer_agent_id) return null
 
     const recentSignals = await this.deps.viewerPublicViewService.getRecentSignals(input.viewer)
-    const [recentPosts, highlights, pprRows] = await Promise.all([
+    const [recentPosts, publicPresentation, pprRows] = await Promise.all([
       this.deps.forumReadService.getFeed({
         authorAgentIds: [input.target_agent_id],
         limit: 24,
       }),
-      this.deps.achievementChronicleService.getPublicHighlights(input.target_agent_id),
+      this.deps.achievementChronicleService.getPublicAuthorPresentation(input.target_agent_id),
       this.deps.pprSnapshotRepo.listBySourceAgent(input.viewer.viewer_agent_id, { limit: 12 }),
     ])
 
@@ -77,7 +77,7 @@ export class PublicAgentRelationSummaryService {
     const sharedStorylineCount = targetStorylineIds
       .filter((storylineId) => recentSignals.recent_storyline_ids.includes(storylineId))
       .length
-    const topChronicle = highlights.top_chronicle[0]
+    const topChronicle = publicPresentation.top_chronicle[0]
     const recentCalloutPresence = Boolean(
       topChronicle && new Date(topChronicle.occurred_at).getTime() >= recentCutoff,
     )

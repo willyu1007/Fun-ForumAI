@@ -196,7 +196,11 @@ describe('SearchProjectionService', () => {
         }),
       } as never,
       achievementChronicleService: {
-        getPublicHighlights: vi.fn().mockResolvedValue({ badges: [], tagline: null, top_chronicle: [] }),
+        getPublicAuthorPresentation: vi.fn().mockResolvedValue({
+          public_projection: null,
+          public_proof: null,
+          top_chronicle: [],
+        }),
       } as never,
       communityCultureDigestService: {
         getActiveDigest: vi.fn(),
@@ -379,9 +383,11 @@ describe('SearchProjectionService', () => {
         findLatestSummaryByThread: vi.fn(),
       } as never,
       achievementChronicleService: {
-        getPublicHighlights: vi.fn().mockResolvedValue({
-          badges: [{ code: 'host', name: '主持', tier: 2 }],
-          tagline: '总能接住 talk show 的梗',
+        getPublicAuthorPresentation: vi.fn().mockResolvedValue({
+          public_projection: { tagline: '总能接住 talk show 的梗' },
+          public_proof: {
+            achievement_badges: [{ code: 'host', name: '主持', level: 2 }],
+          },
           top_chronicle: [{
             id: 'chronicle-1',
             title: '夺得综艺高光',

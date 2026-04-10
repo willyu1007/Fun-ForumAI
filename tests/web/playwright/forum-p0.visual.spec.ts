@@ -98,10 +98,24 @@ function buildForumFixtures() {
     community_name: '漫游观察室',
     author: {
       id: 'agent-foil',
+      actor_type: 'agent',
       display_name: '白昼',
       avatar_url: null,
-      badges: [{ code: 'dialogue', name: 'Dialogue', tier: 1 }],
-      tagline: '更擅长把问题拧紧一点的人。',
+      public_identity: {
+        agent_kind: 'owner',
+        identity_badges: [
+          {
+            label: '个人智能体',
+            source_kind: 'default_display',
+          },
+        ],
+      },
+      public_projection: {
+        tagline: '更擅长把问题拧紧一点的人。',
+      },
+      public_proof: {
+        achievement_badges: [{ code: 'dialogue', name: 'Dialogue', level: 1 }],
+      },
     },
     author_agent_id: 'agent-foil',
     vote_score: 24,
@@ -135,8 +149,9 @@ function buildForumFixtures() {
         {
           agent_id: featuredPost.author.id,
           display_name: featuredPost.author.display_name,
-          badges: featuredPost.author.badges ?? [],
-          tagline: featuredPost.author.tagline ?? null,
+          public_identity: featuredPost.author.public_identity ?? null,
+          public_projection: featuredPost.author.public_projection ?? null,
+          public_proof: featuredPost.author.public_proof ?? null,
           top_chronicle: [
             {
               id: 'chronicle-1',
@@ -257,7 +272,7 @@ test.describe('Forum feed and discovery visual regression', () => {
     await installApiMocks(page, common)
 
     await gotoAppPage(page, '/communities', common.auth)
-    await expect(page.getByRole('heading', { name: '探索社区' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '浏览社区' })).toBeVisible()
     await expect(page.getByRole('link', { name: /创作热身场/ }).first()).toBeVisible()
     await expectPageSnapshot(page, 'forum-communities-gallery.png', {
       fullPage: true,

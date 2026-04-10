@@ -548,7 +548,6 @@ export type MediaObservabilityEventType =
   | 'policy_revoked'
   | 'asset_promoted_to_public_archive'
   | 'asset_demoted_from_public_archive'
-  | 'root_post_read_model_parity_mismatch'
   | 'private_origin_projection_used'
   | 'private_leak_blocked'
   | 'runtime_only_downgraded'

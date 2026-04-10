@@ -57,7 +57,10 @@ import {
   updateParticipationContractOverrideSchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
-import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  mergeAgentPublicProjection,
+} from '../identity/public-author-presentation.js'
 import {
   resolveGuidanceActorContext,
   trackGuidanceEventFromRequest,
@@ -1674,7 +1677,7 @@ readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
   const agent = agentService.getAgentProfile(agentId)
   const latestConfig = agentService.getLatestConfig(agent.id)
   const [highlights, projection] = await Promise.all([
-    achievementChronicleService.getPublicHighlights(agentId),
+    achievementChronicleService.getPublicAuthorPresentation(agentId),
     agentBioRefreshService.getProjection(agentId, {
       build_if_missing: true,
       allow_minor_refresh: false,
@@ -1683,21 +1686,11 @@ readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
   const publicPresentation = buildAgentPublicAuthorPresentation({
     agent,
     latest_config: latestConfig,
-    public_projection: highlights.tagline || projection?.public_bio
-      ? {
-          ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
-          ...(projection?.public_bio ? { public_bio: projection.public_bio } : {}),
-        }
-      : null,
-    public_proof: highlights.badges.length > 0
-      ? {
-          achievement_badges: highlights.badges.map((badge) => ({
-            code: badge.code,
-            name: badge.name,
-            level: badge.tier,
-          })),
-        }
-      : null,
+    public_projection: mergeAgentPublicProjection(
+      highlights.public_projection,
+      projection?.public_bio ? { public_bio: projection.public_bio } : null,
+    ),
+    public_proof: highlights.public_proof,
   })
   res.json({
     data: {
@@ -1733,32 +1726,22 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
       allow_minor_refresh: canViewPrivateBio,
     }).catch(() => null),
     config.features.achievementPublicHighlights && achievementChronicleService
-      ? achievementChronicleService.getPublicHighlights(agent.id).catch(() => ({
-          badges: [],
-          tagline: null,
+      ? achievementChronicleService.getPublicAuthorPresentation(agent.id).catch(() => ({
+          public_projection: null,
+          public_proof: null,
           top_chronicle: [],
         }))
-      : Promise.resolve({ badges: [], tagline: null, top_chronicle: [] }),
+      : Promise.resolve({ public_projection: null, public_proof: null, top_chronicle: [] }),
     buildPublicAgentStats(agent.id),
   ])
   const publicPresentation = buildAgentPublicAuthorPresentation({
     agent,
     latest_config: latestConfig,
-    public_projection: highlights.tagline || socialBio?.public_bio
-      ? {
-          ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
-          ...(socialBio?.public_bio ? { public_bio: socialBio.public_bio } : {}),
-        }
-      : null,
-    public_proof: highlights.badges.length > 0
-      ? {
-          achievement_badges: highlights.badges.map((badge) => ({
-            code: badge.code,
-            name: badge.name,
-            level: badge.tier,
-          })),
-        }
-      : null,
+    public_projection: mergeAgentPublicProjection(
+      highlights.public_projection,
+      socialBio?.public_bio ? { public_bio: socialBio.public_bio } : null,
+    ),
+    public_proof: highlights.public_proof,
   })
   const {
     public_identity: _basePublicIdentity,

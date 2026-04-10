@@ -193,13 +193,15 @@ function resolveAgentDisplayProjection(
   latestConfig: AgentConfig | null,
 ) {
   const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
+  const identityBadges = displayFields.public_identity?.identity_badges?.length
+    ? displayFields.public_identity.identity_badges.map((badge) => ({ ...badge }))
+    : resolvePublicIdentityBadges({
+        agentKind: displayFields.agent_kind,
+        createdAt: agent.created_at,
+      })
   const publicIdentity = {
     ...(displayFields.public_identity ?? { agent_kind: displayFields.agent_kind }),
-    identity_badges: resolvePublicIdentityBadges({
-      agentKind: displayFields.agent_kind,
-      explicitDisplayBadges: displayFields.display_badges,
-      createdAt: agent.created_at,
-    }),
+    ...(identityBadges.length > 0 ? { identity_badges: identityBadges } : {}),
   } satisfies AgentPublicIdentity
   return {
     displayFields,

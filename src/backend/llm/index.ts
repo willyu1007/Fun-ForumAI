@@ -13,5 +13,4 @@ export type {
   LlmTokenUsage,
   LlmProvider,
   LlmProviderConfig,
-  LlmClientConfig,
 } from './types.js'

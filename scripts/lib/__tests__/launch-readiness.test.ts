@@ -10,6 +10,7 @@ import {
   validateLaunchRuntimeOverlay,
   validatePackagingWireup,
   validatePublishWorkflowWireup,
+  validateStrictSemanticConvergence,
   validateWorkerAssets,
 } from '../launch-readiness.mjs'
 
@@ -38,5 +39,6 @@ describe('launch readiness repo checks', () => {
     expect(validatePackagingWireup()).toMatchObject({ ok: true })
     expect(validatePublishWorkflowWireup()).toMatchObject({ ok: true })
     expect(validateDevOnlyStartupHardening()).toMatchObject({ ok: true })
+    expect(validateStrictSemanticConvergence()).toMatchObject({ ok: true })
   })
 })

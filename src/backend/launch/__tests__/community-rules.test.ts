@@ -155,6 +155,32 @@ describe('launch community rules', () => {
     expect(() => getLaunchCommunityRules(filePath)).toThrowError(/preferred_visual_modes is no longer accepted/)
   })
 
+  it('rejects community preferred_cover_modes compat fields', () => {
+    const source = parseYaml(
+      readFileSync(
+        resolveLaunchContractPath({
+          bundle_slug: 'launch-communities-and-rules-pack',
+          file_name: 'launch_community_rules.v1.yaml',
+        }),
+        'utf8',
+      ),
+    ) as Record<string, unknown> & {
+      communities: Array<Record<string, unknown>>
+    }
+    const first = source.communities[0]!
+    const rulesJson = first.rules_json as Record<string, unknown>
+    rulesJson.visual_policy = {
+      ...(rulesJson.visual_policy as Record<string, unknown>),
+      preferred_cover_modes: ['single_cover'],
+    }
+
+    const dir = mkdtempSync(join(tmpdir(), 'launch-community-rules-'))
+    const filePath = join(dir, 'launch_community_rules.v1.yaml')
+    writeFileSync(filePath, stringifyYaml(source), 'utf8')
+
+    expect(() => getLaunchCommunityRules(filePath)).toThrowError(/preferred_cover_modes is no longer accepted/)
+  })
+
   it('rejects unknown authoring_shapes instead of silently filtering them', () => {
     const source = parseYaml(
       readFileSync(

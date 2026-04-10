@@ -51,7 +51,7 @@ describe('launch system roster', () => {
       identity_visibility_role_id: 'resident',
     })
     expect(displayFields.surface_access.private_chat_enabled).toBe(false)
-    expect(displayFields.display_badges).toHaveLength(1)
+    expect(displayFields.public_identity?.identity_badges).toHaveLength(1)
   })
 
   it('rejects duplicate display names and invalid badge labels', () => {

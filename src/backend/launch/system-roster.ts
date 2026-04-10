@@ -18,6 +18,7 @@ import {
   normalizeSystemDisplayBadgeLabel,
   type CanonicalSystemBadgeLabel,
 } from '../../shared/badges/catalog.js'
+import { resolvePublicIdentityBadges } from '../identity/public-display-badges.js'
 import { ValidationError } from '../lib/errors.js'
 import { resolveLaunchContractPath } from './contract-paths.js'
 
@@ -217,7 +218,6 @@ export interface AgentSystemDisplayFields {
   public_identity: AgentPublicIdentity | null
   system_identity: AgentSystemIdentitySummary | null
   surface_access: AgentSurfaceAccess
-  display_badges: string[]
 }
 
 export interface LaunchSeedIdentity {
@@ -536,7 +536,6 @@ export function buildAgentSystemDisplayFields(
         private_chat_enabled: true,
         follow_enabled: true,
       },
-      display_badges: [],
     }
   }
 
@@ -550,6 +549,10 @@ export function buildAgentSystemDisplayFields(
     agent_kind: 'system',
     public_identity: {
       agent_kind: 'system',
+      identity_badges: resolvePublicIdentityBadges({
+        agentKind: 'system',
+        explicitDisplayBadges: [displayBadge],
+      }),
       identity_role_id: systemIdentity.identity_role_id,
       identity_visibility_role_id: systemIdentity.identity_visibility_role_id,
       display_mode: roster.surface_display_policy.display_mode,
@@ -573,7 +576,6 @@ export function buildAgentSystemDisplayFields(
       private_chat_enabled: privateChatEnabled,
       follow_enabled: roster.surface_display_policy.follow_enabled,
     },
-    display_badges: [displayBadge],
   }
 }
 

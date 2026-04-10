@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
@@ -97,12 +97,84 @@ export const REQUIRED_HOME_SHELF_ORDER = [
   'all_communities',
 ];
 
+const STRICT_CONVERGENCE_FORBIDDEN_ALIAS_REGEX =
+  /(?<![A-Za-z0-9_])(headline_card|note_cover|evidence_strip|conflict_hero|weekly_picks|relationship_watch)(?![A-Za-z0-9_])/;
+const STRICT_CONVERGENCE_FLAT_FRONTEND_REGEX =
+  /(?<![A-Za-z0-9_])(community_family|storyline_state|content_kind|format_kind|editorial_shelf_id|note_template_id|cover_mode|card_mode)(?![A-Za-z0-9_])/;
+const STRICT_CONVERGENCE_BADGE_DEBUG_COMPAT_REGEX =
+  /\b(compat_outputs|compat_only|BadgeDebugCompat)\b/;
+const STRICT_CONVERGENCE_TARGETS = {
+  launchConfig: [
+    'config/launch/launch_community_rules.v1.yaml',
+    'config/launch/visual_surface_rollout.v1.yaml',
+    'config/launch/post_launch_optimization_and_tuning.v1.yaml',
+  ],
+  launchRuntime: [
+    'src/backend/launch/community-rules.ts',
+    'src/backend/launch/creator-note-templates.ts',
+    'src/backend/launch/programming-projection.ts',
+    'src/backend/launch/visual-rollout.ts',
+  ],
+  frontendRuntime: [
+    'src/frontend/features/forum',
+    'src/frontend/features/search',
+    'src/frontend/features/agents',
+    'src/frontend/shared/utils',
+  ],
+  backendRuntime: [
+    'src/backend',
+    'src/frontend',
+    'scripts',
+  ],
+};
+
 function readText(relativePath) {
   return readFileSync(resolve(ROOT, relativePath), 'utf8');
 }
 
 function readYaml(relativePath) {
   return parseYaml(readText(relativePath));
+}
+
+function listRelativeFiles(target) {
+  const pathname = resolve(ROOT, target);
+  if (!existsSync(pathname)) return [];
+  const stats = statSync(pathname);
+  if (stats.isFile()) return [target];
+  if (!stats.isDirectory()) return [];
+
+  return readdirSync(pathname, { withFileTypes: true })
+    .flatMap((entry) => listRelativeFiles(`${target}/${entry.name}`))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function scanForMatches(targets, matcher, options = {}) {
+  const {
+    exclude = () => false,
+    maxMatches = 8,
+  } = options;
+  const files = [...new Set(targets.flatMap((target) => listRelativeFiles(target)))]
+    .filter((relativePath) => !exclude(relativePath));
+  const matches = [];
+
+  for (const relativePath of files) {
+    const lines = readText(relativePath).split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (matcher(line, relativePath)) {
+        matches.push(`${relativePath}:${index + 1}`);
+        if (matches.length >= maxMatches) {
+          return matches;
+        }
+      }
+    }
+  }
+
+  return matches;
+}
+
+function formatMatchDetail(label, matches) {
+  return `${label}: ${matches.join(', ')}`;
 }
 
 function validateLaunchContractManifestShape(manifest) {
@@ -522,5 +594,96 @@ export function validateWorkerAssets() {
     detail: roleOk && probeOk && envOk
       ? 'worker templates, health probe, and env matrix are complete'
       : 'worker contract is missing runtime/env/probe guarantees',
+  };
+}
+
+export function validateStrictSemanticConvergence() {
+  const failures = [];
+
+  const legacyLaunchConfigKeys = scanForMatches(
+    STRICT_CONVERGENCE_TARGETS.launchConfig,
+    (line) => /\b(preferred_visual_modes|allowed_content_shapes)\b/.test(line),
+  );
+  if (legacyLaunchConfigKeys.length > 0) {
+    failures.push(formatMatchDetail('legacy launch config keys remain', legacyLaunchConfigKeys));
+  }
+
+  const communityVisualCoverModes = scanForMatches(
+    ['config/launch/launch_community_rules.v1.yaml'],
+    (line) => /\bpreferred_cover_modes\b/.test(line),
+  );
+  if (communityVisualCoverModes.length > 0) {
+    failures.push(formatMatchDetail('community visual policy still declares preferred_cover_modes', communityVisualCoverModes));
+  }
+
+  const legacyAliasMatches = scanForMatches(
+    [...STRICT_CONVERGENCE_TARGETS.launchConfig, ...STRICT_CONVERGENCE_TARGETS.launchRuntime],
+    (line) => STRICT_CONVERGENCE_FORBIDDEN_ALIAS_REGEX.test(line),
+  );
+  if (legacyAliasMatches.length > 0) {
+    failures.push(formatMatchDetail('legacy creator/card/template aliases remain in runtime/config', legacyAliasMatches));
+  }
+
+  const frontendFlatSemanticReads = scanForMatches(
+    STRICT_CONVERGENCE_TARGETS.frontendRuntime,
+    (line) => STRICT_CONVERGENCE_FLAT_FRONTEND_REGEX.test(line),
+    {
+      exclude: (relativePath) =>
+        relativePath.includes('/__tests__/')
+        || /\.test\.[^.]+$/.test(relativePath)
+        || relativePath.includes('/api/'),
+    },
+  );
+  if (frontendFlatSemanticReads.length > 0) {
+    failures.push(formatMatchDetail('frontend runtime still references flat semantic fields', frontendFlatSemanticReads));
+  }
+
+  const legacyAuthorBadgeReads = scanForMatches(
+    STRICT_CONVERGENCE_TARGETS.backendRuntime,
+    (line) => /\bdisplay_badges\b/.test(line),
+    {
+      exclude: (relativePath) => relativePath.includes('/__tests__/') || /\.test\.[^.]+$/.test(relativePath),
+    },
+  );
+  if (legacyAuthorBadgeReads.length > 0) {
+    failures.push(formatMatchDetail('legacy author badge fields remain in runtime', legacyAuthorBadgeReads));
+  }
+
+  const legacyHighlightsReaders = scanForMatches(
+    ['src/backend'],
+    (line) => /\bgetPublicHighlights\s*\(/.test(line),
+  );
+  if (legacyHighlightsReaders.length > 0) {
+    failures.push(formatMatchDetail('runtime still consumes legacy public highlights DTOs', legacyHighlightsReaders));
+  }
+
+  const legacyForumReadParity = scanForMatches(
+    ['src/backend/services/forum-read-service.ts'],
+    (line) => /\b(resolveLegacyPostMediaAltText|recordRootPostReadModelParity|root_post_read_model_parity_mismatch|legacy_media)\b/.test(line),
+  );
+  if (legacyForumReadParity.length > 0) {
+    failures.push(formatMatchDetail('forum read still carries legacy parity dual-read code', legacyForumReadParity));
+  }
+
+  const legacyBadgeDebugCompat = scanForMatches(
+    [
+      'src/shared/badges/debug-catalog.ts',
+      'src/backend/identity/badge-debug-catalog.ts',
+      'src/frontend/widgets/dev',
+    ],
+    (line) => STRICT_CONVERGENCE_BADGE_DEBUG_COMPAT_REGEX.test(line),
+    {
+      exclude: (relativePath) => relativePath.includes('/__tests__/') || /\.test\.[^.]+$/.test(relativePath),
+    },
+  );
+  if (legacyBadgeDebugCompat.length > 0) {
+    failures.push(formatMatchDetail('debug surfaces still teach compat badge outputs as primary vocabulary', legacyBadgeDebugCompat));
+  }
+
+  return {
+    ok: failures.length === 0,
+    detail: failures.length === 0
+      ? 'strict semantic convergence gate passed'
+      : failures.join(' | '),
   };
 }

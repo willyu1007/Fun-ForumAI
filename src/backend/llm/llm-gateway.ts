@@ -865,8 +865,8 @@ export class LLMGateway {
     const resolvedParams: ResolvedExecutionParams = {
       modality: request.modality,
       responseMode: request.responseMode,
-      temperature: policyDefaults.temperature,
-      maxTokens: policyDefaults.maxTokens,
+      temperature: executionPolicy.defaults.temperature,
+      maxTokens: executionPolicy.defaults.max_tokens,
       timeoutMs: policyDefaults.timeoutMs ?? provider.defaults.timeout_ms,
       maxRetries: policyDefaults.maxRetries ?? provider.defaults.max_retries,
       regionHint: undefined,
@@ -1466,9 +1466,9 @@ function collectPresentOverrideFields(
   if ('executionPolicyId' in overrides && overrides.executionPolicyId !== undefined) {
     fields.push('executionPolicyId')
   }
-  if (overrides.timeoutMs !== undefined) fields.push('timeoutMs')
-  if (overrides.maxRetries !== undefined) fields.push('maxRetries')
-  if (overrides.regionHint !== undefined) fields.push('regionHint')
+  if ('timeoutMs' in overrides && overrides.timeoutMs !== undefined) fields.push('timeoutMs')
+  if ('maxRetries' in overrides && overrides.maxRetries !== undefined) fields.push('maxRetries')
+  if ('regionHint' in overrides && overrides.regionHint !== undefined) fields.push('regionHint')
   return fields
 }
 

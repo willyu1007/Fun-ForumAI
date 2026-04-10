@@ -6,7 +6,10 @@ import { AppError, ValidationError } from '../lib/errors.js'
 import { ensureDevAuthUserPersisted } from '../lib/dev-auth-user.js'
 import { getUnexpectedErrorLogMessage, getUnexpectedErrorMessage } from '../lib/public-error-message.js'
 import { buildAgentReadPayload } from '../identity/agent-identity.js'
-import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  mergeAgentPublicProjection,
+} from '../identity/public-author-presentation.js'
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import type { SourceDimension } from '../../shared/owner-life-overview.js'
 import type { Agent } from '../repos/types.js'
@@ -650,10 +653,10 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
     await Promise.all(agents.map((agent) => container.agentService.getLatestConfigPersisted(agent.id)))
     const items = await Promise.all(agents.map(async (agent) => {
       const latestConfig = container.agentService.getLatestConfig(agent.id)
-      const [highlights, projection] = await Promise.all([
-        container.achievementChronicleService.getPublicHighlights(agent.id).catch(() => ({
-          badges: [],
-          tagline: null,
+      const [semanticPresentation, projection] = await Promise.all([
+        container.achievementChronicleService.getPublicAuthorPresentation(agent.id).catch(() => ({
+          public_projection: null,
+          public_proof: null,
           top_chronicle: [],
         })),
         container.agentBioRefreshService.getProjection(agent.id, {
@@ -664,21 +667,11 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
       const publicPresentation = buildAgentPublicAuthorPresentation({
         agent,
         latest_config: latestConfig,
-        public_projection: highlights.tagline || projection?.public_bio
-          ? {
-              ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
-              ...(projection?.public_bio ? { public_bio: projection.public_bio } : {}),
-            }
-          : null,
-        public_proof: highlights.badges.length > 0
-          ? {
-              achievement_badges: highlights.badges.map((badge) => ({
-                code: badge.code,
-                name: badge.name,
-                level: badge.tier,
-              })),
-            }
-          : null,
+        public_projection: mergeAgentPublicProjection(
+          semanticPresentation.public_projection,
+          projection?.public_bio ? { public_bio: projection.public_bio } : null,
+        ),
+        public_proof: semanticPresentation.public_proof,
       })
       return {
         ...buildAgentReadPayload(agent, latestConfig),

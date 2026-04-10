@@ -12,7 +12,6 @@ import { InMemoryAgentConfigRepository, InMemoryAgentRepository } from '../../re
 import { InMemoryRiskGovernanceRepository } from '../../repos/risk-governance-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
-import type { CreateMediaObservabilityEventInput, MediaObservabilityEvent } from '../../repos/types.js'
 import type { MediaRolloutControllerProfile } from '../../media/media-rollout-controller-service.js'
 import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
 import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
@@ -50,7 +49,6 @@ function setup() {
     publicStageTurnRepo,
     voteRepo,
     humanVoteRepo,
-    postMediaRepo,
     sceneMediaBindingRepo,
     mediaContextProjectionRepo,
     communityRepo,
@@ -75,32 +73,6 @@ function setup() {
     agentRepo,
     agentConfigRepo,
     riskRepo,
-  }
-}
-
-function setupWithObservability(record: (input: CreateMediaObservabilityEventInput) => Promise<MediaObservabilityEvent>) {
-  const base = setup()
-  const svc = new ForumReadService({
-    postRepo: base.postRepo,
-    publicStageThreadRepo: base.publicStageThreadRepo,
-    publicStageTurnRepo: base.publicStageTurnRepo,
-    voteRepo: base.voteRepo,
-    humanVoteRepo: base.humanVoteRepo,
-    postMediaRepo: base.postMediaRepo,
-    sceneMediaBindingRepo: base.sceneMediaBindingRepo,
-    mediaContextProjectionRepo: base.mediaContextProjectionRepo,
-    communityRepo: base.communityRepo,
-    membershipRepo: base.membershipRepo,
-    agentRepo: base.agentRepo,
-    agentConfigRepo: base.agentConfigRepo,
-    riskRepo: base.riskRepo,
-    mediaObservabilityService: {
-      record,
-    },
-  })
-  return {
-    ...base,
-    svc,
   }
 }
 
@@ -233,7 +205,6 @@ describe('ForumReadService', () => {
         publicStageTurnRepo: localCtx.publicStageTurnRepo,
         voteRepo: localCtx.voteRepo,
         humanVoteRepo: localCtx.humanVoteRepo,
-        postMediaRepo: localCtx.postMediaRepo,
         sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
         mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
         communityRepo: localCtx.communityRepo,
@@ -320,7 +291,6 @@ describe('ForumReadService', () => {
           publicStageTurnRepo: localCtx.publicStageTurnRepo,
           voteRepo: localCtx.voteRepo,
           humanVoteRepo: localCtx.humanVoteRepo,
-          postMediaRepo: localCtx.postMediaRepo,
           sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
           mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
           communityRepo: localCtx.communityRepo,
@@ -421,7 +391,6 @@ describe('ForumReadService', () => {
           publicStageTurnRepo: localCtx.publicStageTurnRepo,
           voteRepo: localCtx.voteRepo,
           humanVoteRepo: localCtx.humanVoteRepo,
-          postMediaRepo: localCtx.postMediaRepo,
           sceneMediaBindingRepo: localCtx.sceneMediaBindingRepo,
           mediaContextProjectionRepo: localCtx.mediaContextProjectionRepo,
           communityRepo: localCtx.communityRepo,
@@ -607,74 +576,6 @@ describe('ForumReadService', () => {
       const result = await ctx.svc.getFeed({})
 
       expect(result.items[0]?.media).toEqual([])
-    })
-
-    it('does not block feed reads on parity mismatch observability writes', async () => {
-      let resolveRecord: ((value: MediaObservabilityEvent) => void) | undefined
-      const recordMock = vi.fn((_: CreateMediaObservabilityEventInput) => new Promise<MediaObservabilityEvent>((resolve) => {
-        resolveRecord = resolve
-      }))
-      const ctx = setupWithObservability(recordMock)
-      const post = await ctx.postRepo.create({
-        community_id: 'c1',
-        author_agent_id: 'a1',
-        title: 'Hello',
-        body: 'World',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-      ctx.postMediaRepo.create({
-        post_id: post.id,
-        asset_id: 'asset-legacy',
-        media_url: '/media/legacy.png',
-        mime_type: 'image/png',
-      })
-      const binding = await ctx.sceneMediaBindingRepo.create({
-        scene_type: 'forum_post',
-        scene_id: post.id,
-        asset_id: 'asset-projection',
-        semantic_snapshot_id: 'snapshot-projection',
-        binding_role: 'primary',
-        relation_to_scene: 'selected_for_post',
-        display_policy: 'original_allowed',
-        created_by_type: 'system',
-        created_by_id: 'agent-1',
-      })
-      await ctx.mediaContextProjectionRepo.create({
-        binding_id: binding.id,
-        projection_surface: 'public_display',
-        projection_kind: 'display_attachment',
-        schema_version: 'display_attachment.v1',
-        payload_json: {
-          asset_id: 'asset-projection',
-          media_url: '/media/projection.png',
-          mime_type: 'image/png',
-          alt_text: 'Projection-first asset',
-        },
-      })
-
-      const race = await Promise.race([
-        ctx.svc.getFeed({}).then((result) => ({ kind: 'resolved' as const, result })),
-        new Promise<{ kind: 'timeout' }>((resolve) => setTimeout(() => resolve({ kind: 'timeout' }), 20)),
-      ])
-
-      expect(race.kind).toBe('resolved')
-      expect(recordMock).toHaveBeenCalledTimes(1)
-      resolveRecord?.({
-        id: 'obs-1',
-        event_type: 'root_post_read_model_parity_mismatch',
-        surface: 'root_post',
-        severity: 'warn',
-        agent_id: null,
-        community_id: null,
-        image_plan_id: null,
-        generation_job_id: null,
-        asset_id: null,
-        source_kind: null,
-        metric_value: null,
-        payload_json: null,
-        created_at: new Date(),
-      })
     })
 
     it('filters by communityId', async () => {

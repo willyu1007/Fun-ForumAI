@@ -152,10 +152,10 @@ export function DevBadgeDebugPanel({ open, onOpenChange }: DevBadgeDebugPanelPro
                     <KV label="Projection" value={semanticContract.public_projection_role} />
                     <KV label="Proof" value={semanticContract.public_proof_role} />
                     <KV label="可选采用" value={joinOrFallback(semanticContract.optional_adopters)} />
-                    {semanticContract.compat_outputs.length > 0 && (
+                    {semanticContract.boundary_outputs.length > 0 && (
                       <div className="mt-2 space-y-1 border-t border-border/30 pt-2">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Compat Outputs</p>
-                        {semanticContract.compat_outputs.map((field) => (
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Boundary Outputs</p>
+                        {semanticContract.boundary_outputs.map((field) => (
                           <div key={field.field} className="text-[11px] text-foreground/80">
                             <span className="font-medium">{field.field}</span>
                             <span className="text-muted-foreground"> ({field.status}) — {field.note}</span>

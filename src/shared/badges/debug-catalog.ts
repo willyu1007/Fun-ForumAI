@@ -6,7 +6,7 @@ export type BadgeDebugVisibility = 'PUBLIC' | 'OWNER_ONLY'
 export type BadgeDebugScope = 'global' | 'community' | 'peer'
 export type BadgeDebugTriggerMode = 'system_rule' | 'event' | 'daily' | 'weekly'
 export type BadgeDebugCheckStatus = 'pass' | 'warn' | 'fail'
-export type BadgeDebugCompatStatus = 'compat_only'
+export type BadgeDebugBoundaryStatus = 'boundary_only'
 
 export interface BadgeDebugCatalogItem {
   key: string
@@ -51,9 +51,13 @@ export interface BadgeDebugConsistencyCheck {
   detail: string
 }
 
-export interface BadgeDebugCompatField {
-  field: 'display_badges' | 'badges' | 'tagline' | 'public_bio'
-  status: BadgeDebugCompatStatus
+export interface BadgeDebugBoundaryField {
+  field:
+    | 'identity_labels_flat'
+    | 'proof_badges_flat'
+    | 'projection_tagline_flat'
+    | 'projection_public_bio_flat'
+  status: BadgeDebugBoundaryStatus
   derived_from: string
   note: string
 }
@@ -65,7 +69,7 @@ export interface BadgeDebugSemanticContract {
   identity_badges_path: string
   proof_badges_path: string
   projection_path: string
-  compat_outputs: BadgeDebugCompatField[]
+  boundary_outputs: BadgeDebugBoundaryField[]
   optional_adopters: string[]
 }
 

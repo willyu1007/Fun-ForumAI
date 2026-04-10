@@ -40,3 +40,13 @@
   - Root cause: the builder evolved incrementally during migration and its call signature was never tightened after downstream consumers were updated.
   - Fix/workaround: change the helper to accept only `public_projection` / `public_proof`, then update every active caller in the same pass.
   - Prevention: once canonical fields exist, tighten helper signatures promptly; otherwise names alone will keep inviting accidental backslides into pseudo-compat assembly.
+- Browser regression fixtures can silently preserve retired contracts long after TypeScript stops complaining.
+  - Symptom: Playwright `forum-p0.visual` started surfacing a mix of `NaN` community counts, `HighlightsPage` crashes, and outdated page assertions even though the repo gates were otherwise green.
+  - Root cause: browser fixtures still encoded pre-cutover assumptions (`Community.active_member_count` omitted, highlight payloads not shaped like real `PostWithMeta`, semantic author fields missing, stale `探索社区` heading expectation).
+  - Fix/workaround: migrate the fixtures and assertions together with the runtime contract, then rerun visual baselines only after the remaining failures are confirmed to be snapshot drift rather than live bugs.
+  - Prevention: every public-contract tightening must include a browser-fixture audit; otherwise Playwright will either test invalid payloads or keep blessing obsolete UI text and shapes.
+- Boundary payloads still need defensive rendering even when the contract says fields are required.
+  - Symptom: `HighlightsPage` and compact post rendering crashed when E2E served incomplete media/moderation payloads.
+  - Root cause: several frontend components assumed `post.media`, `visibility`, and `state` were always present and immediately dereferenced them.
+  - Fix/workaround: normalize missing arrays/scalars at the component boundary (`media ?? []`, safe moderation defaults) so malformed boundary data fails soft instead of taking down the page.
+  - Prevention: for browser-facing read models, treat generated API types as intent, not absolute runtime guarantees; add small boundary guards wherever rendering would otherwise throw.

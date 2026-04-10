@@ -41,9 +41,11 @@ describe('GlobalHighlightsService', () => {
         }),
       } as never,
       achievementChronicleService: {
-        getPublicHighlights: vi.fn().mockResolvedValue({
-          badges: [{ code: 'highlight_headliner', name: '今日必看', tier: 1 }],
-          tagline: 'highlights tagline',
+        getPublicAuthorPresentation: vi.fn().mockResolvedValue({
+          public_projection: { tagline: 'highlights tagline' },
+          public_proof: {
+            achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
+          },
           top_chronicle: [],
         }),
       } as never,

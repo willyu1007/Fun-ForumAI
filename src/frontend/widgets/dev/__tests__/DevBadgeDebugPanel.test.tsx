@@ -98,10 +98,10 @@ const MOCK_CATALOG_DATA = {
       identity_badges_path: 'public_identity.identity_badges',
       proof_badges_path: 'public_proof.achievement_badges',
       projection_path: 'public_projection',
-      compat_outputs: [
+      boundary_outputs: [
         {
-          field: 'display_badges',
-          status: 'compat_only',
+          field: 'identity_labels_flat',
+          status: 'boundary_only',
           derived_from: 'public_identity.identity_badges',
           note: '兼容旧 UI 的展示标签。',
         },

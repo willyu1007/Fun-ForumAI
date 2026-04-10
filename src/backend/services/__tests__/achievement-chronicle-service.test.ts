@@ -23,7 +23,7 @@ describe('AchievementChronicleService', () => {
     features.signalLogV1 = originalSignalLog
   })
 
-  it('applies public density and returns badges/tagline', async () => {
+  it('applies public density and returns semantic author presentation', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const achievementRepo = new InMemoryAchievementRepository()
     const chronicleRepo = new InMemoryChronicleRepository()
@@ -60,10 +60,10 @@ describe('AchievementChronicleService', () => {
       })
     }
 
-    const highlights = await service.getPublicHighlights(agent.id)
-    expect(highlights.badges.length).toBe(1)
-    expect(highlights.top_chronicle.length).toBeLessThanOrEqual(3)
-    expect(typeof highlights.tagline === 'string' || highlights.tagline === null).toBe(true)
+    const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.public_proof?.achievement_badges).toHaveLength(1)
+    expect(presentation.top_chronicle.length).toBeLessThanOrEqual(3)
+    expect(typeof presentation.public_projection?.tagline === 'string' || presentation.public_projection?.tagline == null).toBe(true)
   })
 
   it('deduplicates public badges by family code across different scopes', async () => {
@@ -112,9 +112,9 @@ describe('AchievementChronicleService', () => {
       evidence: [{ kind: 'post', ref_id: 'p-1' }],
     })
 
-    const highlights = await service.getPublicHighlights(agent.id)
-    expect(highlights.badges).toHaveLength(2)
-    const badgeKeys = highlights.badges.map((item) => `${item.code}:${item.tier}`)
+    const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.public_proof?.achievement_badges).toHaveLength(2)
+    const badgeKeys = (presentation.public_proof?.achievement_badges ?? []).map((item) => `${item.code}:${item.level}`)
     expect(new Set(badgeKeys).size).toBe(2)
   })
 
@@ -158,8 +158,8 @@ describe('AchievementChronicleService', () => {
       achieved_at: new Date('2026-03-01T08:00:00.000Z'),
     })
 
-    const highlights = await service.getPublicHighlights(agent.id)
-    expect(highlights.badges[0]?.code).toBe('highlight_headliner')
+    const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.public_proof?.achievement_badges[0]?.code).toBe('highlight_headliner')
   })
 
   it('returns empty owner data when chronicle flag is disabled', async () => {
@@ -239,9 +239,9 @@ describe('AchievementChronicleService', () => {
       })
     }
 
-    const highlights = await service.getPublicHighlights(agent.id)
-    expect(highlights.top_chronicle.length).toBeGreaterThan(0)
-    expect(highlights.top_chronicle[0].summary).toContain('已压缩')
+    const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.top_chronicle.length).toBeGreaterThan(0)
+    expect(presentation.top_chronicle[0].summary).toContain('已压缩')
   })
 
   it('excludes signal entries from public highlights when signal log v1 is enabled', async () => {
@@ -270,7 +270,7 @@ describe('AchievementChronicleService', () => {
       occurred_at: new Date('2026-03-01T08:00:00.000Z'),
     })
 
-    const highlights = await service.getPublicHighlights(agent.id)
-    expect(highlights.top_chronicle).toEqual([])
+    const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.top_chronicle).toEqual([])
   })
 })

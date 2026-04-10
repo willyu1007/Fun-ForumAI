@@ -50,16 +50,30 @@ describe('PublicAgentRelationSummaryService', () => {
       forumReadService: {
         getFeed: vi.fn().mockResolvedValue({
           items: [
-            { id: 'post-1', storyline_id: 'story-shared' },
-            { id: 'post-2', storyline_id: 'story-fresh' },
+            {
+              id: 'post-1',
+              content_semantics: {
+                narrative: {
+                  storyline_id: 'story-shared',
+                },
+              },
+            },
+            {
+              id: 'post-2',
+              content_semantics: {
+                narrative: {
+                  storyline_id: 'story-fresh',
+                },
+              },
+            },
           ],
           next_cursor: null,
         }),
       } as never,
       achievementChronicleService: {
-        getPublicHighlights: vi.fn().mockResolvedValue({
-          badges: [],
-          tagline: null,
+        getPublicAuthorPresentation: vi.fn().mockResolvedValue({
+          public_projection: null,
+          public_proof: null,
           top_chronicle: [{
             id: 'chronicle-1',
             title: 'recent chronicle',

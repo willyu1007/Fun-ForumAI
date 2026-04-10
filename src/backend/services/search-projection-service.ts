@@ -22,7 +22,12 @@ import type { CommunityCultureDigestService } from './community-culture-digest-s
 import type { AgentPublicProjectionService } from './agent-public-projection-service.js'
 import type { AgentBioRefreshService } from './agent-bio-refresh-service.js'
 import type { AftershowService } from './aftershow-service.js'
-import { buildAgentPublicAuthorPresentation } from '../identity/public-author-presentation.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  clonePublicProjection,
+  clonePublicProof,
+  mergeAgentPublicProjection,
+} from '../identity/public-author-presentation.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import {
   resolveLaunchCommunityInteractionContract,
@@ -33,6 +38,7 @@ import { SearchGuard } from './search/search-guard.js'
 import type { SearchAuthorVisibility } from '../../shared/public-search.js'
 import type {
   AgentPublicIdentity,
+  AgentPublicProjection,
   AgentPublicProof,
   AgentHumanResponseMode,
   AudienceSignalIngestion,
@@ -137,15 +143,35 @@ function formatBadgeText(badges: SearchBadge[]): string {
   return badges.map((badge) => `${badge.name} T${badge.tier}`).join(' ')
 }
 
+function buildSearchBadgesFromProof(
+  publicProof: AgentPublicProof | null | undefined,
+): SearchBadge[] {
+  return (publicProof?.achievement_badges ?? []).map((badge) => ({
+    code: badge.code,
+    name: badge.name,
+    tier: badge.level ?? 1,
+  }))
+}
+
+function readProjectionBoundaryFields(
+  publicProjection: AgentPublicProjection | null | undefined,
+): {
+  tagline: string | null
+  public_bio: string | null
+  public_projection_hint: string | null
+} {
+  return {
+    tagline: publicProjection?.tagline ?? null,
+    public_bio: publicProjection?.public_bio ?? null,
+    public_projection_hint: publicProjection?.public_projection_hint ?? null,
+  }
+}
+
 function formatAchievementBadgeText(input: {
   public_proof?: AgentPublicProof | null
-  badges?: SearchBadge[]
 }): string {
   const proofNames = input.public_proof?.achievement_badges.map((badge) => badge.name) ?? []
-  if (proofNames.length > 0) {
-    return proofNames.join(' ')
-  }
-  return formatBadgeText(input.badges ?? [])
+  return proofNames.join(' ')
 }
 
 function formatIdentityText(input: {
@@ -374,7 +400,8 @@ export class SearchProjectionService {
     const contentFields = readContentSemanticFields({
       content_semantics: postMeta.content_semantics,
     })
-    const authorBadgesText = formatBadgeText(projectedAuthor.badges)
+    const authorBoundaryFields = readProjectionBoundaryFields(projectedAuthor.public_projection)
+    const authorBadgesText = formatBadgeText(projectedAuthor.search_badges)
     const watchabilityScore = Number((
       Math.min(postMeta.heat_score / 120, 1.4)
       + Math.min(postMeta.thread_turn_count / 35, 0.45)
@@ -402,9 +429,9 @@ export class SearchProjectionService {
       author_identity_visibility_role_id: projectedAuthor.identity_visibility_role_id,
       author_identity_text: projectedAuthor.identity_text,
       author_achievement_badges_text: projectedAuthor.achievement_badges_text,
-      author_tagline: projectedAuthor.tagline,
-      author_public_bio: projectedAuthor.public_bio,
-      author_badges: projectedAuthor.badges,
+      author_tagline: authorBoundaryFields.tagline,
+      author_public_bio: authorBoundaryFields.public_bio,
+      author_badges: projectedAuthor.search_badges,
       author_badges_text: authorBadgesText,
       title: postMeta.title,
       body: postMeta.body,
@@ -435,8 +462,8 @@ export class SearchProjectionService {
         communityFields.launch_wave,
         projectedAuthor.display_name,
         projectedAuthor.identity_text,
-        projectedAuthor.tagline,
-        projectedAuthor.public_bio,
+        authorBoundaryFields.tagline,
+        authorBoundaryFields.public_bio,
         projectedAuthor.achievement_badges_text,
         authorBadgesText,
         sceneFields.scene_tags_text,
@@ -490,7 +517,8 @@ export class SearchProjectionService {
       ? this.deps.humanFollowRepo.listFollowerUserIds(thread.author_agent_id).length
       : 0
     const projectedAuthor = this.buildProjectedAuthor(threadMeta.author)
-    const authorBadgesText = formatBadgeText(projectedAuthor.badges)
+    const authorBoundaryFields = readProjectionBoundaryFields(projectedAuthor.public_projection)
+    const authorBadgesText = formatBadgeText(projectedAuthor.search_badges)
     const sceneFields = readSceneSearchFields(scene)
     const communityFields = readCommunitySemanticFields({
       community_semantics: postMeta.community_semantics,
@@ -500,7 +528,7 @@ export class SearchProjectionService {
       content_semantics: postMeta.content_semantics,
     })
     const threadSignalScore = projectedAuthor.actor_type === 'agent' && projectedAuthor.visibility === 'full'
-      ? Number((followerCount + projectedAuthor.badges.length * 2 + threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
+      ? Number((followerCount + projectedAuthor.search_badges.length * 2 + threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
       : Number((threadMeta.turn_count + threadMeta.participant_count).toFixed(2))
 
     await this.deps.searchDocRepo.upsertThreadDoc({
@@ -524,9 +552,9 @@ export class SearchProjectionService {
       author_identity_visibility_role_id: projectedAuthor.identity_visibility_role_id,
       author_identity_text: projectedAuthor.identity_text,
       author_achievement_badges_text: projectedAuthor.achievement_badges_text,
-      author_tagline: projectedAuthor.tagline,
-      author_public_bio: projectedAuthor.public_bio,
-      author_badges: projectedAuthor.badges,
+      author_tagline: authorBoundaryFields.tagline,
+      author_public_bio: authorBoundaryFields.public_bio,
+      author_badges: projectedAuthor.search_badges,
       author_badges_text: authorBadgesText,
       body: threadMeta.body,
       post_title: postMeta.title,
@@ -555,8 +583,8 @@ export class SearchProjectionService {
         communityFields.launch_wave,
         projectedAuthor.display_name,
         projectedAuthor.identity_text,
-        projectedAuthor.tagline,
-        projectedAuthor.public_bio,
+        authorBoundaryFields.tagline,
+        authorBoundaryFields.public_bio,
         projectedAuthor.achievement_badges_text,
         authorBadgesText,
         sceneFields.scene_tags_text,
@@ -680,8 +708,8 @@ export class SearchProjectionService {
 
     const latestConfig = this.deps.agentConfigRepo.findLatest(agentId)
     const identity = resolveAgentIdentity(agent, latestConfig)
-    const [highlights, projection, bioProjection] = await Promise.all([
-      this.deps.achievementChronicleService.getPublicHighlights(agentId),
+    const [semanticPresentation, projection, bioProjection] = await Promise.all([
+      this.deps.achievementChronicleService.getPublicAuthorPresentation(agentId),
       this.deps.agentPublicProjectionService.getOrBuild(agentId).catch(() => null),
       this.deps.agentBioService.getProjection(agentId, {
         build_if_missing: true,
@@ -706,7 +734,7 @@ export class SearchProjectionService {
       this.readLatestPublicPostByAgent(agentId),
       this.readLatestPublicStageThreadTurnByAgent(agentId),
     ])
-    const topChronicleText = highlights.top_chronicle
+    const topChronicleText = semanticPresentation.top_chronicle
       .map((entry) => joinSearchParts([
         entry.title,
         entry.summary,
@@ -723,10 +751,9 @@ export class SearchProjectionService {
       + publicChronicleCount * 1.5
       + followerCount
       + memberships.length * 0.75
-      + highlights.badges.length * 0.5
+      + (semanticPresentation.public_proof?.achievement_badges.length ?? 0) * 0.5
       + (projection?.public_projection_hint ? 0.5 : 0)
     ).toFixed(2))
-    const badgeText = formatBadgeText(highlights.badges)
     const authorPresentation = buildAgentPublicAuthorPresentation({
       agent: {
         id: agent.id,
@@ -735,22 +762,12 @@ export class SearchProjectionService {
         created_at: agent.created_at,
       },
       latest_config: latestConfig,
-      public_projection: highlights.tagline || bioProjection?.public_bio || projection?.public_projection_hint
-        ? {
-            ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
-            ...(bioProjection?.public_bio ? { public_bio: bioProjection.public_bio } : {}),
-            ...(projection?.public_projection_hint ? { public_projection_hint: projection.public_projection_hint } : {}),
-          }
-        : null,
-      public_proof: highlights.badges.length > 0
-        ? {
-            achievement_badges: highlights.badges.map((badge) => ({
-              code: badge.code,
-              name: badge.name,
-              level: badge.tier,
-            })),
-          }
-        : null,
+      public_projection: mergeAgentPublicProjection(
+        semanticPresentation.public_projection,
+        bioProjection?.public_bio ? { public_bio: bioProjection.public_bio } : null,
+        projection?.public_projection_hint ? { public_projection_hint: projection.public_projection_hint } : null,
+      ),
+      public_proof: semanticPresentation.public_proof,
     })
     const identityRoleId =
       authorPresentation.public_identity?.identity_role_id
@@ -768,8 +785,10 @@ export class SearchProjectionService {
       )
     const achievementBadgesText = formatAchievementBadgeText({
       public_proof: authorPresentation.public_proof,
-      badges: highlights.badges,
     })
+    const publicProjectionFields = readProjectionBoundaryFields(authorPresentation.public_projection)
+    const publicBadges = buildSearchBadgesFromProof(authorPresentation.public_proof)
+    const badgeText = formatBadgeText(publicBadges)
     const activeCommunityNamesText = activeCommunities.map((community) => community.name).join(' ')
     const socialSignalText = joinSearchParts([
       followerCount > 0 ? `粉丝 ${followerCount}` : '',
@@ -792,9 +811,9 @@ export class SearchProjectionService {
       home_voice_line_id: identity.summary.home_voice_line_id,
       home_voice_line_label: identity.summary.home_voice_line_label,
       identity_contract_source: identity.source,
-      public_tagline: highlights.tagline,
-      public_bio: bioProjection?.public_bio ?? null,
-      public_badges: highlights.badges,
+      public_tagline: publicProjectionFields.tagline,
+      public_bio: publicProjectionFields.public_bio,
+      public_badges: publicBadges,
       public_badges_text: badgeText,
       active_membership_count: memberships.length,
       active_community_ids: activeCommunities.map((community) => community.id),
@@ -814,8 +833,8 @@ export class SearchProjectionService {
         formatCapabilities.join(' '),
         identity.summary.persona_seed_label,
         identity.summary.home_voice_line_label,
-        highlights.tagline,
-        bioProjection?.public_bio,
+        publicProjectionFields.tagline,
+        publicProjectionFields.public_bio,
         achievementBadgesText,
         badgeText,
         activeCommunityNamesText,
@@ -1202,7 +1221,7 @@ export class SearchProjectionService {
     display_name: string
     avatar_url: string | null
     public_identity?: AgentPublicIdentity | null
-    public_projection?: { tagline?: string | null; public_bio?: string | null } | null
+    public_projection?: AgentPublicProjection | null
     public_proof?: AgentPublicProof | null
     system_identity?: {
       identity_role_id?: string
@@ -1220,9 +1239,9 @@ export class SearchProjectionService {
     user_id: string | null
     display_name: string
     avatar_url: string | null
-    tagline: string | null
-    public_bio: string | null
-    badges: SearchBadge[]
+    public_projection: AgentPublicProjection | null
+    public_proof: AgentPublicProof | null
+    search_badges: SearchBadge[]
     visibility: SearchAuthorVisibility
     identity_role_id: IdentityRoleId | null
     identity_visibility_role_id: IdentityVisibilityRoleId | null
@@ -1236,9 +1255,9 @@ export class SearchProjectionService {
         user_id: author.id,
         display_name: author.display_name,
         avatar_url: author.avatar_url,
-        tagline: null,
-        public_bio: null,
-        badges: [],
+        public_projection: null,
+        public_proof: null,
+        search_badges: [],
         visibility: 'full',
         identity_role_id: null,
         identity_visibility_role_id: null,
@@ -1249,13 +1268,9 @@ export class SearchProjectionService {
 
     const agent = this.deps.agentRepo.findById(author.id)
     const visibility = this.deps.guard.getAuthorVisibility(agent)
-    const tagline = author.public_projection?.tagline ?? null
-    const publicBio = author.public_projection?.public_bio ?? null
-    const badges = (author.public_proof?.achievement_badges ?? []).map((badge) => ({
-      code: badge.code,
-      name: badge.name,
-      tier: badge.level ?? 1,
-    }))
+    const publicProjection = clonePublicProjection(author.public_projection)
+    const publicProof = clonePublicProof(author.public_proof)
+    const searchBadges = buildSearchBadgesFromProof(publicProof)
     const identityRoleId =
       normalizeIdentityRoleId(author.public_identity?.identity_role_id)
       ?? normalizeIdentityRoleId(author.system_identity?.identity_role_id)
@@ -1271,9 +1286,9 @@ export class SearchProjectionService {
       user_id: null,
       display_name: author.display_name,
       avatar_url: visibility === 'full' ? author.avatar_url : null,
-      tagline: visibility === 'full' ? tagline : null,
-      public_bio: visibility === 'full' ? publicBio : null,
-      badges: visibility === 'full' ? badges : [],
+      public_projection: visibility === 'full' ? publicProjection : null,
+      public_proof: visibility === 'full' ? publicProof : null,
+      search_badges: visibility === 'full' ? searchBadges : [],
       visibility,
       identity_role_id: visibility === 'full' ? identityRoleId : null,
       identity_visibility_role_id: visibility === 'full' ? identityVisibilityRoleId : null,
@@ -1285,8 +1300,7 @@ export class SearchProjectionService {
         : '',
       achievement_badges_text: visibility === 'full'
         ? formatAchievementBadgeText({
-            public_proof: author.public_proof,
-            badges,
+            public_proof: publicProof,
           })
         : '',
     }

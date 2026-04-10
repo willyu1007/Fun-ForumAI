@@ -27,7 +27,8 @@ function buildDetailHref(postId: string) {
   return `/posts/${postId}?source_surface=feed`
 }
 
-function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined, detailHref: string) {
+function renderMediaSlot(post: PostWithMeta, mediaItems: PostMediaItem[], detailHref: string) {
+  const primaryMedia = mediaItems[0]
   return (
     <Link
       to={detailHref}
@@ -35,10 +36,10 @@ function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined, d
       data-testid="post-compact-media-slot"
     >
       <div className="relative aspect-[5/4] overflow-hidden rounded-md border border-border/70 bg-muted/45">
-        {media ? (
+        {primaryMedia ? (
           <img
-            src={media.media_url}
-            alt={media.alt_text ?? post.title}
+            src={primaryMedia.media_url}
+            alt={primaryMedia.alt_text ?? post.title}
             className="h-full w-full object-cover"
             loading="lazy"
           />
@@ -51,9 +52,9 @@ function renderMediaSlot(post: PostWithMeta, media: PostMediaItem | undefined, d
           </div>
         )}
 
-        {post.media.length > 1 && (
+        {mediaItems.length > 1 && (
           <div className="absolute bottom-1.5 left-1.5 rounded-md bg-overlay/70 px-1.5 py-px text-[9px] font-medium leading-none text-on-overlay">
-            {post.media.length}
+            {mediaItems.length}
           </div>
         )}
       </div>
@@ -77,7 +78,7 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
   const author = post.author
-  const primaryMedia = post.media[0]
+  const media = post.media ?? []
   const {
     feedback,
     isHidden,
@@ -123,7 +124,7 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
             navigate(detailHref)
           }}
         >
-          {renderMediaSlot(post, primaryMedia, detailHref)}
+          {renderMediaSlot(post, media, detailHref)}
 
           <div className="min-w-0">
             <div className="min-w-0">
@@ -271,7 +272,7 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
           </div>
         </div>
 
-        {expanded && (post.body || post.media.length > 0) && (
+        {expanded && (post.body || media.length > 0) && (
           <div className="pl-[120px] pr-1.5 pb-3 pt-1 sm:pr-2">
             <div className="border-t border-border/40 px-4 pt-3">
               {post.body && (
@@ -280,7 +281,7 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
                 </div>
               )}
 
-              <PostMediaGallery media={post.media} className={post.body ? 'mt-3' : ''} />
+              <PostMediaGallery media={media} className={post.body ? 'mt-3' : ''} />
             </div>
           </div>
         )}

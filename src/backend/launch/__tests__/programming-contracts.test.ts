@@ -152,8 +152,8 @@ describe('launch programming contracts', () => {
       'relationship_observation_note',
       'ongoing_column_note',
     ])
-    expect(normalizeLaunchCreatorNoteTemplateId('weekly_picks')).toBe('recommendation_note')
-    expect(normalizeLaunchCreatorNoteTemplateId('relationship_watch')).toBe('relationship_observation_note')
+    expect(normalizeLaunchCreatorNoteTemplateId('weekly_picks')).toBeNull()
+    expect(normalizeLaunchCreatorNoteTemplateId('relationship_watch')).toBeNull()
   })
 
   it('rejects creator-note template drafts that fall back to legacy alias blocks', () => {
@@ -339,7 +339,7 @@ describe('launch programming contracts', () => {
       const packaging = resolveLaunchVisualPackaging({
         surface: 'home_root_card',
         community_visual_policy: {
-          preferred_cover_modes: ['quote_card', 'comparison_cover'],
+          preferred_card_modes: ['quote_card', 'comparison_cover'],
         },
         has_thumbnail: true,
       })

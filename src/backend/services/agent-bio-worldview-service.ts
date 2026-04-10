@@ -89,13 +89,13 @@ export class AgentBioWorldviewService {
     const identity = resolveAgentIdentity(agent, latestConfig)
     const systemIdentity = readLaunchSystemIdentityConfig(latestConfig?.config_json)
 
-    const [personaState, projection, publicHighlights, chroniclePage, privateMemories, relationSummary] =
+    const [personaState, projection, publicPresentation, chroniclePage, privateMemories, relationSummary] =
       await Promise.all([
         this.deps.personaStateService?.getCurrentState(agentId).catch(() => null) ?? Promise.resolve(null),
         this.deps.agentPublicProjectionService.getOrBuild(agentId).catch(() => null),
-        this.deps.achievementChronicleService.getPublicHighlights(agentId).catch(() => ({
-          badges: [],
-          tagline: null,
+        this.deps.achievementChronicleService.getPublicAuthorPresentation(agentId).catch(() => ({
+          public_projection: null,
+          public_proof: null,
           top_chronicle: [],
         })),
         this.deps.chronicleRepo.findByAgent(agentId, { limit: 8 }).catch(() => ({
@@ -116,7 +116,7 @@ export class AgentBioWorldviewService {
     const privateMemorySummaries = privateMemories.items
       .map((memory) => clip(memory.summary_text))
       .slice(0, 3)
-    const lastPublicAt = publicHighlights.top_chronicle[0]?.occurred_at
+    const lastPublicAt = publicPresentation.top_chronicle[0]?.occurred_at
       ?? chroniclePage.items.find((entry) => entry.visibility === 'PUBLIC')?.occurred_at
       ?? null
     const lastPrivateAt = privateMemories.items[0]?.created_at ?? null
@@ -169,9 +169,13 @@ export class AgentBioWorldviewService {
         private_lane_policy: systemIdentity?.identity_scaffold.private_lane_policy ?? null,
       },
       public_history: {
-        badges: publicHighlights.badges,
-        tagline: publicHighlights.tagline,
-        top_chronicle_summaries: publicHighlights.top_chronicle.map((entry) => clip(entry.summary)).slice(0, 3),
+        badges: (publicPresentation.public_proof?.achievement_badges ?? []).map((badge) => ({
+          code: badge.code,
+          name: badge.name,
+          tier: badge.level ?? 1,
+        })),
+        tagline: publicPresentation.public_projection?.tagline ?? null,
+        top_chronicle_summaries: publicPresentation.top_chronicle.map((entry) => clip(entry.summary)).slice(0, 3),
       },
       owner_history: {
         chronicle_summaries: ownerChronicleSummaries,
@@ -196,8 +200,8 @@ export class AgentBioWorldviewService {
       presence,
       source_clauses: {
         public_safe: uniqueStrings([
-          publicHighlights.tagline,
-          ...publicHighlights.top_chronicle.map((entry) => entry.summary),
+          publicPresentation.public_projection?.tagline ?? null,
+          ...publicPresentation.top_chronicle.map((entry) => entry.summary),
           projection?.public_projection_hint ?? null,
           systemIdentity?.identity_scaffold.role_promise ?? null,
           systemIdentity?.identity_scaffold.viewer_hook_style ?? null,
@@ -218,7 +222,7 @@ export class AgentBioWorldviewService {
           systemIdentity?.identity_scaffold.viewer_hook_style ?? null,
           ownerChronicleSummaries[0] ?? null,
           privateMemorySummaries[0] ?? null,
-          publicHighlights.tagline,
+          publicPresentation.public_projection?.tagline ?? null,
         ], 4),
         private_guard: uniqueStrings([
           ...(systemIdentity?.identity_scaffold.forbidden_tones ?? []),

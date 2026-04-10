@@ -15,6 +15,7 @@ import {
   validateLaunchRuntimeOverlay,
   validatePackagingWireup,
   validatePublishWorkflowWireup,
+  validateStrictSemanticConvergence,
   validateWorkerAssets,
 } from './lib/launch-readiness.mjs';
 
@@ -143,6 +144,9 @@ function runRepoChecks() {
 
   const startupHardeningCheck = validateDevOnlyStartupHardening();
   pushResult('Dev-only startup hardening', startupHardeningCheck.ok, startupHardeningCheck.detail);
+
+  const strictConvergenceCheck = validateStrictSemanticConvergence();
+  pushResult('Strict semantic convergence', strictConvergenceCheck.ok, strictConvergenceCheck.detail);
 
   runCommand(
     'Typecheck',

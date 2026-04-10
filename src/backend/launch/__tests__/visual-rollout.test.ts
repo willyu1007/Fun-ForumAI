@@ -90,49 +90,19 @@ describe('launch visual rollout', () => {
     expect(() => getLaunchVisualRollout(missingThumbnailPolicyPath)).toThrowError(/Invalid launch visual rollout/)
   })
 
-  it('normalizes legacy creator-note aliases into canonical card modes', () => {
-    expect(normalizeLaunchCardMode('headline_card')).toEqual({
-      input_mode: 'headline_card',
-      card_mode: 'single_cover',
-      hero_eligible: false,
-      visual_tone: null,
-    })
-    expect(normalizeLaunchCardMode('note_cover')).toEqual({
-      input_mode: 'note_cover',
-      card_mode: 'single_cover',
-      hero_eligible: false,
-      visual_tone: null,
-    })
-    expect(normalizeLaunchCardMode('hero_cover')).toEqual({
-      input_mode: 'hero_cover',
-      card_mode: 'single_cover',
-      hero_eligible: true,
-      visual_tone: null,
-    })
-    expect(normalizeLaunchCardMode('grid_cover')).toEqual({
-      input_mode: 'grid_cover',
-      card_mode: 'multi_panel_cover',
-      hero_eligible: false,
-      visual_tone: null,
-    })
+  it('accepts only canonical launch card modes', () => {
+    expect(normalizeLaunchCardMode('headline_card')).toBeNull()
+    expect(normalizeLaunchCardMode('note_cover')).toBeNull()
+    expect(normalizeLaunchCardMode('hero_cover')).toBeNull()
+    expect(normalizeLaunchCardMode('grid_cover')).toBeNull()
     expect(normalizeLaunchCardMode('portrait_cover')).toEqual({
       input_mode: 'portrait_cover',
       card_mode: 'portrait_cover',
       hero_eligible: false,
       visual_tone: null,
     })
-    expect(normalizeLaunchCardMode('evidence_strip')).toEqual({
-      input_mode: 'evidence_strip',
-      card_mode: 'strip_card',
-      hero_eligible: false,
-      visual_tone: null,
-    })
-    expect(normalizeLaunchCardMode('conflict_hero')).toEqual({
-      input_mode: 'conflict_hero',
-      card_mode: 'single_cover',
-      hero_eligible: true,
-      visual_tone: 'conflict',
-    })
+    expect(normalizeLaunchCardMode('evidence_strip')).toBeNull()
+    expect(normalizeLaunchCardMode('conflict_hero')).toBeNull()
   })
 
   it('prefers intersected canonical community card modes', () => {
@@ -175,8 +145,8 @@ describe('launch visual rollout', () => {
     })
   })
 
-  it('reads creator-note preferred_cover_modes through the same alias normalization path', () => {
-    const result = resolveLaunchVisualPackaging({
+  it('rejects creator-note preferred_cover_modes on community visual policy', () => {
+    expect(() => resolveLaunchVisualPackaging({
       surface: 'note_root_card',
       community_visual_policy: {
         preferred_cover_modes: ['grid_cover'],
@@ -185,21 +155,14 @@ describe('launch visual rollout', () => {
       content_context: {
         is_creator_note: true,
       },
-    })
-
-    expect(result).toEqual({
-      surface_kind: 'note_root_card',
-      card_mode: 'multi_panel_cover',
-      thumbnail_policy: 'required',
-      hero_eligible: false,
-    })
+    })).toThrowError(/preferred_cover_modes is no longer accepted/)
   })
 
   it('drops packaging when required thumbnails are missing', () => {
     const result = resolveLaunchVisualPackaging({
       surface: 'note_root_card',
       community_visual_policy: {
-        preferred_cover_modes: ['note_cover'],
+        preferred_card_modes: ['single_cover'],
       },
       has_thumbnail: false,
       content_context: {

@@ -47,7 +47,8 @@ function readLaunchBadges(post: PostWithMeta): string[] {
 export function PostCard({ post, detailHref }: PostCardProps) {
   const navigate = useNavigate()
   const author = post.author
-  const hasMedia = post.media.length > 0
+  const media = post.media ?? []
+  const hasMedia = media.length > 0
   const postHref = detailHref ?? `/posts/${post.id}`
   const {
     feedback,
@@ -188,7 +189,7 @@ export function PostCard({ post, detailHref }: PostCardProps) {
         </div>
       )}
 
-      <PostMediaGallery media={post.media} className="mt-3" />
+      <PostMediaGallery media={media} className="mt-3" />
 
       {launchBadges.length > 0 && (
         <p className="mt-2 text-[11px] leading-5 text-muted-foreground/72">

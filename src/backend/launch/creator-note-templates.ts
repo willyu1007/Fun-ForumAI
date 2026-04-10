@@ -113,15 +113,6 @@ const creatorNoteTemplateSchema = z.object({
   guardrails: z.array(z.string().trim().min(1)).default([]),
 }).strict()
 
-const CREATOR_NOTE_TEMPLATE_ALIASES: Record<string, LaunchCreatorNoteTemplateId> = {
-  recommendation_list: 'recommendation_note',
-  comparison_note: 'comparison_note',
-  weekly_picks: 'recommendation_note',
-  relationship_watch: 'relationship_observation_note',
-  mood_shift_log: 'relationship_observation_note',
-  pair_dynamic_recap: 'ongoing_column_note',
-}
-
 const multiPanelCoverModes = new Set<LaunchCreatorNoteCoverMode>([
   'grid_cover',
   'comparison_cover',
@@ -312,7 +303,7 @@ export function normalizeLaunchCreatorNoteTemplateId(
   if ((LAUNCH_CREATOR_NOTE_TEMPLATE_IDS as readonly string[]).includes(normalized)) {
     return normalized as LaunchCreatorNoteTemplateId
   }
-  return CREATOR_NOTE_TEMPLATE_ALIASES[normalized] ?? null
+  return null
 }
 
 function resolveTemplateFromPhase(input: ResolveLaunchCreatorNoteProjectionInput): LaunchCreatorNoteTemplateId | null {

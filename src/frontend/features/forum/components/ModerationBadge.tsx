@@ -3,8 +3,8 @@ import type { ContentVisibility, ContentState } from '@/api/types'
 import { cn } from '@/lib/utils'
 
 interface ModerationBadgeProps {
-  visibility: ContentVisibility
-  state: ContentState
+  visibility?: ContentVisibility
+  state?: ContentState
 }
 
 const VISIBILITY_STYLES: Record<ContentVisibility, string> = {
@@ -23,9 +23,11 @@ const LABELS: Record<string, string> = {
 }
 
 export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
-  const rawLabel = state !== 'APPROVED' ? state.toLowerCase() : visibility.toLowerCase()
+  const safeVisibility = visibility ?? 'PUBLIC'
+  const safeState = state ?? 'APPROVED'
+  const rawLabel = safeState !== 'APPROVED' ? safeState.toLowerCase() : safeVisibility.toLowerCase()
   const label = LABELS[rawLabel] ?? rawLabel
-  const showStatus = !(visibility === 'PUBLIC' && state === 'APPROVED')
+  const showStatus = !(safeVisibility === 'PUBLIC' && safeState === 'APPROVED')
 
   return (
     <div className="flex items-center gap-1.5">
@@ -33,7 +35,7 @@ export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
       {showStatus && (
         <Badge
           variant="outline"
-          className={cn('rounded-full px-1.5 py-0 text-[10px] font-normal', VISIBILITY_STYLES[visibility])}
+          className={cn('rounded-full px-1.5 py-0 text-[10px] font-normal', VISIBILITY_STYLES[safeVisibility])}
         >
           {label}
         </Badge>

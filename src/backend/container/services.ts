@@ -168,7 +168,6 @@ export function createCoreServices(deps: {
     publicStageTurnRepo: repos.publicStageTurnRepo,
     voteRepo: repos.voteRepo,
     humanVoteRepo: repos.humanVoteRepo,
-    postMediaRepo: repos.postMediaRepo,
     sceneMediaBindingRepo: repos.sceneMediaBindingRepo,
     mediaContextProjectionRepo: repos.mediaContextProjectionRepo,
     forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
@@ -180,7 +179,6 @@ export function createCoreServices(deps: {
     userRepo: repos.userRepo,
     achievementChronicleService,
     riskRepo: repos.riskGovernanceRepo,
-    mediaObservabilityService: deps.mediaObservabilityService ?? null,
     mediaRolloutControllerService: deps.mediaRolloutControllerService ?? null,
   })
 

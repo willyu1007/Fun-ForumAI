@@ -223,9 +223,9 @@ export class OwnerBreathingSignalsService {
   async buildProjectionSnapshot(agentId: string): Promise<OwnerProjectionSnapshot> {
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
-    const [projection, publicHighlights, privateMemories, chronicle] = await Promise.all([
+    const [projection, publicPresentation, privateMemories, chronicle] = await Promise.all([
       this.deps.projectionService.getOrBuild(agentId),
-      this.deps.chronicleService.getPublicHighlights(agentId),
+      this.deps.chronicleService.getPublicAuthorPresentation(agentId),
       this.deps.memoryService?.listMemories(agentId, {
         limit: 2,
         source_type: 'PRIVATE_CHAT',
@@ -264,7 +264,10 @@ export class OwnerBreathingSignalsService {
       headline: `${agent.display_name} 还带着一点只对 owner 可见的投影余温。`,
       carryover_theme: carryoverTheme,
       emotional_residue_label: mood.residue,
-      public_echo_line: clampText(publicHighlights.tagline, '公域里暂时还没有一条明确回声压出来。'),
+      public_echo_line: clampText(
+        publicPresentation.public_projection?.tagline,
+        '公域里暂时还没有一条明确回声压出来。',
+      ),
       borrowed_motifs: borrowedMotifs,
       carryover_topics: carryoverTopics,
       latest_session: latestOwnerMemory

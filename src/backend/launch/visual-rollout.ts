@@ -177,36 +177,6 @@ const visualRolloutFileSchema = z.object({
   }).optional(),
 }).strict()
 
-const CARD_MODE_ALIASES: Record<string, Omit<NormalizedLaunchCardMode, 'input_mode'>> = {
-  single_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  multi_panel_cover: { card_mode: 'multi_panel_cover', hero_eligible: false, visual_tone: null },
-  quote_card: { card_mode: 'quote_card', hero_eligible: false, visual_tone: null },
-  strip_card: { card_mode: 'strip_card', hero_eligible: false, visual_tone: null },
-  comparison_cover: { card_mode: 'comparison_cover', hero_eligible: false, visual_tone: null },
-  recap_card: { card_mode: 'recap_card', hero_eligible: false, visual_tone: null },
-  timeline_cover: { card_mode: 'timeline_cover', hero_eligible: false, visual_tone: null },
-  portrait_cover: { card_mode: 'portrait_cover', hero_eligible: false, visual_tone: null },
-  relationship_map_card: { card_mode: 'relationship_map_card', hero_eligible: false, visual_tone: null },
-  program_card: { card_mode: 'program_card', hero_eligible: false, visual_tone: null },
-  headline_card: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  note_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  minimal_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  story_card: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  weekly_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  event_cover: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  promo_card: { card_mode: 'single_cover', hero_eligible: false, visual_tone: null },
-  hero_cover: { card_mode: 'single_cover', hero_eligible: true, visual_tone: null },
-  conflict_hero: { card_mode: 'single_cover', hero_eligible: true, visual_tone: 'conflict' },
-  list_card: { card_mode: 'multi_panel_cover', hero_eligible: false, visual_tone: null },
-  grid_cover: { card_mode: 'multi_panel_cover', hero_eligible: false, visual_tone: null },
-  carousel: { card_mode: 'multi_panel_cover', hero_eligible: false, visual_tone: null },
-  case_card: { card_mode: 'quote_card', hero_eligible: false, visual_tone: null },
-  drama_card: { card_mode: 'quote_card', hero_eligible: false, visual_tone: null },
-  argument_card: { card_mode: 'quote_card', hero_eligible: false, visual_tone: null },
-  evidence_strip: { card_mode: 'strip_card', hero_eligible: false, visual_tone: null },
-  observation_strip: { card_mode: 'strip_card', hero_eligible: false, visual_tone: null },
-}
-
 let cachedLaunchVisualRollout: LaunchVisualRolloutRuntime | null = null
 
 function toValidationMessage(error: z.ZodError): string {
@@ -326,11 +296,13 @@ export function resolveEffectiveLaunchVisualRollout(): LaunchVisualRolloutRuntim
 
 export function normalizeLaunchCardMode(inputMode: string | null | undefined): NormalizedLaunchCardMode | null {
   if (typeof inputMode !== 'string') return null
-  const normalized = CARD_MODE_ALIASES[inputMode.trim()]
-  if (!normalized) return null
+  const normalized = inputMode.trim()
+  if (!(LAUNCH_CARD_MODES as readonly string[]).includes(normalized)) return null
   return {
-    input_mode: inputMode.trim(),
-    ...normalized,
+    input_mode: normalized,
+    card_mode: normalized as LaunchCardMode,
+    hero_eligible: false,
+    visual_tone: null,
   }
 }
 
@@ -338,14 +310,26 @@ function readPreferredCommunityModes(
   visualPolicy: Record<string, unknown> | null | undefined,
 ): string[] {
   if (!visualPolicy) return []
-  const candidates = [
-    visualPolicy.preferred_card_modes,
-    visualPolicy.preferred_cover_modes,
-  ]
-  return candidates
-    .flatMap((value) => (Array.isArray(value) ? value : []))
-    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    .map((item) => item.trim())
+  if (Object.prototype.hasOwnProperty.call(visualPolicy, 'preferred_cover_modes')) {
+    throw new ValidationError(
+      'Invalid community visual policy: preferred_cover_modes is no longer accepted; use preferred_card_modes',
+    )
+  }
+  const preferredCardModes = visualPolicy.preferred_card_modes
+  if (preferredCardModes === undefined) return []
+  if (!Array.isArray(preferredCardModes)) {
+    throw new ValidationError(
+      'Invalid community visual policy: preferred_card_modes must be an array of canonical card modes',
+    )
+  }
+  return preferredCardModes.map((item, index) => {
+    if (typeof item !== 'string' || item.trim().length === 0) {
+      throw new ValidationError(
+        `Invalid community visual policy: preferred_card_modes[${index}] must be a canonical card mode`,
+      )
+    }
+    return item.trim()
+  })
 }
 
 function readBooleanField(value: unknown): boolean {

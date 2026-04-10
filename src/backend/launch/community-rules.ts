@@ -216,6 +216,11 @@ function validateVisualPolicy(visualPolicy: Record<string, unknown>, slug: strin
       `Invalid launch community rules: ${slug} visual_policy.preferred_visual_modes is no longer accepted; use preferred_card_modes`,
     )
   }
+  if (Object.prototype.hasOwnProperty.call(visualPolicy, 'preferred_cover_modes')) {
+    throw new ValidationError(
+      `Invalid launch community rules: ${slug} visual_policy.preferred_cover_modes is no longer accepted; use preferred_card_modes`,
+    )
+  }
 
   const preferredCardModes = visualPolicy.preferred_card_modes
   if (preferredCardModes !== undefined) {

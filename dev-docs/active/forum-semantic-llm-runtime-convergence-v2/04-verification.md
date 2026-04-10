@@ -138,3 +138,80 @@
 - Negative LLM registry tests were finalized against structured `RegistryResolutionError.details.issues` rather than brittle message-only matching.
 - Shared frontend helper cleanup intentionally removed compat fallback reads from `public-author.ts`; the affected Search and Shell tests had to be updated to provide canonical `public_projection` fixture data instead of outdated `tagline/public_bio` inputs.
 - The final cleanup removed the old `/v1/me/agents` compat bridge entirely; route/e2e coverage now asserts semantic `public_projection` / `public_proof` fields instead of flat `badges` / `tagline` payloads.
+
+## 2026-04-10 Strict Closure Extension
+
+- `pnpm exec vitest run src/backend/services/__tests__/agent-public-projection-service.test.ts src/backend/services/__tests__/public-agent-relation-summary-service.test.ts src/frontend/widgets/dev/__tests__/DevBadgeDebugPanel.test.tsx`
+  - pass
+  - 3 test files passed
+  - 5 tests passed
+  - confirms the remaining author-side services no longer regress after switching from legacy highlights DTOs to semantic `public_projection / public_proof / top_chronicle`
+- `pnpm exec vitest run scripts/lib/__tests__/launch-readiness.test.ts src/backend/launch/__tests__/visual-rollout.test.ts src/backend/launch/__tests__/community-rules.test.ts src/backend/launch/__tests__/programming-contracts.test.ts`
+  - pass
+  - 4 test files passed
+  - 30 tests passed
+  - confirms strict convergence gate and canonical-only launch/runtime contract tests stay green together
+- `node -e "import('./scripts/lib/launch-readiness.mjs').then(({ validateStrictSemanticConvergence }) => console.log(JSON.stringify(validateStrictSemanticConvergence(), null, 2)))"`
+  - pass
+  - returned `{ "ok": true, "detail": "strict semantic convergence gate passed" }`
+- `pnpm exec vitest run src/backend/dev/__tests__/launch-semantic-canonicalization.test.ts`
+  - pass
+  - 1 test file passed
+  - 3 tests passed
+  - locks the historical alias map used by the new launch semantic backfill CLI
+- `pnpm launch:canonicalize:semantic-fields -- --scope=all`
+  - pass with environment note
+  - CLI executed and returned structured dry-run summary
+  - current local database is not rollout-ready for this step and reported missing tables:
+    - `post_search_docs`
+    - `thread_search_docs`
+    - `viewer_public_view_events`
+  - this is treated as an environment readiness note, not a code failure; apply mode remains blocked until the target DB contains those tables
+- `pnpm exec tsc -p tsconfig.json --noEmit --pretty false`
+  - pass
+  - confirms the strict-closure extension compiles after the author/search/runtime refactor
+- `pnpm exec vitest run scripts/lib/__tests__/launch-readiness.test.ts src/backend/dev/__tests__/launch-semantic-canonicalization.test.ts src/backend/launch/__tests__/visual-rollout.test.ts src/backend/launch/__tests__/community-rules.test.ts src/backend/launch/__tests__/programming-contracts.test.ts src/backend/services/__tests__/agent-public-projection-service.test.ts src/backend/services/__tests__/public-agent-relation-summary-service.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/global-highlights-service.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/dev-badge-debug.test.ts src/frontend/widgets/dev/__tests__/DevBadgeDebugPanel.test.tsx`
+  - pass
+  - 14 test files passed
+  - 129 tests passed
+  - covers the full strict-closure touch surface across launch/runtime, read/search, author presentation, dev debug, and semantic backfill mapping
+- `pnpm exec vitest run src/backend/launch/__tests__/system-roster.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts`
+  - pass
+  - 3 test files passed
+  - 51 tests passed
+  - confirms the repo-wide gate cleanup after the strict-closure work did not regress launch system identity or LLM gateway/type contracts
+- `pnpm lint`
+  - pass
+- `pnpm typecheck`
+  - pass
+- `pnpm verify:launch:ci`
+  - pass
+  - `18/18 passed, 0 failed`
+
+## 2026-04-10 Repo Cleanup + E2E Closeout
+
+- `pnpm exec vitest run src/backend/services/__tests__/achievement-chronicle-service.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/frontend/widgets/dev/__tests__/DevBadgeDebugPanel.test.tsx src/backend/services/__tests__/public-observation-real-smoke.test.ts scripts/lib/__tests__/launch-readiness.test.ts`
+  - pass
+  - 5 test files passed
+  - 43 tests passed
+  - confirms the strict-closure cleanup removed legacy author/highlight exits, dual-read forum media parity, and stale debug vocabulary without regressing forum read or public observation smoke behavior
+- `pnpm exec playwright test tests/web/playwright/forum-orchestration.e2e.spec.ts tests/web/playwright/forum-p0.visual.spec.ts --project=desktop-light --project=mobile-light`
+  - initial run exposed real regressions:
+    - `HighlightsPage` crashed on stale highlight payload assumptions (`post.media.some`, later downstream incomplete boundary reads)
+    - `CommunitiesPage` rendered `NaN` member counts from stale fixtures missing `active_member_count`
+    - remaining `forum-p0.visual` failures were stable snapshot drift after those runtime issues were fixed
+- `pnpm exec playwright test tests/web/playwright/forum-p0.visual.spec.ts --project=desktop-light --project=mobile-light --update-snapshots`
+  - pass
+  - regenerated 8 snapshots
+  - updates the forum P0 visual baselines to the current post-cutover UI after stale fixture/test expectations were corrected
+- `pnpm exec playwright test tests/web/playwright/forum-orchestration.e2e.spec.ts tests/web/playwright/forum-p0.visual.spec.ts --project=desktop-light --project=mobile-light`
+  - pass
+  - 12 tests passed
+  - proves the browser paths are green after fixing runtime assumptions and refreshing the visual baselines
+- `pnpm lint`
+  - pass
+- `pnpm typecheck`
+  - pass
+- `pnpm verify:launch:ci`
+  - pass
+  - `18/18 passed, 0 failed`

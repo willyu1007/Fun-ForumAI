@@ -1,7 +1,11 @@
 import { buildAgentTarget } from '../../../shared/agent-target.js'
 import type { SearchAgentItem, SearchMatchExplanation } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, SearchDocRepository } from '../../repos/index.js'
-import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  buildAchievementPublicProof,
+  mergeAgentPublicProjection,
+} from '../../identity/public-author-presentation.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -100,22 +104,12 @@ export class AgentSearchProvider implements SearchProvider {
         created_at: hitDoc.created_at,
       },
       latest_config: latestConfig,
-      public_projection: hitDoc.public_tagline || hitDoc.public_bio || hitDoc.public_projection_hint
-        ? {
-            ...(hitDoc.public_tagline ? { tagline: hitDoc.public_tagline } : {}),
-            ...(hitDoc.public_bio ? { public_bio: hitDoc.public_bio } : {}),
-            ...(hitDoc.public_projection_hint ? { public_projection_hint: hitDoc.public_projection_hint } : {}),
-          }
-        : null,
-      public_proof: hitDoc.public_badges.length > 0
-        ? {
-            achievement_badges: hitDoc.public_badges.map((badge) => ({
-              code: badge.code,
-              name: badge.name,
-              level: badge.tier,
-            })),
-          }
-        : null,
+      public_projection: mergeAgentPublicProjection(
+        hitDoc.public_tagline ? { tagline: hitDoc.public_tagline } : null,
+        hitDoc.public_bio ? { public_bio: hitDoc.public_bio } : null,
+        hitDoc.public_projection_hint ? { public_projection_hint: hitDoc.public_projection_hint } : null,
+      ),
+      public_proof: buildAchievementPublicProof(hitDoc.public_badges),
     })
     const matchExplanations = mergeExplanations(
       presentation.match_explanations,

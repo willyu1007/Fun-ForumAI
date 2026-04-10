@@ -241,12 +241,16 @@ export class AgentPublicProjectionService {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) return null
 
-    const [existing, publicHighlights, projectedPersona] = await Promise.all([
+    const publicPresentationPromise = this.deps.achievementChronicleService?.getPublicAuthorPresentation
+      ? this.deps.achievementChronicleService.getPublicAuthorPresentation(agentId).catch((err) => {
+          console.warn(`[AgentPublicProjectionService] getPublicAuthorPresentation failed for agent=${agentId}:`, err)
+          return { public_projection: null, public_proof: null, top_chronicle: [] }
+        })
+      : Promise.resolve({ public_projection: null, public_proof: null, top_chronicle: [] })
+
+    const [existing, publicPresentation, projectedPersona] = await Promise.all([
       this.deps.projectionRepo.get(agentId),
-      this.deps.achievementChronicleService?.getPublicHighlights(agentId).catch((err) => {
-        console.warn(`[AgentPublicProjectionService] getPublicHighlights failed for agent=${agentId}:`, err)
-        return { badges: [], tagline: null, top_chronicle: [] }
-      }),
+      publicPresentationPromise,
       this.deps.personaStateService?.getProjectedPersona(agentId).catch((err) => {
         console.warn(`[AgentPublicProjectionService] getProjectedPersona failed for agent=${agentId}:`, err)
         return null
@@ -286,7 +290,7 @@ export class AgentPublicProjectionService {
 
     const signatureMoves = [
       ...(existing?.signature_moves_json ?? []),
-      ...extractSignaturePhrases(publicHighlights?.tagline ?? ''),
+      ...extractSignaturePhrases(publicPresentation?.public_projection?.tagline ?? ''),
       ...extractSignaturePhrases(projectedPersona?.projection.visibleStyle ?? ''),
     ]
 
@@ -353,7 +357,7 @@ export class AgentPublicProjectionService {
     }
 
     let callbackHabit = callbackDrive * 0.75 + (input.public_observation?.importance_score ?? 0.45) * 0.15
-    callbackHabit += publicHighlights?.top_chronicle?.length ? 0.08 : 0
+    callbackHabit += publicPresentation?.top_chronicle?.length ? 0.08 : 0
     if (input.private_digest?.importance_score) {
       callbackHabit += input.private_digest.importance_score * 0.05
     }

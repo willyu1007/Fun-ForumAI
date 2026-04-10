@@ -23,7 +23,11 @@ function buildAgentPublicProjectionService() {
       getLatestConfig: vi.fn().mockReturnValue(null),
     } as never,
     achievementChronicleService: {
-      getPublicHighlights: vi.fn().mockResolvedValue({ badges: [], tagline: null, top_chronicle: [] }),
+      getPublicAuthorPresentation: vi.fn().mockResolvedValue({
+        public_projection: null,
+        public_proof: null,
+        top_chronicle: [],
+      }),
     } as never,
     personaStateService: {
       getProjectedPersona: vi.fn().mockResolvedValue(null),

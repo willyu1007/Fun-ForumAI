@@ -15,7 +15,6 @@ import {
   InMemoryMediaContextProjectionRepository,
   InMemoryHumanVoteRepository,
   InMemoryMessageRepository,
-  InMemoryPostMediaRepository,
   InMemoryPostRepository,
   InMemoryPrivateShadowMemoryRepository,
   InMemoryRawContextEventRepository,
@@ -262,7 +261,6 @@ describe('Public observation real smoke', () => {
     })
     const voteRepo = new InMemoryVoteRepository()
     const humanVoteRepo = new InMemoryHumanVoteRepository()
-    const postMediaRepo = new InMemoryPostMediaRepository()
     const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
     const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
     const achievementRepo = new InMemoryAchievementRepository()
@@ -273,7 +271,6 @@ describe('Public observation real smoke', () => {
       publicStageTurnRepo,
       voteRepo,
       humanVoteRepo,
-      postMediaRepo,
       sceneMediaBindingRepo,
       mediaContextProjectionRepo,
       communityRepo,

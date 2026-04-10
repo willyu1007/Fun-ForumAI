@@ -15,6 +15,7 @@ import {
   resolveLaunchVisualPackaging,
   type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
+import { mergeAgentPublicProjection } from '../identity/public-author-presentation.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -189,8 +190,8 @@ export class GlobalHighlightsService {
 
     const selected = uniqueAgentIds.slice(0, 8)
     const rows = await Promise.all(selected.map(async (agentId) => {
-      const [highlights, bio] = await Promise.all([
-        this.deps.achievementChronicleService.getPublicHighlights(agentId),
+      const [publicPresentation, bio] = await Promise.all([
+        this.deps.achievementChronicleService.getPublicAuthorPresentation(agentId),
         this.deps.agentBioService?.getProjection(agentId, {
           build_if_missing: true,
           allow_minor_refresh: false,
@@ -216,21 +217,11 @@ export class GlobalHighlightsService {
         agent_id: agentId,
         display_name: fallback?.author.display_name ?? agentId,
         public_identity: fallback?.author.public_identity ?? null,
-        public_projection: highlights.tagline || bio?.public_bio
-          ? {
-              ...(highlights.tagline ? { tagline: highlights.tagline } : {}),
-              ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
-            }
-          : null,
-        public_proof: highlights.badges.length > 0
-          ? {
-              achievement_badges: highlights.badges.map((badge) => ({
-                code: badge.code,
-                name: badge.name,
-                level: badge.tier,
-              })),
-            }
-          : null,
+        public_projection: mergeAgentPublicProjection(
+          publicPresentation.public_projection,
+          bio?.public_bio ? { public_bio: bio.public_bio } : null,
+        ),
+        public_proof: publicPresentation.public_proof,
         recent_post: latestPost ? {
           id: latestPost.id,
           title: latestPost.title,
@@ -241,7 +232,7 @@ export class GlobalHighlightsService {
           post_count: postCount,
           upvote_count: upvoteCount,
         },
-        top_chronicle: highlights.top_chronicle.map((entry) => ({
+        top_chronicle: publicPresentation.top_chronicle.map((entry) => ({
           ...entry,
           occurred_at: entry.occurred_at.toISOString(),
         })),

@@ -15,6 +15,10 @@ import type { MediaContextProjectionRepository } from '../repos/media-context-pr
 import { resolveSurfaceMediaAttachmentFromEvidence } from '../media/surface-media-view.js'
 import { resolveAchievementBadgePriorityRank } from '../../shared/badges/catalog.js'
 import type { AgentPublicProjection, AgentPublicProof } from '../../shared/semantic-taxonomy.js'
+import {
+  buildAchievementPublicProof,
+  mergeAgentPublicProjection,
+} from '../identity/public-author-presentation.js'
 
 export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
@@ -35,14 +39,14 @@ export interface ChronicleListResult {
   folded_count: number
 }
 
-export interface PublicBadge {
+interface PublicBadgeSeed {
   code: string
   name: string
   tier: 1 | 2 | 3
 }
 
-export interface PublicHighlights {
-  badges: PublicBadge[]
+interface PublicAuthorSemanticSeed {
+  badges: PublicBadgeSeed[]
   tagline: string | null
   top_chronicle: Array<{
     id: string
@@ -52,6 +56,12 @@ export interface PublicHighlights {
     importance_score: number
     visual?: SurfaceMediaAttachmentView | null
   }>
+}
+
+export interface PublicAuthorSemanticPresentation {
+  public_projection: AgentPublicProjection | null
+  public_proof: AgentPublicProof | null
+  top_chronicle: PublicAuthorSemanticSeed['top_chronicle']
 }
 
 function clampLimit(limit: number | undefined, fallback: number, max: number): number {
@@ -153,9 +163,9 @@ function compressSignalEntries(entries: ChronicleEntry[]): ChronicleEntry[] {
   return compressed
 }
 
-function selectTopUniqueBadges(achievements: AgentAchievement[], limit: number): PublicBadge[] {
+function selectTopUniqueBadges(achievements: AgentAchievement[], limit: number): PublicBadgeSeed[] {
   const seen = new Set<string>()
-  const badges: PublicBadge[] = []
+  const badges: PublicBadgeSeed[] = []
   const sorted = achievements
     .slice()
     .sort((a, b) => {
@@ -239,7 +249,7 @@ export class AchievementChronicleService {
     }
   }
 
-  async getPublicHighlights(agentId: string): Promise<PublicHighlights> {
+  private async buildPublicAuthorSemanticSeed(agentId: string): Promise<PublicAuthorSemanticSeed> {
     if (!config.features.achievementPublicHighlights) {
       return { badges: [], tagline: null, top_chronicle: [] }
     }
@@ -303,20 +313,23 @@ export class AchievementChronicleService {
     public_projection: AgentPublicProjection | null
     public_proof: AgentPublicProof | null
   }> {
-    const highlights = await this.getPublicHighlights(agentId)
+    const presentation = await this.getPublicAuthorPresentation(agentId)
     return {
-      public_projection: highlights.tagline
-        ? { tagline: highlights.tagline } satisfies AgentPublicProjection
-        : null,
-      public_proof: highlights.badges.length > 0
-        ? {
-            achievement_badges: highlights.badges.map((badge) => ({
-              code: badge.code,
-              name: badge.name,
-              level: badge.tier,
-            })),
-          } satisfies AgentPublicProof
-        : null,
+      public_projection: presentation.public_projection,
+      public_proof: presentation.public_proof,
+    }
+  }
+
+  async getPublicAuthorPresentation(agentId: string): Promise<PublicAuthorSemanticPresentation> {
+    const presentationSeed = await this.buildPublicAuthorSemanticSeed(agentId)
+    return {
+      public_projection: mergeAgentPublicProjection(
+        presentationSeed.tagline ? { tagline: presentationSeed.tagline } : null,
+      ),
+      public_proof: buildAchievementPublicProof(presentationSeed.badges),
+      top_chronicle: presentationSeed.top_chronicle.map((entry) => ({
+        ...entry,
+      })),
     }
   }
 

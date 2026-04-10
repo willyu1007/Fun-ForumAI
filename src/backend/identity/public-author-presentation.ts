@@ -3,6 +3,7 @@ import { buildAgentSystemDisplayFields, type AgentSurfaceAccess, type AgentSyste
 import { resolvePublicIdentityBadges } from './public-display-badges.js'
 import type {
   AgentPublicIdentity,
+  AgentPublicIdentityBadge,
   AgentPublicProjection,
   AgentPublicProof,
 } from '../../shared/semantic-taxonomy.js'
@@ -20,6 +21,82 @@ export interface PublicAuthorPresentation {
   surface_access?: AgentSurfaceAccess | null
 }
 
+type AchievementBadgeInput = {
+  code: string
+  name: string
+  level?: 1 | 2 | 3 | null
+  tier?: 1 | 2 | 3 | null
+}
+
+function hasProjectionValue(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function cloneIdentityBadges(
+  badges: AgentPublicIdentityBadge[] | null | undefined,
+): AgentPublicIdentityBadge[] {
+  return (badges ?? []).map((badge) => ({ ...badge }))
+}
+
+export function clonePublicProjection(
+  projection: AgentPublicProjection | null | undefined,
+): AgentPublicProjection | null {
+  if (!projection) return null
+  const merged: AgentPublicProjection = {}
+  if (hasProjectionValue(projection.tagline)) {
+    merged.tagline = projection.tagline
+  }
+  if (hasProjectionValue(projection.public_bio)) {
+    merged.public_bio = projection.public_bio
+  }
+  if (hasProjectionValue(projection.public_projection_hint)) {
+    merged.public_projection_hint = projection.public_projection_hint
+  }
+  return Object.keys(merged).length > 0 ? merged : null
+}
+
+export function mergeAgentPublicProjection(
+  ...parts: Array<AgentPublicProjection | null | undefined>
+): AgentPublicProjection | null {
+  const merged: AgentPublicProjection = {}
+  for (const part of parts) {
+    if (!part) continue
+    if (!merged.tagline && hasProjectionValue(part.tagline)) {
+      merged.tagline = part.tagline
+    }
+    if (!merged.public_bio && hasProjectionValue(part.public_bio)) {
+      merged.public_bio = part.public_bio
+    }
+    if (!merged.public_projection_hint && hasProjectionValue(part.public_projection_hint)) {
+      merged.public_projection_hint = part.public_projection_hint
+    }
+  }
+  return Object.keys(merged).length > 0 ? merged : null
+}
+
+export function buildAchievementPublicProof(
+  badges: ReadonlyArray<AchievementBadgeInput> | null | undefined,
+): AgentPublicProof | null {
+  const normalized = (badges ?? [])
+    .map((badge) => {
+      const level = badge.level ?? badge.tier ?? 1
+      return {
+        code: badge.code,
+        name: badge.name,
+        level,
+      }
+    })
+  return normalized.length > 0
+    ? { achievement_badges: normalized }
+    : null
+}
+
+export function clonePublicProof(
+  proof: AgentPublicProof | null | undefined,
+): AgentPublicProof | null {
+  return buildAchievementPublicProof(proof?.achievement_badges)
+}
+
 export function buildAgentPublicAuthorPresentation(input: {
   agent: Pick<Agent, 'id' | 'display_name' | 'avatar_url' | 'created_at'>
   latest_config?: AgentConfig | null
@@ -27,22 +104,20 @@ export function buildAgentPublicAuthorPresentation(input: {
   public_proof?: AgentPublicProof | null
 }): PublicAuthorPresentation {
   const displayFields = buildAgentSystemDisplayFields(input.latest_config?.config_json)
-  const publicProof = input.public_proof?.achievement_badges ?? []
-  const proof = publicProof.length > 0
-    ? { achievement_badges: publicProof.map((badge) => ({ ...badge })) } satisfies AgentPublicProof
-    : null
+  const proof = clonePublicProof(input.public_proof)
+  const semanticIdentityBadges = cloneIdentityBadges(displayFields.public_identity?.identity_badges)
+  const fallbackIdentityBadges = displayFields.agent_kind === 'owner'
+    ? resolvePublicIdentityBadges({
+        agentKind: displayFields.agent_kind,
+        createdAt: input.agent.created_at ?? null,
+      })
+    : []
+  const identityBadges = semanticIdentityBadges.length > 0 ? semanticIdentityBadges : fallbackIdentityBadges
   const publicIdentity = {
     ...(displayFields.public_identity ?? { agent_kind: displayFields.agent_kind }),
-    identity_badges: resolvePublicIdentityBadges({
-      agentKind: displayFields.agent_kind,
-      explicitDisplayBadges: displayFields.display_badges,
-      createdAt: input.agent.created_at ?? null,
-    }),
+    ...(identityBadges.length > 0 ? { identity_badges: identityBadges } : {}),
   } satisfies AgentPublicIdentity
-  const projection =
-    input.public_projection?.tagline || input.public_projection?.public_bio || input.public_projection?.public_projection_hint
-      ? { ...input.public_projection } satisfies AgentPublicProjection
-      : null
+  const projection = clonePublicProjection(input.public_projection)
 
   return {
     id: input.agent.id,

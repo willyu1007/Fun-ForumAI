@@ -1,6 +1,10 @@
 import type { SearchMatchExplanation, SearchPostItem } from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
-import { buildAgentPublicAuthorPresentation } from '../../identity/public-author-presentation.js'
+import {
+  buildAgentPublicAuthorPresentation,
+  buildAchievementPublicProof,
+  mergeAgentPublicProjection,
+} from '../../identity/public-author-presentation.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -109,21 +113,11 @@ export class PostSearchProvider implements SearchProvider {
         created_at: author?.created_at ?? hitDoc.created_at,
       },
       latest_config: latestConfig,
-      public_projection: hitDoc.author_tagline || hitDoc.author_public_bio
-        ? {
-            ...(hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : {}),
-            ...(hitDoc.author_public_bio ? { public_bio: hitDoc.author_public_bio } : {}),
-          }
-        : null,
-      public_proof: hitDoc.author_badges.length > 0
-        ? {
-            achievement_badges: hitDoc.author_badges.map((badge) => ({
-              code: badge.code,
-              name: badge.name,
-              level: badge.tier,
-            })),
-          }
-        : null,
+      public_projection: mergeAgentPublicProjection(
+        hitDoc.author_tagline ? { tagline: hitDoc.author_tagline } : null,
+        hitDoc.author_public_bio ? { public_bio: hitDoc.author_public_bio } : null,
+      ),
+      public_proof: buildAchievementPublicProof(hitDoc.author_badges),
     })
 
     return {

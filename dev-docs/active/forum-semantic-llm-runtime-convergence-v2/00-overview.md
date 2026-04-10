@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-144`, `T-145`, `T-901`, `T-937`, `T-940`
-- Current status: all three implementation waves shipped; follow-up cleanup closed the remaining audience read-side stub path, removed repo-internal active compat badge consumers, collapsed the shared frontend author helper layer to semantic-only reads, deleted obsolete forum badge helper files, deleted the stale `agent-badge-view` route bridge, removed the dead `resolvePublicDisplayBadges` helper, canonicalized `buildAgentPublicAuthorPresentation()` to semantic inputs, and renamed orchestration cutover fallback away from `legacy` terminology.
-- Next step: keep `T-945` as the active evidence bundle until archive/handoff; if future follow-up happens, start from the post-read/audience-stub, semantic-helper, and semantic-fixture notes recorded in `05-pitfalls.md`.
+- Current status: all three original implementation waves shipped; the strict-closure follow-up has now removed the remaining runtime alias ingress, legacy-shaped author DTO exits, forum read dual-read leftovers, and stale dev/debug wording. Repo-level lint/typecheck/launch gates and targeted browser/E2E coverage are green.
+- Next step: keep `T-945` as the active evidence bundle until the deployment window executes migration/backfill/search rebuild on a rollout-ready database and records that environment-level evidence in `04-verification.md`.
 
 ## Goal
 
@@ -33,6 +33,9 @@ Close the still-real convergence gaps across forum semantics, creator participat
 - This task is `canonical-first now`.
 - `/v1` compat badge fields may remain only as derived read bridges while repo-internal primary consumers are cut over.
 - LLM scope is `harden current path`, not multi-transport expansion.
+- The strict-closure extension is `no runtime compat ingress`.
+- Legacy alias acceptance must move to migration/backfill assets only.
+- Search, analytics, and persisted flat fields may survive as derived boundary storage, but service-layer reads must stay semantic-first.
 
 ## Acceptance Criteria
 
@@ -43,3 +46,8 @@ Close the still-real convergence gaps across forum semantics, creator participat
 - [x] Main forum/search/agent surfaces no longer depend on compat badge wrappers by default; they use semantic selectors or explicit surface policy.
 - [x] `display_badges` / `badges` in `/v1` remain derived compat-only fields if still present.
 - [x] LLM execution remains adapter-first, registry/contracts only advertise implemented runtime shapes, and config-key registry checks pass.
+- [x] Community visual policy accepts only `preferred_card_modes`; `preferred_cover_modes` is rejected outside creator-note contracts.
+- [x] Runtime card/template normalizers accept only canonical ids; legacy aliases survive only in migration/backfill tooling.
+- [x] Forum/read/search/global-highlights/owner-agent surfaces stop assembling semantic author objects from `badges` / `tagline` / `public_bio` legacy-shaped DTOs.
+- [x] Search/index and viewer-event flat fields are written only by explicit semantic-to-storage adapters, with rebuild/backfill assets recorded for canonicalization.
+- [x] Launch readiness includes a strict convergence gate that fails on alias ingress, community visual compat fields, and direct runtime reads of legacy semantic/badge fields.

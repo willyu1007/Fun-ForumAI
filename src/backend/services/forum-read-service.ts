@@ -4,7 +4,6 @@ import type {
   PublicStageTurnRepository,
   VoteRepository,
   HumanVoteRepository,
-  PostMediaRepository,
   SceneMediaBindingRepository,
   MediaContextProjectionRepository,
   CommunityRepository,
@@ -64,7 +63,6 @@ import type { RiskGovernanceRepository } from '../repos/risk-governance-reposito
 import { listSurfaceMediaAttachmentViews } from '../media/surface-media-view.js'
 import type { UserRepository } from '../repos/user-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
-import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type {
   MediaRolloutControllerProfile,
   MediaRolloutControllerService,
@@ -72,6 +70,7 @@ import type {
 import {
   buildAgentPublicAuthorPresentation,
   buildHumanPublicAuthorPresentation,
+  mergeAgentPublicProjection,
 } from '../identity/public-author-presentation.js'
 import type {
   AudienceSignalCapsule,
@@ -102,7 +101,6 @@ export interface ForumReadServiceDeps {
   publicStageTurnRepo: PublicStageTurnRepository
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
-  postMediaRepo: PostMediaRepository
   sceneMediaBindingRepo: SceneMediaBindingRepository
   mediaContextProjectionRepo: MediaContextProjectionRepository
   forumSceneMetadataRepo?: ForumSceneMetadataRepository | null
@@ -115,7 +113,6 @@ export interface ForumReadServiceDeps {
   achievementChronicleService?: AchievementChronicleService
   agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
   riskRepo?: RiskGovernanceRepository
-  mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
   mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
   threadLifecycleService?: ThreadLifecycleService | null
   semanticProjectionService?: SemanticProjectionService | null
@@ -558,16 +555,13 @@ export class ForumReadService {
       }).catch(() => null) ?? Promise.resolve(null),
     ])
 
-    const publicProjection = presentation.public_projection?.tagline || bio?.public_bio
-      ? {
-          ...(presentation.public_projection?.tagline ? { tagline: presentation.public_projection.tagline } : {}),
-          ...(bio?.public_bio ? { public_bio: bio.public_bio } : {}),
-        }
-      : null
     return buildAgentPublicAuthorPresentation({
       agent,
       latest_config: latestConfig,
-      public_projection: publicProjection,
+      public_projection: mergeAgentPublicProjection(
+        presentation.public_projection,
+        bio?.public_bio ? { public_bio: bio.public_bio } : null,
+      ),
       public_proof: presentation.public_proof,
     })
   }
@@ -944,72 +938,6 @@ export class ForumReadService {
     return { items: page, next_cursor }
   }
 
-  private async resolveLegacyPostMediaAltText(postIds: string[]): Promise<Record<string, Record<string, string | null>>> {
-    if (postIds.length === 0) return {}
-    const bindings = await this.deps.sceneMediaBindingRepo.findByScenes('forum_post', postIds)
-    if (bindings.length === 0) return {}
-    const projections = await this.deps.mediaContextProjectionRepo.findByBindingIds(bindings.map((binding) => binding.id))
-    const altByBindingId = new Map<string, string | null>()
-    for (const projection of projections) {
-      if (
-        projection.projection_surface !== 'public_display'
-        || projection.projection_kind !== 'display_attachment'
-        || altByBindingId.has(projection.binding_id)
-      ) {
-        continue
-      }
-      const altText = projection.payload_json.alt_text
-      altByBindingId.set(
-        projection.binding_id,
-        typeof altText === 'string' && altText.trim().length > 0 ? altText : null,
-      )
-    }
-
-    const altByPostId: Record<string, Record<string, string | null>> = {}
-    for (const binding of bindings) {
-      if (!altByPostId[binding.scene_id]) altByPostId[binding.scene_id] = {}
-      altByPostId[binding.scene_id]![binding.asset_id] = altByBindingId.get(binding.id) ?? null
-    }
-    return altByPostId
-  }
-
-  private async recordRootPostReadModelParity(input: {
-    post_id: string
-    attachment_media: PostMediaSummary[]
-    legacy_media: PostMediaSummary[]
-  }): Promise<void> {
-    if (!this.deps.mediaObservabilityService) return
-    const attachmentSignature = input.attachment_media.map((item) =>
-      `${item.asset_id}|${item.media_url}|${item.mime_type}`,
-    )
-    const legacySignature = input.legacy_media.map((item) =>
-      `${item.asset_id}|${item.media_url}|${item.mime_type}`,
-    )
-    if (attachmentSignature.join('||') === legacySignature.join('||')) {
-      return
-    }
-    await this.deps.mediaObservabilityService.record({
-      event_type: 'root_post_read_model_parity_mismatch',
-      surface: 'root_post',
-      severity: 'warn',
-      payload_json: {
-        post_id: input.post_id,
-        attachment_asset_ids: input.attachment_media.map((item) => item.asset_id),
-        legacy_asset_ids: input.legacy_media.map((item) => item.asset_id),
-        attachment_count: input.attachment_media.length,
-        legacy_count: input.legacy_media.length,
-      },
-    })
-  }
-
-  private recordRootPostReadModelParityAsync(input: {
-    post_id: string
-    attachment_media: PostMediaSummary[]
-    legacy_media: PostMediaSummary[]
-  }): void {
-    void this.recordRootPostReadModelParity(input).catch(() => {})
-  }
-
   private async resolvePostMediaViews(postIds: string[]): Promise<Record<string, PostMediaSummary[]>> {
     if (postIds.length === 0) return {}
     const attachmentMap = await listSurfaceMediaAttachmentViews(
@@ -1020,36 +948,15 @@ export class ForumReadService {
       'forum_post',
       postIds,
     )
-    const shouldCompareLegacyReadModel = Boolean(this.deps.mediaObservabilityService)
-    const legacyMediaByPost = shouldCompareLegacyReadModel
-      ? this.deps.postMediaRepo.findByPostIds(postIds)
-      : {}
-    const legacyAltTextByPost = shouldCompareLegacyReadModel
-      ? await this.resolveLegacyPostMediaAltText(postIds)
-      : {}
     const mediaByPost: Record<string, PostMediaSummary[]> = {}
 
     for (const postId of postIds) {
-      const attachmentMedia = (attachmentMap.get(postId) ?? []).map((item) => ({
+      mediaByPost[postId] = (attachmentMap.get(postId) ?? []).map((item) => ({
         asset_id: item.asset_id,
         media_url: item.media_url,
         mime_type: item.mime_type,
         alt_text: item.alt_text,
       }))
-      const legacyMedia = (legacyMediaByPost[postId] ?? []).map((item) => ({
-        asset_id: item.asset_id,
-        media_url: item.media_url,
-        mime_type: item.mime_type,
-        alt_text: legacyAltTextByPost[postId]?.[item.asset_id] ?? null,
-      }))
-      mediaByPost[postId] = attachmentMedia
-      if (shouldCompareLegacyReadModel && (attachmentMedia.length > 0 || legacyMedia.length > 0)) {
-        this.recordRootPostReadModelParityAsync({
-          post_id: postId,
-          attachment_media: attachmentMedia,
-          legacy_media: legacyMedia,
-        })
-      }
     }
 
     return mediaByPost

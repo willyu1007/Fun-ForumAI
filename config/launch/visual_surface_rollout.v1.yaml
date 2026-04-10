@@ -97,7 +97,6 @@ integration_notes:
     - highlight_hero_required
     - aftershow_visual_required
     - preferred_card_modes
-    - preferred_cover_modes
   read_model_fields:
     - surface_kind
     - card_mode

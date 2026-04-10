@@ -234,7 +234,7 @@ export function HighlightsPage() {
   const carouselPosts = useMemo(() => {
     if (!highlights) return []
     return highlights.hot_threads
-      .filter((post) => post.media.some((item) => item.mime_type.startsWith('image/')))
+      .filter((post) => (post.media ?? []).some((item) => item.mime_type.startsWith('image/')))
       .slice(0, 8)
   }, [highlights])
 
