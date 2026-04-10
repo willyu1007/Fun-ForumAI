@@ -56,6 +56,7 @@ import {
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { allowsDirectThreadReply } from '../lib/thread-writeability'
 
 interface AftershowContentHighlightV1 {
   audience_message_id: string
@@ -290,22 +291,45 @@ export function PostDetailPage() {
     () => forest?.nodes.find((node) => node.id === selectedForestNodeId) ?? null,
     [forest?.nodes, selectedForestNodeId],
   )
+  const branchGroupByThreadId = useMemo(() => {
+    if (!forest) return new Map<string, NonNullable<typeof forest>['branch_groups'][number]>()
+    return new Map(forest.branch_groups.map((group) => [group.thread_id, group]))
+  }, [forest])
   const explicitComposerAnchorNode = useMemo(
     () => forest?.nodes.find((node) => node.id === composerAnchorNodeId) ?? null,
     [composerAnchorNodeId, forest?.nodes],
   )
+  const selectedForestGroup = selectedForestNode
+    ? branchGroupByThreadId.get(selectedForestNode.thread_id) ?? null
+    : null
+  const selectedForestWriteability = selectedForestGroup?.lifecycle?.writeability ?? null
+  const selectedForestRouteCtaLabel =
+    typeof selectedForestGroup?.lifecycle?.active_route?.cta?.label === 'string'
+      ? selectedForestGroup.lifecycle.active_route.cta.label
+      : null
+  const isThreadReplyable = useCallback((threadId: string | null | undefined) => {
+    if (!threadId) return false
+    const group = branchGroupByThreadId.get(threadId)
+    return allowsDirectThreadReply(group?.lifecycle?.writeability)
+  }, [branchGroupByThreadId])
   const composerAnchorNode = useMemo(() => {
     if (!stageTurnReplyEnabled) {
       return null
     }
-    if (explicitComposerAnchorNode) {
+    if (explicitComposerAnchorNode && isThreadReplyable(explicitComposerAnchorNode.thread_id)) {
       return explicitComposerAnchorNode
     }
-    if (!stageThreadEntryEnabled) {
+    if (!stageThreadEntryEnabled && selectedForestNode && isThreadReplyable(selectedForestNode.thread_id)) {
       return selectedForestNode
     }
     return null
-  }, [explicitComposerAnchorNode, selectedForestNode, stageThreadEntryEnabled, stageTurnReplyEnabled])
+  }, [
+    explicitComposerAnchorNode,
+    isThreadReplyable,
+    selectedForestNode,
+    stageThreadEntryEnabled,
+    stageTurnReplyEnabled,
+  ])
   const canClearComposerAnchor = Boolean(
     composerAnchorNodeId
     && stageTurnReplyEnabled
@@ -880,13 +904,17 @@ export function PostDetailPage() {
                   <RichTextLite text={composerAnchorNode.body} className="mt-1 text-xs leading-6 text-foreground/80" />
                 </div>
               ) : null}
-              {selectedForestNode && !composerAnchorNode ? (
+                {selectedForestNode && !composerAnchorNode ? (
                 <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
                   <p className="text-[11px] font-medium text-muted-foreground">
                     当前聚焦节点 · {selectedForestNode.author.display_name}
                   </p>
                   <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                    {stageThreadEntryEnabled && stageTurnReplyEnabled
+                    {selectedForestWriteability && !allowsDirectThreadReply(selectedForestWriteability)
+                      ? selectedForestRouteCtaLabel
+                        ? `当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“${selectedForestRouteCtaLabel}”，或者直接发起新的公开分支。`
+                        : '当前聚焦节点已经收口，不能再沿原线程公开回复；如需继续，请直接发起新的公开分支。'
+                      : stageThreadEntryEnabled && stageTurnReplyEnabled
                       ? '当前聚焦节点仅用于观看；如需沿着它继续，请点击“回应这里”，否则你的发言会作为新的公开分支发布。'
                       : stageThreadEntryEnabled
                       ? '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'
@@ -895,6 +923,9 @@ export function PostDetailPage() {
                 </div>
               ) : null}
               <Textarea
+                id="public-stage-composer"
+                name="public-stage-composer"
+                aria-label={composerAnchorNode ? '公开节点回应输入框' : '公开分支输入框'}
                 value={publicReplyDraft}
                 onChange={(event) => {
                   setPublicReplyDraft(event.target.value)
@@ -962,6 +993,20 @@ export function PostDetailPage() {
                   return
                 }
                 if (source === 'reply') {
+                  if (!isThreadReplyable(node.thread_id)) {
+                    setComposerAnchorNodeId(null)
+                    setPublicReplyError(null)
+                    const ctaLabel = typeof branchGroupByThreadId.get(node.thread_id)?.lifecycle?.active_route?.cta?.label === 'string'
+                      ? branchGroupByThreadId.get(node.thread_id)?.lifecycle.active_route?.cta?.label
+                      : null
+                    setPublicReplyNotice(
+                      ctaLabel
+                        ? `这条分支已经转去新的续接入口，请使用“${ctaLabel}”。`
+                        : '这条分支当前不再接受沿原线程继续公开回复。',
+                    )
+                    return
+                  }
+                  setPublicReplyNotice(null)
                   setComposerAnchorNodeId(node.id)
                   recordWatchTelemetry({
                     event_type: 'reply_anchor_select',
@@ -971,6 +1016,7 @@ export function PostDetailPage() {
                   })
                   return
                 }
+                setPublicReplyNotice(null)
                 recordWatchTelemetry({
                   event_type: 'node_focus',
                   thread_id: node.thread_id,

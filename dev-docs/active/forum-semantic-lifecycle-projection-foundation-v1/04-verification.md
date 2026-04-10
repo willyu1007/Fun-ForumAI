@@ -54,3 +54,33 @@
   - 仓内日志显示 staging runtime 已成功使用 DashScope OpenAI-compatible 路由处理 forum runtime 请求。
   - 额外对 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions` 做了 `qwen-flash-character` 直连 smoke，请求成功返回 completion，确认 user 指定的 Qwen-Flash 凭据与模型可用。
 - 2026-04-07: `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict` 通过。
+- 2026-04-09: `pnpm vitest run src/backend/services/__tests__/thread-lifecycle-service.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/agent-perception-service.test.ts src/backend/services/__tests__/human-participation-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/forum-read-service.test.ts` 通过，覆盖 lifecycle core、writeability resolver、viewer/agent turn gating、runtime allowed actions、summary/detail/forest/runtime parity。
+- 2026-04-09: `pnpm vitest run src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts` 通过，覆盖 public read surface、runtime preview、discussion forest、route handoff list、viewer public write、route event wiring。
+- 2026-04-09: `pnpm exec tsc --noEmit` 通过。
+- 2026-04-09: `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict` 通过；期间顺手修复了 yaml-lite 解析下的 OpenAPI drift（`bearerAuth` / response wrapper schema / public thread schema 尾段未被质量门识别）。
+- 2026-04-09: `docs/context/api/openapi.yaml` 已补齐 `ThreadWriteabilitySnapshot`、`PublicStageThreadSummary.lifecycle`、`DiscussionBranchGroup.lifecycle`、`RuntimeContextEnvelope.focus_thread.lifecycle`，与代码实际返回字段对齐。
+- 2026-04-09: `pnpm vitest run src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx` 通过，覆盖 route-only 分支不再暴露“回应这里”、timeline reply affordance 跟随 lifecycle.writeability、post detail composer 对 route CTA 的提示文案。
+- 2026-04-09: 深度清理回归通过：
+  - `pnpm vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/services/__tests__/thread-lifecycle-service.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/agent-perception-service.test.ts`
+  - `pnpm vitest run src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - `pnpm exec tsc --noEmit`
+  - 覆盖 runtime `threadMeta` compat fallback、true-closed skip 与 handoff-pending soft-close 区分、以及前端不再在缺 `lifecycle.writeability` 时继续走 permissive reply path。
+- 2026-04-09: `kind-funforum` / `funforum` namespace 真实回归：
+  - `pnpm k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-seed` 通过，镜像重建、迁移、secret 复用、backend rollout 均成功。
+  - 对 `seed-post-ai-consciousness` 与 `seed-post-cyberpunk-city-images` 真实线程执行 `/v1/posts/:postId/threads-summary`、`/v1/threads/:threadId`、`/v1/posts/:postId/discussion-forest`、`/v1/internal/runtime-contexts/build`、`/v1/viewer/threads/:threadId/public-turns` 回归，确认 `HANDOFF_PENDING => SOFT_CLOSE + reply_allowed=true + preferred_action=FOLLOW_ROUTE`，`HANDOFFED => ROUTE_ONLY + reply_allowed=false + preferred_action=FOLLOW_ROUTE`，且 summary/detail/forest/runtime/viewer write plane 一致。
+  - Chrome DevTools MCP 实测 `http://127.0.0.1:4100/posts/seed-post-cyberpunk-city-images`：route-only 分支现只显示 `转入私聊` CTA，不再显示 `回应这里`；选中该节点时顶部 composer 引导会提示改走新的续接入口；timeline 中 route-only thread 也已隐藏回复按钮，而 soft-close thread 继续保留回复入口。
+- 2026-04-10: `rg -n "can_receive_replies\\b" src/backend src/frontend src/shared`
+  - pass
+  - live matches now limit the field to:
+    - shared lifecycle contract declaration
+    - resolver derivation
+    - route-event compat excerpt
+    - tests / comment guards
+  - no mainline UI/service consumer reads `can_receive_replies` instead of `lifecycle.writeability.reply_allowed`.
+- 2026-04-10: `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - passed
+  - 10 files, 119 tests
+  - confirms lifecycle/writeability/route semantics stay aligned across read/runtime/write/frontend consumers after the Gate 1 compat sweep.
+- 2026-04-10: Gate 1 review verdict
+  - PASS
+  - `T-941` exits Phase 1 as the frozen lifecycle / writeability / route truth owner for downstream `T-947` and `T-942`.

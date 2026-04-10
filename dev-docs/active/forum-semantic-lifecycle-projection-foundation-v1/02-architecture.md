@@ -25,6 +25,11 @@
 - `ReadingGuideProjection`
 - `TurnDisplayProjection`
 - 供 runtime / search / UI / aftershow 共享的 vocabulary 与 evidence refs
+- lifecycle consumer contract for:
+  - writeability
+  - route handoff
+  - revive explanation
+  - route/lifecycle change propagation
 
 ### Frozen Rules
 
@@ -53,17 +58,24 @@
   - `display_depth`
   - `reason_badges`
   - anchor preview 来源边界
+- forest group meta / lifecycle snapshot 必须足以支持 de-thread-card grouping 与 late-entry visual insertion
 
 ### To `T-943`
 
 - `ParticipationContract` 依赖的 `ThreadState` / `RouteHandoff` / visibility 边界必须稳定
 - viewer write 回帖锚点必须复用 pack1 的真实锚点语义，而不是页面层自造
+- viewer write 的可写性/收束解释必须能回落到 lifecycle contract，而不是 route 层直接读 thread row
 
 ### To `T-944`
 
 - capsule 必须可被 broker / runtime context 直接消费
 - public-safe growth/persona cues 必须已经定义好来源、过滤规则与 evidence refs
 - docs/context vocabulary 必须足够明确，避免 pack4 再“发明一次 capsule 语义”
+
+### To `T-948`
+
+- lifecycle snapshot 必须可被 lean summary/detail/search bundles 直接消费
+- projection version/fallback 约束必须足以支撑 cache/versioning，而不需要重新发明第二套 capsule 结构
 
 ## Exit Review Gate
 
@@ -78,3 +90,4 @@
 - 若把森林展示规则直接写进前端，会导致 read/search/runtime 继续分叉。
 - 若 display projection 偷读 hidden anchor 原文，会破坏可见性边界。
 - 若 lifecycle 只保留旧 `OPEN/PEAKED/CLOSED` 粗字段，后续 opportunity/perception 无法稳定消费。
+- 若 lifecycle contract 只停留在 service 内部，后续 writeability/route/search/UI 很容易再次各自拼状态。

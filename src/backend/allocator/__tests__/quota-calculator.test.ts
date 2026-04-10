@@ -45,6 +45,13 @@ describe('DefaultQuotaCalculator', () => {
     expect(calc.calculate(ctx({ post_id: 'post-1' }), NORMAL)).toBe(0)
   })
 
+  it('tracks thread quota by thread_id before post_id when thread context exists', () => {
+    calc.recordThreadAllocation('thread-1', 20)
+    expect(calc.calculate(ctx({ post_id: 'post-1', thread_id: 'thread-1' }), NORMAL)).toBe(0)
+    expect(calc.calculate(ctx({ post_id: 'post-1', thread_id: 'thread-2' }), NORMAL)).toBe(5)
+    expect(calc.calculate(ctx({ post_id: 'post-1' }), NORMAL)).toBe(5)
+  })
+
   it('applies moderate degradation factor (×0.5)', () => {
     // base=5, ×0.5 = 2 (floor)
     expect(calc.calculate(ctx(), MODERATE)).toBe(2)

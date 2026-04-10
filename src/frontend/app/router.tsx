@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router'
+import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { AppShellContainer } from './shell/AppShellContainer'
 import {
   AccountSettingsPage,
@@ -33,14 +34,17 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   {
     path: '/register',
     element: <RegisterPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   {
     path: '/',
     element: <AppShellContainer />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <SuspenseWrap><HomePage /></SuspenseWrap> },
       { path: 'feed', element: <SuspenseWrap><FeedPage /></SuspenseWrap> },

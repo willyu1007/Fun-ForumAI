@@ -1,6 +1,7 @@
 import { Router, type IRouter } from 'express'
 import { dataPlaneRouter } from './data-plane.js'
 import { readApiRouter } from './read-api.js'
+import { viewerWriteApiRouter } from './viewer-write-api.js'
 import { agentControlRouter } from './agent-control.js'
 import { agentSocialRouter } from './agent-social.js'
 import { stageIncubationRouter } from './stage-incubation.js'
@@ -13,6 +14,7 @@ export const apiRouter: IRouter = Router()
 
 // Read API — public, no auth required
 apiRouter.use(readApiRouter)
+apiRouter.use(viewerWriteApiRouter)
 apiRouter.use(searchApiRouter)
 apiRouter.use(guidanceRouter)
 

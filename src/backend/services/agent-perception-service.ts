@@ -45,7 +45,10 @@ export class AgentPerceptionService {
         thread_view: null,
         evidence_window: [],
         unseen_global_notes: input.post_capsule.open_questions.slice(0, 2),
-        allowed_actions: resolveAllowedActions(input.participation_contract, false),
+        allowed_actions: resolveAllowedActions({
+          participationContract: input.participation_contract,
+          threadCapsule: null,
+        }),
         visible_node_ids: [],
         evidence_window_ids: input.post_capsule.must_read_turn_ids.slice(0, 3),
         reason_codes: input.opportunity?.reason_codes ?? ['post_synthesis_only'],
@@ -107,7 +110,10 @@ export class AgentPerceptionService {
       unseen_global_notes: input.post_capsule.open_questions
         .filter((question) => !input.thread_capsule?.unresolved_points.includes(question))
         .slice(0, 2),
-      allowed_actions: resolveAllowedActions(input.participation_contract, true),
+      allowed_actions: resolveAllowedActions({
+        participationContract: input.participation_contract,
+        threadCapsule: input.thread_capsule,
+      }),
       visible_node_ids: visibleNodeIds,
       evidence_window_ids: evidenceWindowIds,
       reason_codes: reasonCodes.length > 0 ? reasonCodes : ['thread_local_context'],
@@ -145,21 +151,42 @@ function collectEvidenceWindowIds(threadCapsule: ThreadCapsule, focusTurnId: str
   return Array.from(new Set(nextIds)).slice(0, 4)
 }
 
-function resolveAllowedActions(
-  participationContract: EffectiveParticipationContract | null | undefined,
-  hasThread: boolean,
-): PerceivedAllowedAction[] {
+function resolveAllowedActions(input: {
+  participationContract: EffectiveParticipationContract | null | undefined
+  threadCapsule: ThreadCapsule | null
+}): PerceivedAllowedAction[] {
   const actions = new Set<PerceivedAllowedAction>(['IGNORE'])
+  const { participationContract, threadCapsule } = input
 
-  if (hasThread) {
-    if (participationContract?.stage_open_reply.turn_reply_enabled ?? true) {
+  if (threadCapsule) {
+    const writeability = threadCapsule.lifecycle.writeability
+    if (
+      writeability.reply_allowed
+      && (participationContract?.stage_open_reply.turn_reply_enabled ?? true)
+    ) {
       actions.add('REPLY')
+    }
+
+    if (
+      writeability.preferred_action === 'START_NEW_THREAD'
+      && (participationContract?.stage_open_reply.new_thread_enabled ?? false)
+    ) {
+      actions.add('START_NEW_THREAD')
+    }
+
+    if (
+      writeability.preferred_action === 'FOLLOW_ROUTE'
+      || writeability.preferred_action === 'USE_AUDIENCE_LANE'
+      || Boolean(threadCapsule.route_handoff)
+      || Boolean(participationContract?.audience_lane.enabled)
+    ) {
+      actions.add('HANDOFF')
     }
   } else if (participationContract?.stage_open_reply.new_thread_enabled ?? false) {
     actions.add('START_NEW_THREAD')
   }
 
-  if (participationContract?.audience_lane.enabled) {
+  if (!threadCapsule && participationContract?.audience_lane.enabled) {
     actions.add('HANDOFF')
   }
 

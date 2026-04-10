@@ -36,8 +36,11 @@ export class InMemoryAdmissionGate implements AdmissionGate {
     if (!event.community_id) {
       return { admitted: false, reason: 'missing community_id' }
     }
-    if (!event.author_agent_id) {
-      return { admitted: false, reason: 'missing author_agent_id' }
+    const hasAgentAuthor = Boolean(event.author_agent_id)
+    const hasHumanAuthor = event.author_actor_type === 'human' && Boolean(event.author_user_id)
+    const hasSystemAuthor = event.author_actor_type === 'system'
+    if (!hasAgentAuthor && !hasHumanAuthor && !hasSystemAuthor) {
+      return { admitted: false, reason: 'missing author identity' }
     }
 
     if (event.chain_depth > this.maxChainDepth) {

@@ -22,6 +22,14 @@
 - write result envelope snapshot
 - idempotency replay evidence
 - audit / moderation / rate-limit hook evidence
+- governance regression suite covering:
+  - feature flag
+  - permission / community role
+  - open-reply vs audience lane
+  - moderation mode
+  - rate limit
+  - idempotency
+  - audit payload
 
 ## 2026-04-08 Evidence
 
@@ -63,3 +71,86 @@
   - passed
 - `pnpm typecheck`
   - passed
+
+## 2026-04-10 Evidence
+
+- `pnpm exec vitest run src/backend/services/__tests__/viewer-public-write-service.test.ts src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/allocator/__tests__/admission.test.ts src/backend/runtime/__tests__/event-bridge.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+  - passed
+  - 覆盖：
+    - `ViewerPublicWriteService` accepted forum hook / audience hook / non-accepted no-op
+    - shared forum dispatcher fanout 与 audience minimal dispatcher
+    - human-authored event bridge provenance
+    - allocator admission 对无 `author_agent_id` 的 human event 放行
+    - canonical `/viewer/*` route split 之后的 e2e compatibility
+  - 期间暴露一个真实回退：`read-api.ts` 的 human vote refresh 仍引用 `searchProjectionService`；在同轮修复后复跑 targeted route tests。
+- `pnpm exec vitest run src/backend/routes/__tests__/e2e-read-api.test.ts -t "(POST /v1/votes/human|POST /v1/viewer/posts/:postId/public-threads and /v1/viewer/threads/:threadId/public-turns return auditable envelopes and honor idempotency)"`
+  - passed
+  - 确认：
+    - canonical viewer thread/turn envelope 仍为 `ACCEPTED + audit_id`
+    - canonical viewer thread 写入后可立即在 `/v1/search?tab=threads` 命中，证明 viewer accepted write 已经通过 shared dispatcher 驱动搜索更新，而不是依赖 route-level manual refresh
+    - human vote path 不再因 import 回退产生 `ReferenceError`
+- `rg -n "viewer/.+public-|/v1/posts/.+public-threads|/v1/threads/.+public-turns|/v1/posts/.+audience-messages|/v1/viewer/" src/frontend src/backend/routes src/backend/services -g'*.ts' -g'*.tsx'`
+  - frontend 活路径命中：
+    - `src/frontend/api/hooks/forum.ts` 仅使用 `viewer/posts/:postId/public-threads` 与 `viewer/threads/:threadId/public-turns`
+  - canonical route owner 命中：
+    - `src/backend/routes/viewer-write-api.ts`
+  - legacy 路径命中主要保留在 compat route tests 与 backend legacy wrappers，符合 `compat-only` 目标。
+- `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/event-queue.test.ts src/backend/runtime/__tests__/runtime-loop.test.ts`
+  - passed
+  - 覆盖本轮真实线上回退修复：
+    - thread-root 场景下 `final_write_anchor_turn_id` 不再回落到 thread id
+    - human-authored continuity / prompt-layer 不再伪造 `author_agent_id`
+    - Redis runtime backlog 只按 consumer-group 可处理 backlog 计 lag，不再被 zombie stream entry 压成 `0 agents`
+- `pnpm exec vitest run src/backend/repos/__tests__/pg-agent-community-membership-repository.test.ts src/backend/repos/__tests__/pg-agent-stage-tier-snapshot-repository.test.ts src/backend/repos/__tests__/pg-community-repository.test.ts src/backend/repos/__tests__/pg-image-plan-repository.test.ts`
+  - passed
+  - 确认 runtime / orchestration 读取仓储层在 live retest 前后都能刷新到最新 repo 视图，不再卡在旧 snapshot。
+- `pnpm exec vitest run src/frontend/app/__tests__/lazy-import-recovery.test.ts src/frontend/app/__tests__/RouteErrorBoundary.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx`
+  - 39 tests passed
+  - 覆盖：
+    - stale dynamic-import recover-once sentinel
+    - route-level safe error boundary，不再把 raw chunk URL 直接暴露给用户
+    - post detail / discussion forest / thread list 在最新前端 bundle 上无回退
+- `pnpm build`
+  - passed
+  - 本轮额外捕获并修复一个 build-only 回退：`lazyWithDynamicImportRecovery(...)` 的调用换行通过了 `tsc` 与单测，但被 Vite/esbuild 拒绝；修复后 production build 恢复通过。
+- kind live proof on `seed-post-cyberpunk-city-images`
+  - live deploy:
+    - `pnpm k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-db-migrate --skip-seed`
+    - latest backend pod: `backend-659d7b9486-8ltq6` during runtime parity validation, then `backend-86958b657d-2fn97` after UX hardening rollout
+  - Chrome DevTools MCP:
+    - viewer real write: `POST /v1/viewer/posts/seed-post-cyberpunk-city-images/public-threads` returned `201`
+    - discussion forest immediately inserted new thread `cmns304r7014b0mi1dobe5q4z`
+    - latest frontend bundle smoke:
+      - `/communities` loaded normally after rollout
+      - `/posts/seed-post-cyberpunk-city-images` loaded normally, forest shows the new probe thread as `4 位参与者 · 3 条后续发言`
+      - composer `textarea` now exposes `id=name=public-stage-composer` and `aria-label`
+      - console remained clean; browser-side nameless form-field warning no longer reproduces
+  - backend pod logs:
+    - saw `POST /v1/viewer/posts/seed-post-cyberpunk-city-images/public-threads HTTP/1.1 201`
+    - saw `EventBridge Enqueued ThreadOpened`
+    - saw follow-up `ThreadTurnAdded`
+    - did not see `Turn with id ... not found`
+  - PostgreSQL verification:
+    - `public_stage_threads.id = cmns304r7014b0mi1dobe5q4z`
+    - thread row is `author_actor_type=HUMAN`, `author_user_id=dev-user-001`, `author_agent_id IS NULL`
+    - `public_stage_turns` for that thread show:
+      - turn 1 agent reply with `anchor_turn_id IS NULL`
+      - later turns anchor to real turn ids (`cmns30s2b01a30mi1b1i4oqfw`), not to the thread id
+  - conclusion:
+    - canonical viewer write -> shared dispatcher -> runtime writeback -> forest refresh 闭环成立
+    - thread-root 场景的 anchor / author provenance / queue lag 三个真实回退均已收口
+- 2026-04-10: `rg -n "viewer/posts/.*/public-threads|viewer/threads/.*/public-turns|viewer/posts/.*/audience-messages|/posts/.*/public-threads|/threads/.*/public-turns|/posts/.*/audience-messages" src/frontend src/backend/routes src/backend/services -g'*.ts' -g'*.tsx'`
+  - pass
+  - frontend active matches remain only in `src/frontend/api/hooks/forum.ts` under `/viewer/*`.
+  - legacy public-write paths are now confined to backend compat wrappers and tests.
+- 2026-04-10: `pnpm exec vitest run src/backend/services/__tests__/viewer-public-write-service.test.ts src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/allocator/__tests__/admission.test.ts src/backend/runtime/__tests__/event-bridge.test.ts`
+  - passed
+  - 4 files, 25 tests
+  - confirms accepted forum hooks, shared dispatcher fanout, human-authored event provenance, and allocator admission for human events.
+- 2026-04-10: `pnpm exec vitest run src/backend/routes/__tests__/e2e-read-api.test.ts -t "(POST /v1/posts/:postId/public-threads and /v1/threads/:threadId/public-turns allow human open_reply on the main thread|POST /v1/viewer/posts/:postId/public-threads and /v1/viewer/threads/:threadId/public-turns return auditable envelopes and honor idempotency|POST /v1/viewer/posts/:postId/audience-messages returns auditable envelopes and honors idempotency|POST /v1/posts/:postId/audience-messages validates body length and accepts valid message|POST /v1/votes/human)"`
+  - passed
+  - 7 targeted tests
+  - confirms canonical and compat write routes both hold, viewer accepted thread writes hit search via the shared dispatcher, and the adjacent `/votes/human` refresh path remains non-blocking.
+- 2026-04-10: Gate 1 review verdict
+  - PASS
+  - `/viewer/*` is frozen as the only canonical viewer-facing write contract, with legacy wrappers demoted to compat-only behavior.

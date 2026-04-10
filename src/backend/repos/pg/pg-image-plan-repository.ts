@@ -69,30 +69,18 @@ export class PgImagePlanRepository implements ImagePlanRepository {
     const limitClause = typeof options?.limit === 'number' && options.limit > 0
       ? Prisma.sql`LIMIT ${options.limit}`
       : Prisma.empty
-    const ids = options?.since
-      ? await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-          SELECT id
-          FROM image_plans
-          WHERE EXISTS (
-            SELECT 1
-            FROM jsonb_array_elements(selected_sources) AS source
-            WHERE source ->> 'asset_id' = ${assetId}
-          )
-            AND created_at >= ${options.since}
-          ORDER BY created_at DESC
-          ${limitClause}
-        `)
-      : await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-          SELECT id
-          FROM image_plans
-          WHERE EXISTS (
-            SELECT 1
-            FROM jsonb_array_elements(selected_sources) AS source
-            WHERE source ->> 'asset_id' = ${assetId}
-          )
-          ORDER BY created_at DESC
-          ${limitClause}
-        `)
+    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT id
+      FROM image_plans
+      WHERE EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(selected_sources) AS source(value)
+        WHERE value ->> 'asset_id' = ${assetId}
+      )
+      ${options?.since ? Prisma.sql`AND created_at >= ${options.since}` : Prisma.empty}
+      ORDER BY created_at DESC
+      ${limitClause}
+    `)
     if (ids.length === 0) return []
     const rows = await this.prisma.imagePlanRecord.findMany({
       where: {

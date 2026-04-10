@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { Router, type IRouter, type Request, type Response } from 'express'
 import multer from 'multer'
 import {
@@ -22,7 +21,6 @@ import {
   agentBioRefreshService,
   viewerPublicViewService,
   publicAgentRelationSummaryService,
-  viewerPublicWriteService,
   forumWatchTelemetryService,
   guidanceOrchestrator,
   guidanceStateService,
@@ -79,10 +77,12 @@ import {
   readStorylineState,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
-import type {
-  PublicWriteCommunityRole,
-  PublicWriteResult,
-} from '../../shared/forum-orchestration.js'
+import {
+  executeViewerAudienceMessageWrite,
+  executeViewerPublicThreadWrite,
+  executeViewerPublicTurnWrite,
+  getViewerWriteStatus,
+} from './viewer-write-shared.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -132,70 +132,30 @@ function readSourceContext(req: Request): {
   }
 }
 
-function getClientIp(req: Request): string | null {
-  const forwardedFor = req.headers['x-forwarded-for']
-  if (typeof forwardedFor === 'string') {
-    const first = forwardedFor.split(',')[0]?.trim()
-    if (first) return first
-  }
-  return req.ip || null
-}
-
-function resolveRequestCredential(req: Request): string | null {
-  const authHeader = req.headers.authorization
-  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-    return authHeader.slice(7)
-  }
-  const cookie = req.cookies?.auth_token
-  return typeof cookie === 'string' && cookie.trim().length > 0 ? cookie : null
-}
-
-function hashNullableValue(value: string | null): string | null {
-  if (!value) return null
-  return createHash('sha256').update(value).digest('hex')
-}
-
-function getViewerSessionId(req: Request): string | null {
-  return hashNullableValue(resolveRequestCredential(req))
-}
-
-function getUserAgentHash(req: Request): string | null {
-  const header = req.headers['user-agent']
-  return typeof header === 'string' && header.trim().length > 0
-    ? hashNullableValue(header.trim())
-    : null
-}
-
-function getViewerCommunityRole(req: Request): PublicWriteCommunityRole {
-  return req.user?.role === 'admin' ? 'ADMIN' : 'VIEWER'
-}
-
-function getViewerWriteStatus(result: PublicWriteResult): number {
-  if (result.result === 'ACCEPTED') return 201
-  if (result.result === 'PENDING_MODERATION') return 202
-  if (result.result === 'RATE_LIMITED') return 429
-  return 200
-}
-
-async function refreshSearchProjectionForWrite(result: PublicWriteResult, postId: string): Promise<void> {
-  if (result.result !== 'ACCEPTED') {
-    return
-  }
-
-  await Promise.all([
-    result.action !== 'CREATE_AUDIENCE_MESSAGE' && result.thread_id
-      ? searchProjectionService.refreshThread(result.thread_id)
-      : Promise.resolve(),
-    searchProjectionService.refreshPost(postId),
-  ])
-}
-
-function readViewerSemanticFields(
-  input: (
-    & NonNullable<Parameters<typeof readCommunityFamily>[0]>
-    & NonNullable<Parameters<typeof readContentKind>[0]>
-  ) | null | undefined,
-): Pick<
+function readViewerSemanticFields(input: {
+  community_semantics?: { community_family?: string | null } | null
+  interaction_contract?: { public_participation_mode?: string | null } | null
+  content_semantics?: {
+    narrative?: { storyline_state?: string | null }
+    distribution?: {
+      content_kind?: string | null
+      editorial_shelf_id?: string | null
+    }
+    format?: {
+      format_kind?: string | null
+      note_template_id?: string | null
+      cover_mode?: string | null
+    }
+  } | null
+  community_family?: string | null
+  public_participation_mode?: string | null
+  content_kind?: string | null
+  editorial_shelf_id?: string | null
+  storyline_state?: string | null
+  format_kind?: string | null
+  note_template_id?: string | null
+  cover_mode?: string | null
+}): Pick<
   CreateViewerPublicViewEventInput,
   | 'community_family'
   | 'public_participation_mode'
@@ -1090,23 +1050,13 @@ readApiRouter.post(
   requireHumanAuth,
   validate(createPublicThreadSchema),
   async (req, res) => {
-    const result = await viewerPublicWriteService.createPublicThread({
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      community_role: getViewerCommunityRole(req),
-      client_ip: getClientIp(req),
-      session_id: getViewerSessionId(req),
-      user_agent_hash: getUserAgentHash(req),
-      post_id: String(req.params.postId),
-      body: req.body.body,
-      idempotency_key: req.body.idempotency_key ?? null,
-      source_context: req.body.source_context ?? null,
-    })
+    // Compat-only legacy wrapper. Keep HTTP compatibility, but do not add new
+    // write-plane behavior here; canonical viewer writes live under /viewer/*.
+    const result = await executeViewerPublicThreadWrite(req)
     if (result.result !== 'ACCEPTED' || !result.thread_id) {
       res.status(getViewerWriteStatus(result)).json({ data: result })
       return
     }
-    await refreshSearchProjectionForWrite(result, String(req.params.postId))
     const data = await forumReadService.getThread(result.thread_id, req.user!.userId)
     res.status(201).json({ data })
   },
@@ -1117,79 +1067,15 @@ readApiRouter.post(
   requireHumanAuth,
   validate(createPublicTurnSchema),
   async (req, res) => {
-    const thread = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
-    const result = await viewerPublicWriteService.createPublicTurn({
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      community_role: getViewerCommunityRole(req),
-      client_ip: getClientIp(req),
-      session_id: getViewerSessionId(req),
-      user_agent_hash: getUserAgentHash(req),
-      post_id: thread.post_id,
-      thread_id: String(req.params.threadId),
-      body: req.body.body,
-      idempotency_key: req.body.idempotency_key ?? null,
-      source_context: req.body.source_context ?? null,
-      focused_turn_id: req.body.focused_turn_id ?? req.body.anchor_turn_id ?? null,
-      actual_anchor_turn_id: req.body.actual_anchor_turn_id ?? req.body.anchor_turn_id ?? null,
-      quoted_excerpt: req.body.quoted_excerpt ?? null,
-    })
+    // Compat-only legacy wrapper. Keep hydrated legacy response shape without
+    // reviving route-owned fanout or projection refresh logic.
+    const result = await executeViewerPublicTurnWrite(req)
     if (result.result !== 'ACCEPTED' || !result.thread_id) {
       res.status(getViewerWriteStatus(result)).json({ data: result })
       return
     }
-    await refreshSearchProjectionForWrite(result, thread.post_id)
     const data = await forumReadService.getThread(result.thread_id, req.user!.userId)
     res.status(201).json({ data })
-  },
-)
-
-readApiRouter.post(
-  '/viewer/posts/:postId/public-threads',
-  requireHumanAuth,
-  validate(createPublicThreadSchema),
-  async (req, res) => {
-    const result = await viewerPublicWriteService.createPublicThread({
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      community_role: getViewerCommunityRole(req),
-      client_ip: getClientIp(req),
-      session_id: getViewerSessionId(req),
-      user_agent_hash: getUserAgentHash(req),
-      post_id: String(req.params.postId),
-      body: req.body.body,
-      idempotency_key: req.body.idempotency_key ?? null,
-      source_context: req.body.source_context ?? null,
-    })
-    await refreshSearchProjectionForWrite(result, String(req.params.postId))
-    res.status(getViewerWriteStatus(result)).json({ data: result })
-  },
-)
-
-readApiRouter.post(
-  '/viewer/threads/:threadId/public-turns',
-  requireHumanAuth,
-  validate(createPublicTurnSchema),
-  async (req, res) => {
-    const thread = await forumReadService.getThread(String(req.params.threadId), req.user!.userId)
-    const result = await viewerPublicWriteService.createPublicTurn({
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      community_role: getViewerCommunityRole(req),
-      client_ip: getClientIp(req),
-      session_id: getViewerSessionId(req),
-      user_agent_hash: getUserAgentHash(req),
-      post_id: thread.post_id,
-      thread_id: String(req.params.threadId),
-      body: req.body.body,
-      idempotency_key: req.body.idempotency_key ?? null,
-      source_context: req.body.source_context ?? null,
-      focused_turn_id: req.body.focused_turn_id ?? req.body.anchor_turn_id ?? null,
-      actual_anchor_turn_id: req.body.actual_anchor_turn_id ?? req.body.anchor_turn_id ?? null,
-      quoted_excerpt: req.body.quoted_excerpt ?? null,
-    })
-    await refreshSearchProjectionForWrite(result, thread.post_id)
-    res.status(getViewerWriteStatus(result)).json({ data: result })
   },
 )
 
@@ -1417,49 +1303,16 @@ readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
 })
 
 readApiRouter.post(
-  '/viewer/posts/:postId/audience-messages',
-  requireHumanAuth,
-  validate(createAudienceMessageSchema),
-  async (req, res) => {
-    const result = await viewerPublicWriteService.createAudienceMessage({
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      community_role: getViewerCommunityRole(req),
-      client_ip: getClientIp(req),
-      session_id: getViewerSessionId(req),
-      user_agent_hash: getUserAgentHash(req),
-      post_id: String(req.params.postId),
-      body: req.body.body,
-      idempotency_key: req.body.idempotency_key ?? null,
-      source_context: req.body.source_context ?? null,
-    })
-    await refreshSearchProjectionForWrite(result, String(req.params.postId))
-    res.status(getViewerWriteStatus(result)).json({ data: result })
-  },
-)
-
-readApiRouter.post(
   '/posts/:postId/audience-messages',
   requireHumanAuth,
   validate(createAudienceMessageSchema),
   async (req, res) => {
-    const result = await viewerPublicWriteService.createAudienceMessage({
-      post_id: String(req.params.postId),
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      community_role: getViewerCommunityRole(req),
-      client_ip: getClientIp(req),
-      session_id: getViewerSessionId(req),
-      user_agent_hash: getUserAgentHash(req),
-      body: req.body.body,
-      idempotency_key: req.body.idempotency_key ?? null,
-      source_context: req.body.source_context ?? null,
-    })
+    // Compat-only legacy wrapper. Canonical audience writes live under /viewer/*.
+    const result = await executeViewerAudienceMessageWrite(req)
     if (result.result !== 'ACCEPTED' || !result.audience_message_id) {
       res.status(getViewerWriteStatus(result)).json({ data: result })
       return
     }
-    await refreshSearchProjectionForWrite(result, String(req.params.postId))
     const audienceThread = await audienceService.getThreadByPost(String(req.params.postId))
     const message = audienceThread.messages.find((item) => item.id === result.audience_message_id) ?? null
     res.status(201).json({ data: { thread: audienceThread.thread, message } })
@@ -1833,6 +1686,8 @@ readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
     direction,
   })
   try {
+    // Phase 1 adjacency only: this is not part of the canonical viewer write
+    // plane parity gate and stays tracked in T-946 adjudication separately.
     await searchProjectionService.refreshVoteTarget(targetType, targetId)
   } catch (error) {
     console.error('[ReadAPI] refreshVoteTarget failed after human vote:', error)

@@ -22,6 +22,9 @@ class StubRedis {
   public xdelCalls: Array<{ key: string, ids: string[] }> = []
   public delCalls: string[][] = []
   public xgroupCreated = 0
+  public xlenValue: number | null = null
+  public groupInfoRows: unknown[] = []
+  public pendingSummary: unknown[] = [0, null, null, null]
 
   async call(command: string, ..._args: Array<string | number>): Promise<unknown> {
     if (command === 'XGROUP') {
@@ -37,6 +40,12 @@ class StubRedis {
       if (!row) return null
       return [['stream', [row]]]
     }
+    if (command === 'XINFO') {
+      return this.groupInfoRows
+    }
+    if (command === 'XPENDING') {
+      return this.pendingSummary
+    }
     throw new Error(`Unsupported command in test stub: ${command}`)
   }
 
@@ -46,11 +55,14 @@ class StubRedis {
   }
 
   async xlen(_key: string): Promise<number> {
-    return this.streamRows.length
+    return this.xlenValue ?? this.streamRows.length
   }
 
-  async xrange(_key: string, _start: string, _end: string, _countToken?: string, _count?: number): Promise<Array<[string, string[]]>> {
-    return this.streamRows.length ? [this.streamRows[0]] : []
+  async xrange(_key: string, start: string, _end: string, _countToken?: string, _count?: number): Promise<Array<[string, string[]]>> {
+    const rows = this.streamRows
+      .filter(([id]) => matchesRangeStart(id, start))
+      .sort((a, b) => compareStreamIds(a[0], b[0]))
+    return rows.length ? [rows[0]] : []
   }
 
   async xack(key: string, group: string, id: string): Promise<number> {
@@ -175,4 +187,96 @@ describe('RedisStreamRuntimeEventQueue', () => {
     expect(dlqCall?.args).toContain('reason')
     expect(dlqCall?.args).toContain('fatal')
   })
+
+  it('reports consumer-group backlog instead of raw stream length', async () => {
+    redis.xlenValue = 5
+    redis.groupInfoRows = [[
+      'name',
+      'runtime-loop',
+      'pending',
+      1,
+      'last-delivered-id',
+      '3000-0',
+      'lag',
+      2,
+    ]]
+
+    const queue = new RedisStreamRuntimeEventQueue(redis, {
+      streamKey: 'runtime:events',
+      deadLetterStreamKey: 'runtime:events:dlq',
+      consumerGroup: 'runtime-loop',
+      consumerName: 'test-consumer',
+    })
+
+    await expect(queue.size()).resolves.toBe(3)
+  })
+
+  it('ignores pre-group zombie rows when computing oldest backlog timestamp', async () => {
+    redis.streamRows.push(
+      ['1000-0', ['event', JSON.stringify(makeEvent('zombie')), 'retry_count', '0']],
+      ['5000-0', ['event', JSON.stringify(makeEvent('fresh')), 'retry_count', '0']],
+    )
+    redis.groupInfoRows = [[
+      'name',
+      'runtime-loop',
+      'pending',
+      0,
+      'last-delivered-id',
+      '3000-0',
+      'lag',
+      1,
+    ]]
+    redis.pendingSummary = [0, null, null, null]
+
+    const queue = new RedisStreamRuntimeEventQueue(redis, {
+      streamKey: 'runtime:events',
+      deadLetterStreamKey: 'runtime:events:dlq',
+      consumerGroup: 'runtime-loop',
+      consumerName: 'test-consumer',
+    })
+
+    await expect(queue.oldestTimestampMs()).resolves.toBe(5000)
+  })
+
+  it('prefers the oldest pending delivery when pending work is older than unread work', async () => {
+    redis.streamRows.push(
+      ['1000-0', ['event', JSON.stringify(makeEvent('zombie')), 'retry_count', '0']],
+      ['5000-0', ['event', JSON.stringify(makeEvent('fresh')), 'retry_count', '0']],
+    )
+    redis.groupInfoRows = [[
+      'name',
+      'runtime-loop',
+      'pending',
+      1,
+      'last-delivered-id',
+      '3000-0',
+      'lag',
+      1,
+    ]]
+    redis.pendingSummary = [1, '4000-0', '4000-0', [['test-consumer', '1']]]
+
+    const queue = new RedisStreamRuntimeEventQueue(redis, {
+      streamKey: 'runtime:events',
+      deadLetterStreamKey: 'runtime:events:dlq',
+      consumerGroup: 'runtime-loop',
+      consumerName: 'test-consumer',
+    })
+
+    await expect(queue.oldestTimestampMs()).resolves.toBe(4000)
+  })
 })
+
+function matchesRangeStart(id: string, start: string): boolean {
+  if (start === '-') return true
+  if (start.startsWith('(')) {
+    return compareStreamIds(id, start.slice(1)) > 0
+  }
+  return compareStreamIds(id, start) >= 0
+}
+
+function compareStreamIds(left: string, right: string): number {
+  const [leftMs, leftSeq] = left.split('-').map((value) => Number.parseInt(value, 10))
+  const [rightMs, rightSeq] = right.split('-').map((value) => Number.parseInt(value, 10))
+  if (leftMs !== rightMs) return leftMs - rightMs
+  return leftSeq - rightSeq
+}

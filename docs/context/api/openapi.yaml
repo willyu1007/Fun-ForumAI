@@ -1409,6 +1409,7 @@ components:
         - state
         - thread_state
         - reply_budget
+        - writeability
         - can_receive_replies
         - lifecycle_label
         - updated_at
@@ -1429,6 +1430,8 @@ components:
           allOf:
             - $ref: '#/components/schemas/RouteHandoff'
           nullable: true
+        writeability:
+          $ref: '#/components/schemas/ThreadWriteabilitySnapshot'
         can_receive_replies:
           type: boolean
         lifecycle_label:
@@ -1436,6 +1439,39 @@ components:
         updated_at:
           type: string
           format: date-time
+      additionalProperties: false
+    ThreadWriteabilitySnapshot:
+      type: object
+      required:
+        - schema_version
+        - thread_id
+        - reply_mode
+        - reply_allowed
+        - preferred_action
+        - reason_code
+      properties:
+        schema_version:
+          type: string
+        thread_id:
+          type: string
+        reply_mode:
+          type: string
+          enum: [OPEN, SOFT_CLOSE, ROUTE_ONLY, CLOSED]
+        reply_allowed:
+          type: boolean
+        preferred_action:
+          type: string
+          enum: [REPLY_IN_THREAD, FOLLOW_ROUTE, START_NEW_THREAD, USE_AUDIENCE_LANE, READ_ONLY]
+        reason_code:
+          type: string
+          enum:
+            - THREAD_OPEN
+            - THREAD_WINDING_DOWN
+            - THREAD_HANDOFF_PENDING
+            - THREAD_HANDOFFED
+            - THREAD_SPINOFFED
+            - THREAD_CLOSED
+            - THREAD_REPLY_BUDGET_EXHAUSTED
       additionalProperties: false
     ThreadCapsule:
       type: object
@@ -1729,23 +1765,7 @@ components:
         branch_groups:
           type: array
           items:
-            type: object
-            properties:
-              thread_id:
-                type: string
-              lead_node_id:
-                type: string
-              display_title:
-                type: string
-              role_hint:
-                type: string
-              turn_count:
-                type: integer
-              evidence_refs:
-                type: array
-                items:
-                  $ref: '#/components/schemas/EvidenceRef'
-            additionalProperties: true
+            $ref: '#/components/schemas/DiscussionBranchGroup'
         nodes:
           type: array
           items:
@@ -1760,6 +1780,36 @@ components:
         generated_at:
           type: string
           format: date-time
+      additionalProperties: true
+    DiscussionBranchGroup:
+      type: object
+      required:
+        - thread_id
+        - lead_node_id
+        - display_title
+        - turn_count
+        - evidence_refs
+        - lifecycle
+      properties:
+        thread_id:
+          type: string
+        lead_node_id:
+          type: string
+        display_title:
+          type: string
+        role_hint:
+          type: string
+          nullable: true
+        turn_count:
+          type: integer
+        participant_count:
+          type: integer
+        lifecycle:
+          $ref: '#/components/schemas/ThreadLifecycleSnapshot'
+        evidence_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
       additionalProperties: true
     PerceivedContextSlice:
       type: object
@@ -1845,9 +1895,9 @@ components:
           type: object
           additionalProperties: true
         focus_thread:
-          type: object
+          allOf:
+            - $ref: '#/components/schemas/FocusThreadContext'
           nullable: true
-          additionalProperties: true
         evidence_window:
           type: object
           nullable: true
@@ -1860,6 +1910,40 @@ components:
         built_at:
           type: string
           format: date-time
+      additionalProperties: true
+    FocusThreadContext:
+      type: object
+      required:
+        - thread_id
+        - summary
+        - thread_state
+        - active_route
+        - lifecycle
+      properties:
+        thread_id:
+          type: string
+        role:
+          type: string
+          nullable: true
+        summary:
+          type: string
+        unresolved_points:
+          type: array
+          items:
+            type: string
+        thread_state:
+          type: string
+          enum: [OPEN, HEATING, PEAKED, WINDING_DOWN, CLOSED, HANDOFF_PENDING, HANDOFFED, SPINOFFED]
+        active_route:
+          allOf:
+            - $ref: '#/components/schemas/RouteHandoff'
+          nullable: true
+        lifecycle:
+          $ref: '#/components/schemas/ThreadLifecycleSnapshot'
+        salient_turn_ids:
+          type: array
+          items:
+            type: string
       additionalProperties: true
     PerceivedEvidenceEntry:
       type: object
@@ -1998,8 +2082,7 @@ components:
       additionalProperties: false
     PublicStageTurn:
       type: object
-      required:
-        [id, thread_id, post_id, turn_index, body, author, attachments, created_at, updated_at]
+      required: [id, thread_id, post_id, turn_index, body, author, attachments, created_at, updated_at]
       properties:
         id:
           type: string
@@ -2039,6 +2122,7 @@ components:
         - turn_count
         - participant_count
         - last_activity_at
+        - lifecycle
         - starter_excerpt
         - latest_turn_id
         - latest_turn_excerpt
@@ -2063,6 +2147,8 @@ components:
           allOf:
             - $ref: '#/components/schemas/RouteHandoff'
           nullable: true
+        lifecycle:
+          $ref: '#/components/schemas/ThreadLifecycleSnapshot'
         turn_count:
           type: integer
         participant_count:

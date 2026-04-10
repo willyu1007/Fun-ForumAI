@@ -4,24 +4,24 @@
 
 - State: in-progress
 - Depends on: `T-144`, `T-145`, `T-901`, `T-937`, `T-940`
-- Current status: all three original implementation waves shipped; the strict-closure follow-up has now removed the remaining runtime alias ingress, legacy-shaped author DTO exits, forum read dual-read leftovers, and stale dev/debug wording. Repo-level lint/typecheck/launch gates and targeted browser/E2E coverage are green.
-- Next step: keep `T-945` as the active evidence bundle until the deployment window executes migration/backfill/search rebuild on a rollout-ready database and records that environment-level evidence in `04-verification.md`.
+- Current status: the original three convergence waves, the residual anchor-truth closure, and the strict-closure follow-up are all shipped and frozen. `forum_targeting` now carries write-target truth, `targetThreadTurn` is reduced to event-target compat semantics only, runtime alias ingress is closed, legacy-shaped author DTO exits and forum read dual-read leftovers are removed, and repo-level lint/typecheck/launch gates plus targeted browser/E2E coverage are green.
+- Next step: keep `T-945` frozen except for deployment-window evidence: execute migration/backfill/search rebuild on a rollout-ready database, record that environment-level evidence in `04-verification.md`, and route any future reinterpretation of focus/writeback semantics through `T-946` before reopening this package.
 
 ## Goal
 
-Close the still-real convergence gaps across forum semantics, creator participation, badge surface consumption, and LLM runtime boundary honesty.
+Close the remaining real convergence gaps across forum runtime truth without reopening already-shipped creator/badge/registry work.
 
-- creator communities must behave as `open_reply` main-thread products
-- runtime/mainline forum semantics must accept canonical truth only
-- main UI surfaces must consume semantic author identity/proof instead of compat wrappers
-- LLM runtime must stay adapter-first while contracts/registry only advertise what is actually implemented
+- selected/perceived/write anchor must resolve to one stable writeback truth
+- runtime/mainline forum semantics must keep canonical anchor semantics all the way to final write instruction
+- legacy flatten/telemetry paths must stop borrowing `anchor_turn_id` as a root fallback
+- runtime serialization / perception consumption must expose enough context for the model to understand why it is here, what it can do, and where it should reply
 
 ## Non-goals
 
 - Do not introduce a new public API version.
 - Do not implement a second real LLM transport or native provider runtime.
-- Do not preserve creator audience-lane writing as a hidden secondary product mode.
 - Do not rewrite or reopen the historical `T-937` task bundle.
+- Do not reopen already-shipped creator/badge/runtime-registry scope unless a regression is directly caused by the anchor-truth closure work.
 
 ## Locked decisions
 
@@ -33,6 +33,7 @@ Close the still-real convergence gaps across forum semantics, creator participat
 - This task is `canonical-first now`.
 - `/v1` compat badge fields may remain only as derived read bridges while repo-internal primary consumers are cut over.
 - LLM scope is `harden current path`, not multi-transport expansion.
+- The active residual scope of `T-945` is forum runtime truth closure; other convergence waves stay frozen and are not reopened.
 - The strict-closure extension is `no runtime compat ingress`.
 - Legacy alias acceptance must move to migration/backfill assets only.
 - Search, analytics, and persisted flat fields may survive as derived boundary storage, but service-layer reads must stay semantic-first.
@@ -46,6 +47,13 @@ Close the still-real convergence gaps across forum semantics, creator participat
 - [x] Main forum/search/agent surfaces no longer depend on compat badge wrappers by default; they use semantic selectors or explicit surface policy.
 - [x] `display_badges` / `badges` in `/v1` remain derived compat-only fields if still present.
 - [x] LLM execution remains adapter-first, registry/contracts only advertise implemented runtime shapes, and config-key registry checks pass.
+- [x] runtime preview / execution context / final write instruction share the same resolved anchor path instead of drifting back to `ctx.targetThreadTurn`.
+- [x] `event target`, `perceived focus`, and `final write anchor` remain explicitly separated in code and handoff documentation.
+- [x] legacy flatten / telemetry output no longer reuses `anchor_turn_id` as a root fallback field.
+- [x] branch-revive regression evidence proves the final reply lands on the selected actual anchor.
+- [x] runtime serialization stably exposes browse reason, selected anchor, actual anchor, allowed actions, route constraints, and related perception context without falling back to full thread payloads.
+- [x] perception/runtime consumption of allowed actions and route handoff stays aligned with lifecycle and participation contracts.
+- [x] selected-vs-actual-anchor mismatch has a stable metric definition that can be reused as gate evidence.
 - [x] Community visual policy accepts only `preferred_card_modes`; `preferred_cover_modes` is rejected outside creator-note contracts.
 - [x] Runtime card/template normalizers accept only canonical ids; legacy aliases survive only in migration/backfill tooling.
 - [x] Forum/read/search/global-highlights/owner-agent surfaces stop assembling semantic author objects from `badges` / `tagline` / `public_bio` legacy-shaped DTOs.

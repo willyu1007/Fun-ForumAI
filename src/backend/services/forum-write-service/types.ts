@@ -16,6 +16,8 @@ import type { PublicSceneWritePayload } from '../public-scene-runtime.js'
 import type { PublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import type { PublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import type { RouteHandoff } from '../../repos/types.js'
+import type { ThreadLifecycleService } from '../thread-lifecycle-service.js'
+import type { ThreadInteractionResolver } from '../thread-interaction-resolver.js'
 
 export interface ModerationEvaluator {
   evaluate(input: {
@@ -48,6 +50,8 @@ export interface ForumWriteServiceDeps {
   incubationRepo?: IncubationRepository
   moderator: ModerationEvaluator
   policyGatewayService?: PolicyGatewayService
+  threadLifecycleService?: ThreadLifecycleService
+  threadInteractionResolver?: ThreadInteractionResolver
   onEventCreated?: EventHook
 }
 

@@ -1249,6 +1249,76 @@ describe('ForumReadService', () => {
       )
     })
 
+    it('keeps lifecycle writeability consistent across summaries, detail, forest, and runtime preview', async () => {
+      attachProjectionDeps(ctx)
+      const community = ctx.communityRepo.create({
+        name: 'Lifecycle Contract',
+        slug: 'lifecycle-contract',
+      })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-a', display_name: 'Lifecycle Root' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Lifecycle target',
+        body: 'Body for lifecycle parity.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const thread = await ctx.publicStageThreadRepo.create({
+        post_id: post.id,
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        body: 'This thread is ready to hand off.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+        thread_state: 'CLOSED',
+        reply_budget: 1,
+        active_route: {
+          route_type: 'AFTERSHOW',
+          route_state: 'SUGGESTED',
+          reason_code: 'THREAD_REPLY_BUDGET_EXHAUSTED',
+          handoff_label: 'Move to aftershow.',
+          handoff_payload: null,
+          cta: { label: 'Open aftershow', target: `/posts/${post.id}#aftershow` },
+        },
+      })
+      await ctx.publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        turn_index: 1,
+        anchor_turn_id: null,
+        quoted_excerpt: null,
+        body: 'Last visible turn.',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      const summaries = await ctx.svc.getThreadSummaries(post.id)
+      const detail = await ctx.svc.getThread(thread.id)
+      const forest = await ctx.svc.getDiscussionForest(post.id, { focus_thread_id: thread.id })
+      const preview = await ctx.svc.buildRuntimeContextPreview({
+        post_id: post.id,
+        thread_id: thread.id,
+      })
+
+      const summaryLifecycle = summaries.items[0]?.lifecycle
+      const detailLifecycle = detail.lifecycle
+      const forestLifecycle = forest.branch_groups[0]?.lifecycle
+      const previewLifecycle = preview.runtime_context?.focus_thread?.lifecycle
+
+      expect(summaryLifecycle).toBeDefined()
+      expect(summaryLifecycle).toEqual(detailLifecycle)
+      expect(summaryLifecycle).toEqual(forestLifecycle)
+      expect(summaryLifecycle).toEqual(previewLifecycle)
+      expect(summaryLifecycle?.writeability).toMatchObject({
+        reply_mode: 'SOFT_CLOSE',
+        reply_allowed: true,
+        preferred_action: 'FOLLOW_ROUTE',
+        reason_code: 'THREAD_HANDOFF_PENDING',
+      })
+    })
+
     it('falls back to baseline compare output when the post policy disables envelope cutover', async () => {
       const deps = attachProjectionDeps(ctx)
       const community = ctx.communityRepo.create({

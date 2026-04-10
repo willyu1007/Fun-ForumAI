@@ -94,6 +94,7 @@ import type { ParticipationContractService } from './participation-contract-serv
 import type { ForumOrchestrationPolicyService } from './forum-orchestration-policy-service.js'
 import type { AgentPerceptionService } from './agent-perception-service.js'
 import type { RuntimeContextAssembler } from './runtime-context-assembler.js'
+import { ThreadInteractionResolver } from './thread-interaction-resolver.js'
 
 export interface ForumReadServiceDeps {
   postRepo: PostRepository
@@ -115,6 +116,7 @@ export interface ForumReadServiceDeps {
   riskRepo?: RiskGovernanceRepository
   mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
   threadLifecycleService?: ThreadLifecycleService | null
+  threadInteractionResolver?: ThreadInteractionResolver | null
   semanticProjectionService?: SemanticProjectionService | null
   displayProjectionService?: DisplayProjectionService | null
   participationContractService?: ParticipationContractService | null
@@ -304,6 +306,7 @@ export interface PublicStageThreadWithAuthor extends PublicStageThread {
   last_activity_at: Date
   turns: PublicStageTurnWithAuthor[]
   active_route: RouteHandoff | null
+  lifecycle: ThreadLifecycleSnapshot
 }
 
 export interface PublicStageThreadSummaryWithAuthor extends Omit<PublicStageThreadWithAuthor, 'turns'> {
@@ -335,6 +338,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const READ_MEDIA_ROLLOUT_PROFILE_TIMEOUT_MS = 150
 const READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS = 30_000
+const DEFAULT_THREAD_INTERACTION_RESOLVER = new ThreadInteractionResolver()
 
 function isPubliclyVisibleContent(
   value: Pick<Post, 'visibility' | 'state'> | Pick<PublicStageThreadTurn, 'visibility' | 'state'>,
@@ -373,6 +377,7 @@ export class ForumReadService {
   attachRuntimeDeps(input: {
     agentBioService?: Pick<AgentBioRefreshService, 'getProjection'> | null
     threadLifecycleService?: ThreadLifecycleService | null
+    threadInteractionResolver?: ThreadInteractionResolver | null
     semanticProjectionService?: SemanticProjectionService | null
     displayProjectionService?: DisplayProjectionService | null
     participationContractService?: ParticipationContractService | null
@@ -385,6 +390,9 @@ export class ForumReadService {
     }
     if (input.threadLifecycleService !== undefined) {
       this.deps.threadLifecycleService = input.threadLifecycleService
+    }
+    if (input.threadInteractionResolver !== undefined) {
+      this.deps.threadInteractionResolver = input.threadInteractionResolver
     }
     if (input.semanticProjectionService !== undefined) {
       this.deps.semanticProjectionService = input.semanticProjectionService
@@ -744,6 +752,27 @@ export class ForumReadService {
       semanticProjectionService: this.deps.semanticProjectionService,
       displayProjectionService: this.deps.displayProjectionService,
     }
+  }
+
+  private async resolvePostParticipationContract(postId: string): Promise<EffectiveParticipationContract | null> {
+    if (!this.deps.participationContractService) {
+      return null
+    }
+    return this.deps.participationContractService.getPostContract(postId)
+  }
+
+  private resolveThreadLifecycleSnapshot(
+    thread: Pick<PublicStageThread, 'id' | 'thread_state' | 'reply_budget' | 'active_route' | 'updated_at'>,
+    turnCount: number,
+    participationContract?: EffectiveParticipationContract | null,
+  ): ThreadLifecycleSnapshot {
+    if (!this.deps.threadLifecycleService) {
+      throw new Error('ThreadLifecycleService is not attached')
+    }
+
+    const coreLifecycle = this.deps.threadLifecycleService.buildThreadLifecycle(thread, turnCount)
+    const interactionResolver = this.deps.threadInteractionResolver ?? DEFAULT_THREAD_INTERACTION_RESOLVER
+    return interactionResolver.resolveLifecycleSnapshot(coreLifecycle, participationContract ?? null)
   }
 
   private resolveFocusThreadId(
@@ -1180,6 +1209,8 @@ export class ForumReadService {
     turns: PublicStageTurn[],
     opts: {
       viewerUserId?: string
+      participationContract?: EffectiveParticipationContract | null
+      totalTurnCount: number
       authorCache: Map<string, Promise<AuthorSummary>>
       visibleTurnById: Map<string, PublicStageTurn>
       attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
@@ -1191,6 +1222,11 @@ export class ForumReadService {
     const turnViews = await Promise.all(
       visibleTurns.map((turn) =>
         this.toPublicStageTurnWithAuthor(turn, opts)),
+    )
+    const lifecycle = this.resolveThreadLifecycleSnapshot(
+      thread,
+      opts.totalTurnCount,
+      opts.participationContract ?? null,
     )
     const participantIds = new Set<string>([
       this.buildPublicActorKey(thread),
@@ -1219,7 +1255,8 @@ export class ForumReadService {
       participant_count: participantIds.size,
       last_activity_at: lastTurn?.created_at ?? thread.created_at,
       turns: turnViews,
-      active_route: thread.active_route,
+      active_route: lifecycle.active_route,
+      lifecycle,
     }
   }
 
@@ -1228,6 +1265,8 @@ export class ForumReadService {
     turns: PublicStageTurn[],
     opts: {
       viewerUserId?: string
+      participationContract?: EffectiveParticipationContract | null
+      totalTurnCount: number
       authorCache: Map<string, Promise<AuthorSummary>>
       attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
     },
@@ -1235,6 +1274,11 @@ export class ForumReadService {
     const votes = this.getDetailedVoteSummary('THREAD', thread.id, opts.viewerUserId)
     const topicPresentation = await this.resolveThreadTurnTopicSignals(thread.id)
     const visibleTurns = turns.filter((turn) => isPubliclyVisibleContent(turn))
+    const lifecycle = this.resolveThreadLifecycleSnapshot(
+      thread,
+      opts.totalTurnCount,
+      opts.participationContract ?? null,
+    )
     const participantIds = new Set<string>([
       this.buildPublicActorKey(thread),
       ...visibleTurns.map((turn) => this.buildPublicActorKey(turn)),
@@ -1261,7 +1305,8 @@ export class ForumReadService {
       turn_count: visibleTurns.length,
       participant_count: participantIds.size,
       last_activity_at: lastTurn?.created_at ?? thread.created_at,
-      active_route: thread.active_route,
+      active_route: lifecycle.active_route,
+      lifecycle,
       starter_excerpt: thread.body.slice(0, 180),
       latest_turn_id: lastTurn?.id ?? null,
       latest_turn_excerpt: lastTurn?.body.slice(0, 180) ?? null,
@@ -1347,6 +1392,7 @@ export class ForumReadService {
       cursor: opts.cursor,
       limit,
     })
+    const participationContract = await this.resolvePostParticipationContract(postId)
     const turns = await this.deps.publicStageTurnRepo.findByThreads(result.items.map((thread) => thread.id))
     const attachmentMap = await this.resolveThreadTurnAttachmentViews([
       ...result.items.map((thread) => ({ id: thread.id, entry_kind: 'THREAD' as const })),
@@ -1365,6 +1411,8 @@ export class ForumReadService {
       result.items.map((thread) =>
         this.toPublicStageThreadWithAuthor(thread, turnsByThreadId.get(thread.id) ?? [], {
           viewerUserId,
+          participationContract,
+          totalTurnCount: turnsByThreadId.get(thread.id)?.length ?? 0,
           authorCache,
           visibleTurnById: new Map(
             (turnsByThreadId.get(thread.id) ?? [])
@@ -1392,6 +1440,7 @@ export class ForumReadService {
       cursor: opts?.cursor,
       limit,
     })
+    const participationContract = await this.resolvePostParticipationContract(postId)
     const turns = await this.deps.publicStageTurnRepo.findByThreads(result.items.map((thread) => thread.id))
     const attachmentMap = await this.resolveThreadTurnAttachmentViews(
       result.items.map((thread) => ({ id: thread.id, entry_kind: 'THREAD' as const })),
@@ -1409,6 +1458,8 @@ export class ForumReadService {
       result.items.map((thread) =>
         this.toPublicStageThreadSummaryWithAuthor(thread, turnsByThreadId.get(thread.id) ?? [], {
           viewerUserId,
+          participationContract,
+          totalTurnCount: turnsByThreadId.get(thread.id)?.length ?? 0,
           authorCache,
           attachmentMap,
         })),
@@ -1465,8 +1516,11 @@ export class ForumReadService {
         .map((turn) => [turn.id, turn] as const),
     )
     const authorCache = new Map<string, Promise<AuthorSummary>>()
+    const participationContract = await this.resolvePostParticipationContract(thread.post_id)
     const detail = await this.toPublicStageThreadWithAuthor(thread, turns, {
       viewerUserId,
+      participationContract,
+      totalTurnCount: allTurns.length,
       authorCache,
       visibleTurnById,
       attachmentMap,
@@ -1509,10 +1563,8 @@ export class ForumReadService {
     const thread = await this.deps.publicStageThreadRepo.findById(threadId)
     if (!thread) throw new NotFoundError('Thread', threadId)
     const turnCount = await this.deps.publicStageTurnRepo.countByThread(threadId)
-    if (!this.deps.threadLifecycleService) {
-      throw new Error('ThreadLifecycleService is not attached')
-    }
-    return this.deps.threadLifecycleService.buildThreadLifecycle(thread, turnCount)
+    const participationContract = await this.resolvePostParticipationContract(thread.post_id)
+    return this.resolveThreadLifecycleSnapshot(thread, turnCount, participationContract)
   }
 
   async getPostSemanticCapsule(postId: string, viewerUserId?: string): Promise<PostSemanticCapsule> {

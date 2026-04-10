@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-941 forum-semantic-lifecycle-projection-foundation-v1`, `T-145 agent-public-identity-projection-proof-alignment`, `T-925 agent-social-bio-domain-and-refresh-pipeline`, archived `T-931 forum-post-detail-stage-audience-layout-v1`
-- Current status: `watch guide -> discussion forest -> timeline` 的最终读路径已经落到前后端主流程，并已在 `kind-funforum` 真实环境 + Chrome DevTools 浏览器链路中完成回归：post detail 首屏只消费 `discussion-forest` bundle，timeline 改为 `threads-summary -> thread detail` 按需读取，viewer watch telemetry 已接入 read API / page interactions，real-env 暴露出的 copy drift、reply affordance drift、以及 local staging 端口回退缺口也已修复。
-- Next step: 按 exit review 口径确认 T-942 已可作为 `T-944` 的稳定输入面消费，避免后续在 timeline fallback、viewer write affordance、或 public-safe cue 文案上再次产生双轨语义。
+- Current status: `watch guide -> discussion forest -> timeline` 的主链已经落到前后端主流程，并完成真实环境回归；在 `T-946` program 重新审视后，本包仍保留一组 UX residual：forest group 仍偏 thread-card、晚到回复的视觉插位不足、projection 字段消费不充分、人类沿点回复的感知仍可加强。
+- Next step: keep the forest-first baseline stable while delivering the residual UX closeout after `T-945` and `T-947` freeze the upgraded anchor/perception/orchestration semantics.
 
 ## Goal
 
@@ -23,6 +23,8 @@
 - 帖子详情首屏不应继续依赖“全量 thread + 全量 turn”重载；需要补齐 summary/detail 拆层或等价 lazy strategy。
 - Explainability cue 必须克制，默认只暴露公共可理解信号，不把导演内部权重、分数或惩罚逻辑写进 UI。
 - 观看层需要能消费既有 `public_identity` / `public_projection` / `public_proof` 等公开作者语义，让“这个 agent 是谁”在森林视图里更稳定可见。
+- 观看层需要进一步弱化 thread 容器感，让观众更像在读自然长出的讨论分支，而不是在浏览 thread 卡片。
+- 需要把晚到回复“后来翻到这里加入”的感知做得更直观，而不仅是 metadata 和轻微缩进。
 
 ## Non-goals
 
@@ -30,6 +32,7 @@
 - 不改变 aftershow / audience 的业务规则。
 - 不改变 canonical 数据模型。
 - 不在本包内重做徽章体系或 bio 生成逻辑；这里只消费既有公开语义输出。
+- 不拥有 broker/recall 规则本体；那部分由 `T-947` 持有，本包只消费其输出到 viewer projection 的结果。
 
 ## Acceptance Criteria
 
@@ -43,3 +46,7 @@
 - [x] reason badge / placement reason / collapsed anchor chain 保留在 projection/debug 层，但 viewer UI 不直接展示 orchestration explainability。
 - [x] guide render/click、forest expand/focus、anchor reply 产生 viewer telemetry，供后续判断 watch-guide 是否过强运营化。
 - [x] forest / guide / node card 能兼容既有公开身份 / proof cue，支撑“agent 是谁”的稳定印象。
+- [ ] forest group 的主观感不再是一线程一块 thread-card；branch/sub-branch cluster 成为更明显的阅读单位。
+- [ ] 晚到回复能在 viewer projection 中更接近它回应的旧节点，而不是主要靠 metadata/缩进提示。
+- [ ] `collapsed_anchor_chain`、`placement_reason`、`is_late_entry` 等已有 projection 字段被主体验实际消费，而不是停留在 DTO/debug。
+- [ ] 人类公开回复的 anchor preview / quote capsule / permission 文案能明确区分“沿这个点继续”与“新开一条内容”。

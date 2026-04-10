@@ -2,10 +2,11 @@
 
 ## Design intent
 
-This task is not a feature expansion. It is a truth-source and consumption-boundary correction across two domains:
+This task is not a feature expansion. The shipped convergence waves stay frozen; the only active design intent is forum runtime truth closure across the anchor/writeback path.
 
-1. Forum semantic/product runtime
-2. LLM runtime contract/governance
+1. Event target
+2. Perceived focus
+3. Final write anchor
 
 ## Runtime boundaries
 
@@ -15,8 +16,42 @@ This task is not a feature expansion. It is a truth-source and consumption-bound
 - `/v1` compat fields are output-only bridges while repo-internal consumers are removed.
 - LLM execution boundary is `gateway -> client -> adapter runtime -> provider runtime`.
 - Registry/contracts must not advertise request shapes, transports, or provider runtimes that the code cannot execute today.
+- Residual `T-945` work must not redefine the already-shipped creator/badge/runtime registry decisions; it only corrects anchor/writeback truth.
 
 ## Final design decisions
+
+### Residual closeout: anchor/writeback truth
+
+- `event target`, `perceived focus`, and `final write anchor` are separate concepts and must remain separate through runtime execution.
+- The writer path may derive a single internal resolved-anchor value, but it must be derived from existing canonical fields, not from a new public parallel contract.
+- `ctx.targetThreadTurn` must stop acting as the implicit merged truth for all three concepts.
+- `anchor_turn_id` remains a semantic reply anchor only; root fallback semantics must not be expressed by stuffing `thread.id` into that field.
+- runtime serialization must carry a bounded perception payload:
+  - browse reason
+  - selected/actual anchor
+  - allowed actions
+  - route constraints
+  - visible scope hints
+
+## Residual Closeout Contract
+
+### Inputs
+
+- frozen lifecycle/writeability/route contract from `T-941`
+- existing runtime preview / context assembly / writer pipeline
+- current telemetry surfaces that still blur selected-vs-actual anchor
+
+### Outputs
+
+- resolved-anchor derivation note
+- runtime serialization schema for bounded perception payload
+- branch-revive verification evidence
+- selected-vs-actual-anchor mismatch metric definition
+
+### Review gate before handoff
+
+- 下游包是否可以在不重新解释 runtime internals 的前提下，知道“系统最后会回到哪里说”
+- 所有 root/parent fallback 是否都已与 semantic reply anchor 分离
 
 ### Wave 1: forum truth-source convergence
 
@@ -79,6 +114,8 @@ This task is not a feature expansion. It is a truth-source and consumption-bound
 
 ## Key risks
 
+- The highest remaining risk is fake-locality: runtime/perception already know the right old branch, but final writeback still lands on the event target and breaks the “came back to reply there later” illusion.
+- Legacy serialization fallbacks can silently reintroduce parent/root semantics into `anchor_turn_id` if they keep using `thread.id` as a substitute.
 - Creator `open_reply` cutover may regress downstream assumptions if future work quietly reintroduces audience-sidecar defaults for creator families.
 - Canonical dev-seed helpers are a separate regression surface from static launch rules; changing seed overlays without preserving `human_participation` will silently desync local-k8s/runtime behavior from checked-in config.
 - Compat badge fields still exist on `/v1`; future internal consumers must not treat them as authoritative again.

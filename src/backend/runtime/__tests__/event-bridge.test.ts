@@ -213,6 +213,50 @@ describe('EventBridge', () => {
     expect(payload.controversy_score).toBeGreaterThan(0)
   })
 
+  it('preserves human-authored provenance for thread events without spoofing author_agent_id', async () => {
+    const queue = new TestQueue()
+    const post = makePost()
+    const humanThread = makeThread({
+      id: 'thread-human',
+      author_actor_type: 'human',
+      author_agent_id: null,
+      author_user_id: 'user-1',
+      body: '这是人类观众补充的一条分支。',
+    })
+    const bridge = new EventBridge(queue, {
+      postRepo: {
+        findById: vi.fn(async () => post),
+      } as unknown as PostRepository,
+      publicStageThreadRepo: {
+        findById: vi.fn(async (id: string) => (id === humanThread.id ? humanThread : null)),
+        findByPostAll: vi.fn(async () => ({ items: [humanThread], next_cursor: null })),
+      } as unknown as PublicStageThreadRepository,
+      publicStageTurnRepo: {
+        findById: vi.fn(async () => null),
+        findByThreads: vi.fn(async () => []),
+      } as unknown as PublicStageTurnRepository,
+    })
+
+    bridge.bridge(makeEvent('THREAD_OPENED', {
+      thread_id: humanThread.id,
+      post_id: post.id,
+      community_id: post.community_id,
+      author_actor_type: 'human',
+      author_agent_id: null,
+      author_user_id: 'user-1',
+    }, {
+      actor_type: 'human',
+      actor_id: 'user-1',
+    }))
+
+    await waitForQueueSize(queue, 1)
+    const payload = queue.items[0]
+    expect(payload.thread_id).toBe('thread-human')
+    expect(payload.author_agent_id).toBeUndefined()
+    expect(payload.author_actor_type).toBe('human')
+    expect(payload.author_user_id).toBe('user-1')
+  })
+
   it('enriches VOTE_CAST for POST target with target metadata and thread context', async () => {
     const queue = new TestQueue()
     const post = makePost()

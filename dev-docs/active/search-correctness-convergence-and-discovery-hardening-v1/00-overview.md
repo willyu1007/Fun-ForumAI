@@ -4,29 +4,23 @@
 
 - State: in-progress
 - Depends on: `T-912 public-search-system-v1`, `T-913 search-ecosystem-enrichment-v2`
-- Next step: 合入搜索 UI regression closure 后，按 rollout 说明执行 `pnpm search:reconcile-docs --scope=all` 回填 `agent_vote_down`，并做 runtime 巡检。
+- Current status: the original correctness/discoverability work is effectively shipped; `T-915` remains active because search hit hydration and projection refresh still ride full forum thread detail in hot paths, and that consumer-side closeout now depends on `T-948`.
+- Next step: consume the lean bundles produced by `T-948`, then rerun reconcile/runtime health/search regression with the new internal path.
 
 ## Goal
 
-修复当前搜索系统的真实缺口，让公共搜索在 projection 正确性、discoverability 策略、入口语义、空查询 discovery、评论上下文和 admin-first 观测上形成一套一致、可回填、可验证的实现。
+保持已经落地的搜索 correctness/discoverability 主链，同时完成 search-side 对 lean forum/search read surfaces 的消费收口，不再让搜索热路径依赖完整 forum thread detail。
 
 ## Non-goals
 
 - 不引入新的外部 analytics 平台。
 - 不建设持久化 trending-search 系统。
 - 不把评论上下文扩展为完整子树浏览器。
-- 不在本任务中重构论坛主读模型或改动私域资料暴露策略。
+- 不在本任务中拥有论坛主读模型重构；内部热路径瘦身由 `T-948` 负责。
 
 ## Context
 
-当前搜索已经具备 `posts / communities / agents / comments` 四类公共索引与 `/v1/search` 入口，但仍存在 6 类真实问题：
-
-- agent 资料/状态/social 信号变化后，历史 post/comment/community projection 不会反向刷新，导致搜索文档长期漂移。
-- discoverability policy 只存在隐式口径，没有在 projection、guard、返回 contract、前端渲染三层对齐。
-- 历史上 `GET /v1/agents` 曾承载独立 agent list/search 语义，和 `/v1/search?tab=agents` 双轨并存。
-- 空查询只返回空壳，没有 discovery surface。
-- comments deep link 只有父链，没有近邻上下文。
-- 只有手动 destructive rebuild，没有幂等 reconcile 与 admin runtime 搜索观测闭环。
+当前搜索已经具备 `posts / communities / agents / comments` 四类公共索引与 `/v1/search` 入口，并完成 discoverability、discovery、comments context、reconcile、runtime telemetry 的首轮收口；但 search hit hydration 与 `refreshThread()` 仍依赖完整 forum thread detail，这部分内部路径整改由 `T-948` 提供新底座，`T-915` 负责完成消费切换和回归闭环。
 
 ## Acceptance Criteria
 
@@ -36,3 +30,6 @@
 - [x] `/v1/search` 增加 `score`、`highlights`、`match_reason_codes`、`author_visibility`，且保持兼容旧字段。
 - [x] 空查询返回 lightweight discovery payload；comments thread-context 返回父链 + 近邻。
 - [x] 新增幂等 reconcile 命令、runtime health 检查、admin-first 搜索 telemetry，并完成针对性测试与文档回填。
+- [ ] search hit hydration 不再在热路径上逐条调用完整 `forumReadService.getThread()`。
+- [ ] search projection refresh/runtime health 默认消费 `T-948` 提供的 lean projection/read surfaces。
+- [ ] 完成一次基于 lean bundles 的 reconcile/runtime health/search regression closeout，并把证据记录到 `04-verification.md`。

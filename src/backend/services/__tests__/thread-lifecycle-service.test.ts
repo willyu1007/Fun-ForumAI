@@ -27,8 +27,7 @@ describe('ThreadLifecycleService', () => {
     expect(lifecycle).toMatchObject({
       thread_id: 'thread-1',
       thread_state: 'HANDOFF_PENDING',
-      lifecycle_label: 'AT_CAPACITY',
-      can_receive_replies: false,
+      lifecycle_label: 'HANDOFF_READY',
       reply_budget: {
         mode: 'CLOSED',
         exhausted: true,
@@ -71,7 +70,6 @@ describe('ThreadLifecycleService', () => {
       thread_id: 'thread-2',
       thread_state: 'HANDOFFED',
       lifecycle_label: 'CLOSED',
-      can_receive_replies: false,
       active_route: {
         route_id: 'route-2',
         state: 'ACTIVE',

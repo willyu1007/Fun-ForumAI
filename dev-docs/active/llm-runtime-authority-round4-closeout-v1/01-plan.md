@@ -8,7 +8,7 @@
 
 ## Detailed Steps
 
-- Create `T-946` and sync project governance so the runtime-only scope is isolated from forum tasks.
+- Create `T-950` and sync project governance so the runtime-only scope is isolated from forum tasks.
 - Shrink gateway contracts to active `text | json_object` response modes and the minimal override/debug fields.
 - Remove dead adapter-binding metadata and direct provider/model fallback from registry loader, gateway, tests, and closeout scripts.
 - Remove env-backed LLM execution defaults from config/container/client wiring and keep execution defaults registry-owned only.

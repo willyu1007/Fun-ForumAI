@@ -7,6 +7,12 @@
 
 ## Final checks
 
+### Residual anchor-truth checks
+
+- selected/perceived/write anchor chain regression
+- runtime serialization snapshot including browse reason / allowed actions / route constraints
+- selected-vs-actual-anchor mismatch metric evidence
+
 ### Wave 1 backend verification
 
 - 2026-04-08: `pnpm -s test -- --run src/backend/stage/__tests__/stage-spec.test.ts src/backend/launch/__tests__/community-rules.test.ts src/backend/routes/__tests__/e2e-community-proposals-control-plane.test.ts src/backend/routes/__tests__/e2e-community-config-control-plane.test.ts src/backend/services/__tests__/community-config-service.test.ts src/backend/services/__tests__/aftershow-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/participation-contract-service.test.ts`
@@ -90,6 +96,51 @@
   - 8 test files passed
   - 100 tests passed
   - proves the final semantic-only author presentation path works across feed/read/search/highlights/dev-seed/owner-agent surfaces without the deleted compat bridge
+- 2026-04-09: `pnpm exec vitest run src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts`
+  - pass
+  - 4 test files passed
+  - 20 tests passed
+  - covers:
+    - branch-revive writeback uses resolved `final_write_anchor_turn_id`
+    - missing `reply_thread_id` fails closed
+    - event target stays separate from prompt-facing focus
+    - legacy flatten no longer rewrites null anchor to `thread.id`
+    - `instruction.audit_metadata.forum_targeting` carries full triad plus `written_anchor_turn_id`
+    - aggregate mismatch metrics accumulate for selected-vs-actual and resolved-vs-written anchor drift
+- 2026-04-09: `pnpm exec tsc --noEmit`
+  - pass
+  - confirms the new runtime-only `forum_targeting` contract, parser changes, audit metadata wiring, and metrics additions compile cleanly
+- 2026-04-09: `pnpm exec vitest run src/backend/allocator/__tests__/quota-calculator.test.ts src/backend/allocator/__tests__/integration.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts`
+  - pass
+  - 6 test files passed
+  - 43 tests passed
+  - confirms the thread-scoped quota fix does not regress T-945 runtime targeting/writeback behavior
+- 2026-04-09: `pnpm exec vitest run src/backend/llm/__tests__/credential-broker.test.ts src/backend/allocator/__tests__/quota-calculator.test.ts src/backend/allocator/__tests__/integration.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts`
+  - pass
+  - 7 test files passed
+  - 48 tests passed
+  - confirms the live concurrency follow-up fix:
+    - saturated primary credential pools still surface `RateLimitError`
+    - broken lower-priority fallback secrets no longer masquerade as missing primary Qwen credentials
+- 2026-04-09: `pnpm exec tsc --noEmit`
+  - pass
+  - rerun after the allocator quota-scope fix and credential-broker error-classification fix
+- 2026-04-09: `pnpm exec vitest run src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - pass
+  - 3 test files passed
+  - 33 tests passed
+  - confirms route-handoff gating stays aligned across forest, timeline, and post-detail composer guidance
+- 2026-04-09: `pnpm exec tsc --noEmit`
+  - pass
+  - rerun after the frontend route-handoff gating cleanup and shared writeability helper extraction
+- 2026-04-09: `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/backend/allocator/__tests__/quota-calculator.test.ts src/backend/allocator/__tests__/integration.test.ts src/backend/llm/__tests__/credential-broker.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - pass
+  - 10 test files passed
+  - 83 tests passed
+  - provides one combined regression packet for:
+    - runtime anchor triad / writeback truth
+    - thread-scoped quota and credential saturation fixes
+    - forest / timeline / post-detail route-handoff UX gating
 
 ## Post-implementation E2E
 
@@ -131,9 +182,62 @@
     - discussion-forest entries including the real human-created thread
     - the right rail placeholder (`帖子上下文区`) instead of a disabled `观众讨论` panel
   - this closes the product-facing “main-thread only” requirement at the actual UI layer
+- 2026-04-09: local patched backend on `http://127.0.0.1:4101` using kind Postgres/Redis via port-forward (`55432 -> postgres`, `56379 -> redis`) and isolated runtime prefix `llm-forum:runtime:t945fix`
+  - pass
+  - seeded/used the live canonical `seed-post-cyberpunk-city-images` post, then replayed a real branch-revive thread with agent-authored turns
+  - `POST /v1/internal/runtime-contexts/build` on revive focus turn `cmnrl3rgo002f4knohsx274xs` showed:
+    - `browse_reason=REVIVE`
+    - `focus_turn_id=cmnrl3rgo002f4knohsx274xs`
+    - `selected_anchor_turn_id=cmnrl3rgo002f4knohsx274xs`
+    - `actual_anchor_turn_id=cmnrl3ra700264knok4yuk4n2`
+    - `allowed_actions=["IGNORE","REPLY"]`
+  - `POST /v1/dev/runtime/tick` then processed the queued revive event successfully and produced public thread turns with persisted `anchor_turn_id=cmnrl3ra700264knok4yuk4n2`
+  - `agent_runs` rows for trigger event `3ab26473-4608-4c11-b545-c8652401f736` persisted `output_json.audit_metadata.forum_targeting` with:
+    - `focus_turn_id=cmnrl3rgo002f4knohsx274xs`
+    - `selected_anchor_turn_id=cmnrl3rgo002f4knohsx274xs`
+    - `actual_anchor_turn_id=cmnrl3ra700264knok4yuk4n2`
+    - `final_write_anchor_turn_id=cmnrl3ra700264knok4yuk4n2`
+    - `written_anchor_turn_id=cmnrl3ra700264knok4yuk4n2`
+  - this closes the required live evidence chain:
+    - event target vs perceived focus remain separate
+    - final write anchor follows resolved actual anchor
+    - persisted writeback matches audit metadata rather than falling back to the event target
+- 2026-04-09: standalone `chrome-devtools-mcp@latest --headless --isolated --viewport 1440x1200 --slim` against `http://localhost:3000/posts/seed-post-cyberpunk-city-images`
+  - pass
+  - dev-auth cookie switch succeeded through the live Vite proxy (`POST /v1/auth/dev/switch`)
+  - default post-detail state showed:
+    - `讨论森林` and `时间线`
+    - `公共观看摘要`
+    - `发起新的公开分支`
+  - route-handoff cards now stay single-track:
+    - the `查看 Aftershow` article no longer contains `回应这里`
+    - the `转入私聊` article no longer contains `回应这里`
+  - clicking a real forest `回应这里` button still switched the composer into anchor mode with:
+    - `回应当前节点`
+    - `当前锚点`
+    - `清除锚点`
+    - `发送回应`
+  - this closes the browser-side Gate requirement that:
+    - forest-first post detail remains intact
+    - anchor reply mental model still works
+    - route handoff no longer mixes public reply affordances into routed branches
+- 2026-04-10: `rg -n "targetThreadTurn|ctx\\.targetThreadTurn" src/backend/runtime src/frontend src/shared`
+  - pass
+  - mainline matches now reduce to:
+    - `ContextBuilder` event-target assembly and compat focus fallback
+    - prompt-layer compat input (`targetThreadTurnId`)
+    - type declarations and tests
+  - no `response-parser` final write path or forum media-planning path now consumes `targetThreadTurn` as write-target truth.
+- 2026-04-10: `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-feature-metrics.test.ts src/backend/services/__tests__/thread-interaction-resolver.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/__tests__/forum-write-service.test.ts src/frontend/features/forum/components/__tests__/DiscussionForest.test.tsx src/frontend/features/forum/components/__tests__/ThreadList.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx`
+  - passed
+  - 10 files, 119 tests
+- 2026-04-10: Gate 1 review verdict
+  - PASS
+  - branch revive / triad separation / mismatch metric evidence remain sufficient for `T-947` and `T-942` to treat anchor semantics as frozen.
 
 ## Notes
 
+- 2026-04-09 the built-in desktop Chrome DevTools MCP transport remained closed (`Transport closed`), so browser verification used a standalone `chrome-devtools-mcp` session over stdio/newline JSON instead of the in-app bridge.
 - Targeted greps for generic `mode` fields produced unrelated aftershow/media-rollout hits and were excluded from acceptance evidence.
 - Negative LLM registry tests were finalized against structured `RegistryResolutionError.details.issues` rather than brittle message-only matching.
 - Shared frontend helper cleanup intentionally removed compat fallback reads from `public-author.ts`; the affected Search and Shell tests had to be updated to provide canonical `public_projection` fixture data instead of outdated `tagline/public_bio` inputs.

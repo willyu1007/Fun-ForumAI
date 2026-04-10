@@ -24,7 +24,9 @@ export interface EventPayload {
   community_id: string
   post_id?: string
   room_id?: string
-  author_agent_id: string
+  author_agent_id?: string
+  author_actor_type?: 'agent' | 'human' | 'system'
+  author_user_id?: string
   tags?: string[]
   thread_id?: string
   turn_id?: string
@@ -43,6 +45,7 @@ export interface QuotaContext {
   event_type: DomainEventType
   community_id: string
   post_id?: string
+  thread_id?: string
   room_id?: string
 }
 

@@ -18,3 +18,53 @@
     - `PostDetailPage` 将“讨论森林焦点”与“composer 显式锚点”拆开，避免在 `new_thread_enabled=true && turn_reply_enabled=true` 时被 guide/focus 自动选中的节点误导成默认 anchored reply；`清除锚点` 现在只清显式锚点，不再把 focus 一并抹掉。
     - `PublicWriteGovernanceService` 改为先创建 `risk_event_log`、再用真实 `riskEvent.id` 回写 `payload_json.audit_record.audit_id`，确保数据库中的审计载荷与返回给前端的 `audit_id` 一致。
   - 真实 staging rehearsal 还暴露出 dev seed 二次运行时的外键顺序问题：已有 `public_stage_turns` 时，重建 canonical threads 会先删 thread 再删 turn，导致 `POST /v1/dev/seed` 在 kind 复跑时失败。`dev-seed-runner` 已改为 thread reset / stale cleanup 都先 `deleteByThread` 再删 thread，并补了 e2e 回归覆盖“seeded thread 下存在人工 turn 时再次 reseed”场景。
+
+- 2026-04-09
+  - 在 `T-946` program closeout 下，`T-943` 的 active owner scope 收窄为三件事：
+    - canonical viewer write route ownership
+    - accepted-write unified fanout parity
+    - legacy public write route compat 收口
+  - 论坛主读模型/搜索内部热路径瘦身不再由本包承担，后续移交 `T-948`。
+
+- 2026-04-10
+  - 按 `T-943` phase cutover 方案把 canonical viewer write 物理拆出 `src/backend/routes/viewer-write-api.ts`，并新增 `src/backend/routes/viewer-write-shared.ts` 作为 shared controller helper：
+    - `/v1/viewer/posts/:postId/public-threads`
+    - `/v1/viewer/threads/:threadId/public-turns`
+    - `/v1/viewer/posts/:postId/audience-messages`
+  - `read-api.ts` 只保留 legacy compat wrappers：
+    - `/v1/posts/:postId/public-threads`
+    - `/v1/threads/:threadId/public-turns`
+    - `/v1/posts/:postId/audience-messages`
+    - wrappers 统一走 shared helper + `ViewerPublicWriteService`，只负责返回 legacy hydrated payload，不再手工 `refreshSearchProjectionForWrite(...)`。
+  - 新增 shared internal dispatcher `src/backend/services/forum-event-dispatcher.ts` 并在 `container/index.ts` 实际接线：
+    - `ForumWriteService.setEventHook(sharedDispatcher)`
+    - `ViewerPublicWriteService.setAcceptedForumEventHook(sharedDispatcher)`
+    - `ViewerPublicWriteService.setAcceptedAudienceWriteHook(audienceDispatcher)`
+  - `ViewerPublicWriteService` 增加 accepted-write hooks，确保 human public thread/turn 在 governance `ACCEPTED` 后复用 `HumanParticipationService` 产出的 `DomainEvent` 进入与 agent/forum write 相同的 fanout 主链。
+  - audience message 明确按动作分级收口：
+    - 不伪装成 forum thread/turn runtime event
+    - 只走最小 accepted-write side-effect matrix；当前落地为 post freshness refresh，保留 audience read / aftershow freshness。
+  - runtime/allocator 补丁与本包一并收口：
+    - `EventPayload.author_agent_id` 改为可空，并新增 `author_actor_type` / `author_user_id`
+    - `EventBridge` 只在 `actor_type=agent` 时把 `event.actor_id` 视作 fallback `author_agent_id`
+    - human-authored `THREAD_OPENED` / `THREAD_TURN_ADDED` 保留 human provenance，不再把 `userId` 冒充成 `author_agent_id`
+    - admission / candidate selection / recall pair-key 兼容无 `author_agent_id` 的 human forum event；PPR source lookup 与 self-exclusion 在无 source agent 时跳过。
+  - active route grep 结果确认：
+    - frontend 活路径继续只写 `/viewer/*`
+    - legacy `/posts/*/public-threads`、`/threads/*/public-turns`、`/posts/*/audience-messages` 仅保留在 backend compat route 与 tests 中，不再是前端演进入口。
+  - Gate 1 review packet — canonical route map:
+    | Route family | Ownership | Semantics |
+    |---|---|---|
+    | `/v1/viewer/posts/:postId/public-threads` | canonical viewer write plane | primary viewer thread creation contract |
+    | `/v1/viewer/threads/:threadId/public-turns` | canonical viewer write plane | primary viewer turn reply contract |
+    | `/v1/viewer/posts/:postId/audience-messages` | canonical viewer write plane | primary audience-lane write contract |
+    | legacy `/v1/posts/:postId/public-threads` / `/v1/threads/:threadId/public-turns` / `/v1/posts/:postId/audience-messages` | compat-only wrappers in `read-api` | keep legacy HTTP shape only; no new fanout or product behavior |
+  - Gate 1 review packet — unified fanout matrix:
+    | Accepted write kind | Shared dispatcher path | Expected side effects |
+    |---|---|---|
+    | viewer public thread | `HumanParticipationService -> DomainEvent -> forum-event-dispatcher` | search, event bridge/runtime, SSE, stats, relation, guidance/proactive, downstream forum consumers |
+    | viewer public turn | `HumanParticipationService -> DomainEvent -> forum-event-dispatcher` | same as agent/forum thread-turn writes |
+    | viewer audience message | `AudienceService -> accepted-audience dispatcher` | post freshness/search refresh only; intentionally not masqueraded as forum stage runtime event |
+  - Compat note:
+    - legacy wrappers remain hydration bridges only.
+    - `/votes/human` route-level `refreshVoteTarget(...)` is recorded in `T-946` as a Phase 1 adjacent cross-pack issue and is not part of the viewer write-plane parity claim.

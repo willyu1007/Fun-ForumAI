@@ -70,6 +70,7 @@ import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-
 import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
 import { PublicAgentRelationSummaryService } from '../services/public-agent-relation-summary-service.js'
 import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
+import { ThreadInteractionResolver } from '../services/thread-interaction-resolver.js'
 import { SemanticProjectionService } from '../services/semantic-projection-service.js'
 import { DisplayProjectionService } from '../services/display-projection-service.js'
 import { ParticipationContractService } from '../services/participation-contract-service.js'
@@ -240,8 +241,10 @@ export function createCoreServices(deps: {
   })
   const viewerPublicViewService = new ViewerPublicViewService(repos.viewerPublicViewEventRepo)
   const threadLifecycleService = new ThreadLifecycleService()
+  const threadInteractionResolver = new ThreadInteractionResolver()
   const semanticProjectionService = new SemanticProjectionService({
     threadLifecycleService,
+    threadInteractionResolver,
   })
   const displayProjectionService = new DisplayProjectionService({
     semanticProjectionService,
@@ -285,6 +288,8 @@ export function createCoreServices(deps: {
     incubationRepo: repos.incubationRepo,
     moderator,
     policyGatewayService,
+    threadLifecycleService,
+    threadInteractionResolver,
   })
 
   const globalHighlightsService = new GlobalHighlightsService({
@@ -408,6 +413,7 @@ export function createCoreServices(deps: {
   forumReadService.attachRuntimeDeps({
     agentBioService: agentBioRefreshService,
     threadLifecycleService,
+    threadInteractionResolver,
     semanticProjectionService,
     displayProjectionService,
     participationContractService,
@@ -589,6 +595,8 @@ export function createCoreServices(deps: {
     humanFollowRepo: repos.humanFollowRepo,
     agentRepo: repos.agentRepo,
     eventRepo: repos.eventRepo,
+    threadLifecycleService,
+    threadInteractionResolver,
   })
   const publicWriteGovernanceService = new PublicWriteGovernanceService({
     postRepo: repos.postRepo,
@@ -665,6 +673,7 @@ export function createCoreServices(deps: {
     viewerPublicViewService,
     viewerPublicWriteService,
     threadLifecycleService,
+    threadInteractionResolver,
     semanticProjectionService,
     displayProjectionService,
     participationContractService,

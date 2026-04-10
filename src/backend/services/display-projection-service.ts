@@ -147,6 +147,7 @@ export class DisplayProjectionService {
         unresolved_count: threadCapsule.unresolved_points.length,
         reason_badges: threadCapsule.reason_badges,
         evidence_refs: threadCapsule.evidence_refs,
+        lifecycle: threadCapsule.lifecycle,
       })
     }
 

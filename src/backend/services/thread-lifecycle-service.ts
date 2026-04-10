@@ -4,7 +4,7 @@ import type {
   ResourceRef,
   RouteHandoff,
   RouteState,
-  ThreadLifecycleSnapshot,
+  ThreadLifecycleCoreSnapshot,
   ThreadState,
 } from '../../shared/forum-orchestration.js'
 import {
@@ -49,15 +49,11 @@ export class ThreadLifecycleService {
   buildThreadLifecycle(
     thread: Pick<PublicStageThread, 'id' | 'thread_state' | 'reply_budget' | 'active_route' | 'updated_at'>,
     turnCount: number,
-  ): ThreadLifecycleSnapshot {
+  ): ThreadLifecycleCoreSnapshot {
     const replyBudget = this.buildReplyBudgetSnapshot(thread, turnCount)
     const activeRoute = this.normalizeRouteHandoff(thread)
     const threadState = this.resolveThreadState(thread, replyBudget, activeRoute)
     const handoffReady = threadState === 'HANDOFF_PENDING'
-    const canReceiveReplies = !replyBudget.exhausted
-      && threadState !== 'CLOSED'
-      && threadState !== 'HANDOFFED'
-      && threadState !== 'SPINOFFED'
 
     return {
       schema_version: THREAD_LIFECYCLE_SCHEMA_VERSION,
@@ -66,13 +62,12 @@ export class ThreadLifecycleService {
       thread_state: threadState,
       reply_budget: replyBudget,
       active_route: activeRoute,
-      can_receive_replies: canReceiveReplies,
       lifecycle_label: threadState === 'CLOSED' || threadState === 'HANDOFFED' || threadState === 'SPINOFFED'
         ? 'CLOSED'
-        : replyBudget.exhausted
-          ? 'AT_CAPACITY'
-          : handoffReady
-            ? 'HANDOFF_READY'
+        : handoffReady
+          ? 'HANDOFF_READY'
+          : replyBudget.exhausted
+            ? 'AT_CAPACITY'
             : 'ACTIVE',
       updated_at: toIsoString(thread.updated_at),
     }

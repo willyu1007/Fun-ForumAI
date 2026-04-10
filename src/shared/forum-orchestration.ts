@@ -13,6 +13,7 @@ export interface VersionedSchema {
 
 export const FORUM_REPLY_BUDGET_SCHEMA_VERSION = 'forum-reply-budget.v1'
 export const FORUM_ROUTE_HANDOFF_SCHEMA_VERSION = 'forum-route-handoff.v1'
+export const FORUM_THREAD_WRITEABILITY_SCHEMA_VERSION = 'forum-thread-writeability.v1'
 export const FORUM_THREAD_LIFECYCLE_SCHEMA_VERSION = 'forum-thread-lifecycle.v1'
 export const FORUM_TURN_SEMANTIC_MARK_SCHEMA_VERSION = 'forum-turn-semantic-mark.v1'
 export const FORUM_AUDIENCE_SIGNAL_CAPSULE_SCHEMA_VERSION = 'forum-audience-signal-capsule.v1'
@@ -42,6 +43,21 @@ export type ThreadState =
 export type RouteType = 'SPINOFF' | 'AFTERSHOW' | 'PRIVATE' | 'AUDIENCE'
 export type RouteState = 'SUGGESTED' | 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED'
 export type ReplyBudgetMode = 'OPEN' | 'SOFT_CAP' | 'HARD_CAP' | 'CLOSED'
+export type ThreadReplyMode = 'OPEN' | 'SOFT_CLOSE' | 'ROUTE_ONLY' | 'CLOSED'
+export type ThreadPreferredAction =
+  | 'REPLY_IN_THREAD'
+  | 'FOLLOW_ROUTE'
+  | 'START_NEW_THREAD'
+  | 'USE_AUDIENCE_LANE'
+  | 'READ_ONLY'
+export type ThreadWriteabilityReasonCode =
+  | 'THREAD_OPEN'
+  | 'THREAD_WINDING_DOWN'
+  | 'THREAD_HANDOFF_PENDING'
+  | 'THREAD_HANDOFFED'
+  | 'THREAD_SPINOFFED'
+  | 'THREAD_CLOSED'
+  | 'THREAD_REPLY_BUDGET_EXHAUSTED'
 export type TurnAct =
   | 'PROPOSE'
   | 'COUNTER'
@@ -119,15 +135,29 @@ export interface ReplyBudgetSnapshot extends VersionedSchema {
   last_evaluated_at: string
 }
 
-export interface ThreadLifecycleSnapshot extends VersionedSchema {
+export interface ThreadWriteabilitySnapshot extends VersionedSchema {
+  thread_id: string
+  reply_mode: ThreadReplyMode
+  reply_allowed: boolean
+  preferred_action: ThreadPreferredAction
+  reason_code: ThreadWriteabilityReasonCode
+}
+
+export interface ThreadLifecycleCoreSnapshot extends VersionedSchema {
   thread_id: string
   state: ThreadState
   thread_state: ThreadState
   reply_budget: ReplyBudgetSnapshot
   active_route: RouteHandoff | null
-  can_receive_replies: boolean
   lifecycle_label: 'ACTIVE' | 'AT_CAPACITY' | 'HANDOFF_READY' | 'CLOSED'
   updated_at: string
+}
+
+export interface ThreadLifecycleSnapshot extends ThreadLifecycleCoreSnapshot {
+  writeability: ThreadWriteabilitySnapshot
+  // Derived compat bridge only. New mainline consumers must read
+  // lifecycle.writeability.reply_allowed instead of reviving a second truth.
+  can_receive_replies: boolean
 }
 
 export const TURN_REASON_BADGE_IDS = [
@@ -322,6 +352,7 @@ export interface DiscussionBranchGroup {
   subtree_last_activity_at: string | null
   node_count: number
   unresolved_count: number
+  lifecycle: ThreadLifecycleSnapshot
   reason_badges: TurnReasonBadgeId[]
   evidence_refs: EvidenceRef[]
 }
@@ -700,6 +731,7 @@ export interface FocusThreadContext {
   thread_state: ThreadState
   active_route: RouteHandoff | null
   salient_turn_ids: string[]
+  lifecycle: ThreadLifecycleSnapshot
 }
 
 export interface EvidenceWindowContext {

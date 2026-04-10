@@ -1,0 +1,72 @@
+# 03 Implementation Notes
+
+## 2026-04-09
+
+- Created the program bundle `T-946 forum-orchestration-experience-closeout-program-v1`.
+- Froze the delivery model as:
+  - one coordination program
+  - three new child packs
+  - three reused active packs with rewritten ownership boundaries
+- Locked two-phase sequencing:
+  - Phase 1 closes behavior truth and unified write-plane effects
+  - Phase 2 closes hot-path slimming and narrative/context alignment
+- No product-code changes are owned by `T-946`; this bundle is governance-only.
+
+## 2026-04-10
+
+- Adjudication added for `T-943`:
+  - issue: `allocator/event-bridge author_agent_id mandatory assumption blocks viewer-write runtime parity`
+  - classification: `cross-pack integration issue`
+  - owner pack: `T-943 forum-participation-contract-and-viewer-write-plane-v1`
+  - disposition:
+    - do not reopen `T-941` lifecycle / route contract
+    - do not defer to `T-947` broker/recall policy work
+    - patch runtime bridge + allocator input contract in `T-943` so human-authored `THREAD_OPENED` / `THREAD_TURN_ADDED` can enter the frozen runtime path without spoofing `author_agent_id`
+  - compatibility note:
+    - agent-authored events keep existing `author_agent_id` semantics
+    - human-authored events must carry explicit provenance (`author_actor_type`, `author_user_id`) and allow downstream no-op behavior where agent-only signals do not apply.
+- Adjudication added for deploy-window UX drift found during `T-943` live validation:
+  - issue: `stale dynamic-import chunk failure leaves old tabs on React Router default crash screen after rollout`
+  - classification: `cross-pack integration issue`
+  - owner pack: `T-946 forum-orchestration-experience-closeout-program-v1`
+  - disposition:
+    - do not treat as `T-943` write-plane semantic failure
+    - patch frontend route error boundary + guarded one-shot reload so future deploy windows recover without exposing raw chunk URLs to end users
+    - add live deploy-window navigation smoke to Gate 4 acceptance checklist
+  - compatibility note:
+    - fix only guarantees recovery for tabs already carrying the patched root bundle
+    - long-term deploy policy should still avoid deleting current + immediately-previous chunk assets too aggressively.
+- Gate 1 adjudication update:
+  - issue: `can_receive_replies` still exists in the shared lifecycle snapshot
+  - classification: `compat-only`
+  - owner pack: `T-941 forum-semantic-lifecycle-projection-foundation-v1`
+  - disposition:
+    - keep as derived compat bridge only
+    - freeze `lifecycle.writeability` as the sole mainline replyability contract
+    - block any new downstream consumer from keying behavior off `can_receive_replies`
+  - issue: `targetThreadTurn` still exists inside runtime execution context
+  - classification: `compat-only`
+  - owner pack: `T-945 forum-semantic-llm-runtime-convergence-v2`
+  - disposition:
+    - keep as raw event-target bridge for continuity/prompt-layer compatibility
+    - forbid writer/planner/telemetry from treating it as merged write-target truth
+  - issue: legacy public write wrappers still live under `read-api`
+  - classification: `compat-only`
+  - owner pack: `T-943 forum-participation-contract-and-viewer-write-plane-v1`
+  - disposition:
+    - preserve HTTP compatibility only
+    - forbid new frontend or active-doc consumers from binding to the legacy paths
+  - issue: `/votes/human` still refreshes search projection in `read-api`
+  - classification: `cross-pack integration issue`
+  - owner pack: `T-948 forum-read-model-and-search-projection-slimming-v1`
+  - disposition:
+    - record as Phase 1 adjacent and non-blocking for Gate 1
+    - revisit in Phase 3 when route-level search refresh patterns are normalized
+  - Gate 1 review result:
+    - branch revive / final-write-anchor closure: pass via `T-945`
+    - accepted viewer write unified fanout parity: pass via `T-943`
+    - lifecycle/writeability/route consistency across read/runtime/write: pass via `T-941`
+    - frozen semantics for Phase 2:
+      - `lifecycle.writeability` is the only replyability truth
+      - `forum_targeting` is the only runtime write-target truth
+      - `/viewer/*` is the only canonical viewer-facing public write contract

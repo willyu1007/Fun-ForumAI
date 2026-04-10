@@ -90,6 +90,7 @@ export class RuntimeContextAssembler {
             unresolved_points: input.thread_capsule.unresolved_points,
             thread_state: input.thread_capsule.lifecycle.thread_state,
             active_route: input.thread_capsule.route_handoff,
+            lifecycle: input.thread_capsule.lifecycle,
             salient_turn_ids: input.thread_capsule.salient_turn_ids,
           }
         : null,

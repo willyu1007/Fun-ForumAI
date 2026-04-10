@@ -247,8 +247,8 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
   },
   'deepseek-director-v1': {
     id: 'deepseek-director-v1',
-    displayName: 'DeepSeek Director v1',
-    family: 'deepseek',
+    displayName: 'Qwen Director v1',
+    family: 'qwen',
     visible: false,
     directorOnly: true,
   },

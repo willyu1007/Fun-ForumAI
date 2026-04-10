@@ -21,6 +21,11 @@ pricing:
     prompt_per_1k_cny: 0.04
     completion_per_1k_cny: 0.12
 
+  - model_id: qwen3.5-plus
+    provider_id: dashscope-openai
+    prompt_per_1k_cny: 0.008
+    completion_per_1k_cny: 0.048
+
   - model_id: qwen-vl-plus
     provider_id: dashscope-openai
     prompt_per_1k_cny: 0.02

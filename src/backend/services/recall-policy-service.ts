@@ -56,7 +56,7 @@ export class RecallPolicyService {
     )
 
     for (const candidate of input.candidates) {
-      const pairKey = buildPairKey(input.event.author_agent_id, candidate.agent_id)
+      const pairKey = buildPairKey(resolveEventAuthorKey(input.event), candidate.agent_id)
       const currentWindow = this.getPairWindow(pairKey, budget.thread_id, now, budget.pair_window_seconds)
       const appliedPolicySnapshot = {
         profile: input.policy?.profile ?? input.opportunity.profile,
@@ -197,4 +197,10 @@ export class RecallPolicyService {
 
 function buildPairKey(left: string, right: string): string {
   return [left, right].sort().join('::')
+}
+
+function resolveEventAuthorKey(event: EventPayload): string {
+  return event.author_agent_id
+    ?? event.author_user_id
+    ?? `${event.author_actor_type ?? 'unknown'}:${event.event_id}`
 }

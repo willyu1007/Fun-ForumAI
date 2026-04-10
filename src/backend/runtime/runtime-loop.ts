@@ -120,8 +120,9 @@ export class RuntimeLoop {
 
           totalAllocated += allocationResult.agents.length
 
-          if (event.post_id) {
-            quotaCalc.recordThreadAllocation(event.post_id, allocationResult.agents.length)
+          const threadQuotaScopeId = event.thread_id ?? event.post_id
+          if (threadQuotaScopeId) {
+            quotaCalc.recordThreadAllocation(threadQuotaScopeId, allocationResult.agents.length)
           }
 
           const results = await executor.execute(event, allocationResult)

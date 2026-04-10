@@ -12,6 +12,10 @@ import type {
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 import type { ViewerWriteSourceContext } from '../../shared/forum-orchestration.js'
+import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
+import type { ThreadInteractionResolver } from './thread-interaction-resolver.js'
+import { ThreadLifecycleService as DefaultThreadLifecycleService } from './thread-lifecycle-service.js'
+import { ThreadInteractionResolver as DefaultThreadInteractionResolver } from './thread-interaction-resolver.js'
 
 export { HUMAN_VOTE_WEIGHT }
 
@@ -24,6 +28,8 @@ export interface HumanParticipationServiceDeps {
   humanFollowRepo: HumanFollowRepository
   agentRepo: AgentRepository
   eventRepo: EventRepository
+  threadLifecycleService?: ThreadLifecycleService | null
+  threadInteractionResolver?: ThreadInteractionResolver | null
 }
 
 export interface HumanVoteSummary {
@@ -38,6 +44,14 @@ export interface HumanVoteSummary {
 
 export class HumanParticipationService {
   constructor(private readonly deps: HumanParticipationServiceDeps) {}
+
+  private resolveThreadLifecycleService(): ThreadLifecycleService {
+    return this.deps.threadLifecycleService ?? new DefaultThreadLifecycleService()
+  }
+
+  private resolveThreadInteractionResolver(): ThreadInteractionResolver {
+    return this.deps.threadInteractionResolver ?? new DefaultThreadInteractionResolver()
+  }
 
   async createPublicThread(input: {
     actor_user_id: string
@@ -121,17 +135,17 @@ export class HumanParticipationService {
     if (!thread) {
       throw new NotFoundError('Thread', input.thread_id)
     }
-    if (thread.thread_state === 'CLOSED' || thread.thread_state === 'SPINOFF') {
-      throw new ValidationError(`Thread ${thread.thread_state.toLowerCase()} and cannot accept more turns`)
-    }
 
     const [post, currentTurnCount] = await Promise.all([
       this.deps.postRepo.findById(thread.post_id),
       this.deps.publicStageTurnRepo.countByThread(thread.id),
     ])
     if (!post) throw new NotFoundError('Post', thread.post_id)
-    if (currentTurnCount >= thread.reply_budget) {
-      throw new ValidationError('Thread reply budget exhausted')
+    const lifecycle = this.resolveThreadInteractionResolver().resolveLifecycleSnapshot(
+      this.resolveThreadLifecycleService().buildThreadLifecycle(thread, currentTurnCount),
+    )
+    if (!lifecycle.writeability.reply_allowed) {
+      throw new ValidationError(`Thread ${lifecycle.thread_state.toLowerCase()} and cannot accept more turns`)
     }
 
     const anchorTurn = input.anchor_turn_id

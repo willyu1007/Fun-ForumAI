@@ -32,6 +32,14 @@ capabilities:
     response_modes: [text, json_object]
 
   - provider_id: dashscope-openai
+    model_id: qwen3.5-plus
+    input_window_tokens: 1000000
+    max_output_tokens: 65536
+    recommended_operating_input_tokens: 262144
+    modalities: [text]
+    response_modes: [text, json_object]
+
+  - provider_id: dashscope-openai
     model_id: qwen-vl-plus
     input_window_tokens: 32768
     max_output_tokens: 8192

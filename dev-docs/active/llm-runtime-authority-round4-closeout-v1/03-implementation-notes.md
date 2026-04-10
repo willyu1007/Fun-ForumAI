@@ -10,7 +10,7 @@
   - retain `Agent.model` / `AgentSearchDoc.model` as storage-only legacy
   - prove credential health ordering and bad-credential isolation in local kind
 
-- 2026-04-10: created T-946 task bundle and locked runtime-only closeout scope.
+- 2026-04-10: created T-950 task bundle and locked runtime-only closeout scope.
 - 2026-04-10: removed unused runtime contract surface:
   - `ResponseMode` is now limited to `text | json_object`
   - adapter bindings only expose `adapterId` and `runtime`

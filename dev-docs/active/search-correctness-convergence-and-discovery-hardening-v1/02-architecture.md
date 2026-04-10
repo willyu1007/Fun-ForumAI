@@ -2,73 +2,57 @@
 
 ## Context & Current State
 
-- `SearchProjectionService` 目前只支持单 doc 刷新和 destructive `rebuildAll()`。
-- `SearchGuard` 只校验 post/comment 的公开可见性，不校验 agent discoverability。
-- `/v1/search` 已经提供统一搜索入口，但 blank query、typed explainability、runtime telemetry 仍然缺位。
-- 历史上的 `GET /v1/agents` list/search 走 `HumanParticipationService.searchAgents()` 旧实现。
-- comment thread context 只返回目标评论与祖先链。
+- `SearchProjectionService` 已具备 targeted reconcile、read-model health 与 discoverability-aware projection。
+- `/v1/search` 的 additive contract、blank query discovery、comments thread-context、telemetry 主链均已落地。
+- search provider hydration 与 `refreshThread()` 仍默认依赖完整 forum thread detail；这一点现在被切分为：
+  - `T-948` 负责内部 lean path
+  - `T-915` 负责 consumer adoption / reconcile / runtime health closeout
 
 ## Proposed Design
 
 ### Components / modules
 
-- `SearchGuard`
-  - 定义 discoverability matrix。
-  - 提供 agent discoverability、community resident discoverability、author visibility 判断。
-- `SearchProjectionService`
-  - 增加 agent-scoped reconcile 与 all reconcile。
-  - 在 projection build 阶段按 discoverability matrix 降级/过滤字段。
-  - 提供 runtime health snapshot，供启动告警与 admin runtime 使用。
-- `SearchService` / providers / shared contract
-  - 支持 blank query discovery。
-  - 为每个结果项补 `score`、`highlights`、`match_reason_codes`。
-  - posts/comments 结果补 `author_visibility`。
-- `read-api` / `search-api` / `/agents` page
-  - 旧 `GET /v1/agents` list/search 语义删除，不再保留兼容适配层。
-  - `/agents` 页面直接消费新搜索主链。
-- `ForumReadService`
-  - 线程上下文返回目标评论的父链 + 同级近邻 + 子评论预览。
-- `SearchTelemetryService`
-  - 聚合 query / zero-result / reformulation / result-click / result-open / follow。
-  - admin runtime 暴露 funnel 与 projection health。
+- `T-948` 提供：
+  - lean forum/search read bundles
+  - bounded-window thread/detail path
+  - projection-first refresh inputs
+- `T-915` 负责：
+  - Search providers consume the lean bundles
+  - `SearchProjectionService` refresh path migration
+  - reconcile/runtime health/regression proof
+  - 保持 `/v1/search` 和搜索 UI contract additive/compatible
 
 ### Interfaces & Contracts
 
-- Public API:
+- Public API 保持不变：
   - `GET /v1/search`
   - `POST /v1/search/telemetry`
   - `GET /v1/comments/:commentId/thread-context`
-  - `GET /v1/search?tab=agents&q=...`
-- Shared types:
-  - `PublicSearchResponse` additive fields
-  - `SearchPostItem` / `SearchCommentItem` `author_visibility`
-  - `CommentThreadContextData` sibling / child preview fields
-  - `RuntimeFeaturesData.search`
-- Commands:
-  - `pnpm search:reconcile-docs --scope=all|agent --agent-id=<id> --dry-run`
+- Internal handoff from `T-948` must explicitly name:
+  - search hit hydration bundle
+  - thread refresh bundle
+  - fallback policy
 
 ### Boundaries & Dependency Rules
 
 - Search projection 仍然作为 forum / community / agent 的 read-model consumer，不反向侵入业务写模型。
 - discoverability policy 由 `SearchGuard` 单点定义，provider 与 projection 只能调用 guard，不各自 hardcode。
-- 不再保留 `/v1/agents` list/search adapter，避免 route 层再次形成第二套排序/召回/契约。
+- `T-915` 不拥有 forum 主读模型/投影瘦身；只能消费 `T-948` 提供的 lean surfaces。
 
-## Data Migration
+## Review Gate
 
-- 不做 Prisma schema 迁移，新增能力尽量通过现有 search doc 字段和运行时计算完成。
-- 历史 search doc 通过 targeted reconcile 与 all reconcile 修正。
-- destructive `rebuildAll()` 保留为开发工具，不作为生产回填路径。
+- 所有 search-side consumer 都必须能指出自己使用的是哪一个 `T-948` bundle，而不是本包自定义的内部 DTO。
+- reconcile/runtime health/search regression 证据必须证明：
+  - public contract 未漂移
+  - internal hot path 已切换
+  - fallback policy 可解释
 
-## Non-functional Considerations
+## Handoff Outputs
 
-- Security/auth/permissions:
-  - 搜索继续只暴露公开内容；本轮不增加 owner-only/inference debug/public 泄露面。
-- Performance:
-  - targeted reconcile 优先使用 agent-scoped fan-out，避免默认全量重建。
-  - blank query discovery 只取小窗口 featured items。
-- Observability:
-  - admin runtime 暴露 search funnel、last reconcile summary、read-model health snapshot。
+- search-side adoption report
+- updated reconcile/runtime health checklist
+- search regression evidence on lean path
 
 ## Open Questions
 
-- 无。产品口径已锁定为最终一致、agent 本体不可发现、内容可搜但作者 restricted、comments context 取父链 + 近邻。
+- 无。`T-915` 的剩余问题不再是产品意图，而是等待 `T-948` handoff 后完成 consumer closeout。
