@@ -35,7 +35,9 @@ describe('PgImagePlanRepository', () => {
       limit: 2,
     })
 
-    const query = queryRaw.mock.calls[0]?.[0] as {
+    expect(queryRaw).toHaveBeenCalled()
+    const calls = queryRaw.mock.calls as unknown[][]
+    const query = calls[0]?.[0] as unknown as {
       strings: string[]
       values: unknown[]
     }

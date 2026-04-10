@@ -365,16 +365,16 @@ describe('ContextBuilder prompt routing', () => {
       }))
 
       const firstComposeCall = vi.mocked(compose).mock.calls.at(0) as unknown as Array<{
-        currentContextSources?: Array<{ kind: string }>
+        currentContextSources?: Array<{ kind: string; text?: string }>
       }> | undefined
       const currentContextSources = firstComposeCall?.[0]?.currentContextSources ?? []
       expect(currentContextSources.some((source: { kind: string }) => source.kind === 'forum_runtime_context')).toBe(true)
       expect(currentContextSources.some((source: { kind: string }) => source.kind === 'thread_excerpt')).toBe(false)
-      expect(currentContextSources.some((source: { kind: string; text: string }) =>
+      expect(currentContextSources.some((source: { kind: string; text?: string }) =>
         source.kind === 'forum_runtime_context'
-        && source.text.includes('browse_reason=REVIVE')
-        && source.text.includes('final_write_anchor=turn-1')
-        && source.text.includes('allowed_actions=REPLY|IGNORE'))).toBe(true)
+        && (source.text ?? '').includes('browse_reason=REVIVE')
+        && (source.text ?? '').includes('final_write_anchor=turn-1')
+        && (source.text ?? '').includes('allowed_actions=REPLY|IGNORE'))).toBe(true)
     } finally {
       featureFlags.forumOrchestrationEnvelopeCutover = originalEnvelopeCutover
     }
@@ -1582,11 +1582,14 @@ describe('ContextBuilder prompt routing', () => {
         current_user_input_tokens: Math.max(1, Math.ceil('Focus reply body'.length / 4)),
       }),
     }))
-    const currentContextSources = compose.mock.calls[0]?.[0]?.currentContextSources ?? []
-    expect(currentContextSources.some((source: { kind: string; text: string }) =>
-      source.kind === 'focus_thread_turn' && source.text.includes('Focus reply body'))).toBe(true)
-    expect(currentContextSources.some((source: { text: string }) =>
-      source.text.includes('Newest event target that should not drive prompt focus'))).toBe(false)
+    const firstComposeCall = compose.mock.calls[0] as unknown as Array<{
+      currentContextSources?: Array<{ kind: string; text?: string }>
+    }> | undefined
+    const currentContextSources = firstComposeCall?.[0]?.currentContextSources ?? []
+    expect(currentContextSources.some((source: { kind: string; text?: string }) =>
+      source.kind === 'focus_thread_turn' && (source.text ?? '').includes('Focus reply body'))).toBe(true)
+    expect(currentContextSources.some((source: { text?: string }) =>
+      (source.text ?? '').includes('Newest event target that should not drive prompt focus'))).toBe(false)
   })
 
   it('throws when PromptOrchestrator is absent', async () => {

@@ -35,7 +35,7 @@ export interface ForumEventDispatcherDeps {
       signalType: 'vote_received',
       amount: number,
       options?: { dedup_key?: string },
-    ): Promise<void>
+    ): Promise<unknown>
   } | null
   relationService?: {
     onForumStageEvent(event: DomainEvent): Promise<void>

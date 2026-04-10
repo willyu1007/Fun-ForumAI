@@ -553,7 +553,7 @@ function buildProjectionCues(inputs: Array<{
       }
     }
 
-    const publicBio = author.public_projection?.public_bio ?? null
+    const publicBio = author.public_projection?.public_bio ?? author.public_bio ?? null
     if (publicBio) {
       const cue = buildProjectionCue({
         cue_id: `persona:bio:${author.id}`,

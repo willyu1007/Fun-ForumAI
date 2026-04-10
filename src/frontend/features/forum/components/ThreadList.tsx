@@ -183,7 +183,8 @@ function ThreadTimelineItem({
     { enabled: expanded || isTargetThread },
   )
   const detail = detailQuery.data?.data ?? null
-  const canReplyInThread = enablePublicReplies && allowsDirectThreadReply(summary.lifecycle.writeability)
+  const canReplyInThread =
+    enablePublicReplies && allowsDirectThreadReply(summary.lifecycle?.writeability)
 
   useEffect(() => {
     if (!canReplyInThread && replyOpen) {

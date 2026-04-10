@@ -199,4 +199,5 @@ Project: `main`
 | T-948 forum-read-model-and-search-projection-slimming-v1 | planned | F-000 | dev-docs/active/forum-read-model-and-search-projection-slimming-v1 |
 | T-949 forum-product-narrative-and-context-alignment-v1 | planned | F-000 | dev-docs/active/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | in-progress | F-000 | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
+| T-951 repo-review-stability-fixes-v1 | in-progress | F-000 | dev-docs/active/repo-review-stability-fixes-v1 |
 <!-- AUTO-GENERATED:END task-index -->

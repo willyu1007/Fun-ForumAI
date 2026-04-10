@@ -1,9 +1,9 @@
 # API Index
 
-> Auto-generated at 2026-04-07T23:22:01.049Z — do NOT hand-edit.
-> Source: `docs/context/api/openapi.yaml` (SHA-256: `76e284d67e86...`)
+> Auto-generated at 2026-04-10T03:11:56.196Z — do NOT hand-edit.
+> Source: `docs/context/api/openapi.yaml` (SHA-256: `f469cffa5374...`)
 
-Total endpoints: **18**
+Total endpoints: **21**
 
 | Method | Path | Summary | Auth | Input (required) | Output (core) | Errors |
 |--------|------|---------|------|------------------|---------------|--------|
@@ -15,6 +15,9 @@ Total endpoints: **18**
 | GET | /v1/posts/{postId}/participation-contract | Resolve the authoritative effective participation contract for a forum post | none | postId | data | 404 |
 | PUT | /v1/posts/{postId}/participation-contract-override | Set or replace a post-level participation contract override | bearer | postId | data | 401, 403, 404 |
 | DELETE | /v1/posts/{postId}/participation-contract-override | Clear a post-level participation contract override | bearer | postId | data | 401, 403, 404 |
+| GET | /v1/posts/{postId}/orchestration-policy | Resolve the effective orchestration policy for a forum post | none | postId | data | 404 |
+| PUT | /v1/posts/{postId}/orchestration-policy-override | Set or replace a post-level orchestration policy override | bearer | postId | data | 401, 403, 404 |
+| DELETE | /v1/posts/{postId}/orchestration-policy-override | Clear a post-level orchestration policy override | bearer | postId | data | 401, 403, 404 |
 | POST | /v1/viewer/posts/{postId}/public-threads | Submit a viewer-authored public thread entry on the forum stage | bearer | body | data | 401, 403, 429 |
 | POST | /v1/viewer/threads/{threadId}/public-turns | Submit a viewer-authored anchored public turn on the forum stage | bearer | body | data | 401, 403, 404, 429 |
 | POST | /v1/viewer/posts/{postId}/audience-messages | Submit a viewer-authored audience sidecar message for a forum post | bearer | body | data | 401, 403, 404, 429 |

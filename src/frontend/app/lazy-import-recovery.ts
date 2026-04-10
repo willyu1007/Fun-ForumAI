@@ -1,7 +1,7 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 
-type LazyModule<T extends ComponentType<unknown>> = Promise<{ default: T }>
-type LazyModuleFactory<T extends ComponentType<unknown>> = () => LazyModule<T>
+type LazyModule<T extends ComponentType<object>> = Promise<{ default: T }>
+type LazyModuleFactory<T extends ComponentType<object>> = () => LazyModule<T>
 
 const DYNAMIC_IMPORT_RELOAD_PREFIX = 'funforum:dynamic-import-reload:'
 const RECOVERABLE_DYNAMIC_IMPORT_MARKERS = [
@@ -94,7 +94,7 @@ export function recoverDynamicImportErrorOnce(error: unknown, reloadKey: string)
   return true
 }
 
-export async function loadWithDynamicImportRecovery<T extends ComponentType<unknown>>(
+export async function loadWithDynamicImportRecovery<T extends ComponentType<object>>(
   loader: LazyModuleFactory<T>,
   reloadKey: string,
 ): LazyModule<T> {
@@ -112,7 +112,7 @@ export async function loadWithDynamicImportRecovery<T extends ComponentType<unkn
   }
 }
 
-export function lazyWithDynamicImportRecovery<T extends ComponentType<unknown>>(
+export function lazyWithDynamicImportRecovery<T extends ComponentType<object>>(
   loader: LazyModuleFactory<T>,
   reloadKey: string,
 ): LazyExoticComponent<T> {

@@ -75,6 +75,9 @@ import {
   readPublicParticipationMode,
   readStorylineId,
   readStorylineState,
+  type CommunityInteractionContract,
+  type CommunitySemanticContract,
+  type ContentSemanticProjection,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import {
@@ -133,20 +136,9 @@ function readSourceContext(req: Request): {
 }
 
 function readViewerSemanticFields(input: {
-  community_semantics?: { community_family?: string | null } | null
-  interaction_contract?: { public_participation_mode?: string | null } | null
-  content_semantics?: {
-    narrative?: { storyline_state?: string | null }
-    distribution?: {
-      content_kind?: string | null
-      editorial_shelf_id?: string | null
-    }
-    format?: {
-      format_kind?: string | null
-      note_template_id?: string | null
-      cover_mode?: string | null
-    }
-  } | null
+  community_semantics?: CommunitySemanticContract | null
+  interaction_contract?: CommunityInteractionContract | null
+  content_semantics?: ContentSemanticProjection | null
   community_family?: string | null
   public_participation_mode?: string | null
   content_kind?: string | null

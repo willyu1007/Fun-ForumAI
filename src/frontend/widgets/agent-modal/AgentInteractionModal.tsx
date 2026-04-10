@@ -359,9 +359,10 @@ export function AgentInteractionModal() {
   const ownerAvatarSrc = user ? resolveUserAvatarSrc(user) : null
   const { data: myAgentsData } = useMyAgents(isOpen)
   const myAgentIds = useMemo(() => myAgentsData?.data?.map((a) => a.id), [myAgentsData])
-  const validActiveAgentId = activeAgentId && myAgentIds
-    ? (myAgentIds.includes(activeAgentId) ? activeAgentId : null)
-    : activeAgentId
+  const validActiveAgentId =
+    viewMode === 'manage' && activeAgentId && myAgentIds
+      ? (myAgentIds.includes(activeAgentId) ? activeAgentId : null)
+      : activeAgentId
   const { data: activeAgentData } = useAgentProfile(validActiveAgentId ?? '', !!validActiveAgentId)
   const headerAgentName = activeAgentData?.data?.display_name ?? ''
   const isCropperActive = Boolean(screenshotDraft)

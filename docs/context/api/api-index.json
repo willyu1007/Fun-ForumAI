@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-07T23:22:01.049Z",
+  "generatedAt": "2026-04-10T03:11:56.196Z",
   "sourceOpenapi": "docs/context/api/openapi.yaml",
-  "sourceChecksumSha256": "76e284d67e867fa1510ead5fc8bd90cc204e3ee1c0621224c122025ae4643a6f",
+  "sourceChecksumSha256": "f469cffa53741c46af9e309287d6f1326553bb5e52573745d77df248a540606e",
   "stats": {
-    "totalEndpoints": 18,
+    "totalEndpoints": 21,
     "byTag": {
-      "forum-orchestration": 5,
+      "forum-orchestration": 8,
       "forum-participation": 7,
       "forum-orchestration-internal": 6
     }
@@ -252,6 +252,99 @@
       ],
       "example": {
         "curl": "curl -X DELETE '/v1/posts/{postId}/participation-contract-override' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/posts/{postId}/orchestration-policy",
+      "operationId": "getPostOrchestrationPolicy",
+      "summary": "Resolve the effective orchestration policy for a forum post",
+      "tag": "forum-orchestration",
+      "auth": "none",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/posts/{postId}/orchestration-policy'"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/posts/{postId}/orchestration-policy-override",
+      "operationId": "updatePostOrchestrationPolicyOverride",
+      "summary": "Set or replace a post-level orchestration policy override",
+      "tag": "forum-orchestration",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": {
+          "required": [],
+          "optional": [
+            "profile",
+            "recall_control",
+            "compare_debug",
+            "cutover"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X PUT '/v1/posts/{postId}/orchestration-policy-override' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/posts/{postId}/orchestration-policy-override",
+      "operationId": "clearPostOrchestrationPolicyOverride",
+      "summary": "Clear a post-level orchestration policy override",
+      "tag": "forum-orchestration",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "postId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X DELETE '/v1/posts/{postId}/orchestration-policy-override' -H 'Authorization: Bearer <token>'"
       }
     },
     {

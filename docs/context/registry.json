@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-10T01:39:04.966Z",
+  "updatedAt": "2026-04-10T03:11:56.224Z",
   "artifacts": [
     {
       "id": "api-openapi",
@@ -29,8 +29,8 @@
         "index",
         "llm"
       ],
-      "checksumSha256": "aad27c0219959afac39a2158e06efb3cfbd542646068e0c3bd579a5cb49bfa90",
-      "lastUpdated": "2026-04-07T23:22:01.099Z",
+      "checksumSha256": "9a71b2b59b929775947cead37e58cb8bfaa2af30ba77f0daf212dc7c79d7c6ed",
+      "lastUpdated": "2026-04-10T03:11:56.222Z",
       "source": {
         "kind": "command",
         "command": "node .ai/scripts/ctl-api-index.mjs generate --touch",

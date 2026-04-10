@@ -1072,7 +1072,7 @@ export class MediaAssetService {
   async getResolvedMediaUrl(assetId: string): Promise<string | null> {
     const asset = await this.deps.mediaAssetRepo.findById(assetId)
     if (!asset) return null
-    return resolveAvailableMediaAssetUrl(asset, this.deps.storage)
+    return resolveMediaAssetUrl(asset, this.deps.storage)
   }
 
   private async createOwnerPoolRecord(input: {

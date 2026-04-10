@@ -1812,3 +1812,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/llm-runtime-authority-round4-closeout-v1
     updated: 2026-04-10
+  - id: T-951
+    slug: repo-review-stability-fixes-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/repo-review-stability-fixes-v1
+    updated: 2026-04-10

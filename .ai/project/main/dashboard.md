@@ -8,13 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 189 (planned: 4, in-progress: 19, blocked: 0, done: 8, archived: 158)
+- Tasks: 190 (planned: 4, in-progress: 20, blocked: 0, done: 8, archived: 158)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-950 llm-runtime-authority-round4-closeout-v1 | in-progress | F-000 | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
+| T-951 repo-review-stability-fixes-v1 | in-progress | F-000 | dev-docs/active/repo-review-stability-fixes-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | F-000 | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-946 forum-orchestration-experience-closeout-program-v1 | in-progress | F-000 | dev-docs/active/forum-orchestration-experience-closeout-program-v1 |
 | T-947 forum-attention-and-recall-hardening-v1 | planned | F-000 | dev-docs/active/forum-attention-and-recall-hardening-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-938 runtime-e2e-seed-and-media-closeout | archived | F-000 | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-142 forum-semantic-convergence-governance-program | done | F-100 | dev-docs/active/forum-semantic-convergence-governance-program |
 | T-144 governance-and-public-participation-cutover | done | F-100 | dev-docs/active/governance-and-public-participation-cutover |
-| T-145 agent-public-identity-projection-proof-alignment | done | F-100 | dev-docs/active/agent-public-identity-projection-proof-alignment |
 <!-- AUTO-GENERATED:END dashboard -->

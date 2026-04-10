@@ -65,11 +65,11 @@ function getCollapsedNodes(
 
 function readRouteAction(group: DiscussionBranchGroup): { label: string; target: string } | null {
   const label =
-    typeof group.lifecycle.active_route?.cta?.label === 'string'
+    typeof group.lifecycle?.active_route?.cta?.label === 'string'
       ? group.lifecycle.active_route.cta.label
       : null
   const target =
-    typeof group.lifecycle.active_route?.cta?.target === 'string'
+    typeof group.lifecycle?.active_route?.cta?.target === 'string'
       ? group.lifecycle.active_route.cta.target
       : null
 
@@ -273,8 +273,9 @@ export function DiscussionForest({
           const displayedNodes = expanded ? nodes : getCollapsedNodes(nodes, selectedNodeId)
           const rootNode = nodes[0] ?? null
           const routeAction = readRouteAction(group)
-          const canReplyInThread = Boolean(replyActionLabel) && allowsDirectThreadReply(group.lifecycle.writeability)
-          const preferRouteAction = prefersRouteHandoff(group.lifecycle.writeability)
+          const canReplyInThread =
+            Boolean(replyActionLabel) && allowsDirectThreadReply(group.lifecycle?.writeability)
+          const preferRouteAction = prefersRouteHandoff(group.lifecycle?.writeability)
 
           return (
             <div key={group.id} className="rounded-2xl border border-border/60 bg-background/90 p-4">

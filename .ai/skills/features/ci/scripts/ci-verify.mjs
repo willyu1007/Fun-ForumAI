@@ -171,9 +171,9 @@ function resolvePerfSmokeSteps() {
   }
 
   return {
-    source: 'default contract fallback (test:perf:k6)',
-    note: 'No local k6 fallback detected. Expect downstream repo to define package.json script "test:perf:k6".',
-    steps: [{ label: 'k6 smoke tests', cmd: 'pnpm', args: ['test:perf:k6'] }]
+    source: 'suite unavailable',
+    note: 'No package.json script "test:perf:k6" or local k6 smoke script detected. Skipping perf-k6-smoke.',
+    steps: []
   };
 }
 
@@ -187,8 +187,17 @@ function resolveSuiteSteps(suite) {
           args: ['.ai/scripts/ctl-project-governance.mjs', 'lint', '--check', '--project', 'main']
         }
       ];
-    case 'api':
+    case 'api': {
+      const scripts = readPackageScripts();
+      if (scripts['test:api']) {
+        return [{ label: 'API tests', cmd: 'pnpm', args: ['test:api'] }];
+      }
+      if (scripts.test) {
+        console.log('[warn] api suite fallback: package.json script "test:api" not found, using "test".');
+        return [{ label: 'API tests', cmd: 'pnpm', args: ['test'] }];
+      }
       return [{ label: 'API tests', cmd: 'pnpm', args: ['test:api'] }];
+    }
     case 'api-context': {
       if (!fs.existsSync('docs/context/api/openapi.yaml') && !fs.existsSync('docs/context/api/openapi.yml')) {
         console.log('[skip] api-context: docs/context/api/openapi.yaml not found. Context Awareness may not be materialized.');

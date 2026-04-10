@@ -21,6 +21,7 @@ function buildForest(): DiscussionForestProjection {
           focus_turn_id: null,
           title: '先看这里',
           teaser: 'guide teaser',
+          reason_badges: [],
           participant_count: 1,
           turn_count: 0,
           latest_activity_at: '2026-03-01T00:00:00.000Z',
@@ -182,5 +183,29 @@ describe('DiscussionForest', () => {
     expect(screen.getByRole('link', { name: '查看 Aftershow' }).getAttribute('href')).toBe(
       '/posts/post-1#aftershow-panel',
     )
+  })
+
+  it('renders branch content without crashing when lifecycle metadata is absent', () => {
+    const forest = buildForest()
+    forest.branch_groups = [
+      {
+        ...forest.branch_groups[0],
+        lifecycle: undefined,
+      } as unknown as DiscussionForestProjection['branch_groups'][number],
+    ]
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          replyActionLabel="回应这里"
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('已经转场的分支')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: '查看 Aftershow' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '回应这里' })).toBeNull()
   })
 })

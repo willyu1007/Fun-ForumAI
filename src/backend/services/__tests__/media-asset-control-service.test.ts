@@ -46,16 +46,24 @@ function createService() {
     display_name: 'Media Agent',
   })
 
+  const storedObjects = new Map<string, { data: Buffer; contentType: string; size: number }>()
   const storage = {
     backend: 'local' as const,
     putObject: vi.fn(async ({ key, data, contentType }: { key: string; data: Buffer; contentType: string }) => ({
+      ...(storedObjects.set(key, {
+        data,
+        contentType,
+        size: data.byteLength,
+      }), {}),
       key,
       url: `/v1/media/local/${encodeURIComponent(key)}`,
       contentType,
       size: data.byteLength,
     })),
-    getObject: vi.fn(async () => null),
-    deleteObject: vi.fn(async () => {}),
+    getObject: vi.fn(async (key: string) => storedObjects.get(key) ?? null),
+    deleteObject: vi.fn(async (key: string) => {
+      storedObjects.delete(key)
+    }),
     publicUrl: vi.fn((key: string) => `/v1/media/local/${encodeURIComponent(key)}`),
   }
 

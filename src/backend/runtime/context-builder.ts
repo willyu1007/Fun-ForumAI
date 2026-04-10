@@ -509,7 +509,9 @@ export class ContextBuilder {
       id: string
       post_id: string
       body: string
+      author_actor_type: 'agent' | 'human'
       author_agent_id: string | null
+      author_user_id: string | null
       author: { id: string; display_name: string }
       turns: Array<{
         id: string
@@ -518,7 +520,9 @@ export class ContextBuilder {
         anchor_turn_id: string | null
         turn_index: number
         body: string
+        author_actor_type: 'agent' | 'human'
         author_agent_id: string | null
+        author_user_id: string | null
         author: { id: string; display_name: string }
       }>
     }>,

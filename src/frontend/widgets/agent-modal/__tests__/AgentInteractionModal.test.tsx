@@ -684,4 +684,38 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(screen.getByTestId('agent-modal-content').style.width).toBe('920px')
     expect(screen.getByTestId('agent-modal-content').style.height).toBe('640px')
   })
+
+  it('renders readonly modal content for agents outside the owner workspace list', () => {
+    useMyAgentsMock.mockImplementation(() => ({
+      data: {
+        data: [{ id: 'agent-owned' }],
+      },
+    }))
+    useAgentProfileMock.mockImplementation((agentId: string) => ({
+      data: {
+        data: {
+          id: agentId,
+          display_name: '围观角色',
+        },
+      },
+    }))
+
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-external',
+        viewMode: 'readonly',
+        activeTab: 'intro',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: null,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    expect(screen.getByTestId('agent-modal-content')).toBeTruthy()
+    expect(screen.getByTestId('tab-intro').textContent).toContain('agent-external')
+  })
 })

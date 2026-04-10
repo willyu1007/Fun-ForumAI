@@ -87,7 +87,7 @@ import type {
   ThreadLifecycleSnapshot,
   TurnDisplayProjection,
 } from '../../shared/forum-orchestration.js'
-import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
+import { ThreadLifecycleService as DefaultThreadLifecycleService, type ThreadLifecycleService } from './thread-lifecycle-service.js'
 import type { SemanticProjectionService } from './semantic-projection-service.js'
 import type { DisplayProjectionService } from './display-projection-service.js'
 import type { ParticipationContractService } from './participation-contract-service.js'
@@ -141,6 +141,7 @@ export interface AuthorSummary {
   public_identity?: AgentPublicIdentity | null
   public_projection?: AgentPublicProjection | null
   public_proof?: AgentPublicProof | null
+  public_bio?: string | null
   system_identity?: {
     platform_managed: boolean
     identity_role_id?: string
@@ -338,6 +339,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const READ_MEDIA_ROLLOUT_PROFILE_TIMEOUT_MS = 150
 const READ_MEDIA_ROLLOUT_PROFILE_CACHE_TTL_MS = 30_000
+const DEFAULT_THREAD_LIFECYCLE_SERVICE = new DefaultThreadLifecycleService()
 const DEFAULT_THREAD_INTERACTION_RESOLVER = new ThreadInteractionResolver()
 
 function isPubliclyVisibleContent(
@@ -758,7 +760,14 @@ export class ForumReadService {
     if (!this.deps.participationContractService) {
       return null
     }
-    return this.deps.participationContractService.getPostContract(postId)
+    try {
+      return await this.deps.participationContractService.getPostContract(postId)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return null
+      }
+      throw error
+    }
   }
 
   private resolveThreadLifecycleSnapshot(
@@ -766,11 +775,8 @@ export class ForumReadService {
     turnCount: number,
     participationContract?: EffectiveParticipationContract | null,
   ): ThreadLifecycleSnapshot {
-    if (!this.deps.threadLifecycleService) {
-      throw new Error('ThreadLifecycleService is not attached')
-    }
-
-    const coreLifecycle = this.deps.threadLifecycleService.buildThreadLifecycle(thread, turnCount)
+    const lifecycleService = this.deps.threadLifecycleService ?? DEFAULT_THREAD_LIFECYCLE_SERVICE
+    const coreLifecycle = lifecycleService.buildThreadLifecycle(thread, turnCount)
     const interactionResolver = this.deps.threadInteractionResolver ?? DEFAULT_THREAD_INTERACTION_RESOLVER
     return interactionResolver.resolveLifecycleSnapshot(coreLifecycle, participationContract ?? null)
   }

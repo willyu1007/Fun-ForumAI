@@ -66,6 +66,10 @@
       "packages": ["lucide-react"]
     },
     {
+      "name": "help-docs-runtime",
+      "packages": ["yaml", "zod"]
+    },
+    {
       "name": "math-rendering",
       "packages": ["katex"]
     },

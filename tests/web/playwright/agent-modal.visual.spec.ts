@@ -465,7 +465,10 @@ test.describe('Agent modal visual regression', () => {
     ])
 
     await gotoAppPage(page, '/my/activity', common.auth)
-    await page.getByRole('button', { name: /^雾岚/ }).click()
+    await page
+      .getByRole('tabpanel')
+      .getByRole('button', { name: /^雾岚/ })
+      .click()
 
     await expect(page.getByTestId('agent-profile-summary')).toBeVisible()
     await expectPageSnapshot(page, 'agent-modal-manage-owner-intro.png')

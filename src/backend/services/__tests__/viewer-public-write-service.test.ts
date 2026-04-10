@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { FORUM_PUBLIC_WRITE_RESULT_SCHEMA_VERSION } from '../../../shared/forum-orchestration.js'
-import type { DomainEvent } from '../../repos/index.js'
+import type { AudienceMessage, AudienceThread, DomainEvent, PublicStageThread } from '../../repos/index.js'
 import { ViewerPublicWriteService } from '../viewer-public-write-service.js'
 
 function makeEvent(overrides: Partial<DomainEvent> = {}): DomainEvent {
@@ -38,7 +38,7 @@ describe('ViewerPublicWriteService', () => {
     const service = new ViewerPublicWriteService({
       humanParticipationService: {
         createPublicThread: vi.fn(async () => ({
-          thread: { id: 'thread-1' },
+          thread: { id: 'thread-1' } as unknown as PublicStageThread,
           event: forumEvent,
         })),
         createPublicTurn: vi.fn(),
@@ -89,8 +89,8 @@ describe('ViewerPublicWriteService', () => {
       },
       audienceService: {
         createAcceptedMessage: vi.fn(async () => ({
-          thread: { id: 'aud-thread-1' },
-          message: { id: 'aud-message-1' },
+          thread: { id: 'aud-thread-1' } as unknown as AudienceThread,
+          message: { id: 'aud-message-1' } as unknown as AudienceMessage,
         })),
       },
       publicWriteGovernanceService: {

@@ -166,7 +166,10 @@ describe('FeedbackPage', () => {
     fireEvent.change(screen.getByLabelText('详细描述'), { target: { value: '步骤一，步骤二，然后出现异常。' } })
 
     const file = new File(['png-binary'], 'capture.png', { type: 'image/png' })
-    fireEvent.change(screen.getByLabelText('截图上传'), { target: { files: [file] } })
+    const attachmentInput = document.getElementById('feedback-attachments')
+    expect(attachmentInput).toBeTruthy()
+    if (!attachmentInput) return
+    fireEvent.change(attachmentInput, { target: { files: [file] } })
 
     fireEvent.click(screen.getByRole('button', { name: /提交反馈/ }))
 
@@ -191,7 +194,7 @@ describe('FeedbackPage', () => {
     expect(screen.getByText('帖子页切图会闪烁')).toBeTruthy()
     expect(screen.getByText('体验问题')).toBeTruthy()
     expect(screen.getAllByText('已规划').length).toBeGreaterThan(0)
-    expect(screen.getByText('1 张截图')).toBeTruthy()
+    expect(screen.getByText(/1 张截图/)).toBeTruthy()
 
     expect(screen.getByRole('button', { name: '全部' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '处理中' })).toBeTruthy()

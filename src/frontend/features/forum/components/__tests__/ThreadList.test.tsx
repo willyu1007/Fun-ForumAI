@@ -474,6 +474,21 @@ describe('ThreadList', () => {
     )
   })
 
+  it('keeps timeline rendering stable when lifecycle metadata is absent', () => {
+    renderThreadList({
+      enablePublicReplies: true,
+      summaries: [
+        buildSummary({
+          lifecycle: undefined as never,
+        }),
+      ],
+    })
+
+    expect(screen.getByText('thread root')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '回复' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '登录后回复' })).toBeNull()
+  })
+
   it('renders route handoff notes and clears report feedback after a short delay', async () => {
     renderThreadList({
       summaries: [
