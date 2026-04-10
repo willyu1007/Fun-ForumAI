@@ -1160,6 +1160,58 @@ describe('ForumReadService', () => {
       expect(findByThreadSpy).not.toHaveBeenCalled()
     })
 
+    it('preserves matched search turns outside the recent card window', async () => {
+      const community = ctx.communityRepo.create({ name: 'Search Cards', slug: 'search-cards' })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-root', display_name: 'Root Author' })
+      const replyAuthor = ctx.agentRepo.create({ owner_id: 'owner-reply', display_name: 'Reply Author' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Search card target',
+        body: 'Body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      const thread = await ctx.commentRepo.create({
+        post_id: post.id,
+        author_agent_id: rootAuthor.id,
+        body: 'Search card root',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+      let matchedTurnId = ''
+      for (let index = 1; index <= 30; index += 1) {
+        const turn = await ctx.publicStageTurnRepo.create({
+          thread_id: thread.id,
+          post_id: post.id,
+          author_agent_id: replyAuthor.id,
+          turn_index: index,
+          anchor_turn_id: null,
+          quoted_excerpt: null,
+          body: index === 1
+            ? 'ancient unique-search-needle should stay hydrated'
+            : `recent filler ${index}`,
+          visibility: 'PUBLIC',
+          state: 'APPROVED',
+        })
+        if (index === 1) {
+          matchedTurnId = turn.id
+        }
+      }
+
+      const bundle = await ctx.svc.getThreadSearchCardBundle(thread.id, {
+        query: 'unique-search-needle',
+      })
+
+      expect(bundle.turns).toHaveLength(24)
+      expect(bundle.turns.map((turn) => turn.id)).toContain(matchedTurnId)
+      expect(bundle.turns[0]).toMatchObject({
+        id: matchedTurnId,
+        body: expect.stringContaining('unique-search-needle'),
+      })
+      expect(bundle.turn_count).toBe(30)
+    })
+
     it('builds runtime context previews from frozen capsules and public-safe evidence windows', async () => {
       attachProjectionDeps(ctx)
       const community = ctx.communityRepo.create({

@@ -269,3 +269,16 @@
 - Gate 1, Gate 2, and Gate 3 owner packets are archived in-package.
 - Integrated acceptance commands and anti-drift checks are now explicit and replayable.
 - Program is marked done after final governance sync/lint.
+
+## 2026-04-10 — Phase 3 Review Revalidation
+
+- Revalidated committed `017256f4 feat(forum): close orchestration program` against the actual Phase 3 gate criteria before landing any follow-up code:
+  - `T-948` was not Gate-3-clean on the commit itself because Postgres around-window detail underfilled near the thread tail and search-card hydration could drop old matched turns when recent turns overflowed the bounded card.
+  - `T-949` was not Gate-3-clean on the commit itself because active metadata and PRD wording still described the product as `Only-LLM-participates` / human-observer-only in current-state surfaces.
+- Follow-up integration landing keeps the frozen Phase 1 / Phase 2 semantics intact:
+  - `T-948` owns the Postgres around-window rebalance and matched-first search-card selection.
+  - `T-915` only revalidates search consumer behavior on top of the `T-948` fix; it does not define a second lean path.
+  - `T-949` owns the active narrative cleanup in `package.json` and `docs/project/overview/LLM_forum_PRD.md`.
+- Program-level closeout interpretation:
+  - treat the original Gate 3 / Gate 4 closeout notes as intended release state.
+  - treat this revalidation addendum plus the replayed verification evidence as the authoritative record that the reviewed owner fixes actually landed after `017256f4`.

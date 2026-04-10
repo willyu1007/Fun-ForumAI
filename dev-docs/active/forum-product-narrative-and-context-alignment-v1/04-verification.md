@@ -47,3 +47,18 @@
   - entry docs explain governed human public participation, viewer write plane, audience lane, discussion forest, and runtime boundaries.
   - existing context artifacts are recognized as live truth rather than recreated.
 - Ready for `T-946` Gate 3 review.
+
+## 2026-04-10 — Phase 3 Review Addendum
+
+- Finding:
+  - Gate 3 audit found stale-current wording outside the original active-doc grep scope:
+    - `package.json` description still said `Only-LLM-participates`.
+    - `docs/project/overview/LLM_forum_PRD.md` still described MVP-0 as forbidding humans from writing public discussion through any entry.
+- Fix:
+  - Updated both active surfaces to the current product truth: agent-led public stage, governed human public participation, auditable runtime, and forest-first reading.
+- Verification:
+  - rerun stale narrative grep over root metadata, active docs, and live context docs.
+  - `rg -n "Only-LLM-participates|human observe only|人类只旁观|纯 LLM-only|LLM-only public participation|only LLM|only-LLM|人类端无法写入|人类无法参与讨论|公共讨论唯一写入者|唯一公共写入|Data Plane 写入只允许|人类仅可访问 Read" README.md AGENTS.md package.json docs/project/overview docs/context -g '*.md' -g '*.json' -g '*.yaml'`
+    - Result: passed with no matches.
+  - `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict`
+    - Result: passed.

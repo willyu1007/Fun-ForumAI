@@ -2,7 +2,7 @@
 
 ## Status
 
-- State: completed
+- State: done
 - Depends on: `T-947 forum-attention-and-recall-hardening-v1`, `T-942 forum-post-detail-discussion-forest-v1`, `T-946 forum-orchestration-experience-closeout-program-v1`, local `kind-funforum` cluster, Chrome DevTools MCP / Playwright, real DashScope / Seedream credentials injected at runtime only
 - Current status: real local-kind rollout, browser/API Gate 2 walkthroughs, canonical `/viewer/*` write checks, and code-level regression audit completed.
 - Next step: hand off Phase 3 review planning and subsequent implementation prompt.

@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 191 (planned: 1, in-progress: 18, blocked: 0, done: 14, archived: 158)
+- Tasks: 191 (planned: 1, in-progress: 17, blocked: 0, done: 15, archived: 158)
 
 ## Recent tasks
 
@@ -22,7 +22,7 @@ Project: `main`
 | T-949 forum-product-narrative-and-context-alignment-v1 | done | F-000 | dev-docs/active/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | in-progress | F-000 | dev-docs/active/llm-runtime-authority-round4-closeout-v1 |
 | T-951 repo-review-stability-fixes-v1 | in-progress | F-000 | dev-docs/active/repo-review-stability-fixes-v1 |
-| T-952 forum-gate2-real-e2e-regression-v1 | in-progress | F-000 | dev-docs/active/forum-gate2-real-e2e-regression-v1 |
+| T-952 forum-gate2-real-e2e-regression-v1 | done | F-000 | dev-docs/active/forum-gate2-real-e2e-regression-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | F-000 | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | done | F-000 | dev-docs/active/forum-attention-opportunity-and-perception-full-cutover-v1 |
 | T-945 forum-semantic-llm-runtime-convergence-v2 | in-progress | F-000 | dev-docs/active/forum-semantic-llm-runtime-convergence-v2 |

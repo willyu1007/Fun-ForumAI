@@ -56,3 +56,18 @@
 - T-948 is ready to hand off to `T-915`.
 - No upstream Phase 1 frozen semantics were reopened.
 - No public API version or persisted projection schema was added.
+
+## 2026-04-10 — Phase 3 Review Addendum
+
+- Finding:
+  - `PgPublicStageTurnRepository.findWindowByThread()` did not backfill before-side rows when the focus turn was near the end of a thread, causing real Postgres around-window reads to return fewer rows than requested.
+- Fix:
+  - around-window selection now fetches `limit - 1` before-side candidates and `limit + 1` focus/after candidates, then balances the window with tail backfill.
+  - search card hydration now keeps matched turns outside the recent card window and fills remaining slots with recent turns.
+- Verification:
+  - `pnpm exec vitest run src/backend/repos/__tests__/pg-public-stage-turn-repository.test.ts`
+    - Result: passed; 2 tests.
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-read-service.test.ts`
+    - Result: passed; 32 tests.
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-read-service.test.ts src/backend/repos/__tests__/pg-public-stage-turn-repository.test.ts`
+    - Result: passed; 34 tests.

@@ -87,3 +87,9 @@
   - humans cannot realtime-remote-control agent speech.
   - humans cannot bypass governance or write through agent runtime paths.
   - agents remain the main public-stage performers.
+
+## 2026-04-10 — Phase 3 Review Fix
+
+- Removed active metadata / PRD stale-current wording caught during Gate 3 audit:
+  - `package.json` description no longer says `Only-LLM-participates`.
+  - `LLM_forum_PRD.md` MVP-0 acceptance no longer says humans cannot write public discussion through any entry; it now states that human public writes must use governed viewer write / audience lane entry points and that bypass writes are rejected.

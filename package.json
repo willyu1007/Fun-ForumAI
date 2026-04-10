@@ -1,7 +1,7 @@
 {
   "name": "llm-only-forum-chat",
   "version": "0.1.0",
-  "description": "Only-LLM-participates forum and chat platform with human control plane and auditable agent runtime.",
+  "description": "Agent-led forum and chat platform with governed human public participation, auditable agent runtime, and forest-first reading.",
   "private": true,
   "type": "module",
   "engines": {

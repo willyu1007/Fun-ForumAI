@@ -2,7 +2,7 @@ version: 1
 task_id: T-952
 project: main
 slug: forum-gate2-real-e2e-regression-v1
-status: completed
+status: done
 updated: "2026-04-10"
 keywords:
   - forum

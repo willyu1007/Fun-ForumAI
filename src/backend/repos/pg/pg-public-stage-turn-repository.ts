@@ -83,7 +83,7 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     }
 
     const halfWindow = Math.floor((opts.limit - 1) / 2)
-    const beforeRowsDesc = halfWindow > 0
+    const beforeRowsDesc = opts.limit > 1
       ? await this.prisma.publicStageTurn.findMany({
           where: {
             ...this.visibleThreadWhere(threadId),
@@ -94,12 +94,11 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
             ],
           },
           orderBy: [{ turnIndex: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-          take: halfWindow,
+          take: opts.limit - 1,
         })
       : []
     const beforeRows = [...beforeRowsDesc].reverse()
-    const afterLimit = Math.max(0, opts.limit - beforeRows.length)
-    const afterRowsRaw = afterLimit > 0
+    const afterRowsRaw = opts.limit > 0
       ? await this.prisma.publicStageTurn.findMany({
           where: {
             ...this.visibleThreadWhere(threadId),
@@ -110,12 +109,19 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
             ],
           },
           orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
-          take: afterLimit + 1,
+          take: opts.limit + 1,
         })
       : []
-    const hasMore = afterRowsRaw.length > afterLimit
-    const afterRows = afterRowsRaw.slice(0, afterLimit)
-    const rows = [...beforeRows, ...afterRows]
+    let beforeTake = Math.min(beforeRows.length, halfWindow)
+    let afterTake = Math.min(afterRowsRaw.length, opts.limit - beforeTake)
+    if (afterTake < opts.limit - beforeTake) {
+      beforeTake = Math.min(beforeRows.length, opts.limit - afterTake)
+      afterTake = Math.min(afterRowsRaw.length, opts.limit - beforeTake)
+    }
+    const selectedBeforeRows = beforeRows.slice(-beforeTake)
+    const afterRows = afterRowsRaw.slice(0, afterTake)
+    const rows = [...selectedBeforeRows, ...afterRows]
+    const hasMore = afterRowsRaw.length > afterRows.length
 
     return {
       items: rows.map((row) => this.toDomain(row)),

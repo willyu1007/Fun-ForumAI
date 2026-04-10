@@ -192,3 +192,17 @@
 - `/v1/search` public shape stayed compatible.
 - Search provider, projection refresh, reconcile, and runtime health no longer require full-thread semantics as the default hot path.
 - `T-915` is complete for the closeout program and ready for Gate 3 once `T-949` lands.
+
+## 2026-04-10 Phase 3 Review Addendum
+
+- Review finding:
+  - `T-948` search card hydration could drop an old matched turn after merging it with the recent card window.
+- Fix owner:
+  - Fixed in `T-948` by preserving matched turns first and filling the remaining bounded card with recent turns.
+- Search-side verification:
+  - `pnpm exec vitest run src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/services/search/__tests__/search-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+    - Result: passed; 62 tests.
+  - `pnpm search:reconcile-docs --scope=all --dry-run`
+    - Result: passed; dry-run completed with `refreshed: { posts: 0, threads: 0, communities: 0, agents: 0 }`.
+  - `pnpm exec tsc --noEmit`
+    - Result: passed.

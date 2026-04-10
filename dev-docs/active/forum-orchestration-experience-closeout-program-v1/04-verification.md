@@ -173,3 +173,39 @@
 - 2026-04-10: Gate 4 verdict
   - Gate 4 passes.
   - `T-946` program closeout is complete.
+
+- 2026-04-10: Gate 3 revalidation after Phase 3 review landing
+  - committed baseline check:
+    - `git show 017256f4:src/backend/repos/pg/pg-public-stage-turn-repository.ts | sed -n '85,118p'`
+      - confirmed the committed around-window query only fetched `halfWindow` before rows and did not backfill from earlier turns when the after side ran short.
+    - `git show 017256f4:src/backend/services/forum-read-service.ts | sed -n '1828,1833p'`
+      - confirmed the committed search-card path used `mergeUniqueTurns(...).slice(-turnLimit)`, allowing matched historical turns to be dropped by recent overflow.
+    - `git show 017256f4:package.json | sed -n '1,6p'`
+    - `git show 017256f4:docs/project/overview/LLM_forum_PRD.md | sed -n '315,320p'`
+      - confirmed the committed active narrative still described the product as `Only-LLM-participates` / read-only for human public discussion.
+  - replayed Phase 3 owner verification on the landed follow-up patch:
+    - `pnpm exec vitest run src/backend/repos/__tests__/pg-public-stage-turn-repository.test.ts src/backend/services/__tests__/forum-read-service.test.ts src/backend/services/search/__tests__/search-providers.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/services/search/__tests__/search-service.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+      - passed; 6 files, 96 tests.
+    - `pnpm search:reconcile-docs --scope=all --dry-run`
+      - passed; exited with code 0.
+    - `pnpm exec tsc --noEmit`
+      - passed.
+    - `git diff --check`
+      - passed.
+    - `rg -n "Only-LLM-participates|human observe only|人类只旁观|纯 LLM-only|LLM-only public participation|only LLM|only-LLM|人类端无法写入|人类无法参与讨论|公共讨论唯一写入者|唯一公共写入|Data Plane 写入只允许|人类仅可访问 Read" README.md AGENTS.md package.json docs/project/overview docs/context -g '*.md' -g '*.json' -g '*.yaml'`
+      - passed with no matches.
+    - `rg -n "\\bcan_receive_replies\\b|targetThreadTurn|/v1/posts/.+public-threads|/v1/threads/.+public-turns|/v1/posts/.+audience-messages|/v1/viewer/.+public-threads|/v1/viewer/.+public-turns|/v1/viewer/.+audience-messages" src/backend src/frontend src/shared -g '*.ts' -g '*.tsx'`
+      - passed; remaining matches are compat bridges, prompt/runtime compat ingress, and tests only.
+    - `rg -n "viewer/posts/.*/public-threads|viewer/threads/.*/public-turns|viewer/posts/.*/audience-messages|/posts/.*/public-threads|/threads/.*/public-turns|/posts/.*/audience-messages" src/frontend src/backend/routes/viewer-write-api.ts src/backend/routes/read-api.ts src/frontend/api/hooks -g '*.ts' -g '*.tsx'`
+      - passed; frontend remains on canonical `/viewer/*`, while legacy routes stay confined to backend compat surfaces/tests.
+    - `node .ai/scripts/ctl-openapi-quality.mjs verify --source docs/context/api/openapi.yaml --strict`
+      - passed.
+    - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+      - passed; regenerated project views after the Phase 3 review landing and normalized `T-952` task status to the allowed `done` enum so governance checks could run cleanly.
+    - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+      - passed; no new `T-946` / `T-948` / `T-915` / `T-949` drift remains.
+      - note: `repo-review-stability-fixes-v1` still emits one pre-existing warning for `State: completed`, but it no longer blocks lint.
+  - revalidated verdict:
+    - `017256f4` alone was not Gate-3-clean.
+    - after the owner-scoped `T-948` / `T-949` fixes and `T-915` revalidation landed, Gate 3 passes without reopening frozen semantics.
+    - Gate 4 closeout remains valid only with this addendum included as the authoritative landing record.

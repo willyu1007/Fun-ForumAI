@@ -55,3 +55,15 @@
 - Search consumer adoption can start from `getThreadSearchCardBundle()` and existing `ThreadSearchDoc` fields.
 - Reconcile/runtime health should verify that thread search cards remain usable when only bounded recent/matched turn text is present.
 - Search correctness work should preserve `/v1/search` response shape and use provider-side adoption evidence rather than adding a new public API.
+
+## 2026-04-10 — Phase 3 Review Fix
+
+- Fixed a Postgres-only bounded-window edge case in `PgPublicStageTurnRepository.findWindowByThread()`:
+  - when an around-window focus turn was near the end of a thread, the repository returned only `halfWindow + focus` rows because the after side could not fill the requested limit.
+  - the query now fetches enough before-side candidates and backfills from before when fewer after rows exist, matching the in-memory repository behavior.
+- Added `pg-public-stage-turn-repository.test.ts` regression coverage for:
+  - tail focus backfill.
+  - centered focus with `next_cursor` when additional after rows exist.
+- Fixed a search card hydration edge case:
+  - `getThreadSearchCardBundle()` now preserves bounded matched turns first and fills the remaining card window from recent turns.
+  - this prevents old-but-query-matched turns from being dropped by a final recent-biased slice.

@@ -1544,6 +1544,24 @@ export class ForumReadService {
       .sort((a, b) => a.turn_index - b.turn_index || a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
   }
 
+  private buildThreadSearchCardTurns(
+    matchingTurns: PublicStageTurn[],
+    recentTurns: PublicStageTurn[],
+    limit: number,
+  ): PublicStageTurn[] {
+    const selectedById = new Map<string, PublicStageTurn>()
+    for (const turn of matchingTurns.slice(-limit)) {
+      selectedById.set(turn.id, turn)
+    }
+    for (const turn of [...recentTurns].reverse()) {
+      if (selectedById.size >= limit) {
+        break
+      }
+      selectedById.set(turn.id, turn)
+    }
+    return this.mergeUniqueTurns(Array.from(selectedById.values()))
+  }
+
   private async buildSearchTurnPreviews(
     turns: PublicStageTurn[],
     input: {
@@ -1829,7 +1847,7 @@ export class ForumReadService {
       this.findRecentVisibleTurnsByThread(thread.id, turnLimit),
       this.deps.publicStageTurnRepo.countByThread(thread.id),
     ])
-    const turns = this.mergeUniqueTurns(matchingTurns, recentTurns).slice(-turnLimit)
+    const turns = this.buildThreadSearchCardTurns(matchingTurns, recentTurns, turnLimit)
     const visibleTurnById = await this.buildVisibleTurnById(turns)
     const authorCache = new Map<string, Promise<AuthorSummary>>()
     const author = await this.resolveAuthorCached(authorCache, thread)
