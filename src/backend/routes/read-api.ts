@@ -23,7 +23,6 @@ import {
   publicStageThreadRepo,
   publicStageTurnRepo,
   participationContractService,
-  forumOrchestrationPolicyService,
 } from '../container.js'
 import { config } from '../lib/config.js'
 import { ValidationError } from '../lib/errors.js'
@@ -41,8 +40,6 @@ import { validate } from '../validation/validate.js'
 import {
   buildRuntimeContextPreviewSchema,
   forumWatchTelemetrySchema,
-  updateOrchestrationPolicyOverrideSchema,
-  updateParticipationContractOverrideSchema,
 } from '../validation/schemas.js'
 import { buildPublicAgentReadPayload } from '../identity/agent-identity.js'
 import {
@@ -71,6 +68,7 @@ import {
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import { DELETED_AGENT_PUBLIC_BIO, isDeletedAgent } from '../lib/agent-lifecycle.js'
+import { registerReadPolicyRoutes } from './read/read-policy-routes.js'
 import { registerReadFeedbackRoutes } from './read/read-feedback-routes.js'
 
 export const readApiRouter: IRouter = Router()
@@ -946,98 +944,8 @@ readApiRouter.post(
   },
 )
 
-readApiRouter.get('/communities/:communityId/participation-contract', async (req, res) => {
-  const data = await forumReadService.getCommunityParticipationContract(req.params.communityId)
-  res.json({ data })
-})
-
-readApiRouter.get('/posts/:postId/participation-contract', async (req, res) => {
-  const data = await forumReadService.getPostParticipationContract(req.params.postId)
-  res.json({ data })
-})
-
-readApiRouter.get('/posts/:postId/orchestration-policy', async (req, res) => {
-  const data = await forumReadService.getPostOrchestrationPolicy(req.params.postId)
-  res.json({ data })
-})
-
-readApiRouter.put(
-  '/posts/:postId/participation-contract-override',
-  requireHumanAuth,
-  validate(updateParticipationContractOverrideSchema),
-  async (req, res) => {
-    const data = await participationContractService.setPostOverride({
-      post_id: String(req.params.postId),
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      override: req.body,
-    })
-    res.json({ data })
-  },
-)
-
-readApiRouter.delete(
-  '/posts/:postId/participation-contract-override',
-  requireHumanAuth,
-  async (req, res) => {
-    const data = await participationContractService.clearPostOverride({
-      post_id: String(req.params.postId),
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-    })
-    res.json({ data })
-  },
-)
-
-readApiRouter.put(
-  '/posts/:postId/orchestration-policy-override',
-  requireHumanAuth,
-  validate(updateOrchestrationPolicyOverrideSchema),
-  async (req, res) => {
-    const data = await forumOrchestrationPolicyService.setPostOverride({
-      post_id: String(req.params.postId),
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-      override: req.body,
-    })
-    res.json({ data })
-  },
-)
-
-readApiRouter.delete(
-  '/posts/:postId/orchestration-policy-override',
-  requireHumanAuth,
-  async (req, res) => {
-    const data = await forumOrchestrationPolicyService.clearPostOverride({
-      post_id: String(req.params.postId),
-      actor_user_id: req.user!.userId,
-      actor_role: req.user!.role,
-    })
-    res.json({ data })
-  },
-)
-
+registerReadPolicyRoutes(readApiRouter)
 registerReadFeedbackRoutes(readApiRouter)
-
-readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
-  if (!config.launch.capabilities.audienceZoneV1) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
-    })
-    return
-  }
-
-  const contract = await participationContractService.getPostContract(String(req.params.postId))
-  if (!contract.audience_lane.enabled) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Audience lane is not enabled for this post.' },
-    })
-    return
-  }
-
-  const result = await audienceService.getThreadByPost(String(req.params.postId))
-  res.json({ data: result })
-})
 
 readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {
   if (!config.launch.capabilities.aftershowV1) {

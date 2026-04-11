@@ -107,3 +107,23 @@
 - `pnpm typecheck`
   - Result: passed
   - Meaning: asset cleanup did not reintroduce TypeScript regressions
+
+## 2026-04-11 — Route Split Phase 2
+
+- `pnpm typecheck`
+  - Result: passed
+  - Meaning: extracting admin runtime/control-plane routes and read policy/audience routes did not leave type-level regressions
+
+- `pnpm test -- --run src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+  - Result: `2` test files passed, `62` tests passed
+  - Meaning: the second batch of extracted route groups preserved the original read/admin runtime behavior
+
+- `wc -l src/backend/routes/admin-api.ts src/backend/routes/read-api.ts src/backend/routes/admin/admin-review-routes.ts src/backend/routes/admin/admin-runtime-routes.ts src/backend/routes/read/read-feedback-routes.ts src/backend/routes/read/read-policy-routes.ts`
+  - Result:
+    - `src/backend/routes/admin-api.ts`: `591`
+    - `src/backend/routes/read-api.ts`: `1362`
+    - `src/backend/routes/admin/admin-review-routes.ts`: `441`
+    - `src/backend/routes/admin/admin-runtime-routes.ts`: `668`
+    - `src/backend/routes/read/read-feedback-routes.ts`: `239`
+    - `src/backend/routes/read/read-policy-routes.ts`: `107`
+  - Meaning: root router files are materially smaller while extracted route modules now hold the moved low-coupling handler groups

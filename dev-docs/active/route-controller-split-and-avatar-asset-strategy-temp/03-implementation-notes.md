@@ -108,3 +108,34 @@
   - newly extracted modules:
     - `src/backend/routes/admin/admin-review-routes.ts`: `441` lines
     - `src/backend/routes/read/read-feedback-routes.ts`: `239` lines
+
+## 2026-04-11 — Low-Risk Route Split Phase 2
+
+- Extracted admin runtime/control-plane routes into `src/backend/routes/admin/admin-runtime-routes.ts`, covering:
+  - runtime stats / feature observability
+  - runtime closeout helper endpoints
+  - launch programming ops read-model endpoint
+  - moderation action execution
+  - relation unblock endpoint
+  - rollout evidence-window lifecycle and fallback-entry inspection
+- Extracted read-side policy/audience routes into `src/backend/routes/read/read-policy-routes.ts`, covering:
+  - community participation-contract read
+  - post participation-contract read
+  - post orchestration-policy read
+  - post contract/orchestration override write/delete
+  - audience-thread read
+- Kept `admin-api.ts` / `read-api.ts` as composition roots and only replaced inline registrations with:
+  - `registerAdminRuntimeRoutes(adminApiRouter)`
+  - `registerReadPolicyRoutes(readApiRouter)`
+- Maintained the same low-risk constraints as phase 1:
+  - no path changes
+  - no middleware order changes
+  - no validator changes
+  - no response contract changes
+  - no service/repository contract redesign
+- Current file-size snapshot after phase 2:
+  - `src/backend/routes/admin-api.ts`: `591` lines
+  - `src/backend/routes/read-api.ts`: `1362` lines
+  - newly extracted modules:
+    - `src/backend/routes/admin/admin-runtime-routes.ts`: `668` lines
+    - `src/backend/routes/read/read-policy-routes.ts`: `107` lines
