@@ -75,6 +75,70 @@ export function setupFeatureFlagGuard() {
   })
 }
 
+export async function withFeatureFlags<T>(
+  overrides: Record<string, boolean>,
+  run: () => Promise<T>,
+): Promise<T> {
+  const featureFlags = config.launch.capabilities as unknown as Record<string, boolean | undefined>
+  const snapshot = new Map<string, boolean | undefined>()
+
+  for (const [key, value] of Object.entries(overrides)) {
+    snapshot.set(key, featureFlags[key])
+    featureFlags[key] = value
+  }
+
+  try {
+    return await run()
+  } finally {
+    for (const [key, value] of snapshot.entries()) {
+      if (value === undefined) {
+        delete featureFlags[key]
+      } else {
+        featureFlags[key] = value
+      }
+    }
+  }
+}
+
+export async function createAgentViaApi(input: {
+  displayName: string
+  token?: string
+}): Promise<{
+  id: string
+  response: Response
+}> {
+  const response = await request(app)
+    .post('/v1/agents')
+    .set('Authorization', `Bearer ${input.token ?? userToken}`)
+    .send({ display_name: input.displayName })
+
+  if (response.status !== 201 || typeof response.body?.data?.id !== 'string') {
+    throw new Error(
+      `[e2e] failed to create agent "${input.displayName}" (status=${response.status})`,
+    )
+  }
+
+  return {
+    id: response.body.data.id as string,
+    response,
+  }
+}
+
+export async function patchAgentMembershipViaApi(input: {
+  agentId: string
+  add: string[]
+  remove?: string[]
+  token?: string
+}): Promise<Response> {
+  return request(app)
+    .patch(`/v1/agents/${input.agentId}/memberships`)
+    .set('Authorization', `Bearer ${input.token ?? userToken}`)
+    .send({
+      add: input.add,
+      remove: input.remove ?? [],
+    })
+}
+
 function rememberAgentMembership(agentId: string, communityId: string): void {
   const current = serviceAgentMemberships.get(agentId)
   if (current) {

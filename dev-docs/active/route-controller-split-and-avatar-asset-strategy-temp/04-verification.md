@@ -166,3 +166,22 @@
     - `src/backend/routes/read/read-post-routes.ts`: `159`
     - `src/backend/routes/read/read-agent-routes.ts`: `204`
   - Meaning: `read-api.ts` is now also a pure composition root, with the previously inline feed/post/agent handlers moved into dedicated modules and shared helper logic extracted for reuse
+
+## 2026-04-11 — Route Regression Slimming + Service Split Phase 1
+
+- `pnpm typecheck`
+  - Result: passed
+  - Meaning: route-test helper extraction and the first large-service internal split did not introduce type-level regressions
+
+- `pnpm test -- --run src/backend/services/__tests__/launch-programming-ops-service.test.ts`
+  - Result: `1` test file passed, `7` tests passed
+  - Meaning: `LaunchProgrammingOpsService` still satisfies the existing public contract after extracting the slot recommendation seam
+
+- `pnpm test -- --run --maxWorkers=1 src/backend/routes/__tests__/e2e-read-api.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/routes/__tests__/admin-media-api.test.ts src/backend/routes/__tests__/admin-hot-topic-api.test.ts src/backend/routes/__tests__/feedback-api.test.ts src/backend/routes/__tests__/admin-moderation-api.test.ts src/backend/routes/__tests__/admin-user-access-api.test.ts src/backend/routes/__tests__/admin-invite-codes-api.test.ts`
+  - Result: `8` test files passed, `71` tests passed
+  - Meaning: the previously completed admin/read route splits remain behaviorally stable after the test-helper slimming pass
+
+- Full-route regression note
+  - Initial file-parallel run produced a single timeout in `src/backend/routes/__tests__/e2e-read-api.test.ts` for the role-expiration scenario.
+  - The same scenario passed in isolation, and the full targeted route pack passed when rerun with `--maxWorkers=1`.
+  - Current interpretation: no functional regression reproduced; the route regression pack has a file-parallel timing edge and should be treated as concurrency-sensitive until the harness is further isolated.

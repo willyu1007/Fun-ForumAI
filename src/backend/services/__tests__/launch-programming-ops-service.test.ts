@@ -1,7 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { config } from '../../lib/config.js'
 import type { LaunchProgramRole, LaunchSystemRosterEntry } from '../../launch/system-roster.js'
 import { getLaunchSystemRoster } from '../../launch/system-roster.js'
-import { recommendProgrammingSlotAssignments } from '../launch-programming-ops-service.js'
+import {
+  LaunchProgrammingOpsService,
+  type LaunchProgrammingOpsServiceDeps,
+  recommendProgrammingSlotAssignments,
+} from '../launch-programming-ops-service.js'
+
+const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
+const originalProgrammingOps = featureFlags.programmingOpsV1
+
+afterEach(() => {
+  featureFlags.programmingOpsV1 = originalProgrammingOps
+})
 
 function makeRosterEntry(input: {
   id: string
@@ -47,6 +59,54 @@ function makeRosterEntry(input: {
       private_lane_policy: 'public_only',
     },
   }
+}
+
+function createLaunchProgrammingOpsService(
+  overrides: Partial<LaunchProgrammingOpsServiceDeps> = {},
+): LaunchProgrammingOpsService {
+  const deps: LaunchProgrammingOpsServiceDeps = {
+    forumReadService: {
+      getFeed: async () => ({
+        items: [],
+        next_cursor: null,
+      }),
+    } as LaunchProgrammingOpsServiceDeps['forumReadService'],
+    globalHighlightsService: {
+      collectToday: async () => ({
+        hot_threads: [],
+        controversy: [],
+        featured_agents: [],
+        wildcard_cameos: [],
+        meta: {
+          range: 'today',
+          generated_at: new Date('2026-04-11T00:00:00.000Z').toISOString(),
+          source: 'global-highlights-v1',
+        },
+      }),
+    } as unknown as LaunchProgrammingOpsServiceDeps['globalHighlightsService'],
+    aftershowService: {
+      getLatestByPost: async () => ({
+        artifact: null,
+        callouts: [],
+      }),
+    } as unknown as LaunchProgrammingOpsServiceDeps['aftershowService'],
+    communityRepo: {
+      findAll: () => ({
+        items: [],
+      }),
+    } as unknown as LaunchProgrammingOpsServiceDeps['communityRepo'],
+    communityProposalRepo: {
+      listProposals: async () => [],
+      findRecommendationByProposalId: async () => null,
+      listEventsByProposalId: async () => [],
+    } as unknown as LaunchProgrammingOpsServiceDeps['communityProposalRepo'],
+    roleAssignmentRepo: {
+      listActiveByScope: () => [],
+    } as LaunchProgrammingOpsServiceDeps['roleAssignmentRepo'],
+    ...overrides,
+  }
+
+  return new LaunchProgrammingOpsService(deps)
 }
 
 describe('recommendProgrammingSlotAssignments', () => {
@@ -155,5 +215,50 @@ describe('recommendProgrammingSlotAssignments', () => {
     })
     expect(result.fallback_agent_ids).toEqual([])
     expect(result.unfilled_required_roles).toEqual([])
+  })
+})
+
+describe('LaunchProgrammingOpsService public methods', () => {
+  it('getHomeItems returns an empty list when programming ops is disabled', async () => {
+    featureFlags.programmingOpsV1 = false
+    const service = createLaunchProgrammingOpsService()
+
+    await expect(service.getHomeItems()).resolves.toEqual([])
+  })
+
+  it('getHomeItems returns public programming slot items when programming ops is enabled', async () => {
+    featureFlags.programmingOpsV1 = true
+    const service = createLaunchProgrammingOpsService()
+
+    const items = await service.getHomeItems({
+      now: new Date('2026-04-11T12:00:00.000Z'),
+    })
+
+    expect(items.length).toBeGreaterThan(0)
+    expect(items[0]).toMatchObject({
+      item_kind: 'programming_slot',
+      content_kind: 'programming_slot',
+      slot_name: expect.any(String),
+      daypart_id: expect.any(String),
+      lead_seats: expect.any(Array),
+      next_jump_target: expect.stringContaining('/c/'),
+    })
+  })
+
+  it('getAdminPayload returns an enabled read model through the public service method', async () => {
+    featureFlags.programmingOpsV1 = true
+    const service = createLaunchProgrammingOpsService()
+
+    const payload = await service.getAdminPayload({
+      now: new Date('2026-04-11T12:00:00.000Z'),
+    })
+
+    expect(payload.enabled).toBe(true)
+    expect(payload.dayparts.length).toBeGreaterThan(0)
+    expect(payload.slots.length).toBeGreaterThan(0)
+    expect(payload.health).toHaveProperty('warnings')
+    expect(payload.governance_references).toHaveProperty('communities')
+    expect(payload.rollback_order.length).toBeGreaterThan(0)
+    expect(payload.meta.source).toBe('launch-programming-ops-v1')
   })
 })

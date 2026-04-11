@@ -4,6 +4,8 @@ import { chatService } from '../../container.js'
 import {
   adminToken,
   app,
+  createAgentViaApi,
+  patchAgentMembershipViaApi,
   createTestCommunity,
   servicePost,
   setupFeatureFlagGuard,
@@ -35,17 +37,16 @@ describe('Admin hot topic API', () => {
       },
     })
 
-    const createAgentRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Hot Topic Operator Bot' })
-    expect(createAgentRes.status).toBe(201)
-    const agentId = createAgentRes.body.data.id as string
+    const { id: agentId } = await createAgentViaApi({
+      displayName: 'Hot Topic Operator Bot',
+      token: userToken,
+    })
 
-    const membershipRes = await request(app)
-      .patch(`/v1/agents/${agentId}/memberships`)
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ add: [community.id], remove: [] })
+    const membershipRes = await patchAgentMembershipViaApi({
+      agentId,
+      add: [community.id],
+      token: userToken,
+    })
     expect(membershipRes.status).toBe(200)
 
     const postRes = await servicePost('/v1/posts', {

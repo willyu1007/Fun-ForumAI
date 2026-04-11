@@ -3,6 +3,7 @@ import request from 'supertest'
 import {
   adminToken,
   app,
+  createAgentViaApi,
   createTestCommunity,
   servicePost,
   setupFeatureFlagGuard,
@@ -20,14 +21,13 @@ describe('Admin moderation API', () => {
       name: 'Admin Moderation Queue Community',
       slug: `admin-moderation-${Date.now()}`,
     })
-    const agentRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Admin Moderation Agent' })
-    expect(agentRes.status).toBe(201)
+    const { id: agentId } = await createAgentViaApi({
+      displayName: 'Admin Moderation Agent',
+      token: userToken,
+    })
 
     const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: agentRes.body.data.id,
+      actor_agent_id: agentId,
       run_id: 'run-admin-moderation-1',
       community_id: community.id,
       title: 'Privacy complaint target',

@@ -2,13 +2,15 @@ import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import {
   app,
-  config,
   servicePost,
   userToken,
   user2Token,
   adminToken,
+  createAgentViaApi,
+  patchAgentMembershipViaApi,
   setupFeatureFlagGuard,
   createTestCommunity,
+  withFeatureFlags,
 } from './e2e-helpers.js'
 import {
   agentService,
@@ -82,17 +84,11 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/agents/:agentId/relations/public-summary returns a viewer-facing summary when viewer_agent_id is provided', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalFlag = featureFlags.lightweightPersonalizationV1
-    featureFlags.lightweightPersonalizationV1 = true
-
-    try {
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Relation Summary Agent' })
-      expect(authorRes.status).toBe(201)
-      const agentId = authorRes.body.data.id as string
+    await withFeatureFlags({ lightweightPersonalizationV1: true }, async () => {
+      const { id: agentId } = await createAgentViaApi({
+        displayName: 'Relation Summary Agent',
+        token: userToken,
+      })
 
       const res = await request(app)
         .get(`/v1/agents/${agentId}/relations/public-summary`)
@@ -115,40 +111,26 @@ describe('E2E: Read API (public)', () => {
         }),
       })
       expect(res.body.meta.viewer_agent_id).toBe('viewer-agent-demo')
-    } finally {
-      featureFlags.lightweightPersonalizationV1 = originalFlag
-    }
+    })
   })
 
   it('GET /v1/agents/:agentId/relations/public-summary degrades to null when viewer_agent_id is unavailable', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalFlag = featureFlags.lightweightPersonalizationV1
-    featureFlags.lightweightPersonalizationV1 = true
-
-    try {
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Relation Null Agent' })
-      expect(authorRes.status).toBe(201)
-      const agentId = authorRes.body.data.id as string
+    await withFeatureFlags({ lightweightPersonalizationV1: true }, async () => {
+      const { id: agentId } = await createAgentViaApi({
+        displayName: 'Relation Null Agent',
+        token: userToken,
+      })
 
       const res = await request(app).get(`/v1/agents/${agentId}/relations/public-summary`)
 
       expect(res.status).toBe(200)
       expect(res.body.data).toBeNull()
       expect(res.body.meta.viewer_agent_id).toBeNull()
-    } finally {
-      featureFlags.lightweightPersonalizationV1 = originalFlag
-    }
+    })
   })
 
   it('GET /v1/home returns fixed shelf order and keeps non-native creator notes out of notes_today while preserving them in continuation', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalHomeProgramming = featureFlags.homeProgrammingV1
-    featureFlags.homeProgrammingV1 = true
-
-    try {
+    await withFeatureFlags({ homeProgrammingV1: true }, async () => {
       const hotArena = getLaunchCommunityBySlug('hot-arena')
       const creatorRecommendation = getLaunchCommunityBySlug('creator-recommendation')
       const hotCommunity = await createTestCommunity({
@@ -161,12 +143,10 @@ describe('E2E: Read API (public)', () => {
         slug: `home-creator-note-${Date.now()}`,
         rules_json: creatorRecommendation?.rules_json,
       })
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Home Route Author' })
-      expect(authorRes.status).toBe(201)
-      const agentId = authorRes.body.data.id as string
+      const { id: agentId } = await createAgentViaApi({
+        displayName: 'Home Route Author',
+        token: userToken,
+      })
 
       const hotPostRes = await servicePost('/v1/posts', {
         actor_agent_id: agentId,
@@ -364,9 +344,7 @@ describe('E2E: Read API (public)', () => {
         res.body.data.hot_feed_continuation.items
           .some((item: { id: string }) => item.id === creatorNotePostId),
       ).toBe(true)
-    } finally {
-      featureFlags.homeProgrammingV1 = originalHomeProgramming
-    }
+    })
   })
 
   it('GET /v1/feed and GET /v1/posts/:id expose launch visual packaging metadata when community rules provide it', async () => {
@@ -524,20 +502,14 @@ describe('E2E: Read API (public)', () => {
       name: 'Directory Count Community',
       slug: `directory-count-${Date.now()}`,
     })
-    const firstAgentRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Directory Agent 1' })
-    expect(firstAgentRes.status).toBe(201)
-
-    const secondAgentRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${user2Token}`)
-      .send({ display_name: 'Directory Agent 2' })
-    expect(secondAgentRes.status).toBe(201)
-
-    const firstAgent = { id: firstAgentRes.body.data.id as string }
-    const secondAgent = { id: secondAgentRes.body.data.id as string }
+    const firstAgent = await createAgentViaApi({
+      displayName: 'Directory Agent 1',
+      token: userToken,
+    })
+    const secondAgent = await createAgentViaApi({
+      displayName: 'Directory Agent 2',
+      token: user2Token,
+    })
 
     await agentCommunityMembershipService.patchMemberships({
       agent_id: firstAgent.id,
@@ -684,11 +656,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/highlights returns empty fallback payload when highlights are disabled', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalHighlights = featureFlags.globalHighlightsV1
-    featureFlags.globalHighlightsV1 = false
-
-    try {
+    await withFeatureFlags({ globalHighlightsV1: false }, async () => {
       const res = await request(app).get('/v1/highlights')
       expect(res.status).toBe(200)
       expect(res.body.data).toMatchObject({
@@ -697,34 +665,26 @@ describe('E2E: Read API (public)', () => {
         controversy: [],
         wildcard_cameos: [],
       })
-    } finally {
-      featureFlags.globalHighlightsV1 = originalHighlights
-    }
+    })
   })
 
   it('GET /v1/highlights returns grouped payload when feature is enabled', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalHighlights = featureFlags.globalHighlightsV1
-    featureFlags.globalHighlightsV1 = true
-
-    try {
+    await withFeatureFlags({ globalHighlightsV1: true }, async () => {
       const community = await createTestCommunity({
         name: 'Highlights Community',
         slug: `highlights-${Date.now()}`,
       })
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Highlights Author' })
-      expect(authorRes.status).toBe(201)
-      const commenterRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Highlights Commenter' })
-      expect(commenterRes.status).toBe(201)
+      const author = await createAgentViaApi({
+        displayName: 'Highlights Author',
+        token: userToken,
+      })
+      const commenter = await createAgentViaApi({
+        displayName: 'Highlights Commenter',
+        token: userToken,
+      })
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: authorRes.body.data.id,
+        actor_agent_id: author.id,
         run_id: 'run-highlights-1',
         community_id: community.id,
         title: 'Hot highlight post',
@@ -734,7 +694,7 @@ describe('E2E: Read API (public)', () => {
       const postId = postRes.body.data.id as string
 
       const commentRes = await servicePost(`/v1/posts/${postId}/threads`, {
-        actor_agent_id: commenterRes.body.data.id,
+        actor_agent_id: commenter.id,
         run_id: 'run-highlights-2',
         body: 'interesting thread',
       })
@@ -747,33 +707,27 @@ describe('E2E: Read API (public)', () => {
       expect(Array.isArray(highlights.body.data.featured_agents)).toBe(true)
       expect(Array.isArray(highlights.body.data.controversy)).toBe(true)
       expect(Array.isArray(highlights.body.data.wildcard_cameos)).toBe(true)
-    } finally {
-      featureFlags.globalHighlightsV1 = originalHighlights
-    }
+    })
   })
 
   it('GET /v1/highlights exposes launch visual packaging metadata for posts with highlight attachments', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalHighlights = featureFlags.globalHighlightsV1
-    const originalRolloutController = featureFlags.mediaRolloutControllerV1
-    featureFlags.globalHighlightsV1 = true
-    featureFlags.mediaRolloutControllerV1 = false
-
-    try {
+    await withFeatureFlags({
+      globalHighlightsV1: true,
+      mediaRolloutControllerV1: false,
+    }, async () => {
       const launchCommunity = getLaunchCommunityBySlug('hot-arena')
       const community = await createTestCommunity({
         name: 'Highlights Packaging Community',
         slug: `highlights-packaging-${Date.now()}`,
         rules_json: launchCommunity?.rules_json,
       })
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Highlights Packaging Author' })
-      expect(authorRes.status).toBe(201)
+      const author = await createAgentViaApi({
+        displayName: 'Highlights Packaging Author',
+        token: userToken,
+      })
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: authorRes.body.data.id,
+        actor_agent_id: author.id,
         run_id: `run-highlights-packaging-${Date.now()}`,
         community_id: community.id,
         title: 'Highlights packaging post',
@@ -785,7 +739,7 @@ describe('E2E: Read API (public)', () => {
       const asset = await mediaAssetRepo.create({
         id: `asset-highlight-${Date.now()}`,
         owner_user_id: 'user1',
-        steward_agent_id: authorRes.body.data.id as string,
+        steward_agent_id: author.id,
         source_kind: 'owner_console_upload',
         source_scene_type: 'forum_post',
         source_scene_id: postId,
@@ -884,10 +838,7 @@ describe('E2E: Read API (public)', () => {
       expect(hotThread.card_mode).toBeUndefined()
       expect(hotThread.thumbnail_policy).toBeUndefined()
       expect(hotThread.hero_eligible).toBeUndefined()
-    } finally {
-      featureFlags.globalHighlightsV1 = originalHighlights
-      featureFlags.mediaRolloutControllerV1 = originalRolloutController
-    }
+    })
   })
 
   it('GET /v1/feed?limit=abc returns 400 validation error', async () => {
@@ -1355,14 +1306,6 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/posts/:postId does not block on slow rollout profile evaluation when aftershow web is enabled', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalAudienceAftershowWeb = featureFlags.audienceAftershowWebV1
-    const originalAftershow = featureFlags.aftershowV1
-    const originalRollout = featureFlags.mediaRolloutControllerV1
-    featureFlags.audienceAftershowWebV1 = true
-    featureFlags.aftershowV1 = true
-    featureFlags.mediaRolloutControllerV1 = true
-
     const rolloutSpy = vi.spyOn(mediaRolloutControllerService, 'getEffectiveProfile').mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 500))
       return {
@@ -1390,56 +1333,58 @@ describe('E2E: Read API (public)', () => {
     })
 
     try {
-      const community = await createTestCommunity({
-        name: 'Post Detail Timeout Guard Community',
-        slug: `post-detail-timeout-guard-${Date.now()}`,
-      })
-      const agentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Post Detail Timeout Guard Agent' })
-      expect(agentRes.status).toBe(201)
-
-      const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentRes.body.data.id,
-        run_id: `run-post-detail-timeout-guard-${Date.now()}`,
-        community_id: community.id,
-        title: 'Post detail timeout guard',
-        body: 'This post should not block on slow rollout profile reads.',
-      })
-      expect(postRes.status).toBe(201)
-      const postId = postRes.body.data.id as string
-
-      const startedAt = Date.now()
-      const race = await Promise.race([
-        request(app)
-          .get(`/v1/posts/${postId}`)
-          .then((res) => ({ kind: 'resolved' as const, res })),
-        new Promise<{ kind: 'timeout' }>((resolve) => setTimeout(() => resolve({ kind: 'timeout' }), 400)),
-      ])
-
-      expect(race.kind).toBe('resolved')
-      expect(Date.now() - startedAt).toBeLessThan(450)
-      expect(rolloutSpy).toHaveBeenCalledTimes(2)
-
-      if (race.kind === 'resolved') {
-        expect(race.res.status).toBe(200)
-        expect(race.res.body.data).toMatchObject({
-          id: postId,
-          aftershow_summary: null,
-          aftershow_callouts: [],
+      await withFeatureFlags({
+        audienceAftershowWebV1: true,
+        aftershowV1: true,
+        mediaRolloutControllerV1: true,
+      }, async () => {
+        const community = await createTestCommunity({
+          name: 'Post Detail Timeout Guard Community',
+          slug: `post-detail-timeout-guard-${Date.now()}`,
         })
-      }
+        const agent = await createAgentViaApi({
+          displayName: 'Post Detail Timeout Guard Agent',
+          token: userToken,
+        })
 
-      await new Promise((resolve) => setTimeout(resolve, 550))
-      const secondRes = await request(app).get(`/v1/posts/${postId}`)
-      expect(secondRes.status).toBe(200)
-      expect(rolloutSpy).toHaveBeenCalledTimes(2)
+        const postRes = await servicePost('/v1/posts', {
+          actor_agent_id: agent.id,
+          run_id: `run-post-detail-timeout-guard-${Date.now()}`,
+          community_id: community.id,
+          title: 'Post detail timeout guard',
+          body: 'This post should not block on slow rollout profile reads.',
+        })
+        expect(postRes.status).toBe(201)
+        const postId = postRes.body.data.id as string
+
+        const startedAt = Date.now()
+        const race = await Promise.race([
+          request(app)
+            .get(`/v1/posts/${postId}`)
+            .then((res) => ({ kind: 'resolved' as const, res })),
+          new Promise<{ kind: 'timeout' }>((resolve) => setTimeout(() => resolve({ kind: 'timeout' }), 400)),
+        ])
+
+        expect(race.kind).toBe('resolved')
+        expect(Date.now() - startedAt).toBeLessThan(450)
+        expect(rolloutSpy).toHaveBeenCalledTimes(2)
+
+        if (race.kind === 'resolved') {
+          expect(race.res.status).toBe(200)
+          expect(race.res.body.data).toMatchObject({
+            id: postId,
+            aftershow_summary: null,
+            aftershow_callouts: [],
+          })
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 550))
+        const secondRes = await request(app).get(`/v1/posts/${postId}`)
+        expect(secondRes.status).toBe(200)
+        expect(rolloutSpy).toHaveBeenCalledTimes(2)
+      })
     } finally {
       rolloutSpy.mockRestore()
-      featureFlags.audienceAftershowWebV1 = originalAudienceAftershowWeb
-      featureFlags.aftershowV1 = originalAftershow
-      featureFlags.mediaRolloutControllerV1 = originalRollout
     }
   })
 
@@ -1521,13 +1466,10 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('does not materialize audience-thread read stubs and blocks audience-thread reads for open-reply posts', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalAudienceZone = featureFlags.audienceZoneV1
-    const originalAftershow = featureFlags.aftershowV1
-    featureFlags.audienceZoneV1 = true
-    featureFlags.aftershowV1 = true
-
-    try {
+    await withFeatureFlags({
+      audienceZoneV1: true,
+      aftershowV1: true,
+    }, async () => {
       const audienceCommunity = await createTestCommunity({
         name: 'Read Only Audience Community',
         slug: `read-only-audience-${Date.now()}`,
@@ -1554,14 +1496,13 @@ describe('E2E: Read API (public)', () => {
           },
         },
       })
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Audience Stub Guard Author' })
-      expect(authorRes.status).toBe(201)
+      const author = await createAgentViaApi({
+        displayName: 'Audience Stub Guard Author',
+        token: userToken,
+      })
 
       const audiencePostRes = await servicePost('/v1/posts', {
-        actor_agent_id: authorRes.body.data.id,
+        actor_agent_id: author.id,
         run_id: `run-audience-read-stub-${Date.now()}`,
         community_id: audienceCommunity.id,
         title: 'Audience read stub target',
@@ -1582,7 +1523,7 @@ describe('E2E: Read API (public)', () => {
       expect(audiencePostReadRes.body.data).not.toHaveProperty('audience_thread_meta')
 
       const openReplyPostRes = await servicePost('/v1/posts', {
-        actor_agent_id: authorRes.body.data.id,
+        actor_agent_id: author.id,
         run_id: `run-open-reply-read-guard-${Date.now()}`,
         community_id: openReplyCommunity.id,
         title: 'Open reply audience thread guard',
@@ -1601,10 +1542,7 @@ describe('E2E: Read API (public)', () => {
       const openReplyPostReadRes = await request(app).get(`/v1/posts/${openReplyPostId}`)
       expect(openReplyPostReadRes.status).toBe(200)
       expect(openReplyPostReadRes.body.data).not.toHaveProperty('audience_thread_meta')
-    } finally {
-      featureFlags.audienceZoneV1 = originalAudienceZone
-      featureFlags.aftershowV1 = originalAftershow
-    }
+    })
   })
 
   it('GET/PUT/DELETE orchestration policy endpoints derive defaults and allow post owner overrides', async () => {
@@ -1866,13 +1804,10 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('POST /v1/viewer/posts/:postId/audience-messages returns auditable envelopes and honors idempotency', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalAudienceZone = featureFlags.audienceZoneV1
-    const originalHumanParticipation = featureFlags.humanParticipationV1
-    featureFlags.audienceZoneV1 = true
-    featureFlags.humanParticipationV1 = true
-
-    try {
+    await withFeatureFlags({
+      audienceZoneV1: true,
+      humanParticipationV1: true,
+    }, async () => {
       const community = await createTestCommunity({
         name: 'Viewer Audience Community',
         slug: `viewer-audience-${Date.now()}`,
@@ -1886,14 +1821,13 @@ describe('E2E: Read API (public)', () => {
           },
         },
       })
-      const authorRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Viewer Audience Author' })
-      expect(authorRes.status).toBe(201)
+      const author = await createAgentViaApi({
+        displayName: 'Viewer Audience Author',
+        token: userToken,
+      })
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: authorRes.body.data.id,
+        actor_agent_id: author.id,
         run_id: `run-viewer-audience-post-${Date.now()}`,
         community_id: community.id,
         title: 'Viewer audience target',
@@ -1940,10 +1874,7 @@ describe('E2E: Read API (public)', () => {
         author_user_id: 'user1',
         body: 'Audience sidecar message.',
       })
-    } finally {
-      featureFlags.audienceZoneV1 = originalAudienceZone
-      featureFlags.humanParticipationV1 = originalHumanParticipation
-    }
+    })
   })
 
   it('GET /v1/posts/:postId/threads exposes all route handoff variants with CTA payloads', async () => {
@@ -1951,14 +1882,13 @@ describe('E2E: Read API (public)', () => {
       name: 'Route Handoff Community',
       slug: `route-handoff-${Date.now()}`,
     })
-    const authorRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Route Thread Author' })
-    expect(authorRes.status).toBe(201)
+    const author = await createAgentViaApi({
+      displayName: 'Route Thread Author',
+      token: userToken,
+    })
 
     const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: authorRes.body.data.id,
+      actor_agent_id: author.id,
       run_id: `run-route-post-${Date.now()}`,
       community_id: community.id,
       title: 'Route target post',
@@ -1992,7 +1922,7 @@ describe('E2E: Read API (public)', () => {
 
     for (const route of routes) {
       const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
-        actor_agent_id: authorRes.body.data.id,
+        actor_agent_id: author.id,
         run_id: `run-route-${route.route_type}-${Date.now()}`,
         body: `Route seed ${route.route_type}`,
         route_handoff: route,
@@ -2029,7 +1959,7 @@ describe('E2E: Read API (public)', () => {
     expect(routeMap.get('PRIVATE')).toMatchObject({
       cta: expect.objectContaining({
         target: buildAgentTarget({
-          agentId: authorRes.body.data.id as string,
+          agentId: author.id,
           mode: 'readonly',
           tab: 'chat',
         }),
@@ -2481,13 +2411,10 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('POST /v1/viewer/posts/:postId/audience-messages validates body length and accepts valid message', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalAudienceZone = featureFlags.audienceZoneV1
-    const originalHumanParticipation = featureFlags.humanParticipationV1
-    featureFlags.audienceZoneV1 = true
-    featureFlags.humanParticipationV1 = true
-
-    try {
+    await withFeatureFlags({
+      audienceZoneV1: true,
+      humanParticipationV1: true,
+    }, async () => {
       const community = await createTestCommunity({
         name: 'Audience Message Community',
         slug: `audience-message-${Date.now()}`,
@@ -2501,14 +2428,13 @@ describe('E2E: Read API (public)', () => {
           },
         },
       })
-      const agentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Audience Message Agent' })
-      expect(agentRes.status).toBe(201)
+      const agent = await createAgentViaApi({
+        displayName: 'Audience Message Agent',
+        token: userToken,
+      })
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentRes.body.data.id,
+        actor_agent_id: agent.id,
         run_id: 'run-audience-1',
         community_id: community.id,
         title: 'Audience target',
@@ -2560,22 +2486,15 @@ describe('E2E: Read API (public)', () => {
         .send({ body: tooLongBody })
       expect(longRes.status).toBe(400)
       expect(longRes.body.error.code).toBe('VALIDATION_ERROR')
-    } finally {
-      featureFlags.audienceZoneV1 = originalAudienceZone
-      featureFlags.humanParticipationV1 = originalHumanParticipation
-    }
+    })
   })
 
   it('GET /v1/posts/:postId/aftershow returns aftershow summary and callouts', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalAudienceZone = featureFlags.audienceZoneV1
-    const originalAftershow = featureFlags.aftershowV1
-    const originalAftershowPipeline = featureFlags.aftershowEventPipelineV1
-    featureFlags.audienceZoneV1 = true
-    featureFlags.aftershowV1 = true
-    featureFlags.aftershowEventPipelineV1 = true
-
-    try {
+    await withFeatureFlags({
+      audienceZoneV1: true,
+      aftershowV1: true,
+      aftershowEventPipelineV1: true,
+    }, async () => {
       const launchCommunity = getLaunchCommunityBySlug('postmortem-lab')
       const community = await createTestCommunity({
         name: 'Aftershow Read Community',
@@ -2583,15 +2502,13 @@ describe('E2E: Read API (public)', () => {
         rules_json: launchCommunity?.rules_json,
       })
 
-      const createAgentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Aftershow Agent' })
-      expect(createAgentRes.status).toBe(201)
-      const agentId = createAgentRes.body.data.id as string
+      const agent = await createAgentViaApi({
+        displayName: 'Aftershow Agent',
+        token: userToken,
+      })
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentId,
+        actor_agent_id: agent.id,
         run_id: `run-aftershow-${Date.now()}`,
         community_id: community.id,
         title: 'Aftershow target post',
@@ -2642,37 +2559,27 @@ describe('E2E: Read API (public)', () => {
           `/posts/${postId}?aftershow_id=`,
         )
       }
-    } finally {
-      featureFlags.audienceZoneV1 = originalAudienceZone
-      featureFlags.aftershowV1 = originalAftershow
-      featureFlags.aftershowEventPipelineV1 = originalAftershowPipeline
-    }
+    })
   })
 
   it('GET /v1/posts/:postId/aftershow keeps published artifact when the latest trigger is aborted', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalAudienceZone = featureFlags.audienceZoneV1
-    const originalAftershow = featureFlags.aftershowV1
-    const originalAftershowPipeline = featureFlags.aftershowEventPipelineV1
-    featureFlags.audienceZoneV1 = true
-    featureFlags.aftershowV1 = true
-    featureFlags.aftershowEventPipelineV1 = true
-
-    try {
+    await withFeatureFlags({
+      audienceZoneV1: true,
+      aftershowV1: true,
+      aftershowEventPipelineV1: true,
+    }, async () => {
       const community = await createTestCommunity({
         name: 'Aftershow Read Fallback Community',
         slug: `aftershow-fallback-${Date.now()}`,
       })
 
-      const createAgentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Aftershow Fallback Agent' })
-      expect(createAgentRes.status).toBe(201)
-      const agentId = createAgentRes.body.data.id as string
+      const agent = await createAgentViaApi({
+        displayName: 'Aftershow Fallback Agent',
+        token: userToken,
+      })
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentId,
+        actor_agent_id: agent.id,
         run_id: `run-aftershow-fallback-${Date.now()}`,
         community_id: community.id,
         title: 'Aftershow fallback target post',
@@ -2710,41 +2617,33 @@ describe('E2E: Read API (public)', () => {
       expect(readRes.body.data.aftershow_summary.id).toBe(firstArtifactId)
       expect(Array.isArray(readRes.body.data.aftershow_callouts)).toBe(true)
       expect(readRes.body.data.aftershow_callouts.length).toBeGreaterThan(0)
-    } finally {
-      featureFlags.audienceZoneV1 = originalAudienceZone
-      featureFlags.aftershowV1 = originalAftershow
-      featureFlags.aftershowEventPipelineV1 = originalAftershowPipeline
-    }
+    })
   })
 
   it('GET /v1/posts/:postId/aside-seats returns role assignments for post scope', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalRoleAssignment = featureFlags.roleAssignmentV1
-    const originalMemberships = featureFlags.membershipsV1
-    featureFlags.roleAssignmentV1 = true
-    featureFlags.membershipsV1 = true
-
-    try {
+    await withFeatureFlags({
+      roleAssignmentV1: true,
+      membershipsV1: true,
+    }, async () => {
       const community = await createTestCommunity({
         name: 'Aside Seats Read Community',
         slug: `aside-seats-read-${Date.now()}`,
       })
 
-      const createAgentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Seat Agent' })
-      expect(createAgentRes.status).toBe(201)
-      const agentId = createAgentRes.body.data.id as string
+      const agent = await createAgentViaApi({
+        displayName: 'Seat Agent',
+        token: userToken,
+      })
 
-      const membershipRes = await request(app)
-        .patch(`/v1/agents/${agentId}/memberships`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ add: [community.id], remove: [] })
+      const membershipRes = await patchAgentMembershipViaApi({
+        agentId: agent.id,
+        add: [community.id],
+        token: userToken,
+      })
       expect(membershipRes.status).toBe(200)
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentId,
+        actor_agent_id: agent.id,
         run_id: `run-seat-${Date.now()}`,
         community_id: community.id,
         title: 'Aside seats target',
@@ -2760,7 +2659,7 @@ describe('E2E: Read API (public)', () => {
           scope: 'POST',
           scope_id: postId,
           role: 'core',
-          agent_id: agentId,
+          agent_id: agent.id,
         })
       expect(roleRes.status).toBe(201)
 
@@ -2769,40 +2668,33 @@ describe('E2E: Read API (public)', () => {
       expect(seatsRes.body.data.post_id).toBe(postId)
       expect(Array.isArray(seatsRes.body.data.seats)).toBe(true)
       expect(seatsRes.body.data.seats.length).toBeGreaterThan(0)
-    } finally {
-      featureFlags.roleAssignmentV1 = originalRoleAssignment
-      featureFlags.membershipsV1 = originalMemberships
-    }
+    })
   })
 
   it('expired role assignment disappears from aside seats after expiration processing and writes ROLE_EXPIRED event', async () => {
-    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
-    const originalRoleAssignment = featureFlags.roleAssignmentV1
-    const originalMemberships = featureFlags.membershipsV1
-    featureFlags.roleAssignmentV1 = true
-    featureFlags.membershipsV1 = true
-
-    try {
+    await withFeatureFlags({
+      roleAssignmentV1: true,
+      membershipsV1: true,
+    }, async () => {
       const community = await createTestCommunity({
         name: 'Aside Seats Expiry Community',
         slug: `aside-seats-expiry-${Date.now()}`,
       })
 
-      const createAgentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Seat Expiry Agent' })
-      expect(createAgentRes.status).toBe(201)
-      const agentId = createAgentRes.body.data.id as string
+      const agent = await createAgentViaApi({
+        displayName: 'Seat Expiry Agent',
+        token: userToken,
+      })
 
-      const membershipRes = await request(app)
-        .patch(`/v1/agents/${agentId}/memberships`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ add: [community.id], remove: [] })
+      const membershipRes = await patchAgentMembershipViaApi({
+        agentId: agent.id,
+        add: [community.id],
+        token: userToken,
+      })
       expect(membershipRes.status).toBe(200)
 
       const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentId,
+        actor_agent_id: agent.id,
         run_id: `run-seat-expiry-${Date.now()}`,
         community_id: community.id,
         title: 'Aside seats expiry target',
@@ -2819,7 +2711,7 @@ describe('E2E: Read API (public)', () => {
           scope: 'POST',
           scope_id: postId,
           role: 'core',
-          agent_id: agentId,
+          agent_id: agent.id,
           expires_at: expiresAt,
         })
       expect(roleRes.status).toBe(201)
@@ -2867,9 +2759,6 @@ describe('E2E: Read API (public)', () => {
       )
       expect(expiredEvent).toBeTruthy()
       expect(expiredEvent?.actor_id).toBe('role-expiry-scheduler')
-    } finally {
-      featureFlags.roleAssignmentV1 = originalRoleAssignment
-      featureFlags.membershipsV1 = originalMemberships
-    }
+    })
   })
 })

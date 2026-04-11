@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Governance mapping: 临时任务包；按用户要求不注册到 `.ai/project/main/` 索引。
-- Current status: 已完成图片资产迁移的安全执行链；运行时本地 `.png -> .webp` 兼容层已删除，前端只接受真实资源路径；PWA/favicon 旧引用链已清理，社区 banner 已统一为 `webp`；后端 `typecheck` 基线已修复；`admin-api.ts` 与 `read-api.ts` 已完成四批低风险机械拆分，已抽离审查/反馈/申诉、runtime/closeout/rollout/ops、admin risk/media/hot-topic，以及 read 侧 policy/discussion/feed/post/agent 等路由组，并保持路径、中间件、验证与响应结构不变。`admin-api.ts` 与 `read-api.ts` 现在都已收口为组合注册根文件。针对本次改动面的后端测试通过。
-- Next step: 提交第四批 route 拆分基线；后续只在确有收益时再处理 read-side helper 进一步收敛或测试去重，不与本轮低风险路由拆分混做。
+- Current status: 已完成图片资产迁移的安全执行链；运行时本地 `.png -> .webp` 兼容层已删除，前端只接受真实资源路径；PWA/favicon 旧引用链已清理，社区 banner 已统一为 `webp`；后端 `typecheck` 基线已修复；`admin-api.ts` 与 `read-api.ts` 已完成四批低风险机械拆分，已抽离审查/反馈/申诉、runtime/closeout/rollout/ops、admin risk/media/hot-topic，以及 read 侧 policy/discussion/feed/post/agent 等路由组，并保持路径、中间件、验证与响应结构不变。`admin-api.ts` 与 `read-api.ts` 现在都已收口为组合注册根文件。当前又补做了一轮针对已拆路由的测试去重瘦身，并完成 `LaunchProgrammingOpsService` 的第一刀低风险内部拆分：保留现有公开类与公开方法不变，仅把 slot recommendation 相关纯逻辑抽到独立模块，并用现有公开方法做回归验证。
+- Next step: 继续按同样原则推进下一个大 service 的内部拆分，优先选择公开面窄、内部编排长但契约稳定的 service；每拆一刀都先保持 facade 不变，再用现有公开方法补回归。
 
 ## Goal
 

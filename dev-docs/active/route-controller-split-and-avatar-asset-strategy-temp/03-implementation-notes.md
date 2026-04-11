@@ -220,3 +220,46 @@
     - `src/backend/routes/read/read-feed-routes.ts`: `318` lines
     - `src/backend/routes/read/read-post-routes.ts`: `159` lines
     - `src/backend/routes/read/read-agent-routes.ts`: `204` lines
+
+## 2026-04-11 — Route Regression Slimming
+
+- Added shared route-test helpers in `src/backend/routes/__tests__/e2e-helpers.ts` for the repeated setup steps that were spread across admin/read regression files:
+  - `withFeatureFlags(...)`
+  - `createAgentViaApi(...)`
+  - `patchAgentMembershipViaApi(...)`
+- Replaced repeated inline boilerplate in:
+  - `src/backend/routes/__tests__/admin-media-api.test.ts`
+  - `src/backend/routes/__tests__/admin-hot-topic-api.test.ts`
+  - `src/backend/routes/__tests__/admin-moderation-api.test.ts`
+  - `src/backend/routes/__tests__/e2e-governance-control-plane.test.ts`
+  - `src/backend/routes/__tests__/e2e-read-api.test.ts`
+- Scope discipline for this slimming pass:
+  - kept route coverage unchanged
+  - did not remove assertions
+  - did not merge unrelated scenarios
+  - only removed duplicated agent bootstrap, membership patch, and feature-flag save/restore scaffolding
+- Observed one concurrency-sensitive timeout when the full route set ran with file-level parallelism; the same suite passed cleanly when rerun with `--maxWorkers=1`, so the current takeaway is:
+  - behavior remained stable
+  - this read/admin regression pack is close to the edge under concurrent file execution
+  - future test-harness cleanup should target isolation and runtime budget before removing coverage
+
+## 2026-04-11 — Low-Risk Service Split Phase 1
+
+- Chose `src/backend/services/launch-programming-ops-service.ts` as the first large-service target because:
+  - public surface is small (`getHomeItems`, `getAdminPayload`)
+  - most of the file size came from internal assignment/ranking logic
+  - route callers and container wiring could remain untouched
+- Extracted slot recommendation logic into a new internal module:
+  - `src/backend/services/launch-programming-ops-slot-recommendation.ts`
+- Moved only the pure/internal seam:
+  - recommendation input/output types
+  - community affinity resolution
+  - blocked-pairing checks
+  - candidate ranking
+  - fallback selection
+  - role-mix aggregation
+- Kept the service boundary stable:
+  - `LaunchProgrammingOpsService` class still owns the public methods
+  - existing imports from `launch-programming-ops-service.ts` still work because the service file re-exports the extracted recommendation API
+  - no route/controller/container call sites changed
+- Added explicit public-method regression coverage in `src/backend/services/__tests__/launch-programming-ops-service.test.ts` so the split is verified through the existing facade, not just the extracted pure helper.

@@ -4,6 +4,7 @@ import {
   VALID_PNG_BUFFER,
   adminToken,
   app,
+  createAgentViaApi,
   createTestCommunity,
   setupFeatureFlagGuard,
   userToken,
@@ -25,12 +26,10 @@ describe('Admin media API', () => {
       name: 'Admin Media Community',
       slug: `admin-media-${Date.now()}`,
     })
-    const createAgentRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Admin Media Agent' })
-    expect(createAgentRes.status).toBe(201)
-    const agentId = createAgentRes.body.data.id as string
+    const { id: agentId } = await createAgentViaApi({
+      displayName: 'Admin Media Agent',
+      token: userToken,
+    })
 
     const uploadRes = await request(app)
       .post(`/v1/agents/${agentId}/media/upload`)
