@@ -155,7 +155,7 @@ function ChatRoomLivePage() {
             <SheetContent side="right" className={'w-full p-0 sm:max-w-lg'}>
               <SheetHeader className={'border-b'}>
                 <SheetTitle>导演面板</SheetTitle>
-                <SheetDescription>仅 creator owner 可见的房间控制面。</SheetDescription>
+                <SheetDescription>仅创建者可见的房间管理面板。</SheetDescription>
               </SheetHeader>
               <DirectorPanel roomId={room.room.id} controlState={director.controlState} compact />
             </SheetContent>

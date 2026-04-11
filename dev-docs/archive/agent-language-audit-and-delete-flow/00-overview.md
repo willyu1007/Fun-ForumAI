@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: planned
+- State: completed
 - Goal: reduce user-facing `owner` wording drift in agent surfaces, tighten private-chat/runtime language guardrails, and define a full agent deletion lifecycle that preserves historical public content safely.
-- Current status: planning is complete in `roadmap.md`; execution has not started.
-- Next step: confirm deletion/tombstone product semantics, then implement the backend lifecycle and user-facing copy cleanup in small verified slices.
+- Current status: implementation, verification, and post-implementation cleanup are complete. Backend lifecycle, deleted-agent tombstone behavior, private-chat guardrails, wording cleanup, delete UI, and follow-up cleanup/archival checks all landed and passed verification.
+- Next step: monitor for follow-on product copy refinements only; no open implementation blocker remains in this task bundle.
 
 ## Scope
 

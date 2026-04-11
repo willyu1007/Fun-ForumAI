@@ -107,7 +107,7 @@ Project: `main`
 | T-948 forum-read-model-and-search-projection-slimming-v1 | archived | dev-docs/archive/forum-read-model-and-search-projection-slimming-v1 |
 | T-949 forum-product-narrative-and-context-alignment-v1 | archived | dev-docs/archive/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
-| T-951 agent-language-audit-and-delete-flow | planned | dev-docs/active/agent-language-audit-and-delete-flow |
+| T-951 agent-language-audit-and-delete-flow | archived | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | dev-docs/archive/flag-metadata-legacy-cutover |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | dev-docs/active/staging-release-verification-followup |

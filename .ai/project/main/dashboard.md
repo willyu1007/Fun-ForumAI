@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 176 (planned: 4, in-progress: 4, blocked: 0, done: 0, archived: 168)
+- Tasks: 176 (planned: 3, in-progress: 4, blocked: 0, done: 0, archived: 169)
 
 ## Recent tasks
 
@@ -16,7 +16,7 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-061 ios-android-runtime-smoke-kit | archived | F-000 | dev-docs/archive/ios-android-runtime-smoke-kit |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
-| T-951 agent-language-audit-and-delete-flow | planned | F-000 | dev-docs/active/agent-language-audit-and-delete-flow |
+| T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
