@@ -184,6 +184,7 @@ Project: `main`
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | F-000 | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
-| T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
+| T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 <!-- AUTO-GENERATED:END task-index -->

@@ -1688,7 +1688,7 @@ tasks:
     updated: 2026-04-11
   - id: T-953
     slug: route-controller-split-and-avatar-asset-strategy-temp
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp
@@ -1699,4 +1699,11 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/staging-release-verification-followup
+    updated: 2026-04-11
+  - id: T-955
+    slug: badge-visual-e2e-closeout-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/badge-visual-e2e-closeout-v1
     updated: 2026-04-11

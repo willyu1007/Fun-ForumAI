@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 176 (planned: 3, in-progress: 4, blocked: 0, done: 0, archived: 169)
+- Tasks: 177 (planned: 2, in-progress: 5, blocked: 0, done: 0, archived: 170)
 
 ## Recent tasks
 
@@ -18,8 +18,9 @@ Project: `main`
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
-| T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
+| T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-142 forum-semantic-convergence-governance-program | archived | F-100 | dev-docs/archive/forum-semantic-convergence-governance-program |
 | T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
@@ -33,5 +34,4 @@ Project: `main`
 | T-927 agent-social-bio-public-and-search-rollout | archived | F-020 | dev-docs/archive/agent-social-bio-public-and-search-rollout |
 | T-928 dev-seed-reset-and-bio-baseline-repair | archived | F-000 | dev-docs/archive/dev-seed-reset-and-bio-baseline-repair |
 | T-930 web-auth-email-and-sms-registration | archived | F-000 | dev-docs/archive/web-auth-email-and-sms-registration |
-| T-940 badge-semantic-sot-and-surface-usage-governance-v1 | archived | F-100 | dev-docs/archive/badge-semantic-sot-and-surface-usage-governance-v1 |
 <!-- AUTO-GENERATED:END dashboard -->
