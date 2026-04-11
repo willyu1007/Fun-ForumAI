@@ -113,3 +113,5 @@ Project: `main`
 - 2026-04-06 task_id=T-939 slug=queue-admission-and-private-chat-realtime-v1 event=registered dev_docs_path=dev-docs/active/queue-admission-and-private-chat-realtime-v1
 - 2026-04-06 task_id=T-939 slug=queue-admission-and-private-chat-realtime-v1 event=status from=planned to=in-progress
 - 2026-04-07 task_id=T-939 slug=queue-admission-and-private-chat-realtime-v1 event=status from=in-progress to=archived
+- 2026-04-11 task_id=T-952 slug=flag-metadata-legacy-cutover event=status from=in-progress to=archived
+- 2026-04-11 task_id=T-954 slug=staging-release-verification-followup event=registered dev_docs_path=dev-docs/active/staging-release-verification-followup

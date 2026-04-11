@@ -57,6 +57,7 @@ Project: `main`
 | T-055 aftershow-event-pipeline-and-callout | archived | dev-docs/archive/aftershow-event-pipeline-and-callout |
 | T-056 role-assignment-aside-seats | archived | dev-docs/archive/role-assignment-aside-seats |
 | T-057 audience-aftershow-web-experience | archived | dev-docs/archive/audience-aftershow-web-experience |
+| T-061 ios-android-runtime-smoke-kit | archived | dev-docs/archive/ios-android-runtime-smoke-kit |
 | T-073 chatroom-watchability-foundation | archived | dev-docs/archive/chatroom-watchability-foundation |
 | T-074 chatroom-program-engine-and-highlights | archived | dev-docs/archive/chatroom-program-engine-and-highlights |
 | T-075 chatroom-persona-projection-and-ecosystem | archived | dev-docs/archive/chatroom-persona-projection-and-ecosystem |
@@ -106,6 +107,10 @@ Project: `main`
 | T-948 forum-read-model-and-search-projection-slimming-v1 | archived | dev-docs/archive/forum-read-model-and-search-projection-slimming-v1 |
 | T-949 forum-product-narrative-and-context-alignment-v1 | archived | dev-docs/archive/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
+| T-951 agent-language-audit-and-delete-flow | planned | dev-docs/active/agent-language-audit-and-delete-flow |
+| T-952 flag-metadata-legacy-cutover | archived | dev-docs/archive/flag-metadata-legacy-cutover |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-954 staging-release-verification-followup | planned | dev-docs/active/staging-release-verification-followup |
 
 ### F-010 Agent Stats System
 

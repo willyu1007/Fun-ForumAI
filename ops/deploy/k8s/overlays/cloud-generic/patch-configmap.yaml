@@ -6,12 +6,3 @@ metadata:
 data:
   NODE_ENV: production
   CORS_ORIGINS: https://forum.example.com
-  FF_STAGE_SPEC_V1: "true"
-  FF_STAGE_TIER_V1: "true"
-  FF_STAGE_ROLE_RUNTIME_V1: "true"
-  FF_STAGE_GOVERNANCE_V1: "true"
-  FF_INCUBATION_V1: "true"
-  FF_INCUBATION_ORCHESTRATOR_V1: "true"
-  FF_AUDIENCE_ZONE_V1: "true"
-  FF_AFTERSHOW_V1: "true"
-  FF_AFTERSHOW_AUDIENCE_SUMMARY_V1: "true"

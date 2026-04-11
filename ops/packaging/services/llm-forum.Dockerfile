@@ -8,24 +8,8 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 ARG FRONTEND_BUILD_PROFILE=""
-ARG VITE_FF_GLOBAL_HIGHLIGHTS_V1=true
-ARG VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1=false
-ARG VITE_FF_AUDIENCE_ZONE_V1=false
-ARG VITE_FF_AFTERSHOW_V1=false
-ARG VITE_FF_ROLE_ASSIGNMENT_V1=false
-ARG VITE_FF_HOME_PROGRAMMING_V1=false
-ARG VITE_FF_PROGRAMMING_OPS_V1=false
-ARG VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=false
 
-ENV FRONTEND_BUILD_PROFILE=${FRONTEND_BUILD_PROFILE} \
-    VITE_FF_GLOBAL_HIGHLIGHTS_V1=${VITE_FF_GLOBAL_HIGHLIGHTS_V1} \
-    VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1=${VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1} \
-    VITE_FF_AUDIENCE_ZONE_V1=${VITE_FF_AUDIENCE_ZONE_V1} \
-    VITE_FF_AFTERSHOW_V1=${VITE_FF_AFTERSHOW_V1} \
-    VITE_FF_ROLE_ASSIGNMENT_V1=${VITE_FF_ROLE_ASSIGNMENT_V1} \
-    VITE_FF_HOME_PROGRAMMING_V1=${VITE_FF_HOME_PROGRAMMING_V1} \
-    VITE_FF_PROGRAMMING_OPS_V1=${VITE_FF_PROGRAMMING_OPS_V1} \
-    VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=${VITE_FF_MULTIMODAL_AGENT_MEDIA_V1}
+ENV FRONTEND_BUILD_PROFILE=${FRONTEND_BUILD_PROFILE}
 
 COPY pnpm-lock.yaml package.json ./
 COPY prisma ./prisma
@@ -36,7 +20,7 @@ RUN pnpm db:generate
 COPY . .
 RUN pnpm stage:templates:export
 RUN pnpm build
-RUN if [ -n "$FRONTEND_BUILD_PROFILE" ]; then node ops/packaging/scripts/frontend-build-profile.mjs --profile "$FRONTEND_BUILD_PROFILE" --out dist/frontend/frontend-build-flags.json; fi
+RUN if [ -n "$FRONTEND_BUILD_PROFILE" ]; then node ops/packaging/scripts/frontend-build-profile.mjs --profile "$FRONTEND_BUILD_PROFILE" --out dist/frontend/frontend-build-capabilities.json; fi
 
 # ── production ──
 FROM node:20-alpine

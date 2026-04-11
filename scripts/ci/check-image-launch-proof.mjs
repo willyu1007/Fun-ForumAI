@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { REQUIRED_LAUNCH_FRONTEND_FLAGS } from '../../ops/packaging/scripts/frontend-build-profile.mjs'
+import { REQUIRED_LAUNCH_FRONTEND_CAPABILITIES } from '../../ops/packaging/scripts/frontend-build-profile.mjs'
 
 function parseArgs(argv) {
   const result = {}
@@ -41,31 +41,38 @@ export function validateLaunchImageProof(input, expectedProfile = 'launch') {
     throw new Error('frontend build proof must be a JSON object')
   }
   if (input.profile !== expectedProfile) {
-    throw new Error(`frontend build proof profile must be "${expectedProfile}", received "${String(input.profile)}"`)
+    throw new Error(
+      `frontend build proof profile must be "${expectedProfile}", received "${String(input.profile)}"`,
+    )
   }
-  if (!input.frontend_flags || typeof input.frontend_flags !== 'object' || Array.isArray(input.frontend_flags)) {
-    throw new Error('frontend build proof must include frontend_flags')
+  if (
+    !input.frontend_capabilities ||
+    typeof input.frontend_capabilities !== 'object' ||
+    Array.isArray(input.frontend_capabilities)
+  ) {
+    throw new Error('frontend build proof must include frontend_capabilities')
   }
 
-  const missingFlags = REQUIRED_LAUNCH_FRONTEND_FLAGS.filter(
-    (flag) => input.frontend_flags[flag] !== 'true',
+  const missingCapabilities = REQUIRED_LAUNCH_FRONTEND_CAPABILITIES.filter(
+    (capability) => input.frontend_capabilities[capability] !== true,
   )
-  if (missingFlags.length > 0) {
-    throw new Error(`frontend build proof is missing enabled launch flags: ${missingFlags.join(', ')}`)
+  if (missingCapabilities.length > 0) {
+    throw new Error(
+      `frontend build proof is missing enabled launch capabilities: ${missingCapabilities.join(', ')}`,
+    )
   }
 
   return {
     profile: input.profile,
-    enabled_flags: REQUIRED_LAUNCH_FRONTEND_FLAGS.length,
+    enabled_capabilities: REQUIRED_LAUNCH_FRONTEND_CAPABILITIES.length,
   }
 }
 
 function main() {
   const args = parseArgs(process.argv)
   const imageRef = readRequiredString('image-ref', args['image-ref'])
-  const expectedProfile = typeof args['expected-profile'] === 'string'
-    ? args['expected-profile'].trim()
-    : 'launch'
+  const expectedProfile =
+    typeof args['expected-profile'] === 'string' ? args['expected-profile'].trim() : 'launch'
 
   const raw = runDocker([
     'run',
@@ -74,7 +81,7 @@ function main() {
     'sh',
     imageRef,
     '-lc',
-    'cat dist/frontend/frontend-build-flags.json',
+    'cat dist/frontend/frontend-build-capabilities.json',
   ])
 
   let parsed
@@ -88,11 +95,17 @@ function main() {
   }
 
   const summary = validateLaunchImageProof(parsed, expectedProfile)
-  console.log(JSON.stringify({
-    image_ref: imageRef,
-    profile: summary.profile,
-    enabled_flags: summary.enabled_flags,
-  }, null, 2))
+  console.log(
+    JSON.stringify(
+      {
+        image_ref: imageRef,
+        profile: summary.profile,
+        enabled_capabilities: summary.enabled_capabilities,
+      },
+      null,
+      2,
+    ),
+  )
 }
 
 const isEntrypoint = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
@@ -101,7 +114,10 @@ if (isEntrypoint) {
   try {
     main()
   } catch (error) {
-    console.error('[check-image-launch-proof] failed', error instanceof Error ? error.message : String(error))
+    console.error(
+      '[check-image-launch-proof] failed',
+      error instanceof Error ? error.message : String(error),
+    )
     process.exit(1)
   }
 }

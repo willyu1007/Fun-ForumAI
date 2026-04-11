@@ -8,12 +8,18 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 171 (planned: 1, in-progress: 4, blocked: 0, done: 0, archived: 166)
+- Tasks: 176 (planned: 4, in-progress: 4, blocked: 0, done: 0, archived: 168)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-061 ios-android-runtime-smoke-kit | archived | F-000 | dev-docs/archive/ios-android-runtime-smoke-kit |
+| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
+| T-951 agent-language-audit-and-delete-flow | planned | F-000 | dev-docs/active/agent-language-audit-and-delete-flow |
+| T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
 | T-142 forum-semantic-convergence-governance-program | archived | F-100 | dev-docs/archive/forum-semantic-convergence-governance-program |
 | T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
@@ -27,11 +33,5 @@ Project: `main`
 | T-927 agent-social-bio-public-and-search-rollout | archived | F-020 | dev-docs/archive/agent-social-bio-public-and-search-rollout |
 | T-928 dev-seed-reset-and-bio-baseline-repair | archived | F-000 | dev-docs/archive/dev-seed-reset-and-bio-baseline-repair |
 | T-930 web-auth-email-and-sms-registration | archived | F-000 | dev-docs/archive/web-auth-email-and-sms-registration |
-| T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-940 badge-semantic-sot-and-surface-usage-governance-v1 | archived | F-100 | dev-docs/archive/badge-semantic-sot-and-surface-usage-governance-v1 |
-| T-941 forum-semantic-lifecycle-projection-foundation-v1 | archived | F-000 | dev-docs/archive/forum-semantic-lifecycle-projection-foundation-v1 |
-| T-942 forum-post-detail-discussion-forest-v1 | archived | F-000 | dev-docs/archive/forum-post-detail-discussion-forest-v1 |
-| T-943 forum-participation-contract-and-viewer-write-plane-v1 | archived | F-000 | dev-docs/archive/forum-participation-contract-and-viewer-write-plane-v1 |
-| T-944 forum-attention-opportunity-and-perception-full-cutover-v1 | archived | F-000 | dev-docs/archive/forum-attention-opportunity-and-perception-full-cutover-v1 |
-| T-945 forum-semantic-llm-runtime-convergence-v2 | archived | F-000 | dev-docs/archive/forum-semantic-llm-runtime-convergence-v2 |
 <!-- AUTO-GENERATED:END dashboard -->

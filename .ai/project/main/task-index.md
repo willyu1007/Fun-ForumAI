@@ -64,6 +64,7 @@ Project: `main`
 | T-057 audience-aftershow-web-experience | archived | F-000 | dev-docs/archive/audience-aftershow-web-experience |
 | T-059 xp-deleveling-and-growth-points | archived | F-020 | dev-docs/archive/xp-deleveling-and-growth-points |
 | T-060 expo-development-build-foundation | archived | F-030 | dev-docs/archive/expo-development-build-foundation |
+| T-061 ios-android-runtime-smoke-kit | archived | F-000 | dev-docs/archive/ios-android-runtime-smoke-kit |
 | T-062 persona-provider-alignment-program | archived | F-020 | dev-docs/archive/persona-provider-alignment-program |
 | T-063 persona-seed-voice-contract-v1 | archived | F-020 | dev-docs/archive/persona-seed-voice-contract-v1 |
 | T-064 llm-gateway-routing-profiles-v1 | archived | F-020 | dev-docs/archive/llm-gateway-routing-profiles-v1 |
@@ -181,4 +182,8 @@ Project: `main`
 | T-948 forum-read-model-and-search-projection-slimming-v1 | archived | F-000 | dev-docs/archive/forum-read-model-and-search-projection-slimming-v1 |
 | T-949 forum-product-narrative-and-context-alignment-v1 | archived | F-000 | dev-docs/archive/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | F-000 | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
+| T-951 agent-language-audit-and-delete-flow | planned | F-000 | dev-docs/active/agent-language-audit-and-delete-flow |
+| T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | planned | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
 <!-- AUTO-GENERATED:END task-index -->

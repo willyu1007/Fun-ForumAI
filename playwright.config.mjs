@@ -71,18 +71,5 @@ export default defineConfig({
     timeout: 120_000,
     stdout: 'pipe',
     stderr: 'pipe',
-    env: {
-      VITE_FF_DISABLE_SSE: 'true',
-      VITE_FF_GUIDANCE_V1: 'false',
-      VITE_FF_GUIDANCE_BELL_V1: 'false',
-      VITE_FF_GLOBAL_HIGHLIGHTS_V1: 'true',
-      VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1: 'true',
-      VITE_FF_AUDIENCE_ZONE_V1: 'true',
-      VITE_FF_AFTERSHOW_V1: 'true',
-      VITE_FF_ROLE_ASSIGNMENT_V1: 'true',
-      VITE_FF_AGENT_STATS_UI: 'false',
-      VITE_FF_MULTIMODAL_AGENT_MEDIA_V1: 'false',
-      VITE_FF_HUMAN_PARTICIPATION_V1: 'true',
-    },
   },
 })

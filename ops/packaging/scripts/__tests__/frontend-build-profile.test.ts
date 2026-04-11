@@ -3,41 +3,34 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import {
-  REQUIRED_LAUNCH_FRONTEND_FLAGS,
+  REQUIRED_LAUNCH_FRONTEND_CAPABILITIES,
   loadFrontendBuildProfile,
   toDockerBuildArgs,
-  writeFrontendFlagProof,
+  writeFrontendCapabilityProof,
 } from '../frontend-build-profile.mjs'
 
 describe('frontend build profile', () => {
-  it('loads the canonical launch profile with the required launch flags', () => {
+  it('loads the canonical launch profile with the required launch capabilities', () => {
     const profile = loadFrontendBuildProfile('launch')
 
     expect(profile.target).toBe('llm-forum')
     expect(profile.profile).toBe('launch')
-    expect(Object.keys(profile.frontend_flags).sort()).toEqual(
-      [...REQUIRED_LAUNCH_FRONTEND_FLAGS].sort(),
+    expect(Object.keys(profile.frontend_capabilities).sort()).toEqual(
+      [...REQUIRED_LAUNCH_FRONTEND_CAPABILITIES].sort(),
     )
-    expect(Object.values(profile.frontend_flags)).toEqual(
-      expect.arrayContaining(['true']),
-    )
+    expect(Object.values(profile.frontend_capabilities)).toEqual(expect.arrayContaining([true]))
   })
 
   it('emits a proof artifact and docker build args from the same profile source', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'frontend-build-profile-'))
-    const outPath = join(tempDir, 'frontend-build-flags.json')
+    const outPath = join(tempDir, 'frontend-build-capabilities.json')
 
-    const proof = writeFrontendFlagProof('launch', outPath)
+    const proof = writeFrontendCapabilityProof('launch', outPath)
     const written = JSON.parse(readFileSync(outPath, 'utf8'))
     const dockerBuildArgs = toDockerBuildArgs(loadFrontendBuildProfile('launch'))
 
     expect(written).toEqual(proof)
-    expect(written.frontend_flags.VITE_FF_HOME_PROGRAMMING_V1).toBe('true')
-    expect(dockerBuildArgs).toEqual(expect.arrayContaining([
-      ['FRONTEND_BUILD_PROFILE', 'launch'],
-      ['VITE_FF_HOME_PROGRAMMING_V1', 'true'],
-      ['VITE_FF_PROGRAMMING_OPS_V1', 'true'],
-      ['VITE_FF_MULTIMODAL_AGENT_MEDIA_V1', 'true'],
-    ]))
+    expect(written.frontend_capabilities.home_programming).toBe(true)
+    expect(dockerBuildArgs).toEqual([['FRONTEND_BUILD_PROFILE', 'launch']])
   })
 })

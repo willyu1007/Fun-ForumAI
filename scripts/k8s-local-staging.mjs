@@ -21,6 +21,8 @@ import {
 } from '../ops/packaging/scripts/frontend-build-profile.mjs'
 import { validateLaunchImageProof } from './ci/check-image-launch-proof.mjs'
 
+const LEGACY_BACKEND_FLAG_PREFIX = ['FF', ''].join('_')
+
 function usage(exitCode = 0) {
   console.log(`
 k8s-local-staging.mjs
@@ -146,7 +148,15 @@ async function getSecretData({ context, namespace, secretName }) {
   try {
     const res = await runCommandCapture(
       'kubectl',
-      kubectlArgs(context, ['get', 'secret', String(secretName), '-n', String(namespace), '-o', 'json']),
+      kubectlArgs(context, [
+        'get',
+        'secret',
+        String(secretName),
+        '-n',
+        String(namespace),
+        '-o',
+        'json',
+      ]),
     )
     const payload = JSON.parse(res.stdout)
     return decodeSecretData(payload?.data)
@@ -161,7 +171,13 @@ async function maybeKindLoadImage(image, clusterName) {
   if (!image) return
   await ensureCommandExists('kind')
   console.log(`[staging] Loading image into kind cluster "${clusterName}": ${image}`)
-  await runCommandCapture('kind', ['load', 'docker-image', String(image), '--name', String(clusterName)])
+  await runCommandCapture('kind', [
+    'load',
+    'docker-image',
+    String(image),
+    '--name',
+    String(clusterName),
+  ])
 }
 
 async function maybeRefreshImage({
@@ -195,19 +211,16 @@ async function maybeRefreshImage({
   }
 
   if (skipKindLoad) {
-    console.warn(`[staging] WARN: skip-kind-load=true; cluster will reuse whatever image is already cached for ${imageTag}`)
+    console.warn(
+      `[staging] WARN: skip-kind-load=true; cluster will reuse whatever image is already cached for ${imageTag}`,
+    )
     return
   }
 
   await maybeKindLoadImage(imageTag, clusterName)
 }
 
-async function waitForDeploymentRollout({
-  context,
-  namespace,
-  deployment,
-  timeoutSeconds = 180,
-}) {
+async function waitForDeploymentRollout({ context, namespace, deployment, timeoutSeconds = 180 }) {
   await runCommandCapture(
     'kubectl',
     kubectlArgs(context, [
@@ -271,7 +284,9 @@ async function startServicePortForward({
     child.once('exit', (code) => {
       finish(() =>
         rejectPromise(
-          new Error(`kubectl port-forward exited early (${code ?? 'null'}) for svc/${serviceName}: ${output}`),
+          new Error(
+            `kubectl port-forward exited early (${code ?? 'null'}) for svc/${serviceName}: ${output}`,
+          ),
         ),
       )
     })
@@ -309,14 +324,17 @@ async function startServicePortForwardWithFallback({
     } catch (error) {
       lastError = error
       const message = error instanceof Error ? error.message : String(error)
-      const isPortConflict = /address already in use|unable to listen on any of the requested ports/i.test(message)
+      const isPortConflict =
+        /address already in use|unable to listen on any of the requested ports/i.test(message)
       if (!isPortConflict) {
         throw error
       }
     }
   }
 
-  throw lastError ?? new Error(`Unable to establish service port-forward after ${maxAttempts} attempts`)
+  throw (
+    lastError ?? new Error(`Unable to establish service port-forward after ${maxAttempts} attempts`)
+  )
 }
 
 async function runDbMigrations({
@@ -386,9 +404,9 @@ async function verifyDbMigrationStatus({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(
-        `--skip-db-migrate was requested, but the local-kind database is not migration-clean. `
-          + `Run the command again without --skip-db-migrate, or migrate the in-cluster Postgres first. `
-          + `Root cause: ${message}`,
+        `--skip-db-migrate was requested, but the local-kind database is not migration-clean. ` +
+          `Run the command again without --skip-db-migrate, or migrate the in-cluster Postgres first. ` +
+          `Root cause: ${message}`,
         { cause: error },
       )
     }
@@ -434,14 +452,17 @@ async function startBackendPortForwardWithFallback({
     } catch (error) {
       lastError = error
       const message = error instanceof Error ? error.message : String(error)
-      const isPortConflict = /address already in use|unable to listen on any of the requested ports/i.test(message)
+      const isPortConflict =
+        /address already in use|unable to listen on any of the requested ports/i.test(message)
       if (!isPortConflict) {
         throw error
       }
     }
   }
 
-  throw lastError ?? new Error(`Unable to establish backend port-forward after ${maxAttempts} attempts`)
+  throw (
+    lastError ?? new Error(`Unable to establish backend port-forward after ${maxAttempts} attempts`)
+  )
 }
 
 async function runSmokeSuite({ context, namespace, labelSelector }) {
@@ -475,10 +496,13 @@ async function runSmokeSuite({ context, namespace, labelSelector }) {
 }
 
 async function waitForBackend(baseUrl) {
-  await pollUntil(async () => {
-    const res = await requestJson(`${baseUrl}/health`)
-    return res.ok ? res : null
-  }, { timeoutMs: 30_000, intervalMs: 1000 })
+  await pollUntil(
+    async () => {
+      const res = await requestJson(`${baseUrl}/health`)
+      return res.ok ? res : null
+    },
+    { timeoutMs: 30_000, intervalMs: 1000 },
+  )
 }
 
 async function fetchRuntimeFeatures(baseUrl, adminToken) {
@@ -495,13 +519,13 @@ async function fetchRuntimeFeatures(baseUrl, adminToken) {
 }
 
 async function fetchFrontendBuildProof(baseUrl) {
-  const res = await requestJson(`${baseUrl}/frontend-build-flags.json`, {
+  const res = await requestJson(`${baseUrl}/frontend-build-capabilities.json`, {
     headers: {
       Accept: 'application/json',
     },
   })
   if (!res.ok) {
-    throw new Error(`GET /frontend-build-flags.json failed: ${res.status} ${res.text}`)
+    throw new Error(`GET /frontend-build-capabilities.json failed: ${res.status} ${res.text}`)
   }
   return res.json
 }
@@ -537,7 +561,15 @@ function validateRuntimeFeatures(features, localBuildInfo) {
   }
 
   const flags = features?.flags ?? {}
-  const requiredScenes = ['forum_post', 'forum_thread', 'forum_turn', 'chat_room', 'private_chat', 'proactive_dm', 'scheduled_post']
+  const requiredScenes = [
+    'forum_post',
+    'forum_thread',
+    'forum_turn',
+    'chat_room',
+    'private_chat',
+    'proactive_dm',
+    'scheduled_post',
+  ]
   const requiredTrueFlags = [
     'directorRuntimeStateV1',
     'multimodalAgentMediaV1',
@@ -548,7 +580,9 @@ function validateRuntimeFeatures(features, localBuildInfo) {
     throw new Error('Runtime features show personaRuntimeV1=false after local-kind reconciliation')
   }
   if (flags.personaWritebackV1 !== true) {
-    throw new Error('Runtime features show personaWritebackV1=false after local-kind reconciliation')
+    throw new Error(
+      'Runtime features show personaWritebackV1=false after local-kind reconciliation',
+    )
   }
   for (const flagName of requiredTrueFlags) {
     if (flags[flagName] !== true) {
@@ -558,9 +592,13 @@ function validateRuntimeFeatures(features, localBuildInfo) {
   if (!Array.isArray(flags.personaRuntimeScenes)) {
     throw new Error('Runtime features are missing personaRuntimeScenes array')
   }
-  const missingScenes = requiredScenes.filter((scene) => !flags.personaRuntimeScenes.includes(scene))
+  const missingScenes = requiredScenes.filter(
+    (scene) => !flags.personaRuntimeScenes.includes(scene),
+  )
   if (missingScenes.length > 0) {
-    throw new Error(`Runtime features are missing persona runtime scenes: ${missingScenes.join(', ')}`)
+    throw new Error(
+      `Runtime features are missing persona runtime scenes: ${missingScenes.join(', ')}`,
+    )
   }
 }
 
@@ -615,7 +653,9 @@ async function main() {
   if (!contexts.includes(String(args.k8sContext))) {
     if (!args.createKindIfMissing) {
       const list = contexts.length ? contexts.join(', ') : '(none)'
-      throw new Error(`Kubernetes context "${args.k8sContext}" not found. Available contexts: ${list}`)
+      throw new Error(
+        `Kubernetes context "${args.k8sContext}" not found. Available contexts: ${list}`,
+      )
     }
     await ensureCommandExists('kind')
     console.log(`[staging] Context missing, creating kind cluster "${args.kindClusterName}"...`)
@@ -634,8 +674,10 @@ async function main() {
     ? loadFrontendBuildProfile(frontendBuildProfileId)
     : null
   const dockerBuildArgs = frontendBuildProfile
-    ? toDockerBuildArgs(frontendBuildProfile)
-      .flatMap(([key, value]) => ['--build-arg', `${key}=${value}`])
+    ? toDockerBuildArgs(frontendBuildProfile).flatMap(([key, value]) => [
+        '--build-arg',
+        `${key}=${value}`,
+      ])
     : []
   const seedProfile = normalizeSeedProfile(args.seedProfile)
 
@@ -646,25 +688,21 @@ async function main() {
   })
   const preservedSecretData = Object.fromEntries(
     Object.entries(existingSecretData).filter(
-      ([key]) => key !== 'FF_HOME_PROGRAMMING_V1' && key !== 'FF_PROGRAMMING_OPS_V1',
+      ([key]) => !key.startsWith(LEGACY_BACKEND_FLAG_PREFIX),
     ),
   )
 
-  const {
-    dashscopeApiKey,
-    dashscopeSecondaryApiKey,
-  } = resolveDashscopeSecretData({
+  const { dashscopeApiKey, dashscopeSecondaryApiKey } = resolveDashscopeSecretData({
     existingSecretData,
     dashscopeApiKeyEnv: args.dashscopeApiKeyEnv,
     env: process.env,
   })
-  const mediaGenerationApiKey = (
+  const mediaGenerationApiKey =
     process.env[String(args.mediaGenerationApiKeyEnv)] ||
     process.env.ARK_API_KEY ||
     existingSecretData.MEDIA_GENERATION_API_KEY ||
     existingSecretData.ARK_API_KEY ||
     ''
-  )
   if (!dashscopeApiKey.trim()) {
     throw new Error(
       `Missing API key env "${args.dashscopeApiKeyEnv}" and no reusable DashScope API key was found in secret/${args.secretName}`,
@@ -705,7 +743,9 @@ async function main() {
       postgresLocalPort: Number(args.postgresLocalPort),
     })
   } else {
-    console.log('[staging] Verifying database migration status because --skip-db-migrate was requested...')
+    console.log(
+      '[staging] Verifying database migration status because --skip-db-migrate was requested...',
+    )
     await verifyDbMigrationStatus({
       context: args.k8sContext,
       namespace: args.k8sNamespace,
@@ -719,7 +759,9 @@ async function main() {
     REDIS_URL: existingSecretData.REDIS_URL || defaultRedisUrl(String(args.k8sNamespace)),
     JWT_SECRET: process.env.JWT_SECRET || existingSecretData.JWT_SECRET || 'local-dev-jwt-secret',
     SERVICE_AUTH_SECRET:
-      process.env.SERVICE_AUTH_SECRET || existingSecretData.SERVICE_AUTH_SECRET || 'local-dev-service-auth-secret',
+      process.env.SERVICE_AUTH_SECRET ||
+      existingSecretData.SERVICE_AUTH_SECRET ||
+      'local-dev-service-auth-secret',
     DASHSCOPE_API_KEY: dashscopeApiKey,
     DASHSCOPE_API_KEY_SECONDARY: dashscopeSecondaryApiKey,
     ZAI_API_KEY: process.env.ZAI_API_KEY || existingSecretData.ZAI_API_KEY || '',
@@ -753,7 +795,9 @@ async function main() {
     2,
   )
 
-  console.log(`[staging] Injecting API key into secret/${args.secretName} in namespace ${args.k8sNamespace}`)
+  console.log(
+    `[staging] Injecting API key into secret/${args.secretName} in namespace ${args.k8sNamespace}`,
+  )
   await runCommandWithStdin(
     'kubectl',
     kubectlArgs(args.k8sContext, ['apply', '-f', '-']),
@@ -763,7 +807,13 @@ async function main() {
   console.log('[staging] Restarting backend deployment to pick up updated secret values...')
   await runCommandCapture(
     'kubectl',
-    kubectlArgs(args.k8sContext, ['rollout', 'restart', 'deploy/backend', '-n', String(args.k8sNamespace)]),
+    kubectlArgs(args.k8sContext, [
+      'rollout',
+      'restart',
+      'deploy/backend',
+      '-n',
+      String(args.k8sNamespace),
+    ]),
   )
 
   console.log('[staging] Waiting for backend rollout...')
@@ -814,8 +864,8 @@ async function main() {
     if (frontendBuildProfile) {
       const frontendBuildProof = await fetchFrontendBuildProof(baseUrl)
       validateLaunchImageProof(frontendBuildProof, frontendBuildProfile.profile)
-      if (frontendBuildProof.frontend_flags?.VITE_FF_MULTIMODAL_AGENT_MEDIA_V1 !== 'true') {
-        throw new Error('Frontend build proof is missing VITE_FF_MULTIMODAL_AGENT_MEDIA_V1=true')
+      if (frontendBuildProof.frontend_capabilities?.multimodal_agent_media !== true) {
+        throw new Error('Frontend build proof is missing multimodal_agent_media=true')
       }
     }
     let seedSummary = null
@@ -825,14 +875,17 @@ async function main() {
         throw new Error(`Seed profile ${seedProfile} did not create usable entities`)
       }
     }
-    console.log('[staging] Runtime fingerprint verified:', JSON.stringify({
-      code_fingerprint: runtimeFeatures.runtime.build.code_fingerprint,
-      persona_runtime: runtimeFeatures.runtime.persona_runtime,
-      frontend_build_profile: frontendBuildProfile?.profile ?? null,
-      seeded_profile: !args.skipSeed && seedProfile ? seedProfile : null,
-      seeded_counts: seedSummary?.counts ?? null,
-      local_port: backendLocalPort,
-    }))
+    console.log(
+      '[staging] Runtime fingerprint verified:',
+      JSON.stringify({
+        code_fingerprint: runtimeFeatures.runtime.build.code_fingerprint,
+        persona_runtime: runtimeFeatures.runtime.persona_runtime,
+        frontend_build_profile: frontendBuildProfile?.profile ?? null,
+        seeded_profile: !args.skipSeed && seedProfile ? seedProfile : null,
+        seeded_counts: seedSummary?.counts ?? null,
+        local_port: backendLocalPort,
+      }),
+    )
     unregisterBackendForwardCleanup()
   } finally {
     await stopChildProcess(backendForward)

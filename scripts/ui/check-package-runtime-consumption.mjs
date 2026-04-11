@@ -15,38 +15,27 @@ const ROOT = resolve(__dirname, '../..')
 const CHECKS = [
   {
     label: 'design-tokens dist entry',
-    command:
-      `node --input-type=module -e "import('${resolve(ROOT, 'packages/design-tokens/dist/index.js')}').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+    command: `node --input-type=module -e "import('${resolve(ROOT, 'packages/design-tokens/dist/index.js')}').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
   {
     label: 'ui-contract dist entry',
-    command:
-      `node --input-type=module -e "import('${resolve(ROOT, 'packages/ui-contract/dist/index.js')}').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+    command: `node --input-type=module -e "import('${resolve(ROOT, 'packages/ui-contract/dist/index.js')}').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
   {
     label: 'ui-contract manifest dist entry',
-    command:
-      `node --input-type=module -e "import('${resolve(ROOT, 'packages/ui-contract/dist/manifest.js')}').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+    command: `node --input-type=module -e "import('${resolve(ROOT, 'packages/ui-contract/dist/manifest.js')}').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
   {
     label: 'root web consumer import',
-    command:
-      `node --input-type=module -e "import('@fun-forum/ui-web').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+    command: `node --input-type=module -e "import('@fun-forum/ui-web').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
   {
     label: 'root web theme subpath import',
-    command:
-      `node --input-type=module -e "import('@fun-forum/ui-web/theme').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+    command: `node --input-type=module -e "import('@fun-forum/ui-web/theme').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
   {
     label: 'mobile app consumer import',
-    command:
-      `pnpm --dir apps/mobile exec node --input-type=module -e "import('@fun-forum/ui-mobile/theme').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
-  },
-  {
-    label: 'mobile compat subpath import',
-    command:
-      `pnpm --dir apps/mobile exec node --input-type=module -e "import('@fun-forum/ui-mobile/compat').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
+    command: `pnpm --dir apps/mobile exec node --input-type=module -e "import('@fun-forum/ui-mobile/theme').then(() => console.log('ok')).catch((error) => { console.error(error.code || error.name); console.error(error.message); process.exit(1) })"`,
   },
 ]
 

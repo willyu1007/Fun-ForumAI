@@ -82,7 +82,7 @@ node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target ecs_w
 - Web:
   - `http://127.0.0.1:14000/health` returns healthy
   - `./smoke.sh` passes
-  - `/frontend-build-flags.json` exposes the launch build proof for the deployed image
+  - `/frontend-build-capabilities.json` exposes the launch build proof for the deployed image
   - browser smoke for `/` shows Home Programming markers such as `今日必看`
 - Worker:
   - `docker compose --profile staging-same-host-worker ps worker` reports healthy

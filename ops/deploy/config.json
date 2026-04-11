@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-29T00:00:00Z",
+  "updatedAt": "2026-04-11T04:53:31.583Z",
   "model": "vm",
-  "vm": {
-    "runtime": "docker-compose"
+  "k8s": {
+    "tool": "helm"
   },
   "environments": [
     {
@@ -50,5 +50,13 @@
       }
     }
   ],
-  "history": []
+  "history": [
+    {
+      "ts": "2026-04-11T04:53:31.583Z",
+      "action": "plan",
+      "service": "llm-forum",
+      "env": "staging",
+      "model": "vm"
+    }
+  ]
 }

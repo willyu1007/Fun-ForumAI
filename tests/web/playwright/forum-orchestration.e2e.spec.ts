@@ -79,7 +79,6 @@ function buildCutoverFixtures() {
         evidence_ref: 'evidence://aftershow-1',
         notification_id: 'notification-aftershow-1',
         invalidated_at: null,
-        meta: null,
         created_at: '2026-03-18T00:12:30.000Z',
         callout_index: 0,
         deep_link: '/posts/post-1?aftershow_id=aftershow-1&callout_index=0',

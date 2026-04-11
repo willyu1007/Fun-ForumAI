@@ -703,6 +703,13 @@ tasks:
       - R-024
     dev_docs_path: dev-docs/archive/expo-development-build-foundation
     updated: 2026-03-12
+  - id: T-061
+    slug: ios-android-runtime-smoke-kit
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/ios-android-runtime-smoke-kit
+    updated: 2026-04-11
   - id: T-062
     slug: persona-provider-alignment-program
     status: archived
@@ -1564,7 +1571,7 @@ tasks:
     requirement_ids:
       - R-027
     dev_docs_path: dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1
-    updated: 2026-04-10
+    updated: 2026-04-11
   - id: T-937
     slug: forum-semantic-and-llm-runtime-residual-closeout
     status: archived
@@ -1665,3 +1672,31 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/llm-runtime-authority-round4-closeout-v1
     updated: 2026-04-10
+  - id: T-951
+    slug: agent-language-audit-and-delete-flow
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-language-audit-and-delete-flow
+    updated: 2026-04-11
+  - id: T-952
+    slug: flag-metadata-legacy-cutover
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/flag-metadata-legacy-cutover
+    updated: 2026-04-11
+  - id: T-953
+    slug: route-controller-split-and-avatar-asset-strategy-temp
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp
+    updated: 2026-04-11
+  - id: T-954
+    slug: staging-release-verification-followup
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/staging-release-verification-followup
+    updated: 2026-04-11

@@ -3,14 +3,14 @@
   "profile": "launch",
   "target": "llm-forum",
   "description": "Canonical immutable frontend launch build for gray-release delivery.",
-  "frontend_flags": {
-    "VITE_FF_GLOBAL_HIGHLIGHTS_V1": "true",
-    "VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1": "true",
-    "VITE_FF_AUDIENCE_ZONE_V1": "true",
-    "VITE_FF_AFTERSHOW_V1": "true",
-    "VITE_FF_ROLE_ASSIGNMENT_V1": "true",
-    "VITE_FF_HOME_PROGRAMMING_V1": "true",
-    "VITE_FF_PROGRAMMING_OPS_V1": "true",
-    "VITE_FF_MULTIMODAL_AGENT_MEDIA_V1": "true"
+  "frontend_capabilities": {
+    "global_highlights": true,
+    "audience_aftershow_web": true,
+    "audience_zone": true,
+    "aftershow": true,
+    "role_assignment": true,
+    "home_programming": true,
+    "programming_ops": true,
+    "multimodal_agent_media": true
   }
 }

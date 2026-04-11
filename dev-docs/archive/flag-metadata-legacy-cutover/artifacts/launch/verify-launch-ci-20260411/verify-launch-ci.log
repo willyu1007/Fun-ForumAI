@@ -1,0 +1,55 @@
+
+> llm-only-forum-chat@0.1.0 verify:launch:ci /Volumes/DataDisk/Project/Fun-ForumAI
+> node scripts/verify-launch-readiness.mjs --ci
+
+
+Launch Readiness v2 — repo gate
+
+  OK  Membership bootstrap assets
+     launch seed bootstraps memberships and launch e2e assertions exist
+  OK  Launch warm-start assets
+     launch warm-start command and curated bootstrap module exist
+  OK  Worker workload assets
+     worker templates, health probe, and env matrix are complete
+  OK  Runtime launch contracts
+     9 runtime launch contracts resolved from config/launch
+  OK  Staging launch runtime overlay
+     launch runtime overlay is free of legacy feature pins
+  OK  Prod launch runtime overlay
+     launch runtime overlay is free of legacy feature pins
+  OK  Canonical launch frontend build profile
+     canonical launch frontend build profile is the only remaining frontend build profile
+  OK  Frontend dist delivery
+     frontend dist delivery exposes build proof and SPA fallback
+  OK  Packaging launch wireup
+     Dockerfile wires launch build args and proof artifact
+  OK  Publish workflow launch wireup
+     publish workflow builds and promotes the canonical launch image with proof checks
+  OK  Dev-only startup hardening
+     production startup no longer statically imports dev-seed launch fixtures
+  OK  Strict semantic convergence
+     strict semantic convergence gate passed
+  OK  Typecheck
+     pnpm typecheck
+  OK  Lint
+     pnpm lint
+  OK  Build
+     pnpm build
+  OK  Packaging dry-run (canonical launch profile)
+     node ops/packaging/scripts/build.mjs --dry-run --target llm-forum --build-profile launch
+  ERR Launch regression tests
+     node scripts/run-vitest.mjs run scripts/ci/__tests__/check-image-launch-proof.test.ts src/backend/app.test.ts src/backend/launch/__tests__/programming-contracts.test.ts src/backend/services/__tests__/agent-community-membership-service.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts ops/packaging/scripts/__tests__/frontend-build-profile.test.ts scripts/lib/__tests__/launch-readiness.test.ts src/frontend/features/forum/pages/__tests__/HomePage.test.tsx src/frontend/features/forum/pages/__tests__/HighlightsPage.test.tsx src/frontend/features/forum/pages/__tests__/PostDetailPage.test.tsx
+ ❯ resolveStageWriteContext src/backend/services/forum-write-service/stage-gates.ts:223:5
+ ❯ createPost src/backend/services/forum-write-service/post-command.ts:41:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+  ERR Governance lint
+     node .ai/scripts/ctl-project-governance.mjs lint --check --project main
+- (no-id) agent-language-audit-and-delete-flow (active) @ dev-docs/active/agent-language-audit-and-delete-flow: Missing 00-overview.md (task progress SoT file).
+- (no-id) route-controller-split-and-avatar-asset-strategy-temp (active) @ dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp: Invalid State value: "planning". Allowed: planned, in-progress, blocked, done
+- (no-id) ios-android-runtime-smoke-kit (archive) @ dev-docs/archive/ios-android-runtime-smoke-kit: Missing .ai-task.yaml (migration warning).
+[error] Lint failed.
+
+Result: 16/18 passed, 2 failed
+
+ ELIFECYCLE  Command failed with exit code 1.

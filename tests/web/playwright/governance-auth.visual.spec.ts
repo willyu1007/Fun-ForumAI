@@ -264,9 +264,6 @@ test.describe('Governance and auth visual regression', () => {
               submitted_at: '2026-03-17T20:00:00.000Z',
               reviewed_at: null,
               expires_at: '2026-03-20T20:00:00.000Z',
-              meta: {
-                region: 'CN',
-              },
             },
           ]),
       },

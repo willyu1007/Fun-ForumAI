@@ -82,8 +82,41 @@ export async function prepareVisualPage(page: Page) {
     Object.setPrototypeOf(MockDate, RealDate)
     Math.random = () => 0.123456789
 
+    class MockEventSource extends EventTarget {
+      static CONNECTING = 0
+      static OPEN = 1
+      static CLOSED = 2
+
+      readonly url: string
+      readonly withCredentials: boolean
+      readyState = MockEventSource.CONNECTING
+      onopen: ((this: EventSource, event: Event) => void) | null = null
+      onmessage: ((this: EventSource, event: MessageEvent<string>) => void) | null = null
+      onerror: ((this: EventSource, event: Event) => void) | null = null
+
+      constructor(url: string | URL, init?: EventSourceInit) {
+        super()
+        this.url = String(url)
+        this.withCredentials = Boolean(init?.withCredentials)
+
+        window.setTimeout(() => {
+          if (this.readyState === MockEventSource.CLOSED) return
+          this.readyState = MockEventSource.OPEN
+          const openEvent = new Event('open')
+          this.dispatchEvent(openEvent)
+          this.onopen?.call(this as unknown as EventSource, openEvent)
+        }, 0)
+      }
+
+      close() {
+        this.readyState = MockEventSource.CLOSED
+      }
+    }
+
     // @ts-expect-error Test harness replaces Date with a frozen clock.
     globalThis.Date = MockDate
+    // @ts-expect-error Visual tests replace EventSource with a local mock.
+    globalThis.EventSource = MockEventSource
 
     const theme =
       window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -134,6 +167,25 @@ export async function installApiMocks(
       method: 'GET',
       match: '/feed',
       handle: ({ route }) => fulfillOk(route, [], { meta: { cursor: null } }),
+    },
+    {
+      method: 'GET',
+      match: '/home',
+      handle: ({ route }) =>
+        fulfillOk(route, {
+          enabled: false,
+          mode: 'disabled',
+          fallback_mode: 'feed',
+          shelves: [],
+          hot_feed_continuation: {
+            items: [],
+            next_cursor: null,
+          },
+          meta: {
+            generated_at: FIXED_TIME_ISO,
+            source: 'playwright-fallback',
+          },
+        }),
     },
   ]
 
