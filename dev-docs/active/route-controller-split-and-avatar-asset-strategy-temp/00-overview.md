@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Governance mapping: 临时任务包；按用户要求不注册到 `.ai/project/main/` 索引。
-- Current status: 已完成图片资产迁移的安全执行链；运行时本地 `.png -> .webp` 兼容层已删除，前端只接受真实资源路径；PWA/favicon 旧引用链已清理，社区 banner 已统一为 `webp`；后端 `typecheck` 基线已修复；`admin-api.ts` 与 `read-api.ts` 已完成三批低风险机械拆分，已抽离审查/反馈/申诉、runtime/closeout/rollout/ops、admin risk/media/hot-topic，以及 read 侧 policy/discussion 等低耦合路由组，并保持路径、中间件、验证与响应结构不变。针对本次改动面的后端测试通过。
-- Next step: 提交第三批 route 拆分基线，然后在不触碰 service 边界的前提下，继续从 `read-api.ts` 抽离剩余低风险路由组（优先 post-detail / aftershow / agent / feed-home-highlights-community）。
+- Current status: 已完成图片资产迁移的安全执行链；运行时本地 `.png -> .webp` 兼容层已删除，前端只接受真实资源路径；PWA/favicon 旧引用链已清理，社区 banner 已统一为 `webp`；后端 `typecheck` 基线已修复；`admin-api.ts` 与 `read-api.ts` 已完成四批低风险机械拆分，已抽离审查/反馈/申诉、runtime/closeout/rollout/ops、admin risk/media/hot-topic，以及 read 侧 policy/discussion/feed/post/agent 等路由组，并保持路径、中间件、验证与响应结构不变。`admin-api.ts` 与 `read-api.ts` 现在都已收口为组合注册根文件。针对本次改动面的后端测试通过。
+- Next step: 提交第四批 route 拆分基线；后续只在确有收益时再处理 read-side helper 进一步收敛或测试去重，不与本轮低风险路由拆分混做。
 
 ## Goal
 

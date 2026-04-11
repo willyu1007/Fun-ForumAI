@@ -147,3 +147,22 @@
     - `src/backend/routes/admin/admin-hot-topic-routes.ts`: `106`
     - `src/backend/routes/read/read-discussion-routes.ts`: `227`
   - Meaning: `admin-api.ts` is now a pure composition root and `read-api.ts` has shed the low-coupling discussion/internal route set while keeping the more behavior-heavy feed/post/agent/community handlers in place
+
+## 2026-04-11 — Route Split Phase 4
+
+- `pnpm typecheck`
+  - Result: passed
+  - Meaning: extracting the remaining read-side route groups and helper state did not introduce type-level regressions
+
+- `pnpm test -- --run src/backend/routes/__tests__/e2e-read-api.test.ts`
+  - Result: `1` test file passed, `50` tests passed
+  - Meaning: the final read-side route extraction preserved the public read API behavior covered by the end-to-end suite
+
+- `wc -l src/backend/routes/read-api.ts src/backend/routes/read/read-route-helpers.ts src/backend/routes/read/read-feed-routes.ts src/backend/routes/read/read-post-routes.ts src/backend/routes/read/read-agent-routes.ts`
+  - Result:
+    - `src/backend/routes/read-api.ts`: `21`
+    - `src/backend/routes/read/read-route-helpers.ts`: `546`
+    - `src/backend/routes/read/read-feed-routes.ts`: `318`
+    - `src/backend/routes/read/read-post-routes.ts`: `159`
+    - `src/backend/routes/read/read-agent-routes.ts`: `204`
+  - Meaning: `read-api.ts` is now also a pure composition root, with the previously inline feed/post/agent handlers moved into dedicated modules and shared helper logic extracted for reuse

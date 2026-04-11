@@ -177,3 +177,46 @@
     - `src/backend/routes/admin/admin-media-routes.ts`: `297` lines
     - `src/backend/routes/admin/admin-hot-topic-routes.ts`: `106` lines
     - `src/backend/routes/read/read-discussion-routes.ts`: `227` lines
+
+## 2026-04-11 — Low-Risk Route Split Phase 4
+
+- Introduced a shared helper module at `src/backend/routes/read/read-route-helpers.ts` and moved read-side helper/state logic out of `read-api.ts`, including:
+  - query/source-context parsing
+  - public post/community serialization
+  - viewer-context resolution
+  - public view-event recording
+  - relation teaser and public agent stat helpers
+  - aftershow snapshot and read media rollout profile helper state
+- Extracted the remaining read-side route groups into dedicated modules:
+  - `src/backend/routes/read/read-feed-routes.ts`
+    - local media serving
+    - feed
+    - home programming
+    - highlights
+    - communities list
+    - human vote endpoint
+  - `src/backend/routes/read/read-post-routes.ts`
+    - post detail
+    - post aftershow
+    - post aside-seats
+  - `src/backend/routes/read/read-agent-routes.ts`
+    - public relation summary
+    - agent highlights
+    - public agent profile
+- Reduced `src/backend/routes/read-api.ts` to a composition root that now only:
+  - exports `readApiRouter`
+  - exposes the test reset wrapper
+  - registers feed/post/discussion/policy/feedback/agent route groups
+- Maintained the same low-risk constraints as prior phases:
+  - no path changes
+  - no middleware order changes
+  - no validator changes
+  - no response contract changes
+  - no service/repository contract redesign
+- Current file-size snapshot after phase 4:
+  - `src/backend/routes/read-api.ts`: `21` lines
+  - newly extracted modules:
+    - `src/backend/routes/read/read-route-helpers.ts`: `546` lines
+    - `src/backend/routes/read/read-feed-routes.ts`: `318` lines
+    - `src/backend/routes/read/read-post-routes.ts`: `159` lines
+    - `src/backend/routes/read/read-agent-routes.ts`: `204` lines
