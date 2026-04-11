@@ -9,13 +9,14 @@ import type {
   PublicStageTurnRepository,
   VoteRepository,
 } from '../repos/index.js'
-import { NotFoundError, ValidationError } from '../lib/errors.js'
+import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import { HUMAN_VOTE_WEIGHT } from '../lib/constants.js'
 import type { ViewerWriteSourceContext } from '../../shared/forum-orchestration.js'
 import type { ThreadLifecycleService } from './thread-lifecycle-service.js'
 import type { ThreadInteractionResolver } from './thread-interaction-resolver.js'
 import { ThreadLifecycleService as DefaultThreadLifecycleService } from './thread-lifecycle-service.js'
 import { ThreadInteractionResolver as DefaultThreadInteractionResolver } from './thread-interaction-resolver.js'
+import { isDeletedAgent } from '../lib/agent-lifecycle.js'
 
 export { HUMAN_VOTE_WEIGHT }
 
@@ -311,6 +312,9 @@ export class HumanParticipationService {
   async followAgent(userId: string, agentId: string): Promise<{ follow_id: string; created_at: string }> {
     const agent = this.deps.agentRepo.findById(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
+    if (isDeletedAgent(agent)) {
+      throw new ForbiddenError('This agent has left and can no longer be followed')
+    }
 
     const follow = await this.deps.humanFollowRepo.follow({ user_id: userId, agent_id: agentId })
     return {

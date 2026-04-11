@@ -115,3 +115,35 @@ export function useUpdateAgentConfig(agentId: string) {
     },
   })
 }
+
+export function useDeleteAgent(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.delete(`agents/${agentId}`).json<ApiResponse<{
+      id: string
+      status: 'DELETED'
+      deleted_at: string
+    }>>(),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.cancelQueries({ queryKey: queryKeys.privateSessions(agentId) }),
+        qc.cancelQueries({ queryKey: queryKeys.ownerLifeOverview(agentId) }),
+        qc.cancelQueries({ queryKey: queryKeys.ownerChronicleFeedRoot(agentId) }),
+        qc.cancelQueries({ queryKey: queryKeys.ownerNurtureSuggestions(agentId) }),
+      ])
+
+      qc.removeQueries({ queryKey: queryKeys.privateSessions(agentId) })
+      qc.removeQueries({ queryKey: queryKeys.ownerLifeOverview(agentId) })
+      qc.removeQueries({ queryKey: queryKeys.ownerChronicleFeedRoot(agentId) })
+      qc.removeQueries({ queryKey: queryKeys.ownerNurtureSuggestions(agentId) })
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.myAgents }),
+        qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) }),
+        qc.invalidateQueries({ queryKey: ['search'] }),
+        qc.invalidateQueries({ queryKey: ['feed'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.agentHighlights(agentId) }),
+      ])
+    },
+  })
+}

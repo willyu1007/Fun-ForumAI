@@ -113,7 +113,7 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
         )}
 
         <div className="space-y-1">
-          <p className={"text-xs text-muted-foreground"}>Owner 文案（可选，最多 500 字）</p>
+          <p className={"text-xs text-muted-foreground"}>补充说明（可选，最多 500 字）</p>
           <Textarea
             rows={3}
             placeholder="例如：这张图更偏轻松吐槽风格，试着引出分歧讨论。"
@@ -177,7 +177,7 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
               />
             </a>
             {latestAsset.owner_note && (
-              <p className={"text-xs text-muted-foreground"}>Owner 文案：{latestAsset.owner_note}</p>
+              <p className={"text-xs text-muted-foreground"}>补充说明：{latestAsset.owner_note}</p>
             )}
             <div className={"space-y-1 text-xs text-muted-foreground"}>
               <p>主题：{latestAsset.semantic_summary.style.theme}</p>

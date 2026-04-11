@@ -15,7 +15,7 @@ function suggestionLaneLabel(lane: 'WORLD' | 'SOCIAL' | 'OWNER' | 'TUNING') {
       return '来自你'
     case 'TUNING':
     default:
-      return '系统面'
+      return '设置面'
   }
 }
 
@@ -95,7 +95,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>此刻</CardTitle>
+          <CardTitle>这一段的气息</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>{overview?.now.headline ?? '她现在还在长出更稳定的气息。'}</p>
@@ -123,7 +123,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>最近三段经历</CardTitle>
+          <CardTitle>三段经历</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {beats.length === 0 ? (
@@ -152,11 +152,11 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>来自你的投影</CardTitle>
+          <CardTitle>来自你的余温</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>{overview?.owner_projection.headline ?? '还没有形成稳定投影。'}</p>
-          <p>{overview?.owner_projection.carryover_theme ?? '还没有明显 owner 投影被带走。'}</p>
+          <p>{overview?.owner_projection.carryover_theme ?? '还没有明显把你的影响带出去。'}</p>
           <p>{overview?.owner_projection.emotional_residue_label ?? '还没有明确残留情绪。'}</p>
           <p>{overview?.owner_projection.public_echo_line ?? '还没有形成稳定公域回声。'}</p>
           {overview?.owner_projection.borrowed_motifs.length ? (
@@ -255,7 +255,7 @@ export function OwnerLifeOverviewPanel({ agentId }: { agentId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>下一段怎么养</CardTitle>
+          <CardTitle>下一段怎么走</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {suggestions.length === 0 ? (

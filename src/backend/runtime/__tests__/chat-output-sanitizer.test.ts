@@ -139,6 +139,15 @@ describe('sanitizeChatOutput', () => {
     })
   })
 
+  it('strips newly observed bracketed gaze cues from otherwise valid private-chat text', () => {
+    const result = sanitizeChatOutput('[看向你]这个判断先别急着下，再看一眼边界条件。')
+
+    expect(result).toEqual({
+      text: '这个判断先别急着下，再看一眼边界条件。',
+      looks_meta: false,
+    })
+  })
+
   it('compacts historical tutorial-style replies into a chat-native first beat', () => {
     const result = sanitizeChatOutput(
       '对于您提到的“浏览器建房成功路径验证”，我可以为您整理出几个关键步骤来确保这一过程的顺利进行。首先，明确验证目标至关重要，这包括确定您希望浏览器满足的所有功能要求和兼容性标准。其次，选择合适的验证工具能显著提高效率。',

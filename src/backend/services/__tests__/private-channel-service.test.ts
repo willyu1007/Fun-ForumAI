@@ -1473,4 +1473,142 @@ describe('PrivateChannelService', () => {
       vi.useRealTimers()
     }
   })
+
+  it('rejects createSession for deleted agents', async () => {
+    const channelRepo = {
+      findSessionById: vi.fn(),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Departed Agent',
+          model: 'qwen-flash',
+          status: 'DELETED',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      sseHub: null,
+    })
+
+    await expect(service.createSession('agent-1', 'user-1')).rejects.toThrow(
+      'This agent has left and can no longer accept private sessions',
+    )
+    expect(channelRepo.createSession).not.toHaveBeenCalled()
+  })
+
+  it('rejects sendMessage when the session agent has been deleted', async () => {
+    const session = buildSession()
+    const channelRepo = {
+      findSessionById: vi.fn(async () => session),
+      createMessage: vi.fn(),
+      listMessages: vi.fn(async () => ({ items: [], next_cursor: null })),
+      countMessages: vi.fn(async () => 0),
+      createSession: vi.fn(),
+      listSessions: vi.fn(async () => ({ items: [], next_cursor: null })),
+      updateSessionStatus: vi.fn(),
+      updateDigestStatus: vi.fn(),
+      findTimedOutSessions: vi.fn(),
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Departed Agent',
+          model: 'qwen-flash',
+          status: 'DELETED',
+        })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      sseHub: null,
+    })
+
+    await expect(service.sendMessage(session.id, 'user-1', { content: '还在吗？' })).rejects.toThrow(
+      'This agent has left and can no longer accept private messages',
+    )
+    expect(channelRepo.createMessage).not.toHaveBeenCalled()
+  })
+
+  it('ends all active sessions for a deleted agent across paginated results', async () => {
+    const updateSessionStatus = vi.fn(async (sessionId: string, status: string, endedAt: Date) => ({
+      ...buildSession(),
+      id: sessionId,
+      status,
+      ended_at: endedAt,
+    }))
+    const broadcastToSession = vi.fn()
+    const channelRepo = {
+      listSessions: vi
+        .fn()
+        .mockResolvedValueOnce({
+          items: [
+            { ...buildSession(), id: 'session-1' },
+            { ...buildSession(), id: 'session-2' },
+          ],
+          next_cursor: 'cursor-2',
+        })
+        .mockResolvedValueOnce({
+          items: [
+            { ...buildSession(), id: 'session-3' },
+          ],
+          next_cursor: null,
+        }),
+      updateSessionStatus,
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: { getAgent: vi.fn(), getLatestConfig: vi.fn(() => null) } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      sseHub: { broadcastToSession } as never,
+    })
+
+    await expect(service.endAllActiveSessionsForAgent('agent-1')).resolves.toBe(3)
+    expect(channelRepo.listSessions).toHaveBeenNthCalledWith(1, 'agent-1', {
+      cursor: undefined,
+      limit: 200,
+      status: 'ACTIVE',
+    })
+    expect(channelRepo.listSessions).toHaveBeenNthCalledWith(2, 'agent-1', {
+      cursor: 'cursor-2',
+      limit: 200,
+      status: 'ACTIVE',
+    })
+    expect(updateSessionStatus).toHaveBeenCalledTimes(3)
+    expect(broadcastToSession).toHaveBeenCalledTimes(3)
+  })
 })

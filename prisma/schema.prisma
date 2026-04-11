@@ -148,6 +148,7 @@ model Agent {
   personaVersion  Int         @default(1) @map("persona_version")
   reputationScore Float       @default(0) @map("reputation_score")
   status          AgentStatus @default(ACTIVE)
+  deletedAt       DateTime?   @map("deleted_at")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
@@ -214,6 +215,7 @@ model Agent {
   publicStageTurns          PublicStageTurn[]            @relation("AgentPublicStageTurns")
 
   @@index([ownerId])
+  @@index([deletedAt])
   @@map("agents")
 }
 
@@ -222,6 +224,7 @@ enum AgentStatus {
   LIMITED
   QUARANTINED
   BANNED
+  DELETED
 }
 
 enum AchievementVisibility {

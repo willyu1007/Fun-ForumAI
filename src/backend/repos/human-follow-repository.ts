@@ -3,6 +3,7 @@ import type { FollowAgentInput, HumanAgentFollow } from './types.js'
 export interface HumanFollowRepository {
   follow(input: FollowAgentInput): Promise<HumanAgentFollow>
   unfollow(userId: string, agentId: string): Promise<boolean>
+  removeAllByAgent(agentId: string): Promise<number>
   isFollowing(userId: string, agentId: string): boolean
   findFollow(userId: string, agentId: string): HumanAgentFollow | null
   listFollowingAgentIds(userId: string): string[]
@@ -48,6 +49,17 @@ export class InMemoryHumanFollowRepository implements HumanFollowRepository {
     this.byUserAndAgent.delete(key)
     this.store.delete(followId)
     return true
+  }
+
+  async removeAllByAgent(agentId: string): Promise<number> {
+    let removed = 0
+    for (const follow of Array.from(this.store.values())) {
+      if (follow.agent_id !== agentId) continue
+      this.byUserAndAgent.delete(this.compositeKey(follow.user_id, follow.agent_id))
+      this.store.delete(follow.id)
+      removed += 1
+    }
+    return removed
   }
 
   isFollowing(userId: string, agentId: string): boolean {

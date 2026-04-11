@@ -439,9 +439,9 @@ export class OwnerLifeOverviewService {
               : '去看完整经历线。',
         },
         system: {
-          label: '进入系统面板',
+          label: '打开设置面板',
           href: buildOwnerAgentTarget(agent.id, { tab: 'intro', introSection: 'privacy' }),
-          hint: '控制面保留在二级导航里，需要时再进去。',
+          hint: '设置面板放在二级导航里，需要时再进去。',
         },
       },
       meta: {
@@ -609,15 +609,15 @@ export class OwnerLifeOverviewService {
         id: `tuning:${agentId}`,
         lane: 'TUNING',
         priority: 'optional',
-        title: '最后再动风格和控制面',
-        body: '如果前面三条都做过了，再去微调风格 pin 或高级控制，收益会更稳。',
+        title: '最后再调风格和设置',
+        body: '如果前面三条都做过了，再去微调风格 pin 或高级设置，收益会更稳。',
         why_now: projection.borrowed_motifs.length > 0
           ? `她现在已经有一些外显招牌：${projection.borrowed_motifs.slice(0, 2).join('、')}。`
-          : '当前更需要经历来塑形，而不是先把控制面拧满。',
-        expected_progress: '让调参成为精修，而不是拿控制面替代经历。',
+          : '当前更需要经历来塑形，而不是先把设置拧满。',
+        expected_progress: '让调参成为精修，而不是拿设置替代经历。',
         primary_action: {
           kind: 'open_system_panel',
-          label: '进入系统面板',
+          label: '打开设置面板',
           href: buildOwnerAgentTarget(agentId, { tab: 'intro', introSection: 'privacy' }),
         },
         secondary_action: null,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAgentProfile } from '@/api/hooks'
@@ -364,6 +364,11 @@ export function AgentInteractionModal() {
       ? (myAgentIds.includes(activeAgentId) ? activeAgentId : null)
       : activeAgentId
   const { data: activeAgentData } = useAgentProfile(validActiveAgentId ?? '', !!validActiveAgentId)
+  const activeAgent = activeAgentData?.data
+  const visibleTabs = useMemo(
+    () => (activeAgent?.status === 'DELETED' ? TABS.filter((tab) => tab.id === 'intro') : TABS),
+    [activeAgent?.status],
+  )
   const headerAgentName = activeAgentData?.data?.display_name ?? ''
   const isCropperActive = Boolean(screenshotDraft)
   const shouldBlockDialogDismiss = isCaptureHidden || isCropperActive
@@ -406,6 +411,12 @@ export function AgentInteractionModal() {
       showAfterCapture()
     }
   }, [showAfterCapture])
+
+  useEffect(() => {
+    if (activeAgent?.status === 'DELETED' && activeTab !== 'intro') {
+      setActiveTab('intro')
+    }
+  }, [activeAgent?.status, activeTab, setActiveTab])
 
   const handleCaptureScreenshot = useCallback(async () => {
     setScreenshotErrorMessage(null)
@@ -471,6 +482,9 @@ export function AgentInteractionModal() {
         )}
       >
         <DialogTitle className="sr-only">Agent Interaction</DialogTitle>
+        <DialogDescription className="sr-only">
+          查看或管理智能体资料、互动入口与相关设置。
+        </DialogDescription>
 
         {/* Drag handle bar */}
         <div
@@ -577,7 +591,7 @@ export function AgentInteractionModal() {
           {/* Icon rail */}
           <nav className="flex w-12 shrink-0 flex-col items-center border-r border-border/60 bg-muted/50 py-2.5">
             <div className="flex flex-col items-center gap-1">
-              {TABS.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon
                 const isActive = activeTab === tab.id
                 return (

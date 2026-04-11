@@ -75,6 +75,7 @@ vi.mock('@/components/ui/dialog', async () => {
       </div>
     )),
     DialogTitle: ({ children, ...props }: ComponentProps<'div'>) => <div {...props}>{children}</div>,
+    DialogDescription: ({ children, ...props }: ComponentProps<'div'>) => <div {...props}>{children}</div>,
   }
 })
 
@@ -717,5 +718,20 @@ describe('AgentInteractionModal geometry updates', () => {
 
     expect(screen.getByTestId('agent-modal-content')).toBeTruthy()
     expect(screen.getByTestId('tab-intro').textContent).toContain('agent-external')
+  })
+
+  it('renders an accessible dialog description', () => {
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        activeAgentId: 'agent-1',
+        viewMode: 'manage',
+        activeTab: 'intro',
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    expect(screen.getByText('查看或管理智能体资料、互动入口与相关设置。')).toBeTruthy()
   })
 })

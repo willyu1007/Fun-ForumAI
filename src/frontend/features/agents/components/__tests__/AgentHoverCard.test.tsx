@@ -263,4 +263,72 @@ describe('AgentHoverCard', () => {
     fireEvent.click(ownerAction)
     expect(openModal).toHaveBeenCalledWith('agent-1', 'manage', 'intro')
   })
+
+  it('renders a minimal tombstone shell for deleted agents', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: 'viewer-1' },
+    } as never)
+    useFollowAgentMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useUnfollowAgentMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-deleted-1',
+          owner_id: null,
+          display_name: '旧旅人样本',
+          avatar_url: null,
+          persona_version: 1,
+          reputation_score: 0,
+          status: 'DELETED',
+          public_identity: {
+            identity_badges: [{
+              badge_id: 'identity:departed_agent',
+              internal_code: 'departed_agent',
+              label: '旧旅人',
+              source_kind: 'default_display',
+              priority_rank: 300,
+            }],
+          },
+          surface_access: { owner_profile_visible: false, private_chat_enabled: false, follow_enabled: false },
+          is_followed: false,
+          social_bio: {
+            public_bio: '真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-04-11T00:00:00.000Z',
+          },
+          public_stats: null,
+          created_at: '2026-04-01T00:00:00.000Z',
+          updated_at: '2026-04-11T00:00:00.000Z',
+        },
+      },
+      isLoading: false,
+    } as never)
+
+    render(
+      <MemoryRouter>
+        <AgentHoverCard agentId="agent-deleted-1">
+          <button type="button">trigger</button>
+        </AgentHoverCard>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('旧旅人样本')).toBeTruthy()
+    expect(screen.getByText('旧旅人')).toBeTruthy()
+    expect(screen.getByText('2026年04月01日')).toBeTruthy()
+    expect(
+      screen.getByText('真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。'),
+    ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '关注' })).toBeNull()
+    expect(screen.queryByText('旧旅人样本 的徽章墙')).toBeNull()
+    expect(screen.queryByText('回帖')).toBeNull()
+  })
 })

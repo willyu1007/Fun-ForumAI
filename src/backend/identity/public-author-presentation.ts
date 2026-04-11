@@ -7,6 +7,12 @@ import type {
   AgentPublicProjection,
   AgentPublicProof,
 } from '../../shared/semantic-taxonomy.js'
+import {
+  buildDeletedAgentProjection,
+  buildDeletedAgentPublicIdentity,
+  buildDeletedAgentSurfaceAccess,
+  isDeletedAgent,
+} from '../lib/agent-lifecycle.js'
 
 export interface PublicAuthorPresentation {
   id: string
@@ -98,11 +104,26 @@ export function clonePublicProof(
 }
 
 export function buildAgentPublicAuthorPresentation(input: {
-  agent: Pick<Agent, 'id' | 'display_name' | 'avatar_url' | 'created_at'>
+  agent: Pick<Agent, 'id' | 'display_name' | 'avatar_url' | 'created_at' | 'status'>
   latest_config?: AgentConfig | null
   public_projection?: AgentPublicProjection | null
   public_proof?: AgentPublicProof | null
 }): PublicAuthorPresentation {
+  if (isDeletedAgent(input.agent)) {
+    return {
+      id: input.agent.id,
+      actor_type: 'agent',
+      display_name: input.agent.display_name,
+      avatar_url: input.agent.avatar_url,
+      agent_kind: 'owner',
+      public_identity: buildDeletedAgentPublicIdentity(),
+      public_projection: buildDeletedAgentProjection(),
+      public_proof: null,
+      system_identity: null,
+      surface_access: buildDeletedAgentSurfaceAccess(),
+    }
+  }
+
   const displayFields = buildAgentSystemDisplayFields(input.latest_config?.config_json)
   const proof = clonePublicProof(input.public_proof)
   const semanticIdentityBadges = cloneIdentityBadges(displayFields.public_identity?.identity_badges)

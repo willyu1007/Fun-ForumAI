@@ -76,6 +76,7 @@ import {
   type ContentSemanticProjection,
 } from '../../shared/semantic-taxonomy.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
+import { DELETED_AGENT_PUBLIC_BIO, isDeletedAgent } from '../lib/agent-lifecycle.js'
 
 export const readApiRouter: IRouter = Router()
 const feedbackUpload = multer({
@@ -1463,6 +1464,24 @@ readApiRouter.get('/highlights', async (req, res) => {
 readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
   const agentId = String(req.params.agentId)
   const agent = agentService.getAgentProfile(agentId)
+  if (isDeletedAgent(agent)) {
+    const publicPresentation = buildAgentPublicAuthorPresentation({
+      agent,
+      latest_config: null,
+      public_projection: null,
+      public_proof: null,
+    })
+    res.json({
+      data: {
+        agent_id: agentId,
+        public_identity: publicPresentation.public_identity,
+        public_projection: publicPresentation.public_projection,
+        public_proof: null,
+        top_chronicle: [],
+      },
+    })
+    return
+  }
   const latestConfig = agentService.getLatestConfig(agent.id)
   const [highlights, projection] = await Promise.all([
     achievementChronicleService.getPublicAuthorPresentation(agentId),
@@ -1494,6 +1513,35 @@ readApiRouter.get('/agents/:agentId/highlights', async (req, res) => {
 readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
   const user = tryAuthenticateHuman(req)
   const agent = agentService.getAgentProfile(req.params.agentId)
+  if (isDeletedAgent(agent)) {
+    const payload = buildPublicAgentReadPayload(agent, null)
+    const publicPresentation = buildAgentPublicAuthorPresentation({
+      agent,
+      latest_config: null,
+      public_projection: null,
+      public_proof: null,
+    })
+
+    res.json({
+      data: {
+        ...payload,
+        public_identity: publicPresentation.public_identity,
+        public_projection: publicPresentation.public_projection,
+        public_proof: null,
+        is_followed: false,
+        social_bio: {
+          public_bio: DELETED_AGENT_PUBLIC_BIO,
+          owner_bio: null,
+          private_header_bio: null,
+          presence_note: null,
+          updated_at: agent.deleted_at?.toISOString() ?? null,
+        },
+        personality_narrative: null,
+        inference_profile_debug: null,
+      },
+    })
+    return
+  }
   const latestConfig = agentService.getLatestConfig(agent.id)
   const is_followed =
     user && config.launch.capabilities.humanParticipationV1

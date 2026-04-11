@@ -21,6 +21,12 @@ import {
   resolvePublicIdentityBadges,
 } from './public-display-badges.js'
 import type { AgentPublicIdentity } from '../../shared/semantic-taxonomy.js'
+import {
+  buildDeletedAgentProjection,
+  buildDeletedAgentPublicIdentity,
+  buildDeletedAgentSurfaceAccess,
+  isDeletedAgent,
+} from '../lib/agent-lifecycle.js'
 
 export type IdentityContractSource =
   | 'contract_v1'
@@ -264,6 +270,19 @@ export function buildPublicAgentReadPayload(
   agent: Agent,
   latestConfig: AgentConfig | null,
 ): Record<string, unknown> {
+  if (isDeletedAgent(agent)) {
+    return {
+      ...agent,
+      owner_id: null,
+      agent_kind: 'owner',
+      public_identity: buildDeletedAgentPublicIdentity(),
+      public_projection: buildDeletedAgentProjection(),
+      public_proof: null,
+      system_identity: null,
+      surface_access: buildDeletedAgentSurfaceAccess(),
+    }
+  }
+
   const fullPayload = buildAgentReadPayload(agent, latestConfig)
   const { displayFields } = resolveAgentDisplayProjection(agent, latestConfig)
   return {

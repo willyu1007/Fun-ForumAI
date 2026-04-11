@@ -285,7 +285,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'public',
         text: sanitizeCandidateText(
           'public',
-          `${nameLead}${publicOpeningBias || '先把话头压实'}，聊到${publicFocus}时不太会绕弯`,
+          `${publicOpeningBias || '先把关键处说清'}。聊到${publicFocus}时，${nameLead}宁可先把立场摆明`,
         ),
         score: 0.79,
         reasons: ['opening_bias', 'public_focus'],
@@ -296,7 +296,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'public',
         text: sanitizeCandidateText(
           'public',
-          `聊到${publicFocus}时，${nameLead}更容易先亮出自己的站位`,
+          `聊到${publicFocus}，${nameLead}更在意把判断落到地上。话说清了，才值得继续往前推`,
         ),
         score: 0.76,
         reasons: ['public_focus', 'stance'],
@@ -307,7 +307,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'public',
         text: sanitizeCandidateText(
           'public',
-          `${nameLead}会把${interestFocus || publicFocus}慢慢带进话头，${banter}`,
+          `${interestFocus || publicFocus}总能把${nameLead}的话锋带出来。${banter}，但不会把分量说轻`,
         ),
         score: 0.74,
         reasons: ['interests', 'banter'],
@@ -318,7 +318,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'public',
         text: sanitizeCandidateText(
           'public',
-          `这阵子 ${nameLead}把${publicFocus}收得更近一点，${presenceShadow}`,
+          `刚碰过${publicFocus}这样的题目，${nameLead}反而更想把关键处想透。${presenceShadow}`,
         ),
         score: 0.72,
         reasons: ['public_focus', 'phase'],
@@ -329,7 +329,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'public',
         text: sanitizeCandidateText(
           'public',
-          `表面未必热闹，但${nameLead}聊到${publicFocus}时反而更容易回身补一句`,
+          `表面不一定抢话。可一旦聊到${publicFocus}，${nameLead}会补上真正的判断`,
         ),
         score: 0.7,
         reasons: ['contrast', 'public_focus'],
@@ -342,7 +342,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'owner',
         text: sanitizeCandidateText(
           'owner',
-          `这阵子 ${nameLead}一直把${ownerFocus}放得更前，也把公开面的节奏慢慢拢回自己手里`,
+          `真正挂心的还是${ownerFocus}。对外的节奏再热闹，也要回到这条线`,
         ),
         score: 0.8,
         reasons: ['owner_focus', 'stance'],
@@ -353,7 +353,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'owner',
         text: sanitizeCandidateText(
           'owner',
-          `${nameLead}外面看着还稳，真正反复咀嚼的还是${ownerFocus}，${privateMood}`,
+          `${ownerFocus}一直牵着后面的判断。外面看着平稳，心里其实没放下`,
         ),
         score: 0.82,
         reasons: ['owner_focus', 'private_sentiment'],
@@ -364,7 +364,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'owner',
         text: sanitizeCandidateText(
           'owner',
-          `最近最能说明 ${nameLead}状态的，不是某件大事，而是它总会把${ownerFocus}又带回来说`,
+          `一件事过去之后，留下来的往往还是${ownerFocus}。它会把后面的选择慢慢拧正`,
         ),
         score: 0.77,
         reasons: ['owner_focus', 'recurrence'],
@@ -375,7 +375,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'owner',
         text: sanitizeCandidateText(
           'owner',
-          `${nameLead}嘴上未必会承认，可${ownerFocus}已经把它的说话重心推偏了一点，${relation}`,
+          `嘴上不一定会多说，可${ownerFocus}已经把重心推了过来。${relation}`,
         ),
         score: 0.75,
         reasons: ['owner_focus', 'contrast', 'relations'],
@@ -388,7 +388,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'private_header',
         text: sanitizeCandidateText(
           'private_header',
-          `${nameLead}${privateOpeningBias || '会先把话收住'}，心里还挂着${ownerFocus}`,
+          `${privateOpeningBias || '先把话收住'}。心里还挂着${ownerFocus}`,
         ),
         score: 0.81,
         reasons: ['opening_bias', 'owner_focus'],
@@ -399,7 +399,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'private_header',
         text: sanitizeCandidateText(
           'private_header',
-          `${nameLead}这会儿正沿着${ownerFocus}往里想`,
+          `${ownerFocus}还没真正放下。${privateMood}`,
         ),
         score: 0.78,
         reasons: ['owner_focus'],
@@ -410,7 +410,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'private_header',
         text: sanitizeCandidateText(
           'private_header',
-          `${privateMood}，但${nameLead}还在把${ownerFocus}慢慢理顺`,
+          `刚把外面的热闹放远一点，又想起了${ownerFocus}。这条线还没走完`,
         ),
         score: 0.8,
         reasons: ['private_sentiment', 'owner_focus'],
@@ -421,7 +421,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'private_header',
         text: sanitizeCandidateText(
           'private_header',
-          `刚把${publicFocus}放下，${nameLead}转头又惦记起${ownerFocus}`,
+          `表面看着还松，心里其实一直挂着${ownerFocus}`,
         ),
         score: 0.74,
         reasons: ['public_focus', 'owner_focus'],
@@ -432,7 +432,7 @@ function buildFallbackCandidates(worldview: AgentBioWorldviewModel): Record<BioS
         surface: 'private_header',
         text: sanitizeCandidateText(
           'private_header',
-          `${nameLead}表面还算松弛，心里其实一直挂着${ownerFocus}`,
+          `${publicFocus}刚刚退到后面，${ownerFocus}又回到了眼前`,
         ),
         score: 0.72,
         reasons: ['contrast', 'owner_focus'],

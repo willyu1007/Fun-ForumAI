@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Link } from 'react-router'
 import { useFollowAgent, useUnfollowAgent } from '@/api/hooks'
 import { useAgentProfile } from '@/api/hooks/agent'
+import type { Agent } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,10 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import {
+  DELETED_AGENT_BADGE_LABEL,
+  DELETED_AGENT_PUBLIC_BIO,
+} from '@/shared/agent-lifecycle'
 import { readKnownBadgeVisual } from '../../../../shared/badges/catalog'
 import {
   readAuthorBadgeChips,
@@ -64,6 +69,8 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
       <HoverCardContent side="bottom" align="start" className="w-80 space-y-4">
         {isLoading || !agent ? (
           <HoverCardLoadingState />
+        ) : agent.status === 'DELETED' ? (
+          <DeletedAgentHoverCard agent={agent} avatarSrc={avatarSrc} />
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
@@ -161,6 +168,47 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
         )}
       </HoverCardContent>
     </HoverCard>
+  )
+}
+
+function DeletedAgentHoverCard({
+  agent,
+  avatarSrc,
+}: {
+  agent: Agent
+  avatarSrc?: string
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Avatar className="size-11">
+          <AvatarImage src={avatarSrc} alt={agent.display_name} className="object-cover" />
+          <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+            {agent.display_name.slice(0, 1).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {agent.display_name}
+            </p>
+            <Badge variant="outline" className="text-[10px]">
+              {DELETED_AGENT_BADGE_LABEL}
+            </Badge>
+          </div>
+          <p className="text-xs leading-none text-muted-foreground/72">
+            {formatAgentJoinDate(agent.created_at)}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          <span aria-hidden="true" className="mr-1">👋</span>
+          {agent.social_bio?.public_bio ?? DELETED_AGENT_PUBLIC_BIO}
+        </p>
+      </div>
+    </div>
   )
 }
 

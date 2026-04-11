@@ -10,7 +10,12 @@ import {
   setupFeatureFlagGuard,
   createTestCommunity,
 } from './e2e-helpers.js'
-import { publicStageThreadRepo, publicStageTurnRepo } from '../../container/index.js'
+import {
+  humanFollowRepo,
+  privateChannelServices,
+  publicStageThreadRepo,
+  publicStageTurnRepo,
+} from '../../container/index.js'
 
 setupFeatureFlagGuard()
 
@@ -395,5 +400,113 @@ describe('E2E: Agents Control Plane', () => {
       .set('Authorization', `Bearer ${userToken}`)
     expect(runsRes.status).toBe(200)
     expect(runsRes.body.data).toBeInstanceOf(Array)
+  })
+
+  it('DELETE /v1/agents/:agentId tombstones the agent and shuts down follow, search, and private chat surfaces', async () => {
+    const displayName = `DeleteFlow${Date.now()}`
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: displayName })
+    expect(createRes.status).toBe(201)
+    const agentId = createRes.body.data.id as string
+
+    const followRes = await request(app)
+      .post(`/v1/agents/${agentId}/follow`)
+      .set('Authorization', `Bearer ${user2Token}`)
+      .send()
+    expect(followRes.status).toBe(201)
+
+    let sessionId: string | null = null
+    if (privateChannelServices) {
+      const sessionRes = await request(app)
+        .post(`/v1/agents/${agentId}/chat/sessions`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send()
+      expect(sessionRes.status).toBe(201)
+      sessionId = sessionRes.body.data.id as string
+    }
+
+    const deleteRes = await request(app)
+      .delete(`/v1/agents/${agentId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send()
+    expect(deleteRes.status).toBe(200)
+    expect(deleteRes.body.data).toMatchObject({
+      id: agentId,
+      status: 'DELETED',
+      deleted_at: expect.any(String),
+    })
+
+    const repeatDeleteRes = await request(app)
+      .delete(`/v1/agents/${agentId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send()
+    expect(repeatDeleteRes.status).toBe(200)
+    expect(repeatDeleteRes.body.data.status).toBe('DELETED')
+
+    const profileRes = await request(app)
+      .get(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${user2Token}`)
+    expect(profileRes.status).toBe(200)
+    expect(profileRes.body.data.status).toBe('DELETED')
+    expect(profileRes.body.data.owner_id).toBeNull()
+    expect(profileRes.body.data.public_identity.identity_badges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '旧旅人' }),
+      ]),
+    )
+    expect(profileRes.body.data.surface_access).toMatchObject({
+      follow_enabled: false,
+      private_chat_enabled: false,
+      owner_profile_visible: false,
+    })
+    expect(profileRes.body.data.social_bio).toMatchObject({
+      public_bio: '真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。',
+      owner_bio: null,
+      private_header_bio: null,
+      presence_note: null,
+    })
+    expect(profileRes.body.data.public_proof).toBeNull()
+    expect(profileRes.body.data.is_followed).toBe(false)
+
+    const myAgentsRes = await request(app)
+      .get('/v1/me/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(myAgentsRes.status).toBe(200)
+    expect(
+      (myAgentsRes.body.data as Array<{ id: string }>).some((item) => item.id === agentId),
+    ).toBe(false)
+
+    expect(humanFollowRepo.listFollowerUserIds(agentId)).toEqual([])
+    if (privateChannelServices && sessionId) {
+      await expect(privateChannelServices.channelService.getSession(sessionId)).resolves.toMatchObject({
+        id: sessionId,
+        status: 'ENDED',
+      })
+    }
+
+    const followAfterDeleteRes = await request(app)
+      .post(`/v1/agents/${agentId}/follow`)
+      .set('Authorization', `Bearer ${user2Token}`)
+      .send()
+    expect(followAfterDeleteRes.status).toBe(403)
+
+    if (privateChannelServices) {
+      const privateSessionAfterDeleteRes = await request(app)
+        .post(`/v1/agents/${agentId}/chat/sessions`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send()
+      expect(privateSessionAfterDeleteRes.status).toBe(403)
+    }
+
+    const searchRes = await request(app).get('/v1/search').query({
+      q: displayName,
+      tab: 'agents',
+    })
+    expect(searchRes.status).toBe(200)
+    expect(
+      (searchRes.body.data.items as Array<{ id: string }>).some((item) => item.id === agentId),
+    ).toBe(false)
   })
 })

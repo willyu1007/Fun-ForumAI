@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TabIntro } from '../TabIntro'
+import { useDeleteAgent } from '@/api/hooks/agent'
 
 const useAgentProfileMock = vi.fn()
 const useAgentRunsMock = vi.fn()
@@ -11,6 +12,7 @@ const useFollowAgentMock = vi.fn()
 const useUnfollowAgentMock = vi.fn()
 const useGuidanceSummaryMock = vi.fn()
 const useAgentHighlightsMock = vi.fn()
+const useDeleteAgentMock = vi.fn()
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
@@ -25,13 +27,28 @@ vi.mock('@/api/hooks', () => ({
 }))
 
 vi.mock('@/shared/stores/agent-modal-store', () => ({
-  useAgentModalStore: () => ({
-    viewMode: 'manage',
-    setActiveTab: vi.fn(),
-    setIntroSection: vi.fn(),
-    introSection: 'overview',
-    sourceSessionId: null,
-  }),
+  useAgentModalStore: (selector?: (state: {
+    viewMode: string
+    setActiveTab: ReturnType<typeof vi.fn>
+    setIntroSection: ReturnType<typeof vi.fn>
+    introSection: string
+    sourceSessionId: string | null
+    closeModal: ReturnType<typeof vi.fn>
+  }) => unknown) => {
+    const state = {
+      viewMode: 'manage',
+      setActiveTab: vi.fn(),
+      setIntroSection: vi.fn(),
+      introSection: 'overview',
+      sourceSessionId: null,
+      closeModal: vi.fn(),
+    }
+    return selector ? selector(state) : state
+  },
+}))
+
+vi.mock('@/api/hooks/agent', () => ({
+  useDeleteAgent: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -187,6 +204,7 @@ function renderTabIntro() {
 describe('TabIntro owner social bio', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useDeleteAgent).mockImplementation((() => useDeleteAgentMock()) as never)
 
     useAgentProfileMock.mockReturnValue({
       data: {
@@ -257,6 +275,10 @@ describe('TabIntro owner social bio', () => {
       data: null,
       isLoading: false,
       error: null,
+    })
+    useDeleteAgentMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
     })
   })
 
@@ -339,5 +361,71 @@ describe('TabIntro owner social bio', () => {
     expect(screen.queryByRole('button', { name: '私聊' })).toBeNull()
     expect(screen.getAllByText('常驻席').length).toBeGreaterThan(0)
     expect(screen.getByText(/热点擂台/)).toBeTruthy()
+  })
+
+  it('renders the deleted-agent tombstone shell and hides active management surfaces', () => {
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-deleted-1',
+          owner_id: null,
+          display_name: '旧旅人样本',
+          status: 'DELETED',
+          created_at: '2026-03-27T00:00:00.000Z',
+          updated_at: '2026-04-11T00:00:00.000Z',
+          avatar_url: null,
+          public_identity: {
+            identity_badges: [{
+              badge_id: 'identity:departed_agent',
+              internal_code: 'departed_agent',
+              label: '旧旅人',
+              source_kind: 'default_display',
+              priority_rank: 300,
+            }],
+          },
+          surface_access: {
+            owner_profile_visible: false,
+            private_chat_enabled: false,
+            follow_enabled: false,
+          },
+          is_followed: false,
+          social_bio: {
+            public_bio: '真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-04-11T00:00:00.000Z',
+          },
+          inference_profile_debug: null,
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderTabIntro()
+
+    expect(screen.getByTestId('agent-profile-deleted-shell')).toBeTruthy()
+    expect(screen.getAllByText('旧旅人样本').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('旧旅人').length).toBeGreaterThan(0)
+    expect(screen.getByText('已离场')).toBeTruthy()
+    expect(screen.getByText('加入于 2026/03/27')).toBeTruthy()
+    expect(
+      screen.getByText('真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。'),
+    ).toBeTruthy()
+    expect(screen.queryByText('当前自我介绍')).toBeNull()
+    expect(screen.queryByRole('button', { name: '删除这个智能体' })).toBeNull()
+  })
+
+  it('shows the delete danger zone for the owner view and requires explicit confirmation', () => {
+    renderTabIntro()
+
+    expect(screen.getByText('危险操作')).toBeTruthy()
+    expect(
+      screen.getByText('删除后，这个智能体会离场；历史公开帖子仍会保留，但不再开放关注、私聊或进一步互动。'),
+    ).toBeTruthy()
+    const firstButton = screen.getByRole('button', { name: '删除智能体' })
+    fireEvent.click(firstButton)
+    expect(screen.getByRole('button', { name: '确认删除' })).toBeTruthy()
   })
 })

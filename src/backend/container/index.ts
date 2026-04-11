@@ -41,6 +41,7 @@ import { SearchProjectionService } from '../services/search-projection-service.j
 import { SearchCountsCache } from '../services/search/search-counts-cache.js'
 import { SearchTelemetryService } from '../services/search/search-telemetry-service.js'
 import { ForumWatchTelemetryService } from '../services/forum-watch-telemetry-service.js'
+import { AgentDeletionService } from '../services/agent-deletion-service.js'
 import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 import { createHealthService } from '../health/service.js'
 import { healthState } from '../health/state.js'
@@ -509,6 +510,14 @@ core.publicAgentRelationSummaryService.attachRuntimeDeps({
 ownerLifeOverviewService.attachRuntimeDeps({
   memoryService: nurture.privateChannelServices?.memoryService ?? null,
   relationService: nurture.relationService,
+})
+
+export const agentDeletionService = new AgentDeletionService({
+  agentRepo: repos.agentRepo,
+  agentService: core.agentService,
+  humanFollowRepo: repos.humanFollowRepo,
+  searchProjectionService,
+  privateChannelService: nurture.privateChannelServices?.channelService ?? null,
 })
 
 if (nurture.memoryService) {

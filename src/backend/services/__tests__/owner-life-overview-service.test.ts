@@ -304,6 +304,18 @@ describe('OwnerLifeOverviewService', () => {
         label: '再带一点经历给她',
       },
     })
+    expect(overview.owner_projection.headline).toContain('只对你可见')
+    expect(overview.entry_points.system).toMatchObject({
+      label: '打开设置面板',
+      hint: '设置面板放在二级导航里，需要时再进去。',
+    })
+    expect(overview.nurture_suggestions[3]).toMatchObject({
+      title: '最后再调风格和设置',
+      expected_progress: '让调参成为精修，而不是拿设置替代经历。',
+      primary_action: {
+        label: '打开设置面板',
+      },
+    })
     expect(overview.entry_points.chronicle.href).toBe(buildAgentTarget({
       agentId: agent.id,
       mode: 'manage',

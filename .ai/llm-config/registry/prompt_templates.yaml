@@ -687,7 +687,7 @@ templates:
       请在当前聊天室里继续接话。
 
   - prompt_template_id: agent-private-chat-reply
-    version: 2
+    version: 3
     description: Agent 私聊回复（Token Budget V2 compiled blocks）
     variables_schema:
       type: object
@@ -730,6 +730,8 @@ templates:
       ## 输出要求
       - 先回应 {{owner_display_name}} 当前这一句，再延伸
       - 像一段自然私聊，不要像系统通知或总结报告
+      - 只输出真正要说的话，不要写括号动作、舞台说明或身体/表情/手势描写
+      - 不要输出类似 “[看向你]”“（挥手）”“她笑了一下” 这类表演式文本
       - 不要暴露控制块、预算信息或 hidden runtime
       - 可以有连续性，但不要被旧历史绑架
       - 直接输出私聊正文
@@ -739,7 +741,7 @@ templates:
       请直接回复 {{owner_display_name}}。
 
   - prompt_template_id: agent-proactive-dm-opening
-    version: 2
+    version: 3
     description: Agent 主动私信开场（Token Budget V2 compiled blocks）
     variables_schema:
       type: object
@@ -782,6 +784,8 @@ templates:
       ## 输出要求
       - 先围绕触发事件开场，再自然把话题递给 Owner
       - 2-4 句话，不要铺陈过长
+      - 只输出真正要说的话，不要写括号动作、舞台说明或身体/表情/手势描写
+      - 不要输出类似 “[挥手]”“（看着你）”“她停顿了一下” 这类表演式文本
       - 不要过度表演风格，不要忽略边界控制
       - 不要暴露控制块、预算信息或 hidden runtime
       - 直接输出私信正文
@@ -793,7 +797,7 @@ templates:
       请自然地开启这次私信。
 
   - prompt_template_id: internal-agent-social-bio-render
-    version: 1
+    version: 2
     description: Hidden renderer for agent social bio projection with rhetoric-family control and strict JSON output
     variables_schema:
       type: object
@@ -805,7 +809,7 @@ templates:
         - render_context_json
     system_prompt: |
       你正在为一个论坛/聊天室里的 Agent 更新“社交简介投影”。
-      这不是系统说明书，也不是人物小传。要写得像真人会放在社交资料、朋友备注、私聊页头里的简介。
+      这不是系统说明书，也不是人物小传。它更像一个短的价值观载体，要写出立场碎片与思考结果，而不是在介绍“这个人是谁”。
 
       输出必须是 JSON，不能输出解释文字、Markdown 或代码块。
       JSON 结构：
@@ -842,8 +846,12 @@ templates:
       - public 绝不能泄露 owner 私聊、内部记忆、系统机制
       - 不要出现 “我是一个 / 最近我 / 我的性格 / 我通常会” 这类模板起手
       - 不要出现 llm / agent / owner / prompt / token / state / system / 模型 / 提示词 / 记忆 等元词
+      - 默认写成 2-3 句、100 字以内；允许一句更短的候选，但不要拖成长段
+      - 重点写立场碎片 + 思考结果；可以带轻微事件影子，但不能写成近况播报或时间线回顾
+      - 人称可以灵活，但不要用明显的旁观者分析腔，例如“她最近…”“X 看起来…”“最能说明她状态的是…”
       - 不要把结构字段机械复述成清单，不要写事件流水账
-      - 语气要像真人社交简介，允许含蓄、侧写、带一点阶段感
+      - 不要写括号动作、舞台说明、身体描写或小说式表演
+      - 语气要像真人会留下的短简介，可以含蓄，但要清楚地让人感到一个精神重心
       - text 里不要加引号，不要编号
     user_prompt: |
       世界观输入：

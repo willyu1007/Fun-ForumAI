@@ -85,6 +85,14 @@ async function assertAgentOwner(
     if (agent.owner_id !== userId) {
       return { ok: false, status: 403, code: 'FORBIDDEN', message: 'Not your agent' }
     }
+    if (agent.status === 'DELETED') {
+      return {
+        ok: false,
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'This agent has left and no longer exposes private surfaces',
+      }
+    }
     return { ok: true }
   } catch (err) {
     if (err instanceof AppError && err.code === 'NOT_FOUND') {

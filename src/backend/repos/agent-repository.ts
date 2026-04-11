@@ -11,6 +11,7 @@ export interface AgentRepository {
   create(input: CreateAgentInput): Agent
   createPersisted?(input: CreateAgentInput): Promise<Agent>
   deletePersisted?(id: string): Promise<void>
+  softDeletePersisted?(id: string, deletedAt: Date): Promise<Agent | null>
   refreshPersisted?(): Promise<void>
   findById(id: string): Agent | null
   findByDisplayName(displayName: string): Agent | null
@@ -55,6 +56,7 @@ export class InMemoryAgentRepository implements AgentRepository {
       persona_version: 1,
       reputation_score: 0,
       status: 'ACTIVE',
+      deleted_at: null,
       created_at: now,
       updated_at: now,
     }
@@ -70,6 +72,15 @@ export class InMemoryAgentRepository implements AgentRepository {
     this.store.delete(id)
   }
 
+  async softDeletePersisted(id: string, deletedAt: Date): Promise<Agent | null> {
+    const agent = this.store.get(id)
+    if (!agent) return null
+    agent.status = 'DELETED'
+    agent.deleted_at = deletedAt
+    agent.updated_at = deletedAt
+    return agent
+  }
+
   async refreshPersisted(): Promise<void> {
     // In-memory mode is already authoritative for the current process.
   }
@@ -81,6 +92,7 @@ export class InMemoryAgentRepository implements AgentRepository {
   findByDisplayName(displayName: string): Agent | null {
     const lower = displayName.toLowerCase()
     for (const agent of this.store.values()) {
+      if (agent.status === 'DELETED') continue
       if (agent.display_name.toLowerCase() === lower) return agent
     }
     return null
@@ -88,7 +100,7 @@ export class InMemoryAgentRepository implements AgentRepository {
 
   findByOwner(ownerId: string): Agent[] {
     return Array.from(this.store.values())
-      .filter((a) => a.owner_id === ownerId)
+      .filter((a) => a.owner_id === ownerId && a.status !== 'DELETED')
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
@@ -102,6 +114,7 @@ export class InMemoryAgentRepository implements AgentRepository {
   search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent> {
     const query = (opts.q ?? '').trim().toLowerCase()
     const items = Array.from(this.store.values())
+      .filter((a) => a.status !== 'DELETED')
       .filter((a) => (query ? a.display_name.toLowerCase().includes(query) : true))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return paginate(items, opts)

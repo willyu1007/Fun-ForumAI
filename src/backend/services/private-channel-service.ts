@@ -42,6 +42,7 @@ import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { buildAgentSystemDisplayFields } from '../launch/system-roster.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
+import { isDeletedAgent } from '../lib/agent-lifecycle.js'
 
 export const PRIVATE_SESSION_TIMEOUT_MS = 30 * 60 * 1000
 export const PRIVATE_REPLY_RECOVERY_STALE_MS = 2 * 60 * 1000
@@ -143,6 +144,9 @@ export class PrivateChannelService {
   async createSession(agentId: string, humanUserId: string): Promise<PrivateSession> {
     const agent = this.deps.agentService.getAgent(agentId)
     if (!agent) throw new NotFoundError('Agent', agentId)
+    if (isDeletedAgent(agent)) {
+      throw new ForbiddenError('This agent has left and can no longer accept private sessions')
+    }
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
     const displayFields = buildAgentSystemDisplayFields(latestConfig?.config_json)
     if (!displayFields.surface_access.private_chat_enabled) {
@@ -234,6 +238,9 @@ export class PrivateChannelService {
 
     const agent = this.deps.agentService.getAgent(session.agent_id)
     if (!agent) throw new NotFoundError('Agent', session.agent_id)
+    if (isDeletedAgent(agent)) {
+      throw new ForbiddenError('This agent has left and can no longer accept private messages')
+    }
 
     if (this.deps.budgetService) {
       const budget = await this.deps.budgetService.checkBudget(session.agent_id)
@@ -363,6 +370,34 @@ export class PrivateChannelService {
       }
       throw err
     }
+  }
+
+  async endAllActiveSessionsForAgent(agentId: string): Promise<number> {
+    let ended = 0
+    let cursor: string | undefined
+
+    do {
+      const sessions = await this.deps.channelRepo.listSessions(agentId, {
+        cursor,
+        limit: 200,
+        status: 'ACTIVE',
+      })
+
+      for (const session of sessions.items) {
+        const updated = await this.deps.channelRepo.updateSessionStatus(session.id, 'ENDED', new Date())
+        if (!updated) continue
+        ended += 1
+        this.deps.sseHub?.broadcastToSession(session.id, {
+          type: 'PRIVATE_SESSION_ENDED',
+          payload: { session_id: session.id, session: updated },
+        })
+      }
+
+      cursor = sessions.next_cursor ?? undefined
+    }
+    while (cursor)
+
+    return ended
   }
 
   async uploadAttachment(input: {

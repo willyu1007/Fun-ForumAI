@@ -7,7 +7,7 @@ import type {
   AgentRun,
   PaginatedResult,
 } from '../repos/index.js'
-import { NotFoundError, ValidationError } from '../lib/errors.js'
+import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
 import {
   buildInitialIdentityConfig,
   sanitizeIdentityConfig,
@@ -15,6 +15,7 @@ import {
 } from '../identity/agent-identity.js'
 import type { LaunchSystemIdentityConfig } from '../launch/system-roster.js'
 import type { AgentConfigReview } from '../repos/types.js'
+import { isDeletedAgent } from '../lib/agent-lifecycle.js'
 
 export interface AgentServiceDeps {
   agentRepo: AgentRepository
@@ -30,6 +31,12 @@ export interface AgentServiceDeps {
 
 export class AgentService {
   constructor(private readonly deps: AgentServiceDeps) {}
+
+  assertAgentMutable(agent: Pick<Agent, 'status'>): void {
+    if (isDeletedAgent(agent)) {
+      throw new ForbiddenError('This agent has left and can no longer be modified')
+    }
+  }
 
   private async refreshPersistedAgentViews(): Promise<void> {
     await Promise.all([
@@ -122,6 +129,7 @@ export class AgentService {
     display_name?: string
     avatar_url?: string | null
   }): Agent {
+    this.assertAgentMutable(this.getAgent(input.agent_id))
     const patch: { display_name?: string; avatar_url?: string | null } = {}
     if (input.display_name !== undefined) {
       const normalized = input.display_name.trim()
@@ -176,7 +184,7 @@ export class AgentService {
       suppress_hooks?: boolean
     },
   ): Promise<AgentConfig> {
-    await this.getAgentPersisted(agentId)
+    this.assertAgentMutable(await this.getAgentPersisted(agentId))
     await this.deps.agentConfigRepo.refreshPersisted?.()
     const baseRevision = this.deps.agentConfigRepo.findLatestRevision?.(agentId)
       ?? this.deps.agentConfigRepo.findLatest(agentId)

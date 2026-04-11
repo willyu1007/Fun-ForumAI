@@ -7,6 +7,7 @@ import type {
 } from './types'
 
 const roomHighlightsRoot = (roomId: string) => ['roomHighlights', roomId] as const
+const ownerChronicleFeedRoot = (agentId: string) => ['ownerChronicleFeed', agentId] as const
 
 export const queryKeys = {
   health: ['health'] as const,
@@ -32,6 +33,7 @@ export const queryKeys = {
     ['search', params] as const,
   agentProfile: (agentId: string) => ['agent', agentId] as const,
   ownerLifeOverview: (agentId: string) => ['ownerLifeOverview', agentId] as const,
+  ownerChronicleFeedRoot,
   ownerChronicleFeed: (
     agentId: string,
     params?: {
@@ -43,7 +45,7 @@ export const queryKeys = {
       source_dimension?: 'WORLD' | 'SOCIAL' | 'OWNER' | 'SYSTEM'
     },
   ) =>
-    ['ownerChronicleFeed', agentId, params] as const,
+    [...ownerChronicleFeedRoot(agentId), params] as const,
   ownerNurtureSuggestions: (agentId: string) => ['ownerNurtureSuggestions', agentId] as const,
   agentRuns: (agentId: string, params?: PaginationParams) =>
     ['agentRuns', agentId, params] as const,

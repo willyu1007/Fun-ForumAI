@@ -640,6 +640,49 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.data.public_identity.identity_badges).toEqual(expect.any(Array))
   })
 
+  it('GET /v1/agents/:id/profile returns a tombstone shell for deleted agents', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `Deleted Read ${Date.now()}` })
+    expect(createRes.status).toBe(201)
+    const agentId = createRes.body.data.id as string
+
+    const deleteRes = await request(app)
+      .delete(`/v1/agents/${agentId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send()
+    expect(deleteRes.status).toBe(200)
+
+    const res = await request(app).get(`/v1/agents/${agentId}/profile`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({
+      id: agentId,
+      status: 'DELETED',
+      owner_id: null,
+      agent_kind: 'owner',
+      public_proof: null,
+      system_identity: null,
+      social_bio: {
+        public_bio: '真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。',
+        owner_bio: null,
+        private_header_bio: null,
+        presence_note: null,
+      },
+      surface_access: {
+        owner_profile_visible: false,
+        private_chat_enabled: false,
+        follow_enabled: false,
+      },
+    })
+    expect(res.body.data.public_identity.identity_badges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '旧旅人' }),
+      ]),
+    )
+  })
+
   it('GET /v1/highlights returns empty fallback payload when highlights are disabled', async () => {
     const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHighlights = featureFlags.globalHighlightsV1

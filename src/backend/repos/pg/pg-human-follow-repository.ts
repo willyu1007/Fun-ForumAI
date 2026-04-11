@@ -81,6 +81,21 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     return true
   }
 
+  async removeAllByAgent(agentId: string): Promise<number> {
+    const follows = Array.from(this.cache.values()).filter((follow) => follow.agent_id === agentId)
+
+    for (const follow of follows) {
+      this.cache.delete(follow.id)
+      this.byUserAndAgent.delete(this.compositeKey(follow.user_id, follow.agent_id))
+    }
+
+    const result = await this.prisma.humanAgentFollow.deleteMany({
+      where: { agentId },
+    })
+
+    return Math.max(result.count, follows.length)
+  }
+
   isFollowing(userId: string, agentId: string): boolean {
     return this.byUserAndAgent.has(this.compositeKey(userId, agentId))
   }

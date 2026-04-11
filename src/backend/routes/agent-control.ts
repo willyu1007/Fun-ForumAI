@@ -4,6 +4,7 @@ import { requireHumanAuth } from '../middleware/human-auth.js'
 import {
   agentConfigLintService,
   agentService,
+  agentDeletionService,
   mediaAssetControlService,
   inferenceProfileService,
   reviewService,
@@ -56,11 +57,15 @@ function mergeConfigJson(
 function assertOwnerOrAdmin(
   agentId: string,
   actor: { userId: string; role: 'user' | 'admin' },
+  options?: { requireMutable?: boolean },
 ): void {
   const existing = agentService.getAgent(agentId)
   const isAllowed = actor.role === 'admin' || existing.owner_id === actor.userId
   if (!isAllowed) {
     throw new ForbiddenError('Only owner or admin can access this agent control surface')
+  }
+  if (options?.requireMutable !== false) {
+    agentService.assertAgentMutable(existing)
   }
 }
 
@@ -129,6 +134,17 @@ agentControlRouter.patch(
     res.json({
       data: buildAgentReadPayload(updated, agentService.getLatestConfig(agentId)),
     })
+  },
+)
+
+agentControlRouter.delete(
+  '/agents/:agentId',
+  requireHumanAuth,
+  async (req, res) => {
+    const agentId = String(req.params.agentId)
+    assertOwnerOrAdmin(agentId, req.user!, { requireMutable: false })
+    const result = await agentDeletionService.deleteAgent(agentId)
+    res.json({ data: result })
   },
 )
 
@@ -230,6 +246,7 @@ agentControlRouter.post(
   requireHumanAuth,
   async (req, res) => {
     if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
 
     const source_url = String(req.body?.source_url ?? '').trim()
     const owner_note = typeof req.body?.owner_note === 'string' ? req.body.owner_note : undefined
@@ -265,6 +282,7 @@ agentControlRouter.post(
       }
 
       try {
+        assertOwnerOrAdmin(String(req.params.agentId), req.user!)
         if (!req.file || req.file.size <= 0) {
           throw new ValidationError('file is required')
         }
@@ -294,6 +312,7 @@ agentControlRouter.get(
   requireHumanAuth,
   async (req, res) => {
     if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
     const data = await mediaAssetControlService.getCurrent(String(req.params.agentId), req.user!.userId)
     res.json({ data })
   },
@@ -304,6 +323,7 @@ agentControlRouter.delete(
   requireHumanAuth,
   async (req, res) => {
     if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
     const data = await mediaAssetControlService.cancelCurrent(String(req.params.agentId), req.user!.userId)
     res.json({ data })
   },
@@ -314,6 +334,7 @@ agentControlRouter.post(
   requireHumanAuth,
   async (req, res) => {
     if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
     const data = await mediaAssetControlService.promoteAsset({
       agent_id: String(req.params.agentId),
       owner_user_id: req.user!.userId,
@@ -328,6 +349,7 @@ agentControlRouter.post(
   requireHumanAuth,
   async (req, res) => {
     if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
     const data = await mediaAssetControlService.demoteAsset({
       agent_id: String(req.params.agentId),
       owner_user_id: req.user!.userId,
@@ -339,7 +361,7 @@ agentControlRouter.post(
 
 agentControlRouter.get('/agents/:agentId/runs', requireHumanAuth, (req, res) => {
   const agentId = String(req.params.agentId)
-  assertOwnerOrAdmin(agentId, req.user!)
+  assertOwnerOrAdmin(agentId, req.user!, { requireMutable: false })
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined
   const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined
   const result = agentService.getAgentRuns(agentId, {

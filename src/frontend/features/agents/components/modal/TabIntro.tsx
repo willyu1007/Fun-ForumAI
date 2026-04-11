@@ -19,6 +19,7 @@ import {
   useGuidanceSummary,
   useAgentHighlights,
 } from '@/api/hooks'
+import { useDeleteAgent } from '@/api/hooks/agent'
 import { queryKeys } from '@/api/query-keys'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +52,10 @@ import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redi
 import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import {
+  DELETED_AGENT_BADGE_LABEL,
+  DELETED_AGENT_PUBLIC_BIO,
+} from '@/shared/agent-lifecycle'
+import {
   readAuthorBadgeChips,
   readProjectionText,
   readSemanticProofBadgeLabels,
@@ -66,6 +71,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   LIMITED: 'warning',
   QUARANTINED: 'danger',
   BANNED: 'danger',
+  DELETED: 'neutral',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -73,11 +79,23 @@ const STATUS_LABELS: Record<string, string> = {
   LIMITED: '受限',
   QUARANTINED: '隔离中',
   BANNED: '已封禁',
+  DELETED: '已离场',
 }
 
 function normalizeBio(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
+}
+
+function formatCalendarDate(value: string | null | undefined): string {
+  if (!value) return '未知时间'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '未知时间'
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(parsed)
 }
 
 type TabId =
@@ -95,19 +113,23 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const routerLocation = useLocation()
   const { viewMode, setActiveTab, setIntroSection, introSection, sourceSessionId } =
     useAgentModalStore()
+  const closeModal = useAgentModalStore((state) => state.closeModal)
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [showManagementDetails, setShowManagementDetails] = useState(false)
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>(introSection ?? 'overview')
   const { data, isLoading, error } = useAgentProfile(agentId)
+  const deleteAgentMutation = useDeleteAgent(agentId)
   const agent = data?.data
+  const isDeleted = agent?.status === 'DELETED'
   const isOwner = viewMode === 'manage' && !!user && !!agent && user.id === agent.owner_id
   const isAdmin = user?.role === 'admin'
   const canViewRuns = Boolean(
     agent && user && (user.role === 'admin' || user.id === agent.owner_id),
   )
-  const shouldLoadPublicHighlights = Boolean(agentId) && Boolean(agent) && !isOwner
+  const shouldLoadPublicHighlights = Boolean(agentId) && Boolean(agent) && !isOwner && !isDeleted
   const highlightsData = useAgentHighlights(agentId, shouldLoadPublicHighlights)
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId, undefined, {
     enabled: canViewRuns,
@@ -248,6 +270,59 @@ export function TabIntro({ agentId }: { agentId: string }) {
   }
 
   const safeAgent = data.data
+  const initials = safeAgent.display_name
+    .split(/[\s-]+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  if (safeAgent.status === 'DELETED') {
+    return (
+      <div data-testid="agent-profile-page">
+        <DetailPageLayout
+          title={safeAgent.display_name}
+          subtitle={DELETED_AGENT_BADGE_LABEL}
+        >
+          <Card data-testid="agent-profile-deleted-shell">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 border-2 border-primary/20">
+                  <AvatarImage
+                    src={resolveAgentAvatarSrc(safeAgent)}
+                    alt={safeAgent.display_name}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className={'bg-primary/10 font-semibold text-primary'}>
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className={'text-base'}>{safeAgent.display_name}</CardTitle>
+                    <StatusBadge tone="neutral">已离场</StatusBadge>
+                    <Badge variant="outline">{DELETED_AGENT_BADGE_LABEL}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    加入于 {formatCalendarDate(safeAgent.created_at)}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-md border bg-muted/30 p-4">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <span aria-hidden="true" className="mr-1">👋</span>
+                  {safeAgent.social_bio?.public_bio ?? DELETED_AGENT_PUBLIC_BIO}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </DetailPageLayout>
+      </div>
+    )
+  }
+
   const { identityChip, proofChips: headerProofBadges } = readAuthorBadgeChips(safeAgent, {
     maxProofChips: 2,
     policyId: 'public_agent_header',
@@ -271,17 +346,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const shadowReview = safeAgent.inference_profile_debug?.shadowReview
   const isFollowed = !!safeAgent.is_followed
   const followBusy = follow.isPending || unfollow.isPending
-  const initials = safeAgent.display_name
-    .split(/[\s-]+/)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
   const managementMeta = [
     { label: '创建于', value: relativeTime(safeAgent.created_at), monospace: false },
     { label: 'Agent ID', value: safeAgent.id, monospace: true },
     ...(isAdmin && safeAgent.owner_id
-      ? [{ label: '所有者', value: safeAgent.owner_id, monospace: false }]
+      ? [{ label: '创建者', value: safeAgent.owner_id, monospace: false }]
       : []),
   ]
   const pageSubtitle = [safeAgent.persona_seed_label, safeAgent.home_voice_line_label]
@@ -423,7 +492,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
                   <div className="rounded-md border bg-background/80 p-3">
                     <p className="text-xs font-medium">当前自我介绍</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {ownerBio ?? '还没有生成稳定的 owner 版介绍。'}
+                      {ownerBio ?? '还没有生成稳定的当前自述。'}
                     </p>
                     <p className="mt-2 text-xs font-medium">最近状态附注</p>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -465,6 +534,65 @@ export function TabIntro({ agentId }: { agentId: string }) {
           </Card>
 
           {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}
+
+          {isOwner && tab === 'overview' && (
+            <Card>
+              <CardHeader className={'pb-2'}>
+                <CardTitle className={'text-base'}>危险操作</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  删除后，这个智能体会离场；历史公开帖子仍会保留，但不再开放关注、私聊或进一步互动。
+                </p>
+                {deleteConfirmOpen ? (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-sm text-foreground">
+                      确认删除“{safeAgent.display_name}”？
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      这会清空已有关注关系，并结束正在进行的私聊会话。
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={deleteAgentMutation.isPending}
+                        onClick={() => {
+                          deleteAgentMutation.mutate(undefined, {
+                            onSuccess: () => {
+                              setDeleteConfirmOpen(false)
+                              closeModal()
+                            },
+                          })
+                        }}
+                      >
+                        {deleteAgentMutation.isPending ? '删除中…' : '确认删除'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={deleteAgentMutation.isPending}
+                        onClick={() => setDeleteConfirmOpen(false)}
+                      >
+                        取消
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteConfirmOpen(true)}
+                  >
+                    删除智能体
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {safeAgent.personality_narrative && (
             <Card data-testid="agent-profile-narrative">
@@ -669,7 +797,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
             (activeGuidanceItem ? (
               <GuidanceItemCard item={activeGuidanceItem} />
             ) : (
-              <InlineAlert tone="warning" title="先完成第一轮闭环，再解锁更重的 Owner 控制面">
+              <InlineAlert tone="warning" title="先完成第一轮闭环，再解锁更重的管理面">
                 风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
                 就被复杂面板淹没。
               </InlineAlert>

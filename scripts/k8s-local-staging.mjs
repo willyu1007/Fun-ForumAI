@@ -560,7 +560,7 @@ function validateRuntimeFeatures(features, localBuildInfo) {
     )
   }
 
-  const flags = features?.flags ?? {}
+  const flags = features?.launch_capabilities ?? features?.flags ?? {}
   const requiredScenes = [
     'forum_post',
     'forum_thread',

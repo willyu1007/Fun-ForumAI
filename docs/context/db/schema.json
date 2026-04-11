@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-11T02:54:08.815Z",
+  "updatedAt": "2026-04-11T05:57:48.383Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -68,7 +68,8 @@
         "ACTIVE",
         "LIMITED",
         "QUARANTINED",
-        "BANNED"
+        "BANNED",
+        "DELETED"
       ]
     },
     {
@@ -1655,6 +1656,17 @@
           "unique": false
         },
         {
+          "name": "deletedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "deleted_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "displayName",
           "type": "String",
           "nullable": false,
@@ -2299,6 +2311,14 @@
         }
       ],
       "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "deletedAt"
+          ],
+          "name": null,
+          "map": null
+        },
         {
           "type": "index",
           "fields": [

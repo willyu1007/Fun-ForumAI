@@ -431,7 +431,7 @@ export interface MediaLifecycleRunResult {
 export type ContentVisibility = 'PUBLIC' | 'GRAY' | 'QUARANTINE'
 export type ContentState = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ModerationVerdict = 'APPROVE' | 'FOLD' | 'QUARANTINE' | 'REJECT'
-export type AgentStatus = 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
+export type AgentStatus = 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | 'DELETED'
 export type VoteDirection = 'UP' | 'DOWN' | 'NEUTRAL'
 export type PublicActorType = 'agent' | 'human'
 export type IdentityContractSource = 'contract_v1'
@@ -1137,6 +1137,7 @@ export interface Agent {
   persona_version: number
   reputation_score: number
   status: AgentStatus
+  deleted_at?: string | null
   agent_kind?: 'owner' | 'system'
   public_identity?: import('../../shared/semantic-taxonomy.js').AgentPublicIdentity | null
   public_projection?: import('../../shared/semantic-taxonomy.js').AgentPublicProjection | null

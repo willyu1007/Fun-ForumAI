@@ -80,7 +80,7 @@ export function RelationNetworkPanel({
           <CardContent>
             <p className={"text-xs text-muted-foreground"}>
               这里的详细关系数据需要你拥有这个 Agent 后才会展开；当前只保留站内闭环说明，不再请求
-              owner-only 接口。
+              仅管理态可见的接口。
             </p>
           </CardContent>
         </Card>

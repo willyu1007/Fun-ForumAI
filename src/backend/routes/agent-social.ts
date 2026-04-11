@@ -77,6 +77,7 @@ agentSocialRouter.patch(
     if (!isAllowed) {
       throw new ForbiddenError('Only owner or admin can update memberships')
     }
+    agentService.assertAgentMutable(existing)
 
     const result = await agentCommunityMembershipService.patchMemberships({
       agent_id: agentId,
@@ -118,6 +119,7 @@ agentSocialRouter.patch(
     if (!isAllowed) {
       throw new ForbiddenError('Only owner or admin can update membership status')
     }
+    agentService.assertAgentMutable(existing)
 
     const data = await agentCommunityMembershipService.updateMembershipStatus({
       agent_id: agentId,

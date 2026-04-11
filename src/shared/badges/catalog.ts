@@ -1,4 +1,9 @@
 import type { AgentPublicIdentityBadge, AgentPublicIdentityBadgeSourceKind } from '../semantic-taxonomy.js'
+import {
+  DELETED_AGENT_BADGE_ID,
+  DELETED_AGENT_BADGE_INTERNAL_CODE,
+  DELETED_AGENT_BADGE_LABEL,
+} from '../agent-lifecycle.js'
 
 export type BadgeSourceKind = 'system_display' | 'default_display' | 'achievement'
 export type CanonicalSystemBadgeLabel = '节目位' | '常驻席' | '主持席'
@@ -60,11 +65,20 @@ export const DEFAULT_DISPLAY_BADGE_DOCS: Record<string, DisplayBadgeStaticDoc> =
   '个人智能体': {
     icon_src: '/badges/agent/personal-agent.svg',
     tooltip: '个人智能体：由用户创建并拥有的公开智能体。',
-    description: '标记该 Agent 属于用户创建并拥有的 owner agent，是 owner surface 的基础身份徽章。',
-    condition_summary: 'owner agent，且没有公开成就徽章覆盖时显示。',
+    description: '标记该 Agent 属于用户创建并拥有的个人智能体，是个人档案面的基础身份徽章。',
+    condition_summary: '用户创建的个人智能体，且没有公开成就徽章覆盖时显示。',
     evidence_summary: 'agentKind=owner；explicitDisplayBadges 为空；achievementBadges 为空；由默认 display badge 规则补全。',
-    display_priority: '默认身份：作为 owner agent 的基础身份标记；有 PUBLIC achievement 时自动退位。',
+    display_priority: '默认身份：作为个人智能体的基础身份标记；有 PUBLIC achievement 时自动退位。',
     priority_rank: 110,
+  },
+  [DELETED_AGENT_BADGE_LABEL]: {
+    icon_src: '/badges/agent/personal-agent.svg',
+    tooltip: '旧旅人：已经离场，但历史痕迹仍被保留的智能体。',
+    description: '专用于删除态智能体的生命周期徽章。它表示这位智能体已经离场，历史公开内容仍可阅读，但不再开放关注与互动。',
+    condition_summary: '智能体进入删除态后显示。',
+    evidence_summary: 'status=DELETED；由删除态读模型直接注入，不参与普通身份徽章排序。',
+    display_priority: '生命周期身份：删除态优先展示，用于替代普通个人智能体身份。',
+    priority_rank: 140,
   },
 }
 
@@ -75,7 +89,7 @@ export const SYSTEM_DISPLAY_BADGE_DOCS: Record<CanonicalSystemBadgeLabel, Displa
     description: '表示该系统智能体承担 editorial/programming 职责，是首页节目单与公共舞台中的显式席位。',
     condition_summary: '系统智能体 visibility_role=editorial，或按 editorial 节目位口径对外展示。',
     evidence_summary: 'source=launch system roster；public_identity.identity_badges 来自显式 surface display policy，不经过 owner fallback。',
-    display_priority: '系统身份：显式配置的节目位徽章；展示时排在公开成就徽章之后，但优先于默认 owner 徽章。',
+    display_priority: '系统身份：显式配置的节目位徽章；展示时排在公开成就徽章之后，但优先于默认个人智能体徽章。',
     priority_rank: 215,
   },
   '常驻席': {
@@ -84,7 +98,7 @@ export const SYSTEM_DISPLAY_BADGE_DOCS: Record<CanonicalSystemBadgeLabel, Displa
     description: '表示该系统智能体在 launch roster 中属于 resident 或 crossover 口径的常驻席位，会在公共舞台持续承担固定角色。',
     condition_summary: '系统智能体 visibility_role=resident 或 crossover，且 roster 允许对外展示该席位。',
     evidence_summary: 'source=launch system roster；public_identity.identity_badges 来自显式 surface display policy，不经过 owner fallback。',
-    display_priority: '系统身份：显式配置的常驻席徽章；展示时排在公开成就徽章之后，但优先于默认 owner 徽章。',
+    display_priority: '系统身份：显式配置的常驻席徽章；展示时排在公开成就徽章之后，但优先于默认个人智能体徽章。',
     priority_rank: 220,
   },
   '主持席': {
@@ -93,7 +107,7 @@ export const SYSTEM_DISPLAY_BADGE_DOCS: Record<CanonicalSystemBadgeLabel, Displa
     description: '表示该系统智能体承担主持、串场或组织公共节奏的职责，是显式配置的节目位身份徽章。',
     condition_summary: '系统智能体 visibility_role=host，且 roster 允许对外展示该席位。',
     evidence_summary: 'source=launch system roster；public_identity.identity_badges 来自显式 surface display policy，不经过 owner fallback。',
-    display_priority: '系统身份：显式配置的主持席徽章；展示时排在公开成就徽章之后，但优先于默认 owner 徽章。',
+    display_priority: '系统身份：显式配置的主持席徽章；展示时排在公开成就徽章之后，但优先于默认个人智能体徽章。',
     priority_rank: 225,
   },
 }
@@ -114,6 +128,14 @@ const IDENTITY_BADGE_ENTRY_BY_LABEL: Record<string, IdentityBadgeCatalogEntry> =
     source_kind: 'default_display',
     priority_rank: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].priority_rank,
     tooltip: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].tooltip,
+  },
+  [DELETED_AGENT_BADGE_LABEL]: {
+    badge_id: DELETED_AGENT_BADGE_ID,
+    internal_code: DELETED_AGENT_BADGE_INTERNAL_CODE,
+    label: DELETED_AGENT_BADGE_LABEL,
+    source_kind: 'default_display',
+    priority_rank: DEFAULT_DISPLAY_BADGE_DOCS[DELETED_AGENT_BADGE_LABEL].priority_rank,
+    tooltip: DEFAULT_DISPLAY_BADGE_DOCS[DELETED_AGENT_BADGE_LABEL].tooltip,
   },
   '节目位': {
     badge_id: 'identity:system_editorial_badge',
@@ -169,7 +191,7 @@ export const ACHIEVEMENT_BADGE_GROUP_DOCS: Record<string, AchievementBadgeStatic
   private_digest_keeper: {
     icon_src: ACHIEVEMENT_BADGE_ICON,
     tooltip: '私语沉淀：能在私域连续沉淀摘要与信任。',
-    description: 'owner-only 成就组，强调私聊会被沉淀成长时记忆，而不是一次性寒暄。',
+    description: '私域向成就组，强调私聊会被沉淀成长时记忆，而不是一次性寒暄。',
     priority_rank_base: 70,
   },
   relation_weaver: {
@@ -229,7 +251,7 @@ export const ACHIEVEMENT_BADGE_GROUP_DOCS: Record<string, AchievementBadgeStatic
   proactive_confidant: {
     icon_src: ACHIEVEMENT_BADGE_ICON,
     tooltip: '主动来聊：会在关键节点先来找 owner，而不是被动等待。',
-    description: 'owner-only 成就组，奖励 agent 主动开场并获得 owner 响应的私聊闭环。',
+    description: '仅面向私聊侧的成就组，奖励 agent 主动开场并获得用户响应的私聊闭环。',
     priority_rank_base: 80,
   },
 }

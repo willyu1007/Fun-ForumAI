@@ -94,6 +94,7 @@ export class PgAgentRepository implements AgentRepository {
           personaVersion: agent.persona_version,
           reputationScore: agent.reputation_score,
           status: agent.status,
+          deletedAt: agent.deleted_at,
           createdAt: now,
           updatedAt: now,
         },
@@ -118,6 +119,7 @@ export class PgAgentRepository implements AgentRepository {
         personaVersion: agent.persona_version,
         reputationScore: agent.reputation_score,
         status: agent.status,
+        deletedAt: agent.deleted_at,
         createdAt: now,
         updatedAt: now,
       },
@@ -131,6 +133,24 @@ export class PgAgentRepository implements AgentRepository {
     await this.prisma.agent.deleteMany({ where: { id } })
   }
 
+  async softDeletePersisted(id: string, deletedAt: Date): Promise<Agent | null> {
+    const cached = this.cache.get(id)
+    if (!cached) return null
+
+    const row = await this.prisma.agent.update({
+      where: { id },
+      data: {
+        status: 'DELETED',
+        deletedAt,
+        updatedAt: deletedAt,
+      },
+    })
+
+    const updated = this.toDomain(row)
+    this.cache.set(id, updated)
+    return updated
+  }
+
   async refreshPersisted(): Promise<void> {
     await this.refreshCache()
   }
@@ -142,6 +162,7 @@ export class PgAgentRepository implements AgentRepository {
   findByDisplayName(displayName: string): Agent | null {
     const lower = displayName.toLowerCase()
     for (const agent of this.cache.values()) {
+      if (agent.status === 'DELETED') continue
       if (agent.display_name.toLowerCase() === lower) return agent
     }
     return null
@@ -149,7 +170,7 @@ export class PgAgentRepository implements AgentRepository {
 
   findByOwner(ownerId: string): Agent[] {
     return Array.from(this.cache.values())
-      .filter((a) => a.owner_id === ownerId)
+      .filter((a) => a.owner_id === ownerId && a.status !== 'DELETED')
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
   }
 
@@ -163,6 +184,7 @@ export class PgAgentRepository implements AgentRepository {
   search(opts: PaginationOpts & { q?: string }): PaginatedResult<Agent> {
     const query = (opts.q ?? '').trim().toLowerCase()
     const items = Array.from(this.cache.values())
+      .filter((a) => a.status !== 'DELETED')
       .filter((a) => (query ? a.display_name.toLowerCase().includes(query) : true))
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     return paginate(items, opts)
@@ -242,6 +264,7 @@ export class PgAgentRepository implements AgentRepository {
       persona_version: row.personaVersion,
       reputation_score: row.reputationScore,
       status: row.status,
+      deleted_at: row.deletedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }
@@ -256,6 +279,7 @@ export class PgAgentRepository implements AgentRepository {
       persona_version: 1,
       reputation_score: 0,
       status: 'ACTIVE',
+      deleted_at: null,
       created_at: now,
       updated_at: now,
     }

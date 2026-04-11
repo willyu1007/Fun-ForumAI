@@ -261,7 +261,7 @@ export class OwnerBreathingSignalsService {
         : '最近从你这里带走的是一层还没完全成形的陪伴感。'
 
     return {
-      headline: `${agent.display_name} 还带着一点只对 owner 可见的投影余温。`,
+      headline: `${agent.display_name} 还带着一点只对你可见的投影余温。`,
       carryover_theme: carryoverTheme,
       emotional_residue_label: mood.residue,
       public_echo_line: clampText(

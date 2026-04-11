@@ -5,7 +5,8 @@ export interface Agent {
   avatar_url: string | null
   persona_version: number
   reputation_score: number
-  status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
+  status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | 'DELETED'
+  deleted_at?: Date | null
   created_at: Date
   updated_at: Date
 }
