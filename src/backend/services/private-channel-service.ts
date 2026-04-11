@@ -25,6 +25,10 @@ import {
   type PersonaObservationV1,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import {
+  formatChatReplyForReadability,
+  sanitizeChatOutput,
+} from '../runtime/chat-output-sanitizer.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { buildPromptBudgetSummary } from '../runtime/prompt-budget-summary.js'
 import type {
@@ -118,6 +122,15 @@ export interface PrivateChannelServiceDeps {
     human_message_id?: string | null
     opening_message_id?: string | null
   }) => Promise<void> | void
+}
+
+function normalizeVisibleReplyText(text: string, errorCode: string): string {
+  const sanitized = sanitizeChatOutput(text)
+  const formatted = formatChatReplyForReadability(sanitized.text)
+  if (!formatted || sanitized.looks_meta) {
+    throw new AppError(502, 'Visible reply normalization failed', errorCode)
+  }
+  return formatted
 }
 
 export class PrivateChannelService {
@@ -691,6 +704,10 @@ export class PrivateChannelService {
       allowCrossFamily: false,
     })
     const latencyMs = Date.now() - startMs
+    const normalizedContent = normalizeVisibleReplyText(
+      llmResponse.content,
+      'PRIVATE_REPLY_INVALID_OUTPUT',
+    )
     const identity = this.resolveObservationIdentity(input.session.agent_id)
     const observation = buildPersonaObservation({
       sourceCallsiteId: 'private-channel-reply',
@@ -715,7 +732,7 @@ export class PrivateChannelService {
     const outboundPolicy = this.deps.policyGatewayService
       ? await this.deps.policyGatewayService.evaluate({
           channel: 'private_outbound',
-          text: llmResponse.content,
+          text: normalizedContent,
           author_agent_id: input.session.agent_id,
           user_id: input.humanUserId,
           target_type: 'private_session',
@@ -729,7 +746,12 @@ export class PrivateChannelService {
       llmResponse,
       latencyMs,
       observation,
-      finalContent: outboundPolicy?.final_text ?? llmResponse.content,
+      finalContent: outboundPolicy?.final_text
+        ? normalizeVisibleReplyText(
+            outboundPolicy.final_text,
+            'PRIVATE_REPLY_INVALID_OUTPUT',
+          )
+        : normalizedContent,
       deliveryStatus: outboundPolicy?.action === 'block'
         ? 'REFUSED'
         : outboundPolicy?.delivery_status ?? 'DELIVERED',

@@ -20,11 +20,16 @@ import {
   type PersonaObservationV1,
   recordPersonaObservation,
 } from '../runtime/persona-observation.js'
+import {
+  formatChatReplyForReadability,
+  sanitizeChatOutput,
+} from '../runtime/chat-output-sanitizer.js'
 import type { PolicyGatewayService } from './policy-gateway-service.js'
 import type { IdentityGateService } from './identity-gate-service.js'
 import type { MediaAssetService } from '../media/media-asset-service.js'
 import type { PrivateMessage, PrivateSession } from '../repos/types/private-channel.js'
 import { config } from '../lib/config.js'
+import { AppError } from '../lib/errors.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
@@ -42,6 +47,15 @@ export interface ProactiveInteractionDeps {
   policyGatewayService?: PolicyGatewayService | null
   identityGateService?: IdentityGateService | null
   mediaAssetService?: MediaAssetService | null
+}
+
+function normalizeVisibleOpeningText(text: string, errorCode: string): string {
+  const sanitized = sanitizeChatOutput(text)
+  const formatted = formatChatReplyForReadability(sanitized.text)
+  if (!formatted || sanitized.looks_meta) {
+    throw new AppError(502, 'Visible proactive opening normalization failed', errorCode)
+  }
+  return formatted
 }
 
 export class ProactiveInteractionService {
@@ -295,7 +309,9 @@ export class ProactiveInteractionService {
       : null
     if (policyDecision?.action === 'block') return null
 
-    const effectiveOpeningContent = policyDecision?.final_text ?? input.openingMessage.content
+    const effectiveOpeningContent = policyDecision?.final_text
+      ? normalizeVisibleOpeningText(policyDecision.final_text, 'PROACTIVE_DM_INVALID_OUTPUT')
+      : input.openingMessage.content
     const session = await this.deps.channelRepo.createSession({
       agent_id: input.agentId,
       human_user_id: input.humanUserId,
@@ -449,9 +465,13 @@ export class ProactiveInteractionService {
       allowFallbackWithinLine: true,
       allowCrossFamily: false,
     })
+    const normalizedContent = normalizeVisibleOpeningText(
+      response.content,
+      'PROACTIVE_DM_INVALID_OUTPUT',
+    )
 
     return {
-      content: response.content,
+      content: normalizedContent,
       traceId,
       renderDecision: composed.runtimeEnvelope?.renderTierDecision ?? null,
       usage: response.usage,

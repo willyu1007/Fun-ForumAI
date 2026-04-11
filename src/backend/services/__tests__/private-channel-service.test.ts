@@ -329,7 +329,7 @@ describe('PrivateChannelService', () => {
     }
 
     const gatewayGenerate = vi.fn(async (_input: { variables: Record<string, string> }) => ({
-      content: '你好呀',
+      content: '[微微点头]（双手交叉放在身前）你好呀',
       messages: [],
       usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
       latencyMs: 12,
@@ -512,7 +512,7 @@ describe('PrivateChannelService', () => {
       } as never,
       llmGateway: {
         generateVisibleText: vi.fn(async () => ({
-          content: '已准备好继续。',
+          content: '[看向你]（略作思索）已准备好继续。',
           messages: [],
           usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
           latencyMs: 18,

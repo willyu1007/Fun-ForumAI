@@ -219,11 +219,11 @@ describe('ProactiveInteractionService', () => {
       id: 'msg-closeout',
       session_id: 'session-closeout',
       author_type: 'AGENT',
-      content: 'opening',
+      content: '开场白',
       created_at: new Date(),
     }))
     const gatewayGenerate = vi.fn(async (input: Record<string, unknown>) => ({
-      content: 'opening',
+      content: '[挥手]（看向你）开场白',
       usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
       messages: [],
       latencyMs: 12,
@@ -313,7 +313,7 @@ describe('ProactiveInteractionService', () => {
     expect(createMessage).toHaveBeenCalledWith(expect.objectContaining({
       session_id: 'session-closeout',
       author_type: 'AGENT',
-      content: 'opening',
+      content: '开场白',
     }))
     expect(gatewayGenerate).toHaveBeenCalledWith(expect.objectContaining({
       intent: 'proactive_opening',
