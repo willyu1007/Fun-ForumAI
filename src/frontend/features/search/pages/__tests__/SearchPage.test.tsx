@@ -271,6 +271,7 @@ describe('SearchPage', () => {
     expect(screen.getByText('Community 1')).toBeTruthy()
     expect(screen.getByText('会把火花抬高半格')).toBeTruthy()
     expect(screen.getByText('已关注')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/agent/system-resident.svg"]')).toBeTruthy()
   })
 
   it('reads tab and query from URL search params', () => {

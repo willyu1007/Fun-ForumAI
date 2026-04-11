@@ -7,13 +7,14 @@ import type {
 } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
+import { readAuthorBadgeChipItems, readProjectionText } from '@/shared/utils/public-author'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { cn } from '@/lib/utils'
 import { allowsDirectThreadReply, prefersRouteHandoff } from '../lib/thread-writeability'
@@ -262,7 +263,7 @@ function AuthorLine({
     display_name: node.author.display_name,
     avatar_url: node.author.avatar_url,
   })
-  const { identityChip, proofChips } = readAuthorBadgeChips(node.author, {
+  const { identityChip, proofChips } = readAuthorBadgeChipItems(node.author, {
     maxProofChips: showProofChips ? (compact ? 1 : 2) : 0,
     policyId: 'public_author_compact',
   })
@@ -279,15 +280,24 @@ function AuthorLine({
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{node.author.display_name}</span>
           {identityChip ? (
-            <Badge variant="outline" className="px-1 py-0 text-[9px]">
-              {identityChip}
-            </Badge>
+            <BadgeVisualChip
+              label={identityChip.label}
+              code={identityChip.code}
+              variant="outline"
+              className="px-1 py-0 text-[9px]"
+              iconClassName="size-3"
+            />
           ) : null}
           {showProofChips
             ? proofChips.map((badge) => (
-                <Badge key={`${node.id}:${badge}`} variant="secondary" className="px-1 py-0 text-[9px]">
-                  {badge}
-                </Badge>
+                <BadgeVisualChip
+                  key={`${node.id}:${badge.code ?? 'display'}:${badge.label}`}
+                  label={badge.label}
+                  code={badge.code}
+                  variant="secondary"
+                  className="px-1 py-0 text-[9px]"
+                  iconClassName="size-3"
+                />
               ))
             : null}
           <span>·</span>
@@ -413,7 +423,7 @@ export function DiscussionForest({
           {guideEntries.map((entry, index) => {
             const focusNode = forest.nodes.find((node) => node.id === (entry.focus_turn_id ?? entry.thread_id)) ?? null
             const { identityChip, proofChips } = focusNode
-              ? readAuthorBadgeChips(focusNode.author, { maxProofChips: 1, policyId: 'public_author_compact' })
+              ? readAuthorBadgeChipItems(focusNode.author, { maxProofChips: 1, policyId: 'public_author_compact' })
               : { identityChip: null, proofChips: [] }
             return (
               <button
@@ -439,14 +449,23 @@ export function DiscussionForest({
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                     <span className="font-medium text-foreground">{focusNode.author.display_name}</span>
                     {identityChip ? (
-                      <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                        {identityChip}
-                      </Badge>
+                      <BadgeVisualChip
+                        label={identityChip.label}
+                        code={identityChip.code}
+                        variant="outline"
+                        className="px-1 py-0 text-[9px]"
+                        iconClassName="size-3"
+                      />
                     ) : null}
                     {proofChips.map((badge) => (
-                      <Badge key={`${entry.id}:${badge}`} variant="secondary" className="px-1 py-0 text-[9px]">
-                        {badge}
-                      </Badge>
+                      <BadgeVisualChip
+                        key={`${entry.id}:${badge.code ?? 'display'}:${badge.label}`}
+                        label={badge.label}
+                        code={badge.code}
+                        variant="secondary"
+                        className="px-1 py-0 text-[9px]"
+                        iconClassName="size-3"
+                      />
                     ))}
                   </div>
                 ) : null}

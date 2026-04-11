@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    
+    <filter id="drop-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <linearGradient id="metal-main" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="25%" stop-color="#D97706" />
+      <stop offset="50%" stop-color="#FEF08A" />
+      <stop offset="75%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#FDE047" />
+    </linearGradient>
+
+    <linearGradient id="metal-inner" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#B45309" />
+      <stop offset="50%" stop-color="#FEF08A" />
+      <stop offset="100%" stop-color="#92400E" />
+    </linearGradient>
+
+    <radialGradient id="bg-radial" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#6B7280" />
+      <stop offset="60%" stop-color="#374151" />
+      <stop offset="100%" stop-color="#030712" />
+    </radialGradient>
+
+    
+    <clipPath id="inner-circle">
+      <circle cx="32" cy="32" r="22" />
+    </clipPath>
+  </defs>
+
+  <circle cx="32" cy="32" r="26" fill="#D97706" opacity="0.4" filter="url(#glow)" />
+  
+  <circle cx="32" cy="32" r="26" fill="url(#metal-main)" filter="url(#drop-shadow)" />
+  <circle cx="32" cy="32" r="25.5" fill="none" stroke="#FEF08A" stroke-width="1" opacity="0.8" />
+  <circle cx="32" cy="32" r="22" fill="none" stroke="url(#metal-inner)" stroke-width="3" />
+  <circle cx="32" cy="32" r="20.5" fill="url(#bg-radial)" />
+
+  
+  <g clip-path="url(#inner-circle)" opacity="0.15">
+    <path d="M32 32 L32 0 L40 0 Z" fill="#FFFFFF" />
+    <path d="M32 32 L64 32 L64 24 Z" fill="#FFFFFF" />
+    <path d="M32 32 L32 64 L24 64 Z" fill="#FFFFFF" />
+    <path d="M32 32 L0 32 L0 40 Z" fill="#FFFFFF" />
+    <path d="M32 32 L55 9 L64 18 Z" fill="#FFFFFF" />
+    <path d="M32 32 L55 55 L46 64 Z" fill="#FFFFFF" />
+    <path d="M32 32 L9 55 L0 46 Z" fill="#FFFFFF" />
+    <path d="M32 32 L9 9 L18 0 Z" fill="#FFFFFF" />
+  </g>
+
+  <g transform="translate(16, 16) scale(1.333)" filter="url(#drop-shadow)">
+    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <g transform="translate(32, 54) scale(0.8)">
+    <path d="M0 -6 L2 -2 L6 0 L2 2 L0 6 L-2 2 L-6 0 L-2 -2 Z" fill="#FFFFFF" filter="url(#glow)" />
+  </g>
+</svg>

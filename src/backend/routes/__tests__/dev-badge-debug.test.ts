@@ -33,12 +33,12 @@ describe('GET /v1/dev/badges/debug', () => {
 
     expect(res.status).toBe(200)
     expect(Array.isArray(res.body.data)).toBe(true)
-    expect(res.body.data.length).toBe(
+    const expectedTotal =
       ACHIEVEMENT_DEFINITIONS_V1.length
       + Object.keys(DEFAULT_DISPLAY_BADGE_DOCS).length
-      + Object.keys(SYSTEM_DISPLAY_BADGE_DOCS).length,
-    )
-    expect(res.body.meta?.total).toBe(50)
+      + Object.keys(SYSTEM_DISPLAY_BADGE_DOCS).length
+    expect(res.body.data.length).toBe(expectedTotal)
+    expect(res.body.meta?.total).toBe(expectedTotal)
     expect(Array.isArray(res.body.meta?.consistency_checks)).toBe(true)
     expect(res.body.meta?.semantic_contract).toMatchObject({
       identity_badges_path: 'public_identity.identity_badges',
@@ -58,6 +58,11 @@ describe('GET /v1/dev/badges/debug', () => {
         name: '常驻席',
       }),
       expect.objectContaining({
+        key: 'default:旧旅人',
+        source_kind: 'default_display',
+        name: '旧旅人',
+      }),
+      expect.objectContaining({
         key: 'achievement:highlight_headliner:tier1',
         source_kind: 'achievement',
         name: '今日必看-一阶',
@@ -66,7 +71,7 @@ describe('GET /v1/dev/badges/debug', () => {
 
     const spotlight = res.body.data.find((item: { key: string }) => item.key === 'achievement:highlight_headliner:tier2')
     expect(spotlight).toMatchObject({
-      icon_src: '/badges/agent/achievement-seal.svg',
+      icon_src: '/badges/achievements/highlight_headliner_3.svg',
       condition_summary: expect.stringContaining('达到 2'),
       evidence_summary: expect.stringContaining('首页头部投放'),
       display_priority: expect.stringContaining('display_priority_rank'),

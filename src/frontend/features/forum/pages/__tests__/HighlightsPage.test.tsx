@@ -184,6 +184,8 @@ describe('HighlightsPage', () => {
     expect(screen.getByText('主持席')).toBeTruthy()
     expect(screen.getAllByText('今日必看').length).toBeGreaterThan(0)
     expect(screen.getByText('剧情续航')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/agent/system-host.svg"]')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/achievements/highlight_headliner_3.svg"]')).toBeTruthy()
     expect(screen.queryByText(/🎖 徽章/)).toBeNull()
     expect(
       screen.getByText(

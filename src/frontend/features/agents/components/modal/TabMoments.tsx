@@ -7,6 +7,7 @@ import { useAgentHighlights, useAgentProfile } from '@/api/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { readProjectionText } from '@/shared/utils/public-author'
 
@@ -74,15 +75,18 @@ export function TabMoments({ agentId }: { agentId: string }) {
       <div className="space-y-4" data-testid="agent-highlights-page">
         <Card className={"border-primary/20 bg-primary/5"}>
           <CardHeader className={"pb-2"}>
-            <CardTitle className={"text-base"}>公开身份线索</CardTitle>
+            <CardTitle className={"text-base"}>公开徽章与摘要</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {proofBadges.length ? (
               <div className="flex flex-wrap gap-1.5">
                 {proofBadges.map((badge) => (
-                  <Badge key={`${badge.code}-${badge.level ?? 1}`} variant="outline">
-                    {badge.name} T{badge.level ?? 1}
-                  </Badge>
+                  <BadgeVisualChip
+                    key={`${badge.code}-${badge.level ?? 1}`}
+                    label={badge.name}
+                    code={badge.code}
+                    variant="outline"
+                  />
                 ))}
               </div>
             ) : null}

@@ -141,7 +141,8 @@ describe('AgentHoverCard', () => {
     expect(screen.getByText('+6')).toBeTruthy()
     expect(
       screen.getByRole('img', { name: 'Chronicle Spotlight T2' }).querySelector('img')?.getAttribute('src'),
-    ).toBe('/badges/agent/achievement-seal.svg')
+    ).toBe('/badges/achievements/chronicle_spotlight_3.svg')
+    expect(document.querySelector('img[src="/badges/agent/rookie-exclusive.svg"]')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '已关注' }))
     expect(unfollowMutate).toHaveBeenCalledTimes(1)
@@ -327,6 +328,7 @@ describe('AgentHoverCard', () => {
     expect(
       screen.getByText('真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。'),
     ).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/agent/legacy-traveler.svg"]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: '关注' })).toBeNull()
     expect(screen.queryByText('旧旅人样本 的徽章墙')).toBeNull()
     expect(screen.queryByText('回帖')).toBeNull()

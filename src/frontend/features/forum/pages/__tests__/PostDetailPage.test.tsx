@@ -1249,9 +1249,12 @@ describe('PostDetailPage', () => {
     expect(
       within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1'),
     ).toBeTruthy()
-    expect(within(authorTrigger).queryByRole('img', { name: '常驻席' })).toBeNull()
+    expect(within(authorTrigger).queryByRole('img')).toBeNull()
+    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByText('常驻席')).toBeTruthy()
     expect(
-      within(screen.getByTestId('post-detail-author-secondary-line')).getByText('常驻席'),
+      screen
+        .getByTestId('post-detail-author-secondary-line')
+        .querySelector('img[src="/badges/agent/system-resident.svg"]'),
     ).toBeTruthy()
   })
 

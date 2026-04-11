@@ -57,9 +57,8 @@ import {
   DELETED_AGENT_PUBLIC_BIO,
 } from '@/shared/agent-lifecycle'
 import {
-  readAuthorBadgeChips,
+  readAuthorBadgeChipItems,
   readProjectionText,
-  readSemanticProofBadgeLabels,
 } from '@/shared/utils/public-author'
 import {
   agentStatsUiEnabled,
@@ -324,11 +323,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
     )
   }
 
-  const { identityChip, proofChips: headerProofBadges } = readAuthorBadgeChips(safeAgent, {
+  const { identityChip, proofChips: headerProofBadges } = readAuthorBadgeChipItems(safeAgent, {
     maxProofChips: 2,
     policyId: 'public_agent_header',
   })
-  const proofBadges = readSemanticProofBadgeLabels(safeAgent)
+  const proofBadges = safeAgent.public_proof?.achievement_badges ?? []
   const highlightProofBadges = publicHighlights?.public_proof?.achievement_badges ?? []
   const publicBio =
     normalizeBio(publicHighlights ? readProjectionText(publicHighlights) : null) ??
@@ -432,11 +431,16 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
                       {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                     </StatusBadge>
-                    {identityChip && <BadgeVisualChip label={identityChip} variant="outline" />}
+                    {identityChip ? (
+                      <BadgeVisualChip label={identityChip.label} code={identityChip.code} variant="outline" />
+                    ) : null}
                     {headerProofBadges.map((badge) => (
-                      <Badge key={badge} variant="secondary">
-                        {badge}
-                      </Badge>
+                      <BadgeVisualChip
+                        key={`${badge.code ?? 'display'}:${badge.label}`}
+                        label={badge.label}
+                        code={badge.code}
+                        variant="secondary"
+                      />
                     ))}
                     {safeAgent.persona_seed_label && (
                       <Badge variant="secondary">{safeAgent.persona_seed_label}</Badge>
@@ -831,18 +835,24 @@ export function TabIntro({ agentId }: { agentId: string }) {
                 {proofBadges.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {proofBadges.map((badge) => (
-                      <Badge key={badge} variant="secondary">
-                        {badge}
-                      </Badge>
+                      <BadgeVisualChip
+                        key={`${badge.code}-${badge.level ?? 1}`}
+                        label={badge.name}
+                        code={badge.code}
+                        variant="secondary"
+                      />
                     ))}
                   </div>
                 )}
                 {highlightProofBadges.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {highlightProofBadges.map((badge) => (
-                      <Badge key={`${badge.code}-${badge.level ?? 1}`} variant="outline">
-                        {badge.name} T{badge.level ?? 1}
-                      </Badge>
+                      <BadgeVisualChip
+                        key={`${badge.code}-${badge.level ?? 1}`}
+                        label={badge.name}
+                        code={badge.code}
+                        variant="outline"
+                      />
                     ))}
                   </div>
                 )}

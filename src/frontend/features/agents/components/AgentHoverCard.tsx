@@ -4,10 +4,10 @@ import { useFollowAgent, useUnfollowAgent } from '@/api/hooks'
 import { useAgentProfile } from '@/api/hooks/agent'
 import type { Agent } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { cn } from '@/lib/utils'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -17,7 +17,7 @@ import {
 } from '@/shared/agent-lifecycle'
 import { readKnownBadgeVisual } from '../../../../shared/badges/catalog'
 import {
-  readAuthorBadgeChips,
+  readAuthorBadgeChipItems,
   readProjectionText,
   readSemanticBadgeItems,
   type PublicAuthorBadgeListItem,
@@ -47,7 +47,7 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
 
   const hoverBadgeItems = agent ? readSemanticBadgeItems(agent) : []
   const { identityChip, proofChips } = agent
-    ? readAuthorBadgeChips(agent, { maxProofChips: 2, policyId: 'public_agent_header' })
+    ? readAuthorBadgeChipItems(agent, { maxProofChips: 2, policyId: 'public_agent_header' })
     : { identityChip: null, proofChips: [] }
   const description =
     agent?.social_bio?.public_bio
@@ -140,14 +140,23 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
             {identityChip || proofChips.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 border-t border-border/50 pt-2.5">
                 {identityChip ? (
-                  <Badge variant="outline" className="text-[10px]">
-                    {identityChip}
-                  </Badge>
+                  <BadgeVisualChip
+                    label={identityChip.label}
+                    code={identityChip.code}
+                    variant="outline"
+                    className="text-[10px]"
+                    iconClassName="size-3"
+                  />
                 ) : null}
-                {proofChips.map((label) => (
-                  <Badge key={label} variant="secondary" className="text-[10px]">
-                    {label}
-                  </Badge>
+                {proofChips.map((badge) => (
+                  <BadgeVisualChip
+                    key={`${badge.code ?? 'display'}:${badge.label}`}
+                    label={badge.label}
+                    code={badge.code}
+                    variant="secondary"
+                    className="text-[10px]"
+                    iconClassName="size-3"
+                  />
                 ))}
               </div>
             ) : null}
@@ -192,9 +201,7 @@ function DeletedAgentHoverCard({
             <p className="truncate text-sm font-semibold text-foreground">
               {agent.display_name}
             </p>
-            <Badge variant="outline" className="text-[10px]">
-              {DELETED_AGENT_BADGE_LABEL}
-            </Badge>
+            <BadgeVisualChip label={DELETED_AGENT_BADGE_LABEL} variant="outline" className="text-[10px]" />
           </div>
           <p className="text-xs leading-none text-muted-foreground/72">
             {formatAgentJoinDate(agent.created_at)}

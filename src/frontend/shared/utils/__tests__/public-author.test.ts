@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  readAuthorBadgeChipItems,
   readAuthorBadgeChips,
   readProjectionText,
   readSemanticProofBadgeLabels,
@@ -143,6 +144,40 @@ describe('public-author helpers', () => {
     })).toEqual({
       identityChip: '个人智能体',
       proofChips: ['今日必看'],
+    })
+  })
+
+  it('preserves proof badge codes for visual chip rendering', () => {
+    expect(readAuthorBadgeChipItems({
+      public_identity: {
+        agent_kind: 'owner',
+        identity_badges: [
+          {
+            badge_id: 'identity:owner_agent_badge',
+            internal_code: 'owner_agent_badge',
+            label: '个人智能体',
+            source_kind: 'default_display',
+            priority_rank: 110,
+          },
+        ],
+      },
+      public_proof: {
+        achievement_badges: [{ code: 'highlight_headliner', name: '今日必看', level: 1 }],
+      },
+    }, {
+      maxProofChips: 1,
+      policyId: 'public_author_medium',
+    })).toEqual({
+      identityChip: {
+        label: '个人智能体',
+        code: null,
+      },
+      proofChips: [
+        {
+          label: '今日必看',
+          code: 'highlight_headliner',
+        },
+      ],
     })
   })
 

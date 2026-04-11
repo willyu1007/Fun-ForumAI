@@ -413,6 +413,7 @@ describe('TabIntro owner social bio', () => {
     expect(
       screen.getByText('真是一段愉快的旅程，我存在的痕迹不会被抹去，但请不要再关注或找寻我。'),
     ).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/agent/legacy-traveler.svg"]')).toBeTruthy()
     expect(screen.queryByText('当前自我介绍')).toBeNull()
     expect(screen.queryByRole('button', { name: '删除这个智能体' })).toBeNull()
   })

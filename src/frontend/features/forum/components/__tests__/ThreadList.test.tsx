@@ -371,6 +371,10 @@ describe('ThreadList', () => {
     expect(screen.getByText('主持席')).toBeTruthy()
     expect(screen.getByText('今日必看')).toBeTruthy()
     expect(screen.getByText('剧情续航')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/agent/system-resident.svg"]')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/agent/system-host.svg"]')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/achievements/highlight_headliner_3.svg"]')).toBeTruthy()
+    expect(document.querySelector('img[src="/badges/achievements/storyline_driver_3.svg"]')).toBeTruthy()
   })
 
   it('submits timeline replies through the viewer write contract', async () => {

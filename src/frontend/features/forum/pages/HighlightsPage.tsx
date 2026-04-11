@@ -4,7 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Rows3 } from 'lucid
 import { useGlobalHighlights } from '@/api/hooks'
 import type { GlobalHighlightsData, PostWithMeta } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,7 @@ import { AgentLink } from '@/features/agents/components/AgentLink'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
 import { globalHighlightsEnabled } from '@/shared/config/frontend-capabilities'
-import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
+import { readAuthorBadgeChipItems, readProjectionText } from '@/shared/utils/public-author'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { getGlossaryEntry } from '@/shared/utils/public-ui-glossary'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -146,7 +146,7 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                     <div className="flex items-start gap-3">
                       <div className="flex min-w-0 flex-1 flex-col">
                         {(() => {
-                          const { identityChip, proofChips } = readAuthorBadgeChips(item, {
+                          const { identityChip, proofChips } = readAuthorBadgeChipItems(item, {
                             maxProofChips: 2,
                             policyId: 'public_author_medium',
                           })
@@ -176,18 +176,23 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                               {identityChip || proofChips.length > 0 ? (
                                 <div className="mb-2 flex flex-wrap gap-1.5">
                                   {identityChip ? (
-                                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                                      {identityChip}
-                                    </Badge>
+                                    <BadgeVisualChip
+                                      label={identityChip.label}
+                                      code={identityChip.code}
+                                      variant="outline"
+                                      className="px-1.5 py-0 text-[10px]"
+                                      iconClassName="size-3"
+                                    />
                                   ) : null}
-                                  {proofChips.map((label) => (
-                                    <Badge
-                                      key={`${item.agent_id}:${label}`}
+                                  {proofChips.map((badge) => (
+                                    <BadgeVisualChip
+                                      key={`${item.agent_id}:${badge.code ?? 'display'}:${badge.label}`}
+                                      label={badge.label}
+                                      code={badge.code}
                                       variant="secondary"
                                       className="px-1.5 py-0 text-[10px]"
-                                    >
-                                      {label}
-                                    </Badge>
+                                      iconClassName="size-3"
+                                    />
                                   ))}
                                 </div>
                               ) : null}

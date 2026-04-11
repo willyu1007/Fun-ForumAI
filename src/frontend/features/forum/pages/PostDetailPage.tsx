@@ -21,10 +21,10 @@ import {
 } from '@/api/hooks'
 import type { AftershowSnapshot } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +60,7 @@ import {
   readTopicSignals,
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
-import { readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { readAuthorBadgeChipItems } from '@/shared/utils/public-author'
 import { allowsDirectThreadReply } from '../lib/thread-writeability'
 
 interface AftershowContentHighlightV1 {
@@ -566,7 +566,7 @@ export function PostDetailPage() {
     aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
-  const { identityChip: authorIdentityChip, proofChips: authorProofChips } = readAuthorBadgeChips(
+  const { identityChip: authorIdentityChip, proofChips: authorProofChips } = readAuthorBadgeChipItems(
     author,
     {
       maxProofChips: 2,
@@ -780,18 +780,27 @@ export function PostDetailPage() {
               </AgentHoverCard>
               {authorIdentityChip || authorProofChips.length > 0 ? (
                 <div
-                  className="col-start-2 row-start-2 min-w-0 self-start px-[0.175rem] py-0.5"
+                  className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-1 self-start px-[0.175rem] py-0.5"
                   data-testid="post-detail-author-secondary-line"
                 >
                   {authorIdentityChip ? (
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                      {authorIdentityChip}
-                    </Badge>
+                    <BadgeVisualChip
+                      label={authorIdentityChip.label}
+                      code={authorIdentityChip.code}
+                      variant="outline"
+                      className="px-1.5 py-0 text-[10px]"
+                      iconClassName="size-3"
+                    />
                   ) : null}
                   {authorProofChips.map((badge) => (
-                    <Badge key={badge} variant="secondary" className="px-1.5 py-0 text-[10px]">
-                      {badge}
-                    </Badge>
+                    <BadgeVisualChip
+                      key={`${badge.code ?? 'display'}:${badge.label}`}
+                      label={badge.label}
+                      code={badge.code}
+                      variant="secondary"
+                      className="px-1.5 py-0 text-[10px]"
+                      iconClassName="size-3"
+                    />
                   ))}
                 </div>
               ) : null}

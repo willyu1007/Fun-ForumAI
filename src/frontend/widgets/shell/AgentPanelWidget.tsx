@@ -14,12 +14,10 @@ import { useNotifications } from '@/api/hooks/notifications'
 import { useMyAgents } from '@/api/hooks/user'
 import type { Agent, Notification as NotifType } from '@/api/types'
 import { cn } from '@/lib/utils'
+import { BadgeIconStack } from '@/shared/components/BadgeIconStack'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import {
-  readProjectionText,
-  selectSemanticAuthorBadgeSlots,
-} from '@/shared/utils/public-author'
+import { readProjectionText, readSemanticBadgeItems } from '@/shared/utils/public-author'
 import {
   openMyAgentsWorkspace,
   openSpecificAgentInLastContext,
@@ -39,13 +37,7 @@ function proactiveCountLabel(count: number) {
   return count > 9 ? '9+' : String(count)
 }
 
-function formatBadgeLabel(badge: { name: string; tier: 1 | 2 | 3 }) {
-  return `${badge.name} T${badge.tier}`
-}
-
 function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
-  const semanticBadges = selectSemanticAuthorBadgeSlots(agent)
-
   if (proactiveSummary) {
     return {
       text: proactiveSummary,
@@ -61,30 +53,7 @@ function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
     }
   }
 
-  const proofSummary = semanticBadges.proofBadges
-    .slice(0, 2)
-    .map((badge) => formatBadgeLabel({ name: badge.label, tier: badge.level ?? 1 }))
-  if (proofSummary.length > 0) {
-    return {
-      text: `公开勋章：${proofSummary.join(' · ')}`,
-      tone: 'muted' as const,
-    }
-  }
-
-  const identitySummary = semanticBadges.identityBadges
-    .slice(0, 2)
-    .map((badge) => badge.label)
-  if (identitySummary.length > 0) {
-    return {
-      text: `公开身份：${identitySummary.join(' · ')}`,
-      tone: 'muted' as const,
-    }
-  }
-
-  return {
-    text: '还没有公开动态，先创建或继续培养这个智能体。',
-    tone: 'muted' as const,
-  }
+  return null
 }
 
 function summaryMarqueeSpeedClass(text: string): string {
@@ -204,6 +173,13 @@ export function AgentPanelWidget() {
             const latestProactive = proactiveItems[0] ?? null
             const proactiveSummary = latestProactive?.body ?? latestProactive?.title ?? null
             const summary = buildAgentSummary(agent, proactiveSummary)
+            const badgeItems = readSemanticBadgeItems(agent, {
+              maxIdentityBadges: 1,
+              maxProofBadges: 2,
+            })
+            const fallbackSummary = badgeItems.length === 0
+              ? '还没有公开动态，先创建或继续培养这个智能体。'
+              : null
 
             return (
               <DropdownMenuItem
@@ -256,7 +232,7 @@ export function AgentPanelWidget() {
                       </Badge>
                     </div>
                   </div>
-                  {summary.tone === 'primary' ? (
+                  {summary?.tone === 'primary' ? (
                     <div
                       className="agent-panel-marquee mt-1 overflow-hidden whitespace-nowrap text-[11px] leading-snug text-primary"
                       aria-label={summary.text}
@@ -271,11 +247,22 @@ export function AgentPanelWidget() {
                         <span className="shrink-0 pr-6" aria-hidden="true">{summary.text}</span>
                       </div>
                     </div>
-                  ) : (
+                  ) : summary ? (
                     <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
                       {summary.text}
                     </p>
-                  )}
+                  ) : null}
+                  {badgeItems.length > 0 ? (
+                    <BadgeIconStack
+                      badges={badgeItems}
+                      size="sm"
+                      className={cn(summary ? 'mt-1.5' : 'mt-1')}
+                    />
+                  ) : fallbackSummary ? (
+                    <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
+                      {fallbackSummary}
+                    </p>
+                  ) : null}
                 </div>
               </DropdownMenuItem>
             )

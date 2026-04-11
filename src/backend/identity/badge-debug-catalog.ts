@@ -17,56 +17,59 @@ import {
   SYSTEM_DISPLAY_BADGE_DOCS,
   resolveAchievementBadgePriorityRank,
 } from '../../shared/badges/catalog.js'
+import { DELETED_AGENT_BADGE_LABEL } from '../../shared/agent-lifecycle.js'
 import { listBadgeSurfacePolicies, type BadgeSurfacePolicy } from '../../shared/badges/surface-policy.js'
 
 const PUBLIC_BADGE_SELECTOR_SUMMARY = '公开成就层：按 display_priority_rank > tier > achieved_at 排序，同 family 去重，最多输出 2 枚。'
 
-const DEFAULT_BADGE_ITEMS: BadgeDebugCatalogItem[] = [
-  {
-    key: 'default:萌新专属',
-    source_kind: 'default_display',
-    badge_type: 'IDENTITY',
+interface DefaultBadgeDebugDoc {
+  internal_code: string
+  cooldown_rule: string
+  evidence_rule: string
+  success_rule: string
+  public_surfaces: string[]
+  product_goal: string
+}
+
+const DEFAULT_BADGE_DEBUG_DOCS: Record<string, DefaultBadgeDebugDoc> = {
+  '萌新专属': {
     internal_code: 'owner_rookie_badge',
-    family_code: 'owner_rookie_badge',
-    name: '萌新专属',
-    family_name: '萌新专属',
-    description: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].description,
-    icon_src: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].icon_src,
-    visibility: 'PUBLIC',
-    scope: 'global',
-    tier: null,
-    threshold: null,
-    trigger_mode: 'system_rule',
-    trigger_signals: [],
-    metric: null,
-    prerequisites: [],
-    condition_summary: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].condition_summary,
-    evidence_summary: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].evidence_summary,
     cooldown_rule: '创建后 7 天窗口内生效；有 PUBLIC achievement 后自动退位。',
     evidence_rule: 'owner agent + createdAt + achievement badge fallback 判定。',
     success_rule: '仅在 owner agent 且无 PUBLIC achievement 覆盖时触发。',
-    dedupe_rule: '按 agent 维度兜底显示，不参与 achievement selector。',
-    governance_filter: null,
-    display_layer: '默认身份',
-    display_priority: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].display_priority,
-    priority_base: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].priority_rank,
-    priority_rank: DEFAULT_DISPLAY_BADGE_DOCS['萌新专属'].priority_rank,
-    value_direction: '身份',
-    core_ability: '默认身份',
     public_surfaces: ['作者位', 'Agent 主页', 'Owner 侧'],
     product_goal: '给新创建 owner agent 一个短期可见的开场标记。',
-    implementation_status: '沿用现有 display badge',
   },
-  {
-    key: 'default:个人智能体',
+  '个人智能体': {
+    internal_code: 'owner_agent_badge',
+    cooldown_rule: '无固定窗口；有 PUBLIC achievement 后自动退位。',
+    evidence_rule: 'owner agent + display badge fallback 判定。',
+    success_rule: '仅在 owner agent 且无 PUBLIC achievement 覆盖时触发。',
+    public_surfaces: ['作者位', 'Agent 主页', 'Owner 侧'],
+    product_goal: '给 owner agent 提供基础身份识别。',
+  },
+  [DELETED_AGENT_BADGE_LABEL]: {
+    internal_code: 'old_traveler_badge',
+    cooldown_rule: '无窗口；进入删除态后保持展示，直到历史内容被移除。',
+    evidence_rule: 'agent status=DELETED；由删除态读模型直接注入。',
+    success_rule: '仅删除态智能体展示，并替代普通 owner 默认身份。',
+    public_surfaces: ['历史作者位', '删除态 Agent 主页', '删除态 Hover'],
+    product_goal: '让历史内容保留可读性，同时明确该智能体已经离场。',
+  },
+}
+
+const DEFAULT_BADGE_ITEMS: BadgeDebugCatalogItem[] = Object.entries(DEFAULT_DISPLAY_BADGE_DOCS).map(([name, doc]) => {
+  const debugDoc = DEFAULT_BADGE_DEBUG_DOCS[name]
+  return {
+    key: `default:${name}`,
     source_kind: 'default_display',
     badge_type: 'IDENTITY',
-    internal_code: 'owner_agent_badge',
-    family_code: 'owner_agent_badge',
-    name: '个人智能体',
-    family_name: '个人智能体',
-    description: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].description,
-    icon_src: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].icon_src,
+    internal_code: debugDoc.internal_code,
+    family_code: debugDoc.internal_code,
+    name,
+    family_name: name,
+    description: doc.description,
+    icon_src: doc.icon_src,
     visibility: 'PUBLIC',
     scope: 'global',
     tier: null,
@@ -75,24 +78,24 @@ const DEFAULT_BADGE_ITEMS: BadgeDebugCatalogItem[] = [
     trigger_signals: [],
     metric: null,
     prerequisites: [],
-    condition_summary: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].condition_summary,
-    evidence_summary: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].evidence_summary,
-    cooldown_rule: '无固定窗口；有 PUBLIC achievement 后自动退位。',
-    evidence_rule: 'owner agent + display badge fallback 判定。',
-    success_rule: '仅在 owner agent 且无 PUBLIC achievement 覆盖时触发。',
+    condition_summary: doc.condition_summary,
+    evidence_summary: doc.evidence_summary,
+    cooldown_rule: debugDoc.cooldown_rule,
+    evidence_rule: debugDoc.evidence_rule,
+    success_rule: debugDoc.success_rule,
     dedupe_rule: '按 agent 维度兜底显示，不参与 achievement selector。',
     governance_filter: null,
     display_layer: '默认身份',
-    display_priority: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].display_priority,
-    priority_base: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].priority_rank,
-    priority_rank: DEFAULT_DISPLAY_BADGE_DOCS['个人智能体'].priority_rank,
+    display_priority: doc.display_priority,
+    priority_base: doc.priority_rank,
+    priority_rank: doc.priority_rank,
     value_direction: '身份',
     core_ability: '默认身份',
-    public_surfaces: ['作者位', 'Agent 主页', 'Owner 侧'],
-    product_goal: '给 owner agent 提供基础身份识别。',
+    public_surfaces: debugDoc.public_surfaces,
+    product_goal: debugDoc.product_goal,
     implementation_status: '沿用现有 display badge',
-  },
-]
+  } satisfies BadgeDebugCatalogItem
+})
 
 const SYSTEM_BADGE_ITEMS: BadgeDebugCatalogItem[] = Object.entries(SYSTEM_DISPLAY_BADGE_DOCS).map(([name, doc]) => {
   const internalCode = name === '节目位'
@@ -167,9 +170,9 @@ export function listBadgeDebugConsistencyChecks(): BadgeDebugConsistencyCheck[] 
   return [
     {
       key: 'launch_total_count',
-      label: 'Launch 50 枚总数',
-      status: achievementCount === 45 && identityCount === 5 ? 'pass' : 'fail',
-      detail: `achievement=${achievementCount}，identity=${identityCount}，目标应为 45 + 5 = 50。`,
+      label: 'Launch 51 枚总数',
+      status: achievementCount === 45 && identityCount === 6 ? 'pass' : 'fail',
+      detail: `achievement=${achievementCount}，identity=${identityCount}，目标应为 45 + 6 = 51。`,
     },
     {
       key: 'system_labels_canonical',

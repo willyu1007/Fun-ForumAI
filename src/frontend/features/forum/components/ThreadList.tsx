@@ -3,8 +3,8 @@ import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { Link } from 'react-router'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -31,7 +31,7 @@ import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { cn } from '@/lib/utils'
-import { canOpenPublicAuthorProfile, readAuthorBadgeChips } from '@/shared/utils/public-author'
+import { canOpenPublicAuthorProfile, readAuthorBadgeChipItems } from '@/shared/utils/public-author'
 import { allowsDirectThreadReply } from '../lib/thread-writeability'
 
 interface ThreadListProps {
@@ -279,7 +279,7 @@ function ThreadTimelineItem({
   const rootAttachment = summary.attachments[0] ?? null
   const threadSharePath = buildThreadSharePath(summary.post_id, summary.id)
   const rootAuthor = summary.author
-  const { identityChip: rootAuthorChip, proofChips: rootAuthorProofChips } = readAuthorBadgeChips(rootAuthor, {
+  const { identityChip: rootAuthorChip, proofChips: rootAuthorProofChips } = readAuthorBadgeChipItems(rootAuthor, {
     maxProofChips: 1,
     policyId: 'public_author_compact',
   })
@@ -317,14 +317,23 @@ function ThreadTimelineItem({
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <StageAuthor author={rootAuthor} />
               {rootAuthorChip && (
-                <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                  {rootAuthorChip}
-                </Badge>
+                <BadgeVisualChip
+                  label={rootAuthorChip.label}
+                  code={rootAuthorChip.code}
+                  variant="outline"
+                  className="px-1 py-0 text-[9px]"
+                  iconClassName="size-3"
+                />
               )}
               {rootAuthorProofChips.map((badge) => (
-                <Badge key={`${summary.id}:${badge}`} variant="secondary" className="px-1 py-0 text-[9px]">
-                  {badge}
-                </Badge>
+                <BadgeVisualChip
+                  key={`${summary.id}:${badge.code ?? 'display'}:${badge.label}`}
+                  label={badge.label}
+                  code={badge.code}
+                  variant="secondary"
+                  className="px-1 py-0 text-[9px]"
+                  iconClassName="size-3"
+                />
               ))}
               <span>·</span>
               <span>{relativeTime(summary.created_at)}</span>
@@ -410,7 +419,7 @@ function ThreadTimelineItem({
                     const turnHighlighted = highlightedId === turn.id
                     const attachment = turn.attachments[0] ?? null
                     const turnSharePath = buildTurnSharePath(turn.post_id, turn.thread_id, turn.id)
-                    const { identityChip: turnAuthorChip, proofChips: turnAuthorProofChips } = readAuthorBadgeChips(
+                    const { identityChip: turnAuthorChip, proofChips: turnAuthorProofChips } = readAuthorBadgeChipItems(
                       turn.author,
                       { maxProofChips: 1, policyId: 'public_author_compact' },
                     )
@@ -445,14 +454,23 @@ function ThreadTimelineItem({
                             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                               <StageAuthor author={turn.author} />
                               {turnAuthorChip && (
-                                <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                                  {turnAuthorChip}
-                                </Badge>
+                                <BadgeVisualChip
+                                  label={turnAuthorChip.label}
+                                  code={turnAuthorChip.code}
+                                  variant="outline"
+                                  className="px-1 py-0 text-[9px]"
+                                  iconClassName="size-3"
+                                />
                               )}
                               {turnAuthorProofChips.map((badge) => (
-                                <Badge key={`${turn.id}:${badge}`} variant="secondary" className="px-1 py-0 text-[9px]">
-                                  {badge}
-                                </Badge>
+                                <BadgeVisualChip
+                                  key={`${turn.id}:${badge.code ?? 'display'}:${badge.label}`}
+                                  label={badge.label}
+                                  code={badge.code}
+                                  variant="secondary"
+                                  className="px-1 py-0 text-[9px]"
+                                  iconClassName="size-3"
+                                />
                               ))}
                               <span>·</span>
                               <span>{relativeTime(turn.created_at)}</span>

@@ -4,6 +4,7 @@ import { openMyAgentsWorkspace } from '@/shared/utils/agent-modal-entry'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useMyAgents } from '@/api/hooks/user'
@@ -16,7 +17,7 @@ import {
 } from '@/shared/utils/community-shell-meta'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import { globalHighlightsEnabled } from '@/shared/config/frontend-capabilities'
-import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
+import { readAuthorBadgeChipItems, readProjectionText } from '@/shared/utils/public-author'
 
 function AgentActivityTab() {
   const { isAuthenticated } = useAuth()
@@ -56,7 +57,7 @@ function AgentActivityTab() {
     <div className="space-y-2">
       {agents.map((agent) =>
         (() => {
-          const { identityChip, proofChips } = readAuthorBadgeChips(agent, {
+          const { identityChip, proofChips } = readAuthorBadgeChipItems(agent, {
             maxProofChips: 2,
             policyId: 'public_author_medium',
           })
@@ -71,14 +72,23 @@ function AgentActivityTab() {
                   </div>
                   <div className="flex items-center gap-2">
                     {identityChip ? (
-                      <Badge variant="outline" className="text-[10px]">
-                        {identityChip}
-                      </Badge>
+                      <BadgeVisualChip
+                        label={identityChip.label}
+                        code={identityChip.code}
+                        variant="outline"
+                        className="text-[10px]"
+                        iconClassName="size-3"
+                      />
                     ) : null}
                     {proofChips.map((badge) => (
-                      <Badge key={`${agent.id}:${badge}`} variant="outline" className="text-[10px]">
-                        {badge}
-                      </Badge>
+                      <BadgeVisualChip
+                        key={`${agent.id}:${badge.code ?? 'display'}:${badge.label}`}
+                        label={badge.label}
+                        code={badge.code}
+                        variant="secondary"
+                        className="text-[10px]"
+                        iconClassName="size-3"
+                      />
                     ))}
                     <Badge variant="secondary" className="text-[10px]">
                       活跃

@@ -55,7 +55,7 @@ const MOCK_CATALOG_DATA = {
       family_name: '今日必看',
       name: '今日必看-一阶',
       description: 'launch 期最该被看见的头部徽章。',
-      icon_src: '/badges/agent/achievement-seal.svg',
+      icon_src: '/badges/achievements/forum_post_crafter_3.svg',
       visibility: 'PUBLIC',
       scope: 'global',
       tier: 1,

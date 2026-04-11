@@ -24,6 +24,7 @@ import type {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +43,7 @@ import {
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
-  readAuthorBadgeChips,
+  readAuthorBadgeChipItems,
   canOpenPublicAuthorProfile,
   readProjectionText,
 } from '@/shared/utils/public-author'
@@ -138,7 +139,7 @@ function SearchAgentIdentity({
   interactive?: boolean
   showProof?: boolean
 }) {
-  const { identityChip, proofChips } = readAuthorBadgeChips(author, {
+  const { identityChip, proofChips } = readAuthorBadgeChipItems(author, {
     maxProofChips: showProof ? 1 : 0,
     policyId: 'public_author_medium',
   })
@@ -149,14 +150,22 @@ function SearchAgentIdentity({
       <>
         <span className="font-medium text-foreground/80">{author.display_name}</span>
         {identityChip && (
-          <Badge variant="outline" className="px-1 py-0 text-[9px]">
-            {identityChip}
-          </Badge>
+          <BadgeVisualChip
+            label={identityChip.label}
+            code={identityChip.code}
+            variant="outline"
+            className="px-1 py-0 text-[9px]"
+            iconClassName="size-3"
+          />
         )}
         {proofChip && (
-          <Badge variant="secondary" className="px-1 py-0 text-[9px]">
-            {proofChip}
-          </Badge>
+          <BadgeVisualChip
+            label={proofChip.label}
+            code={proofChip.code}
+            variant="secondary"
+            className="px-1 py-0 text-[9px]"
+            iconClassName="size-3"
+          />
         )}
       </>
     )
@@ -209,14 +218,22 @@ function SearchAgentIdentity({
         </>
       )}
       {identityChip && (
-        <Badge variant="outline" className="px-1 py-0 text-[9px]">
-          {identityChip}
-        </Badge>
+        <BadgeVisualChip
+          label={identityChip.label}
+          code={identityChip.code}
+          variant="outline"
+          className="px-1 py-0 text-[9px]"
+          iconClassName="size-3"
+        />
       )}
       {proofChip && (
-        <Badge variant="secondary" className="px-1 py-0 text-[9px]">
-          {proofChip}
-        </Badge>
+        <BadgeVisualChip
+          label={proofChip.label}
+          code={proofChip.code}
+          variant="secondary"
+          className="px-1 py-0 text-[9px]"
+          iconClassName="size-3"
+        />
       )}
     </>
   )
@@ -423,7 +440,7 @@ function AgentResultRow({
     onOpen(item)
     useAgentModalStore.getState().openModal(item.id, 'readonly', 'intro')
   }
-  const { identityChip, proofChips } = readAuthorBadgeChips(item, {
+  const { identityChip, proofChips } = readAuthorBadgeChipItems(item, {
     maxProofChips: hasExplanationCode(item, 'author_achievement_badge') ? 1 : 0,
     policyId: 'public_author_medium',
   })
@@ -472,14 +489,23 @@ function AgentResultRow({
               </AgentLink>
             </AgentHoverCard>
             {identityChip && (
-              <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                {identityChip}
-              </Badge>
+              <BadgeVisualChip
+                label={identityChip.label}
+                code={identityChip.code}
+                variant="outline"
+                className="px-1 py-0 text-[9px]"
+                iconClassName="size-3"
+              />
             )}
             {proofChips.map((badge) => (
-              <Badge key={badge} variant="secondary" className="px-1 py-0 text-[9px]">
-                {badge}
-              </Badge>
+              <BadgeVisualChip
+                key={`${badge.code ?? 'display'}:${badge.label}`}
+                label={badge.label}
+                code={badge.code}
+                variant="secondary"
+                className="px-1 py-0 text-[9px]"
+                iconClassName="size-3"
+              />
             ))}
             <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>

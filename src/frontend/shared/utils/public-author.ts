@@ -136,11 +136,33 @@ export function readAuthorBadgeChips(
   identityChip: string | null
   proofChips: string[]
 } {
+  const { identityChip, proofChips } = readAuthorBadgeChipItems(author, options)
+  return {
+    identityChip: identityChip?.label ?? null,
+    proofChips: proofChips.map((badge) => badge.label),
+  }
+}
+
+export function readAuthorBadgeChipItems(
+  author: PublicAuthorLike,
+  options: { maxProofChips?: number; policyId: BadgeSurfacePolicyId },
+): {
+  identityChip: PublicAuthorBadgeListItem | null
+  proofChips: PublicAuthorBadgeListItem[]
+} {
   const maxProofChips = Math.max(0, options.maxProofChips ?? 2)
   const slots = selectAuthorBadgeSlotsByPolicy(author, options.policyId)
   return {
-    identityChip: slots.identityBadges[0]?.label ?? null,
-    proofChips: slots.proofBadges.slice(0, maxProofChips).map((badge) => badge.label),
+    identityChip: slots.identityBadges[0]
+      ? {
+          label: slots.identityBadges[0].label,
+          code: null,
+        }
+      : null,
+    proofChips: slots.proofBadges.slice(0, maxProofChips).map((badge) => ({
+      label: badge.label,
+      code: badge.code ?? null,
+    })),
   }
 }
 
