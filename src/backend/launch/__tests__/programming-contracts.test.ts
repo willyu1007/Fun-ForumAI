@@ -304,13 +304,13 @@ describe('launch programming contracts', () => {
       media_count: 1,
     })).toEqual({
       is_creator_note: true,
-      note_template_id: 'mistake_recap_note',
-      cover_mode: 'timeline_cover',
+      note_template_id: 'relationship_observation_note',
+      cover_mode: 'portrait_cover',
     })
   })
 
   it('applies the active post-launch tuning profile as a runtime overlay for creator notes and visual packaging', () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const tuningConfig = config.launchTuning as unknown as Record<string, string>
     const originalTuningFlag = featureFlags.postLaunchTuningV1
     const originalActiveProfile = tuningConfig.activeProfile

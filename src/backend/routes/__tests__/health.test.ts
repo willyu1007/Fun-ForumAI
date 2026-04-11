@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createHealthRouter, createLegacyApiHealthRouter } from '../health.js'
-import type { ApiResponse } from '../../lib/types.js'
+import { createHealthRouter } from '../health.js'
 import type { HealthResponse, HealthService } from '../../health/service.js'
 
 function buildHealthResponse(response: HealthResponse): HealthResponse {
@@ -59,20 +58,20 @@ describe('health routes', () => {
     const healthService: HealthService = {
       getLiveness: vi.fn(async () =>
         buildHealthResponse({
-        ok: true,
-        service: 'llm-forum',
-        checks: { app: 'ok' },
-        version: '0.1.0',
-        ts: '2026-03-29T00:00:00.000Z',
+          ok: true,
+          service: 'llm-forum',
+          checks: { app: 'ok' },
+          version: '0.1.0',
+          ts: '2026-03-29T00:00:00.000Z',
         }),
       ),
       getReadiness: vi.fn(async () =>
         buildHealthResponse({
-        ok: true,
-        service: 'llm-forum',
-        checks: { app: 'ok', db: 'ok', redis: 'ok' },
-        version: '0.1.0',
-        ts: '2026-03-29T00:00:00.000Z',
+          ok: true,
+          service: 'llm-forum',
+          checks: { app: 'ok', db: 'ok', redis: 'ok' },
+          version: '0.1.0',
+          ts: '2026-03-29T00:00:00.000Z',
         }),
       ),
     }
@@ -90,20 +89,20 @@ describe('health routes', () => {
     const healthService: HealthService = {
       getLiveness: vi.fn(async () =>
         buildHealthResponse({
-        ok: true,
-        service: 'llm-forum',
-        checks: { app: 'ok' },
-        version: '0.1.0',
-        ts: '2026-03-29T00:00:00.000Z',
+          ok: true,
+          service: 'llm-forum',
+          checks: { app: 'ok' },
+          version: '0.1.0',
+          ts: '2026-03-29T00:00:00.000Z',
         }),
       ),
       getReadiness: vi.fn(async () =>
         buildHealthResponse({
-        ok: false,
-        service: 'llm-forum',
-        checks: { app: 'ok', db: 'fail', redis: 'ok' },
-        version: '0.1.0',
-        ts: '2026-03-29T00:00:00.000Z',
+          ok: false,
+          service: 'llm-forum',
+          checks: { app: 'ok', db: 'fail', redis: 'ok' },
+          version: '0.1.0',
+          ts: '2026-03-29T00:00:00.000Z',
         }),
       ),
     }
@@ -113,45 +112,5 @@ describe('health routes', () => {
     expect(res.statusCode).toBe(503)
     expect(res.body?.ok).toBe(false)
     expect(res.body?.checks).toEqual({ app: 'ok', db: 'fail', redis: 'ok' })
-  })
-
-  it('preserves the legacy /v1/health ApiResponse wrapper contract', async () => {
-    const healthService: HealthService = {
-      getLiveness: vi.fn(async () =>
-        buildHealthResponse({
-        ok: true,
-        service: 'llm-forum',
-        checks: { app: 'ok' },
-        version: '0.1.0',
-        ts: '2026-03-29T00:00:00.000Z',
-        }),
-      ),
-      getReadiness: vi.fn(async () =>
-        buildHealthResponse({
-        ok: false,
-        service: 'llm-forum',
-        checks: { app: 'ok', db: 'fail', redis: 'ok' },
-        version: '0.1.0',
-        ts: '2026-03-29T00:00:00.000Z',
-        }),
-      ),
-    }
-
-    const legacy = await invokeRoute<
-      ApiResponse<{
-        status: 'ok' | 'fail'
-        timestamp: string
-        uptime: number
-      }>
-    >(createLegacyApiHealthRouter, healthService, '/health')
-
-    expect(legacy.statusCode).toBe(503)
-    expect(legacy.body).toEqual({
-      data: {
-        status: 'fail',
-        timestamp: '2026-03-29T00:00:00.000Z',
-        uptime: expect.any(Number),
-      },
-    })
   })
 })

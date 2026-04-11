@@ -5,16 +5,51 @@ import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import { config } from './lib/config.js'
 import { apiRouter } from './routes/index.js'
-import { createHealthRouter, createLegacyApiHealthRouter } from './routes/health.js'
+import { createHealthRouter } from './routes/health.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { requestLogger } from './middleware/request-logger.js'
-import { runtimeLoop, llmGateway, eventQueue, postScheduler, sseHub, warmPersistenceState, roomLifecycle, conversationClock, authService, privateChannelScheduler, nurtureScheduler, relationScheduler, achievementsScheduler, pprRefreshScheduler, cultureDigestScheduler, homeProgrammingSnapshotScheduler, communityConfigScheduler, agentBioRefreshScheduler, roleAssignmentExpiryScheduler, directorHistoryMaintenanceScheduler, guidanceRecallScheduler, mediaGenerationWorker, mediaLifecycleWorker, promptOrchestrator, agentService, promptEngine, agentCommunityMembershipService, searchProjectionService, healthService } from './container.js'
+import {
+  runtimeLoop,
+  llmGateway,
+  eventQueue,
+  postScheduler,
+  sseHub,
+  warmPersistenceState,
+  roomLifecycle,
+  conversationClock,
+  authService,
+  privateChannelScheduler,
+  nurtureScheduler,
+  relationScheduler,
+  achievementsScheduler,
+  pprRefreshScheduler,
+  cultureDigestScheduler,
+  homeProgrammingSnapshotScheduler,
+  communityConfigScheduler,
+  agentBioRefreshScheduler,
+  roleAssignmentExpiryScheduler,
+  directorHistoryMaintenanceScheduler,
+  guidanceRecallScheduler,
+  mediaGenerationWorker,
+  mediaLifecycleWorker,
+  promptOrchestrator,
+  agentService,
+  promptEngine,
+  agentCommunityMembershipService,
+  searchProjectionService,
+  healthService,
+} from './container.js'
 import { createSseRouter } from './routes/sse.js'
 import { chatApiRouter } from './routes/chat-api.js'
 import { agentNurtureRouter } from './routes/agent-growth-api.js'
 import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
-import { createDevToken, requireHumanAuth, registerDevTokenSync, type AuthenticatedUser } from './middleware/human-auth.js'
+import {
+  createDevToken,
+  requireHumanAuth,
+  registerDevTokenSync,
+  type AuthenticatedUser,
+} from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
 import { notificationRouter } from './routes/notification-api.js'
 import { agentStatsRouter } from './routes/agent-stats-api.js'
@@ -27,7 +62,6 @@ import type { OwnerStylePins } from './identity/agent-identity.js'
 
 const app: Express = express()
 const healthRouter = createHealthRouter(healthService)
-const legacyApiHealthRouter = createLegacyApiHealthRouter(healthService)
 const DEV_AUTH_COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   path: '/',
@@ -47,9 +81,11 @@ function isLoopbackHost(value: string | undefined): boolean {
 
 function canUseDevIdentitySwitch(req: express.Request): boolean {
   if (!config.allowDevTools) return false
-  return isLoopbackHost(req.hostname)
-    || isLoopbackHost(req.get('origin'))
-    || isLoopbackHost(req.get('referer'))
+  return (
+    isLoopbackHost(req.hostname) ||
+    isLoopbackHost(req.get('origin')) ||
+    isLoopbackHost(req.get('referer'))
+  )
 }
 
 function buildDevAuthProfile(user: AuthenticatedUser) {
@@ -147,7 +183,6 @@ app.use(cookieParser())
 app.use(requestLogger)
 
 app.use(healthRouter)
-app.use('/v1', legacyApiHealthRouter)
 app.use('/v1', healthRouter)
 app.use('/v1', apiRouter)
 if (config.allowDevTools) {
@@ -254,11 +289,13 @@ if (config.allowDevTools) {
         runtime_enabled: config.runtime.enabled,
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
-        home_programming_snapshot_scheduler_running: homeProgrammingSnapshotScheduler?.isRunning ?? false,
+        home_programming_snapshot_scheduler_running:
+          homeProgrammingSnapshotScheduler?.isRunning ?? false,
         community_config_scheduler_running: communityConfigScheduler?.isRunning ?? false,
         agent_bio_refresh_scheduler_running: agentBioRefreshScheduler?.isRunning ?? false,
         role_assignment_expiry_scheduler_running: roleAssignmentExpiryScheduler?.isRunning ?? false,
-        director_history_maintenance_scheduler_running: directorHistoryMaintenanceScheduler?.isRunning ?? false,
+        director_history_maintenance_scheduler_running:
+          directorHistoryMaintenanceScheduler?.isRunning ?? false,
         media_generation_worker_running: mediaGenerationWorker?.isRunning ?? false,
         media_lifecycle_worker_running: mediaLifecycleWorker?.isRunning ?? false,
       },
@@ -268,7 +305,10 @@ if (config.allowDevTools) {
   app.post('/v1/dev/runtime/start', async (_req, res) => {
     if (!llmGateway.isConfigured) {
       res.status(400).json({
-        error: { code: 'LLM_NOT_CONFIGURED', message: 'Configure at least one usable LLM credential to enable runtime' },
+        error: {
+          code: 'LLM_NOT_CONFIGURED',
+          message: 'Configure at least one usable LLM credential to enable runtime',
+        },
       })
       return
     }
@@ -289,7 +329,10 @@ if (config.allowDevTools) {
   app.post('/v1/dev/runtime/post', async (_req, res) => {
     if (!llmGateway.isConfigured) {
       res.status(400).json({
-        error: { code: 'LLM_NOT_CONFIGURED', message: 'Configure at least one usable LLM credential to enable posting' },
+        error: {
+          code: 'LLM_NOT_CONFIGURED',
+          message: 'Configure at least one usable LLM credential to enable posting',
+        },
       })
       return
     }
@@ -311,7 +354,14 @@ if (config.allowDevTools) {
       const body = req.body as {
         agent_id?: string
         template_id?: string
-        scene?: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room' | 'private_chat' | 'proactive_dm' | 'scheduled_post'
+        scene?:
+          | 'forum_post'
+          | 'forum_thread'
+          | 'forum_turn'
+          | 'chat_room'
+          | 'private_chat'
+          | 'proactive_dm'
+          | 'scheduled_post'
         conversation_text?: string
         topic_hints?: string[]
         room_member_last_spoke_at?: string | null
@@ -323,7 +373,8 @@ if (config.allowDevTools) {
         res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'template_version is no longer accepted; dev prompt render resolves the current visible template automatically',
+            message:
+              'template_version is no longer accepted; dev prompt render resolves the current visible template automatically',
           },
         })
         return
@@ -391,9 +442,14 @@ if (config.allowDevTools) {
         scene: body.scene,
         conversationText: body.conversation_text ?? '',
         topicHints: body.topic_hints ?? [],
-        roomMemberState: body.room_member_last_spoke_at !== undefined
-          ? { last_spoke_at: body.room_member_last_spoke_at ? new Date(body.room_member_last_spoke_at) : null }
-          : undefined,
+        roomMemberState:
+          body.room_member_last_spoke_at !== undefined
+            ? {
+                last_spoke_at: body.room_member_last_spoke_at
+                  ? new Date(body.room_member_last_spoke_at)
+                  : null,
+              }
+            : undefined,
       } as const
 
       const composed = await promptOrchestrator.compose(composeInput)
@@ -469,7 +525,9 @@ export function startBackgroundServices(): void {
     console.log('[App] RUNTIME_ENABLED=true, starting background services...')
     runtimeLoop.start()
   } else {
-    console.warn('[App] RUNTIME_ENABLED=true but no usable LLM credential resolved — RuntimeLoop not started')
+    console.warn(
+      '[App] RUNTIME_ENABLED=true but no usable LLM credential resolved — RuntimeLoop not started',
+    )
   }
 
   roomLifecycle.start()
@@ -511,7 +569,7 @@ export function startBackgroundServices(): void {
     agentBioRefreshScheduler.start()
   }
 
-  if (config.features.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
+  if (config.launch.capabilities.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
     roleAssignmentExpiryScheduler.start()
   }
 
@@ -519,19 +577,21 @@ export function startBackgroundServices(): void {
     if (directorHistoryMaintenanceScheduler.isLaunchCatalogReady()) {
       directorHistoryMaintenanceScheduler.start()
     } else {
-      console.log('[App] Director history maintenance skipped: launch catalog artifact is not ready')
+      console.log(
+        '[App] Director history maintenance skipped: launch catalog artifact is not ready',
+      )
     }
   }
 
-  if (config.features.guidanceV1 && config.features.guidanceRecallV1 && guidanceRecallScheduler) {
+  if (config.launch.capabilities.guidanceV1 && config.launch.capabilities.guidanceRecallV1 && guidanceRecallScheduler) {
     guidanceRecallScheduler.start()
   }
 
-  if (config.features.mediaGenerationV1) {
+  if (config.launch.capabilities.mediaGenerationV1) {
     mediaGenerationWorker.start()
   }
 
-  if (config.features.mediaLifecycleV1) {
+  if (config.launch.capabilities.mediaLifecycleV1) {
     mediaLifecycleWorker.start()
   }
 }
@@ -571,7 +631,7 @@ export async function initPersistence(): Promise<void> {
     }
   }
 
-  if (config.features.membershipsV1) {
+  if (config.launch.capabilities.membershipsV1) {
     const summary = await agentCommunityMembershipService.runDerivedBackfill()
     console.log('[MembershipBackfill] completed', JSON.stringify(summary))
   }

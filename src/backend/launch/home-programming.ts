@@ -56,10 +56,6 @@ const launchHomeProgrammingSchema = z.object({
     global_highlights: z.string().trim().min(1),
     aftershow_detail: z.string().trim().min(1),
   }).strict(),
-  feature_flags: z.object({
-    existing: z.array(z.string().trim().min(1)).default([]),
-    planned: z.array(z.string().trim().min(1)).default([]),
-  }).strict(),
   shelves: z.array(shelfSchema).length(LAUNCH_HOME_SHELF_IDS.length),
   storyline_contract: z.object({
     storage_strategy: z.string().trim().min(1),
@@ -85,7 +81,6 @@ export interface LaunchHomeProgrammingRuntime {
   notes: string[]
   home_surface: z.infer<typeof launchHomeProgrammingSchema>['home_surface']
   source_endpoints: z.infer<typeof launchHomeProgrammingSchema>['source_endpoints']
-  feature_flags: z.infer<typeof launchHomeProgrammingSchema>['feature_flags']
   shelves: z.infer<typeof launchHomeProgrammingSchema>['shelves']
   storyline_contract: z.infer<typeof launchHomeProgrammingSchema>['storyline_contract']
   highlight_projection: Record<string, unknown>
@@ -220,7 +215,6 @@ function normalizeLaunchHomeProgrammingRuntime(input: unknown): LaunchHomeProgra
     notes: file.notes,
     home_surface: file.home_surface,
     source_endpoints: file.source_endpoints,
-    feature_flags: file.feature_flags,
     shelves: normalizedShelves,
     storyline_contract: file.storyline_contract,
     highlight_projection: file.highlight_projection,

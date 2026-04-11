@@ -77,7 +77,7 @@ export function createAllocator(deps: {
     return stageResolved.stage_spec.allocator
   }
 
-  if (config.features.castingDirectorEnabled) {
+  if (config.launch.capabilities.castingDirectorEnabled) {
     const missingPilotSlugs = DIRECTOR_PILOT_COMMUNITY_SLUGS.filter((slug) => !repos.communityRepo.findBySlug(slug))
     if (missingPilotSlugs.length > 0) {
       console.warn(
@@ -90,18 +90,18 @@ export function createAllocator(deps: {
     getCandidates(communityId: string, authorAgentId?: string, postId?: string): AgentCandidate[] {
       const agents = repos.agentRepo.findActive({ limit: 100 })
       const membershipSnapshot = buildCommunityMembershipSnapshot({
-        memberships_enabled: config.features.membershipsV1,
-        membership_status_enabled: config.features.membershipStatusV1,
+        memberships_enabled: config.launch.capabilities.membershipsV1,
+        membership_status_enabled: config.launch.capabilities.membershipStatusV1,
         community_id: communityId,
         membership_repo: repos.agentCommunityMembershipRepo,
       })
       const community = repos.communityRepo.findById(communityId)
       const stageResolved = resolveStageSpecFromRules(community?.rules_json ?? null, { community_id: communityId })
       const minTierPool = stageResolved.stage_spec.min_tier_pool
-      const tierMap = config.features.stageTierV1
+      const tierMap = config.launch.capabilities.stageTierV1
         ? stageTierService.getLatestSnapshotMap(agents.items.map((agent) => agent.id))
         : new Map()
-      const postScopedSeatAgentIds = config.features.roleAssignmentV1 && repos.roleAssignmentRepo && postId
+      const postScopedSeatAgentIds = config.launch.capabilities.roleAssignmentV1 && repos.roleAssignmentRepo && postId
         ? (() => {
             const assignments = repos.roleAssignmentRepo.listActiveByScope('POST', postId)
             if (assignments.length === 0) return null
@@ -122,13 +122,13 @@ export function createAllocator(deps: {
         if (!passesMembershipGate({
           agent_id: a.id,
           explicit_member_ids: membershipSnapshot.explicit_member_ids,
-          membership_status_enabled: config.features.membershipStatusV1,
+          membership_status_enabled: config.launch.capabilities.membershipStatusV1,
           membership,
         })) {
           continue
         }
 
-        if (config.features.stageTierV1) {
+        if (config.launch.capabilities.stageTierV1) {
           const tier = tierMap.get(a.id)?.tier ?? 'T1'
           if (!tierMeets(minTierPool, tier)) {
             continue
@@ -136,10 +136,10 @@ export function createAllocator(deps: {
         }
 
         candidates.push({
-          stats_hint: config.features.agentStatsBehavior && statsService
+          stats_hint: config.launch.capabilities.agentStatsBehavior && statsService
             ? statsService.getDerivedSync(a.id).stats_hint
             : undefined,
-          relation_hint_to_author: config.features.socialGraphEffective && authorAgentId && relationService
+          relation_hint_to_author: config.launch.capabilities.socialGraphEffective && authorAgentId && relationService
             ? relationService.getPairHintSync(a.id, authorAgentId)
             : undefined,
           agent_id: a.id,
@@ -173,9 +173,9 @@ export function createAllocator(deps: {
     candidates: new DefaultCandidateSelector(DEFAULT_ALLOCATOR_CONFIG, {
       graphRelevanceProvider,
       castingDirectorPolicy,
-      pprEnabled: config.features.allocatorPprEnabled,
-      directorEnabled: config.features.castingDirectorEnabled || config.features.castingDirectorV2,
-      directorV2Enabled: config.features.castingDirectorV2,
+      pprEnabled: config.launch.capabilities.allocatorPprEnabled,
+      directorEnabled: config.launch.capabilities.castingDirectorEnabled || config.launch.capabilities.castingDirectorV2,
+      directorV2Enabled: config.launch.capabilities.castingDirectorV2,
       resolveCommunityDirectorConfig: resolveDirectorConfigByCommunity,
       attentionOpportunityBroker: deps.attentionOpportunityBroker ?? undefined,
       recallPolicyService: deps.recallPolicyService ?? undefined,
@@ -201,8 +201,8 @@ export function createAllocator(deps: {
         }
       },
       forumOrchestrationFlags: {
-        shadow: config.features.forumOrchestrationShadow,
-        selectionCutover: config.features.forumOrchestrationSelectionCutover,
+        shadow: config.launch.capabilities.forumOrchestrationShadow,
+        selectionCutover: config.launch.capabilities.forumOrchestrationSelectionCutover,
       },
     }),
     lock: new InMemoryAllocationLock(DEFAULT_ALLOCATOR_CONFIG.lockTtlMs),

@@ -15,7 +15,7 @@ export const guidanceRouter: IRouter = Router()
 
 guidanceRouter.get('/guidance/summary', async (req, res, next) => {
   try {
-    if (!config.features.guidanceV1) {
+    if (!config.launch.capabilities.guidanceV1) {
       res.json({ data: buildDisabledGuidanceSummary(peekGuidanceActorContext(req)) })
       return
     }
@@ -30,7 +30,7 @@ guidanceRouter.get('/guidance/summary', async (req, res, next) => {
 
 guidanceRouter.get('/guidance/inbox', async (req, res, next) => {
   try {
-    if (!config.features.guidanceV1) {
+    if (!config.launch.capabilities.guidanceV1) {
       res.json({ data: buildDisabledGuidanceInbox() })
       return
     }
@@ -45,7 +45,7 @@ guidanceRouter.get('/guidance/inbox', async (req, res, next) => {
 
 guidanceRouter.get('/guidance/bell', async (req, res, next) => {
   try {
-    if (!config.features.guidanceV1 || !config.features.guidanceRecallV1) {
+    if (!config.launch.capabilities.guidanceV1 || !config.launch.capabilities.guidanceRecallV1) {
       res.json({ data: buildDisabledGuidanceBell() })
       return
     }
@@ -64,7 +64,7 @@ guidanceRouter.post('/guidance/client-events', async (req, res, next) => {
     if (!eventType) {
       throw new ValidationError('event_type is required')
     }
-    if (!config.features.guidanceV1) {
+    if (!config.launch.capabilities.guidanceV1) {
       res.status(202).json({ data: { accepted: true } })
       return
     }
@@ -91,7 +91,7 @@ guidanceRouter.post('/guidance/items/:id/action', async (req, res, next) => {
     if (action !== 'open' && action !== 'dismiss' && action !== 'complete') {
       throw new ValidationError('action must be one of open, dismiss, complete')
     }
-    if (!config.features.guidanceV1) {
+    if (!config.launch.capabilities.guidanceV1) {
       const actor = peekGuidanceActorContext(req)
       const item = await guidanceOrchestrator.getItem(actor, String(req.params.id))
       if (!item) {

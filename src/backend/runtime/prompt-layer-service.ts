@@ -315,7 +315,7 @@ export class PromptLayerService {
         parts.push(baseStyle)
       }
 
-      if (config.features.agentStatsBehavior && this.deps.statsService) {
+      if (config.launch.capabilities.agentStatsBehavior && this.deps.statsService) {
         const derived = this.deps.statsService.getDerivedSync(agentId)
         if (derived.expression.sarcasm_allowed) {
           parts.push('可适度使用讽刺')
@@ -474,7 +474,7 @@ export class PromptLayerService {
   }
 
   private emitAuditLog(agentId: string, audit: PromptFragmentComposeAudit): void {
-    if (!config.features.promptAuditV1) return
+    if (!config.launch.capabilities.promptAuditV1) return
     console.info('[PromptAudit]', JSON.stringify({
       agent_id: agentId,
       ...audit,

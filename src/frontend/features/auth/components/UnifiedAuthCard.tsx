@@ -1154,7 +1154,9 @@ export function UnifiedAuthCard({
   const isRegisterIntent = initialIntent === 'register'
   const phoneTabLabel = isRegisterIntent ? '手机注册' : '手机登录'
   const emailTabLabel = isRegisterIntent ? '邮箱注册' : '邮箱登录'
-  const isAuthTestMode = !import.meta.env.PROD
+  const isAuthTestMode =
+    !import.meta.env.PROD &&
+    !(typeof navigator !== 'undefined' && navigator.webdriver === true)
 
   return (
     <Card className="auth-card-shell rounded-[18px] shadow-sm ring-1 ring-border/15">

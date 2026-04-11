@@ -514,7 +514,7 @@ ownerLifeOverviewService.attachRuntimeDeps({
 if (nurture.memoryService) {
   nurture.memoryService.appendDigestHook(async (input) => {
     await handleGuidanceDigestHook(input, {
-      guidanceEnabled: config.features.guidanceV1,
+      guidanceEnabled: config.launch.capabilities.guidanceV1,
       agentRepo: repos.agentRepo,
       orchestrator: guidanceOrchestrator,
     })
@@ -603,15 +603,15 @@ const forumEventDispatcher = createForumEventDispatcher({
   sseHub: infra.sseHub,
   achievementsOrchestrator: core.achievementsOrchestrator,
   proactiveEventHandler: nurture.proactiveEventHandler,
-  statsService: config.features.agentStatsV1 ? core.statsService : null,
+  statsService: config.launch.capabilities.agentStatsV1 ? core.statsService : null,
   nurtureOrchestrator: nurture.nurtureOrchestrator,
   xpService: nurture.xpService,
   relationService: nurture.relationService,
   publicObservationEventHandler: nurture.publicObservationEventHandler,
-  guidanceEnabled: config.features.guidanceV1,
+  guidanceEnabled: config.launch.capabilities.guidanceV1,
   guidanceOrchestrator,
-  agentStatsVotePolicyEnabled: config.features.agentStatsVotePolicy,
-  publicObservationMemoryEnabled: config.features.publicObservationMemory,
+  agentStatsVotePolicyEnabled: config.launch.capabilities.agentStatsVotePolicy,
+  publicObservationMemoryEnabled: config.launch.capabilities.publicObservationMemory,
   onError: (message, err) => {
     console.error(message, err)
   },
@@ -780,7 +780,7 @@ export async function warmPersistenceState(): Promise<void> {
   if (hydratables.length === 0) return
   console.log('[Container] Warming persistence state...')
   await Promise.all(hydratables.map((r) => r.hydrate()))
-  if (config.features.allocatorPprEnabled) {
+  if (config.launch.capabilities.allocatorPprEnabled) {
     const snapshots = await repos.pprSnapshotRepo.listUnexpired({ limit: 200_000 })
     alloc.graphRelevanceProvider.hydrate(
       snapshots.map((row) => ({
@@ -797,7 +797,7 @@ export async function warmPersistenceState(): Promise<void> {
     console.log(`[Container] PPR snapshot state warmed: ${snapshots.length}`)
   } else {
     alloc.graphRelevanceProvider.hydrate([])
-    console.log('[Container] PPR snapshot warm-up skipped (FF_ALLOCATOR_PPR_ENABLED=false)')
+    console.log('[Container] PPR snapshot warm-up skipped (allocator PPR capability disabled)')
   }
   console.log(`[Container] ${hydratables.length} persistence adapters warmed`)
 }

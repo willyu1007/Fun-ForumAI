@@ -355,7 +355,7 @@ function resolvePostLaunchCreatorNotePreferences(
   preferred_cover_modes: LaunchCreatorNoteCoverMode[]
 } | null {
   const tuning = resolvePostLaunchTuningProfile({
-    enabled: config.features.postLaunchTuningV1,
+    enabled: config.launch.capabilities.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,
   })
   if (!tuning) return null

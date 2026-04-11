@@ -994,7 +994,7 @@ export class PromptOrchestrator {
       lintWarnings: audit.lintWarnings,
     })
 
-    if (!config.features.promptAuditV1) return
+    if (!config.launch.capabilities.promptAuditV1) return
     console.info('[PromptAudit]', JSON.stringify({
       agent_id: agentId,
       ...audit,

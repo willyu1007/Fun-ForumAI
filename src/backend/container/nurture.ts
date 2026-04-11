@@ -364,14 +364,14 @@ export async function createNurtureEngines(deps: {
       }),
     )
 
-    if (config.features.achievementChronicleV1) {
+    if (config.launch.capabilities.achievementChronicleV1) {
       achievementsScheduler = new AchievementsScheduler({
         orchestrator: achievementsOrchestrator,
         leaderElector: deps.leaderElectors.achievements,
       })
     }
 
-    if (config.features.communityDigestV1 && communityCultureDigestService) {
+    if (config.launch.capabilities.communityDigestV1 && communityCultureDigestService) {
       cultureDigestScheduler = new CultureDigestScheduler({
         digestService: communityCultureDigestService,
         leaderElector: deps.leaderElectors.cultureDigest,
@@ -413,14 +413,14 @@ export async function createNurtureEngines(deps: {
     }),
   )
 
-  if (config.features.achievementChronicleV1) {
+  if (config.launch.capabilities.achievementChronicleV1) {
     achievementsScheduler = new AchievementsScheduler({
       orchestrator: achievementsOrchestrator,
       leaderElector: deps.leaderElectors.achievements,
     })
   }
 
-  if (config.features.communityDigestV1 && communityCultureDigestService) {
+  if (config.launch.capabilities.communityDigestV1 && communityCultureDigestService) {
     cultureDigestScheduler = new CultureDigestScheduler({
       digestService: communityCultureDigestService,
       leaderElector: deps.leaderElectors.cultureDigest,

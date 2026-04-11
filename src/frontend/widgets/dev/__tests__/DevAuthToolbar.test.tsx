@@ -9,11 +9,6 @@ vi.mock('../DevBadgeDebugPanel', () => ({
     open ? <div data-testid="badge-debug-panel" /> : null,
 }))
 
-vi.mock('../DevFrontendFlagsPanel', () => ({
-  DevFrontendFlagsPanel: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="flags-panel" /> : null,
-}))
-
 vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))

@@ -10,16 +10,6 @@ launch_window:
   schedule_timezone: Asia/Shanghai
   cadence: daily
 
-feature_flags:
-  existing:
-    - FF_GLOBAL_HIGHLIGHTS_V1
-    - FF_AFTERSHOW_V1
-    - FF_AFTERSHOW_EVENT_PIPELINE_V1
-  planned:
-    - FF_HOME_PROGRAMMING_V1
-    - FF_CREATOR_NOTE_HOME_SHELF_V1
-    - FF_PROGRAMMING_OPS_V1
-
 dependency_contracts:
   roster_source: T-133
   community_rules_source: T-134

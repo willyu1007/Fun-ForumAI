@@ -116,7 +116,7 @@ export class PprRefreshScheduler {
 
     try {
       const now = new Date()
-      const v2Enabled = config.features.pprRefreshV2
+      const v2Enabled = config.launch.capabilities.pprRefreshV2
       const shouldFullBackfill = forceFullBackfill
         || !v2Enabled
         || this.lastFullBackfillAt === 0

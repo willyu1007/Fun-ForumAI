@@ -38,10 +38,10 @@ async function main() {
   await initPersistence()
   startBackgroundServices()
 
-  if (config.features.runtimeFeaturesV1) {
+  if (config.launch.capabilities.runtimeFeaturesV1) {
     console.log('[RuntimeFeatures] startup', JSON.stringify({
       build: getRuntimeBuildInfo(),
-      flags: config.features,
+      capabilities: config.launch.capabilities,
       runtime: {
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,

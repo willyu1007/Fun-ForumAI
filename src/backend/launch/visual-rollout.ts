@@ -265,7 +265,7 @@ export function getLaunchVisualRollout(
 export function resolveEffectiveLaunchVisualRollout(): LaunchVisualRolloutRuntime {
   const runtime = getLaunchVisualRollout()
   const tuning = resolvePostLaunchTuningProfile({
-    enabled: config.features.postLaunchTuningV1,
+    enabled: config.launch.capabilities.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,
   })
   if (!tuning) {
@@ -427,7 +427,7 @@ export function resolveLaunchVisualPackaging(
   }
 
   const tuning = resolvePostLaunchTuningProfile({
-    enabled: config.features.postLaunchTuningV1,
+    enabled: config.launch.capabilities.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,
   })
   const preferredModes = tuning?.active_profile.visual.preferred_card_modes[input.surface]

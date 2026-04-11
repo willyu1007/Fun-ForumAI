@@ -7,7 +7,7 @@ export class GuidanceDeliveryAdapter {
   constructor(private readonly sseHub: SseHub) {}
 
   publishUpdated(actor: GuidanceActorRef): void {
-    if (!config.features.guidanceV1) return
+    if (!config.launch.capabilities.guidanceV1) return
     this.sseHub.broadcastToActor(toGuidanceActorChannelKey(actor), {
       type: 'GUIDANCE_UPDATED',
       payload: {},

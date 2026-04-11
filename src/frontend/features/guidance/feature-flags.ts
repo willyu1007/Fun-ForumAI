@@ -1,9 +1,9 @@
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { guidanceBellEnabled, guidanceEnabled } from '@/shared/config/frontend-capabilities'
 
 export function isGuidanceEnabled(): boolean {
-  return isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1')
+  return guidanceEnabled
 }
 
 export function isGuidanceBellEnabled(): boolean {
-  return isGuidanceEnabled() && isFrontendFlagEnabled('VITE_FF_GUIDANCE_BELL_V1')
+  return guidanceBellEnabled
 }

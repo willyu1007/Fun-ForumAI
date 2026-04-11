@@ -5,7 +5,7 @@ import { createSseRouter } from '../sse.js'
 import { config } from '../../lib/config.js'
 import type { SseHub } from '../../sse/hub.js'
 
-const featureFlags = config.features as unknown as Record<string, boolean>
+const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
 const originalGuidanceFlag = featureFlags.guidanceV1
 
 function createTestHub() {

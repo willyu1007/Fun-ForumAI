@@ -62,7 +62,7 @@ describe('app bootstrap', () => {
 
   it('always runs membership backfill when the feature flag is enabled', async () => {
     const { appModule, container, config } = await loadAppModule('false')
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalMembershipsV1 = featureFlags.membershipsV1
     featureFlags.membershipsV1 = true
 

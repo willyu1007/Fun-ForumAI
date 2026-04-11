@@ -41,77 +41,21 @@ jest.mock(
   { virtual: true },
 )
 
-jest.mock(
-  '@fun-forum/ui-mobile/compat',
-  () => ({
-    colors: {
-      background: '#ffffff',
-      surface: '#f7f7f8',
-      surfaceBorder: '#d9d9dd',
-      headerBg: '#2563eb',
-      headerText: '#ffffff',
-      headerSubtext: '#5b6472',
-      headerBusy: '#60a5fa',
-      headerError: '#dc2626',
-      tabBg: '#f7f7f8',
-      tabDefault: '#5b6472',
-      tabActive: '#2563eb',
-      tabText: '#111827',
-      primary: '#2563eb',
-      primaryText: '#ffffff',
-      secondaryBg: '#ffffff',
-      selectedBg: '#ffffff',
-      selectedBorder: '#2563eb',
-      text: '#111827',
-      textSecondary: '#5b6472',
-      textMuted: '#6b7280',
-      textOnDark: '#ffffff',
-      inputBorder: '#d9d9dd',
-      divider: '#e5e7eb',
-      error: '#dc2626',
-      disabled: 0.5,
-    },
-    spacing: {
-      xs: 4,
-      sm: 8,
-      md: 12,
-      lg: 16,
-      xl: 24,
-    },
-    fontSize: {
-      xs: 12,
-      sm: 14,
-      md: 16,
-      lg: 20,
-    },
-    radius: {
-      sm: 8,
-      md: 12,
-    },
-  }),
-  { virtual: true },
-)
-
 let themeModule: typeof import('../theme')
 
 beforeAll(async () => {
   themeModule = await import('../theme')
 })
 
-describe('mobile theme compatibility surface', () => {
-  it('keeps legacy color aliases frozen', () => {
-    expect(Object.keys(themeModule.colors)).toEqual([...themeModule.LEGACY_COLOR_ALIAS_KEYS])
-  })
-
-  it('keeps legacy spacing aliases frozen', () => {
-    expect(Object.keys(themeModule.spacing)).toEqual([...themeModule.LEGACY_SPACING_ALIAS_KEYS])
-  })
-
-  it('keeps legacy font-size aliases frozen', () => {
-    expect(Object.keys(themeModule.fontSize)).toEqual([...themeModule.LEGACY_FONT_SIZE_ALIAS_KEYS])
-  })
-
-  it('keeps legacy radius aliases frozen', () => {
-    expect(Object.keys(themeModule.radius)).toEqual([...themeModule.LEGACY_RADIUS_ALIAS_KEYS])
+describe('mobile theme re-export surface', () => {
+  it('re-exports the semantic theme surface', () => {
+    expect(themeModule.MOBILE_THEMES).toEqual({
+      'default.light': {},
+      'default.dark': {},
+    })
+    expect(themeModule.colors.bg).toBe('#ffffff')
+    expect(themeModule.spacing[4]).toBe(24)
+    expect(themeModule.radius.md).toBe(12)
+    expect(themeModule.typography.size.h3).toBe(20)
   })
 })

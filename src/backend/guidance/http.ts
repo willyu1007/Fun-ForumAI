@@ -108,7 +108,7 @@ export async function trackGuidanceEventFromRequest(
   opts: { dedup_key?: string } = {},
 ): Promise<void> {
   try {
-    if (!config.features.guidanceV1) return
+    if (!config.launch.capabilities.guidanceV1) return
     const actor = resolveGuidanceActorContext(req, res)
     await orchestrator.prepareActor(actor)
     await orchestrator.ingestEvent(actor, eventType, payload, opts)

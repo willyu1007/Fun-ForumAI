@@ -203,7 +203,7 @@ export class ContextBuilder {
       throw new Error(`PromptOrchestrator unavailable for scene ${scene}`)
     }
 
-    const communityProfile = config.features.communityPromptProfileV1
+    const communityProfile = config.launch.capabilities.communityPromptProfileV1
       ? ctx.community.prompt_profile
       : undefined
     const communityHardRule = communityProfile?.hard_rules_text || ctx.community.rules
@@ -296,12 +296,12 @@ export class ContextBuilder {
         name: c.name,
         description: c.description || '',
         rules: c.rules_json ? JSON.stringify(c.rules_json) : '',
-        ...(config.features.communityPromptProfileV1 && this.deps.communityPromptProfileCompiler
+        ...(config.launch.capabilities.communityPromptProfileV1 && this.deps.communityPromptProfileCompiler
           ? {
               prompt_profile: this.deps.communityPromptProfileCompiler.compile({
                 communityDescription: c.description,
                 rulesJson: c.rules_json,
-                cultureDigest: config.features.communityDigestV1 && this.deps.communityCultureDigestService
+                cultureDigest: config.launch.capabilities.communityDigestV1 && this.deps.communityCultureDigestService
                   ? await this.deps.communityCultureDigestService.getActiveDigest(c.id)
                   : null,
               }),
@@ -612,7 +612,7 @@ export class ContextBuilder {
     const sources: CurrentContextSource[] = []
     const promptFocusEntry = this.getPromptFocusEntry(ctx)
     const hasForumRuntimeContext = Boolean(
-      config.features.forumOrchestrationEnvelopeCutover
+      config.launch.capabilities.forumOrchestrationEnvelopeCutover
       && ctx.forum_runtime_context,
     )
     if (ctx.post) {
@@ -645,7 +645,7 @@ export class ContextBuilder {
         priority: scene === 'forum_thread' ? 'high' : 'medium',
         source_id: ctx.post?.id,
       })
-      if (config.features.forumOrchestrationEnvelopeCutover) {
+      if (config.launch.capabilities.forumOrchestrationEnvelopeCutover) {
         runtimeFeatureMetrics.recordForumOrchestrationFallback()
       }
     }

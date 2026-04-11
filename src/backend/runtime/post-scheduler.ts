@@ -604,7 +604,7 @@ export class PostScheduler {
       return null
     }
 
-    if (config.features.multimodalAgentMediaV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
+    if (config.launch.capabilities.multimodalAgentMediaV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
       const prioritizedAgentIds = await this.deps.imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(100)
       const activeById = new Map(candidates.map((candidate) => [candidate.selected.id, candidate]))
       for (const agentId of prioritizedAgentIds) {
@@ -659,7 +659,7 @@ export class PostScheduler {
     agentId: string,
     communities: CommunityCandidate[],
   ): Promise<CommunityCandidate[]> {
-    if (!config.features.stageRoleRuntimeV1) {
+    if (!config.launch.capabilities.stageRoleRuntimeV1) {
       return communities
     }
 
@@ -681,7 +681,7 @@ export class PostScheduler {
       community_id: input.community.id,
     })
     if (
-      config.features.riskControlV1
+      config.launch.capabilities.riskControlV1
       && config.launch.market === 'mainland'
       && stageResolved.used_fallback
     ) {
@@ -690,9 +690,9 @@ export class PostScheduler {
 
     const membership = this.deps.membershipRepo?.findCurrent(input.agentId, input.community.id) ?? null
     if (
-      (config.features.membershipsV1
-        || config.features.membershipStatusV1
-        || config.features.stageRoleRuntimeV1)
+      (config.launch.capabilities.membershipsV1
+        || config.launch.capabilities.membershipStatusV1
+        || config.launch.capabilities.stageRoleRuntimeV1)
       && !membership
     ) {
       return false
@@ -700,12 +700,12 @@ export class PostScheduler {
     if (membership?.left_at) {
       return false
     }
-    if (config.features.membershipStatusV1 && membership && membership.status !== 'ACTIVE') {
+    if (config.launch.capabilities.membershipStatusV1 && membership && membership.status !== 'ACTIVE') {
       return false
     }
 
     let roleKey = membership?.role === 'GUEST' ? 'guest' : 'resident'
-    if (config.features.roleAssignmentV1 && this.deps.roleAssignmentRepo) {
+    if (config.launch.capabilities.roleAssignmentV1 && this.deps.roleAssignmentRepo) {
       const assignment = this.deps.roleAssignmentRepo.findPrimaryForAgent({
         agent_id: input.agentId,
         community_id: input.community.id,
@@ -753,11 +753,11 @@ export class PostScheduler {
   }
 
   private requiresMembershipScopedPosting(): boolean {
-    return config.features.membershipsV1 || config.features.membershipStatusV1 || config.features.stageRoleRuntimeV1
+    return config.launch.capabilities.membershipsV1 || config.launch.capabilities.membershipStatusV1 || config.launch.capabilities.stageRoleRuntimeV1
   }
 
   private async resolveAgentTier(agentId: string): Promise<AgentStageTier> {
-    if (config.features.stageTierV1 && this.deps.stageTierService) {
+    if (config.launch.capabilities.stageTierV1 && this.deps.stageTierService) {
       const snapshot = await this.deps.stageTierService.getSnapshot(agentId, {
         recomputeIfMissing: true,
       })

@@ -20,7 +20,7 @@ export function createSseRouter(hub: SseHub): IRouter {
   router.get('/events/stream', async (req, res) => {
     const roomIds = parseIdsParam(req.query.rooms)
     const sessionIds = parseIdsParam(req.query.sessions)
-    const subscribeGuidanceActor = config.features.guidanceV1 && roomIds.length === 0 && sessionIds.length === 0
+    const subscribeGuidanceActor = config.launch.capabilities.guidanceV1 && roomIds.length === 0 && sessionIds.length === 0
 
     if (sessionIds.length > 0) {
       const user = tryAuthenticateHuman(req)

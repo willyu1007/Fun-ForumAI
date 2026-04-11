@@ -192,7 +192,7 @@ describe('ContextBuilder prompt routing', () => {
   })
 
   it('prefers forum_runtime_context over raw thread excerpts when envelope cutover is enabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalEnvelopeCutover = featureFlags.forumOrchestrationEnvelopeCutover
     featureFlags.forumOrchestrationEnvelopeCutover = true
 

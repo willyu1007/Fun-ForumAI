@@ -3,7 +3,7 @@ import { api } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ChevronLeft, ChevronRight, Wrench, Database, Medal, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Wrench, Database, Medal } from 'lucide-react'
 import {
   DEV_AUTH_TOOLBAR_HEIGHT_CLASS,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
@@ -11,7 +11,6 @@ import {
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { DevBadgeDebugPanel } from './DevBadgeDebugPanel'
-import { DevFrontendFlagsPanel } from './DevFrontendFlagsPanel'
 
 type Identity = 'anonymous' | 'user' | 'admin'
 
@@ -27,7 +26,6 @@ export function DevAuthToolbar() {
   const setCollapsed = useDevAuthToolbarStore((state) => state.setCollapsed)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [badgePanelOpen, setBadgePanelOpen] = useState(false)
-  const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
 
   const handleSeed = async () => {
     setToolsOpen(false)
@@ -137,28 +135,21 @@ export function DevAuthToolbar() {
                 <button
                   type="button"
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={() => { setToolsOpen(false); setBadgePanelOpen(true) }}
+                  onClick={() => {
+                    setToolsOpen(false)
+                    setBadgePanelOpen(true)
+                  }}
                 >
                   <Medal className="size-3.5 text-muted-foreground" />
                   勋章调试
                 </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={() => { setToolsOpen(false); setFlagsPanelOpen(true) }}
-                >
-                  <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-                  VITE 功能门
-                </button>
               </PopoverContent>
             </Popover>
-
           </div>
         </div>
       </div>
 
       <DevBadgeDebugPanel open={badgePanelOpen} onOpenChange={setBadgePanelOpen} />
-      <DevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
     </>
   )
 }

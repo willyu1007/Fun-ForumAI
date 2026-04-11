@@ -17,14 +17,6 @@ source_endpoints:
   global_highlights: /v1/highlights
   aftershow_detail: /v1/posts/:postId/aftershow
 
-feature_flags:
-  existing:
-    - FF_GLOBAL_HIGHLIGHTS_V1
-    - FF_AFTERSHOW_V1
-    - FF_AUDIENCE_AFTERSHOW_WEB_V1
-  planned:
-    - FF_HOME_PROGRAMMING_V1
-
 shelves:
   - id: must_watch_today
     label: 今日必看
@@ -187,7 +179,7 @@ read_model_fields:
     used_by: [must_watch_today, notes_today, continue_storyline]
 
 fallback_rules:
-  - If FF_HOME_PROGRAMMING_V1 is disabled, route users to legacy feed plus highlights entry.
+  - If programming-home payload generation is unavailable, route users to legacy feed plus highlights entry.
   - "If a card lacks `storyline_id`, it must not enter `剧情继续看`."
   - "If a card has `hero_eligible=false`, it must not occupy the first slot of `今日必看`."
   - "If a card lacks `surface_kind / card_mode / thumbnail_policy`, render it with text-first fallback rather than dropping it."

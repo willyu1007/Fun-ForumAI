@@ -18,15 +18,19 @@ describe('frontend static router', () => {
   function createFixture() {
     const dir = mkdtempSync(join(tmpdir(), 'frontend-static-'))
     tempDirs.push(dir)
-    writeFileSync(join(dir, 'index.html'), '<!doctype html><html><body>launch-home</body></html>\n', 'utf8')
     writeFileSync(
-      join(dir, 'frontend-build-flags.json'),
+      join(dir, 'index.html'),
+      '<!doctype html><html><body>launch-home</body></html>\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(dir, 'frontend-build-capabilities.json'),
       `${JSON.stringify({
         version: 1,
         profile: 'launch',
-        frontend_flags: {
-          VITE_FF_HOME_PROGRAMMING_V1: 'true',
-          VITE_FF_PROGRAMMING_OPS_V1: 'true',
+        frontend_capabilities: {
+          home_programming: true,
+          programming_ops: true,
         },
       })}\n`,
       'utf8',
@@ -47,11 +51,11 @@ describe('frontend static router', () => {
   it('serves the frontend build proof artifact with no-store caching', async () => {
     const app = createApp(createFixture())
 
-    const response = await request(app).get('/frontend-build-flags.json')
+    const response = await request(app).get('/frontend-build-capabilities.json')
 
     expect(response.status).toBe(200)
     expect(response.headers['cache-control']).toContain('no-store')
-    expect(response.body.frontend_flags.VITE_FF_HOME_PROGRAMMING_V1).toBe('true')
+    expect(response.body.frontend_capabilities.home_programming).toBe(true)
   })
 
   it('serves static assets and falls back to index.html for SPA routes', async () => {

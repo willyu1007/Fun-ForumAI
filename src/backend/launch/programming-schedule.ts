@@ -54,11 +54,6 @@ const launchWindowSchema = z.object({
   cadence: z.string().trim().min(1),
 }).strict()
 
-const featureFlagsSchema = z.object({
-  existing: z.array(z.string().trim().min(1)).default([]),
-  planned: z.array(z.string().trim().min(1)).default([]),
-}).strict()
-
 const dependencyContractsSchema = z.object({
   roster_source: z.string().trim().min(1),
   community_rules_source: z.string().trim().min(1),
@@ -120,7 +115,6 @@ const launchProgrammingScheduleSchema = z.object({
   draft_status: z.string().trim().min(1),
   notes: z.array(z.string().trim().min(1)).default([]),
   launch_window: launchWindowSchema,
-  feature_flags: featureFlagsSchema,
   dependency_contracts: dependencyContractsSchema,
   dayparts: z.array(daypartSchema).length(LAUNCH_PROGRAMMING_DAYPART_IDS.length),
   slot_templates: z.array(slotTemplateSchema).min(1),
@@ -223,7 +217,6 @@ export interface LaunchProgrammingScheduleRuntime {
   draft_status: string
   notes: string[]
   launch_window: z.infer<typeof launchWindowSchema>
-  feature_flags: z.infer<typeof featureFlagsSchema>
   dependency_contracts: LaunchProgrammingDependencyContracts
   dayparts: LaunchProgrammingDaypartRuntime[]
   slot_templates: LaunchProgrammingSlotTemplateRuntime[]
@@ -510,7 +503,6 @@ function normalizeLaunchProgrammingScheduleRuntime(input: unknown): LaunchProgra
     draft_status: file.draft_status,
     notes: file.notes,
     launch_window: file.launch_window,
-    feature_flags: file.feature_flags,
     dependency_contracts: {
       roster_source: file.dependency_contracts.roster_source,
       community_rules_source: file.dependency_contracts.community_rules_source,

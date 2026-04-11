@@ -10,7 +10,7 @@ function extractVisitorCookie(setCookie: string | string[] | undefined): string 
   return values.find((entry) => entry.startsWith('ff_vid='))
 }
 
-const featureFlags = config.features as unknown as Record<string, boolean>
+const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
 const originalGuidanceFlag = featureFlags.guidanceV1
 const originalGuidanceRecallFlag = featureFlags.guidanceRecallV1
 

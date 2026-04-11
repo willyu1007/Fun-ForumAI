@@ -59,7 +59,7 @@ export class AgentExecutor {
     try {
       let ctx = await this.deps.contextBuilder.build(event, agent)
       if (
-        config.features.mediaForumThreadTurnSurfaceV1
+        config.launch.capabilities.mediaForumThreadTurnSurfaceV1
         && (event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded')
         && ctx.public_scene
         && this.deps.surfaceMediaPlanningService
@@ -105,7 +105,7 @@ export class AgentExecutor {
         }
       }
       if (
-        config.features.mediaChatRoomSurfaceV1
+        config.launch.capabilities.mediaChatRoomSurfaceV1
         && event.event_type === 'NewMessageCreated'
         && ctx.chatContext
         && this.deps.surfaceMediaPlanningService

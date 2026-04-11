@@ -460,7 +460,7 @@ describe('PromptLayerService', () => {
       } as unknown as PromptLayerServiceDeps['agentService'],
     })
 
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.promptAuditV1
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
 
