@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { homeProgrammingEnabled } from '@/shared/config/frontend-capabilities'
 import { readEditorialShelfLabel, readCreatorNoteTemplateLabel } from '../lib/launch-surface-labels'
 import type {
   ApiResponse,
@@ -33,8 +33,6 @@ import {
   readStorylineState,
   readStorylineTitle,
 } from '../../../../shared/semantic-taxonomy.js'
-
-const HOME_PROGRAMMING_ENABLED = isFrontendFlagEnabled('VITE_FF_HOME_PROGRAMMING_V1')
 
 function isCommunityItem(item: HomeProgrammingItem): item is HomeProgrammingCommunityItem {
   return item.item_kind === 'community_entry'
@@ -72,11 +70,14 @@ function readPreviewText(item: HomeProgrammingPostItem) {
   return item.summary_text ?? readStorylineHook(item) ?? item.body
 }
 
-function appendSourceContext(target: string, input: {
-  sourceSurface: string
-  sourceShelf?: string | null
-  sourcePosition?: number | null
-}) {
+function appendSourceContext(
+  target: string,
+  input: {
+    sourceSurface: string
+    sourceShelf?: string | null
+    sourcePosition?: number | null
+  },
+) {
   if (!target.startsWith('/posts/')) {
     return target
   }
@@ -156,25 +157,43 @@ function HomeProgrammingCard({
         target={target}
         className={cn(
           'group block overflow-hidden rounded-2xl border border-border/60 bg-background transition-colors hover:border-primary/30 hover:bg-primary/[0.04]',
-          isNoteCard && 'border-warning/40 bg-warning/10 hover:border-warning/60 hover:bg-warning/15',
+          isNoteCard &&
+            'border-warning/40 bg-warning/10 hover:border-warning/60 hover:bg-warning/15',
           featured ? 'min-h-[20rem]' : 'min-h-[13rem]',
         )}
       >
-        <div className={cn('grid h-full gap-0', featured && cover ? 'md:grid-cols-[1.2fr_1fr]' : '')}>
+        <div
+          className={cn('grid h-full gap-0', featured && cover ? 'md:grid-cols-[1.2fr_1fr]' : '')}
+        >
           {cover ? (
-            <div className={cn('min-h-[12rem] overflow-hidden bg-muted/30', featured ? 'md:min-h-full' : '')}>
-              <img src={cover} alt={item.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+            <div
+              className={cn(
+                'min-h-[12rem] overflow-hidden bg-muted/30',
+                featured ? 'md:min-h-full' : '',
+              )}
+            >
+              <img
+                src={cover}
+                alt={item.title}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
             </div>
           ) : null}
           <div className="flex h-full flex-col gap-3 p-5">
             <div className="flex flex-wrap items-center gap-2">
               {isNoteCard ? (
-                <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">{creatorNotesLabel}</Badge>
+                <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
+                  {creatorNotesLabel}
+                </Badge>
               ) : null}
-              <Badge variant="outline" className="text-[10px]">{readContentBadge(item)}</Badge>
+              <Badge variant="outline" className="text-[10px]">
+                {readContentBadge(item)}
+              </Badge>
               {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
               {creatorNoteTemplateLabel ? (
-                <Badge variant="outline" className="text-[10px]">{creatorNoteTemplateLabel}</Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  {creatorNoteTemplateLabel}
+                </Badge>
               ) : null}
               {storylineTitle ? (
                 <span className="text-[11px] text-muted-foreground">{storylineTitle}</span>
@@ -182,10 +201,20 @@ function HomeProgrammingCard({
             </div>
 
             <div className="space-y-2">
-              <h2 className={cn('font-semibold tracking-tight text-foreground', featured ? 'text-2xl leading-8' : 'text-lg leading-7')}>
+              <h2
+                className={cn(
+                  'font-semibold tracking-tight text-foreground',
+                  featured ? 'text-2xl leading-8' : 'text-lg leading-7',
+                )}
+              >
                 {item.title}
               </h2>
-              <p className={cn('line-clamp-3 text-sm leading-6 text-muted-foreground', featured && 'line-clamp-4')}>
+              <p
+                className={cn(
+                  'line-clamp-3 text-sm leading-6 text-muted-foreground',
+                  featured && 'line-clamp-4',
+                )}
+              >
                 {readPreviewText(item)}
               </p>
             </div>
@@ -225,9 +254,13 @@ function CommunityEntryCard({ item }: { item: HomeProgrammingCommunityItem }) {
           <h3 className="font-medium text-foreground">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">c/{item.slug}</p>
         </div>
-        <Badge variant="outline" className="text-[10px]">{item.headline_priority}</Badge>
+        <Badge variant="outline" className="text-[10px]">
+          {item.headline_priority}
+        </Badge>
       </div>
-      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
+      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+        {item.description}
+      </p>
       {item.editorial_shelves.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {item.editorial_shelves.slice(0, 2).map((shelf) => (
@@ -248,8 +281,12 @@ function ProgrammingSlotCard({ item }: { item: HomeProgrammingSlotItem }) {
       className="block rounded-2xl border border-border/60 bg-background p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.04]"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline" className="text-[10px]">{item.daypart_label}</Badge>
-        <Badge variant="outline" className="text-[10px]">{item.daypart_time_range}</Badge>
+        <Badge variant="outline" className="text-[10px]">
+          {item.daypart_label}
+        </Badge>
+        <Badge variant="outline" className="text-[10px]">
+          {item.daypart_time_range}
+        </Badge>
         <Badge className="text-[10px]">{item.community_name}</Badge>
       </div>
       <div className="mt-3 space-y-2">
@@ -284,12 +321,17 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelfLabel}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {shelf.id === 'must_watch_today' ? '先看这一条，就能立刻进入今天最值得追的主线。' :
-              shelf.id === 'conflict_rising' ? '不是普通热榜，而是正在升温的交锋。' :
-                shelf.id === 'notes_today' ? '封面感更强、结构更完整的创作者笔记。' :
-                  shelf.id === 'continue_storyline' ? '给回访用户准备的 continuation 入口。' :
-                    shelf.id === 'tonight_programming' ? '先知道今晚会发生什么，再决定从哪条线切进去。' :
-                    '完整世界入口。'}
+            {shelf.id === 'must_watch_today'
+              ? '先看这一条，就能立刻进入今天最值得追的主线。'
+              : shelf.id === 'conflict_rising'
+                ? '不是普通热榜，而是正在升温的交锋。'
+                : shelf.id === 'notes_today'
+                  ? '封面感更强、结构更完整的创作者笔记。'
+                  : shelf.id === 'continue_storyline'
+                    ? '给回访用户准备的 continuation 入口。'
+                    : shelf.id === 'tonight_programming'
+                      ? '先知道今晚会发生什么，再决定从哪条线切进去。'
+                      : '完整世界入口。'}
           </p>
         </div>
       </div>
@@ -307,13 +349,27 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
           ))}
         </div>
       ) : featured ? (
-        shelf.items.filter(isPostItem).slice(0, 1).map((item) => (
-          <HomeProgrammingCard key={item.id} item={item} featured sourceShelf={shelf.id} sourcePosition={0} />
-        ))
+        shelf.items
+          .filter(isPostItem)
+          .slice(0, 1)
+          .map((item) => (
+            <HomeProgrammingCard
+              key={item.id}
+              item={item}
+              featured
+              sourceShelf={shelf.id}
+              sourcePosition={0}
+            />
+          ))
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {shelf.items.filter(isPostItem).map((item, index) => (
-            <HomeProgrammingCard key={item.id} item={item} sourceShelf={shelf.id} sourcePosition={index} />
+            <HomeProgrammingCard
+              key={item.id}
+              item={item}
+              sourceShelf={shelf.id}
+              sourcePosition={index}
+            />
           ))}
         </div>
       )}
@@ -363,16 +419,24 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
         </div>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-2xl">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">首页现在是节目入口，不只是广场入口。</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              首页现在是节目入口，不只是广场入口。
+            </h1>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               先看今日必看、冲突升级和创作者笔记，底部再接热门广场续读。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to="/highlights" className="inline-flex items-center rounded-full border border-border/70 px-4 py-2 text-sm text-foreground/85 transition-colors hover:border-primary/30 hover:bg-primary/[0.04]">
+            <Link
+              to="/highlights"
+              className="inline-flex items-center rounded-full border border-border/70 px-4 py-2 text-sm text-foreground/85 transition-colors hover:border-primary/30 hover:bg-primary/[0.04]"
+            >
               今日高光
             </Link>
-            <Link to="/feed" className="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90">
+            <Link
+              to="/feed"
+              className="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90"
+            >
               打开论坛广场
             </Link>
           </div>
@@ -409,11 +473,7 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
 }
 
 export function HomePage() {
-  const homeProgramming = useHomeProgramming(HOME_PROGRAMMING_ENABLED)
-
-  if (!HOME_PROGRAMMING_ENABLED) {
-    return <FeedPage />
-  }
+  const homeProgramming = useHomeProgramming(homeProgrammingEnabled)
 
   if (homeProgramming.isLoading) {
     return (

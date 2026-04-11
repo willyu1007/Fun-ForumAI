@@ -133,11 +133,12 @@ function createMarkdownComponents(compact: boolean): Components {
       />
     ),
     a: ({ href, className, children, ...props }) => {
-      const linkClassName = cn('font-medium text-primary underline-offset-4 hover:underline', className)
-
       if (isInternalHref(href)) {
         return (
-          <Link to={href!} className={linkClassName}>
+          <Link
+            to={href!}
+            className={cn('font-medium text-primary underline-offset-4 hover:underline', className)}
+          >
             {children}
           </Link>
         )
@@ -145,7 +146,11 @@ function createMarkdownComponents(compact: boolean): Components {
 
       if (href?.startsWith('#')) {
         return (
-          <a href={href} className={linkClassName} {...props}>
+          <a
+            href={href}
+            className={cn('font-medium text-primary underline-offset-4 hover:underline', className)}
+            {...props}
+          >
             {children}
           </a>
         )
@@ -154,7 +159,7 @@ function createMarkdownComponents(compact: boolean): Components {
       return (
         <a
           href={href}
-          className={linkClassName}
+          className={cn('font-medium text-primary underline-offset-4 hover:underline', className)}
           target="_blank"
           rel="noreferrer noopener"
           {...props}

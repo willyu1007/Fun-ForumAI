@@ -25,9 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { extractRichTextPreview } from '@/shared/utils/rich-text-lite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import type { RoomBeatType, RoomCastRole, RoomSceneType } from '@/api/types'
-import { ChatRoomHoldSurface } from './chat-room-page/ChatRoomHoldSurface'
 const STATUS_LABEL: Record<
   string,
   {
@@ -68,10 +66,6 @@ const BEAT_LABEL: Record<RoomBeatType, string> = {
   LANDING: '落点',
 }
 export function ChatRoomListPage() {
-  if (isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1')) {
-    return <ChatRoomHoldSurface />
-  }
-
   return <ChatRoomListLivePage />
 }
 
@@ -80,25 +74,25 @@ function ChatRoomListLivePage() {
   const rooms = data?.data ?? []
   if (isLoading) {
     return (
-      <div className={"space-y-3 p-4"}>
+      <div className={'space-y-3 p-4'}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className={"h-24 rounded-xl"} />
+          <Skeleton key={i} className={'h-24 rounded-xl'} />
         ))}
       </div>
     )
   }
   if (error) {
-    return <div className={"p-4 text-destructive"}>加载失败: {error.message}</div>
+    return <div className={'p-4 text-destructive'}>加载失败: {error.message}</div>
   }
   return (
-    <div className={"max-w-3xl mx-auto space-y-4 py-4"}>
-      <div className={"flex items-center justify-between px-1"}>
-        <h1 className={"text-xl font-bold"}>房间广场</h1>
+    <div className={'max-w-3xl mx-auto space-y-4 py-4'}>
+      <div className={'flex items-center justify-between px-1'}>
+        <h1 className={'text-xl font-bold'}>房间广场</h1>
         <CreateRoomDialog />
       </div>
 
       {rooms.length === 0 ? (
-        <div className={"text-center py-20 text-muted-foreground"}>还没有聊天室，创建一个吧！</div>
+        <div className={'text-center py-20 text-muted-foreground'}>还没有聊天室，创建一个吧！</div>
       ) : (
         <div className="grid gap-3">
           {rooms.map((room) => {
@@ -106,16 +100,16 @@ function ChatRoomListLivePage() {
             return (
               <Link key={room.id} to={`/rooms/${room.id}`}>
                 <Card className="hover:bg-accent/30 transition-colors cursor-pointer">
-                  <CardHeader className={"pb-2"}>
+                  <CardHeader className={'pb-2'}>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <CardTitle className={"text-base"}>{room.name}</CardTitle>
-                        <Badge variant={status.variant} className={"text-xs"}>
+                        <CardTitle className={'text-base'}>{room.name}</CardTitle>
+                        <Badge variant={status.variant} className={'text-xs'}>
                           {status.text}
                         </Badge>
                       </div>
                       {room.description && (
-                        <p className={"text-sm text-muted-foreground"}>
+                        <p className={'text-sm text-muted-foreground'}>
                           {extractRichTextPreview(room.description, 88)}
                         </p>
                       )}
@@ -123,61 +117,57 @@ function ChatRoomListLivePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className={"text-[10px]"}>
+                      <Badge variant="outline" className={'text-[10px]'}>
                         {SCENE_LABEL[room.watchability?.scene_type ?? 'FREE_CHAT']}
                       </Badge>
                       {room.watchability?.current_beat && (
-                        <Badge variant="secondary" className={"text-[10px]"}>
+                        <Badge variant="secondary" className={'text-[10px]'}>
                           {BEAT_LABEL[room.watchability.current_beat]}
                         </Badge>
                       )}
                       {(room.watchability?.active_cast_preview ?? []).slice(0, 3).map((entry) => (
-                        <Badge
-                          key={entry.agent_id}
-                          variant="secondary"
-                          className={"text-[10px]"}
-                        >
+                        <Badge key={entry.agent_id} variant="secondary" className={'text-[10px]'}>
                           {entry.name} · {ROLE_LABEL[entry.role]}
                         </Badge>
                       ))}
                     </div>
-                    <p className={"mt-3 text-sm font-medium leading-6"}>
+                    <p className={'mt-3 text-sm font-medium leading-6'}>
                       {room.watchability?.live_hook ||
                         room.description ||
                         '这间房正在等待下一个看点。'}
                     </p>
                     {room.watchability?.unresolved_question && (
-                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
+                      <p className={'mt-1 text-xs text-muted-foreground line-clamp-2'}>
                         {formatGlossaryLabel('unresolvedQuestion')}：
                         {room.watchability.unresolved_question}
                       </p>
                     )}
                     {room.watchability?.last_highlight_text && (
-                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
+                      <p className={'mt-1 text-xs text-muted-foreground line-clamp-2'}>
                         {formatGlossaryLabel('currentHighlight')}：
                         {room.watchability.last_highlight_text}
                       </p>
                     )}
                     {room.watchability?.continuity_summary && (
-                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
+                      <p className={'mt-1 text-xs text-muted-foreground line-clamp-2'}>
                         {formatGlossaryLabel('continuity')}：{room.watchability.continuity_summary}
                       </p>
                     )}
                     {room.watchability?.canonization_note && (
-                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
+                      <p className={'mt-1 text-xs text-muted-foreground line-clamp-2'}>
                         {formatGlossaryLabel('canon')}：{room.watchability.canonization_note}
                       </p>
                     )}
                     {room.watchability?.cameo_hint && (
-                      <p className={"mt-1 text-xs text-muted-foreground line-clamp-2"}>
+                      <p className={'mt-1 text-xs text-muted-foreground line-clamp-2'}>
                         {formatGlossaryLabel('cameo')}：{room.watchability.cameo_hint}
                       </p>
                     )}
-                    <p className={"text-xs text-muted-foreground mt-3"}>
+                    <p className={'text-xs text-muted-foreground mt-3'}>
                       热度 {Math.round((room.watchability?.energy ?? 0) * 100)} · 张力{' '}
                       {Math.round((room.watchability?.tension ?? 0) * 100)}
                     </p>
-                    <p className={"text-xs text-muted-foreground mt-1"}>
+                    <p className={'text-xs text-muted-foreground mt-1'}>
                       {room.last_message_at
                         ? `最后活跃 ${relativeTime(room.last_message_at)}`
                         : `创建于 ${relativeTime(room.created_at)}`}
@@ -238,11 +228,13 @@ function CreateRoomDialog() {
           <DialogTitle>创建新聊天室</DialogTitle>
           <DialogDescription>选择由哪个 agent 开场，再设置房间名称和一句简介。</DialogDescription>
         </DialogHeader>
-        <div className={"space-y-3 pt-2"}>
-          {!user && <p className={"text-sm text-muted-foreground"}>登录后才能以你的 agent 创建聊天室。</p>}
+        <div className={'space-y-3 pt-2'}>
+          {!user && (
+            <p className={'text-sm text-muted-foreground'}>登录后才能以你的 agent 创建聊天室。</p>
+          )}
           {user && (
             <div className="space-y-1">
-              <p className={"text-sm text-muted-foreground"}>开场 Agent</p>
+              <p className={'text-sm text-muted-foreground'}>开场 Agent</p>
               <Select
                 value={selectedAgentId}
                 onValueChange={setSelectedAgentId}
@@ -260,7 +252,9 @@ function CreateRoomDialog() {
                 </SelectContent>
               </Select>
               {!myAgentsLoading && myAgents.length === 0 && (
-                <p className={"text-xs text-muted-foreground"}>你还没有可用 agent，先去创建一个再开房间。</p>
+                <p className={'text-xs text-muted-foreground'}>
+                  你还没有可用 agent，先去创建一个再开房间。
+                </p>
               )}
             </div>
           )}
@@ -271,7 +265,7 @@ function CreateRoomDialog() {
             onChange={(e) => setDesc(e.target.value)}
           />
           {createRoom.isError && (
-            <p className={"text-sm text-destructive"}>
+            <p className={'text-sm text-destructive'}>
               创建失败：{createRoom.error?.message ?? '未知错误'}
             </p>
           )}

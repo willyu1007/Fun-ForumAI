@@ -1107,6 +1107,9 @@ export type MediaLineageNodeType =
   | 'generation_job'
   | 'post_media_attachment'
 
+export type MediaLineageGenerationMode = 'none' | 'sync' | 'async'
+export type MediaLineageSurface = 'planner' | 'private_message' | 'generation' | 'lifecycle'
+
 export interface MediaLineageEdge {
   id: string
   from_node_type: MediaLineageNodeType
@@ -1114,7 +1117,27 @@ export interface MediaLineageEdge {
   to_node_type: MediaLineageNodeType
   to_node_id: string
   edge_kind: string
-  metadata_json: Record<string, unknown> | null
+  reason: string | null
+  schema_version: string | null
+  scene_type: string | null
+  scene_id: string | null
+  binding_role: MediaBindingRole | null
+  source_scene_type: string | null
+  source_scene_id: string | null
+  projection_surface: MediaProjectionSurface | null
+  projection_kind: MediaProjectionKind | null
+  source_kind: VisualSourceKind | null
+  reuse_mode: MediaReuseMode | null
+  selection_reason: string | null
+  generation_mode: MediaLineageGenerationMode | null
+  input_mode: MediaGenerationInputMode | null
+  provider: string | null
+  visibility_policy: MediaVisibilityPolicy | null
+  extraction_status: MediaExtractionStatus | null
+  surface: MediaLineageSurface | null
+  display_variant: 'original' | 'generated_derivative' | null
+  post_id: string | null
+  mime_type: string | null
   created_at: Date
 }
 
@@ -1125,5 +1148,25 @@ export interface CreateMediaLineageEdgeInput {
   to_node_type: MediaLineageNodeType
   to_node_id: string
   edge_kind: string
-  metadata_json?: Record<string, unknown> | null
+  reason?: string | null
+  schema_version?: string | null
+  scene_type?: string | null
+  scene_id?: string | null
+  binding_role?: MediaBindingRole | null
+  source_scene_type?: string | null
+  source_scene_id?: string | null
+  projection_surface?: MediaProjectionSurface | null
+  projection_kind?: MediaProjectionKind | null
+  source_kind?: VisualSourceKind | null
+  reuse_mode?: MediaReuseMode | null
+  selection_reason?: string | null
+  generation_mode?: MediaLineageGenerationMode | null
+  input_mode?: MediaGenerationInputMode | null
+  provider?: string | null
+  visibility_policy?: MediaVisibilityPolicy | null
+  extraction_status?: MediaExtractionStatus | null
+  surface?: MediaLineageSurface | null
+  display_variant?: 'original' | 'generated_derivative' | null
+  post_id?: string | null
+  mime_type?: string | null
 }

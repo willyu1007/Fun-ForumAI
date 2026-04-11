@@ -50,9 +50,9 @@ function buildSteadySettings(): MediaRolloutEffectiveSettings {
     target_min_rate: config.mediaController.rootPostTargetMinRate,
     target_max_rate: config.mediaController.rootPostTargetMaxRate,
     threshold_delta: 0,
-    allow_generation: config.features.mediaGenerationV1,
-    generation_tier: config.features.mediaGenerationV1 ? 'medium' : 'none',
-    sync_generation_ms_budget: config.features.mediaGenerationV1 ? STEADY_SYNC_BUDGET_MS : 0,
+    allow_generation: config.launch.capabilities.mediaGenerationV1,
+    generation_tier: config.launch.capabilities.mediaGenerationV1 ? 'medium' : 'none',
+    sync_generation_ms_budget: config.launch.capabilities.mediaGenerationV1 ? STEADY_SYNC_BUDGET_MS : 0,
     allow_private_runtime_projection: true,
     allow_private_inspired_generation: true,
     force_safe_mode: false,
@@ -114,7 +114,7 @@ export class MediaRolloutControllerService {
       target_max_rate: targetBand.target_max_rate,
     }
 
-    if (!config.features.mediaRolloutControllerV1) {
+    if (!config.launch.capabilities.mediaRolloutControllerV1) {
       return {
         mode: 'OFF',
         active_override: activeOverride,
@@ -213,8 +213,8 @@ export class MediaRolloutControllerService {
         effective: {
           ...steady,
           threshold_delta: -0.2,
-          generation_tier: config.features.mediaGenerationV1 ? 'medium' : 'none',
-          sync_generation_ms_budget: config.features.mediaGenerationV1 ? 2600 : 0,
+          generation_tier: config.launch.capabilities.mediaGenerationV1 ? 'medium' : 'none',
+          sync_generation_ms_budget: config.launch.capabilities.mediaGenerationV1 ? 2600 : 0,
         },
         reason: 'attach_rate_below_target_band',
       }
@@ -237,7 +237,7 @@ export class MediaRolloutControllerService {
         effective: {
           ...steady,
           threshold_delta: 0.2,
-          allow_generation: !disableGeneration && config.features.mediaGenerationV1,
+          allow_generation: !disableGeneration && config.launch.capabilities.mediaGenerationV1,
           generation_tier: disableGeneration ? 'none' : 'low',
           sync_generation_ms_budget: disableGeneration ? 0 : 1000,
           allow_private_inspired_generation: !disableGeneration,

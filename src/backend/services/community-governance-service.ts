@@ -141,7 +141,7 @@ function computeRecommendation(
   incubation_visibility_mode: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
-  meta: Record<string, unknown>
+  decision_context: CommunityMergeRecommendation['decision_context']
 } {
   const proposalTokens = buildProposalTokens(proposal)
   let best: {
@@ -189,7 +189,19 @@ function computeRecommendation(
       incubation_visibility_mode: 'WHITELIST_ONLY',
       overlap_score: 0,
       rationale,
-      meta: { basis: 'empty_catalog' },
+      decision_context: {
+        basis: 'empty_catalog',
+        best_match_slug: null,
+        text_overlap: 0,
+        scene_overlap: 0,
+        publication_profile_bonus: 0,
+        community_family_bonus: 0,
+        thresholds: {
+          merge_threshold: mergeThreshold,
+          lane_threshold: laneThreshold,
+          gray_visibility_threshold: grayVisibilityThreshold,
+        },
+      },
     }
   }
 
@@ -225,15 +237,16 @@ function computeRecommendation(
     incubation_visibility_mode: incubationVisibilityMode,
     overlap_score: best.overlap_score,
     rationale,
-      meta: {
-        best_match_slug: best.entry.slug,
-        text_overlap: best.text_overlap,
-        scene_overlap: best.scene_overlap,
-        publication_profile_bonus: best.publication_profile_bonus,
-        community_family_bonus: best.community_family_bonus,
-        thresholds: {
-          merge_threshold: mergeThreshold,
-          lane_threshold: laneThreshold,
+    decision_context: {
+      basis: 'catalog_overlap',
+      best_match_slug: best.entry.slug,
+      text_overlap: best.text_overlap,
+      scene_overlap: best.scene_overlap,
+      publication_profile_bonus: best.publication_profile_bonus,
+      community_family_bonus: best.community_family_bonus,
+      thresholds: {
+        merge_threshold: mergeThreshold,
+        lane_threshold: laneThreshold,
         gray_visibility_threshold: grayVisibilityThreshold,
       },
     },
@@ -376,7 +389,7 @@ export class CommunityGovernanceService {
       }))
 
     const tuning = resolvePostLaunchTuningProfile({
-      enabled: config.features.postLaunchTuningV1,
+      enabled: config.launch.capabilities.postLaunchTuningV1,
       profileId: config.launchTuning.activeProfile || null,
     })
     const recommendationInput = computeRecommendation(
@@ -517,11 +530,8 @@ export class CommunityGovernanceService {
       merged_into_community_id: mergedIntoCommunityId ?? proposal.merged_into_community_id ?? null,
       reviewed_by_user_id: input.actor_user_id,
       reviewed_at: new Date(),
-      meta: {
-        ...(proposal.meta ?? {}),
-        last_action: input.action,
-        last_action_reason: input.reason ?? null,
-      },
+      last_action: input.action,
+      last_action_reason: input.reason ?? proposal.last_action_reason,
     })
     if (!updatedProposal) throw new NotFoundError('CommunityProposal', proposal.id)
 

@@ -184,7 +184,7 @@ function createSemanticSnapshot(assetId: string): MediaSemanticSnapshot {
 
 describe('MediaGenerationService', () => {
   const originalMediaGeneration = { ...config.mediaGeneration }
-  const featureFlags = config.features as unknown as Record<string, boolean>
+  const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
   const originalFeatureFlags = {
     mediaGenerationV1: featureFlags.mediaGenerationV1,
   }
@@ -470,7 +470,7 @@ describe('MediaGenerationService', () => {
   })
 
   it('processes a queued job, ingests the derivative, and upgrades the plan to ready', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaGenerationV1: true,
     })
     Object.assign(config.mediaGeneration, {
@@ -696,7 +696,7 @@ describe('MediaGenerationService', () => {
   })
 
   it('syncs all linked plans when a deduplicated job succeeds', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaGenerationV1: true,
     })
     Object.assign(config.mediaGeneration, {
@@ -931,7 +931,7 @@ describe('MediaGenerationService', () => {
   })
 
   it('requeues stale running jobs when retry budget remains and completes the next pass', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaGenerationV1: true,
     })
     Object.assign(config.mediaGeneration, {
@@ -1074,7 +1074,7 @@ describe('MediaGenerationService', () => {
   })
 
   it('marks stale running jobs timed_out after retry budget is exhausted and degrades linked plans', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaGenerationV1: true,
     })
     Object.assign(config.mediaGeneration, {

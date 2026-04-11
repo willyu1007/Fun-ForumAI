@@ -8,6 +8,13 @@ import type {
   AgentSignalLogRepository,
   AgentSignalMetrics,
 } from '../agent-signal-log-repository.js'
+import {
+  fromSignalContextColumns,
+  toSignalContextColumns,
+} from './achievement-signal-context.js'
+
+const GLOBAL_SCOPE: AchievementScope = 'global'
+const GLOBAL_SCOPE_KEY = '__global__'
 
 function isUniqueError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
@@ -23,6 +30,7 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
       const existing = await this.findByDedupKey(input.agent_id, input.dedup_key)
       if (existing) return existing
     }
+    const signalContext = toSignalContextColumns(input.signal_context)
     try {
       const row = await this.prisma.agentSignalLog.create({
         data: {
@@ -30,9 +38,11 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
           signalKind: input.signal_kind,
           importanceScore: input.importance_score,
           visibility: input.visibility,
+          scope: input.scope ?? GLOBAL_SCOPE,
+          scopeKey: input.scope_key ?? GLOBAL_SCOPE_KEY,
           occurredAt: input.occurred_at ?? new Date(),
           evidenceJson: input.evidence as unknown as Prisma.InputJsonValue,
-          metaJson: (input.meta ?? null) as unknown as Prisma.InputJsonValue,
+          ...signalContext,
           dedupKey: input.dedup_key ?? null,
         },
       })
@@ -64,10 +74,10 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
       ? Prisma.sql`AND "occurred_at" >= ${opts.since}`
       : Prisma.empty
     const scopeSql = opts.scope
-      ? Prisma.sql`AND COALESCE("meta_json"->>'scope', 'global') = ${opts.scope}`
+      ? Prisma.sql`AND "scope" = ${opts.scope}`
       : Prisma.empty
     const scopeKeySql = opts.scope_key
-      ? Prisma.sql`AND COALESCE("meta_json"->>'scope_key', '__global__') = ${opts.scope_key}`
+      ? Prisma.sql`AND "scope_key" = ${opts.scope_key}`
       : Prisma.empty
 
     const baseRows = await this.prisma.$queryRaw<
@@ -133,9 +143,41 @@ export class PgAgentSignalLogRepository implements AgentSignalLogRepository {
       signal_kind: row.signalKind,
       importance_score: row.importanceScore,
       visibility: row.visibility,
+      scope: row.scope as AchievementScope,
+      scope_key: row.scopeKey,
       occurred_at: row.occurredAt,
       evidence: toEvidence(row.evidenceJson),
-      meta: (row.metaJson ?? null) as Record<string, unknown> | null,
+      signal_context: fromSignalContextColumns({
+        eventId: row.eventId,
+        threadId: row.threadId,
+        communityId: row.communityId,
+        peerAgentId: row.peerAgentId,
+        toAgentId: row.toAgentId,
+        previousState: row.previousState,
+        nextState: row.nextState,
+        action: row.action,
+        adminUserId: row.adminUserId,
+        targetType: row.targetType,
+        resultSuccess: row.resultSuccess,
+        newVisibility: row.newVisibility,
+        newState: row.newState,
+        postId: row.postId,
+        artifactId: row.artifactId,
+        publishShape: row.publishShape,
+        sessionId: row.sessionId,
+        humanMessageId: row.humanMessageId,
+        openingMessageId: row.openingMessageId,
+        signalVisibilityReason: row.signalVisibilityReason,
+        sourceRef: row.sourceRef,
+        sourceEventId: row.sourceEventId,
+        contentKind: row.contentKind,
+        generatedAt: row.generatedAt,
+        snapshotDate: row.snapshotDate,
+        sourceMode: row.sourceMode,
+        shelfId: row.shelfId,
+        storylineId: row.storylineId,
+        dedupKey: row.dedupKey,
+      }),
       dedup_key: row.dedupKey,
       created_at: row.createdAt,
     }

@@ -5,11 +5,13 @@ import type {
   AgentRepository,
   AchievementVisibility,
   AgentAchievement,
+  AchievementScope,
+  AchievementSignalContext,
   ChronicleEntry,
+  ChronicleStoryContext,
   EvidenceRef,
   SurfaceMediaAttachmentView,
 } from '../repos/index.js'
-import { buildChronicleStoryMetaV1, withChronicleStoryMeta } from './chronicle-story-meta.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
 import type { MediaContextProjectionRepository } from '../repos/media-context-projection-repository.js'
 import { resolveSurfaceMediaAttachmentFromEvidence } from '../media/surface-media-view.js'
@@ -153,10 +155,6 @@ function compressSignalEntries(entries: ChronicleEntry[]): ChronicleEntry[] {
     compressed.push({
       ...anchor,
       summary: `${anchor.summary}（同类信号 ${list.length} 条，已压缩）`,
-      meta: {
-        ...(anchor.meta ?? {}),
-        signal_compressed_count: list.length,
-      },
     })
   }
 
@@ -205,7 +203,7 @@ export class AchievementChronicleService {
     agentId: string,
     opts: { cursor?: string; limit?: number },
   ): Promise<{ items: AgentAchievement[]; next_cursor: string | null }> {
-    if (!config.features.achievementChronicleV1) {
+    if (!config.launch.capabilities.achievementChronicleV1) {
       return { items: [], next_cursor: null }
     }
 
@@ -220,7 +218,7 @@ export class AchievementChronicleService {
     agentId: string,
     opts: { cursor?: string; limit?: number; include_folded?: boolean },
   ): Promise<ChronicleListResult> {
-    if (!config.features.achievementChronicleV1) {
+    if (!config.launch.capabilities.achievementChronicleV1) {
       return { items: [], next_cursor: null, folded_count: 0 }
     }
 
@@ -250,7 +248,7 @@ export class AchievementChronicleService {
   }
 
   private async buildPublicAuthorSemanticSeed(agentId: string): Promise<PublicAuthorSemanticSeed> {
-    if (!config.features.achievementPublicHighlights) {
+    if (!config.launch.capabilities.achievementPublicHighlights) {
       return { badges: [], tagline: null, top_chronicle: [] }
     }
 
@@ -271,7 +269,7 @@ export class AchievementChronicleService {
     const candidateEntries = compressSignalEntries(publicDensity.items)
 
     const topChronicle = await Promise.all(candidateEntries
-      .filter((entry) => (config.features.signalLogV1 ? !isSignalEntry(entry) : true))
+      .filter((entry) => (config.launch.capabilities.signalLogV1 ? !isSignalEntry(entry) : true))
       .filter((entry) => isHighQualityPublicEntry(entry))
       .slice()
       .sort((a, b) => b.importance_score - a.importance_score || b.occurred_at.getTime() - a.occurred_at.getTime())
@@ -282,7 +280,7 @@ export class AchievementChronicleService {
         summary: entry.summary,
         occurred_at: entry.occurred_at,
         importance_score: entry.importance_score,
-        visual: config.features.mediaHighlightsSurfaceV1
+        visual: config.launch.capabilities.mediaHighlightsSurfaceV1
           && this.deps.sceneMediaBindingRepo
           && this.deps.mediaContextProjectionRepo
           ? await resolveSurfaceMediaAttachmentFromEvidence(
@@ -292,9 +290,7 @@ export class AchievementChronicleService {
               },
               {
                 evidence: entry.evidence,
-                fallbackCommunityId: typeof entry.meta?.community_id === 'string'
-                  ? entry.meta.community_id
-                  : null,
+                fallbackCommunityId: entry.signal_context?.community_id ?? null,
               },
             )
           : null,
@@ -344,27 +340,36 @@ export class AchievementChronicleService {
     actors?: string[]
     location?: string | null
     tags?: string[]
-    meta?: Record<string, unknown> | null
+    scope?: AchievementScope
+    scope_key?: string
+    signal_context?: AchievementSignalContext | null
+    story_context?: ChronicleStoryContext | null
+    entry_source?: string | null
+    source_event_ids?: string[]
     dedup_key?: string | null
     maxEvidence?: number
     occurred_at?: Date
   }): Promise<ChronicleEntry> {
     const occurredAt = input.occurred_at ?? new Date()
-    const storyMeta = buildChronicleStoryMetaV1({
-      occurred_at: occurredAt,
+    const created = await this.deps.chronicleRepo.create({
+      agent_id: input.agent_id,
       visibility: input.visibility,
       type: input.type,
       title: input.title,
       summary: input.summary,
+      importance_score: input.importance_score,
+      evidence: ensureEvidence(input.evidence, input.maxEvidence ?? 5),
+      actors: input.actors,
       location: input.location,
       tags: input.tags,
-      meta: input.meta,
-    })
-    const created = await this.deps.chronicleRepo.create({
-      ...input,
-      evidence: ensureEvidence(input.evidence, input.maxEvidence ?? 5),
+      scope: input.scope,
+      scope_key: input.scope_key,
+      signal_context: input.signal_context,
+      story_context: input.story_context,
+      entry_source: input.entry_source,
+      source_event_ids: input.source_event_ids,
+      dedup_key: input.dedup_key,
       occurred_at: occurredAt,
-      meta: withChronicleStoryMeta(input.meta, storyMeta),
     })
     if (this.deps.onRecord) {
       Promise.resolve(this.deps.onRecord({

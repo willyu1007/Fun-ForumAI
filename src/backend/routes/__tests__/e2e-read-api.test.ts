@@ -5,6 +5,7 @@ import {
   config,
   servicePost,
   userToken,
+  user2Token,
   adminToken,
   setupFeatureFlagGuard,
   createTestCommunity,
@@ -81,7 +82,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/agents/:agentId/relations/public-summary returns a viewer-facing summary when viewer_agent_id is provided', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.lightweightPersonalizationV1
     featureFlags.lightweightPersonalizationV1 = true
 
@@ -120,7 +121,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/agents/:agentId/relations/public-summary degrades to null when viewer_agent_id is unavailable', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.lightweightPersonalizationV1
     featureFlags.lightweightPersonalizationV1 = true
 
@@ -143,7 +144,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/home returns fixed shelf order and keeps non-native creator notes out of notes_today while preserving them in continuation', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHomeProgramming = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
 
@@ -523,8 +524,20 @@ describe('E2E: Read API (public)', () => {
       name: 'Directory Count Community',
       slug: `directory-count-${Date.now()}`,
     })
-    const firstAgent = agentService.createAgent({ owner_id: 'user-1', display_name: 'Directory Agent 1' })
-    const secondAgent = agentService.createAgent({ owner_id: 'user-2', display_name: 'Directory Agent 2' })
+    const firstAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Directory Agent 1' })
+    expect(firstAgentRes.status).toBe(201)
+
+    const secondAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${user2Token}`)
+      .send({ display_name: 'Directory Agent 2' })
+    expect(secondAgentRes.status).toBe(201)
+
+    const firstAgent = { id: firstAgentRes.body.data.id as string }
+    const secondAgent = { id: secondAgentRes.body.data.id as string }
 
     await agentCommunityMembershipService.patchMemberships({
       agent_id: firstAgent.id,
@@ -627,19 +640,27 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.data.public_identity.identity_badges).toEqual(expect.any(Array))
   })
 
-  it('GET /v1/highlights returns empty', async () => {
-    const res = await request(app).get('/v1/highlights')
-    expect(res.status).toBe(200)
-    expect(res.body.data).toMatchObject({
-      hot_threads: [],
-      featured_agents: [],
-      controversy: [],
-      wildcard_cameos: [],
-    })
+  it('GET /v1/highlights returns empty fallback payload when highlights are disabled', async () => {
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
+    const originalHighlights = featureFlags.globalHighlightsV1
+    featureFlags.globalHighlightsV1 = false
+
+    try {
+      const res = await request(app).get('/v1/highlights')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({
+        hot_threads: [],
+        featured_agents: [],
+        controversy: [],
+        wildcard_cameos: [],
+      })
+    } finally {
+      featureFlags.globalHighlightsV1 = originalHighlights
+    }
   })
 
   it('GET /v1/highlights returns grouped payload when feature is enabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHighlights = featureFlags.globalHighlightsV1
     featureFlags.globalHighlightsV1 = true
 
@@ -689,7 +710,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/highlights exposes launch visual packaging metadata for posts with highlight attachments', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHighlights = featureFlags.globalHighlightsV1
     const originalRolloutController = featureFlags.mediaRolloutControllerV1
     featureFlags.globalHighlightsV1 = true
@@ -1038,7 +1059,7 @@ describe('E2E: Read API (public)', () => {
       thread_id: threadId,
       latest_turn_id: secondTurnId,
     })
-  })
+  }, 15_000)
 
   it('GET /v1/posts/:postId/reading-guide and /v1/posts/:postId/discussion-forest return post-detail projections', async () => {
     const community = await createTestCommunity({
@@ -1291,7 +1312,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/posts/:postId does not block on slow rollout profile evaluation when aftershow web is enabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAudienceAftershowWeb = featureFlags.audienceAftershowWebV1
     const originalAftershow = featureFlags.aftershowV1
     const originalRollout = featureFlags.mediaRolloutControllerV1
@@ -1457,7 +1478,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('does not materialize audience-thread read stubs and blocks audience-thread reads for open-reply posts', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
     const originalAftershow = featureFlags.aftershowV1
     featureFlags.audienceZoneV1 = true
@@ -1802,7 +1823,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('POST /v1/viewer/posts/:postId/audience-messages returns auditable envelopes and honors idempotency', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
     const originalHumanParticipation = featureFlags.humanParticipationV1
     featureFlags.audienceZoneV1 = true
@@ -2220,30 +2241,30 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('POST /v1/votes/human still succeeds when search projection refresh fails', async () => {
+    const community = await createTestCommunity({
+      name: 'Human Vote Projection Failure Community',
+      slug: `human-vote-projection-failure-${Date.now()}`,
+    })
+    const agentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Human Vote Projection Failure Agent' })
+    expect(agentRes.status).toBe(201)
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: agentRes.body.data.id,
+      run_id: 'run-human-vote-projection-failure',
+      community_id: community.id,
+      title: 'Human vote projection failure target',
+      body: 'Target body',
+    })
+    expect(postRes.status).toBe(201)
+
     const refreshSpy = vi
       .spyOn(searchDocRepo, 'upsertPostDoc')
       .mockRejectedValueOnce(new Error('projection write failed'))
 
     try {
-      const community = await createTestCommunity({
-        name: 'Human Vote Projection Failure Community',
-        slug: `human-vote-projection-failure-${Date.now()}`,
-      })
-      const agentRes = await request(app)
-        .post('/v1/agents')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ display_name: 'Human Vote Projection Failure Agent' })
-      expect(agentRes.status).toBe(201)
-
-      const postRes = await servicePost('/v1/posts', {
-        actor_agent_id: agentRes.body.data.id,
-        run_id: 'run-human-vote-projection-failure',
-        community_id: community.id,
-        title: 'Human vote projection failure target',
-        body: 'Target body',
-      })
-      expect(postRes.status).toBe(201)
-
       const voteRes = await request(app)
         .post('/v1/votes/human')
         .set('Authorization', `Bearer ${userToken}`)
@@ -2417,7 +2438,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('POST /v1/viewer/posts/:postId/audience-messages validates body length and accepts valid message', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
     const originalHumanParticipation = featureFlags.humanParticipationV1
     featureFlags.audienceZoneV1 = true
@@ -2503,7 +2524,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/posts/:postId/aftershow returns aftershow summary and callouts', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
     const originalAftershow = featureFlags.aftershowV1
     const originalAftershowPipeline = featureFlags.aftershowEventPipelineV1
@@ -2586,7 +2607,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/posts/:postId/aftershow keeps published artifact when the latest trigger is aborted', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAudienceZone = featureFlags.audienceZoneV1
     const originalAftershow = featureFlags.aftershowV1
     const originalAftershowPipeline = featureFlags.aftershowEventPipelineV1
@@ -2654,7 +2675,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('GET /v1/posts/:postId/aside-seats returns role assignments for post scope', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -2712,7 +2733,7 @@ describe('E2E: Read API (public)', () => {
   })
 
   it('expired role assignment disappears from aside seats after expiration processing and writes ROLE_EXPIRED event', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true

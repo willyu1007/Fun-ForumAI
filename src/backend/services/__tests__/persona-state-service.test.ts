@@ -9,9 +9,9 @@ import { PersonaStateService } from '../persona-state-service.js'
 import { config } from '../../lib/config.js'
 
 const originalFeatures = {
-  personaRuntimeV1: config.features.personaRuntimeV1,
-  personaRuntimeScenes: [...config.features.personaRuntimeScenes],
-  personaWritebackV1: config.features.personaWritebackV1,
+  personaRuntimeV1: config.launch.capabilities.personaRuntimeV1,
+  personaRuntimeScenes: [...config.launch.capabilities.personaRuntimeScenes],
+  personaWritebackV1: config.launch.capabilities.personaWritebackV1,
 }
 
 function setPersonaFlags(input: {
@@ -19,7 +19,7 @@ function setPersonaFlags(input: {
   scenes: string[]
   writeback: boolean
 }): void {
-  const featureFlags = config.features as unknown as {
+  const featureFlags = config.launch.capabilities as unknown as {
     personaRuntimeV1: boolean
     personaRuntimeScenes: string[]
     personaWritebackV1: boolean

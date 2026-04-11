@@ -719,7 +719,7 @@ export class LaunchProgrammingOpsService {
   constructor(private readonly deps: LaunchProgrammingOpsServiceDeps) {}
 
   async getHomeItems(input: { now?: Date } = {}): Promise<PublicProgrammingSlotItem[]> {
-    if (!config.features.programmingOpsV1) {
+    if (!config.launch.capabilities.programmingOpsV1) {
       return []
     }
 
@@ -761,7 +761,7 @@ export class LaunchProgrammingOpsService {
   }
 
   async getAdminPayload(input: { now?: Date } = {}): Promise<LaunchProgrammingOpsPayload> {
-    if (!config.features.programmingOpsV1) {
+    if (!config.launch.capabilities.programmingOpsV1) {
       return buildDisabledLaunchProgrammingOpsPayload(input.now)
     }
 

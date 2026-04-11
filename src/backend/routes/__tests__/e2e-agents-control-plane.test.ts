@@ -153,7 +153,7 @@ describe('E2E: Agents Control Plane', () => {
   })
 
   it('PATCH /v1/agents/:agentId/memberships updates explicit memberships', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalMembershipFlag = featureFlags.membershipsV1
     featureFlags.membershipsV1 = true
 
@@ -210,7 +210,7 @@ describe('E2E: Agents Control Plane', () => {
   })
 
   it('PATCH /v1/agents/:agentId/memberships cannot recover BANNED membership via add', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalMembershipFlag = featureFlags.membershipsV1
     const originalMembershipStatusFlag = featureFlags.membershipStatusV1
     featureFlags.membershipsV1 = true

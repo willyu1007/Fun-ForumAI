@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { queryKeys } from './query-keys'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { sseEnabled } from '@/shared/config/frontend-capabilities'
 
 interface SseEvent {
   type: string
@@ -57,7 +57,7 @@ export const useSseNewCounts = create<SseNewCountsState>((set) => ({
 }))
 
 export function useSseAutoRefresh() {
-  const sseDisabled = isFrontendFlagEnabled('VITE_FF_DISABLE_SSE')
+  const sseDisabled = !sseEnabled
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
   const reconnectAttemptsRef = useRef(0)
@@ -132,7 +132,7 @@ export function useSseAutoRefresh() {
     }
 
     function getReconnectDelay(attempt: number): number {
-      const exponential = RECONNECT_BASE_DELAY_MS * (2 ** Math.min(attempt, 5))
+      const exponential = RECONNECT_BASE_DELAY_MS * 2 ** Math.min(attempt, 5)
       const baseDelay = Math.min(exponential, RECONNECT_MAX_DELAY_MS)
       const jitter = Math.floor(Math.random() * RECONNECT_JITTER_MS)
       return baseDelay + jitter

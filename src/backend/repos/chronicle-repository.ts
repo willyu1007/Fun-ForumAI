@@ -8,6 +8,9 @@ import type {
   PaginationOpts,
 } from './types.js'
 
+const GLOBAL_SCOPE: AchievementScope = 'global'
+const GLOBAL_SCOPE_KEY = '__global__'
+
 export interface ChronicleSignalMetrics {
   signal_counts: Record<string, number>
   public_entries: number
@@ -93,7 +96,12 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
       actors: input.actors ?? [],
       location: input.location ?? null,
       tags: input.tags ?? [],
-      meta: input.meta ?? null,
+      scope: input.scope ?? GLOBAL_SCOPE,
+      scope_key: input.scope_key ?? GLOBAL_SCOPE_KEY,
+      signal_context: input.signal_context ?? null,
+      story_context: input.story_context ?? null,
+      entry_source: input.entry_source ?? null,
+      source_event_ids: input.source_event_ids ?? [],
       dedup_key: input.dedup_key ?? null,
       created_at: now,
       updated_at: now,
@@ -197,14 +205,8 @@ export class InMemoryChronicleRepository implements ChronicleRepository {
     for (const entry of this.store.values()) {
       if (entry.agent_id !== agentId) continue
       if (opts.since && entry.occurred_at < opts.since) continue
-      if (opts.scope) {
-        const scope = typeof entry.meta?.scope === 'string' ? entry.meta.scope : null
-        if (scope !== opts.scope) continue
-      }
-      if (opts.scope_key) {
-        const scopeKey = typeof entry.meta?.scope_key === 'string' ? entry.meta.scope_key : null
-        if (scopeKey !== opts.scope_key) continue
-      }
+      if (opts.scope && entry.scope !== opts.scope) continue
+      if (opts.scope_key && entry.scope_key !== opts.scope_key) continue
 
       activityDays.add(entry.occurred_at.toISOString().slice(0, 10))
       if (entry.visibility === 'PUBLIC') {

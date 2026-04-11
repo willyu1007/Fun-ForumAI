@@ -25,6 +25,10 @@ import {
   toPrismaActorType,
   toPrismaPlane,
 } from './pg-event-repository.js'
+import {
+  buildPostModerationColumns,
+  readPostModerationColumns,
+} from './pg-content-moderation.js'
 
 function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue
@@ -60,8 +64,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           tagsJson: (input.post.tags ?? []) as Prisma.InputJsonValue,
           visibility: input.post.visibility,
           state: input.post.state,
-          moderationMetadataJson:
-            (input.post.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          ...buildPostModerationColumns(input.post.moderation_metadata),
         },
       })
 
@@ -306,8 +309,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
       tags: (row.tagsJson as string[] | null) ?? [],
       visibility: row.visibility,
       state: row.state,
-      moderation_metadata:
-        (row.moderationMetadataJson as Record<string, unknown> | null) ?? null,
+      moderation_metadata: readPostModerationColumns(row),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

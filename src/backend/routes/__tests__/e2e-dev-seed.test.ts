@@ -22,6 +22,7 @@ import {
   publicStageTurnRepo,
   roomRepo,
   sceneMediaBindingRepo,
+  stageTierService,
   voteRepo,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
@@ -40,7 +41,7 @@ describe('E2E: Dev seed route', () => {
       0,
     )
     const canonicalOwnerPoolMediaCount = canonicalFixtures.owner_pool_media.length
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const previousGuidance = featureFlags.guidanceV1
     const previousGuidanceRecall = featureFlags.guidanceRecallV1
     const previousHumanParticipation = featureFlags.humanParticipationV1
@@ -294,7 +295,7 @@ describe('E2E: Dev seed route', () => {
 
   it('POST /v1/dev/seed supports smoke-minimal without inflating canonical fixtures', async () => {
     const smokeCounts = countDevSeedFixtures('smoke-minimal')
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const previousMediaRolloutController = featureFlags.mediaRolloutControllerV1
     const previousMediaGeneration = featureFlags.mediaGenerationV1
     featureFlags.mediaRolloutControllerV1 = true
@@ -343,7 +344,7 @@ describe('E2E: Dev seed route', () => {
 
   it('POST /v1/dev/seed supports launch roster bootstrap without materializing content fixtures', async () => {
     const launchCounts = countDevSeedFixtures('launch')
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalMemberships = featureFlags.membershipsV1
     const previousMediaRolloutController = featureFlags.mediaRolloutControllerV1
     const previousMediaGeneration = featureFlags.mediaGenerationV1
@@ -411,7 +412,7 @@ describe('E2E: Dev seed route', () => {
   })
 
   it('launch warm-start materializes the minimum launch shelves without duplicating curated posts', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalMemberships = featureFlags.membershipsV1
     const originalHomeProgramming = featureFlags.homeProgrammingV1
     const originalProgrammingOps = featureFlags.programmingOpsV1
@@ -432,6 +433,7 @@ describe('E2E: Dev seed route', () => {
         communityRepo,
         postRepo,
         membershipService: agentCommunityMembershipService,
+        stageTierService,
         forumWriteService,
         homeProgrammingService,
         launchProgrammingOpsService,
@@ -460,6 +462,7 @@ describe('E2E: Dev seed route', () => {
         communityRepo,
         postRepo,
         membershipService: agentCommunityMembershipService,
+        stageTierService,
         forumWriteService,
         homeProgrammingService,
         launchProgrammingOpsService,

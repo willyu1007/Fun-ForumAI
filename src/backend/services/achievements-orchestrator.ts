@@ -6,7 +6,9 @@ import type {
   RelationRepository,
   ChronicleEntry,
   AgentSignalLogRepository,
+  AchievementAwardContext,
   AchievementScope,
+  AchievementSignalContext,
 } from '../repos/index.js'
 import type { AchievementRepository, ChronicleRepository } from '../repos/index.js'
 import { ACHIEVEMENT_DEFINITIONS_V1, type AchievementDefinition, type AchievementSignalKind } from './achievements/definitions.js'
@@ -148,7 +150,7 @@ export class AchievementsOrchestrator {
   }
 
   async processDomainEvent(event: DomainEvent): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
 
     const payload = event.payload_json
     try {
@@ -251,7 +253,7 @@ export class AchievementsOrchestrator {
   }
 
   async processPrivateDigest(input: { agent_id: string; session_id: string; memory_id?: string }): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
 
     await this.processSignal({
       kind: 'private_digest',
@@ -275,7 +277,7 @@ export class AchievementsOrchestrator {
     next_state: string
     relation_id: string
   }): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
     if (input.next_state !== 'effective') return
 
     await this.processSignal({
@@ -303,7 +305,7 @@ export class AchievementsOrchestrator {
     new_visibility?: string | null
     new_state?: string | null
   }): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
     if (!input.result_success) return
     if (input.target_type !== 'post' && input.target_type !== 'thread_turn') return
     if (input.action !== 'approve' && input.action !== 'fold') return
@@ -332,7 +334,7 @@ export class AchievementsOrchestrator {
     artifact_id: string
     publish_shape?: string | null
   }): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
 
     await this.processSignal({
       kind: 'aftershow_published',
@@ -358,7 +360,7 @@ export class AchievementsOrchestrator {
     human_message_id?: string | null
     opening_message_id?: string | null
   }): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
 
     await this.processSignal({
       kind: 'proactive_session_success',
@@ -380,7 +382,7 @@ export class AchievementsOrchestrator {
   }
 
   async runDailyBatch(now = new Date()): Promise<{ scanned: number }> {
-    if (!config.features.achievementChronicleV1) return { scanned: 0 }
+    if (!config.launch.capabilities.achievementChronicleV1) return { scanned: 0 }
 
     let cursor: string | undefined
     let scanned = 0
@@ -411,7 +413,7 @@ export class AchievementsOrchestrator {
   }
 
   async runWeeklyBatch(now = new Date()): Promise<{ scanned: number }> {
-    if (!config.features.achievementChronicleV1) return { scanned: 0 }
+    if (!config.launch.capabilities.achievementChronicleV1) return { scanned: 0 }
 
     let cursor: string | undefined
     let scanned = 0
@@ -443,7 +445,7 @@ export class AchievementsOrchestrator {
   }
 
   async processSignal(signal: AchievementSignal): Promise<void> {
-    if (!config.features.achievementChronicleV1) return
+    if (!config.launch.capabilities.achievementChronicleV1) return
 
     const exists = await this.deps.chronicleService.ensureAgentExists(signal.agent_id)
     if (!exists) return
@@ -481,21 +483,19 @@ export class AchievementsOrchestrator {
       importanceScore: signalImportance,
     })
 
-    const effectiveSignalVisibility = config.features.signalLogV1
+    const effectiveSignalVisibility = config.launch.capabilities.signalLogV1
       ? 'OWNER_ONLY'
       : signalDecision.visibility
-    const effectiveSignalReason = config.features.signalLogV1
+    const effectiveSignalReason = config.launch.capabilities.signalLogV1
       ? 'signal_log_v1_owner_only'
       : signalDecision.reason
 
-    const signalMeta = {
-      ...(signal.metadata ?? {}),
-      scope: signalScope.scope,
-      scope_key: signalScope.scope_key,
-      signal_visibility_reason: effectiveSignalReason,
-      dedup_key: signal.dedup_key ?? null,
-      source_ref: this.getPrimarySourceRef(signal.evidence),
-    }
+    const signalContext = this.buildSignalContext({
+      metadata: signal.metadata,
+      effectiveSignalReason,
+      dedupKey: signal.dedup_key ?? null,
+      sourceRef: this.getPrimarySourceRef(signal.evidence),
+    })
 
     await this.deps.chronicleService.recordChronicle({
       agent_id: signal.agent_id,
@@ -506,21 +506,25 @@ export class AchievementsOrchestrator {
       importance_score: signalImportance,
       evidence,
       tags: [signalTag],
-      meta: signalMeta,
+      scope: signalScope.scope,
+      scope_key: signalScope.scope_key,
+      signal_context: signalContext,
       dedup_key: signal.dedup_key,
       occurred_at: occurredAt,
       maxEvidence: 5,
     })
 
-    if (config.features.signalLogV1 && this.deps.signalLogRepo) {
+    if (config.launch.capabilities.signalLogV1 && this.deps.signalLogRepo) {
       await this.deps.signalLogRepo.create({
         agent_id: signal.agent_id,
         signal_kind: signal.kind,
         importance_score: signalImportance,
         visibility: effectiveSignalVisibility,
+        scope: signalScope.scope,
+        scope_key: signalScope.scope_key,
         occurred_at: occurredAt,
         evidence,
-        meta: signalMeta,
+        signal_context: signalContext,
         dedup_key: signal.dedup_key,
       })
     }
@@ -557,6 +561,16 @@ export class AchievementsOrchestrator {
       const visibility = evidenceSatisfied ? definition.visibility : 'OWNER_ONLY'
       const signalMetadata = signal.metadata ?? {}
       const triggerKind = this.getMetaString(signalMetadata, 'trigger_kind') ?? signal.kind
+      const awardContext = this.buildAwardContext({
+        triggerKind,
+        triggerMode: definition.triggerMode,
+        metricName: definition.metric,
+        metricValue: value,
+        threshold: definition.threshold,
+        evidenceSatisfied,
+        visibilityReason: visibility === 'PUBLIC' ? 'public_evidence_satisfied' : 'missing_required_evidence',
+        dedupKey: signal.dedup_key ?? null,
+      })
 
       const granted = await this.deps.achievementRepo.grant({
         agent_id: signal.agent_id,
@@ -570,20 +584,8 @@ export class AchievementsOrchestrator {
         visibility,
         achieved_at: occurredAt,
         evidence: evidence.slice(0, definition.evidencePolicy.maxEvidence),
-        meta: {
-          ...signalMetadata,
-          trigger_kind: triggerKind,
-          trigger_mode: definition.triggerMode,
-          scope: scopeContext.scope,
-          scope_key: scopeContext.scope_key,
-          metric_name: definition.metric,
-          metric_value: value,
-          threshold: definition.threshold,
-          dedup_key: signal.dedup_key ?? null,
-          evidence_satisfied: evidenceSatisfied,
-          visibility_reason: visibility === 'PUBLIC' ? 'public_evidence_satisfied' : 'missing_required_evidence',
-          source_ref: this.getPrimarySourceRef(evidence),
-        },
+        signal_context: signalContext,
+        award_context: awardContext,
       })
 
       if (!granted.created) continue
@@ -612,24 +614,12 @@ export class AchievementsOrchestrator {
         }),
         evidence,
         tags: [...definition.chronicleTemplate.tags, `achievement:${definition.code}`, `tier:${definition.tier}`],
+        scope: scopeContext.scope,
+        scope_key: scopeContext.scope_key,
+        signal_context: signalContext,
         dedup_key: `achievement:${signal.agent_id}:${definition.code}:${definition.tier}:${scopeContext.scope}:${scopeContext.scope_key}`,
         occurred_at: occurredAt,
         maxEvidence: definition.evidencePolicy.maxEvidence,
-        meta: {
-          ...signalMetadata,
-          code: definition.code,
-          tier: definition.tier,
-          scope: scopeContext.scope,
-          scope_key: scopeContext.scope_key,
-          trigger_kind: triggerKind,
-          trigger_mode: definition.triggerMode,
-          metric_name: definition.metric,
-          metric_value: value,
-          threshold: definition.threshold,
-          dedup_key: signal.dedup_key ?? null,
-          visibility_reason: visibility === 'PUBLIC' ? 'public_evidence_satisfied' : 'missing_required_evidence',
-          source_ref: this.getPrimarySourceRef(evidence),
-        },
       })
     }
   }
@@ -663,7 +653,7 @@ export class AchievementsOrchestrator {
 
   private async collectMetrics(agentId: string, scopeContext: ScopeContext): Promise<MetricSnapshot> {
     const cacheKey = this.metricCacheKey(agentId, scopeContext)
-    if (config.features.chronicleMetricsCacheV1) {
+    if (config.launch.capabilities.chronicleMetricsCacheV1) {
       const cached = this.metricCache.get(cacheKey)
       if (cached && cached.expires_at > Date.now()) {
         return cached.snapshot
@@ -675,7 +665,7 @@ export class AchievementsOrchestrator {
       scope: scopeContext.scope,
       scope_key: scopeContext.scope_key,
     })
-    const signalSummary = config.features.signalLogV1 && this.deps.signalLogRepo
+    const signalSummary = config.launch.capabilities.signalLogV1 && this.deps.signalLogRepo
       ? await this.deps.signalLogRepo.getMetrics(agentId, {
           signalKinds: AchievementsOrchestrator.METRIC_SIGNAL_KINDS,
           scope: scopeContext.scope,
@@ -705,7 +695,7 @@ export class AchievementsOrchestrator {
       proactive_sessions_responded: signalSummary.signal_counts.proactive_session_success ?? 0,
     }
 
-    if (config.features.chronicleMetricsCacheV1) {
+    if (config.launch.capabilities.chronicleMetricsCacheV1) {
       this.metricCache.set(cacheKey, {
         expires_at: Date.now() + AchievementsOrchestrator.METRIC_CACHE_TTL_MS,
         snapshot,
@@ -801,6 +791,73 @@ export class AchievementsOrchestrator {
   private getPrimarySourceRef(evidence: EvidenceRef[] | undefined): string | null {
     const ref = evidence?.find((item) => typeof item.ref_id === 'string' && item.ref_id.trim().length > 0)
     return ref?.ref_id ?? null
+  }
+
+  private buildSignalContext(input: {
+    metadata?: Record<string, unknown>
+    effectiveSignalReason: string
+    dedupKey: string | null
+    sourceRef: string | null
+  }): AchievementSignalContext {
+    const metadata = input.metadata ?? {}
+    return {
+      event_id: this.getMetaString(metadata, 'event_id'),
+      thread_id: this.getMetaString(metadata, 'thread_id'),
+      community_id: this.getMetaString(metadata, 'community_id'),
+      peer_agent_id: this.getMetaString(metadata, 'peer_agent_id'),
+      to_agent_id: this.getMetaString(metadata, 'to_agent_id'),
+      previous_state: this.getMetaString(metadata, 'previous_state'),
+      next_state: this.getMetaString(metadata, 'next_state'),
+      action: this.getMetaString(metadata, 'action'),
+      admin_user_id: this.getMetaString(metadata, 'admin_user_id'),
+      target_type: this.getMetaString(metadata, 'target_type'),
+      result_success: this.getMetaBoolean(metadata, 'result_success'),
+      new_visibility: this.getMetaString(metadata, 'new_visibility'),
+      new_state: this.getMetaString(metadata, 'new_state'),
+      post_id: this.getMetaString(metadata, 'post_id'),
+      artifact_id: this.getMetaString(metadata, 'artifact_id'),
+      publish_shape: this.getMetaString(metadata, 'publish_shape'),
+      session_id: this.getMetaString(metadata, 'session_id'),
+      human_message_id: this.getMetaString(metadata, 'human_message_id'),
+      opening_message_id: this.getMetaString(metadata, 'opening_message_id'),
+      signal_visibility_reason: input.effectiveSignalReason,
+      source_ref: input.sourceRef,
+      source_event_id: this.getMetaString(metadata, 'source_event_id'),
+      content_kind: this.getMetaString(metadata, 'content_kind'),
+      generated_at: this.getMetaString(metadata, 'generated_at'),
+      snapshot_date: this.getMetaString(metadata, 'snapshot_date'),
+      source_mode: this.getMetaString(metadata, 'source_mode'),
+      shelf_id: this.getMetaString(metadata, 'shelf_id'),
+      storyline_id: this.getMetaString(metadata, 'storyline_id'),
+      dedup_key: input.dedupKey,
+    }
+  }
+
+  private buildAwardContext(input: {
+    triggerKind: string
+    triggerMode: string
+    metricName: string
+    metricValue: number
+    threshold: number
+    evidenceSatisfied: boolean
+    visibilityReason: string
+    dedupKey: string | null
+  }): AchievementAwardContext {
+    return {
+      trigger_kind: input.triggerKind,
+      trigger_mode: input.triggerMode,
+      metric_name: input.metricName,
+      metric_value: input.metricValue,
+      threshold: input.threshold,
+      evidence_satisfied: input.evidenceSatisfied,
+      visibility_reason: input.visibilityReason,
+      dedup_key: input.dedupKey,
+    }
+  }
+
+  private getMetaBoolean(meta: Record<string, unknown>, key: string): boolean | null {
+    const value = meta[key]
+    return typeof value === 'boolean' ? value : null
   }
 
   private computeCrossSceneCount(signalCounts: Record<string, number>, effectiveRelations: number): number {

@@ -274,7 +274,7 @@ export class RelationService {
     if (!targetAgentId || targetAgentId === voterAgentId) return
 
     let repeat = 1
-    if (config.features.agentStatsVotePolicy && this.deps.statsService) {
+    if (config.launch.capabilities.agentStatsVotePolicy && this.deps.statsService) {
       const voteKnobs = this.deps.statsService.getDerivedSync(voterAgentId).vote
       if (direction === 'DOWN' && voteKnobs.p_down_given_vote > 0.7) {
         repeat = 2
@@ -446,7 +446,7 @@ export class RelationService {
     ])
     const safetyScore = await this.computeSafetyScore(fromAgentId, toAgentId)
 
-    if (config.features.agentStatsRelationPolicy && this.deps.statsService) {
+    if (config.launch.capabilities.agentStatsRelationPolicy && this.deps.statsService) {
       const knobs = this.deps.statsService.getDerivedSync(fromAgentId).relation_policy
       stats = applyRelationPolicyToPairStats(stats, {
         pos_multiplier: knobs.pos_multiplier,

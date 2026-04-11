@@ -137,7 +137,7 @@ export class MediaObservabilityService {
   }
 
   async record(input: CreateMediaObservabilityEventInput): Promise<MediaObservabilityEvent> {
-    if (!config.features.mediaObservabilityV1) {
+    if (!config.launch.capabilities.mediaObservabilityV1) {
       return {
         id: input.id ?? 'media_observability_disabled',
         event_type: input.event_type,

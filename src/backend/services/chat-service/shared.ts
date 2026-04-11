@@ -42,7 +42,7 @@ export async function getAgentTickIntervalPersisted(
   const { talkativeness } = toAgentChatConfig(latestConfig)
   let finalTalkativeness = talkativeness
 
-  if (config.features.agentStatsBehavior && context.deps.statsService) {
+  if (config.launch.capabilities.agentStatsBehavior && context.deps.statsService) {
     const derived = context.deps.statsService.getDerivedSync(agentId, {
       hard: { talkativeness },
     })

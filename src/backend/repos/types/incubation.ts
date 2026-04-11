@@ -10,6 +10,9 @@ export type IncubationJobPhase =
   | 'DONE'
   | 'ABORTED'
 
+export type IncubationJobSource = 'PRIVATE_DIGEST_COMPLETED'
+export type IncubationReviewVerdict = 'approve' | 'reject' | 'quarantine'
+
 export interface IncubationJob {
   id: string
   post_id: string | null
@@ -30,7 +33,14 @@ export interface IncubationJob {
   review: Record<string, unknown> | null
   requested_at: Date
   expires_at: Date | null
-  meta: Record<string, unknown> | null
+  job_source: IncubationJobSource | null
+  stage_spec_fallback: boolean
+  review_verdict: IncubationReviewVerdict | null
+  review_reason: string | null
+  reviewed_by_user_id: string | null
+  reviewed_at: Date | null
+  published_post_id: string | null
+  published_at: Date | null
   created_at: Date
   updated_at: Date
 }
@@ -51,7 +61,6 @@ export interface IncubationGrant {
   granted_at: Date
   expires_at: Date
   revoked_at: Date | null
-  meta: Record<string, unknown> | null
   created_at: Date
   updated_at: Date
 }
@@ -63,7 +72,8 @@ export interface IncubationSourceBundle {
   source_ref: string
   source_url: string | null
   title: string | null
-  meta: Record<string, unknown> | null
+  source_session_id: string | null
+  source_memory_id: string | null
   created_at: Date
   updated_at: Date
 }
@@ -96,7 +106,14 @@ export interface CreateIncubationJobInput {
   review?: Record<string, unknown> | null
   requested_at?: Date
   expires_at?: Date | null
-  meta?: Record<string, unknown> | null
+  job_source?: IncubationJobSource | null
+  stage_spec_fallback?: boolean
+  review_verdict?: IncubationReviewVerdict | null
+  review_reason?: string | null
+  reviewed_by_user_id?: string | null
+  reviewed_at?: Date | null
+  published_post_id?: string | null
+  published_at?: Date | null
 }
 
 export interface UpdateIncubationJobInput {
@@ -108,7 +125,14 @@ export interface UpdateIncubationJobInput {
   research?: Record<string, unknown> | null
   draft?: Record<string, unknown> | null
   review?: Record<string, unknown> | null
-  meta?: Record<string, unknown> | null
+  job_source?: IncubationJobSource | null
+  stage_spec_fallback?: boolean
+  review_verdict?: IncubationReviewVerdict | null
+  review_reason?: string | null
+  reviewed_by_user_id?: string | null
+  reviewed_at?: Date | null
+  published_post_id?: string | null
+  published_at?: Date | null
 }
 
 export interface CreateIncubationGrantInput {
@@ -125,7 +149,6 @@ export interface CreateIncubationGrantInput {
   policy?: Record<string, unknown> | null
   granted_at?: Date
   expires_at: Date
-  meta?: Record<string, unknown> | null
 }
 
 export interface CreateIncubationSourceBundleInput {
@@ -134,7 +157,8 @@ export interface CreateIncubationSourceBundleInput {
   source_ref: string
   source_url?: string | null
   title?: string | null
-  meta?: Record<string, unknown> | null
+  source_session_id?: string | null
+  source_memory_id?: string | null
 }
 
 export interface CreateIncubationEventInput {

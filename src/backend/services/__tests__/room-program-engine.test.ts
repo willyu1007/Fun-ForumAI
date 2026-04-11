@@ -342,7 +342,7 @@ describe('RoomProgramEngine', () => {
   })
 
   it('rolls over a closed runtime episode before planning the next turn', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 

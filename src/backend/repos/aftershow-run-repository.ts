@@ -33,7 +33,12 @@ export class InMemoryAftershowRunRepository implements AftershowRunRepository {
       threshold_detail: input.threshold_detail ?? null,
       triggered_by_agent_id: input.triggered_by_agent_id ?? null,
       triggered_by_user_id: input.triggered_by_user_id ?? null,
-      meta: input.meta ?? null,
+      trigger_mode: input.trigger_mode ?? null,
+      force_trigger: input.force_trigger ?? false,
+      threshold_pass: input.threshold_pass ?? false,
+      reason: input.reason ?? null,
+      used_stage_fallback: input.used_stage_fallback ?? false,
+      stage_spec_errors: [...(input.stage_spec_errors ?? [])],
       created_at: now,
       updated_at: now,
     }

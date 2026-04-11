@@ -96,15 +96,15 @@ describe('ForumWriteService policy gateway target binding', () => {
   let featureSnapshot: Record<string, unknown>
 
   beforeEach(() => {
-    featureSnapshot = { ...(config.features as unknown as Record<string, unknown>) }
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    featureSnapshot = { ...(config.launch.capabilities as unknown as Record<string, unknown>) }
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.hotTopicPolicyV1 = false
   })
 
   afterEach(() => {
-    Object.assign(config.features as unknown as Record<string, unknown>, featureSnapshot)
+    Object.assign(config.launch.capabilities as unknown as Record<string, unknown>, featureSnapshot)
   })
 
   it('rebinds post moderation records to the created post id', async () => {

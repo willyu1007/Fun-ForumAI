@@ -35,7 +35,19 @@ function toJob(row: Prisma.IncubationJobGetPayload<object>): IncubationJob {
     review: row.reviewJson as Record<string, unknown> | null,
     requested_at: row.requestedAt,
     expires_at: row.expiresAt,
-    meta: row.metaJson as Record<string, unknown> | null,
+    job_source: row.jobSource === 'PRIVATE_DIGEST_COMPLETED' ? 'PRIVATE_DIGEST_COMPLETED' : null,
+    stage_spec_fallback: row.stageSpecFallback,
+    review_verdict:
+      row.reviewVerdict === 'approve'
+      || row.reviewVerdict === 'reject'
+      || row.reviewVerdict === 'quarantine'
+        ? row.reviewVerdict
+        : null,
+    review_reason: row.reviewReason,
+    reviewed_by_user_id: row.reviewedByUserId,
+    reviewed_at: row.reviewedAt,
+    published_post_id: row.publishedPostId,
+    published_at: row.publishedAt,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -58,7 +70,6 @@ function toGrant(row: Prisma.IncubationGrantGetPayload<object>): IncubationGrant
     granted_at: row.grantedAt,
     expires_at: row.expiresAt,
     revoked_at: row.revokedAt,
-    meta: row.metaJson as Record<string, unknown> | null,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -72,7 +83,8 @@ function toSourceBundle(row: Prisma.IncubationSourceBundleGetPayload<object>): I
     source_ref: row.sourceRef,
     source_url: row.sourceUrl,
     title: row.title,
-    meta: row.metaJson as Record<string, unknown> | null,
+    source_session_id: row.sourceSessionId,
+    source_memory_id: row.sourceMemoryId,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -117,13 +129,14 @@ function buildJobPatchData(patch: UpdateIncubationJobInput): Prisma.IncubationJo
             : Prisma.DbNull,
         }
       : {}),
-    ...(patch.meta !== undefined
-      ? {
-          metaJson: patch.meta
-            ? (patch.meta as Prisma.InputJsonValue)
-            : Prisma.DbNull,
-        }
-      : {}),
+    ...(patch.job_source !== undefined ? { jobSource: patch.job_source } : {}),
+    ...(patch.stage_spec_fallback !== undefined ? { stageSpecFallback: patch.stage_spec_fallback } : {}),
+    ...(patch.review_verdict !== undefined ? { reviewVerdict: patch.review_verdict } : {}),
+    ...(patch.review_reason !== undefined ? { reviewReason: patch.review_reason } : {}),
+    ...(patch.reviewed_by_user_id !== undefined ? { reviewedByUserId: patch.reviewed_by_user_id } : {}),
+    ...(patch.reviewed_at !== undefined ? { reviewedAt: patch.reviewed_at } : {}),
+    ...(patch.published_post_id !== undefined ? { publishedPostId: patch.published_post_id } : {}),
+    ...(patch.published_at !== undefined ? { publishedAt: patch.published_at } : {}),
     updatedAt: new Date(),
   }
 }
@@ -148,7 +161,6 @@ function buildGrantCreateData(
     grantedAt: now,
     expiresAt: input.expires_at,
     revokedAt: null,
-    metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
     createdAt: now,
     updatedAt: now,
   }
@@ -193,7 +205,14 @@ export class PgIncubationRepository implements IncubationRepository {
         reviewJson: input.review ? (input.review as Prisma.InputJsonValue) : Prisma.DbNull,
         requestedAt: now,
         expiresAt: input.expires_at ?? null,
-        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+        jobSource: input.job_source ?? null,
+        stageSpecFallback: input.stage_spec_fallback ?? false,
+        reviewVerdict: input.review_verdict ?? null,
+        reviewReason: input.review_reason ?? null,
+        reviewedByUserId: input.reviewed_by_user_id ?? null,
+        reviewedAt: input.reviewed_at ?? null,
+        publishedPostId: input.published_post_id ?? null,
+        publishedAt: input.published_at ?? null,
         createdAt: now,
         updatedAt: now,
       },
@@ -288,7 +307,8 @@ export class PgIncubationRepository implements IncubationRepository {
         sourceRef: input.source_ref,
         sourceUrl: input.source_url ?? null,
         title: input.title ?? null,
-        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+        sourceSessionId: input.source_session_id ?? null,
+        sourceMemoryId: input.source_memory_id ?? null,
         createdAt: now,
         updatedAt: now,
       },

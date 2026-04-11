@@ -15,7 +15,7 @@ setupFeatureFlagGuard()
 
 describe('E2E: Role Assignment Control Plane', () => {
   it('Role assignment control-plane endpoints create and update assignments', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -77,7 +77,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment rejects role keys that are not defined in stage_spec', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -144,7 +144,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment control-plane endpoints reject non-admin caller with 403', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -213,7 +213,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment patch returns 404 when assignment does not belong to path community', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -279,7 +279,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment creation rejects COMMUNITY scope with mismatched scope_id', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -321,7 +321,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment creation rejects MUTED membership with 409', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     const originalMembershipStatus = featureFlags.membershipStatusV1
@@ -373,7 +373,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment creation rejects LEFT membership with 409', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -422,7 +422,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment creation rejects missing membership with 409', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     featureFlags.roleAssignmentV1 = true
@@ -459,7 +459,7 @@ describe('E2E: Role Assignment Control Plane', () => {
   })
 
   it('Role assignment creation rejects BANNED membership with 409', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRoleAssignment = featureFlags.roleAssignmentV1
     const originalMemberships = featureFlags.membershipsV1
     const originalMembershipStatus = featureFlags.membershipStatusV1

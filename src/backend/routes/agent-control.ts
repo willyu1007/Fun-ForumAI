@@ -65,7 +65,7 @@ function assertOwnerOrAdmin(
 }
 
 async function ensureAgentMediaRouteEnabled(_req: Request, res: Response): Promise<boolean> {
-  if (!config.features.multimodalAgentMediaV1) {
+  if (!config.launch.capabilities.multimodalAgentMediaV1) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',

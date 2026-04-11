@@ -279,7 +279,7 @@ export async function postMessage(
         display_variant: 'original' | 'generated_derivative'
       }>
     } | null = null
-    if (config.features.mediaChatRoomSurfaceV1 && context.deps.surfaceMediaPlanningService) {
+    if (config.launch.capabilities.mediaChatRoomSurfaceV1 && context.deps.surfaceMediaPlanningService) {
       const room = await context.deps.roomRepo.findById(roomId)
       if (room) {
         const snapshot = await context.deps.roomWatchabilityRepo?.getLiveSnapshot(roomId) ?? null

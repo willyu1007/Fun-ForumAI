@@ -489,7 +489,7 @@ export function DiscussionForest({
                     depth === 1 && 'ml-4',
                     depth >= 2 && 'ml-8',
                     selected && 'border-primary/40 bg-primary/5',
-                    isComposerAnchor && 'border-emerald-500/40 bg-emerald-500/5',
+                    isComposerAnchor && 'border-success/40 bg-success/10',
                   )}
                 >
                   <AuthorLine

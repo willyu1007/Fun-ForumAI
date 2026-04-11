@@ -598,7 +598,7 @@ describe('AftershowService', () => {
     expect(afterAudienceMessage.threshold_pass).toBe(true)
   })
 
-  it('records stage_spec_errors in meta when rules_json is invalid', async () => {
+  it('records stage_spec_errors in explicit fields when rules_json is invalid', async () => {
     const postRepo = new InMemoryPostRepository()
     const humanVoteRepo = new InMemoryHumanVoteRepository()
     const communityRepo = new InMemoryCommunityRepository()
@@ -638,15 +638,13 @@ describe('AftershowService', () => {
       force: false,
     })
 
-    expect(result.run.meta).toBeDefined()
-    const meta = result.run.meta as Record<string, unknown>
-    expect(meta.used_stage_fallback).toBe(true)
-    expect(Array.isArray(meta.stage_spec_errors)).toBe(true)
-    expect((meta.stage_spec_errors as string[]).length).toBeGreaterThan(0)
+    expect(result.run.used_stage_fallback).toBe(true)
+    expect(Array.isArray(result.run.stage_spec_errors)).toBe(true)
+    expect(result.run.stage_spec_errors.length).toBeGreaterThan(0)
   })
 
   it('getLatestByPost keeps latest published artifact when newest run is aborted', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalPipelineFlag = featureFlags.aftershowEventPipelineV1
     featureFlags.aftershowEventPipelineV1 = true
 
@@ -737,7 +735,7 @@ describe('AftershowService', () => {
       window_start: now,
       window_end: now,
       summary_text: 'aborted artifact',
-      meta: { reason: 'publish_rate_limited' },
+      reason: 'publish_rate_limited',
     })
 
     const service = createService({
@@ -756,7 +754,7 @@ describe('AftershowService', () => {
   })
 
   it('emits extended aftershow pipeline events in order', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalPipelineFlag = featureFlags.aftershowEventPipelineV1
     featureFlags.aftershowEventPipelineV1 = true
 
@@ -837,7 +835,7 @@ describe('AftershowService', () => {
   })
 
   it('enforces max unique users per aftershow while allowing previously-unnotified users on next run', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalPipelineFlag = featureFlags.aftershowEventPipelineV1
     featureFlags.aftershowEventPipelineV1 = true
 
@@ -928,7 +926,7 @@ describe('AftershowService', () => {
   })
 
   it('bridges audience via summary ref without exposing raw messages in run meta', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalSummaryFlag = featureFlags.aftershowAudienceSummaryV1
     featureFlags.aftershowAudienceSummaryV1 = true
 
@@ -999,9 +997,8 @@ describe('AftershowService', () => {
       const latestSummary = await audienceRepo.findLatestSummaryByThread(thread.id)
       expect(latestSummary?.id).toBe(result.summary_ref)
 
-      const runMeta = result.run.meta as Record<string, unknown>
-      expect(runMeta).toHaveProperty('audience_summary_ref')
-      expect(JSON.stringify(runMeta)).not.toContain('This raw message should not be copied to run meta')
+      expect(result.run.audience_summary_ref).toBe(result.summary_ref)
+      expect(JSON.stringify(result.run)).not.toContain('This raw message should not be copied to run meta')
     } finally {
       featureFlags.aftershowAudienceSummaryV1 = originalSummaryFlag
     }

@@ -235,7 +235,7 @@ function buildHarness() {
 
 describe('RuntimeSceneStateManager', () => {
   it('creates chatroom runtime authority and records turn planning audit', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 
@@ -275,7 +275,7 @@ describe('RuntimeSceneStateManager', () => {
   })
 
   it('closes into cooldown when a close cue executes', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 
@@ -312,7 +312,7 @@ describe('RuntimeSceneStateManager', () => {
   })
 
   it('marks aftershow-enabled scenes as closed and due instead of forcing cooldown', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 

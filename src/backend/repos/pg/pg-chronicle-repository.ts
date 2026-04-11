@@ -9,6 +9,19 @@ import type {
   PaginationOpts,
 } from '../types.js'
 import type { ChronicleRepository, ChronicleSignalMetrics } from '../chronicle-repository.js'
+import {
+  fromSignalContextColumns,
+  toSignalContextColumns,
+} from './achievement-signal-context.js'
+import {
+  fromChronicleStoryContextColumns,
+  fromJsonStringArray,
+  toChronicleStoryContextColumns,
+  toStringArrayJsonInput,
+} from './chronicle-context.js'
+
+const GLOBAL_SCOPE: AchievementScope = 'global'
+const GLOBAL_SCOPE_KEY = '__global__'
 
 function isUniqueError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
@@ -51,6 +64,8 @@ export class PgChronicleRepository implements ChronicleRepository {
       if (existing) return existing
     }
     try {
+      const signalContext = toSignalContextColumns(input.signal_context)
+      const storyContext = toChronicleStoryContextColumns(input.story_context)
       const row = await this.prisma.chronicleEntry.create({
         data: {
           agentId: input.agent_id,
@@ -64,7 +79,12 @@ export class PgChronicleRepository implements ChronicleRepository {
           actorsJson: (input.actors ?? []) as unknown as Prisma.InputJsonValue,
           location: input.location ?? null,
           tagsJson: (input.tags ?? []) as unknown as Prisma.InputJsonValue,
-          metaJson: (input.meta ?? null) as unknown as Prisma.InputJsonValue,
+          scope: input.scope ?? GLOBAL_SCOPE,
+          scopeKey: input.scope_key ?? GLOBAL_SCOPE_KEY,
+          ...signalContext,
+          ...storyContext,
+          entrySource: input.entry_source ?? null,
+          sourceEventIdsJson: toStringArrayJsonInput(input.source_event_ids),
           dedupKey: input.dedup_key ?? null,
         },
       })
@@ -203,10 +223,10 @@ export class PgChronicleRepository implements ChronicleRepository {
       ? Prisma.sql`AND "occurred_at" >= ${opts.since}`
       : Prisma.empty
     const scopeSql = opts.scope
-      ? Prisma.sql`AND COALESCE("meta_json"->>'scope', 'global') = ${opts.scope}`
+      ? Prisma.sql`AND COALESCE("scope", 'global') = ${opts.scope}`
       : Prisma.empty
     const scopeKeySql = opts.scope_key
-      ? Prisma.sql`AND COALESCE("meta_json"->>'scope_key', '__global__') = ${opts.scope_key}`
+      ? Prisma.sql`AND COALESCE("scope_key", '__global__') = ${opts.scope_key}`
       : Prisma.empty
 
     const baseRows = await this.prisma.$queryRaw<
@@ -322,7 +342,49 @@ export class PgChronicleRepository implements ChronicleRepository {
       actors: toStringArray(row.actorsJson),
       location: row.location,
       tags: toStringArray(row.tagsJson),
-      meta: (row.metaJson ?? null) as Record<string, unknown> | null,
+      scope: row.scope as AchievementScope,
+      scope_key: row.scopeKey,
+      signal_context: fromSignalContextColumns({
+        eventId: row.eventId,
+        threadId: row.threadId,
+        communityId: row.communityId,
+        peerAgentId: row.peerAgentId,
+        toAgentId: row.toAgentId,
+        previousState: row.previousState,
+        nextState: row.nextState,
+        action: row.action,
+        adminUserId: row.adminUserId,
+        targetType: row.targetType,
+        resultSuccess: row.resultSuccess,
+        newVisibility: row.newVisibility,
+        newState: row.newState,
+        postId: row.postId,
+        artifactId: row.artifactId,
+        publishShape: row.publishShape,
+        sessionId: row.sessionId,
+        humanMessageId: row.humanMessageId,
+        openingMessageId: row.openingMessageId,
+        signalVisibilityReason: row.signalVisibilityReason,
+        sourceRef: row.sourceRef,
+        sourceEventId: row.sourceEventId,
+        contentKind: row.contentKind,
+        generatedAt: row.generatedAt,
+        snapshotDate: row.snapshotDate,
+        sourceMode: row.sourceMode,
+        shelfId: row.shelfId,
+        storylineId: row.storylineId,
+        dedupKey: row.dedupKey,
+      }),
+      story_context: fromChronicleStoryContextColumns({
+        sceneLabel: row.sceneLabel,
+        emotionBefore: row.emotionBefore,
+        emotionAfter: row.emotionAfter,
+        reactionSentence: row.reactionSentence,
+        outcomeSentence: row.outcomeSentence,
+        nextHook: row.nextHook,
+      }),
+      entry_source: row.entrySource,
+      source_event_ids: fromJsonStringArray(row.sourceEventIdsJson),
       dedup_key: row.dedupKey,
       created_at: row.createdAt,
       updated_at: row.updatedAt,

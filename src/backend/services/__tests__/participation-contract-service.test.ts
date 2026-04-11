@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
+import type { PostModerationMetadata } from '../../repos/types/moderation-context.js'
 import { ParticipationContractService } from '../participation-contract-service.js'
 
 function setup() {
@@ -227,14 +228,14 @@ describe('ParticipationContractService', () => {
       body: 'Body',
       visibility: 'PUBLIC',
       state: 'APPROVED',
-      moderation_metadata: {
+      moderation_metadata: ({
         participation_contract: {
           public_participation_mode: 'audience_sidecar',
           audience_lane: {
             posting_enabled: true,
           },
         },
-      },
+      } as unknown as PostModerationMetadata),
     })
 
     const effective = await ctx.service.getPostContract(post.id)

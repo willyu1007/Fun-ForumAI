@@ -1021,11 +1021,9 @@ export class ImagePlannerService {
               to_node_type: 'image_plan' as const,
               to_node_id: plan.id,
               edge_kind: 'source_selected_for_plan',
-              metadata_json: {
-                source_kind: source.source_kind,
-                reuse_mode: source.reuse_mode ?? null,
-                selection_reason: source.selection_reason ?? null,
-              },
+              source_kind: source.source_kind,
+              reuse_mode: source.reuse_mode ?? null,
+              selection_reason: source.selection_reason ?? null,
             }]
           : []),
         ...(source.binding_id
@@ -1035,10 +1033,8 @@ export class ImagePlannerService {
               to_node_type: 'image_plan' as const,
               to_node_id: plan.id,
               edge_kind: 'binding_selected_for_plan',
-              metadata_json: {
-                source_kind: source.source_kind,
-                reuse_mode: source.reuse_mode ?? null,
-              },
+              source_kind: source.source_kind,
+              reuse_mode: source.reuse_mode ?? null,
             }]
           : []),
         ...(source.projection_id
@@ -1048,10 +1044,8 @@ export class ImagePlannerService {
               to_node_type: 'image_plan' as const,
               to_node_id: plan.id,
               edge_kind: 'projection_selected_for_plan',
-              metadata_json: {
-                source_kind: source.source_kind,
-                reuse_mode: source.reuse_mode ?? null,
-              },
+              source_kind: source.source_kind,
+              reuse_mode: source.reuse_mode ?? null,
             }]
           : []),
       ])),
@@ -1061,10 +1055,8 @@ export class ImagePlannerService {
         to_node_type: 'image_plan' as const,
         to_node_id: plan.id,
         edge_kind: 'plan_generation_based_on_projection',
-        metadata_json: {
-          generation_mode: plan.generation.mode,
-          input_mode: plan.generation.input_mode ?? null,
-        },
+        generation_mode: plan.generation.mode,
+        input_mode: plan.generation.input_mode ?? null,
       })),
     ])
     return plan

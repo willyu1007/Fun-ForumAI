@@ -672,7 +672,6 @@ export interface AftershowCalloutItem {
   evidence_ref: string | null
   notification_id: string | null
   invalidated_at: string | null
-  meta: Record<string, unknown> | null
   created_at: string
   callout_index: number
   deep_link: string
@@ -1328,7 +1327,23 @@ export interface AgentAchievementItem {
   visibility: AchievementVisibility
   achieved_at: string
   evidence: EvidenceRef[]
-  meta: Record<string, unknown> | null
+  signal_context?: {
+    source_event_id?: string | null
+    content_kind?: string | null
+    shelf_id?: string | null
+    storyline_id?: string | null
+    dedup_key?: string | null
+  } | null
+  award_context?: {
+    trigger_kind?: string | null
+    trigger_mode?: string | null
+    metric_name?: string | null
+    metric_value?: number | null
+    threshold?: number | null
+    evidence_satisfied?: boolean | null
+    visibility_reason?: string | null
+    dedup_key?: string | null
+  } | null
   created_at: string
   updated_at: string
 }
@@ -1346,7 +1361,26 @@ export interface ChronicleEntryItem {
   actors: string[]
   location: string | null
   tags: string[]
-  meta: Record<string, unknown> | null
+  scope: AchievementScope
+  scope_key: string
+  signal_context?: {
+    community_id?: string | null
+    source_event_id?: string | null
+    content_kind?: string | null
+    shelf_id?: string | null
+    storyline_id?: string | null
+    dedup_key?: string | null
+  } | null
+  story_context?: {
+    scene_label?: string | null
+    emotion_before?: string | null
+    emotion_after?: string | null
+    reaction_sentence?: string | null
+    outcome_sentence?: string | null
+    next_hook?: string | null
+  } | null
+  entry_source?: string | null
+  source_event_ids?: string[]
   dedup_key: string | null
   created_at: string
   updated_at: string
@@ -1569,9 +1603,24 @@ export interface CommunityProposal {
   merged_into_community_id: string | null
   reviewed_by_user_id: string | null
   reviewed_at: string | null
-  meta: Record<string, unknown> | null
+  last_action: CommunityProposalAction | null
+  last_action_reason: string | null
   created_at: string
   updated_at: string
+}
+
+export interface CommunityMergeRecommendationDecisionContext {
+  basis: 'empty_catalog' | 'catalog_overlap'
+  best_match_slug: string | null
+  text_overlap: number
+  scene_overlap: number
+  publication_profile_bonus: number
+  community_family_bonus: number
+  thresholds: {
+    merge_threshold: number
+    lane_threshold: number
+    gray_visibility_threshold: number
+  }
 }
 
 export interface CommunityMergeRecommendation {
@@ -1583,7 +1632,7 @@ export interface CommunityMergeRecommendation {
   incubation_visibility_mode: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
-  meta: Record<string, unknown> | null
+  decision_context: CommunityMergeRecommendationDecisionContext | null
   created_at: string
   updated_at: string
 }
@@ -1648,13 +1697,21 @@ export interface CommunityConfigPatch {
   validated_by_user_id: string | null
   approved_by_user_id: string | null
   applied_version_id: string | null
+  applied_version_number: number | null
   rejected_reason: string | null
   validated_at: string | null
+  validation_failed_at: string | null
   approved_at: string | null
+  scheduled_by_user_id: string | null
+  scheduled_at: string | null
   effective_at: string | null
   applied_at: string | null
   rolled_back_at: string | null
-  meta: Record<string, unknown> | null
+  scheduler_retry_count: number
+  scheduler_last_error: string | null
+  scheduler_last_error_at: string | null
+  scheduler_next_retry_at: string | null
+  scheduler_retry_exhausted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -1665,14 +1722,17 @@ export interface CommunityConfigVersion {
   version: number
   rules_json: Record<string, unknown>
   source_patch_id: string | null
+  seed_key: string | null
+  source: string | null
   status: 'ACTIVE' | 'ROLLED_BACK' | 'RETIRED'
   risk_level: ConfigRiskLevel
   created_by_user_id: string | null
+  applied_by_actor_id: string | null
   rollback_from_version_id: string | null
+  rollback_reason: string | null
   effective_at: string | null
   applied_at: string | null
   rolled_back_at: string | null
-  meta: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -1787,7 +1847,6 @@ export interface ReviewCaseTarget {
   target_id: string
   relation_type: 'PRIMARY' | 'RELATED' | 'PARENT_THREAD' | 'SESSION_MEMBER' | 'OWNER' | 'AGENT'
   channel: string
-  meta: Record<string, unknown> | null
   community_id: string | null
   agent_id: string | null
   user_id: string | null
@@ -1958,7 +2017,6 @@ export interface IdentityVerification {
   submitted_at: string
   reviewed_at: string | null
   expires_at: string | null
-  meta: Record<string, unknown> | null
 }
 
 export interface ComplaintTicket {

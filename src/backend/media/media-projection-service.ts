@@ -686,11 +686,9 @@ export class MediaProjectionService {
       to_node_type: 'projection',
       to_node_id: projection.id,
       edge_kind: 'binding_projected',
-      metadata_json: {
-        projection_surface: projection.projection_surface,
-        projection_kind: projection.projection_kind,
-        schema_version: projection.schema_version,
-      },
+      projection_surface: projection.projection_surface,
+      projection_kind: projection.projection_kind,
+      schema_version: projection.schema_version,
     })
   }
 }

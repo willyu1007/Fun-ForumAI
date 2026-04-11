@@ -1,11 +1,8 @@
-import type { ChronicleEntry } from '../repos/types.js'
+import type { ChronicleEntry, ChronicleStoryContext } from '../repos/types.js'
 import type {
   ChronicleStoryMetaV1,
   SourceDimension,
-  SourceDimensionLabel,
 } from '../../shared/owner-life-overview.js'
-
-const STORY_META_KEY = 'story_meta_v1'
 
 function normalizeTags(tags: string[] | undefined): string[] {
   return Array.from(
@@ -19,12 +16,6 @@ function normalizeTags(tags: string[] | undefined): string[] {
 
 function normalizeOptionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : []
 }
 
 function normalizeOwnerFacingSceneLabel(
@@ -56,7 +47,7 @@ function inferSourceDimension(input: {
   return 'WORLD'
 }
 
-function toSourceLabel(sourceDimension: SourceDimension): SourceDimensionLabel {
+function toSourceLabel(sourceDimension: SourceDimension): ChronicleStoryMetaV1['source_label'] {
   switch (sourceDimension) {
     case 'OWNER':
       return '来自你'
@@ -92,9 +83,9 @@ function inferSceneLabel(input: {
   type: ChronicleEntry['type']
   tags?: string[]
   location?: string | null
-  meta?: Record<string, unknown> | null
+  story_context?: ChronicleStoryContext | null
 }): string | null {
-  const explicit = normalizeOptionalString(input.meta?.scene_label)
+  const explicit = normalizeOptionalString(input.story_context?.scene_label)
   if (explicit) return normalizeOwnerFacingSceneLabel(input.sourceDimension, explicit)
   if (input.location?.trim()) return input.location.trim()
 
@@ -131,31 +122,15 @@ function linkedAchievementCodes(tags?: string[]): string[] {
     .map((tag) => tag.slice('achievement:'.length))
 }
 
-function beatTypeToStoryKind(beatType: string, sourceDimension: SourceDimension): string {
-  switch (beatType) {
-    case 'AFTERGLOW':
-      return 'private_afterglow'
-    case 'RELATION':
-      return 'relation_shift'
-    case 'MILESTONE':
-      return 'milestone'
-    case 'SYSTEM':
-      return 'system_adjustment'
-    case 'SCENE':
-    default:
-      return inferStoryKind({ sourceDimension, type: 'HIGHLIGHT' })
-  }
-}
-
 export function buildChronicleStoryMetaV1(input: {
   occurred_at: Date
   visibility: ChronicleEntry['visibility']
   type: ChronicleEntry['type']
-  title?: string
-  summary?: string
   location?: string | null
   tags?: string[]
-  meta?: Record<string, unknown> | null
+  scope?: ChronicleEntry['scope'] | null
+  scope_key?: ChronicleEntry['scope_key'] | null
+  story_context?: ChronicleStoryContext | null
 }): ChronicleStoryMetaV1 {
   const sourceDimension = inferSourceDimension(input)
   const sourceTags = normalizeTags(input.tags)
@@ -177,114 +152,34 @@ export function buildChronicleStoryMetaV1(input: {
       type: input.type,
       tags: input.tags,
       location: input.location,
-      meta: input.meta,
+      story_context: input.story_context,
     }),
-    emotion_before: normalizeOptionalString(input.meta?.emotion_before),
-    emotion_after: normalizeOptionalString(input.meta?.emotion_after),
-    reaction_sentence: normalizeOptionalString(input.meta?.reaction_sentence),
-    outcome_sentence: normalizeOptionalString(input.meta?.outcome_sentence),
-    next_hook: normalizeOptionalString(input.meta?.next_hook),
+    emotion_before: normalizeOptionalString(input.story_context?.emotion_before),
+    emotion_after: normalizeOptionalString(input.story_context?.emotion_after),
+    reaction_sentence: normalizeOptionalString(input.story_context?.reaction_sentence),
+    outcome_sentence: normalizeOptionalString(input.story_context?.outcome_sentence),
+    next_hook: normalizeOptionalString(input.story_context?.next_hook),
     linked_achievement_codes: linkedAchievementCodes(input.tags),
     source_tags: sourceTags,
-    scope: normalizeOptionalString(input.meta?.scope),
-    scope_key: normalizeOptionalString(input.meta?.scope_key),
-  }
-}
-
-export function withChronicleStoryMeta(
-  meta: Record<string, unknown> | null | undefined,
-  storyMeta: ChronicleStoryMetaV1,
-): Record<string, unknown> {
-  return {
-    ...(meta ?? {}),
-    [STORY_META_KEY]: storyMeta,
+    scope: normalizeOptionalString(input.scope),
+    scope_key: normalizeOptionalString(input.scope_key),
   }
 }
 
 export function readChronicleStoryMeta(
-  entry: Pick<ChronicleEntry, 'occurred_at' | 'visibility' | 'type' | 'tags' | 'meta' | 'location'>,
+  entry: Pick<
+    ChronicleEntry,
+    'occurred_at' | 'visibility' | 'type' | 'tags' | 'location' | 'scope' | 'scope_key' | 'story_context'
+  >,
 ): ChronicleStoryMetaV1 {
-  const raw = entry.meta?.[STORY_META_KEY]
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    const record = raw as Record<string, unknown>
-    const sourceDimension = record.source_dimension
-    const chapterKey = record.chapter_key
-    const chapterTitle = record.chapter_title
-
-    if (
-      (sourceDimension === 'WORLD' ||
-        sourceDimension === 'SOCIAL' ||
-        sourceDimension === 'OWNER' ||
-        sourceDimension === 'SYSTEM') &&
-      typeof chapterKey === 'string' &&
-      typeof chapterTitle === 'string'
-    ) {
-      const sourceTags = normalizeTags(normalizeStringArray(record.source_tags))
-      const storyKind = normalizeOptionalString(record.story_kind)
-
-      if (storyKind) {
-        return {
-          version: 1,
-          source_dimension: sourceDimension,
-          source_label: (record.source_label === '论坛里' ||
-          record.source_label === '和别人' ||
-          record.source_label === '来自你' ||
-          record.source_label === '系统层'
-            ? record.source_label
-            : toSourceLabel(sourceDimension)) as SourceDimensionLabel,
-          story_kind: storyKind,
-          chapter_key: chapterKey,
-          chapter_title: chapterTitle,
-          scene_label: normalizeOwnerFacingSceneLabel(
-            sourceDimension,
-            normalizeOptionalString(record.scene_label),
-          ),
-          emotion_before: normalizeOptionalString(record.emotion_before),
-          emotion_after: normalizeOptionalString(record.emotion_after),
-          reaction_sentence: normalizeOptionalString(record.reaction_sentence),
-          outcome_sentence: normalizeOptionalString(record.outcome_sentence),
-          next_hook: normalizeOptionalString(record.next_hook),
-          linked_achievement_codes: normalizeStringArray(record.linked_achievement_codes),
-          source_tags: sourceTags,
-          scope: normalizeOptionalString(record.scope),
-          scope_key: normalizeOptionalString(record.scope_key),
-        }
-      }
-
-      const beatType = normalizeOptionalString(record.beat_type) ?? 'SCENE'
-      return {
-        version: 1,
-        source_dimension: sourceDimension,
-        source_label: toSourceLabel(sourceDimension),
-        story_kind: beatTypeToStoryKind(beatType, sourceDimension),
-        chapter_key: chapterKey,
-        chapter_title: chapterTitle,
-        scene_label: inferSceneLabel({
-          sourceDimension,
-          type: entry.type,
-          tags: entry.tags,
-          location: entry.location,
-          meta: entry.meta,
-        }),
-        emotion_before: null,
-        emotion_after: null,
-        reaction_sentence: null,
-        outcome_sentence: null,
-        next_hook: null,
-        linked_achievement_codes: linkedAchievementCodes(entry.tags),
-        source_tags: sourceTags,
-        scope: normalizeOptionalString(record.scope),
-        scope_key: normalizeOptionalString(record.scope_key),
-      }
-    }
-  }
-
   return buildChronicleStoryMetaV1({
     occurred_at: entry.occurred_at,
     visibility: entry.visibility,
     type: entry.type,
     location: entry.location,
     tags: entry.tags,
-    meta: entry.meta,
+    scope: entry.scope,
+    scope_key: entry.scope_key,
+    story_context: entry.story_context,
   })
 }

@@ -23,6 +23,40 @@ import { ParticipationContractService } from '../participation-contract-service.
 import { AgentPerceptionService } from '../agent-perception-service.js'
 import { RuntimeContextAssembler } from '../runtime-context-assembler.js'
 import { ForumOrchestrationPolicyService } from '../forum-orchestration-policy-service.js'
+import type { ModerationTopicSignals } from '../../repos/types/moderation-context.js'
+
+function buildTopicSignals(
+  overrides: Partial<ModerationTopicSignals> = {},
+): ModerationTopicSignals {
+  return {
+    topic_domain: 'GENERAL',
+    hot_topic_flag: false,
+    topic_confidence: 0,
+    drift_risk_score: 0,
+    drift_detected: false,
+    distribution_state: 'NORMAL',
+    enforcement_reason: 'test',
+    matched_keywords: [],
+    allowed_matches: [],
+    sensitive_matches: [],
+    context_matches: [],
+    allowed_domains: [],
+    kill_switch_mode: 'NORMAL',
+    kill_switch_source: 'default',
+    scene_key: null,
+    room_no_recommend: false,
+    policy_shadowed: false,
+    sampled_review_required: false,
+    sampling_metrics: {
+      post_thread_turn_count: 0,
+      room_message_count_hour: 0,
+      report_count_24h: 0,
+    },
+    gray_keyword_matches: [],
+    deny_keyword_matches: [],
+    ...overrides,
+  }
+}
 
 function setup() {
   const postRepo = new InMemoryPostRepository()
@@ -194,8 +228,8 @@ describe('ForumReadService', () => {
     })
 
     it('keeps real public proof badges as the primary author proof source', async () => {
-      const originalFlag = config.features.achievementPublicHighlights
-      ;(config.features as Record<string, unknown>).achievementPublicHighlights = true
+      const originalFlag = config.launch.capabilities.achievementPublicHighlights
+      ;(config.launch.capabilities as Record<string, unknown>).achievementPublicHighlights = true
 
       try {
       const localCtx = setup()
@@ -246,7 +280,7 @@ describe('ForumReadService', () => {
         expect.objectContaining({ label: '个人智能体' }),
       ])
       } finally {
-        ;(config.features as Record<string, unknown>).achievementPublicHighlights = originalFlag
+        ;(config.launch.capabilities as Record<string, unknown>).achievementPublicHighlights = originalFlag
       }
     })
 
@@ -279,8 +313,8 @@ describe('ForumReadService', () => {
     })
 
     it('ignores controller off-profiles when the rollout controller feature is disabled', async () => {
-      const originalFlag = config.features.mediaRolloutControllerV1
-      ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = false
+      const originalFlag = config.launch.capabilities.mediaRolloutControllerV1
+      ;(config.launch.capabilities as Record<string, unknown>).mediaRolloutControllerV1 = false
 
       try {
         const launchCommunity = getLaunchCommunityBySlug('hot-arena')
@@ -349,13 +383,13 @@ describe('ForumReadService', () => {
           hero_eligible: false,
         })
       } finally {
-        ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
+        ;(config.launch.capabilities as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
       }
     })
 
     it('does not block public post reads on slow rollout profile evaluation and reuses the pending fetch', async () => {
-      const originalFlag = config.features.mediaRolloutControllerV1
-      ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = true
+      const originalFlag = config.launch.capabilities.mediaRolloutControllerV1
+      ;(config.launch.capabilities as Record<string, unknown>).mediaRolloutControllerV1 = true
 
       try {
         const getEffectiveProfile = vi.fn(async (): Promise<MediaRolloutControllerProfile> => {
@@ -434,7 +468,7 @@ describe('ForumReadService', () => {
 
         expect(getEffectiveProfile).toHaveBeenCalledTimes(1)
       } finally {
-        ;(config.features as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
+        ;(config.launch.capabilities as Record<string, unknown>).mediaRolloutControllerV1 = originalFlag
       }
     })
 
@@ -710,11 +744,11 @@ describe('ForumReadService', () => {
         visibility: 'GRAY',
         state: 'APPROVED',
         moderation_metadata: {
-          topic_signals: {
+          topic_signals: buildTopicSignals({
             hot_topic_flag: true,
             topic_domain: 'ENTERTAINMENT',
             distribution_state: 'NO_RECOMMEND',
-          },
+          }),
           distribution_state: 'NO_RECOMMEND',
         },
       })
@@ -726,11 +760,11 @@ describe('ForumReadService', () => {
         visibility: 'PUBLIC',
         state: 'APPROVED',
         moderation_metadata: {
-          topic_signals: {
+          topic_signals: buildTopicSignals({
             hot_topic_flag: true,
             topic_domain: 'SPORTS',
             distribution_state: 'NORMAL',
-          },
+          }),
           distribution_state: 'NORMAL',
         },
       })
@@ -841,12 +875,12 @@ describe('ForumReadService', () => {
         visibility: 'GRAY',
         state: 'APPROVED',
         moderation_metadata: {
-          topic_signals: {
+          topic_signals: buildTopicSignals({
             hot_topic_flag: true,
             topic_domain: 'ENTERTAINMENT',
             drift_detected: true,
             distribution_state: 'NO_RECOMMEND',
-          },
+          }),
           distribution_state: 'NO_RECOMMEND',
         },
       })

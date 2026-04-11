@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient } from '@prisma/client'
 import type {
   AftershowRun,
+  AftershowThresholdDetail,
   CreateAftershowRunInput,
 } from '../types.js'
 import type { AftershowRunRepository } from '../aftershow-run-repository.js'
@@ -21,7 +22,12 @@ function toDomain(row: {
   thresholdDetailJson: Prisma.JsonValue | null
   triggeredByAgentId: string | null
   triggeredByUserId: string | null
-  metaJson: Prisma.JsonValue | null
+  triggerMode: string | null
+  forceTrigger: boolean
+  thresholdPass: boolean
+  reason: string | null
+  usedStageFallback: boolean
+  stageSpecErrors: string[]
   createdAt: Date
   updatedAt: Date
 }): AftershowRun {
@@ -37,10 +43,15 @@ function toDomain(row: {
     audience_message_count_at_trigger: row.audienceMessageCountAtTrigger,
     human_vote_score_at_trigger: row.humanVoteScoreAtTrigger,
     audience_summary_ref: row.audienceSummaryRef,
-    threshold_detail: row.thresholdDetailJson as Record<string, unknown> | null,
+    threshold_detail: row.thresholdDetailJson as AftershowThresholdDetail | null,
     triggered_by_agent_id: row.triggeredByAgentId,
     triggered_by_user_id: row.triggeredByUserId,
-    meta: row.metaJson as Record<string, unknown> | null,
+    trigger_mode: row.triggerMode === 'AUTO' || row.triggerMode === 'MANUAL' ? row.triggerMode : null,
+    force_trigger: row.forceTrigger,
+    threshold_pass: row.thresholdPass,
+    reason: row.reason,
+    used_stage_fallback: row.usedStageFallback,
+    stage_spec_errors: row.stageSpecErrors,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -64,10 +75,15 @@ export class PgAftershowRunRepository implements AftershowRunRepository {
         audienceMessageCountAtTrigger: input.audience_message_count_at_trigger ?? 0,
         humanVoteScoreAtTrigger: input.human_vote_score_at_trigger ?? 0,
         audienceSummaryRef: input.audience_summary_ref ?? null,
-        thresholdDetailJson: input.threshold_detail ? (input.threshold_detail as Prisma.InputJsonValue) : Prisma.DbNull,
+        thresholdDetailJson: input.threshold_detail ? (input.threshold_detail as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
         triggeredByAgentId: input.triggered_by_agent_id ?? null,
         triggeredByUserId: input.triggered_by_user_id ?? null,
-        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+        triggerMode: input.trigger_mode ?? null,
+        forceTrigger: input.force_trigger ?? false,
+        thresholdPass: input.threshold_pass ?? false,
+        reason: input.reason ?? null,
+        usedStageFallback: input.used_stage_fallback ?? false,
+        stageSpecErrors: input.stage_spec_errors ?? [],
         createdAt: now,
         updatedAt: now,
       },
@@ -82,9 +98,6 @@ export class PgAftershowRunRepository implements AftershowRunRepository {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
 
-    return rows.map((row) => toDomain({
-      ...row,
-      metaJson: row.metaJson,
-    }))
+    return rows.map((row) => toDomain(row))
   }
 }

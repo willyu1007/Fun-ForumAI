@@ -68,7 +68,7 @@ export function applyPremodOverride(
   stageSpec: StageSpecV1,
   opts: { is_longform: boolean },
 ): ModerationResult {
-  if (!config.features.stageGovernanceV1) return modResult
+  if (!config.launch.capabilities.stageGovernanceV1) return modResult
   if (!stageSpec.strict_publication.enabled || !stageSpec.strict_publication.premod_required) return modResult
   if (!opts.is_longform) return modResult
   if (modResult.state === 'PENDING') return modResult
@@ -90,7 +90,7 @@ export function resolveModerationThresholds(stageSpec: StageSpecV1): {
   medium_max_score: number
   auto_reject_score: number
 } | undefined {
-  if (!config.features.stageGovernanceV1) return undefined
+  if (!config.launch.capabilities.stageGovernanceV1) return undefined
   const moderation = stageSpec.moderation as Record<string, unknown> | undefined
   const thresholdsRaw = moderation?.thresholds
   if (!thresholdsRaw || typeof thresholdsRaw !== 'object' || Array.isArray(thresholdsRaw)) {

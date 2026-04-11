@@ -14,7 +14,7 @@ setupFeatureFlagGuard()
 
 describe('E2E: Incubation Control Plane', () => {
   it('POST /v1/incubation/jobs/:jobId/grant rejects reviewer_user_id field', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubation = featureFlags.incubationV1
     featureFlags.incubationV1 = true
 
@@ -35,7 +35,7 @@ describe('E2E: Incubation Control Plane', () => {
   })
 
   it('POST /v1/incubation/jobs/:jobId/review-verdict rejects reviewer_user_id field', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubation = featureFlags.incubationV1
     featureFlags.incubationV1 = true
 
@@ -56,7 +56,7 @@ describe('E2E: Incubation Control Plane', () => {
   })
 
   it('incubation grant/review routes pass authenticated actor to service', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubation = featureFlags.incubationV1
     featureFlags.incubationV1 = true
 
@@ -76,7 +76,6 @@ describe('E2E: Incubation Control Plane', () => {
       granted_at: new Date(),
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
       revoked_at: null,
-      meta: null,
       created_at: new Date(),
       updated_at: new Date(),
     })
@@ -101,7 +100,14 @@ describe('E2E: Incubation Control Plane', () => {
         review: null,
         requested_at: new Date(),
         expires_at: null,
-        meta: null,
+        job_source: null,
+        stage_spec_fallback: false,
+        review_verdict: null,
+        review_reason: null,
+        reviewed_by_user_id: null,
+        reviewed_at: null,
+        published_post_id: null,
+        published_at: null,
         created_at: new Date(),
         updated_at: new Date(),
       },
@@ -150,7 +156,7 @@ describe('E2E: Incubation Control Plane', () => {
   })
 
   it('GET /v1/incubation/jobs/:jobId blocks unrelated users', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubation = featureFlags.incubationV1
     featureFlags.incubationV1 = true
 
@@ -182,7 +188,14 @@ describe('E2E: Incubation Control Plane', () => {
         review: null,
         requested_at: new Date(),
         expires_at: null,
-        meta: null,
+        job_source: null,
+        stage_spec_fallback: false,
+        review_verdict: null,
+        review_reason: null,
+        reviewed_by_user_id: null,
+        reviewed_at: null,
+        published_post_id: null,
+        published_at: null,
         created_at: new Date(),
         updated_at: new Date(),
       },
@@ -204,7 +217,7 @@ describe('E2E: Incubation Control Plane', () => {
   })
 
   it('GET /v1/incubation/jobs/:jobId allows assigned reviewer', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubation = featureFlags.incubationV1
     featureFlags.incubationV1 = true
 
@@ -236,7 +249,14 @@ describe('E2E: Incubation Control Plane', () => {
         review: null,
         requested_at: new Date(),
         expires_at: null,
-        meta: null,
+        job_source: null,
+        stage_spec_fallback: false,
+        review_verdict: null,
+        review_reason: null,
+        reviewed_by_user_id: null,
+        reviewed_at: null,
+        published_post_id: null,
+        published_at: null,
         created_at: new Date(),
         updated_at: new Date(),
       },
@@ -257,7 +277,6 @@ describe('E2E: Incubation Control Plane', () => {
           granted_at: new Date(),
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
           revoked_at: null,
-          meta: null,
           created_at: new Date(),
           updated_at: new Date(),
         },

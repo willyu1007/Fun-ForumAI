@@ -36,7 +36,6 @@ model HumanUser {
   notifications               Notification[]
   humanVotes                  HumanVote[]
   follows                     HumanAgentFollow[]
-  legacyMediaAssets           LegacyAgentMediaAsset[]      @relation("LegacyMediaAssetOwner")
   ownedMediaAssets            MediaAsset[]                 @relation("MediaAssetOwner")
   audienceMessages            AudienceMessage[]            @relation("AudienceMessageAuthor")
   publicStageThreads          PublicStageThread[]          @relation("HumanPublicStageThreads")
@@ -167,7 +166,6 @@ model Agent {
   xp                        AgentXp?
   traits                    AgentTrait[]
   xpEvents                  XpEvent[]
-  legacyGrowthEventArchives LegacyGrowthEventArchive[]
   instructions              AgentInstruction[]
   budget                    AgentBudget?
   costLogs                  CostLog[]
@@ -198,7 +196,6 @@ model Agent {
   outgoingRelationEvents    AgentRelationEvent[]         @relation("RelationEventFromAgent")
   incomingRelationEvents    AgentRelationEvent[]         @relation("RelationEventToAgent")
   humanFollowers            HumanAgentFollow[]
-  legacyMediaAssets         LegacyAgentMediaAsset[]
   achievements              AgentAchievement[]
   chronicleEntries          ChronicleEntry[]
   outgoingPprSnapshots      PprSnapshot[]                @relation("PprSourceAgent")
@@ -312,31 +309,42 @@ enum AgentCommunityMembershipStatus {
 }
 
 model Post {
-  id                     String       @id @default(cuid())
-  communityId            String       @map("community_id")
-  authorAgentId          String       @map("author_agent_id")
-  title                  String
-  body                   String
-  tagsJson               Json?        @map("tags_json")
-  visibility             Visibility   @default(PUBLIC)
-  state                  ContentState @default(PENDING)
-  moderationMetadataJson Json?        @map("moderation_metadata_json")
-  createdAt              DateTime     @default(now()) @map("created_at")
-  updatedAt              DateTime     @updatedAt @map("updated_at")
+  id                                 String       @id @default(cuid())
+  communityId                        String       @map("community_id")
+  authorAgentId                      String       @map("author_agent_id")
+  title                              String
+  body                               String
+  tagsJson                           Json?        @map("tags_json")
+  visibility                         Visibility   @default(PUBLIC)
+  state                              ContentState @default(PENDING)
+  moderationTopicSignalsJson         Json?        @map("moderation_topic_signals_json")
+  moderationDistributionState        String       @default("NORMAL") @map("moderation_distribution_state")
+  moderationPolicyAction             String?      @map("moderation_policy_action")
+  moderationPolicyReason             String?      @map("moderation_policy_reason")
+  moderationPolicyCaseId             String?      @map("moderation_policy_case_id")
+  moderationKillSwitchJson           Json?        @map("moderation_kill_switch_json")
+  stageSpecFallback                  Boolean      @default(false) @map("stage_spec_fallback")
+  stageRuntimeRole                   String?      @map("stage_runtime_role")
+  stageRuntimeTier                   String?      @map("stage_runtime_tier")
+  trustContextJson                   Json?        @map("trust_context_json")
+  participationContractOverrideJson  Json?        @map("participation_contract_override_json")
+  forumOrchestrationOverrideJson     Json?        @map("forum_orchestration_override_json")
+  adminDistributionOverrideJson      Json?        @map("admin_distribution_override_json")
+  createdAt                          DateTime     @default(now()) @map("created_at")
+  updatedAt                          DateTime     @updatedAt @map("updated_at")
 
-  community                 Community               @relation(fields: [communityId], references: [id])
-  author                    Agent                   @relation(fields: [authorAgentId], references: [id])
-  media                     PostMedia[]
-  consumedLegacyMediaAssets LegacyAgentMediaAsset[] @relation("LegacyMediaConsumedPost")
-  incubationJobs            IncubationJob[]
-  audienceThread            AudienceThread?
-  audienceSummaries         AudienceSummary[]
-  aftershowRuns             AftershowRun[]
-  roleAssignments           RoleAssignment[]
-  aftershowArtifacts        AftershowArtifact[]
-  sceneMetadata             ForumSceneMetadata[]    @relation("PostSceneMetadata")
-  publicStageThreads        PublicStageThread[]     @relation("PostPublicStageThreads")
-  publicStageTurns          PublicStageTurn[]
+  community          Community            @relation(fields: [communityId], references: [id])
+  author             Agent                @relation(fields: [authorAgentId], references: [id])
+  media              PostMedia[]
+  incubationJobs     IncubationJob[]
+  audienceThread     AudienceThread?
+  audienceSummaries  AudienceSummary[]
+  aftershowRuns      AftershowRun[]
+  roleAssignments    RoleAssignment[]
+  aftershowArtifacts AftershowArtifact[]
+  sceneMetadata      ForumSceneMetadata[] @relation("PostSceneMetadata")
+  publicStageThreads PublicStageThread[]  @relation("PostPublicStageThreads")
+  publicStageTurns   PublicStageTurn[]
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
@@ -734,33 +742,6 @@ model HumanAgentFollow {
   @@map("human_agent_follows")
 }
 
-model LegacyAgentMediaAsset {
-  id                String                 @id @default(cuid())
-  agentId           String                 @map("agent_id")
-  ownerUserId       String                 @map("owner_user_id")
-  sourceType        LegacyMediaSourceType  @map("source_type")
-  originUrl         String?                @map("origin_url")
-  storageKey        String?                @map("storage_key")
-  mediaUrl          String                 @map("media_url")
-  mimeType          String                 @map("mime_type")
-  fileSizeBytes     Int                    @map("file_size_bytes")
-  ownerNote         String?                @map("owner_note")
-  visionSummaryJson Json                   @map("vision_summary_json")
-  status            LegacyMediaAssetStatus @default(PENDING)
-  consumedPostId    String?                @map("consumed_post_id")
-  consumedAt        DateTime?              @map("consumed_at")
-  createdAt         DateTime               @default(now()) @map("created_at")
-
-  agent        Agent     @relation(fields: [agentId], references: [id])
-  owner        HumanUser @relation("LegacyMediaAssetOwner", fields: [ownerUserId], references: [id])
-  consumedPost Post?     @relation("LegacyMediaConsumedPost", fields: [consumedPostId], references: [id])
-
-  @@index([agentId, status, createdAt])
-  @@index([ownerUserId, createdAt])
-  @@index([consumedPostId])
-  @@map("agent_inclination_assets")
-}
-
 model MediaAsset {
   id               String   @id @default(cuid())
   stewardAgentId   String?  @map("steward_agent_id")
@@ -1044,14 +1025,34 @@ model MediaRolloutControllerOverride {
 }
 
 model MediaLineageEdge {
-  id           String   @id @default(cuid())
-  fromNodeType String   @map("from_node_type")
-  fromNodeId   String   @map("from_node_id")
-  toNodeType   String   @map("to_node_type")
-  toNodeId     String   @map("to_node_id")
-  edgeKind     String   @map("edge_kind")
-  metadataJson Json?    @map("metadata_json")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                String   @id @default(cuid())
+  fromNodeType      String   @map("from_node_type")
+  fromNodeId        String   @map("from_node_id")
+  toNodeType        String   @map("to_node_type")
+  toNodeId          String   @map("to_node_id")
+  edgeKind          String   @map("edge_kind")
+  reason            String?
+  schemaVersion     String?  @map("schema_version")
+  sceneType         String?  @map("scene_type")
+  sceneId           String?  @map("scene_id")
+  bindingRole       String?  @map("binding_role")
+  sourceSceneType   String?  @map("source_scene_type")
+  sourceSceneId     String?  @map("source_scene_id")
+  projectionSurface String?  @map("projection_surface")
+  projectionKind    String?  @map("projection_kind")
+  sourceKind        String?  @map("source_kind")
+  reuseMode         String?  @map("reuse_mode")
+  selectionReason   String?  @map("selection_reason")
+  generationMode    String?  @map("generation_mode")
+  inputMode         String?  @map("input_mode")
+  provider          String?
+  visibilityPolicy  String?  @map("visibility_policy")
+  extractionStatus  String?  @map("extraction_status")
+  surface           String?
+  displayVariant    String?  @map("display_variant")
+  postId            String?  @map("post_id")
+  mimeType          String?  @map("mime_type")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   @@index([fromNodeType, fromNodeId, createdAt])
   @@index([toNodeType, toNodeId, createdAt])
@@ -1060,21 +1061,56 @@ model MediaLineageEdge {
 }
 
 model AgentAchievement {
-  id           String                @id @default(cuid())
-  agentId      String                @map("agent_id")
-  code         String
-  name         String
-  category     String
-  tier         Int
-  scope        String                @default("global")
-  scopeKey     String                @default("__global__") @map("scope_key")
-  rarity       Float                 @default(0.5)
-  visibility   AchievementVisibility @default(PUBLIC)
-  achievedAt   DateTime              @default(now()) @map("achieved_at")
-  evidenceJson Json                  @map("evidence_json")
-  metaJson     Json?                 @map("meta_json")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
+  id                     String                @id @default(cuid())
+  agentId                String                @map("agent_id")
+  code                   String
+  name                   String
+  category               String
+  tier                   Int
+  scope                  String                @default("global")
+  scopeKey               String                @default("__global__") @map("scope_key")
+  rarity                 Float                 @default(0.5)
+  visibility             AchievementVisibility @default(PUBLIC)
+  achievedAt             DateTime              @default(now()) @map("achieved_at")
+  evidenceJson           Json                  @map("evidence_json")
+  eventId                String?               @map("event_id")
+  threadId               String?               @map("thread_id")
+  communityId            String?               @map("community_id")
+  peerAgentId            String?               @map("peer_agent_id")
+  toAgentId              String?               @map("to_agent_id")
+  previousState          String?               @map("previous_state")
+  nextState              String?               @map("next_state")
+  action                 String?               @map("action")
+  adminUserId            String?               @map("admin_user_id")
+  targetType             String?               @map("target_type")
+  resultSuccess          Boolean?              @map("result_success")
+  newVisibility          String?               @map("new_visibility")
+  newState               String?               @map("new_state")
+  postId                 String?               @map("post_id")
+  artifactId             String?               @map("artifact_id")
+  publishShape           String?               @map("publish_shape")
+  sessionId              String?               @map("session_id")
+  humanMessageId         String?               @map("human_message_id")
+  openingMessageId       String?               @map("opening_message_id")
+  signalVisibilityReason String?               @map("signal_visibility_reason")
+  sourceRef              String?               @map("source_ref")
+  sourceEventId          String?               @map("source_event_id")
+  contentKind            String?               @map("content_kind")
+  generatedAt            DateTime?             @map("generated_at")
+  snapshotDate           String?               @map("snapshot_date")
+  sourceMode             String?               @map("source_mode")
+  shelfId                String?               @map("shelf_id")
+  storylineId            String?               @map("storyline_id")
+  triggerKind            String?               @map("trigger_kind")
+  triggerMode            String?               @map("trigger_mode")
+  metricName             String?               @map("metric_name")
+  metricValue            Float?                @map("metric_value")
+  metricThreshold        Float?                @map("metric_threshold")
+  evidenceSatisfied      Boolean?              @map("evidence_satisfied")
+  visibilityReason       String?               @map("visibility_reason")
+  sourceDedupKey         String?               @map("source_dedup_key")
+  createdAt              DateTime              @default(now()) @map("created_at")
+  updatedAt              DateTime              @updatedAt @map("updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
@@ -1086,27 +1122,65 @@ model AgentAchievement {
 }
 
 model ChronicleEntry {
-  id              String                @id @default(cuid())
-  agentId         String                @map("agent_id")
-  visibility      AchievementVisibility @default(PUBLIC)
-  type            ChronicleType
-  occurredAt      DateTime              @default(now()) @map("occurred_at")
-  title           String
-  summary         String
-  importanceScore Float                 @default(0.5) @map("importance_score")
-  evidenceJson    Json                  @map("evidence_json")
-  actorsJson      Json?                 @map("actors_json")
-  location        String?
-  tagsJson        Json?                 @map("tags_json")
-  metaJson        Json?                 @map("meta_json")
-  dedupKey        String?               @map("dedup_key")
-  createdAt       DateTime              @default(now()) @map("created_at")
-  updatedAt       DateTime              @updatedAt @map("updated_at")
+  id                     String                @id @default(cuid())
+  agentId                String                @map("agent_id")
+  visibility             AchievementVisibility @default(PUBLIC)
+  type                   ChronicleType
+  occurredAt             DateTime              @default(now()) @map("occurred_at")
+  title                  String
+  summary                String
+  importanceScore        Float                 @default(0.5) @map("importance_score")
+  evidenceJson           Json                  @map("evidence_json")
+  actorsJson             Json?                 @map("actors_json")
+  location               String?
+  tagsJson               Json?                 @map("tags_json")
+  scope                  String                @default("global")
+  scopeKey               String                @default("__global__") @map("scope_key")
+  eventId                String?               @map("event_id")
+  threadId               String?               @map("thread_id")
+  communityId            String?               @map("community_id")
+  peerAgentId            String?               @map("peer_agent_id")
+  toAgentId              String?               @map("to_agent_id")
+  previousState          String?               @map("previous_state")
+  nextState              String?               @map("next_state")
+  action                 String?               @map("action")
+  adminUserId            String?               @map("admin_user_id")
+  targetType             String?               @map("target_type")
+  resultSuccess          Boolean?              @map("result_success")
+  newVisibility          String?               @map("new_visibility")
+  newState               String?               @map("new_state")
+  postId                 String?               @map("post_id")
+  artifactId             String?               @map("artifact_id")
+  publishShape           String?               @map("publish_shape")
+  sessionId              String?               @map("session_id")
+  humanMessageId         String?               @map("human_message_id")
+  openingMessageId       String?               @map("opening_message_id")
+  signalVisibilityReason String?               @map("signal_visibility_reason")
+  sourceRef              String?               @map("source_ref")
+  sourceEventId          String?               @map("source_event_id")
+  contentKind            String?               @map("content_kind")
+  generatedAt            DateTime?             @map("generated_at")
+  snapshotDate           String?               @map("snapshot_date")
+  sourceMode             String?               @map("source_mode")
+  shelfId                String?               @map("shelf_id")
+  storylineId            String?               @map("storyline_id")
+  sceneLabel             String?               @map("scene_label")
+  emotionBefore          String?               @map("emotion_before")
+  emotionAfter           String?               @map("emotion_after")
+  reactionSentence       String?               @map("reaction_sentence")
+  outcomeSentence        String?               @map("outcome_sentence")
+  nextHook               String?               @map("next_hook")
+  entrySource            String?               @map("entry_source")
+  sourceEventIdsJson     Json?                 @map("source_event_ids_json")
+  dedupKey               String?               @map("dedup_key")
+  createdAt              DateTime              @default(now()) @map("created_at")
+  updatedAt              DateTime              @updatedAt @map("updated_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
   @@unique([agentId, dedupKey])
   @@index([agentId, occurredAt])
+  @@index([agentId, scope, scopeKey, occurredAt])
   @@index([agentId, visibility, occurredAt])
   @@index([agentId, type, occurredAt])
   @@map("chronicle_entries")
@@ -1245,7 +1319,14 @@ model IncubationJob {
   reviewJson        Json?               @map("review_json")
   requestedAt       DateTime            @default(now()) @map("requested_at")
   expiresAt         DateTime?           @map("expires_at")
-  metaJson          Json?               @map("meta_json")
+  jobSource         String?             @map("job_source")
+  stageSpecFallback Boolean             @default(false) @map("stage_spec_fallback")
+  reviewVerdict     String?             @map("review_verdict")
+  reviewReason      String?             @map("review_reason")
+  reviewedByUserId  String?             @map("reviewed_by_user_id")
+  reviewedAt        DateTime?           @map("reviewed_at")
+  publishedPostId   String?             @map("published_post_id")
+  publishedAt       DateTime?           @map("published_at")
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
 
@@ -1279,7 +1360,6 @@ model IncubationGrant {
   grantedAt       DateTime              @default(now()) @map("granted_at")
   expiresAt       DateTime              @map("expires_at")
   revokedAt       DateTime?             @map("revoked_at")
-  metaJson        Json?                 @map("meta_json")
   createdAt       DateTime              @default(now()) @map("created_at")
   updatedAt       DateTime              @updatedAt @map("updated_at")
 
@@ -1293,15 +1373,16 @@ model IncubationGrant {
 }
 
 model IncubationSourceBundle {
-  id         String   @id @default(cuid())
-  jobId      String   @map("job_id")
-  sourceType String   @map("source_type")
-  sourceRef  String   @map("source_ref")
-  sourceUrl  String?  @map("source_url")
-  title      String?
-  metaJson   Json?    @map("meta_json")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  jobId           String   @map("job_id")
+  sourceType      String   @map("source_type")
+  sourceRef       String   @map("source_ref")
+  sourceUrl       String?  @map("source_url")
+  title           String?
+  sourceSessionId String?  @map("source_session_id")
+  sourceMemoryId  String?  @map("source_memory_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   job IncubationJob @relation(fields: [jobId], references: [id])
 
@@ -1372,7 +1453,8 @@ model AudienceSummary {
   windowEnd    DateTime @map("window_end")
   summaryText  String   @map("summary_text")
   messageCount Int      @default(0) @map("message_count")
-  metaJson     Json?    @map("meta_json")
+  source       String?  @map("source")
+  safeMode     Boolean  @default(false) @map("safe_mode")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -1407,7 +1489,12 @@ model AftershowRun {
   thresholdDetailJson           Json?              @map("threshold_detail_json")
   triggeredByAgentId            String?            @map("triggered_by_agent_id")
   triggeredByUserId             String?            @map("triggered_by_user_id")
-  metaJson                      Json?              @map("meta_json")
+  triggerMode                   String?            @map("trigger_mode")
+  forceTrigger                  Boolean            @default(false) @map("force_trigger")
+  thresholdPass                 Boolean            @default(false) @map("threshold_pass")
+  reason                        String?
+  usedStageFallback             Boolean            @default(false) @map("used_stage_fallback")
+  stageSpecErrors               String[]           @default([]) @map("stage_spec_errors")
   createdAt                     DateTime           @default(now()) @map("created_at")
   updatedAt                     DateTime           @updatedAt @map("updated_at")
 
@@ -1444,7 +1531,9 @@ model AftershowArtifact {
   causeEventId       String?                 @map("cause_event_id")
   idempotencyKey     String?                 @unique @map("idempotency_key")
   publishedAt        DateTime?               @map("published_at")
-  metaJson           Json?                   @map("meta_json")
+  reason             String?
+  thresholdPass      Boolean?                @map("threshold_pass")
+  publishShape       String?                 @map("publish_shape")
   createdAt          DateTime                @default(now()) @map("created_at")
   updatedAt          DateTime                @updatedAt @map("updated_at")
 
@@ -1468,7 +1557,6 @@ model AftershowCallout {
   evidenceRef       String?   @map("evidence_ref")
   notificationId    String?   @map("notification_id")
   invalidatedAt     DateTime? @map("invalidated_at")
-  metaJson          Json?     @map("meta_json")
   createdAt         DateTime  @default(now()) @map("created_at")
 
   artifact        AftershowArtifact @relation(fields: [artifactId], references: [id])
@@ -1533,14 +1621,17 @@ model CommunityConfigVersion {
   version               Int
   rulesJson             Json                @map("rules_json")
   sourcePatchId         String?             @map("source_patch_id")
+  seedKey               String?             @map("seed_key")
+  source                String?
   status                ConfigVersionStatus @default(ACTIVE)
   riskLevel             ConfigRiskLevel     @default(LOW) @map("risk_level")
   createdByUserId       String?             @map("created_by_user_id")
+  appliedByActorId      String?             @map("applied_by_actor_id")
   rollbackFromVersionId String?             @map("rollback_from_version_id")
+  rollbackReason        String?             @map("rollback_reason")
   effectiveAt           DateTime?           @map("effective_at")
   appliedAt             DateTime?           @map("applied_at")
   rolledBackAt          DateTime?           @map("rolled_back_at")
-  metaJson              Json?               @map("meta_json")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
 
@@ -1554,28 +1645,36 @@ model CommunityConfigVersion {
 }
 
 model CommunityConfigPatch {
-  id                String            @id @default(cuid())
-  communityId       String            @map("community_id")
-  baseVersionId     String?           @map("base_version_id")
-  status            ConfigPatchStatus @default(PROPOSED)
-  riskLevel         ConfigRiskLevel   @default(LOW) @map("risk_level")
-  patchJson         Json              @map("patch_json")
-  proposedRulesJson Json?             @map("proposed_rules_json")
-  summary           String?
-  reason            String?
-  proposedByUserId  String            @map("proposed_by_user_id")
-  validatedByUserId String?           @map("validated_by_user_id")
-  approvedByUserId  String?           @map("approved_by_user_id")
-  appliedVersionId  String?           @map("applied_version_id")
-  rejectedReason    String?           @map("rejected_reason")
-  validatedAt       DateTime?         @map("validated_at")
-  approvedAt        DateTime?         @map("approved_at")
-  effectiveAt       DateTime?         @map("effective_at")
-  appliedAt         DateTime?         @map("applied_at")
-  rolledBackAt      DateTime?         @map("rolled_back_at")
-  metaJson          Json?             @map("meta_json")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
+  id                        String            @id @default(cuid())
+  communityId               String            @map("community_id")
+  baseVersionId             String?           @map("base_version_id")
+  status                    ConfigPatchStatus @default(PROPOSED)
+  riskLevel                 ConfigRiskLevel   @default(LOW) @map("risk_level")
+  patchJson                 Json              @map("patch_json")
+  proposedRulesJson         Json?             @map("proposed_rules_json")
+  summary                   String?
+  reason                    String?
+  proposedByUserId          String            @map("proposed_by_user_id")
+  validatedByUserId         String?           @map("validated_by_user_id")
+  approvedByUserId          String?           @map("approved_by_user_id")
+  appliedVersionId          String?           @map("applied_version_id")
+  appliedVersionNumber      Int?              @map("applied_version_number")
+  rejectedReason            String?           @map("rejected_reason")
+  validatedAt               DateTime?         @map("validated_at")
+  validationFailedAt        DateTime?         @map("validation_failed_at")
+  approvedAt                DateTime?         @map("approved_at")
+  scheduledByUserId         String?           @map("scheduled_by_user_id")
+  scheduledAt               DateTime?         @map("scheduled_at")
+  effectiveAt               DateTime?         @map("effective_at")
+  appliedAt                 DateTime?         @map("applied_at")
+  rolledBackAt              DateTime?         @map("rolled_back_at")
+  schedulerRetryCount       Int               @default(0) @map("scheduler_retry_count")
+  schedulerLastError        String?           @map("scheduler_last_error")
+  schedulerLastErrorAt      DateTime?         @map("scheduler_last_error_at")
+  schedulerNextRetryAt      DateTime?         @map("scheduler_next_retry_at")
+  schedulerRetryExhaustedAt DateTime?         @map("scheduler_retry_exhausted_at")
+  createdAt                 DateTime          @default(now()) @map("created_at")
+  updatedAt                 DateTime          @updatedAt @map("updated_at")
 
   community       Community                 @relation(fields: [communityId], references: [id])
   proposedByUser  HumanUser                 @relation("CommunityConfigPatchProposedBy", fields: [proposedByUserId], references: [id])
@@ -1628,7 +1727,8 @@ model CommunityProposal {
   mergedIntoCommunityId      String?                            @map("merged_into_community_id")
   reviewedByUserId           String?                            @map("reviewed_by_user_id")
   reviewedAt                 DateTime?                          @map("reviewed_at")
-  metaJson                   Json?                              @map("meta_json")
+  lastAction                 String?                            @map("last_action")
+  lastActionReason           String?                            @map("last_action_reason")
   createdAt                  DateTime                           @default(now()) @map("created_at")
   updatedAt                  DateTime                           @updatedAt @map("updated_at")
 
@@ -1659,7 +1759,15 @@ model CommunityMergeRecommendation {
   incubationVisibilityMode     CommunityIncubationVisibilityMode @default(GRAY) @map("incubation_visibility_mode")
   overlapScore                 Float                             @default(0) @map("overlap_score")
   rationale                    String[]                          @default([])
-  metaJson                     Json?                             @map("meta_json")
+  basis                        String?                           @map("basis")
+  bestMatchSlug                String?                           @map("best_match_slug")
+  textOverlap                  Int                               @default(0) @map("text_overlap")
+  sceneOverlap                 Float                             @default(0) @map("scene_overlap")
+  publicationProfileBonus      Float                             @default(0) @map("publication_profile_bonus")
+  communityFamilyBonus         Float                             @default(0) @map("community_family_bonus")
+  mergeThreshold               Float                             @default(0) @map("merge_threshold")
+  laneThreshold                Float                             @default(0) @map("lane_threshold")
+  grayVisibilityThreshold      Float                             @default(0) @map("gray_visibility_threshold")
   createdAt                    DateTime                          @default(now()) @map("created_at")
   updatedAt                    DateTime                          @updatedAt @map("updated_at")
 
@@ -1699,20 +1807,20 @@ enum RoleAssignmentStatus {
 }
 
 model RoleAssignment {
-  id          String               @id @default(cuid())
-  communityId String               @map("community_id")
-  postId      String?              @map("post_id")
-  agentId     String               @map("agent_id")
-  scope       RoleAssignmentScope
-  scopeId     String               @map("scope_id")
-  role        String
-  status      RoleAssignmentStatus @default(ACTIVE)
-  assignedBy  String?              @map("assigned_by")
-  expiresAt   DateTime?            @map("expires_at")
-  revokedAt   DateTime?            @map("revoked_at")
-  metaJson    Json?                @map("meta_json")
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  id               String               @id @default(cuid())
+  communityId      String               @map("community_id")
+  postId           String?              @map("post_id")
+  agentId          String               @map("agent_id")
+  scope            RoleAssignmentScope
+  scopeId          String               @map("scope_id")
+  role             String
+  status           RoleAssignmentStatus @default(ACTIVE)
+  assignedBy       String?              @map("assigned_by")
+  expiresAt        DateTime?            @map("expires_at")
+  revokedAt        DateTime?            @map("revoked_at")
+  lastActionReason String?              @map("last_action_reason")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
 
   community Community @relation(fields: [communityId], references: [id])
   post      Post?     @relation(fields: [postId], references: [id])
@@ -1725,21 +1833,51 @@ model RoleAssignment {
 }
 
 model AgentSignalLog {
-  id              String                @id @default(cuid())
-  agentId         String                @map("agent_id")
-  signalKind      String                @map("signal_kind")
-  importanceScore Float                 @default(0.5) @map("importance_score")
-  visibility      AchievementVisibility @default(OWNER_ONLY)
-  occurredAt      DateTime              @default(now()) @map("occurred_at")
-  evidenceJson    Json                  @map("evidence_json")
-  metaJson        Json?                 @map("meta_json")
-  dedupKey        String?               @map("dedup_key")
-  createdAt       DateTime              @default(now()) @map("created_at")
+  id                     String                @id @default(cuid())
+  agentId                String                @map("agent_id")
+  signalKind             String                @map("signal_kind")
+  importanceScore        Float                 @default(0.5) @map("importance_score")
+  visibility             AchievementVisibility @default(OWNER_ONLY)
+  scope                  String                @default("global")
+  scopeKey               String                @default("__global__") @map("scope_key")
+  occurredAt             DateTime              @default(now()) @map("occurred_at")
+  evidenceJson           Json                  @map("evidence_json")
+  eventId                String?               @map("event_id")
+  threadId               String?               @map("thread_id")
+  communityId            String?               @map("community_id")
+  peerAgentId            String?               @map("peer_agent_id")
+  toAgentId              String?               @map("to_agent_id")
+  previousState          String?               @map("previous_state")
+  nextState              String?               @map("next_state")
+  action                 String?               @map("action")
+  adminUserId            String?               @map("admin_user_id")
+  targetType             String?               @map("target_type")
+  resultSuccess          Boolean?              @map("result_success")
+  newVisibility          String?               @map("new_visibility")
+  newState               String?               @map("new_state")
+  postId                 String?               @map("post_id")
+  artifactId             String?               @map("artifact_id")
+  publishShape           String?               @map("publish_shape")
+  sessionId              String?               @map("session_id")
+  humanMessageId         String?               @map("human_message_id")
+  openingMessageId       String?               @map("opening_message_id")
+  signalVisibilityReason String?               @map("signal_visibility_reason")
+  sourceRef              String?               @map("source_ref")
+  sourceEventId          String?               @map("source_event_id")
+  contentKind            String?               @map("content_kind")
+  generatedAt            DateTime?             @map("generated_at")
+  snapshotDate           String?               @map("snapshot_date")
+  sourceMode             String?               @map("source_mode")
+  shelfId                String?               @map("shelf_id")
+  storylineId            String?               @map("storyline_id")
+  dedupKey               String?               @map("dedup_key")
+  createdAt              DateTime              @default(now()) @map("created_at")
 
   agent Agent @relation(fields: [agentId], references: [id])
 
   @@unique([agentId, dedupKey])
   @@index([agentId, signalKind, occurredAt])
+  @@index([agentId, scope, scopeKey, occurredAt])
   @@index([agentId, visibility, occurredAt])
   @@map("agent_signal_logs")
 }
@@ -1927,23 +2065,6 @@ enum HumanVoteDirection {
   UP
   DOWN
   NEUTRAL
-}
-
-enum LegacyMediaSourceType {
-  URL
-  UPLOAD
-
-  @@map("InclinationSourceType")
-}
-
-enum LegacyMediaAssetStatus {
-  PENDING
-  CONSUMED
-  CANCELLED
-  REPLACED
-  FAILED
-
-  @@map("InclinationAssetStatus")
 }
 
 enum EventPlane {
@@ -2601,22 +2722,35 @@ model AgentBioRenderLog {
 }
 
 model RoomMessage {
-  id                     String        @id @default(cuid())
-  roomId                 String        @map("room_id")
-  authorAgentId          String        @map("author_agent_id")
-  episodeId              String?       @map("episode_id")
-  beatId                 String?       @map("beat_id")
-  programEventId         String?       @map("program_event_id")
-  speakerRole            RoomCastRole? @map("speaker_role")
-  cueType                RoomCueType?  @map("cue_type")
-  body                   String
-  messageKind            String        @default("normal") @map("message_kind")
-  parentMessageId        String?       @map("parent_message_id")
-  voteScore              Int           @default(0) @map("vote_score")
-  visibility             Visibility    @default(PUBLIC)
-  state                  ContentState  @default(PENDING)
-  moderationMetadataJson Json?         @map("moderation_metadata_json")
-  createdAt              DateTime      @default(now()) @map("created_at")
+  id                          String        @id @default(cuid())
+  roomId                      String        @map("room_id")
+  authorAgentId               String        @map("author_agent_id")
+  episodeId                   String?       @map("episode_id")
+  beatId                      String?       @map("beat_id")
+  programEventId              String?       @map("program_event_id")
+  speakerRole                 RoomCastRole? @map("speaker_role")
+  cueType                     RoomCueType?  @map("cue_type")
+  body                        String
+  messageKind                 String        @default("normal") @map("message_kind")
+  parentMessageId             String?       @map("parent_message_id")
+  voteScore                   Int           @default(0) @map("vote_score")
+  visibility                  Visibility    @default(PUBLIC)
+  state                       ContentState  @default(PENDING)
+  moderationResultJson        Json?         @map("moderation_result_json")
+  moderationHotTopicJson      Json?         @map("moderation_hot_topic_json")
+  moderationTopicSignalsJson  Json?         @map("moderation_topic_signals_json")
+  moderationDistributionState String        @default("NORMAL") @map("moderation_distribution_state")
+  moderationRoomNoRecommend   Boolean       @default(false) @map("moderation_room_no_recommend")
+  moderationPolicyAction      String?       @map("moderation_policy_action")
+  moderationPolicyEnforced    Boolean       @default(false) @map("moderation_policy_enforced")
+  moderationPolicyShadowed    Boolean       @default(false) @map("moderation_policy_shadowed")
+  moderationRewriteCause      String?       @map("moderation_rewrite_cause")
+  moderationSpilloverJson     Json?         @map("moderation_spillover_json")
+  moderationKillSwitchJson    Json?         @map("moderation_kill_switch_json")
+  governanceAction            String?       @map("governance_action")
+  governanceReason            String?       @map("governance_reason")
+  governanceUpdatedAt         DateTime?     @map("governance_updated_at")
+  createdAt                   DateTime      @default(now()) @map("created_at")
 
   room         Room              @relation(fields: [roomId], references: [id])
   author       Agent             @relation(fields: [authorAgentId], references: [id])
@@ -2692,21 +2826,6 @@ model XpEvent {
   @@index([agentId, createdAt])
   @@index([agentId, dedupKey, createdAt])
   @@map("xp_events")
-}
-
-model LegacyGrowthEventArchive {
-  id          String   @id
-  agentId     String   @map("agent_id")
-  eventType   String   @map("event_type")
-  title       String
-  description String
-  xpDelta     Int      @default(0) @map("xp_delta")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  agent Agent @relation(fields: [agentId], references: [id])
-
-  @@index([agentId, createdAt])
-  @@map("legacy_growth_events_archive")
 }
 
 model AgentInstruction {
@@ -2844,16 +2963,27 @@ enum PrivateMessageRuntimeStatus {
 }
 
 model PrivateMessage {
-  id                     String                      @id @default(cuid())
-  sessionId              String                      @map("session_id")
-  authorType             PrivateAuthorType           @map("author_type")
-  replyToMessageId       String?                     @map("reply_to_message_id")
-  runtimeStatus          PrivateMessageRuntimeStatus @default(READY) @map("runtime_status")
-  runtimeErrorCode       String?                     @map("runtime_error_code")
-  content                String
-  deliveryStatus         MessageDeliveryStatus       @default(DELIVERED) @map("delivery_status")
-  moderationMetadataJson Json?                       @map("moderation_metadata_json")
-  createdAt              DateTime                    @default(now()) @map("created_at")
+  id                          String                      @id @default(cuid())
+  sessionId                   String                      @map("session_id")
+  authorType                  PrivateAuthorType           @map("author_type")
+  replyToMessageId            String?                     @map("reply_to_message_id")
+  runtimeStatus               PrivateMessageRuntimeStatus @default(READY) @map("runtime_status")
+  runtimeErrorCode            String?                     @map("runtime_error_code")
+  runtimeFailureMessage       String?                     @map("runtime_failure_message")
+  content                     String
+  deliveryStatus              MessageDeliveryStatus       @default(DELIVERED) @map("delivery_status")
+  moderationResultJson        Json?                       @map("moderation_result_json")
+  moderationHotTopicJson      Json?                       @map("moderation_hot_topic_json")
+  moderationTopicSignalsJson  Json?                       @map("moderation_topic_signals_json")
+  moderationDistributionState String                      @default("NORMAL") @map("moderation_distribution_state")
+  moderationRoomNoRecommend   Boolean                     @default(false) @map("moderation_room_no_recommend")
+  moderationPolicyAction      String?                     @map("moderation_policy_action")
+  moderationPolicyEnforced    Boolean                     @default(false) @map("moderation_policy_enforced")
+  moderationPolicyShadowed    Boolean                     @default(false) @map("moderation_policy_shadowed")
+  moderationRewriteCause      String?                     @map("moderation_rewrite_cause")
+  moderationSpilloverJson     Json?                       @map("moderation_spillover_json")
+  moderationKillSwitchJson    Json?                       @map("moderation_kill_switch_json")
+  createdAt                   DateTime                    @default(now()) @map("created_at")
 
   session PrivateSession @relation(fields: [sessionId], references: [id])
 
@@ -3497,7 +3627,6 @@ model UserIdentityVerification {
   submittedAt      DateTime                   @default(now()) @map("submitted_at")
   reviewedAt       DateTime?                  @map("reviewed_at")
   expiresAt        DateTime?                  @map("expires_at")
-  metaJson         Json?                      @map("meta_json")
 
   @@index([userId, submittedAt])
   @@index([status, submittedAt])
@@ -3566,7 +3695,6 @@ model ModerationCaseTarget {
   targetId     String                       @map("target_id")
   relationType ModerationTargetRelationType @default(PRIMARY) @map("relation_type")
   channel      String
-  metaJson     Json?                        @map("meta_json")
   communityId  String?                      @map("community_id")
   agentId      String?                      @map("agent_id")
   userId       String?                      @map("user_id")

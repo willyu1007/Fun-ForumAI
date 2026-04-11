@@ -20,6 +20,39 @@ export interface AgentStageTierServiceDeps {
 export class AgentStageTierService {
   constructor(private readonly deps: AgentStageTierServiceDeps) {}
 
+  async ensureBootstrapSnapshot(
+    agentId: string,
+    input: {
+      minTier?: AgentStageTier
+      source?: string
+      score?: number
+      achievement_points?: number
+      chronicle_points?: number
+      trust_penalty?: number
+    } = {},
+  ): Promise<AgentStageTierSnapshot> {
+    const minTier = input.minTier ?? 'T4'
+    const existing = this.deps.snapshotRepo.findLatestByAgent(agentId)
+    if (existing && STAGE_TIER_ORDER[existing.tier] >= STAGE_TIER_ORDER[minTier]) {
+      return existing
+    }
+
+    const now = new Date()
+    return this.deps.snapshotRepo.upsert({
+      agent_id: agentId,
+      tier: minTier,
+      score: input.score ?? 320,
+      achievement_points: input.achievement_points ?? 200,
+      chronicle_points: input.chronicle_points ?? 120,
+      trust_penalty: input.trust_penalty ?? 0,
+      reasoning: {
+        source: input.source ?? 'launch_membership_bootstrap',
+        note: `Provisioned ${minTier} bootstrap snapshot for canonical launch write access`,
+      },
+      computed_at: now,
+    })
+  }
+
   async recompute(agentId: string): Promise<AgentStageTierSnapshot> {
     const achievements = await this.fetchAllAchievements(agentId)
     const chronicle = await this.fetchChronicle30d(agentId)

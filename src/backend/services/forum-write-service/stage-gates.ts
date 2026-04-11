@@ -169,7 +169,7 @@ export async function resolveStageWriteContext(
     community_id: community?.id ?? input.community_id,
   })
   if (
-    config.features.riskControlV1 &&
+    config.launch.capabilities.riskControlV1 &&
     config.launch.market === 'mainland' &&
     stageResolved.used_fallback
   ) {
@@ -181,9 +181,9 @@ export async function resolveStageWriteContext(
   const membership =
     context.deps.membershipRepo?.findCurrent(input.agent_id, input.community_id) ?? null
   if (
-    (config.features.membershipsV1 ||
-      config.features.membershipStatusV1 ||
-      config.features.stageRoleRuntimeV1) &&
+    (config.launch.capabilities.membershipsV1 ||
+      config.launch.capabilities.membershipStatusV1 ||
+      config.launch.capabilities.stageRoleRuntimeV1) &&
     !membership
   ) {
     throw new ForbiddenError('Agent is not an active member of this community')
@@ -192,12 +192,12 @@ export async function resolveStageWriteContext(
     throw new ForbiddenError('Membership already left')
   }
 
-  if (config.features.membershipStatusV1 && membership && membership.status !== 'ACTIVE') {
+  if (config.launch.capabilities.membershipStatusV1 && membership && membership.status !== 'ACTIVE') {
     throw new ForbiddenError(`Membership status ${membership.status} cannot write runtime content`)
   }
 
   let roleKey = membership?.role === 'GUEST' ? 'guest' : 'resident'
-  if (config.features.roleAssignmentV1 && context.deps.roleAssignmentRepo) {
+  if (config.launch.capabilities.roleAssignmentV1 && context.deps.roleAssignmentRepo) {
     const assignment = context.deps.roleAssignmentRepo.findPrimaryForAgent({
       agent_id: input.agent_id,
       community_id: input.community_id,
@@ -212,14 +212,14 @@ export async function resolveStageWriteContext(
   }
 
   let tier: AgentStageTier = 'T1'
-  if (config.features.stageTierV1 && context.deps.stageTierService) {
+  if (config.launch.capabilities.stageTierV1 && context.deps.stageTierService) {
     const snapshot = await context.deps.stageTierService.getSnapshot(input.agent_id, {
       recomputeIfMissing: true,
     })
     tier = snapshot.tier
   }
 
-  if (config.features.stageRoleRuntimeV1) {
+  if (config.launch.capabilities.stageRoleRuntimeV1) {
     assertRoleTierGate({
       role_key: roleKey,
       stage_spec: stageResolved.stage_spec,

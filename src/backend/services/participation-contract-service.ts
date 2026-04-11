@@ -1,5 +1,6 @@
 import type { AgentRepository, CommunityRepository, Post, PostRepository } from '../repos/index.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
+import type { PostModerationMetadata } from '../repos/types/moderation-context.js'
 import {
   resolveLaunchCommunityInteractionContract,
 } from '../launch/community-rules.js'
@@ -16,8 +17,6 @@ import {
   type ParticipationContractOverride,
   type StageOpenReplyPolicy,
 } from '../../shared/forum-orchestration.js'
-
-const PARTICIPATION_OVERRIDE_METADATA_KEY = 'participation_contract_override_v1'
 
 export interface ParticipationContractServiceDeps {
   communityRepo: CommunityRepository
@@ -141,7 +140,7 @@ export class ParticipationContractService {
 
   private async persistOverrideMetadata(
     postId: string,
-    metadata: Record<string, unknown> | null,
+    metadata: PostModerationMetadata | null,
     override: ParticipationContractOverride,
   ): Promise<void> {
     const nextMetadata = writeOverrideMetadata(metadata, override)
@@ -219,12 +218,8 @@ export class ParticipationContractService {
   }
 }
 
-function readStoredPostOverride(metadata: Record<string, unknown> | null): ParticipationContractOverride | null {
-  if (!isRecord(metadata)) {
-    return null
-  }
-
-  return normalizeOverride(metadata[PARTICIPATION_OVERRIDE_METADATA_KEY])
+function readStoredPostOverride(metadata: PostModerationMetadata | null): ParticipationContractOverride | null {
+  return normalizeOverride(metadata?.participation_contract_override_v1)
 }
 
 function normalizeOverride(value: unknown): ParticipationContractOverride | null {
@@ -270,38 +265,23 @@ function normalizeOverride(value: unknown): ParticipationContractOverride | null
 }
 
 function writeOverrideMetadata(
-  metadata: Record<string, unknown> | null,
+  metadata: PostModerationMetadata | null,
   override: ParticipationContractOverride,
-): Record<string, unknown> {
-  const base = isRecord(metadata) ? { ...metadata } : {}
-  base[PARTICIPATION_OVERRIDE_METADATA_KEY] = serializeOverride(override)
-  return base
+): PostModerationMetadata {
+  return {
+    ...(metadata ?? {}),
+    participation_contract_override_v1: normalizeOverride(override) ?? override,
+  }
 }
 
-function clearOverrideMetadata(metadata: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (!isRecord(metadata)) {
+function clearOverrideMetadata(metadata: PostModerationMetadata | null): PostModerationMetadata | null {
+  if (!metadata) {
     return null
   }
 
-  const base = { ...metadata }
-  delete base[PARTICIPATION_OVERRIDE_METADATA_KEY]
-  return Object.keys(base).length > 0 ? base : null
-}
-
-function serializeOverride(override: ParticipationContractOverride): Record<string, unknown> {
-  return {
-    ...(override.public_participation_mode
-      ? { public_participation_mode: override.public_participation_mode }
-      : {}),
-    ...(override.audience_signal_ingestion
-      ? { audience_signal_ingestion: override.audience_signal_ingestion }
-      : {}),
-    ...(override.agent_human_response_mode
-      ? { agent_human_response_mode: override.agent_human_response_mode }
-      : {}),
-    ...(override.stage_open_reply ? { stage_open_reply: override.stage_open_reply } : {}),
-    ...(override.audience_lane ? { audience_lane: override.audience_lane } : {}),
-  }
+  const rest = { ...metadata }
+  delete rest.participation_contract_override_v1
+  return Object.keys(rest).length > 0 ? rest : null
 }
 
 function compactStageOverride(input: {

@@ -1,11 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminPanel } from '../AdminPanel'
-import type {
-  ComplaintTicket,
-  ReviewCaseDetail,
-  ReviewEvidenceExport,
-} from '@/api/types'
+import type { ComplaintTicket, ReviewCaseDetail, ReviewEvidenceExport } from '@/api/types'
 import {
   useAdminAgentRiskProfile,
   useAdminCommunityProposals,
@@ -107,7 +103,9 @@ const useReleaseModerationCaseMock = vi.mocked(useReleaseModerationCase)
 const useReopenModerationCaseMock = vi.mocked(useReopenModerationCase)
 const useResolveIdentityReviewMock = vi.mocked(useResolveIdentityReview)
 const useResolveModerationCaseMock = vi.mocked(useResolveModerationCase)
-const useRefreshCommunityProposalRecommendationMock = vi.mocked(useRefreshCommunityProposalRecommendation)
+const useRefreshCommunityProposalRecommendationMock = vi.mocked(
+  useRefreshCommunityProposalRecommendation,
+)
 const useTransferModerationCaseMock = vi.mocked(useTransferModerationCase)
 const useCommunitiesMock = vi.mocked(useCommunities)
 const useAuthMock = vi.mocked(useAuth)
@@ -155,57 +153,62 @@ const caseDetail: ReviewCaseDetail = {
     created_at: '2026-03-12T10:00:00.000Z',
     updated_at: '2026-03-12T10:10:00.000Z',
   },
-  targets: [{
-    id: 'target-1',
-    case_id: 'case-1',
-    target_type: 'post',
-    target_id: 'post-1',
-    relation_type: 'PRIMARY',
-    channel: 'report',
-    meta: { source: 'post_detail' },
-    community_id: 'community-1',
-    agent_id: null,
-    user_id: 'user-1',
-    room_id: null,
-    session_id: null,
-    message_id: null,
-    created_at: '2026-03-12T10:00:00.000Z',
-  }],
-  evidence: [{
-    id: 'evidence-1',
-    case_id: 'case-1',
-    snapshot_type: 'complaint_ticket',
-    payload: { complaint_id: linkedComplaint.id },
-    content: { body: 'contains personal data' },
-    context: { reporter_user_id: 'user-1' },
-    policy_hits: { rules: ['privacy_request'] },
-    prompt_memory: { memory_excerpt: 'sensitive data' },
-    topic_signals: null,
-    action_history: { actor_user_id: 'operator-1' },
-    evidence_package: {
+  targets: [
+    {
+      id: 'target-1',
+      case_id: 'case-1',
+      target_type: 'post',
+      target_id: 'post-1',
+      relation_type: 'PRIMARY',
+      channel: 'report',
+      community_id: 'community-1',
+      agent_id: null,
+      user_id: 'user-1',
+      room_id: null,
+      session_id: null,
+      message_id: null,
+      created_at: '2026-03-12T10:00:00.000Z',
+    },
+  ],
+  evidence: [
+    {
+      id: 'evidence-1',
+      case_id: 'case-1',
+      snapshot_type: 'complaint_ticket',
+      payload: { complaint_id: linkedComplaint.id },
       content: { body: 'contains personal data' },
       context: { reporter_user_id: 'user-1' },
+      policy_hits: { rules: ['privacy_request'] },
+      prompt_memory: { memory_excerpt: 'sensitive data' },
+      topic_signals: null,
+      action_history: { actor_user_id: 'operator-1' },
+      evidence_package: {
+        content: { body: 'contains personal data' },
+        context: { reporter_user_id: 'user-1' },
+      },
+      created_at: '2026-03-12T10:00:00.000Z',
     },
-    created_at: '2026-03-12T10:00:00.000Z',
-  }],
-  tasks: [{
-    id: 'task-1',
-    case_id: 'case-1',
-    queue: 'PRIVACY',
-    task_type: 'INITIAL_REVIEW',
-    status: 'ASSIGNED',
-    assignee_user_id: 'operator-1',
-    claim_token: 'claim-token-1',
-    claimed_by_user_id: 'operator-1',
-    claimed_at: '2026-03-12T10:10:00.000Z',
-    assigned_role: 'privacy_reviewer',
-    due_at: '2026-03-13T10:00:00.000Z',
-    resolution_code: null,
-    operator_note: null,
-    completed_at: null,
-    created_at: '2026-03-12T10:00:00.000Z',
-    updated_at: '2026-03-12T10:10:00.000Z',
-  }],
+  ],
+  tasks: [
+    {
+      id: 'task-1',
+      case_id: 'case-1',
+      queue: 'PRIVACY',
+      task_type: 'INITIAL_REVIEW',
+      status: 'ASSIGNED',
+      assignee_user_id: 'operator-1',
+      claim_token: 'claim-token-1',
+      claimed_by_user_id: 'operator-1',
+      claimed_at: '2026-03-12T10:10:00.000Z',
+      assigned_role: 'privacy_reviewer',
+      due_at: '2026-03-13T10:00:00.000Z',
+      resolution_code: null,
+      operator_note: null,
+      completed_at: null,
+      created_at: '2026-03-12T10:00:00.000Z',
+      updated_at: '2026-03-12T10:10:00.000Z',
+    },
+  ],
   linked_complaint: linkedComplaint,
   linked_appeal: null,
 }
@@ -219,15 +222,17 @@ const operatorExport: ReviewEvidenceExport = {
   action_logs: [],
   redaction_level: 'operator',
   redaction_notes: [],
-  evidence: [{
-    id: 'evidence-1',
-    snapshot_type: 'complaint_ticket',
-    evidence_package: {
-      content: { body: 'contains personal data' },
-      prompt_memory: { memory_excerpt: 'sensitive data' },
+  evidence: [
+    {
+      id: 'evidence-1',
+      snapshot_type: 'complaint_ticket',
+      evidence_package: {
+        content: { body: 'contains personal data' },
+        prompt_memory: { memory_excerpt: 'sensitive data' },
+      },
+      created_at: '2026-03-12T10:00:00.000Z',
     },
-    created_at: '2026-03-12T10:00:00.000Z',
-  }],
+  ],
   exported_at: '2026-03-12T10:20:00.000Z',
 }
 
@@ -240,23 +245,23 @@ const shareExport: ReviewEvidenceExport = {
     reporter_user_id: '[REDACTED]',
     detail_text: '[REDACTED]',
   },
-  evidence: [{
-    id: 'evidence-1',
-    snapshot_type: 'complaint_ticket',
-    evidence_package: {
-      content: { redacted: true },
-      prompt_memory: { redacted: true },
-      context: { reporter_user_id: '[REDACTED]' },
+  evidence: [
+    {
+      id: 'evidence-1',
+      snapshot_type: 'complaint_ticket',
+      evidence_package: {
+        content: { redacted: true },
+        prompt_memory: { redacted: true },
+        context: { reporter_user_id: '[REDACTED]' },
+      },
+      created_at: '2026-03-12T10:20:00.000Z',
     },
-    created_at: '2026-03-12T10:20:00.000Z',
-  }],
+  ],
 }
 
 describe('AdminPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubEnv('VITE_FF_PROGRAMMING_OPS_V1', 'false')
-    import.meta.env.VITE_FF_PROGRAMMING_OPS_V1 = 'false'
 
     useAuthMock.mockReturnValue({
       currentIdentity: 'admin',
@@ -293,13 +298,21 @@ describe('AdminPanel', () => {
             validated_by_user_id: 'admin-1',
             approved_by_user_id: 'admin-1',
             applied_version_id: 'version-1',
+            applied_version_number: 2,
             rejected_reason: null,
             validated_at: null,
+            validation_failed_at: null,
             approved_at: null,
+            scheduled_by_user_id: null,
+            scheduled_at: null,
             effective_at: null,
             applied_at: '2026-03-12T10:10:00.000Z',
             rolled_back_at: null,
-            meta: null,
+            scheduler_retry_count: 0,
+            scheduler_last_error: null,
+            scheduler_last_error_at: null,
+            scheduler_next_retry_at: null,
+            scheduler_retry_exhausted_at: null,
             created_at: '2026-03-12T10:00:00.000Z',
             updated_at: '2026-03-12T10:10:00.000Z',
           },
@@ -309,14 +322,17 @@ describe('AdminPanel', () => {
             version: 2,
             rules_json: {},
             source_patch_id: 'patch-1',
+            seed_key: null,
+            source: null,
             status: 'ACTIVE',
             risk_level: 'HIGH',
             created_by_user_id: 'admin-1',
+            applied_by_actor_id: 'admin-1',
             rollback_from_version_id: null,
+            rollback_reason: null,
             effective_at: null,
             applied_at: '2026-03-12T10:10:00.000Z',
             rolled_back_at: null,
-            meta: null,
             created_at: '2026-03-12T10:00:00.000Z',
             updated_at: '2026-03-12T10:10:00.000Z',
           },
@@ -412,15 +428,17 @@ describe('AdminPanel', () => {
     } as never)
     useModerationQueueMock.mockReturnValue({
       data: {
-        data: [{
-          id: 'case-1',
-          case_type: 'COMPLAINT',
-          queue: 'PRIVACY',
-          status: 'IN_REVIEW',
-          priority: 95,
-          summary_text: 'Privacy complaint',
-          assigned_to_user_id: 'operator-1',
-        }],
+        data: [
+          {
+            id: 'case-1',
+            case_type: 'COMPLAINT',
+            queue: 'PRIVACY',
+            status: 'IN_REVIEW',
+            priority: 95,
+            summary_text: 'Privacy complaint',
+            assigned_to_user_id: 'operator-1',
+          },
+        ],
       },
     } as never)
     useIdentityReviewsMock.mockReturnValue({
@@ -466,33 +484,34 @@ describe('AdminPanel', () => {
     } as never)
     useCommunitiesMock.mockReturnValue({
       data: {
-        data: [{
-          id: 'community-1',
-          name: '热点擂台',
-          slug: 'hot-arena',
-          description: '主舞台',
-          rules_json: { community_lifecycle_state: 'launch_core' },
-          visibility_default: 'PUBLIC',
-          created_at: '2026-03-12T10:00:00.000Z',
-          updated_at: '2026-03-12T10:00:00.000Z',
-        }],
+        data: [
+          {
+            id: 'community-1',
+            name: '热点擂台',
+            slug: 'hot-arena',
+            description: '主舞台',
+            rules_json: { community_lifecycle_state: 'launch_core' },
+            visibility_default: 'PUBLIC',
+            created_at: '2026-03-12T10:00:00.000Z',
+            updated_at: '2026-03-12T10:00:00.000Z',
+          },
+        ],
       },
     } as never)
-    useModerationCaseMock.mockImplementation((caseId) => (
-      caseId
-        ? { data: { data: caseDetail } }
-        : { data: undefined }
-    ) as never)
-    useModerationEvidenceExportMock.mockImplementation((caseId, redaction = 'operator') => (
-      caseId
-        ? {
-            data: { data: redaction === 'share' ? shareExport : operatorExport },
-            refetch: vi.fn().mockResolvedValue({
+    useModerationCaseMock.mockImplementation(
+      (caseId) => (caseId ? { data: { data: caseDetail } } : { data: undefined }) as never,
+    )
+    useModerationEvidenceExportMock.mockImplementation(
+      (caseId, redaction = 'operator') =>
+        (caseId
+          ? {
               data: { data: redaction === 'share' ? shareExport : operatorExport },
-            }),
-          }
-        : { data: undefined, refetch: vi.fn() }
-    ) as never)
+              refetch: vi.fn().mockResolvedValue({
+                data: { data: redaction === 'share' ? shareExport : operatorExport },
+              }),
+            }
+          : { data: undefined, refetch: vi.fn() }) as never,
+    )
   })
 
   it('renders queue SOP copy, supports release, and switches evidence export redaction', async () => {
@@ -526,7 +545,10 @@ describe('AdminPanel', () => {
     fireEvent.click(exportTab)
 
     const exportRedactionSelect = Array.from(document.querySelectorAll('select')).find((element) =>
-      Array.from(element.querySelectorAll('option')).some((option) => option.value === 'operator' || option.value === 'share'))
+      Array.from(element.querySelectorAll('option')).some(
+        (option) => option.value === 'operator' || option.value === 'share',
+      ),
+    )
     expect(exportRedactionSelect).toBeTruthy()
 
     fireEvent.change(exportRedactionSelect!, {
@@ -542,59 +564,63 @@ describe('AdminPanel', () => {
   })
 
   it('renders the Programming tab with launch ops read data', async () => {
-    vi.stubEnv('VITE_FF_PROGRAMMING_OPS_V1', 'true')
-    import.meta.env.VITE_FF_PROGRAMMING_OPS_V1 = 'true'
     useAdminLaunchProgrammingOpsMock.mockReturnValue({
       data: {
         data: {
           enabled: true,
           timezone: 'Asia/Shanghai',
           active_daypart_id: 'evening_prime',
-          dayparts: [{
-            id: 'evening_prime',
-            label: '晚高峰主冲突',
-            time_range: '19:00-23:00',
-            objective: '形成当天主线、节目高点和 highlight candidate。',
-            target_communities: ['热点擂台'],
-            target_community_slugs: ['hot-arena'],
-            supply_floor: { root_posts: 2, highlight_candidates: 1 },
-            preferred_roles: ['anchor', 'challenger'],
-            metrics_focus: ['hero_candidate_count'],
-          }],
-          slots: [{
-            slot_name: 'main_conflict_slot',
-            daypart: 'evening_prime',
-            daypart_label: '晚高峰主冲突',
-            community_name: '热点擂台',
-            community_slug: 'hot-arena',
-            scene_types: ['DEBATE'],
-            required_roles: ['anchor', 'challenger'],
-            optional_roles: ['mc'],
-            fallback_roles: ['editor'],
-            assigned_agents: [{
-              agent_id: 'sys_anchor_hot_01',
-              display_name: '灼见台',
-              program_role: 'anchor',
-              requested_role: 'anchor',
-              community_affinity: 'home_community',
-              format_capabilities: [],
-            }],
-            assigned_agent_ids: ['sys_anchor_hot_01'],
-            fallback_agents: [],
-            fallback_agent_ids: [],
-            role_mix: { anchor: 1 },
-            blocked_pairings: [],
-            assignment_source: 'recommended_contract',
-            expected_outputs: {
-              root_posts: 1,
-              highlight_candidate: true,
-              surface_kind: 'home_root_card',
+          dayparts: [
+            {
+              id: 'evening_prime',
+              label: '晚高峰主冲突',
+              time_range: '19:00-23:00',
+              objective: '形成当天主线、节目高点和 highlight candidate。',
+              target_communities: ['热点擂台'],
+              target_community_slugs: ['hot-arena'],
+              supply_floor: { root_posts: 2, highlight_candidates: 1 },
+              preferred_roles: ['anchor', 'challenger'],
+              metrics_focus: ['hero_candidate_count'],
             },
-            expected_output_summary: '主线帖 1 条 · 进入高光候选',
-            cross_handoff_communities: ['吐槽观察局'],
-            cross_handoff_community_slugs: ['banter-room'],
-            unfilled_required_roles: [],
-          }],
+          ],
+          slots: [
+            {
+              slot_name: 'main_conflict_slot',
+              daypart: 'evening_prime',
+              daypart_label: '晚高峰主冲突',
+              community_name: '热点擂台',
+              community_slug: 'hot-arena',
+              scene_types: ['DEBATE'],
+              required_roles: ['anchor', 'challenger'],
+              optional_roles: ['mc'],
+              fallback_roles: ['editor'],
+              assigned_agents: [
+                {
+                  agent_id: 'sys_anchor_hot_01',
+                  display_name: '灼见台',
+                  program_role: 'anchor',
+                  requested_role: 'anchor',
+                  community_affinity: 'home_community',
+                  format_capabilities: [],
+                },
+              ],
+              assigned_agent_ids: ['sys_anchor_hot_01'],
+              fallback_agents: [],
+              fallback_agent_ids: [],
+              role_mix: { anchor: 1 },
+              blocked_pairings: [],
+              assignment_source: 'recommended_contract',
+              expected_outputs: {
+                root_posts: 1,
+                highlight_candidate: true,
+                surface_kind: 'home_root_card',
+              },
+              expected_output_summary: '主线帖 1 条 · 进入高光候选',
+              cross_handoff_communities: ['吐槽观察局'],
+              cross_handoff_community_slugs: ['banter-room'],
+              unfilled_required_roles: [],
+            },
+          ],
           health: {
             required_daily_outcomes: {
               mainline_roots: 3,
@@ -602,22 +628,26 @@ describe('AdminPanel', () => {
             observed_daily_outcomes: {
               mainline_roots: 2,
             },
-            daypart_readiness: [{
-              daypart_id: 'evening_prime',
-              label: '晚高峰主冲突',
-              ok: true,
-              required: { root_posts: 2 },
-              observed: { root_posts: 2 },
-            }],
+            daypart_readiness: [
+              {
+                daypart_id: 'evening_prime',
+                label: '晚高峰主冲突',
+                ok: true,
+                required: { root_posts: 2 },
+                observed: { root_posts: 2 },
+              },
+            ],
             community_supply_floor: [],
             visual_ratio_ok: true,
             aftershow_pipeline_ok: true,
             warning_count: 1,
-            warnings: [{
-              code: 'aftershow_publish_below_threshold',
-              severity: 'warn',
-              message: 'Aftershow 发布成功率低于 50%。',
-            }],
+            warnings: [
+              {
+                code: 'aftershow_publish_below_threshold',
+                severity: 'warn',
+                message: 'Aftershow 发布成功率低于 50%。',
+              },
+            ],
           },
           observations: {
             visual_ratio: {
@@ -628,37 +658,45 @@ describe('AdminPanel', () => {
               budget_remaining_cny: 12.5,
               cost_gate_active: true,
             },
-            highlight_candidates: [{
-              candidate_post_id: 'post-1',
-              title: '热点主线',
-              community_name: '热点擂台',
-              community_slug: 'hot-arena',
-              shelf_target: 'must_watch_today',
-              hero_reason: 'hero_candidate_ready',
-              rejected_reason: null,
-            }],
-            aftershow: [{
-              candidate_post_id: 'post-2',
-              title: '夜间回收',
-              community_name: '深夜电台',
-              community_slug: 'night-radio',
-              trigger_status: 'watch',
-              published_status: 'pending',
-              fallback_status: 'post_detail_only',
-            }],
+            highlight_candidates: [
+              {
+                candidate_post_id: 'post-1',
+                title: '热点主线',
+                community_name: '热点擂台',
+                community_slug: 'hot-arena',
+                shelf_target: 'must_watch_today',
+                hero_reason: 'hero_candidate_ready',
+                rejected_reason: null,
+              },
+            ],
+            aftershow: [
+              {
+                candidate_post_id: 'post-2',
+                title: '夜间回收',
+                community_name: '深夜电台',
+                community_slug: 'night-radio',
+                trigger_status: 'watch',
+                published_status: 'pending',
+                fallback_status: 'post_detail_only',
+              },
+            ],
           },
           governance_references: {
-            communities: [{
-              community_id: 'community-1',
-              community_name: '热点擂台',
-              community_slug: 'hot-arena',
-              community_lifecycle_state: 'launch_core',
-              launch_wave: 'launch_core',
-              headline_priority: 100,
-            }],
+            communities: [
+              {
+                community_id: 'community-1',
+                community_name: '热点擂台',
+                community_slug: 'hot-arena',
+                community_lifecycle_state: 'launch_core',
+                launch_wave: 'launch_core',
+                headline_priority: 100,
+              },
+            ],
             incubation: [],
           },
-          rollback_order: ['Disable homepage programming surface and fall back to feed plus highlights.'],
+          rollback_order: [
+            'Disable homepage programming surface and fall back to feed plus highlights.',
+          ],
           drill_checklist: ['Simulate one full daypart schedule before release week.'],
           meta: {
             generated_at: '2026-03-12T10:00:00.000Z',
@@ -705,98 +743,106 @@ describe('AdminPanel', () => {
       mutateAsync: releaseCapMutate,
       isPending: false,
     } as never)
-    useAdminAgentRiskProfileMock.mockImplementation((agentId) => (
-      agentId
-        ? {
-            data: {
+    useAdminAgentRiskProfileMock.mockImplementation(
+      (agentId) =>
+        (agentId
+          ? {
               data: {
-                agent: {
-                  id: 'agent-risk',
-                  owner_id: 'user-1',
-                  display_name: 'Risk Bot',
-                  avatar_url: null,
-                  persona_version: 1,
-                  reputation_score: 0,
-                  status: 'ACTIVE',
-                  created_at: '2026-03-12T10:00:00.000Z',
-                  updated_at: '2026-03-12T10:00:00.000Z',
+                data: {
+                  agent: {
+                    id: 'agent-risk',
+                    owner_id: 'user-1',
+                    display_name: 'Risk Bot',
+                    avatar_url: null,
+                    persona_version: 1,
+                    reputation_score: 0,
+                    status: 'ACTIVE',
+                    created_at: '2026-03-12T10:00:00.000Z',
+                    updated_at: '2026-03-12T10:00:00.000Z',
+                  },
+                  latest_config: null,
+                  spillover_events: [
+                    {
+                      id: 'risk-1',
+                      policy_snapshot_id: 'snap-1',
+                      case_id: 'case-1',
+                      channel: 'forum_post',
+                      event_type: 'policy_gateway_decision',
+                      action: 'block',
+                      risk_level: 'high',
+                      risk_score: 0.9,
+                      risk_categories: ['owner_private_leak'],
+                      target_type: 'post',
+                      target_id: 'post-1',
+                      community_id: 'community-1',
+                      agent_id: 'agent-risk',
+                      user_id: null,
+                      room_id: null,
+                      session_id: null,
+                      message_id: null,
+                      detail_text: 'owner_private_leak_blocked',
+                      payload: null,
+                      created_at: '2026-03-12T10:00:00.000Z',
+                    },
+                  ],
+                  recent_config_actions: [],
+                  recent_private_provenance: [
+                    {
+                      run_id: 'run-1',
+                      used_memory_ids: ['mem-1'],
+                      requested_disclosure_level: 3,
+                      effective_disclosure_level: 1,
+                      cap_source: 'server_cap',
+                      public_disclosure_cap: 1,
+                      server_cap_sources: [
+                        {
+                          source_type: 'agent_override',
+                          scope_type: 'agent',
+                          scope_id: 'agent-risk',
+                          cap_level: 1,
+                          source: 'manual',
+                        },
+                      ],
+                    },
+                  ],
+                  active_cap_overrides: [],
+                  cap_history: [],
+                  effective_disclosure_cap: 1,
                 },
-                latest_config: null,
-                spillover_events: [{
-                  id: 'risk-1',
-                  policy_snapshot_id: 'snap-1',
-                  case_id: 'case-1',
-                  channel: 'forum_post',
-                  event_type: 'policy_gateway_decision',
-                  action: 'block',
-                  risk_level: 'high',
-                  risk_score: 0.9,
-                  risk_categories: ['owner_private_leak'],
-                  target_type: 'post',
-                  target_id: 'post-1',
-                  community_id: 'community-1',
-                  agent_id: 'agent-risk',
-                  user_id: null,
-                  room_id: null,
-                  session_id: null,
-                  message_id: null,
-                  detail_text: 'owner_private_leak_blocked',
-                  payload: null,
-                  created_at: '2026-03-12T10:00:00.000Z',
-                }],
-                recent_config_actions: [],
-                recent_private_provenance: [{
-                  run_id: 'run-1',
-                  used_memory_ids: ['mem-1'],
-                  requested_disclosure_level: 3,
-                  effective_disclosure_level: 1,
-                  cap_source: 'server_cap',
-                  public_disclosure_cap: 1,
-                  server_cap_sources: [{
-                    source_type: 'agent_override',
-                    scope_type: 'agent',
-                    scope_id: 'agent-risk',
-                    cap_level: 1,
-                    source: 'manual',
-                  }],
-                }],
-                active_cap_overrides: [],
-                cap_history: [],
-                effective_disclosure_cap: 1,
               },
-            },
-          }
-        : { data: undefined }
-    ) as never)
-    useDisclosureCapsMock.mockImplementation((_scopeType, scopeId) => (
-      scopeId
-        ? {
-            data: {
+            }
+          : { data: undefined }) as never,
+    )
+    useDisclosureCapsMock.mockImplementation(
+      (_scopeType, scopeId) =>
+        (scopeId
+          ? {
               data: {
-                scope_type: 'agent',
-                scope_id: scopeId,
-                active_override: {
-                  id: 'override-1',
+                data: {
                   scope_type: 'agent',
                   scope_id: scopeId,
-                  cap_level: 1,
-                  status: 'ACTIVE',
-                  source: 'manual',
-                  reason: 'manual tighten',
-                  linked_case_id: null,
-                  linked_risk_event_id: null,
-                  created_by_user_id: 'admin-1',
-                  released_by_user_id: null,
-                  released_reason: null,
-                  released_at: null,
-                  created_at: '2026-03-12T10:00:00.000Z',
+                  active_override: {
+                    id: 'override-1',
+                    scope_type: 'agent',
+                    scope_id: scopeId,
+                    cap_level: 1,
+                    status: 'ACTIVE',
+                    source: 'manual',
+                    reason: 'manual tighten',
+                    linked_case_id: null,
+                    linked_risk_event_id: null,
+                    created_by_user_id: 'admin-1',
+                    released_by_user_id: null,
+                    released_reason: null,
+                    released_at: null,
+                    created_at: '2026-03-12T10:00:00.000Z',
+                  },
+                  history: [],
                 },
-                history: [],
               },
-            },
-          }
-        : { data: undefined }
-    ) as never)
+            }
+          : { data: undefined }) as never,
+    )
 
     render(<AdminPanel />)
 
@@ -849,13 +895,21 @@ describe('AdminPanel', () => {
           validated_by_user_id: 'admin-1',
           approved_by_user_id: 'admin-1',
           applied_version_id: 'version-2',
+          applied_version_number: 3,
           rejected_reason: null,
           validated_at: null,
+          validation_failed_at: null,
           approved_at: null,
+          scheduled_by_user_id: null,
+          scheduled_at: null,
           effective_at: null,
           applied_at: '2026-03-12T10:10:00.000Z',
           rolled_back_at: null,
-          meta: null,
+          scheduler_retry_count: 0,
+          scheduler_last_error: null,
+          scheduler_last_error_at: null,
+          scheduler_next_retry_at: null,
+          scheduler_retry_exhausted_at: null,
           created_at: '2026-03-12T10:00:00.000Z',
           updated_at: '2026-03-12T10:10:00.000Z',
         },
@@ -865,14 +919,17 @@ describe('AdminPanel', () => {
           version: 3,
           rules_json: {},
           source_patch_id: 'patch-2',
+          seed_key: null,
+          source: null,
           status: 'ACTIVE',
           risk_level: 'HIGH',
           created_by_user_id: 'admin-1',
+          applied_by_actor_id: 'admin-1',
           rollback_from_version_id: null,
+          rollback_reason: null,
           effective_at: null,
           applied_at: '2026-03-12T10:10:00.000Z',
           rolled_back_at: null,
-          meta: null,
           created_at: '2026-03-12T10:00:00.000Z',
           updated_at: '2026-03-12T10:10:00.000Z',
         },
@@ -989,25 +1046,27 @@ describe('AdminPanel', () => {
     } as never)
     useAdminHotTopicAlertsMock.mockReturnValue({
       data: {
-        data: [{
-          severity: 'high',
-          reason: 'drift_risk_high',
-          item: {
-            target_type: 'room',
-            target_id: 'room-hot-1',
-            title: 'Hot room',
-            community_id: 'community-1',
-            topic_domain: 'SPORTS',
-            hot_score: 24,
-            drift_risk_score: 0.88,
-            report_count_24h: 1,
-            distribution_state: 'NO_RECOMMEND',
-            restriction_state: 'MANUAL_REVIEW_ONLY',
-            sampled_review_required: true,
-            linked_case_id: 'case-hot-2',
-            latest_event_at: '2026-03-12T10:11:00.000Z',
+        data: [
+          {
+            severity: 'high',
+            reason: 'drift_risk_high',
+            item: {
+              target_type: 'room',
+              target_id: 'room-hot-1',
+              title: 'Hot room',
+              community_id: 'community-1',
+              topic_domain: 'SPORTS',
+              hot_score: 24,
+              drift_risk_score: 0.88,
+              report_count_24h: 1,
+              distribution_state: 'NO_RECOMMEND',
+              restriction_state: 'MANUAL_REVIEW_ONLY',
+              sampled_review_required: true,
+              linked_case_id: 'case-hot-2',
+              latest_event_at: '2026-03-12T10:11:00.000Z',
+            },
           },
-        }],
+        ],
       },
     } as never)
     useAdminHotTopicPostDistributionMock.mockReturnValue({
@@ -1055,6 +1114,8 @@ describe('AdminPanel', () => {
     })
 
     expect(screen.getByText('热点告警')).toBeTruthy()
-    expect(screen.getAllByText((_, node) => node?.textContent?.includes('漂移风险高') ?? false).length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText((_, node) => node?.textContent?.includes('漂移风险高') ?? false).length,
+    ).toBeGreaterThan(0)
   })
 })

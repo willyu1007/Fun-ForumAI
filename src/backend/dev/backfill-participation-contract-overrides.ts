@@ -8,7 +8,6 @@ import {
 import type { ParticipationContractOverride } from '../../shared/forum-orchestration.js'
 
 const LEGACY_METADATA_KEY = 'participation_contract'
-const CANONICAL_METADATA_KEY = 'participation_contract_override_v1'
 
 function hasFlag(name: string): boolean {
   return process.argv.includes(`--${name}`)
@@ -134,12 +133,19 @@ function serializeOverride(override: ParticipationContractOverride): Prisma.Inpu
   }
 }
 
-type MutableJsonRecord = Record<string, Prisma.InputJsonValue>
-
 type PendingUpdate = {
   post_id: string
-  metadata: Prisma.InputJsonObject
+  participation_contract_override_json: Prisma.InputJsonObject
+  next_legacy_metadata_json: Prisma.InputJsonObject | null
 }
+
+type LegacyPostRow = {
+  id: string
+  legacy_metadata_json: Prisma.JsonValue | null
+  participation_contract_override_json: Prisma.JsonValue | null
+}
+
+type MutableJsonRecord = Record<string, Prisma.InputJsonValue>
 
 async function main() {
   const prisma = getPrismaClient()
@@ -182,12 +188,72 @@ async function main() {
     process.exitCode = 1
     return
   }
-  const rows = await prisma.post.findMany({
-    select: {
-      id: true,
-      moderationMetadataJson: true,
-    },
-  })
+  const availableColumns = await prisma.$queryRawUnsafe<Array<{ column_name: string }>>(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'posts'
+      AND column_name IN ('moderation_metadata_json', 'participation_contract_override_json')
+  `)
+  const availableColumnSet = new Set(availableColumns.map((row) => row.column_name))
+  const legacyColumnAvailable = availableColumnSet.has('moderation_metadata_json')
+  const canonicalColumnAvailable = availableColumnSet.has('participation_contract_override_json')
+
+  if (!canonicalColumnAvailable) {
+    console.log(JSON.stringify({
+      apply,
+      environment_ready: false,
+      table_available: true,
+      legacy_column_available: legacyColumnAvailable,
+      canonical_column_available: canonicalColumnAvailable,
+      table_error: 'participation_contract_override_json column is missing in the current database',
+      scanned_rows: 0,
+      rows_with_legacy_key: 0,
+      rows_ready_for_backfill: 0,
+      rows_with_conflicts: 0,
+      rows_with_invalid_legacy_override: 0,
+      updated_rows: 0,
+      remaining_legacy_rows: 0,
+      conflict_examples: [],
+      invalid_examples: [],
+      recommended_follow_up: [
+        'pnpm exec prisma validate',
+        'pnpm exec prisma migrate deploy',
+        'pnpm forum:audit:participation-contract-overrides',
+      ],
+    }, null, 2))
+    process.exitCode = 1
+    return
+  }
+
+  if (!legacyColumnAvailable) {
+    console.log(JSON.stringify({
+      apply,
+      environment_ready: true,
+      table_available: true,
+      legacy_column_available: legacyColumnAvailable,
+      canonical_column_available: canonicalColumnAvailable,
+      scanned_rows: 0,
+      rows_with_legacy_key: 0,
+      rows_ready_for_backfill: 0,
+      rows_with_conflicts: 0,
+      rows_with_invalid_legacy_override: 0,
+      updated_rows: 0,
+      remaining_legacy_rows: 0,
+      conflict_examples: [],
+      invalid_examples: [],
+      recommended_follow_up: [],
+    }, null, 2))
+    return
+  }
+
+  const rows = await prisma.$queryRawUnsafe<LegacyPostRow[]>(`
+    SELECT
+      id,
+      moderation_metadata_json AS "legacy_metadata_json",
+      participation_contract_override_json AS "participation_contract_override_json"
+    FROM posts
+  `)
 
   const updates: PendingUpdate[] = []
   const conflictExamples: Array<Record<string, unknown>> = []
@@ -199,20 +265,20 @@ async function main() {
   let rowsWithInvalidLegacyOverride = 0
 
   for (const row of rows) {
-    if (!isRecord(row.moderationMetadataJson) || !(LEGACY_METADATA_KEY in row.moderationMetadataJson)) {
+    if (!isRecord(row.legacy_metadata_json) || !(LEGACY_METADATA_KEY in row.legacy_metadata_json)) {
       continue
     }
 
     rowsWithLegacyKey += 1
 
-    const legacyOverride = normalizeOverride(row.moderationMetadataJson[LEGACY_METADATA_KEY])
-    const canonicalOverride = normalizeOverride(row.moderationMetadataJson[CANONICAL_METADATA_KEY])
+    const legacyOverride = normalizeOverride(row.legacy_metadata_json[LEGACY_METADATA_KEY])
+    const canonicalOverride = normalizeOverride(row.participation_contract_override_json)
 
     if (!legacyOverride) {
       rowsWithInvalidLegacyOverride += 1
       invalidExamples.push({
         post_id: row.id,
-        legacy_value: row.moderationMetadataJson[LEGACY_METADATA_KEY],
+        legacy_value: row.legacy_metadata_json[LEGACY_METADATA_KEY],
       })
       continue
     }
@@ -230,13 +296,16 @@ async function main() {
       continue
     }
 
-    const nextMetadata = { ...row.moderationMetadataJson } as MutableJsonRecord
-    nextMetadata[CANONICAL_METADATA_KEY] = serializedCanonical ?? serializedLegacy
-    delete nextMetadata[LEGACY_METADATA_KEY]
+    const nextLegacyMetadata = { ...row.legacy_metadata_json } as MutableJsonRecord
+    delete nextLegacyMetadata[LEGACY_METADATA_KEY]
 
     updates.push({
       post_id: row.id,
-      metadata: nextMetadata as Prisma.InputJsonObject,
+      participation_contract_override_json: serializedCanonical ?? serializedLegacy,
+      next_legacy_metadata_json:
+        Object.keys(nextLegacyMetadata).length > 0
+          ? nextLegacyMetadata as Prisma.InputJsonObject
+          : null,
     })
     rowsReadyForBackfill += 1
   }
@@ -251,12 +320,18 @@ async function main() {
   if (apply) {
     for (let index = 0; index < updates.length; index += batchSize) {
       const batch = updates.slice(index, index + batchSize)
-      await Promise.all(batch.map((entry) => prisma.post.update({
-        where: { id: entry.post_id },
-        data: {
-          moderationMetadataJson: entry.metadata as Prisma.InputJsonValue,
-        },
-      })))
+      await Promise.all(batch.map((entry) => prisma.$executeRawUnsafe(
+        `
+          UPDATE posts
+          SET
+            participation_contract_override_json = $1::jsonb,
+            moderation_metadata_json = $2::jsonb
+          WHERE id = $3
+        `,
+        JSON.stringify(entry.participation_contract_override_json),
+        entry.next_legacy_metadata_json ? JSON.stringify(entry.next_legacy_metadata_json) : null,
+        entry.post_id,
+      )))
       updatedRows += batch.length
     }
   }

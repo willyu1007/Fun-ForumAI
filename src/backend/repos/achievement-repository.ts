@@ -89,7 +89,8 @@ export class InMemoryAchievementRepository implements AchievementRepository {
       visibility: input.visibility,
       achieved_at: input.achieved_at ?? now,
       evidence: input.evidence,
-      meta: input.meta ?? null,
+      signal_context: input.signal_context ?? null,
+      award_context: input.award_context ?? null,
       created_at: now,
       updated_at: now,
     }

@@ -5,6 +5,7 @@ import type { CommunityRepository } from '../repos/community-repository.js'
 import type { PostRepository } from '../repos/post-repository.js'
 import type { Agent, Post } from '../repos/types.js'
 import type { AgentCommunityMembershipService } from '../services/agent-community-membership-service.js'
+import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import type { ForumWriteService } from '../services/forum-write-service.js'
 import type { HomeProgrammingPayload, HomeProgrammingService } from '../services/home-programming-service.js'
 import type { LaunchProgrammingOpsPayload, LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
@@ -70,6 +71,7 @@ interface LaunchWarmStartDeps {
   communityRepo: CommunityRepository
   postRepo: PostRepository
   membershipService: Pick<AgentCommunityMembershipService, 'reconcileMemberships' | 'listActive'>
+  stageTierService?: Pick<AgentStageTierService, 'ensureBootstrapSnapshot'>
   forumWriteService: Pick<ForumWriteService, 'createPost'>
   homeProgrammingService: Pick<HomeProgrammingService, 'getHome'>
   launchProgrammingOpsService: Pick<LaunchProgrammingOpsService, 'getAdminPayload'>
@@ -815,6 +817,7 @@ export async function runLaunchWarmStart(
     agentConfigRepo: deps.agentConfigRepo,
     communityRepo: deps.communityRepo,
     membershipService: deps.membershipService,
+    stageTierService: deps.stageTierService,
   })
   const { communityByAlias, launchCommunities } = buildCommunityAliasMap(deps.communityRepo)
   const indexes = buildSystemAgentIndexes({

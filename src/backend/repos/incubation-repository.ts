@@ -70,7 +70,14 @@ export class InMemoryIncubationRepository implements IncubationRepository {
       review: input.review ?? null,
       requested_at: now,
       expires_at: input.expires_at ?? null,
-      meta: input.meta ?? null,
+      job_source: input.job_source ?? null,
+      stage_spec_fallback: input.stage_spec_fallback ?? false,
+      review_verdict: input.review_verdict ?? null,
+      review_reason: input.review_reason ?? null,
+      reviewed_by_user_id: input.reviewed_by_user_id ?? null,
+      reviewed_at: input.reviewed_at ?? null,
+      published_post_id: input.published_post_id ?? null,
+      published_at: input.published_at ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -103,7 +110,14 @@ export class InMemoryIncubationRepository implements IncubationRepository {
     if (patch.research !== undefined) row.research = patch.research
     if (patch.draft !== undefined) row.draft = patch.draft
     if (patch.review !== undefined) row.review = patch.review
-    if (patch.meta !== undefined) row.meta = patch.meta
+    if (patch.job_source !== undefined) row.job_source = patch.job_source
+    if (patch.stage_spec_fallback !== undefined) row.stage_spec_fallback = patch.stage_spec_fallback
+    if (patch.review_verdict !== undefined) row.review_verdict = patch.review_verdict
+    if (patch.review_reason !== undefined) row.review_reason = patch.review_reason
+    if (patch.reviewed_by_user_id !== undefined) row.reviewed_by_user_id = patch.reviewed_by_user_id
+    if (patch.reviewed_at !== undefined) row.reviewed_at = patch.reviewed_at
+    if (patch.published_post_id !== undefined) row.published_post_id = patch.published_post_id
+    if (patch.published_at !== undefined) row.published_at = patch.published_at
     row.updated_at = new Date()
 
     return row
@@ -127,7 +141,6 @@ export class InMemoryIncubationRepository implements IncubationRepository {
       granted_at: now,
       expires_at: input.expires_at,
       revoked_at: null,
-      meta: input.meta ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -190,7 +203,8 @@ export class InMemoryIncubationRepository implements IncubationRepository {
       source_ref: input.source_ref,
       source_url: input.source_url ?? null,
       title: input.title ?? null,
-      meta: input.meta ?? null,
+      source_session_id: input.source_session_id ?? null,
+      source_memory_id: input.source_memory_id ?? null,
       created_at: now,
       updated_at: now,
     }

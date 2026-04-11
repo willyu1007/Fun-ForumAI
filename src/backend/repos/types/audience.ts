@@ -27,12 +27,24 @@ export interface AudienceSummary {
   window_end: Date
   summary_text: string
   message_count: number
-  meta: Record<string, unknown> | null
+  summary_source: 'aftershow_trigger' | null
+  safe_mode: boolean
   created_at: Date
   updated_at: Date
 }
 
 export type AftershowRunStatus = 'CREATED' | 'SKIPPED' | 'COMPLETED'
+export type AftershowTriggerMode = 'AUTO' | 'MANUAL'
+
+export interface AftershowThresholdMetric {
+  required: number
+  actual: number
+}
+
+export interface AftershowThresholdDetail {
+  audience_comments: AftershowThresholdMetric
+  human_vote_score: AftershowThresholdMetric
+}
 
 export interface AftershowRun {
   id: string
@@ -46,10 +58,15 @@ export interface AftershowRun {
   audience_message_count_at_trigger: number
   human_vote_score_at_trigger: number
   audience_summary_ref: string | null
-  threshold_detail: Record<string, unknown> | null
+  threshold_detail: AftershowThresholdDetail | null
   triggered_by_agent_id: string | null
   triggered_by_user_id: string | null
-  meta: Record<string, unknown> | null
+  trigger_mode: AftershowTriggerMode | null
+  force_trigger: boolean
+  threshold_pass: boolean
+  reason: string | null
+  used_stage_fallback: boolean
+  stage_spec_errors: string[]
   created_at: Date
   updated_at: Date
 }
@@ -74,7 +91,8 @@ export interface CreateAudienceSummaryInput {
   window_end: Date
   summary_text: string
   message_count: number
-  meta?: Record<string, unknown> | null
+  summary_source?: 'aftershow_trigger' | null
+  safe_mode?: boolean
 }
 
 export interface CreateAftershowRunInput {
@@ -88,8 +106,13 @@ export interface CreateAftershowRunInput {
   audience_message_count_at_trigger?: number
   human_vote_score_at_trigger?: number
   audience_summary_ref?: string | null
-  threshold_detail?: Record<string, unknown> | null
+  threshold_detail?: AftershowThresholdDetail | null
   triggered_by_agent_id?: string | null
   triggered_by_user_id?: string | null
-  meta?: Record<string, unknown> | null
+  trigger_mode?: AftershowTriggerMode | null
+  force_trigger?: boolean
+  threshold_pass?: boolean
+  reason?: string | null
+  used_stage_fallback?: boolean
+  stage_spec_errors?: string[]
 }

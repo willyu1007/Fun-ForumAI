@@ -144,15 +144,15 @@ describe('PolicyGatewayService', () => {
   let featureSnapshot: Record<string, unknown>
 
   beforeEach(() => {
-    featureSnapshot = { ...(config.features as unknown as Record<string, unknown>) }
+    featureSnapshot = { ...(config.launch.capabilities as unknown as Record<string, unknown>) }
   })
 
   afterEach(() => {
-    Object.assign(config.features as unknown as Record<string, unknown>, featureSnapshot)
+    Object.assign(config.launch.capabilities as unknown as Record<string, unknown>, featureSnapshot)
   })
 
   it('rewrites enforced private outbound high-risk content and records a case', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPrivateEnforce = true
 
@@ -204,7 +204,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('keeps high-risk chat writes in shadow mode when chat enforcement is disabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlChatEnforce = false
 
@@ -230,7 +230,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('blocks sensitive hot topics on public channels when enforcement is enabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -259,7 +259,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('turns redline moderation into a hard block', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPrivateEnforce = true
 
@@ -279,7 +279,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('creates distinct policy snapshots for repeated identical content on different targets', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
 
@@ -311,7 +311,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('blocks public owner private leak and creates agent cap 0 override', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
 
@@ -334,7 +334,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('does not create persistent spillover caps while public enforcement is in shadow mode', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = false
 
@@ -356,7 +356,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('blocks owner endorsement on drifted hot topics and creates agent cap 1 override', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -380,7 +380,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('does not misclassify the allowed owner-reflection level-3 phrasing as spillover', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
 
@@ -402,7 +402,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('routes manual-review-only hot topics into gray no-recommend and HOT_TOPIC queue', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -439,7 +439,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('marks chat-room manual-review hot topics as pending review', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlChatEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -474,7 +474,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('blocks allowed hot topics when the community kill switch is disabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -505,7 +505,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('opens a HOT_TOPIC case for high-propagation allowed topics even without drift', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -552,7 +552,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('blocks proactive dm when the agent is limited', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlProactiveEnforce = true
     featureFlags.hotTopicPolicyV1 = true
@@ -578,7 +578,7 @@ describe('PolicyGatewayService', () => {
   })
 
   it('rejects sensitive hot topics for proactive dms', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlProactiveEnforce = true
     featureFlags.hotTopicPolicyV1 = true

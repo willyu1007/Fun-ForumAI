@@ -4,6 +4,58 @@ export type AchievementVisibility = 'PUBLIC' | 'OWNER_ONLY'
 export type AchievementScope = 'global' | 'community' | 'peer'
 export type ChronicleType = 'ACHIEVEMENT' | 'RELATION_CHANGE' | 'HIGHLIGHT' | 'PRIVATE_DIGEST' | 'MODERATION'
 
+export interface AchievementSignalContext {
+  event_id?: string | null
+  thread_id?: string | null
+  community_id?: string | null
+  peer_agent_id?: string | null
+  to_agent_id?: string | null
+  previous_state?: string | null
+  next_state?: string | null
+  action?: string | null
+  admin_user_id?: string | null
+  target_type?: string | null
+  result_success?: boolean | null
+  new_visibility?: string | null
+  new_state?: string | null
+  post_id?: string | null
+  artifact_id?: string | null
+  publish_shape?: string | null
+  session_id?: string | null
+  human_message_id?: string | null
+  opening_message_id?: string | null
+  signal_visibility_reason?: string | null
+  source_ref?: string | null
+  source_event_id?: string | null
+  content_kind?: string | null
+  generated_at?: string | null
+  snapshot_date?: string | null
+  source_mode?: string | null
+  shelf_id?: string | null
+  storyline_id?: string | null
+  dedup_key?: string | null
+}
+
+export interface AchievementAwardContext {
+  trigger_kind?: string | null
+  trigger_mode?: string | null
+  metric_name?: string | null
+  metric_value?: number | null
+  threshold?: number | null
+  evidence_satisfied?: boolean | null
+  visibility_reason?: string | null
+  dedup_key?: string | null
+}
+
+export interface ChronicleStoryContext {
+  scene_label?: string | null
+  emotion_before?: string | null
+  emotion_after?: string | null
+  reaction_sentence?: string | null
+  outcome_sentence?: string | null
+  next_hook?: string | null
+}
+
 export interface AgentAchievement {
   id: string
   agent_id: string
@@ -17,7 +69,8 @@ export interface AgentAchievement {
   visibility: AchievementVisibility
   achieved_at: Date
   evidence: EvidenceRef[]
-  meta: Record<string, unknown> | null
+  signal_context: AchievementSignalContext | null
+  award_context: AchievementAwardContext | null
   created_at: Date
   updated_at: Date
 }
@@ -35,7 +88,12 @@ export interface ChronicleEntry {
   actors: string[]
   location: string | null
   tags: string[]
-  meta: Record<string, unknown> | null
+  scope: AchievementScope
+  scope_key: string
+  signal_context: AchievementSignalContext | null
+  story_context: ChronicleStoryContext | null
+  entry_source: string | null
+  source_event_ids: string[]
   dedup_key: string | null
   created_at: Date
   updated_at: Date
@@ -70,9 +128,11 @@ export interface AgentSignalLog {
   signal_kind: string
   importance_score: number
   visibility: AchievementVisibility
+  scope: AchievementScope
+  scope_key: string
   occurred_at: Date
   evidence: EvidenceRef[]
-  meta: Record<string, unknown> | null
+  signal_context: AchievementSignalContext | null
   dedup_key: string | null
   created_at: Date
 }
@@ -104,7 +164,8 @@ export interface CreateAgentAchievementInput {
   visibility: AchievementVisibility
   achieved_at?: Date
   evidence: EvidenceRef[]
-  meta?: Record<string, unknown> | null
+  signal_context?: AchievementSignalContext | null
+  award_context?: AchievementAwardContext | null
 }
 
 export interface CreateChronicleEntryInput {
@@ -119,7 +180,12 @@ export interface CreateChronicleEntryInput {
   actors?: string[]
   location?: string | null
   tags?: string[]
-  meta?: Record<string, unknown> | null
+  scope?: AchievementScope
+  scope_key?: string
+  signal_context?: AchievementSignalContext | null
+  story_context?: ChronicleStoryContext | null
+  entry_source?: string | null
+  source_event_ids?: string[]
   dedup_key?: string | null
 }
 
@@ -139,9 +205,11 @@ export interface CreateAgentSignalLogInput {
   signal_kind: string
   importance_score: number
   visibility: AchievementVisibility
+  scope?: AchievementScope
+  scope_key?: string
   occurred_at?: Date
   evidence: EvidenceRef[]
-  meta?: Record<string, unknown> | null
+  signal_context?: AchievementSignalContext | null
   dedup_key?: string | null
 }
 

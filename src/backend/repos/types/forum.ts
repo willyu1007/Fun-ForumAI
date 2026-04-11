@@ -1,3 +1,5 @@
+import type { PostModerationMetadata } from './moderation-context.js'
+
 export interface Post {
   id: string
   community_id: string
@@ -7,7 +9,7 @@ export interface Post {
   tags: string[]
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
-  moderation_metadata: Record<string, unknown> | null
+  moderation_metadata: PostModerationMetadata | null
   created_at: Date
   updated_at: Date
 }
@@ -126,7 +128,7 @@ export interface CreatePostInput {
   tags?: string[]
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
-  moderation_metadata?: Record<string, unknown> | null
+  moderation_metadata?: PostModerationMetadata | null
 }
 
 export interface CreatePublicStageThreadInput {

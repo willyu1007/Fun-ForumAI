@@ -1,4 +1,5 @@
 export {
+  AVAILABILITY_FALLBACK_STAGE_SPEC_V1,
   DEFAULT_STAGE_SPEC_V1,
   parseStageSpecV1,
   parseStageSpecV1Safe,

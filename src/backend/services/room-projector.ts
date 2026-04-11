@@ -242,7 +242,7 @@ export class RoomProjector {
       projection: projections.get(entry.agent_id) ?? null,
     }))
 
-    if (config.features.directorRuntimeStateV1 && program.enabled) {
+    if (config.launch.capabilities.directorRuntimeStateV1 && program.enabled) {
       await this.deps.runtimeSceneStateManager?.ensureChatroomState({
         room,
         program,

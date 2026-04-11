@@ -94,7 +94,7 @@ function buildScheduledPostSelection(community: ScheduledPostEligibleCommunity) 
 }
 
 describe('E2E: Multimodal media + owner-only growth controls', () => {
-  const featureFlags = config.features as unknown as Record<string, boolean>
+  const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
   const originalMultimodal = featureFlags.multimodalAgentMediaV1
   const originalRolloutController = featureFlags.mediaRolloutControllerV1
   const originalMediaGeneration = featureFlags.mediaGenerationV1

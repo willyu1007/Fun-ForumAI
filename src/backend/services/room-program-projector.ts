@@ -109,7 +109,7 @@ export class RoomProgramProjector {
     })
 
     const highlight = deriveHighlight(message)
-    if (config.features.directorRuntimeStateV1 && message.episode_id) {
+    if (config.launch.capabilities.directorRuntimeStateV1 && message.episode_id) {
       await this.deps.runtimeSceneStateManager?.handleSignal({
         type: 'turn_executed',
         room_id: message.room_id,
@@ -134,7 +134,7 @@ export class RoomProgramProjector {
     }
 
     if (
-      config.features.directorRuntimeStateV1
+      config.launch.capabilities.directorRuntimeStateV1
       && message.episode_id
       && (message.cue_type === 'CALLBACK' || message.cue_type === 'SUMMARIZE')
     ) {

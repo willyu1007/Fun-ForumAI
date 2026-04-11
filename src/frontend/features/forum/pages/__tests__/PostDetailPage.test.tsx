@@ -85,13 +85,7 @@ vi.mock('@/components/ui/dropdown-menu', async () => {
 
   return {
     DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    DropdownMenuTrigger: ({
-      children,
-      asChild,
-    }: {
-      children: ReactNode
-      asChild?: boolean
-    }) => {
+    DropdownMenuTrigger: ({ children, asChild }: { children: ReactNode; asChild?: boolean }) => {
       if (asChild && React.isValidElement(children)) {
         return React.cloneElement(children)
       }
@@ -102,19 +96,19 @@ vi.mock('@/components/ui/dropdown-menu', async () => {
       children,
       asChild,
       onClick,
-	    }: {
-	      children: ReactNode
-	      asChild?: boolean
-	      onClick?: () => void
-	    }) => {
-	      if (asChild && React.isValidElement(children)) {
-	        return React.cloneElement(
-	          children as React.ReactElement<{ role?: string; onClick?: () => void }>,
-	          { role: 'menuitem', onClick },
-	        )
-	      }
-	      return (
-	        <div role="menuitem" onClick={onClick}>
+    }: {
+      children: ReactNode
+      asChild?: boolean
+      onClick?: () => void
+    }) => {
+      if (asChild && React.isValidElement(children)) {
+        return React.cloneElement(
+          children as React.ReactElement<{ role?: string; onClick?: () => void }>,
+          { role: 'menuitem', onClick },
+        )
+      }
+      return (
+        <div role="menuitem" onClick={onClick}>
           {children}
         </div>
       )
@@ -320,14 +314,6 @@ async function renderPageAndFlush(path: string) {
 describe('PostDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubEnv('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1', 'true')
-    vi.stubEnv('VITE_FF_AUDIENCE_ZONE_V1', 'true')
-    vi.stubEnv('VITE_FF_AFTERSHOW_V1', 'true')
-    vi.stubEnv('VITE_FF_ROLE_ASSIGNMENT_V1', 'true')
-    import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 = 'true'
-    import.meta.env.VITE_FF_AUDIENCE_ZONE_V1 = 'true'
-    import.meta.env.VITE_FF_AFTERSHOW_V1 = 'true'
-    import.meta.env.VITE_FF_ROLE_ASSIGNMENT_V1 = 'true'
     setViewportWidth(1280)
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
@@ -510,7 +496,11 @@ describe('PostDetailPage', () => {
     )
     expect(screen.getByTestId('discussion-forest')).toBeTruthy()
     expect(screen.queryByTestId('thread-list')).toBeNull()
-    expect(useThreadSummariesMock).toHaveBeenCalledWith('post-1', { limit: 100 }, { enabled: false })
+    expect(useThreadSummariesMock).toHaveBeenCalledWith(
+      'post-1',
+      { limit: 100 },
+      { enabled: false },
+    )
     expect(useDiscussionForestMock).toHaveBeenCalledWith(
       'post-1',
       {
@@ -627,29 +617,6 @@ describe('PostDetailPage', () => {
     expect(screen.queryByText('观众区暂未准备好')).toBeNull()
   })
 
-  it('disables audience rail requests when the audience web surface is turned off', () => {
-    vi.stubEnv('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1', 'false')
-    import.meta.env.VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1 = 'false'
-    usePostMock.mockReturnValue({
-      data: { data: buildPost({ includeAudienceFields: true }) },
-      isLoading: false,
-      error: null,
-    } as never)
-    useAudienceThreadMock.mockReturnValue({ data: undefined } as never)
-    useAftershowMock.mockReturnValue({ data: undefined } as never)
-    useAsideSeatsMock.mockReturnValue({ data: undefined } as never)
-
-    renderPage('/posts/post-1')
-
-    expect(screen.getByTestId('post-detail-rail')).toBeTruthy()
-    expect(screen.getByText('帖子上下文区')).toBeTruthy()
-    expect(screen.queryByText('摘要与亮点')).toBeNull()
-    expect(screen.queryByText('观众讨论')).toBeNull()
-    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
-    expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: false })
-    expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: false })
-  })
-
   it('opens the audience tab by default on mobile when a deep link targets aftershow content', async () => {
     setViewportWidth(390)
     usePostMock.mockReturnValue({
@@ -735,7 +702,6 @@ describe('PostDetailPage', () => {
               evidence_ref: null,
               notification_id: null,
               invalidated_at: null,
-              meta: null,
               created_at: '2026-03-01T00:00:00.000Z',
               callout_index: 0,
               deep_link: '/posts/post-1?aftershow_id=artifact-1&callout_index=0',
@@ -799,7 +765,6 @@ describe('PostDetailPage', () => {
               evidence_ref: null,
               notification_id: null,
               invalidated_at: null,
-              meta: null,
               created_at: '2026-03-01T00:00:00.000Z',
               callout_index: 0,
               deep_link: '/posts/post-1?aftershow_id=artifact-1&callout_index=0',
@@ -834,7 +799,11 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1?turnId=turn-42')
 
-    expect(useThreadSummariesMock).toHaveBeenCalledWith('post-1', { limit: 100 }, { enabled: false })
+    expect(useThreadSummariesMock).toHaveBeenCalledWith(
+      'post-1',
+      { limit: 100 },
+      { enabled: false },
+    )
     expect(useDiscussionForestMock).toHaveBeenCalledWith(
       'post-1',
       {
@@ -916,7 +885,9 @@ describe('PostDetailPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'),
+        screen.getByText(
+          '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。',
+        ),
       ).toBeTruthy()
     })
     expect(discussionForestMock).toHaveBeenLastCalledWith(
@@ -1009,7 +980,9 @@ describe('PostDetailPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“转入私聊”，或者直接发起新的公开分支。'),
+        screen.getByText(
+          '当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“转入私聊”，或者直接发起新的公开分支。',
+        ),
       ).toBeTruthy()
     })
   })
@@ -1081,11 +1054,16 @@ describe('PostDetailPage', () => {
       expect(screen.getByText('发起新的公开分支')).toBeTruthy()
     })
     expect(screen.getByText('当前聚焦节点 · Agent 1')).toBeTruthy()
-    expect(screen.getByText('当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。')).toBeTruthy()
+    expect(
+      screen.getByText(
+        '当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。',
+      ),
+    ).toBeTruthy()
     expect(screen.queryByText('公开回应锚点 · Agent 1')).toBeNull()
     expect(screen.queryByRole('button', { name: '清除锚点' })).toBeNull()
 
-    const lastForestCall = discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]
+    const lastForestCall =
+      discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]
     const lastForestProps = lastForestCall?.[0] as {
       onSelectNode: (
         node: {
@@ -1180,12 +1158,20 @@ describe('PostDetailPage', () => {
         }),
       )
     })
-    expect(useThreadSummariesMock).toHaveBeenLastCalledWith('post-1', { limit: 100 }, { enabled: false })
+    expect(useThreadSummariesMock).toHaveBeenLastCalledWith(
+      'post-1',
+      { limit: 100 },
+      { enabled: false },
+    )
 
     fireEvent.click(screen.getByRole('tab', { name: '时间线' }))
 
     await waitFor(() => {
-      expect(useThreadSummariesMock).toHaveBeenLastCalledWith('post-1', { limit: 100 }, { enabled: true })
+      expect(useThreadSummariesMock).toHaveBeenLastCalledWith(
+        'post-1',
+        { limit: 100 },
+        { enabled: true },
+      )
     })
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1220,7 +1206,9 @@ describe('PostDetailPage', () => {
     renderPage('/posts/post-1')
 
     expect(screen.getByRole('link', { name: '返回广场' }).getAttribute('href')).toBe('/')
-    expect(within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1')).toBeTruthy()
+    expect(
+      within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1'),
+    ).toBeTruthy()
     expect(screen.queryByText('c/community-1')).toBeNull()
   })
 
@@ -1237,13 +1225,15 @@ describe('PostDetailPage', () => {
               avatar_url: null,
               public_identity: {
                 agent_kind: 'system',
-                identity_badges: [{
-                  badge_id: 'identity:resident',
-                  internal_code: 'resident_badge',
-                  label: '常驻席',
-                  source_kind: 'system_display',
-                  priority_rank: 200,
-                }],
+                identity_badges: [
+                  {
+                    badge_id: 'identity:resident',
+                    internal_code: 'resident_badge',
+                    label: '常驻席',
+                    source_kind: 'system_display',
+                    priority_rank: 200,
+                  },
+                ],
               },
             },
           },
@@ -1256,9 +1246,13 @@ describe('PostDetailPage', () => {
     renderPage('/posts/post-1')
 
     const authorTrigger = screen.getByRole('button', { name: /Agent 1/i })
-    expect(within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1')).toBeTruthy()
+    expect(
+      within(screen.getByTestId('post-detail-author-primary-line')).getByText('Agent 1'),
+    ).toBeTruthy()
     expect(within(authorTrigger).queryByRole('img', { name: '常驻席' })).toBeNull()
-    expect(within(screen.getByTestId('post-detail-author-secondary-line')).getByText('常驻席')).toBeTruthy()
+    expect(
+      within(screen.getByTestId('post-detail-author-secondary-line')).getByText('常驻席'),
+    ).toBeTruthy()
   })
 
   it('does not render author bio copy or post tags in the top hero', () => {
@@ -1313,7 +1307,9 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(within(screen.getByTestId('post-detail-stage-article')).queryByText('查看关系')).toBeNull()
+    expect(
+      within(screen.getByTestId('post-detail-stage-article')).queryByText('查看关系'),
+    ).toBeNull()
     expect(screen.getByText('查看关系')).toBeTruthy()
   })
 

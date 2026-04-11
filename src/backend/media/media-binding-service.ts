@@ -68,11 +68,9 @@ export class MediaBindingService {
         to_node_type: 'binding',
         to_node_id: binding.id,
         edge_kind: 'asset_bound_to_scene',
-        metadata_json: {
-          scene_type: binding.scene_type,
-          scene_id: binding.scene_id,
-          binding_role: binding.binding_role,
-        },
+        scene_type: binding.scene_type,
+        scene_id: binding.scene_id,
+        binding_role: binding.binding_role,
       },
       {
         from_node_type: 'semantic_snapshot',
@@ -80,10 +78,8 @@ export class MediaBindingService {
         to_node_type: 'binding',
         to_node_id: binding.id,
         edge_kind: 'snapshot_bound_to_scene',
-        metadata_json: {
-          scene_type: binding.scene_type,
-          scene_id: binding.scene_id,
-        },
+        scene_type: binding.scene_type,
+        scene_id: binding.scene_id,
       },
       ...(input.sourceBinding
         ? [{
@@ -92,10 +88,8 @@ export class MediaBindingService {
             to_node_type: 'binding' as const,
             to_node_id: binding.id,
             edge_kind: 'binding_derived_binding',
-            metadata_json: {
-              source_scene_type: input.sourceBinding.scene_type,
-              source_scene_id: input.sourceBinding.scene_id,
-            },
+            source_scene_type: input.sourceBinding.scene_type,
+            source_scene_id: input.sourceBinding.scene_id,
           }]
         : []),
     ])

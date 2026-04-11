@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { Prisma, type PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
 import type {
   RoleAssignment,
   RoleAssignmentScope,
@@ -20,7 +20,7 @@ function toDomain(row: {
   assignedBy: string | null
   expiresAt: Date | null
   revokedAt: Date | null
-  metaJson: Prisma.JsonValue | null
+  lastActionReason: string | null
   createdAt: Date
   updatedAt: Date
 }): RoleAssignment {
@@ -36,7 +36,7 @@ function toDomain(row: {
     assigned_by: row.assignedBy,
     expires_at: row.expiresAt,
     revoked_at: row.revokedAt,
-    meta: row.metaJson as Record<string, unknown> | null,
+    last_action_reason: row.lastActionReason,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -61,7 +61,7 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
     const rows = await this.prisma.roleAssignment.findMany()
     this.cache.clear()
     for (const row of rows) {
-      this.cache.set(row.id, toDomain({ ...row, metaJson: row.metaJson }))
+      this.cache.set(row.id, toDomain(row))
     }
     this.lastHydratedAt = Date.now()
   }
@@ -89,12 +89,12 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
         assignedBy: input.assigned_by ?? null,
         expiresAt: input.expires_at ?? null,
         revokedAt: input.revoked_at ?? null,
-        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+        lastActionReason: input.last_action_reason ?? null,
         createdAt: now,
         updatedAt: now,
       },
     })
-    const mapped = toDomain({ ...row, metaJson: row.metaJson })
+    const mapped = toDomain(row)
     this.cache.set(mapped.id, mapped)
     return mapped
   }
@@ -105,9 +105,7 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
       ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.expires_at !== undefined ? { expiresAt: input.expires_at } : {}),
       ...(input.revoked_at !== undefined ? { revokedAt: input.revoked_at } : {}),
-      ...(input.meta !== undefined
-        ? { metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull }
-        : {}),
+      ...(input.last_action_reason !== undefined ? { lastActionReason: input.last_action_reason } : {}),
       updatedAt: new Date(),
     }
 
@@ -133,7 +131,7 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
     })()
 
     if (!row) return null
-    const mapped = toDomain({ ...row, metaJson: row.metaJson })
+    const mapped = toDomain(row)
     this.cache.set(mapped.id, mapped)
     return mapped
   }
@@ -170,7 +168,7 @@ export class PgRoleAssignmentRepository implements RoleAssignmentRepository {
       ],
       take: limit,
     })
-    const mapped = rows.map((row) => toDomain({ ...row, metaJson: row.metaJson }))
+    const mapped = rows.map((row) => toDomain(row))
     for (const row of mapped) {
       this.cache.set(row.id, row)
     }

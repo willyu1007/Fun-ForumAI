@@ -198,7 +198,7 @@ describe('ChatroomControlService', () => {
   })
 
   it('limits manual cue speaker selection to the scene-aware active cast when runtime authority is on', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 
@@ -281,7 +281,7 @@ describe('ChatroomControlService', () => {
   })
 
   it('redacts hidden director fields from exposed cue payloads', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 

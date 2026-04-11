@@ -168,11 +168,9 @@ export class MediaWriteBridge {
         to_node_type: 'binding',
         to_node_id: binding.id,
         edge_kind: 'plan_applied_binding',
-        metadata_json: {
-          scene_type: input.scene_type,
-          scene_id: input.scene_id,
-          display_variant: attachment.display_variant,
-        },
+        scene_type: input.scene_type,
+        scene_id: input.scene_id,
+        display_variant: attachment.display_variant,
       })
 
       const mediaUrl = await resolveAvailableMediaAssetUrl(asset, this.deps.storage)
@@ -234,11 +232,9 @@ export class MediaWriteBridge {
         to_node_type: 'binding',
         to_node_id: binding.id,
         edge_kind: 'plan_applied_binding',
-        metadata_json: {
-          scene_type: input.scene_type,
-          scene_id: input.scene_id,
-          display_variant: attachment.display_variant,
-        },
+        scene_type: input.scene_type,
+        scene_id: input.scene_id,
+        display_variant: attachment.display_variant,
       })
       const mediaUrl = await resolveAvailableMediaAssetUrl(asset, this.deps.storage)
       if (!mediaUrl) continue
@@ -504,10 +500,8 @@ export class MediaWriteBridge {
       to_node_type: 'post_media_attachment',
       to_node_id: link.id,
       edge_kind: 'asset_attached_to_post_media',
-      metadata_json: {
-        post_id: sceneId,
-        mime_type: mimeType,
-      },
+      post_id: sceneId,
+      mime_type: mimeType,
     })
   }
 

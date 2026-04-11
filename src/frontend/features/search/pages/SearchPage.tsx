@@ -3,7 +3,13 @@ import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentSentimentBar } from '@/features/forum/components/AgentSentimentBar'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { useFollowAgent, useUnfollowAgent, useRecordSearchTelemetry, useSearch, useSearchInfinite } from '@/api/hooks'
+import {
+  useFollowAgent,
+  useUnfollowAgent,
+  useRecordSearchTelemetry,
+  useSearch,
+  useSearchInfinite,
+} from '@/api/hooks'
 import { LoadMore } from '@/shared/components/LoadMore'
 import { useAuth } from '@/shared/hooks/use-auth'
 import type {
@@ -40,7 +46,7 @@ import {
   canOpenPublicAuthorProfile,
   readProjectionText,
 } from '@/shared/utils/public-author'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { humanParticipationEnabled } from '@/shared/config/frontend-capabilities'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 const TAB_LABELS: Record<SearchTab, string> = {
@@ -98,8 +104,6 @@ function formatRelativeTime(value: string | null | undefined): string | null {
   const years = Math.floor(months / 12)
   return `${years} 年前`
 }
-
-const HUMAN_PARTICIPATION_ENABLED = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
 
 function shouldSkipRowActivationTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && Boolean(target.closest('[data-stop-row-click]'))
@@ -167,7 +171,9 @@ function SearchAgentIdentity({
   const avatar = (
     <Avatar className="h-7 w-7">
       <AvatarImage src={avatarSrc} alt={author.display_name} className="object-cover" />
-      <AvatarFallback className="bg-primary/10 text-[10px] text-primary">{initials(author.display_name)}</AvatarFallback>
+      <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
+        {initials(author.display_name)}
+      </AvatarFallback>
     </Avatar>
   )
 
@@ -244,7 +250,12 @@ function PostResultRow({
       }}
       onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
-      <div className={cn('gap-4', item.thumbnail_url ? 'grid items-start sm:grid-cols-[100px_minmax(0,1fr)]' : 'block')}>
+      <div
+        className={cn(
+          'gap-4',
+          item.thumbnail_url ? 'grid items-start sm:grid-cols-[100px_minmax(0,1fr)]' : 'block',
+        )}
+      >
         {item.thumbnail_url && (
           <div className="hidden shrink-0 sm:block">
             <img
@@ -320,9 +331,7 @@ function CommunityResultRow({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <span className="text-base font-semibold leading-snug text-foreground">
-            {item.name}
-          </span>
+          <span className="text-base font-semibold leading-snug text-foreground">{item.name}</span>
           <p className="mt-0.5 text-xs text-muted-foreground">
             c/{item.slug} · {item.active_member_count} 常驻成员
           </p>
@@ -344,13 +353,19 @@ function CommunityResultRow({
   )
 }
 
-function AgentFollowButton({ agent, searchQuery }: { agent: SearchAgentItem; searchQuery: string }) {
+function AgentFollowButton({
+  agent,
+  searchQuery,
+}: {
+  agent: SearchAgentItem
+  searchQuery: string
+}) {
   const { isAuthenticated } = useAuth()
   const follow = useFollowAgent(agent.id)
   const unfollow = useUnfollowAgent(agent.id)
   const telemetry = useRecordSearchTelemetry()
 
-  if (!HUMAN_PARTICIPATION_ENABLED) return null
+  if (!humanParticipationEnabled) return null
 
   if (!isAuthenticated) {
     return (
@@ -438,7 +453,9 @@ function AgentResultRow({
           >
             <Avatar className="h-10 w-10 shrink-0">
               <AvatarImage src={agentAvatarSrc} alt={item.display_name} className="object-cover" />
-              <AvatarFallback className="bg-primary/10 text-sm text-primary">{initials(item.display_name)}</AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-sm text-primary">
+                {initials(item.display_name)}
+              </AvatarFallback>
             </Avatar>
           </AgentLink>
         </AgentHoverCard>
@@ -466,9 +483,7 @@ function AgentResultRow({
             ))}
             <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {projectionText}
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{projectionText}</p>
         </div>
       </div>
       {item.active_communities.length > 0 && (
@@ -573,8 +588,28 @@ function SearchResultRow({
 
 const SIDEBAR_COMMUNITY_MAX = 10
 
-function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string; sort?: string; timeRange?: string; onViewAll: () => void }) {
-  const result = useSearch(query ? { q: query, tab: 'communities', limit: SIDEBAR_COMMUNITY_MAX + 1, sort, time_range: timeRange } : undefined)
+function CommunitySidebar({
+  query,
+  sort,
+  timeRange,
+  onViewAll,
+}: {
+  query: string
+  sort?: string
+  timeRange?: string
+  onViewAll: () => void
+}) {
+  const result = useSearch(
+    query
+      ? {
+          q: query,
+          tab: 'communities',
+          limit: SIDEBAR_COMMUNITY_MAX + 1,
+          sort,
+          time_range: timeRange,
+        }
+      : undefined,
+  )
   const items = result.data?.data?.items ?? []
   const communityItems = items.filter((i): i is SearchCommunityItem => i.type === 'community')
   const displayItems = communityItems.slice(0, SIDEBAR_COMMUNITY_MAX)
@@ -590,14 +625,12 @@ function CommunitySidebar({ query, sort, timeRange, onViewAll }: { query: string
           const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
           const category = item.community_shell_category ?? 'theme'
           return (
-            <Link
-              key={item.id}
-              to={item.href}
-              className="flex items-start gap-5"
-            >
+            <Link key={item.id} to={item.href} className="flex items-start gap-5">
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
-                <AvatarFallback className={`text-sm font-semibold ${getCommunityAvatarToneClassName(category)}`}>
+                <AvatarFallback
+                  className={`text-sm font-semibold ${getCommunityAvatarToneClassName(category)}`}
+                >
                   {getCommunityCategoryGlyph(category)}
                 </AvatarFallback>
               </Avatar>
@@ -692,10 +725,14 @@ function DiscoverySection({
                 className="flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-lg p-2 text-center transition-colors hover:bg-muted/40"
               >
                 <Avatar className="h-12 w-12">
-                  {agent.avatar_url ? <AvatarImage src={agent.avatar_url} alt={agent.display_name} /> : null}
+                  {agent.avatar_url ? (
+                    <AvatarImage src={agent.avatar_url} alt={agent.display_name} />
+                  ) : null}
                   <AvatarFallback>{initials(agent.display_name)}</AvatarFallback>
                 </Avatar>
-                <span className="w-full truncate text-xs font-medium text-foreground">{agent.display_name}</span>
+                <span className="w-full truncate text-xs font-medium text-foreground">
+                  {agent.display_name}
+                </span>
               </AgentLink>
             ))}
           </div>
@@ -731,7 +768,11 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const sidebarSlotRef = useRef<HTMLElement | null>(null)
   const floatingSidebarRef = useRef<HTMLDivElement | null>(null)
-  const [sidebarSlotRect, setSidebarSlotRect] = useState<{ left: number; top: number; width: number } | null>(null)
+  const [sidebarSlotRect, setSidebarSlotRect] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
   const currentTab = readTab(searchParams.get('tab'))
   const currentQuery = searchParams.get('q') ?? ''
   const currentSort = searchParams.get('sort') ?? undefined
@@ -798,8 +839,11 @@ export function SearchPage() {
     setSearchParams(sp, { replace: true })
   }
 
-  const sortLabel = SEARCH_SORT_OPTIONS.find((o) => o.value === (currentSort ?? 'relevance'))?.label ?? '相关性'
-  const timeLabel = SEARCH_TIME_RANGE_OPTIONS.find((o) => o.value === (currentTimeRange ?? 'all'))?.label ?? '所有时间'
+  const sortLabel =
+    SEARCH_SORT_OPTIONS.find((o) => o.value === (currentSort ?? 'relevance'))?.label ?? '相关性'
+  const timeLabel =
+    SEARCH_TIME_RANGE_OPTIONS.find((o) => o.value === (currentTimeRange ?? 'all'))?.label ??
+    '所有时间'
   const activeFilters = TAB_FILTERS[currentTab] ?? []
 
   const showGrid = currentTab === 'posts' && currentQuery.trim()
@@ -831,9 +875,8 @@ export function SearchPage() {
 
     measure()
 
-    const resizeObserver = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => measure())
-      : null
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => measure()) : null
     resizeObserver?.observe(element)
     window.addEventListener('resize', measure)
 
@@ -859,7 +902,9 @@ export function SearchPage() {
   return (
     <div data-testid="search-page">
       {/* Row 1: Pill tabs */}
-      <div role="tablist" className="flex items-center gap-1.5"
+      <div
+        role="tablist"
+        className="flex items-center gap-1.5"
         onKeyDown={(e) => {
           const keys = ['ArrowRight', 'ArrowLeft', 'Home', 'End'] as const
           if (!keys.includes(e.key as (typeof keys)[number])) return
@@ -871,7 +916,9 @@ export function SearchPage() {
           else if (e.key === 'Home') next = 0
           else if (e.key === 'End') next = SEARCH_TABS.length - 1
           updateSearch({ tab: SEARCH_TABS[next] })
-          const btn = e.currentTarget.querySelector<HTMLButtonElement>(`[data-tab="${SEARCH_TABS[next]}"]`)
+          const btn = e.currentTarget.querySelector<HTMLButtonElement>(
+            `[data-tab="${SEARCH_TABS[next]}"]`,
+          )
           btn?.focus()
         }}
       >
@@ -913,14 +960,17 @@ export function SearchPage() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-36">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">排序方式</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    排序方式
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {SEARCH_SORT_OPTIONS.map((option) => (
                     <DropdownMenuItem
                       key={option.value}
                       className={cn(
                         'text-sm',
-                        (currentSort ?? 'relevance') === option.value && 'font-semibold text-foreground',
+                        (currentSort ?? 'relevance') === option.value &&
+                          'font-semibold text-foreground',
                       )}
                       onClick={() => updateFilterParam('sort', option.value, 'relevance')}
                     >
@@ -944,14 +994,17 @@ export function SearchPage() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-36">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">时间范围</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    时间范围
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {SEARCH_TIME_RANGE_OPTIONS.map((option) => (
                     <DropdownMenuItem
                       key={option.value}
                       className={cn(
                         'text-sm',
-                        (currentTimeRange ?? 'all') === option.value && 'font-semibold text-foreground',
+                        (currentTimeRange ?? 'all') === option.value &&
+                          'font-semibold text-foreground',
                       )}
                       onClick={() => updateFilterParam('time_range', option.value, 'all')}
                     >
@@ -976,10 +1029,7 @@ export function SearchPage() {
         <div className="min-w-0">
           {/* Discovery: empty query */}
           {!currentQuery.trim() && !isLoading && !isError && (
-            <DiscoverySection
-              discovery={discovery}
-              onSearch={(q) => updateSearch({ q })}
-            />
+            <DiscoverySection discovery={discovery} onSearch={(q) => updateSearch({ q })} />
           )}
 
           {/* Loading (initial) */}
@@ -1000,34 +1050,31 @@ export function SearchPage() {
           )}
 
           {/* Empty results */}
-          {currentQuery.trim() &&
-            !isLoading &&
-            !isError &&
-            allItems.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="text-base font-medium text-foreground">
-                  没有找到相关的{TAB_LABELS[currentTab]}结果
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  试试换个关键词，或切换到其他标签页
-                </p>
-                {counts && (
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    {SEARCH_TABS.filter((t) => t !== currentTab).map((tab) => (
-                      <Button
-                        key={tab}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateSearch({ tab })}
-                      >
-                        {TAB_LABELS[tab]}
-                        {counts[tab] > 0 ? ` (${counts[tab]})` : ''}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+          {currentQuery.trim() && !isLoading && !isError && allItems.length === 0 && (
+            <div className="py-12 text-center">
+              <p className="text-base font-medium text-foreground">
+                没有找到相关的{TAB_LABELS[currentTab]}结果
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                试试换个关键词，或切换到其他标签页
+              </p>
+              {counts && (
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {SEARCH_TABS.filter((t) => t !== currentTab).map((tab) => (
+                    <Button
+                      key={tab}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateSearch({ tab })}
+                    >
+                      {TAB_LABELS[tab]}
+                      {counts[tab] > 0 ? ` (${counts[tab]})` : ''}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Results */}
           {allItems.length > 0 && (
@@ -1052,9 +1099,7 @@ export function SearchPage() {
         </div>
 
         {/* Sidebar column: always occupies grid space on posts tab to prevent width jumps */}
-        {showGrid && (
-          <aside ref={sidebarSlotRef} className="hidden lg:block" aria-hidden />
-        )}
+        {showGrid && <aside ref={sidebarSlotRef} className="hidden lg:block" aria-hidden />}
       </div>
 
       {showGrid && sidebarSlotRect ? (

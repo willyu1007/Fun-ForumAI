@@ -17,7 +17,6 @@ export interface CommunityConfigRepository {
       status?: ConfigVersionStatus
       applied_at?: Date | null
       rolled_back_at?: Date | null
-      meta?: Record<string, unknown> | null
     },
   ): Promise<CommunityConfigVersion | null>
   listVersionsByCommunity(communityId: string): Promise<CommunityConfigVersion[]>
@@ -52,14 +51,17 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
       version: input.version,
       rules_json: input.rules_json,
       source_patch_id: input.source_patch_id ?? null,
+      seed_key: input.seed_key ?? null,
+      source: input.source ?? null,
       status: input.status ?? 'ACTIVE',
       risk_level: input.risk_level ?? 'LOW',
       created_by_user_id: input.created_by_user_id ?? null,
+      applied_by_actor_id: input.applied_by_actor_id ?? null,
       rollback_from_version_id: input.rollback_from_version_id ?? null,
+      rollback_reason: input.rollback_reason ?? null,
       effective_at: input.effective_at ?? null,
       applied_at: input.applied_at ?? null,
       rolled_back_at: input.rolled_back_at ?? null,
-      meta: input.meta ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -73,7 +75,6 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
       status?: ConfigVersionStatus
       applied_at?: Date | null
       rolled_back_at?: Date | null
-      meta?: Record<string, unknown> | null
     },
   ): Promise<CommunityConfigVersion | null> {
     const row = this.versions.get(versionId)
@@ -81,7 +82,6 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
     if (input.status !== undefined) row.status = input.status
     if (input.applied_at !== undefined) row.applied_at = input.applied_at
     if (input.rolled_back_at !== undefined) row.rolled_back_at = input.rolled_back_at
-    if (input.meta !== undefined) row.meta = input.meta
     row.updated_at = new Date()
     this.versions.set(row.id, row)
     return row
@@ -118,13 +118,21 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
       validated_by_user_id: input.validated_by_user_id ?? null,
       approved_by_user_id: input.approved_by_user_id ?? null,
       applied_version_id: input.applied_version_id ?? null,
+      applied_version_number: input.applied_version_number ?? null,
       rejected_reason: input.rejected_reason ?? null,
       validated_at: input.validated_at ?? null,
+      validation_failed_at: input.validation_failed_at ?? null,
       approved_at: input.approved_at ?? null,
+      scheduled_by_user_id: input.scheduled_by_user_id ?? null,
+      scheduled_at: input.scheduled_at ?? null,
       effective_at: input.effective_at ?? null,
       applied_at: input.applied_at ?? null,
       rolled_back_at: input.rolled_back_at ?? null,
-      meta: input.meta ?? null,
+      scheduler_retry_count: input.scheduler_retry_count ?? 0,
+      scheduler_last_error: input.scheduler_last_error ?? null,
+      scheduler_last_error_at: input.scheduler_last_error_at ?? null,
+      scheduler_next_retry_at: input.scheduler_next_retry_at ?? null,
+      scheduler_retry_exhausted_at: input.scheduler_retry_exhausted_at ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -141,13 +149,23 @@ export class InMemoryCommunityConfigRepository implements CommunityConfigReposit
     if (input.validated_by_user_id !== undefined) row.validated_by_user_id = input.validated_by_user_id
     if (input.approved_by_user_id !== undefined) row.approved_by_user_id = input.approved_by_user_id
     if (input.applied_version_id !== undefined) row.applied_version_id = input.applied_version_id
+    if (input.applied_version_number !== undefined) row.applied_version_number = input.applied_version_number
     if (input.rejected_reason !== undefined) row.rejected_reason = input.rejected_reason
     if (input.validated_at !== undefined) row.validated_at = input.validated_at
+    if (input.validation_failed_at !== undefined) row.validation_failed_at = input.validation_failed_at
     if (input.approved_at !== undefined) row.approved_at = input.approved_at
+    if (input.scheduled_by_user_id !== undefined) row.scheduled_by_user_id = input.scheduled_by_user_id
+    if (input.scheduled_at !== undefined) row.scheduled_at = input.scheduled_at
     if (input.effective_at !== undefined) row.effective_at = input.effective_at
     if (input.applied_at !== undefined) row.applied_at = input.applied_at
     if (input.rolled_back_at !== undefined) row.rolled_back_at = input.rolled_back_at
-    if (input.meta !== undefined) row.meta = input.meta
+    if (input.scheduler_retry_count !== undefined) row.scheduler_retry_count = input.scheduler_retry_count
+    if (input.scheduler_last_error !== undefined) row.scheduler_last_error = input.scheduler_last_error
+    if (input.scheduler_last_error_at !== undefined) row.scheduler_last_error_at = input.scheduler_last_error_at
+    if (input.scheduler_next_retry_at !== undefined) row.scheduler_next_retry_at = input.scheduler_next_retry_at
+    if (input.scheduler_retry_exhausted_at !== undefined) {
+      row.scheduler_retry_exhausted_at = input.scheduler_retry_exhausted_at
+    }
     row.updated_at = new Date()
     this.patches.set(row.id, row)
     return row

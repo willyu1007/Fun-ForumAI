@@ -206,7 +206,7 @@ export class ChatroomControlService {
       throw new ValidationError('Room program is disabled')
     }
 
-    if (config.features.directorRuntimeStateV1) {
+    if (config.launch.capabilities.directorRuntimeStateV1) {
       const runtimeState = await this.deps.runtimeSceneStateManager?.findActiveByRoom(roomId) ?? null
       if (runtimeState && (runtimeState.status === 'cooldown' || runtimeState.status === 'closed')) {
         await this.deps.watchabilityRepo.endActiveEpisode(roomId).catch(() => null)
@@ -242,7 +242,7 @@ export class ChatroomControlService {
       },
     }
 
-    const ensuredRuntime = config.features.directorRuntimeStateV1
+    const ensuredRuntime = config.launch.capabilities.directorRuntimeStateV1
       ? await this.deps.runtimeSceneStateManager?.ensureChatroomState({
           room: state.room,
           program: state.program,
@@ -259,7 +259,7 @@ export class ChatroomControlService {
       })
       ?? null
     const localIntentBundle =
-      config.features.directorRuntimeStateV1
+      config.launch.capabilities.directorRuntimeStateV1
       && sceneContract
       && ensuredRuntime
       && this.deps.localIntentService
@@ -335,7 +335,7 @@ export class ChatroomControlService {
       })),
     })
 
-    if (config.features.directorRuntimeStateV1) {
+    if (config.launch.capabilities.directorRuntimeStateV1) {
       await this.deps.runtimeSceneStateManager?.handleSignal({
         type: 'turn_planned',
         room_id: roomId,

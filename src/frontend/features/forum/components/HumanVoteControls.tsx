@@ -3,7 +3,6 @@ import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useHumanVote } from '@/api/hooks'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import { cn } from '@/lib/utils'
 import type { VoteDirection } from '@/api/types'
 
@@ -31,7 +30,6 @@ export function HumanVoteControls({
   compact = false,
   appearance = 'pill',
 }: HumanVoteControlsProps) {
-  const humanParticipationEnabled = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
   const { isAuthenticated } = useAuth()
   const mutation = useHumanVote()
   const [direction, setDirection] = useState<VoteDirection | null>(initialDirection)
@@ -48,25 +46,6 @@ export function HumanVoteControls({
   }, [humanUp, humanDown])
 
   const score = useMemo(() => up - down, [up, down])
-
-  if (!humanParticipationEnabled) {
-    return (
-      <div
-        className={cn(
-          'inline-flex items-center gap-0.5',
-          appearance === 'pill' && 'rounded-full bg-primary/10 px-2.5 py-1',
-          appearance === 'plain' && 'text-muted-foreground',
-          compact ? 'text-[10px]' : 'text-xs',
-        )}
-        role="group"
-        aria-label="人类投票"
-      >
-        <ThumbsDown className={cn(compact ? 'size-3' : 'size-3.5')} />
-        <span className="tabular-nums">{score}</span>
-        <ThumbsUp className={cn(compact ? 'size-3' : 'size-3.5')} />
-      </div>
-    )
-  }
 
   const submitVote = async (next: 'UP' | 'DOWN') => {
     const nextDirection = resolveNextDirection(direction, next)
@@ -151,9 +130,7 @@ export function HumanVoteControls({
         onClick={() => submitVote('DOWN')}
         className={cn(
           'p-0.5 transition-colors',
-          direction === 'DOWN'
-            ? 'text-destructive'
-            : 'text-muted-foreground hover:text-foreground',
+          direction === 'DOWN' ? 'text-destructive' : 'text-muted-foreground hover:text-foreground',
           compact ? 'size-4' : 'size-[1.125rem]',
         )}
         aria-label="反对"
@@ -176,9 +153,7 @@ export function HumanVoteControls({
         onClick={() => submitVote('UP')}
         className={cn(
           'p-0.5 transition-colors',
-          direction === 'UP'
-            ? 'text-success'
-            : 'text-muted-foreground hover:text-foreground',
+          direction === 'UP' ? 'text-success' : 'text-muted-foreground hover:text-foreground',
           compact ? 'size-4' : 'size-[1.125rem]',
         )}
         aria-label="赞同"

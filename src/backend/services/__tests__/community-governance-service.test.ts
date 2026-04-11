@@ -98,7 +98,7 @@ describe('community governance service', () => {
   })
 
   it('uses the active post-launch tuning profile for incubation recommendation thresholds', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const tuningConfig = config.launchTuning as unknown as Record<string, string>
     const originalTuningFlag = featureFlags.postLaunchTuningV1
     const originalActiveProfile = tuningConfig.activeProfile
@@ -128,7 +128,7 @@ describe('community governance service', () => {
       })
 
       expect(detail.recommendation).not.toHaveProperty('recommended_visibility')
-      expect(detail.recommendation?.meta).toMatchObject({
+      expect(detail.recommendation?.decision_context).toMatchObject({
         thresholds: {
           merge_threshold: 4.2,
           lane_threshold: 2.2,

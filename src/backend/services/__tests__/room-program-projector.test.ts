@@ -71,7 +71,7 @@ describe('RoomProgramProjector', () => {
   })
 
   it('inherits scene audit fields into raw message events and resolves referenced open loops', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const snapshot = { ...featureFlags }
     featureFlags.directorRuntimeStateV1 = true
 

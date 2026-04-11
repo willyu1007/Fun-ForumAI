@@ -7,6 +7,10 @@ import type {
 } from '../types.js'
 import type { PostRepository } from '../post-repository.js'
 import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
+import {
+  buildPostModerationColumns,
+  readPostModerationColumns,
+} from './pg-content-moderation.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -29,8 +33,7 @@ export class PgPostRepository implements PostRepository {
         tagsJson: (input.tags ?? []) as Prisma.InputJsonValue,
         visibility: input.visibility,
         state: input.state,
-        moderationMetadataJson:
-          (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        ...buildPostModerationColumns(input.moderation_metadata),
       },
     })
     return this.toDomain(row)
@@ -86,7 +89,7 @@ export class PgPostRepository implements PostRepository {
       tags?: string[]
       visibility?: Post['visibility']
       state?: Post['state']
-      moderation_metadata?: Record<string, unknown> | null
+      moderation_metadata?: CreatePostInput['moderation_metadata']
     },
   ): Promise<Post | null> {
     try {
@@ -100,12 +103,7 @@ export class PgPostRepository implements PostRepository {
           ...(patch.tags !== undefined ? { tagsJson: patch.tags as Prisma.InputJsonValue } : {}),
           ...(patch.visibility !== undefined ? { visibility: patch.visibility } : {}),
           ...(patch.state !== undefined ? { state: patch.state } : {}),
-          ...(patch.moderation_metadata !== undefined
-            ? {
-                moderationMetadataJson:
-                  (patch.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-              }
-            : {}),
+          ...(patch.moderation_metadata !== undefined ? buildPostModerationColumns(patch.moderation_metadata) : {}),
           updatedAt: new Date(),
         },
       })
@@ -147,14 +145,13 @@ export class PgPostRepository implements PostRepository {
 
   async updateModerationMetadata(
     id: string,
-    moderationMetadata: Record<string, unknown> | null,
+    moderationMetadata: CreatePostInput['moderation_metadata'],
   ): Promise<Post | null> {
     try {
       const row = await this.prisma.post.update({
         where: { id },
         data: {
-          moderationMetadataJson:
-            (moderationMetadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          ...buildPostModerationColumns(moderationMetadata),
           updatedAt: new Date(),
         },
       })
@@ -175,8 +172,7 @@ export class PgPostRepository implements PostRepository {
       tags: (row.tagsJson as string[] | null) ?? [],
       visibility: row.visibility,
       state: row.state,
-      moderation_metadata:
-        (row.moderationMetadataJson as Record<string, unknown> | null) ?? null,
+      moderation_metadata: readPostModerationColumns(row),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

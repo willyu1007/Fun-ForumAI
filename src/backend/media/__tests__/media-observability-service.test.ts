@@ -8,16 +8,16 @@ import { PublicDisclosureCapService } from '../../services/public-disclosure-cap
 
 describe('MediaObservabilityService', () => {
   const originalFeatures = {
-    mediaObservabilityV1: config.features.mediaObservabilityV1,
-    hotTopicPolicyV1: config.features.hotTopicPolicyV1,
+    mediaObservabilityV1: config.launch.capabilities.mediaObservabilityV1,
+    hotTopicPolicyV1: config.launch.capabilities.hotTopicPolicyV1,
   }
 
   afterEach(() => {
-    Object.assign(config.features, originalFeatures)
+    Object.assign(config.launch.capabilities, originalFeatures)
   })
 
   it('aggregates root-post metrics and escalates critical private leaks', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaObservabilityV1: true,
       hotTopicPolicyV1: false,
     })
@@ -119,7 +119,7 @@ describe('MediaObservabilityService', () => {
   })
 
   it('scans paged event windows without truncating metrics after the first 1000 events', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaObservabilityV1: true,
       hotTopicPolicyV1: false,
     })

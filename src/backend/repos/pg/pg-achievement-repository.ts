@@ -8,6 +8,12 @@ import type {
   PaginationOpts,
 } from '../types.js'
 import type { AchievementRepository } from '../achievement-repository.js'
+import {
+  fromAwardContextColumns,
+  fromSignalContextColumns,
+  toAwardContextColumns,
+  toSignalContextColumns,
+} from './achievement-signal-context.js'
 
 const GLOBAL_SCOPE: AchievementScope = 'global'
 const GLOBAL_SCOPE_KEY = '__global__'
@@ -42,6 +48,8 @@ export class PgAchievementRepository implements AchievementRepository {
     const scope = input.scope || GLOBAL_SCOPE
     const scopeKey = input.scope_key || GLOBAL_SCOPE_KEY
     const achievedAt = input.achieved_at ?? new Date()
+    const signalContext = toSignalContextColumns(input.signal_context)
+    const awardContext = toAwardContextColumns(input.award_context)
     const created = await this.prisma.agentAchievement.createMany({
       data: [{
         agentId: input.agent_id,
@@ -55,7 +63,8 @@ export class PgAchievementRepository implements AchievementRepository {
         visibility: input.visibility,
         achievedAt,
         evidenceJson: input.evidence as unknown as Prisma.InputJsonValue,
-        metaJson: (input.meta ?? null) as unknown as Prisma.InputJsonValue,
+        ...signalContext,
+        ...awardContext,
       }],
       skipDuplicates: true,
     })
@@ -78,7 +87,8 @@ export class PgAchievementRepository implements AchievementRepository {
           visibility: input.visibility,
           achievedAt,
           evidenceJson: input.evidence as unknown as Prisma.InputJsonValue,
-          metaJson: (input.meta ?? null) as unknown as Prisma.InputJsonValue,
+          ...signalContext,
+          ...awardContext,
         },
       })
       return { achievement: this.toDomain(row), created: true }
@@ -164,7 +174,47 @@ export class PgAchievementRepository implements AchievementRepository {
       visibility: row.visibility,
       achieved_at: row.achievedAt,
       evidence: toEvidence(row.evidenceJson),
-      meta: (row.metaJson ?? null) as Record<string, unknown> | null,
+      signal_context: fromSignalContextColumns({
+        eventId: row.eventId,
+        threadId: row.threadId,
+        communityId: row.communityId,
+        peerAgentId: row.peerAgentId,
+        toAgentId: row.toAgentId,
+        previousState: row.previousState,
+        nextState: row.nextState,
+        action: row.action,
+        adminUserId: row.adminUserId,
+        targetType: row.targetType,
+        resultSuccess: row.resultSuccess,
+        newVisibility: row.newVisibility,
+        newState: row.newState,
+        postId: row.postId,
+        artifactId: row.artifactId,
+        publishShape: row.publishShape,
+        sessionId: row.sessionId,
+        humanMessageId: row.humanMessageId,
+        openingMessageId: row.openingMessageId,
+        signalVisibilityReason: row.signalVisibilityReason,
+        sourceRef: row.sourceRef,
+        sourceEventId: row.sourceEventId,
+        contentKind: row.contentKind,
+        generatedAt: row.generatedAt,
+        snapshotDate: row.snapshotDate,
+        sourceMode: row.sourceMode,
+        shelfId: row.shelfId,
+        storylineId: row.storylineId,
+        dedupKey: row.sourceDedupKey,
+      }),
+      award_context: fromAwardContextColumns({
+        triggerKind: row.triggerKind,
+        triggerMode: row.triggerMode,
+        metricName: row.metricName,
+        metricValue: row.metricValue,
+        metricThreshold: row.metricThreshold,
+        evidenceSatisfied: row.evidenceSatisfied,
+        visibilityReason: row.visibilityReason,
+        sourceDedupKey: row.sourceDedupKey,
+      }),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

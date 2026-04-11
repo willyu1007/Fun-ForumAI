@@ -46,7 +46,6 @@ export class RoleAssignmentService {
     agent_id: string
     actor_user_id: string
     expires_at?: Date | null
-    meta?: Record<string, unknown> | null
   }): Promise<RoleAssignment> {
     const community = this.deps.communityRepo.findById(input.community_id)
     if (!community) throw new NotFoundError('Community', input.community_id)
@@ -112,7 +111,6 @@ export class RoleAssignmentService {
       status: 'ACTIVE',
       assigned_by: input.actor_user_id,
       expires_at: input.expires_at ?? null,
-      meta: input.meta ?? null,
     })
 
     this.deps.eventRepo.create({
@@ -172,10 +170,9 @@ export class RoleAssignmentService {
       ...(role !== undefined ? { role } : {}),
       ...(input.expires_at !== undefined ? { expires_at: input.expires_at } : {}),
       ...(transitionedToRevoked ? { revoked_at: new Date() } : {}),
-      meta: {
-        ...(existing.meta ?? {}),
-        ...(input.reason ? { reason: input.reason } : {}),
-      },
+      ...(input.reason !== undefined
+        ? { last_action_reason: input.reason }
+        : {}),
     })
     if (!next) {
       const latest = this.deps.roleAssignmentRepo.findById(existing.id)

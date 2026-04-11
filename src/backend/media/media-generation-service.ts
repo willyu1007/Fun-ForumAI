@@ -206,10 +206,8 @@ export class MediaGenerationService {
           to_node_type: 'generation_job',
           to_node_id: job.id,
           edge_kind: 'plan_scheduled_generation_job',
-          metadata_json: {
-            input_mode: inputMode,
-            provider: job.provider,
-          },
+          input_mode: inputMode,
+          provider: job.provider,
         },
         ...basedOnProjectionIds.map((projectionId) => ({
           from_node_type: 'projection' as const,
@@ -217,9 +215,7 @@ export class MediaGenerationService {
           to_node_type: 'generation_job' as const,
           to_node_id: job.id,
           edge_kind: 'generation_job_based_on_projection',
-          metadata_json: {
-            input_mode: inputMode,
-          },
+          input_mode: inputMode,
         })),
       ])
     }
@@ -291,7 +287,7 @@ export class MediaGenerationService {
   }
 
   async sweepTimedOutRunningJobs(force = false): Promise<MediaGenerationJob[]> {
-    if (!config.features.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
+    if (!config.launch.capabilities.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
       return []
     }
     const nowMs = Date.now()
@@ -317,7 +313,7 @@ export class MediaGenerationService {
   }
 
   private async processNextQueuedJobInternal(): Promise<MediaGenerationJob | null> {
-    if (!config.features.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
+    if (!config.launch.capabilities.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
       return null
     }
 
@@ -474,9 +470,7 @@ export class MediaGenerationService {
             to_node_type: 'asset',
             to_node_id: generated.asset.id,
             edge_kind: 'generation_job_produced_asset',
-            metadata_json: {
-              visibility_policy: generated.asset.visibility_policy,
-            },
+            visibility_policy: generated.asset.visibility_policy,
           },
           {
             from_node_type: 'asset',
@@ -484,9 +478,7 @@ export class MediaGenerationService {
             to_node_type: 'semantic_snapshot',
             to_node_id: generated.snapshot.id,
             edge_kind: 'generated_asset_described_by_snapshot',
-            metadata_json: {
-              schema_version: generated.snapshot.schema_version,
-            },
+            schema_version: generated.snapshot.schema_version,
           },
         ])
       }
@@ -531,7 +523,7 @@ export class MediaGenerationService {
   }
 
   private kickProcessing(): void {
-    if (this.processKickScheduled || !config.features.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
+    if (this.processKickScheduled || !config.launch.capabilities.mediaGenerationV1 || !this.deps.gateway.isConfigured) {
       return
     }
     this.processKickScheduled = true

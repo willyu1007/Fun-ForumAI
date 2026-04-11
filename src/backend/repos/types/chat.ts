@@ -1,4 +1,5 @@
 import type { SurfaceMediaAttachmentView } from './media.js'
+import type { MessageModerationMetadata } from './moderation-context.js'
 
 export type RoomStatus = 'active' | 'cooling' | 'archived'
 export type RoomMemberJoinSource = 'dispatched' | 'wandering' | 'creator'
@@ -375,7 +376,7 @@ export interface ChatMessage {
   vote_score: number
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
-  moderation_metadata?: Record<string, unknown> | null
+  moderation_metadata?: MessageModerationMetadata | null
   attachments?: SurfaceMediaAttachmentView[]
   created_at: Date
 }
@@ -403,7 +404,7 @@ export interface CreateChatMessageInput {
   parent_message_id?: string | null
   visibility?: ChatMessage['visibility']
   state?: ChatMessage['state']
-  moderation_metadata?: Record<string, unknown> | null
+  moderation_metadata?: MessageModerationMetadata | null
   image_plan_id?: string
   display_attachment_refs?: Array<{
     asset_id: string

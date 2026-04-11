@@ -6,18 +6,18 @@ import { compileMediaGenerationSpec } from '../media-generation-compiler.js'
 describe('ArkSeedreamGateway', () => {
   const originalMediaGeneration = { ...config.mediaGeneration }
   const originalFeatureFlags = {
-    mediaGenerationV1: config.features.mediaGenerationV1,
+    mediaGenerationV1: config.launch.capabilities.mediaGenerationV1,
   }
 
   afterEach(() => {
     Object.assign(config.mediaGeneration, originalMediaGeneration)
-    Object.assign(config.features, originalFeatureFlags)
+    Object.assign(config.launch.capabilities, originalFeatureFlags)
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
   it('calls the Ark image endpoint with the expected model and request body', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaGenerationV1: true,
     })
     Object.assign(config.mediaGeneration, {

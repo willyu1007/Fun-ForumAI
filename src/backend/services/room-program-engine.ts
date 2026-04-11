@@ -45,7 +45,7 @@ export class RoomProgramEngine {
     if (!state || !state.program.enabled || !state.episode) return null
     const initialEpisode = state.episode
 
-    const runtimeState = config.features.directorRuntimeStateV1
+    const runtimeState = config.launch.capabilities.directorRuntimeStateV1
       ? await this.deps.runtimeSceneStateManager?.ensureChatroomState({
           room: state.room,
           program: state.program,
@@ -82,7 +82,7 @@ export class RoomProgramEngine {
     const cue = this.deps.cuePlanner.plan(state, input.triggerAgentId)
     if (!cue) return null
 
-    const ensuredRuntime = config.features.directorRuntimeStateV1
+    const ensuredRuntime = config.launch.capabilities.directorRuntimeStateV1
       ? await this.deps.runtimeSceneStateManager?.ensureChatroomState({
           room: state.room,
           program: state.program,
@@ -123,7 +123,7 @@ export class RoomProgramEngine {
       })
       ?? null
     const localIntentBundle =
-      config.features.directorRuntimeStateV1
+      config.launch.capabilities.directorRuntimeStateV1
       && sceneContract
       && ensuredRuntime
       && this.deps.localIntentService
@@ -199,7 +199,7 @@ export class RoomProgramEngine {
       })),
     })
 
-    if (config.features.directorRuntimeStateV1) {
+    if (config.launch.capabilities.directorRuntimeStateV1) {
       await this.deps.runtimeSceneStateManager?.handleSignal({
         type: 'turn_planned',
         room_id: state.room.id,

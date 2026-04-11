@@ -340,7 +340,7 @@ stageIncubationRouter.get('/community-proposals/:proposalId/events', requireHuma
 })
 
 stageIncubationRouter.get('/agents/:agentId/stage-tier', requireHumanAuth, async (req, res) => {
-  if (!config.features.stageTierV1) {
+  if (!config.launch.capabilities.stageTierV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Stage tier API is disabled by feature flag.' },
     })
@@ -375,7 +375,7 @@ stageIncubationRouter.post(
   requireHumanAuth,
   validate(triggerAftershowSchema),
   async (req, res) => {
-    if (!config.features.aftershowV1) {
+    if (!config.launch.capabilities.aftershowV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Aftershow API is disabled by feature flag.' },
       })
@@ -401,7 +401,7 @@ stageIncubationRouter.post(
   requireAdmin,
   validate(createRoleAssignmentSchema),
   async (req, res) => {
-    if (!config.features.roleAssignmentV1) {
+    if (!config.launch.capabilities.roleAssignmentV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Role assignment API is disabled by feature flag.' },
       })
@@ -416,7 +416,6 @@ stageIncubationRouter.post(
       agent_id: req.body.agent_id,
       actor_user_id: req.user!.userId,
       expires_at: req.body.expires_at ? new Date(req.body.expires_at) : null,
-      meta: req.body.meta ?? null,
     })
 
     res.status(201).json({ data: assignment })
@@ -429,7 +428,7 @@ stageIncubationRouter.patch(
   requireAdmin,
   validate(updateRoleAssignmentSchema),
   async (req, res) => {
-    if (!config.features.roleAssignmentV1) {
+    if (!config.launch.capabilities.roleAssignmentV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Role assignment API is disabled by feature flag.' },
       })
@@ -452,7 +451,7 @@ stageIncubationRouter.patch(
 )
 
 stageIncubationRouter.get('/incubation/jobs/:jobId', requireHumanAuth, async (req, res) => {
-  if (!config.features.incubationV1) {
+  if (!config.launch.capabilities.incubationV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Incubation API is disabled by feature flag.' },
     })
@@ -476,7 +475,7 @@ stageIncubationRouter.post(
   requireHumanAuth,
   validate(createIncubationGrantSchema),
   async (req, res) => {
-    if (!config.features.incubationV1) {
+    if (!config.launch.capabilities.incubationV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Incubation API is disabled by feature flag.' },
       })
@@ -507,7 +506,7 @@ stageIncubationRouter.post(
   requireHumanAuth,
   validate(createIncubationReviewVerdictSchema),
   async (req, res) => {
-    if (!config.features.incubationV1) {
+    if (!config.launch.capabilities.incubationV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Incubation API is disabled by feature flag.' },
       })
@@ -535,7 +534,7 @@ stageIncubationRouter.post(
   requireAdmin,
   validate(adminSeasonRotateSchema),
   async (req, res) => {
-    if (!config.features.stageRotationV1) {
+    if (!config.launch.capabilities.stageRotationV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Stage rotation is disabled by feature flag.' },
       })

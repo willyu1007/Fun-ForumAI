@@ -25,7 +25,7 @@ export async function decayAndForget(
   let decayPerDay = DECAY_FACTOR_PER_DAY
   let forgetThreshold = FORGET_THRESHOLD
 
-  if (config.features.agentStatsBehavior && deps.statsService) {
+  if (config.launch.capabilities.agentStatsBehavior && deps.statsService) {
     const knobs = deps.statsService.getDerivedSync(agentId)
     decayPerDay = knobs.memory.decay_per_day
     forgetThreshold = knobs.memory.forget_threshold
@@ -148,12 +148,10 @@ async function runTypedNightlyMaintenance(
             'context:compaction',
             ...Array.from(new Set(compacted.mergeCandidates.map((card) => `scene:${card.scene}`))),
           ],
-          meta: {
-            source: 'context_memory_nightly',
-            event_ids: compacted.mergeCandidates
-              .map((card) => card.event_id)
-              .filter((value): value is string => Boolean(value)),
-          },
+          entry_source: 'context_memory_nightly',
+          source_event_ids: compacted.mergeCandidates
+            .map((card) => card.event_id)
+            .filter((value): value is string => Boolean(value)),
           dedup_key: dedupKey,
         })
         compactionCreated = true

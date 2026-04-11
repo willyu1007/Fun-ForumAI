@@ -14,11 +14,14 @@ export interface PostRepository {
     tags?: string[]
     visibility?: Post['visibility']
     state?: Post['state']
-    moderation_metadata?: Record<string, unknown> | null
+    moderation_metadata?: CreatePostInput['moderation_metadata']
   }): Promise<Post | null>
   updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
   updateState(id: string, state: Post['state']): Promise<Post | null>
-  updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<Post | null>
+  updateModerationMetadata(
+    id: string,
+    moderationMetadata: CreatePostInput['moderation_metadata'],
+  ): Promise<Post | null>
 }
 
 let counter = 0
@@ -90,7 +93,7 @@ export class InMemoryPostRepository implements PostRepository {
       tags?: string[]
       visibility?: Post['visibility']
       state?: Post['state']
-      moderation_metadata?: Record<string, unknown> | null
+      moderation_metadata?: CreatePostInput['moderation_metadata']
     },
   ): Promise<Post | null> {
     const post = this.store.get(id)
@@ -125,10 +128,10 @@ export class InMemoryPostRepository implements PostRepository {
     return post
   }
 
-  async updateModerationMetadata(id: string, moderationMetadata: Record<string, unknown> | null): Promise<Post | null> {
+  async updateModerationMetadata(id: string, moderationMetadata: CreatePostInput['moderation_metadata']): Promise<Post | null> {
     const post = this.store.get(id)
     if (!post) return null
-    post.moderation_metadata = moderationMetadata
+    post.moderation_metadata = moderationMetadata ?? null
     post.updated_at = new Date()
     return post
   }

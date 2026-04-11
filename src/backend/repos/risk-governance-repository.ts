@@ -200,7 +200,6 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       submitted_at: now,
       reviewed_at: input.reviewed_at ?? now,
       expires_at: input.expires_at ?? null,
-      meta: input.meta ?? null,
     }
     this.identityVerifications.set(entity.id, entity)
     const ids = this.identityByUser.get(entity.user_id) ?? []
@@ -550,7 +549,6 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       target_id: input.target_id,
       relation_type: input.relation_type ?? 'PRIMARY',
       channel: input.channel,
-      meta: input.meta ?? null,
       community_id: input.community_id ?? null,
       agent_id: input.agent_id ?? null,
       user_id: input.user_id ?? null,
@@ -571,7 +569,6 @@ export class InMemoryRiskGovernanceRepository implements RiskGovernanceRepositor
       ...target,
       ...(input.target_id !== undefined ? { target_id: input.target_id } : {}),
       ...(input.relation_type !== undefined ? { relation_type: input.relation_type } : {}),
-      ...(input.meta !== undefined ? { meta: input.meta } : {}),
       ...(input.room_id !== undefined ? { room_id: input.room_id } : {}),
       ...(input.session_id !== undefined ? { session_id: input.session_id } : {}),
       ...(input.message_id !== undefined ? { message_id: input.message_id } : {}),

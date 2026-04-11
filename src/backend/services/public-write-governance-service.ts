@@ -250,11 +250,11 @@ export class PublicWriteGovernanceService {
   }
 
   private assertFeatureEnabled(action: PublicWriteAction): void {
-    if (!config.features.humanParticipationV1) {
+    if (!config.launch.capabilities.humanParticipationV1) {
       throw new ForbiddenError('Human participation is disabled by feature flag')
     }
 
-    if (action === 'CREATE_AUDIENCE_MESSAGE' && !config.features.audienceZoneV1) {
+    if (action === 'CREATE_AUDIENCE_MESSAGE' && !config.launch.capabilities.audienceZoneV1) {
       throw new ForbiddenError('Audience API is disabled by feature flag')
     }
   }
@@ -273,10 +273,10 @@ export class PublicWriteGovernanceService {
 
   private snapshotFeatureFlags(): PublicWriteFeatureFlagSnapshot {
     return {
-      humanParticipationV1: config.features.humanParticipationV1,
-      audienceZoneV1: config.features.audienceZoneV1,
-      riskControlV1: config.features.riskControlV1,
-      riskControlPublicEnforce: config.features.riskControlPublicEnforce,
+      humanParticipationV1: config.launch.capabilities.humanParticipationV1,
+      audienceZoneV1: config.launch.capabilities.audienceZoneV1,
+      riskControlV1: config.launch.capabilities.riskControlV1,
+      riskControlPublicEnforce: config.launch.capabilities.riskControlPublicEnforce,
     }
   }
 
@@ -294,7 +294,7 @@ export class PublicWriteGovernanceService {
   }
 
   private async isRateLimited(action: PublicWriteAction, actorUserId: string): Promise<boolean> {
-    if (!config.features.riskControlV1 || !config.features.riskControlPublicEnforce) {
+    if (!config.launch.capabilities.riskControlV1 || !config.launch.capabilities.riskControlPublicEnforce) {
       return false
     }
 

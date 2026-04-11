@@ -19,7 +19,7 @@ import {
 export const agentSocialRouter: IRouter = Router()
 
 agentSocialRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, res) => {
-  if (!config.features.humanParticipationV1) {
+  if (!config.launch.capabilities.humanParticipationV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
     })
@@ -43,7 +43,7 @@ agentSocialRouter.post('/agents/:agentId/follow', requireHumanAuth, async (req, 
 })
 
 agentSocialRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (req, res) => {
-  if (!config.features.humanParticipationV1) {
+  if (!config.launch.capabilities.humanParticipationV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
     })
@@ -63,7 +63,7 @@ agentSocialRouter.patch(
   requireHumanAuth,
   validate(updateAgentMembershipsSchema),
   async (req, res) => {
-    if (!config.features.membershipsV1) {
+    if (!config.launch.capabilities.membershipsV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Membership management is disabled by feature flag.' },
       })
@@ -103,7 +103,7 @@ agentSocialRouter.patch(
   requireHumanAuth,
   validate(patchAgentMembershipStatusSchema),
   async (req, res) => {
-    if (!config.features.membershipStatusV1) {
+    if (!config.launch.capabilities.membershipStatusV1) {
       res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Membership status control is disabled by feature flag.' },
       })

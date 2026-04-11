@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { Prisma, type PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
 import type {
   AudienceThread,
   AudienceMessage,
@@ -55,7 +55,8 @@ function toSummary(row: {
   windowEnd: Date
   summaryText: string
   messageCount: number
-  metaJson: Prisma.JsonValue | null
+  source: string | null
+  safeMode: boolean
   createdAt: Date
   updatedAt: Date
 }): AudienceSummary {
@@ -68,7 +69,8 @@ function toSummary(row: {
     window_end: row.windowEnd,
     summary_text: row.summaryText,
     message_count: row.messageCount,
-    meta: row.metaJson as Record<string, unknown> | null,
+    summary_source: row.source === 'aftershow_trigger' ? 'aftershow_trigger' : null,
+    safe_mode: row.safeMode,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -147,15 +149,13 @@ export class PgAudienceRepository implements AudienceRepository {
         windowEnd: input.window_end,
         summaryText: input.summary_text,
         messageCount: input.message_count,
-        metaJson: input.meta ? (input.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+        source: input.summary_source ?? null,
+        safeMode: input.safe_mode ?? false,
         createdAt: now,
         updatedAt: now,
       },
     })
-    return toSummary({
-      ...row,
-      metaJson: row.metaJson,
-    })
+    return toSummary(row)
   }
 
   async findLatestSummaryByThread(threadId: string): Promise<AudienceSummary | null> {
@@ -164,9 +164,6 @@ export class PgAudienceRepository implements AudienceRepository {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
     if (!row) return null
-    return toSummary({
-      ...row,
-      metaJson: row.metaJson,
-    })
+    return toSummary(row)
   }
 }

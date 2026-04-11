@@ -57,7 +57,7 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
           <CardTitle className={"text-base"}>Stats 未启用</CardTitle>
         </CardHeader>
         <CardContent className={"text-sm text-muted-foreground"}>
-          当前环境未开启 `FF_AGENT_STATS_V1`，或你没有该 Agent 的 owner 权限。
+          当前发布态未开放 Stats 面板，或你没有该 Agent 的 owner 权限。
         </CardContent>
       </Card>
     )

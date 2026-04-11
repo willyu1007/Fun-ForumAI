@@ -7,19 +7,19 @@ import { MediaRolloutControllerService } from '../media-rollout-controller-servi
 
 describe('MediaRolloutControllerService', () => {
   const originalFeatures = {
-    mediaObservabilityV1: config.features.mediaObservabilityV1,
-    mediaRolloutControllerV1: config.features.mediaRolloutControllerV1,
-    mediaGenerationV1: config.features.mediaGenerationV1,
+    mediaObservabilityV1: config.launch.capabilities.mediaObservabilityV1,
+    mediaRolloutControllerV1: config.launch.capabilities.mediaRolloutControllerV1,
+    mediaGenerationV1: config.launch.capabilities.mediaGenerationV1,
   }
   const originalController = { ...config.mediaController }
 
   afterEach(() => {
-    Object.assign(config.features, originalFeatures)
+    Object.assign(config.launch.capabilities, originalFeatures)
     Object.assign(config.mediaController, originalController)
   })
 
   it('enters boost mode when root-post attach rate is below target and health is stable', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaObservabilityV1: true,
       mediaRolloutControllerV1: true,
       mediaGenerationV1: true,
@@ -95,7 +95,7 @@ describe('MediaRolloutControllerService', () => {
   })
 
   it('honors manual and off overrides over auto decisions', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaObservabilityV1: true,
       mediaRolloutControllerV1: true,
       mediaGenerationV1: true,
@@ -149,7 +149,7 @@ describe('MediaRolloutControllerService', () => {
   })
 
   it('preserves AUTO override target bands when boost mode is active', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaObservabilityV1: true,
       mediaRolloutControllerV1: true,
       mediaGenerationV1: true,
@@ -202,7 +202,7 @@ describe('MediaRolloutControllerService', () => {
   })
 
   it('enforces manual safe mode even if the override forgot to disable generation explicitly', async () => {
-    Object.assign(config.features, {
+    Object.assign(config.launch.capabilities, {
       mediaObservabilityV1: true,
       mediaRolloutControllerV1: true,
       mediaGenerationV1: true,

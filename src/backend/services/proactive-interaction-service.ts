@@ -239,7 +239,7 @@ export class ProactiveInteractionService {
     messageId: string
     why_relevant_hint: string
   }): Promise<void> {
-    if (!config.features.mediaProactivePrivateSurfaceV1 || !this.deps.mediaAssetService) {
+    if (!config.launch.capabilities.mediaProactivePrivateSurfaceV1 || !this.deps.mediaAssetService) {
       return
     }
     const candidate = await this.deps.mediaAssetService.findLatestAgentAuthoredPrivateAttachmentCandidate(

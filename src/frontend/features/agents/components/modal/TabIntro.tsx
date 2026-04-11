@@ -55,7 +55,11 @@ import {
   readProjectionText,
   readSemanticProofBadgeLabels,
 } from '@/shared/utils/public-author'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import {
+  agentStatsUiEnabled,
+  humanParticipationEnabled,
+  multimodalAgentMediaEnabled,
+} from '@/shared/config/frontend-capabilities'
 
 const STATUS_TONES: Record<string, StatusTone> = {
   ACTIVE: 'success',
@@ -76,9 +80,6 @@ function normalizeBio(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null
 }
 
-const STATS_UI_ENABLED = isFrontendFlagEnabled('VITE_FF_AGENT_STATS_UI')
-const HUMAN_PARTICIPATION_ENABLED = isFrontendFlagEnabled('VITE_FF_HUMAN_PARTICIPATION_V1')
-const MULTIMODAL_MEDIA_ENABLED = isFrontendFlagEnabled('VITE_FF_MULTIMODAL_AGENT_MEDIA_V1')
 type TabId =
   | 'overview'
   | 'stats'
@@ -92,7 +93,8 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const qc = useQueryClient()
   const guidanceEnabled = isGuidanceEnabled()
   const routerLocation = useLocation()
-  const { viewMode, setActiveTab, setIntroSection, introSection, sourceSessionId } = useAgentModalStore()
+  const { viewMode, setActiveTab, setIntroSection, introSection, sourceSessionId } =
+    useAgentModalStore()
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [showManagementDetails, setShowManagementDetails] = useState(false)
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
@@ -193,7 +195,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
       label: string
     }> = [
       { id: 'overview', label: '概览' },
-      ...(STATS_UI_ENABLED ? [{ id: 'stats' as const, label: 'Stats' }] : []),
+      ...(agentStatsUiEnabled ? [{ id: 'stats' as const, label: 'Stats' }] : []),
       { id: 'privacy', label: '隐私' },
       ...(canViewRuns ? [{ id: 'runs' as const, label: '运行记录' }] : []),
     ]
@@ -202,9 +204,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
       ...baseTabs,
       ...(reveal.style ? [{ id: 'style' as const, label: '风格' }] : []),
       ...(reveal.instructions ? [{ id: 'instructions' as const, label: '指令' }] : []),
-      ...(MULTIMODAL_MEDIA_ENABLED
-        ? [{ id: 'multimodal' as const, label: '媒体素材' }]
-        : []),
+      ...(multimodalAgentMediaEnabled ? [{ id: 'multimodal' as const, label: '媒体素材' }] : []),
       ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高阶' }] : []),
     ]
   }, [canViewRuns, isOwner, reveal.advanced, reveal.instructions, reveal.style])
@@ -222,13 +222,10 @@ export function TabIntro({ agentId }: { agentId: string }) {
   if (isLoading) {
     return (
       <div data-testid="agent-profile-page">
-        <DetailPageLayout
-          title="智能体档案"
-          subtitle="正在准备角色档案。"
-        >
+        <DetailPageLayout title="智能体档案" subtitle="正在准备角色档案。">
           <div className="space-y-3">
             <Skeleton className="h-6 w-40" />
-            <Skeleton className={"h-32 rounded-md"} data-testid="agent-profile-loading" />
+            <Skeleton className={'h-32 rounded-md'} data-testid="agent-profile-loading" />
           </div>
         </DetailPageLayout>
       </div>
@@ -238,10 +235,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   if (error || !data?.data) {
     return (
       <div data-testid="agent-profile-page">
-        <DetailPageLayout
-          title="智能体档案"
-          subtitle="未能加载该角色的详情。"
-        >
+        <DetailPageLayout title="智能体档案" subtitle="未能加载该角色的详情。">
           <div data-testid="agent-profile-error">
             <EmptyState
               title="未找到该智能体。"
@@ -261,10 +255,10 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const proofBadges = readSemanticProofBadgeLabels(safeAgent)
   const highlightProofBadges = publicHighlights?.public_proof?.achievement_badges ?? []
   const publicBio =
-    normalizeBio(publicHighlights ? readProjectionText(publicHighlights) : null)
-    ?? normalizeBio(safeAgent.social_bio?.public_bio)
-    ?? normalizeBio(readProjectionText(safeAgent))
-    ?? null
+    normalizeBio(publicHighlights ? readProjectionText(publicHighlights) : null) ??
+    normalizeBio(safeAgent.social_bio?.public_bio) ??
+    normalizeBio(readProjectionText(safeAgent)) ??
+    null
   const ownerBio = normalizeBio(safeAgent.social_bio?.owner_bio)
   const presenceNote = normalizeBio(safeAgent.social_bio?.presence_note)
   const topChronicle = publicHighlights?.top_chronicle[0] ?? null
@@ -272,12 +266,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const canOpenPrivateChat = safeAgent.surface_access?.private_chat_enabled !== false
   const canFollowAgent = safeAgent.surface_access?.follow_enabled !== false
   const shouldShowPublicProof =
-    !isOwner &&
-    Boolean(
-      publicBio ||
-      proofBadges.length ||
-      publicHighlights?.top_chronicle.length,
-    )
+    !isOwner && Boolean(publicBio || proofBadges.length || publicHighlights?.top_chronicle.length)
   const debugProfile = safeAgent.inference_profile_debug?.profile
   const shadowReview = safeAgent.inference_profile_debug?.shadowReview
   const isFollowed = !!safeAgent.is_followed
@@ -295,10 +284,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
       ? [{ label: '所有者', value: safeAgent.owner_id, monospace: false }]
       : []),
   ]
-  const pageSubtitle = [
-    safeAgent.persona_seed_label,
-    safeAgent.home_voice_line_label,
-  ]
+  const pageSubtitle = [safeAgent.persona_seed_label, safeAgent.home_voice_line_label]
     .filter(Boolean)
     .join(' · ')
   const headerActions = (
@@ -308,7 +294,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
           {isOwner ? '带一段经历给她' : '私聊'}
         </Button>
       ) : null}
-      {HUMAN_PARTICIPATION_ENABLED && canFollowAgent && isAuthenticated ? (
+      {humanParticipationEnabled && canFollowAgent && isAuthenticated ? (
         <Button
           size="sm"
           variant={isFollowed ? 'secondary' : 'default'}
@@ -317,7 +303,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
         >
           {followBusy ? '处理中…' : isFollowed ? '已关注' : '关注'}
         </Button>
-      ) : HUMAN_PARTICIPATION_ENABLED && canFollowAgent ? (
+      ) : humanParticipationEnabled && canFollowAgent ? (
         <Button size="sm" variant="outline" asChild>
           <Link to="/login" state={buildAuthRedirectState(currentPath, currentPath)}>
             登录后关注
@@ -336,10 +322,10 @@ export function TabIntro({ agentId }: { agentId: string }) {
             setTab(t.id as TabId)
             setIntroSection(t.id as TabId)
           }}
-          className={`${"whitespace-nowrap px-3 py-2 text-sm transition-colors"} ${
+          className={`${'whitespace-nowrap px-3 py-2 text-sm transition-colors'} ${
             tab === t.id
-              ? "border-b-2 border-primary font-medium text-foreground"
-              : "text-muted-foreground hover:text-foreground"
+              ? 'border-b-2 border-primary font-medium text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           {t.label}
@@ -358,27 +344,25 @@ export function TabIntro({ agentId }: { agentId: string }) {
       >
         <div className="space-y-4">
           <Card data-testid="agent-profile-summary">
-            <CardHeader className={"pb-3"}>
+            <CardHeader className={'pb-3'}>
               <div className="flex items-center gap-3">
-                <Avatar className={"h-12 w-12 border-2 border-primary/20"}>
+                <Avatar className={'h-12 w-12 border-2 border-primary/20'}>
                   <AvatarImage
                     src={resolveAgentAvatarSrc(safeAgent)}
                     alt={safeAgent.display_name}
                     className="object-cover"
                   />
-                  <AvatarFallback className={"bg-primary/10 font-semibold text-primary"}>
+                  <AvatarFallback className={'bg-primary/10 font-semibold text-primary'}>
                     {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className={"text-base"}>{safeAgent.display_name}</CardTitle>
+                    <CardTitle className={'text-base'}>{safeAgent.display_name}</CardTitle>
                     <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
                       {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                     </StatusBadge>
-                    {identityChip && (
-                      <Badge variant="outline">{identityChip}</Badge>
-                    )}
+                    {identityChip && <Badge variant="outline">{identityChip}</Badge>}
                     {headerProofBadges.map((badge) => (
                       <Badge key={badge} variant="secondary">
                         {badge}
@@ -419,15 +403,15 @@ export function TabIntro({ agentId }: { agentId: string }) {
                   </div>
                 )}
                 {safeAgent.identity_contract && (
-                  <div className={"mb-4 rounded-md border bg-muted/30 p-3"}>
-                    <p className={"text-xs font-medium"}>角色底色</p>
-                    <p className={"mt-1 text-sm text-muted-foreground"}>
+                  <div className={'mb-4 rounded-md border bg-muted/30 p-3'}>
+                    <p className={'text-xs font-medium'}>角色底色</p>
+                    <p className={'mt-1 text-sm text-muted-foreground'}>
                       {safeAgent.identity_contract.visible_persona.style}
                     </p>
                     {safeAgent.identity_contract.owner_style_pins.interests?.length ? (
-                      <div className={"mt-2 flex flex-wrap gap-1"}>
+                      <div className={'mt-2 flex flex-wrap gap-1'}>
                         {safeAgent.identity_contract.owner_style_pins.interests.map((interest) => (
-                          <Badge key={interest} variant="outline" className={"text-[10px]"}>
+                          <Badge key={interest} variant="outline" className={'text-[10px]'}>
                             {interest}
                           </Badge>
                         ))}
@@ -463,11 +447,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
                       {showManagementDetails ? '收起管理信息' : '管理信息'}
                     </Button>
                     {showManagementDetails ? (
-                      <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
+                      <div className={'grid grid-cols-2 gap-3 text-xs sm:grid-cols-3'}>
                         {managementMeta.map((item) => (
                           <div key={item.label}>
-                            <span className={"text-muted-foreground"}>{item.label}</span>
-                            <p className={item.monospace ? "font-mono text-[10px]" : "font-medium"}>
+                            <span className={'text-muted-foreground'}>{item.label}</span>
+                            <p className={item.monospace ? 'font-mono text-[10px]' : 'font-medium'}>
                               {item.value}
                             </p>
                           </div>
@@ -484,28 +468,28 @@ export function TabIntro({ agentId }: { agentId: string }) {
 
           {safeAgent.personality_narrative && (
             <Card data-testid="agent-profile-narrative">
-              <CardHeader className={"pb-2"}>
-                <CardTitle className={"text-base"}>最近的人格变化</CardTitle>
+              <CardHeader className={'pb-2'}>
+                <CardTitle className={'text-base'}>最近的人格变化</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <p className={"mt-1 text-sm text-muted-foreground"}>
+                <p className={'mt-1 text-sm text-muted-foreground'}>
                   {safeAgent.personality_narrative.summary}
                 </p>
                 {safeAgent.personality_narrative.bullets.map((bullet) => (
-                  <p key={bullet} className={"text-xs text-muted-foreground"}>
+                  <p key={bullet} className={'text-xs text-muted-foreground'}>
                     {bullet}
                   </p>
                 ))}
-                <p className={"text-xs text-muted-foreground"}>
+                <p className={'text-xs text-muted-foreground'}>
                   {safeAgent.personality_narrative.growthNote}
                 </p>
                 {safeAgent.personality_narrative.stageNote && (
-                  <p className={"text-xs text-muted-foreground"}>
+                  <p className={'text-xs text-muted-foreground'}>
                     {safeAgent.personality_narrative.stageNote}
                   </p>
                 )}
                 {safeAgent.personality_narrative.migrationNote && (
-                  <p className={"text-xs text-muted-foreground"}>
+                  <p className={'text-xs text-muted-foreground'}>
                     {safeAgent.personality_narrative.migrationNote}
                   </p>
                 )}
@@ -515,40 +499,42 @@ export function TabIntro({ agentId }: { agentId: string }) {
 
           {isAdmin && safeAgent.inference_profile_debug && (
             <Card>
-              <CardHeader className={"pb-2"}>
-                <CardTitle className={"text-base"}>人格编译诊断</CardTitle>
+              <CardHeader className={'pb-2'}>
+                <CardTitle className={'text-base'}>人格编译诊断</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className={"rounded-md border bg-background/80 p-3"}>
-                    <p className={"text-sm font-medium"}>
+                  <div className={'rounded-md border bg-background/80 p-3'}>
+                    <p className={'text-sm font-medium'}>
                       {safeAgent.inference_profile_debug.profile.incumbentFamily}
                       {' -> '}
                       {safeAgent.inference_profile_debug.profile.challengerFamily ?? 'none'}
                     </p>
-                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                    <p className={'mt-1 text-xs text-muted-foreground'}>
                       migration={safeAgent.inference_profile_debug.profile.migrationState}
                       {' · '}lead={safeAgent.inference_profile_debug.profile.consecutiveLeadWindows}
-                      {' · '}delta={safeAgent.inference_profile_debug.profile.challengerScoreDelta ?? 0}
+                      {' · '}delta=
+                      {safeAgent.inference_profile_debug.profile.challengerScoreDelta ?? 0}
                     </p>
-                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                    <p className={'mt-1 text-xs text-muted-foreground'}>
                       tier floor=
                       {safeAgent.inference_profile_debug.snapshot.requestedTierFloor ?? 'none'}
                       {' · '}stage eligible=
                       {safeAgent.inference_profile_debug.snapshot.stageEligible ? 'yes' : 'no'}
                     </p>
                   </div>
-                  <div className={"rounded-md border bg-background/80 p-3"}>
-                    <p className={"text-sm font-medium"}>
+                  <div className={'rounded-md border bg-background/80 p-3'}>
+                    <p className={'text-sm font-medium'}>
                       risk={safeAgent.inference_profile_debug.snapshot.signals.risk}
-                      {' · '}initiative={safeAgent.inference_profile_debug.snapshot.signals.initiative}
+                      {' · '}initiative=
+                      {safeAgent.inference_profile_debug.snapshot.signals.initiative}
                     </p>
-                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                    <p className={'mt-1 text-xs text-muted-foreground'}>
                       blocked={safeAgent.inference_profile_debug.profile.blockedReason ?? 'none'}
                       {' · '}lock=
                       {safeAgent.inference_profile_debug.profile.manualVoiceLineLock ? 'on' : 'off'}
                     </p>
-                    <p className={"mt-1 text-xs text-muted-foreground"}>
+                    <p className={'mt-1 text-xs text-muted-foreground'}>
                       line=
                       {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ??
                         safeAgent.home_voice_line_id ??
@@ -586,14 +572,15 @@ export function TabIntro({ agentId }: { agentId: string }) {
                   )}
                 </div>
                 {safeAgent.inference_profile_debug.shadowReview && (
-                  <div className={"rounded-md border bg-background/80 p-3"}>
-                    <p className={"text-sm font-medium"}>
+                  <div className={'rounded-md border bg-background/80 p-3'}>
+                    <p className={'text-sm font-medium'}>
                       shadow review={safeAgent.inference_profile_debug.shadowReview.status}
                       {' · '}recommendation=
                       {safeAgent.inference_profile_debug.shadowReview.summary.recommendation}
                     </p>
-                    <p className={"mt-1 text-xs text-muted-foreground"}>
-                      incumbent={safeAgent.inference_profile_debug.shadowReview.incumbentVoiceLineId}
+                    <p className={'mt-1 text-xs text-muted-foreground'}>
+                      incumbent=
+                      {safeAgent.inference_profile_debug.shadowReview.incumbentVoiceLineId}
                       {' -> '}
                       {safeAgent.inference_profile_debug.shadowReview.challengerVoiceLineId}
                       {' · '}case=
@@ -682,12 +669,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
             (activeGuidanceItem ? (
               <GuidanceItemCard item={activeGuidanceItem} />
             ) : (
-              <InlineAlert
-                tone="warning"
-                title="先完成第一轮闭环，再解锁更重的 Owner 控制面"
-              >
-                风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免
-                Day 0 就被复杂面板淹没。
+              <InlineAlert tone="warning" title="先完成第一轮闭环，再解锁更重的 Owner 控制面">
+                风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
+                就被复杂面板淹没。
               </InlineAlert>
             ))}
 
@@ -710,9 +694,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
             ) : null)}
 
           {!isOwner && shouldShowPublicProof && (
-            <Card className={"border-primary/20 bg-primary/5"}>
-              <CardHeader className={"pb-2"}>
-                <CardTitle className={"text-base"}>这个角色为什么值得追</CardTitle>
+            <Card className={'border-primary/20 bg-primary/5'}>
+              <CardHeader className={'pb-2'}>
+                <CardTitle className={'text-base'}>这个角色为什么值得追</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {proofBadges.length > 0 && (
@@ -733,27 +717,38 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     ))}
                   </div>
                 )}
-                {publicBio && (
-                  <p className={"text-sm text-muted-foreground"}>{publicBio}</p>
-                )}
+                {publicBio && <p className={'text-sm text-muted-foreground'}>{publicBio}</p>}
                 {topChronicle && (
-                  <div className={"overflow-hidden rounded-md border bg-background/80"}>
+                  <div className={'overflow-hidden rounded-md border bg-background/80'}>
                     {topChronicleVisual && (
                       <img
                         src={topChronicleVisual.media_url}
-                        alt={topChronicleVisual.alt_text ?? topChronicleVisual.public_caption ?? topChronicle.title}
-                        className={"aspect-[16/9] w-full object-cover"}
+                        alt={
+                          topChronicleVisual.alt_text ??
+                          topChronicleVisual.public_caption ??
+                          topChronicle.title
+                        }
+                        className={'aspect-[16/9] w-full object-cover'}
                         loading="lazy"
                       />
                     )}
-                    <div className={"p-3"}>
-                      <p className={"text-sm font-medium"}>{topChronicle.title}</p>
-                      <p className={"mt-1 text-xs text-muted-foreground"}>
-                        {topChronicle.summary}
-                      </p>
+                    <div className={'p-3'}>
+                      <p className={'text-sm font-medium'}>{topChronicle.title}</p>
+                      <p className={'mt-1 text-xs text-muted-foreground'}>{topChronicle.summary}</p>
                       {agentId && (
-                        <Button variant="ghost" size="sm" asChild className={"mt-2 h-7 px-0 text-xs"}>
-                          <button type="button" onClick={() => setActiveTab('moments')} className="text-primary hover:underline">查看公开高光</button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className={'mt-2 h-7 px-0 text-xs'}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('moments')}
+                            className="text-primary hover:underline"
+                          >
+                            查看公开高光
+                          </button>
                         </Button>
                       )}
                     </div>
@@ -767,7 +762,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
             (isOwner ? null : (
               <div className="space-y-4">
                 {xpLoading ? (
-                  <Skeleton className={"h-12 w-48 rounded-full"} />
+                  <Skeleton className={'h-12 w-48 rounded-full'} />
                 ) : xpError ? (
                   <InlineAlert tone="warning" title="XP 加载失败">
                     请稍后再试。

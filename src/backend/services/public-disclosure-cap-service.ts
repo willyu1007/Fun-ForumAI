@@ -85,7 +85,7 @@ export class PublicDisclosureCapService {
       serverCapSources.push(this.toResolvedServerCapSource(communityOverride))
     }
 
-    const hotTopic = config.features.hotTopicPolicyV1
+    const hotTopic = config.launch.capabilities.hotTopicPolicyV1
       ? this.deps.hotTopicPolicyService.evaluate({
           text: input.conversation_text,
           tags: input.topic_hints,

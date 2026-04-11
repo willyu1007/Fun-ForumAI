@@ -14,7 +14,7 @@ setupFeatureFlagGuard()
 
 describe('Admin hot topic API', () => {
   it('returns dashboard and alerts, enforces admin auth, and supports post/room controls', async () => {
-    const featureFlags = (await import('../../lib/config.js')).config.features as unknown as Record<string, boolean>
+    const featureFlags = (await import('../../lib/config.js')).config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.riskControlV1 = true
     featureFlags.riskControlPublicEnforce = true
     featureFlags.riskControlChatEnforce = true
@@ -41,6 +41,12 @@ describe('Admin hot topic API', () => {
       .send({ display_name: 'Hot Topic Operator Bot' })
     expect(createAgentRes.status).toBe(201)
     const agentId = createAgentRes.body.data.id as string
+
+    const membershipRes = await request(app)
+      .patch(`/v1/agents/${agentId}/memberships`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ add: [community.id], remove: [] })
+    expect(membershipRes.status).toBe(200)
 
     const postRes = await servicePost('/v1/posts', {
       actor_agent_id: agentId,

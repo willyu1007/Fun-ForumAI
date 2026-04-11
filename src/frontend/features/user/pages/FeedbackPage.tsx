@@ -23,23 +23,19 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { relativeTime } from '@/shared/utils/relative-time'
 
-/* ------------------------------------------------------------------ */
-/*  Page-local palette (sand warm)                                    */
-/* ------------------------------------------------------------------ */
-
 const c = {
-  page: 'bg-[#faf9f6]',
-  title: 'text-[#292524]',
-  accent: 'text-[#a8856c]',
-  accentBg: 'bg-[#a8856c]',
-  btn: 'bg-[#57534e] hover:bg-[#44403c] text-white',
-  pillOn: 'border-[#57534e] bg-[#57534e] text-white',
-  pillOff: 'border-[#e7e5e4] bg-transparent text-[#78716c] hover:border-[#a8a29e] hover:bg-[#57534e]/5',
-  muted: 'text-[#a8a29e]',
-  sub: 'text-[#78716c]',
-  line: 'border-[#e7e5e4]',
-  lineBg: 'bg-[#e7e5e4]',
-  dot: 'bg-[#d6d3d1]',
+  page: 'bg-background',
+  title: 'text-foreground',
+  accent: 'text-primary',
+  accentBg: 'bg-primary',
+  btn: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  pillOn: 'border-primary bg-primary text-primary-foreground',
+  pillOff: 'border-border bg-transparent text-muted-foreground hover:border-ring/40 hover:bg-accent/40',
+  muted: 'text-muted-foreground',
+  sub: 'text-muted-foreground',
+  line: 'border-border',
+  lineBg: 'bg-border',
+  dot: 'bg-border',
 } as const
 
 /* ------------------------------------------------------------------ */
@@ -68,10 +64,10 @@ const STATUS_LABELS: Record<FeedbackStatus, string> = {
 }
 
 const STATUS_BADGE_CLASS: Record<FeedbackStatus, string> = {
-  RECEIVED: 'bg-[#a8856c]/10 text-[#292524]',
-  UNDER_REVIEW: 'bg-amber-500/10 text-amber-700',
-  PLANNED: 'bg-emerald-500/10 text-emerald-700',
-  CLOSED: 'bg-[#e7e5e4] text-[#78716c]',
+  RECEIVED: 'bg-primary/10 text-primary',
+  UNDER_REVIEW: 'bg-warning/10 text-warning',
+  PLANNED: 'bg-success/10 text-success',
+  CLOSED: 'bg-muted text-muted-foreground',
 }
 
 const HISTORY_LABELS: Record<FeedbackHistoryEntry['event_type'], string> = {
@@ -219,7 +215,7 @@ function FeedbackHero({ sourceLabel }: { sourceLabel: string | null }) {
   return (
     <div className="space-y-3">
       {sourceLabel ? (
-        <span className={cn('inline-flex items-center rounded-full px-3 py-1 text-xs', c.sub, 'bg-[#a8856c]/[0.08]')}>
+        <span className={cn('inline-flex items-center rounded-full bg-accent/40 px-3 py-1 text-xs', c.sub)}>
           来自 {sourceLabel}
         </span>
       ) : null}
@@ -274,8 +270,8 @@ function StatsBar({
               className={cn(
                 'rounded-full px-5 py-1.5 text-sm font-medium transition-all',
                 activeTab === tab.id
-                  ? 'bg-[#57534e] text-white shadow-sm'
-                  : cn(c.sub, 'hover:text-[#292524]'),
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : cn(c.sub, 'hover:text-foreground'),
               )}
               onClick={() => onTabChange(tab.id)}
             >
@@ -341,7 +337,11 @@ function SubmitTab({
             maxLength={200}
             rows={2}
             placeholder="概括你的想法"
-            className={cn('mt-4 !field-sizing-fixed !min-h-0 resize-none rounded-none border-0 border-b bg-transparent px-0 py-1 text-lg font-medium leading-snug placeholder:text-[#d6d3d1] focus-visible:ring-0', c.line, c.title, 'focus-visible:border-[#a8856c]')}
+            className={cn(
+              'mt-4 !field-sizing-fixed !min-h-0 resize-none rounded-none border-0 border-b bg-transparent px-0 py-1 text-lg font-medium leading-snug placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-0',
+              c.line,
+              c.title,
+            )}
           />
         </div>
 
@@ -357,11 +357,19 @@ function SubmitTab({
               maxLength={5000}
               rows={6}
               placeholder="请写清触发步骤、预期行为和实际表现……"
-              className={cn('mt-4 resize-none border-0 border-b bg-transparent pr-10 placeholder:text-[#d6d3d1] focus-visible:ring-0', c.line, c.title, 'focus-visible:border-[#a8856c]')}
+              className={cn(
+                'mt-4 resize-none border-0 border-b bg-transparent pr-10 placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-0',
+                c.line,
+                c.title,
+              )}
             />
             <button
               type="button"
-              className={cn('absolute bottom-2 right-0 flex h-7 w-7 items-center justify-center rounded-full transition-colors', c.muted, 'hover:text-[#57534e]')}
+              className={cn(
+                'absolute bottom-2 right-0 flex h-7 w-7 items-center justify-center rounded-full transition-colors',
+                c.muted,
+                'hover:text-foreground',
+              )}
               aria-label="截图上传"
               onClick={() => fileInputRef.current?.click()}
             >
@@ -392,7 +400,7 @@ function SubmitTab({
                 <img src={item.url} alt={`待上传截图 ${index + 1}`} className="h-full w-full object-cover" />
                 <button
                   type="button"
-                  className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute inset-0 flex items-center justify-center bg-background/80 text-foreground opacity-0 transition-opacity group-hover:opacity-100"
                   onClick={() => setFiles((cur) => cur.filter((_, i) => i !== index))}
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -577,7 +585,7 @@ function ExpandableTicketRow({
     <div className={cn(!isLast && !isExpanded && 'border-b', c.line)}>
       <button
         type="button"
-        className="w-full py-5 text-left transition-colors hover:bg-[#57534e]/[0.03]"
+        className="w-full py-5 text-left transition-colors hover:bg-accent/30"
         aria-expanded={isExpanded}
         onClick={onToggle}
       >
@@ -613,8 +621,8 @@ function ExpandableTicketRow({
           </p>
 
           {ticket.public_resolution_note && (
-            <div className="border-l-2 border-emerald-500/40 pl-4">
-              <p className="text-xs font-bold tracking-widest text-emerald-700">处理结果</p>
+            <div className="border-l-2 border-success/40 pl-4">
+              <p className="text-xs font-bold tracking-widest text-success">处理结果</p>
               <p className={cn('mt-1 whitespace-pre-wrap text-sm leading-relaxed', c.title)}>
                 {ticket.public_resolution_note}
               </p>
@@ -624,7 +632,7 @@ function ExpandableTicketRow({
           {ticket.attachments.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {ticket.attachments.map((att, i) => (
-                <a key={att.id} href={att.url} target="_blank" rel="noreferrer" className={cn('h-14 w-14 overflow-hidden rounded-lg border transition-colors hover:border-[#a8856c]/30', c.line)}>
+                <a key={att.id} href={att.url} target="_blank" rel="noreferrer" className={cn('h-14 w-14 overflow-hidden rounded-lg border transition-colors hover:border-primary/30', c.line)}>
                   <img src={att.url} alt={`反馈截图 ${i + 1}`} className="h-full w-full object-cover" />
                 </a>
               ))}

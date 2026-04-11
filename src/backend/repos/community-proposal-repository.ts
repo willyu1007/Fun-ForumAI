@@ -66,7 +66,8 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
       merged_into_community_id: input.merged_into_community_id ?? null,
       reviewed_by_user_id: input.reviewed_by_user_id ?? null,
       reviewed_at: input.reviewed_at ?? null,
-      meta: input.meta ?? null,
+      last_action: input.last_action ?? null,
+      last_action_reason: input.last_action_reason ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -116,8 +117,11 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
     if (input.reviewed_at !== undefined) {
       proposal.reviewed_at = input.reviewed_at
     }
-    if (input.meta !== undefined) {
-      proposal.meta = input.meta
+    if (input.last_action !== undefined) {
+      proposal.last_action = input.last_action
+    }
+    if (input.last_action_reason !== undefined) {
+      proposal.last_action_reason = input.last_action_reason
     }
     proposal.updated_at = new Date()
     this.proposals.set(id, proposal)
@@ -148,7 +152,7 @@ export class InMemoryCommunityProposalRepository implements CommunityProposalRep
       incubation_visibility_mode: input.incubation_visibility_mode ?? 'GRAY',
       overlap_score: input.overlap_score ?? 0,
       rationale: input.rationale ?? [],
-      meta: input.meta ?? null,
+      decision_context: input.decision_context ?? null,
       created_at: existing?.created_at ?? now,
       updated_at: now,
     }

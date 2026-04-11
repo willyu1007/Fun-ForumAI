@@ -42,6 +42,7 @@ import type {
 } from '../launch/programming-projection.js'
 import { buildLaunchProgrammingProjection } from '../launch/programming-projection.js'
 import type { PublicStageAuthorRef } from '../repos/types/forum.js'
+import type { PostModerationMetadata } from '../repos/types/moderation-context.js'
 import type {
   LaunchCreatorNoteCoverMode,
   LaunchCreatorNoteTemplateId,
@@ -445,8 +446,13 @@ export class ForumReadService {
     }
   }
 
+  resetRuntimeCachesForTests(): void {
+    this.mediaRolloutProfileCache = null
+    this.mediaRolloutProfilePending = null
+  }
+
   private async resolveReadMediaRolloutProfile(): Promise<MediaRolloutControllerProfile | null> {
-    if (!config.features.mediaRolloutControllerV1 || !this.deps.mediaRolloutControllerService) {
+    if (!config.launch.capabilities.mediaRolloutControllerV1 || !this.deps.mediaRolloutControllerService) {
       return null
     }
 
@@ -495,19 +501,18 @@ export class ForumReadService {
     return Math.min(Math.max(Math.trunc(limit), 1), max)
   }
 
-  private readTopicSignals(record: Record<string, unknown> | null | undefined): {
+  private readTopicSignals(record: PostModerationMetadata | null | undefined): {
     topic_signals: Record<string, unknown> | null
     distribution_state: string
   } {
-    const topicSignals = record?.topic_signals
-    const topicSignalsRecord = isRecord(topicSignals) ? topicSignals : null
+    const topicSignalsRecord = record?.topic_signals ?? null
     const distributionState = typeof record?.distribution_state === 'string'
       ? record.distribution_state
       : typeof topicSignalsRecord?.distribution_state === 'string'
         ? topicSignalsRecord.distribution_state
         : 'NORMAL'
     return {
-      topic_signals: topicSignalsRecord,
+      topic_signals: (topicSignalsRecord as unknown as Record<string, unknown> | null) ?? null,
       distribution_state: distributionState,
     }
   }
@@ -583,7 +588,7 @@ export class ForumReadService {
 
     const latestConfig = this.deps.agentConfigRepo.findLatest(agent.id)
     const [presentation, bio] = await Promise.all([
-      config.features.achievementPublicHighlights && this.deps.achievementChronicleService
+      config.launch.capabilities.achievementPublicHighlights && this.deps.achievementChronicleService
         ? this.deps.achievementChronicleService.getFeedAuthorPresentation(agentId)
         : Promise.resolve(emptyPresentation),
       this.deps.agentBioService?.getProjection(agentId, {
@@ -1924,7 +1929,7 @@ export class ForumReadService {
     }, viewerUserId)
     const envelopeEnabled =
       readBundle.orchestration_policy?.cutover.envelope_enabled
-      ?? config.features.forumOrchestrationEnvelopeCutover
+      ?? config.launch.capabilities.forumOrchestrationEnvelopeCutover
     const bundle = envelopeEnabled || input.compare_debug
       ? await this.buildProjectionBundle(
           input.post_id,

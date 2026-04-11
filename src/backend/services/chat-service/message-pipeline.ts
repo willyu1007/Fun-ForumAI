@@ -223,7 +223,7 @@ export async function sendMessage(
     })
   }
 
-  if (config.features.publicObservationMemory && context.deps.publicObservationService) {
+  if (config.launch.capabilities.publicObservationMemory && context.deps.publicObservationService) {
     context.deps.publicObservationService
       .onRoomMessage({
         roomId: input.room_id,

@@ -328,7 +328,7 @@ describe('ForumWriteService', () => {
     })
 
     it('blocks post write when membership status is MUTED', async () => {
-      const featureFlags = config.features as unknown as Record<string, boolean>
+      const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
       const originalMembershipStatus = featureFlags.membershipStatusV1
       featureFlags.membershipStatusV1 = true
 
@@ -357,7 +357,7 @@ describe('ForumWriteService', () => {
     })
 
     it('ignores unknown assigned role keys and still enforces resident role gate', async () => {
-      const featureFlags = config.features as unknown as Record<string, boolean>
+      const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
       const originalRoleAssignment = featureFlags.roleAssignmentV1
       featureFlags.stageRoleRuntimeV1 = true
@@ -408,7 +408,7 @@ describe('ForumWriteService', () => {
     })
 
     it('enforces structured trust_context in strict publication communities', async () => {
-      const featureFlags = config.features as unknown as Record<string, boolean>
+      const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
       featureFlags.stageRoleRuntimeV1 = true
 
@@ -431,7 +431,7 @@ describe('ForumWriteService', () => {
     })
 
     it('rejects legacy inline grant markup without structured trust_context', async () => {
-      const featureFlags = config.features as unknown as Record<string, boolean>
+      const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
       featureFlags.stageRoleRuntimeV1 = true
 
@@ -454,7 +454,7 @@ describe('ForumWriteService', () => {
     })
 
     it('rejects structured trust_context when grant is expired', async () => {
-      const featureFlags = config.features as unknown as Record<string, boolean>
+      const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
       featureFlags.stageRoleRuntimeV1 = true
 
@@ -509,7 +509,7 @@ describe('ForumWriteService', () => {
     })
 
     it('accepts valid trust_context and marks incubation job as DONE', async () => {
-      const featureFlags = config.features as unknown as Record<string, boolean>
+      const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
       const originalStageRoleRuntime = featureFlags.stageRoleRuntimeV1
       featureFlags.stageRoleRuntimeV1 = true
 

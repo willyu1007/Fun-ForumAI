@@ -90,7 +90,7 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
 
 describe('HomeProgrammingService', () => {
   it('builds the six launch shelves and keeps creator notes native-only', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
 
@@ -238,7 +238,7 @@ describe('HomeProgrammingService', () => {
   })
 
   it('tops up notes_today from native creator-note communities when the global hot feed is crowded out', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
 
@@ -388,7 +388,7 @@ describe('HomeProgrammingService', () => {
   })
 
   it('materializes off-feed highlight and controversy candidates before falling back to hot feed', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
 
@@ -507,7 +507,7 @@ describe('HomeProgrammingService', () => {
   })
 
   it('promotes conflict rising into must watch when no hero candidate is available', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalFlag = featureFlags.homeProgrammingV1
     featureFlags.homeProgrammingV1 = true
 
@@ -594,7 +594,7 @@ describe('HomeProgrammingService', () => {
   })
 
   it('injects tonight_programming slots only when programming ops is enabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHomeProgrammingFlag = featureFlags.homeProgrammingV1
     const originalProgrammingOpsFlag = featureFlags.programmingOpsV1
     featureFlags.homeProgrammingV1 = true
@@ -692,7 +692,7 @@ describe('HomeProgrammingService', () => {
   })
 
   it('applies post-launch tuning shelf order and viewer-aware continuation ordering', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const tuningConfig = config.launchTuning as unknown as Record<string, string>
     const originalHomeProgrammingFlag = featureFlags.homeProgrammingV1
     const originalPersonalizationFlag = featureFlags.lightweightPersonalizationV1

@@ -7,7 +7,7 @@ import { IncubationOrchestrator } from '../incubation-orchestrator.js'
 
 describe('IncubationOrchestrator', () => {
   it('does nothing when orchestrator flag is disabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubationV1 = featureFlags.incubationV1
     const originalOrchestrator = featureFlags.incubationOrchestratorV1
     featureFlags.incubationV1 = true
@@ -36,7 +36,7 @@ describe('IncubationOrchestrator', () => {
   })
 
   it('creates incubation seed job/source/event from private digest', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubationV1 = featureFlags.incubationV1
     const originalOrchestrator = featureFlags.incubationOrchestratorV1
     featureFlags.incubationV1 = true
@@ -97,7 +97,7 @@ describe('IncubationOrchestrator', () => {
   })
 
   it('is idempotent for same session/community digest event', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubationV1 = featureFlags.incubationV1
     const originalOrchestrator = featureFlags.incubationOrchestratorV1
     featureFlags.incubationV1 = true
@@ -149,7 +149,7 @@ describe('IncubationOrchestrator', () => {
   })
 
   it('skips seed creation when tier gate is not met', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalIncubationV1 = featureFlags.incubationV1
     const originalOrchestrator = featureFlags.incubationOrchestratorV1
     const originalStageTier = featureFlags.stageTierV1

@@ -52,6 +52,23 @@ function stringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
 }
 
+function extractSceneRefLineageContext(value: unknown): Pick<CreateMediaLineageEdgeInput, 'scene_type' | 'scene_id'> {
+  if (!isRecord(value)) return {}
+  if (typeof value.post_id === 'string') {
+    return { scene_type: 'forum_post', scene_id: value.post_id }
+  }
+  if (typeof value.thread_id === 'string') {
+    return { scene_type: 'forum_thread', scene_id: value.thread_id }
+  }
+  if (typeof value.turn_id === 'string') {
+    return { scene_type: 'forum_turn', scene_id: value.turn_id }
+  }
+  if (typeof value.message_id === 'string') {
+    return { scene_type: 'chat_room_message', scene_id: value.message_id }
+  }
+  return {}
+}
+
 function edgeKey(input: {
   from_node_type: MediaLineageNodeType
   from_node_id: string
@@ -159,7 +176,10 @@ async function main() {
     nodeType: MediaLineageNodeType,
     nodeId: string,
     reason: string,
-    metadata: Record<string, unknown> = {},
+    details: Partial<Omit<
+      CreateMediaLineageEdgeInput,
+      'id' | 'from_node_type' | 'from_node_id' | 'to_node_type' | 'to_node_id' | 'edge_kind'
+    >> = {},
   ) => {
     enqueueEdge({
       from_node_type: nodeType,
@@ -167,10 +187,8 @@ async function main() {
       to_node_type: nodeType,
       to_node_id: nodeId,
       edge_kind: 'orphaned_lineage',
-      metadata_json: {
-        reason,
-        ...metadata,
-      },
+      reason,
+      ...details,
     })
   }
 
@@ -192,9 +210,7 @@ async function main() {
       to_node_type: 'semantic_snapshot',
       to_node_id: snapshot.id,
       edge_kind: 'asset_described_by_snapshot',
-      metadata_json: {
-        schema_version: snapshot.schemaVersion,
-      },
+      schema_version: snapshot.schemaVersion,
     })
   }
   await flushEdges()
@@ -226,10 +242,8 @@ async function main() {
       to_node_type: 'binding',
       to_node_id: binding.id,
       edge_kind: 'asset_bound_to_scene',
-      metadata_json: {
-        scene_type: binding.sceneType,
-        scene_id: binding.sceneId,
-      },
+      scene_type: binding.sceneType,
+      scene_id: binding.sceneId,
     })
     enqueueEdge({
       from_node_type: 'semantic_snapshot',
@@ -237,10 +251,8 @@ async function main() {
       to_node_type: 'binding',
       to_node_id: binding.id,
       edge_kind: 'snapshot_bound_to_scene',
-      metadata_json: {
-        scene_type: binding.sceneType,
-        scene_id: binding.sceneId,
-      },
+      scene_type: binding.sceneType,
+      scene_id: binding.sceneId,
     })
     if (binding.sourceSceneType && binding.sourceSceneId) {
       const sourceBinding = resolveSourceBinding(binding, bindingsByScene)
@@ -251,10 +263,8 @@ async function main() {
           to_node_type: 'binding',
           to_node_id: binding.id,
           edge_kind: 'binding_derived_binding',
-          metadata_json: {
-            source_scene_type: binding.sourceSceneType,
-            source_scene_id: binding.sourceSceneId,
-          },
+          source_scene_type: binding.sourceSceneType,
+          source_scene_id: binding.sourceSceneId,
         })
       } else {
         markOrphaned('binding', binding.id, 'unresolved_source_binding', {
@@ -281,10 +291,8 @@ async function main() {
       to_node_type: 'projection',
       to_node_id: projection.id,
       edge_kind: 'binding_projected',
-      metadata_json: {
-        projection_surface: projection.projectionSurface,
-        projection_kind: projection.projectionKind,
-      },
+      projection_surface: projection.projectionSurface as CreateMediaLineageEdgeInput['projection_surface'],
+      projection_kind: projection.projectionKind as CreateMediaLineageEdgeInput['projection_kind'],
     })
   }
   await flushEdges()
@@ -303,9 +311,7 @@ async function main() {
       to_node_type: 'post_media_attachment',
       to_node_id: row.id,
       edge_kind: 'asset_attached_to_post_media',
-      metadata_json: {
-        post_id: row.postId,
-      },
+      post_id: row.postId,
     })
   }
   await flushEdges()
@@ -323,8 +329,12 @@ async function main() {
     const selectedSources = Array.isArray(plan.selectedSources) ? plan.selectedSources : []
     for (const source of selectedSources) {
       if (!isRecord(source)) continue
-      const sourceKind = typeof source.source_kind === 'string' ? source.source_kind : null
-      const reuseMode = typeof source.reuse_mode === 'string' ? source.reuse_mode : null
+      const sourceKind = typeof source.source_kind === 'string'
+        ? source.source_kind as CreateMediaLineageEdgeInput['source_kind']
+        : null
+      const reuseMode = typeof source.reuse_mode === 'string'
+        ? source.reuse_mode as CreateMediaLineageEdgeInput['reuse_mode']
+        : null
       const selectionReason = typeof source.selection_reason === 'string' ? source.selection_reason : null
       if (typeof source.asset_id === 'string') {
         enqueueEdge({
@@ -333,13 +343,9 @@ async function main() {
           to_node_type: 'image_plan',
           to_node_id: plan.id,
           edge_kind: 'source_selected_for_plan',
-          metadata_json: sourceKind
-            ? {
-                source_kind: sourceKind,
-                reuse_mode: reuseMode,
-                selection_reason: selectionReason,
-              }
-            : null,
+          source_kind: sourceKind,
+          reuse_mode: reuseMode,
+          selection_reason: selectionReason,
         })
         linkedSourceCount += 1
       }
@@ -350,12 +356,8 @@ async function main() {
           to_node_type: 'image_plan',
           to_node_id: plan.id,
           edge_kind: 'binding_selected_for_plan',
-          metadata_json: sourceKind
-            ? {
-                source_kind: sourceKind,
-                reuse_mode: reuseMode,
-              }
-            : null,
+          source_kind: sourceKind,
+          reuse_mode: reuseMode,
         })
         linkedSourceCount += 1
       }
@@ -366,12 +368,8 @@ async function main() {
           to_node_type: 'image_plan',
           to_node_id: plan.id,
           edge_kind: 'projection_selected_for_plan',
-          metadata_json: sourceKind
-            ? {
-                source_kind: sourceKind,
-                reuse_mode: reuseMode,
-              }
-            : null,
+          source_kind: sourceKind,
+          reuse_mode: reuseMode,
         })
         linkedSourceCount += 1
       }
@@ -388,18 +386,16 @@ async function main() {
         to_node_type: 'image_plan',
         to_node_id: plan.id,
         edge_kind: 'plan_generation_based_on_projection',
-        metadata_json: {
-          generation_mode:
-            typeof generation?.mode === 'string'
-              ? generation.mode
+        generation_mode:
+          typeof generation?.mode === 'string'
+            ? generation.mode as CreateMediaLineageEdgeInput['generation_mode']
+            : null,
+        input_mode:
+          typeof generation?.input_mode === 'string'
+            ? generation.input_mode as CreateMediaLineageEdgeInput['input_mode']
+            : typeof generation?.inputMode === 'string'
+              ? generation.inputMode as CreateMediaLineageEdgeInput['input_mode']
               : null,
-          input_mode:
-            typeof generation?.input_mode === 'string'
-              ? generation.input_mode
-              : typeof generation?.inputMode === 'string'
-                ? generation.inputMode
-                : null,
-        },
       })
       linkedSourceCount += 1
     }
@@ -415,24 +411,20 @@ async function main() {
         to_node_type: 'generation_job',
         to_node_id: jobId,
         edge_kind: 'plan_scheduled_generation_job',
-        metadata_json: {
-          input_mode:
-            typeof generation?.input_mode === 'string'
-              ? generation.input_mode
-              : typeof generation?.inputMode === 'string'
-                ? generation.inputMode
-                : null,
-          provider:
-            typeof generation?.provider === 'string'
-              ? generation.provider
+        input_mode:
+          typeof generation?.input_mode === 'string'
+            ? generation.input_mode as CreateMediaLineageEdgeInput['input_mode']
+            : typeof generation?.inputMode === 'string'
+              ? generation.inputMode as CreateMediaLineageEdgeInput['input_mode']
               : null,
-        },
+        provider:
+          typeof generation?.provider === 'string'
+            ? generation.provider
+            : null,
       })
     }
     if (linkedSourceCount === 0) {
-      markOrphaned('image_plan', plan.id, 'no_plan_sources_detected', {
-        scene_ref: plan.sceneRef as Record<string, unknown>,
-      })
+      markOrphaned('image_plan', plan.id, 'no_plan_sources_detected', extractSceneRefLineageContext(plan.sceneRef))
     }
   }
   await flushEdges()
@@ -498,10 +490,8 @@ async function main() {
         to_node_type: 'generation_job',
         to_node_id: job.id,
         edge_kind: 'plan_scheduled_generation_job',
-        metadata_json: {
-          input_mode: job.inputMode,
-          provider: null,
-        },
+        input_mode: job.inputMode as CreateMediaLineageEdgeInput['input_mode'],
+        provider: null,
       })
     }
     const basedOnProjectionIds = stringArray(job.basedOnProjectionIds)
@@ -530,9 +520,7 @@ async function main() {
           to_node_type: 'semantic_snapshot',
           to_node_id: snapshot.id,
           edge_kind: 'generated_asset_described_by_snapshot',
-          metadata_json: {
-            schema_version: snapshot.schemaVersion,
-          },
+          schema_version: snapshot.schemaVersion,
         })
       }
     }

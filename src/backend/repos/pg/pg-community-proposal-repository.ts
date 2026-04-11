@@ -17,7 +17,7 @@ import {
   resolveCommunityInteractionContract,
 } from '../../../shared/semantic-taxonomy.js'
 
-function toNullableJsonInput(
+function toNullablePayloadJsonInput(
   value: Record<string, unknown> | null | undefined,
 ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
   if (value === undefined) return undefined
@@ -47,7 +47,8 @@ function toProposal(row: {
   mergedIntoCommunityId: string | null
   reviewedByUserId: string | null
   reviewedAt: Date | null
-  metaJson: Prisma.JsonValue | null
+  lastAction: string | null
+  lastActionReason: string | null
   createdAt: Date
   updatedAt: Date
 }): CommunityProposal {
@@ -85,7 +86,16 @@ function toProposal(row: {
     merged_into_community_id: row.mergedIntoCommunityId,
     reviewed_by_user_id: row.reviewedByUserId,
     reviewed_at: row.reviewedAt,
-    meta: row.metaJson as Record<string, unknown> | null,
+    last_action:
+      row.lastAction === 'reject'
+      || row.lastAction === 'merge'
+      || row.lastAction === 'incubate'
+      || row.lastAction === 'seasonal_slot'
+      || row.lastAction === 'activate'
+      || row.lastAction === 'archive'
+        ? row.lastAction
+        : null,
+    last_action_reason: row.lastActionReason,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -100,7 +110,15 @@ function toRecommendation(row: {
   incubationVisibilityMode: CommunityMergeRecommendation['incubation_visibility_mode'] | null
   overlapScore: number
   rationale: string[]
-  metaJson: Prisma.JsonValue | null
+  basis: string | null
+  bestMatchSlug: string | null
+  textOverlap: number
+  sceneOverlap: number
+  publicationProfileBonus: number
+  communityFamilyBonus: number
+  mergeThreshold: number
+  laneThreshold: number
+  grayVisibilityThreshold: number
   createdAt: Date
   updatedAt: Date
 }): CommunityMergeRecommendation {
@@ -113,7 +131,19 @@ function toRecommendation(row: {
     incubation_visibility_mode: row.incubationVisibilityMode ?? 'GRAY',
     overlap_score: row.overlapScore,
     rationale: row.rationale,
-    meta: row.metaJson as Record<string, unknown> | null,
+    decision_context: {
+      basis: row.basis === 'empty_catalog' ? 'empty_catalog' : 'catalog_overlap',
+      best_match_slug: row.bestMatchSlug,
+      text_overlap: row.textOverlap,
+      scene_overlap: row.sceneOverlap,
+      publication_profile_bonus: row.publicationProfileBonus,
+      community_family_bonus: row.communityFamilyBonus,
+      thresholds: {
+        merge_threshold: row.mergeThreshold,
+        lane_threshold: row.laneThreshold,
+        gray_visibility_threshold: row.grayVisibilityThreshold,
+      },
+    },
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -171,10 +201,11 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         mergedIntoCommunityId: input.merged_into_community_id ?? null,
         reviewedByUserId: input.reviewed_by_user_id ?? null,
         reviewedAt: input.reviewed_at ?? null,
-        metaJson: toNullableJsonInput(input.meta),
+        lastAction: input.last_action ?? null,
+        lastActionReason: input.last_action_reason ?? null,
       },
     })
-    return toProposal({ ...row, metaJson: row.metaJson })
+    return toProposal(row)
   }
 
   async updateProposal(id: string, input: UpdateCommunityProposalInput): Promise<CommunityProposal | null> {
@@ -217,15 +248,16 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
           : {}),
         ...(input.reviewed_by_user_id !== undefined ? { reviewedByUserId: input.reviewed_by_user_id } : {}),
         ...(input.reviewed_at !== undefined ? { reviewedAt: input.reviewed_at } : {}),
-        ...(input.meta !== undefined ? { metaJson: toNullableJsonInput(input.meta) } : {}),
+        ...(input.last_action !== undefined ? { lastAction: input.last_action } : {}),
+        ...(input.last_action_reason !== undefined ? { lastActionReason: input.last_action_reason } : {}),
       },
     }).catch((error) => (error?.code === 'P2025' ? null : Promise.reject(error)))
-    return row ? toProposal({ ...row, metaJson: row.metaJson }) : null
+    return row ? toProposal(row) : null
   }
 
   async findProposalById(id: string): Promise<CommunityProposal | null> {
     const row = await this.prisma.communityProposal.findUnique({ where: { id } })
-    return row ? toProposal({ ...row, metaJson: row.metaJson }) : null
+    return row ? toProposal(row) : null
   }
 
   async listProposals(opts?: { status?: CommunityProposal['status'] }): Promise<CommunityProposal[]> {
@@ -233,7 +265,7 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
       where: opts?.status ? { status: opts.status } : undefined,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
-    return rows.map((row) => toProposal({ ...row, metaJson: row.metaJson }))
+    return rows.map((row) => toProposal(row))
   }
 
   async upsertRecommendation(
@@ -248,7 +280,15 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         incubationVisibilityMode: input.incubation_visibility_mode ?? 'GRAY',
         overlapScore: input.overlap_score ?? 0,
         rationale: input.rationale ?? [],
-        metaJson: toNullableJsonInput(input.meta),
+        basis: input.decision_context?.basis ?? null,
+        bestMatchSlug: input.decision_context?.best_match_slug ?? null,
+        textOverlap: input.decision_context?.text_overlap ?? 0,
+        sceneOverlap: input.decision_context?.scene_overlap ?? 0,
+        publicationProfileBonus: input.decision_context?.publication_profile_bonus ?? 0,
+        communityFamilyBonus: input.decision_context?.community_family_bonus ?? 0,
+        mergeThreshold: input.decision_context?.thresholds.merge_threshold ?? 0,
+        laneThreshold: input.decision_context?.thresholds.lane_threshold ?? 0,
+        grayVisibilityThreshold: input.decision_context?.thresholds.gray_visibility_threshold ?? 0,
       },
       create: {
         id: randomUUID(),
@@ -259,17 +299,25 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         incubationVisibilityMode: input.incubation_visibility_mode ?? 'GRAY',
         overlapScore: input.overlap_score ?? 0,
         rationale: input.rationale ?? [],
-        metaJson: toNullableJsonInput(input.meta),
+        basis: input.decision_context?.basis ?? null,
+        bestMatchSlug: input.decision_context?.best_match_slug ?? null,
+        textOverlap: input.decision_context?.text_overlap ?? 0,
+        sceneOverlap: input.decision_context?.scene_overlap ?? 0,
+        publicationProfileBonus: input.decision_context?.publication_profile_bonus ?? 0,
+        communityFamilyBonus: input.decision_context?.community_family_bonus ?? 0,
+        mergeThreshold: input.decision_context?.thresholds.merge_threshold ?? 0,
+        laneThreshold: input.decision_context?.thresholds.lane_threshold ?? 0,
+        grayVisibilityThreshold: input.decision_context?.thresholds.gray_visibility_threshold ?? 0,
       },
     })
-    return toRecommendation({ ...row, metaJson: row.metaJson })
+    return toRecommendation(row)
   }
 
   async findRecommendationByProposalId(proposalId: string): Promise<CommunityMergeRecommendation | null> {
     const row = await this.prisma.communityMergeRecommendation.findUnique({
       where: { proposalId },
     })
-    return row ? toRecommendation({ ...row, metaJson: row.metaJson }) : null
+    return row ? toRecommendation(row) : null
   }
 
   async createEvent(input: CreateCommunityProposalEventInput): Promise<CommunityProposalEvent> {
@@ -280,7 +328,7 @@ export class PgCommunityProposalRepository implements CommunityProposalRepositor
         actorType: input.actor_type,
         actorId: input.actor_id,
         eventType: input.event_type,
-        payloadJson: toNullableJsonInput(input.payload_json ?? null),
+        payloadJson: toNullablePayloadJsonInput(input.payload_json ?? null),
       },
     })
     return toEvent({ ...row, payloadJson: row.payloadJson })

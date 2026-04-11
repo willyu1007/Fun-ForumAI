@@ -278,7 +278,7 @@ export class AftershowService {
     const messages = audienceThread ? await this.deps.audienceRepo.listMessagesByThread(audienceThread.id) : []
 
     if (
-      config.features.aftershowAudienceSummaryV1
+      config.launch.capabilities.aftershowAudienceSummaryV1
       && audienceThread
       && audienceMessageCount > 0
       && stageResolved.stage_spec.human_participation.audience_signal_ingestion !== 'direct_read'
@@ -292,10 +292,8 @@ export class AftershowService {
         window_end: messages[messages.length - 1]?.created_at ?? now,
         summary_text: this.buildAudienceSummary(messages),
         message_count: audienceMessageCount,
-        meta: {
-          source: 'aftershow_trigger',
-          safe_mode: true,
-        },
+        summary_source: 'aftershow_trigger',
+        safe_mode: true,
       })
       summaryRef = summary.id
     }
@@ -324,15 +322,12 @@ export class AftershowService {
       audience_summary_ref: summaryRef,
       threshold_detail: thresholdDetail,
       triggered_by_user_id: input.triggered_by_user_id ?? null,
-      meta: {
-        trigger_mode: input.mode,
-        force: input.force,
-        threshold_pass: thresholdPass,
-        reason,
-        audience_summary_ref: summaryRef,
-        used_stage_fallback: stageResolved.used_fallback,
-        ...(stageResolved.errors.length > 0 && { stage_spec_errors: stageResolved.errors }),
-      },
+      trigger_mode: input.mode,
+      force_trigger: input.force,
+      threshold_pass: thresholdPass,
+      reason,
+      used_stage_fallback: stageResolved.used_fallback,
+      stage_spec_errors: stageResolved.errors,
     })
 
     richCommunitiesMetrics.recordAftershowTrigger({
@@ -344,7 +339,7 @@ export class AftershowService {
     const callouts: AftershowCallout[] = []
     let notifications_created = 0
 
-    if (config.features.aftershowEventPipelineV1) {
+    if (config.launch.capabilities.aftershowEventPipelineV1) {
       const correlationId = `aftershow-run:${run.id}`
       await this.emitRuntimeEvent({
         event_type: 'AFTERSHOW_DUE',
@@ -380,10 +375,8 @@ export class AftershowService {
         audience_summary_ref: summaryRef,
         correlation_id: correlationId,
         idempotency_key: `${post.id}:${stageMode}:${summaryRef ?? run.id}`,
-        meta: {
-          reason,
-          threshold_pass: thresholdPass,
-        },
+        reason,
+        threshold_pass: thresholdPass,
       })
 
       await this.deps.artifactRepo.updateArtifact(artifact.id, {
@@ -448,10 +441,7 @@ export class AftershowService {
       if (status === 'SKIPPED') {
         artifact = await this.deps.artifactRepo.updateArtifact(artifact.id, {
           status: 'ABORTED',
-          meta: {
-            ...(artifact.meta ?? {}),
-            reason,
-          },
+          reason,
         })
 
         await this.emitRuntimeEvent({
@@ -468,10 +458,7 @@ export class AftershowService {
         artifact = await this.deps.artifactRepo.updateArtifact(artifact.id, {
           status: 'PUBLISHED',
           published_at: new Date(),
-          meta: {
-            ...(artifact.meta ?? {}),
-            publish_shape: 'aftershow_block',
-          },
+          publish_shape: 'aftershow_block',
         })
         if (!artifact) throw new NotFoundError('AftershowArtifact', run.id)
 

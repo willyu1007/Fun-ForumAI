@@ -47,7 +47,7 @@ export class InMemoryRoleAssignmentRepository implements RoleAssignmentRepositor
       assigned_by: input.assigned_by ?? null,
       expires_at: input.expires_at ?? null,
       revoked_at: input.revoked_at ?? null,
-      meta: input.meta ?? null,
+      last_action_reason: input.last_action_reason ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -63,7 +63,7 @@ export class InMemoryRoleAssignmentRepository implements RoleAssignmentRepositor
     if (input.status !== undefined) row.status = input.status
     if (input.expires_at !== undefined) row.expires_at = input.expires_at
     if (input.revoked_at !== undefined) row.revoked_at = input.revoked_at
-    if (input.meta !== undefined) row.meta = input.meta
+    if (input.last_action_reason !== undefined) row.last_action_reason = input.last_action_reason
     row.updated_at = new Date()
     this.rows.set(row.id, row)
     return row

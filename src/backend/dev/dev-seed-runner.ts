@@ -30,6 +30,7 @@ import {
   roomRepo,
   sceneMediaBindingRepo,
   searchProjectionService,
+  stageTierService,
   userRepo,
   voteRepo,
 } from '../container.js'
@@ -229,10 +230,6 @@ async function ensureCommunityBaselineConfigVersion(
   if (latest && (latest.status === 'ACTIVE' || latest.status === 'RETIRED')) {
     await communityConfigRepo.updateVersion(latest.id, {
       status: 'RETIRED',
-      meta: {
-        ...(latest.meta ?? {}),
-        retired_by: 'dev_seed_launch_baseline',
-      },
     })
   }
 
@@ -243,12 +240,10 @@ async function ensureCommunityBaselineConfigVersion(
     status: 'ACTIVE',
     risk_level: 'LOW',
     created_by_user_id: null,
+    seed_key: spec.seed_key,
+    source: 'dev_seed_launch_baseline',
     effective_at: new Date(),
     applied_at: new Date(),
-    meta: {
-      source: 'dev_seed_launch_baseline',
-      seed_key: spec.seed_key,
-    },
   })
 }
 
@@ -1192,7 +1187,7 @@ function isManagedDevSeedMediaOverride(reason: string | null | undefined): boole
 }
 
 async function reconcileDevSeedMediaRollout(profile: DevSeedProfile): Promise<void> {
-  if (!config.features.mediaRolloutControllerV1 || !mediaRolloutControllerService) return
+  if (!config.launch.capabilities.mediaRolloutControllerV1 || !mediaRolloutControllerService) return
 
   const activeOverride = await mediaRolloutControllerService.getActiveOverride()
   const managedActive = activeOverride && isManagedDevSeedMediaOverride(activeOverride.reason)
@@ -1275,6 +1270,7 @@ export async function runDevSeed(input: {
       agentConfigRepo,
       communityRepo,
       membershipService: agentCommunityMembershipService,
+      stageTierService,
     })
   } else {
     const membershipsByAgent = new Map<string, Set<string>>()

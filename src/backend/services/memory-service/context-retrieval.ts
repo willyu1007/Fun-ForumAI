@@ -22,7 +22,7 @@ export async function getMemoriesForContext(
   let effectiveBudget = opts.tokenCeiling ?? opts.tokenBudget ?? 400
   const requestedMemoryTier = opts.memoryTier ?? 'full'
 
-  if (config.features.agentStatsBehavior && deps.statsService) {
+  if (config.launch.capabilities.agentStatsBehavior && deps.statsService) {
     const knobs = deps.statsService.getDerivedSync(agentId, {
       privacy_top_k: opts.topK,
       privacy_budget: effectiveBudget,

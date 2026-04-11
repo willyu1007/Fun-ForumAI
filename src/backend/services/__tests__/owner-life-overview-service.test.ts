@@ -21,7 +21,7 @@ import { buildInitialIdentityConfig } from '../../identity/agent-identity.js'
 import { config } from '../../lib/config.js'
 
 describe('OwnerLifeOverviewService', () => {
-  const features = config.features as unknown as Record<string, boolean>
+  const features = config.launch.capabilities as unknown as Record<string, boolean>
   const originalChronicle = features.achievementChronicleV1
   const originalPublicHighlights = features.achievementPublicHighlights
 

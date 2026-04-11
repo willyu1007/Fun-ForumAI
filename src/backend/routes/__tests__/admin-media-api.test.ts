@@ -18,7 +18,7 @@ setupFeatureFlagGuard()
 
 describe('Admin media API', () => {
   it('registers canonical and commons assets, patches policies, and revokes them', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.multimodalAgentMediaV1 = true
 
     const community = await createTestCommunity({
@@ -86,7 +86,7 @@ describe('Admin media API', () => {
   })
 
   it('exposes media observability, rollout control, and lifecycle operations', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.mediaObservabilityV1 = true
     featureFlags.mediaRolloutControllerV1 = true
     featureFlags.mediaLifecycleV1 = true

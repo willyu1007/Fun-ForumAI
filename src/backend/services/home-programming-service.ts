@@ -169,13 +169,13 @@ export class HomeProgrammingService {
     viewerUserId?: string
     viewer?: ViewerActorContext | null
   } = {}): Promise<HomeProgrammingPayload> {
-    if (!config.features.homeProgrammingV1) {
+    if (!config.launch.capabilities.homeProgrammingV1) {
       return buildDisabledHomeProgrammingPayload()
     }
 
     const contract = getLaunchHomeProgramming()
     const tuning = resolvePostLaunchTuningProfile({
-      enabled: config.features.postLaunchTuningV1,
+      enabled: config.launch.capabilities.postLaunchTuningV1,
       profileId: config.launchTuning.activeProfile || null,
     })
     const viewerRuntime = await this.resolveViewerRuntime(input.viewer ?? null)
@@ -186,7 +186,7 @@ export class HomeProgrammingService {
         viewerUserId: input.viewerUserId,
       }),
       this.deps.globalHighlightsService.collectToday(),
-      config.features.mediaRolloutControllerV1
+      config.launch.capabilities.mediaRolloutControllerV1
         ? this.deps.mediaRolloutControllerService?.getEffectiveProfile()
             .catch(() => null) ?? null
         : Promise.resolve(null),
@@ -253,7 +253,7 @@ export class HomeProgrammingService {
     ])
 
     const allCommunities = this.pickAllCommunities()
-    const tonightProgramming = config.features.programmingOpsV1
+    const tonightProgramming = config.launch.capabilities.programmingOpsV1
       ? await this.deps.launchProgrammingOpsService?.getHomeItems()
           .catch(() => []) ?? []
       : []
@@ -745,7 +745,7 @@ export class HomeProgrammingService {
   }
 
   private async resolveViewerRuntime(viewer: ViewerActorContext | null): Promise<HomeViewerRuntime> {
-    if (!viewer || !config.features.lightweightPersonalizationV1) {
+    if (!viewer || !config.launch.capabilities.lightweightPersonalizationV1) {
       return {
         viewer,
         enabled: false,
@@ -762,7 +762,7 @@ export class HomeProgrammingService {
       viewer.user_id && this.deps.humanFollowRepo
         ? Promise.resolve(this.deps.humanFollowRepo.listFollowingAgentIds(viewer.user_id))
         : Promise.resolve([]),
-      viewer.viewer_agent_id && this.deps.pprSnapshotRepo && config.features.allocatorPprEnabled
+      viewer.viewer_agent_id && this.deps.pprSnapshotRepo && config.launch.capabilities.allocatorPprEnabled
         ? this.deps.pprSnapshotRepo.listBySourceAgent(viewer.viewer_agent_id, { limit: 24 })
             .catch(() => [])
         : Promise.resolve([]),
@@ -882,7 +882,7 @@ export class HomeProgrammingService {
     items: T[],
     viewer: ViewerActorContext | null,
   ): Promise<Array<T & { relation_teaser?: RelationSummaryTeaser | null }>> {
-    if (!viewer?.viewer_agent_id || !config.features.lightweightPersonalizationV1 || !this.deps.publicAgentRelationSummaryService) {
+    if (!viewer?.viewer_agent_id || !config.launch.capabilities.lightweightPersonalizationV1 || !this.deps.publicAgentRelationSummaryService) {
       return items
     }
     const uniqueAgentIds = Array.from(new Set(

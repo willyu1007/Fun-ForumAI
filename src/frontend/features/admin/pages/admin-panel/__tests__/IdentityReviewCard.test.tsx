@@ -19,7 +19,6 @@ describe('IdentityReviewCard', () => {
                 submitted_at: '2026-03-28T00:29:29.947Z',
                 reviewed_at: '2026-03-28T00:29:29.947Z',
                 expires_at: null,
-                meta: null,
               },
               {
                 id: 'review-1',
@@ -31,7 +30,6 @@ describe('IdentityReviewCard', () => {
                 submitted_at: '2026-03-28T00:28:57.435Z',
                 reviewed_at: '2026-03-28T00:28:57.435Z',
                 expires_at: null,
-                meta: null,
               },
             ],
           },

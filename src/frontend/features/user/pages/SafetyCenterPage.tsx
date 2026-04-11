@@ -17,23 +17,19 @@ import { relativeTime } from '@/shared/utils/relative-time'
 import { buildAgentTarget } from '../../../../shared/agent-target.js'
 import { useState } from 'react'
 
-/* ------------------------------------------------------------------ */
-/*  Page-local palette (warm graphite)                                */
-/* ------------------------------------------------------------------ */
-
 const c = {
-  page: 'bg-[#f7f7f6]',
-  title: 'text-[#1c1917]',
-  accent: 'text-[#57534e]',
-  accentBg: 'bg-[#57534e]',
-  btn: 'bg-[#292524] hover:bg-[#1c1917] text-white',
-  pillOn: 'border-[#292524] bg-[#292524] text-white',
-  pillOff: 'border-[#d6d3d1] bg-transparent text-[#78716c] hover:border-[#a8a29e] hover:bg-[#292524]/5',
-  muted: 'text-[#a8a29e]',
-  sub: 'text-[#78716c]',
-  line: 'border-[#e7e5e4]',
-  lineBg: 'bg-[#e7e5e4]',
-  dot: 'bg-[#d6d3d1]',
+  page: 'bg-background',
+  title: 'text-foreground',
+  accent: 'text-primary',
+  accentBg: 'bg-primary',
+  btn: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  pillOn: 'border-primary bg-primary text-primary-foreground',
+  pillOff: 'border-border bg-transparent text-muted-foreground hover:border-ring/40 hover:bg-accent/40',
+  muted: 'text-muted-foreground',
+  sub: 'text-muted-foreground',
+  line: 'border-border',
+  lineBg: 'bg-border',
+  dot: 'bg-border',
 } as const
 
 /* ------------------------------------------------------------------ */
@@ -381,26 +377,26 @@ function buildTimelineEntries(
 
 function phaseBadgeClass(phase: TimelinePhase): string {
   switch (phase) {
-    case 'QUEUED': return 'bg-[#57534e]/10 text-[#57534e]'
-    case 'REOPENED': return 'bg-amber-500/10 text-amber-700'
-    case 'RESOLVED': return 'bg-emerald-500/10 text-emerald-700'
-    case 'CLOSED': return 'bg-[#e7e5e4] text-[#78716c]'
-    case 'UPDATE': return 'bg-[#e7e5e4] text-[#78716c]'
-    default: return 'bg-[#e7e5e4] text-[#78716c]'
+    case 'QUEUED': return 'bg-primary/10 text-primary'
+    case 'REOPENED': return 'bg-warning/10 text-warning'
+    case 'RESOLVED': return 'bg-success/10 text-success'
+    case 'CLOSED': return 'bg-muted text-muted-foreground'
+    case 'UPDATE': return 'bg-muted text-muted-foreground'
+    default: return 'bg-muted text-muted-foreground'
   }
 }
 
 function statusBadgeClass(status: string): string {
-  if (status === 'LINKED' || status === 'UNREAD') return 'bg-[#57534e]/10 text-[#57534e]'
-  if (status === 'RESOLVED') return 'bg-emerald-500/10 text-emerald-700'
-  if (status === 'REJECTED') return 'bg-red-500/10 text-red-700'
-  return 'bg-[#e7e5e4] text-[#78716c]'
+  if (status === 'LINKED' || status === 'UNREAD') return 'bg-primary/10 text-primary'
+  if (status === 'RESOLVED') return 'bg-success/10 text-success'
+  if (status === 'REJECTED') return 'bg-destructive/10 text-destructive'
+  return 'bg-muted text-muted-foreground'
 }
 
 function sourceBadgeClass(source: string): string {
-  if (source === 'REPORT') return 'bg-amber-500/10 text-amber-700'
-  if (source === 'APPEAL') return 'bg-[#57534e]/10 text-[#57534e]'
-  return 'bg-[#57534e]/10 text-[#57534e]'
+  if (source === 'REPORT') return 'bg-warning/10 text-warning'
+  if (source === 'APPEAL') return 'bg-primary/10 text-primary'
+  return 'bg-primary/10 text-primary'
 }
 
 /* ------------------------------------------------------------------ */
@@ -458,8 +454,8 @@ function SafetyTitleBar({
             className={cn(
               'border-b-2 pb-2.5 text-sm font-medium transition-colors',
               activeTab === tab.id
-                ? cn('border-[#292524]', c.title)
-                : cn('border-transparent', c.sub, 'hover:text-[#1c1917] hover:border-[#d6d3d1]'),
+                ? cn('border-primary', c.title)
+                : cn('border-transparent', c.sub, 'hover:border-border hover:text-foreground'),
             )}
             onClick={() => onTabChange(tab.id)}
           >
@@ -468,10 +464,10 @@ function SafetyTitleBar({
         ))}
 
         <div className="ml-auto flex items-baseline gap-4">
-          <Link to="/help/report-appeal-delete" className={cn('text-xs underline-offset-4 hover:underline', c.muted, 'hover:text-[#57534e]')}>
+          <Link to="/help/report-appeal-delete" className={cn('text-xs underline-offset-4 hover:underline', c.muted, 'hover:text-primary')}>
             流程说明
           </Link>
-          <Link to="/help/hot-topic-rules" className={cn('text-xs underline-offset-4 hover:underline', c.muted, 'hover:text-[#57534e]')}>
+          <Link to="/help/hot-topic-rules" className={cn('text-xs underline-offset-4 hover:underline', c.muted, 'hover:text-primary')}>
             热点规则
           </Link>
         </div>
@@ -549,7 +545,7 @@ function TimelineTab({
                         {STATUS_LABELS[entry.status] ?? entry.status}
                       </Badge>
                       {entry.unread && (
-                        <Badge className="rounded-full bg-[#292524] px-2 py-0.5 text-[11px] text-white border-transparent">
+                        <Badge className="rounded-full border-transparent bg-primary px-2 py-0.5 text-[11px] text-primary-foreground">
                           未读
                         </Badge>
                       )}

@@ -8,6 +8,10 @@ import type {
 } from '../types.js'
 import type { MessageRepository } from '../message-repository.js'
 import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
+import {
+  buildMessageModerationColumns,
+  readMessageModerationColumns,
+} from './pg-content-moderation.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -35,8 +39,7 @@ export class PgMessageRepository implements MessageRepository {
         voteScore: 0,
         visibility: input.visibility ?? 'PUBLIC',
         state: input.state ?? 'APPROVED',
-        moderationMetadataJson:
-          (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        ...buildMessageModerationColumns(input.moderation_metadata),
       },
     })
     return this.toDomain(row)
@@ -138,14 +141,13 @@ export class PgMessageRepository implements MessageRepository {
 
   async updateModerationMetadata(
     id: string,
-    moderationMetadata: Record<string, unknown> | null,
+    moderationMetadata: CreateChatMessageInput['moderation_metadata'],
   ): Promise<ChatMessage | null> {
     try {
       const row = await this.prisma.roomMessage.update({
         where: { id },
         data: {
-          moderationMetadataJson:
-            (moderationMetadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          ...buildMessageModerationColumns(moderationMetadata),
         },
       })
       return this.toDomain(row)
@@ -172,10 +174,7 @@ export class PgMessageRepository implements MessageRepository {
       vote_score: row.voteScore,
       visibility: row.visibility,
       state: row.state,
-      moderation_metadata:
-        row.moderationMetadataJson
-          ? row.moderationMetadataJson as Record<string, unknown>
-          : null,
+      moderation_metadata: readMessageModerationColumns(row),
       created_at: row.createdAt,
     }
   }

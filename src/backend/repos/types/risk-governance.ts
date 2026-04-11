@@ -72,7 +72,6 @@ export interface UserIdentityVerification {
   submitted_at: Date
   reviewed_at: Date | null
   expires_at: Date | null
-  meta: Record<string, unknown> | null
 }
 
 export interface PolicySnapshot {
@@ -125,7 +124,6 @@ export interface ModerationCaseTarget {
   target_id: string
   relation_type: ModerationTargetRelationType
   channel: string
-  meta: Record<string, unknown> | null
   community_id: string | null
   agent_id: string | null
   user_id: string | null
@@ -377,7 +375,6 @@ export interface CreateModerationCaseTargetInput {
   target_id: string
   relation_type?: ModerationTargetRelationType
   channel: string
-  meta?: Record<string, unknown> | null
   community_id?: string | null
   agent_id?: string | null
   user_id?: string | null
@@ -389,7 +386,6 @@ export interface CreateModerationCaseTargetInput {
 export interface UpdateModerationCaseTargetInput {
   target_id?: string
   relation_type?: ModerationTargetRelationType
-  meta?: Record<string, unknown> | null
   room_id?: string | null
   session_id?: string | null
   message_id?: string | null
@@ -495,7 +491,6 @@ export interface UpsertUserIdentityVerificationInput {
   method?: IdentityVerificationMethod
   reviewed_at?: Date | null
   expires_at?: Date | null
-  meta?: Record<string, unknown> | null
 }
 
 export interface IdentityReviewSummary {

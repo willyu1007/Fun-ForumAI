@@ -33,6 +33,7 @@ import type {
   PrivateMessageAttachment,
   PaginatedResult,
   PaginationOpts,
+  PrivateMessageModerationMetadata,
   PrivateSessionStatus,
   SendPrivateMessageInput,
 } from '../repos/types.js'
@@ -73,7 +74,7 @@ interface GeneratedPrivateReplyResult {
   observation: PersonaObservationV1
   finalContent: string
   deliveryStatus: PrivateMessage['delivery_status']
-  moderationMetadata: Record<string, unknown> | null
+  moderationMetadata: PrivateMessageModerationMetadata | null
 }
 
 interface CompletedPrivateReplyResult {
@@ -616,7 +617,6 @@ export class PrivateChannelService {
         runtime_status: 'FAILED',
         runtime_error_code: resolvePrivateReplyErrorCode(err),
         moderation_metadata: {
-          runtime_status: 'failed',
           failure_message: err instanceof Error ? err.message : 'Private reply generation failed',
         },
       })
@@ -890,7 +890,6 @@ export class PrivateChannelService {
         runtime_status: 'FAILED',
         runtime_error_code: 'PRIVATE_REPLY_RECOVERY_TIMEOUT',
         moderation_metadata: {
-          runtime_status: 'failed',
           failure_message: 'Private reply did not complete before the recovery timeout expired.',
         },
       })

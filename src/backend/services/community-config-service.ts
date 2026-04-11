@@ -135,11 +135,9 @@ function isFutureDate(input: Date): boolean {
   return input.getTime() > Date.now()
 }
 
-function getRetryCount(meta: Record<string, unknown> | null): number {
-  if (!meta) return 0
-  const raw = meta.scheduler_retry_count
-  if (typeof raw !== 'number' || Number.isNaN(raw)) return 0
-  return raw
+function getRetryCount(patch: Pick<CommunityConfigPatch, 'scheduler_retry_count'>): number {
+  if (!Number.isFinite(patch.scheduler_retry_count)) return 0
+  return Math.max(0, Math.trunc(patch.scheduler_retry_count))
 }
 
 export class CommunityConfigService {
@@ -240,13 +238,8 @@ export class CommunityConfigService {
       proposed_rules_json: proposed,
       validated_by_user_id: input.actor_user_id,
       validated_at: new Date(),
+      validation_failed_at: errors.length > 0 ? new Date() : null,
       rejected_reason: errors.length > 0 ? errors.join('; ') : null,
-      meta: errors.length > 0
-        ? {
-            ...(patch.meta ?? {}),
-            validation_failed_at: new Date().toISOString(),
-          }
-        : patch.meta ?? null,
     })
     if (!updated) throw new NotFoundError('CommunityConfigPatch', patch.id)
     const normalizedUpdated = normalizeCommunityConfigPatchRecord(updated)
@@ -396,12 +389,14 @@ export class CommunityConfigService {
         status: 'SCHEDULED',
         risk_level: patch.risk_level,
         proposed_rules_json: patch.proposed_rules_json,
+        scheduled_by_user_id: input.actor_user_id,
+        scheduled_at: new Date(),
         effective_at: effectiveAt,
-        meta: {
-          ...(patch.meta ?? {}),
-          scheduled_by: input.actor_user_id,
-          scheduled_at: new Date().toISOString(),
-        },
+        scheduler_retry_count: 0,
+        scheduler_last_error: null,
+        scheduler_last_error_at: null,
+        scheduler_next_retry_at: null,
+        scheduler_retry_exhausted_at: null,
       })
       if (!scheduled) throw new NotFoundError('CommunityConfigPatch', patch.id)
       return { patch: normalizeCommunityConfigPatchRecord(scheduled), version: null }
@@ -437,7 +432,7 @@ export class CommunityConfigService {
 
     for (const duePatch of duePatches) {
       const { patch, normalizationUpdate } = await this.normalizePatchForEvaluation(duePatch)
-      const previousRetryCount = getRetryCount(patch.meta)
+      const previousRetryCount = getRetryCount(patch)
       if (previousRetryCount >= maxRetries) {
         exhausted += 1
         failed += 1
@@ -447,11 +442,9 @@ export class CommunityConfigService {
           risk_level: patch.risk_level,
           proposed_rules_json: patch.proposed_rules_json,
           rejected_reason: 'scheduler_retry_exhausted',
-          meta: {
-            ...(patch.meta ?? {}),
-            scheduler_retry_exhausted_at: new Date().toISOString(),
-            scheduler_retry_count: previousRetryCount,
-          },
+          scheduler_retry_count: previousRetryCount,
+          scheduler_next_retry_at: null,
+          scheduler_retry_exhausted_at: new Date(),
         })
         this.deps.eventRepo.create({
           event_type: 'COMMUNITY_CONFIG_APPLY_FAILED',
@@ -505,19 +498,11 @@ export class CommunityConfigService {
               }),
           risk_level: patch.risk_level,
           proposed_rules_json: patch.proposed_rules_json,
-          meta: {
-            ...(patch.meta ?? {}),
-            scheduler_retry_count: retryCount,
-            scheduler_last_error: message,
-            scheduler_last_error_at: new Date().toISOString(),
-            ...(exhaustedNow
-              ? {
-                  scheduler_retry_exhausted_at: new Date().toISOString(),
-                }
-              : {
-                  scheduler_next_retry_at: nextRetryAt.toISOString(),
-                }),
-          },
+          scheduler_retry_count: retryCount,
+          scheduler_last_error: message,
+          scheduler_last_error_at: new Date(),
+          scheduler_next_retry_at: exhaustedNow ? null : nextRetryAt,
+          scheduler_retry_exhausted_at: exhaustedNow ? new Date() : null,
         })
         this.deps.eventRepo.create({
           event_type: 'COMMUNITY_CONFIG_APPLY_FAILED',
@@ -569,11 +554,9 @@ export class CommunityConfigService {
       risk_level: 'HIGH',
       created_by_user_id: input.actor_user_id,
       rollback_from_version_id: targetVersion.id,
+      rollback_reason: input.reason ?? null,
       effective_at: new Date(),
       applied_at: new Date(),
-      meta: {
-        rollback_reason: input.reason ?? null,
-      },
     })
 
     this.deps.eventRepo.create({
@@ -670,12 +653,9 @@ export class CommunityConfigService {
       status: 'ACTIVE',
       risk_level: patch.risk_level,
       created_by_user_id: input.actor.actor_type === 'human' ? input.actor.actor_id : null,
+      applied_by_actor_id: input.actor.actor_id,
       effective_at: input.effective_at ?? input.applied_at,
       applied_at: input.applied_at,
-      meta: {
-        applied_by: input.actor.actor_id,
-        source_patch_id: patch.id,
-      },
     })
 
     const updatedPatch = await this.deps.configRepo.updatePatch(patch.id, {
@@ -684,11 +664,12 @@ export class CommunityConfigService {
       proposed_rules_json: nextRules,
       effective_at: input.effective_at ?? patch.effective_at ?? input.applied_at,
       applied_version_id: version.id,
+      applied_version_number: version.version,
       applied_at: input.applied_at,
-      meta: {
-        ...(patch.meta ?? {}),
-        applied_version: version.version,
-      },
+      scheduler_last_error: null,
+      scheduler_last_error_at: null,
+      scheduler_next_retry_at: null,
+      scheduler_retry_exhausted_at: null,
     })
     if (!updatedPatch) throw new NotFoundError('CommunityConfigPatch', patch.id)
     const normalizedUpdatedPatch = normalizeCommunityConfigPatchRecord(updatedPatch)
@@ -766,7 +747,9 @@ export class CommunityConfigService {
       const latestRaw = await this.deps.configRepo.findLatestVersionByCommunity(communityId)
       const latest = latestRaw ? normalizeCommunityConfigVersionRecord(latestRaw) : null
       if (latest && (latest.status === 'ACTIVE' || latest.status === 'RETIRED')) {
-        const retireStatus = input.meta && 'rollback_reason' in input.meta ? 'ROLLED_BACK' as const : 'RETIRED' as const
+        const retireStatus = Object.prototype.hasOwnProperty.call(input, 'rollback_reason')
+          ? 'ROLLED_BACK' as const
+          : 'RETIRED' as const
         await this.deps.configRepo.updateVersion(latest.id, {
           status: retireStatus,
           ...(retireStatus === 'ROLLED_BACK' ? { rolled_back_at: new Date() } : {}),

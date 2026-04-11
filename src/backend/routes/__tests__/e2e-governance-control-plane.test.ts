@@ -52,7 +52,7 @@ describe('E2E: Governance Control Plane', () => {
   })
 
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalRuntimeFeatures = featureFlags.runtimeFeaturesV1
     const originalGuidanceRecall = featureFlags.guidanceRecallV1
     featureFlags.runtimeFeaturesV1 = true
@@ -63,7 +63,13 @@ describe('E2E: Governance Control Plane', () => {
         .get('/v1/admin/runtime/features')
         .set('Authorization', `Bearer ${adminToken}`)
       expect(res.status).toBe(200)
-      expect(typeof res.body.data.flags).toBe('object')
+      expect(typeof res.body.data.launch_capabilities).toBe('object')
+      expect(res.body.data.launch_capabilities).toEqual(
+        expect.objectContaining({
+          runtimeFeaturesV1: true,
+          guidanceRecallV1: true,
+        }),
+      )
       expect(typeof res.body.data.counters).toBe('object')
       expect(res.body.data.counters).toHaveProperty('allocator.ppr_hits')
       expect(res.body.data.counters).toHaveProperty('director.selected_core')
@@ -233,7 +239,7 @@ describe('E2E: Governance Control Plane', () => {
   })
 
   it('GET /v1/admin/launch/programming-ops returns the launch programming read model for admin', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalProgrammingOps = featureFlags.programmingOpsV1
     featureFlags.programmingOpsV1 = true
 
@@ -264,7 +270,7 @@ describe('E2E: Governance Control Plane', () => {
   })
 
   it('POST /v1/admin/stage/season-rotate supports dry_run for admin', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalStageRotation = featureFlags.stageRotationV1
     featureFlags.stageRotationV1 = true
 
@@ -284,7 +290,7 @@ describe('E2E: Governance Control Plane', () => {
   })
 
   it('POST /v1/admin/stage/season-rotate blocks non-dry-run in production-like deployments', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const runtimeConfig = config as unknown as { allowDevTools: boolean }
     const originalStageRotation = featureFlags.stageRotationV1
     const originalAllowDevTools = runtimeConfig.allowDevTools
@@ -316,7 +322,7 @@ describe('E2E: Governance Control Plane', () => {
   })
 
   it('POST /v1/posts/:postId/aftershow/trigger allows only admin or agent owner in manual mode', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAftershow = featureFlags.aftershowV1
     featureFlags.aftershowV1 = true
 

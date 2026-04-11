@@ -1,5 +1,6 @@
 import type { AgentRepository, CommunityRepository, Post, PostRepository } from '../repos/index.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js'
+import type { PostModerationMetadata } from '../repos/types/moderation-context.js'
 import { resolveStageSpecFromRules } from '../stage/index.js'
 import {
   FORUM_ORCHESTRATION_POLICY_SCHEMA_VERSION as ORCHESTRATION_POLICY_SCHEMA_VERSION,
@@ -12,8 +13,6 @@ import {
   type OrchestrationPolicyOverride,
   type RecallControlPolicy,
 } from '../../shared/forum-orchestration.js'
-
-const ORCHESTRATION_OVERRIDE_METADATA_KEY = 'forum_orchestration_override_v1'
 
 export interface ForumOrchestrationPolicyServiceDeps {
   communityRepo: CommunityRepository
@@ -172,29 +171,26 @@ export class ForumOrchestrationPolicyService {
   }
 }
 
-function readStoredPostOverride(metadata: Record<string, unknown> | null): OrchestrationPolicyOverride | null {
-  if (!isRecord(metadata)) {
-    return null
-  }
-  return normalizeOverride(metadata[ORCHESTRATION_OVERRIDE_METADATA_KEY])
+function readStoredPostOverride(metadata: PostModerationMetadata | null): OrchestrationPolicyOverride | null {
+  return normalizeOverride(metadata?.forum_orchestration_override_v1)
 }
 
 function writeOverrideMetadata(
-  metadata: Record<string, unknown> | null,
+  metadata: PostModerationMetadata | null,
   override: OrchestrationPolicyOverride,
-): Record<string, unknown> {
+): PostModerationMetadata {
   return {
-    ...(isRecord(metadata) ? metadata : {}),
-    [ORCHESTRATION_OVERRIDE_METADATA_KEY]: override,
+    ...(metadata ?? {}),
+    forum_orchestration_override_v1: normalizeOverride(override) ?? override,
   }
 }
 
-function clearOverrideMetadata(metadata: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (!isRecord(metadata)) {
+function clearOverrideMetadata(metadata: PostModerationMetadata | null): PostModerationMetadata | null {
+  if (!metadata) {
     return metadata
   }
   const nextMetadata = { ...metadata }
-  delete nextMetadata[ORCHESTRATION_OVERRIDE_METADATA_KEY]
+  delete nextMetadata.forum_orchestration_override_v1
   return Object.keys(nextMetadata).length > 0 ? nextMetadata : null
 }
 

@@ -67,9 +67,24 @@ export interface CommunityProposal {
   merged_into_community_id: string | null
   reviewed_by_user_id: string | null
   reviewed_at: Date | null
-  meta: Record<string, unknown> | null
+  last_action: CommunityProposalAction | null
+  last_action_reason: string | null
   created_at: Date
   updated_at: Date
+}
+
+export interface CommunityMergeRecommendationDecisionContext {
+  basis: 'empty_catalog' | 'catalog_overlap'
+  best_match_slug: string | null
+  text_overlap: number
+  scene_overlap: number
+  publication_profile_bonus: number
+  community_family_bonus: number
+  thresholds: {
+    merge_threshold: number
+    lane_threshold: number
+    gray_visibility_threshold: number
+  }
 }
 
 export interface CommunityMergeRecommendation {
@@ -81,7 +96,7 @@ export interface CommunityMergeRecommendation {
   incubation_visibility_mode: CommunityIncubationVisibilityMode
   overlap_score: number
   rationale: string[]
-  meta: Record<string, unknown> | null
+  decision_context: CommunityMergeRecommendationDecisionContext | null
   created_at: Date
   updated_at: Date
 }
@@ -117,7 +132,8 @@ export interface CreateCommunityProposalInput {
   merged_into_community_id?: string | null
   reviewed_by_user_id?: string | null
   reviewed_at?: Date | null
-  meta?: Record<string, unknown> | null
+  last_action?: CommunityProposalAction | null
+  last_action_reason?: string | null
 }
 
 export interface UpdateCommunityProposalInput {
@@ -133,7 +149,8 @@ export interface UpdateCommunityProposalInput {
   merged_into_community_id?: string | null
   reviewed_by_user_id?: string | null
   reviewed_at?: Date | null
-  meta?: Record<string, unknown> | null
+  last_action?: CommunityProposalAction | null
+  last_action_reason?: string | null
 }
 
 export interface UpsertCommunityMergeRecommendationInput {
@@ -144,7 +161,7 @@ export interface UpsertCommunityMergeRecommendationInput {
   incubation_visibility_mode?: CommunityIncubationVisibilityMode
   overlap_score?: number
   rationale?: string[]
-  meta?: Record<string, unknown> | null
+  decision_context?: CommunityMergeRecommendationDecisionContext | null
 }
 
 export interface CreateCommunityProposalEventInput {
@@ -161,14 +178,17 @@ export interface CommunityConfigVersion {
   version: number
   rules_json: Record<string, unknown>
   source_patch_id: string | null
+  seed_key: string | null
+  source: string | null
   status: ConfigVersionStatus
   risk_level: ConfigRiskLevel
   created_by_user_id: string | null
+  applied_by_actor_id: string | null
   rollback_from_version_id: string | null
+  rollback_reason: string | null
   effective_at: Date | null
   applied_at: Date | null
   rolled_back_at: Date | null
-  meta: Record<string, unknown> | null
   created_at: Date
   updated_at: Date
 }
@@ -187,13 +207,21 @@ export interface CommunityConfigPatch {
   validated_by_user_id: string | null
   approved_by_user_id: string | null
   applied_version_id: string | null
+  applied_version_number: number | null
   rejected_reason: string | null
   validated_at: Date | null
+  validation_failed_at: Date | null
   approved_at: Date | null
+  scheduled_by_user_id: string | null
+  scheduled_at: Date | null
   effective_at: Date | null
   applied_at: Date | null
   rolled_back_at: Date | null
-  meta: Record<string, unknown> | null
+  scheduler_retry_count: number
+  scheduler_last_error: string | null
+  scheduler_last_error_at: Date | null
+  scheduler_next_retry_at: Date | null
+  scheduler_retry_exhausted_at: Date | null
   created_at: Date
   updated_at: Date
 }
@@ -212,14 +240,17 @@ export interface CreateCommunityConfigVersionInput {
   version: number
   rules_json: Record<string, unknown>
   source_patch_id?: string | null
+  seed_key?: string | null
+  source?: string | null
   status?: ConfigVersionStatus
   risk_level?: ConfigRiskLevel
   created_by_user_id?: string | null
+  applied_by_actor_id?: string | null
   rollback_from_version_id?: string | null
+  rollback_reason?: string | null
   effective_at?: Date | null
   applied_at?: Date | null
   rolled_back_at?: Date | null
-  meta?: Record<string, unknown> | null
 }
 
 export interface CreateCommunityConfigPatchInput {
@@ -235,13 +266,21 @@ export interface CreateCommunityConfigPatchInput {
   validated_by_user_id?: string | null
   approved_by_user_id?: string | null
   applied_version_id?: string | null
+  applied_version_number?: number | null
   rejected_reason?: string | null
   validated_at?: Date | null
+  validation_failed_at?: Date | null
   approved_at?: Date | null
+  scheduled_by_user_id?: string | null
+  scheduled_at?: Date | null
   effective_at?: Date | null
   applied_at?: Date | null
   rolled_back_at?: Date | null
-  meta?: Record<string, unknown> | null
+  scheduler_retry_count?: number
+  scheduler_last_error?: string | null
+  scheduler_last_error_at?: Date | null
+  scheduler_next_retry_at?: Date | null
+  scheduler_retry_exhausted_at?: Date | null
 }
 
 export interface UpdateCommunityConfigPatchInput {
@@ -251,13 +290,21 @@ export interface UpdateCommunityConfigPatchInput {
   validated_by_user_id?: string | null
   approved_by_user_id?: string | null
   applied_version_id?: string | null
+  applied_version_number?: number | null
   rejected_reason?: string | null
   validated_at?: Date | null
+  validation_failed_at?: Date | null
   approved_at?: Date | null
+  scheduled_by_user_id?: string | null
+  scheduled_at?: Date | null
   effective_at?: Date | null
   applied_at?: Date | null
   rolled_back_at?: Date | null
-  meta?: Record<string, unknown> | null
+  scheduler_retry_count?: number
+  scheduler_last_error?: string | null
+  scheduler_last_error_at?: Date | null
+  scheduler_next_retry_at?: Date | null
+  scheduler_retry_exhausted_at?: Date | null
 }
 
 export interface CreateCommunityConfigApprovalInput {
@@ -282,7 +329,7 @@ export interface RoleAssignment {
   assigned_by: string | null
   expires_at: Date | null
   revoked_at: Date | null
-  meta: Record<string, unknown> | null
+  last_action_reason: string | null
   created_at: Date
   updated_at: Date
 }
@@ -298,7 +345,7 @@ export interface CreateRoleAssignmentInput {
   assigned_by?: string | null
   expires_at?: Date | null
   revoked_at?: Date | null
-  meta?: Record<string, unknown> | null
+  last_action_reason?: string | null
 }
 
 export interface UpdateRoleAssignmentInput {
@@ -307,10 +354,11 @@ export interface UpdateRoleAssignmentInput {
   expected_status?: RoleAssignmentStatus
   expires_at?: Date | null
   revoked_at?: Date | null
-  meta?: Record<string, unknown> | null
+  last_action_reason?: string | null
 }
 
 export type AftershowArtifactStatus = 'DUE' | 'SNAPSHOT_CREATED' | 'COMPOSED' | 'PUBLISHED' | 'ABORTED'
+export type AftershowPublishShape = 'aftershow_block'
 
 export interface AftershowArtifact {
   id: string
@@ -327,7 +375,9 @@ export interface AftershowArtifact {
   cause_event_id: string | null
   idempotency_key: string | null
   published_at: Date | null
-  meta: Record<string, unknown> | null
+  reason: string | null
+  threshold_pass: boolean | null
+  publish_shape: AftershowPublishShape | null
   created_at: Date
   updated_at: Date
 }
@@ -346,7 +396,9 @@ export interface CreateAftershowArtifactInput {
   cause_event_id?: string | null
   idempotency_key?: string | null
   published_at?: Date | null
-  meta?: Record<string, unknown> | null
+  reason?: string | null
+  threshold_pass?: boolean | null
+  publish_shape?: AftershowPublishShape | null
 }
 
 export interface UpdateAftershowArtifactInput {
@@ -355,7 +407,9 @@ export interface UpdateAftershowArtifactInput {
   content?: Record<string, unknown> | null
   audience_summary_ref?: string | null
   published_at?: Date | null
-  meta?: Record<string, unknown> | null
+  reason?: string | null
+  threshold_pass?: boolean | null
+  publish_shape?: AftershowPublishShape | null
 }
 
 export interface AftershowCallout {
@@ -367,7 +421,6 @@ export interface AftershowCallout {
   evidence_ref: string | null
   notification_id: string | null
   invalidated_at: Date | null
-  meta: Record<string, unknown> | null
   created_at: Date
 }
 
@@ -379,11 +432,9 @@ export interface CreateAftershowCalloutInput {
   evidence_ref?: string | null
   notification_id?: string | null
   invalidated_at?: Date | null
-  meta?: Record<string, unknown> | null
 }
 
 export interface UpdateAftershowCalloutInput {
   notification_id?: string | null
   invalidated_at?: Date | null
-  meta?: Record<string, unknown> | null
 }

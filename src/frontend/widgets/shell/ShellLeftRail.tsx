@@ -24,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import type { Community } from '@/api/types'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { globalHighlightsEnabled } from '@/shared/config/frontend-capabilities'
 import { getInitials } from '@/shared/utils/get-initials'
 import { useLeftRailAgentDisplayStore } from '@/shared/stores/left-rail-agent-display-store'
 import {
@@ -44,7 +44,6 @@ import {
 } from '@/shared/utils/community-shell-meta'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 
-const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 const LEFT_RAIL_SECTION_STATE_KEY = 'shell-left-rail-sections'
 const LEFT_RAIL_RECENT_VISITS_KEY = 'shell-left-rail-recent-visits'
 const RECENT_VISIT_LIMIT = 5
@@ -182,9 +181,7 @@ function isLinkActive(to: string, pathname: string, search: string) {
     return false
   }
 
-  return targetEntries.every(
-    ([key, value]) => currentParams.get(key) === value,
-  )
+  return targetEntries.every(([key, value]) => currentParams.get(key) === value)
 }
 
 function SidebarLink({
@@ -210,11 +207,7 @@ function SidebarLink({
   const isFilled = active && isTopLevel
 
   return (
-    <Link
-      to={to}
-      state={state}
-      className="group block text-sm transition-colors"
-    >
+    <Link to={to} state={state} className="group block text-sm transition-colors">
       <span
         className={cn(
           'mx-auto flex w-[95%] items-center gap-3.5 rounded-[10px] transition-colors',
@@ -227,9 +220,9 @@ function SidebarLink({
         )}
       >
         <span className={cn('shrink-0', iconColorClass)}>
-          <Icon 
-            className={cn("transition-all", isTopLevel ? "h-[18px] w-[18px]" : "h-4 w-4")} 
-            fill={isFilled ? 'currentColor' : 'none'} 
+          <Icon
+            className={cn('transition-all', isTopLevel ? 'h-[18px] w-[18px]' : 'h-4 w-4')}
+            fill={isFilled ? 'currentColor' : 'none'}
           />
         </span>
         <span className="truncate">{label}</span>
@@ -275,10 +268,7 @@ function RecentVisitLink({
   const avatarTheme = community ? getCommunityAvatarTheme(community) : null
 
   return (
-    <Link
-      to={to}
-      className="group block text-sm transition-colors"
-    >
+    <Link to={to} className="group block text-sm transition-colors">
       <span
         className={cn(
           'mx-auto flex w-[95%] items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] transition-colors',
@@ -293,7 +283,9 @@ function RecentVisitLink({
               {avatarTheme && avatarTheme.type === 'preset' && (
                 <AvatarImage src={avatarTheme.value} className="object-cover" />
               )}
-              <AvatarFallback className={cn('text-[10px]', getCommunityAvatarToneClassName(category))}>
+              <AvatarFallback
+                className={cn('text-[10px]', getCommunityAvatarToneClassName(category))}
+              >
                 {getCommunityCategoryGlyph(category)}
               </AvatarFallback>
             </Avatar>
@@ -324,7 +316,10 @@ export function ShellLeftRail() {
   )
   const selectionsByOwnerId = useLeftRailAgentDisplayStore((state) => state.selectionsByOwnerId)
   const selectedAgentIds = useMemo(
-    () => (ownerId ? (selectionsByOwnerId[ownerId] ?? EMPTY_SELECTED_AGENT_IDS) : EMPTY_SELECTED_AGENT_IDS),
+    () =>
+      ownerId
+        ? (selectionsByOwnerId[ownerId] ?? EMPTY_SELECTED_AGENT_IDS)
+        : EMPTY_SELECTED_AGENT_IDS,
     [ownerId, selectionsByOwnerId],
   )
   const displayedAgents = useMemo(
@@ -346,13 +341,16 @@ export function ShellLeftRail() {
 
     const pathKey = normalizePathKey(pathname, search)
     setRecentVisits((current) => {
-      const next = [pathKey, ...current.filter((item) => item !== pathKey)].slice(0, RECENT_VISIT_LIMIT)
+      const next = [pathKey, ...current.filter((item) => item !== pathKey)].slice(
+        0,
+        RECENT_VISIT_LIMIT,
+      )
       writeRecentVisits(next)
       return next
     })
   }, [pathname, search])
 
-  const highlightLinks = GLOBAL_HIGHLIGHTS_ENABLED ? HIGHLIGHT_LINKS : []
+  const highlightLinks = globalHighlightsEnabled ? HIGHLIGHT_LINKS : []
   const currentPath = normalizePathKey(pathname, search)
 
   const toggleSection = (section: keyof LeftRailSectionState) => {
@@ -472,12 +470,14 @@ export function ShellLeftRail() {
                     icon={link.icon}
                     nested
                     active={isLinkActive(link.to, pathname, search)}
-                    state={link.to === '/feedback'
-                      ? {
-                          feedbackSourceRoute: currentPath,
-                          feedbackEntrySurface: 'left_rail_resources',
-                        }
-                      : undefined}
+                    state={
+                      link.to === '/feedback'
+                        ? {
+                            feedbackSourceRoute: currentPath,
+                            feedbackEntrySurface: 'left_rail_resources',
+                          }
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -488,11 +488,7 @@ export function ShellLeftRail() {
 
       {/* My Agents (Fixed at bottom) — only for authenticated users */}
       {isAuthenticated && (
-        <div
-          className={cn(
-            'mb-3 flex h-56 w-full shrink-0 flex-col',
-          )}
-        >
+        <div className={cn('mb-3 flex h-56 w-full shrink-0 flex-col')}>
           <div className="border-t border-primary/22" aria-hidden />
           <div className="flex shrink-0 items-start px-3 pb-1.5 pt-2">
             <button
@@ -510,7 +506,9 @@ export function ShellLeftRail() {
                   className="gradient-icon-flow h-6 w-6 shrink-0 text-foreground/75 transition-colors duration-200"
                   strokeWidth={2}
                 />
-                <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">我的智能体</span>
+                <span className="gradient-text-flow truncate font-semibold transition-colors duration-200">
+                  我的智能体
+                </span>
               </span>
             </button>
           </div>

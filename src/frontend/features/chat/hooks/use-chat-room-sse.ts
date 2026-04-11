@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/hooks'
 import type { ChatMessage } from '@/api/types'
 import type { SseConnectionPhase } from '@/api/use-sse'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { sseEnabled } from '@/shared/config/frontend-capabilities'
 
 interface SseEvent {
   type: string
@@ -27,10 +27,17 @@ type RoomSseEventType =
   | 'ROOM_CONTROL_STATE_UPDATED'
 
 const ROOM_EVENT_TYPES = new Set<string>([
-  'MESSAGE_CREATED', 'ROOM_MEMBER_JOINED', 'ROOM_MEMBER_LEFT',
-  'ROOM_STATUS_CHANGED', 'AGENT_TYPING', 'AGENT_STOP_TYPING',
-  'ROOM_BEAT_CHANGED', 'ROOM_CAST_UPDATED', 'ROOM_HIGHLIGHT_CREATED',
-  'ROOM_LIVE_SNAPSHOT_UPDATED', 'ROOM_CONTROL_STATE_UPDATED',
+  'MESSAGE_CREATED',
+  'ROOM_MEMBER_JOINED',
+  'ROOM_MEMBER_LEFT',
+  'ROOM_STATUS_CHANGED',
+  'AGENT_TYPING',
+  'AGENT_STOP_TYPING',
+  'ROOM_BEAT_CHANGED',
+  'ROOM_CAST_UPDATED',
+  'ROOM_HIGHLIGHT_CREATED',
+  'ROOM_LIVE_SNAPSHOT_UPDATED',
+  'ROOM_CONTROL_STATE_UPDATED',
 ])
 
 function isRoomSseEvent(event: SseEvent): event is SseEvent & { type: RoomSseEventType } {
@@ -43,7 +50,7 @@ export interface ChatRoomSseStatus {
 }
 
 export function useChatRoomSse(roomId: string) {
-  const sseDisabled = isFrontendFlagEnabled('VITE_FF_DISABLE_SSE')
+  const sseDisabled = !sseEnabled
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
   const retriesRef = useRef(0)
@@ -161,7 +168,10 @@ export function useChatRoomSse(roomId: string) {
       if (aborted) return
       if (sourceRef.current) sourceRef.current.close()
 
-      setStatus({ phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting', reconnectAttempts: retriesRef.current })
+      setStatus({
+        phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting',
+        reconnectAttempts: retriesRef.current,
+      })
 
       const es = new EventSource(`/v1/events/stream?rooms=${roomId}`, {
         withCredentials: true,

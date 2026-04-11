@@ -53,12 +53,12 @@ export class PersonaStateService {
   constructor(private readonly deps: PersonaStateServiceDeps) {}
 
   isEnabled(): boolean {
-    return config.features.personaRuntimeV1
+    return config.launch.capabilities.personaRuntimeV1
   }
 
   isSceneEnabled(scene: PersonaRuntimeScene): boolean {
     if (!this.isEnabled()) return false
-    const whitelist = config.features.personaRuntimeScenes
+    const whitelist = config.launch.capabilities.personaRuntimeScenes
     if (whitelist.length === 0) return true
     return whitelist.includes(scene)
   }
@@ -241,7 +241,7 @@ export class PersonaStateService {
     afterPins: OwnerStylePins,
     sourceRef?: string | null,
   ): Promise<void> {
-    if (!config.features.personaWritebackV1) return
+    if (!config.launch.capabilities.personaWritebackV1) return
     const identity = this.resolveIdentity(agentId)
     const rawDelta = stylePinsToDelta(beforePins, afterPins)
     await this.applyLongTermDelta(agentId, identity.seed, {
@@ -259,7 +259,7 @@ export class PersonaStateService {
     traitCode: string,
     action: 'equip' | 'unequip',
   ): Promise<void> {
-    if (!config.features.personaWritebackV1) return
+    if (!config.launch.capabilities.personaWritebackV1) return
     const identity = this.resolveIdentity(agentId)
     const base = TRAIT_DELTA_MAP[traitCode]
     if (!base) return
@@ -281,7 +281,7 @@ export class PersonaStateService {
     instructionId?: string | null
     triggerType?: string | null
   }): Promise<void> {
-    if (!config.features.personaWritebackV1) return
+    if (!config.launch.capabilities.personaWritebackV1) return
     const identity = this.resolveIdentity(input.agentId)
     const base = instructionToDelta(input.body ?? '', input.triggerType ?? '')
     if (sumAbsoluteDelta(base) === 0) return
@@ -306,7 +306,7 @@ export class PersonaStateService {
     const identity = this.resolveIdentity(input.agentId)
     const rawDelta = privateDigestToDelta(input.sentiment)
     const salience = clamp(input.importanceScore, 0, 1)
-    const shouldWrite = config.features.personaWritebackV1 && salience >= 0.65
+    const shouldWrite = config.launch.capabilities.personaWritebackV1 && salience >= 0.65
     await this.applyLongTermDelta(input.agentId, identity.seed, {
       sourceType: 'private_digest',
       sourceRef: input.memoryId,

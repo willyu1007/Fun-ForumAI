@@ -18,15 +18,15 @@ describe('PublicDisclosureCapService', () => {
   let featureSnapshot: Record<string, unknown>
 
   beforeEach(() => {
-    featureSnapshot = { ...(config.features as unknown as Record<string, unknown>) }
+    featureSnapshot = { ...(config.launch.capabilities as unknown as Record<string, unknown>) }
   })
 
   afterEach(() => {
-    Object.assign(config.features as unknown as Record<string, unknown>, featureSnapshot)
+    Object.assign(config.launch.capabilities as unknown as Record<string, unknown>, featureSnapshot)
   })
 
   it('resolves effective disclosure from baseline, agent override, community override, and drift clamp', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.hotTopicPolicyV1 = true
 
     const { service } = createService()
@@ -74,7 +74,7 @@ describe('PublicDisclosureCapService', () => {
   })
 
   it('does not apply hot-topic runtime clamp when the feature flag is disabled', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.hotTopicPolicyV1 = false
 
     const { service } = createService()

@@ -21,7 +21,6 @@ import {
   useRooms,
   useMyAgents,
 } from '@/api/hooks'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useChatRoomSse } from '../../hooks/use-chat-room-sse'
 
@@ -48,10 +47,6 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
-vi.mock('@/shared/config/frontend-flags', () => ({
-  isFrontendFlagEnabled: vi.fn(),
-}))
-
 vi.mock('../../hooks/use-chat-room-sse', () => ({
   useChatRoomSse: vi.fn(),
 }))
@@ -72,7 +67,6 @@ const useRoomProgramMock = vi.mocked(useRoomProgram)
 const useRoomHighlightsMock = vi.mocked(useRoomHighlights)
 const useRecallAgentMock = vi.mocked(useRecallAgent)
 const useMyAgentsMock = vi.mocked(useMyAgents)
-const isFrontendFlagEnabledMock = vi.mocked(isFrontendFlagEnabled)
 const useAuthMock = vi.mocked(useAuth)
 const useChatRoomSseMock = vi.mocked(useChatRoomSse)
 
@@ -80,7 +74,6 @@ describe('chat room pages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     Element.prototype.scrollIntoView = vi.fn()
-    isFrontendFlagEnabledMock.mockReturnValue(false)
     useAuthMock.mockReturnValue({ user: null } as never)
     useChatRoomSseMock.mockReturnValue({
       typingAgents: new Set<string>(),
@@ -267,25 +260,27 @@ describe('chat room pages', () => {
     } as never)
     useCommunitiesMock.mockReturnValue({
       data: {
-        data: [{
-          id: 'community-1',
-          name: 'Night Show',
-          slug: 'night-show',
-          description: null,
-          rules_json: {
-            hot_topic_policy_v1: {
-              mode: 'MANUAL_REVIEW_ONLY',
-              allowed_domains: ['ENTERTAINMENT', 'SPORTS'],
-              scene_modes: {},
-              user_copy: {
-                room_banner: '热点内容可能只保留直达访问。',
+        data: [
+          {
+            id: 'community-1',
+            name: 'Night Show',
+            slug: 'night-show',
+            description: null,
+            rules_json: {
+              hot_topic_policy_v1: {
+                mode: 'MANUAL_REVIEW_ONLY',
+                allowed_domains: ['ENTERTAINMENT', 'SPORTS'],
+                scene_modes: {},
+                user_copy: {
+                  room_banner: '热点内容可能只保留直达访问。',
+                },
               },
             },
+            visibility_default: 'PUBLIC',
+            created_at: '2026-03-10T10:00:00.000Z',
+            updated_at: '2026-03-10T10:00:00.000Z',
           },
-          visibility_default: 'PUBLIC',
-          created_at: '2026-03-10T10:00:00.000Z',
-          updated_at: '2026-03-10T10:00:00.000Z',
-        }],
+        ],
       },
     } as never)
     useRoomHighlightsMock.mockReturnValue({
@@ -430,35 +425,6 @@ describe('chat room pages', () => {
     )
     expect(screen.getByText('回梗现场的 supporting visual')).toBeTruthy()
     expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: true })
-  })
-
-  it('renders the staging hold surface on the list page when chatroom hold is enabled', () => {
-    isFrontendFlagEnabledMock.mockImplementation((key) => key === 'VITE_FF_CHATROOM_STAGING_HOLD_V1')
-
-    render(
-      <MemoryRouter initialEntries={['/rooms']}>
-        <ChatRoomListPage />
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('聊天室正在做重开前打磨')).toBeTruthy()
-    expect(screen.getByText('流式实时感')).toBeTruthy()
-    expect(screen.getByRole('link', { name: '先看全站高光' }).getAttribute('href')).toBe('/highlights')
-  })
-
-  it('renders the staging hold surface on the detail page when chatroom hold is enabled', () => {
-    isFrontendFlagEnabledMock.mockImplementation((key) => key === 'VITE_FF_CHATROOM_STAGING_HOLD_V1')
-
-    render(
-      <MemoryRouter initialEntries={['/rooms/room-1']}>
-        <Routes>
-          <Route path="/rooms/:roomId" element={<ChatRoomPage />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('当前阶段只保留内部验证链路')).toBeTruthy()
-    expect(screen.queryByText('聊天室不存在')).toBeNull()
   })
 
   it('keeps owner control query disabled for public viewers', () => {

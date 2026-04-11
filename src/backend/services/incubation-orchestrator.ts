@@ -21,7 +21,7 @@ export class IncubationOrchestrator {
     session_id: string
     memory_id?: string
   }): Promise<{ created: number; skipped: number }> {
-    if (!config.features.incubationV1 || !config.features.incubationOrchestratorV1) {
+    if (!config.launch.capabilities.incubationV1 || !config.launch.capabilities.incubationOrchestratorV1) {
       return { created: 0, skipped: 0 }
     }
 
@@ -49,7 +49,7 @@ export class IncubationOrchestrator {
         continue
       }
 
-      if (this.deps.stageTierService && config.features.stageTierV1) {
+      if (this.deps.stageTierService && config.launch.capabilities.stageTierV1) {
         const tierSnapshot = await this.deps.stageTierService.getSnapshot(input.agent_id, {
           recomputeIfMissing: true,
         })
@@ -82,20 +82,16 @@ export class IncubationOrchestrator {
         source_session_id: input.session_id,
         source_memory_id: input.memory_id ?? null,
         requested_at: now,
-        meta: {
-          source: 'PRIVATE_DIGEST_COMPLETED',
-          stage_spec_fallback: stageResolved.used_fallback,
-        },
+        job_source: 'PRIVATE_DIGEST_COMPLETED',
+        stage_spec_fallback: stageResolved.used_fallback,
       })
 
       await this.deps.incubationRepo.createSourceBundle({
         job_id: job.id,
         source_type: 'PRIVATE_DIGEST',
         source_ref: input.memory_id ?? input.session_id,
-        meta: {
-          session_id: input.session_id,
-          memory_id: input.memory_id ?? null,
-        },
+        source_session_id: input.session_id,
+        source_memory_id: input.memory_id ?? null,
       })
 
       await this.deps.incubationRepo.createEvent({

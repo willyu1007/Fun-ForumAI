@@ -132,21 +132,12 @@ export class IncubationService {
       )
     }
 
-    const existingMeta = (job.meta ?? {}) as Record<string, unknown>
-    if (existingMeta.review_verdict) {
+    if (job.review_verdict) {
       throw new AppError(
         409,
-        `Incubation job ${input.job_id} already reviewed (verdict: ${existingMeta.review_verdict}); submit grant or create a new job`,
+        `Incubation job ${input.job_id} already reviewed (verdict: ${job.review_verdict}); submit grant or create a new job`,
         'CONFLICT',
       )
-    }
-
-    const meta: Record<string, unknown> = {
-      ...existingMeta,
-      review_verdict: input.verdict,
-      review_reason: input.reason?.trim() || null,
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: input.actor_user_id,
     }
 
     let status: 'REJECTED' | 'QUARANTINED' | undefined
@@ -165,7 +156,10 @@ export class IncubationService {
         reviewed_at: new Date().toISOString(),
         reviewed_by: input.actor_user_id,
       },
-      meta,
+      review_verdict: input.verdict,
+      review_reason: input.reason?.trim() || null,
+      reviewed_by_user_id: input.actor_user_id,
+      reviewed_at: new Date(),
     })
 
     if (!updated) throw new NotFoundError('IncubationJob', input.job_id)

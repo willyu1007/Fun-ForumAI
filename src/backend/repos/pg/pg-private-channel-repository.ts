@@ -3,7 +3,6 @@ import type {
   PrivateSession as PrismaSession,
   PrivateMessage as PrismaMessage,
 } from '@prisma/client'
-import { Prisma } from '@prisma/client'
 import type {
   PrivateSession,
   PrivateMessage,
@@ -19,6 +18,10 @@ import type {
   PrivateChannelRepository,
   UpdatePrivateMessagePatch,
 } from '../private-channel-repository.js'
+import {
+  buildPrivateMessageModerationColumns,
+  readPrivateMessageModerationColumns,
+} from './pg-content-moderation.js'
 
 export class PgPrivateChannelRepository implements PrivateChannelRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -126,8 +129,7 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
         runtimeErrorCode: input.runtime_error_code ?? null,
         content: input.content,
         deliveryStatus: input.delivery_status ?? 'DELIVERED',
-        moderationMetadataJson:
-          (input.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        ...buildPrivateMessageModerationColumns(input.moderation_metadata),
         createdAt: input.created_at,
       },
     })
@@ -142,7 +144,7 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
           ...(patch.content !== undefined ? { content: patch.content } : {}),
           ...(patch.delivery_status !== undefined ? { deliveryStatus: patch.delivery_status } : {}),
           ...(patch.moderation_metadata !== undefined
-            ? { moderationMetadataJson: (patch.moderation_metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue }
+            ? buildPrivateMessageModerationColumns(patch.moderation_metadata)
             : {}),
           ...(patch.runtime_status !== undefined ? { runtimeStatus: patch.runtime_status } : {}),
           ...(patch.runtime_error_code !== undefined ? { runtimeErrorCode: patch.runtime_error_code } : {}),
@@ -238,10 +240,7 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
       content: row.content,
       attachments: [],
       delivery_status: row.deliveryStatus,
-      moderation_metadata:
-        row.moderationMetadataJson
-          ? row.moderationMetadataJson as Record<string, unknown>
-          : null,
+      moderation_metadata: readPrivateMessageModerationColumns(row),
       created_at: row.createdAt,
     }
   }

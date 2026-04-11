@@ -11,13 +11,13 @@ import {
   createTestCommunity,
 } from './e2e-helpers.js'
 import { communityConfigScheduler } from '../../container.js'
-import { DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
+import { AVAILABILITY_FALLBACK_STAGE_SPEC_V1, DEFAULT_STAGE_SPEC_V1 } from '../../stage/index.js'
 
 setupFeatureFlagGuard()
 
 describe('E2E: Community Config Control Plane', () => {
   it('Control Plane config flow supports proposal -> validate -> approve -> apply -> history -> rollback', async () => {
-    const featureFlags = config.features as unknown as Record<string, boolean>
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalAftershow = featureFlags.aftershowV1
     const originalAudienceZone = featureFlags.audienceZoneV1
     featureFlags.aftershowV1 = true
@@ -28,7 +28,7 @@ describe('E2E: Community Config Control Plane', () => {
         name: 'Config Flow Community',
         slug: `config-flow-${Date.now()}`,
         rules_json: {
-          stage_spec_v1: DEFAULT_STAGE_SPEC_V1,
+          stage_spec_v1: AVAILABILITY_FALLBACK_STAGE_SPEC_V1,
         },
       })
 
@@ -39,11 +39,17 @@ describe('E2E: Community Config Control Plane', () => {
           patch: {
             stage_spec_v1: {
               aftershow: {
+                enabled: true,
                 mode: 'THRESHOLD',
                 threshold: {
                   audience_comments: 1,
                   human_vote_score: 0,
                 },
+              },
+              human_participation: {
+                public_participation_mode: 'audience_sidecar',
+                audience_signal_ingestion: 'direct_read',
+                agent_human_response_mode: 'aftershow_only',
               },
             },
           },
@@ -54,11 +60,17 @@ describe('E2E: Community Config Control Plane', () => {
       expect(proposalRes.body.data.patch_json).toEqual({
         stage_spec_v1: {
           aftershow: {
+            enabled: true,
             mode: 'THRESHOLD',
             threshold: {
               audience_comments: 1,
               human_vote_score: 0,
             },
+          },
+          human_participation: {
+            public_participation_mode: 'audience_sidecar',
+            audience_signal_ingestion: 'direct_read',
+            agent_human_response_mode: 'aftershow_only',
           },
         },
       })
@@ -118,11 +130,17 @@ describe('E2E: Community Config Control Plane', () => {
       expect(appliedPatch?.patch_json).toEqual({
         stage_spec_v1: {
           aftershow: {
+            enabled: true,
             mode: 'THRESHOLD',
             threshold: {
               audience_comments: 1,
               human_vote_score: 0,
             },
+          },
+          human_participation: {
+            public_participation_mode: 'audience_sidecar',
+            audience_signal_ingestion: 'direct_read',
+            agent_human_response_mode: 'aftershow_only',
           },
         },
       })
@@ -133,6 +151,12 @@ describe('E2E: Community Config Control Plane', () => {
         .send({ display_name: 'Config Flow Aftershow Agent' })
       expect(createAgentRes.status).toBe(201)
       const agentId = createAgentRes.body.data.id as string
+
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${agentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
 
       const postRes = await servicePost('/v1/posts', {
         actor_agent_id: agentId,

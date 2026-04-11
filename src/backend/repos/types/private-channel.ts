@@ -38,6 +38,8 @@ export interface SendPrivateMessageInput {
   attachment_asset_ids?: string[]
 }
 
+import type { PrivateMessageModerationMetadata } from './moderation-context.js'
+
 export interface PrivateSession {
   id: string
   agent_id: string
@@ -61,7 +63,7 @@ export interface PrivateMessage {
   content: string
   attachments: PrivateMessageAttachment[]
   delivery_status: MessageDeliveryStatus
-  moderation_metadata: Record<string, unknown> | null
+  moderation_metadata: PrivateMessageModerationMetadata | null
   created_at: Date
 }
 
@@ -124,7 +126,7 @@ export interface CreatePrivateMessageInput {
   runtime_error_code?: string | null
   content: string
   delivery_status?: MessageDeliveryStatus
-  moderation_metadata?: Record<string, unknown> | null
+  moderation_metadata?: PrivateMessageModerationMetadata | null
   created_at?: Date
 }
 

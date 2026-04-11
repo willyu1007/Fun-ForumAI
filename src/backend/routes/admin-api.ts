@@ -776,7 +776,7 @@ adminApiRouter.get(
   requireHumanAuth,
   requireAdmin,
   async (_req, res) => {
-    if (!config.features.mediaObservabilityV1) {
+    if (!config.launch.capabilities.mediaObservabilityV1) {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',
@@ -790,7 +790,7 @@ adminApiRouter.get(
       target_min_rate: controllerProfile.effective.target_min_rate,
       target_max_rate: controllerProfile.effective.target_max_rate,
     })
-    const lifecycleCandidates = config.features.mediaLifecycleV1
+    const lifecycleCandidates = config.launch.capabilities.mediaLifecycleV1
       ? await mediaLifecycleService.previewCandidates()
       : {
           orphan_asset_ids: [],
@@ -818,7 +818,7 @@ adminApiRouter.get(
   requireHumanAuth,
   requireAdmin,
   async (_req, res) => {
-    if (!config.features.mediaRolloutControllerV1) {
+    if (!config.launch.capabilities.mediaRolloutControllerV1) {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',
@@ -930,7 +930,7 @@ adminApiRouter.post(
   requireHumanAuth,
   requireAdmin,
   async (_req, res) => {
-    if (!config.features.mediaLifecycleV1) {
+    if (!config.launch.capabilities.mediaLifecycleV1) {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',
@@ -1123,7 +1123,7 @@ adminApiRouter.post(
   requireHumanAuth,
   requireAdmin,
   async (_req, res) => {
-    if (!config.features.runtimeFeaturesV1) {
+    if (!config.launch.capabilities.runtimeFeaturesV1) {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',
@@ -1145,7 +1145,7 @@ adminApiRouter.post(
 )
 
 adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, async (_req, res) => {
-  if (!config.features.runtimeFeaturesV1) {
+  if (!config.launch.capabilities.runtimeFeaturesV1) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',
@@ -1172,17 +1172,17 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
   })
   const identityGate = identityGateService.getRuntimeState()
   const tuning = resolvePostLaunchTuningProfile({
-    enabled: config.features.postLaunchTuningV1,
+    enabled: config.launch.capabilities.postLaunchTuningV1,
     profileId: config.launchTuning.activeProfile || null,
   })
-  const lightweightPersonalization = config.features.lightweightPersonalizationV1
+  const lightweightPersonalization = config.launch.capabilities.lightweightPersonalizationV1
     ? getLightweightPersonalizationRuntime()
     : null
   const effectiveVisualRollout = tuning ? resolveEffectiveLaunchVisualRollout() : null
 
   res.json({
     data: {
-      flags: config.features,
+      launch_capabilities: config.launch.capabilities,
       runtime: {
         queue_backend: config.runtime.queueBackend,
         leader_backend: config.runtime.leaderBackend,
@@ -1190,14 +1190,14 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
         identity_gate: identityGate,
         build,
         persona_runtime: {
-          enabled: config.features.personaRuntimeV1,
-          scenes: config.features.personaRuntimeScenes,
-          writeback_enabled: config.features.personaWritebackV1,
+          enabled: config.launch.capabilities.personaRuntimeV1,
+          scenes: config.launch.capabilities.personaRuntimeScenes,
+          writeback_enabled: config.launch.capabilities.personaWritebackV1,
         },
         forum_orchestration: {
-          shadow: config.features.forumOrchestrationShadow,
-          selection_cutover: config.features.forumOrchestrationSelectionCutover,
-          envelope_cutover: config.features.forumOrchestrationEnvelopeCutover,
+          shadow: config.launch.capabilities.forumOrchestrationShadow,
+          selection_cutover: config.launch.capabilities.forumOrchestrationSelectionCutover,
+          envelope_cutover: config.launch.capabilities.forumOrchestrationEnvelopeCutover,
         },
         lightweight_personalization: lightweightPersonalization
           ? {
@@ -1228,8 +1228,8 @@ adminApiRouter.get('/admin/runtime/features', requireHumanAuth, requireAdmin, as
       rich_communities: richCounters,
       guidance: {
         flags: {
-          guidance_v1: config.features.guidanceV1,
-          guidance_recall_v1: config.features.guidanceRecallV1,
+          guidance_v1: config.launch.capabilities.guidanceV1,
+          guidance_recall_v1: config.launch.capabilities.guidanceRecallV1,
         },
         ...guidance,
       },

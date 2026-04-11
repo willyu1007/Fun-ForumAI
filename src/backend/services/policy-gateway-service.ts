@@ -4,6 +4,7 @@ import type { ModerationResult } from '../moderation/types.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { CommunityRepository } from '../repos/community-repository.js'
 import type { MessageDeliveryStatus, ReviewCaseType, ReviewQueue } from '../repos/types.js'
+import type { MessageModerationMetadata } from '../repos/types/moderation-context.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { HotTopicDistributionState, HotTopicPolicyService } from './hot-topic-policy-service.js'
 import type { PublicDisclosureCapService } from './public-disclosure-cap-service.js'
@@ -36,7 +37,7 @@ export interface PolicyGatewayResult {
   delivery_status: MessageDeliveryStatus
   rewrite_cause: string | null
   reason: string
-  metadata: Record<string, unknown>
+  metadata: MessageModerationMetadata
   shadowed: boolean
   case_id: string | null
   policy_snapshot_id: string | null
@@ -413,7 +414,7 @@ export class PolicyGatewayService {
   }
 
   private shouldEvaluateHotTopicPolicy(channel: PolicyGatewayChannel): boolean {
-    return config.features.hotTopicPolicyV1
+    return config.launch.capabilities.hotTopicPolicyV1
       && (
         channel === 'forum_post'
         || channel === 'forum_thread'
@@ -431,13 +432,13 @@ export class PolicyGatewayService {
   }
 
   private isEnforced(channel: PolicyGatewayChannel): boolean {
-    if (!config.features.riskControlV1) return false
+    if (!config.launch.capabilities.riskControlV1) return false
     if (channel === 'forum_post' || channel === 'forum_thread' || channel === 'forum_turn') {
-      return config.features.riskControlPublicEnforce
+      return config.launch.capabilities.riskControlPublicEnforce
     }
-    if (channel === 'chat_room') return config.features.riskControlChatEnforce
-    if (channel === 'proactive_dm') return config.features.riskControlProactiveEnforce
-    return config.features.riskControlPrivateEnforce
+    if (channel === 'chat_room') return config.launch.capabilities.riskControlChatEnforce
+    if (channel === 'proactive_dm') return config.launch.capabilities.riskControlProactiveEnforce
+    return config.launch.capabilities.riskControlPrivateEnforce
   }
 
   private mapScene(channel: PolicyGatewayChannel) {

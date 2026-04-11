@@ -3,6 +3,7 @@ import type { AgentConfigRepository, AgentRepository } from '../repos/agent-repo
 import type { CommunityRepository } from '../repos/community-repository.js'
 import type { Agent } from '../repos/types.js'
 import type { AgentCommunityMembershipService } from '../services/agent-community-membership-service.js'
+import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
 import { listLaunchCommunitySeeds } from './community-rules.js'
 import {
   getLaunchSystemRoster,
@@ -17,6 +18,7 @@ interface LaunchMembershipBootstrapDeps {
   agentConfigRepo: AgentConfigRepository
   communityRepo: CommunityRepository
   membershipService: Pick<AgentCommunityMembershipService, 'reconcileMemberships'>
+  stageTierService?: Pick<AgentStageTierService, 'ensureBootstrapSnapshot'>
 }
 
 interface ResolvedSystemAgent {
@@ -281,6 +283,10 @@ export async function bootstrapLaunchRosterMemberships(
     baseResult.role_changed_memberships += reconciled.updated.role_changed.length
     baseResult.removed_memberships += reconciled.updated.removed.length
     baseResult.blocked_memberships += reconciled.updated.blocked.length
+    await deps.stageTierService?.ensureBootstrapSnapshot(item.agent.id, {
+      minTier: 'T4',
+      source: 'launch_membership_bootstrap',
+    })
     if (
       reconciled.updated.added.length > 0
       || reconciled.updated.role_changed.length > 0

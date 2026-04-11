@@ -48,7 +48,12 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { SHOULD_RENDER_DEV_AUTH_TOOLBAR } from '@/shared/layout/dev-auth-toolbar'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import {
+  aftershowEnabled,
+  audienceAftershowWebEnabled,
+  audienceZoneEnabled,
+  roleAssignmentEnabled,
+} from '@/shared/config/frontend-capabilities'
 import {
   describeTopicSignals,
   HOT_TOPIC_DISTRIBUTION_LABELS,
@@ -80,19 +85,19 @@ interface RailHighlightItem {
 const DESKTOP_BREAKPOINT = 1024
 
 function isAudienceAftershowWebEnabled() {
-  return isFrontendFlagEnabled('VITE_FF_AUDIENCE_AFTERSHOW_WEB_V1')
+  return audienceAftershowWebEnabled
 }
 
 function isAudienceZoneEnabled(audienceAftershowWebEnabled: boolean) {
-  return audienceAftershowWebEnabled && isFrontendFlagEnabled('VITE_FF_AUDIENCE_ZONE_V1')
+  return audienceAftershowWebEnabled && audienceZoneEnabled
 }
 
 function isAftershowEnabled(audienceAftershowWebEnabled: boolean) {
-  return audienceAftershowWebEnabled && isFrontendFlagEnabled('VITE_FF_AFTERSHOW_V1')
+  return audienceAftershowWebEnabled && aftershowEnabled
 }
 
 function isAsideSeatsEnabled(audienceAftershowWebEnabled: boolean) {
-  return audienceAftershowWebEnabled && isFrontendFlagEnabled('VITE_FF_ROLE_ASSIGNMENT_V1')
+  return audienceAftershowWebEnabled && roleAssignmentEnabled
 }
 
 function toAftershowContentV1(
@@ -131,10 +136,10 @@ function toAftershowContentV1(
 function hasMeaningfulAftershowSnapshot(snapshot: AftershowSnapshot | null | undefined) {
   if (!snapshot) return false
   return Boolean(
-    snapshot.aftershow_summary
-    || snapshot.relation_teaser
-    || snapshot.aftershow_callouts.length > 0
-    || ((snapshot.audience_thread_meta?.message_count ?? 0) > 0),
+    snapshot.aftershow_summary ||
+    snapshot.relation_teaser ||
+    snapshot.aftershow_callouts.length > 0 ||
+    (snapshot.audience_thread_meta?.message_count ?? 0) > 0,
   )
 }
 
@@ -174,10 +179,18 @@ export function PostDetailPage() {
   })()
   const viewSourceParams = useMemo(
     () => ({
-      ...(searchParams.get('viewer_agent_id') ? { viewer_agent_id: searchParams.get('viewer_agent_id') ?? undefined } : {}),
-      ...(searchParams.get('source_surface') ? { source_surface: searchParams.get('source_surface') ?? undefined } : {}),
-      ...(searchParams.get('source_shelf') ? { source_shelf: searchParams.get('source_shelf') ?? undefined } : {}),
-      ...(typeof parsedSourcePosition === 'number' ? { source_position: parsedSourcePosition } : {}),
+      ...(searchParams.get('viewer_agent_id')
+        ? { viewer_agent_id: searchParams.get('viewer_agent_id') ?? undefined }
+        : {}),
+      ...(searchParams.get('source_surface')
+        ? { source_surface: searchParams.get('source_surface') ?? undefined }
+        : {}),
+      ...(searchParams.get('source_shelf')
+        ? { source_shelf: searchParams.get('source_shelf') ?? undefined }
+        : {}),
+      ...(typeof parsedSourcePosition === 'number'
+        ? { source_position: parsedSourcePosition }
+        : {}),
     }),
     [parsedSourcePosition, searchParams],
   )
@@ -196,7 +209,11 @@ export function PostDetailPage() {
       ? 'audience'
       : 'stage',
   )
-  const { data: postData, isLoading: postLoading, error: postError } = usePost(postId ?? '', viewSourceParams)
+  const {
+    data: postData,
+    isLoading: postLoading,
+    error: postError,
+  } = usePost(postId ?? '', viewSourceParams)
   const postPayload = postData?.data ?? null
   const authorAgentId = postPayload?.author.id ?? ''
   const authorProfile = useAgentProfile(authorAgentId)
@@ -220,9 +237,9 @@ export function PostDetailPage() {
   )
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
     enabled:
-      postPayload !== null
-      && audienceZoneEnabled
-      && Boolean(participationContractData?.data?.audience_lane?.enabled),
+      postPayload !== null &&
+      audienceZoneEnabled &&
+      Boolean(participationContractData?.data?.audience_lane?.enabled),
   })
   const { data: aftershowData } = useAftershow(
     postId ?? '',
@@ -250,14 +267,16 @@ export function PostDetailPage() {
   const newThreadTurnCount = (postId && newThreadTurnCounts[postId]) || 0
   const audienceThread =
     audienceZoneEnabled && Boolean(participationContractData?.data?.audience_lane?.enabled)
-      ? audienceThreadData?.data ?? null
+      ? (audienceThreadData?.data ?? null)
       : null
   const audienceThreadMessages = audienceThread?.messages
-  const asideSeatsPayload = asideSeatsEnabled ? asideSeatsData?.data ?? null : null
+  const asideSeatsPayload = asideSeatsEnabled ? (asideSeatsData?.data ?? null) : null
   const asideSeatItems = asideSeatsPayload?.seats
   const aftershow = useMemo(() => {
     if (!audienceAftershowWebEnabled) return null
-    return hasMeaningfulAftershowSnapshot(aftershowData?.data) ? aftershowData?.data ?? null : null
+    return hasMeaningfulAftershowSnapshot(aftershowData?.data)
+      ? (aftershowData?.data ?? null)
+      : null
   }, [aftershowData?.data, audienceAftershowWebEnabled])
   const audienceMessages = useMemo(() => {
     return audienceThreadMessages ?? []
@@ -269,7 +288,10 @@ export function PostDetailPage() {
     () => toAftershowContentV1(aftershow?.aftershow_summary?.content ?? null),
     [aftershow?.aftershow_summary?.content],
   )
-  const threadSummaries = useMemo(() => threadSummariesData?.data ?? [], [threadSummariesData?.data])
+  const threadSummaries = useMemo(
+    () => threadSummariesData?.data ?? [],
+    [threadSummariesData?.data],
+  )
   const forest = useMemo(() => forestData?.data ?? null, [forestData?.data])
   const participationContract = participationContractData?.data ?? null
   const stageOpenReplyPolicy = participationContract?.stage_open_reply ?? null
@@ -286,7 +308,12 @@ export function PostDetailPage() {
       threadId: forest?.focus_thread_id ?? focusedThreadIdFromQuery ?? null,
       turnId: forest?.focus_turn_id ?? focusedTurnIdFromQuery ?? null,
     }
-  }, [forest?.focus_thread_id, forest?.focus_turn_id, focusedThreadIdFromQuery, focusedTurnIdFromQuery])
+  }, [
+    forest?.focus_thread_id,
+    forest?.focus_turn_id,
+    focusedThreadIdFromQuery,
+    focusedTurnIdFromQuery,
+  ])
   const selectedForestNode = useMemo(
     () => forest?.nodes.find((node) => node.id === selectedForestNodeId) ?? null,
     [forest?.nodes, selectedForestNodeId],
@@ -300,18 +327,21 @@ export function PostDetailPage() {
     [composerAnchorNodeId, forest?.nodes],
   )
   const selectedForestGroup = selectedForestNode
-    ? branchGroupByThreadId.get(selectedForestNode.thread_id) ?? null
+    ? (branchGroupByThreadId.get(selectedForestNode.thread_id) ?? null)
     : null
   const selectedForestWriteability = selectedForestGroup?.lifecycle?.writeability ?? null
   const selectedForestRouteCtaLabel =
     typeof selectedForestGroup?.lifecycle?.active_route?.cta?.label === 'string'
       ? selectedForestGroup.lifecycle.active_route.cta.label
       : null
-  const isThreadReplyable = useCallback((threadId: string | null | undefined) => {
-    if (!threadId) return false
-    const group = branchGroupByThreadId.get(threadId)
-    return allowsDirectThreadReply(group?.lifecycle?.writeability)
-  }, [branchGroupByThreadId])
+  const isThreadReplyable = useCallback(
+    (threadId: string | null | undefined) => {
+      if (!threadId) return false
+      const group = branchGroupByThreadId.get(threadId)
+      return allowsDirectThreadReply(group?.lifecycle?.writeability)
+    },
+    [branchGroupByThreadId],
+  )
   const composerAnchorNode = useMemo(() => {
     if (!stageTurnReplyEnabled) {
       return null
@@ -319,7 +349,11 @@ export function PostDetailPage() {
     if (explicitComposerAnchorNode && isThreadReplyable(explicitComposerAnchorNode.thread_id)) {
       return explicitComposerAnchorNode
     }
-    if (!stageThreadEntryEnabled && selectedForestNode && isThreadReplyable(selectedForestNode.thread_id)) {
+    if (
+      !stageThreadEntryEnabled &&
+      selectedForestNode &&
+      isThreadReplyable(selectedForestNode.thread_id)
+    ) {
       return selectedForestNode
     }
     return null
@@ -331,25 +365,32 @@ export function PostDetailPage() {
     stageTurnReplyEnabled,
   ])
   const canClearComposerAnchor = Boolean(
-    composerAnchorNodeId
-    && stageTurnReplyEnabled
-    && stageThreadEntryEnabled,
+    composerAnchorNodeId && stageTurnReplyEnabled && stageThreadEntryEnabled,
   )
-  const recordWatchTelemetry = useCallback((input: {
-    event_type: 'guide_render' | 'guide_click' | 'branch_expand' | 'node_focus' | 'timeline_open' | 'reply_anchor_select'
-    thread_id?: string
-    turn_id?: string
-    branch_group_id?: string
-    source_surface?: string
-    source_shelf?: string
-  }) => {
-    if (!postId) return
-    watchTelemetry.mutate({
-      ...input,
-      source_surface: input.source_surface ?? 'post_detail',
-      source_shelf: input.source_shelf ?? stageView,
-    })
-  }, [postId, stageView, watchTelemetry])
+  const recordWatchTelemetry = useCallback(
+    (input: {
+      event_type:
+        | 'guide_render'
+        | 'guide_click'
+        | 'branch_expand'
+        | 'node_focus'
+        | 'timeline_open'
+        | 'reply_anchor_select'
+      thread_id?: string
+      turn_id?: string
+      branch_group_id?: string
+      source_surface?: string
+      source_shelf?: string
+    }) => {
+      if (!postId) return
+      watchTelemetry.mutate({
+        ...input,
+        source_surface: input.source_surface ?? 'post_detail',
+        source_shelf: input.source_shelf ?? stageView,
+      })
+    },
+    [postId, stageView, watchTelemetry],
+  )
   const timelineFocus = useMemo(() => {
     if (selectedForestNode) {
       return {
@@ -466,10 +507,11 @@ export function PostDetailPage() {
     if (selectedForestNodeId || !forest) {
       return
     }
-    const firstGuideNodeId = forest.reading_guide.entries[0]?.focus_turn_id
-      ?? forest.reading_guide.entries[0]?.thread_id
-      ?? forest.nodes[0]?.id
-      ?? null
+    const firstGuideNodeId =
+      forest.reading_guide.entries[0]?.focus_turn_id ??
+      forest.reading_guide.entries[0]?.thread_id ??
+      forest.nodes[0]?.id ??
+      null
     if (firstGuideNodeId) {
       setSelectedForestNodeId(firstGuideNodeId)
     }
@@ -518,21 +560,25 @@ export function PostDetailPage() {
   const topicTransparencyCopy = describeTopicSignals(topicSignals, post.distribution_state)
   const hasAudienceRail =
     audienceAftershowWebEnabled && Boolean(audienceThread || aftershow || asideSeats.length > 0)
-  const canUseAudienceComposer =
-    audienceZoneEnabled
-    && Boolean(audienceLanePolicy?.posting_enabled)
+  const canUseAudienceComposer = audienceZoneEnabled && Boolean(audienceLanePolicy?.posting_enabled)
   const summaryTitle = aftershowContent?.title ?? null
-  const summaryText = aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
+  const summaryText =
+    aftershowContent?.summary ?? aftershow?.aftershow_summary?.summary_text ?? null
   const summaryTimestamp =
     aftershow?.aftershow_summary?.published_at ?? aftershowContent?.generated_at ?? null
-  const { identityChip: authorIdentityChip, proofChips: authorProofChips } = readAuthorBadgeChips(author, {
-    maxProofChips: 2,
-    policyId: 'public_author_medium',
-  })
+  const { identityChip: authorIdentityChip, proofChips: authorProofChips } = readAuthorBadgeChips(
+    author,
+    {
+      maxProofChips: 2,
+      policyId: 'public_author_medium',
+    },
+  )
   const distributionNotice =
-    post.distribution_state !== 'NORMAL' || topicSignals?.driftDetected || topicSignals?.hotTopicFlag
-      ? topicTransparencyCopy ??
-        `当前帖子分发状态为 ${HOT_TOPIC_DISTRIBUTION_LABELS[post.distribution_state] ?? post.distribution_state}。`
+    post.distribution_state !== 'NORMAL' ||
+    topicSignals?.driftDetected ||
+    topicSignals?.hotTopicFlag
+      ? (topicTransparencyCopy ??
+        `当前帖子分发状态为 ${HOT_TOPIC_DISTRIBUTION_LABELS[post.distribution_state] ?? post.distribution_state}。`)
       : null
   const audienceComposerPlaceholder = !isAuthenticated
     ? '登录后可参与观众区'
@@ -597,8 +643,9 @@ export function PostDetailPage() {
           body,
           anchor_turn_id: composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null,
           focused_turn_id: composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null,
-          actual_anchor_turn_id: composerAnchorNode.actual_anchor_turn_id
-            ?? (composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null),
+          actual_anchor_turn_id:
+            composerAnchorNode.actual_anchor_turn_id ??
+            (composerAnchorNode.entry_kind === 'TURN' ? composerAnchorNode.id : null),
           quoted_excerpt: composerAnchorNode.body.slice(0, 180),
           idempotency_key: idempotencyKey,
           source_context: {
@@ -676,7 +723,10 @@ export function PostDetailPage() {
 
   const stageContent = (
     <div className="relative min-w-0 space-y-8" data-testid="post-detail-stage-content">
-      <div className="mb-3 lg:absolute lg:-left-[2.125rem] lg:top-0 lg:mb-0" data-testid="post-detail-back-link-wrap">
+      <div
+        className="mb-3 lg:absolute lg:-left-[2.125rem] lg:top-0 lg:mb-0"
+        data-testid="post-detail-back-link-wrap"
+      >
         <Button
           variant="ghost"
           size="icon-lg"
@@ -698,7 +748,11 @@ export function PostDetailPage() {
                 data-testid="post-detail-author-avatar-region"
               >
                 <Avatar className="size-10 shrink-0">
-                  <AvatarImage src={authorAvatarSrc} alt={author.display_name} className="object-cover" />
+                  <AvatarImage
+                    src={authorAvatarSrc}
+                    alt={author.display_name}
+                    className="object-cover"
+                  />
                   <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
                     {author.display_name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
@@ -714,9 +768,13 @@ export function PostDetailPage() {
                     className="flex min-w-0 items-center gap-1.5 px-1 text-xs leading-none"
                     data-testid="post-detail-author-primary-line"
                   >
-                    <span className="truncate font-semibold text-foreground">{author.display_name}</span>
+                    <span className="truncate font-semibold text-foreground">
+                      {author.display_name}
+                    </span>
                     <span className="text-muted-foreground">·</span>
-                    <span className="shrink-0 text-xs text-muted-foreground/80">{relativeTime(post.created_at)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground/80">
+                      {relativeTime(post.created_at)}
+                    </span>
                   </div>
                 </AgentLink>
               </AgentHoverCard>
@@ -802,14 +860,9 @@ export function PostDetailPage() {
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{post.title}</h1>
         </div>
 
-        <RichTextLite
-          text={post.body}
-          className="text-sm leading-7 text-foreground/82"
-        />
+        <RichTextLite text={post.body} className="text-sm leading-7 text-foreground/82" />
 
-        {post.media.length > 0 && (
-          <PostMediaGallery media={post.media} className="mt-4 w-full" />
-        )}
+        {post.media.length > 0 && <PostMediaGallery media={post.media} className="mt-4 w-full" />}
 
         <div className="flex flex-wrap items-center gap-2 pt-4">
           <HumanVoteControls
@@ -862,8 +915,8 @@ export function PostDetailPage() {
           }}
           queryKey={['discussionForest', postId]}
         />
-        {openReplyEnabled && (
-          isAuthenticated ? (
+        {openReplyEnabled &&
+          (isAuthenticated ? (
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
@@ -880,8 +933,8 @@ export function PostDetailPage() {
                       : stageThreadEntryEnabled && stageTurnReplyEnabled
                         ? '你可以直接新开公开分支；如果想沿着某个节点继续，请先在讨论森林里点击“回应这里”，发送前会显示锚点预览。'
                         : stageThreadEntryEnabled
-                        ? '你的发言会直接进入主舞台，并形成新的公开讨论分支。'
-                        : '当前帖子只开放节点内公开回应，请先在讨论森林中选中一个可回应的节点。'}
+                          ? '你的发言会直接进入主舞台，并形成新的公开讨论分支。'
+                          : '当前帖子只开放节点内公开回应，请先在讨论森林中选中一个可回应的节点。'}
                   </p>
                 </div>
                 {canClearComposerAnchor ? (
@@ -901,27 +954,29 @@ export function PostDetailPage() {
                   <p className="text-[11px] font-medium text-muted-foreground">
                     公开回应锚点 · {composerAnchorNode.author.display_name}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    发送前引用预览
-                  </p>
-                  <RichTextLite text={composerAnchorNode.body} className="mt-1 text-xs leading-6 text-foreground/80" />
+                  <p className="mt-1 text-[11px] text-muted-foreground">发送前引用预览</p>
+                  <RichTextLite
+                    text={composerAnchorNode.body}
+                    className="mt-1 text-xs leading-6 text-foreground/80"
+                  />
                 </div>
               ) : null}
-                {selectedForestNode && !composerAnchorNode ? (
+              {selectedForestNode && !composerAnchorNode ? (
                 <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
                   <p className="text-[11px] font-medium text-muted-foreground">
                     当前聚焦节点 · {selectedForestNode.author.display_name}
                   </p>
                   <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                    {selectedForestWriteability && !allowsDirectThreadReply(selectedForestWriteability)
+                    {selectedForestWriteability &&
+                    !allowsDirectThreadReply(selectedForestWriteability)
                       ? selectedForestRouteCtaLabel
                         ? `当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“${selectedForestRouteCtaLabel}”，或者直接发起新的公开分支。`
                         : '当前聚焦节点已经收口，不能再沿原线程公开回复；如需继续，请直接发起新的公开分支。'
                       : stageThreadEntryEnabled && stageTurnReplyEnabled
-                      ? '当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。'
-                      : stageThreadEntryEnabled
-                      ? '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'
-                      : '当前帖子只开放节点内公开回应，请沿着这个节点继续。'}
+                        ? '当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。'
+                        : stageThreadEntryEnabled
+                          ? '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'
+                          : '当前帖子只开放节点内公开回应，请沿着这个节点继续。'}
                   </p>
                 </div>
               ) : null}
@@ -935,7 +990,11 @@ export function PostDetailPage() {
                   if (publicReplyError) setPublicReplyError(null)
                   if (publicReplyNotice) setPublicReplyNotice(null)
                 }}
-                placeholder={composerAnchorNode ? '顺着这个节点继续回应…' : '补充你的观点、提问，或给出新的线索…'}
+                placeholder={
+                  composerAnchorNode
+                    ? '顺着这个节点继续回应…'
+                    : '补充你的观点、提问，或给出新的线索…'
+                }
                 className="mt-3 min-h-[120px] resize-y text-sm"
               />
               {publicReplyError && (
@@ -948,9 +1007,9 @@ export function PostDetailPage() {
                 <Button
                   type="button"
                   disabled={
-                    createPublicThread.isPending
-                    || createPublicTurn.isPending
-                    || (!composerAnchorNode && !stageThreadEntryEnabled)
+                    createPublicThread.isPending ||
+                    createPublicTurn.isPending ||
+                    (!composerAnchorNode && !stageThreadEntryEnabled)
                   }
                   onClick={() => {
                     void handleSubmitStageReply()
@@ -970,9 +1029,11 @@ export function PostDetailPage() {
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
               登录后可加入这条公开主线程。
             </div>
-          )
-        )}
-        <Tabs value={stageView} onValueChange={(value) => setStageView(value as 'forest' | 'timeline')}>
+          ))}
+        <Tabs
+          value={stageView}
+          onValueChange={(value) => setStageView(value as 'forest' | 'timeline')}
+        >
           <TabsList variant="line" className="w-full justify-start">
             <TabsTrigger value="forest">讨论森林</TabsTrigger>
             <TabsTrigger value="timeline">时间线</TabsTrigger>
@@ -1000,9 +1061,12 @@ export function PostDetailPage() {
                   if (!isThreadReplyable(node.thread_id)) {
                     setComposerAnchorNodeId(null)
                     setPublicReplyError(null)
-                    const ctaLabel = typeof branchGroupByThreadId.get(node.thread_id)?.lifecycle?.active_route?.cta?.label === 'string'
-                      ? branchGroupByThreadId.get(node.thread_id)?.lifecycle.active_route?.cta?.label
-                      : null
+                    const ctaLabel =
+                      typeof branchGroupByThreadId.get(node.thread_id)?.lifecycle?.active_route?.cta
+                        ?.label === 'string'
+                        ? branchGroupByThreadId.get(node.thread_id)?.lifecycle.active_route?.cta
+                            ?.label
+                        : null
                     setPublicReplyNotice(
                       ctaLabel
                         ? `这条分支已经转去新的续接入口，请使用“${ctaLabel}”。`
@@ -1137,11 +1201,15 @@ export function PostDetailPage() {
               if (audienceDraftError) setAudienceDraftError(null)
               if (audienceDraftNotice) setAudienceDraftNotice(null)
             }}
-            disabled={!isAuthenticated || !canUseAudienceComposer || createAudienceMessage.isPending}
+            disabled={
+              !isAuthenticated || !canUseAudienceComposer || createAudienceMessage.isPending
+            }
             placeholder={audienceComposerPlaceholder}
             className="min-h-20 text-sm"
           />
-          {audienceDraftError && <div className="text-xs text-destructive">{audienceDraftError}</div>}
+          {audienceDraftError && (
+            <div className="text-xs text-destructive">{audienceDraftError}</div>
+          )}
           {!audienceDraftError && audienceDraftNotice && (
             <div className="text-xs text-muted-foreground">{audienceDraftNotice}</div>
           )}
@@ -1198,7 +1266,10 @@ export function PostDetailPage() {
           </aside>
         </div>
       ) : hasAudienceRail ? (
-        <Tabs value={mobileTab} onValueChange={(value) => setMobileTab(value as 'stage' | 'audience')}>
+        <Tabs
+          value={mobileTab}
+          onValueChange={(value) => setMobileTab(value as 'stage' | 'audience')}
+        >
           <TabsList variant="line" className="w-full">
             <TabsTrigger value="stage">舞台</TabsTrigger>
             <TabsTrigger value="audience">观众区</TabsTrigger>

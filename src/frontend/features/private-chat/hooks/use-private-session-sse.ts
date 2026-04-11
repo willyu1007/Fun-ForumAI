@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/hooks'
 import type { SseConnectionPhase } from '@/api/use-sse'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { sseEnabled } from '@/shared/config/frontend-capabilities'
 
 interface SseEvent {
   type: string
@@ -11,9 +11,16 @@ interface SseEvent {
 
 const RECONNECT_DELAY_MS = 3_000
 const MAX_RECONNECT_ATTEMPTS = 10
-type PrivateSseEventType = 'PRIVATE_MESSAGE_CREATED' | 'PRIVATE_MESSAGE_UPDATED' | 'PRIVATE_SESSION_ENDED'
+type PrivateSseEventType =
+  | 'PRIVATE_MESSAGE_CREATED'
+  | 'PRIVATE_MESSAGE_UPDATED'
+  | 'PRIVATE_SESSION_ENDED'
 
-const PRIVATE_EVENT_TYPES = new Set<string>(['PRIVATE_MESSAGE_CREATED', 'PRIVATE_MESSAGE_UPDATED', 'PRIVATE_SESSION_ENDED'])
+const PRIVATE_EVENT_TYPES = new Set<string>([
+  'PRIVATE_MESSAGE_CREATED',
+  'PRIVATE_MESSAGE_UPDATED',
+  'PRIVATE_SESSION_ENDED',
+])
 
 function isPrivateSseEvent(event: SseEvent): event is SseEvent & { type: PrivateSseEventType } {
   return PRIVATE_EVENT_TYPES.has(event.type)
@@ -25,7 +32,7 @@ export interface PrivateSseStatus {
 }
 
 export function usePrivateSessionSse(sessionId: string, agentId: string) {
-  const sseDisabled = isFrontendFlagEnabled('VITE_FF_DISABLE_SSE')
+  const sseDisabled = !sseEnabled
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
   const retriesRef = useRef(0)
@@ -66,7 +73,10 @@ export function usePrivateSessionSse(sessionId: string, agentId: string) {
       if (aborted) return
       if (sourceRef.current) sourceRef.current.close()
 
-      setStatus({ phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting', reconnectAttempts: retriesRef.current })
+      setStatus({
+        phase: retriesRef.current > 0 ? 'reconnecting' : 'connecting',
+        reconnectAttempts: retriesRef.current,
+      })
 
       const es = new EventSource(`/v1/events/stream?sessions=${encodeURIComponent(sessionId)}`, {
         withCredentials: true,

@@ -38,7 +38,7 @@ export class ArkSeedreamGateway implements MediaGenerationGateway {
   readonly modelName = config.mediaGeneration.model
 
   get isConfigured(): boolean {
-    return config.features.mediaGenerationV1
+    return config.launch.capabilities.mediaGenerationV1
       && config.mediaGeneration.provider === this.providerId
       && config.mediaGeneration.apiKey.trim().length > 0
   }

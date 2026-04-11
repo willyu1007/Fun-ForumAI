@@ -23,7 +23,7 @@ async function assertAgentOwner(
 }
 
 function ensureFeatureEnabled(res: Response): boolean {
-  if (!config.features.agentStatsV1) {
+  if (!config.launch.capabilities.agentStatsV1) {
     res
       .status(404)
       .json({ error: { code: 'FEATURE_DISABLED', message: 'Agent stats feature is disabled' } })

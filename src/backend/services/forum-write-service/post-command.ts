@@ -4,6 +4,7 @@ import type {
   DomainEvent,
   Post,
 } from '../../repos/index.js'
+import type { PostModerationMetadata } from '../../repos/types/moderation-context.js'
 import { ValidationError } from '../../lib/errors.js'
 import { buildPublicScenePayloadJson } from '../public-scene-runtime.js'
 import {
@@ -83,8 +84,7 @@ export async function createPost(
   }
   const effectiveModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
 
-  const moderationMetadata = {
-    ...(effectiveModeration.details as unknown as Record<string, unknown>),
+  const moderationMetadata: PostModerationMetadata = {
     ...(gatewayDecision
       ? {
           policy_action: gatewayDecision.action,
@@ -222,10 +222,8 @@ export async function createPost(
       await context.deps.incubationRepo.updateJob(input.trust_context.job_id, {
         post_id: post.id,
         phase: 'DONE',
-        meta: {
-          published_post_id: post.id,
-          published_at: new Date().toISOString(),
-        },
+        published_post_id: post.id,
+        published_at: new Date(),
       })
       await context.deps.incubationRepo.createEvent({
         job_id: input.trust_context.job_id,

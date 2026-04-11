@@ -57,7 +57,9 @@ export class InMemoryAftershowArtifactRepository implements AftershowArtifactRep
       cause_event_id: input.cause_event_id ?? null,
       idempotency_key: input.idempotency_key ?? null,
       published_at: input.published_at ?? null,
-      meta: input.meta ?? null,
+      reason: input.reason ?? null,
+      threshold_pass: input.threshold_pass ?? null,
+      publish_shape: input.publish_shape ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -74,7 +76,9 @@ export class InMemoryAftershowArtifactRepository implements AftershowArtifactRep
     if (input.content !== undefined) row.content = input.content
     if (input.audience_summary_ref !== undefined) row.audience_summary_ref = input.audience_summary_ref
     if (input.published_at !== undefined) row.published_at = input.published_at
-    if (input.meta !== undefined) row.meta = input.meta
+    if (input.reason !== undefined) row.reason = input.reason
+    if (input.threshold_pass !== undefined) row.threshold_pass = input.threshold_pass
+    if (input.publish_shape !== undefined) row.publish_shape = input.publish_shape
     row.updated_at = new Date()
     this.artifacts.set(row.id, row)
     return row
@@ -121,7 +125,6 @@ export class InMemoryAftershowArtifactRepository implements AftershowArtifactRep
       evidence_ref: input.evidence_ref ?? null,
       notification_id: input.notification_id ?? null,
       invalidated_at: input.invalidated_at ?? null,
-      meta: input.meta ?? null,
       created_at: new Date(),
     }
     this.callouts.set(row.id, row)
@@ -134,7 +137,6 @@ export class InMemoryAftershowArtifactRepository implements AftershowArtifactRep
     if (!row) return null
     if (input.notification_id !== undefined) row.notification_id = input.notification_id
     if (input.invalidated_at !== undefined) row.invalidated_at = input.invalidated_at
-    if (input.meta !== undefined) row.meta = input.meta
     this.callouts.set(row.id, row)
     return row
   }

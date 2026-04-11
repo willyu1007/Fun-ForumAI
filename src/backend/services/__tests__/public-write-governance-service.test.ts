@@ -82,7 +82,7 @@ function buildWriteAuthContext(overrides?: {
 }
 
 describe('PublicWriteGovernanceService', () => {
-  const featureFlags = config.features as unknown as Record<string, boolean>
+  const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
   let originalFlags: Record<string, boolean>
 
   beforeEach(() => {

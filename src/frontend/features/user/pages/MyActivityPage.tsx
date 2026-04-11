@@ -15,10 +15,8 @@ import {
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { globalHighlightsEnabled } from '@/shared/config/frontend-capabilities'
 import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
-
-const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 
 function AgentActivityTab() {
   const { isAuthenticated } = useAuth()
@@ -28,7 +26,9 @@ function AgentActivityTab() {
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-16 rounded-lg" />
+        ))}
       </div>
     )
   }
@@ -54,7 +54,7 @@ function AgentActivityTab() {
 
   return (
     <div className="space-y-2">
-      {agents.map((agent) => (
+      {agents.map((agent) =>
         (() => {
           const { identityChip, proofChips } = readAuthorBadgeChips(agent, {
             maxProofChips: 2,
@@ -80,14 +80,16 @@ function AgentActivityTab() {
                         {badge}
                       </Badge>
                     ))}
-                    <Badge variant="secondary" className="text-[10px]">活跃</Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      活跃
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
             </AgentLink>
           )
-        })()
-      ))}
+        })(),
+      )}
     </div>
   )
 }
@@ -99,7 +101,9 @@ function MyCommunityTab() {
   if (isLoading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2">
-        {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-24 rounded-lg" />
+        ))}
       </div>
     )
   }
@@ -110,7 +114,9 @@ function MyCommunityTab() {
         <p className="text-sm font-medium">暂无关联社区</p>
         <p className="mt-1 text-xs text-muted-foreground">
           前往
-          <Link to="/communities" className="ml-1 text-primary hover:underline">浏览社区</Link>
+          <Link to="/communities" className="ml-1 text-primary hover:underline">
+            浏览社区
+          </Link>
           发现感兴趣的社区。
         </p>
       </div>
@@ -157,21 +163,15 @@ function toHighlightsOrNull(value: unknown): GlobalHighlightsData | null {
 }
 
 function PublicActivityTab() {
-  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED)
+  const { data, isLoading, error } = useGlobalHighlights(globalHighlightsEnabled)
   const highlights = toHighlightsOrNull(data?.data)
-
-  if (!GLOBAL_HIGHLIGHTS_ENABLED) {
-    return (
-      <div className="rounded-xl border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-        全站高光功能未开启。
-      </div>
-    )
-  }
 
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 rounded-lg" />
+        ))}
       </div>
     )
   }
@@ -199,9 +199,15 @@ function PublicActivityTab() {
                 {item.title}
               </Link>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                <Badge variant="outline" className="text-[10px]">热度 {item.heat_score}</Badge>
-                <Badge variant="outline" className="text-[10px]">舞台发言 {item.thread_turn_count}</Badge>
-                <Badge variant="outline" className="text-[10px]">{item.community_name}</Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  热度 {item.heat_score}
+                </Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  舞台发言 {item.thread_turn_count}
+                </Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  {item.community_name}
+                </Badge>
               </div>
             </div>
           ))
@@ -239,13 +245,17 @@ export function MyActivityPage() {
       <div className="space-y-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight">我的关联</h1>
-          <p className="mt-1 text-sm text-muted-foreground">查看你的智能体动态、所属社区和公开动向。</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            查看你的智能体动态、所属社区和公开动向。
+          </p>
         </div>
         <div className="rounded-xl border border-dashed bg-muted/30 p-10 text-center">
           <p className="text-sm font-medium">需要登录</p>
           <p className="mt-1 text-xs text-muted-foreground">
             请先
-            <Link to="/login" className="ml-1 text-primary hover:underline">登录</Link>
+            <Link to="/login" className="ml-1 text-primary hover:underline">
+              登录
+            </Link>
             以查看你的关联信息。
           </p>
         </div>
@@ -257,7 +267,9 @@ export function MyActivityPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-bold tracking-tight">我的关联</h1>
-        <p className="mt-1 text-sm text-muted-foreground">查看你的智能体动态、所属社区和公开动向。</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          查看你的智能体动态、所属社区和公开动向。
+        </p>
       </div>
 
       <Tabs defaultValue="agents">

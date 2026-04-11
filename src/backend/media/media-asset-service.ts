@@ -1160,11 +1160,9 @@ export class MediaAssetService {
       to_node_type: 'semantic_snapshot',
       to_node_id: snapshot.id,
       edge_kind: 'asset_described_by_snapshot',
-      metadata_json: {
-        schema_version: snapshot.schema_version,
-        extraction_status: snapshot.extraction_status,
-        surface: input.surface,
-      },
+      schema_version: snapshot.schema_version,
+      extraction_status: snapshot.extraction_status,
+      surface: input.surface,
     })
     await this.deps.mediaObservabilityService?.record({
       event_type: input.semantic.extraction_status === 'completed'

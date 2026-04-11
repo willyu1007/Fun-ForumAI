@@ -90,6 +90,11 @@ let readMediaRolloutProfileCache: {
 } | null = null
 let readMediaRolloutProfilePending: Promise<MediaRolloutControllerProfile | null> | null = null
 
+export function resetReadApiRouteTestState(): void {
+  readMediaRolloutProfileCache = null
+  readMediaRolloutProfilePending = null
+}
+
 function isAttachmentInput(item: unknown): item is { ref: string; type: string } {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return false
   const record = item as Record<string, unknown>
@@ -336,14 +341,14 @@ async function resolveViewerContext(req: Request, res: Response): Promise<Viewer
 }
 
 async function recordPublicViewEvents(entries: CreateViewerPublicViewEventInput[]): Promise<void> {
-  if (!config.features.lightweightPersonalizationV1 || entries.length === 0) {
+  if (!config.launch.capabilities.lightweightPersonalizationV1 || entries.length === 0) {
     return
   }
   await viewerPublicViewService.record(entries)
 }
 
 async function resolveReadMediaRolloutProfile(): Promise<MediaRolloutControllerProfile | null> {
-  if (!config.features.mediaRolloutControllerV1) {
+  if (!config.launch.capabilities.mediaRolloutControllerV1) {
     return null
   }
 
@@ -389,7 +394,7 @@ async function buildRelationTeaser(
   targetAgentId: string,
   viewer: ViewerActorContext | null,
 ) {
-  if (!viewer?.viewer_agent_id || !config.features.lightweightPersonalizationV1) {
+  if (!viewer?.viewer_agent_id || !config.launch.capabilities.lightweightPersonalizationV1) {
     return null
   }
   return publicAgentRelationSummaryService
@@ -409,7 +414,7 @@ async function attachRelationTeasersToPosts<T extends RelationTeaserAttachable>(
   relation_context?: { hint: string }
   relation_teaser?: Awaited<ReturnType<typeof buildRelationTeaser>>
 }>> {
-  if (!config.features.lightweightPersonalizationV1 || !viewer?.viewer_agent_id || items.length === 0) {
+  if (!config.launch.capabilities.lightweightPersonalizationV1 || !viewer?.viewer_agent_id || items.length === 0) {
     return items
   }
   const uniqueAgentIds = Array.from(new Set(items.map((item) => item.author.id)))
@@ -471,7 +476,6 @@ async function buildAftershowSnapshot(postId: string, input: {
     evidence_ref: string | null
     notification_id: string | null
     invalidated_at: Date | null
-    meta: Record<string, unknown> | null
     created_at: Date
     callout_index: number
     deep_link: string
@@ -491,7 +495,7 @@ async function buildAftershowSnapshot(postId: string, input: {
   const participationContract = await participationContractService.getPostContract(postId)
   const [aftershow, thread] = await Promise.all([
     aftershowService.getLatestByPost(postId),
-    config.features.audienceZoneV1 && participationContract.audience_lane.enabled
+    config.launch.capabilities.audienceZoneV1 && participationContract.audience_lane.enabled
       ? audienceService.getThreadByPost(postId)
       : null,
   ])
@@ -694,7 +698,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
   const sourceContext = readSourceContext(req)
   const post = await forumReadService.getPost(req.params.postId, user?.userId)
   const relationTeaser = await buildRelationTeaser(post.author.id, viewer)
-  if (!config.features.audienceAftershowWebV1) {
+  if (!config.launch.capabilities.audienceAftershowWebV1) {
     await recordPublicViewEvents([{
       actor_type: viewer.actor_type,
       actor_id: viewer.actor_id,
@@ -722,7 +726,7 @@ readApiRouter.get('/posts/:postId', async (req, res) => {
     return
   }
 
-  const aftershow = config.features.aftershowV1
+  const aftershow = config.launch.capabilities.aftershowV1
     ? await buildAftershowSnapshot(post.id, { post, viewer })
     : {
         post_id: post.id,
@@ -1231,7 +1235,7 @@ readApiRouter.post('/appeals', requireHumanAuth, async (req, res) => {
 })
 
 readApiRouter.get('/posts/:postId/audience-thread', async (req, res) => {
-  if (!config.features.audienceZoneV1) {
+  if (!config.launch.capabilities.audienceZoneV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Audience API is disabled by feature flag.' },
     })
@@ -1264,7 +1268,7 @@ readApiRouter.get('/appeals', requireHumanAuth, async (req, res) => {
 })
 
 readApiRouter.get('/posts/:postId/aftershow', async (req, res) => {
-  if (!config.features.aftershowV1) {
+  if (!config.launch.capabilities.aftershowV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Aftershow API is disabled by feature flag.' },
     })
@@ -1322,7 +1326,7 @@ readApiRouter.get('/agents/:agentId/relations/public-summary', async (req, res) 
 })
 
 readApiRouter.get('/posts/:postId/aside-seats', async (req, res) => {
-  if (!config.features.roleAssignmentV1) {
+  if (!config.launch.capabilities.roleAssignmentV1) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Role assignment API is disabled by feature flag.' },
     })
@@ -1349,7 +1353,7 @@ readApiRouter.get('/posts/:postId/aside-seats', async (req, res) => {
 })
 
 readApiRouter.get('/highlights', async (req, res) => {
-  if (!config.features.globalHighlightsV1) {
+  if (!config.launch.capabilities.globalHighlightsV1) {
     const payload = buildEmptyGlobalHighlightsPayload()
     res.json({ data: payload, meta: payload.meta })
     return
@@ -1492,7 +1496,7 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
   const agent = agentService.getAgentProfile(req.params.agentId)
   const latestConfig = agentService.getLatestConfig(agent.id)
   const is_followed =
-    user && config.features.humanParticipationV1
+    user && config.launch.capabilities.humanParticipationV1
       ? humanParticipationService.isFollowing(user.userId, agent.id)
       : false
   const isOwner = Boolean(user && user.userId === agent.owner_id)
@@ -1509,7 +1513,7 @@ readApiRouter.get('/agents/:agentId/profile', async (req, res) => {
       build_if_missing: true,
       allow_minor_refresh: canViewPrivateBio,
     }).catch(() => null),
-    config.features.achievementPublicHighlights && achievementChronicleService
+    config.launch.capabilities.achievementPublicHighlights && achievementChronicleService
       ? achievementChronicleService.getPublicAuthorPresentation(agent.id).catch(() => ({
           public_projection: null,
           public_proof: null,
@@ -1572,7 +1576,7 @@ readApiRouter.get('/communities', async (req, res) => {
 })
 
 readApiRouter.post('/votes/human', requireHumanAuth, async (req, res) => {
-  if (!config.features.humanParticipationV1) {
+  if (!config.launch.capabilities.humanParticipationV1) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',

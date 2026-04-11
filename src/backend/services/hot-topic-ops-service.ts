@@ -7,6 +7,10 @@ import type {
   RiskGovernanceRepository,
   RoomRepository,
 } from '../repos/index.js'
+import type {
+  ModerationTopicSignals,
+  PostModerationMetadata,
+} from '../repos/types/moderation-context.js'
 import type { ChatService } from './chat-service.js'
 import type { ChatroomControlService } from './chatroom-control-service.js'
 import { listPublicStageThreadTurnsByPostsSince } from '../lib/public-stage-thread-turn.js'
@@ -106,6 +110,42 @@ function severityRank(value: HotTopicAlertSeverity): number {
   if (value === 'high') return 3
   if (value === 'medium') return 2
   return 1
+}
+
+function buildTopicSignalOverride(
+  existingSignals: ModerationTopicSignals | null | undefined,
+  input: {
+    distribution_state: 'NORMAL' | 'NO_RECOMMEND'
+    reason?: string | null
+  },
+): ModerationTopicSignals {
+  return {
+    topic_domain: existingSignals?.topic_domain ?? 'GENERAL',
+    hot_topic_flag: existingSignals?.hot_topic_flag ?? true,
+    topic_confidence: existingSignals?.topic_confidence ?? 0,
+    drift_risk_score: existingSignals?.drift_risk_score ?? 0,
+    drift_detected: existingSignals?.drift_detected ?? false,
+    distribution_state: input.distribution_state,
+    enforcement_reason: input.reason ?? 'admin_hot_topic_distribution_override',
+    matched_keywords: existingSignals?.matched_keywords ?? [],
+    allowed_matches: existingSignals?.allowed_matches ?? [],
+    sensitive_matches: existingSignals?.sensitive_matches ?? [],
+    context_matches: existingSignals?.context_matches ?? [],
+    allowed_domains: existingSignals?.allowed_domains ?? [],
+    kill_switch_mode: existingSignals?.kill_switch_mode ?? 'NORMAL',
+    kill_switch_source: existingSignals?.kill_switch_source ?? 'default',
+    scene_key: existingSignals?.scene_key ?? null,
+    room_no_recommend: existingSignals?.room_no_recommend ?? (input.distribution_state === 'NO_RECOMMEND'),
+    policy_shadowed: existingSignals?.policy_shadowed ?? false,
+    sampled_review_required: existingSignals?.sampled_review_required ?? false,
+    sampling_metrics: existingSignals?.sampling_metrics ?? {
+      post_thread_turn_count: 0,
+      room_message_count_hour: 0,
+      report_count_24h: 0,
+    },
+    gray_keyword_matches: existingSignals?.gray_keyword_matches ?? [],
+    deny_keyword_matches: existingSignals?.deny_keyword_matches ?? [],
+  }
 }
 
 export class HotTopicOpsService {
@@ -422,16 +462,11 @@ export class HotTopicOpsService {
     const post = await this.deps.postRepo.findById(input.post_id)
     if (!post) throw new NotFoundError('Post', input.post_id)
 
-    const existingMetadata = isRecord(post.moderation_metadata) ? post.moderation_metadata : {}
-    const existingSignals = isRecord(existingMetadata.topic_signals) ? existingMetadata.topic_signals : {}
-    const nextMetadata = {
-      ...existingMetadata,
+    const existingMetadata = post.moderation_metadata ?? null
+    const nextMetadata: PostModerationMetadata = {
+      ...(existingMetadata ?? {}),
       distribution_state: input.distribution_state,
-      topic_signals: {
-        ...existingSignals,
-        distribution_state: input.distribution_state,
-        enforcement_reason: input.reason ?? 'admin_hot_topic_distribution_override',
-      },
+      topic_signals: buildTopicSignalOverride(existingMetadata?.topic_signals, input),
       admin_distribution_override: {
         state: input.distribution_state,
         actor_user_id: input.actor_user_id,

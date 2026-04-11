@@ -133,7 +133,6 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         reason: input.reason ?? null,
         reviewedAt: input.reviewed_at ?? (input.reviewed_by_user_id ? new Date() : null),
         expiresAt: input.expires_at ?? null,
-        metaJson: toNullableJsonInput(input.meta),
       },
     })
     return this.toIdentityVerification(row)
@@ -480,7 +479,6 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
         targetId: input.target_id,
         relationType: input.relation_type ?? 'PRIMARY',
         channel: input.channel,
-        metaJson: toNullableJsonInput(input.meta),
         communityId: input.community_id ?? null,
         agentId: input.agent_id ?? null,
         userId: input.user_id ?? null,
@@ -506,7 +504,6 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       data: {
         ...(input.target_id !== undefined ? { targetId: input.target_id } : {}),
         ...(input.relation_type !== undefined ? { relationType: input.relation_type } : {}),
-        ...(input.meta !== undefined ? { metaJson: toNullableJsonInput(input.meta) } : {}),
         ...(input.room_id !== undefined ? { roomId: input.room_id } : {}),
         ...(input.session_id !== undefined ? { sessionId: input.session_id } : {}),
         ...(input.message_id !== undefined ? { messageId: input.message_id } : {}),
@@ -744,7 +741,6 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       submitted_at: row.submittedAt,
       reviewed_at: row.reviewedAt,
       expires_at: row.expiresAt,
-      meta: toRecordOrNull(row.metaJson),
     }
   }
 
@@ -803,7 +799,6 @@ export class PgRiskGovernanceRepository implements RiskGovernanceRepository {
       target_id: row.targetId,
       relation_type: row.relationType,
       channel: row.channel,
-      meta: toRecordOrNull(row.metaJson),
       community_id: row.communityId,
       agent_id: row.agentId,
       user_id: row.userId,

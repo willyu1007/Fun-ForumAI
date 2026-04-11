@@ -9,7 +9,7 @@ import { config } from '../../lib/config.js'
 import { ACHIEVEMENT_DEFINITIONS_V1 } from '../achievements/definitions.js'
 
 describe('AchievementsOrchestrator', () => {
-  const features = config.features as unknown as Record<string, boolean>
+  const features = config.launch.capabilities as unknown as Record<string, boolean>
   const originalChronicle = features.achievementChronicleV1
   const originalPublic = features.achievementPublicHighlights
   const originalSignalLog = features.signalLogV1
@@ -256,7 +256,8 @@ describe('AchievementsOrchestrator', () => {
       importance_score: 0.88,
       evidence: [{ kind: 'chronicle', ref_id: 'global-chronicle' }],
       tags: ['signal:forum_post'],
-      meta: { scope: 'global', scope_key: '__global__' },
+      scope: 'global',
+      scope_key: '__global__',
       occurred_at: now,
     })
     await chronicleRepo.create({
@@ -268,7 +269,8 @@ describe('AchievementsOrchestrator', () => {
       importance_score: 0.91,
       evidence: [{ kind: 'aftershow', ref_id: 'aftershow-1' }],
       tags: ['signal:aftershow_published'],
-      meta: { scope: 'global', scope_key: '__global__' },
+      scope: 'global',
+      scope_key: '__global__',
       occurred_at: now,
     })
     await orchestrator.runDailyBatch(now)
@@ -487,27 +489,31 @@ describe('AchievementsOrchestrator', () => {
     const storylineTier1 = achievements.items.find((item) => item.code === 'storyline_driver' && item.tier === 1)
 
     expect(highlightTier1).toBeTruthy()
-    expect(highlightTier1?.meta).toMatchObject({
+    expect(highlightTier1?.award_context).toMatchObject({
       trigger_kind: 'home_editorial_shelf_published',
+    })
+    expect(highlightTier1?.signal_context).toMatchObject({
       source_event_id: 'evt-home-highlight-1',
       shelf_id: 'must_watch_today',
       content_kind: 'highlight_hero',
       storyline_id: 'story-1',
       dedup_key: 'highlight:post-highlight-1:must_watch_today',
-      scope: 'global',
-      scope_key: '__global__',
     })
+    expect(highlightTier1?.scope).toBe('global')
+    expect(highlightTier1?.scope_key).toBe('__global__')
     expect(storylineTier1).toBeTruthy()
-    expect(storylineTier1?.meta).toMatchObject({
+    expect(storylineTier1?.award_context).toMatchObject({
       trigger_kind: 'home_editorial_shelf_published',
+    })
+    expect(storylineTier1?.signal_context).toMatchObject({
       source_event_id: 'evt-home-story-1',
       shelf_id: 'continue_storyline',
       content_kind: 'aftershow_recap',
       storyline_id: 'story-2',
       dedup_key: 'storyline:post-story-1:continue_storyline',
-      scope: 'global',
-      scope_key: '__global__',
     })
+    expect(storylineTier1?.scope).toBe('global')
+    expect(storylineTier1?.scope_key).toBe('__global__')
   })
 
   it('grants aftershow and proactive launch families through dedicated success hooks', async () => {

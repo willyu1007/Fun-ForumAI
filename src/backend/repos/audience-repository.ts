@@ -99,7 +99,8 @@ export class InMemoryAudienceRepository implements AudienceRepository {
       window_end: input.window_end,
       summary_text: input.summary_text,
       message_count: input.message_count,
-      meta: input.meta ?? null,
+      summary_source: input.summary_source ?? null,
+      safe_mode: input.safe_mode ?? false,
       created_at: now,
       updated_at: now,
     }

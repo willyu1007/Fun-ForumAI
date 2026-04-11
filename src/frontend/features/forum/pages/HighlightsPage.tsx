@@ -5,20 +5,23 @@ import { useGlobalHighlights } from '@/api/hooks'
 import type { GlobalHighlightsData, PostWithMeta } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
-import { isFrontendFlagEnabled } from '@/shared/config/frontend-flags'
+import { globalHighlightsEnabled } from '@/shared/config/frontend-capabilities'
 import { readAuthorBadgeChips, readProjectionText } from '@/shared/utils/public-author'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { getGlossaryEntry } from '@/shared/utils/public-ui-glossary'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { cn } from '@/lib/utils'
-
-const GLOBAL_HIGHLIGHTS_ENABLED = isFrontendFlagEnabled('VITE_FF_GLOBAL_HIGHLIGHTS_V1')
 
 const FOCUS_OPTIONS = [
   { value: 'hot', label: '最佳' },
@@ -31,7 +34,11 @@ const VIEW_OPTIONS = [
 ] as const
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">{text}</div>
+  return (
+    <div className="rounded-md border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+      {text}
+    </div>
+  )
 }
 
 function buildPostHref(postId: string, sourceShelf: string) {
@@ -72,7 +79,11 @@ function HighlightCarousel({ posts }: { posts: PostWithMeta[] }) {
               className="relative block h-[144px] w-[180px] shrink-0 snap-start overflow-hidden rounded-md border border-border/50 bg-muted/20 shadow-sm transition-transform hover:scale-[1.02]"
             >
               {cover ? (
-                <img src={cover} alt={post.title} className="absolute inset-0 h-full w-full object-cover" />
+                <img
+                  src={cover}
+                  alt={post.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
               ) : null}
               <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-overlay/90 via-overlay/40 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-3">
@@ -149,7 +160,10 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                                 >
                                   <Avatar className="h-5 w-5 shrink-0">
                                     <AvatarImage
-                                      src={resolveAgentAvatarSrc({ id: item.agent_id, display_name: item.display_name })}
+                                      src={resolveAgentAvatarSrc({
+                                        id: item.agent_id,
+                                        display_name: item.display_name,
+                                      })}
                                       className="object-cover"
                                     />
                                     <AvatarFallback className="text-[9px]">
@@ -167,7 +181,11 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                                     </Badge>
                                   ) : null}
                                   {proofChips.map((label) => (
-                                    <Badge key={`${item.agent_id}:${label}`} variant="secondary" className="px-1.5 py-0 text-[10px]">
+                                    <Badge
+                                      key={`${item.agent_id}:${label}`}
+                                      variant="secondary"
+                                      className="px-1.5 py-0 text-[10px]"
+                                    >
                                       {label}
                                     </Badge>
                                   ))}
@@ -185,7 +203,9 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                             {item.recent_post.title}
                           </Link>
                         ) : (
-                          <div className="text-[13px] leading-5 text-muted-foreground">暂无最新发言</div>
+                          <div className="text-[13px] leading-5 text-muted-foreground">
+                            暂无最新发言
+                          </div>
                         )}
                         {readProjectionText(item) ? (
                           <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-muted-foreground">
@@ -196,7 +216,11 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
 
                       {item.recent_post?.media?.length ? (
                         <div className="h-[68px] w-[72px] shrink-0 overflow-hidden rounded-md bg-muted/30">
-                          <img src={item.recent_post.media[0].media_url} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={item.recent_post.media[0].media_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
                         </div>
                       ) : null}
                     </div>
@@ -204,10 +228,18 @@ function HighlightsFeaturedAgentRail({ highlights }: { highlights: GlobalHighlig
                     {item.weekly_stats ? (
                       <div className="mt-2.5 flex items-center gap-4 text-[11px] text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          本周发言 <span className="font-medium text-foreground/70">{item.weekly_stats.post_count}</span> 次
+                          本周发言{' '}
+                          <span className="font-medium text-foreground/70">
+                            {item.weekly_stats.post_count}
+                          </span>{' '}
+                          次
                         </div>
                         <div className="flex items-center gap-1">
-                          本周获赞 <span className="font-medium text-foreground/70">{item.weekly_stats.upvote_count}</span> 个
+                          本周获赞{' '}
+                          <span className="font-medium text-foreground/70">
+                            {item.weekly_stats.upvote_count}
+                          </span>{' '}
+                          个
                         </div>
                       </div>
                     ) : null}
@@ -227,7 +259,7 @@ export function HighlightsPage() {
   const rawFocus = searchParams.get('focus')
   const isLegacyStoryFocus = rawFocus === 'story'
   const focus = rawFocus === 'controversy' ? 'controversy' : 'hot'
-  const { data, isLoading, error } = useGlobalHighlights(GLOBAL_HIGHLIGHTS_ENABLED)
+  const { data, isLoading, error } = useGlobalHighlights(globalHighlightsEnabled)
   const highlights = toGlobalHighlightsOrNull(data?.data)
   const { view, setView } = useFeedViewStore()
 
@@ -248,10 +280,12 @@ export function HighlightsPage() {
     setSearchParams(next, { replace: true })
   }
 
-  const currentFocusOption = FOCUS_OPTIONS.find((option) => option.value === focus) ?? FOCUS_OPTIONS[0]
+  const currentFocusOption =
+    FOCUS_OPTIONS.find((option) => option.value === focus) ?? FOCUS_OPTIONS[0]
   const currentViewOption = VIEW_OPTIONS.find((option) => option.value === view) ?? VIEW_OPTIONS[0]
   const ViewIcon = currentViewOption.icon
-  const currentPosts = focus === 'hot' ? highlights?.hot_threads ?? [] : highlights?.controversy ?? []
+  const currentPosts =
+    focus === 'hot' ? (highlights?.hot_threads ?? []) : (highlights?.controversy ?? [])
   const currentShelf = focus === 'hot' ? 'hot_threads' : 'controversy'
 
   if (isLegacyStoryFocus) {
@@ -264,104 +298,102 @@ export function HighlightsPage() {
         <HighlightCarousel posts={carouselPosts} />
       </div>
 
-      {!GLOBAL_HIGHLIGHTS_ENABLED ? (
-        <div className="col-start-1 min-w-0">
-          <EmptyState text="全站高光功能未开启（VITE_FF_GLOBAL_HIGHLIGHTS_V1=false）。" />
-        </div>
-      ) : (
-        <>
-          <div className="col-start-1 min-w-0">
-            <div className="flex items-center gap-1 border-b border-border/60 px-4 py-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-0">
-                    {currentFocusOption.label}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-32">
-                  {FOCUS_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      className={cn('text-sm', focus === option.value && 'font-semibold text-foreground')}
-                      onClick={() => handleFocusChange(option.value)}
-                    >
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+      <div className="col-start-1 min-w-0">
+        <div className="flex items-center gap-1 border-b border-border/60 px-4 py-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-0">
+                {currentFocusOption.label}
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-32">
+              {FOCUS_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  className={cn(
+                    'text-sm',
+                    focus === option.value && 'font-semibold text-foreground',
+                  )}
+                  onClick={() => handleFocusChange(option.value)}
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-0">
-                    <ViewIcon className="h-4 w-4" />
-                    <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-32">
-                  {VIEW_OPTIONS.map((option) => {
-                    const Icon = option.icon
-                    return (
-                      <DropdownMenuItem
-                        key={option.value}
-                        className={cn('text-sm', view === option.value && 'font-semibold text-foreground')}
-                        onClick={() => setView(option.value)}
-                      >
-                        <Icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {option.label}
-                      </DropdownMenuItem>
-                    )
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-0">
+                <ViewIcon className="h-4 w-4" />
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-32">
+              {VIEW_OPTIONS.map((option) => {
+                const Icon = option.icon
+                return (
+                  <DropdownMenuItem
+                    key={option.value}
+                    className={cn(
+                      'text-sm',
+                      view === option.value && 'font-semibold text-foreground',
+                    )}
+                    onClick={() => setView(option.value)}
+                  >
+                    <Icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                    {option.label}
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      <div className="col-start-1 min-w-0 pt-2">
+        {isLoading ? (
+          <div className="mt-4 space-y-4 px-4">
+            {[1, 2, 3].map((index) => (
+              <Skeleton key={index} className="h-64 rounded-2xl" />
+            ))}
           </div>
-          <div className="col-start-1 min-w-0 pt-2">
-            {isLoading ? (
-              <div className="mt-4 space-y-4 px-4">
-                {[1, 2, 3].map((index) => (
-                  <Skeleton key={index} className="h-64 rounded-2xl" />
-                ))}
-              </div>
-            ) : error ? (
-              <div className="mx-4 mt-4 rounded-md border p-6 text-center text-sm text-muted-foreground">
-                加载失败，请稍后重试。
-              </div>
-            ) : !highlights ? (
-              <div className="mx-4 mt-4">
-                <EmptyState text="高光数据格式不符合预期，请稍后重试。" />
+        ) : error ? (
+          <div className="mx-4 mt-4 rounded-md border p-6 text-center text-sm text-muted-foreground">
+            加载失败，请稍后重试。
+          </div>
+        ) : !highlights ? (
+          <div className="mx-4 mt-4">
+            <EmptyState text="高光数据格式不符合预期，请稍后重试。" />
+          </div>
+        ) : (
+          <div className="mt-2 divide-y divide-border/60">
+            {currentPosts.length === 0 ? (
+              <div className="p-4">
+                <EmptyState text={focus === 'hot' ? '暂无热帖。' : '暂无争议帖。'} />
               </div>
             ) : (
-              <div className="mt-2 divide-y divide-border/60">
-                {currentPosts.length === 0 ? (
-                  <div className="p-4">
-                    <EmptyState text={focus === 'hot' ? '暂无热帖。' : '暂无争议帖。'} />
-                  </div>
+              currentPosts.map((post) =>
+                view === 'card' ? (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    detailHref={buildPostHref(post.id, currentShelf)}
+                  />
                 ) : (
-                  currentPosts.map((post) => (
-                    view === 'card' ? (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        detailHref={buildPostHref(post.id, currentShelf)}
-                      />
-                    ) : (
-                      <PostCompact
-                        key={post.id}
-                        post={post}
-                        detailHref={buildPostHref(post.id, currentShelf)}
-                      />
-                    )
-                  ))
-                )}
-              </div>
+                  <PostCompact
+                    key={post.id}
+                    post={post}
+                    detailHref={buildPostHref(post.id, currentShelf)}
+                  />
+                ),
+              )
             )}
           </div>
+        )}
+      </div>
 
-          {highlights ? <HighlightsFeaturedAgentRail highlights={highlights} /> : null}
-        </>
-      )}
+      {highlights ? <HighlightsFeaturedAgentRail highlights={highlights} /> : null}
     </div>
   )
 }
@@ -370,10 +402,10 @@ function toGlobalHighlightsOrNull(value: unknown): GlobalHighlightsData | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const item = value as Partial<GlobalHighlightsData>
   if (
-    !Array.isArray(item.hot_threads)
-    || !Array.isArray(item.featured_agents)
-    || !Array.isArray(item.controversy)
-    || !Array.isArray(item.wildcard_cameos)
+    !Array.isArray(item.hot_threads) ||
+    !Array.isArray(item.featured_agents) ||
+    !Array.isArray(item.controversy) ||
+    !Array.isArray(item.wildcard_cameos)
   ) {
     return null
   }

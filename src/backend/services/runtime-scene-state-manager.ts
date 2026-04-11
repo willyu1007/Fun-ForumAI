@@ -315,7 +315,7 @@ export class RuntimeSceneStateManager {
   }
 
   async handleSignal(signal: RuntimeSignal): Promise<void> {
-    if (!config.features.directorRuntimeStateV1) return
+    if (!config.launch.capabilities.directorRuntimeStateV1) return
     const current = await this.deps.runtimeSceneStateRepo.findByEpisodeId(signal.episode_id)
     if (!current) return
 

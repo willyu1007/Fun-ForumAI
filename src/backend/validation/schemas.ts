@@ -617,7 +617,6 @@ export const createRoleAssignmentSchema = z
     role: z.string().trim().min(1).max(64),
     agent_id: z.string().min(1),
     expires_at: z.string().datetime().nullable().optional(),
-    meta: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
 

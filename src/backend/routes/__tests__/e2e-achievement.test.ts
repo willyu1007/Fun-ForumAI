@@ -5,7 +5,7 @@ import { app, config, servicePost, adminToken, userToken, user2Token, waitFor, s
 setupFeatureFlagGuard()
 
 describe('E2E: Achievement Chronicle V1', () => {
-  const featureFlags = config.features as unknown as Record<string, boolean>
+  const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
   const originalChronicle = featureFlags.achievementChronicleV1
   const originalPublicHighlights = featureFlags.achievementPublicHighlights
 

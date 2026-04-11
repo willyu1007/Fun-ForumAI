@@ -6,7 +6,7 @@ import { AchievementChronicleService } from '../achievement-chronicle-service.js
 import { config } from '../../lib/config.js'
 
 describe('AchievementChronicleService', () => {
-  const features = config.features as unknown as Record<string, boolean>
+  const features = config.launch.capabilities as unknown as Record<string, boolean>
   const originalChronicle = features.achievementChronicleV1
   const originalPublic = features.achievementPublicHighlights
   const originalSignalLog = features.signalLogV1

@@ -113,7 +113,7 @@ export class GlobalHighlightsService {
       limit: 30,
       viewerUserId: input?.viewerUserId,
     })
-    const rolloutProfile = config.features.mediaRolloutControllerV1
+    const rolloutProfile = config.launch.capabilities.mediaRolloutControllerV1
       ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
         .catch(() => null) ?? null
       : null
