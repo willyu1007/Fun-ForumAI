@@ -127,3 +127,23 @@
     - `src/backend/routes/read/read-feedback-routes.ts`: `239`
     - `src/backend/routes/read/read-policy-routes.ts`: `107`
   - Meaning: root router files are materially smaller while extracted route modules now hold the moved low-coupling handler groups
+
+## 2026-04-11 — Route Split Phase 3
+
+- `pnpm typecheck`
+  - Result: passed
+  - Meaning: extracting admin risk/media/hot-topic routes and read discussion/internal routes did not introduce type-level regressions
+
+- `pnpm test -- --run src/backend/routes/__tests__/admin-media-api.test.ts src/backend/routes/__tests__/admin-hot-topic-api.test.ts src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/routes/__tests__/e2e-read-api.test.ts`
+  - Result: `4` test files passed, `65` tests passed
+  - Meaning: the third batch of extracted route groups preserved admin media/hot-topic/control-plane behavior and read-side discussion/thread behavior
+
+- `wc -l src/backend/routes/admin-api.ts src/backend/routes/read-api.ts src/backend/routes/admin/admin-risk-routes.ts src/backend/routes/admin/admin-media-routes.ts src/backend/routes/admin/admin-hot-topic-routes.ts src/backend/routes/read/read-discussion-routes.ts`
+  - Result:
+    - `src/backend/routes/admin-api.ts`: `14`
+    - `src/backend/routes/read-api.ts`: `1161`
+    - `src/backend/routes/admin/admin-risk-routes.ts`: `181`
+    - `src/backend/routes/admin/admin-media-routes.ts`: `297`
+    - `src/backend/routes/admin/admin-hot-topic-routes.ts`: `106`
+    - `src/backend/routes/read/read-discussion-routes.ts`: `227`
+  - Meaning: `admin-api.ts` is now a pure composition root and `read-api.ts` has shed the low-coupling discussion/internal route set while keeping the more behavior-heavy feed/post/agent/community handlers in place

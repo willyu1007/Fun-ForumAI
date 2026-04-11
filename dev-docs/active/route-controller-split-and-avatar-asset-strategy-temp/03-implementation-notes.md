@@ -139,3 +139,41 @@
   - newly extracted modules:
     - `src/backend/routes/admin/admin-runtime-routes.ts`: `668` lines
     - `src/backend/routes/read/read-policy-routes.ts`: `107` lines
+
+## 2026-04-11 — Low-Risk Route Split Phase 3
+
+- Extracted the remaining admin route groups into dedicated modules:
+  - `src/backend/routes/admin/admin-risk-routes.ts`
+    - agent risk-profile read
+    - disclosure-cap list/create/release
+  - `src/backend/routes/admin/admin-media-routes.ts`
+    - platform/community asset registration
+    - media reuse-policy write/revoke
+    - media observability / rollout-controller / lineage / lifecycle endpoints
+  - `src/backend/routes/admin/admin-hot-topic-routes.ts`
+    - dashboard / alerts
+    - post distribution control
+    - room control
+- Extracted read-side discussion/internal read-model routes into `src/backend/routes/read/read-discussion-routes.ts`, covering:
+  - post threads / thread summaries
+  - reading-guide / discussion-forest
+  - watch telemetry
+  - thread detail
+  - internal lifecycle / semantic capsule / runtime-context preview
+- Kept `admin-api.ts` and `read-api.ts` as composition roots only:
+  - `admin-api.ts` now registers review/runtime/risk/media/hot-topic groups
+  - `read-api.ts` now registers discussion/policy/feedback groups and keeps the more coupled feed/post-detail/agent/community surfaces in place
+- Maintained the same low-risk constraints as prior phases:
+  - no path changes
+  - no middleware order changes
+  - no validator changes
+  - no response contract changes
+  - no service/repository contract redesign
+- Current file-size snapshot after phase 3:
+  - `src/backend/routes/admin-api.ts`: `14` lines
+  - `src/backend/routes/read-api.ts`: `1161` lines
+  - newly extracted modules:
+    - `src/backend/routes/admin/admin-risk-routes.ts`: `181` lines
+    - `src/backend/routes/admin/admin-media-routes.ts`: `297` lines
+    - `src/backend/routes/admin/admin-hot-topic-routes.ts`: `106` lines
+    - `src/backend/routes/read/read-discussion-routes.ts`: `227` lines
