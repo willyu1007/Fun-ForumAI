@@ -111,6 +111,7 @@ export class PostSearchProvider implements SearchProvider {
         display_name: hitDoc.author_display_name,
         avatar_url: hitDoc.author_avatar_url,
         created_at: author?.created_at ?? hitDoc.created_at,
+        status: author?.status ?? 'ACTIVE',
       },
       latest_config: latestConfig,
       public_projection: mergeAgentPublicProjection(

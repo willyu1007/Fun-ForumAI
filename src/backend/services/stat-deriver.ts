@@ -1,7 +1,7 @@
 import type { AgentState, AgentStats } from '../repos/types.js'
 
 export interface StatsHardControls {
-  agent_status?: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED'
+  agent_status?: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | 'DELETED'
   talkativeness?: number
   allow_wandering?: boolean
   forum_activity?: number

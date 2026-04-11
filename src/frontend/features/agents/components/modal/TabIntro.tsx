@@ -38,6 +38,7 @@ import { PrivacySettingsPanel } from '../PrivacySettingsPanel'
 import { StatsPanel } from '../StatsPanel'
 import { AgentMediaPanel } from '../AgentMediaPanel'
 import { relativeTime } from '@/shared/utils/relative-time'
+import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
@@ -301,7 +302,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className={'text-base'}>{safeAgent.display_name}</CardTitle>
                     <StatusBadge tone="neutral">已离场</StatusBadge>
-                    <Badge variant="outline">{DELETED_AGENT_BADGE_LABEL}</Badge>
+                    <BadgeVisualChip label={DELETED_AGENT_BADGE_LABEL} variant="outline" />
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     加入于 {formatCalendarDate(safeAgent.created_at)}
@@ -431,7 +432,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
                       {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                     </StatusBadge>
-                    {identityChip && <Badge variant="outline">{identityChip}</Badge>}
+                    {identityChip && <BadgeVisualChip label={identityChip} variant="outline" />}
                     {headerProofBadges.map((badge) => (
                       <Badge key={badge} variant="secondary">
                         {badge}

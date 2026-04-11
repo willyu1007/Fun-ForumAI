@@ -76,7 +76,7 @@ interface ResolvedHotTopicPolicyContext {
   hits: HotTopicKillSwitchHit[]
   room_no_recommend: boolean
   scene_key: string | null
-  agent_status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | null
+  agent_status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | 'DELETED' | null
 }
 
 interface HotTopicEnforcement {
@@ -720,10 +720,10 @@ export class PolicyGatewayService {
   }
 
   private mapAgentStatusToHotTopicMode(
-    status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED',
+    status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | 'DELETED',
   ): HotTopicMode {
     if (status === 'LIMITED') return 'MANUAL_REVIEW_ONLY'
-    if (status === 'QUARANTINED' || status === 'BANNED') return 'DISABLED'
+    if (status === 'QUARANTINED' || status === 'BANNED' || status === 'DELETED') return 'DISABLED'
     return 'NORMAL'
   }
 }

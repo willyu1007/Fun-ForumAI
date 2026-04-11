@@ -10,7 +10,7 @@ interface SearchProjectionDeps {
       reason: string
       scopes?: Array<'agent' | 'posts' | 'threads' | 'communities'>
     },
-  ) => Promise<void>
+  ) => Promise<unknown>
 }
 
 interface PrivateChannelDeletionDeps {

@@ -39,6 +39,8 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
   const pool = current.data?.data?.pool
   const latestAsset = pool?.latest_asset ?? null
   const latestPublicAttachment = current.data?.data?.latest_public_attachment ?? null
+  const latestAssetUrl = latestAsset?.media_url ?? null
+  const latestPublicAttachmentUrl = latestPublicAttachment?.media_url ?? null
   const errorMessage = useMemo(() => {
     return renderError(createFromUrl.error ?? createFromUpload.error ?? removeCurrent.error)
   }, [createFromUrl.error, createFromUpload.error, removeCurrent.error])
@@ -169,9 +171,9 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
                 创建于 {relativeTime(latestAsset.created_at)}
               </span>
             </div>
-            <a href={latestAsset.media_url} target="_blank" rel="noreferrer" className="block">
+            <a href={latestAssetUrl ?? undefined} target="_blank" rel="noreferrer" className="block">
               <img
-                src={latestAsset.media_url}
+                src={latestAssetUrl ?? undefined}
                 alt="latest private material"
                 className={"max-h-56 w-auto rounded-md border object-cover"}
               />
@@ -201,7 +203,7 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
               最近一次公开挂图：{relativeTime(latestPublicAttachment.created_at)}
             </p>
             <a
-              href={latestPublicAttachment.media_url}
+              href={latestPublicAttachmentUrl ?? undefined}
               target="_blank"
               rel="noreferrer"
               className={"text-xs text-primary hover:underline"}

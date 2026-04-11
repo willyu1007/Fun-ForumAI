@@ -111,6 +111,7 @@ export class ThreadSearchProvider implements SearchProvider {
               display_name: hit.doc.author_display_name,
               avatar_url: hit.doc.author_avatar_url,
               created_at: author?.created_at ?? hit.doc.created_at,
+              status: author?.status ?? 'ACTIVE',
             },
             latest_config: latestConfig,
             public_projection: mergeAgentPublicProjection(

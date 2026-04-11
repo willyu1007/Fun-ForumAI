@@ -580,6 +580,7 @@ export class ForumReadService {
           display_name: agentId,
           avatar_url: null,
           created_at: new Date(0),
+          status: 'ACTIVE',
         },
         public_projection: null,
         public_proof: null,

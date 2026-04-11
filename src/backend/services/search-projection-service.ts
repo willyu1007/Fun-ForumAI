@@ -760,6 +760,7 @@ export class SearchProjectionService {
         display_name: agent.display_name,
         avatar_url: agent.avatar_url,
         created_at: agent.created_at,
+        status: agent.status,
       },
       latest_config: latestConfig,
       public_projection: mergeAgentPublicProjection(

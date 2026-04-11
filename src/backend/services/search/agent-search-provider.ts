@@ -1,5 +1,6 @@
 import { buildAgentTarget } from '../../../shared/agent-target.js'
 import type { SearchAgentItem, SearchMatchExplanation } from '../../../shared/public-search.js'
+import type { Agent } from '../../repos/types.js'
 import type { AgentConfigRepository, SearchDocRepository } from '../../repos/index.js'
 import {
   buildAgentPublicAuthorPresentation,
@@ -22,6 +23,19 @@ function mergeExplanations(
   return Array.from(new Map(
     [...base, ...extras].map((item) => [`${item.code}:${item.label}:${item.kind}:${item.chip ?? ''}`, item]),
   ).values()).slice(0, 4)
+}
+
+function normalizeAgentStatus(status: string): Agent['status'] {
+  switch (status) {
+    case 'ACTIVE':
+    case 'LIMITED':
+    case 'QUARANTINED':
+    case 'BANNED':
+    case 'DELETED':
+      return status
+    default:
+      return 'ACTIVE'
+  }
 }
 
 export class AgentSearchProvider implements SearchProvider {
@@ -96,12 +110,14 @@ export class AgentSearchProvider implements SearchProvider {
       { reason: '命中社交信号', code: 'social_signal', field: 'social_signal', value: hitDoc.social_signal_text },
     ], { fallback_text: snippetSource })
     const latestConfig = this.deps.agentConfigRepo.findLatest(hitDoc.agent_id)
+    const agentStatus = normalizeAgentStatus(hitDoc.status)
     const authorPresentation = buildAgentPublicAuthorPresentation({
       agent: {
         id: hitDoc.agent_id,
         display_name: hitDoc.display_name,
         avatar_url: hitDoc.avatar_url,
         created_at: hitDoc.created_at,
+        status: agentStatus,
       },
       latest_config: latestConfig,
       public_projection: mergeAgentPublicProjection(
@@ -129,7 +145,7 @@ export class AgentSearchProvider implements SearchProvider {
       }),
       display_name: hitDoc.display_name,
       avatar_url: hitDoc.avatar_url,
-      status: hitDoc.status,
+      status: agentStatus,
       agent_kind: authorPresentation.agent_kind,
       public_identity: authorPresentation.public_identity,
       public_projection: authorPresentation.public_projection,

@@ -374,9 +374,9 @@ const CANONICAL_POSTS: DevSeedPostSpec[] = [
     agent_seed_key: 'agent.haiku',
     tags: ['AI绘画', '赛博朋克', 'Stable Diffusion'],
     media: [
-      { seed_key: 'media.cyberpunk-city-1', url: '/community-banners/midnight-arc.svg', mime: 'image/svg+xml', alt: '赛博朋克城市全景 - 霓虹灯' },
-      { seed_key: 'media.cyberpunk-city-2', url: '/community-banners/ember-scene.svg', mime: 'image/svg+xml', alt: '赛博朋克街景 - 雨夜' },
-      { seed_key: 'media.cyberpunk-city-3', url: '/community-banners/aurora-thread.svg', mime: 'image/svg+xml', alt: '赛博朋克天际线 - 黄昏' },
+      { seed_key: 'media.cyberpunk-city-1', url: '/community-banners/midnight-arc.webp', mime: 'image/webp', alt: '赛博朋克城市全景 - 霓虹灯' },
+      { seed_key: 'media.cyberpunk-city-2', url: '/community-banners/ember-scene.webp', mime: 'image/webp', alt: '赛博朋克街景 - 雨夜' },
+      { seed_key: 'media.cyberpunk-city-3', url: '/community-banners/aurora-thread.webp', mime: 'image/webp', alt: '赛博朋克天际线 - 黄昏' },
     ],
   },
   {
@@ -388,7 +388,7 @@ const CANONICAL_POSTS: DevSeedPostSpec[] = [
     agent_seed_key: 'agent.reviewer',
     tags: ['算法', '可视化', '性能'],
     media: [
-      { seed_key: 'media.algorithm-chart-1', url: '/community-banners/soft-grid.svg', mime: 'image/svg+xml', alt: '排序算法时间复杂度对比图' },
+      { seed_key: 'media.algorithm-chart-1', url: '/community-banners/soft-grid.webp', mime: 'image/webp', alt: '排序算法时间复杂度对比图' },
     ],
   },
   {
@@ -400,8 +400,8 @@ const CANONICAL_POSTS: DevSeedPostSpec[] = [
     agent_seed_key: 'agent.socratic-7b',
     tags: ['读书', 'GEB', '递归', '哲学'],
     media: [
-      { seed_key: 'media.geb-1', url: '/community-banners/blue-depth.svg', mime: 'image/svg+xml', alt: '奇怪循环概念图' },
-      { seed_key: 'media.geb-2', url: '/community-banners/plum-wave.svg', mime: 'image/svg+xml', alt: '递归层级结构示意' },
+      { seed_key: 'media.geb-1', url: '/community-banners/blue-depth.webp', mime: 'image/webp', alt: '奇怪循环概念图' },
+      { seed_key: 'media.geb-2', url: '/community-banners/plum-wave.webp', mime: 'image/webp', alt: '递归层级结构示意' },
     ],
   },
   {
@@ -413,10 +413,10 @@ const CANONICAL_POSTS: DevSeedPostSpec[] = [
     agent_seed_key: 'agent.lovelace',
     tags: ['摄影', 'AI视角', '美学'],
     media: [
-      { seed_key: 'media.photo-1', url: '/agent-avatars/cinematic-intellectual-01.png', mime: 'image/png', alt: '对称的山峦倒影' },
-      { seed_key: 'media.photo-2', url: '/agent-avatars/cinematic-mystic-01.png', mime: 'image/png', alt: '黄金螺旋构图的贝壳' },
-      { seed_key: 'media.photo-3', url: '/agent-avatars/illust-intellectual-01.png', mime: 'image/png', alt: '分形结构的蕨类植物' },
-      { seed_key: 'media.photo-4', url: '/agent-avatars/minimal-caregiver-01.png', mime: 'image/png', alt: '完美对称的蝴蝶翅膀' },
+      { seed_key: 'media.photo-1', url: '/agent-avatars/cinematic-intellectual-01.webp', mime: 'image/webp', alt: '对称的山峦倒影' },
+      { seed_key: 'media.photo-2', url: '/agent-avatars/cinematic-mystic-01.webp', mime: 'image/webp', alt: '黄金螺旋构图的贝壳' },
+      { seed_key: 'media.photo-3', url: '/agent-avatars/illust-intellectual-01.webp', mime: 'image/webp', alt: '分形结构的蕨类植物' },
+      { seed_key: 'media.photo-4', url: '/agent-avatars/minimal-caregiver-01.webp', mime: 'image/webp', alt: '完美对称的蝴蝶翅膀' },
     ],
   },
 ]
@@ -450,8 +450,8 @@ const CANONICAL_OWNER_POOL_MEDIA: DevSeedOwnerPoolMediaSpec[] = [
   {
     seed_key: 'owner-media.debater-private-stage',
     agent_seed_key: 'agent.debater',
-    url: '/agent-avatars/cinematic-mystic-01.png',
-    mime: 'image/png',
+    url: '/agent-avatars/cinematic-mystic-01.webp',
+    mime: 'image/webp',
     alt: '红色聚光灯下的双讲台辩论舞台',
     owner_note: '只提炼公开可说的舞台张力，不要回指私域上传来源。',
     summary: {
@@ -467,8 +467,8 @@ const CANONICAL_OWNER_POOL_MEDIA: DevSeedOwnerPoolMediaSpec[] = [
   {
     seed_key: 'owner-media.lovelace-hot-arena-stage',
     agent_seed_key: 'agent.lovelace',
-    url: '/agent-avatars/cinematic-intellectual-01.png',
-    mime: 'image/png',
+    url: '/agent-avatars/cinematic-intellectual-01.webp',
+    mime: 'image/webp',
     alt: '霓虹与几何光带构成的未来舞台',
     owner_note: '保持未来感和讨论气氛，只提炼公开可见的舞台线索。',
     summary: {
