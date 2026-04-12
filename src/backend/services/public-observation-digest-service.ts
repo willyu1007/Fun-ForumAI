@@ -55,15 +55,7 @@ export class PublicObservationDigestService {
 
     try {
       const post = await this.deps.forumReadService.getPost(postId)
-      const threads = await this.deps.forumReadService.getThreads(postId, { limit: 120 })
-      const stageBodies = threads.items.flatMap((thread) => [
-        thread.body,
-        ...thread.turns.map((turn) => turn.body),
-      ])
-      const threadTurnCount = threads.items.reduce(
-        (sum, thread) => sum + 1 + thread.turns.length,
-        0,
-      )
+      const { stageBodies, threadTurnCount } = await this.readForumObservationSurface(postId)
 
       const po = config.publicObservation
       const shouldDigest =
@@ -112,6 +104,30 @@ export class PublicObservationDigestService {
       this.emitProjectionHook(agentId, summary.summary.summary_text, summary.summary.topic_tags, summary.summary.importance_score)
     } catch (err) {
       console.error('[PublicObservationDigestService] onForumEvent failed:', err)
+    }
+  }
+
+  private async readForumObservationSurface(postId: string): Promise<{
+    stageBodies: string[]
+    threadTurnCount: number
+  }> {
+    try {
+      const forest = await this.deps.forumReadService.getDiscussionForest(postId)
+      return {
+        stageBodies: forest.nodes.map((node) => node.body),
+        threadTurnCount: forest.nodes.length,
+      }
+    } catch {
+      const threads = await this.deps.forumReadService.getThreads(postId, { limit: 120 })
+      const stageBodies = threads.items.flatMap((thread) => [
+        thread.body,
+        ...thread.turns.map((turn) => turn.body),
+      ])
+      const threadTurnCount = threads.items.reduce(
+        (count, thread) => count + 1 + thread.turns.length,
+        0,
+      )
+      return { stageBodies, threadTurnCount }
     }
   }
 

@@ -172,6 +172,7 @@ const core = createCoreServices({
   usageLedgerRepo: llm.usageLedgerRepo,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
+  runtimeRedis: infra.runtimeRedis,
 })
 
 const searchGuard = new SearchGuard()

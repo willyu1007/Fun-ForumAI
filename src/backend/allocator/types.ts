@@ -1,8 +1,11 @@
 import type {
+  BrowseReason,
   DiscussionForestProjection,
   EffectiveOrchestrationPolicy,
   EffectiveParticipationContract,
+  PostAttentionState,
   PostSemanticCapsule,
+  ThreadAttentionState,
   ThreadCapsule,
 } from '../../shared/forum-orchestration.js'
 
@@ -81,8 +84,59 @@ export interface ScoredCandidate {
   score: number
   reasons: string[]
   opportunity_id?: string
-  browse_reason?: string
+  browse_reason?: BrowseReason
   selected_anchor_turn_id?: string | null
+  forum_attention_hint?: ForumAttentionHint | null
+}
+
+export const FORUM_SELECTION_PATH_IDS = [
+  'legacy_baseline',
+  'selection_cutover_disabled_baseline',
+  'selection_no_opportunity_baseline',
+  'selection_cutover_granted',
+  'selection_fallback_baseline',
+] as const
+
+export type ForumSelectionPath = (typeof FORUM_SELECTION_PATH_IDS)[number]
+
+export const FORUM_BASELINE_FALLBACK_REASON_IDS = [
+  'allocator_selection_fallback',
+  'allocator_empty_granted_fallback',
+  'executor_call1_infra_fallback',
+  'audience_scope_excluded_baseline_fallback',
+  'runtime_context_preview_fallback',
+] as const
+
+export type ForumBaselineFallbackReason =
+  (typeof FORUM_BASELINE_FALLBACK_REASON_IDS)[number]
+
+export const FORUM_ROAMING_NO_WRITE_REASON_IDS = [
+  'decision_failed',
+  'candidate_missing',
+  'candidate_expired',
+  'candidate_invalid',
+  'target_invalid',
+  'observe_only',
+  'no_viable_candidates',
+  'audience_scope_excluded',
+] as const
+
+export type ForumRoamingNoWriteReason =
+  (typeof FORUM_ROAMING_NO_WRITE_REASON_IDS)[number]
+
+export interface ForumAttentionHint {
+  opportunity_id: string | null
+  browse_reason: BrowseReason | null
+  selected_anchor_turn_id: string | null
+  target_thread_id: string | null
+  target_agent_ids: string[]
+  priority_agent_ids: string[]
+  evidence_turn_ids: string[]
+  reason_codes: string[]
+  post_attention_state: PostAttentionState | null
+  thread_attention_state: ThreadAttentionState | null
+  selection_path: ForumSelectionPath
+  fallback_reason: ForumBaselineFallbackReason | null
 }
 
 export interface GraphRelevanceSnapshot {
@@ -151,8 +205,9 @@ export interface SelectedAgent {
   score: number
   priority: number
   opportunity_id?: string
-  browse_reason?: string
+  browse_reason?: BrowseReason
   selected_anchor_turn_id?: string | null
+  forum_attention_hint?: ForumAttentionHint | null
 }
 
 // ─── Degradation ────────────────────────────────────────────

@@ -84,6 +84,7 @@ export class EventAllocator {
           opportunity_id: c.opportunity_id,
           browse_reason: c.browse_reason,
           selected_anchor_turn_id: c.selected_anchor_turn_id ?? null,
+          forum_attention_hint: c.forum_attention_hint ?? null,
         })
       } else {
         skipped[c.agent_id] = 'lock_conflict'

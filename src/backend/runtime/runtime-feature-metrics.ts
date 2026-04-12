@@ -1,4 +1,31 @@
 import type { PersonaObservationCounters, PersonaObservationV1 } from './persona-observation.js'
+import type {
+  ForumBaselineFallbackReason,
+  ForumRoamingNoWriteReason,
+  ForumSelectionPath,
+} from '../allocator/types.js'
+
+export interface ForumOrchestrationFallbackSample {
+  at: string
+  stage: 'allocator' | 'executor' | 'context_builder'
+  selection_path: ForumSelectionPath
+  fallback_reason: ForumBaselineFallbackReason
+  event_type?: string | null
+  post_id?: string | null
+  thread_id?: string | null
+  agent_id?: string | null
+  opportunity_id?: string | null
+}
+
+export interface ForumOrchestrationNoWriteSample {
+  at: string
+  reason: ForumRoamingNoWriteReason
+  event_type?: string | null
+  post_id?: string | null
+  thread_id?: string | null
+  agent_id?: string | null
+  opportunity_id?: string | null
+}
 
 export interface RuntimeFeatureMetricsSnapshot {
   allocator: {
@@ -40,6 +67,11 @@ export interface RuntimeFeatureMetricsSnapshot {
     runtime_context_token_count_p95: number
     fallback_count: number
     shadow_overlap_ratio: number
+    fallback_counters: Partial<Record<ForumBaselineFallbackReason, number>>
+    no_write_counters: Partial<Record<ForumRoamingNoWriteReason, number>>
+    selection_path_counts: Partial<Record<ForumSelectionPath, number>>
+    recent_fallback_samples: ForumOrchestrationFallbackSample[]
+    recent_no_write_samples: ForumOrchestrationNoWriteSample[]
   }
   persona: PersonaObservationCounters
   updated_at: string
@@ -86,6 +118,11 @@ export class RuntimeFeatureMetrics {
       runtime_context_token_count_p95: 0,
       fallback_count: 0,
       shadow_overlap_ratio: 0,
+      fallback_counters: {},
+      no_write_counters: {},
+      selection_path_counts: {},
+      recent_fallback_samples: [],
+      recent_no_write_samples: [],
     },
     persona: {
       observed_runs_total: 0,
@@ -235,7 +272,78 @@ export class RuntimeFeatureMetrics {
   }
 
   recordForumOrchestrationFallback(): void {
+    this.recordForumBaselineFallback({
+      stage: 'allocator',
+      selection_path: 'selection_fallback_baseline',
+      fallback_reason: 'allocator_selection_fallback',
+    })
+  }
+
+  recordForumSelectionPath(selectionPath: ForumSelectionPath): void {
+    this.bumpRecordCounter(
+      this.snapshotState.forum_orchestration.selection_path_counts,
+      selectionPath,
+    )
+    this.touch()
+  }
+
+  recordForumBaselineFallback(input: {
+    stage: 'allocator' | 'executor' | 'context_builder'
+    selection_path: ForumSelectionPath
+    fallback_reason: ForumBaselineFallbackReason
+    count_selection_path?: boolean
+    event_type?: string | null
+    post_id?: string | null
+    thread_id?: string | null
+    agent_id?: string | null
+    opportunity_id?: string | null
+  }): void {
     this.snapshotState.forum_orchestration.fallback_count += 1
+    this.bumpRecordCounter(
+      this.snapshotState.forum_orchestration.fallback_counters,
+      input.fallback_reason,
+    )
+    if (input.count_selection_path ?? true) {
+      this.bumpRecordCounter(
+        this.snapshotState.forum_orchestration.selection_path_counts,
+        input.selection_path,
+      )
+    }
+    this.pushRecentFallbackSample({
+      at: new Date().toISOString(),
+      stage: input.stage,
+      selection_path: input.selection_path,
+      fallback_reason: input.fallback_reason,
+      event_type: input.event_type ?? null,
+      post_id: input.post_id ?? null,
+      thread_id: input.thread_id ?? null,
+      agent_id: input.agent_id ?? null,
+      opportunity_id: input.opportunity_id ?? null,
+    })
+    this.touch()
+  }
+
+  recordForumRoamingNoWrite(input: {
+    reason: ForumRoamingNoWriteReason
+    event_type?: string | null
+    post_id?: string | null
+    thread_id?: string | null
+    agent_id?: string | null
+    opportunity_id?: string | null
+  }): void {
+    this.bumpRecordCounter(
+      this.snapshotState.forum_orchestration.no_write_counters,
+      input.reason,
+    )
+    this.pushRecentNoWriteSample({
+      at: new Date().toISOString(),
+      reason: input.reason,
+      event_type: input.event_type ?? null,
+      post_id: input.post_id ?? null,
+      thread_id: input.thread_id ?? null,
+      agent_id: input.agent_id ?? null,
+      opportunity_id: input.opportunity_id ?? null,
+    })
     this.touch()
   }
 
@@ -343,6 +451,27 @@ export class RuntimeFeatureMetrics {
 
   private touch(): void {
     this.snapshotState.updated_at = new Date().toISOString()
+  }
+
+  private bumpRecordCounter<T extends string>(
+    record: Partial<Record<T, number>>,
+    key: T,
+  ): void {
+    record[key] = (record[key] ?? 0) + 1
+  }
+
+  private pushRecentFallbackSample(sample: ForumOrchestrationFallbackSample): void {
+    this.snapshotState.forum_orchestration.recent_fallback_samples.unshift(sample)
+    if (this.snapshotState.forum_orchestration.recent_fallback_samples.length > 25) {
+      this.snapshotState.forum_orchestration.recent_fallback_samples.length = 25
+    }
+  }
+
+  private pushRecentNoWriteSample(sample: ForumOrchestrationNoWriteSample): void {
+    this.snapshotState.forum_orchestration.recent_no_write_samples.unshift(sample)
+    if (this.snapshotState.forum_orchestration.recent_no_write_samples.length > 25) {
+      this.snapshotState.forum_orchestration.recent_no_write_samples.length = 25
+    }
   }
 }
 

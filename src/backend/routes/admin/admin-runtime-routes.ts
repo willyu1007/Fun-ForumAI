@@ -211,6 +211,12 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
             shadow: config.launch.capabilities.forumOrchestrationShadow,
             selection_cutover: config.launch.capabilities.forumOrchestrationSelectionCutover,
             envelope_cutover: config.launch.capabilities.forumOrchestrationEnvelopeCutover,
+            fallback_count: counters.forum_orchestration.fallback_count,
+            fallback_counters: counters.forum_orchestration.fallback_counters,
+            no_write_counters: counters.forum_orchestration.no_write_counters,
+            selection_path_counts: counters.forum_orchestration.selection_path_counts,
+            recent_fallback_samples: counters.forum_orchestration.recent_fallback_samples,
+            recent_no_write_samples: counters.forum_orchestration.recent_no_write_samples,
           },
           lightweight_personalization: lightweightPersonalization
             ? {

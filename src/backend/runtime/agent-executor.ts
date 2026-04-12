@@ -39,6 +39,30 @@ export interface AgentExecutorDeps {
   inferenceProfileService?: InferenceProfileService | null
 }
 
+function normalizeForumNoWriteReason(reason: string):
+  | 'decision_failed'
+  | 'candidate_missing'
+  | 'candidate_expired'
+  | 'candidate_invalid'
+  | 'target_invalid'
+  | 'observe_only'
+  | 'no_viable_candidates'
+  | 'audience_scope_excluded' {
+  if (
+    reason === 'decision_failed'
+    || reason === 'candidate_missing'
+    || reason === 'candidate_expired'
+    || reason === 'candidate_invalid'
+    || reason === 'target_invalid'
+    || reason === 'observe_only'
+    || reason === 'no_viable_candidates'
+    || reason === 'audience_scope_excluded'
+  ) {
+    return reason
+  }
+  return 'decision_failed'
+}
+
 export class AgentExecutor {
   constructor(private readonly deps: AgentExecutorDeps) {}
 
@@ -274,6 +298,16 @@ export class AgentExecutor {
 
     if (preparation.skip_reason) {
       if (preparation.skip_reason === 'audience_scope_excluded' && fallbackToBaseline) {
+        runtimeFeatureMetrics.recordForumBaselineFallback({
+          stage: 'executor',
+          selection_path: 'selection_fallback_baseline',
+          fallback_reason: 'audience_scope_excluded_baseline_fallback',
+          event_type: input.event.event_type,
+          post_id: input.event.post_id ?? null,
+          thread_id: input.event.thread_id ?? null,
+          agent_id: input.agent.agent_id,
+          opportunity_id: input.ctx.agent.forum_attention_hint?.opportunity_id ?? null,
+        })
         let baselineCtx = await this.prepareSurfaceMediaPlan(input.ctx, input.agent)
         baselineCtx = await this.deps.contextBuilder.enrichWithLayers(baselineCtx)
         return this.executeVisibleWrite({
@@ -321,6 +355,16 @@ export class AgentExecutor {
       })
     } catch (error) {
       if (fallbackToBaseline) {
+        runtimeFeatureMetrics.recordForumBaselineFallback({
+          stage: 'executor',
+          selection_path: 'selection_fallback_baseline',
+          fallback_reason: 'executor_call1_infra_fallback',
+          event_type: input.event.event_type,
+          post_id: input.event.post_id ?? null,
+          thread_id: input.event.thread_id ?? null,
+          agent_id: input.agent.agent_id,
+          opportunity_id: input.ctx.agent.forum_attention_hint?.opportunity_id ?? null,
+        })
         let baselineCtx = await this.prepareSurfaceMediaPlan(input.ctx, input.agent)
         baselineCtx = await this.deps.contextBuilder.enrichWithLayers(baselineCtx)
         return this.executeVisibleWrite({
@@ -455,6 +499,9 @@ export class AgentExecutor {
             error: 'LLM output could not be parsed into a valid action',
             prompt_template_id: templateId.id,
             prompt_version: templateId.version,
+            audit_metadata: {
+              forum_roaming: this.buildForumRoamingAuditMetadata(input.ctx),
+            },
           },
           failedObservation,
         ),
@@ -558,7 +605,7 @@ export class AgentExecutor {
         })
       }
     }
-    if (ctx.forum_roaming) {
+    if (ctx.forum_roaming || ctx.agent.forum_attention_hint) {
       instruction.audit_metadata = {
         ...(instruction.audit_metadata ?? {}),
         forum_roaming: this.buildForumRoamingAuditMetadata(ctx),
@@ -567,24 +614,40 @@ export class AgentExecutor {
   }
 
   private buildForumRoamingAuditMetadata(ctx: ExecutionContext): Record<string, unknown> | null {
-    if (!ctx.forum_roaming) {
+    if (!ctx.forum_roaming && !ctx.agent.forum_attention_hint) {
       return null
     }
 
     return {
-      decision_hint: ctx.forum_roaming.decision_hint
+      attention_hint: ctx.agent.forum_attention_hint
+        ? {
+            opportunity_id: ctx.agent.forum_attention_hint.opportunity_id,
+            browse_reason: ctx.agent.forum_attention_hint.browse_reason,
+            selected_anchor_turn_id: ctx.agent.forum_attention_hint.selected_anchor_turn_id,
+            target_thread_id: ctx.agent.forum_attention_hint.target_thread_id,
+            target_agent_ids: ctx.agent.forum_attention_hint.target_agent_ids,
+            priority_agent_ids: ctx.agent.forum_attention_hint.priority_agent_ids,
+            evidence_turn_ids: ctx.agent.forum_attention_hint.evidence_turn_ids,
+            reason_codes: ctx.agent.forum_attention_hint.reason_codes,
+            selection_path: ctx.agent.forum_attention_hint.selection_path,
+            fallback_reason: ctx.agent.forum_attention_hint.fallback_reason,
+          }
+        : null,
+      decision_hint: ctx.forum_roaming?.decision_hint
         ? {
             text: ctx.forum_roaming.decision_hint.text,
             source_provenance: ctx.forum_roaming.decision_hint.source_provenance,
           }
         : null,
-      decision_result: ctx.forum_roaming.decision_result,
-      resolved_execution_plan: ctx.forum_roaming.resolved_execution_plan,
-      arrival_candidates: ctx.forum_roaming.arrival_candidates.map((candidate) => ({
+      decision_result: ctx.forum_roaming?.decision_result ?? null,
+      resolved_execution_plan: ctx.forum_roaming?.resolved_execution_plan ?? null,
+      arrival_candidates: (ctx.forum_roaming?.arrival_candidates ?? []).map((candidate) => ({
         candidate_id: candidate.candidate_id,
         candidate_kind: candidate.candidate_kind,
         thread_id: candidate.thread_id,
         focus_turn_id: candidate.focus_turn_id,
+        ranking_reasons: candidate.ranking_reasons,
+        reason_codes: candidate.reason_codes,
         allowed_actions: candidate.allowed_actions,
       })),
     }
@@ -598,6 +661,14 @@ export class AgentExecutor {
     usage: LlmTokenUsage | null
     reason: string
   }): AgentExecutionResult {
+    runtimeFeatureMetrics.recordForumRoamingNoWrite({
+      reason: normalizeForumNoWriteReason(input.reason),
+      event_type: input.event.event_type,
+      post_id: input.event.post_id ?? null,
+      thread_id: input.event.thread_id ?? null,
+      agent_id: input.agentId,
+      opportunity_id: input.ctx.agent.forum_attention_hint?.opportunity_id ?? null,
+    })
     this.deps.agentRunRepo.create({
       agent_id: input.agentId,
       trigger_event_id: input.event.event_id,

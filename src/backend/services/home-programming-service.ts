@@ -679,7 +679,9 @@ export class HomeProgrammingService {
     viewerUserId?: string,
   ): Promise<string> {
     try {
-      const threads = await this.deps.forumReadService.getThreads(postId, { limit: 20 }, viewerUserId)
+      const threads = typeof this.deps.forumReadService.getThreadSummaries === 'function'
+        ? await this.deps.forumReadService.getThreadSummaries(postId, { limit: 20 }, viewerUserId)
+        : await this.deps.forumReadService.getThreads(postId, { limit: 20 }, viewerUserId)
       const ctaTarget = threads.items
         .map((thread) => {
           const target = thread.active_route?.cta?.target

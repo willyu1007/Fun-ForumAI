@@ -1,27 +1,30 @@
 import type {
   AttentionOpportunity,
   EffectiveOrchestrationPolicy,
-  PairInteractionWindow,
   RecallDecision,
   ThreadAttentionBudgetSnapshot,
 } from '../../shared/forum-orchestration.js'
 import type { EventPayload, ScoredCandidate } from '../allocator/types.js'
+import {
+  InMemoryRecallStateStore,
+  type RecallStateStore,
+} from './recall-state-store.js'
 
 export class RecallPolicyService {
-  private readonly pairWindows = new Map<string, PairInteractionWindow>()
-  private readonly reviveWindows = new Map<string, { count: number; updated_at: number }>()
+  constructor(
+    private readonly store: RecallStateStore = new InMemoryRecallStateStore(),
+  ) {}
 
-  evaluate(input: {
+  async evaluate(input: {
     event: EventPayload
     opportunity: AttentionOpportunity
     candidates: ScoredCandidate[]
     policy?: EffectiveOrchestrationPolicy | null
     budget?: Partial<ThreadAttentionBudgetSnapshot>
-  }): {
+  }): Promise<{
     decisions: RecallDecision[]
     granted: ScoredCandidate[]
-  } {
-    const now = Date.now()
+  }> {
     const recallControl = input.policy?.recall_control ?? {
       schema_version: 'forum-orchestration-policy.v1',
       pair_window_minutes: 30,
@@ -58,15 +61,6 @@ export class RecallPolicyService {
         isTargeted,
         isPriority,
       })
-      const pairKey = buildPairKey(budget.thread_id, resolveEventAuthorKey(input.event), candidate.agent_id)
-      const currentWindow = this.getPairWindow(
-        pairKey,
-        budget.thread_id,
-        input.event.post_id ?? input.opportunity.post_id,
-        now,
-        budget.pair_window_seconds,
-      )
-      const decayStage = resolveDecayStage(currentWindow.exchange_count, recallControl.reactive_recall_decay)
       const appliedPolicySnapshot = {
         profile: input.policy?.profile ?? input.opportunity.profile,
         recall_control: recallControl,
@@ -109,67 +103,34 @@ export class RecallPolicyService {
         continue
       }
 
-      if (input.opportunity.source === 'REVIVE_OLD_BRANCH') {
-        const reviveWindow = this.getReviveWindow(budget.thread_id, now)
-        if (reviveWindow.count >= budget.revive_old_branch_budget) {
-          decisions.push({
-            agent_id: candidate.agent_id,
-            opportunity_id: input.opportunity.id,
-            decision: 'SUPPRESSED',
-            decision_source: 'policy_guard',
-            decision_scope: 'thread',
-            decay_stage: null,
-            quota_kind: quotaKind,
-            reason_codes: ['revive_budget_exhausted'],
-            applied_policy_snapshot: appliedPolicySnapshot,
-            suppression_reason: 'revive_budget_exhausted',
-          })
-          continue
-        }
-      }
-
-      if (quotaKind === 'incumbent_reactive' && decayStage === 'decayed') {
-        decisions.push({
-          agent_id: candidate.agent_id,
-          opportunity_id: input.opportunity.id,
-          decision: 'SUPPRESSED',
-          decision_source: 'policy_guard',
-          decision_scope: 'thread_pair',
-          decay_stage: decayStage,
-          quota_kind: quotaKind,
-          reason_codes: ['reactive_recall_decay'],
-          applied_policy_snapshot: appliedPolicySnapshot,
-          suppression_reason: 'reactive_recall_decay',
-        })
-        continue
-      }
-
-      if (currentWindow.exchange_count >= budget.pair_max_exchanges) {
-        decisions.push({
-          agent_id: candidate.agent_id,
-          opportunity_id: input.opportunity.id,
-          decision: 'SUPPRESSED',
-          decision_source: 'policy_guard',
-          decision_scope: 'thread_pair',
-          decay_stage: decayStage,
-          quota_kind: quotaKind,
-          reason_codes: ['pair_window_cap'],
-          applied_policy_snapshot: appliedPolicySnapshot,
-          suppression_reason: 'pair_window_cap',
-        })
-        continue
-      }
-
-      this.pairWindows.set(pairKey, {
-        ...currentWindow,
-        exchange_count: currentWindow.exchange_count + 1,
-        last_exchanged_at: new Date(now).toISOString(),
+      const storeResult = await this.store.attemptGrant({
+        thread_id: budget.thread_id,
+        event_author_key: resolveEventAuthorKey(input.event),
+        candidate_agent_id: candidate.agent_id,
+        pair_window_seconds: budget.pair_window_seconds,
+        pair_max_exchanges: budget.pair_max_exchanges,
+        quota_kind: quotaKind,
+        reactive_recall_decay: recallControl.reactive_recall_decay,
+        is_revive_branch: input.opportunity.source === 'REVIVE_OLD_BRANCH',
+        revive_old_branch_budget: budget.revive_old_branch_budget,
       })
-      if (input.opportunity.source === 'REVIVE_OLD_BRANCH') {
-        this.reviveWindows.set(budget.thread_id, {
-          count: this.getReviveWindow(budget.thread_id, now).count + 1,
-          updated_at: now,
+
+      if (!storeResult.granted) {
+        decisions.push({
+          agent_id: candidate.agent_id,
+          opportunity_id: input.opportunity.id,
+          decision: 'SUPPRESSED',
+          decision_source: 'policy_guard',
+          decision_scope: storeResult.suppression_reason === 'revive_budget_exhausted'
+            ? 'thread'
+            : 'thread_pair',
+          decay_stage: storeResult.decay_stage,
+          quota_kind: quotaKind,
+          reason_codes: storeResult.suppression_reason ? [storeResult.suppression_reason] : [],
+          applied_policy_snapshot: appliedPolicySnapshot,
+          suppression_reason: storeResult.suppression_reason,
         })
+        continue
       }
 
       const grantedCandidate = quotaKind === 'outsider_diversity'
@@ -198,7 +159,7 @@ export class RecallPolicyService {
             : quotaKind === 'incumbent_reactive'
               ? 'thread_pair'
               : 'candidate',
-        decay_stage: quotaKind === 'incumbent_reactive' ? decayStage : null,
+        decay_stage: quotaKind === 'incumbent_reactive' ? storeResult.decay_stage : null,
         quota_kind: quotaKind,
         reason_codes: input.opportunity.reason_codes,
         applied_policy_snapshot: appliedPolicySnapshot,
@@ -209,52 +170,6 @@ export class RecallPolicyService {
     granted.sort((left, right) => right.score - left.score)
     return { decisions, granted }
   }
-
-  private getPairWindow(
-    pairKey: string,
-    threadId: string,
-    postId: string,
-    now: number,
-    pairWindowSeconds: number,
-  ): PairInteractionWindow {
-    const existing = this.pairWindows.get(pairKey)
-    if (!existing || !existing.last_exchanged_at) {
-      return {
-        post_id: postId,
-        thread_id: threadId,
-        pair_key: pairKey,
-        exchange_count: 0,
-        last_exchanged_at: null,
-      }
-    }
-
-    const ageMs = now - new Date(existing.last_exchanged_at).getTime()
-    if (ageMs > pairWindowSeconds * 1000) {
-      return {
-        ...existing,
-        post_id: postId,
-        thread_id: threadId,
-        exchange_count: 0,
-      }
-    }
-    return existing
-  }
-
-  private getReviveWindow(threadId: string, now: number): { count: number; updated_at: number } {
-    const existing = this.reviveWindows.get(threadId)
-    if (!existing) {
-      return { count: 0, updated_at: now }
-    }
-    const ageMs = now - existing.updated_at
-    if (ageMs > 60 * 60 * 1000) {
-      return { count: 0, updated_at: now }
-    }
-    return existing
-  }
-}
-
-function buildPairKey(threadId: string, left: string, right: string): string {
-  return [threadId, ...[left, right].sort()].join('::')
 }
 
 function resolveEventAuthorKey(event: EventPayload): string {
@@ -292,18 +207,4 @@ function resolveQuotaKind(input: {
     return 'incumbent_reactive'
   }
   return 'neutral'
-}
-
-function resolveDecayStage(
-  exchangeCount: number,
-  mode: EffectiveOrchestrationPolicy['recall_control']['reactive_recall_decay'],
-): RecallDecision['decay_stage'] {
-  const threshold = mode === 'steep' ? 1 : mode === 'moderate' ? 2 : 3
-  if (exchangeCount <= 0) {
-    return 'fresh'
-  }
-  if (exchangeCount < threshold) {
-    return 'repeat'
-  }
-  return 'decayed'
 }
