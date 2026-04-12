@@ -25,6 +25,8 @@ export class PgPostMediaRepository implements PostMediaRepository {
       asset_id: input.asset_id,
       media_url: input.media_url,
       mime_type: input.mime_type,
+      warm_start_batch_id: input.warm_start_batch_id ?? null,
+      generation_mode: input.generation_mode ?? null,
       created_at: now,
     }
     this.cache.set(id, media)
@@ -36,6 +38,8 @@ export class PgPostMediaRepository implements PostMediaRepository {
         assetId: media.asset_id,
         mediaUrl: media.media_url,
         mimeType: media.mime_type,
+        warmStartBatchId: media.warm_start_batch_id ?? null,
+        generationMode: media.generation_mode ?? null,
         createdAt: now,
       },
     }).catch((err: unknown) => console.error('[PgPostMediaRepo] create error:', err))
@@ -69,6 +73,12 @@ export class PgPostMediaRepository implements PostMediaRepository {
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
+  findByWarmStartBatch(batchId: string): PostMedia[] {
+    return Array.from(this.cache.values())
+      .filter((item) => item.warm_start_batch_id === batchId)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
   deleteByPostIds(postIds: string[]): number {
     const lookup = new Set(postIds)
     if (lookup.size === 0) return 0
@@ -93,6 +103,8 @@ export class PgPostMediaRepository implements PostMediaRepository {
       asset_id: row.assetId,
       media_url: row.mediaUrl,
       mime_type: row.mimeType,
+      warm_start_batch_id: row.warmStartBatchId,
+      generation_mode: row.generationMode as PostMedia['generation_mode'],
       created_at: row.createdAt,
     }
   }

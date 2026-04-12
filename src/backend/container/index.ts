@@ -581,11 +581,20 @@ const rt = createRuntime({
   postRepo: repos.postRepo,
   publicStageThreadRepo: repos.publicStageThreadRepo,
   publicStageTurnRepo: repos.publicStageTurnRepo,
+  publicGrowthGate: core.warmupGovernanceService,
   eventQueue: infra.eventQueue,
   allocator: alloc.allocator,
   degradationMonitor: alloc.degradationMonitor,
   quotaCalc: alloc.quotaCalc,
   runtimeLoopLeaderElector: infra.leaderElectors.runtimeLoop,
+})
+
+core.warmupGovernanceService.attachRuntimeDeps({
+  postScheduler: rt.postScheduler,
+  runtimeLoop: rt.runtimeLoop,
+})
+core.warmupGovernanceService.attachProjectionDeps({
+  searchProjectionService,
 })
 
 // ─── 8. Event Hook Wiring ───────────────────────────────────
@@ -660,6 +669,7 @@ export const eventRepo = repos.eventRepo
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
 export const searchDocRepo = repos.searchDocRepo
+export const warmupGovernanceRepo = repos.warmupGovernanceRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue
@@ -711,6 +721,7 @@ export const publicAgentRelationSummaryService = core.publicAgentRelationSummary
 export const launchProgrammingOpsService = core.launchProgrammingOpsService
 export const homeProgrammingService = core.homeProgrammingService
 export const homeProgrammingSnapshotService = core.homeProgrammingSnapshotService
+export const warmupGovernanceService = core.warmupGovernanceService
 export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService
 export const communityCultureDigestService = core.communityCultureDigestService

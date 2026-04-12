@@ -45,6 +45,7 @@ import type { RoleAssignmentRepository } from '../repos/role-assignment-reposito
 import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
 import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
 import { config } from '../lib/config.js'
+import type { RuntimeBaselineAdmission } from '../services/warmup-governance-service.js'
 
 export function createRuntime(deps: {
   llmGateway: LLMGateway
@@ -82,6 +83,9 @@ export function createRuntime(deps: {
   postRepo: PostRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
+  publicGrowthGate?: {
+    getRuntimeBaselineAdmission(): Promise<RuntimeBaselineAdmission>
+  } | null
   eventQueue: RuntimeEventQueue
   allocator: EventAllocator
   degradationMonitor: DefaultDegradationMonitor
@@ -167,6 +171,7 @@ export function createRuntime(deps: {
       quotaCalc: deps.quotaCalc,
       executor: agentExecutor,
       postScheduler,
+      publicGrowthGate: deps.publicGrowthGate ?? null,
       leaderElector: deps.runtimeLoopLeaderElector,
     },
     {

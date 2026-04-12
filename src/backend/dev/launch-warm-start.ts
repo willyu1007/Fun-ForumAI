@@ -23,6 +23,7 @@ async function main() {
       postScheduler,
       runtimeLoop,
       stageTierService,
+      warmupGovernanceService,
       warmPersistenceState,
     },
     { runLaunchWarmStart },
@@ -45,6 +46,7 @@ async function main() {
     launchProgrammingOpsService,
     runtimeLoop,
     postScheduler,
+    warmupExecutor: warmupGovernanceService,
   }, {
     max_runtime_topup_posts: maxRuntimeTopupPosts,
   })

@@ -6,6 +6,7 @@ import type { PostScheduler } from './post-scheduler.js'
 import type { RuntimeTickResult, AgentExecutionResult } from './types.js'
 import type { LeaderElector } from './leader-elector.js'
 import type { RuntimeEventQueue } from './event-queue.js'
+import type { RuntimeBaselineAdmission } from '../services/warmup-governance-service.js'
 
 export interface RuntimeLoopConfig {
   intervalMs: number
@@ -19,6 +20,9 @@ export interface RuntimeLoopDeps {
   quotaCalc: DefaultQuotaCalculator
   executor: AgentExecutor
   postScheduler?: PostScheduler
+  publicGrowthGate?: {
+    getRuntimeBaselineAdmission(): Promise<RuntimeBaselineAdmission>
+  } | null
   leaderElector?: LeaderElector
 }
 
@@ -142,9 +146,18 @@ export class RuntimeLoop {
       let scheduledPost: RuntimeTickResult['scheduled_post']
       // Do not generate autonomous posts while backlog exists; it can amplify queue pressure.
       if (this.deps.postScheduler && this.lastKnownQueueSize === 0) {
-        const postResult = await this.deps.postScheduler.createPost()
-        if (postResult.triggered) {
-          scheduledPost = postResult
+        const admission = this.deps.publicGrowthGate
+          ? await this.deps.publicGrowthGate.getRuntimeBaselineAdmission()
+          : null
+        if (!admission || admission.allow_public_growth) {
+          const postResult = await this.deps.postScheduler.createPost()
+          if (postResult.triggered) {
+            scheduledPost = postResult
+          }
+        } else {
+          console.log(
+            `[RuntimeLoop] Autonomous growth skipped: ${admission.reasons.join(', ') || 'baseline_admission_blocked'}`,
+          )
         }
       }
 

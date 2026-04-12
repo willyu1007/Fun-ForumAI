@@ -18,6 +18,7 @@ import {
   postRepo,
   postScheduler,
   runtimeLoop,
+  warmupGovernanceService,
   postMediaRepo,
   publicStageTurnRepo,
   roomRepo,
@@ -439,22 +440,20 @@ describe('E2E: Dev seed route', () => {
         launchProgrammingOpsService,
         runtimeLoop,
         postScheduler,
+        warmupExecutor: warmupGovernanceService,
       })
 
       expect(first.verification.ok).toBe(true)
+      expect(first.suite_state).toBe('review_ready')
+      expect(first.reused_existing_suite).toBe(false)
       expect(first.created_posts.length + first.skipped_posts.length).toBe(CURATED_LAUNCH_WARM_START_POSTS.length)
-      expect(first.verification.shelf_counts.must_watch_today).toBeGreaterThanOrEqual(1)
-      expect(first.verification.shelf_counts.conflict_rising).toBeGreaterThanOrEqual(1)
-      expect(first.verification.shelf_counts.notes_today).toBeGreaterThanOrEqual(2)
-      expect(first.verification.shelf_counts.continue_storyline).toBeGreaterThanOrEqual(2)
-      expect(first.verification.shelf_counts.tonight_programming).toBeGreaterThanOrEqual(1)
-      expect(first.verification.required_launch_communities).toHaveLength(12)
-      expect(first.verification.required_community_floor).toBe(1)
-      expect(Object.keys(first.verification.community_occupancy)).toHaveLength(12)
-      expect(Object.values(first.verification.community_occupancy).every((count) => count >= 1)).toBe(true)
-      expect(first.verification.observed_daily_outcomes.mainline_roots).toBeGreaterThanOrEqual(2)
-      expect(first.verification.observed_daily_outcomes.creator_note_entries).toBeGreaterThanOrEqual(2)
-      expect(first.verification.observed_daily_outcomes.continuity_callbacks).toBeGreaterThanOrEqual(2)
+      expect(first.kickoff_batch_id).toBeTruthy()
+      expect(first.warmup_batch_id).toBeTruthy()
+      expect(first.verification.batch_states.kickoff).toBe('review_ready')
+      expect(first.verification.batch_states.warmup).toBe('review_ready')
+      expect(first.verification.total_candidate_posts).toBe(CURATED_LAUNCH_WARM_START_POSTS.length)
+      expect(first.verification.active_baseline.has_active_baseline).toBe(false)
+      expect(first.verification.active_baseline.allow_public_growth).toBe(false)
 
       const second = await runLaunchWarmStart({
         agentRepo,
@@ -468,11 +467,12 @@ describe('E2E: Dev seed route', () => {
         launchProgrammingOpsService,
         runtimeLoop,
         postScheduler,
+        warmupExecutor: warmupGovernanceService,
       })
 
       expect(second.created_posts).toHaveLength(0)
-      expect(second.skipped_posts).toHaveLength(CURATED_LAUNCH_WARM_START_POSTS.length)
-      expect(Object.values(second.verification.community_occupancy).every((count) => count >= 1)).toBe(true)
+      expect(second.reused_existing_suite).toBe(true)
+      expect(second.suite_id).toBe(first.suite_id)
       expect(second.verification.ok).toBe(true)
     } finally {
       featureFlags.membershipsV1 = originalMemberships

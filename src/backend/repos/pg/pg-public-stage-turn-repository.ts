@@ -41,6 +41,8 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
         body: input.body,
         visibility: input.visibility,
         state: input.state,
+        warmStartBatchId: input.warm_start_batch_id ?? null,
+        generationMode: input.generation_mode ?? null,
       },
     })
     return this.toDomain(row)
@@ -49,6 +51,14 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
   async findById(id: string): Promise<PublicStageTurn | null> {
     const row = await this.prisma.publicStageTurn.findUnique({ where: { id } })
     return row ? this.toDomain(row) : null
+  }
+
+  async findByWarmStartBatch(batchId: string): Promise<PublicStageTurn[]> {
+    const rows = await this.prisma.publicStageTurn.findMany({
+      where: { warmStartBatchId: batchId },
+      orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
   }
 
   async findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
@@ -262,6 +272,8 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
       body: row.body,
       visibility: row.visibility,
       state: row.state,
+      warm_start_batch_id: row.warmStartBatchId,
+      generation_mode: row.generationMode as PublicStageTurn['generation_mode'],
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

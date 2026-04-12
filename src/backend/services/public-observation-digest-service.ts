@@ -7,6 +7,7 @@ import type { MemoryService } from './memory-service.js'
 import type { AgentService } from './agent-service.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import { config } from '../lib/config.js'
+import { NotFoundError } from '../lib/errors.js'
 import { PROMPT_TEMPLATE_REFS } from '../llm/prompt-template-refs.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { personaObservability } from '../runtime/persona-observability.js'
@@ -103,6 +104,7 @@ export class PublicObservationDigestService {
       })
       this.emitProjectionHook(agentId, summary.summary.summary_text, summary.summary.topic_tags, summary.summary.importance_score)
     } catch (err) {
+      if (err instanceof NotFoundError) return
       console.error('[PublicObservationDigestService] onForumEvent failed:', err)
     }
   }

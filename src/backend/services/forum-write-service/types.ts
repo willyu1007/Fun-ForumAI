@@ -16,6 +16,7 @@ import type { PublicSceneWritePayload } from '../public-scene-runtime.js'
 import type { PublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import type { PublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import type { RouteHandoff } from '../../repos/types.js'
+import type { WarmStartGenerationMode } from '../../repos/types/warmup-governance.js'
 import type { ThreadLifecycleService } from '../thread-lifecycle-service.js'
 import type { ThreadInteractionResolver } from '../thread-interaction-resolver.js'
 
@@ -72,6 +73,11 @@ export interface RouteHandoffInput {
   handoff_label: string
   handoff_payload?: Record<string, unknown> | null
   cta?: Record<string, unknown> | null
+}
+
+export interface WarmupWriteContextInput {
+  warm_start_batch_id: string
+  generation_mode: WarmStartGenerationMode
 }
 
 export interface ForumWriteContext {

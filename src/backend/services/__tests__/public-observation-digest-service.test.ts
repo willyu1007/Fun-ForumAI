@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { NotFoundError } from '../../lib/errors.js'
 import { PublicObservationDigestService } from '../public-observation-digest-service.js'
 
 interface MemoryListOpts {
@@ -207,6 +208,33 @@ describe('PublicObservationDigestService', () => {
     }))
 
     expect(createPublicObservationMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('silently ignores forum events for posts that are not publicly readable yet', async () => {
+    const errorSpy = vi.spyOn(console, 'error')
+    const service = new PublicObservationDigestService({
+      llmGateway: { isConfigured: false } as never,
+      forumReadService: {
+        getPost: vi.fn().mockRejectedValue(new NotFoundError('post', 'candidate-post')),
+      } as never,
+      roomRepo: {} as never,
+      messageRepo: {} as never,
+      memoryService: {
+        hasTypedPublicObservationEvent: vi.fn().mockResolvedValue(false),
+        getLatestTypedPublicObservationAt: vi.fn().mockResolvedValue(null),
+        listMemories: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        createPublicObservationMemory: vi.fn(),
+      } as never,
+      ...makeObservationDeps(),
+    })
+
+    await expect(service.onForumEvent(makeDomainEvent({
+      id: 'evt-hidden-post',
+      event_type: 'POST_CREATED',
+      payload_json: { post_id: 'candidate-post', author_agent_id: 'a1' },
+    }))).resolves.toBeUndefined()
+
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 
   it('uses the real agent id when routing public observation through the gateway', async () => {

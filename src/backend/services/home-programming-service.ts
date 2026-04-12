@@ -382,39 +382,46 @@ export class HomeProgrammingService {
     usedPostIds: Set<string>,
     viewerRuntime: HomeViewerRuntime,
   ): HomeProgrammingPostItem[] {
+    const targetCount = 4
     const primaryPool = sortPostsByViewerContext(
       this.mergeUniquePosts(controversyCandidates, hotFeed),
       viewerRuntime,
     )
-    const items = primaryPool
+    const escalatingItems = primaryPool
       .filter((item) => !usedPostIds.has(item.id))
       .filter((item) => !isCreatorNoteEntry(item))
       .filter((item) => readStorylineState(item) === 'escalating')
-      .slice(0, 4)
+      .slice(0, targetCount)
       .map((item) => this.asPostShelfItem(item))
 
+    const selectedIds = new Set(escalatingItems.map((item) => item.id))
+    const recentStorylines = new Set(viewerRuntime.recentSignals?.recent_storyline_ids ?? [])
+    const fallbackPool = primaryPool
+      .filter((item) => !usedPostIds.has(item.id))
+      .filter((item) => !selectedIds.has(item.id))
+      .filter((item) => !isCreatorNoteEntry(item))
+    const reservedForContinuation = viewerRuntime.enabled
+      ? fallbackPool.filter((item) => {
+          const storylineId = readStorylineId(item)
+          return Boolean(storylineId && recentStorylines.has(storylineId))
+        })
+      : []
+    const prioritizedFallbackPool = fallbackPool.filter((item) => !reservedForContinuation.includes(item))
+    const fallbackSource = prioritizedFallbackPool.length > 0
+      ? prioritizedFallbackPool
+      : reservedForContinuation.length > 0
+        ? []
+        : fallbackPool
+
+    const fallbackItems = escalatingItems.length < targetCount
+      ? fallbackSource
+          .slice(0, targetCount - escalatingItems.length)
+          .map((item) => this.asPostShelfItem(item))
+      : []
+
+    const items = [...escalatingItems, ...fallbackItems]
     if (items.length === 0) {
-      const recentStorylines = new Set(viewerRuntime.recentSignals?.recent_storyline_ids ?? [])
-      const fallbackPool = primaryPool
-        .filter((item) => !usedPostIds.has(item.id))
-        .filter((item) => !isCreatorNoteEntry(item))
-      const reservedForContinuation = viewerRuntime.enabled
-        ? fallbackPool.filter((item) => {
-            const storylineId = readStorylineId(item)
-            return Boolean(storylineId && recentStorylines.has(storylineId))
-          })
-        : []
-      const prioritizedFallbackPool = fallbackPool.filter((item) => !reservedForContinuation.includes(item))
-      const fallbackSource = prioritizedFallbackPool.length > 0
-        ? prioritizedFallbackPool
-        : reservedForContinuation.length > 0
-          ? []
-          : fallbackPool
-      const fallbackItems = fallbackSource
-        .slice(0, 4)
-        .map((item) => this.asPostShelfItem(item))
-      fallbackItems.forEach((item) => usedPostIds.add(item.id))
-      return fallbackItems
+      return items
     }
 
     items.forEach((item) => usedPostIds.add(item.id))

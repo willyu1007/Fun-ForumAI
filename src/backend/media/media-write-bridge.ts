@@ -25,6 +25,7 @@ import {
   readForumThreadIdFromThreadRootRef,
 } from './media-contract-utils.js'
 import { resolveAvailableMediaAssetUrl } from './media-url.js'
+import type { WarmupWriteContextInput } from '../services/forum-write-service/types.js'
 
 export interface MediaWriteBridgeDeps {
   mediaAssetRepo: MediaAssetRepository
@@ -120,6 +121,7 @@ export class MediaWriteBridge {
     scene_type: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message'
     scene_id: string
     created_by_id?: string
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ linked: boolean }> {
     const plan = await this.deps.imagePlanRepo.findById(input.image_plan_id)
     if (!plan) {
@@ -194,7 +196,14 @@ export class MediaWriteBridge {
         })
       }
 
-      this.ensurePostMediaLink(input.scene_type, input.scene_id, asset.id, mediaUrl, asset.mime_type)
+      this.ensurePostMediaLink(
+        input.scene_type,
+        input.scene_id,
+        asset.id,
+        mediaUrl,
+        asset.mime_type,
+        input.warmup_context,
+      )
 
       linkedAssetIds.add(asset.id)
       linked = true
@@ -256,7 +265,14 @@ export class MediaWriteBridge {
           publicCaption: attachment.public_caption,
         })
       }
-      this.ensurePostMediaLink(input.scene_type, input.scene_id, asset.id, mediaUrl, asset.mime_type)
+      this.ensurePostMediaLink(
+        input.scene_type,
+        input.scene_id,
+        asset.id,
+        mediaUrl,
+        asset.mime_type,
+        input.warmup_context,
+      )
       linkedAssetIds.add(asset.id)
       linked = true
     }
@@ -483,6 +499,7 @@ export class MediaWriteBridge {
     assetId: string,
     mediaUrl: string,
     mimeType: string,
+    warmupContext?: WarmupWriteContextInput,
   ): void {
     if (sceneType !== 'forum_post') return
     const hasPostMedia = this.deps.postMediaRepo.findByAssetId(assetId)
@@ -493,6 +510,8 @@ export class MediaWriteBridge {
       asset_id: assetId,
       media_url: mediaUrl,
       mime_type: mimeType,
+      warm_start_batch_id: warmupContext?.warm_start_batch_id ?? null,
+      generation_mode: warmupContext?.generation_mode ?? null,
     })
     void this.deps.mediaLineageService?.recordEdge({
       from_node_type: 'asset',

@@ -312,29 +312,31 @@ enum AgentCommunityMembershipStatus {
 }
 
 model Post {
-  id                                 String       @id @default(cuid())
-  communityId                        String       @map("community_id")
-  authorAgentId                      String       @map("author_agent_id")
-  title                              String
-  body                               String
-  tagsJson                           Json?        @map("tags_json")
-  visibility                         Visibility   @default(PUBLIC)
-  state                              ContentState @default(PENDING)
-  moderationTopicSignalsJson         Json?        @map("moderation_topic_signals_json")
-  moderationDistributionState        String       @default("NORMAL") @map("moderation_distribution_state")
-  moderationPolicyAction             String?      @map("moderation_policy_action")
-  moderationPolicyReason             String?      @map("moderation_policy_reason")
-  moderationPolicyCaseId             String?      @map("moderation_policy_case_id")
-  moderationKillSwitchJson           Json?        @map("moderation_kill_switch_json")
-  stageSpecFallback                  Boolean      @default(false) @map("stage_spec_fallback")
-  stageRuntimeRole                   String?      @map("stage_runtime_role")
-  stageRuntimeTier                   String?      @map("stage_runtime_tier")
-  trustContextJson                   Json?        @map("trust_context_json")
-  participationContractOverrideJson  Json?        @map("participation_contract_override_json")
-  forumOrchestrationOverrideJson     Json?        @map("forum_orchestration_override_json")
-  adminDistributionOverrideJson      Json?        @map("admin_distribution_override_json")
-  createdAt                          DateTime     @default(now()) @map("created_at")
-  updatedAt                          DateTime     @updatedAt @map("updated_at")
+  id                                String       @id @default(cuid())
+  communityId                       String       @map("community_id")
+  authorAgentId                     String       @map("author_agent_id")
+  title                             String
+  body                              String
+  tagsJson                          Json?        @map("tags_json")
+  visibility                        Visibility   @default(PUBLIC)
+  state                             ContentState @default(PENDING)
+  warmStartBatchId                  String?      @map("warm_start_batch_id")
+  generationMode                    String?      @map("generation_mode")
+  moderationTopicSignalsJson        Json?        @map("moderation_topic_signals_json")
+  moderationDistributionState       String       @default("NORMAL") @map("moderation_distribution_state")
+  moderationPolicyAction            String?      @map("moderation_policy_action")
+  moderationPolicyReason            String?      @map("moderation_policy_reason")
+  moderationPolicyCaseId            String?      @map("moderation_policy_case_id")
+  moderationKillSwitchJson          Json?        @map("moderation_kill_switch_json")
+  stageSpecFallback                 Boolean      @default(false) @map("stage_spec_fallback")
+  stageRuntimeRole                  String?      @map("stage_runtime_role")
+  stageRuntimeTier                  String?      @map("stage_runtime_tier")
+  trustContextJson                  Json?        @map("trust_context_json")
+  participationContractOverrideJson Json?        @map("participation_contract_override_json")
+  forumOrchestrationOverrideJson    Json?        @map("forum_orchestration_override_json")
+  adminDistributionOverrideJson     Json?        @map("admin_distribution_override_json")
+  createdAt                         DateTime     @default(now()) @map("created_at")
+  updatedAt                         DateTime     @updatedAt @map("updated_at")
 
   community          Community            @relation(fields: [communityId], references: [id])
   author             Agent                @relation(fields: [authorAgentId], references: [id])
@@ -351,6 +353,8 @@ model Post {
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
+  @@index([warmStartBatchId, createdAt])
+  @@index([generationMode, createdAt])
   @@map("posts")
 }
 
@@ -367,20 +371,22 @@ enum PublicActorType {
 }
 
 model PublicStageThread {
-  id              String                 @id @default(cuid())
-  postId          String                 @map("post_id")
-  communityId     String                 @map("community_id")
-  authorActorType PublicActorType        @default(AGENT) @map("author_actor_type")
-  authorAgentId   String?                @map("author_agent_id")
-  authorUserId    String?                @map("author_user_id")
-  body            String
-  visibility      Visibility             @default(PUBLIC)
-  state           ContentState           @default(PENDING)
-  threadState     PublicStageThreadState @default(OPEN) @map("thread_state")
-  replyBudget     Int                    @default(6) @map("reply_budget")
-  activeRouteJson Json?                  @map("active_route_json")
-  createdAt       DateTime               @default(now()) @map("created_at")
-  updatedAt       DateTime               @updatedAt @map("updated_at")
+  id               String                 @id @default(cuid())
+  postId           String                 @map("post_id")
+  communityId      String                 @map("community_id")
+  authorActorType  PublicActorType        @default(AGENT) @map("author_actor_type")
+  authorAgentId    String?                @map("author_agent_id")
+  authorUserId     String?                @map("author_user_id")
+  body             String
+  visibility       Visibility             @default(PUBLIC)
+  state            ContentState           @default(PENDING)
+  warmStartBatchId String?                @map("warm_start_batch_id")
+  generationMode   String?                @map("generation_mode")
+  threadState      PublicStageThreadState @default(OPEN) @map("thread_state")
+  replyBudget      Int                    @default(6) @map("reply_budget")
+  activeRouteJson  Json?                  @map("active_route_json")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
 
   post          Post                @relation("PostPublicStageThreads", fields: [postId], references: [id])
   community     Community           @relation(fields: [communityId], references: [id])
@@ -393,25 +399,28 @@ model PublicStageThread {
   @@index([communityId, createdAt])
   @@index([authorAgentId])
   @@index([authorUserId])
+  @@index([warmStartBatchId, createdAt])
   @@map("public_stage_threads")
 }
 
 model PublicStageTurn {
-  id              String          @id @default(cuid())
-  threadId        String          @map("thread_id")
-  postId          String          @map("post_id")
-  authorActorType PublicActorType @default(AGENT) @map("author_actor_type")
-  authorAgentId   String?         @map("author_agent_id")
-  authorUserId    String?         @map("author_user_id")
-  turnIndex       Int             @map("turn_index")
-  anchorTurnId    String?         @map("anchor_turn_id")
-  anchorIntent    String?         @map("anchor_intent")
-  quotedExcerpt   String?         @map("quoted_excerpt")
-  body            String
-  visibility      Visibility      @default(PUBLIC)
-  state           ContentState    @default(PENDING)
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  id               String          @id @default(cuid())
+  threadId         String          @map("thread_id")
+  postId           String          @map("post_id")
+  authorActorType  PublicActorType @default(AGENT) @map("author_actor_type")
+  authorAgentId    String?         @map("author_agent_id")
+  authorUserId     String?         @map("author_user_id")
+  turnIndex        Int             @map("turn_index")
+  anchorTurnId     String?         @map("anchor_turn_id")
+  anchorIntent     String?         @map("anchor_intent")
+  quotedExcerpt    String?         @map("quoted_excerpt")
+  body             String
+  visibility       Visibility      @default(PUBLIC)
+  state            ContentState    @default(PENDING)
+  warmStartBatchId String?         @map("warm_start_batch_id")
+  generationMode   String?         @map("generation_mode")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   thread        PublicStageThread   @relation("ThreadTurns", fields: [threadId], references: [id])
   post          Post                @relation(fields: [postId], references: [id])
@@ -426,6 +435,7 @@ model PublicStageTurn {
   @@index([threadId, createdAt])
   @@index([authorAgentId])
   @@index([authorUserId])
+  @@index([warmStartBatchId, createdAt])
   @@map("public_stage_turns")
 }
 
@@ -955,19 +965,137 @@ model MediaGenerationJobRecord {
 }
 
 model PostMedia {
-  id        String   @id @default(cuid())
-  postId    String   @map("post_id")
-  assetId   String   @map("asset_id")
-  mediaUrl  String   @map("media_url")
-  mimeType  String   @map("mime_type")
-  createdAt DateTime @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  postId           String   @map("post_id")
+  assetId          String   @map("asset_id")
+  mediaUrl         String   @map("media_url")
+  mimeType         String   @map("mime_type")
+  warmStartBatchId String?  @map("warm_start_batch_id")
+  generationMode   String?  @map("generation_mode")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   post  Post       @relation(fields: [postId], references: [id])
   asset MediaAsset @relation(fields: [assetId], references: [id])
 
   @@index([postId, createdAt])
   @@index([assetId])
+  @@index([warmStartBatchId, createdAt])
   @@map("post_media")
+}
+
+enum WarmupSuiteState {
+  draft
+  review_ready
+  active
+  archived
+}
+
+enum WarmStartBatchKind {
+  kickoff
+  warmup
+}
+
+enum WarmStartBatchState {
+  draft
+  generating
+  review_ready
+  active
+  archived
+  failed
+}
+
+enum WarmupReviewDecision {
+  pass_to_active
+  not_passed
+}
+
+enum GovernanceBatchAction {
+  quarantine
+  restore
+  archive
+}
+
+model WarmupSuite {
+  id              String           @id @default(cuid())
+  state           WarmupSuiteState @default(draft)
+  suiteLabel      String?          @map("suite_label")
+  kickoffBatchId  String?          @map("kickoff_batch_id")
+  warmupBatchId   String?          @map("warmup_batch_id")
+  createdByUserId String?          @map("created_by_user_id")
+  activatedAt     DateTime?        @map("activated_at")
+  archivedAt      DateTime?        @map("archived_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@index([state, createdAt])
+  @@map("warmup_suites")
+}
+
+model WarmStartBatch {
+  id            String              @id @default(cuid())
+  suiteId       String              @map("suite_id")
+  batchKind     WarmStartBatchKind  @map("batch_kind")
+  state         WarmStartBatchState @default(draft)
+  sourceBatchId String?             @map("source_batch_id")
+  revisionKey   String?             @map("revision_key")
+  packageHash   String?             @map("package_hash")
+  notes         String?
+  activatedAt   DateTime?           @map("activated_at")
+  archivedAt    DateTime?           @map("archived_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  @@index([suiteId, batchKind, createdAt])
+  @@index([state, createdAt])
+  @@map("warm_start_batches")
+}
+
+model WarmupSuiteReview {
+  id              String               @id @default(cuid())
+  suiteId         String               @map("suite_id")
+  reviewerUserId  String?              @map("reviewer_user_id")
+  decision        WarmupReviewDecision
+  reasonCodesJson Json                 @map("reason_codes_json")
+  note            String?
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  @@index([suiteId, createdAt])
+  @@map("warmup_suite_reviews")
+}
+
+model ActiveBaseline {
+  id                 String    @id @default(cuid())
+  suiteId            String    @map("suite_id")
+  kickoffBatchId     String    @map("kickoff_batch_id")
+  warmupBatchId      String    @map("warmup_batch_id")
+  previousBaselineId String?   @map("previous_baseline_id")
+  isCurrent          Boolean   @default(true) @map("is_current")
+  activatedByUserId  String?   @map("activated_by_user_id")
+  activatedAt        DateTime  @default(now()) @map("activated_at")
+  deactivatedAt      DateTime? @map("deactivated_at")
+
+  @@index([isCurrent, activatedAt])
+  @@index([suiteId, activatedAt])
+  @@map("active_baselines")
+}
+
+model GovernanceBatch {
+  id                    String                @id @default(cuid())
+  action                GovernanceBatchAction
+  requestedByUserId     String?               @map("requested_by_user_id")
+  suiteId               String?               @map("suite_id")
+  warmStartBatchIdsJson Json                  @map("warm_start_batch_ids_json")
+  contentIdsJson        Json                  @map("content_ids_json")
+  scopeJson             Json                  @map("scope_json")
+  previewJson           Json                  @map("preview_json")
+  resultJson            Json?                 @map("result_json")
+  executedAt            DateTime?             @map("executed_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  @@index([action, createdAt])
+  @@index([suiteId, createdAt])
+  @@map("governance_batches")
 }
 
 model MediaObservabilityEvent {

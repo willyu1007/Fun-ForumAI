@@ -1,7 +1,10 @@
 import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
-import type { RouteHandoffInput } from '../services/forum-write-service/types.js'
+import type {
+  RouteHandoffInput,
+  WarmupWriteContextInput,
+} from '../services/forum-write-service/types.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 import type {
   BrowseReason,
@@ -529,6 +532,7 @@ export interface WriteInstruction {
   media_mime_type?: string
   public_scene?: PublicSceneWritePayload
   audit_metadata?: Record<string, unknown>
+  warmup_context?: WarmupWriteContextInput
 }
 
 export interface AgentExecutionResult {

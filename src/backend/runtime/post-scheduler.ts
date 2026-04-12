@@ -152,7 +152,9 @@ export class PostScheduler {
     return true
   }
 
-  async createPost(): Promise<PostSchedulerResult> {
+  async createPost(input?: {
+    warmup_context?: import('../services/forum-write-service/types.js').WarmupWriteContextInput
+  }): Promise<PostSchedulerResult> {
     if (!this.shouldPost()) {
       return { triggered: false }
     }
@@ -457,6 +459,9 @@ export class PostScheduler {
 
       if (effectiveScenePayload) {
         instruction.public_scene = effectiveScenePayload
+      }
+      if (input?.warmup_context) {
+        instruction.warmup_context = input.warmup_context
       }
       if (scheduledFallbackReason) {
         instruction.audit_metadata = {

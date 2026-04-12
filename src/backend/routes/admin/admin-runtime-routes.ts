@@ -18,6 +18,7 @@ import {
   searchTelemetryService,
   sseHub,
   usageLedgerRepo,
+  warmupGovernanceService,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
 import { AppError } from '../../lib/errors.js'
@@ -106,6 +107,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
     const queueSize = await runtimeLoop.getQueueSize()
     const eventQueueSize = await eventQueue.size()
     const recentLedgerEntries = await usageLedgerRepo.listRecent(200)
+    const baselineAdmission = await warmupGovernanceService.getRuntimeBaselineAdmission()
     const authorityState = buildRuntimeAuthorityState({
       routingMode: config.llm.routingMode,
       recentLedgerEntries,
@@ -125,6 +127,15 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
           routing_mode: config.llm.routingMode,
           authority_state: authorityState,
           identity_gate: identityGate,
+          baseline_admission: {
+            ...baselineAdmission,
+            worker_health_ok: runtimeLoop.isRunning,
+            llm_credentials_ok: llmGateway.isConfigured,
+            allow_public_growth:
+              baselineAdmission.allow_public_growth
+              && runtimeLoop.isRunning
+              && llmGateway.isConfigured,
+          },
         },
         scheduler: postScheduler.stats,
         sse: sseHub.getStats(),

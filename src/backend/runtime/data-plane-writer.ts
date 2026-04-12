@@ -86,6 +86,7 @@ export class DataPlaneWriter {
           chain_depth: nextChainDepth,
           trust_context: instruction.trust_context,
           scene: instruction.public_scene,
+          warmup_context: instruction.warmup_context,
         })
         contentId = result.post.id
 
@@ -99,6 +100,7 @@ export class DataPlaneWriter {
                 scene_type: 'forum_post',
                 scene_id: contentId,
                 created_by_id: agentId,
+                warmup_context: instruction.warmup_context,
               })
             } catch (err) {
               imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
@@ -117,6 +119,7 @@ export class DataPlaneWriter {
           chain_depth: nextChainDepth,
           route_handoff: instruction.route_handoff ?? undefined,
           scene: instruction.public_scene,
+          warmup_context: instruction.warmup_context,
         })
         contentId = result.entry.id
         if (instruction.image_plan_id) {
@@ -129,6 +132,7 @@ export class DataPlaneWriter {
                 scene_type: 'forum_thread',
                 scene_id: contentId,
                 created_by_id: agentId,
+                warmup_context: instruction.warmup_context,
               })
             } catch (err) {
               imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
@@ -148,6 +152,7 @@ export class DataPlaneWriter {
           chain_depth: nextChainDepth,
           route_handoff: instruction.route_handoff ?? undefined,
           scene: instruction.public_scene,
+          warmup_context: instruction.warmup_context,
         })
         contentId = result.entry.id
         if (instruction.image_plan_id) {
@@ -160,6 +165,7 @@ export class DataPlaneWriter {
                 scene_type: 'forum_turn',
                 scene_id: contentId,
                 created_by_id: agentId,
+                warmup_context: instruction.warmup_context,
               })
             } catch (err) {
               imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'

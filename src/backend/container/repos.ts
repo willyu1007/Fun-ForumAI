@@ -54,6 +54,7 @@ import { InMemoryGuidanceInboxRepository } from '../repos/guidance-inbox-reposit
 import { InMemoryGuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
 import { InMemoryRiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import { InMemoryViewerPublicViewEventRepository } from '../repos/viewer-public-view-event-repository.js'
+import { InMemoryWarmupGovernanceRepository } from '../repos/warmup-governance-repository.js'
 
 import type { PostRepository } from '../repos/post-repository.js'
 import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
@@ -112,6 +113,7 @@ import type { GuidanceInboxRepository } from '../repos/guidance-inbox-repository
 import type { GuidanceEventLogRepository } from '../repos/guidance-event-log-repository.js'
 import type { RiskGovernanceRepository } from '../repos/risk-governance-repository.js'
 import type { ViewerPublicViewEventRepository } from '../repos/viewer-public-view-event-repository.js'
+import type { WarmupGovernanceRepository } from '../repos/warmup-governance-repository.js'
 
 export interface Repositories {
   postRepo: PostRepository
@@ -173,6 +175,7 @@ export interface Repositories {
   guidanceEventLogRepo: GuidanceEventLogRepository
   riskGovernanceRepo: RiskGovernanceRepository
   viewerPublicViewEventRepo: ViewerPublicViewEventRepository
+  warmupGovernanceRepo: WarmupGovernanceRepository
 }
 
 interface HydratableRepo { hydrate(): Promise<void> }
@@ -244,6 +247,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgRiskGovernanceRepository } = await import('../repos/pg/pg-risk-governance-repository.js')
     const { PgPublicSceneWriteRepository } = await import('../repos/pg/pg-public-scene-write-repository.js')
     const { PgViewerPublicViewEventRepository } = await import('../repos/pg/pg-viewer-public-view-event-repository.js')
+    const { PgWarmupGovernanceRepository } =
+      await import('../repos/pg/pg-warmup-governance-repository.js')
 
     const pr = new PgPostRepository(prisma)
     const publicStageThreadRepo = new PgPublicStageThreadRepository(prisma)
@@ -301,6 +306,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const guidanceEventLogRepo = new PgGuidanceEventLogRepository(prisma)
     const riskGovernanceRepo = new PgRiskGovernanceRepository(prisma)
     const viewerPublicViewEventRepo = new PgViewerPublicViewEventRepository(prisma)
+    const warmupGovernanceRepo = new PgWarmupGovernanceRepository(prisma)
     const publicSceneWriteRepo = new PgPublicSceneWriteRepository({
       prisma,
       eventRepo: er,
@@ -310,6 +316,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     hydratables.push(
       pr, publicStageThreadRepo, publicStageTurnRepo, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, abr, mr,
       sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
+      warmupGovernanceRepo,
     )
 
     return {
@@ -339,6 +346,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         guidanceEventLogRepo,
         riskGovernanceRepo,
         viewerPublicViewEventRepo,
+        warmupGovernanceRepo,
       },
       hydratables,
     }
@@ -421,6 +429,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       guidanceEventLogRepo: new InMemoryGuidanceEventLogRepository(),
       riskGovernanceRepo: new InMemoryRiskGovernanceRepository(),
       viewerPublicViewEventRepo: new InMemoryViewerPublicViewEventRepository(),
+      warmupGovernanceRepo: new InMemoryWarmupGovernanceRepository(),
     },
     hydratables,
   }

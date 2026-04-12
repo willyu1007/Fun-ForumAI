@@ -4,6 +4,10 @@ import {
   COMMUNITY_PROPOSAL_ACTIONS,
 } from '../repos/types/governance.js'
 import {
+  GOVERNANCE_BATCH_ACTIONS,
+  WARMUP_REVIEW_REASON_CODES,
+} from '../repos/types/warmup-governance.js'
+import {
   AGENT_HUMAN_RESPONSE_MODE_IDS,
   AUDIENCE_SIGNAL_INGESTION_IDS,
   COMMUNITY_FAMILY_IDS,
@@ -791,6 +795,65 @@ export const governanceActionSchema = z
     reason: z.string().max(1000).optional(),
   })
   .strict()
+
+export const warmupSuiteIdParamSchema = z
+  .object({
+    id: z.string().trim().min(1),
+  })
+  .strict()
+
+export const createWarmupSuiteSchema = z
+  .object({
+    suite_label: z.string().trim().min(1).max(120).nullable().optional(),
+    max_runtime_topup_posts: z.number().int().min(0).max(50).optional(),
+  })
+  .strict()
+
+export const reviewWarmupSuiteSchema = z
+  .object({
+    decision: z.enum(['pass_to_active', 'not_passed']),
+    reason_codes: z.array(z.enum(WARMUP_REVIEW_REASON_CODES)).max(10).optional(),
+    note: z.string().trim().max(5_000).nullable().optional(),
+    confirm_activation: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((body, ctx) => {
+    if (body.decision === 'not_passed' && (!body.reason_codes || body.reason_codes.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'reason_codes is required when decision=not_passed',
+        path: ['reason_codes'],
+      })
+    }
+    if (body.decision === 'pass_to_active' && body.confirm_activation !== true) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'confirm_activation=true is required when decision=pass_to_active',
+        path: ['confirm_activation'],
+      })
+    }
+  })
+
+export const retryWarmupSuiteSchema = z.object({}).strict()
+
+export const rebuildWarmupSuiteSchema = z
+  .object({
+    max_runtime_topup_posts: z.number().int().min(0).max(50).optional(),
+  })
+  .strict()
+
+export const archiveWarmupSuiteSchema = z.object({}).strict()
+
+export const previewWarmupGovernanceBatchSchema = z
+  .object({
+    action: z.enum(GOVERNANCE_BATCH_ACTIONS),
+    suite_id: z.string().trim().min(1).nullable().optional(),
+    warm_start_batch_ids: z.array(z.string().trim().min(1)).max(20).optional(),
+    content_ids: z.array(z.string().trim().min(1)).max(200).optional(),
+  })
+  .strict()
+
+export const executeWarmupGovernanceBatchSchema = previewWarmupGovernanceBatchSchema
 
 export const createDisclosureCapOverrideSchema = z
   .object({

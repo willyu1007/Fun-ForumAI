@@ -593,6 +593,105 @@ describe('HomeProgrammingService', () => {
     }
   })
 
+  it('tops up conflict rising after promoting the only escalating storyline into must watch', async () => {
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.homeProgrammingV1
+    featureFlags.homeProgrammingV1 = true
+
+    try {
+      const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
+      const service = new HomeProgrammingService({
+        forumReadService: {
+          getFeed: async () => ({
+            items: [
+              makePost({
+                id: 'post-escalating-1',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '唯一升级冲突',
+                storyline_id: 'episode-1',
+                storyline_state: 'escalating',
+                heat_score: 88,
+              }),
+              makePost({
+                id: 'post-fallback-1',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '回填冲突一',
+                storyline_id: 'episode-2',
+                storyline_state: 'opening',
+                heat_score: 80,
+              }),
+              makePost({
+                id: 'post-fallback-2',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '回填冲突二',
+                storyline_id: 'episode-3',
+                storyline_state: 'opening',
+                heat_score: 72,
+              }),
+            ],
+            next_cursor: null,
+          }),
+          getPost: async () => {
+            throw new Error('unexpected getPost')
+          },
+          getThreads: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+        } as never,
+        globalHighlightsService: {
+          collectToday: async () => ({
+            hot_threads: [],
+            featured_agents: [],
+            controversy: [],
+            wildcard_cameos: [],
+            meta: {
+              range: 'today',
+              generated_at: '2026-03-31T00:00:00.000Z',
+              source: 'global-highlights-v1',
+            },
+          }),
+        } as never,
+        aftershowService: {
+          getLatestByPost: async () => ({
+            artifact: null,
+            callouts: [],
+          }),
+        } as never,
+        communityRepo: {
+          findById: (communityId: string) => ({
+            id: communityId,
+            slug: 'hot-arena',
+            name: '热点擂台',
+            rules_json: hotArenaRules,
+          }),
+          findBySlug: () => null,
+        } as never,
+      })
+
+      const payload = await service.getHome()
+      const mustWatchShelf = payload.shelves.find((item) => item.id === 'must_watch_today')
+      const conflictShelf = payload.shelves.find((item) => item.id === 'conflict_rising')
+
+      expect(mustWatchShelf?.items[0]).toMatchObject({
+        id: 'post-escalating-1',
+        hero_reason: '冲突升级回填',
+      })
+      expect(conflictShelf?.items.map((item) => item.id)).toEqual([
+        'post-fallback-1',
+        'post-fallback-2',
+      ])
+    } finally {
+      featureFlags.homeProgrammingV1 = originalFlag
+    }
+  })
+
   it('injects tonight_programming slots only when programming ops is enabled', async () => {
     const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHomeProgrammingFlag = featureFlags.homeProgrammingV1

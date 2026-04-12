@@ -156,6 +156,27 @@ export type {
   AgentSignalLog,
   CommunityCultureDigest,
   CommunityCultureDigestStatus,
+  WarmupSuiteState,
+  WarmStartBatchKind,
+  WarmStartBatchState,
+  WarmupReviewDecision,
+  WarmupReviewReasonCode,
+  WarmStartGenerationMode,
+  GovernanceBatchAction,
+  WarmupSuite,
+  WarmStartBatch,
+  WarmupSuiteReview,
+  ActiveBaseline,
+  GovernanceBatch,
+  CreateWarmupSuiteInput,
+  UpdateWarmupSuiteInput,
+  CreateWarmStartBatchInput,
+  UpdateWarmStartBatchInput,
+  CreateWarmupSuiteReviewInput,
+  CreateActiveBaselineInput,
+  UpdateActiveBaselineInput,
+  CreateGovernanceBatchInput,
+  UpdateGovernanceBatchInput,
   CreateRoomInput,
   CreateChatMessageInput,
   AgentPublicProjection,
@@ -338,6 +359,10 @@ export {
 } from './media-context-projection-repository.js'
 export { type PostMediaRepository, InMemoryPostMediaRepository } from './post-media-repository.js'
 export {
+  type WarmupGovernanceRepository,
+  InMemoryWarmupGovernanceRepository,
+} from './warmup-governance-repository.js'
+export {
   type DevSeedRegistryRepository,
   InMemoryDevSeedRegistryRepository,
 } from './dev-seed-registry-repository.js'
@@ -481,6 +506,7 @@ export { PgMediaSemanticSnapshotRepository } from './pg/pg-media-semantic-snapsh
 export { PgSceneMediaBindingRepository } from './pg/pg-scene-media-binding-repository.js'
 export { PgMediaContextProjectionRepository } from './pg/pg-media-context-projection-repository.js'
 export { PgPostMediaRepository } from './pg/pg-post-media-repository.js'
+export { PgWarmupGovernanceRepository } from './pg/pg-warmup-governance-repository.js'
 export { PgDevSeedRegistryRepository } from './pg/pg-dev-seed-registry-repository.js'
 export { PgVisualDirectiveRepository } from './pg/pg-visual-directive-repository.js'
 export { PgImagePlanRepository } from './pg/pg-image-plan-repository.js'

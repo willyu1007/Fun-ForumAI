@@ -51,6 +51,21 @@ describe('E2E: Governance Control Plane', () => {
         ],
       }),
     )
+    expect(res.body.data.runtime.baseline_admission).toEqual(
+      expect.objectContaining({
+        has_active_baseline: expect.any(Boolean),
+        kickoff_layer_ready: expect.any(Boolean),
+        warmup_layer_ready: expect.any(Boolean),
+        key_communities_ready: expect.any(Boolean),
+        key_shelves_ready: expect.any(Boolean),
+        media_access_ok: expect.any(Boolean),
+        last_review_decision_ok: expect.any(Boolean),
+        worker_health_ok: expect.any(Boolean),
+        llm_credentials_ok: expect.any(Boolean),
+        allow_public_growth: expect.any(Boolean),
+        reasons: expect.any(Array),
+      }),
+    )
   })
 
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {

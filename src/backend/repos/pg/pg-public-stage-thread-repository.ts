@@ -37,6 +37,8 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
         body: input.body,
         visibility: input.visibility,
         state: input.state,
+        warmStartBatchId: input.warm_start_batch_id ?? null,
+        generationMode: input.generation_mode ?? null,
         threadState: input.thread_state ?? 'OPEN',
         replyBudget: input.reply_budget ?? 6,
         activeRouteJson: input.active_route === null || input.active_route === undefined
@@ -50,6 +52,14 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
   async findById(id: string): Promise<PublicStageThread | null> {
     const row = await this.prisma.publicStageThread.findUnique({ where: { id } })
     return row ? this.toDomain(row) : null
+  }
+
+  async findByWarmStartBatch(batchId: string): Promise<PublicStageThread[]> {
+    const rows = await this.prisma.publicStageThread.findMany({
+      where: { warmStartBatchId: batchId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
   }
 
   async findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {
@@ -190,6 +200,8 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
       body: row.body,
       visibility: row.visibility,
       state: row.state,
+      warm_start_batch_id: row.warmStartBatchId,
+      generation_mode: row.generationMode as PublicStageThread['generation_mode'],
       thread_state: row.threadState,
       reply_budget: row.replyBudget,
       active_route: (row.activeRouteJson as PublicStageThread['active_route']) ?? null,

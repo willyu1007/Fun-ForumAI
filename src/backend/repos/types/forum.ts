@@ -1,4 +1,5 @@
 import type { PostModerationMetadata } from './moderation-context.js'
+import type { WarmStartGenerationMode } from './warmup-governance.js'
 
 export interface Post {
   id: string
@@ -10,6 +11,8 @@ export interface Post {
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
   moderation_metadata: PostModerationMetadata | null
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
   created_at: Date
   updated_at: Date
 }
@@ -59,6 +62,8 @@ export interface PublicStageThread {
   thread_state: PublicStageThreadState
   reply_budget: number
   active_route: RouteHandoff | null
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
   created_at: Date
   updated_at: Date
 }
@@ -77,6 +82,8 @@ export interface PublicStageTurn {
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
   created_at: Date
   updated_at: Date
 }
@@ -116,6 +123,8 @@ export interface PostMedia {
   asset_id: string
   media_url: string
   mime_type: string
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
   created_at: Date
 }
 
@@ -129,6 +138,8 @@ export interface CreatePostInput {
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
   moderation_metadata?: PostModerationMetadata | null
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
 }
 
 export interface CreatePublicStageThreadInput {
@@ -144,6 +155,8 @@ export interface CreatePublicStageThreadInput {
   thread_state?: PublicStageThreadState
   reply_budget?: number
   active_route?: RouteHandoff | null
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
 }
 
 export interface CreatePublicStageTurnInput {
@@ -160,6 +173,8 @@ export interface CreatePublicStageTurnInput {
   body: string
   visibility: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
   state: 'PENDING' | 'APPROVED' | 'REJECTED'
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
 }
 
 export interface UpsertVoteInput {
@@ -187,4 +202,6 @@ export interface CreatePostMediaInput {
   asset_id: string
   media_url: string
   mime_type: string
+  warm_start_batch_id?: string | null
+  generation_mode?: WarmStartGenerationMode | null
 }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-11T05:57:48.383Z",
+  "updatedAt": "2026-04-12T22:29:02.404Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -336,6 +336,14 @@
         "POST",
         "THREAD",
         "TURN"
+      ]
+    },
+    {
+      "name": "GovernanceBatchAction",
+      "values": [
+        "quarantine",
+        "restore",
+        "archive"
       ]
     },
     {
@@ -723,9 +731,170 @@
         "TURN",
         "MESSAGE"
       ]
+    },
+    {
+      "name": "WarmStartBatchKind",
+      "values": [
+        "kickoff",
+        "warmup"
+      ]
+    },
+    {
+      "name": "WarmStartBatchState",
+      "values": [
+        "draft",
+        "generating",
+        "review_ready",
+        "active",
+        "archived",
+        "failed"
+      ]
+    },
+    {
+      "name": "WarmupReviewDecision",
+      "values": [
+        "pass_to_active",
+        "not_passed"
+      ]
+    },
+    {
+      "name": "WarmupSuiteState",
+      "values": [
+        "draft",
+        "review_ready",
+        "active",
+        "archived"
+      ]
     }
   ],
   "tables": [
+    {
+      "name": "ActiveBaseline",
+      "dbName": "active_baselines",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "activated_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "activatedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "activated_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "deactivatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "deactivated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "isCurrent",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_current",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "kickoffBatchId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "kickoff_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "previousBaselineId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "previous_baseline_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suiteId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "suite_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmupBatchId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "warmup_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "isCurrent",
+            "activatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "suiteId",
+            "activatedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
     {
       "name": "ActiveTensionItem",
       "dbName": "active_tension_items",
@@ -14227,6 +14396,166 @@
       ]
     },
     {
+      "name": "GovernanceBatch",
+      "dbName": "governance_batches",
+      "schema": null,
+      "columns": [
+        {
+          "name": "action",
+          "type": "GovernanceBatchAction",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contentIdsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "content_ids_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "executedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "executed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "previewJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "preview_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "requested_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "result_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suiteId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "suite_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmStartBatchIdsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "warm_start_batch_ids_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "action",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "suiteId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "GuidanceActorState",
       "dbName": "guidance_actor_states",
       "schema": null,
@@ -20589,6 +20918,17 @@
           "unique": false
         },
         {
+          "name": "generationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generation_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -20774,6 +21114,17 @@
           "default": "PUBLIC",
           "primaryKey": false,
           "unique": false
+        },
+        {
+          "name": "warmStartBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
         }
       ],
       "relations": [
@@ -20911,6 +21262,24 @@
           ],
           "name": null,
           "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "generationMode",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "warmStartBatchId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
         }
       ]
     },
@@ -20938,6 +21307,17 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "generationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generation_mode",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -20980,6 +21360,17 @@
           "nullable": false,
           "list": false,
           "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmStartBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -21027,6 +21418,15 @@
           "type": "index",
           "fields": [
             "postId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "warmStartBatchId",
             "createdAt"
           ],
           "name": null,
@@ -22696,6 +23096,17 @@
           "unique": false
         },
         {
+          "name": "generationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generation_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -22769,6 +23180,17 @@
           "dbName": null,
           "dbType": null,
           "default": "PUBLIC",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmStartBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         }
@@ -22879,6 +23301,15 @@
           ],
           "name": null,
           "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "warmStartBatchId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
         }
       ]
     },
@@ -22961,6 +23392,17 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "generationMode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generation_mode",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         },
@@ -23049,6 +23491,17 @@
           "dbName": null,
           "dbType": null,
           "default": "PUBLIC",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmStartBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
+          "dbType": null,
+          "default": null,
           "primaryKey": false,
           "unique": false
         }
@@ -23168,6 +23621,15 @@
           "type": "index",
           "fields": [
             "threadId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "warmStartBatchId",
             "createdAt"
           ],
           "name": null,
@@ -29365,6 +29827,392 @@
             "voterAgentId",
             "targetType",
             "targetId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "WarmStartBatch",
+      "dbName": "warm_start_batches",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "activated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "batchKind",
+          "type": "WarmStartBatchKind",
+          "nullable": false,
+          "list": false,
+          "dbName": "batch_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "notes",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "packageHash",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "package_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "revisionKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "revision_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "WarmStartBatchState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "draft",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suiteId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "suite_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "state",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "suiteId",
+            "batchKind",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "WarmupSuite",
+      "dbName": "warmup_suites",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "activated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "kickoffBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "kickoff_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "WarmupSuiteState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "draft",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suiteLabel",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "suite_label",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmupBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warmup_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "state",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "WarmupSuiteReview",
+      "dbName": "warmup_suite_reviews",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "decision",
+          "type": "WarmupReviewDecision",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "note",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reasonCodesJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "reason_codes_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reviewerUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "reviewer_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suiteId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "suite_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "suiteId",
+            "createdAt"
           ],
           "name": null,
           "map": null

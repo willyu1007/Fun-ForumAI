@@ -82,6 +82,7 @@ import { RecallPolicyService } from '../services/recall-policy-service.js'
 import { RedisRecallStateStore } from '../services/recall-state-store.js'
 import { AgentPerceptionService } from '../services/agent-perception-service.js'
 import { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
+import { WarmupGovernanceService } from '../services/warmup-governance-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
@@ -356,6 +357,20 @@ export function createCoreServices(deps: {
     publicStageThreadRepo: repos.publicStageThreadRepo,
     publicStageTurnRepo: repos.publicStageTurnRepo,
     eventRepo: repos.eventRepo,
+  })
+  const warmupGovernanceService = new WarmupGovernanceService({
+    warmupGovernanceRepo: repos.warmupGovernanceRepo,
+    postRepo: repos.postRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    publicStageTurnRepo: repos.publicStageTurnRepo,
+    postMediaRepo: repos.postMediaRepo,
+    communityRepo: repos.communityRepo,
+    agentRepo: repos.agentRepo,
+    agentConfigRepo: repos.agentConfigRepo,
+    membershipService: agentCommunityMembershipService,
+    stageTierService,
+    forumWriteService,
+    launchProgrammingOpsService,
   })
 
   const communityCultureDigestService = new CommunityCultureDigestService({
@@ -698,6 +713,7 @@ export function createCoreServices(deps: {
     launchProgrammingOpsService,
     homeProgrammingService,
     homeProgrammingSnapshotService,
+    warmupGovernanceService,
     agentService,
     agentCommunityMembershipService,
     communityCultureDigestService,

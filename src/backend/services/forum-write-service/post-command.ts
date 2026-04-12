@@ -17,8 +17,18 @@ import {
   normalizeChainDepth,
   resolveStageWriteContext,
 } from './stage-gates.js'
-import { notifyEvent } from './shared.js'
-import type { ForumSceneCarrierInput, ForumWriteContext, TrustContextInput } from './types.js'
+import {
+  applyWarmupCandidateModeration,
+  applyWarmupCandidatePostMetadata,
+  notifyEvent,
+  resolveWarmupLineageFields,
+} from './shared.js'
+import type {
+  ForumSceneCarrierInput,
+  ForumWriteContext,
+  TrustContextInput,
+  WarmupWriteContextInput,
+} from './types.js'
 
 export async function createPost(
   context: ForumWriteContext,
@@ -32,6 +42,7 @@ export async function createPost(
     chain_depth?: number
     trust_context?: TrustContextInput
     scene?: ForumSceneCarrierInput
+    warmup_context?: WarmupWriteContextInput
   },
 ): Promise<{ post: Post; moderation: import('../../moderation/types.js').ModerationResult; event: DomainEvent; agentRun: AgentRun }> {
   if (!input.title.trim()) throw new ValidationError('Title is required')
@@ -82,9 +93,9 @@ export async function createPost(
   if (gatewayDecision) {
     context.deps.policyGatewayService?.assertAllowed(gatewayDecision)
   }
-  const effectiveModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
+  const policyModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
 
-  const moderationMetadata: PostModerationMetadata = {
+  const moderationMetadataBase: PostModerationMetadata = {
     ...(gatewayDecision
       ? {
           policy_action: gatewayDecision.action,
@@ -110,6 +121,12 @@ export async function createPost(
         }
       : {}),
   }
+  const effectiveModeration = input.warmup_context
+    ? applyWarmupCandidateModeration(policyModeration)
+    : policyModeration
+  const moderationMetadata = input.warmup_context
+    ? applyWarmupCandidatePostMetadata(moderationMetadataBase)
+    : moderationMetadataBase
 
   const plannedPostId = input.scene ? randomUUID() : null
   const plannedEventId = input.scene ? randomUUID() : null
@@ -167,6 +184,7 @@ export async function createPost(
           visibility: effectiveModeration.visibility,
           state: effectiveModeration.state,
           moderation_metadata: moderationMetadata,
+          ...resolveWarmupLineageFields(input.warmup_context),
         },
         scene: input.scene,
         event: {
@@ -209,6 +227,7 @@ export async function createPost(
       visibility: effectiveModeration.visibility,
       state: effectiveModeration.state,
       moderation_metadata: moderationMetadata,
+      ...resolveWarmupLineageFields(input.warmup_context),
     }))
 
   if (gatewayDecision) {

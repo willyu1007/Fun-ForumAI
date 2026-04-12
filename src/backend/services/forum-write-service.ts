@@ -25,7 +25,11 @@ import {
   createSceneThreadTurn,
 } from './forum-write-service/scene-write.js'
 import { normalizeChainDepth, resolveStageWriteContext } from './forum-write-service/stage-gates.js'
-import { notifyEvent } from './forum-write-service/shared.js'
+import {
+  applyWarmupCandidateModeration,
+  notifyEvent,
+  resolveWarmupLineageFields,
+} from './forum-write-service/shared.js'
 import { ThreadLifecycleService as DefaultThreadLifecycleService } from './thread-lifecycle-service.js'
 import { ThreadInteractionResolver as DefaultThreadInteractionResolver } from './thread-interaction-resolver.js'
 import type {
@@ -34,6 +38,7 @@ import type {
   ForumWriteContext,
   ForumWriteServiceDeps,
   RouteHandoffInput,
+  WarmupWriteContextInput,
 } from './forum-write-service/types.js'
 import { upsertVote } from './forum-write-service/vote-command.js'
 
@@ -61,6 +66,7 @@ export class ForumWriteService {
     chain_depth?: number
     trust_context?: import('./forum-write-service/types.js').TrustContextInput
     scene?: ForumSceneCarrierInput
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ post: Post; moderation: import('../moderation/types.js').ModerationResult; event: DomainEvent; agentRun: AgentRun }> {
     return createPost({ deps: this.deps }, input)
   }
@@ -74,6 +80,7 @@ export class ForumWriteService {
     chain_depth?: number
     route_handoff?: RouteHandoffInput
     scene?: ForumSceneCarrierInput
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ entry: PublicStageThreadTurn; moderation: import('../moderation/types.js').ModerationResult; event: DomainEvent }> {
     return createThreadEntry({ deps: this.deps }, input)
   }
@@ -88,6 +95,7 @@ export class ForumWriteService {
     chain_depth?: number
     route_handoff?: RouteHandoffInput
     scene?: ForumSceneCarrierInput
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ entry: PublicStageThreadTurn; moderation: import('../moderation/types.js').ModerationResult; event: DomainEvent }> {
     return createThreadTurnEntry({ deps: this.deps }, input)
   }
@@ -116,6 +124,7 @@ async function createThreadEntry(
     chain_depth?: number
     route_handoff?: RouteHandoffInput
     scene?: ForumSceneCarrierInput
+    warmup_context?: WarmupWriteContextInput
   },
 ): Promise<{ entry: PublicStageThreadTurn; moderation: import('../moderation/types.js').ModerationResult; event: DomainEvent }> {
   if (!input.body.trim()) throw new ValidationError('Body is required')
@@ -167,7 +176,10 @@ async function createThreadEntry(
   if (gatewayDecision) {
     context.deps.policyGatewayService?.assertAllowed(gatewayDecision)
   }
-  const effectiveModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
+  const policyModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
+  const effectiveModeration = input.warmup_context
+    ? applyWarmupCandidateModeration(policyModeration)
+    : policyModeration
   const isAside = input.channel === 'ASIDE'
   const eventType = isAside ? 'ASIDE_THREAD_CREATED' : 'THREAD_OPENED'
   const plannedThreadId = input.scene ? crypto.randomUUID() : null
@@ -198,6 +210,7 @@ async function createThreadEntry(
           body: input.body,
           visibility: effectiveModeration.visibility,
           state: effectiveModeration.state,
+          ...resolveWarmupLineageFields(input.warmup_context),
         },
         scene: input.scene,
         event: {
@@ -228,6 +241,7 @@ async function createThreadEntry(
     body: input.body,
     visibility: effectiveModeration.visibility,
     state: effectiveModeration.state,
+    ...resolveWarmupLineageFields(input.warmup_context),
   })
   const entry = toPublicStageThreadTurnFromThread(thread)
 
@@ -271,6 +285,7 @@ async function createThreadTurnEntry(
     chain_depth?: number
     route_handoff?: RouteHandoffInput
     scene?: ForumSceneCarrierInput
+    warmup_context?: WarmupWriteContextInput
   },
 ): Promise<{ entry: PublicStageThreadTurn; moderation: import('../moderation/types.js').ModerationResult; event: DomainEvent }> {
   if (!input.body.trim()) throw new ValidationError('Body is required')
@@ -346,7 +361,10 @@ async function createThreadTurnEntry(
   if (gatewayDecision) {
     context.deps.policyGatewayService?.assertAllowed(gatewayDecision)
   }
-  const effectiveModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
+  const policyModeration = applyPolicyDecisionToModeration(modResult, gatewayDecision)
+  const effectiveModeration = input.warmup_context
+    ? applyWarmupCandidateModeration(policyModeration)
+    : policyModeration
   const isAside = input.channel === 'ASIDE'
   const eventType = isAside ? 'ASIDE_TURN_CREATED' : 'THREAD_TURN_ADDED'
   const nextTurnIndex = currentTurnCount + 1
@@ -383,6 +401,7 @@ async function createThreadTurnEntry(
           body: input.body,
           visibility: effectiveModeration.visibility,
           state: effectiveModeration.state,
+          ...resolveWarmupLineageFields(input.warmup_context),
         },
         scene: input.scene,
         event: {
@@ -416,6 +435,7 @@ async function createThreadTurnEntry(
     body: input.body,
     visibility: effectiveModeration.visibility,
     state: effectiveModeration.state,
+    ...resolveWarmupLineageFields(input.warmup_context),
   })
   const entry = toPublicStageThreadTurnFromTurn(turn)
 

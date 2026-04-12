@@ -8,6 +8,7 @@ import type {
 export interface PublicStageThreadRepository {
   create(input: CreatePublicStageThreadInput): Promise<PublicStageThread>
   findById(id: string): Promise<PublicStageThread | null>
+  findByWarmStartBatch(batchId: string): Promise<PublicStageThread[]>
   findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>>
   findByPostAll(postId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>>
   findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>>
@@ -46,6 +47,8 @@ export class InMemoryPublicStageThreadRepository implements PublicStageThreadRep
       body: input.body,
       visibility: input.visibility,
       state: input.state,
+      warm_start_batch_id: input.warm_start_batch_id ?? null,
+      generation_mode: input.generation_mode ?? null,
       thread_state: input.thread_state ?? 'OPEN',
       reply_budget: input.reply_budget ?? 6,
       active_route: input.active_route ?? null,
@@ -58,6 +61,12 @@ export class InMemoryPublicStageThreadRepository implements PublicStageThreadRep
 
   async findById(id: string): Promise<PublicStageThread | null> {
     return this.store.get(id) ?? null
+  }
+
+  async findByWarmStartBatch(batchId: string): Promise<PublicStageThread[]> {
+    return Array.from(this.store.values())
+      .filter((thread) => thread.warm_start_batch_id === batchId)
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
   }
 
   async findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {

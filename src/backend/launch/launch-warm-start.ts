@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { ValidationError } from '../lib/errors.js'
 import type { AgentConfigRepository, AgentRepository } from '../repos/agent-repository.js'
 import type { CommunityRepository } from '../repos/community-repository.js'
@@ -19,9 +18,7 @@ import type {
   SceneMetadata,
 } from '../stage/index.js'
 import { listLaunchCommunitySeeds } from './community-rules.js'
-import { bootstrapLaunchRosterMemberships } from './launch-membership-bootstrap.js'
 import {
-  getLaunchSystemRoster,
   readLaunchSystemIdentityConfig,
   type LaunchProgramRole,
   type LaunchSystemIdentityConfig,
@@ -30,6 +27,7 @@ import {
 } from './system-roster.js'
 import type { LaunchContentKind } from './programming-projection.js'
 import type { LaunchCreatorNoteCoverMode, LaunchCreatorNoteTemplateId } from './creator-note-templates.js'
+import type { LaunchWarmupSuiteResult } from '../services/warmup-governance-service.js'
 
 type WarmStartShelfId =
   | 'must_watch_today'
@@ -37,7 +35,7 @@ type WarmStartShelfId =
   | 'notes_today'
   | 'continue_storyline'
 
-interface LaunchWarmStartSpec {
+export interface LaunchWarmStartSpec {
   id: string
   pass: 'occupancy' | 'amplification'
   community_slug: string
@@ -65,7 +63,7 @@ interface ResolvedSystemAgent {
   identity: LaunchSystemIdentityConfig
 }
 
-interface LaunchWarmStartDeps {
+export interface LaunchWarmStartDeps {
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   communityRepo: CommunityRepository
@@ -79,56 +77,23 @@ interface LaunchWarmStartDeps {
     isRunning: boolean
   } | null
   postScheduler?: {
-    createPost(): Promise<{
+    createPost(input?: {
+      warmup_context?: import('../services/forum-write-service/types.js').WarmupWriteContextInput
+    }): Promise<{
       triggered: boolean
       post_id?: string
       error?: string
     }>
   } | null
+  warmupExecutor?: {
+    createLaunchSuite(input?: {
+      max_runtime_topup_posts?: number
+      now?: Date
+    }): Promise<LaunchWarmupSuiteResult>
+  } | null
 }
 
-export interface LaunchWarmStartCreatedPost {
-  spec_id: string
-  post_id: string
-  title: string
-  agent_id: string
-  community_id: string
-  community_slug: string
-}
-
-export interface LaunchWarmStartSkippedPost {
-  spec_id: string
-  post_id: string
-  title: string
-  reason: 'already_exists'
-}
-
-export interface LaunchWarmStartVerification {
-  home_enabled: boolean
-  shelf_counts: Record<string, number>
-  required_home_thresholds: Record<string, number>
-  required_launch_communities: string[]
-  required_community_floor: number
-  community_occupancy: Record<string, number>
-  required_daily_outcomes: Record<string, number>
-  observed_daily_outcomes: Record<string, number>
-  missing: string[]
-  ok: boolean
-}
-
-export interface LaunchWarmStartResult {
-  bootstrap_memberships: Awaited<ReturnType<typeof bootstrapLaunchRosterMemberships>>
-  created_posts: LaunchWarmStartCreatedPost[]
-  skipped_posts: LaunchWarmStartSkippedPost[]
-  runtime_top_up: {
-    enabled: boolean
-    running: boolean
-    attempted: number
-    triggered: number
-    errors: string[]
-  }
-  verification: LaunchWarmStartVerification
-}
+export type LaunchWarmStartResult = LaunchWarmupSuiteResult
 
 const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
   {
@@ -454,7 +419,7 @@ export const CURATED_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
   ...AMPLIFICATION_LAUNCH_WARM_START_POSTS,
 ] as const
 
-const REQUIRED_HOME_THRESHOLD_COUNTS: Record<string, number> = {
+export const REQUIRED_HOME_THRESHOLD_COUNTS: Record<string, number> = {
   must_watch_today: 1,
   conflict_rising: 1,
   notes_today: 2,
@@ -466,11 +431,7 @@ function dedupe(values: string[]): string[] {
   return Array.from(new Set(values))
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function buildCommunityAliasMap(
+export function buildCommunityAliasMap(
   communityRepo: CommunityRepository,
 ): {
   communityByAlias: Map<string, { id: string; slug: string; name: string }>
@@ -501,7 +462,7 @@ function buildCommunityAliasMap(
   }
 }
 
-function buildSystemAgentIndexes(input: {
+export function buildSystemAgentIndexes(input: {
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   ownerId: string
@@ -569,7 +530,7 @@ function readCommunityAffinityRank(
   return 3
 }
 
-function pickRosterEntryForSpec(input: {
+export function pickRosterEntryForSpec(input: {
   roster: LaunchSystemRosterRuntime
   spec: LaunchWarmStartSpec
   usedAgentIds: Set<string>
@@ -615,7 +576,7 @@ function pickRosterEntryForSpec(input: {
   return chosen.agent
 }
 
-async function findExistingCuratedPost(
+export async function findExistingCuratedPost(
   postRepo: PostRepository,
   communityId: string,
   title: string,
@@ -636,7 +597,7 @@ async function findExistingCuratedPost(
   return null
 }
 
-function buildWarmStartScenePayload(input: {
+export function buildWarmStartScenePayload(input: {
   spec: LaunchWarmStartSpec
   now: Date
 }): PublicSceneWritePayload {
@@ -720,7 +681,7 @@ function buildWarmStartScenePayload(input: {
   }
 }
 
-function readShelfCounts(homePayload: HomeProgrammingPayload): Record<string, number> {
+export function readShelfCounts(homePayload: HomeProgrammingPayload): Record<string, number> {
   const byId = new Map(homePayload.shelves.map((shelf) => [shelf.id, shelf.items.length]))
   return {
     must_watch_today: byId.get('must_watch_today') ?? 0,
@@ -731,7 +692,7 @@ function readShelfCounts(homePayload: HomeProgrammingPayload): Record<string, nu
   }
 }
 
-async function readCommunityOccupancy(input: {
+export async function readCommunityOccupancy(input: {
   postRepo: PostRepository
   launchCommunities: Array<{ id: string; slug: string; name: string }>
 }): Promise<Record<string, number>> {
@@ -746,12 +707,23 @@ async function readCommunityOccupancy(input: {
   return Object.fromEntries(entries)
 }
 
-async function buildVerification(input: {
+export async function buildVerification(input: {
   homePayload: HomeProgrammingPayload
   opsPayload: LaunchProgrammingOpsPayload
   postRepo: PostRepository
   launchCommunities: Array<{ id: string; slug: string; name: string }>
-}): Promise<LaunchWarmStartVerification> {
+}): Promise<{
+  home_enabled: boolean
+  shelf_counts: Record<string, number>
+  required_home_thresholds: Record<string, number>
+  required_launch_communities: string[]
+  required_community_floor: number
+  community_occupancy: Record<string, number>
+  required_daily_outcomes: Record<string, number>
+  observed_daily_outcomes: Record<string, number>
+  missing: string[]
+  ok: boolean
+}> {
   const shelfCounts = readShelfCounts(input.homePayload)
   const communityOccupancy = await readCommunityOccupancy({
     postRepo: input.postRepo,
@@ -808,121 +780,12 @@ export async function runLaunchWarmStart(
     now?: Date
   } = {},
 ): Promise<LaunchWarmStartResult> {
-  const roster = input.roster ?? getLaunchSystemRoster()
-  const now = input.now ?? new Date()
-  const maxRuntimeTopupPosts = Math.max(0, input.max_runtime_topup_posts ?? 0)
+  if (!deps.warmupExecutor) {
+    throw new ValidationError('warmupExecutor is required for launch warm-start v1')
+  }
 
-  const bootstrapMemberships = await bootstrapLaunchRosterMemberships({
-    agentRepo: deps.agentRepo,
-    agentConfigRepo: deps.agentConfigRepo,
-    communityRepo: deps.communityRepo,
-    membershipService: deps.membershipService,
-    stageTierService: deps.stageTierService,
+  return deps.warmupExecutor.createLaunchSuite({
+    max_runtime_topup_posts: input.max_runtime_topup_posts,
+    now: input.now,
   })
-  const { communityByAlias, launchCommunities } = buildCommunityAliasMap(deps.communityRepo)
-  const indexes = buildSystemAgentIndexes({
-    agentRepo: deps.agentRepo,
-    agentConfigRepo: deps.agentConfigRepo,
-    ownerId: roster.owner_model.owner_id,
-  })
-
-  const usedAgentIds = new Set<string>()
-  const createdPosts: LaunchWarmStartCreatedPost[] = []
-  const skippedPosts: LaunchWarmStartSkippedPost[] = []
-
-  for (const passSpecs of [OCCUPANCY_LAUNCH_WARM_START_POSTS, AMPLIFICATION_LAUNCH_WARM_START_POSTS]) {
-    for (const spec of passSpecs) {
-      const community = communityByAlias.get(spec.community_slug)
-      if (!community) {
-        throw new ValidationError(`Launch warm-start is blocked: missing community ${spec.community_slug}`)
-      }
-
-      const agent = pickRosterEntryForSpec({
-        roster,
-        spec,
-        usedAgentIds,
-        indexes,
-      })
-      usedAgentIds.add(agent.id)
-
-      const existing = await findExistingCuratedPost(deps.postRepo, community.id, spec.title)
-      if (existing) {
-        skippedPosts.push({
-          spec_id: spec.id,
-          post_id: existing.id,
-          title: spec.title,
-          reason: 'already_exists',
-        })
-        continue
-      }
-
-      const writeResult = await deps.forumWriteService.createPost({
-        actor_agent_id: agent.id,
-        run_id: `launch-warm-start:${spec.id}:${randomUUID()}`,
-        community_id: community.id,
-        title: spec.title,
-        body: spec.body,
-        tags: spec.tags,
-        scene: buildWarmStartScenePayload({ spec, now }),
-      })
-
-      createdPosts.push({
-        spec_id: spec.id,
-        post_id: writeResult.post.id,
-        title: spec.title,
-        agent_id: agent.id,
-        community_id: community.id,
-        community_slug: community.slug,
-      })
-    }
-  }
-
-  let homePayload = await deps.homeProgrammingService.getHome()
-  let opsPayload = await deps.launchProgrammingOpsService.getAdminPayload({ now })
-  let verification = await buildVerification({
-    homePayload,
-    opsPayload,
-    postRepo: deps.postRepo,
-    launchCommunities,
-  })
-
-  const runtimeTopUp = {
-    enabled: maxRuntimeTopupPosts > 0,
-    running: deps.runtimeLoop?.isRunning === true,
-    attempted: 0,
-    triggered: 0,
-    errors: [] as string[],
-  }
-
-  if (!verification.ok && runtimeTopUp.enabled && runtimeTopUp.running && deps.postScheduler) {
-    for (let attempt = 0; attempt < maxRuntimeTopupPosts; attempt += 1) {
-      runtimeTopUp.attempted += 1
-      const result = await deps.postScheduler.createPost()
-      if (result.triggered) {
-        runtimeTopUp.triggered += 1
-      }
-      if (result.error) {
-        runtimeTopUp.errors.push(result.error)
-      }
-
-      await sleep(250)
-      homePayload = await deps.homeProgrammingService.getHome()
-      opsPayload = await deps.launchProgrammingOpsService.getAdminPayload({ now })
-      verification = await buildVerification({
-        homePayload,
-        opsPayload,
-        postRepo: deps.postRepo,
-        launchCommunities,
-      })
-      if (verification.ok) break
-    }
-  }
-
-  return {
-    bootstrap_memberships: bootstrapMemberships,
-    created_posts: createdPosts,
-    skipped_posts: skippedPosts,
-    runtime_top_up: runtimeTopUp,
-    verification,
-  }
 }
