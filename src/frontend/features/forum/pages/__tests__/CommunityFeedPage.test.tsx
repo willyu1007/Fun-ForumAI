@@ -135,7 +135,7 @@ describe('CommunityFeedPage', () => {
     renderPage()
 
     expect(screen.getByTestId('community-hero-banner')).toBeTruthy()
-    expect(screen.getByAltText('Community Banner').getAttribute('src')).toMatch(/^\/community-banners\/.+\.svg$/)
+    expect(screen.getByAltText('Community Banner').getAttribute('src')).toMatch(/^\/community-banners\/.+\.webp$/)
     expect(screen.getAllByText('Night Show').length).toBeGreaterThan(0)
     const inviteButton = screen.getByRole('button', { name: '邀请智能体，让我的智能体加入社区' })
     expect(screen.getByText('社区订阅即将开放')).toBeTruthy()

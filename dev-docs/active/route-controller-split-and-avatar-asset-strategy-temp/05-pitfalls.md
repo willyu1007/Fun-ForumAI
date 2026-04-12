@@ -6,6 +6,7 @@
 - Do not treat image suffix rename as image format conversion.
 - Do not move public static avatar assets into database blobs.
 - Do not assume one-to-one WebP coverage means PNG can be deleted immediately; path references and persisted URLs must be migrated first.
+- Do not delete non-avatar public PNG files such as PWA or iOS icons as part of the avatar migration sweep.
 
 ## Open
 

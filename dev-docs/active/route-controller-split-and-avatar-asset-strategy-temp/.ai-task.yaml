@@ -2,7 +2,7 @@ version: 1
 task_id: T-953
 project: main
 slug: route-controller-split-and-avatar-asset-strategy-temp
-status: planned
+status: in-progress
 updated: "2026-04-11"
 keywords:
   - controller
