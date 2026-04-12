@@ -1707,3 +1707,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/badge-visual-e2e-closeout-v1
     updated: 2026-04-11
+  - id: T-960
+    slug: chatroom-staging-hold-e2e-closure
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/chatroom-staging-hold-e2e-closure
+    updated: 2026-04-12
