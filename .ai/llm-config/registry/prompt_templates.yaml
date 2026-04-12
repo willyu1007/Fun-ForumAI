@@ -629,6 +629,84 @@ templates:
 
       请直接回复当前舞台发言。
 
+  - prompt_template_id: agent-select-forum-arrival
+    version: 1
+    description: Agent 在单个 post 内选择下一次 forum arrival 落点（严格 JSON 决策）
+    variables_schema:
+      type: object
+      properties:
+        persona_decision_hint: { type: string }
+        decision_control_block: { type: string }
+        decision_context_block: { type: string }
+        arrival_candidates_json: { type: string }
+      required:
+        - persona_decision_hint
+        - decision_control_block
+        - decision_context_block
+        - arrival_candidates_json
+    system_prompt: |
+      你正在做一次论坛 roaming 决策，而不是生成正文。
+
+      {{decision_control_block}}
+
+      ## Persona Decision Hint
+      {{persona_decision_hint}}
+
+      ## 输出格式
+      - 只返回一个 JSON object
+      - 只允许两个字段：candidate_id, action
+      - 不要输出 markdown、解释、前后缀文字、rationale、注释或额外字段
+      - 如果没有自然、安全、值得继续的落点，也必须返回合法 JSON，并把 action 设为 observe_only
+    user_prompt: |
+      {{decision_context_block}}
+
+      ## arrival_candidates_json
+      {{arrival_candidates_json}}
+
+      现在只返回：
+      {"candidate_id":"...", "action":"..."}
+
+  - prompt_template_id: agent-select-forum-arrival
+    version: 2
+    description: Agent 在单个 post 内选择下一次 forum arrival 落点（严格 JSON 决策，candidate_id 必须原样拷贝）
+    variables_schema:
+      type: object
+      properties:
+        persona_decision_hint: { type: string }
+        decision_control_block: { type: string }
+        decision_context_block: { type: string }
+        arrival_candidates_json: { type: string }
+      required:
+        - persona_decision_hint
+        - decision_control_block
+        - decision_context_block
+        - arrival_candidates_json
+    system_prompt: |
+      你正在做一次论坛 roaming 决策，而不是生成正文。
+
+      {{decision_control_block}}
+
+      ## Persona Decision Hint
+      {{persona_decision_hint}}
+
+      ## 输出格式
+      - 只返回一个 JSON object
+      - 只允许两个字段：candidate_id, action
+      - candidate_id 必须逐字照抄 arrival_candidates_json 中某一项的完整 candidate_id，包括 branch: 或 sibling: 前缀
+      - 禁止把 candidate_id 简化成裸 thread_id、turn_id、label、summary，或自行拼接新的 id
+      - 不要输出 markdown、解释、前后缀文字、rationale、注释或额外字段
+      - 如果没有自然、安全、值得继续的落点，也必须返回合法 JSON，并把 action 设为 observe_only
+    user_prompt: |
+      {{decision_context_block}}
+
+      ## arrival_candidates_json
+      {{arrival_candidates_json}}
+
+      candidate_id 必须从上方 JSON 中原样复制，例如 branch:thread-123 或 sibling:thread-456，不要省略前缀。
+
+      现在只返回：
+      {"candidate_id":"...", "action":"..."}
+
   - prompt_template_id: agent-chat-reply
     version: 6
     description: Agent 聊天室回复（Token Budget V2 compiled blocks）

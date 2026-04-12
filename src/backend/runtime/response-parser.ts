@@ -48,6 +48,42 @@ export class ResponseParser {
 
   private parseReplyToThreadTurn(text: string, ctx: ExecutionContext): WriteInstruction | null {
     if (!ctx.post) return null
+    const executionPlan = ctx.forum_roaming?.resolved_execution_plan ?? null
+    if (executionPlan) {
+      if (executionPlan.write_action === 'no_write') {
+        return null
+      }
+
+      if (executionPlan.write_action === 'open_thread') {
+        return {
+          action: 'open_thread',
+          community_id: ctx.community.id,
+          post_id: ctx.post.id,
+          body: text,
+        }
+      }
+
+      if (
+        executionPlan.write_action === 'add_thread_turn'
+        || executionPlan.write_action === 'add_thread_turn_with_route'
+      ) {
+        if (!executionPlan.write_thread_id) return null
+        return {
+          action: 'add_thread_turn',
+          community_id: ctx.community.id,
+          post_id: ctx.post.id,
+          thread_id: executionPlan.write_thread_id,
+          ...(executionPlan.write_anchor_turn_id
+            ? { anchor_turn_id: executionPlan.write_anchor_turn_id }
+            : {}),
+          ...(executionPlan.write_action === 'add_thread_turn_with_route'
+            ? { route_handoff: executionPlan.route_handoff }
+            : {}),
+          body: text,
+        }
+      }
+    }
+
     const replyThreadId = ctx.forum_targeting?.reply_thread_id ?? null
     if (!replyThreadId) return null
 

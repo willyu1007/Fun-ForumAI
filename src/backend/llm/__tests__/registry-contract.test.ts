@@ -265,6 +265,23 @@ describe('LLM registry contract', () => {
     ).toBe(true)
   })
 
+  it('keeps qwen forum-reply lite bound to the flash-tier profile', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+
+    expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'forum_reply', 'lite')).toBe(
+      'qwen-social-forum-reply-lite',
+    )
+    expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[0]?.model_id).toBe(
+      'qwen-flash-character',
+    )
+    expect(profilesById.get('qwen-social-forum-reply-base')?.candidates[0]?.model_id).toBe(
+      'qwen-plus-character',
+    )
+  })
+
   it('keeps qwen hidden digest profiles multi-homed for saturation resilience', () => {
     const bundle = loadLlmRegistryBundle()
     const profilesById = new Map(

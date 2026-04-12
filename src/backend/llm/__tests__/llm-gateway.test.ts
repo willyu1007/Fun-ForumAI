@@ -1386,6 +1386,172 @@ describe('LLMGateway', () => {
     expect(response.executionPlan.policy.policy_id).toBe('hidden-private_digest-premium-override')
   })
 
+  it('allows forum reply selection to override onto a json-object execution policy', async () => {
+    const bundle = buildBundle()
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'qwen-social-forum-reply-lite',
+      voice_line_id: 'qwen-social-v1',
+      tier: 'lite',
+      intent: 'forum_reply',
+      visibility: 'visible',
+      policy_id: 'visible-forum_reply-base',
+      candidates: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-flash-character',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 100,
+          quality_class: 'fast',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'qwen-social-forum-reply-base',
+      voice_line_id: 'qwen-social-v1',
+      tier: 'base',
+      intent: 'forum_reply',
+      visibility: 'visible',
+      policy_id: 'visible-forum_reply-base',
+      candidates: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-plus-character',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 100,
+          quality_class: 'balanced',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'qwen-social-forum-reply-lite',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'qwen-social-forum-reply-base',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'visible-forum_reply-base',
+      lane: 'visible_forum_reply',
+      modality: 'text',
+      response_mode: 'text',
+      defaults: {
+        temperature: 0.75,
+        max_tokens: 720,
+        timeout_ms: 30_000,
+        max_retries: 2,
+      },
+      fallback: {
+        allow_fallback_within_line: false,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none'],
+      },
+      merge: {
+        allow_callsite_override_fields: ['executionPolicyId'],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'visible-forum_reply-selection-lite',
+      lane: 'visible_forum_reply',
+      modality: 'text',
+      response_mode: 'json_object',
+      defaults: {
+        temperature: 0.2,
+        max_tokens: 160,
+        timeout_ms: 30_000,
+        max_retries: 2,
+      },
+      fallback: {
+        allow_fallback_within_line: false,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none'],
+      },
+      merge: {
+        allow_callsite_override_fields: [],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.credentialPools.pools.push({
+      credential_id: 'dashscope-visible-default',
+      provider_id: 'dashscope-openai',
+      region: 'cn-beijing',
+      endpoint_id: 'dashscope-cn-beijing',
+      endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      credential_ref: 'secret-ref:llm_api_default',
+      priority: 10,
+      health: 'healthy',
+      enabled: true,
+      scope_tags: ['visible'],
+      allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character'],
+    })
+
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: '{"candidate_id":"branch:thread-1","action":"observe_only"}',
+      usage: { prompt_tokens: 11, completion_tokens: 5, total_tokens: 16 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger: new UsageLedgerWriter(),
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      intent: 'forum_reply',
+      scene: 'forum_thread',
+      responseMode: 'json_object',
+      promptRef: { id: 'agent-select-forum-arrival', version: 2 },
+      promptMessages: [{ role: 'user', content: 'select arrival' }],
+      requestedTier: 'lite',
+      allowFallbackWithinLine: false,
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-selection-lite',
+      },
+      traceId: 'trace-forum-selection',
+    }))
+
+    expect(chatSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'qwen-flash-character',
+        temperature: 0.2,
+        max_tokens: 160,
+      }),
+    )
+    expect(response.renderDecision.modelId).toBe('qwen-flash-character')
+    expect(response.renderDecision.profileId).toBe('qwen-social-forum-reply-lite')
+    expect(response.renderDecision.policyId).toBe('visible-forum_reply-selection-lite')
+    expect(response.executionPlan.policy.policy_id).toBe('visible-forum_reply-selection-lite')
+  })
+
   it('orders candidates by the registry route order without compatibility model hints', async () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = [

@@ -14,6 +14,15 @@ policies:
       - headroom
       - health
 
+  - profile_id: qwen-social-forum-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
   - profile_id: qwen-social-forum-reply-base
     route_order:
       - intent_scene_fit

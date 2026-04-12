@@ -29,6 +29,35 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-chat_reply-lite
+  - profile_id: qwen-social-forum-reply-lite
+    voice_line_id: qwen-social-v1
+    tier: lite
+    intent: forum_reply
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen-flash-character
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 85
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: tencent-openai
+        model_id: hunyuan-2.0-instruct-20251111
+        region: cn
+        endpoint_id: tencent-cn
+        weight: 80
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: visible-forum_reply-base
   - profile_id: qwen-social-forum-reply-base
     voice_line_id: qwen-social-v1
     tier: base

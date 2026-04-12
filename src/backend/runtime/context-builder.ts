@@ -9,6 +9,7 @@ import type {
   ExecutionContextThreadEntry,
   ForumTargetingContext,
   PromptRequestEnvelope,
+  ResolvedForumExecutionPlan,
 } from './types.js'
 import { config } from '../lib/config.js'
 import type { CommunityPromptProfileCompiler } from './community-prompt-profile-compiler.js'
@@ -115,8 +116,10 @@ export class ContextBuilder {
       ) => Promise<{
         post_capsule: ExecutionContext['semantic_post_capsule']
         thread_capsule: ExecutionContext['semantic_thread_capsule']
+        forest: ExecutionContext['discussion_forest']
         perceived_slice: ExecutionContext['perceived_context_slice']
         runtime_context: ExecutionContext['forum_runtime_context']
+        orchestration_policy: ExecutionContext['forum_orchestration_policy']
       }>
     }
 
@@ -128,19 +131,7 @@ export class ContextBuilder {
           focus_turn_id: agent.selected_anchor_turn_id ?? event.turn_id ?? null,
           agent_id: agent.agent_id,
         })
-
-        ctx.semantic_post_capsule = preview.post_capsule ?? null
-        ctx.semantic_thread_capsule = preview.thread_capsule ?? null
-        ctx.perceived_context_slice = preview.perceived_slice ?? null
-        ctx.forum_runtime_context = preview.runtime_context ?? null
-
-        if (preview.perceived_slice && ctx.threadTurns?.length) {
-          const visibleIds = new Set(preview.perceived_slice.visible_node_ids)
-          const filtered = ctx.threadTurns.filter((item) => visibleIds.has(item.id))
-          if (filtered.length > 0) {
-            ctx.threadTurns = filtered
-          }
-        }
+        this.applyForumRuntimePreview(ctx, preview)
       } catch (error) {
         console.error(
           `[ContextBuilder] forum semantic context build failed for post=${event.post_id} thread=${event.thread_id ?? 'none'} agent=${agent.agent_id}:`,
@@ -257,6 +248,74 @@ export class ContextBuilder {
     ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
     ctx.prompt_audit = composed.audit
     return ctx
+  }
+
+  async retargetForumThreadContext(
+    ctx: ExecutionContext,
+    plan: ResolvedForumExecutionPlan,
+  ): Promise<ExecutionContext> {
+    if (!ctx.post || !isForumThreadEvent(ctx.event)) {
+      return ctx
+    }
+
+    const next: ExecutionContext = {
+      ...ctx,
+      agent: {
+        ...ctx.agent,
+        selected_anchor_turn_id: plan.context_focus_turn_id ?? ctx.agent.selected_anchor_turn_id ?? null,
+      },
+      focusThreadTurn: undefined,
+      forum_targeting: undefined,
+      blocks: undefined,
+      prompt_audit: undefined,
+      runtimeEnvelope: undefined,
+    }
+
+    const targetThreadId = plan.context_thread_id
+    next.threadTurns = targetThreadId
+      ? await this.loadThreadTurns(ctx.post.id, targetThreadId)
+      : []
+    next.threadMeta = targetThreadId
+      ? await this.loadThreadMeta(targetThreadId)
+      : undefined
+
+    const runtimePreviewBuilder = this.deps.forumReadService as unknown as {
+      buildRuntimeContextPreview?: (
+        input: {
+          post_id: string
+          thread_id?: string | null
+          focus_turn_id?: string | null
+          agent_id?: string | null
+        },
+      ) => Promise<{
+        post_capsule: ExecutionContext['semantic_post_capsule']
+        thread_capsule: ExecutionContext['semantic_thread_capsule']
+        forest: ExecutionContext['discussion_forest']
+        perceived_slice: ExecutionContext['perceived_context_slice']
+        runtime_context: ExecutionContext['forum_runtime_context']
+        orchestration_policy: ExecutionContext['forum_orchestration_policy']
+      }>
+    }
+
+    if (typeof runtimePreviewBuilder.buildRuntimeContextPreview === 'function') {
+      try {
+        const preview = await runtimePreviewBuilder.buildRuntimeContextPreview({
+          post_id: ctx.post.id,
+          thread_id: targetThreadId,
+          focus_turn_id: plan.context_focus_turn_id,
+          agent_id: ctx.agent.agent_id,
+        })
+        this.applyForumRuntimePreview(next, preview)
+      } catch (error) {
+        console.error(
+          `[ContextBuilder] forum retarget preview build failed for post=${ctx.post.id} thread=${targetThreadId ?? 'none'} agent=${ctx.agent.agent_id}:`,
+          error,
+        )
+      }
+    }
+
+    this.finalizeForumTargeting(next)
+    return next
   }
 
   private composeConversationText(ctx: ExecutionContext): string {
@@ -458,6 +517,33 @@ export class ContextBuilder {
     return threadTurns.find((entry) => entry.id === entryId)
   }
 
+  private applyForumRuntimePreview(
+    ctx: ExecutionContext,
+    preview: {
+      post_capsule: ExecutionContext['semantic_post_capsule']
+      thread_capsule: ExecutionContext['semantic_thread_capsule']
+      forest: ExecutionContext['discussion_forest']
+      perceived_slice: ExecutionContext['perceived_context_slice']
+      runtime_context: ExecutionContext['forum_runtime_context']
+      orchestration_policy: ExecutionContext['forum_orchestration_policy']
+    },
+  ): void {
+    ctx.semantic_post_capsule = preview.post_capsule ?? null
+    ctx.semantic_thread_capsule = preview.thread_capsule ?? null
+    ctx.discussion_forest = preview.forest ?? null
+    ctx.perceived_context_slice = preview.perceived_slice ?? null
+    ctx.forum_runtime_context = preview.runtime_context ?? null
+    ctx.forum_orchestration_policy = preview.orchestration_policy ?? null
+
+    if (preview.perceived_slice && ctx.threadTurns?.length) {
+      const visibleIds = new Set(preview.perceived_slice.visible_node_ids)
+      const filtered = ctx.threadTurns.filter((item) => visibleIds.has(item.id))
+      if (filtered.length > 0) {
+        ctx.threadTurns = filtered
+      }
+    }
+  }
+
   private resolveEventTargetEntry(ctx: ExecutionContext): ExecutionContextThreadEntry | undefined {
     if (!isForumThreadEvent(ctx.event)) {
       return undefined
@@ -611,6 +697,10 @@ export class ContextBuilder {
   ): CurrentContextSource[] {
     const sources: CurrentContextSource[] = []
     const promptFocusEntry = this.getPromptFocusEntry(ctx)
+    const resolvedExecutionPlan = ctx.forum_roaming?.resolved_execution_plan ?? null
+    const chosenCandidate = resolvedExecutionPlan?.candidate_id
+      ? ctx.forum_roaming?.arrival_candidates.find((item) => item.candidate_id === resolvedExecutionPlan.candidate_id) ?? null
+      : null
     const hasForumRuntimeContext = Boolean(
       config.launch.capabilities.forumOrchestrationEnvelopeCutover
       && ctx.forum_runtime_context,
@@ -624,7 +714,11 @@ export class ContextBuilder {
       })
     }
     if (hasForumRuntimeContext && ctx.forum_runtime_context) {
-      const text = this.serializeForumRuntimeContext(ctx.forum_runtime_context, ctx.forum_targeting)
+      const text = this.serializeForumRuntimeContext(
+        ctx.forum_runtime_context,
+        ctx.forum_targeting,
+        resolvedExecutionPlan,
+      )
       sources.push({
         kind: 'forum_runtime_context',
         text,
@@ -648,6 +742,14 @@ export class ContextBuilder {
       if (config.launch.capabilities.forumOrchestrationEnvelopeCutover) {
         runtimeFeatureMetrics.recordForumOrchestrationFallback()
       }
+    }
+    if (chosenCandidate?.local_evidence.length) {
+      sources.push({
+        kind: 'roaming_local_evidence',
+        text: chosenCandidate.local_evidence.join('\n'),
+        priority: 'high',
+        source_id: chosenCandidate.candidate_id,
+      })
     }
     if (promptFocusEntry) {
       sources.push({
@@ -728,6 +830,7 @@ export class ContextBuilder {
   private serializeForumRuntimeContext(
     runtimeContext: NonNullable<ExecutionContext['forum_runtime_context']>,
     forumTargeting?: ForumTargetingContext,
+    resolvedExecutionPlan?: ResolvedForumExecutionPlan | null,
   ): string {
     const routeSnapshot = runtimeContext.foundation_skeleton.route_snapshot
     const writeability = runtimeContext.focus_thread?.lifecycle.writeability
@@ -743,6 +846,18 @@ export class ContextBuilder {
       forumTargeting?.actual_anchor_turn_id ? `actual_anchor=${forumTargeting.actual_anchor_turn_id}` : null,
       forumTargeting?.final_write_anchor_turn_id ? `final_write_anchor=${forumTargeting.final_write_anchor_turn_id}` : null,
       forumTargeting?.allowed_actions.length ? `allowed_actions=${forumTargeting.allowed_actions.join('|')}` : null,
+      resolvedExecutionPlan?.decision_action
+        ? `roaming_action=${resolvedExecutionPlan.decision_action}`
+        : null,
+      resolvedExecutionPlan?.write_action
+        ? `frozen_write_action=${resolvedExecutionPlan.write_action}`
+        : null,
+      resolvedExecutionPlan?.write_thread_id
+        ? `frozen_write_thread=${resolvedExecutionPlan.write_thread_id}`
+        : null,
+      resolvedExecutionPlan?.write_anchor_turn_id
+        ? `frozen_write_anchor=${resolvedExecutionPlan.write_anchor_turn_id}`
+        : null,
       writeability
         ? `writeability=${writeability.reply_mode}:${writeability.preferred_action}:${writeability.reason_code}`
         : null,

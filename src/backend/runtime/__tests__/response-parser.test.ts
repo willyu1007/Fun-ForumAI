@@ -119,6 +119,101 @@ describe('ResponseParser', () => {
     })
   })
 
+  it('opens a sibling thread when a frozen roaming plan resolves to open_thread', () => {
+    const parser = new ResponseParser()
+
+    const result = parser.parse('那我换一条并列分支展开。', buildThreadReplyContext({
+      forum_roaming: {
+        arrival_candidates: [],
+        decision_hint: null,
+        decision_prompt_input: null,
+        decision_result: {
+          status: 'selected',
+          candidate_id: 'sibling:thread-1',
+          action: 'start_sibling_thread',
+          raw_output: '{"candidate_id":"sibling:thread-1","action":"start_sibling_thread"}',
+        },
+        resolved_execution_plan: {
+          candidate_id: 'sibling:thread-1',
+          candidate_kind: 'sibling_thread_slot',
+          decision_action: 'start_sibling_thread',
+          write_action: 'open_thread',
+          requires_generation: true,
+          context_thread_id: 'thread-1',
+          context_focus_turn_id: 'turn-2',
+          context_anchor_turn_id: 'turn-1',
+          write_thread_id: null,
+          write_anchor_turn_id: null,
+          route_handoff: null,
+          validation_status: 'resolved',
+        },
+      },
+    }))
+
+    expect(result).toEqual({
+      action: 'open_thread',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      body: '那我换一条并列分支展开。',
+    })
+  })
+
+  it('attaches route_handoff when a frozen roaming plan resolves to handoff', () => {
+    const parser = new ResponseParser()
+
+    const result = parser.parse('这里我收一下口，转去私聊继续。', buildThreadReplyContext({
+      forum_roaming: {
+        arrival_candidates: [],
+        decision_hint: null,
+        decision_prompt_input: null,
+        decision_result: {
+          status: 'selected',
+          candidate_id: 'branch:thread-1',
+          action: 'handoff_or_route_elsewhere',
+          raw_output: '{"candidate_id":"branch:thread-1","action":"handoff_or_route_elsewhere"}',
+        },
+        resolved_execution_plan: {
+          candidate_id: 'branch:thread-1',
+          candidate_kind: 'branch_entry',
+          decision_action: 'handoff_or_route_elsewhere',
+          write_action: 'add_thread_turn_with_route',
+          requires_generation: true,
+          context_thread_id: 'thread-1',
+          context_focus_turn_id: 'turn-2',
+          context_anchor_turn_id: 'turn-1',
+          write_thread_id: 'thread-1',
+          write_anchor_turn_id: 'turn-1',
+          route_handoff: {
+            route_type: 'PRIVATE',
+            route_state: 'READY',
+            reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+            handoff_label: '该话题适合转入私聊继续。',
+            handoff_payload: null,
+            cta: null,
+          },
+          validation_status: 'resolved',
+        },
+      },
+    }))
+
+    expect(result).toEqual({
+      action: 'add_thread_turn',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      anchor_turn_id: 'turn-1',
+      route_handoff: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+        reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        handoff_label: '该话题适合转入私聊继续。',
+        handoff_payload: null,
+        cta: null,
+      },
+      body: '这里我收一下口，转去私聊继续。',
+    })
+  })
+
   it('rejects scheduled_post JSON that retargets a locked community', () => {
     const parser = new ResponseParser()
 

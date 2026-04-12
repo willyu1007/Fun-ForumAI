@@ -4,6 +4,7 @@ export const PROMPT_TEMPLATE_REFS = {
   agentReplyToPost: { id: 'agent-reply-to-post', version: 4 },
   agentReplyToPostScene: { id: 'agent-reply-to-post', version: 4 },
   agentCreatePostScene: { id: 'agent-create-post', version: 4 },
+  agentSelectForumArrival: { id: 'agent-select-forum-arrival', version: 2 },
   agentReplyToThreadTurn: { id: 'agent-reply-to-thread-turn', version: 4 },
   agentReplyToThreadTurnScene: { id: 'agent-reply-to-thread-turn', version: 4 },
   agentChatReply: { id: 'agent-chat-reply', version: 6 },
@@ -25,6 +26,7 @@ export const PROMPT_TEMPLATE_REFS = {
 const CURRENT_VISIBLE_PROMPT_REFS_BY_TEMPLATE_ID: Readonly<Record<string, PromptTemplateRef>> = {
   'agent-reply-to-post': PROMPT_TEMPLATE_REFS.agentReplyToPostScene,
   'agent-create-post': PROMPT_TEMPLATE_REFS.agentCreatePostScene,
+  'agent-select-forum-arrival': PROMPT_TEMPLATE_REFS.agentSelectForumArrival,
   'agent-reply-to-thread-turn': PROMPT_TEMPLATE_REFS.agentReplyToThreadTurnScene,
   'agent-chat-reply': PROMPT_TEMPLATE_REFS.agentChatReplyScene,
   'agent-private-chat-reply': PROMPT_TEMPLATE_REFS.agentPrivateChatReply,

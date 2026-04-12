@@ -37,6 +37,23 @@ policies:
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
+      allow_callsite_override_fields: [executionPolicyId]
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-forum_reply-selection-lite
+    lane: visible_forum_reply
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 0.2
+      max_tokens: 160
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: false
+      allow_cross_family: false
+      allowed_fallback_levels: [none]
+    merge:
       allow_callsite_override_fields: []
       allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 

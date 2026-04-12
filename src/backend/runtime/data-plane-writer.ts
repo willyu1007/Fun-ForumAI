@@ -115,6 +115,7 @@ export class DataPlaneWriter {
           post_id: instruction.post_id!,
           body: instruction.body,
           chain_depth: nextChainDepth,
+          route_handoff: instruction.route_handoff ?? undefined,
           scene: instruction.public_scene,
         })
         contentId = result.entry.id
@@ -145,6 +146,7 @@ export class DataPlaneWriter {
           anchor_turn_id: instruction.anchor_turn_id,
           body: instruction.body,
           chain_depth: nextChainDepth,
+          route_handoff: instruction.route_handoff ?? undefined,
           scene: instruction.public_scene,
         })
         contentId = result.entry.id

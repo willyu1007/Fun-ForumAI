@@ -1,9 +1,12 @@
 import type { AllocationResult, EventPayload, SelectedAgent } from '../allocator/types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
+import type { RouteHandoffInput } from '../services/forum-write-service/types.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 import type {
   BrowseReason,
+  DiscussionForestProjection,
+  EffectiveOrchestrationPolicy,
   PerceivedAllowedAction,
   PerceivedContextSlice,
   PostSemanticCapsule,
@@ -149,6 +152,116 @@ export interface ForumTargetingContext {
   reply_thread_id: string | null
   browse_reason: BrowseReason | null
   allowed_actions: PerceivedAllowedAction[]
+}
+
+export const ROAMING_ARRIVAL_CANDIDATE_KIND_IDS = [
+  'branch_entry',
+  'sibling_thread_slot',
+] as const
+
+export type RoamingArrivalCandidateKind = (typeof ROAMING_ARRIVAL_CANDIDATE_KIND_IDS)[number]
+
+export const ROAMING_DECISION_ACTION_IDS = [
+  'reply_in_branch',
+  'late_enter_branch',
+  'handoff_or_route_elsewhere',
+  'start_sibling_thread',
+  'observe_only',
+] as const
+
+export type RoamingDecisionAction = (typeof ROAMING_DECISION_ACTION_IDS)[number]
+
+export const ROAMING_DECISION_STATUS_IDS = [
+  'selected',
+  'invalid_json',
+  'invalid_shape',
+  'invalid_candidate',
+  'invalid_action',
+] as const
+
+export type RoamingDecisionStatus = (typeof ROAMING_DECISION_STATUS_IDS)[number]
+
+export const RESOLVED_FORUM_EXECUTION_WRITE_ACTION_IDS = [
+  'add_thread_turn',
+  'add_thread_turn_with_route',
+  'open_thread',
+  'no_write',
+] as const
+
+export type ResolvedForumExecutionWriteAction =
+  (typeof RESOLVED_FORUM_EXECUTION_WRITE_ACTION_IDS)[number]
+
+export const RESOLVED_FORUM_EXECUTION_VALIDATION_STATUS_IDS = [
+  'resolved',
+  'decision_failed',
+  'candidate_missing',
+  'candidate_expired',
+  'candidate_invalid',
+  'target_invalid',
+] as const
+
+export type ResolvedForumExecutionValidationStatus =
+  (typeof RESOLVED_FORUM_EXECUTION_VALIDATION_STATUS_IDS)[number]
+
+export interface RoamingArrivalCandidate {
+  candidate_id: string
+  candidate_kind: RoamingArrivalCandidateKind
+  label: string
+  summary: string
+  thread_id: string | null
+  focus_turn_id: string | null
+  anchor_turn_id: string | null
+  branch_root_turn_id: string | null
+  local_evidence: string[]
+  reason_codes: string[]
+  allowed_actions: RoamingDecisionAction[]
+  expires_at: string | null
+  route_handoff: RouteHandoffInput | null
+}
+
+export interface DecisionHintBuildResult {
+  text: string
+  baseline: string
+  projection_calibration: string | null
+  transient_modifier: string | null
+  source_provenance: string[]
+}
+
+export interface RoamingDecisionPromptInput {
+  persona_decision_hint: string
+  decision_control_block: string
+  decision_context_block: string
+  arrival_candidates_json: string
+}
+
+export interface RoamingDecisionResult {
+  status: RoamingDecisionStatus
+  candidate_id: string | null
+  action: RoamingDecisionAction | null
+  raw_output: string
+}
+
+export interface ResolvedForumExecutionPlan {
+  candidate_id: string | null
+  candidate_kind: RoamingArrivalCandidateKind | null
+  decision_action: RoamingDecisionAction | null
+  write_action: ResolvedForumExecutionWriteAction
+  requires_generation: boolean
+  context_thread_id: string | null
+  context_focus_turn_id: string | null
+  context_anchor_turn_id: string | null
+  write_thread_id: string | null
+  write_anchor_turn_id: string | null
+  route_handoff: RouteHandoffInput | null
+  validation_status: ResolvedForumExecutionValidationStatus
+}
+
+export interface ForumRoamingRuntimeState {
+  arrival_candidates: RoamingArrivalCandidate[]
+  decision_hint: DecisionHintBuildResult | null
+  decision_prompt_input: RoamingDecisionPromptInput | null
+  decision_result: RoamingDecisionResult | null
+  resolved_execution_plan: ResolvedForumExecutionPlan | null
 }
 
 export interface PromptBudgetDecision {
@@ -362,8 +475,11 @@ export interface ExecutionContext {
   runtimeEnvelope?: PersonaRuntimeEnvelope | null
   semantic_post_capsule?: PostSemanticCapsule | null
   semantic_thread_capsule?: ThreadCapsule | null
+  discussion_forest?: DiscussionForestProjection | null
   perceived_context_slice?: PerceivedContextSlice | null
   forum_runtime_context?: RuntimeContextEnvelope | null
+  forum_orchestration_policy?: EffectiveOrchestrationPolicy | null
+  forum_roaming?: ForumRoamingRuntimeState | null
   prompt_audit?: PromptComposeAudit
   public_scene?: PublicSceneWritePayload & {
     continuity_source: 'selector' | 'thread_sidecar' | 'turn_sidecar' | 'post_sidecar' | 'event_replay'
@@ -387,6 +503,7 @@ export interface WriteInstruction {
   post_id?: string
   thread_id?: string
   anchor_turn_id?: string
+  route_handoff?: RouteHandoffInput | null
   room_id?: string
   title?: string
   body: string

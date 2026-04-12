@@ -100,9 +100,6 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       : await this.deps.llmGateway.generateHiddenArtifact({
           ...commonRequest,
           promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationSummaryExtract,
-          localOverrides: {
-            executionPolicyId: 'hidden-public_observation_digest-agent-owned-base',
-          },
         })
 
     const parsed = parseJsonRecord(response.content)
@@ -147,9 +144,6 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
       : await this.deps.llmGateway.generateHiddenArtifact({
           ...commonRequest,
           promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationSummaryDistill,
-          localOverrides: {
-            executionPolicyId: 'hidden-public_observation_digest-agent-owned-base',
-          },
         })
 
     const parsed = parseJsonRecord(response.content)

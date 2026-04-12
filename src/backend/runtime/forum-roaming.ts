@@ -1,0 +1,720 @@
+import type {
+  DiscussionForestProjection,
+  DisplayAuthorSummary,
+  ThreadCapsule,
+  TurnDisplayProjection,
+} from '../../shared/forum-orchestration.js'
+import type { OwnerStylePins } from '../identity/agent-identity.js'
+import type { RouteHandoffInput } from '../services/forum-write-service/types.js'
+import type {
+  DecisionHintBuildResult,
+  ExecutionContext,
+  ResolvedForumExecutionPlan,
+  RoamingArrivalCandidate,
+  RoamingDecisionAction,
+  RoamingDecisionPromptInput,
+  RoamingDecisionResult,
+} from './types.js'
+
+interface DecisionIdentitySnapshot {
+  agent_id: string
+  display_name: string
+  persona_seed_code: string
+  owner_style_pins: OwnerStylePins | null
+}
+
+interface RoamingPreparationResult {
+  arrival_candidates: RoamingArrivalCandidate[]
+  decision_hint: DecisionHintBuildResult
+  decision_prompt_input: RoamingDecisionPromptInput
+  skip_reason: null | 'audience_scope_excluded' | 'no_viable_candidates'
+}
+
+export function buildForumRoamingPreparation(input: {
+  ctx: ExecutionContext
+  identity: DecisionIdentitySnapshot
+}): RoamingPreparationResult {
+  const arrivalCandidates = buildArrivalCandidates(input.ctx)
+  const decisionHint = buildDecisionHint({
+    ctx: input.ctx,
+    identity: input.identity,
+  })
+
+  return {
+    arrival_candidates: arrivalCandidates.candidates,
+    decision_hint: decisionHint,
+    decision_prompt_input: {
+      persona_decision_hint: decisionHint.text,
+      decision_control_block: buildDecisionControlBlock(input.ctx),
+      decision_context_block: buildDecisionContextBlock(input.ctx),
+      arrival_candidates_json: JSON.stringify(
+        arrivalCandidates.candidates.map((candidate) => toPromptCandidate(candidate)),
+        null,
+        2,
+      ),
+    },
+    skip_reason: arrivalCandidates.candidates.length > 0
+      ? null
+      : arrivalCandidates.audience_scope_excluded
+        ? 'audience_scope_excluded'
+        : 'no_viable_candidates',
+  }
+}
+
+export function buildDecisionHint(input: {
+  ctx: ExecutionContext
+  identity: DecisionIdentitySnapshot
+}): DecisionHintBuildResult {
+  const ownerPins = input.identity.owner_style_pins ?? {}
+  const baselineParts = [
+    `${input.identity.display_name} 的公开基线偏向 ${input.identity.persona_seed_code}`,
+    ownerPins.mood ? `情绪底色偏 ${ownerPins.mood}` : null,
+    typeof ownerPins.verbosity === 'number' ? `展开度约 ${ownerPins.verbosity}/5` : null,
+    ownerPins.habits?.length ? `习惯动作=${ownerPins.habits.slice(0, 2).join('/')}` : null,
+  ].filter((value): value is string => Boolean(value))
+  const baseline = trimSentence(baselineParts.join('，'))
+
+  const projectionText = resolveProjectionCalibration(input.ctx, input.identity.agent_id)
+  const projectionCalibration = projectionText
+    ? trimSentence(`公开投射校准：${projectionText}`)
+    : null
+  const transientModifier = buildTransientModifier(input.ctx)
+
+  return {
+    text: [baseline, projectionCalibration ?? transientModifier].filter(Boolean).slice(0, 2).join('\n'),
+    baseline,
+    projection_calibration: projectionCalibration,
+    transient_modifier: projectionCalibration ? transientModifier : transientModifier,
+    source_provenance: [
+      'identity.persona_seed_code',
+      ...(ownerPins.mood ? ['identity.owner_style_pins.mood'] : []),
+      ...(typeof ownerPins.verbosity === 'number' ? ['identity.owner_style_pins.verbosity'] : []),
+      ...(ownerPins.habits?.length ? ['identity.owner_style_pins.habits'] : []),
+      ...(projectionText ? ['discussion_forest.author.public_projection'] : []),
+      ...(transientModifier ? ['runtime.browse_reason'] : []),
+    ],
+  }
+}
+
+export function parseRoamingDecision(
+  rawOutput: string,
+  candidates: RoamingArrivalCandidate[],
+): RoamingDecisionResult {
+  const trimmed = rawOutput.trim()
+  if (!trimmed) {
+    return {
+      status: 'invalid_json',
+      candidate_id: null,
+      action: null,
+      raw_output: rawOutput,
+    }
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    return {
+      status: 'invalid_json',
+      candidate_id: null,
+      action: null,
+      raw_output: rawOutput,
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      status: 'invalid_shape',
+      candidate_id: null,
+      action: null,
+      raw_output: rawOutput,
+    }
+  }
+
+  const record = parsed as Record<string, unknown>
+  const keys = Object.keys(record).sort()
+  if (keys.length !== 2 || keys[0] !== 'action' || keys[1] !== 'candidate_id') {
+    return {
+      status: 'invalid_shape',
+      candidate_id: null,
+      action: null,
+      raw_output: rawOutput,
+    }
+  }
+
+  const candidateId = typeof record.candidate_id === 'string' ? record.candidate_id : null
+  const action = isRoamingDecisionAction(record.action) ? record.action : null
+  if (!candidateId || !action) {
+    return {
+      status: action ? 'invalid_candidate' : 'invalid_action',
+      candidate_id: candidateId,
+      action,
+      raw_output: rawOutput,
+    }
+  }
+
+  const candidate = candidates.find((item) => item.candidate_id === candidateId)
+  if (!candidate) {
+    return {
+      status: 'invalid_candidate',
+      candidate_id: candidateId,
+      action,
+      raw_output: rawOutput,
+    }
+  }
+
+  if (!candidate.allowed_actions.includes(action)) {
+    return {
+      status: 'invalid_action',
+      candidate_id: candidateId,
+      action,
+      raw_output: rawOutput,
+    }
+  }
+
+  return {
+    status: 'selected',
+    candidate_id: candidateId,
+    action,
+    raw_output: rawOutput,
+  }
+}
+
+export function resolveForumExecutionPlan(input: {
+  post_id: string
+  candidates: RoamingArrivalCandidate[]
+  decision_result: RoamingDecisionResult | null
+  now?: Date
+}): ResolvedForumExecutionPlan {
+  const now = input.now ?? new Date()
+  if (!input.decision_result || input.decision_result.status !== 'selected') {
+    return {
+      candidate_id: input.decision_result?.candidate_id ?? null,
+      candidate_kind: null,
+      decision_action: input.decision_result?.action ?? null,
+      write_action: 'no_write',
+      requires_generation: false,
+      context_thread_id: null,
+      context_focus_turn_id: null,
+      context_anchor_turn_id: null,
+      write_thread_id: null,
+      write_anchor_turn_id: null,
+      route_handoff: null,
+      validation_status: 'decision_failed',
+    }
+  }
+
+  const candidate = input.candidates.find((item) => item.candidate_id === input.decision_result?.candidate_id)
+  if (!candidate) {
+    return {
+      candidate_id: input.decision_result.candidate_id,
+      candidate_kind: null,
+      decision_action: input.decision_result.action,
+      write_action: 'no_write',
+      requires_generation: false,
+      context_thread_id: null,
+      context_focus_turn_id: null,
+      context_anchor_turn_id: null,
+      write_thread_id: null,
+      write_anchor_turn_id: null,
+      route_handoff: null,
+      validation_status: 'candidate_missing',
+    }
+  }
+
+  if (candidate.expires_at && new Date(candidate.expires_at).getTime() < now.getTime()) {
+    return {
+      candidate_id: candidate.candidate_id,
+      candidate_kind: candidate.candidate_kind,
+      decision_action: input.decision_result.action,
+      write_action: 'no_write',
+      requires_generation: false,
+      context_thread_id: candidate.thread_id,
+      context_focus_turn_id: candidate.focus_turn_id,
+      context_anchor_turn_id: candidate.anchor_turn_id,
+      write_thread_id: null,
+      write_anchor_turn_id: null,
+      route_handoff: null,
+      validation_status: 'candidate_expired',
+    }
+  }
+
+  if (!candidate.allowed_actions.includes(input.decision_result.action)) {
+    return {
+      candidate_id: candidate.candidate_id,
+      candidate_kind: candidate.candidate_kind,
+      decision_action: input.decision_result.action,
+      write_action: 'no_write',
+      requires_generation: false,
+      context_thread_id: candidate.thread_id,
+      context_focus_turn_id: candidate.focus_turn_id,
+      context_anchor_turn_id: candidate.anchor_turn_id,
+      write_thread_id: null,
+      write_anchor_turn_id: null,
+      route_handoff: null,
+      validation_status: 'candidate_invalid',
+    }
+  }
+
+  if (input.decision_result.action === 'observe_only') {
+    return {
+      candidate_id: candidate.candidate_id,
+      candidate_kind: candidate.candidate_kind,
+      decision_action: input.decision_result.action,
+      write_action: 'no_write',
+      requires_generation: false,
+      context_thread_id: candidate.thread_id,
+      context_focus_turn_id: candidate.focus_turn_id,
+      context_anchor_turn_id: candidate.anchor_turn_id,
+      write_thread_id: null,
+      write_anchor_turn_id: null,
+      route_handoff: null,
+      validation_status: 'resolved',
+    }
+  }
+
+  if (candidate.candidate_kind === 'branch_entry') {
+    if (!candidate.thread_id) {
+      return {
+        candidate_id: candidate.candidate_id,
+        candidate_kind: candidate.candidate_kind,
+        decision_action: input.decision_result.action,
+        write_action: 'no_write',
+        requires_generation: false,
+        context_thread_id: candidate.thread_id,
+        context_focus_turn_id: candidate.focus_turn_id,
+        context_anchor_turn_id: candidate.anchor_turn_id,
+        write_thread_id: null,
+        write_anchor_turn_id: null,
+        route_handoff: null,
+        validation_status: 'target_invalid',
+      }
+    }
+
+    if (
+      input.decision_result.action === 'reply_in_branch'
+      || input.decision_result.action === 'late_enter_branch'
+    ) {
+      return {
+        candidate_id: candidate.candidate_id,
+        candidate_kind: candidate.candidate_kind,
+        decision_action: input.decision_result.action,
+        write_action: 'add_thread_turn',
+        requires_generation: true,
+        context_thread_id: candidate.thread_id,
+        context_focus_turn_id: candidate.focus_turn_id,
+        context_anchor_turn_id: candidate.anchor_turn_id,
+        write_thread_id: candidate.thread_id,
+        write_anchor_turn_id: candidate.anchor_turn_id,
+        route_handoff: null,
+        validation_status: 'resolved',
+      }
+    }
+
+    if (
+      input.decision_result.action === 'handoff_or_route_elsewhere'
+      && candidate.route_handoff
+      && candidate.route_handoff.route_type !== 'AUDIENCE'
+    ) {
+      return {
+        candidate_id: candidate.candidate_id,
+        candidate_kind: candidate.candidate_kind,
+        decision_action: input.decision_result.action,
+        write_action: 'add_thread_turn_with_route',
+        requires_generation: true,
+        context_thread_id: candidate.thread_id,
+        context_focus_turn_id: candidate.focus_turn_id,
+        context_anchor_turn_id: candidate.anchor_turn_id,
+        write_thread_id: candidate.thread_id,
+        write_anchor_turn_id: candidate.anchor_turn_id,
+        route_handoff: candidate.route_handoff,
+        validation_status: 'resolved',
+      }
+    }
+  }
+
+  if (candidate.candidate_kind === 'sibling_thread_slot') {
+    if (input.decision_result.action === 'start_sibling_thread') {
+      return {
+        candidate_id: candidate.candidate_id,
+        candidate_kind: candidate.candidate_kind,
+        decision_action: input.decision_result.action,
+        write_action: 'open_thread',
+        requires_generation: true,
+        context_thread_id: candidate.thread_id,
+        context_focus_turn_id: candidate.focus_turn_id,
+        context_anchor_turn_id: candidate.anchor_turn_id,
+        write_thread_id: null,
+        write_anchor_turn_id: null,
+        route_handoff: null,
+        validation_status: 'resolved',
+      }
+    }
+  }
+
+  return {
+    candidate_id: candidate.candidate_id,
+    candidate_kind: candidate.candidate_kind,
+    decision_action: input.decision_result.action,
+    write_action: 'no_write',
+    requires_generation: false,
+    context_thread_id: candidate.thread_id,
+    context_focus_turn_id: candidate.focus_turn_id,
+    context_anchor_turn_id: candidate.anchor_turn_id,
+    write_thread_id: null,
+    write_anchor_turn_id: null,
+    route_handoff: null,
+    validation_status: 'candidate_invalid',
+  }
+}
+
+function buildArrivalCandidates(ctx: ExecutionContext): {
+  candidates: RoamingArrivalCandidate[]
+  audience_scope_excluded: boolean
+} {
+  const postCapsule = ctx.semantic_post_capsule
+  const forest = ctx.discussion_forest
+  const participationContract = ctx.forum_runtime_context?.foundation_skeleton.participation_contract
+    ?? null
+  if (!postCapsule || !forest) {
+    return { candidates: [], audience_scope_excluded: false }
+  }
+
+  const currentThreadId = ctx.semantic_thread_capsule?.thread_id ?? ctx.event.thread_id ?? null
+  const orderedThreadIds = uniqueStrings([
+    currentThreadId,
+    ...forest.reading_guide.current_focus_thread_ids,
+    ...forest.reading_guide.start_here_thread_ids,
+    ...forest.reading_guide.highlighted_thread_ids,
+    ...forest.reading_guide.entries.map((entry) => entry.thread_id),
+    ...postCapsule.highlighted_thread_ids,
+    ...postCapsule.thread_capsules.map((thread) => thread.thread_id),
+  ])
+
+  let audienceScopeExcluded = false
+  const branchCandidates: RoamingArrivalCandidate[] = []
+  for (const threadId of orderedThreadIds) {
+    const thread = postCapsule.thread_capsules.find((item) => item.thread_id === threadId)
+    if (!thread) continue
+    const candidate = buildBranchCandidate({
+      ctx,
+      forest,
+      thread,
+      participation_contract: participationContract,
+      current_thread_id: currentThreadId,
+    })
+    if (candidate === 'audience_excluded') {
+      audienceScopeExcluded = true
+      continue
+    }
+    if (!candidate) continue
+    branchCandidates.push(candidate)
+    if (branchCandidates.length >= 3) break
+  }
+
+  const siblingCandidate = buildSiblingThreadCandidate({
+    ctx,
+    forest,
+    current_thread_id: currentThreadId,
+    participation_contract: participationContract,
+  })
+
+  return {
+    candidates: [
+      ...branchCandidates,
+      ...(siblingCandidate ? [siblingCandidate] : []),
+    ].slice(0, 5),
+    audience_scope_excluded: audienceScopeExcluded,
+  }
+}
+
+function buildBranchCandidate(input: {
+  ctx: ExecutionContext
+  forest: DiscussionForestProjection
+  thread: ThreadCapsule
+  participation_contract: {
+    stage_open_reply: { turn_reply_enabled: boolean; new_thread_enabled: boolean }
+    audience_lane: { enabled: boolean; posting_enabled: boolean }
+  } | null
+  current_thread_id: string | null
+}): RoamingArrivalCandidate | 'audience_excluded' | null {
+  const routeHandoff = toRouteHandoffInput(input.thread.route_handoff)
+  const focusTurnId = resolveFocusTurnId(input.thread, input.forest)
+  const focusNode = resolveFocusNode(input.forest, input.thread.thread_id, focusTurnId)
+  const localEvidence = collectLocalEvidence(input.forest, input.thread.thread_id, focusNode?.id ?? focusTurnId)
+  const replyAllowed = input.thread.lifecycle.writeability.reply_allowed
+    && (input.participation_contract?.stage_open_reply.turn_reply_enabled ?? true)
+  const lateEntry = Boolean(
+    focusNode?.is_late_entry
+    || focusNode?.placement_reason === 'LATE_ENTRY_REATTACH'
+    || input.thread.reason_badges.includes('RETURNED_TO_BRANCH')
+    || input.ctx.perceived_context_slice?.browse_reason === 'REVIVE',
+  )
+  const allowedActions = new Set<RoamingDecisionAction>(['observe_only'])
+  if (replyAllowed) {
+    allowedActions.add('reply_in_branch')
+  }
+  if (replyAllowed && lateEntry) {
+    allowedActions.add('late_enter_branch')
+  }
+
+  if (routeHandoff?.route_type === 'AUDIENCE' && allowedActions.size === 1) {
+    return 'audience_excluded'
+  }
+  if (routeHandoff && routeHandoff.route_type !== 'AUDIENCE') {
+    allowedActions.add('handoff_or_route_elsewhere')
+  }
+
+  if (allowedActions.size === 1 && input.thread.thread_id !== input.current_thread_id) {
+    return null
+  }
+
+  const label = input.thread.thread_id === input.current_thread_id
+    ? '当前分支入口'
+    : '相邻分支入口'
+
+  return {
+    candidate_id: `branch:${input.thread.thread_id}`,
+    candidate_kind: 'branch_entry',
+    label,
+    summary: trimSentence([
+      input.thread.summary,
+      input.thread.unresolved_points[0],
+      input.thread.lifecycle.writeability.reason_code,
+    ].filter(Boolean).join(' | ')),
+    thread_id: input.thread.thread_id,
+    focus_turn_id: focusNode?.id ?? focusTurnId,
+    anchor_turn_id: normalizeAnchorTurnId(focusNode),
+    branch_root_turn_id: focusNode?.branch_root_turn_id ?? null,
+    local_evidence: localEvidence,
+    reason_codes: uniqueStrings([
+      ...input.thread.reason_badges.map((badge) => badge.toLowerCase()),
+      input.thread.lifecycle.writeability.reason_code.toLowerCase(),
+      ...(routeHandoff ? [`route:${routeHandoff.route_type.toLowerCase()}`] : []),
+    ]),
+    allowed_actions: Array.from(allowedActions),
+    expires_at: input.ctx.perceived_context_slice?.expires_at ?? buildDefaultExpiryIso(),
+    route_handoff: routeHandoff?.route_type === 'AUDIENCE' ? null : routeHandoff,
+  }
+}
+
+function buildSiblingThreadCandidate(input: {
+  ctx: ExecutionContext
+  forest: DiscussionForestProjection
+  current_thread_id: string | null
+  participation_contract: {
+    stage_open_reply: { turn_reply_enabled: boolean; new_thread_enabled: boolean }
+  } | null
+}): RoamingArrivalCandidate | null {
+  if (!(input.participation_contract?.stage_open_reply.new_thread_enabled ?? false)) {
+    return null
+  }
+  const sourceThread = input.current_thread_id
+    ? input.ctx.semantic_post_capsule?.thread_capsules.find((thread) => thread.thread_id === input.current_thread_id)
+    : input.ctx.semantic_thread_capsule
+  if (!sourceThread) {
+    return null
+  }
+  const focusTurnId = resolveFocusTurnId(sourceThread, input.forest)
+  const focusNode = resolveFocusNode(input.forest, sourceThread.thread_id, focusTurnId)
+
+  return {
+    candidate_id: `sibling:${sourceThread.thread_id}`,
+    candidate_kind: 'sibling_thread_slot',
+    label: '开一条并列新分支',
+    summary: trimSentence([
+      `不继续把压力压在 ${sourceThread.thread_id} 上`,
+      input.ctx.semantic_post_capsule?.current_tension ?? '',
+      sourceThread.summary,
+    ].filter(Boolean).join(' | ')),
+    thread_id: sourceThread.thread_id,
+    focus_turn_id: focusNode?.id ?? focusTurnId,
+    anchor_turn_id: normalizeAnchorTurnId(focusNode),
+    branch_root_turn_id: focusNode?.branch_root_turn_id ?? null,
+    local_evidence: collectLocalEvidence(input.forest, sourceThread.thread_id, focusNode?.id ?? focusTurnId),
+    reason_codes: uniqueStrings([
+      'start_new_thread',
+      sourceThread.lifecycle.writeability.reason_code.toLowerCase(),
+    ]),
+    allowed_actions: ['start_sibling_thread', 'observe_only'],
+    expires_at: input.ctx.perceived_context_slice?.expires_at ?? buildDefaultExpiryIso(),
+    route_handoff: null,
+  }
+}
+
+function buildDecisionControlBlock(ctx: ExecutionContext): string {
+  return [
+    '## Decision Contract',
+    '- 只允许从 arrival_candidates_json 中选择一个 candidate_id。',
+    '- candidate_id 必须逐字照抄候选里的完整值，包括 branch: 或 sibling: 前缀；不要只输出裸 thread_id 或 turn_id。',
+    '- action 必须来自该 candidate 的 allowed_actions。',
+    '- 如果没有干净、安全、自然的落点，选择 observe_only。',
+    '- 禁止发明新的 thread/turn/route，也不要输出解释、理由或额外字段。',
+    '- audience lane 在本轮不参与选择。',
+    ctx.blocks?.hard_control_block ?? '',
+    ctx.blocks?.compact_control_block ?? '',
+  ].filter((value): value is string => Boolean(value)).join('\n')
+}
+
+function buildDecisionContextBlock(ctx: ExecutionContext): string {
+  const writeability = ctx.threadMeta?.writeability
+  return [
+    '## Current Post',
+    ctx.post?.title ? `title=${ctx.post.title}` : null,
+    ctx.semantic_post_capsule?.current_tension
+      ? `tension=${ctx.semantic_post_capsule.current_tension}`
+      : null,
+    ctx.semantic_post_capsule?.open_questions.length
+      ? `open_questions=${ctx.semantic_post_capsule.open_questions.slice(0, 2).join(' | ')}`
+      : null,
+    ctx.semantic_thread_capsule?.summary
+      ? `current_thread=${ctx.semantic_thread_capsule.summary}`
+      : null,
+    ctx.focusThreadTurn?.body ? `focus_excerpt=${trimSentence(ctx.focusThreadTurn.body, 160)}` : null,
+    ctx.forum_targeting?.browse_reason ? `browse_reason=${ctx.forum_targeting.browse_reason}` : null,
+    writeability
+      ? `writeability=${writeability.reply_mode}:${writeability.preferred_action}:${writeability.reason_code}`
+      : null,
+  ].filter((value): value is string => Boolean(value)).join('\n')
+}
+
+function resolveProjectionCalibration(ctx: ExecutionContext, agentId: string): string | null {
+  const authoredNodes = [...(ctx.discussion_forest?.nodes ?? [])]
+    .reverse()
+    .filter((node) => node.author.actor_type === 'agent' && node.author.id === agentId)
+  for (const node of authoredNodes) {
+    const projection = readProjectionLine(node.author)
+    if (projection) return projection
+  }
+  return null
+}
+
+function buildTransientModifier(ctx: ExecutionContext): string | null {
+  if (ctx.perceived_context_slice?.browse_reason === 'REVIVE') {
+    return '当前是旧分支返场场景，优先接回未完点，不要大范围重置话题。'
+  }
+  const currentFocus = ctx.discussion_forest?.nodes.find((node) => node.id === ctx.forum_targeting?.focus_turn_id)
+  if (currentFocus?.is_late_entry || currentFocus?.placement_reason === 'LATE_ENTRY_REATTACH') {
+    return '当前像一次迟到入场，优先轻量接住现场，再推进半步。'
+  }
+  return null
+}
+
+function resolveFocusTurnId(
+  thread: ThreadCapsule,
+  forest: DiscussionForestProjection,
+): string | null {
+  const guideEntry = forest.reading_guide.entries.find((entry) => entry.thread_id === thread.thread_id)
+  return guideEntry?.focus_turn_id
+    ?? forest.nodes.find((node) => node.thread_id === thread.thread_id && node.id === forest.focus_turn_id)?.id
+    ?? thread.salient_turn_ids[0]
+    ?? thread.latest_turn_id
+    ?? thread.thread_id
+}
+
+function resolveFocusNode(
+  forest: DiscussionForestProjection,
+  threadId: string,
+  focusTurnId: string | null,
+): TurnDisplayProjection | null {
+  const threadNodes = forest.nodes.filter((node) => node.thread_id === threadId)
+  return threadNodes.find((node) => node.id === focusTurnId)
+    ?? threadNodes.find((node) => node.actual_anchor_turn_id === focusTurnId)
+    ?? threadNodes.at(-1)
+    ?? null
+}
+
+function collectLocalEvidence(
+  forest: DiscussionForestProjection,
+  threadId: string,
+  focusTurnId: string | null,
+): string[] {
+  const threadNodes = forest.nodes.filter((node) => node.thread_id === threadId)
+  if (threadNodes.length === 0) return []
+  const focusIndex = focusTurnId
+    ? threadNodes.findIndex((node) => node.id === focusTurnId)
+    : threadNodes.length - 1
+  const center = focusIndex >= 0 ? focusIndex : threadNodes.length - 1
+  return threadNodes
+    .slice(Math.max(0, center - 1), Math.min(threadNodes.length, center + 2))
+    .map((node) => `${node.author.display_name}：${trimSentence(node.body, 120)}`)
+}
+
+function normalizeAnchorTurnId(node: TurnDisplayProjection | null): string | null {
+  if (!node) return null
+  return node.entry_kind === 'TURN'
+    ? node.actual_anchor_turn_id ?? node.id
+    : null
+}
+
+function toRouteHandoffInput(
+  routeHandoff: ThreadCapsule['route_handoff'],
+): RouteHandoffInput | null {
+  if (!routeHandoff) return null
+  return {
+    route_type: routeHandoff.route_type,
+    route_state: routeHandoff.route_state,
+    reason_code: routeHandoff.reason_code,
+    handoff_label: routeHandoff.handoff_label,
+    handoff_payload: routeHandoff.handoff_payload,
+    cta: routeHandoff.cta,
+  }
+}
+
+function readProjectionLine(author: DisplayAuthorSummary): string | null {
+  return trimSentence(
+    author.public_projection?.public_projection_hint
+      ?? author.public_projection?.tagline
+      ?? author.public_projection?.public_bio
+      ?? author.public_bio
+      ?? '',
+  ) || null
+}
+
+function toPromptCandidate(candidate: RoamingArrivalCandidate): Record<string, unknown> {
+  return {
+    candidate_id: candidate.candidate_id,
+    candidate_kind: candidate.candidate_kind,
+    label: candidate.label,
+    summary: candidate.summary,
+    thread_id: candidate.thread_id,
+    focus_turn_id: candidate.focus_turn_id,
+    anchor_turn_id: candidate.anchor_turn_id,
+    local_evidence: candidate.local_evidence,
+    reason_codes: candidate.reason_codes,
+    allowed_actions: candidate.allowed_actions,
+    ...(candidate.route_handoff
+      ? {
+          route_type: candidate.route_handoff.route_type,
+          route_label: candidate.route_handoff.handoff_label,
+        }
+      : {}),
+  }
+}
+
+function trimSentence(input: string, maxLength = 220): string {
+  const compact = input.replace(/\s+/g, ' ').trim()
+  if (!compact) return ''
+  return compact.length > maxLength
+    ? `${compact.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+    : compact
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return values.filter((value, index, array): value is string =>
+    Boolean(value) && array.indexOf(value) === index)
+}
+
+function buildDefaultExpiryIso(): string {
+  return new Date(Date.now() + 10 * 60 * 1000).toISOString()
+}
+
+function isRoamingDecisionAction(value: unknown): value is RoamingDecisionAction {
+  return value === 'reply_in_branch'
+    || value === 'late_enter_branch'
+    || value === 'handoff_or_route_elsewhere'
+    || value === 'start_sibling_thread'
+    || value === 'observe_only'
+}
+
+export type { DecisionIdentitySnapshot, RoamingPreparationResult }

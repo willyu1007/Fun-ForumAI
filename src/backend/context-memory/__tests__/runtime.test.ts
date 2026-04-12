@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   LlmIdentityFinalizer,
+  LlmSummaryOrchestrator,
   buildChatRoomWindowRawEvent,
   buildForumThreadRawEvent,
   buildPrivateSessionRawEvent,
@@ -189,5 +190,61 @@ describe('context-memory runtime', () => {
       requestedTier: 'base',
       promptRef: { id: 'internal-public-observation-identity-finalize', version: 1 },
     }))
+  })
+
+  it('keeps public observation extract and distill on the profile-default hidden policy', async () => {
+    const generateHiddenArtifact = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          summary_text: 'summary',
+          topic_tags: [],
+          key_facts: [],
+          sentiment: 'neutral',
+          importance_score: 0.5,
+          owner_signals: [],
+          notable_moments: [],
+          candidate_tensions: [],
+          public_safe_shadow_hint: '',
+        }),
+      })
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          episodic_cards: [],
+          relation_state: null,
+          self_model: null,
+          tensions: [],
+          private_shadow: null,
+          memory_digest: null,
+        }),
+      })
+    const orchestrator = new LlmSummaryOrchestrator({
+      llmGateway: {
+        generateHiddenArtifact,
+      } as never,
+    })
+    const event = buildForumThreadRawEvent({
+      eventId: 'ctxevent:forum:evt-1',
+      agentId: 'agent-1',
+      postId: 'post-1',
+      communityId: 'community-1',
+      transcript: '标题: t\n正文: b',
+      evidenceRefs: ['domain_event:evt-1'],
+      createdAt: new Date('2026-03-09T12:00:00.000Z'),
+    })
+
+    const extracted = await orchestrator.extract(event)
+    await orchestrator.distill(event, extracted)
+
+    expect(generateHiddenArtifact).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      promptRef: { id: 'internal-public-observation-summary-extract', version: 1 },
+      requestedTier: 'base',
+    }))
+    expect(generateHiddenArtifact).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      promptRef: { id: 'internal-public-observation-summary-distill', version: 1 },
+      requestedTier: 'base',
+    }))
+    expect(generateHiddenArtifact.mock.calls[0]?.[0]?.localOverrides).toBeUndefined()
+    expect(generateHiddenArtifact.mock.calls[1]?.[0]?.localOverrides).toBeUndefined()
   })
 })

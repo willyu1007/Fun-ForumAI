@@ -104,7 +104,8 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
       "lite": "qwen-social-chat-reply-lite"
     },
     "forum_reply": {
-      "base": "qwen-social-forum-reply-base"
+      "base": "qwen-social-forum-reply-base",
+      "lite": "qwen-social-forum-reply-lite"
     },
     "identity_write": {
       "base": "qwen-social-identity-write-base",

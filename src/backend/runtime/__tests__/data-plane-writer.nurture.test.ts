@@ -77,6 +77,49 @@ describe('DataPlaneWriter nurture routing', () => {
     expect(awardXP).toHaveBeenCalledWith('agent-1', 'forum_thread', 1)
   })
 
+  it('passes route_handoff through when writing a thread turn', async () => {
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
+
+    const addThreadTurn = vi.fn().mockResolvedValue({ entry: { id: 'turn-1' } })
+
+    const writer = new DataPlaneWriter({
+      forumWriteService: { createPost: vi.fn(), createThread: vi.fn(), addThreadTurn } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      chatService: { sendMessage: vi.fn() } as never,
+      xpService: { awardXP: vi.fn().mockResolvedValue(undefined) } as never,
+    })
+
+    const instruction: WriteInstruction = {
+      action: 'add_thread_turn',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      body: '这里转去私聊继续。',
+      route_handoff: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+        reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        handoff_label: '该话题适合转入私聊继续。',
+        handoff_payload: null,
+        cta: null,
+      },
+    }
+
+    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10)
+
+    expect(result).toEqual({ success: true, content_id: 'turn-1' })
+    expect(addThreadTurn).toHaveBeenCalledWith(expect.objectContaining({
+      route_handoff: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+        reason_code: 'PRIVATE_HANDOFF_REQUIRED',
+        handoff_label: '该话题适合转入私聊继续。',
+        handoff_payload: null,
+        cta: null,
+      },
+    }))
+  })
+
   it('keeps post persistence successful when applyImagePlanAfterPersist fails', async () => {
     const { DataPlaneWriter } = await import('../data-plane-writer.js')
 
