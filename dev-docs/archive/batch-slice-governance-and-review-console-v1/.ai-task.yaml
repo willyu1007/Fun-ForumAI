@@ -1,0 +1,13 @@
+version: 1
+task_id: T-159
+project: main
+slug: batch-slice-governance-and-review-console-v1
+status: archived
+updated: "2026-04-13"
+keywords:
+  - governance
+  - batch
+  - slice
+  - review
+  - admin-ui
+  - moderation

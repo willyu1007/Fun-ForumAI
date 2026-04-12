@@ -1,0 +1,13 @@
+version: 1
+task_id: T-157
+project: main
+slug: warm-start-candidate-review-promote-v1
+status: archived
+updated: "2026-04-13"
+keywords:
+  - warm-start
+  - candidate
+  - review
+  - promote
+  - baseline
+  - lineage

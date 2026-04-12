@@ -8,19 +8,24 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 178 (planned: 2, in-progress: 5, blocked: 0, done: 0, archived: 171)
+- Tasks: 183 (planned: 2, in-progress: 5, blocked: 0, done: 0, archived: 176)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-960 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
-| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
+| T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
+| T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
+| T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
+| T-159 batch-slice-governance-and-review-console-v1 | archived | F-000 | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
+| T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
+| T-960 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-061 ios-android-runtime-smoke-kit | archived | F-000 | dev-docs/archive/ios-android-runtime-smoke-kit |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
 | T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-142 forum-semantic-convergence-governance-program | archived | F-100 | dev-docs/archive/forum-semantic-convergence-governance-program |
 | T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
@@ -28,4 +33,5 @@ Project: `main`
 | T-146 search-analytics-backfill-and-compat-cleanup | archived | F-100 | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | archived | F-000 | dev-docs/archive/search-correctness-convergence-and-discovery-hardening-v1 |
 | T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | archived | F-000 | dev-docs/archive/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
+| T-919 feedback-ticket-and-admin-inbox-v1 | archived | F-000 | dev-docs/archive/feedback-ticket-and-admin-inbox-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -1,0 +1,13 @@
+version: 1
+task_id: T-158
+project: main
+slug: runtime-baseline-admission-and-launch-gate-v1
+status: archived
+updated: "2026-04-13"
+keywords:
+  - runtime
+  - baseline
+  - admission
+  - launch-gate
+  - verify
+  - staging

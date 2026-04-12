@@ -1353,6 +1353,34 @@ tasks:
       - R-105
     dev_docs_path: dev-docs/archive/search-analytics-backfill-and-compat-cleanup
     updated: 2026-04-10
+  - id: T-156
+    slug: staging-public-forum-warmup-governance-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/staging-public-forum-warmup-governance-v1
+    updated: 2026-04-13
+  - id: T-157
+    slug: warm-start-candidate-review-promote-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/warm-start-candidate-review-promote-v1
+    updated: 2026-04-13
+  - id: T-158
+    slug: runtime-baseline-admission-and-launch-gate-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1
+    updated: 2026-04-13
+  - id: T-159
+    slug: batch-slice-governance-and-review-console-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/batch-slice-governance-and-review-console-v1
+    updated: 2026-04-13
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
@@ -1708,9 +1736,16 @@ tasks:
     dev_docs_path: dev-docs/archive/badge-visual-e2e-closeout-v1
     updated: 2026-04-11
   - id: T-960
-    slug: chatroom-staging-hold-e2e-closure
+    slug: forum-post-level-roaming-definition-temp
     status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/archive/chatroom-staging-hold-e2e-closure
+    dev_docs_path: dev-docs/archive/forum-post-level-roaming-definition-temp
     updated: 2026-04-12
+  - id: T-961
+    slug: live-e2e-regression-and-service-split-temp
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/live-e2e-regression-and-service-split-temp
+    updated: 2026-04-13

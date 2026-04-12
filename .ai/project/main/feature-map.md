@@ -74,6 +74,10 @@ Project: `main`
 | T-129 github-actions-acr-image-publishing | archived | dev-docs/archive/github-actions-acr-image-publishing |
 | T-130 ecs-web-compose-delivery | archived | dev-docs/archive/ecs-web-compose-delivery |
 | T-131 eci-worker-runtime-delivery | archived | dev-docs/archive/eci-worker-runtime-delivery |
+| T-156 staging-public-forum-warmup-governance-v1 | archived | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
+| T-157 warm-start-candidate-review-promote-v1 | archived | dev-docs/archive/warm-start-candidate-review-promote-v1 |
+| T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
+| T-159 batch-slice-governance-and-review-console-v1 | archived | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
@@ -112,7 +116,8 @@ Project: `main`
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | dev-docs/active/staging-release-verification-followup |
 | T-955 badge-visual-e2e-closeout-v1 | archived | dev-docs/archive/badge-visual-e2e-closeout-v1 |
-| T-960 chatroom-staging-hold-e2e-closure | archived | dev-docs/archive/chatroom-staging-hold-e2e-closure |
+| T-960 forum-post-level-roaming-definition-temp | archived | dev-docs/archive/forum-post-level-roaming-definition-temp |
+| T-961 live-e2e-regression-and-service-split-temp | archived | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 
 ### F-010 Agent Stats System
 

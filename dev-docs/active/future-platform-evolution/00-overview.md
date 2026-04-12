@@ -175,6 +175,25 @@
 - frontend post detail / search 信息架构
 - 旧 comment-tree 主路径删除与最终语义收敛闭环
 
+### E-15 Launch-like Staging Parity 与 Latency Gate
+**优先级**: High
+**来源**: `T-156/T-157/T-158/T-159` 完成后的 local-kind / verify 真实回归（2026-04-13）
+**描述**: 当前 local-kind 已足够验证 warm-up/governance 功能闭环，但还不足以作为可信的首发前性能/操作基线。需要把“功能验证环境”进一步升级为“更接近真实 staging 拓扑的 rehearsal 环境”，避免后续在同一环境里把功能问题、端口转发抖动、进程共址争抢和 operator runbook 混为一谈。
+- 拆分 `web` / `worker` 部署，避免 `runtime` 背景任务与公共读 API 共用同一 pod / 事件循环；
+- 为 `/v1/home`、`/v1/admin/runtime/stats`、`/v1/feed` 等关键读面建立请求级耗时与慢路径观测；
+- 在 local-kind overlay 中补齐明确的 CPU / memory requests & limits，减少冷启动后资源争抢造成的假性慢请求；
+- 提供本地 ingress / nodeport 访问路径，不再长期依赖 `kubectl port-forward` 作为唯一 rehearsal 入口；
+- 将 `verify:launch:staging` 拆分为 `functional gate` 与 `latency gate`，功能全绿不再自动等价于时延合格。
+**执行状态（2026-04-13）**: **已记录为 backlog** — 本轮 warm-up/governance 已通过功能 live gate（kind `24/24`），但 local-kind 访问延迟仍不能作为 staging latency baseline。
+**依赖**:
+- `T-954 staging-release-verification-followup` 的真实 staging 执行证据
+- 当前 warm-up/governance 主链稳定，不再频繁变更 review/activation/runtime 合同
+**改动范围**:
+- `ops/deploy/k8s/overlays/local-kind` 与部署拓扑
+- runtime / admin 读面观测与慢请求日志
+- `scripts/k8s-local-staging.mjs`、`scripts/verify-launch-readiness.mjs`
+- launch runbook 与 operator rehearsal 口径
+
 ## Non-goals
 - 本任务包不直接产出代码——它是规划仓库
 - 每个演进项在实施前需拆分为独立任务（含完整 task bundle）
@@ -198,6 +217,7 @@
 | E-12 SSE 多实例广播 | 已实现 | T-025 已归档 |
 | E-13 多图帖子 | 未实现 | 已记录到 future-platform-evolution；当前 `F-080` 仅支持 root post 单主图 |
 | E-14 公共舞台 Thread/Turn 重构 | 已提升为正式执行任务 | 已拆分为 `T-916` 与 `T-917`，后续执行以 task bundle 为准 |
+| E-15 Launch-like staging parity / latency gate | 未实现 | 已记录 local-kind service split、观测、资源配额、ingress、functional/latency 双 gate 升级项 |
 | Wave 1–3（T-023/024/025） | 已完成 | 三任务均已归档 |
 
 ## 执行顺序建议（2026-02-25，历史记录）

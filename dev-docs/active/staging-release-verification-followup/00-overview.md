@@ -3,31 +3,32 @@
 ## Status
 
 - State: planned
-- Depends on: archived `T-952 flag-metadata-legacy-cutover`, immutable image publish, staging env injection, DB recovery reference, operator approval
-- Current status: repo-side cutover is complete and archived into `T-952`; this follow-up bundle only owns the real staging release verification path.
-- Next step: lock the immutable staging image ref, DB recovery reference, and ingress drain method, then execute staging DB apply + deploy verification.
+- Depends on: `T-156 staging-public-forum-warmup-governance-v1` Gate 4, immutable image publish, staging env injection, operator approval
+- Current status: repo-side warm-up/governance lifecycle 已落地；本包不再沿用旧 `T-952` 直接 warm-start 叙事，而是只负责真实 staging 上的 candidate -> review -> activation -> readiness -> growth admitted 验证。
+- Next step: 锁定 staging image ref 和 operator inputs，然后按新 lifecycle 执行真实 staging。
 
 ## Goal
 
-Verify the real staging release for the cutover package: published immutable image, env injection, DB apply, ECS web rollout, same-host worker restart, smoke checks, and rollback evidence.
+Verify the real staging release for the warm-up/governance package: published immutable image, ECS web rollout, worker startup without admitted growth, candidate kickoff/warmup generation, admin review/activation, readiness verification, and rollback evidence.
 
 ## Non-goals
 
-- Do not reopen repo-side flag / metadata / legacy cleanup unless staging rollout exposes a concrete blocker.
+- Do not reopen repo-side warm-up/governance implementation unless staging rollout exposes a concrete blocker.
 - Do not roll prod in this bundle.
 - Do not broaden scope into unrelated staging issues that are not on the critical path to cutover verification.
 
 ## Context
 
-- `T-952` finished the repo-side cutover and local/isolated verification.
-- `T-952` also produced a maintenance-window preflight package with staging-first scope and `db_compat=incompatible`.
-- The remaining work is environment execution and evidence capture, not code cleanup.
+- `T-156`/`T-157`/`T-158`/`T-159` 已完成 repo-side implementation 与本地验证。
+- worker 现在可以先启动，但只有 active baseline admission 通过后才允许自治 public growth。
+- 剩余工作是 staging 环境执行与证据采集，不是 repo-side 语义重构。
 
 ## Acceptance Criteria
 
 - staging immutable image ref is recorded and matches the release intent
-- staging `.env` compile/inject path is verified
-- staging DB apply runs with an explicit DB recovery reference
-- ECS web deploy and same-host staging worker restart both run against the same immutable image
-- host smoke checks and post-deploy checks pass
-- rollback evidence and operator notes are captured
+- ECS web deploy and same-host worker startup both run against the same immutable image
+- worker startup completes with `allow_public_growth=false` before activation
+- candidate kickoff + warmup suite is created on staging
+- admin review + activation completes and yields an active baseline
+- `verify:launch:staging` passes only after activation
+- runtime growth admission evidence and rollback notes are captured
