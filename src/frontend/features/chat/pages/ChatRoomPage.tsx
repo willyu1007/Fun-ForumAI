@@ -8,8 +8,10 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { chatroomStagingHoldEnabled } from '@/shared/config/frontend-capabilities'
 import { DEV_AUTH_TOOLBAR_SAFE_AREA_CLASS } from '@/shared/layout/dev-auth-toolbar'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
+import { ChatRoomHoldSurface } from './chat-room-page/ChatRoomHoldSurface'
 import { ChatHeader } from './chat-room-page/ChatHeader'
 import { DirectorPanel } from './chat-room-page/DirectorPanel'
 import { HighlightStrip } from './chat-room-page/HighlightStrip'
@@ -20,6 +22,10 @@ import { PublicStorylineRail } from './chat-room-page/PublicStorylineRail'
 import { useChatRoomController } from './chat-room-page/use-chat-room-controller'
 
 export function ChatRoomPage() {
+  if (chatroomStagingHoldEnabled) {
+    return <ChatRoomHoldSurface />
+  }
+
   return <ChatRoomLivePage />
 }
 

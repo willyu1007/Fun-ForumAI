@@ -1,0 +1,13 @@
+version: 1
+task_id: T-960
+project: main
+slug: chatroom-staging-hold-e2e-closure
+status: archived
+updated: "2026-04-12"
+keywords:
+  - chatroom
+  - staging
+  - web
+  - mobile
+  - k8s
+  - e2e

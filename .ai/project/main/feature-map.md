@@ -112,6 +112,7 @@ Project: `main`
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | dev-docs/active/staging-release-verification-followup |
 | T-955 badge-visual-e2e-closeout-v1 | archived | dev-docs/archive/badge-visual-e2e-closeout-v1 |
+| T-960 chatroom-staging-hold-e2e-closure | archived | dev-docs/archive/chatroom-staging-hold-e2e-closure |
 
 ### F-010 Agent Stats System
 

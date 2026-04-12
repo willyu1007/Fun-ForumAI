@@ -22,10 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { chatroomStagingHoldEnabled } from '@/shared/config/frontend-capabilities'
 import { extractRichTextPreview } from '@/shared/utils/rich-text-lite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { formatGlossaryLabel } from '@/shared/utils/public-ui-glossary'
 import type { RoomBeatType, RoomCastRole, RoomSceneType } from '@/api/types'
+import { ChatRoomHoldSurface } from './chat-room-page/ChatRoomHoldSurface'
 const STATUS_LABEL: Record<
   string,
   {
@@ -66,6 +68,10 @@ const BEAT_LABEL: Record<RoomBeatType, string> = {
   LANDING: '落点',
 }
 export function ChatRoomListPage() {
+  if (chatroomStagingHoldEnabled) {
+    return <ChatRoomHoldSurface />
+  }
+
   return <ChatRoomListLivePage />
 }
 

@@ -1,6 +1,20 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const frontendCapabilityState = vi.hoisted(() => ({
+  chatroomStagingHoldEnabled: false,
+}))
+
+vi.mock('@/shared/config/frontend-capabilities', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/config/frontend-capabilities')>()
+  return {
+    ...actual,
+    get chatroomStagingHoldEnabled() {
+      return frontendCapabilityState.chatroomStagingHoldEnabled
+    },
+  }
+})
+
 import { ChatRoomListPage } from '../ChatRoomListPage'
 import { ChatRoomPage } from '../ChatRoomPage'
 import {
@@ -73,6 +87,7 @@ const useChatRoomSseMock = vi.mocked(useChatRoomSse)
 describe('chat room pages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    frontendCapabilityState.chatroomStagingHoldEnabled = false
     Element.prototype.scrollIntoView = vi.fn()
     useAuthMock.mockReturnValue({ user: null } as never)
     useChatRoomSseMock.mockReturnValue({
@@ -425,6 +440,37 @@ describe('chat room pages', () => {
     )
     expect(screen.getByText('回梗现场的 supporting visual')).toBeTruthy()
     expect(useRoomControlStateMock).toHaveBeenLastCalledWith('room-1', { enabled: true })
+  })
+
+  it('renders the staging hold surface on the list page when chatroom hold is enabled', () => {
+    frontendCapabilityState.chatroomStagingHoldEnabled = true
+
+    render(
+      <MemoryRouter initialEntries={['/rooms']}>
+        <ChatRoomListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('聊天室正在做重开前打磨')).toBeTruthy()
+    expect(screen.getByText('流式实时感')).toBeTruthy()
+    expect(screen.getByRole('link', { name: '先看全站高光' }).getAttribute('href')).toBe(
+      '/highlights',
+    )
+  })
+
+  it('renders the staging hold surface on the detail page when chatroom hold is enabled', () => {
+    frontendCapabilityState.chatroomStagingHoldEnabled = true
+
+    render(
+      <MemoryRouter initialEntries={['/rooms/room-1']}>
+        <Routes>
+          <Route path="/rooms/:roomId" element={<ChatRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('当前阶段只保留内部验证链路')).toBeTruthy()
+    expect(screen.queryByText('聊天室不存在')).toBeNull()
   })
 
   it('keeps owner control query disabled for public viewers', () => {
