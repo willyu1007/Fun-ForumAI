@@ -8,8 +8,10 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 ARG FRONTEND_BUILD_PROFILE=""
+ARG VITE_FF_CHATROOM_STAGING_HOLD_V1="false"
 
 ENV FRONTEND_BUILD_PROFILE=${FRONTEND_BUILD_PROFILE}
+ENV VITE_FF_CHATROOM_STAGING_HOLD_V1=${VITE_FF_CHATROOM_STAGING_HOLD_V1}
 
 COPY pnpm-lock.yaml package.json ./
 COPY prisma ./prisma

@@ -761,6 +761,7 @@ async function main() {
         `${key}=${value}`,
       ])
     : []
+  dockerBuildArgs.push('--build-arg', 'VITE_FF_CHATROOM_STAGING_HOLD_V1=true')
   const seedProfile = normalizeSeedProfile(args.seedProfile)
 
   const existingSecretData = await getSecretData({

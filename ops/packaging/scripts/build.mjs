@@ -199,6 +199,13 @@ Options:
       ])
     }
 
+    if (typeof process.env.VITE_FF_CHATROOM_STAGING_HOLD_V1 === 'string') {
+      dockerBuildArgs.push(
+        '--build-arg',
+        `VITE_FF_CHATROOM_STAGING_HOLD_V1=${process.env.VITE_FF_CHATROOM_STAGING_HOLD_V1}`,
+      )
+    }
+
     if (opts.dryRun) {
       printPlan(t, tag, prereqs, buildProfile)
     } else {
