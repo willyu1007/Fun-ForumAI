@@ -10,8 +10,14 @@ const LEADING_MARKDOWN_SPEAKER_LABEL_RE =
   /^(?:(?:\*\*|__|`)[^*_\n`]{1,24}(?:\*\*|__|`))\s*[:：]\s*/u
 const LEADING_SPEAKER_LABEL_RE =
   /^(?:\[[^\]\n]{1,24}\]|【[^】\n]{1,24}】|[A-Za-z0-9_\-\u4E00-\u9FFF]{2,24})\s*[:：]\s*/u
+const LEADING_ACTIVITY_LABEL_RE =
+  /^(?:[A-Za-z0-9_\-\u4E00-\u9FFF]{2,24})\s*正在(?:追问|推进|解释|回应|补充|发问|强调|抛出|回收|总结|铺陈)[:：]\s*/u
+const EMBEDDED_ACTIVITY_LABEL_RE =
+  /(^|[。！？!?…|｜]|[:：])\s*(?:[A-Za-z0-9_\-\u4E00-\u9FFF]{2,24})\s*正在(?:追问|推进|解释|回应|补充|发问|强调|抛出|回收|总结|铺陈)[:：]\s*/gu
 const INLINE_STAGE_DIRECTION_RE =
   /[（(](?:[^）)\n]{0,24}(?:轻抚|前倾|后仰|神情|目光|表情|身体|手指|双手|双眸|眼睛|眼神|视线|右手|左手|手臂|胸前|额前|碎发|发丝|发梢|敲击|摊手|挑眉|耸肩|点头|点头示意|颔首|摇头|皱眉|停顿|低声|沉吟|沉思|思索|认真思考|略作思索|若有所思|苦笑|微笑|微微一笑|轻笑|眨眼|眼睛亮晶晶|虚握|撩起|捋起|拨开|拢了拢|抬眸|垂眸|环顾|环顾四周|环视|扫视|挥手示意|叹气|追问|补充|插话|看向|看着|望向|望着|转向|朝[^\n）)]{0,12}|向[^\n）)]{0,16}|注视|凝视|紧盯)[^）)\n]{0,28}|略作思索|眼睛亮晶晶的?|若有所思|认真思考|环顾四周|环视一圈|追问|补充|插话|停顿)[）)]/gu
+const TRAILING_INTERNAL_ANALYSIS_RE =
+  /\s*(?:[-—]\s*)?(?:初步评估|系统提示|系统通知)[:：][\s\S]*$/u
 const FORUM_QUOTE_LINE_PATTERNS = [
   /^\[展开\]/,
   /^>+/,
@@ -28,6 +34,9 @@ const META_PATTERNS = [
   /可适时抛出/,
   /当前(?:局面|看点|悬念|目标)[:：]/,
   /房间现场/,
+  /初步评估[:：]/,
+  /系统通知无需赘述/,
+  /需跟进后续发言/,
 ]
 
 const CUSTOMER_SERVICE_SIGNAL_RE =
@@ -84,6 +93,44 @@ function stripForumQuoteScaffolding(text: string): string {
   }
 
   return keptLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function stripLeadingVisibleNoise(text: string): string {
+  let current = text
+
+  for (let i = 0; i < 6; i += 1) {
+    const next = current
+      .replace(LEADING_STAGE_DIRECTION_RE, '')
+      .replace(LEADING_ALERT_MARKER_RE, '')
+      .replace(LEADING_BRACKET_ACTION_RE, '')
+      .replace(LEADING_BRACKET_SPEAKER_TAG_RE, '')
+      .replace(LEADING_MARKDOWN_SPEAKER_LABEL_RE, '')
+      .replace(LEADING_ACTIVITY_LABEL_RE, '')
+      .replace(LEADING_SPEAKER_LABEL_RE, '')
+      .trimStart()
+    if (next === current) {
+      return next
+    }
+    current = next
+  }
+
+  return current
+}
+
+function stripEmbeddedActivityLabels(text: string): string {
+  let current = text
+
+  for (let i = 0; i < 6; i += 1) {
+    const next = current.replace(EMBEDDED_ACTIVITY_LABEL_RE, (_, prefix: string) =>
+      prefix ? `${prefix} ` : '',
+    )
+    if (next === current) {
+      return next
+    }
+    current = next
+  }
+
+  return current
 }
 
 function compactExpositoryReply(text: string): string {
@@ -177,20 +224,24 @@ export function sanitizeChatOutput(text: string): SanitizedChatOutput {
     .trim()
 
   const withoutQuotes = stripForumQuoteScaffolding(cleaned)
-  const normalized = withoutQuotes
-    .replace(LEADING_STAGE_DIRECTION_RE, '')
-    .replace(LEADING_ALERT_MARKER_RE, '')
-    .replace(LEADING_BRACKET_ACTION_RE, '')
-    .replace(LEADING_BRACKET_SPEAKER_TAG_RE, '')
-    .replace(LEADING_MARKDOWN_SPEAKER_LABEL_RE, '')
-    .replace(LEADING_SPEAKER_LABEL_RE, '')
+  const normalized = stripLeadingVisibleNoise(withoutQuotes)
     .replace(INLINE_STAGE_DIRECTION_RE, '')
     .replace(TRAILING_STAGE_DIRECTION_RE, '')
-  const normalizedWithParagraphs = normalizeChatWhitespace(normalized)
+  const normalizedWithoutEmbeddedLabels = stripEmbeddedActivityLabels(normalized)
+  const hadTrailingInternalAnalysis = TRAILING_INTERNAL_ANALYSIS_RE.test(
+    normalizedWithoutEmbeddedLabels,
+  )
+  const withoutInternalAnalysis = normalizedWithoutEmbeddedLabels.replace(
+    TRAILING_INTERNAL_ANALYSIS_RE,
+    '',
+  )
+  const normalizedWithParagraphs = normalizeChatWhitespace(withoutInternalAnalysis)
   const compacted = compactExpositoryReply(normalizedWithParagraphs)
 
   return {
     text: compacted,
-    looks_meta: META_PATTERNS.some((pattern) => pattern.test(compacted)),
+    looks_meta:
+      ((compacted.length === 0) && hadTrailingInternalAnalysis)
+      || META_PATTERNS.some((pattern) => pattern.test(compacted)),
   }
 }

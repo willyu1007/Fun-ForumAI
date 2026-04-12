@@ -53,6 +53,7 @@ Options:
   --skip-db-migrate               Optional: skip "pnpm db:migrate:deploy" against in-cluster Postgres
   --postgres-local-port <port>    Local port used for temporary Postgres port-forward (default: 55432)
   --backend-label <selector>      Backend pod label selector (default: app.kubernetes.io/name=backend)
+  --backend-deployment <name>     Backend deployment name used for smoke scaling (default: backend)
   --backend-local-port <port>     Local port for temporary backend port-forward (default: 4100)
   --backend-port <port>           Backend container port (default: 4000)
   --seed-profile <profile>        Dev seed profile to apply after rollout (default: canonical, use "none" to skip)
@@ -232,6 +233,46 @@ async function waitForDeploymentRollout({ context, namespace, deployment, timeou
       `--timeout=${Number(timeoutSeconds)}s`,
     ]),
   )
+}
+
+async function getDeploymentReplicaCount({ context, namespace, deployment }) {
+  const res = await runCommandCapture(
+    'kubectl',
+    kubectlArgs(context, [
+      'get',
+      'deployment',
+      String(deployment),
+      '-n',
+      String(namespace),
+      '-o',
+      'json',
+    ]),
+  )
+  const payload = JSON.parse(res.stdout)
+  return Number(payload?.spec?.replicas ?? 1)
+}
+
+async function scaleDeploymentReplicas({
+  context,
+  namespace,
+  deployment,
+  replicas,
+}) {
+  await runCommandCapture(
+    'kubectl',
+    kubectlArgs(context, [
+      'scale',
+      `deploy/${String(deployment)}`,
+      '-n',
+      String(namespace),
+      `--replicas=${Number(replicas)}`,
+    ]),
+  )
+  await waitForDeploymentRollout({
+    context,
+    namespace,
+    deployment,
+  })
 }
 
 async function startServicePortForward({
@@ -465,34 +506,74 @@ async function startBackendPortForwardWithFallback({
   )
 }
 
-async function runSmokeSuite({ context, namespace, labelSelector }) {
-  const readyPods = await listRunningPods({
+async function runSmokeSuite({ context, namespace, labelSelector, deployment }) {
+  let readyPods = await listRunningPods({
     context,
     namespace,
     labelSelector,
   })
-  if (readyPods.length < 2) {
+  const requiredPods = 2
+  const originalReplicas = await getDeploymentReplicaCount({
+    context,
+    namespace,
+    deployment,
+  })
+  let scaledForSmoke = false
+
+  if (readyPods.length < requiredPods && originalReplicas < requiredPods) {
+    console.log(
+      `[staging] Scaling ${deployment} to ${requiredPods} replicas so generic runtime staging smoke can run...`,
+    )
+    await scaleDeploymentReplicas({
+      context,
+      namespace,
+      deployment,
+      replicas: requiredPods,
+    })
+    scaledForSmoke = true
+    readyPods = await listRunningPods({
+      context,
+      namespace,
+      labelSelector,
+    })
+  }
+
+  if (readyPods.length < requiredPods) {
     console.warn(
       `[staging] WARN: skipping generic runtime staging smoke because selector ${labelSelector} has ${readyPods.length} ready backend pod(s); the smoke requires at least 2.`,
     )
     return
   }
 
-  console.log('[staging] Running generic runtime staging smoke...')
-  const scriptArgs = [
-    'scripts/runtime-staging-smoke.mjs',
-    '--discover-nodes-k8s',
-    '--k8s-context',
-    String(context),
-    '--k8s-namespace',
-    String(namespace),
-    '--k8s-label-selector',
-    String(labelSelector),
-    '--dev-auth',
-  ]
-  const { stdout, stderr } = await runCommandCapture('node', scriptArgs)
-  if (stdout.trim()) process.stdout.write(stdout)
-  if (stderr.trim()) process.stderr.write(stderr)
+  try {
+    console.log('[staging] Running generic runtime staging smoke...')
+    const scriptArgs = [
+      'scripts/runtime-staging-smoke.mjs',
+      '--discover-nodes-k8s',
+      '--k8s-context',
+      String(context),
+      '--k8s-namespace',
+      String(namespace),
+      '--k8s-label-selector',
+      String(labelSelector),
+      '--dev-auth',
+    ]
+    const { stdout, stderr } = await runCommandCapture('node', scriptArgs)
+    if (stdout.trim()) process.stdout.write(stdout)
+    if (stderr.trim()) process.stderr.write(stderr)
+  } finally {
+    if (scaledForSmoke) {
+      console.log(
+        `[staging] Restoring ${deployment} replica count to ${originalReplicas} after generic smoke...`,
+      )
+      await scaleDeploymentReplicas({
+        context,
+        namespace,
+        deployment,
+        replicas: originalReplicas,
+      })
+    }
+  }
 }
 
 async function waitForBackend(baseUrl) {
@@ -638,6 +719,7 @@ async function main() {
     skipDbMigrate: false,
     postgresLocalPort: 55432,
     backendLabel: 'app.kubernetes.io/name=backend',
+    backendDeployment: 'backend',
     backendLocalPort: 4100,
     backendPort: 4000,
     seedProfile: 'canonical',
@@ -822,7 +904,7 @@ async function main() {
     kubectlArgs(args.k8sContext, [
       'rollout',
       'status',
-      'deploy/backend',
+      `deploy/${String(args.backendDeployment)}`,
       '-n',
       String(args.k8sNamespace),
       '--timeout=180s',
@@ -896,6 +978,7 @@ async function main() {
       context: args.k8sContext,
       namespace: args.k8sNamespace,
       labelSelector: args.backendLabel,
+      deployment: args.backendDeployment,
     })
   }
 

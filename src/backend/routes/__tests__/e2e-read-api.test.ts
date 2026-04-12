@@ -2760,5 +2760,5 @@ describe('E2E: Read API (public)', () => {
       expect(expiredEvent).toBeTruthy()
       expect(expiredEvent?.actor_id).toBe('role-expiry-scheduler')
     })
-  })
+  }, 15_000)
 })

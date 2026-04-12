@@ -508,8 +508,8 @@ describe('LLM registry contract', () => {
       'agent-create-post@4',
       'agent-reply-to-thread-turn@4',
       'agent-chat-reply@6',
-      'agent-private-chat-reply@2',
-      'agent-proactive-dm-opening@2',
+      'agent-private-chat-reply@3',
+      'agent-proactive-dm-opening@3',
     ])
     const requiredBlockKeys = [
       'hard_control_block',
@@ -552,7 +552,7 @@ describe('LLM registry contract', () => {
     expect(versionsById.get('agent-create-post')).toEqual([4])
     expect(versionsById.get('agent-reply-to-thread-turn')).toEqual([4])
     expect(versionsById.get('agent-chat-reply')).toEqual([6])
-    expect(versionsById.get('agent-private-chat-reply')).toEqual([2])
-    expect(versionsById.get('agent-proactive-dm-opening')).toEqual([2])
+    expect(versionsById.get('agent-private-chat-reply')).toEqual([3])
+    expect(versionsById.get('agent-proactive-dm-opening')).toEqual([3])
   })
 })

@@ -192,6 +192,37 @@ describe('sanitizeChatOutput', () => {
     })
   })
 
+  it('strips stacked room activity prefixes and trailing internal analysis from watchability text', () => {
+    const result = sanitizeChatOutput(
+      '代码审查官 正在追问：洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。 - 初步评估：此条系统通知无需赘述，但需跟进后续发言…',
+    )
+
+    expect(result).toEqual({
+      text: '先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+      looks_meta: false,
+    })
+  })
+
+  it('flags pure internal-analysis output after visible text normalization', () => {
+    const result = sanitizeChatOutput(
+      '初步评估：此条系统通知无需赘述，但需跟进后续发言。',
+    )
+
+    expect(result.text).toContain('系统通知无需赘述')
+    expect(result.looks_meta).toBe(true)
+  })
+
+  it('strips embedded activity labels from summary-style visible text', () => {
+    const result = sanitizeChatOutput(
+      '代码审查官 先把话题推开，代码审查官 接着回应：洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下… | 悬念: 洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+    )
+
+    expect(result).toEqual({
+      text: '代码审查官 先把话题推开，代码审查官 接着回应： 先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下… | 悬念: 先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+      looks_meta: false,
+    })
+  })
+
   it('adds soft line breaks to longer chat-native replies without changing existing paragraphs', () => {
     expect(
       formatChatReplyForReadability('复杂度确实更先跳出来。系统一复杂，标准就不再是锦上添花，而是护栏。'),

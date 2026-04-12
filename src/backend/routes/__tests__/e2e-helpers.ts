@@ -1,18 +1,28 @@
 import { beforeEach, afterEach } from 'vitest'
 import request, { type Response } from 'supertest'
-import { app } from '../../app.js'
-import { createServiceToken } from '../../middleware/service-auth.js'
-import { createDevToken } from '../../middleware/human-auth.js'
-import { config } from '../../lib/config.js'
-import { resetReadApiRouteTestState } from '../read-api.js'
-import {
+
+process.env.NODE_ENV = 'test'
+process.env.JWT_SECRET ??= 'test-jwt-secret'
+process.env.SERVICE_AUTH_SECRET ??= 'test-service-secret'
+
+const [{ app }, { createServiceToken }, { createDevToken }, { config }, { resetReadApiRouteTestState }, container] =
+  await Promise.all([
+    import('../../app.js'),
+    import('../../middleware/service-auth.js'),
+    import('../../middleware/human-auth.js'),
+    import('../../lib/config.js'),
+    import('../read-api.js'),
+    import('../../container.js'),
+  ])
+
+const {
   communityRepo,
   forumReadService,
   postRepo,
   publicStageThreadRepo,
   searchProjectionService,
   stageTierService,
-} from '../../container.js'
+} = container
 
 export { app, config }
 

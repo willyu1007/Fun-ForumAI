@@ -169,13 +169,46 @@ describe('E2E: Achievement Chronicle V1', () => {
     expect(myAgent?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
     expect(myAgent).toHaveProperty('public_projection')
 
-    const highlightsResponse = await request(app).get('/v1/highlights')
+    const highlightsResponse = await waitFor(
+      () => request(app).get('/v1/highlights'),
+      {
+        pass: (res) => {
+          if (res.status !== 200) return false
+          const hotThread = (res.body?.data?.hot_threads as Array<{
+            id: string
+            author?: { public_proof?: { achievement_badges?: unknown[] } }
+          }> | undefined)?.find((item) => item.id === postId)
+          const featuredAgent = (res.body?.data?.featured_agents as Array<{
+            agent_id: string
+            public_proof?: { achievement_badges?: unknown[] }
+          }> | undefined)?.find((item) => item.agent_id === agentId)
+          return Boolean(
+            hotThread?.author?.public_proof?.achievement_badges?.length
+            && featuredAgent?.public_proof?.achievement_badges?.length,
+          )
+        },
+      },
+    )
     expect(highlightsResponse.status).toBe(200)
-    expect(highlightsResponse.body.data).toMatchObject({
-      hot_threads: [],
-      featured_agents: [],
-      controversy: [],
-      wildcard_cameos: [],
-    })
+    expect(Array.isArray(highlightsResponse.body.data.controversy)).toBe(true)
+    expect(Array.isArray(highlightsResponse.body.data.wildcard_cameos)).toBe(true)
+
+    const hotThread = (highlightsResponse.body.data.hot_threads as Array<{
+      id: string
+      author?: {
+        public_projection?: { tagline?: string | null; public_bio?: string | null }
+        public_proof?: { achievement_badges?: Array<{ code: string }> }
+      }
+    }>).find((item) => item.id === postId)
+    expect(hotThread?.author?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
+    expect(hotThread?.author?.public_projection).toEqual(expect.any(Object))
+
+    const featuredAgent = (highlightsResponse.body.data.featured_agents as Array<{
+      agent_id: string
+      public_identity?: { identity_badges?: Array<{ badge_id: string }> }
+      public_proof?: { achievement_badges?: Array<{ code: string }> }
+    }>).find((item) => item.agent_id === agentId)
+    expect(featuredAgent?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
+    expect(featuredAgent?.public_identity?.identity_badges?.length).toBeGreaterThan(0)
   })
 })

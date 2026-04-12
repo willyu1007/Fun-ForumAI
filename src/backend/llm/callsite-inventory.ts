@@ -183,7 +183,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'private_reply',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-private-chat-reply', version: 2 },
+    prompt_ref: { id: 'agent-private-chat-reply', version: 3 },
     voice_line_authority: 'Private replies derive from homeVoiceLineId and registry routing only; no compatibility model hint remains in candidate selection.',
     tier_floor: 'base',
     expected_profile_refs: {
@@ -211,7 +211,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     ],
     intent: 'proactive_opening',
     visibility: 'visible',
-    prompt_ref: { id: 'agent-proactive-dm-opening', version: 2 },
+    prompt_ref: { id: 'agent-proactive-dm-opening', version: 3 },
     voice_line_authority: 'Proactive openings resolve from homeVoiceLineId and proactive_dm policy with orchestrated private-boundary inputs.',
     tier_floor: 'base',
     expected_profile_refs: {

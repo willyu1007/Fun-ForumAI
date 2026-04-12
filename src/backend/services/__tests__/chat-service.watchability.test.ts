@@ -395,4 +395,83 @@ describe('ChatService watchability hooks', () => {
 
     expect(rooms.map((item) => item.id)).toEqual(['room-2'])
   })
+
+  it('sanitizes repeated activity labels and internal analysis tails in room watchability listings', async () => {
+    const deps = baseDeps()
+    const service = new ChatService({
+      ...deps,
+      roomRepo: {
+        ...deps.roomRepo,
+        list: vi.fn(async () => ({
+          items: [
+            {
+              id: 'room-1',
+              name: 'Room 1',
+              description: 'watchability room',
+              status: 'active',
+              max_agents: 4,
+              last_message_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+          ],
+          next_cursor: null,
+        })),
+      } as never,
+      roomWatchabilityRepo: {
+        listPrograms: vi.fn(async () => [{
+          room_id: 'room-1',
+          enabled: true,
+          scene_type: 'FREE_CHAT',
+          discoverability_tags: [],
+        }]),
+        listLiveSnapshots: vi.fn(async () => [{
+          id: 'snapshot-1',
+          room_id: 'room-1',
+          episode_id: 'episode-1',
+          scene_type: 'FREE_CHAT',
+          current_beat: 'HOOK',
+          live_hook: '代码审查官 正在追问：洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。 - 初步评估：此条系统通知无需赘述，但需跟进后续发言…',
+          unresolved_question: '洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？',
+          recap_short: '代码审查官 正在追问：先听你说说你心中理想的代码是什么样子的？',
+          active_cast: [],
+          last_highlight_text: '洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。 - 初步评估：此条系统通知无需赘述，但需跟进后续发言…',
+          energy: 0.83,
+          tension: 0.96,
+          message_cursor_id: 'msg-1',
+          continuity_summary: '代码审查官 先把话题推开，代码审查官 接着回应：洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下… | 悬念: 洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。 - 初步评估：此条系统通知无需赘述，但需跟进后续发言…',
+          canonization_note: '房间「代码品鉴会」刚刚沉淀出一段公共 canon。 洛芙蕾丝 正在追问：先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。 - 初步评估：此条系统通知无需赘述，但需跟进后续发言…',
+          cameo_hint: null,
+          version: 3,
+          created_at: new Date(),
+          updated_at: new Date(),
+        }]),
+        getLatestSharedMemory: vi.fn(async () => null),
+      } as never,
+    } as never)
+
+    const result = await service.getRoomsWithWatchability({ limit: 20 })
+    const watchability = result.items[0]?.watchability
+
+    expect(watchability?.live_hook).toBe(
+      '先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+    )
+    expect(watchability?.unresolved_question).toBe(
+      '先听你说说你心中理想的代码是什么样子的？',
+    )
+    expect(watchability?.last_highlight_text).toBe(
+      '先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+    )
+    expect(watchability?.continuity_summary).toBe(
+      '代码审查官 先把话题推开，代码审查官 接着回应： 先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下… | 悬念: 先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+    )
+    expect(watchability?.canonization_note).toBe(
+      '房间「代码品鉴会」刚刚沉淀出一段公共 canon。 先听你说说你心中理想的代码是什么样子的？ 让我也来了解一下你的品味。',
+    )
+    expect(watchability?.continuity_summary).not.toContain('初步评估')
+    expect(watchability?.canonization_note).not.toContain('初步评估')
+    expect(watchability?.continuity_summary).not.toContain('正在追问：')
+    expect(watchability?.canonization_note).not.toContain('正在追问：')
+    expect(watchability?.live_hook).not.toContain('正在追问：洛芙蕾丝 正在追问：')
+  })
 })

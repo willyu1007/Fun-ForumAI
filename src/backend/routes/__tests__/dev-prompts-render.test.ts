@@ -191,13 +191,13 @@ describe('POST /v1/dev/prompts/render', () => {
       {
         scene: 'private_chat',
         template_id: 'agent-private-chat-reply',
-        expected_version: 2,
+        expected_version: 3,
         conversation_text: '我今天有点纠结，想听你的建议。',
       },
       {
         scene: 'proactive_dm',
         template_id: 'agent-proactive-dm-opening',
-        expected_version: 2,
+        expected_version: 3,
         conversation_text: '你的帖子刚被点赞了，想聊聊后续观点。',
       },
       {

@@ -6,7 +6,6 @@ import type { LaunchContentKind } from '../launch/programming-projection.js'
 import {
   LAUNCH_CREATOR_NOTE_COMMUNITY_SLUGS,
   isLaunchNativeCreatorNoteCommunity,
-  normalizeLaunchCreatorNoteTemplateId,
 } from '../launch/creator-note-templates.js'
 import {
   resolveLaunchCommunityVisualConfig,
@@ -28,7 +27,6 @@ import type {
   CommunityRepository,
   HumanFollowRepository,
   PprSnapshotRepository,
-  ViewerRecentSignals,
 } from '../repos/index.js'
 import type { MediaRolloutControllerProfile } from '../media/media-rollout-controller-service.js'
 import type { AftershowService } from './aftershow-service.js'
@@ -40,6 +38,13 @@ import type {
   RelationSummaryTeaser,
 } from './public-agent-relation-summary-service.js'
 import type { ViewerActorContext, ViewerPublicViewService } from './viewer-public-view-service.js'
+import {
+  applyHeroSlotCopy,
+  computeViewerScore,
+  readCreatorNoteTemplateRank,
+  sortPostsByViewerContext,
+  type HomeViewerRankingRuntime,
+} from './home-programming-personalization.js'
 
 export interface HomeProgrammingServiceDeps {
   forumReadService: ForumReadService
@@ -115,12 +120,8 @@ export interface HomeProgrammingPayload {
   }
 }
 
-interface HomeViewerRuntime {
+interface HomeViewerRuntime extends HomeViewerRankingRuntime {
   viewer: ViewerActorContext | null
-  enabled: boolean
-  recentSignals: ViewerRecentSignals | null
-  followedAgentIds: Set<string>
-  pprCandidateAgentIds: Set<string>
   explainability: string[]
 }
 
@@ -219,7 +220,7 @@ export class HomeProgrammingService {
       usedPostIds,
       viewerRuntime,
     )
-    mustWatch = this.applyHeroSlotCopy(mustWatch, tuning?.active_profile)
+    mustWatch = applyHeroSlotCopy(mustWatch, tuning?.active_profile)
     let conflictRising = this.pickConflictRising(
       controversyCandidates,
       hotFeed.items,
@@ -352,10 +353,10 @@ export class HomeProgrammingService {
     usedPostIds: Set<string>,
     viewerRuntime: HomeViewerRuntime,
   ): HomeProgrammingPostItem[] {
-    const rankedHighlights = this.sortByViewerContext(highlightCandidates, viewerRuntime, {
+    const rankedHighlights = sortPostsByViewerContext(highlightCandidates, viewerRuntime, {
       preferStorylineRevisit: true,
     })
-    const rankedHotFeed = this.sortByViewerContext(hotFeed, viewerRuntime, {
+    const rankedHotFeed = sortPostsByViewerContext(hotFeed, viewerRuntime, {
       preferStorylineRevisit: true,
     })
     const highlightHero = rankedHighlights.find((item) => readHeroEligible(item))
@@ -381,7 +382,7 @@ export class HomeProgrammingService {
     usedPostIds: Set<string>,
     viewerRuntime: HomeViewerRuntime,
   ): HomeProgrammingPostItem[] {
-    const primaryPool = this.sortByViewerContext(
+    const primaryPool = sortPostsByViewerContext(
       this.mergeUniquePosts(controversyCandidates, hotFeed),
       viewerRuntime,
     )
@@ -432,10 +433,10 @@ export class HomeProgrammingService {
       .slice()
       .sort((a, b) => {
         const tuningDelta =
-          this.readCreatorNoteTemplateRank(b, tuningProfile) - this.readCreatorNoteTemplateRank(a, tuningProfile)
+          readCreatorNoteTemplateRank(b, tuningProfile) - readCreatorNoteTemplateRank(a, tuningProfile)
         if (tuningDelta !== 0) return tuningDelta
-        const viewerDelta = this.computeViewerScore(b, viewerRuntime, { preferCreatorNoteRevisit: true })
-          - this.computeViewerScore(a, viewerRuntime, { preferCreatorNoteRevisit: true })
+        const viewerDelta = computeViewerScore(b, viewerRuntime, { preferCreatorNoteRevisit: true })
+          - computeViewerScore(a, viewerRuntime, { preferCreatorNoteRevisit: true })
         if (viewerDelta !== 0) return viewerDelta
         return b.heat_score - a.heat_score
       })
@@ -494,7 +495,7 @@ export class HomeProgrammingService {
     viewerRuntime: HomeViewerRuntime,
   ): HomeProgrammingPostItem[] {
     const items: HomeProgrammingPostItem[] = []
-    const rankedAftershow = this.sortByViewerContext(aftershowCandidates, viewerRuntime, {
+    const rankedAftershow = sortPostsByViewerContext(aftershowCandidates, viewerRuntime, {
       preferStorylineRevisit: true,
       preferCreatorNoteRevisit: true,
     })
@@ -508,7 +509,7 @@ export class HomeProgrammingService {
       }
     }
 
-    const continuityItems = this.sortByViewerContext(
+    const continuityItems = sortPostsByViewerContext(
       hotFeed
         .filter((item) => !usedPostIds.has(item.id))
         .filter((item) => Boolean(readStorylineId(item)))
@@ -781,89 +782,6 @@ export class HomeProgrammingService {
         ...(pprCandidateAgentIds.size > 0 ? ['offline_ppr_tiebreaker'] : []),
       ],
     }
-  }
-
-  private sortByViewerContext<T extends PostWithMeta>(
-    items: T[],
-    viewerRuntime: HomeViewerRuntime,
-    options?: {
-      preferStorylineRevisit?: boolean
-      preferCreatorNoteRevisit?: boolean
-    },
-  ): T[] {
-    if (!viewerRuntime.enabled || items.length <= 1) {
-      return items
-    }
-    return items
-      .map((item, index) => ({
-        item,
-        index,
-        score: this.computeViewerScore(item, viewerRuntime, options),
-      }))
-      .sort((a, b) =>
-        b.score - a.score
-        || b.item.heat_score - a.item.heat_score
-        || b.item.thread_turn_count - a.item.thread_turn_count
-        || a.index - b.index,
-      )
-      .map((entry) => entry.item)
-  }
-
-  private computeViewerScore(
-    item: Pick<PostWithMeta, 'author' | 'content_semantics' | 'heat_score'>,
-    viewerRuntime: HomeViewerRuntime,
-    options?: {
-      preferStorylineRevisit?: boolean
-      preferCreatorNoteRevisit?: boolean
-    },
-  ): number {
-    if (!viewerRuntime.enabled) return 0
-    let score = 0
-    const recentSignals = viewerRuntime.recentSignals
-    const storylineId = readStorylineId(item)
-    const noteTemplateId = readNoteTemplateId(item)
-    if (viewerRuntime.followedAgentIds.has(item.author.id)) score += 30
-    if (viewerRuntime.pprCandidateAgentIds.has(item.author.id)) score += 12
-    if (recentSignals?.recent_target_agent_ids.includes(item.author.id)) score += 8
-    if (options?.preferStorylineRevisit && storylineId && recentSignals?.recent_storyline_ids.includes(storylineId)) {
-      score += 40
-    }
-    if (
-      options?.preferCreatorNoteRevisit
-      && noteTemplateId
-      && recentSignals?.recent_note_template_ids.includes(noteTemplateId)
-    ) {
-      score += 20
-    }
-    return score
-  }
-
-  private readCreatorNoteTemplateRank(
-    item: Pick<PostWithMeta, 'community_slug' | 'content_semantics'>,
-    tuningProfile?: PostLaunchTuningProfile,
-  ): number {
-    const noteTemplateId = normalizeLaunchCreatorNoteTemplateId(readNoteTemplateId(item))
-    if (!tuningProfile || !isLaunchNativeCreatorNoteCommunity(item.community_slug) || !noteTemplateId) {
-      return 0
-    }
-    const preferred = tuningProfile.creator_note.preferred_templates_by_community[item.community_slug] ?? []
-    const index = preferred.indexOf(noteTemplateId)
-    return index >= 0 ? preferred.length - index : 0
-  }
-
-  private applyHeroSlotCopy(
-    items: HomeProgrammingPostItem[],
-    tuningProfile?: PostLaunchTuningProfile,
-  ): HomeProgrammingPostItem[] {
-    if (items.length === 0 || !tuningProfile) return items
-    const [first, ...rest] = items
-    const heroReason = tuningProfile.home.hero_slot_copy[readContentKind(first) ?? '']
-      ?? tuningProfile.home.hero_slot_copy.must_watch_today
-      ?? first.hero_reason
-    return [{
-      ...first,
-      hero_reason: heroReason,
-    }, ...rest]
   }
 
   private async attachRelationTeasersToShelfItems(

@@ -217,7 +217,7 @@ describe('HomeProgrammingService', () => {
       ])
       expect(payload.shelves.find((item) => item.id === 'must_watch_today')?.items[0]).toMatchObject({
         id: 'post-main',
-        hero_reason: '今日高光',
+        hero_reason: '今日最值得先点开的主线。',
         content_kind: 'highlight_hero',
         next_jump_target: '/posts/post-main?threadId=thread-main',
       })
