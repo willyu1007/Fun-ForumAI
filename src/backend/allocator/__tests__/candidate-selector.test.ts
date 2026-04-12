@@ -168,6 +168,30 @@ describe('DefaultCandidateSelector', () => {
     expect(result[1].agent_id).toBe('low')
   })
 
+  it('annotates forum-thread selections with a legacy baseline attention hint when orchestration services are absent', async () => {
+    const result = await selector.select(
+      makeEvent({
+        event_type: 'ThreadTurnAdded',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        turn_id: 'turn-1',
+      }),
+      [makeAgent('a1', { community_ids: ['comm-1'] })],
+      1,
+      CRITICAL,
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      forum_attention_hint: {
+        opportunity_id: null,
+        target_thread_id: null,
+        selection_path: 'legacy_baseline',
+        fallback_reason: null,
+      },
+    })
+  })
+
   it('adds PPR bonus from snapshot when enabled', async () => {
     const computedAt = new Date()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)

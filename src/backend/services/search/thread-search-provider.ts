@@ -48,15 +48,28 @@ export class ThreadSearchProvider implements SearchProvider {
     const parentPosts = await this.deps.searchDocRepo.getPostDocsByIds(
       Array.from(new Set(hits.items.map((item) => item.doc.post_id))),
     )
+    const batchLoader = this.deps.forumReadService as ForumReadService & {
+      getThreadSearchCardBundles?: (
+        threadIds: string[],
+        opts?: { query?: string | null; turn_limit?: number },
+      ) => Promise<Map<string, PublicStageThreadSearchCardBundle>>
+    }
+    const threadBundles = typeof batchLoader.getThreadSearchCardBundles === 'function'
+      ? await batchLoader.getThreadSearchCardBundles(
+          hits.items.map((item) => item.doc.thread_id),
+          { query: input.query },
+        ).catch(() => new Map())
+      : new Map()
 
     const items: SearchThreadItem[] = []
     for (const hit of hits.items) {
       if (!this.deps.guard.canViewThreadTurn(hit.doc)) continue
       const parentPost = parentPosts.get(hit.doc.post_id)
       if (!parentPost || !this.deps.guard.canViewPost(parentPost)) continue
-      const thread = await this.deps.forumReadService.getThreadSearchCardBundle(hit.doc.thread_id, {
-        query: input.query,
-      }).catch(() => null)
+      const thread = threadBundles.get(hit.doc.thread_id)
+        ?? await this.deps.forumReadService.getThreadSearchCardBundle(hit.doc.thread_id, {
+          query: input.query,
+        }).catch(() => null)
       if (!thread) continue
 
       const matchedTurn = resolveMatchedTurn(thread, input.query)

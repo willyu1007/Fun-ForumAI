@@ -99,13 +99,13 @@ const candidates: ScoredCandidate[] = [
 ]
 
 describe('RecallPolicyService', () => {
-  it('grants the first direct challenge and suppresses the second within the thread-local pair window', () => {
+  it('grants the first direct challenge and suppresses the second within the thread-local pair window', async () => {
     const service = new RecallPolicyService()
     const event = makeEvent()
     const opportunity = makeOpportunity()
     const policy = makePolicy()
 
-    const first = service.evaluate({
+    const first = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[0]],
@@ -120,7 +120,7 @@ describe('RecallPolicyService', () => {
       quota_kind: 'incumbent_reactive',
     })
 
-    const second = service.evaluate({
+    const second = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[0]],
@@ -134,17 +134,17 @@ describe('RecallPolicyService', () => {
     })
   })
 
-  it('does not leak hot pair suppression across different threads', () => {
+  it('does not leak hot pair suppression across different threads', async () => {
     const service = new RecallPolicyService()
     const policy = makePolicy()
 
-    const first = service.evaluate({
+    const first = await service.evaluate({
       event: makeEvent({ thread_id: 'thread-a' }),
       opportunity: makeOpportunity({ thread_id: 'thread-a' }),
       candidates: [candidates[0]],
       policy,
     })
-    const second = service.evaluate({
+    const second = await service.evaluate({
       event: makeEvent({ thread_id: 'thread-b' }),
       opportunity: makeOpportunity({ thread_id: 'thread-b' }),
       candidates: [candidates[0]],
@@ -155,7 +155,7 @@ describe('RecallPolicyService', () => {
     expect(second.granted).toHaveLength(1)
   })
 
-  it('applies reactive recall decay on repeated incumbent recalls before the hard cap', () => {
+  it('applies reactive recall decay on repeated incumbent recalls before the hard cap', async () => {
     const service = new RecallPolicyService()
     const policy = makePolicy({
       recall_control: {
@@ -167,19 +167,19 @@ describe('RecallPolicyService', () => {
     const event = makeEvent()
     const opportunity = makeOpportunity()
 
-    const first = service.evaluate({
+    const first = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[0]],
       policy,
     })
-    const second = service.evaluate({
+    const second = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[0]],
       policy,
     })
-    const third = service.evaluate({
+    const third = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[0]],
@@ -197,9 +197,9 @@ describe('RecallPolicyService', () => {
     })
   })
 
-  it('prefers outsiders without suppressing a directly challenged incumbent', () => {
+  it('prefers outsiders without suppressing a directly challenged incumbent', async () => {
     const service = new RecallPolicyService()
-    const evaluation = service.evaluate({
+    const evaluation = await service.evaluate({
       event: makeEvent(),
       opportunity: makeOpportunity({
         source: 'AUDIENCE_SPIKE',
@@ -234,7 +234,7 @@ describe('RecallPolicyService', () => {
     })
   })
 
-  it('caps revive_old_branch opportunities with a per-thread budget', () => {
+  it('caps revive_old_branch opportunities with a per-thread budget', async () => {
     const service = new RecallPolicyService()
     const event = makeEvent({ chain_depth: 2 })
     const opportunity = makeOpportunity({
@@ -243,7 +243,7 @@ describe('RecallPolicyService', () => {
     })
     const policy = makePolicy()
 
-    const first = service.evaluate({
+    const first = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[0]],
@@ -251,7 +251,7 @@ describe('RecallPolicyService', () => {
     })
     expect(first.granted).toHaveLength(1)
 
-    const second = service.evaluate({
+    const second = await service.evaluate({
       event,
       opportunity,
       candidates: [candidates[1]],

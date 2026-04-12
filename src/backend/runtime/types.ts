@@ -193,6 +193,7 @@ export type ResolvedForumExecutionWriteAction =
 
 export const RESOLVED_FORUM_EXECUTION_VALIDATION_STATUS_IDS = [
   'resolved',
+  'observe_only',
   'decision_failed',
   'candidate_missing',
   'candidate_expired',
@@ -214,6 +215,7 @@ export interface RoamingArrivalCandidate {
   branch_root_turn_id: string | null
   local_evidence: string[]
   reason_codes: string[]
+  ranking_reasons: string[]
   allowed_actions: RoamingDecisionAction[]
   expires_at: string | null
   route_handoff: RouteHandoffInput | null

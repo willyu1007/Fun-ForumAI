@@ -79,6 +79,7 @@ import { PublicWriteGovernanceService } from '../services/public-write-governanc
 import { ViewerPublicWriteService } from '../services/viewer-public-write-service.js'
 import { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
 import { RecallPolicyService } from '../services/recall-policy-service.js'
+import { RedisRecallStateStore } from '../services/recall-state-store.js'
 import { AgentPerceptionService } from '../services/agent-perception-service.js'
 import { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
@@ -93,6 +94,7 @@ import type { MediaObservabilityService } from '../media/media-observability-ser
 import type { Repositories } from './repos.js'
 import { config } from '../lib/config.js'
 import { getPrismaClient } from '../persistence/prisma-client.js'
+import type { Redis } from 'ioredis'
 
 export function createCoreServices(deps: {
   repos: Repositories
@@ -106,6 +108,7 @@ export function createCoreServices(deps: {
   usageLedgerRepo?: UsageLedgerRepository | null
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
+  runtimeRedis?: Redis | null
 }) {
   const { repos, sseHub, moderator, llmGateway } = deps
 
@@ -260,7 +263,13 @@ export function createCoreServices(deps: {
     agentRepo: repos.agentRepo,
   })
   const attentionOpportunityBroker = new AttentionOpportunityBroker()
-  const recallPolicyService = new RecallPolicyService()
+  const recallPolicyService = new RecallPolicyService(
+    deps.runtimeRedis
+      ? new RedisRecallStateStore(deps.runtimeRedis, {
+          keyPrefix: config.runtime.redisPrefix,
+        })
+      : undefined,
+  )
   const agentPerceptionService = new AgentPerceptionService()
   const runtimeContextAssembler = new RuntimeContextAssembler()
 

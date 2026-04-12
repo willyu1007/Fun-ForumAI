@@ -8,12 +8,16 @@ import type {
   CastingDirectorPolicy,
   CastingDirectorCommunityConfig,
   ForumAttentionInputBundle,
+  ForumAttentionHint,
+  ForumBaselineFallbackReason,
+  ForumSelectionPath,
 } from './types.js'
 import type { AllocatorConfig } from './config.js'
 import { deriveTopicKey } from './ppr-topic-key.js'
 import { runtimeFeatureMetrics } from '../runtime/runtime-feature-metrics.js'
 import type { AttentionOpportunityBroker } from '../services/attention-opportunity-broker.js'
 import type { RecallPolicyService } from '../services/recall-policy-service.js'
+import type { AttentionOpportunity } from '../../shared/forum-orchestration.js'
 
 const PPR_SCORE_SCALE = 2
 
@@ -212,14 +216,27 @@ export class DefaultCandidateSelector implements CandidateSelector {
     candidates: ScoredCandidate[]
     legacyTop: ScoredCandidate[]
   }): Promise<ScoredCandidate[]> {
-    if (!this.deps.attentionOpportunityBroker || !this.deps.recallPolicyService) {
+    if (!isForumSelectionEvent(input.event)) {
       return input.candidates
+    }
+
+    if (!this.deps.attentionOpportunityBroker || !this.deps.recallPolicyService) {
+      runtimeFeatureMetrics.recordForumSelectionPath('legacy_baseline')
+      return annotateCandidatesWithAttentionHint(input.candidates, {
+        opportunity: null,
+        selection_path: 'legacy_baseline',
+        fallback_reason: null,
+      })
     }
 
     try {
       const attentionBundle = input.event.post_id
         ? await this.deps.resolveAttentionInputBundle?.(input.event) ?? null
         : null
+      const selectionEnabled = Boolean(attentionBundle?.effective_orchestration_policy?.cutover.selection_enabled)
+      const selectionCutover =
+        Boolean(this.deps.forumOrchestrationFlags?.selectionCutover)
+        && selectionEnabled
       const opportunities = attentionBundle
         ? this.deps.attentionOpportunityBroker.discover({
             event: input.event,
@@ -236,7 +253,15 @@ export class DefaultCandidateSelector implements CandidateSelector {
           })
       const [opportunity] = opportunities
       if (!opportunity) {
-        return input.candidates
+        const selectionPath: ForumSelectionPath = selectionCutover
+          ? 'selection_no_opportunity_baseline'
+          : 'selection_cutover_disabled_baseline'
+        runtimeFeatureMetrics.recordForumSelectionPath(selectionPath)
+        return annotateCandidatesWithAttentionHint(input.candidates, {
+          opportunity: null,
+          selection_path: selectionPath,
+          fallback_reason: null,
+        })
       }
 
       const boosted = input.candidates.map((candidate) => {
@@ -249,21 +274,19 @@ export class DefaultCandidateSelector implements CandidateSelector {
           reasons: [...candidate.reasons, `attention_opportunity=${opportunity.source.toLowerCase()}`],
         }
       })
-      const evaluation = this.deps.recallPolicyService.evaluate({
+      const evaluation = await this.deps.recallPolicyService.evaluate({
         event: input.event,
         opportunity,
         candidates: boosted,
         policy: attentionBundle?.effective_orchestration_policy ?? null,
       })
-      const granted = evaluation.granted.map((candidate) => ({
-        ...candidate,
-        opportunity_id: opportunity.id,
-        browse_reason: opportunity.browse_reason,
-        selected_anchor_turn_id: opportunity.selected_anchor_turn_id,
-      }))
-      const selectionCutover =
-        Boolean(this.deps.forumOrchestrationFlags?.selectionCutover)
-        && Boolean(attentionBundle?.effective_orchestration_policy?.cutover.selection_enabled)
+      const granted = annotateCandidatesWithAttentionHint(evaluation.granted, {
+        opportunity,
+        selection_path: selectionCutover
+          ? 'selection_cutover_granted'
+          : 'selection_cutover_disabled_baseline',
+        fallback_reason: null,
+      })
       const shadowEnabled =
         this.deps.forumOrchestrationFlags?.shadow
         || Boolean(attentionBundle?.effective_orchestration_policy?.compare_debug.shadow_enabled)
@@ -294,22 +317,59 @@ export class DefaultCandidateSelector implements CandidateSelector {
       }
 
       if (!selectionCutover) {
-        return input.candidates
+        runtimeFeatureMetrics.recordForumSelectionPath('selection_cutover_disabled_baseline')
+        return annotateCandidatesWithAttentionHint(input.candidates, {
+          opportunity,
+          selection_path: 'selection_cutover_disabled_baseline',
+          fallback_reason: null,
+        })
       }
       if (granted.length > 0) {
+        runtimeFeatureMetrics.recordForumSelectionPath('selection_cutover_granted')
         return granted
       }
       if (attentionBundle?.effective_orchestration_policy?.cutover.fallback_to_baseline ?? true) {
-        runtimeFeatureMetrics.recordForumOrchestrationFallback()
-        return input.candidates
+        return this.returnForumSelectionFallback({
+          event: input.event,
+          candidates: input.candidates,
+          opportunity,
+          fallback_reason: 'allocator_empty_granted_fallback',
+        })
       }
       return []
     } catch {
       if (this.deps.forumOrchestrationFlags?.selectionCutover || this.deps.forumOrchestrationFlags?.shadow) {
-        runtimeFeatureMetrics.recordForumOrchestrationFallback()
+        return this.returnForumSelectionFallback({
+          event: input.event,
+          candidates: input.candidates,
+          opportunity: null,
+          fallback_reason: 'allocator_selection_fallback',
+        })
       }
       return input.candidates
     }
+  }
+
+  private returnForumSelectionFallback(input: {
+    event: EventPayload
+    candidates: ScoredCandidate[]
+    opportunity: AttentionOpportunity | null
+    fallback_reason: ForumBaselineFallbackReason
+  }): ScoredCandidate[] {
+    runtimeFeatureMetrics.recordForumBaselineFallback({
+      stage: 'allocator',
+      selection_path: 'selection_fallback_baseline',
+      fallback_reason: input.fallback_reason,
+      event_type: input.event.event_type,
+      post_id: input.event.post_id ?? null,
+      thread_id: input.event.thread_id ?? null,
+      opportunity_id: input.opportunity?.id ?? null,
+    })
+    return annotateCandidatesWithAttentionHint(input.candidates, {
+      opportunity: input.opportunity,
+      selection_path: 'selection_fallback_baseline',
+      fallback_reason: input.fallback_reason,
+    })
   }
 
   private extractTags(event: EventPayload): Set<string> {
@@ -387,6 +447,53 @@ export class DefaultCandidateSelector implements CandidateSelector {
     const trimmed = merged.slice(-120)
     this.threadSelectionHistory.set(threadId, trimmed)
   }
+}
+
+function annotateCandidatesWithAttentionHint(
+  candidates: ScoredCandidate[],
+  input: {
+    opportunity: AttentionOpportunity | null
+    selection_path: ForumSelectionPath
+    fallback_reason: ForumBaselineFallbackReason | null
+  },
+): ScoredCandidate[] {
+  return candidates.map((candidate) => ({
+    ...candidate,
+    opportunity_id: input.opportunity?.id,
+    browse_reason: input.opportunity?.browse_reason,
+    selected_anchor_turn_id: input.opportunity?.selected_anchor_turn_id ?? null,
+    forum_attention_hint: buildForumAttentionHint(input.opportunity, {
+      selection_path: input.selection_path,
+      fallback_reason: input.fallback_reason,
+    }),
+  }))
+}
+
+function buildForumAttentionHint(
+  opportunity: AttentionOpportunity | null,
+  input: {
+    selection_path: ForumSelectionPath
+    fallback_reason: ForumBaselineFallbackReason | null
+  },
+): ForumAttentionHint {
+  return {
+    opportunity_id: opportunity?.id ?? null,
+    browse_reason: opportunity?.browse_reason ?? null,
+    selected_anchor_turn_id: opportunity?.selected_anchor_turn_id ?? null,
+    target_thread_id: opportunity?.thread_id ?? null,
+    target_agent_ids: opportunity?.target_agent_ids ?? [],
+    priority_agent_ids: opportunity?.priority_agent_ids ?? [],
+    evidence_turn_ids: opportunity?.evidence_turn_ids ?? [],
+    reason_codes: opportunity?.reason_codes ?? [],
+    post_attention_state: opportunity?.post_attention_state ?? null,
+    thread_attention_state: opportunity?.thread_attention_state ?? null,
+    selection_path: input.selection_path,
+    fallback_reason: input.fallback_reason,
+  }
+}
+
+function isForumSelectionEvent(event: EventPayload): boolean {
+  return event.event_type === 'ThreadOpened' || event.event_type === 'ThreadTurnAdded'
 }
 
 function relationHintBonus(hint: 'none' | 'following' | 'follower' | 'friend'): number {

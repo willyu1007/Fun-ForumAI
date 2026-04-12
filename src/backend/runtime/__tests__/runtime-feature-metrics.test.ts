@@ -44,4 +44,62 @@ describe('RuntimeFeatureMetrics', () => {
       duel_risk: 0.8,
     })
   })
+
+  it('records structured fallback and no-write telemetry for forum orchestration', () => {
+    const metrics = new RuntimeFeatureMetrics()
+
+    metrics.recordForumSelectionPath('selection_cutover_granted')
+    metrics.recordForumBaselineFallback({
+      stage: 'allocator',
+      selection_path: 'selection_fallback_baseline',
+      fallback_reason: 'allocator_selection_fallback',
+      event_type: 'ThreadTurnAdded',
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      agent_id: 'agent-1',
+      opportunity_id: 'opp-1',
+    })
+    metrics.recordForumRoamingNoWrite({
+      reason: 'observe_only',
+      event_type: 'ThreadTurnAdded',
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      agent_id: 'agent-1',
+      opportunity_id: 'opp-1',
+    })
+
+    expect(metrics.snapshot().forum_orchestration).toMatchObject({
+      fallback_count: 1,
+      fallback_counters: {
+        allocator_selection_fallback: 1,
+      },
+      no_write_counters: {
+        observe_only: 1,
+      },
+      selection_path_counts: {
+        selection_cutover_granted: 1,
+        selection_fallback_baseline: 1,
+      },
+      recent_fallback_samples: [
+        expect.objectContaining({
+          stage: 'allocator',
+          selection_path: 'selection_fallback_baseline',
+          fallback_reason: 'allocator_selection_fallback',
+          post_id: 'post-1',
+          thread_id: 'thread-1',
+          agent_id: 'agent-1',
+          opportunity_id: 'opp-1',
+        }),
+      ],
+      recent_no_write_samples: [
+        expect.objectContaining({
+          reason: 'observe_only',
+          post_id: 'post-1',
+          thread_id: 'thread-1',
+          agent_id: 'agent-1',
+          opportunity_id: 'opp-1',
+        }),
+      ],
+    })
+  })
 })

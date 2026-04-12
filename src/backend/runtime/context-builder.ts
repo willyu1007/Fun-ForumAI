@@ -394,8 +394,8 @@ export class ContextBuilder {
         const thread = await this.deps.forumReadService.getThread(threadId)
         return this.flattenThreadTurns([thread])
       }
-      const result = await this.deps.forumReadService.getThreads(postId, { limit: 20 })
-      return this.flattenThreadTurns(result.items)
+      const forest = await this.deps.forumReadService.getDiscussionForest(postId)
+      return this.flattenDiscussionForestNodes(forest)
     } catch {
       return []
     }
@@ -470,6 +470,7 @@ export class ContextBuilder {
         ? eventTargetEntry.id
         : eventTargetEntry?.thread_id ?? null)
     const focusTurnId = ctx.perceived_context_slice?.focus_turn_id
+      ?? ctx.agent.forum_attention_hint?.selected_anchor_turn_id
       ?? ctx.focusThreadTurn?.id
       ?? null
     const focusEntry = this.resolveThreadEntryById(ctx.threadTurns, focusTurnId)
@@ -499,10 +500,14 @@ export class ContextBuilder {
         ?? fallbackFocusAnchorTurnId,
       reply_thread_id: ctx.forum_runtime_context?.thread_id
         ?? ctx.perceived_context_slice?.thread_id
+        ?? ctx.agent.forum_attention_hint?.target_thread_id
         ?? ctx.semantic_thread_capsule?.thread_id
         ?? ctx.event.thread_id
         ?? null,
-      browse_reason: ctx.perceived_context_slice?.browse_reason ?? null,
+      browse_reason:
+        ctx.perceived_context_slice?.browse_reason
+        ?? ctx.agent.forum_attention_hint?.browse_reason
+        ?? null,
       allowed_actions: ctx.perceived_context_slice?.allowed_actions ?? [],
     }
   }
@@ -645,6 +650,23 @@ export class ContextBuilder {
     })
   }
 
+  private flattenDiscussionForestNodes(
+    forest: NonNullable<ExecutionContext['discussion_forest']>,
+  ): ExecutionContext['threadTurns'] {
+    return forest.nodes.map((node) => ({
+      id: node.id,
+      post_id: node.post_id,
+      thread_id: node.thread_id,
+      entry_kind: node.entry_kind,
+      anchor_turn_id: node.actual_anchor_turn_id,
+      body: node.body,
+      author_actor_type: node.author.actor_type,
+      author_agent_id: node.author.actor_type === 'agent' ? node.author.id : null,
+      author_user_id: node.author.actor_type === 'human' ? node.author.id : null,
+      author_name: node.author.display_name,
+    }))
+  }
+
   private getAgentName(agentId: string): string {
     try {
       const agent = this.deps.agentService.getAgent(agentId)
@@ -740,7 +762,17 @@ export class ContextBuilder {
         source_id: ctx.post?.id,
       })
       if (config.launch.capabilities.forumOrchestrationEnvelopeCutover) {
-        runtimeFeatureMetrics.recordForumOrchestrationFallback()
+        runtimeFeatureMetrics.recordForumBaselineFallback({
+          stage: 'context_builder',
+          selection_path: ctx.agent.forum_attention_hint?.selection_path ?? 'legacy_baseline',
+          fallback_reason: 'runtime_context_preview_fallback',
+          count_selection_path: false,
+          event_type: ctx.event.event_type,
+          post_id: ctx.event.post_id ?? null,
+          thread_id: ctx.event.thread_id ?? null,
+          agent_id: ctx.agent.agent_id,
+          opportunity_id: ctx.agent.forum_attention_hint?.opportunity_id ?? null,
+        })
       }
     }
     if (chosenCandidate?.local_evidence.length) {

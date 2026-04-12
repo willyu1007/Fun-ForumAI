@@ -1355,6 +1355,22 @@ export class ForumReadService {
     return this.deps.publicStageTurnRepo.findMatchingByThread(threadId, normalizedQuery, limit)
   }
 
+  private findMatchingVisibleTurnsFromList(
+    turns: PublicStageTurn[],
+    query: string | null | undefined,
+    limit: number,
+  ): PublicStageTurn[] {
+    const normalizedQuery = (query ?? '').trim().toLowerCase()
+    if (!normalizedQuery) return []
+    const tokens = Array.from(new Set(normalizedQuery.split(/\s+/).filter(Boolean)))
+    return turns
+      .filter((turn) => {
+        const body = turn.body.toLowerCase()
+        return body.includes(normalizedQuery) || tokens.some((token) => body.includes(token))
+      })
+      .slice(-limit)
+  }
+
   private async buildVisibleTurnById(turns: PublicStageTurn[]): Promise<Map<string, PublicStageTurn>> {
     const visibleTurnById = new Map(
       turns
@@ -1634,48 +1650,100 @@ export class ForumReadService {
       turn_limit?: number
     },
   ): Promise<PublicStageThreadSearchCardBundle> {
-    const thread = await this.deps.publicStageThreadRepo.findById(threadId)
-    if (!thread) throw new NotFoundError('Thread', threadId)
-    if (!isPubliclyVisibleContent(thread)) throw new NotFoundError('Thread', threadId)
+    const bundles = await this.getThreadSearchCardBundles([threadId], opts)
+    const bundle = bundles.get(threadId)
+    if (!bundle) {
+      throw new NotFoundError('Thread', threadId)
+    }
+    return bundle
+  }
 
-    const post = await this.deps.postRepo.findById(thread.post_id)
-    if (!post || !isPubliclyVisibleContent(post)) throw new NotFoundError('Thread', threadId)
+  async getThreadSearchCardBundles(
+    threadIds: string[],
+    opts?: {
+      query?: string | null
+      turn_limit?: number
+    },
+  ): Promise<Map<string, PublicStageThreadSearchCardBundle>> {
+    const uniqueThreadIds = Array.from(new Set(threadIds.filter((id) => id.trim().length > 0)))
+    if (uniqueThreadIds.length === 0) {
+      return new Map()
+    }
 
     const turnLimit = this.clampLimit(opts?.turn_limit, THREAD_SEARCH_CARD_TURN_LIMIT, 80)
-    const [matchingTurns, recentTurns, totalTurnCount] = await Promise.all([
-      this.findMatchingVisibleTurnsByThread(thread.id, opts?.query, Math.ceil(turnLimit / 2)),
-      this.findRecentVisibleTurnsByThread(thread.id, turnLimit),
-      this.deps.publicStageTurnRepo.countByThread(thread.id),
-    ])
-    const turns = this.buildThreadSearchCardTurns(matchingTurns, recentTurns, turnLimit)
-    const visibleTurnById = await this.buildVisibleTurnById(turns)
-    const authorCache = new Map<string, Promise<AuthorSummary>>()
-    const author = await this.resolveAuthorCached(authorCache, thread)
-    const turnPreviews = await this.buildSearchTurnPreviews(turns, {
-      authorCache,
-      visibleTurnById,
-    })
-    const participantIds = new Set<string>([
-      this.buildPublicActorKey(thread),
-      ...turns.map((turn) => this.buildPublicActorKey(turn)),
-    ])
-    const lastTurn = recentTurns[recentTurns.length - 1] ?? turns[turns.length - 1] ?? null
-
-    return {
-      id: thread.id,
-      post_id: thread.post_id,
-      community_id: thread.community_id,
-      body: thread.body,
-      visibility: thread.visibility,
-      state: thread.state,
-      created_at: thread.created_at,
-      updated_at: thread.updated_at,
-      author,
-      turn_count: totalTurnCount,
-      participant_count: participantIds.size,
-      last_activity_at: lastTurn?.created_at ?? thread.created_at,
-      turns: turnPreviews,
+    const threads = (await Promise.all(
+      uniqueThreadIds.map((threadId) => this.deps.publicStageThreadRepo.findById(threadId)),
+    ))
+      .filter((thread): thread is NonNullable<typeof thread> => Boolean(thread))
+      .filter((thread) => isPubliclyVisibleContent(thread))
+    if (threads.length === 0) {
+      return new Map()
     }
+
+    const visiblePostById = new Map(
+      (await Promise.all(
+        Array.from(new Set(threads.map((thread) => thread.post_id))).map(async (postId) => {
+          const post = await this.deps.postRepo.findById(postId)
+          return [postId, post && isPubliclyVisibleContent(post) ? post : null] as const
+        }),
+      ))
+        .filter((entry): entry is readonly [string, NonNullable<(typeof entry)[1]>] => entry[1] !== null),
+    )
+    const visibleThreads = threads.filter((thread) => visiblePostById.has(thread.post_id))
+    if (visibleThreads.length === 0) {
+      return new Map()
+    }
+
+    const allTurns = (await this.deps.publicStageTurnRepo.findByThreads(visibleThreads.map((thread) => thread.id)))
+      .filter((turn) => isPubliclyVisibleContent(turn))
+    const turnsByThreadId = new Map<string, typeof allTurns>()
+    for (const turn of allTurns) {
+      if (!turnsByThreadId.has(turn.thread_id)) {
+        turnsByThreadId.set(turn.thread_id, [])
+      }
+      turnsByThreadId.get(turn.thread_id)!.push(turn)
+    }
+
+    const authorCache = new Map<string, Promise<AuthorSummary>>()
+    const bundles = await Promise.all(visibleThreads.map(async (thread) => {
+      const threadTurns = turnsByThreadId.get(thread.id) ?? []
+      const matchingTurns = this.findMatchingVisibleTurnsFromList(
+        threadTurns,
+        opts?.query,
+        Math.ceil(turnLimit / 2),
+      )
+      const recentTurns = threadTurns.slice(-turnLimit)
+      const turns = this.buildThreadSearchCardTurns(matchingTurns, recentTurns, turnLimit)
+      const visibleTurnById = await this.buildVisibleTurnById(turns)
+      const author = await this.resolveAuthorCached(authorCache, thread)
+      const turnPreviews = await this.buildSearchTurnPreviews(turns, {
+        authorCache,
+        visibleTurnById,
+      })
+      const participantIds = new Set<string>([
+        this.buildPublicActorKey(thread),
+        ...threadTurns.map((turn) => this.buildPublicActorKey(turn)),
+      ])
+      const lastTurn = recentTurns[recentTurns.length - 1] ?? turns[turns.length - 1] ?? null
+
+      return [thread.id, {
+        id: thread.id,
+        post_id: thread.post_id,
+        community_id: thread.community_id,
+        body: thread.body,
+        visibility: thread.visibility,
+        state: thread.state,
+        created_at: thread.created_at,
+        updated_at: thread.updated_at,
+        author,
+        turn_count: threadTurns.length,
+        participant_count: participantIds.size,
+        last_activity_at: lastTurn?.created_at ?? thread.created_at,
+        turns: turnPreviews,
+      }] as const
+    }))
+
+    return new Map(bundles)
   }
 
   private async buildThreadLocalProjectionBundle(

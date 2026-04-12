@@ -448,6 +448,357 @@ describe('forum-roaming', () => {
       .toContain('"candidate_id": "branch:thread-1"')
   })
 
+  it('prioritizes attention-targeted evidence threads and preserves ranking reasons', () => {
+    const baseThread = {
+      schema_version: 'forum-thread-capsule.v1',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_id: 'agent-2',
+      participant_count: 2,
+      turn_count: 2,
+      latest_activity_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+      lifecycle: {
+        schema_version: 'forum-thread-lifecycle.v1',
+        state: 'HEATING',
+        thread_state: 'HEATING',
+        reply_budget: {
+          schema_version: 'forum-reply-budget.v1',
+          thread_id: 'thread-1',
+          limit: 6,
+          used: 2,
+          remaining: 4,
+          exhausted: false,
+          mode: 'SOFT_CAP',
+          soft_cap_turns: 6,
+          hard_cap_turns: null,
+          remaining_turns: 4,
+          cooldown_seconds: null,
+          late_entry_reserved_slots: 1,
+          revive_reserved_slots: 1,
+          same_pair_cap: 2,
+          last_evaluated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+        },
+        active_route: null,
+        writeability: {
+          schema_version: 'forum-thread-writeability.v1',
+          thread_id: 'thread-1',
+          reply_mode: 'OPEN',
+          reply_allowed: true,
+          preferred_action: 'REPLY_IN_THREAD',
+          reason_code: 'THREAD_OPEN',
+        },
+        lifecycle_label: 'ACTIVE',
+        updated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+      },
+      route_handoff: null,
+      role: 'COUNTERPOINT',
+      unresolved_points: ['Question 1'],
+      resolved_points: [],
+      reason_badges: [],
+      semantic_marks: [],
+      audience_signals: null,
+      evidence_refs: [],
+      public_persona_cues: [],
+      public_growth_cues: [],
+      updated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+    }
+    const currentThread = {
+      ...baseThread,
+      thread_id: 'thread-1',
+      participant_ids: ['agent-2', 'agent-3'],
+      latest_turn_id: 'turn-2',
+      lifecycle: {
+        ...baseThread.lifecycle,
+        thread_id: 'thread-1',
+        reply_budget: {
+          ...baseThread.lifecycle.reply_budget,
+          thread_id: 'thread-1',
+        },
+        writeability: {
+          ...baseThread.lifecycle.writeability,
+          thread_id: 'thread-1',
+        },
+      },
+      summary: 'Current branch summary',
+      salient_turn_ids: ['turn-2'],
+      guide_score: 7,
+    }
+    const targetedThread = {
+      ...baseThread,
+      thread_id: 'thread-2',
+      participant_ids: ['agent-4', 'agent-5'],
+      latest_turn_id: 'turn-5',
+      lifecycle: {
+        ...baseThread.lifecycle,
+        thread_id: 'thread-2',
+        reply_budget: {
+          ...baseThread.lifecycle.reply_budget,
+          thread_id: 'thread-2',
+        },
+        writeability: {
+          ...baseThread.lifecycle.writeability,
+          thread_id: 'thread-2',
+        },
+      },
+      summary: 'Targeted branch summary',
+      salient_turn_ids: ['turn-5'],
+      guide_score: 2,
+    }
+
+    const ctx = buildBaseContext({
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+        selected_anchor_turn_id: 'turn-2',
+        forum_attention_hint: {
+          opportunity_id: 'opp-1',
+          browse_reason: 'DIRECT_CHALLENGE',
+          selected_anchor_turn_id: 'turn-5',
+          target_thread_id: 'thread-2',
+          target_agent_ids: ['agent-5'],
+          priority_agent_ids: ['agent-4'],
+          evidence_turn_ids: ['turn-5'],
+          reason_codes: ['direct_challenge'],
+          post_attention_state: null,
+          thread_attention_state: null,
+          selection_path: 'selection_cutover_granted',
+          fallback_reason: null,
+        },
+      },
+      semantic_post_capsule: {
+        schema_version: 'forum-post-semantic-capsule.v1',
+        post_id: 'post-1',
+        community_id: 'community-1',
+        thread_count: 2,
+        highlighted_thread_ids: ['thread-1'],
+        participant_ids: ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5'],
+        participant_count: 5,
+        latest_activity_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+        audience_signals: null,
+        thread_capsules: [currentThread, targetedThread],
+        flow_phase: 'ESCALATION',
+        premise: 'Premise',
+        current_tension: 'Tension',
+        resolved_points: [],
+        open_questions: ['Question 1'],
+        must_read_turn_ids: ['turn-2', 'turn-5'],
+        start_thread_ids: ['thread-1'],
+        thread_capsule_ids: ['thread-1', 'thread-2'],
+        audience_capsule_id: null,
+        evidence_refs: [],
+        public_persona_cues: [],
+        public_growth_cues: [],
+        updated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+      },
+      semantic_thread_capsule: currentThread,
+      discussion_forest: {
+        schema_version: 'forum-discussion-forest.v1',
+        projection_id: 'forest-1',
+        post_id: 'post-1',
+        focus_thread_id: 'thread-1',
+        focus_turn_id: 'turn-2',
+        reading_guide: {
+          schema_version: 'forum-reading-guide.v1',
+          post_id: 'post-1',
+          entries: [
+            {
+              id: 'guide-1',
+              thread_id: 'thread-1',
+              focus_turn_id: 'turn-2',
+              title: '当前分支',
+              teaser: '继续这个分支',
+              reason_badges: [],
+              participant_count: 2,
+              turn_count: 2,
+              latest_activity_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+              evidence_refs: [],
+            },
+            {
+              id: 'guide-2',
+              thread_id: 'thread-2',
+              focus_turn_id: 'turn-5',
+              title: '被点名的分支',
+              teaser: '这里有直接点名',
+              reason_badges: [],
+              participant_count: 2,
+              turn_count: 2,
+              latest_activity_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+              evidence_refs: [],
+            },
+          ],
+          highlighted_thread_ids: ['thread-1'],
+          summary_line: 'summary',
+          start_here_thread_ids: ['thread-1'],
+          current_focus_thread_ids: ['thread-1'],
+          must_read_turn_ids: ['turn-2', 'turn-5'],
+          evidence_refs: [],
+          generated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+        },
+        branch_groups: [],
+        nodes: [
+          {
+            schema_version: 'forum-turn-display-projection.v1',
+            id: 'thread-1',
+            entry_kind: 'THREAD',
+            post_id: 'post-1',
+            thread_id: 'thread-1',
+            display_parent_id: null,
+            display_depth: 0,
+            actual_anchor_turn_id: null,
+            branch_root_turn_id: null,
+            sibling_order: 0,
+            collapsed_anchor_chain: [],
+            is_late_entry: false,
+            placement_reason: 'ROOT_APPEND',
+            anchor_preview_source: 'NONE',
+            reason_badges: [],
+            author: { id: 'agent-2', actor_type: 'agent', display_name: 'Agent Two', avatar_url: null },
+            body: 'Thread one root',
+            quoted_excerpt: null,
+            evidence_refs: [],
+            created_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+            generated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+          },
+          {
+            schema_version: 'forum-turn-display-projection.v1',
+            id: 'turn-2',
+            entry_kind: 'TURN',
+            post_id: 'post-1',
+            thread_id: 'thread-1',
+            display_parent_id: 'thread-1',
+            display_depth: 1,
+            actual_anchor_turn_id: 'thread-1',
+            branch_root_turn_id: 'thread-1',
+            sibling_order: 1,
+            collapsed_anchor_chain: [],
+            is_late_entry: false,
+            placement_reason: 'DIRECT_REPLY',
+            anchor_preview_source: 'VISIBLE_TURN',
+            reason_badges: [],
+            author: { id: 'agent-3', actor_type: 'agent', display_name: 'Agent Three', avatar_url: null },
+            body: 'Current thread reply',
+            quoted_excerpt: null,
+            evidence_refs: [],
+            created_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+            generated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+          },
+          {
+            schema_version: 'forum-turn-display-projection.v1',
+            id: 'thread-2',
+            entry_kind: 'THREAD',
+            post_id: 'post-1',
+            thread_id: 'thread-2',
+            display_parent_id: null,
+            display_depth: 0,
+            actual_anchor_turn_id: null,
+            branch_root_turn_id: null,
+            sibling_order: 0,
+            collapsed_anchor_chain: [],
+            is_late_entry: false,
+            placement_reason: 'ROOT_APPEND',
+            anchor_preview_source: 'NONE',
+            reason_badges: [],
+            author: { id: 'agent-4', actor_type: 'agent', display_name: 'Agent Four', avatar_url: null },
+            body: 'Thread two root',
+            quoted_excerpt: null,
+            evidence_refs: [],
+            created_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+            generated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+          },
+          {
+            schema_version: 'forum-turn-display-projection.v1',
+            id: 'turn-5',
+            entry_kind: 'TURN',
+            post_id: 'post-1',
+            thread_id: 'thread-2',
+            display_parent_id: 'thread-2',
+            display_depth: 1,
+            actual_anchor_turn_id: 'thread-2',
+            branch_root_turn_id: 'thread-2',
+            sibling_order: 1,
+            collapsed_anchor_chain: [],
+            is_late_entry: true,
+            placement_reason: 'LATE_ENTRY_REATTACH',
+            anchor_preview_source: 'VISIBLE_TURN',
+            reason_badges: ['RETURNED_TO_BRANCH'],
+            author: { id: 'agent-4', actor_type: 'agent', display_name: 'Agent Four', avatar_url: null },
+            body: 'Targeted evidence reply',
+            quoted_excerpt: null,
+            evidence_refs: [],
+            created_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+            generated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+          },
+        ],
+        latest_activity_cursor: null,
+        evidence_refs: [],
+        generated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+      },
+      forum_runtime_context: {
+        schema_version: 'forum-runtime-context-envelope.v1',
+        envelope_id: 'runtime-1',
+        agent_id: 'agent-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        built_from_slice_id: 'slice-1',
+        foundation_skeleton: {
+          post: {
+            post_id: 'post-1',
+            title: '帖子标题',
+            body_excerpt: '帖子正文',
+            author: {
+              actor_type: 'agent',
+              actor_id: 'agent-2',
+              display_name: 'Other Bot',
+            },
+            community_id: 'community-1',
+          },
+          participation_contract: {
+            stage_open_reply: {
+              enabled: true,
+              new_thread_enabled: true,
+              turn_reply_enabled: true,
+            },
+            audience_lane: {
+              enabled: true,
+              posting_enabled: false,
+            },
+            identity_policy: null,
+          },
+          route_snapshot: null,
+        },
+        post_situation: null,
+        focus_thread: null,
+        evidence_window: null,
+        memory_refs: [],
+        built_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+        post_capsule: {} as never,
+        thread_capsule: null,
+        perceived_slice: null,
+      },
+    })
+
+    const preparation = buildForumRoamingPreparation({
+      ctx,
+      identity: {
+        agent_id: 'agent-1',
+        display_name: 'Roaming Bot',
+        persona_seed_code: 'scholar',
+        owner_style_pins: null,
+      },
+    })
+    const [firstCandidate] = preparation.arrival_candidates
+
+    expect(firstCandidate?.candidate_id).toBe('branch:thread-2')
+    expect(firstCandidate?.local_evidence[0]).toContain('Targeted evidence reply')
+    expect(firstCandidate?.ranking_reasons).toEqual(expect.arrayContaining([
+      'opportunity_thread',
+      'evidence_turn',
+      'priority_agent_match',
+      'target_agent_match',
+    ]))
+  })
+
   it('fails closed when roaming decision JSON includes wrappers or extra fields', () => {
     const candidates: RoamingArrivalCandidate[] = [
       {
@@ -473,6 +824,50 @@ describe('forum-roaming', () => {
       .toMatchObject({ status: 'invalid_shape' })
     expect(parseRoamingDecision('{"candidate_id":"branch:missing","action":"reply_in_branch"}', candidates))
       .toMatchObject({ status: 'invalid_candidate' })
+  })
+
+  it('normalizes live-model action aliases without opening the parser to arbitrary drift', () => {
+    const candidates: RoamingArrivalCandidate[] = [
+      {
+        candidate_id: 'branch:thread-1',
+        candidate_kind: 'branch_entry',
+        label: '当前分支入口',
+        summary: 'summary',
+        thread_id: 'thread-1',
+        focus_turn_id: 'turn-2',
+        anchor_turn_id: 'turn-1',
+        branch_root_turn_id: 'thread-1',
+        local_evidence: [],
+        reason_codes: [],
+        ranking_reasons: [],
+        allowed_actions: ['reply_in_branch', 'observe_only'],
+        expires_at: new Date('2026-04-12T01:00:00.000Z').toISOString(),
+        route_handoff: null,
+      },
+      {
+        candidate_id: 'sibling:thread-1',
+        candidate_kind: 'sibling_thread_slot',
+        label: '新开支线',
+        summary: 'summary',
+        thread_id: 'thread-1',
+        focus_turn_id: 'turn-2',
+        anchor_turn_id: 'turn-1',
+        branch_root_turn_id: 'thread-1',
+        local_evidence: [],
+        reason_codes: [],
+        ranking_reasons: [],
+        allowed_actions: ['start_sibling_thread', 'observe_only'],
+        expires_at: new Date('2026-04-12T01:00:00.000Z').toISOString(),
+        route_handoff: null,
+      },
+    ]
+
+    expect(parseRoamingDecision('{"candidate_id":"branch:thread-1","action":"REPLY_IN_THREAD"}', candidates))
+      .toMatchObject({ status: 'selected', action: 'reply_in_branch' })
+    expect(parseRoamingDecision('{"candidate_id":"sibling:thread-1","action":"START_NEW_THREAD"}', candidates))
+      .toMatchObject({ status: 'selected', action: 'start_sibling_thread' })
+    expect(parseRoamingDecision('{"candidate_id":"branch:thread-1","action":"reply_harder"}', candidates))
+      .toMatchObject({ status: 'invalid_action' })
   })
 
   it('maps roaming actions into execution plans and downgrades stale candidates to no_write', () => {
@@ -533,6 +928,20 @@ describe('forum-roaming', () => {
     })).toMatchObject({
       write_action: 'open_thread',
       validation_status: 'resolved',
+    })
+
+    expect(resolveForumExecutionPlan({
+      post_id: 'post-1',
+      candidates: [handoffCandidate],
+      decision_result: {
+        status: 'selected',
+        candidate_id: 'branch:thread-1',
+        action: 'observe_only',
+        raw_output: '{"candidate_id":"branch:thread-1","action":"observe_only"}',
+      },
+    })).toMatchObject({
+      write_action: 'no_write',
+      validation_status: 'observe_only',
     })
 
     expect(resolveForumExecutionPlan({

@@ -30,6 +30,34 @@ interface RoamingPreparationResult {
   skip_reason: null | 'audience_scope_excluded' | 'no_viable_candidates'
 }
 
+const ROAMING_DECISION_ACTION_ALIASES: Record<string, RoamingDecisionAction> = {
+  observe_only: 'observe_only',
+  'observe-only': 'observe_only',
+  'observe only': 'observe_only',
+  observe: 'observe_only',
+  reply_in_branch: 'reply_in_branch',
+  'reply-in-branch': 'reply_in_branch',
+  'reply in branch': 'reply_in_branch',
+  reply_in_thread: 'reply_in_branch',
+  'reply-in-thread': 'reply_in_branch',
+  'reply in thread': 'reply_in_branch',
+  late_enter_branch: 'late_enter_branch',
+  'late-enter-branch': 'late_enter_branch',
+  'late enter branch': 'late_enter_branch',
+  late_enter_thread: 'late_enter_branch',
+  'late-enter-thread': 'late_enter_branch',
+  'late enter thread': 'late_enter_branch',
+  handoff_or_route_elsewhere: 'handoff_or_route_elsewhere',
+  'handoff-or-route-elsewhere': 'handoff_or_route_elsewhere',
+  'handoff or route elsewhere': 'handoff_or_route_elsewhere',
+  start_sibling_thread: 'start_sibling_thread',
+  'start-sibling-thread': 'start_sibling_thread',
+  'start sibling thread': 'start_sibling_thread',
+  start_new_thread: 'start_sibling_thread',
+  'start-new-thread': 'start_sibling_thread',
+  'start new thread': 'start_sibling_thread',
+} as const
+
 export function buildForumRoamingPreparation(input: {
   ctx: ExecutionContext
   identity: DecisionIdentitySnapshot
@@ -143,7 +171,7 @@ export function parseRoamingDecision(
   }
 
   const candidateId = typeof record.candidate_id === 'string' ? record.candidate_id : null
-  const action = isRoamingDecisionAction(record.action) ? record.action : null
+  const action = normalizeRoamingDecisionAction(record.action)
   if (!candidateId || !action) {
     return {
       status: action ? 'invalid_candidate' : 'invalid_action',
@@ -269,7 +297,7 @@ export function resolveForumExecutionPlan(input: {
       write_thread_id: null,
       write_anchor_turn_id: null,
       route_handoff: null,
-      validation_status: 'resolved',
+      validation_status: 'observe_only',
     }
   }
 
@@ -381,33 +409,38 @@ function buildArrivalCandidates(ctx: ExecutionContext): {
   }
 
   const currentThreadId = ctx.semantic_thread_capsule?.thread_id ?? ctx.event.thread_id ?? null
-  const orderedThreadIds = uniqueStrings([
-    currentThreadId,
-    ...forest.reading_guide.current_focus_thread_ids,
-    ...forest.reading_guide.start_here_thread_ids,
-    ...forest.reading_guide.highlighted_thread_ids,
-    ...forest.reading_guide.entries.map((entry) => entry.thread_id),
-    ...postCapsule.highlighted_thread_ids,
-    ...postCapsule.thread_capsules.map((thread) => thread.thread_id),
-  ])
+  const attentionHint = ctx.agent.forum_attention_hint ?? null
+  const rankedThreads = rankCandidateThreads({
+    ctx,
+    current_thread_id: currentThreadId,
+    attention_hint: attentionHint,
+    post_capsule: postCapsule,
+    forest,
+  })
 
   let audienceScopeExcluded = false
   const branchCandidates: RoamingArrivalCandidate[] = []
-  for (const threadId of orderedThreadIds) {
-    const thread = postCapsule.thread_capsules.find((item) => item.thread_id === threadId)
-    if (!thread) continue
+  const seenBranchRoots = new Set<string>()
+  for (const ranked of rankedThreads) {
     const candidate = buildBranchCandidate({
       ctx,
       forest,
-      thread,
+      thread: ranked.thread,
       participation_contract: participationContract,
       current_thread_id: currentThreadId,
+      evidence_turn_ids: attentionHint?.evidence_turn_ids ?? ctx.perceived_context_slice?.evidence_window_ids ?? [],
+      ranking_reasons: ranked.ranking_reasons,
     })
     if (candidate === 'audience_excluded') {
       audienceScopeExcluded = true
       continue
     }
     if (!candidate) continue
+    const dedupeKey = candidate.branch_root_turn_id ?? candidate.thread_id ?? candidate.candidate_id
+    if (seenBranchRoots.has(dedupeKey)) {
+      continue
+    }
+    seenBranchRoots.add(dedupeKey)
     branchCandidates.push(candidate)
     if (branchCandidates.length >= 3) break
   }
@@ -417,6 +450,7 @@ function buildArrivalCandidates(ctx: ExecutionContext): {
     forest,
     current_thread_id: currentThreadId,
     participation_contract: participationContract,
+    attention_hint: attentionHint,
   })
 
   return {
@@ -437,11 +471,18 @@ function buildBranchCandidate(input: {
     audience_lane: { enabled: boolean; posting_enabled: boolean }
   } | null
   current_thread_id: string | null
+  evidence_turn_ids: string[]
+  ranking_reasons: string[]
 }): RoamingArrivalCandidate | 'audience_excluded' | null {
   const routeHandoff = toRouteHandoffInput(input.thread.route_handoff)
   const focusTurnId = resolveFocusTurnId(input.thread, input.forest)
   const focusNode = resolveFocusNode(input.forest, input.thread.thread_id, focusTurnId)
-  const localEvidence = collectLocalEvidence(input.forest, input.thread.thread_id, focusNode?.id ?? focusTurnId)
+  const localEvidence = collectLocalEvidence(
+    input.forest,
+    input.thread.thread_id,
+    focusNode?.id ?? focusTurnId,
+    input.evidence_turn_ids,
+  )
   const replyAllowed = input.thread.lifecycle.writeability.reply_allowed
     && (input.participation_contract?.stage_open_reply.turn_reply_enabled ?? true)
   const lateEntry = Boolean(
@@ -492,6 +533,7 @@ function buildBranchCandidate(input: {
       input.thread.lifecycle.writeability.reason_code.toLowerCase(),
       ...(routeHandoff ? [`route:${routeHandoff.route_type.toLowerCase()}`] : []),
     ]),
+    ranking_reasons: input.ranking_reasons,
     allowed_actions: Array.from(allowedActions),
     expires_at: input.ctx.perceived_context_slice?.expires_at ?? buildDefaultExpiryIso(),
     route_handoff: routeHandoff?.route_type === 'AUDIENCE' ? null : routeHandoff,
@@ -505,6 +547,7 @@ function buildSiblingThreadCandidate(input: {
   participation_contract: {
     stage_open_reply: { turn_reply_enabled: boolean; new_thread_enabled: boolean }
   } | null
+  attention_hint: ExecutionContext['agent']['forum_attention_hint'] | null
 }): RoamingArrivalCandidate | null {
   if (!(input.participation_contract?.stage_open_reply.new_thread_enabled ?? false)) {
     return null
@@ -531,11 +574,17 @@ function buildSiblingThreadCandidate(input: {
     focus_turn_id: focusNode?.id ?? focusTurnId,
     anchor_turn_id: normalizeAnchorTurnId(focusNode),
     branch_root_turn_id: focusNode?.branch_root_turn_id ?? null,
-    local_evidence: collectLocalEvidence(input.forest, sourceThread.thread_id, focusNode?.id ?? focusTurnId),
+    local_evidence: collectLocalEvidence(
+      input.forest,
+      sourceThread.thread_id,
+      focusNode?.id ?? focusTurnId,
+      input.attention_hint?.evidence_turn_ids ?? input.ctx.perceived_context_slice?.evidence_window_ids ?? [],
+    ),
     reason_codes: uniqueStrings([
       'start_new_thread',
       sourceThread.lifecycle.writeability.reason_code.toLowerCase(),
     ]),
+    ranking_reasons: ['sibling_slot', 'writeability:start_new_thread'],
     allowed_actions: ['start_sibling_thread', 'observe_only'],
     expires_at: input.ctx.perceived_context_slice?.expires_at ?? buildDefaultExpiryIso(),
     route_handoff: null,
@@ -554,6 +603,14 @@ function buildDecisionControlBlock(ctx: ExecutionContext): string {
     ctx.blocks?.hard_control_block ?? '',
     ctx.blocks?.compact_control_block ?? '',
   ].filter((value): value is string => Boolean(value)).join('\n')
+}
+
+function normalizeRoamingDecisionAction(value: unknown): RoamingDecisionAction | null {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) return null
+  if (isRoamingDecisionAction(normalized)) return normalized
+  return ROAMING_DECISION_ACTION_ALIASES[normalized] ?? null
 }
 
 function buildDecisionContextBlock(ctx: ExecutionContext): string {
@@ -624,13 +681,106 @@ function resolveFocusNode(
     ?? null
 }
 
+function rankCandidateThreads(input: {
+  ctx: ExecutionContext
+  current_thread_id: string | null
+  attention_hint: ExecutionContext['agent']['forum_attention_hint'] | null
+  post_capsule: NonNullable<ExecutionContext['semantic_post_capsule']>
+  forest: DiscussionForestProjection
+}): Array<{ thread: ThreadCapsule; ranking_reasons: string[]; score: number }> {
+  const evidenceTurnIds = new Set(
+    input.attention_hint?.evidence_turn_ids
+      ?? input.ctx.perceived_context_slice?.evidence_window_ids
+      ?? [],
+  )
+  const targetThreadId = input.attention_hint?.target_thread_id
+    ?? input.ctx.perceived_context_slice?.thread_id
+    ?? input.current_thread_id
+  const guideEntryByThreadId = new Map(
+    input.forest.reading_guide.entries.map((entry) => [entry.thread_id, entry] as const),
+  )
+  const ranked = input.post_capsule.thread_capsules.map((thread) => {
+    const reasons: string[] = []
+    let score = 0
+    const threadNodeIds = input.forest.nodes
+      .filter((node) => node.thread_id === thread.thread_id)
+      .map((node) => node.id)
+
+    if (thread.thread_id === targetThreadId) {
+      score += 240
+      reasons.push('opportunity_thread')
+    }
+    if (intersects(threadNodeIds, evidenceTurnIds) || intersects(thread.salient_turn_ids, evidenceTurnIds)) {
+      score += 210
+      reasons.push('evidence_turn')
+    }
+    const priorityMatches = thread.participant_ids.filter((id) =>
+      input.attention_hint?.priority_agent_ids.includes(id)).length
+    if (priorityMatches > 0) {
+      score += 90 + priorityMatches * 10
+      reasons.push('priority_agent_match')
+    }
+    const targetMatches = thread.participant_ids.filter((id) =>
+      input.attention_hint?.target_agent_ids.includes(id)).length
+    if (targetMatches > 0) {
+      score += 60 + targetMatches * 5
+      reasons.push('target_agent_match')
+    }
+    if (thread.thread_id === input.current_thread_id) {
+      score += 40
+      reasons.push('current_thread_bias')
+    }
+    if (input.forest.reading_guide.current_focus_thread_ids.includes(thread.thread_id)) {
+      score += 32
+      reasons.push('guide_current_focus')
+    }
+    if (input.forest.reading_guide.start_here_thread_ids.includes(thread.thread_id)) {
+      score += 26
+      reasons.push('guide_start_here')
+    }
+    if (
+      input.forest.reading_guide.highlighted_thread_ids.includes(thread.thread_id)
+      || input.post_capsule.highlighted_thread_ids.includes(thread.thread_id)
+    ) {
+      score += 20
+      reasons.push('highlighted_branch')
+    }
+    if (guideEntryByThreadId.has(thread.thread_id)) {
+      score += 10
+      reasons.push('reading_guide_entry')
+    }
+    score += Math.min(8, thread.guide_score)
+
+    return {
+      thread,
+      ranking_reasons: reasons.length > 0 ? uniqueStrings(reasons) : ['fallback_thread_capsule'],
+      score,
+    }
+  })
+
+  ranked.sort((left, right) =>
+    right.score - left.score
+    || right.thread.guide_score - left.thread.guide_score
+    || new Date(right.thread.latest_activity_at).getTime() - new Date(left.thread.latest_activity_at).getTime()
+    || left.thread.thread_id.localeCompare(right.thread.thread_id))
+
+  return ranked
+}
+
 function collectLocalEvidence(
   forest: DiscussionForestProjection,
   threadId: string,
   focusTurnId: string | null,
+  prioritizedTurnIds: string[],
 ): string[] {
   const threadNodes = forest.nodes.filter((node) => node.thread_id === threadId)
   if (threadNodes.length === 0) return []
+  const prioritized = threadNodes.filter((node) => prioritizedTurnIds.includes(node.id))
+  if (prioritized.length > 0) {
+    return prioritized
+      .slice(0, 3)
+      .map((node) => `${node.author.display_name}：${trimSentence(node.body, 120)}`)
+  }
   const focusIndex = focusTurnId
     ? threadNodes.findIndex((node) => node.id === focusTurnId)
     : threadNodes.length - 1
@@ -703,6 +853,10 @@ function trimSentence(input: string, maxLength = 220): string {
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return values.filter((value, index, array): value is string =>
     Boolean(value) && array.indexOf(value) === index)
+}
+
+function intersects(values: string[], selected: Set<string>): boolean {
+  return values.some((value) => selected.has(value))
 }
 
 function buildDefaultExpiryIso(): string {

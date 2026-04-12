@@ -103,6 +103,11 @@ describe('E2E: Governance Control Plane', () => {
           shadow: expect.any(Boolean),
           selection_cutover: expect.any(Boolean),
           envelope_cutover: expect.any(Boolean),
+          fallback_counters: expect.any(Object),
+          no_write_counters: expect.any(Object),
+          selection_path_counts: expect.any(Object),
+          recent_fallback_samples: expect.any(Array),
+          recent_no_write_samples: expect.any(Array),
         }),
       )
       expect(res.body.data.guidance).toEqual(

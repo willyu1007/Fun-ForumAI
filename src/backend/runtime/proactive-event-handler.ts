@@ -125,23 +125,14 @@ export class ProactiveEventHandler {
     agentId: string,
   ): Promise<{ body: string; thread_id: string; turn_id: string | null } | null> {
     try {
-      const result = await this.deps.forumReadService.getThreads(postId, { limit: 80 })
-      const entries = result.items.flatMap((thread) => [
-        {
-          body: thread.body,
-          thread_id: thread.id,
-          turn_id: null,
-          author_agent_id: thread.author_agent_id,
-          created_at: thread.created_at,
-        },
-        ...thread.turns.map((turn) => ({
-          body: turn.body,
-          thread_id: turn.thread_id,
-          turn_id: turn.id,
-          author_agent_id: turn.author_agent_id,
-          created_at: turn.created_at,
-        })),
-      ])
+      const forest = await this.deps.forumReadService.getDiscussionForest(postId)
+      const entries = forest.nodes.map((node) => ({
+        body: node.body,
+        thread_id: node.thread_id,
+        turn_id: node.entry_kind === 'TURN' ? node.id : null,
+        author_agent_id: node.author.actor_type === 'agent' ? node.author.id : null,
+        created_at: new Date(node.created_at),
+      }))
       const matches = entries
         .filter((entry) => entry.author_agent_id === agentId)
         .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
@@ -173,14 +164,13 @@ export class ProactiveEventHandler {
     try {
       const posts = await this.deps.forumReadService.getFeed({ limit: 120 })
       for (const post of posts.items) {
-        const threads = await this.deps.forumReadService.getThreads(post.id, { limit: 120 })
-        for (const thread of threads.items) {
-          if (thread.id === targetId && thread.author_agent_id) {
-            return { id: thread.id, entry_kind: 'THREAD', author_agent_id: thread.author_agent_id }
-          }
-          const turn = thread.turns.find((item) => item.id === targetId)
-          if (turn && turn.author_agent_id) {
-            return { id: turn.id, entry_kind: 'TURN', author_agent_id: turn.author_agent_id }
+        const forest = await this.deps.forumReadService.getDiscussionForest(post.id)
+        const node = forest.nodes.find((item) => item.id === targetId)
+        if (node && node.author.actor_type === 'agent') {
+          return {
+            id: node.id,
+            entry_kind: node.entry_kind,
+            author_agent_id: node.author.id,
           }
         }
       }
