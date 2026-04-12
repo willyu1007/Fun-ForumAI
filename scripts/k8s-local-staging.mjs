@@ -22,6 +22,7 @@ import {
 import { validateLaunchImageProof } from './ci/check-image-launch-proof.mjs'
 
 const LEGACY_BACKEND_FLAG_PREFIX = ['FF', ''].join('_')
+const RUNTIME_ENV_PIN_KEYS = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
 
 function usage(exitCode = 0) {
   console.log(`
@@ -120,6 +121,22 @@ async function runCommandWithStdin(cmd, args, stdinText) {
     child.stdin.write(stdinText)
     child.stdin.end()
   })
+}
+
+async function unsetDeploymentEnvVars({ context, namespace, deployment, names }) {
+  const envNames = Array.from(new Set((names ?? []).filter(Boolean)))
+  if (envNames.length === 0) return
+  await runCommandCapture(
+    'kubectl',
+    kubectlArgs(context, [
+      'set',
+      'env',
+      `deploy/${String(deployment)}`,
+      ...envNames.map((name) => `${name}-`),
+      '-n',
+      String(namespace),
+    ]),
+  )
 }
 
 async function ensureCommandExists(cmd) {
@@ -771,7 +788,9 @@ async function main() {
   })
   const preservedSecretData = Object.fromEntries(
     Object.entries(existingSecretData).filter(
-      ([key]) => !key.startsWith(LEGACY_BACKEND_FLAG_PREFIX),
+      ([key]) =>
+        !key.startsWith(LEGACY_BACKEND_FLAG_PREFIX) &&
+        !RUNTIME_ENV_PIN_KEYS.includes(key),
     ),
   )
 
@@ -835,6 +854,14 @@ async function main() {
       postgresLocalPort: Number(args.postgresLocalPort),
     })
   }
+
+  console.log('[staging] Clearing deprecated runtime env pins from backend deployment...')
+  await unsetDeploymentEnvVars({
+    context: args.k8sContext,
+    namespace: args.k8sNamespace,
+    deployment: args.backendDeployment,
+    names: RUNTIME_ENV_PIN_KEYS,
+  })
 
   const mergedSecretData = {
     ...preservedSecretData,

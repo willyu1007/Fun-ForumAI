@@ -19,6 +19,13 @@ export const REQUIRED_LAUNCH_FRONTEND_CAPABILITIES = [
   'multimodal_agent_media',
 ]
 
+const BUILD_ENV_FLAG_DEFINITIONS = [
+  {
+    envName: 'VITE_FF_CHATROOM_STAGING_HOLD_V1',
+    proofKey: 'chatroom_staging_hold',
+  },
+]
+
 function parseArgs(args) {
   const result = {}
   for (let index = 0; index < args.length; index += 1) {
@@ -95,12 +102,23 @@ export function loadFrontendBuildProfile(profileId) {
 }
 
 export function buildFrontendCapabilityProof(profile) {
+  const buildEnvFlags = Object.fromEntries(
+    BUILD_ENV_FLAG_DEFINITIONS.flatMap(({ envName, proofKey }) => {
+      const rawValue = process.env[envName]
+      if (rawValue !== 'true' && rawValue !== 'false') {
+        return []
+      }
+      return [[proofKey, rawValue === 'true']]
+    }),
+  )
+
   return {
     version: 1,
     profile: profile.profile,
     target: profile.target,
     description: profile.description ?? '',
     frontend_capabilities: profile.frontend_capabilities,
+    build_env_flags: buildEnvFlags,
   }
 }
 

@@ -7,6 +7,7 @@ import { GovernanceTab } from './admin-panel/GovernanceTab'
 import { HotTopicTab } from './admin-panel/HotTopicTab'
 import { InviteCodesTab } from './admin-panel/InviteCodesTab'
 import { ProgrammingTab } from './admin-panel/ProgrammingTab'
+import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { useAdminPanelController } from './admin-panel/use-admin-panel-controller'
 
 export function AdminPanel() {
@@ -36,12 +37,19 @@ export function AdminPanel() {
         <div className={"flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-xs"}>
           <span>系统状态</span>
           <Badge variant="outline" className={"bg-success/10 text-success text-[10px]"}>
-            {controller.runtime.healthData.data.status === 'ok'
-              ? '正常'
-              : controller.runtime.healthData.data.status}
+            {controller.runtime.healthData.ok ? '正常' : '异常'}
           </Badge>
           <span className={"text-muted-foreground"}>
-            运行 {Math.round(controller.runtime.healthData.data.uptime)} 秒
+            app {controller.runtime.healthData.checks.app}
+          </span>
+          <span className={"text-muted-foreground"}>
+            db {controller.runtime.healthData.checks.db ?? 'skipped'}
+          </span>
+          <span className={"text-muted-foreground"}>
+            redis {controller.runtime.healthData.checks.redis ?? 'skipped'}
+          </span>
+          <span className={"text-muted-foreground"}>
+            版本 {controller.runtime.healthData.version}
           </span>
         </div>
       )}
@@ -55,6 +63,7 @@ export function AdminPanel() {
           <TabsTrigger value="feedback">意见箱</TabsTrigger>
           <TabsTrigger value="hot-topic">Hot Topic</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
+          <TabsTrigger value="warmup">Warm-up</TabsTrigger>
         </TabsList>
 
         <TabsContent value="programming" className={"mt-4"}>
@@ -63,6 +72,10 @@ export function AdminPanel() {
 
         <TabsContent value="runtime" className={"mt-4"}>
           <RuntimeDashboard />
+        </TabsContent>
+
+        <TabsContent value="warmup">
+          <WarmupGovernanceTab warmup={controller.warmup} />
         </TabsContent>
 
         <TabsContent value="hot-topic">

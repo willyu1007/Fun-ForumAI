@@ -10,21 +10,30 @@ import {
   useAdminLaunchProgrammingOps,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
+  useAdminWarmupSuiteDetail,
+  useAdminWarmupSuites,
   useApplyCommunityProposalAction,
   useApplyCommunityHotTopicPolicy,
+  useArchiveAdminWarmupSuite,
   useAssignModerationCase,
   useClaimModerationTask,
+  useCreateAdminWarmupSuite,
   useCreateDisclosureCapOverride,
   useDisclosureCaps,
+  useExecuteAdminWarmupGovernanceBatch,
   useGovernanceAction,
   useHealth,
   useIdentityReviews,
   useModerationCase,
   useModerationEvidenceExport,
   useModerationQueue,
+  usePreviewAdminWarmupGovernanceBatch,
+  useRebuildAdminWarmupSuite,
   useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
   useReopenModerationCase,
+  useReviewAdminWarmupSuite,
+  useRetryAdminWarmupSuite,
   useResolveIdentityReview,
   useResolveModerationCase,
   useRefreshCommunityProposalRecommendation,
@@ -45,6 +54,10 @@ vi.mock('../admin-panel/AdminUsersTab', () => ({
   AdminUsersTab: () => <div>Admin users tab stub</div>,
 }))
 
+vi.mock('../admin-panel/WarmupGovernanceTab', () => ({
+  WarmupGovernanceTab: () => <div>Warmup tab stub</div>,
+}))
+
 vi.mock('@/api/hooks', () => ({
   useAdminAgentRiskProfile: vi.fn(),
   useAdminCommunityProposals: vi.fn(),
@@ -53,21 +66,30 @@ vi.mock('@/api/hooks', () => ({
   useAdminLaunchProgrammingOps: vi.fn(),
   useAdminHotTopicPostDistribution: vi.fn(),
   useAdminHotTopicRoomControl: vi.fn(),
+  useAdminWarmupSuiteDetail: vi.fn(),
+  useAdminWarmupSuites: vi.fn(),
   useApplyCommunityProposalAction: vi.fn(),
   useApplyCommunityHotTopicPolicy: vi.fn(),
+  useArchiveAdminWarmupSuite: vi.fn(),
   useAssignModerationCase: vi.fn(),
   useClaimModerationTask: vi.fn(),
+  useCreateAdminWarmupSuite: vi.fn(),
   useCreateDisclosureCapOverride: vi.fn(),
   useDisclosureCaps: vi.fn(),
+  useExecuteAdminWarmupGovernanceBatch: vi.fn(),
   useGovernanceAction: vi.fn(),
   useHealth: vi.fn(),
   useIdentityReviews: vi.fn(),
   useModerationCase: vi.fn(),
   useModerationEvidenceExport: vi.fn(),
   useModerationQueue: vi.fn(),
+  usePreviewAdminWarmupGovernanceBatch: vi.fn(),
+  useRebuildAdminWarmupSuite: vi.fn(),
   useReleaseDisclosureCapOverride: vi.fn(),
   useReleaseModerationCase: vi.fn(),
   useReopenModerationCase: vi.fn(),
+  useReviewAdminWarmupSuite: vi.fn(),
+  useRetryAdminWarmupSuite: vi.fn(),
   useResolveIdentityReview: vi.fn(),
   useResolveModerationCase: vi.fn(),
   useRefreshCommunityProposalRecommendation: vi.fn(),
@@ -88,19 +110,30 @@ const useAdminHotTopicDashboardMock = vi.mocked(useAdminHotTopicDashboard)
 const useAdminLaunchProgrammingOpsMock = vi.mocked(useAdminLaunchProgrammingOps)
 const useAdminHotTopicPostDistributionMock = vi.mocked(useAdminHotTopicPostDistribution)
 const useAdminHotTopicRoomControlMock = vi.mocked(useAdminHotTopicRoomControl)
+const useAdminWarmupSuiteDetailMock = vi.mocked(useAdminWarmupSuiteDetail)
+const useAdminWarmupSuitesMock = vi.mocked(useAdminWarmupSuites)
 const useApplyCommunityProposalActionMock = vi.mocked(useApplyCommunityProposalAction)
 const useApplyCommunityHotTopicPolicyMock = vi.mocked(useApplyCommunityHotTopicPolicy)
+const useArchiveAdminWarmupSuiteMock = vi.mocked(useArchiveAdminWarmupSuite)
 const useCreateDisclosureCapOverrideMock = vi.mocked(useCreateDisclosureCapOverride)
+const useCreateAdminWarmupSuiteMock = vi.mocked(useCreateAdminWarmupSuite)
 const useDisclosureCapsMock = vi.mocked(useDisclosureCaps)
+const useExecuteAdminWarmupGovernanceBatchMock = vi.mocked(
+  useExecuteAdminWarmupGovernanceBatch,
+)
 const useGovernanceActionMock = vi.mocked(useGovernanceAction)
 const useHealthMock = vi.mocked(useHealth)
 const useIdentityReviewsMock = vi.mocked(useIdentityReviews)
 const useModerationCaseMock = vi.mocked(useModerationCase)
 const useModerationEvidenceExportMock = vi.mocked(useModerationEvidenceExport)
 const useModerationQueueMock = vi.mocked(useModerationQueue)
+const usePreviewAdminWarmupGovernanceBatchMock = vi.mocked(usePreviewAdminWarmupGovernanceBatch)
+const useRebuildAdminWarmupSuiteMock = vi.mocked(useRebuildAdminWarmupSuite)
 const useReleaseDisclosureCapOverrideMock = vi.mocked(useReleaseDisclosureCapOverride)
 const useReleaseModerationCaseMock = vi.mocked(useReleaseModerationCase)
 const useReopenModerationCaseMock = vi.mocked(useReopenModerationCase)
+const useReviewAdminWarmupSuiteMock = vi.mocked(useReviewAdminWarmupSuite)
+const useRetryAdminWarmupSuiteMock = vi.mocked(useRetryAdminWarmupSuite)
 const useResolveIdentityReviewMock = vi.mocked(useResolveIdentityReview)
 const useResolveModerationCaseMock = vi.mocked(useResolveModerationCase)
 const useRefreshCommunityProposalRecommendationMock = vi.mocked(
@@ -269,10 +302,15 @@ describe('AdminPanel', () => {
     } as never)
     useHealthMock.mockReturnValue({
       data: {
-        data: {
-          status: 'ok',
-          uptime: 123,
+        ok: true,
+        service: 'forum-api',
+        checks: {
+          app: 'ok',
+          db: 'ok',
+          redis: 'ok',
         },
+        version: 'test-build',
+        ts: '2026-04-13T00:00:00.000Z',
       },
     } as never)
     useGovernanceActionMock.mockReturnValue({
@@ -421,6 +459,41 @@ describe('AdminPanel', () => {
     } as never)
     useDisclosureCapsMock.mockReturnValue({
       data: undefined,
+    } as never)
+    useAdminWarmupSuitesMock.mockReturnValue({
+      data: { data: [] },
+    } as never)
+    useAdminWarmupSuiteDetailMock.mockReturnValue({
+      data: undefined,
+    } as never)
+    useCreateAdminWarmupSuiteMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    useReviewAdminWarmupSuiteMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    useRetryAdminWarmupSuiteMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    useRebuildAdminWarmupSuiteMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    useArchiveAdminWarmupSuiteMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    usePreviewAdminWarmupGovernanceBatchMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      data: undefined,
+    } as never)
+    useExecuteAdminWarmupGovernanceBatchMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
     } as never)
     useCreateDisclosureCapOverrideMock.mockReturnValue({
       mutateAsync: vi.fn(),

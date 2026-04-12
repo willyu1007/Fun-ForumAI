@@ -29,6 +29,15 @@ function readRequiredString(name, value) {
   throw new Error(`Missing required --${name}`)
 }
 
+function readOptionalBoolean(name, value) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return undefined
+  }
+  if (value === 'true') return true
+  if (value === 'false') return false
+  throw new Error(`--${name} must be "true" or "false"`)
+}
+
 function runDocker(args) {
   return execFileSync('docker', args, {
     encoding: 'utf8',
@@ -36,7 +45,11 @@ function runDocker(args) {
   }).trim()
 }
 
-export function validateLaunchImageProof(input, expectedProfile = 'launch') {
+export function validateLaunchImageProof(
+  input,
+  expectedProfile = 'launch',
+  expectedBuildEnvFlags = {},
+) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('frontend build proof must be a JSON object')
   }
@@ -62,9 +75,23 @@ export function validateLaunchImageProof(input, expectedProfile = 'launch') {
     )
   }
 
+  const buildEnvFlags =
+    input.build_env_flags && typeof input.build_env_flags === 'object' && !Array.isArray(input.build_env_flags)
+      ? input.build_env_flags
+      : {}
+
+  for (const [flagName, expectedValue] of Object.entries(expectedBuildEnvFlags)) {
+    if (buildEnvFlags[flagName] !== expectedValue) {
+      throw new Error(
+        `frontend build proof build_env_flags.${flagName} must be ${String(expectedValue)}, received ${String(buildEnvFlags[flagName])}`,
+      )
+    }
+  }
+
   return {
     profile: input.profile,
     enabled_capabilities: REQUIRED_LAUNCH_FRONTEND_CAPABILITIES.length,
+    build_env_flags: buildEnvFlags,
   }
 }
 
@@ -73,6 +100,10 @@ function main() {
   const imageRef = readRequiredString('image-ref', args['image-ref'])
   const expectedProfile =
     typeof args['expected-profile'] === 'string' ? args['expected-profile'].trim() : 'launch'
+  const expectedChatroomHold = readOptionalBoolean(
+    'expected-chatroom-staging-hold',
+    args['expected-chatroom-staging-hold'],
+  )
 
   const raw = runDocker([
     'run',
@@ -94,13 +125,18 @@ function main() {
     )
   }
 
-  const summary = validateLaunchImageProof(parsed, expectedProfile)
+  const summary = validateLaunchImageProof(parsed, expectedProfile, {
+    ...(typeof expectedChatroomHold === 'boolean'
+      ? { chatroom_staging_hold: expectedChatroomHold }
+      : {}),
+  })
   console.log(
     JSON.stringify(
       {
         image_ref: imageRef,
         profile: summary.profile,
         enabled_capabilities: summary.enabled_capabilities,
+        build_env_flags: summary.build_env_flags,
       },
       null,
       2,

@@ -32,6 +32,9 @@ describe('frontend static router', () => {
           home_programming: true,
           programming_ops: true,
         },
+        build_env_flags: {
+          chatroom_staging_hold: true,
+        },
       })}\n`,
       'utf8',
     )
@@ -56,6 +59,7 @@ describe('frontend static router', () => {
     expect(response.status).toBe(200)
     expect(response.headers['cache-control']).toContain('no-store')
     expect(response.body.frontend_capabilities.home_programming).toBe(true)
+    expect(response.body.build_env_flags.chatroom_staging_hold).toBe(true)
   })
 
   it('serves static assets and falls back to index.html for SPA routes', async () => {

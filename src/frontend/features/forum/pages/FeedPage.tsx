@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useHealth } from '@/api/hooks'
 import { api } from '@/api/client'
@@ -92,6 +92,14 @@ export function FeedPage() {
           onSortChange={handleSortChange}
           showSortControls
           showViewControls
+          trailingContent={
+            <Link
+              to="/recommended"
+              className="inline-flex h-8 items-center rounded-full px-2.5 text-[12px] font-medium text-muted-foreground/80 transition-colors hover:bg-foreground/8 hover:text-foreground/90"
+            >
+              推荐
+            </Link>
+          }
         />
 
         <NewContentBanner

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   useAdminAgentRiskProfile,
   useAdminCommunityProposals,
@@ -6,21 +6,30 @@ import {
   useAdminHotTopicDashboard,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
+  useAdminWarmupSuiteDetail,
+  useAdminWarmupSuites,
   useApplyCommunityProposalAction,
   useApplyCommunityHotTopicPolicy,
+  useArchiveAdminWarmupSuite,
   useAssignModerationCase,
   useClaimModerationTask,
+  useCreateAdminWarmupSuite,
   useCreateDisclosureCapOverride,
   useDisclosureCaps,
+  useExecuteAdminWarmupGovernanceBatch,
   useGovernanceAction,
   useHealth,
   useIdentityReviews,
   useModerationCase,
   useModerationEvidenceExport,
   useModerationQueue,
+  usePreviewAdminWarmupGovernanceBatch,
+  useRebuildAdminWarmupSuite,
   useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
   useReopenModerationCase,
+  useReviewAdminWarmupSuite,
+  useRetryAdminWarmupSuite,
   useResolveIdentityReview,
   useResolveModerationCase,
   useRefreshCommunityProposalRecommendation,
@@ -34,6 +43,9 @@ import type {
   GovernanceActionType,
   GovernanceResult,
   HotTopicDashboardItem,
+  WarmupGovernanceAction,
+  WarmupReviewDecision,
+  WarmupReviewReasonCode,
 } from '@/api/types'
 import { COMMUNITY_TOPIC_DOMAIN_OPTIONS, type EvidenceExportRedaction } from './constants'
 
@@ -97,6 +109,29 @@ export function useAdminPanelController() {
     useModerationEvidenceExport(selectedCaseId, evidenceExportRedaction)
   const { data: riskProfile } = useAdminAgentRiskProfile(riskProfileAgentId || null)
   const { data: disclosureCaps } = useDisclosureCaps(capScopeType, capScopeId || null)
+  const { data: warmupSuites } = useAdminWarmupSuites()
+  const createWarmupSuite = useCreateAdminWarmupSuite()
+  const reviewWarmupSuite = useReviewAdminWarmupSuite()
+  const retryWarmupSuite = useRetryAdminWarmupSuite()
+  const rebuildWarmupSuite = useRebuildAdminWarmupSuite()
+  const archiveWarmupSuite = useArchiveAdminWarmupSuite()
+  const previewWarmupGovernance = usePreviewAdminWarmupGovernanceBatch()
+  const executeWarmupGovernance = useExecuteAdminWarmupGovernanceBatch()
+  const [selectedWarmupSuiteId, setSelectedWarmupSuiteId] = useState<string | null>(null)
+  const [warmupSuiteLabel, setWarmupSuiteLabel] = useState('')
+  const [warmupTopupPosts, setWarmupTopupPosts] = useState('0')
+  const [warmupReviewDecision, setWarmupReviewDecision] =
+    useState<WarmupReviewDecision>('pass_to_active')
+  const [warmupReviewNote, setWarmupReviewNote] = useState('')
+  const [warmupReviewReasons, setWarmupReviewReasons] = useState<WarmupReviewReasonCode[]>([])
+  const [warmupGovernanceAction, setWarmupGovernanceAction] =
+    useState<WarmupGovernanceAction>('quarantine')
+  const { data: warmupSuiteDetail } = useAdminWarmupSuiteDetail(selectedWarmupSuiteId)
+
+  useEffect(() => {
+    if (selectedWarmupSuiteId || !(warmupSuites?.data?.length)) return
+    setSelectedWarmupSuiteId(warmupSuites.data[0]!.id)
+  }, [selectedWarmupSuiteId, warmupSuites])
 
   const handleSubmit = async () => {
     if (!targetId.trim()) return
@@ -213,6 +248,68 @@ export function useAdminPanelController() {
     await refreshCommunityProposalRecommendation.mutateAsync(proposalId)
   }
 
+  const toggleWarmupReason = (reasonCode: WarmupReviewReasonCode) => {
+    setWarmupReviewReasons((current) =>
+      current.includes(reasonCode)
+        ? current.filter((item) => item !== reasonCode)
+        : [...current, reasonCode],
+    )
+  }
+
+  const handleCreateWarmupSuite = async () => {
+    const response = await createWarmupSuite.mutateAsync({
+      suite_label: warmupSuiteLabel.trim() || null,
+      max_runtime_topup_posts: Number.parseInt(warmupTopupPosts, 10) || 0,
+    })
+    setSelectedWarmupSuiteId(response.data.suite_id)
+  }
+
+  const handleReviewWarmupSuite = async (confirmActivation = false) => {
+    if (!selectedWarmupSuiteId) return
+    await reviewWarmupSuite.mutateAsync({
+      suiteId: selectedWarmupSuiteId,
+      decision: warmupReviewDecision,
+      reason_codes:
+        warmupReviewDecision === 'not_passed' ? warmupReviewReasons : [],
+      note: warmupReviewNote.trim() || null,
+      confirm_activation: confirmActivation,
+    })
+  }
+
+  const handleRetryWarmupSuite = async () => {
+    if (!selectedWarmupSuiteId) return
+    await retryWarmupSuite.mutateAsync(selectedWarmupSuiteId)
+  }
+
+  const handleRebuildWarmupSuite = async () => {
+    if (!selectedWarmupSuiteId) return
+    await rebuildWarmupSuite.mutateAsync({
+      suiteId: selectedWarmupSuiteId,
+      max_runtime_topup_posts: Number.parseInt(warmupTopupPosts, 10) || 0,
+    })
+  }
+
+  const handleArchiveWarmupSuite = async () => {
+    if (!selectedWarmupSuiteId) return
+    await archiveWarmupSuite.mutateAsync(selectedWarmupSuiteId)
+  }
+
+  const handlePreviewWarmupGovernance = async () => {
+    if (!selectedWarmupSuiteId) return
+    await previewWarmupGovernance.mutateAsync({
+      action: warmupGovernanceAction,
+      suite_id: selectedWarmupSuiteId,
+    })
+  }
+
+  const handleExecuteWarmupGovernance = async () => {
+    if (!selectedWarmupSuiteId) return
+    await executeWarmupGovernance.mutateAsync({
+      action: warmupGovernanceAction,
+      suite_id: selectedWarmupSuiteId,
+    })
+  }
+
   return {
     auth: {
       currentIdentity,
@@ -299,6 +396,39 @@ export function useAdminPanelController() {
       handleApplyCommunityPolicy,
       handleSetPostDistribution,
       handleSetRoomControl,
+    },
+    warmup: {
+      suites: warmupSuites?.data ?? [],
+      selectedSuiteId: selectedWarmupSuiteId,
+      setSelectedSuiteId: setSelectedWarmupSuiteId,
+      detail: warmupSuiteDetail?.data ?? null,
+      createMutation: createWarmupSuite,
+      reviewMutation: reviewWarmupSuite,
+      retryMutation: retryWarmupSuite,
+      rebuildMutation: rebuildWarmupSuite,
+      archiveMutation: archiveWarmupSuite,
+      previewMutation: previewWarmupGovernance,
+      executeMutation: executeWarmupGovernance,
+      suiteLabel: warmupSuiteLabel,
+      setSuiteLabel: setWarmupSuiteLabel,
+      topupPosts: warmupTopupPosts,
+      setTopupPosts: setWarmupTopupPosts,
+      reviewDecision: warmupReviewDecision,
+      setReviewDecision: setWarmupReviewDecision,
+      reviewNote: warmupReviewNote,
+      setReviewNote: setWarmupReviewNote,
+      reviewReasons: warmupReviewReasons,
+      toggleReason: toggleWarmupReason,
+      governanceAction: warmupGovernanceAction,
+      setGovernanceAction: setWarmupGovernanceAction,
+      governancePreview: previewWarmupGovernance.data?.data ?? null,
+      handleCreateSuite: handleCreateWarmupSuite,
+      handleReviewSuite: handleReviewWarmupSuite,
+      handleRetrySuite: handleRetryWarmupSuite,
+      handleRebuildSuite: handleRebuildWarmupSuite,
+      handleArchiveSuite: handleArchiveWarmupSuite,
+      handlePreviewGovernance: handlePreviewWarmupGovernance,
+      handleExecuteGovernance: handleExecuteWarmupGovernance,
     },
     communityGovernance: {
       proposals: communityProposals?.data ?? [],

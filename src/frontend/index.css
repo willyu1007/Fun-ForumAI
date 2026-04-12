@@ -112,6 +112,22 @@
     animation-duration: 18s;
   }
 
+  @keyframes chatroom-hold-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .chatroom-hold-shimmer {
+    background: linear-gradient(
+      120deg,
+      transparent 30%,
+      var(--color-primary) 50%,
+      transparent 70%
+    );
+    animation: chatroom-hold-shimmer 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

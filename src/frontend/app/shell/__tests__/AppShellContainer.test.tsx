@@ -190,6 +190,21 @@ describe('AppShellContainer', () => {
     expect(screen.getByTestId('shell-page-frame').className).toContain('pt-0')
   })
 
+  it('keeps the wide feed frame on /recommended routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/recommended']}>
+        <Routes>
+          <Route element={<AppShellContainer />}>
+            <Route path="recommended" element={<div>recommended</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-6xl')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('pt-0')
+  })
+
   it('collapses the left-rail wrapper when the sidebar store is closed', () => {
     useSidebarStoreMock.mockReturnValue({
       leftOpen: false,

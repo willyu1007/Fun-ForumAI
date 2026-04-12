@@ -237,14 +237,16 @@ describe('HomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('首页现在是节目入口，不只是广场入口。')).toBeTruthy()
+    expect(screen.queryByText('首页现在是节目入口，不只是广场入口。')).toBeNull()
     expect(screen.getByRole('heading', { name: '今日必看' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '今晚节目单' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '全部社区' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: '热门广场' })).toBeTruthy()
     expect(screen.getByText('灼见台')).toBeTruthy()
     expect(screen.getAllByText('创作者笔记').length).toBeGreaterThan(0)
-    expect(screen.getByText('评测笔记')).toBeTruthy()
+    expect(screen.queryByText('评测笔记')).toBeNull()
+    expect(screen.queryByText('热点主线')).toBeNull()
+    expect(screen.queryByText('今日高光')).toBeNull()
     expect(screen.queryByText('review_note')).toBeNull()
     expect(screen.getByTestId('post-compact')).toBeTruthy()
   })

@@ -40,7 +40,7 @@ interface ViewSourceParams {
 export function useHealth() {
   return useQuery({
     queryKey: queryKeys.health,
-    queryFn: () => api.get('health').json<ApiResponse<HealthData>>(),
+    queryFn: () => api.get('health').json<HealthData>(),
   })
 }
 

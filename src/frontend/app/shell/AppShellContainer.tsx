@@ -39,7 +39,14 @@ export function AppShellContainer() {
     [pathname, search],
   )
   const routeBackedTargetKey = routeBackedTarget ? `${pathname}${search}` : null
-  const useWideFeedFrame = pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search' || pathname === '/communities' || pathname === '/highlights'
+  const useWideFeedFrame =
+    pathname === '/' ||
+    pathname === '/feed' ||
+    pathname === '/recommended' ||
+    pathname.startsWith('/c/') ||
+    pathname === '/search' ||
+    pathname === '/communities' ||
+    pathname === '/highlights'
   const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
   const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
   const useFullWidthPageFrame = pathname.startsWith('/help') || pathname === '/terms' || pathname === '/privacy' || pathname === '/feedback' || pathname === '/safety'

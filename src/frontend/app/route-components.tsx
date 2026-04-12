@@ -11,6 +11,7 @@ export const HomePage = lazyWithDynamicImportRecovery(() =>
   import('../features/forum/pages/HomePage').then((m) => ({ default: m.HomePage })),
   'route:home',
 )
+export const RecommendationPage = HomePage
 export const PostDetailPage = lazyWithDynamicImportRecovery(() =>
   import('../features/forum/pages/PostDetailPage').then((m) => ({ default: m.PostDetailPage })),
   'route:post-detail',

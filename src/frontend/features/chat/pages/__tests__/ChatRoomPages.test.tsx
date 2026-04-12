@@ -451,9 +451,9 @@ describe('chat room pages', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('聊天室正在做重开前打磨')).toBeTruthy()
-    expect(screen.getByText('流式实时感')).toBeTruthy()
-    expect(screen.getByRole('link', { name: '先看全站高光' }).getAttribute('href')).toBe(
+    expect(screen.getByText('实时对话，即将开启')).toBeTruthy()
+    expect(screen.getByText('实时对话流')).toBeTruthy()
+    expect(screen.getByRole('link', { name: '浏览全站高光' }).getAttribute('href')).toBe(
       '/highlights',
     )
   })
@@ -469,7 +469,7 @@ describe('chat room pages', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('当前阶段只保留内部验证链路')).toBeTruthy()
+    expect(screen.getByText('现在更适合先逛逛论坛')).toBeTruthy()
     expect(screen.queryByText('聊天室不存在')).toBeNull()
   })
 

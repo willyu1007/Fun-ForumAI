@@ -13,6 +13,7 @@ import type {
   AdminMediaObservabilityData,
   GuidanceRuntimeData,
   MediaRolloutControllerProfileData,
+  RuntimeBaselineAdmission,
 } from '@/api/types'
 import { useSseStatus } from '@/app/sse-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,6 +35,7 @@ interface RuntimeStats {
       bypass_active: boolean
       gated_operations: string[]
     }
+    baseline_admission?: RuntimeBaselineAdmission
   }
   scheduler: {
     lastPostAt: number
@@ -208,6 +210,7 @@ export function RuntimeDashboard() {
   const stats = adminStats?.data
   const status = devStatus?.data
   const isProdNodeEnv = stats?.runtime.node_env === 'production'
+  const baselineAdmission = stats?.runtime.baseline_admission
   const mediaRolloutData = mediaRolloutController?.data
 
   useEffect(() => {
@@ -257,6 +260,16 @@ export function RuntimeDashboard() {
             stats?.scheduler.lastPostAt
               ? `上次：${formatTime(stats.scheduler.lastPostAt)}`
               : '尚未发帖'
+          }
+        />
+        <StatCard
+          title="Baseline Gate"
+          value={baselineAdmission?.allow_public_growth ? '放量允许' : '放量关闭'}
+          variant={baselineAdmission?.allow_public_growth ? 'success' : 'muted'}
+          detail={
+            baselineAdmission
+              ? baselineAdmission.reasons[0] ?? 'baseline_ready'
+              : 'baseline admission unavailable'
           }
         />
         <StatCard

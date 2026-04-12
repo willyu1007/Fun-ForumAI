@@ -9,6 +9,11 @@ vi.mock('../DevBadgeDebugPanel', () => ({
     open ? <div data-testid="badge-debug-panel" /> : null,
 }))
 
+vi.mock('../DevFrontendFlagsPanel', () => ({
+  DevFrontendFlagsPanel: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="frontend-flags-panel" /> : null,
+}))
+
 vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
@@ -78,5 +83,21 @@ describe('DevAuthToolbar', () => {
     expect(screen.getByText('用户')).toBeTruthy()
     expect(screen.getByText('管理员')).toBeTruthy()
     expect(screen.getByRole('button', { name: '开发工具' })).toBeTruthy()
+  })
+
+  it('shows the restored VITE feature gate entry in the tools menu', () => {
+    useDevAuthToolbarStoreMock.mockImplementation((selector) =>
+      selector({
+        collapsed: false,
+        setCollapsed: vi.fn(),
+        toggleCollapsed: vi.fn(),
+      } as never),
+    )
+
+    render(<DevAuthToolbar />)
+
+    fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
+
+    expect(screen.getByText('VITE 功能门')).toBeTruthy()
   })
 })

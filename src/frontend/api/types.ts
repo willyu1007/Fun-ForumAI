@@ -1674,6 +1674,249 @@ export interface GovernanceResult {
   new_state?: ContentState
 }
 
+export type WarmupSuiteState = 'draft' | 'review_ready' | 'active' | 'archived'
+export type WarmStartBatchKind = 'kickoff' | 'warmup'
+export type WarmStartBatchState =
+  | 'draft'
+  | 'generating'
+  | 'review_ready'
+  | 'active'
+  | 'archived'
+  | 'failed'
+export type WarmupReviewDecision = 'pass_to_active' | 'not_passed'
+export type WarmupReviewReasonCode =
+  | 'content_quality'
+  | 'distribution_density'
+  | 'media_coverage'
+  | 'kickoff_invalid'
+  | 'process_issue'
+export type WarmupGovernanceAction = 'quarantine' | 'restore' | 'archive'
+
+export interface WarmupContentSample {
+  post_id: string
+  title: string
+  community_id: string
+  community_slug: string
+  community_name: string
+  visibility: ContentVisibility
+  state: ContentState
+  distribution_state: string
+  thread_count: number
+  turn_count: number
+  media_count: number
+  created_at: string
+}
+
+export interface WarmupBatchReadModel {
+  id: string
+  batch_kind: WarmStartBatchKind
+  state: WarmStartBatchState
+  source_batch_id: string | null
+  revision_key: string | null
+  package_hash: string | null
+  notes: string | null
+  activated_at: string | null
+  archived_at: string | null
+  created_at: string
+  updated_at: string
+  stats: {
+    posts: number
+    threads: number
+    turns: number
+    media: number
+    communities: number
+    media_covered_posts: number
+    media_coverage_ratio: number
+  }
+  coverage: Array<{
+    community_id: string
+    community_slug: string
+    community_name: string
+    post_count: number
+  }>
+  samples: WarmupContentSample[]
+}
+
+export interface WarmupSuiteListItem {
+  id: string
+  state: WarmupSuiteState
+  suite_label: string | null
+  created_at: string
+  updated_at: string
+  activated_at: string | null
+  archived_at: string | null
+  latest_review: {
+    id: string
+    decision: WarmupReviewDecision
+    reason_codes: WarmupReviewReasonCode[]
+    note: string | null
+    created_at: string
+  } | null
+  summary: {
+    posts: number
+    threads: number
+    turns: number
+    media: number
+    communities: number
+    media_coverage_ratio: number
+  }
+  kickoff_batch: Pick<WarmupBatchReadModel, 'id' | 'state' | 'stats'> | null
+  warmup_batch: Pick<WarmupBatchReadModel, 'id' | 'state' | 'stats'> | null
+}
+
+export interface WarmupSuiteDetail {
+  id: string
+  state: WarmupSuiteState
+  suite_label: string | null
+  created_by_user_id: string | null
+  created_at: string
+  updated_at: string
+  activated_at: string | null
+  archived_at: string | null
+  kickoff_batch_id: string | null
+  warmup_batch_id: string | null
+  latest_review: {
+    id: string
+    reviewer_user_id: string | null
+    decision: WarmupReviewDecision
+    reason_codes: WarmupReviewReasonCode[]
+    note: string | null
+    created_at: string
+    is_fresh_for_current_batches: boolean
+  } | null
+  active_baseline: {
+    id: string
+    is_current: boolean
+    previous_baseline_id: string | null
+    activated_by_user_id: string | null
+    activated_at: string
+    deactivated_at: string | null
+  } | null
+  summary: {
+    posts: number
+    threads: number
+    turns: number
+    media: number
+    communities: number
+    media_covered_posts: number
+    media_coverage_ratio: number
+  }
+  coverage: Array<{
+    community_id: string
+    community_slug: string
+    community_name: string
+    post_count: number
+  }>
+  programming_health: {
+    required_daily_outcomes: Record<string, number>
+    observed_daily_outcomes: Record<string, number>
+    daypart_readiness: Array<{
+      daypart_id: string
+      label: string
+      ok: boolean
+    }>
+    community_supply_floor: Array<{
+      community_slug: string
+      community_name: string
+      ok: boolean
+      missed_slots: number
+    }>
+    visual_ratio_ok: boolean
+    aftershow_pipeline_ok: boolean
+    warning_count: number
+    warnings: Array<{
+      code: string
+      severity: 'warn' | 'critical'
+      message: string
+      affected_daypart?: string | null
+      affected_community_slug?: string | null
+    }>
+  }
+  kickoff_batch: WarmupBatchReadModel | null
+  warmup_batch: WarmupBatchReadModel | null
+  actions: {
+    can_review: boolean
+    can_retry: boolean
+    can_rebuild: boolean
+    can_archive: boolean
+  }
+}
+
+export interface WarmupGovernancePreview {
+  action: WarmupGovernanceAction
+  suite_id: string | null
+  warm_start_batch_ids: string[]
+  scope: {
+    posts: string[]
+    threads: string[]
+    turns: string[]
+    media: string[]
+  }
+  counts: {
+    posts: number
+    threads: number
+    turns: number
+    media: number
+  }
+}
+
+export interface RuntimeBaselineAdmission {
+  active_baseline_id: string | null
+  suite_id: string | null
+  kickoff_batch_id: string | null
+  warmup_batch_id: string | null
+  has_active_baseline: boolean
+  kickoff_layer_ready: boolean
+  warmup_layer_ready: boolean
+  key_communities_ready: boolean
+  key_shelves_ready: boolean
+  media_access_ok: boolean
+  aftershow_pipeline_ok: boolean
+  last_review_decision_ok: boolean
+  worker_health_ok: boolean
+  llm_credentials_ok: boolean
+  allow_public_growth: boolean
+  reasons: string[]
+}
+
+export interface WarmupLaunchResult {
+  suite_id: string
+  suite_state: WarmupSuiteState
+  suite_label: string | null
+  kickoff_batch_id: string
+  warmup_batch_id: string
+  reused_existing_suite: boolean
+  created_posts: Array<{
+    spec_id: string
+    post_id: string
+    title: string
+    agent_id: string
+    community_id: string
+    community_slug: string
+    batch_id: string
+    batch_kind: WarmStartBatchKind
+  }>
+  skipped_posts: Array<never>
+  runtime_top_up: {
+    enabled: boolean
+    running: boolean
+    attempted: number
+    triggered: number
+    errors: string[]
+  }
+  verification: {
+    ok: boolean
+    missing: string[]
+    suite_state: WarmupSuiteState
+    batch_states: Record<'kickoff' | 'warmup', WarmStartBatchState>
+    total_candidate_posts: number
+    total_candidate_threads: number
+    total_candidate_turns: number
+    total_candidate_media: number
+    active_baseline: Omit<RuntimeBaselineAdmission, 'worker_health_ok' | 'llm_credentials_ok'>
+  }
+}
+
 export type ConfigRiskLevel = 'LOW' | 'HIGH'
 export type ConfigPatchStatus =
   | 'PROPOSED'
@@ -2145,10 +2388,18 @@ export interface AdminUserSummary {
   updatedAt: string
 }
 
+export type HealthCheckStatus = 'ok' | 'fail' | 'skipped'
+
 export interface HealthData {
-  status: string
-  timestamp: string
-  uptime: number
+  ok: boolean
+  service: string
+  checks: {
+    app: HealthCheckStatus
+    db?: HealthCheckStatus
+    redis?: HealthCheckStatus
+  }
+  version: string
+  ts: string
 }
 
 export interface PaginationParams {

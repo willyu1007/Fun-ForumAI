@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeedPage } from '../FeedPage'
 import { useHealth } from '@/api/hooks'
@@ -50,11 +51,13 @@ vi.mock('../../components/FeedToolbar', () => ({
     showSortControls,
     showViewControls,
     className,
+    trailingContent,
   }: {
     followingOnly?: boolean
     showSortControls?: boolean
     showViewControls?: boolean
     className?: string
+    trailingContent?: ReactNode
   }) => (
     <div
       data-testid="feed-toolbar"
@@ -63,6 +66,7 @@ vi.mock('../../components/FeedToolbar', () => ({
       data-class-name={className ?? ''}
     >
       {followingOnly ? 'following' : 'all'}
+      {trailingContent}
     </div>
   ),
 }))
@@ -125,6 +129,7 @@ describe('FeedPage', () => {
     expect(toolbars).toHaveLength(1)
     expect(toolbars[0].getAttribute('data-sort-controls')).toBe('true')
     expect(toolbars[0].getAttribute('data-view-controls')).toBe('true')
+    expect(screen.getByRole('link', { name: '推荐' }).getAttribute('href')).toBe('/recommended')
     expect(screen.getByTestId('page-right-rail')).toBeTruthy()
   })
 

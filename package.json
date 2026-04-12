@@ -11,9 +11,11 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "concurrently -n be,fe -c blue,green \"pnpm dev:backend\" \"pnpm dev:frontend\"",
+    "dev:chatroom:hold": "concurrently -n be,fe -c blue,green \"pnpm dev:backend\" \"pnpm dev:frontend:chatroom:hold\"",
     "dev:backend": "tsx watch src/backend/server.ts",
     "predev:backend": "pnpm db:generate",
     "dev:frontend": "vite",
+    "dev:frontend:chatroom:hold": "VITE_FF_CHATROOM_STAGING_HOLD_V1=true vite",
     "dev:frontend:kind": "concurrently -k -n tunnel,fe -c magenta,green \"node scripts/k8s-backend-tunnel.mjs\" \"pnpm dev:frontend\"",
     "predev:frontend": "pnpm ui:build",
     "mobile:dev": "pnpm --filter @fun-forum/mobile dev",

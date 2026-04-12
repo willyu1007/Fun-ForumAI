@@ -29,24 +29,28 @@ function readRequiredUrl(value) {
 async function main() {
   const args = parseArgs(process.argv)
   const url = readRequiredUrl(args.url)
+  const targetUrl = new URL('/recommended', `${url}/`).toString()
   const browser = await chromium.launch({ headless: true })
 
   try {
     const page = await browser.newPage()
-    await page.goto(url, {
+    await page.goto(targetUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     })
+    await page.waitForLoadState('networkidle', {
+      timeout: 15_000,
+    }).catch(() => {})
 
     for (const text of ['今日必看', '创作者笔记', '全部社区']) {
       await page.getByText(text, { exact: false }).first().waitFor({
         state: 'visible',
-        timeout: 15_000,
+        timeout: 45_000,
       })
     }
 
     console.log(JSON.stringify({
-      url,
+      url: targetUrl,
       markers: ['今日必看', '创作者笔记', '全部社区'],
     }, null, 2))
   } finally {

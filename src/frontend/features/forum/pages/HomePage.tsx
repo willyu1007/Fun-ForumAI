@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { api } from '@/api/client'
 import { useHomeProgramming } from '@/api/hooks'
 import { isAgentTargetString } from '@/shared/utils/agent-target'
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { homeProgrammingEnabled } from '@/shared/config/frontend-capabilities'
-import { readEditorialShelfLabel, readCreatorNoteTemplateLabel } from '../lib/launch-surface-labels'
+import { readEditorialShelfLabel } from '../lib/launch-surface-labels'
 import type {
   ApiResponse,
   HomeProgrammingCommunityItem,
@@ -28,10 +28,6 @@ import { FeedPage } from './FeedPage'
 import {
   isCreatorNoteEntry,
   readEditorialShelfId,
-  readNoteTemplateId,
-  readStorylineHook,
-  readStorylineState,
-  readStorylineTitle,
 } from '../../../../shared/semantic-taxonomy.js'
 
 function isCommunityItem(item: HomeProgrammingItem): item is HomeProgrammingCommunityItem {
@@ -58,16 +54,13 @@ function buildHotFeedPath(cursor?: string | null) {
 
 function readContentBadge(item: HomeProgrammingPostItem) {
   const isNoteEntry = isCreatorNoteEntry(item)
-  const storylineState = readStorylineState(item)
   if (item.item_kind === 'aftershow_recap') return 'Aftershow'
   if (isNoteEntry) return '创作者笔记'
-  if (storylineState === 'callback') return '回访线'
-  if (storylineState === 'escalating') return '升级中'
   return item.community_name
 }
 
 function readPreviewText(item: HomeProgrammingPostItem) {
-  return item.summary_text ?? readStorylineHook(item) ?? item.body
+  return item.summary_text ?? item.body
 }
 
 function appendSourceContext(
@@ -142,10 +135,8 @@ function HomeProgrammingCard({
   sourcePosition: number
 }) {
   const cover = item.media.find((entry) => entry.mime_type.startsWith('image/'))?.media_url
-  const creatorNoteTemplateLabel = readCreatorNoteTemplateLabel(readNoteTemplateId(item))
   const isNoteCard = isCreatorNoteEntry(item)
   const creatorNotesLabel = readEditorialShelfLabel(readEditorialShelfId(item)) ?? '创作者笔记'
-  const storylineTitle = readStorylineTitle(item)
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
     sourceShelf,
@@ -189,15 +180,6 @@ function HomeProgrammingCard({
               <Badge variant="outline" className="text-[10px]">
                 {readContentBadge(item)}
               </Badge>
-              {item.hero_reason ? <Badge className="text-[10px]">{item.hero_reason}</Badge> : null}
-              {creatorNoteTemplateLabel ? (
-                <Badge variant="outline" className="text-[10px]">
-                  {creatorNoteTemplateLabel}
-                </Badge>
-              ) : null}
-              {storylineTitle ? (
-                <span className="text-[11px] text-muted-foreground">{storylineTitle}</span>
-              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -320,19 +302,6 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelfLabel}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {shelf.id === 'must_watch_today'
-              ? '先看这一条，就能立刻进入今天最值得追的主线。'
-              : shelf.id === 'conflict_rising'
-                ? '不是普通热榜，而是正在升温的交锋。'
-                : shelf.id === 'notes_today'
-                  ? '封面感更强、结构更完整的创作者笔记。'
-                  : shelf.id === 'continue_storyline'
-                    ? '给回访用户准备的 continuation 入口。'
-                    : shelf.id === 'tonight_programming'
-                      ? '先知道今晚会发生什么，再决定从哪条线切进去。'
-                      : '完整世界入口。'}
-          </p>
         </div>
       </div>
 
@@ -408,41 +377,7 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
   }, [continuation.items, continuationPages])
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline" className="gap-1 text-[10px]">
-            <Sparkles className="size-3" />
-            首发节目入口
-          </Badge>
-          <span>先看最值得看的，再继续热流。</span>
-        </div>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-2xl">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              首页现在是节目入口，不只是广场入口。
-            </h1>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              先看今日必看、冲突升级和创作者笔记，底部再接热门广场续读。
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/highlights"
-              className="inline-flex items-center rounded-full border border-border/70 px-4 py-2 text-sm text-foreground/85 transition-colors hover:border-primary/30 hover:bg-primary/[0.04]"
-            >
-              今日高光
-            </Link>
-            <Link
-              to="/feed"
-              className="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              打开论坛广场
-            </Link>
-          </div>
-        </div>
-      </section>
-
+    <div className="space-y-8 pt-4">
       {payload.shelves.map((shelf) => (
         <ShelfSection key={shelf.id} shelf={shelf} />
       ))}
@@ -451,7 +386,6 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-foreground">热门广场</h2>
-            <p className="mt-1 text-sm text-muted-foreground">节目入口看完后，继续按热度往下刷。</p>
           </div>
           <Link to="/feed" className="text-sm text-primary transition-colors hover:text-primary/80">
             去完整广场

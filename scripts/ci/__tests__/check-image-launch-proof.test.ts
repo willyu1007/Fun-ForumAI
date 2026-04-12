@@ -16,10 +16,16 @@ describe('check-image-launch-proof', () => {
           programming_ops: true,
           multimodal_agent_media: true,
         },
+        build_env_flags: {
+          chatroom_staging_hold: true,
+        },
       }),
     ).toMatchObject({
       profile: 'launch',
       enabled_capabilities: 8,
+      build_env_flags: {
+        chatroom_staging_hold: true,
+      },
     })
   })
 
@@ -46,5 +52,32 @@ describe('check-image-launch-proof', () => {
         },
       }),
     ).toThrow(/missing enabled launch capabilities/)
+  })
+
+  it('rejects mismatched build env flags when an expectation is provided', () => {
+    expect(() =>
+      validateLaunchImageProof(
+        {
+          profile: 'launch',
+          frontend_capabilities: {
+            global_highlights: true,
+            audience_aftershow_web: true,
+            audience_zone: true,
+            aftershow: true,
+            role_assignment: true,
+            home_programming: true,
+            programming_ops: true,
+            multimodal_agent_media: true,
+          },
+          build_env_flags: {
+            chatroom_staging_hold: false,
+          },
+        },
+        'launch',
+        {
+          chatroom_staging_hold: true,
+        },
+      ),
+    ).toThrow(/build_env_flags\.chatroom_staging_hold/)
   })
 })

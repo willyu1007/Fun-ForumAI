@@ -247,6 +247,7 @@ async function runStagingChecks() {
     headers: authHeaders,
   })
   const workerRuntime = runtimeStats.body?.data?.runtime ?? null
+  const baselineAdmission = workerRuntime?.baseline_admission ?? null
   const runtimeRunning = workerRuntime?.running === true
   pushResult(
     'Worker runtime running',
@@ -274,6 +275,34 @@ async function runStagingChecks() {
     runtimeStats.status === 200 && workerRuntime?.authority_state?.debug_signals_present !== true,
     runtimeStats.status === 200
       ? `debug_signals_present=${String(workerRuntime?.authority_state?.debug_signals_present)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker active baseline present',
+    runtimeStats.status === 200 && baselineAdmission?.has_active_baseline === true,
+    runtimeStats.status === 200
+      ? `has_active_baseline=${String(baselineAdmission?.has_active_baseline)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker kickoff baseline ready',
+    runtimeStats.status === 200 && baselineAdmission?.kickoff_layer_ready === true,
+    runtimeStats.status === 200
+      ? `kickoff_layer_ready=${String(baselineAdmission?.kickoff_layer_ready)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker warmup baseline ready',
+    runtimeStats.status === 200 && baselineAdmission?.warmup_layer_ready === true,
+    runtimeStats.status === 200
+      ? `warmup_layer_ready=${String(baselineAdmission?.warmup_layer_ready)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker public growth admitted',
+    runtimeStats.status === 200 && baselineAdmission?.allow_public_growth === true,
+    runtimeStats.status === 200
+      ? `allow_public_growth=${String(baselineAdmission?.allow_public_growth)} reasons=${JSON.stringify(baselineAdmission?.reasons ?? [])}`
       : `status=${runtimeStats.status}`,
   )
 

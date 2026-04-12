@@ -6,6 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import type { ReactNode } from 'react'
 import { useFeedViewStore, type FeedView } from '@/shared/stores/feed-view-store'
 import { FEED_SORT_OPTIONS, type FeedSortMode } from '@/shared/utils/feed-sort'
 import { ChevronDown, LayoutGrid, Rows3 } from 'lucide-react'
@@ -27,6 +28,7 @@ interface FeedToolbarProps {
   showSortControls?: boolean
   showViewControls?: boolean
   className?: string
+  trailingContent?: ReactNode
 }
 
 export function FeedToolbar({
@@ -38,10 +40,11 @@ export function FeedToolbar({
   showSortControls = true,
   showViewControls = true,
   className,
+  trailingContent,
 }: FeedToolbarProps) {
   const { view, setView } = useFeedViewStore()
 
-  if (!showSortControls && !showViewControls && !showFollowingOnlyToggle) {
+  if (!showSortControls && !showViewControls && !showFollowingOnlyToggle && !trailingContent) {
     return null
   }
 
@@ -51,7 +54,8 @@ export function FeedToolbar({
 
   return (
     <div className={cn('flex items-center gap-1 px-[18px] pt-1.5', className)}>
-      {showSortControls && (
+      <div className="flex items-center gap-1">
+        {showSortControls && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -80,9 +84,9 @@ export function FeedToolbar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
+        )}
 
-      {showViewControls && (
+        {showViewControls && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -115,9 +119,9 @@ export function FeedToolbar({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
+        )}
 
-      {showFollowingOnlyToggle && (
+        {showFollowingOnlyToggle && (
         <button
           type="button"
           className={cn(
@@ -131,7 +135,10 @@ export function FeedToolbar({
         >
           仅关注
         </button>
-      )}
+        )}
+      </div>
+
+      {trailingContent ? <div className="ml-auto">{trailingContent}</div> : null}
     </div>
   )
 }

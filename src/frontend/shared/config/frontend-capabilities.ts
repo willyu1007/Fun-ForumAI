@@ -1,18 +1,20 @@
+import { isFrontendFlagEnabled } from './frontend-flags'
+
 export const FRONTEND_LAUNCH_CAPABILITIES = {
   agentStatsUi: false,
-  guidance: false,
-  guidanceBell: false,
+  guidance: isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1'),
+  guidanceBell: isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1'),
   globalHighlights: true,
-  chatroomStagingHold: import.meta.env.VITE_FF_CHATROOM_STAGING_HOLD_V1 === 'true',
+  chatroomStagingHold: isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1'),
   audienceAftershowWeb: true,
   audienceZone: true,
   aftershow: true,
   roleAssignment: true,
-  homeProgramming: true,
-  programmingOps: true,
+  homeProgramming: isFrontendFlagEnabled('VITE_FF_HOME_PROGRAMMING_V1'),
+  programmingOps: isFrontendFlagEnabled('VITE_FF_PROGRAMMING_OPS_V1'),
   humanParticipation: true,
   multimodalAgentMedia: true,
-  sse: true,
+  sse: !isFrontendFlagEnabled('VITE_FF_DISABLE_SSE'),
 } as const
 
 export const agentStatsUiEnabled = FRONTEND_LAUNCH_CAPABILITIES.agentStatsUi

@@ -24,13 +24,24 @@ describe('frontend build profile', () => {
   it('emits a proof artifact and docker build args from the same profile source', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'frontend-build-profile-'))
     const outPath = join(tempDir, 'frontend-build-capabilities.json')
+    const originalChatroomHold = process.env.VITE_FF_CHATROOM_STAGING_HOLD_V1
 
-    const proof = writeFrontendCapabilityProof('launch', outPath)
-    const written = JSON.parse(readFileSync(outPath, 'utf8'))
-    const dockerBuildArgs = toDockerBuildArgs(loadFrontendBuildProfile('launch'))
+    process.env.VITE_FF_CHATROOM_STAGING_HOLD_V1 = 'true'
+    try {
+      const proof = writeFrontendCapabilityProof('launch', outPath)
+      const written = JSON.parse(readFileSync(outPath, 'utf8'))
+      const dockerBuildArgs = toDockerBuildArgs(loadFrontendBuildProfile('launch'))
 
-    expect(written).toEqual(proof)
-    expect(written.frontend_capabilities.home_programming).toBe(true)
-    expect(dockerBuildArgs).toEqual([['FRONTEND_BUILD_PROFILE', 'launch']])
+      expect(written).toEqual(proof)
+      expect(written.frontend_capabilities.home_programming).toBe(true)
+      expect(written.build_env_flags.chatroom_staging_hold).toBe(true)
+      expect(dockerBuildArgs).toEqual([['FRONTEND_BUILD_PROFILE', 'launch']])
+    } finally {
+      if (typeof originalChatroomHold === 'string') {
+        process.env.VITE_FF_CHATROOM_STAGING_HOLD_V1 = originalChatroomHold
+      } else {
+        delete process.env.VITE_FF_CHATROOM_STAGING_HOLD_V1
+      }
+    }
   })
 })

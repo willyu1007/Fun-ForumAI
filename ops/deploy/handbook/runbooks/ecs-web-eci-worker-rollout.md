@@ -29,8 +29,11 @@
 6. Verify ECS web loopback health and smoke checks.
 7. Mark `ecs_web` as applied in the desired release record.
 8. Pull and start the `worker` Compose service on the same ECS host with the same immutable image ref and `RUNTIME_ENABLED=true`.
-9. Verify worker health, queue backend, leader backend, and runtime startup logs.
-10. Mark `eci_worker` as applied in the desired release record; when both targets are applied, the desired release becomes fulfilled.
+9. Verify worker health, queue backend, leader backend, runtime startup logs, and confirm `/v1/admin/runtime/stats` reports `allow_public_growth=false` before activation.
+10. Run `pnpm launch:warm-start` against the target environment to create the candidate kickoff + warmup suite.
+11. In the admin `Warm-up` tab, review the suite, confirm `pass_to_active`, and verify that activation creates the current baseline.
+12. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+13. Confirm `/v1/admin/runtime/stats` now reports `allow_public_growth=true`, then mark `eci_worker` as applied in the desired release record.
 
 ## Staging example
 
@@ -90,10 +93,13 @@ node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target ecs_w
   - runtime queue backend matches contract
   - leader backend matches contract
   - `/v1/admin/runtime/stats` reports `runtime.enabled=true`
+  - before activation, `/v1/admin/runtime/stats` reports `baseline_admission.allow_public_growth=false`
+  - after activation, `/v1/admin/runtime/stats` reports `baseline_admission.allow_public_growth=true`
   - worker logs show runtime startup under the shared immutable image
 
 ## Launch gray-release close-out
 
-1. Run `pnpm launch:warm-start` against the target environment after the worker is healthy.
-2. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
-3. Do not open half-open traffic until both commands pass.
+1. Run `pnpm launch:warm-start` after the worker is healthy; this now creates a candidate suite instead of directly publishing public content.
+2. Review the suite in admin `Warm-up`, then confirm `pass_to_active` to create the active baseline.
+3. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+4. Do not treat runtime growth as admitted until both activation and staging verify pass.

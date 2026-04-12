@@ -33,6 +33,12 @@ import type {
   RuntimeFeaturesData,
   MediaLifecycleRunResult,
   TransferredReviewCase,
+  WarmupGovernancePreview,
+  WarmupLaunchResult,
+  WarmupReviewDecision,
+  WarmupReviewReasonCode,
+  WarmupSuiteDetail,
+  WarmupSuiteListItem,
 } from '../types'
 
 function buildDisabledRuntimeFeaturesResponse(): ApiResponse<RuntimeFeaturesData> {
@@ -169,6 +175,154 @@ export function useAdminLaunchProgrammingOps(enabled = true) {
     },
     refetchInterval: (query) => query.state.data?.data?.enabled === false ? false : 30_000,
     retry: false,
+  })
+}
+
+export function useAdminWarmupSuites() {
+  return useQuery({
+    queryKey: queryKeys.adminWarmupSuites,
+    queryFn: () => api.get('admin/warm-start/suites').json<ApiResponse<WarmupSuiteListItem[]>>(),
+    refetchInterval: 15_000,
+  })
+}
+
+export function useAdminWarmupSuiteDetail(suiteId: string | null) {
+  return useQuery({
+    queryKey: suiteId ? queryKeys.adminWarmupSuiteDetail(suiteId) : ['admin', 'warmup-suite-detail', 'idle'],
+    queryFn: () => api.get(`admin/warm-start/suites/${suiteId}`).json<ApiResponse<WarmupSuiteDetail>>(),
+    enabled: Boolean(suiteId),
+  })
+}
+
+export function useCreateAdminWarmupSuite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body?: { suite_label?: string | null; max_runtime_topup_posts?: number }) =>
+      api.post('admin/warm-start/suites', {
+        json: body ?? {},
+      }).json<ApiResponse<WarmupLaunchResult>>(),
+    onSuccess: (payload) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures })
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(payload.data.suite_id) })
+    },
+  })
+}
+
+export function useReviewAdminWarmupSuite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      suiteId: string
+      decision: WarmupReviewDecision
+      reason_codes?: WarmupReviewReasonCode[]
+      note?: string | null
+      confirm_activation?: boolean
+    }) =>
+      api.post(`admin/warm-start/suites/${input.suiteId}/review`, {
+        json: {
+          decision: input.decision,
+          reason_codes: input.reason_codes ?? [],
+          note: input.note ?? null,
+          confirm_activation: input.confirm_activation ?? false,
+        },
+      }).json<ApiResponse<{ review: { id: string }; suite: WarmupSuiteDetail }>>(),
+    onSuccess: (_response, input) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suiteId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+    },
+  })
+}
+
+export function useRetryAdminWarmupSuite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (suiteId: string) =>
+      api.post(`admin/warm-start/suites/${suiteId}/retry`, {
+        json: {},
+      }).json<ApiResponse<WarmupSuiteDetail>>(),
+    onSuccess: (_response, suiteId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(suiteId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+    },
+  })
+}
+
+export function useRebuildAdminWarmupSuite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { suiteId: string; max_runtime_topup_posts?: number }) =>
+      api.post(`admin/warm-start/suites/${input.suiteId}/rebuild`, {
+        json: {
+          max_runtime_topup_posts: input.max_runtime_topup_posts ?? 0,
+        },
+      }).json<ApiResponse<WarmupSuiteDetail>>(),
+    onSuccess: (_response, input) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suiteId) })
+    },
+  })
+}
+
+export function useArchiveAdminWarmupSuite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (suiteId: string) =>
+      api.post(`admin/warm-start/suites/${suiteId}/archive`, {
+        json: {},
+      }).json<ApiResponse<WarmupSuiteDetail>>(),
+    onSuccess: (_response, suiteId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(suiteId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+    },
+  })
+}
+
+export function usePreviewAdminWarmupGovernanceBatch() {
+  return useMutation({
+    mutationFn: (input: {
+      action: WarmupGovernancePreview['action']
+      suite_id?: string | null
+      warm_start_batch_ids?: string[]
+      content_ids?: string[]
+    }) =>
+      api.post('admin/governance/batches/preview', {
+        json: input,
+      }).json<ApiResponse<WarmupGovernancePreview>>(),
+  })
+}
+
+export function useExecuteAdminWarmupGovernanceBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      action: WarmupGovernancePreview['action']
+      suite_id?: string | null
+      warm_start_batch_ids?: string[]
+      content_ids?: string[]
+    }) =>
+      api.post('admin/governance/batches', {
+        json: input,
+      }).json<ApiResponse<{ batch: unknown; preview: WarmupGovernancePreview }>>(),
+    onSuccess: (_response, input) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      if (input.suite_id) {
+        qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suite_id) })
+      }
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+    },
   })
 }
 
