@@ -1,3 +1,5 @@
+import type { KickoffSuiteEditApplyResult } from '../../shared/kickoff-workflow.js'
+
 export type {
   ActorRoleCard,
   ChronicleStoryMetaV1,
@@ -79,6 +81,24 @@ export type {
   BadgeDebugSemanticContract,
 } from '../../shared/badges/debug-catalog.js'
 export type { BadgeSurfacePolicy, BadgeSurfacePolicyId } from '../../shared/badges/surface-policy.js'
+export type {
+  KickoffAuthoringPatch,
+  KickoffBootstrapMode,
+  KickoffBootstrapResult,
+  KickoffDataMode,
+  KickoffGenerationMode,
+  KickoffImportReport,
+  KickoffImportSummary,
+  KickoffProfileId,
+  KickoffRunDetail,
+  KickoffRunSummary,
+  KickoffRuntimeReadiness,
+  KickoffStatusPayload,
+  KickoffSuiteEditAction,
+  KickoffSuiteEditApplyResult,
+  KickoffSuiteEditPreview,
+  KickoffSuiteEditRequest,
+} from '../../shared/kickoff-workflow.js'
 
 export interface ApiResponse<T = unknown> {
   data: T
@@ -1848,6 +1868,10 @@ export interface WarmupSuiteDetail {
     can_rebuild: boolean
     can_archive: boolean
   }
+}
+
+export interface KickoffSuiteEditApplyPayload extends KickoffSuiteEditApplyResult {
+  suite_detail: WarmupSuiteDetail
 }
 
 export interface WarmupGovernancePreview {

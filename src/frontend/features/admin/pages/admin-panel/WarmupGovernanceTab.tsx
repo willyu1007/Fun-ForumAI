@@ -2,7 +2,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import type {
+  KickoffSuiteEditAction,
   WarmupBatchReadModel,
   WarmupGovernanceAction,
   WarmupReviewReasonCode,
@@ -20,6 +22,16 @@ const REVIEW_REASON_OPTIONS: Array<{
   { value: 'media_coverage', label: '媒体覆盖' },
   { value: 'kickoff_invalid', label: 'Kickoff 失效' },
   { value: 'process_issue', label: '流程问题' },
+]
+
+const EDIT_ACTION_OPTIONS: Array<{
+  value: KickoffSuiteEditAction
+  label: string
+}> = [
+  { value: 'rewrite_post', label: 'rewrite_post' },
+  { value: 'replace_post_media', label: 'replace_post_media' },
+  { value: 'regenerate_thread', label: 'regenerate_thread' },
+  { value: 'regenerate_turn', label: 'regenerate_turn' },
 ]
 
 function BatchCard({
@@ -372,6 +384,119 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
                       posts {warmup.governancePreview.counts.posts} · threads {warmup.governancePreview.counts.threads}
                       {' · '}
                       turns {warmup.governancePreview.counts.turns} · media {warmup.governancePreview.counts.media}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Localized Kickoff Edit</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <select
+                    value={warmup.editAction}
+                    onChange={(event) =>
+                      warmup.setEditAction(event.target.value as KickoffSuiteEditAction)
+                    }
+                    className="h-8 rounded-md border bg-background px-2 text-xs"
+                  >
+                    {EDIT_ACTION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    placeholder="reason"
+                    value={warmup.editReason}
+                    onChange={(event) => warmup.setEditReason(event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Input
+                    placeholder="post_id"
+                    value={warmup.editPostId}
+                    onChange={(event) => warmup.setEditPostId(event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="thread_id"
+                    value={warmup.editThreadId}
+                    onChange={(event) => warmup.setEditThreadId(event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="turn_id"
+                    value={warmup.editTurnId}
+                    onChange={(event) => warmup.setEditTurnId(event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <Textarea
+                  value={warmup.editPayload}
+                  onChange={(event) => warmup.setEditPayload(event.target.value)}
+                  className="min-h-28 font-mono text-[11px]"
+                  placeholder='{"body":"updated content"}'
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={warmup.previewEditMutation.isPending}
+                    onClick={() => {
+                      void warmup.handlePreviewEdit().catch((error: unknown) => {
+                        alert(error instanceof Error ? error.message : '编辑预览失败')
+                      })
+                    }}
+                  >
+                    Preview Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={warmup.applyEditMutation.isPending}
+                    onClick={() => {
+                      void warmup.handleApplyEdit().catch((error: unknown) => {
+                        alert(error instanceof Error ? error.message : '编辑应用失败')
+                      })
+                    }}
+                  >
+                    Apply Edit
+                  </Button>
+                </div>
+                {warmup.editPreview && (
+                  <div className="rounded-md border bg-card px-3 py-2">
+                    <p className="font-medium">{warmup.editPreview.action}</p>
+                    <p className="mt-1 text-muted-foreground">{warmup.editPreview.impact_summary}</p>
+                    {warmup.editPreview.target_ids.length > 0 && (
+                      <p className="mt-1 text-muted-foreground">
+                        target: {warmup.editPreview.target_ids.join(', ')}
+                      </p>
+                    )}
+                    {warmup.editPreview.warnings.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {warmup.editPreview.warnings.map((warning) => (
+                          <Badge key={warning} variant="outline">
+                            {warning}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {warmup.latestEditResult && (
+                  <div className="rounded-md border bg-card px-3 py-2">
+                    <p className="font-medium">Latest edit readiness</p>
+                    <p className="mt-1 text-muted-foreground">
+                      activation {warmup.latestEditResult.suite_readiness.activation_readiness.ok ? 'ready' : 'blocked'}
+                      {' · '}
+                      warnings {warmup.latestEditResult.suite_readiness.quality_state.warning_count}
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      suite {warmup.latestEditResult.suite_detail.id} · state {warmup.latestEditResult.suite_detail.state}
                     </p>
                   </div>
                 )}

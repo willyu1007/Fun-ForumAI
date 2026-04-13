@@ -26,6 +26,9 @@ import type {
   HotTopicAlert,
   HotTopicDashboardItem,
   IdentityVerification,
+  KickoffSuiteEditApplyPayload,
+  KickoffSuiteEditPreview,
+  KickoffSuiteEditRequest,
   ReleasedReviewCase,
   ReviewCase,
   ReviewCaseDetail,
@@ -281,6 +284,33 @@ export function useArchiveAdminWarmupSuite() {
     onSuccess: (_response, suiteId) => {
       qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
       qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(suiteId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+    },
+  })
+}
+
+export function usePreviewAdminWarmupSuiteEdit() {
+  return useMutation({
+    mutationFn: (input: KickoffSuiteEditRequest) =>
+      api.post(`admin/warm-start/suites/${input.target.suite_id}/edits/preview`, {
+        json: input,
+      }).json<ApiResponse<KickoffSuiteEditPreview>>(),
+  })
+}
+
+export function useApplyAdminWarmupSuiteEdit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: KickoffSuiteEditRequest) =>
+      api.post(`admin/warm-start/suites/${input.target.suite_id}/edits`, {
+        json: input,
+      }).json<ApiResponse<KickoffSuiteEditApplyPayload>>(),
+    onSuccess: (response, input) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.target.suite_id) })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(response.data.suite_detail.id) })
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['homeProgramming'] })

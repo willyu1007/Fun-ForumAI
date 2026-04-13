@@ -10,6 +10,22 @@ import { ProgrammingTab } from './admin-panel/ProgrammingTab'
 import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { useAdminPanelController } from './admin-panel/use-admin-panel-controller'
 
+function readDefaultAdminTab() {
+  if (typeof window === 'undefined') return 'governance'
+  const tab = new URLSearchParams(window.location.search).get('tab')
+  const allowed = new Set([
+    'governance',
+    'programming',
+    'admins',
+    'invites',
+    'feedback',
+    'hot-topic',
+    'runtime',
+    'warmup',
+  ])
+  return tab && allowed.has(tab) ? tab : 'governance'
+}
+
 export function AdminPanel() {
   const controller = useAdminPanelController()
 
@@ -54,7 +70,7 @@ export function AdminPanel() {
         </div>
       )}
 
-      <Tabs defaultValue="governance">
+      <Tabs defaultValue={readDefaultAdminTab()}>
         <TabsList>
           <TabsTrigger value="governance">治理操作</TabsTrigger>
           <TabsTrigger value="programming">Programming</TabsTrigger>

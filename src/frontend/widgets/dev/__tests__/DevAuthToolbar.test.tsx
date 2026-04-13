@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useDevKickoffBootstrap, useDevKickoffStatus, useDevSeedMutation } from '@/api/hooks/dev'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { DevAuthToolbar } from '../DevAuthToolbar'
@@ -14,6 +15,17 @@ vi.mock('../DevFrontendFlagsPanel', () => ({
     open ? <div data-testid="frontend-flags-panel" /> : null,
 }))
 
+vi.mock('../DevKickoffPanel', () => ({
+  DevKickoffPanel: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="kickoff-panel" /> : null,
+}))
+
+vi.mock('@/api/hooks/dev', () => ({
+  useDevSeedMutation: vi.fn(),
+  useDevKickoffBootstrap: vi.fn(),
+  useDevKickoffStatus: vi.fn(),
+}))
+
 vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
@@ -24,8 +36,14 @@ vi.mock('@/shared/stores/dev-auth-toolbar-store', () => ({
 
 const useAuthMock = vi.mocked(useAuth)
 const useDevAuthToolbarStoreMock = vi.mocked(useDevAuthToolbarStore)
+const useDevSeedMutationMock = vi.mocked(useDevSeedMutation)
+const useDevKickoffBootstrapMock = vi.mocked(useDevKickoffBootstrap)
+const useDevKickoffStatusMock = vi.mocked(useDevKickoffStatus)
 
 describe('DevAuthToolbar', () => {
+  const seedMutateAsync = vi.fn()
+  const kickoffMutateAsync = vi.fn()
+
   beforeEach(() => {
     vi.clearAllMocks()
     useAuthMock.mockReturnValue({
@@ -33,6 +51,54 @@ describe('DevAuthToolbar', () => {
       switchIdentity: vi.fn(() => Promise.resolve()),
       user: { id: 'user-1', email: 'dev-admin-001@dev.local', role: 'admin' },
     } as never)
+    useDevSeedMutationMock.mockReturnValue({
+      mutateAsync: seedMutateAsync,
+      isPending: false,
+    } as never)
+    useDevKickoffBootstrapMock.mockReturnValue({
+      mutateAsync: kickoffMutateAsync,
+      isPending: false,
+    } as never)
+    useDevKickoffStatusMock.mockReturnValue({
+      data: {
+        data: {
+          current_data_mode: 'kickoff-candidate',
+          current_suite: {
+            label: 'kickoff-v1',
+          },
+          latest_run: {
+            run_id: 'run-1',
+            suite_label: 'kickoff-v1',
+          },
+        },
+      },
+    } as never)
+    seedMutateAsync.mockResolvedValue({
+      data: {
+        counts: {
+          communities: 2,
+          agents: 3,
+          posts: 4,
+          threads: 5,
+        },
+      },
+    })
+    kickoffMutateAsync.mockResolvedValue({
+      data: {
+        suite_id: 'suite-1',
+        suite_label: 'kickoff-v1',
+        readiness: {
+          activation_readiness: {
+            ok: true,
+          },
+        },
+      },
+    })
+    vi.stubGlobal('alert', vi.fn())
+    Object.defineProperty(window, 'location', {
+      value: { reload: vi.fn() },
+      writable: true,
+    })
   })
 
   it('renders a compact expand button when collapsed', () => {
@@ -68,7 +134,7 @@ describe('DevAuthToolbar', () => {
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
 
-  it('renders identity buttons and tools menu in the expanded toolbar', () => {
+  it('renders identity buttons and kickoff tool entries in the expanded toolbar', () => {
     useDevAuthToolbarStoreMock.mockImplementation((selector) =>
       selector({
         collapsed: false,
@@ -79,13 +145,23 @@ describe('DevAuthToolbar', () => {
 
     render(<DevAuthToolbar />)
 
+    expect(screen.getByText('kickoff-candidate')).toBeTruthy()
+    expect(screen.getByText('kickoff-v1')).toBeTruthy()
     expect(screen.getByText('游客')).toBeTruthy()
     expect(screen.getByText('用户')).toBeTruthy()
     expect(screen.getByText('管理员')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '开发工具' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
+
+    expect(screen.getByText('加载 Mock')).toBeTruthy()
+    expect(screen.getByText('加载 Smoke')).toBeTruthy()
+    expect(screen.getByText('Kickoff Candidate')).toBeTruthy()
+    expect(screen.getByText('Kickoff Active')).toBeTruthy()
+    expect(screen.getByText('Kickoff 调试台')).toBeTruthy()
+    expect(screen.getByText('VITE 功能门')).toBeTruthy()
   })
 
-  it('shows the restored VITE feature gate entry in the tools menu', () => {
+  it('loads mock data through the explicit dev seed mutation', async () => {
     useDevAuthToolbarStoreMock.mockImplementation((selector) =>
       selector({
         collapsed: false,
@@ -97,7 +173,35 @@ describe('DevAuthToolbar', () => {
     render(<DevAuthToolbar />)
 
     fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
+    fireEvent.click(screen.getByText('加载 Mock'))
 
-    expect(screen.getByText('VITE 功能门')).toBeTruthy()
+    await waitFor(() => {
+      expect(seedMutateAsync).toHaveBeenCalledWith({
+        profile: 'canonical',
+        reset_before_seed: true,
+      })
+    })
+  })
+
+  it('boots kickoff active through the dedicated kickoff bootstrap mutation', async () => {
+    useDevAuthToolbarStoreMock.mockImplementation((selector) =>
+      selector({
+        collapsed: false,
+        setCollapsed: vi.fn(),
+        toggleCollapsed: vi.fn(),
+      } as never),
+    )
+
+    render(<DevAuthToolbar />)
+
+    fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
+    fireEvent.click(screen.getByText('Kickoff Active'))
+
+    await waitFor(() => {
+      expect(kickoffMutateAsync).toHaveBeenCalledWith({
+        mode: 'active',
+        profile_id: 'local-llm-assisted-runtime-simulation',
+      })
+    })
   })
 })

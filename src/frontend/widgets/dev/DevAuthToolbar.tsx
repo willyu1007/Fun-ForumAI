@@ -1,9 +1,17 @@
 import { useState } from 'react'
-import { api } from '@/api/client'
+import { useDevKickoffBootstrap, useDevKickoffStatus, useDevSeedMutation } from '@/api/hooks/dev'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ChevronLeft, ChevronRight, Wrench, Database, Medal, SlidersHorizontal } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Wrench,
+  Database,
+  Medal,
+  SlidersHorizontal,
+  Rocket,
+} from 'lucide-react'
 import {
   DEV_AUTH_TOOLBAR_HEIGHT_CLASS,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
@@ -12,6 +20,7 @@ import { useAuth } from '@/shared/hooks/use-auth'
 import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { DevBadgeDebugPanel } from './DevBadgeDebugPanel'
 import { DevFrontendFlagsPanel } from './DevFrontendFlagsPanel'
+import { DevKickoffPanel } from './DevKickoffPanel'
 
 type Identity = 'anonymous' | 'user' | 'admin'
 
@@ -28,22 +37,50 @@ export function DevAuthToolbar() {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [badgePanelOpen, setBadgePanelOpen] = useState(false)
   const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
+  const [kickoffPanelOpen, setKickoffPanelOpen] = useState(false)
+  const seedMutation = useDevSeedMutation()
+  const kickoffBootstrapMutation = useDevKickoffBootstrap()
+  const kickoffStatusQuery = useDevKickoffStatus()
+  const currentKickoffMode = kickoffStatusQuery.data?.data.current_data_mode ?? 'unknown'
+  const currentKickoffSummary =
+    kickoffStatusQuery.data?.data.current_suite.label
+    ?? kickoffStatusQuery.data?.data.latest_run?.suite_label
+    ?? kickoffStatusQuery.data?.data.latest_run?.run_id
+    ?? null
 
-  const handleSeed = async () => {
+  const handleSeed = async (profile: 'canonical' | 'smoke-minimal') => {
     setToolsOpen(false)
     try {
-      const res = await api.post('dev/seed').json<{
-        data: {
-          counts: Record<string, number>
-        }
-      }>()
+      const res = await seedMutation.mutateAsync({
+        profile,
+        reset_before_seed: true,
+      })
       const counts = res.data.counts
       alert(
-        `已填充：${counts.communities} 个社区、${counts.agents} 个智能体、${counts.posts} 篇帖子、${counts.threads} 条线程`,
+        `已加载 ${profile === 'canonical' ? 'Mock' : 'Smoke'}：${counts.communities} 个社区、${counts.agents} 个智能体、${counts.posts} 篇帖子、${counts.threads} 条线程`,
       )
       window.location.reload()
     } catch (err) {
-      alert(`填充失败：${err instanceof Error ? err.message : '未知错误'}`)
+      alert(`加载失败：${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleKickoffBootstrap = async (mode: 'candidate' | 'active') => {
+    setToolsOpen(false)
+    try {
+      const res = await kickoffBootstrapMutation.mutateAsync({
+        mode,
+        profile_id:
+          mode === 'active'
+            ? 'local-llm-assisted-runtime-simulation'
+            : 'local-llm-assisted-candidate',
+      })
+      alert(
+        `Kickoff ${mode} 已完成：suite ${res.data.suite_label ?? res.data.suite_id ?? 'n/a'} · activation ${res.data.readiness.activation_readiness.ok ? 'ready' : 'blocked'}`,
+      )
+      window.location.reload()
+    } catch (err) {
+      alert(`Kickoff 启动失败：${err instanceof Error ? err.message : '未知错误'}`)
     }
   }
 
@@ -88,6 +125,14 @@ export function DevAuthToolbar() {
             <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">
               DEV
             </Badge>
+            <Badge variant="secondary" className="shrink-0 text-[10px]">
+              {currentKickoffMode}
+            </Badge>
+            {currentKickoffSummary ? (
+              <span className="max-w-[10rem] truncate text-[10px] text-muted-foreground">
+                {currentKickoffSummary}
+              </span>
+            ) : null}
             {IDENTITIES.map(({ id, label }) => (
               <Button
                 key={id}
@@ -129,10 +174,53 @@ export function DevAuthToolbar() {
                 <button
                   type="button"
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={handleSeed}
+                  onClick={() => {
+                    void handleSeed('canonical')
+                  }}
                 >
                   <Database className="size-3.5 text-muted-foreground" />
-                  填充测试数据
+                  加载 Mock
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => {
+                    void handleSeed('smoke-minimal')
+                  }}
+                >
+                  <Database className="size-3.5 text-muted-foreground" />
+                  加载 Smoke
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => {
+                    void handleKickoffBootstrap('candidate')
+                  }}
+                >
+                  <Rocket className="size-3.5 text-muted-foreground" />
+                  Kickoff Candidate
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => {
+                    void handleKickoffBootstrap('active')
+                  }}
+                >
+                  <Rocket className="size-3.5 text-muted-foreground" />
+                  Kickoff Active
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => {
+                    setToolsOpen(false)
+                    setKickoffPanelOpen(true)
+                  }}
+                >
+                  <Rocket className="size-3.5 text-muted-foreground" />
+                  Kickoff 调试台
                 </button>
                 <button
                   type="button"
@@ -164,6 +252,7 @@ export function DevAuthToolbar() {
 
       <DevBadgeDebugPanel open={badgePanelOpen} onOpenChange={setBadgePanelOpen} />
       <DevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
+      <DevKickoffPanel open={kickoffPanelOpen} onOpenChange={setKickoffPanelOpen} />
     </>
   )
 }

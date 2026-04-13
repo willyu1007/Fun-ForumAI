@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  useApplyAdminWarmupSuiteEdit,
   useAdminAgentRiskProfile,
   useAdminCommunityProposals,
   useAdminHotTopicAlerts,
@@ -24,6 +25,7 @@ import {
   useModerationEvidenceExport,
   useModerationQueue,
   usePreviewAdminWarmupGovernanceBatch,
+  usePreviewAdminWarmupSuiteEdit,
   useRebuildAdminWarmupSuite,
   useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
@@ -43,6 +45,7 @@ import type {
   GovernanceActionType,
   GovernanceResult,
   HotTopicDashboardItem,
+  KickoffSuiteEditAction,
   WarmupGovernanceAction,
   WarmupReviewDecision,
   WarmupReviewReasonCode,
@@ -117,6 +120,8 @@ export function useAdminPanelController() {
   const archiveWarmupSuite = useArchiveAdminWarmupSuite()
   const previewWarmupGovernance = usePreviewAdminWarmupGovernanceBatch()
   const executeWarmupGovernance = useExecuteAdminWarmupGovernanceBatch()
+  const previewWarmupSuiteEdit = usePreviewAdminWarmupSuiteEdit()
+  const applyWarmupSuiteEdit = useApplyAdminWarmupSuiteEdit()
   const [selectedWarmupSuiteId, setSelectedWarmupSuiteId] = useState<string | null>(null)
   const [warmupSuiteLabel, setWarmupSuiteLabel] = useState('')
   const [warmupTopupPosts, setWarmupTopupPosts] = useState('0')
@@ -126,6 +131,13 @@ export function useAdminPanelController() {
   const [warmupReviewReasons, setWarmupReviewReasons] = useState<WarmupReviewReasonCode[]>([])
   const [warmupGovernanceAction, setWarmupGovernanceAction] =
     useState<WarmupGovernanceAction>('quarantine')
+  const [warmupEditAction, setWarmupEditAction] =
+    useState<KickoffSuiteEditAction>('rewrite_post')
+  const [warmupEditReason, setWarmupEditReason] = useState('local kickoff repair')
+  const [warmupEditPostId, setWarmupEditPostId] = useState('')
+  const [warmupEditThreadId, setWarmupEditThreadId] = useState('')
+  const [warmupEditTurnId, setWarmupEditTurnId] = useState('')
+  const [warmupEditPayload, setWarmupEditPayload] = useState('{\n  "body": ""\n}')
   const { data: warmupSuiteDetail } = useAdminWarmupSuiteDetail(selectedWarmupSuiteId)
 
   useEffect(() => {
@@ -310,6 +322,32 @@ export function useAdminPanelController() {
     })
   }
 
+  const handlePreviewWarmupEdit = async () => {
+    if (!selectedWarmupSuiteId) return
+    await previewWarmupSuiteEdit.mutateAsync(buildWarmupEditRequest({
+      suiteId: selectedWarmupSuiteId,
+      action: warmupEditAction,
+      reason: warmupEditReason,
+      postId: warmupEditPostId,
+      threadId: warmupEditThreadId,
+      turnId: warmupEditTurnId,
+      payloadText: warmupEditPayload,
+    }))
+  }
+
+  const handleApplyWarmupEdit = async () => {
+    if (!selectedWarmupSuiteId) return
+    await applyWarmupSuiteEdit.mutateAsync(buildWarmupEditRequest({
+      suiteId: selectedWarmupSuiteId,
+      action: warmupEditAction,
+      reason: warmupEditReason,
+      postId: warmupEditPostId,
+      threadId: warmupEditThreadId,
+      turnId: warmupEditTurnId,
+      payloadText: warmupEditPayload,
+    }))
+  }
+
   return {
     auth: {
       currentIdentity,
@@ -409,6 +447,8 @@ export function useAdminPanelController() {
       archiveMutation: archiveWarmupSuite,
       previewMutation: previewWarmupGovernance,
       executeMutation: executeWarmupGovernance,
+      previewEditMutation: previewWarmupSuiteEdit,
+      applyEditMutation: applyWarmupSuiteEdit,
       suiteLabel: warmupSuiteLabel,
       setSuiteLabel: setWarmupSuiteLabel,
       topupPosts: warmupTopupPosts,
@@ -422,6 +462,20 @@ export function useAdminPanelController() {
       governanceAction: warmupGovernanceAction,
       setGovernanceAction: setWarmupGovernanceAction,
       governancePreview: previewWarmupGovernance.data?.data ?? null,
+      editAction: warmupEditAction,
+      setEditAction: setWarmupEditAction,
+      editReason: warmupEditReason,
+      setEditReason: setWarmupEditReason,
+      editPostId: warmupEditPostId,
+      setEditPostId: setWarmupEditPostId,
+      editThreadId: warmupEditThreadId,
+      setEditThreadId: setWarmupEditThreadId,
+      editTurnId: warmupEditTurnId,
+      setEditTurnId: setWarmupEditTurnId,
+      editPayload: warmupEditPayload,
+      setEditPayload: setWarmupEditPayload,
+      editPreview: previewWarmupSuiteEdit.data?.data ?? null,
+      latestEditResult: applyWarmupSuiteEdit.data?.data ?? null,
       handleCreateSuite: handleCreateWarmupSuite,
       handleReviewSuite: handleReviewWarmupSuite,
       handleRetrySuite: handleRetryWarmupSuite,
@@ -429,6 +483,8 @@ export function useAdminPanelController() {
       handleArchiveSuite: handleArchiveWarmupSuite,
       handlePreviewGovernance: handlePreviewWarmupGovernance,
       handleExecuteGovernance: handleExecuteWarmupGovernance,
+      handlePreviewEdit: handlePreviewWarmupEdit,
+      handleApplyEdit: handleApplyWarmupEdit,
     },
     communityGovernance: {
       proposals: communityProposals?.data ?? [],
@@ -445,6 +501,38 @@ export function useAdminPanelController() {
       handleRefreshRecommendation: handleRefreshCommunityProposalRecommendation,
     },
   }
+}
+
+function buildWarmupEditRequest(input: {
+  suiteId: string
+  action: KickoffSuiteEditAction
+  reason: string
+  postId: string
+  threadId: string
+  turnId: string
+  payloadText: string
+}) {
+  const payload = parsePayloadText(input.payloadText)
+  return {
+    action: input.action,
+    target: {
+      suite_id: input.suiteId,
+      post_id: input.postId.trim() || null,
+      thread_id: input.threadId.trim() || null,
+      turn_id: input.turnId.trim() || null,
+    },
+    payload,
+    reason: input.reason.trim() || 'local kickoff repair',
+  }
+}
+
+function parsePayloadText(payloadText: string): Record<string, unknown> {
+  if (!payloadText.trim()) return {}
+  const parsed = JSON.parse(payloadText) as unknown
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('编辑 payload 必须是 JSON object')
+  }
+  return parsed as Record<string, unknown>
 }
 
 export type AdminPanelController = ReturnType<typeof useAdminPanelController>

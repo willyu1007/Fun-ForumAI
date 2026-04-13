@@ -1,5 +1,5 @@
 import type { IRouter, Response } from 'express'
-import { warmupGovernanceService } from '../../container.js'
+import { kickoffSuiteEditService, warmupGovernanceService } from '../../container.js'
 import { AppError } from '../../lib/errors.js'
 import { requireAdmin, requireHumanAuth } from '../../middleware/human-auth.js'
 import {
@@ -12,6 +12,7 @@ import {
   reviewWarmupSuiteSchema,
   warmupSuiteIdParamSchema,
 } from '../../validation/schemas.js'
+import { kickoffSuiteEditSchema } from '../../validation/kickoff-schemas.js'
 import { validate } from '../../validation/validate.js'
 
 function tryHandleAppError(res: Response, err: unknown): boolean {
@@ -196,6 +197,60 @@ export function registerAdminWarmStartRoutes(router: IRouter): void {
     async (req, res) => {
       try {
         const data = await warmupGovernanceService.getGovernanceBatch(String(req.params.id))
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        throw err
+      }
+    },
+  )
+
+  router.post(
+    '/admin/warm-start/suites/:id/edits/preview',
+    requireHumanAuth,
+    requireAdmin,
+    validate(warmupSuiteIdParamSchema, 'params'),
+    validate(kickoffSuiteEditSchema),
+    async (req, res) => {
+      try {
+        const bodySuiteId = req.body.target?.suite_id
+        if (bodySuiteId && bodySuiteId !== String(req.params.id)) {
+          throw new AppError(400, 'suite_id in body must match route param', 'VALIDATION_ERROR')
+        }
+        const data = await kickoffSuiteEditService.previewEdit({
+          ...req.body,
+          target: {
+            ...req.body.target,
+            suite_id: String(req.params.id),
+          },
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        throw err
+      }
+    },
+  )
+
+  router.post(
+    '/admin/warm-start/suites/:id/edits',
+    requireHumanAuth,
+    requireAdmin,
+    validate(warmupSuiteIdParamSchema, 'params'),
+    validate(kickoffSuiteEditSchema),
+    async (req, res) => {
+      try {
+        const bodySuiteId = req.body.target?.suite_id
+        if (bodySuiteId && bodySuiteId !== String(req.params.id)) {
+          throw new AppError(400, 'suite_id in body must match route param', 'VALIDATION_ERROR')
+        }
+        const data = await kickoffSuiteEditService.applyEdit({
+          ...req.body,
+          target: {
+            ...req.body.target,
+            suite_id: String(req.params.id),
+          },
+        })
         res.json({ data })
       } catch (err) {
         if (tryHandleAppError(res, err)) return

@@ -12,6 +12,9 @@ const ownerChronicleFeedRoot = (agentId: string) => ['ownerChronicleFeed', agent
 export const queryKeys = {
   health: ['health'] as const,
   devBadgeDebugCatalog: ['devBadgeDebugCatalog'] as const,
+  devKickoffStatus: ['devKickoffStatus'] as const,
+  devKickoffLatestRun: ['devKickoffLatestRun'] as const,
+  devKickoffRun: (runId: string) => ['devKickoffRun', runId] as const,
   homeProgramming: ['homeProgramming'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,
   post: (postId: string) => ['post', postId] as const,
