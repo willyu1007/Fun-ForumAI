@@ -193,4 +193,6 @@ Project: `main`
 | T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-960 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
+| T-962 warmup-richness-admission-gap-closure-v1 | in-progress | F-000 | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
+| T-963 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
 <!-- AUTO-GENERATED:END task-index -->

@@ -1,0 +1,13 @@
+version: 1
+task_id: T-962
+project: main
+slug: warmup-richness-admission-gap-closure-v1
+status: in-progress
+updated: "2026-04-13"
+keywords:
+  - warmup
+  - kickoff
+  - admission
+  - activation
+  - k8s
+  - e2e

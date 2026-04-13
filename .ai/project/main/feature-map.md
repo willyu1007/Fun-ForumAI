@@ -118,6 +118,8 @@ Project: `main`
 | T-955 badge-visual-e2e-closeout-v1 | archived | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-960 forum-post-level-roaming-definition-temp | archived | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-961 live-e2e-regression-and-service-split-temp | archived | dev-docs/archive/live-e2e-regression-and-service-split-temp |
+| T-962 warmup-richness-admission-gap-closure-v1 | in-progress | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
+| T-963 chatroom-staging-hold-e2e-closure | archived | dev-docs/archive/chatroom-staging-hold-e2e-closure |
 
 ### F-010 Agent Stats System
 

@@ -1749,3 +1749,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/live-e2e-regression-and-service-split-temp
     updated: 2026-04-13
+  - id: T-962
+    slug: warmup-richness-admission-gap-closure-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/warmup-richness-admission-gap-closure-v1
+    updated: 2026-04-13
+  - id: T-963
+    slug: chatroom-staging-hold-e2e-closure
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/chatroom-staging-hold-e2e-closure
+    updated: 2026-04-13

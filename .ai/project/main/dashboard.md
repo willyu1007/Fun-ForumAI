@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 183 (planned: 2, in-progress: 5, blocked: 0, done: 0, archived: 176)
+- Tasks: 185 (planned: 2, in-progress: 6, blocked: 0, done: 0, archived: 177)
 
 ## Recent tasks
 
@@ -19,6 +19,8 @@ Project: `main`
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
 | T-159 batch-slice-governance-and-review-console-v1 | archived | F-000 | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 | T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
+| T-962 warmup-richness-admission-gap-closure-v1 | in-progress | F-000 | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
+| T-963 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
 | T-960 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-061 ios-android-runtime-smoke-kit | archived | F-000 | dev-docs/archive/ios-android-runtime-smoke-kit |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
@@ -32,6 +34,4 @@ Project: `main`
 | T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
 | T-146 search-analytics-backfill-and-compat-cleanup | archived | F-100 | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
 | T-915 search-correctness-convergence-and-discovery-hardening-v1 | archived | F-000 | dev-docs/archive/search-correctness-convergence-and-discovery-hardening-v1 |
-| T-917 forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 | archived | F-000 | dev-docs/archive/forum-legacy-comment-tree-removal-and-semantic-drift-guard-v1 |
-| T-919 feedback-ticket-and-admin-inbox-v1 | archived | F-000 | dev-docs/archive/feedback-ticket-and-admin-inbox-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

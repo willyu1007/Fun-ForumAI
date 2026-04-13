@@ -1,4 +1,4 @@
-# T-960 Chatroom Staging Hold E2E Closure
+# T-963 Chatroom Staging Hold E2E Closure
 
 - Status: `done`
 - Owner: `codex`
