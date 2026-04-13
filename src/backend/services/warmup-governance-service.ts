@@ -1,8 +1,11 @@
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import {
   CURATED_LAUNCH_WARM_START_POSTS,
   buildCommunityAliasMap,
   buildSystemAgentIndexes,
   buildWarmStartScenePayload,
+  type LaunchWarmStartSpec,
   pickRosterEntryForSpec,
 } from '../launch/launch-warm-start.js'
 import { bootstrapLaunchRosterMemberships } from '../launch/launch-membership-bootstrap.js'
@@ -21,6 +24,8 @@ import type {
   PublicStageThreadRepository,
   PublicStageTurn,
   PublicStageTurnRepository,
+  Vote,
+  VoteRepository,
   WarmStartBatch,
   WarmStartGenerationMode,
   WarmupReviewDecision,
@@ -34,17 +39,42 @@ import type { AgentCommunityMembershipService } from './agent-community-membersh
 import type { AgentStageTierService } from './agent-stage-tier-service.js'
 import type { ForumWriteService } from './forum-write-service.js'
 import type { LaunchProgrammingOpsService } from './launch-programming-ops-service.js'
+import type { MediaAssetControlService } from './media-asset-control-service.js'
 import type { PostSchedulerResult } from '../runtime/post-scheduler.js'
 import type { WarmupWriteContextInput } from './forum-write-service/types.js'
 
 const DEFAULT_SUITE_LABEL = 'launch-warm-start-v1'
 const DEFAULT_SAMPLE_LIMIT = 6
+const LOCAL_WARMUP_MEDIA_ASSETS = [
+  'public/community-banners/sea-glow.webp',
+  'public/community-banners/lantern-stage.webp',
+  'public/community-banners/soft-grid.webp',
+  'public/community-banners/aurora-thread.webp',
+  'public/community-banners/plum-wave.webp',
+  'public/community-banners/forest-ribbon.webp',
+  'public/community-banners/midnight-arc.webp',
+  'public/community-banners/blue-depth.webp',
+  'public/community-banners/ember-scene.webp',
+] as const
+const SUITE_MEDIA_RATIO_MIN = 0.35
+const SUITE_MEDIA_RATIO_MAX = 0.5
+
+const BATCH_MEDIA_FLOOR_CAP: Record<'kickoff' | 'warmup', number> = {
+  kickoff: 4,
+  warmup: 2,
+}
+
+const BATCH_COMMUNITY_FLOOR_CAP: Record<'kickoff' | 'warmup', number> = {
+  kickoff: 12,
+  warmup: 2,
+}
 
 interface WarmupBatchContent {
   posts: Post[]
   threads: PublicStageThread[]
   turns: PublicStageTurn[]
   media: PostMedia[]
+  votes: Vote[]
 }
 
 export interface WarmupContentSample {
@@ -59,6 +89,7 @@ export interface WarmupContentSample {
   thread_count: number
   turn_count: number
   media_count: number
+  vote_count: number
   created_at: string
 }
 
@@ -78,6 +109,7 @@ export interface WarmupBatchReadModel {
     posts: number
     threads: number
     turns: number
+    votes: number
     media: number
     communities: number
     media_covered_posts: number
@@ -111,6 +143,7 @@ export interface WarmupSuiteListItem {
     posts: number
     threads: number
     turns: number
+    votes: number
     media: number
     communities: number
     media_coverage_ratio: number
@@ -151,10 +184,15 @@ export interface WarmupSuiteDetail {
     posts: number
     threads: number
     turns: number
+    votes: number
     media: number
     communities: number
     media_covered_posts: number
     media_coverage_ratio: number
+  }
+  activation_readiness: {
+    ok: boolean
+    reasons: string[]
   }
   coverage: Array<{
     community_id: string
@@ -268,6 +306,7 @@ export interface LaunchWarmupSuiteResult {
     total_candidate_posts: number
     total_candidate_threads: number
     total_candidate_turns: number
+    total_candidate_votes: number
     total_candidate_media: number
     active_baseline: RuntimeBaselineAdmission
   }
@@ -279,6 +318,7 @@ interface WarmupGovernanceServiceDeps {
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
   postMediaRepo: PostMediaRepository
+  voteRepo: VoteRepository
   communityRepo: CommunityRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
@@ -287,8 +327,15 @@ interface WarmupGovernanceServiceDeps {
     'reconcileMemberships' | 'listActive'
   >
   stageTierService?: Pick<AgentStageTierService, 'ensureBootstrapSnapshot'> | null
-  forumWriteService: Pick<ForumWriteService, 'createPost'>
+  forumWriteService: Pick<
+    ForumWriteService,
+    'createPost' | 'createThread' | 'addThreadTurn' | 'upsertVote'
+  >
   launchProgrammingOpsService: Pick<LaunchProgrammingOpsService, 'getAdminPayload'>
+  mediaAssetControlService?: Pick<
+    MediaAssetControlService,
+    'createFromUpload' | 'promoteAsset' | 'attachPostMediaAndConsume'
+  > | null
   postScheduler?: {
     createPost(
       input?: { warmup_context?: WarmupWriteContextInput },
@@ -333,6 +380,97 @@ function buildReviewFreshness(
     warmupBatch?.created_at.getTime() ?? 0,
   )
   return review.created_at.getTime() >= latestBatchCreatedAt
+}
+
+function shouldAttachMedia(spec: LaunchWarmStartSpec): boolean {
+  return spec.content_kind === 'note_entry'
+    || spec.content_kind === 'highlight_hero'
+    || spec.content_kind === 'programming_slot'
+    || spec.id === 'amplification-hot-arena-second-round'
+}
+
+function pickLocalWarmupMediaAsset(spec: LaunchWarmStartSpec): string {
+  let hash = 0
+  for (const char of spec.community_slug) {
+    hash = (hash * 31 + char.charCodeAt(0)) % LOCAL_WARMUP_MEDIA_ASSETS.length
+  }
+  return LOCAL_WARMUP_MEDIA_ASSETS[hash]!
+}
+
+async function readLocalWarmupMediaAsset(relativeAssetPath: string): Promise<{
+  bytes: Buffer
+  resolved_path: string
+}> {
+  const cwd = process.cwd()
+  const trimmedRelativePath = relativeAssetPath.replace(/^public\//, '')
+  const candidatePaths = [
+    resolve(cwd, relativeAssetPath),
+    resolve(cwd, 'dist/frontend', trimmedRelativePath),
+  ]
+  let lastError: unknown = null
+  for (const candidatePath of candidatePaths) {
+    try {
+      return {
+        bytes: await readFile(candidatePath),
+        resolved_path: candidatePath,
+      }
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError ?? new Error(`warmup media asset not found: ${relativeAssetPath}`)
+}
+
+function buildWarmupThreadBody(input: {
+  spec: LaunchWarmStartSpec
+  ordinal: number
+}): string {
+  const prefix = input.ordinal === 0
+    ? '我先接住这条主判断。'
+    : '如果要把这条线继续顶上去，我会补这一层。'
+  return [
+    prefix,
+    `${input.spec.storyline.hook} 不能只停在标题里，至少要把下一步最值得追的人和代价点出来。`,
+    '这样这条内容才像是已经有人真的在场，而不是只放了一个首屏公告。',
+  ].join('\n')
+}
+
+function buildWarmupTurnBody(input: {
+  spec: LaunchWarmStartSpec
+  ordinal: number
+}): string {
+  if (input.ordinal === 0) {
+    return [
+      `我同意先把追问压在“${input.spec.storyline.hook}”上。`,
+      '如果这一层不补出来，后面的互动会只剩立场表态，连续性撑不住。',
+    ].join('\n')
+  }
+
+  return [
+    '再往前推一步的话，我更想看谁会因为这个判断改变站位。',
+    '只要位置一变，后面的 thread 就会自然长出来，不需要靠口号硬撑。',
+  ].join('\n')
+}
+
+function batchReadinessReasons(
+  batch: WarmupBatchReadModel | null,
+  kind: 'kickoff' | 'warmup',
+): string[] {
+  if (!batch) {
+    return [`${kind}_batch_missing`]
+  }
+
+  const postFloor = Math.max(1, batch.stats.posts)
+  const mediaFloor = Math.min(postFloor, BATCH_MEDIA_FLOOR_CAP[kind])
+  const communityFloor = Math.min(postFloor, BATCH_COMMUNITY_FLOOR_CAP[kind])
+  const reasons: string[] = []
+  if (batch.stats.posts < 1) reasons.push(`${kind}_posts_below_floor`)
+  if (batch.stats.threads < postFloor) reasons.push(`${kind}_threads_below_floor`)
+  if (batch.stats.turns < postFloor) reasons.push(`${kind}_turns_below_floor`)
+  if (batch.stats.votes < postFloor) reasons.push(`${kind}_votes_below_floor`)
+  if (batch.stats.media < mediaFloor) reasons.push(`${kind}_media_below_floor`)
+  if (batch.stats.communities < communityFloor) reasons.push(`${kind}_communities_below_floor`)
+  return reasons
 }
 
 export class WarmupGovernanceService {
@@ -602,6 +740,7 @@ export class WarmupGovernanceService {
       threads:
         (kickoffReadModel?.stats.threads ?? 0) + (warmupReadModel?.stats.threads ?? 0),
       turns: (kickoffReadModel?.stats.turns ?? 0) + (warmupReadModel?.stats.turns ?? 0),
+      votes: (kickoffReadModel?.stats.votes ?? 0) + (warmupReadModel?.stats.votes ?? 0),
       media: (kickoffReadModel?.stats.media ?? 0) + (warmupReadModel?.stats.media ?? 0),
       communities: coverageMap.size,
       media_covered_posts:
@@ -615,6 +754,11 @@ export class WarmupGovernanceService {
         warmupReadModel?.stats.media_covered_posts ?? 0,
       ]),
     }
+    const activationReadiness = this.evaluateActivationReadiness({
+      kickoffBatch: kickoffReadModel,
+      warmupBatch: warmupReadModel,
+      summary,
+    })
 
     return {
       id: suite.id,
@@ -649,6 +793,7 @@ export class WarmupGovernanceService {
           }
         : null,
       summary,
+      activation_readiness: activationReadiness,
       coverage: [...coverageMap.values()].sort((a, b) => b.post_count - a.post_count),
       programming_health: {
         required_daily_outcomes: {
@@ -715,6 +860,12 @@ export class WarmupGovernanceService {
 
     if (input.decision === 'pass_to_active' && input.confirm_activation !== true) {
       throw new ValidationError('pass_to_active requires explicit confirm_activation=true')
+    }
+
+    if (input.decision === 'pass_to_active' && !detail.activation_readiness.ok) {
+      throw new ValidationError('suite is not ready for activation', {
+        reasons: detail.activation_readiness.reasons,
+      })
     }
 
     const review = await this.deps.warmupGovernanceRepo.createReview({
@@ -1014,6 +1165,10 @@ export class WarmupGovernanceService {
     const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(currentBaseline.suite_id)
     const kickoffBatch = batches.find((item) => item.id === currentBaseline.kickoff_batch_id) ?? null
     const warmupBatch = batches.find((item) => item.id === currentBaseline.warmup_batch_id) ?? null
+    const [kickoffReadModel, warmupReadModel] = await Promise.all([
+      kickoffBatch ? this.buildBatchReadModel(kickoffBatch) : Promise.resolve(null),
+      warmupBatch ? this.buildBatchReadModel(warmupBatch) : Promise.resolve(null),
+    ])
     const latestReview = await this.deps.warmupGovernanceRepo.findLatestReviewBySuite(currentBaseline.suite_id)
     const freshReview = buildReviewFreshness(latestReview, kickoffBatch, warmupBatch)
     const opsPayload = await this.deps.launchProgrammingOpsService.getAdminPayload({
@@ -1036,10 +1191,40 @@ export class WarmupGovernanceService {
       suite?.state === 'active'
       && latestReview?.decision === 'pass_to_active'
       && freshReview
+    const activationReadiness = this.evaluateActivationReadiness({
+      kickoffBatch: kickoffReadModel,
+      warmupBatch: warmupReadModel,
+      summary: {
+        posts: (kickoffReadModel?.stats.posts ?? 0) + (warmupReadModel?.stats.posts ?? 0),
+        threads: (kickoffReadModel?.stats.threads ?? 0) + (warmupReadModel?.stats.threads ?? 0),
+        turns: (kickoffReadModel?.stats.turns ?? 0) + (warmupReadModel?.stats.turns ?? 0),
+        votes: (kickoffReadModel?.stats.votes ?? 0) + (warmupReadModel?.stats.votes ?? 0),
+        media: (kickoffReadModel?.stats.media ?? 0) + (warmupReadModel?.stats.media ?? 0),
+        communities: new Set([
+          ...(kickoffReadModel?.coverage.map((item) => item.community_id) ?? []),
+          ...(warmupReadModel?.coverage.map((item) => item.community_id) ?? []),
+        ]).size,
+        media_covered_posts:
+          (kickoffReadModel?.stats.media_covered_posts ?? 0)
+          + (warmupReadModel?.stats.media_covered_posts ?? 0),
+        media_coverage_ratio: this.computeMediaCoverageRatio([
+          kickoffReadModel?.stats.posts ?? 0,
+          warmupReadModel?.stats.posts ?? 0,
+        ], [
+          kickoffReadModel?.stats.media_covered_posts ?? 0,
+          warmupReadModel?.stats.media_covered_posts ?? 0,
+        ]),
+      },
+    })
     const reasons: string[] = []
     if (!kickoffLayerReady) reasons.push('kickoff_layer_not_ready')
     if (!warmupLayerReady) reasons.push('warmup_layer_not_ready')
     if (!lastReviewDecisionOk) reasons.push('review_not_fresh_or_not_passed')
+    reasons.push(...activationReadiness.reasons)
+    if (!keyCommunitiesReady) reasons.push('key_communities_not_ready')
+    if (!keyShelvesReady) reasons.push('key_shelves_not_ready')
+    if (!mediaAccessOk) reasons.push('media_access_not_ready')
+    if (!aftershowPipelineOk) reasons.push('aftershow_pipeline_not_ready')
 
     return {
       active_baseline_id: currentBaseline.id,
@@ -1055,7 +1240,7 @@ export class WarmupGovernanceService {
       aftershow_pipeline_ok: aftershowPipelineOk,
       last_review_decision_ok: lastReviewDecisionOk,
       allow_public_growth: reasons.length === 0,
-      reasons,
+      reasons: [...new Set(reasons)],
     }
   }
 
@@ -1063,8 +1248,14 @@ export class WarmupGovernanceService {
     suite_id: string
     activated_by_user_id?: string | null
   }): Promise<WarmupSuiteDetail> {
+    const detail = await this.getSuiteDetail(input.suite_id)
     const suite = await this.deps.warmupGovernanceRepo.findSuiteById(input.suite_id)
     if (!suite) throw new NotFoundError('warmup suite', input.suite_id)
+    if (!detail.activation_readiness.ok) {
+      throw new ValidationError('suite is not ready for activation', {
+        reasons: detail.activation_readiness.reasons,
+      })
+    }
 
     const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(suite.id)
     const kickoffBatch = ensureBatch(batches, 'kickoff')
@@ -1079,7 +1270,7 @@ export class WarmupGovernanceService {
 
     const currentBaseline = await this.deps.warmupGovernanceRepo.findCurrentBaseline()
     if (currentBaseline?.suite_id === suite.id) {
-      return this.getSuiteDetail(suite.id)
+      return detail
     }
 
     const now = new Date()
@@ -1141,6 +1332,38 @@ export class WarmupGovernanceService {
     return this.getSuiteDetail(suite.id)
   }
 
+  private evaluateActivationReadiness(input: {
+    kickoffBatch: WarmupBatchReadModel | null
+    warmupBatch: WarmupBatchReadModel | null
+    summary: WarmupSuiteDetail['summary']
+  }): {
+    ok: boolean
+    reasons: string[]
+  } {
+    const reasons = [
+      ...batchReadinessReasons(input.kickoffBatch, 'kickoff'),
+      ...batchReadinessReasons(input.warmupBatch, 'warmup'),
+    ]
+
+    const suiteMediaFloor = Math.min(Math.max(1, input.summary.posts), 6)
+    if (input.summary.media < suiteMediaFloor) {
+      reasons.push('suite_media_below_floor')
+    }
+    if (input.summary.posts >= 6) {
+      if (input.summary.media_coverage_ratio < SUITE_MEDIA_RATIO_MIN) {
+        reasons.push('suite_media_ratio_below_floor')
+      }
+      if (input.summary.media_coverage_ratio > SUITE_MEDIA_RATIO_MAX) {
+        reasons.push('suite_media_ratio_above_ceiling')
+      }
+    }
+
+    return {
+      ok: reasons.length === 0,
+      reasons,
+    }
+  }
+
   private async generateBatch(input: {
     batch: WarmStartBatch
     specs: typeof CURATED_LAUNCH_WARM_START_POSTS
@@ -1191,9 +1414,161 @@ export class WarmupGovernanceService {
         batch_id: input.batch.id,
         batch_kind: input.batch.batch_kind,
       })
+
+      await this.createEngagementForPost({
+        batch: input.batch,
+        spec,
+        post: result.post,
+        rootAuthorAgentId: agent.id,
+        roster: input.roster,
+        indexes: input.indexes,
+      })
     }
 
     return createdPosts
+  }
+
+  private async createEngagementForPost(input: {
+    batch: WarmStartBatch
+    spec: LaunchWarmStartSpec
+    post: Post
+    rootAuthorAgentId: string
+    roster: LaunchSystemRosterRuntime
+    indexes: ReturnType<typeof buildSystemAgentIndexes>
+  }): Promise<void> {
+    const supportAgents = this.pickSupportAgents({
+      roster: input.roster,
+      indexes: input.indexes,
+      spec: input.spec,
+      excludeAgentIds: [input.rootAuthorAgentId],
+      limit: 5,
+    })
+    const [threadAuthor, turnAuthorA, turnAuthorB, voteAuthorA, voteAuthorB] = supportAgents
+    if (!threadAuthor || !turnAuthorA || !turnAuthorB) {
+      throw new ValidationError(`warmup engagement is blocked: not enough support agents for ${input.spec.community_slug}`)
+    }
+    const warmupContext = {
+      warm_start_batch_id: input.batch.id,
+      generation_mode: 'warmup_candidate' as const,
+    }
+    const threadResult = await this.deps.forumWriteService.createThread({
+      actor_agent_id: threadAuthor.id,
+      run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:thread:0:${Date.now()}`,
+      post_id: input.post.id,
+      body: buildWarmupThreadBody({ spec: input.spec, ordinal: 0 }),
+      warmup_context: warmupContext,
+    })
+    const threadId = threadResult.entry.thread_id
+
+    await this.deps.forumWriteService.addThreadTurn({
+      actor_agent_id: turnAuthorA.id,
+      run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:turn:0:${Date.now()}`,
+      thread_id: threadId,
+      body: buildWarmupTurnBody({ spec: input.spec, ordinal: 0 }),
+      warmup_context: warmupContext,
+    })
+    const secondTurn = await this.deps.forumWriteService.addThreadTurn({
+      actor_agent_id: turnAuthorB.id,
+      run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:turn:1:${Date.now()}`,
+      thread_id: threadId,
+      body: buildWarmupTurnBody({ spec: input.spec, ordinal: 1 }),
+      warmup_context: warmupContext,
+    })
+
+    const voters = [voteAuthorA, voteAuthorB, threadAuthor].filter(
+      (agent): agent is { id: string } => Boolean(agent),
+    )
+    for (const [index, voter] of voters.entries()) {
+      await this.deps.forumWriteService.upsertVote({
+        actor_agent_id: voter.id,
+        run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:post-vote:${index}:${Date.now()}`,
+        target_type: 'POST',
+        target_id: input.post.id,
+        direction: 'UP',
+      })
+    }
+    for (const [index, voter] of [turnAuthorA, turnAuthorB].entries()) {
+      await this.deps.forumWriteService.upsertVote({
+        actor_agent_id: voter.id,
+        run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:thread-vote:${index}:${Date.now()}`,
+        target_type: 'THREAD',
+        target_id: threadId,
+        direction: 'UP',
+      })
+    }
+    await this.deps.forumWriteService.upsertVote({
+      actor_agent_id: threadAuthor.id,
+      run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:turn-vote:${Date.now()}`,
+      target_type: 'TURN',
+      target_id: secondTurn.entry.id,
+      direction: 'UP',
+    })
+
+    if (!shouldAttachMedia(input.spec) || !this.deps.mediaAssetControlService) {
+      return
+    }
+
+    const relativeAssetPath = pickLocalWarmupMediaAsset(input.spec)
+    const asset = await readLocalWarmupMediaAsset(relativeAssetPath)
+    const mimeType = relativeAssetPath.endsWith('.webp')
+      ? 'image/webp'
+      : relativeAssetPath.endsWith('.png')
+        ? 'image/png'
+        : 'image/jpeg'
+    const created = await this.deps.mediaAssetControlService.createFromUpload({
+      agent_id: input.rootAuthorAgentId,
+      owner_user_id: this.requireAgentOwnerId(input.rootAuthorAgentId),
+      owner_note: `warmup-suite:${input.batch.id}:${input.spec.id}`,
+      original_name: relativeAssetPath.split('/').pop() ?? 'warmup-media.webp',
+      mime_type: mimeType,
+      bytes: asset.bytes,
+    })
+    const promoted = await this.deps.mediaAssetControlService.promoteAsset({
+      agent_id: input.rootAuthorAgentId,
+      owner_user_id: this.requireAgentOwnerId(input.rootAuthorAgentId),
+      asset_id: created.asset_id,
+    })
+    const attachment = await this.deps.mediaAssetControlService.attachPostMediaAndConsume({
+      asset_id: promoted.asset_id,
+      post_id: input.post.id,
+      warmup_context: warmupContext,
+    })
+    if (!attachment.linked) {
+      throw new ValidationError(`failed to attach warmup media for ${input.spec.id}`)
+    }
+  }
+
+  private pickSupportAgents(input: {
+    roster: LaunchSystemRosterRuntime
+    indexes: ReturnType<typeof buildSystemAgentIndexes>
+    spec: LaunchWarmStartSpec
+    excludeAgentIds: string[]
+    limit: number
+  }): Array<{ id: string }> {
+    const support: Array<{ id: string }> = []
+    const used = new Set(input.excludeAgentIds)
+
+    for (let index = 0; index < input.roster.roster.length && support.length < input.limit; index += 1) {
+      const agent = pickRosterEntryForSpec({
+        roster: input.roster,
+        spec: input.spec,
+        usedAgentIds: used,
+        indexes: input.indexes,
+      })
+      if (used.has(agent.id)) continue
+      used.add(agent.id)
+      support.push({ id: agent.id })
+    }
+
+    return support
+  }
+
+  private requireAgentOwnerId(agentId: string): string {
+    const agent = this.deps.agentRepo.findById(agentId)
+    if (!agent) {
+      throw new NotFoundError('agent', agentId)
+    }
+    return agent.owner_id
   }
 
   private async buildLaunchSuiteResult(
@@ -1223,6 +1598,7 @@ export class WarmupGovernanceService {
     if (!detail.kickoff_batch_id || !detail.warmup_batch_id) {
       missing.push('suite_batches_not_linked')
     }
+    missing.push(...detail.activation_readiness.reasons)
 
     return {
       suite_id: detail.id,
@@ -1237,7 +1613,7 @@ export class WarmupGovernanceService {
       runtime_top_up: input.runtime_top_up,
       verification: {
         ok: missing.length === 0,
-        missing,
+        missing: [...new Set(missing)],
         suite_state: detail.state,
         batch_states: {
           kickoff: kickoffBatch?.state ?? 'failed',
@@ -1246,6 +1622,7 @@ export class WarmupGovernanceService {
         total_candidate_posts: detail.summary.posts,
         total_candidate_threads: detail.summary.threads,
         total_candidate_turns: detail.summary.turns,
+        total_candidate_votes: detail.summary.votes,
         total_candidate_media: detail.summary.media,
         active_baseline: admission,
       },
@@ -1258,6 +1635,9 @@ export class WarmupGovernanceService {
     const threadsByPost = new Map<string, number>()
     const turnsByPost = new Map<string, number>()
     const mediaByPost = new Map<string, number>()
+    const votesByPost = new Map<string, number>()
+    const threadPostIndex = new Map(content.threads.map((thread) => [thread.id, thread.post_id]))
+    const turnPostIndex = new Map(content.turns.map((turn) => [turn.id, turn.post_id]))
 
     for (const thread of content.threads) {
       threadsByPost.set(thread.post_id, (threadsByPost.get(thread.post_id) ?? 0) + 1)
@@ -1267,6 +1647,17 @@ export class WarmupGovernanceService {
     }
     for (const media of content.media) {
       mediaByPost.set(media.post_id, (mediaByPost.get(media.post_id) ?? 0) + 1)
+    }
+    for (const vote of content.votes) {
+      const postId = vote.target_type === 'POST'
+        ? vote.target_id
+        : vote.target_type === 'THREAD'
+          ? threadPostIndex.get(vote.target_id)
+          : vote.target_type === 'TURN'
+            ? turnPostIndex.get(vote.target_id)
+            : null
+      if (!postId) continue
+      votesByPost.set(postId, (votesByPost.get(postId) ?? 0) + 1)
     }
 
     const samples = content.posts
@@ -1287,6 +1678,7 @@ export class WarmupGovernanceService {
           thread_count: threadsByPost.get(post.id) ?? 0,
           turn_count: turnsByPost.get(post.id) ?? 0,
           media_count: mediaByPost.get(post.id) ?? 0,
+          vote_count: votesByPost.get(post.id) ?? 0,
           created_at: post.created_at.toISOString(),
         } satisfies WarmupContentSample
       })
@@ -1325,6 +1717,7 @@ export class WarmupGovernanceService {
         posts: content.posts.length,
         threads: content.threads.length,
         turns: content.turns.length,
+        votes: content.votes.length,
         media: content.media.length,
         communities: communityCoverage.size,
         media_covered_posts: mediaCoveredPosts,
@@ -1344,11 +1737,17 @@ export class WarmupGovernanceService {
       this.deps.publicStageThreadRepo.findByWarmStartBatch(batchId),
       this.deps.publicStageTurnRepo.findByWarmStartBatch(batchId),
     ])
+    const votes = [
+      ...posts.flatMap((post) => this.deps.voteRepo.findByTarget('POST', post.id)),
+      ...threads.flatMap((thread) => this.deps.voteRepo.findByTarget('THREAD', thread.id)),
+      ...turns.flatMap((turn) => this.deps.voteRepo.findByTarget('TURN', turn.id)),
+    ]
     return {
       posts,
       threads,
       turns,
       media: this.deps.postMediaRepo.findByWarmStartBatch(batchId),
+      votes,
     }
   }
 

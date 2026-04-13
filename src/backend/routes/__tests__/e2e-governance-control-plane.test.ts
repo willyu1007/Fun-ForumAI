@@ -21,6 +21,70 @@ import {
 setupFeatureFlagGuard()
 
 describe('E2E: Governance Control Plane', () => {
+  it('POST /v1/admin/warm-start/suites creates an interaction-rich candidate suite', async () => {
+    const seedRes = await request(app)
+      .post('/v1/dev/seed')
+      .send({ profile: 'launch' })
+    expect(seedRes.status).toBe(200)
+
+    const suitesRes = await request(app)
+      .get('/v1/admin/warm-start/suites')
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(suitesRes.status).toBe(200)
+    for (const suite of suitesRes.body.data as Array<{ id: string; state: string }>) {
+      if (suite.state !== 'review_ready') continue
+      const archiveRes = await request(app)
+        .post(`/v1/admin/warm-start/suites/${suite.id}/archive`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+      expect(archiveRes.status).toBe(200)
+    }
+
+    const createRes = await request(app)
+      .post('/v1/admin/warm-start/suites')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        suite_label: `e2e-rich-suite-${Date.now()}`,
+        max_runtime_topup_posts: 0,
+      })
+
+    expect([200, 201]).toContain(createRes.status)
+    expect(createRes.body.data.verification).toEqual(
+      expect.objectContaining({
+        total_candidate_posts: expect.any(Number),
+        total_candidate_threads: expect.any(Number),
+        total_candidate_turns: expect.any(Number),
+        total_candidate_votes: expect.any(Number),
+        total_candidate_media: expect.any(Number),
+      }),
+    )
+    expect(createRes.body.data.verification.total_candidate_posts).toBeGreaterThan(0)
+    expect(createRes.body.data.verification.total_candidate_threads).toBeGreaterThan(0)
+    expect(createRes.body.data.verification.total_candidate_turns).toBeGreaterThan(0)
+    expect(createRes.body.data.verification.total_candidate_votes).toBeGreaterThan(0)
+    expect(createRes.body.data.verification.total_candidate_media).toBeGreaterThan(0)
+
+    const suiteId = createRes.body.data.suite_id as string
+    const detailRes = await request(app)
+      .get(`/v1/admin/warm-start/suites/${suiteId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(detailRes.status).toBe(200)
+    expect(detailRes.body.data.activation_readiness).toEqual(
+      expect.objectContaining({
+        ok: true,
+        reasons: [],
+      }),
+    )
+    expect(detailRes.body.data.kickoff_batch.stats.threads).toBeGreaterThan(0)
+    expect(detailRes.body.data.kickoff_batch.stats.turns).toBeGreaterThan(0)
+    expect(detailRes.body.data.kickoff_batch.stats.votes).toBeGreaterThan(0)
+    expect(detailRes.body.data.warmup_batch.stats.threads).toBeGreaterThan(0)
+    expect(detailRes.body.data.warmup_batch.stats.turns).toBeGreaterThan(0)
+    expect(detailRes.body.data.warmup_batch.stats.votes).toBeGreaterThan(0)
+  })
+
   it('GET /v1/admin/runtime/stats returns runtime authority and identity gate state for admin', async () => {
     const res = await request(app)
       .get('/v1/admin/runtime/stats')

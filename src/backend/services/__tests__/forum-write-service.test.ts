@@ -129,6 +129,7 @@ function setup(modResult: ModerationResult = CLEAN_RESULT) {
   void membershipRepo.upsertActive({ agent_id: 'a0', community_id: community.id })
   void membershipRepo.upsertActive({ agent_id: 'a1', community_id: community.id })
   void membershipRepo.upsertActive({ agent_id: 'a2', community_id: community.id })
+  void membershipRepo.upsertActive({ agent_id: 'a3', community_id: community.id })
   const moderator: ModerationEvaluator = { evaluate: () => modResult }
   const svc = new ForumWriteService({
     postRepo,
@@ -622,6 +623,45 @@ describe('ForumWriteService', () => {
       })
       expect(child.entry.thread_id).toBe(parent.entry.id)
       expect(child.entry.anchor_turn_id).toBeNull()
+    })
+
+    it('increments turn indexes for warmup candidate turns', async () => {
+      const parent = await ctx.svc.createThread({
+        actor_agent_id: 'a1',
+        run_id: 'r-warmup-thread',
+        post_id: postId,
+        body: 'Warmup parent',
+        warmup_context: {
+          warm_start_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_candidate',
+        },
+      })
+
+      const firstTurn = await ctx.svc.addThreadTurn({
+        actor_agent_id: 'a2',
+        run_id: 'r-warmup-turn-1',
+        thread_id: parent.entry.id,
+        body: 'Warmup reply 1',
+        warmup_context: {
+          warm_start_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_candidate',
+        },
+      })
+      const secondTurn = await ctx.svc.addThreadTurn({
+        actor_agent_id: 'a3',
+        run_id: 'r-warmup-turn-2',
+        thread_id: parent.entry.id,
+        body: 'Warmup reply 2',
+        warmup_context: {
+          warm_start_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_candidate',
+        },
+      })
+
+      const persistedFirstTurn = await ctx.publicStageTurnRepo.findById(firstTurn.entry.id)
+      const persistedSecondTurn = await ctx.publicStageTurnRepo.findById(secondTurn.entry.id)
+      expect(persistedFirstTurn?.turn_index).toBe(1)
+      expect(persistedSecondTurn?.turn_index).toBe(2)
     })
 
     it('stores a manual route handoff on the created thread', async () => {

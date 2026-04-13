@@ -5,6 +5,7 @@ import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.j
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
+import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryWarmupGovernanceRepository } from '../../repos/warmup-governance-repository.js'
 import type { AgentCommunityMembership } from '../../repos/types/index.js'
 import type { ReconcileMembershipsResult } from '../agent-community-membership-service.js'
@@ -17,6 +18,7 @@ function createService() {
   const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
   const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
   const postMediaRepo = new InMemoryPostMediaRepository()
+  const voteRepo = new InMemoryVoteRepository()
   const communityRepo = new InMemoryCommunityRepository()
   const agentRepo = new InMemoryAgentRepository()
   const agentConfigRepo = new InMemoryAgentConfigRepository()
@@ -88,6 +90,7 @@ function createService() {
     publicStageThreadRepo,
     publicStageTurnRepo,
     postMediaRepo,
+    voteRepo,
     communityRepo,
     agentRepo,
     agentConfigRepo,
@@ -98,6 +101,15 @@ function createService() {
     forumWriteService: {
       createPost: vi.fn(async () => {
         throw new Error('forumWriteService.createPost should not be called in this test')
+      }),
+      createThread: vi.fn(async () => {
+        throw new Error('forumWriteService.createThread should not be called in this test')
+      }),
+      addThreadTurn: vi.fn(async () => {
+        throw new Error('forumWriteService.addThreadTurn should not be called in this test')
+      }),
+      upsertVote: vi.fn(async () => {
+        throw new Error('forumWriteService.upsertVote should not be called in this test')
       }),
     },
     launchProgrammingOpsService: {
@@ -120,6 +132,7 @@ function createService() {
       publicStageThreadRepo,
       publicStageTurnRepo,
       postMediaRepo,
+      voteRepo,
     },
     mocks: {
       refreshPost,
@@ -248,6 +261,42 @@ async function seedSuiteFixture(
     warm_start_batch_id: warmupBatch.id,
     generation_mode: 'warmup_candidate',
   })
+  ctx.repos.voteRepo.upsert({
+    voter_agent_id: ctx.seed.agent.id,
+    target_type: 'POST',
+    target_id: kickoffPost.id,
+    direction: 'UP',
+  })
+  ctx.repos.voteRepo.upsert({
+    voter_agent_id: ctx.seed.agent.id,
+    target_type: 'THREAD',
+    target_id: kickoffThread.id,
+    direction: 'UP',
+  })
+  ctx.repos.voteRepo.upsert({
+    voter_agent_id: ctx.seed.agent.id,
+    target_type: 'TURN',
+    target_id: kickoffTurn.id,
+    direction: 'UP',
+  })
+  ctx.repos.voteRepo.upsert({
+    voter_agent_id: ctx.seed.agent.id,
+    target_type: 'POST',
+    target_id: warmupPost.id,
+    direction: 'UP',
+  })
+  ctx.repos.voteRepo.upsert({
+    voter_agent_id: ctx.seed.agent.id,
+    target_type: 'THREAD',
+    target_id: warmupThread.id,
+    direction: 'UP',
+  })
+  ctx.repos.voteRepo.upsert({
+    voter_agent_id: ctx.seed.agent.id,
+    target_type: 'TURN',
+    target_id: warmupTurn.id,
+    direction: 'UP',
+  })
 
   await ctx.repos.warmupGovernanceRepo.updateSuite(suite.id, {
     state: input.suiteState ?? 'review_ready',
@@ -371,6 +420,60 @@ describe('WarmupGovernanceService', () => {
     ).rejects.toThrow('not_passed review requires at least one structured reason code')
   })
 
+  it('blocks pass_to_active when activation readiness is incomplete', async () => {
+    const ctx = createService()
+    const suite = await ctx.repos.warmupGovernanceRepo.createSuite({
+      state: 'review_ready',
+      suite_label: 'incomplete-suite',
+      created_by_user_id: 'admin-1',
+    })
+    const kickoffBatch = await ctx.repos.warmupGovernanceRepo.createBatch({
+      suite_id: suite.id,
+      batch_kind: 'kickoff',
+      state: 'review_ready',
+    })
+    const warmupBatch = await ctx.repos.warmupGovernanceRepo.createBatch({
+      suite_id: suite.id,
+      batch_kind: 'warmup',
+      state: 'review_ready',
+    })
+    await ctx.repos.warmupGovernanceRepo.updateSuite(suite.id, {
+      kickoff_batch_id: kickoffBatch.id,
+      warmup_batch_id: warmupBatch.id,
+    })
+    await ctx.repos.postRepo.create({
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      title: 'Incomplete kickoff',
+      body: 'only root content',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      moderation_metadata: { distribution_state: 'NO_RECOMMEND' },
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'warmup_candidate',
+    })
+    await ctx.repos.postRepo.create({
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      title: 'Incomplete warmup',
+      body: 'only root content',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      moderation_metadata: { distribution_state: 'NO_RECOMMEND' },
+      warm_start_batch_id: warmupBatch.id,
+      generation_mode: 'warmup_candidate',
+    })
+
+    await expect(
+      ctx.service.reviewSuite({
+        suite_id: suite.id,
+        reviewer_user_id: 'admin-1',
+        decision: 'pass_to_active',
+        confirm_activation: true,
+      }),
+    ).rejects.toThrow('suite is not ready for activation')
+  })
+
   it('archives the current active suite and clears baseline admission', async () => {
     const ctx = createService()
     const fixture = await seedSuiteFixture(ctx)
@@ -395,7 +498,7 @@ describe('WarmupGovernanceService', () => {
     expect(admission.reasons).toEqual(['no_active_baseline'])
   })
 
-  it('keeps runtime growth admitted once the active baseline is fresh even when programming health is advisory-only red', async () => {
+  it('fails runtime growth admission when programming health gates are red', async () => {
     const ctx = createService()
     ctx.programmingOpsPayload.health.daypart_readiness = [{
       daypart_id: 'evening_prime',
@@ -429,8 +532,13 @@ describe('WarmupGovernanceService', () => {
     expect(admission.key_communities_ready).toBe(false)
     expect(admission.media_access_ok).toBe(false)
     expect(admission.aftershow_pipeline_ok).toBe(false)
-    expect(admission.allow_public_growth).toBe(true)
-    expect(admission.reasons).toEqual([])
+    expect(admission.allow_public_growth).toBe(false)
+    expect(admission.reasons).toEqual(expect.arrayContaining([
+      'key_shelves_not_ready',
+      'key_communities_not_ready',
+      'media_access_not_ready',
+      'aftershow_pipeline_not_ready',
+    ]))
   })
 
   it('previews quarantine scope and restores candidate exposure', async () => {

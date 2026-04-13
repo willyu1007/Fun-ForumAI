@@ -59,7 +59,7 @@ export class InMemoryPublicStageStore {
     }
 
     const threadId = parentThread?.id ?? parentTurn!.thread_id
-    const turnIndex = await this.turnRepo.countByThread(threadId) + 1
+    const turnIndex = await this.turnRepo.countAllByThread(threadId) + 1
     const turn = await this.turnRepo.create({
       id: input.id,
       thread_id: threadId,

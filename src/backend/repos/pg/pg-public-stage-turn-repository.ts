@@ -223,6 +223,12 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     })
   }
 
+  async countAllByThread(threadId: string): Promise<number> {
+    return this.prisma.publicStageTurn.count({
+      where: { threadId },
+    })
+  }
+
   async delete(id: string): Promise<void> {
     await this.prisma.publicStageTurn.deleteMany({ where: { id } })
   }

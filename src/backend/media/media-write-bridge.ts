@@ -50,6 +50,7 @@ export class MediaWriteBridge {
     asset_id: string
     post_id: string
     created_by_id?: string
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ linked: boolean }> {
     const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
     if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
@@ -110,6 +111,8 @@ export class MediaWriteBridge {
         asset_id: asset.id,
         media_url: mediaUrl,
         mime_type: asset.mime_type,
+        warm_start_batch_id: input.warmup_context?.warm_start_batch_id ?? null,
+        generation_mode: input.warmup_context?.generation_mode ?? null,
       })
     }
 

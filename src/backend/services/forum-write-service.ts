@@ -298,7 +298,9 @@ async function createThreadTurnEntry(
 
   const [post, currentTurnCount] = await Promise.all([
     context.deps.postRepo.findById(thread.post_id),
-    context.deps.publicStageTurnRepo.countByThread(thread.id),
+    input.warmup_context
+      ? context.deps.publicStageTurnRepo.countAllByThread(thread.id)
+      : context.deps.publicStageTurnRepo.countByThread(thread.id),
   ])
   if (!post) throw new NotFoundError('Post', thread.post_id)
   const lifecycle = resolveThreadLifecycleSnapshot(context, thread, currentTurnCount)

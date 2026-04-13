@@ -49,10 +49,11 @@ function BatchCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-xs">
-        <div className="grid gap-2 sm:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-5">
           <Metric label="Posts" value={batch.stats.posts} />
           <Metric label="Threads" value={batch.stats.threads} />
           <Metric label="Turns" value={batch.stats.turns} />
+          <Metric label="Votes" value={batch.stats.votes} />
           <Metric label="Media" value={batch.stats.media} />
         </div>
         <div className="space-y-1">
@@ -80,7 +81,7 @@ function BatchCard({
                 <p className="mt-1 text-muted-foreground">
                   {sample.community_name} · threads {sample.thread_count} · turns {sample.turn_count}
                   {' · '}
-                  media {sample.media_count}
+                  votes {sample.vote_count} · media {sample.media_count}
                 </p>
               </div>
             ))}
@@ -157,7 +158,9 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
                   <Badge variant="outline">{suite.state}</Badge>
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  posts {suite.summary.posts} · media ratio {suite.summary.media_coverage_ratio}
+                  posts {suite.summary.posts} · votes {suite.summary.votes}
+                  {' · '}
+                  media ratio {suite.summary.media_coverage_ratio}
                 </p>
               </button>
             ))}
@@ -192,14 +195,18 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <div className="grid gap-2 sm:grid-cols-5">
+                <div className="grid gap-2 sm:grid-cols-6">
                   <Metric label="Posts" value={detail.summary.posts} />
                   <Metric label="Threads" value={detail.summary.threads} />
                   <Metric label="Turns" value={detail.summary.turns} />
+                  <Metric label="Votes" value={detail.summary.votes} />
                   <Metric label="Media" value={detail.summary.media} />
                   <Metric label="Communities" value={detail.summary.communities} />
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Badge variant={detail.activation_readiness.ok ? 'secondary' : 'destructive'}>
+                    activation {detail.activation_readiness.ok ? 'ready' : 'blocked'}
+                  </Badge>
                   <Badge variant={detail.programming_health.visual_ratio_ok ? 'secondary' : 'destructive'}>
                     visual {detail.programming_health.visual_ratio_ok ? 'ok' : 'blocked'}
                   </Badge>
@@ -210,6 +217,18 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
                     warnings {detail.programming_health.warning_count}
                   </Badge>
                 </div>
+                {detail.activation_readiness.reasons.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="font-medium">Activation blockers</p>
+                    <div className="flex flex-wrap gap-2">
+                      {detail.activation_readiness.reasons.map((reason) => (
+                        <Badge key={reason} variant="destructive">
+                          {reason}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"

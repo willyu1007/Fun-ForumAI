@@ -18,6 +18,7 @@ export interface PublicStageTurnRepository {
   countPublicByAuthorAgent(agentId: string): Promise<number>
   findByPostsSince(postIds: string[], since: Date): Promise<PublicStageTurn[]>
   countByThread(threadId: string): Promise<number>
+  countAllByThread(threadId: string): Promise<number>
   delete(id: string): Promise<void>
   deleteByThread(threadId: string): Promise<void>
   updateVisibility(id: string, visibility: PublicStageTurn['visibility']): Promise<PublicStageTurn | null>
@@ -162,6 +163,12 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
     return Array.from(this.store.values())
       .filter((item) => item.thread_id === threadId && item.state === 'APPROVED')
       .filter((item) => item.visibility === 'PUBLIC' || item.visibility === 'GRAY')
+      .length
+  }
+
+  async countAllByThread(threadId: string): Promise<number> {
+    return Array.from(this.store.values())
+      .filter((item) => item.thread_id === threadId)
       .length
   }
 

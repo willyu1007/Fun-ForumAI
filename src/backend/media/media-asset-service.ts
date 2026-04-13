@@ -1031,6 +1031,7 @@ export class MediaAssetService {
   attachAssetToForumPost(input: {
     asset_id: string
     post_id: string
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ linked: boolean }> {
     return this.deps.mediaWriteBridge.attachAssetToPost(input)
   }
@@ -1838,3 +1839,4 @@ function buildPrivateSummary(summary: MediaSemanticSummary): PrivateMediaRuntime
       : {}),
   }
 }
+import type { WarmupWriteContextInput } from '../services/forum-write-service/types.js'

@@ -1704,6 +1704,7 @@ export interface WarmupContentSample {
   thread_count: number
   turn_count: number
   media_count: number
+  vote_count: number
   created_at: string
 }
 
@@ -1723,6 +1724,7 @@ export interface WarmupBatchReadModel {
     posts: number
     threads: number
     turns: number
+    votes: number
     media: number
     communities: number
     media_covered_posts: number
@@ -1756,6 +1758,7 @@ export interface WarmupSuiteListItem {
     posts: number
     threads: number
     turns: number
+    votes: number
     media: number
     communities: number
     media_coverage_ratio: number
@@ -1796,10 +1799,15 @@ export interface WarmupSuiteDetail {
     posts: number
     threads: number
     turns: number
+    votes: number
     media: number
     communities: number
     media_covered_posts: number
     media_coverage_ratio: number
+  }
+  activation_readiness: {
+    ok: boolean
+    reasons: string[]
   }
   coverage: Array<{
     community_id: string
@@ -1912,6 +1920,7 @@ export interface WarmupLaunchResult {
     total_candidate_posts: number
     total_candidate_threads: number
     total_candidate_turns: number
+    total_candidate_votes: number
     total_candidate_media: number
     active_baseline: Omit<RuntimeBaselineAdmission, 'worker_health_ok' | 'llm_credentials_ok'>
   }

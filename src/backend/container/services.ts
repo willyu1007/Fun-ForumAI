@@ -83,6 +83,7 @@ import { RedisRecallStateStore } from '../services/recall-state-store.js'
 import { AgentPerceptionService } from '../services/agent-perception-service.js'
 import { RuntimeContextAssembler } from '../services/runtime-context-assembler.js'
 import { WarmupGovernanceService } from '../services/warmup-governance-service.js'
+import type { MediaAssetControlService } from '../services/media-asset-control-service.js'
 import type { MediaWriteBridge } from '../media/media-write-bridge.js'
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
@@ -103,6 +104,7 @@ export function createCoreServices(deps: {
   moderator: ModerationService
   llmGateway: LLMGateway
   mediaWriteBridge: MediaWriteBridge
+  mediaAssetControlService: MediaAssetControlService
   surfaceMediaPlanningService: SurfaceMediaPlanningService
   mediaObservabilityService?: MediaObservabilityService | null
   mediaRolloutControllerService?: MediaRolloutControllerService | null
@@ -364,6 +366,7 @@ export function createCoreServices(deps: {
     publicStageThreadRepo: repos.publicStageThreadRepo,
     publicStageTurnRepo: repos.publicStageTurnRepo,
     postMediaRepo: repos.postMediaRepo,
+    voteRepo: repos.voteRepo,
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     agentConfigRepo: repos.agentConfigRepo,
@@ -371,6 +374,7 @@ export function createCoreServices(deps: {
     stageTierService,
     forumWriteService,
     launchProgrammingOpsService,
+    mediaAssetControlService: deps.mediaAssetControlService,
   })
 
   const communityCultureDigestService = new CommunityCultureDigestService({

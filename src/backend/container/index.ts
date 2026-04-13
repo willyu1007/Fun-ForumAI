@@ -166,6 +166,7 @@ const core = createCoreServices({
   moderator: infra.moderator,
   llmGateway: llm.llmGateway,
   mediaWriteBridge: llm.mediaWriteBridge,
+  mediaAssetControlService: llm.mediaAssetControlService,
   surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
   mediaObservabilityService: llm.mediaObservabilityService,
   mediaRolloutControllerService: llm.mediaRolloutControllerService,

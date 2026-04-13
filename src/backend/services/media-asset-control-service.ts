@@ -160,6 +160,7 @@ export class MediaAssetControlService {
   attachPostMediaAndConsume(input: {
     asset_id: string
     post_id: string
+    warmup_context?: WarmupWriteContextInput
   }): Promise<{ linked: boolean }> {
     return this.deps.mediaAssetService.attachAssetToForumPost(input)
   }
@@ -213,3 +214,4 @@ export class MediaAssetControlService {
     return value
   }
 }
+import type { WarmupWriteContextInput } from './forum-write-service/types.js'

@@ -305,6 +305,82 @@ async function runStagingChecks() {
       ? `allow_public_growth=${String(baselineAdmission?.allow_public_growth)} reasons=${JSON.stringify(baselineAdmission?.reasons ?? [])}`
       : `status=${runtimeStats.status}`,
   )
+  pushResult(
+    'Worker key communities ready',
+    runtimeStats.status === 200 && baselineAdmission?.key_communities_ready === true,
+    runtimeStats.status === 200
+      ? `key_communities_ready=${String(baselineAdmission?.key_communities_ready)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker key shelves ready',
+    runtimeStats.status === 200 && baselineAdmission?.key_shelves_ready === true,
+    runtimeStats.status === 200
+      ? `key_shelves_ready=${String(baselineAdmission?.key_shelves_ready)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker media access ready',
+    runtimeStats.status === 200 && baselineAdmission?.media_access_ok === true,
+    runtimeStats.status === 200
+      ? `media_access_ok=${String(baselineAdmission?.media_access_ok)}`
+      : `status=${runtimeStats.status}`,
+  )
+  pushResult(
+    'Worker aftershow pipeline ready',
+    runtimeStats.status === 200 && baselineAdmission?.aftershow_pipeline_ok === true,
+    runtimeStats.status === 200
+      ? `aftershow_pipeline_ok=${String(baselineAdmission?.aftershow_pipeline_ok)}`
+      : `status=${runtimeStats.status}`,
+  )
+
+  const suitesResponse = await fetchJson(`${webBaseUrl}/v1/admin/warm-start/suites`, {
+    headers: authHeaders,
+  })
+  const suites = Array.isArray(suitesResponse.body?.data) ? suitesResponse.body.data : []
+  const activeSuite = suites.find((suite) => suite?.state === 'active') ?? null
+  pushResult(
+    'Active warmup suite present',
+    suitesResponse.status === 200 && Boolean(activeSuite?.id),
+    suitesResponse.status === 200
+      ? `active_suite_id=${String(activeSuite?.id ?? '') || 'none'}`
+      : `status=${suitesResponse.status}`,
+  )
+
+  let activeSuiteDetail = null
+  if (activeSuite?.id) {
+    const detailResponse = await fetchJson(`${webBaseUrl}/v1/admin/warm-start/suites/${activeSuite.id}`, {
+      headers: authHeaders,
+    })
+    activeSuiteDetail = detailResponse.body?.data ?? null
+    pushResult(
+      'Active suite review readiness',
+      detailResponse.status === 200 && activeSuiteDetail?.activation_readiness?.ok === true,
+      detailResponse.status === 200
+        ? `activation_readiness=${String(activeSuiteDetail?.activation_readiness?.ok)} reasons=${JSON.stringify(activeSuiteDetail?.activation_readiness?.reasons ?? [])}`
+        : `status=${detailResponse.status}`,
+    )
+    pushResult(
+      'Active suite interaction floor',
+      detailResponse.status === 200
+        && (activeSuiteDetail?.summary?.threads ?? 0) > 0
+        && (activeSuiteDetail?.summary?.turns ?? 0) > 0
+        && (activeSuiteDetail?.summary?.votes ?? 0) > 0,
+      detailResponse.status === 200
+        ? `threads=${activeSuiteDetail?.summary?.threads ?? 0} turns=${activeSuiteDetail?.summary?.turns ?? 0} votes=${activeSuiteDetail?.summary?.votes ?? 0}`
+        : `status=${detailResponse.status}`,
+    )
+    pushResult(
+      'Active suite media floor',
+      detailResponse.status === 200
+        && (activeSuiteDetail?.summary?.media ?? 0) > 0
+        && typeof activeSuiteDetail?.summary?.media_coverage_ratio === 'number'
+        && activeSuiteDetail.summary.media_coverage_ratio >= 0.35,
+      detailResponse.status === 200
+        ? `media=${activeSuiteDetail?.summary?.media ?? 0} ratio=${String(activeSuiteDetail?.summary?.media_coverage_ratio ?? 0)}`
+        : `status=${detailResponse.status}`,
+    )
+  }
 
   const frontendFlags = await fetchJson(`${webBaseUrl}/frontend-build-capabilities.json`)
   const proofProfile = frontendFlags.body?.profile === 'launch'
