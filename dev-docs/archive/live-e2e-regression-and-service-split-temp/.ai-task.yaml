@@ -1,0 +1,6 @@
+version: 1
+task_id: T-961
+project: main
+slug: live-e2e-regression-and-service-split-temp
+status: archived
+updated: "2026-04-12"
