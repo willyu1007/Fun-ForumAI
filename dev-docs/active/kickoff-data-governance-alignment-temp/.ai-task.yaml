@@ -1,0 +1,14 @@
+version: 1
+task_id: T-964
+project: main
+slug: kickoff-data-governance-alignment-temp
+status: in-progress
+updated: "2026-04-13"
+keywords:
+  - kickoff
+  - warmup
+  - seed
+  - data-mode
+  - dev-toolbar
+  - governance
+  - staging
