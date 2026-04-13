@@ -42,6 +42,11 @@ import { SearchCountsCache } from '../services/search/search-counts-cache.js'
 import { SearchTelemetryService } from '../services/search/search-telemetry-service.js'
 import { ForumWatchTelemetryService } from '../services/forum-watch-telemetry-service.js'
 import { AgentDeletionService } from '../services/agent-deletion-service.js'
+import { KickoffRunArtifactService } from '../services/kickoff-run-artifact-service.js'
+import { KickoffRuntimeReadinessService } from '../services/kickoff-runtime-readiness-service.js'
+import { KickoffBootstrapService } from '../services/kickoff-bootstrap-service.js'
+import { KickoffPatchImportService } from '../services/kickoff-patch-import-service.js'
+import { KickoffSuiteEditService } from '../services/kickoff-suite-edit-service.js'
 import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 import { createHealthService } from '../health/service.js'
 import { healthState } from '../health/state.js'
@@ -595,6 +600,44 @@ core.warmupGovernanceService.attachRuntimeDeps({
   runtimeLoop: rt.runtimeLoop,
 })
 core.warmupGovernanceService.attachProjectionDeps({
+  searchProjectionService,
+})
+
+export const kickoffRunArtifactService = new KickoffRunArtifactService()
+export const kickoffRuntimeReadinessService = new KickoffRuntimeReadinessService({
+  warmupGovernanceService: core.warmupGovernanceService,
+})
+export const kickoffBootstrapService = new KickoffBootstrapService({
+  warmupGovernanceService: core.warmupGovernanceService,
+  runtimeReadinessService: kickoffRuntimeReadinessService,
+  runArtifactService: kickoffRunArtifactService,
+})
+export const kickoffPatchImportService = new KickoffPatchImportService({
+  warmupGovernanceService: core.warmupGovernanceService,
+  warmupGovernanceRepo: repos.warmupGovernanceRepo,
+  communityRepo: repos.communityRepo,
+  agentRepo: repos.agentRepo,
+  postRepo: repos.postRepo,
+  publicStageThreadRepo: repos.publicStageThreadRepo,
+  publicStageTurnRepo: repos.publicStageTurnRepo,
+  postMediaRepo: repos.postMediaRepo,
+  forumWriteService: core.forumWriteService,
+  mediaAssetControlService: llm.mediaAssetControlService,
+  searchProjectionService,
+  runtimeReadinessService: kickoffRuntimeReadinessService,
+  runArtifactService: kickoffRunArtifactService,
+})
+export const kickoffSuiteEditService = new KickoffSuiteEditService({
+  warmupGovernanceRepo: repos.warmupGovernanceRepo,
+  warmupGovernanceService: core.warmupGovernanceService,
+  runtimeReadinessService: kickoffRuntimeReadinessService,
+  postRepo: repos.postRepo,
+  postMediaRepo: repos.postMediaRepo,
+  publicStageThreadRepo: repos.publicStageThreadRepo,
+  publicStageTurnRepo: repos.publicStageTurnRepo,
+  forumWriteService: core.forumWriteService,
+  mediaAssetControlService: llm.mediaAssetControlService,
+  agentRepo: repos.agentRepo,
   searchProjectionService,
 })
 

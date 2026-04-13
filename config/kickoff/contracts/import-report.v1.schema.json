@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kickoff/import-report.v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "report_meta",
+    "resolved_context",
+    "preflight_results",
+    "resolution_map",
+    "op_results",
+    "summary_after_import",
+    "readiness_snapshot",
+    "observability",
+    "recommended_next_actions",
+    "failure_phase"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "const": 1 },
+    "report_meta": { "type": "object" },
+    "resolved_context": { "type": "object" },
+    "preflight_results": { "type": "array" },
+    "resolution_map": { "type": "array" },
+    "op_results": { "type": "array" },
+    "summary_after_import": { "type": "object" },
+    "readiness_snapshot": { "type": "object" },
+    "observability": { "type": "object" },
+    "recommended_next_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failure_phase": { "type": ["string", "null"] }
+  }
+}

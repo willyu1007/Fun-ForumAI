@@ -34,9 +34,11 @@ function readArg(name) {
 
 const results = []
 let failCount = 0
+let lastPrintedGroup = null
 
-function pushResult(name, ok, detail, extra = {}) {
+function pushResult(group, name, ok, detail, extra = {}) {
   results.push({
+    group,
     name,
     ok,
     detail,
@@ -44,6 +46,13 @@ function pushResult(name, ok, detail, extra = {}) {
   })
   if (!ok) failCount += 1
   if (!jsonMode) {
+    if (group !== lastPrintedGroup) {
+      if (lastPrintedGroup !== null) {
+        console.log('')
+      }
+      console.log(`[${group}]`)
+      lastPrintedGroup = group
+    }
     console.log(`  ${ok ? 'OK ' : 'ERR'} ${name}`)
     if (detail) {
       console.log(`     ${detail}`)
@@ -51,7 +60,7 @@ function pushResult(name, ok, detail, extra = {}) {
   }
 }
 
-function runCommand(name, command) {
+function runCommand(group, name, command) {
   try {
     execSync(command, {
       cwd: ROOT,
@@ -59,13 +68,13 @@ function runCommand(name, command) {
       timeout: 120_000,
       maxBuffer: 50 * 1024 * 1024,
     })
-    pushResult(name, true, command, { command })
+    pushResult(group, name, true, command, { command })
   } catch (error) {
     const stdout = error?.stdout?.toString?.() ?? ''
     const stderr = error?.stderr?.toString?.() ?? ''
     const detail =
       `${command}\n${`${stdout}${stderr}`.trim().split('\n').slice(-4).join('\n')}`.trim()
-    pushResult(name, false, detail, { command })
+    pushResult(group, name, false, detail, { command })
   }
 }
 
@@ -114,68 +123,73 @@ function runRepoChecks() {
   ].filter((relativePath) => existsSync(`${ROOT}/${relativePath}`))
 
   const membershipCheck = validateLaunchMembershipBootstrapAssets()
-  pushResult('Membership bootstrap assets', membershipCheck.ok, membershipCheck.detail)
+  pushResult('Contract', 'Membership bootstrap assets', membershipCheck.ok, membershipCheck.detail)
 
   const warmStartCheck = validateLaunchWarmStartAssets()
-  pushResult('Launch warm-start assets', warmStartCheck.ok, warmStartCheck.detail)
+  pushResult('Contract', 'Launch warm-start assets', warmStartCheck.ok, warmStartCheck.detail)
 
   const workerCheck = validateWorkerAssets()
-  pushResult('Worker workload assets', workerCheck.ok, workerCheck.detail)
+  pushResult('Contract', 'Worker workload assets', workerCheck.ok, workerCheck.detail)
 
   const runtimeContractsCheck = validateLaunchRuntimeContracts()
-  pushResult('Runtime launch contracts', runtimeContractsCheck.ok, runtimeContractsCheck.detail)
+  pushResult('Contract', 'Runtime launch contracts', runtimeContractsCheck.ok, runtimeContractsCheck.detail)
 
   const stagingOverlayCheck = validateLaunchRuntimeOverlay(
     'env/values/staging-launch.yaml',
     'staging',
   )
-  pushResult('Staging launch runtime overlay', stagingOverlayCheck.ok, stagingOverlayCheck.detail)
+  pushResult('Contract', 'Staging launch runtime overlay', stagingOverlayCheck.ok, stagingOverlayCheck.detail)
 
   const prodOverlayCheck = validateLaunchRuntimeOverlay('env/values/prod-launch.yaml', 'prod')
-  pushResult('Prod launch runtime overlay', prodOverlayCheck.ok, prodOverlayCheck.detail)
+  pushResult('Contract', 'Prod launch runtime overlay', prodOverlayCheck.ok, prodOverlayCheck.detail)
 
   const canonicalProfileCheck = validateCanonicalLaunchBuildProfile()
   pushResult(
+    'Contract',
     'Canonical launch frontend build profile',
     canonicalProfileCheck.ok,
     canonicalProfileCheck.detail,
   )
 
   const frontendDeliveryCheck = validateFrontendDeliveryAssets()
-  pushResult('Frontend dist delivery', frontendDeliveryCheck.ok, frontendDeliveryCheck.detail)
+  pushResult('Environment/Release', 'Frontend dist delivery', frontendDeliveryCheck.ok, frontendDeliveryCheck.detail)
 
   const packagingCheck = validatePackagingWireup()
-  pushResult('Packaging launch wireup', packagingCheck.ok, packagingCheck.detail)
+  pushResult('Environment/Release', 'Packaging launch wireup', packagingCheck.ok, packagingCheck.detail)
 
   const publishWorkflowCheck = validatePublishWorkflowWireup()
-  pushResult('Publish workflow launch wireup', publishWorkflowCheck.ok, publishWorkflowCheck.detail)
+  pushResult('Environment/Release', 'Publish workflow launch wireup', publishWorkflowCheck.ok, publishWorkflowCheck.detail)
 
   const startupHardeningCheck = validateDevOnlyStartupHardening()
-  pushResult('Dev-only startup hardening', startupHardeningCheck.ok, startupHardeningCheck.detail)
+  pushResult('Contract', 'Dev-only startup hardening', startupHardeningCheck.ok, startupHardeningCheck.detail)
 
   const strictConvergenceCheck = validateStrictSemanticConvergence()
   pushResult(
+    'Contract',
     'Strict semantic convergence',
     strictConvergenceCheck.ok,
     strictConvergenceCheck.detail,
   )
 
-  runCommand('Typecheck', 'pnpm typecheck')
-  runCommand('Lint', 'pnpm lint')
-  runCommand('Build', 'pnpm build')
+  runCommand('Environment/Release', 'Typecheck', 'pnpm typecheck')
+  runCommand('Environment/Release', 'Lint', 'pnpm lint')
+  runCommand('Environment/Release', 'Build', 'pnpm build')
   runCommand(
+    'Environment/Release',
     'Packaging dry-run (canonical launch profile)',
     'node ops/packaging/scripts/build.mjs --dry-run --target llm-forum --build-profile launch',
   )
 
   if (launchRegressionTests.length > 0) {
     runCommand(
+      'Environment/Release',
       'Launch regression tests',
       `node scripts/run-vitest.mjs run ${launchRegressionTests.join(' ')}`,
     )
   }
 
   runCommand(
+    'Environment/Release',
     'Governance lint',
     'node .ai/scripts/ctl-project-governance.mjs lint --check --project main',
   )
@@ -192,6 +206,7 @@ async function runStagingChecks() {
 
   if (!webBaseUrl || !workerBaseUrl || !adminToken) {
     pushResult(
+      'Environment/Release',
       'Staging launch inputs',
       false,
       'require --web-base-url, --worker-base-url, and --admin-token (or LAUNCH_WEB_BASE_URL / LAUNCH_WORKER_BASE_URL / LAUNCH_ADMIN_TOKEN)',
@@ -205,6 +220,7 @@ async function runStagingChecks() {
 
   const webHealth = await fetchJson(`${webBaseUrl}/health`)
   pushResult(
+    'Environment/Release',
     'Web health',
     webHealth.status === 200 && webHealth.body?.ok === true,
     `status=${webHealth.status}`,
@@ -212,6 +228,7 @@ async function runStagingChecks() {
 
   const workerHealth = await fetchJson(`${workerBaseUrl}/health`)
   pushResult(
+    'Environment/Release',
     'Worker health',
     workerHealth.status === 200 && workerHealth.body?.ok === true,
     `status=${workerHealth.status}`,
@@ -222,6 +239,7 @@ async function runStagingChecks() {
   })
   const webRuntime = webRuntimeStats.body?.data?.runtime ?? null
   pushResult(
+    'Environment/Release',
     'API runtime routing mode',
     webRuntimeStats.status === 200 && webRuntime?.routing_mode === 'policy_driven',
     webRuntimeStats.status === 200
@@ -229,6 +247,7 @@ async function runStagingChecks() {
       : `status=${webRuntimeStats.status}`,
   )
   pushResult(
+    'Environment/Release',
     'API env pins absent',
     webRuntimeStats.status === 200 && webRuntime?.authority_state?.env_pins_present !== true,
     webRuntimeStats.status === 200
@@ -236,6 +255,7 @@ async function runStagingChecks() {
       : `status=${webRuntimeStats.status}`,
   )
   pushResult(
+    'Environment/Release',
     'API debug signals absent',
     webRuntimeStats.status === 200 && webRuntime?.authority_state?.debug_signals_present !== true,
     webRuntimeStats.status === 200
@@ -250,6 +270,7 @@ async function runStagingChecks() {
   const baselineAdmission = workerRuntime?.baseline_admission ?? null
   const runtimeRunning = workerRuntime?.running === true
   pushResult(
+    'Environment/Release',
     'Worker runtime running',
     runtimeStats.status === 200 && runtimeRunning,
     runtimeStats.status === 200
@@ -257,6 +278,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Environment/Release',
     'Worker runtime routing mode',
     runtimeStats.status === 200 && workerRuntime?.routing_mode === 'policy_driven',
     runtimeStats.status === 200
@@ -264,6 +286,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Environment/Release',
     'Worker env pins absent',
     runtimeStats.status === 200 && workerRuntime?.authority_state?.env_pins_present !== true,
     runtimeStats.status === 200
@@ -271,6 +294,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Environment/Release',
     'Worker debug signals absent',
     runtimeStats.status === 200 && workerRuntime?.authority_state?.debug_signals_present !== true,
     runtimeStats.status === 200
@@ -278,6 +302,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Kickoff Import',
     'Worker active baseline present',
     runtimeStats.status === 200 && baselineAdmission?.has_active_baseline === true,
     runtimeStats.status === 200
@@ -285,6 +310,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker kickoff baseline ready',
     runtimeStats.status === 200 && baselineAdmission?.kickoff_layer_ready === true,
     runtimeStats.status === 200
@@ -292,6 +318,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker warmup baseline ready',
     runtimeStats.status === 200 && baselineAdmission?.warmup_layer_ready === true,
     runtimeStats.status === 200
@@ -299,6 +326,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker public growth admitted',
     runtimeStats.status === 200 && baselineAdmission?.allow_public_growth === true,
     runtimeStats.status === 200
@@ -306,6 +334,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker key communities ready',
     runtimeStats.status === 200 && baselineAdmission?.key_communities_ready === true,
     runtimeStats.status === 200
@@ -313,6 +342,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker key shelves ready',
     runtimeStats.status === 200 && baselineAdmission?.key_shelves_ready === true,
     runtimeStats.status === 200
@@ -320,6 +350,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker media access ready',
     runtimeStats.status === 200 && baselineAdmission?.media_access_ok === true,
     runtimeStats.status === 200
@@ -327,6 +358,7 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Worker aftershow pipeline ready',
     runtimeStats.status === 200 && baselineAdmission?.aftershow_pipeline_ok === true,
     runtimeStats.status === 200
@@ -340,6 +372,7 @@ async function runStagingChecks() {
   const suites = Array.isArray(suitesResponse.body?.data) ? suitesResponse.body.data : []
   const activeSuite = suites.find((suite) => suite?.state === 'active') ?? null
   pushResult(
+    'Kickoff Import',
     'Active warmup suite present',
     suitesResponse.status === 200 && Boolean(activeSuite?.id),
     suitesResponse.status === 200
@@ -354,6 +387,7 @@ async function runStagingChecks() {
     })
     activeSuiteDetail = detailResponse.body?.data ?? null
     pushResult(
+      'Runtime Readiness',
       'Active suite review readiness',
       detailResponse.status === 200 && activeSuiteDetail?.activation_readiness?.ok === true,
       detailResponse.status === 200
@@ -361,6 +395,7 @@ async function runStagingChecks() {
         : `status=${detailResponse.status}`,
     )
     pushResult(
+      'Runtime Readiness',
       'Active suite interaction floor',
       detailResponse.status === 200
         && (activeSuiteDetail?.summary?.threads ?? 0) > 0
@@ -371,6 +406,7 @@ async function runStagingChecks() {
         : `status=${detailResponse.status}`,
     )
     pushResult(
+      'Runtime Readiness',
       'Active suite media floor',
       detailResponse.status === 200
         && (activeSuiteDetail?.summary?.media ?? 0) > 0
@@ -387,6 +423,7 @@ async function runStagingChecks() {
   const homeFlag = frontendFlags.body?.frontend_capabilities?.home_programming === true
   const opsFlag = frontendFlags.body?.frontend_capabilities?.programming_ops === true
   pushResult(
+    'Environment/Release',
     'Launch frontend build proof',
     frontendFlags.status === 200 && proofProfile && homeFlag && opsFlag,
     frontendFlags.status === 200
@@ -400,6 +437,7 @@ async function runStagingChecks() {
   const shelfIds = shelves.map((shelf) => shelf.id)
   const shelvesById = new Map(shelves.map((shelf) => [shelf.id, shelf]))
   pushResult(
+    'Runtime Readiness',
     'Launch home enabled',
     homeResponse.status === 200 && homePayload?.enabled === true,
     homeResponse.status === 200
@@ -407,31 +445,37 @@ async function runStagingChecks() {
       : `status=${homeResponse.status}`,
   )
   pushResult(
+    'Runtime Readiness',
     'Launch shelf order',
     JSON.stringify(shelfIds) === JSON.stringify(REQUIRED_HOME_SHELF_ORDER),
     `actual=${JSON.stringify(shelfIds)}`,
   )
   pushResult(
+    'Runtime Readiness',
     'must_watch_today non-empty',
     (shelvesById.get('must_watch_today')?.items?.length ?? 0) > 0,
     `count=${shelvesById.get('must_watch_today')?.items?.length ?? 0}`,
   )
   pushResult(
+    'Runtime Readiness',
     'conflict_rising non-empty',
     (shelvesById.get('conflict_rising')?.items?.length ?? 0) > 0,
     `count=${shelvesById.get('conflict_rising')?.items?.length ?? 0}`,
   )
   pushResult(
+    'Runtime Readiness',
     'notes_today threshold',
     (shelvesById.get('notes_today')?.items?.length ?? 0) >= 2,
     `count=${shelvesById.get('notes_today')?.items?.length ?? 0}`,
   )
   pushResult(
+    'Runtime Readiness',
     'continue_storyline threshold',
     (shelvesById.get('continue_storyline')?.items?.length ?? 0) >= 2,
     `count=${shelvesById.get('continue_storyline')?.items?.length ?? 0}`,
   )
   pushResult(
+    'Runtime Readiness',
     'tonight_programming non-empty',
     (shelvesById.get('tonight_programming')?.items?.length ?? 0) > 0,
     `count=${shelvesById.get('tonight_programming')?.items?.length ?? 0}`,
@@ -449,6 +493,7 @@ async function runStagingChecks() {
     (slug) => !visibleCommunitySlugs.has(slug),
   )
   pushResult(
+    'Runtime Readiness',
     'Launch community catalog completeness',
     communitiesResponse.status === 200 && missingLaunchCommunities.length === 0,
     communitiesResponse.status === 200
@@ -473,6 +518,7 @@ async function runStagingChecks() {
     }
   }
   pushResult(
+    'Runtime Readiness',
     'Launch community occupancy',
     occupancyFailures.length === 0,
     occupancyFailures.length === 0
@@ -489,11 +535,12 @@ async function runStagingChecks() {
         stdio: ['ignore', 'pipe', 'pipe'],
       },
     )
-    pushResult('Launch home browser smoke', true, `${webBaseUrl}/ renders Home Programming`)
+    pushResult('Environment/Release', 'Launch home browser smoke', true, `${webBaseUrl}/ renders Home Programming`)
   } catch (error) {
     const stdout = error?.stdout?.toString?.() ?? ''
     const stderr = error?.stderr?.toString?.() ?? ''
     pushResult(
+      'Environment/Release',
       'Launch home browser smoke',
       false,
       `${stdout}${stderr}`.trim() || 'browser smoke failed',

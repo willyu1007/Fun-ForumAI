@@ -1,0 +1,20 @@
+version: 1
+id: local-llm-assisted-candidate
+mode: candidate
+assistant_kind: local-llm-assisted
+bootstrap:
+  reset_before_bootstrap: true
+  seed_profile: launch
+  activate_after_import: false
+  default_target_batch: warmup
+  max_runtime_topup_posts: 0
+import_defaults:
+  allow_inline_patch: true
+  allow_patch_pack_lookup: true
+  allow_runtime_instruction_payload: false
+  default_generation_mode: warmup_candidate
+  require_real_service_import: true
+observability:
+  emit_context_pack: true
+  emit_import_report: true
+  emit_runtime_readiness: true

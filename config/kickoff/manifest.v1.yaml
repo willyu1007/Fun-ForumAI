@@ -1,0 +1,23 @@
+version: 1
+entrypoint: local-kickoff-workflow
+launch_manifest_path: config/launch/manifest.v1.yaml
+contracts:
+  authoring_patch: config/kickoff/contracts/authoring-patch.v1.schema.json
+  import_report: config/kickoff/contracts/import-report.v1.schema.json
+  runtime_readiness: config/kickoff/contracts/runtime-readiness.v1.schema.json
+profiles:
+  - id: local-llm-assisted-candidate
+    path: config/kickoff/profiles/local-llm-assisted-candidate.v1.yaml
+  - id: local-llm-assisted-runtime-simulation
+    path: config/kickoff/profiles/local-llm-assisted-runtime-simulation.v1.yaml
+quality_profiles:
+  default: config/kickoff/quality/acceptance.v1.yaml
+patch_pack_registry: config/kickoff/patch-packs/registry.v1.yaml
+verification_boundary:
+  - repo_contract
+  - kickoff_import
+  - kickoff_runtime_readiness
+notes:
+  - Workflow declaration layer for local kickoff orchestration.
+  - Runtime actual state remains in the database warmup/forum/media tables.
+  - Environment and release verification stay outside config/kickoff.

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kickoff/runtime-readiness.v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "suite_id",
+    "suite_label",
+    "suite_state",
+    "kickoff_batch_id",
+    "warmup_batch_id",
+    "active_baseline_id",
+    "activation_readiness",
+    "layer_readiness",
+    "quality_state",
+    "admission",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "const": 1 },
+    "suite_id": { "type": ["string", "null"] },
+    "suite_label": { "type": ["string", "null"] },
+    "suite_state": {
+      "type": "string",
+      "enum": ["draft", "review_ready", "active", "archived", "unknown"]
+    },
+    "kickoff_batch_id": { "type": ["string", "null"] },
+    "warmup_batch_id": { "type": ["string", "null"] },
+    "active_baseline_id": { "type": ["string", "null"] },
+    "activation_readiness": { "type": "object" },
+    "layer_readiness": { "type": "object" },
+    "quality_state": { "type": "object" },
+    "admission": { "type": "object" },
+    "generated_at": { "type": "string", "format": "date-time" }
+  }
+}
