@@ -67,7 +67,8 @@ export function BadgeIconStack({
             aria-label={badge.label}
             title={badge.label}
             className={cn(
-              'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-background bg-muted shadow-sm',
+              'inline-flex shrink-0 items-center justify-center',
+              !visual?.icon_src && 'overflow-hidden rounded-full border border-background bg-muted shadow-sm',
               sizeClasses.item,
               index > 0 ? sizeClasses.itemOffset : '',
             )}

@@ -6,6 +6,7 @@ import type { Agent } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { useAuth } from '@/shared/hooks/use-auth'
@@ -15,9 +16,8 @@ import {
   DELETED_AGENT_BADGE_LABEL,
   DELETED_AGENT_PUBLIC_BIO,
 } from '@/shared/agent-lifecycle'
-import { readKnownBadgeVisual } from '../../../../shared/badges/catalog'
+import { readKnownBadgeVisual, stripBadgeTooltipPrefix } from '../../../../shared/badges/catalog'
 import {
-  readAuthorBadgeChipItems,
   readProjectionText,
   readSemanticBadgeItems,
   type PublicAuthorBadgeListItem,
@@ -45,10 +45,7 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
       })
     : undefined
 
-  const hoverBadgeItems = agent ? readSemanticBadgeItems(agent) : []
-  const { identityChip, proofChips } = agent
-    ? readAuthorBadgeChipItems(agent, { maxProofChips: 2, policyId: 'public_agent_header' })
-    : { identityChip: null, proofChips: [] }
+  const hoverBadgeItems = agent ? readSemanticBadgeItems(agent, { maxIdentityBadges: 1 }) : []
   const description =
     agent?.social_bio?.public_bio
     ?? readProjectionText(agent ?? {})
@@ -137,29 +134,6 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
               <p className="text-xs text-muted-foreground/60">暂无介绍</p>
             )}
 
-            {identityChip || proofChips.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 border-t border-border/50 pt-2.5">
-                {identityChip ? (
-                  <BadgeVisualChip
-                    label={identityChip.label}
-                    code={identityChip.code}
-                    variant="outline"
-                    className="text-[10px]"
-                    iconClassName="size-3"
-                  />
-                ) : null}
-                {proofChips.map((badge) => (
-                  <BadgeVisualChip
-                    key={`${badge.code ?? 'display'}:${badge.label}`}
-                    label={badge.label}
-                    code={badge.code}
-                    variant="secondary"
-                    className="text-[10px]"
-                    iconClassName="size-3"
-                  />
-                ))}
-              </div>
-            ) : null}
             {hoverBadgeItems.length > 0 ? (
               <div className="border-t border-border/50 pt-2.5">
                 <HoverBadgeWall agentName={agent.display_name} badges={hoverBadgeItems} />
@@ -248,43 +222,76 @@ function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: Publ
     <div className="space-y-2">
       <p className="text-[11px] font-medium tracking-[0.08em] text-primary">{agentName} 的徽章墙</p>
       <div className="flex items-center gap-3">
-        <div className="flex w-[58%] items-center pr-1">
-          {visibleBadges.map((badge, index) => {
-            const visual = readKnownBadgeVisual({
-              label: badge.label,
-              code: badge.code ?? null,
-            })
-            return (
-              <span
-                key={`${badge.code ?? 'display'}:${badge.label}`}
-                role="img"
-                aria-label={badge.label}
-                className={cn(
-                  'inline-flex size-[2.15rem] shrink-0 items-center justify-center rounded-full border-2 border-background bg-primary/10 shadow-sm',
-                  index > 0 ? '-ml-3' : '',
-                )}
-              >
-                {visual ? (
-                  <img src={visual.icon_src ?? undefined} alt="" aria-hidden="true" className="size-[88%] rounded-full object-contain" />
-                ) : (
-                  <span className="text-[11px] font-medium leading-none text-primary">
-                    {badge.label.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
+        <TooltipProvider delayDuration={200}>
+          <div className="flex w-[58%] items-center pr-1">
+            {visibleBadges.map((badge, index) => {
+              const visual = readKnownBadgeVisual({
+                label: badge.label,
+                code: badge.code ?? null,
+              })
+              return (
+                <Tooltip key={`${badge.code ?? 'display'}:${badge.label}`}>
+                  <TooltipTrigger asChild>
+                    <span
+                      role="img"
+                      aria-label={badge.label}
+                      className={cn(
+                        'inline-flex size-[2.15rem] shrink-0 items-center justify-center',
+                        !visual?.icon_src && 'rounded-full border-2 border-background bg-primary/10 shadow-sm',
+                        index > 0 ? '-ml-2' : '',
+                      )}
+                    >
+                      {visual?.icon_src ? (
+                        <img src={visual.icon_src} alt="" aria-hidden="true" className="size-full object-contain" />
+                      ) : (
+                        <span className="text-[11px] font-medium leading-none text-primary">
+                          {badge.label.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-64 border border-border bg-popover text-popover-foreground shadow-md">
+                    <BadgeTooltipBody label={badge.label} visual={visual} />
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+            {overflowCount > 0 ? (
+              <span className="-ml-2 z-10 inline-flex h-[2.15rem] min-w-[2.15rem] shrink-0 items-center justify-center rounded-full border-2 border-background bg-muted px-1.5 text-[10px] font-medium leading-none text-muted-foreground shadow-sm">
+                +{overflowCount}
               </span>
-            )
-          })}
-          {overflowCount > 0 ? (
-            <span className="-ml-3 inline-flex h-[2.15rem] min-w-[2.15rem] shrink-0 items-center justify-center rounded-full border-2 border-background bg-muted px-1.5 text-[10px] font-medium leading-none text-muted-foreground shadow-sm">
-              +{overflowCount}
-            </span>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        </TooltipProvider>
         <div className="flex h-[2.15rem] min-w-0 w-[42%] items-center">
           <p className="line-clamp-2 w-full overflow-hidden text-[11px] font-normal leading-[1.15] text-muted-foreground/82">
             {badgeSummary}
           </p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+function BadgeTooltipBody({
+  label,
+  visual,
+}: {
+  label: string
+  visual: { icon_src: string | null; tooltip: string } | null
+}) {
+  const description = visual?.tooltip ? stripBadgeTooltipPrefix(visual.tooltip) : null
+  return (
+    <div className="flex items-center gap-3">
+      {visual?.icon_src ? (
+        <img src={visual.icon_src} alt="" aria-hidden="true" className="size-14 shrink-0 object-contain" />
+      ) : null}
+      <div className="min-w-0 space-y-1">
+        <p className="text-xs font-semibold text-foreground">{label}</p>
+        {description ? (
+          <p className="text-[11px] leading-snug text-muted-foreground">{description}</p>
+        ) : null}
       </div>
     </div>
   )

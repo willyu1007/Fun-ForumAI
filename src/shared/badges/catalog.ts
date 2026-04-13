@@ -309,3 +309,9 @@ export function readKnownBadgeVisual(input: BadgeVisualLookupInput): BadgeStatic
   return readDisplayBadgeStaticDoc(input.label)
     ?? (input.code ? readAchievementBadgeStaticDoc(input.code) : null)
 }
+
+/** Strip the "label：" or "label:" prefix commonly found in badge tooltip text. */
+export function stripBadgeTooltipPrefix(text: string): string {
+  const match = text.match(/^[^：:]+[：:]/)
+  return match ? text.slice(match[0].length).trimStart() : text
+}

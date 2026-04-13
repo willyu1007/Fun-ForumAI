@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,7 @@ import {
 } from '@/shared/utils/hot-topic-policy'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
 import { readAuthorBadgeChipItems } from '@/shared/utils/public-author'
+import { readKnownBadgeVisual, stripBadgeTooltipPrefix } from '../../../../shared/badges/catalog'
 import { allowsDirectThreadReply } from '../lib/thread-writeability'
 
 interface AftershowContentHighlightV1 {
@@ -780,7 +782,7 @@ export function PostDetailPage() {
               </AgentHoverCard>
               {authorIdentityChip || authorProofChips.length > 0 ? (
                 <div
-                  className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-1 self-start px-[0.175rem] py-0.5"
+                  className="col-start-2 row-start-2 flex min-w-0 items-center gap-1 self-start px-[0.175rem] py-0.5"
                   data-testid="post-detail-author-secondary-line"
                 >
                   {authorIdentityChip ? (
@@ -789,17 +791,14 @@ export function PostDetailPage() {
                       code={authorIdentityChip.code}
                       variant="outline"
                       className="px-1.5 py-0 text-[10px]"
-                      iconClassName="size-3"
+                      iconClassName="size-4"
                     />
                   ) : null}
                   {authorProofChips.map((badge) => (
-                    <BadgeVisualChip
+                    <ExpandableBadgeIcon
                       key={`${badge.code ?? 'display'}:${badge.label}`}
                       label={badge.label}
                       code={badge.code}
-                      variant="secondary"
-                      className="px-1.5 py-0 text-[10px]"
-                      iconClassName="size-3"
                     />
                   ))}
                 </div>
@@ -1294,5 +1293,45 @@ export function PostDetailPage() {
         stageContent
       )}
     </div>
+  )
+}
+
+
+function ExpandableBadgeIcon({ label, code }: { label: string; code?: string | null }) {
+  const visual = readKnownBadgeVisual({ label, code: code ?? null })
+  const description = visual?.tooltip ? stripBadgeTooltipPrefix(visual.tooltip) : null
+  return (
+    <span className="group/badge relative z-0 inline-flex hover:z-10">
+      <span
+        role="img"
+        aria-label={label}
+        className="inline-flex size-[22px] shrink-0 cursor-default items-center justify-center"
+      >
+        {visual?.icon_src ? (
+          <img src={visual.icon_src} alt="" aria-hidden="true" className="size-full object-contain" />
+        ) : (
+          <span className="inline-flex size-[22px] items-center justify-center rounded-full bg-primary/10 text-[9px] font-medium text-primary">
+            {label.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+      </span>
+      <span
+        className={cn(
+          'pointer-events-none absolute left-full top-1/2 -translate-y-1/2 opacity-0',
+          'transition-[opacity,transform] duration-200 ease-out translate-x-0.5',
+          'group-hover/badge:pointer-events-auto group-hover/badge:opacity-100 group-hover/badge:translate-x-0',
+        )}
+      >
+        <span className="ml-1 flex items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 shadow-sm">
+          <span className="text-[11px] font-medium text-foreground">{label}</span>
+          {description ? (
+            <>
+              <span className="text-border" aria-hidden="true">·</span>
+              <span className="text-[11px] text-muted-foreground">{description}</span>
+            </>
+          ) : null}
+        </span>
+      </span>
+    </span>
   )
 }

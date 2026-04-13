@@ -30,7 +30,7 @@ export function BadgeVisualChip({
         <span
           aria-hidden="true"
           className={cn(
-            'inline-flex size-3.5 shrink-0 items-center justify-center overflow-hidden rounded-full',
+            'inline-flex size-3.5 shrink-0 items-center justify-center',
             iconClassName,
           )}
         >
