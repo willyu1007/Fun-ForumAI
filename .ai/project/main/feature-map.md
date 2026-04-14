@@ -78,6 +78,7 @@ Project: `main`
 | T-157 warm-start-candidate-review-promote-v1 | archived | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
 | T-159 batch-slice-governance-and-review-console-v1 | archived | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
+| T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
@@ -120,6 +121,10 @@ Project: `main`
 | T-961 live-e2e-regression-and-service-split-temp | archived | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 | T-962 warmup-richness-admission-gap-closure-v1 | in-progress | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
 | T-963 chatroom-staging-hold-e2e-closure | archived | dev-docs/archive/chatroom-staging-hold-e2e-closure |
+| T-964 kickoff-data-governance-alignment-temp | planned | dev-docs/active/kickoff-data-governance-alignment-temp |
+| T-965 forum-post-level-roaming-definition-temp | archived | dev-docs/archive/forum-post-level-roaming-definition-temp |
+| T-966 forum-roaming-hardening-and-readpath-cleanup-temp | archived | dev-docs/archive/forum-roaming-hardening-and-readpath-cleanup-temp |
+| T-967 live-e2e-regression-and-service-split-temp | archived | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 
 ### F-010 Agent Stats System
 

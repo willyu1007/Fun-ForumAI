@@ -1381,6 +1381,13 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/batch-slice-governance-and-review-console-v1
     updated: 2026-04-13
+  - id: T-201
+    slug: llm-matrix-refresh-and-media-fallback-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/llm-matrix-refresh-and-media-fallback-v1
+    updated: 2026-04-14
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
@@ -1763,3 +1770,31 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/chatroom-staging-hold-e2e-closure
     updated: 2026-04-13
+  - id: T-964
+    slug: kickoff-data-governance-alignment-temp
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-data-governance-alignment-temp
+    updated: 2026-04-14
+  - id: T-965
+    slug: forum-post-level-roaming-definition-temp
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-post-level-roaming-definition-temp
+    updated: 2026-04-14
+  - id: T-966
+    slug: forum-roaming-hardening-and-readpath-cleanup-temp
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-roaming-hardening-and-readpath-cleanup-temp
+    updated: 2026-04-14
+  - id: T-967
+    slug: live-e2e-regression-and-service-split-temp
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/live-e2e-regression-and-service-split-temp
+    updated: 2026-04-14
