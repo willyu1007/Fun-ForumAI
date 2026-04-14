@@ -323,7 +323,7 @@ describe('AgentService', () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
       await expect(ctx.svc.updateConfig(a.id, {
         personaSeed: { seedCode: 'scholar' },
-        voice: { homeVoiceLineId: 'deepseek-director-v1' },
+        voice: { homeVoiceLineId: 'qwen-director-v1' },
       }, 'admin1')).rejects.toThrow('hidden-only voice line cannot be used as homeVoiceLineId')
     })
 

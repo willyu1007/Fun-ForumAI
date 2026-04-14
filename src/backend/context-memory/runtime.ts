@@ -57,19 +57,32 @@ export class LlmSummaryOrchestrator implements SummaryOrchestrator {
     agentService?: AgentService
   }) {}
 
-  private resolveVoiceLineId(agentId: string): 'deepseek-director-v1' | 'qwen-social-v1' | 'glm-deep-v1' {
-    if (!this.deps.agentService) return 'deepseek-director-v1'
+  private resolveVoiceLineId(
+    agentId: string,
+  ):
+    | 'qwen-director-v1'
+    | 'qwen-social-v1'
+    | 'glm-deep-v1'
+    | 'doubao-deep-v1'
+    | 'kimi-deep-v1' {
+    if (!this.deps.agentService) return 'qwen-director-v1'
     try {
       const agent = this.deps.agentService.getAgent(agentId)
       const config = this.deps.agentService.getLatestConfig(agentId)
       const identity = resolveAgentIdentity(agent, config)
       const voiceLineId = identity.summary.home_voice_line_id
-      if (voiceLineId === 'qwen-social-v1' || voiceLineId === 'glm-deep-v1' || voiceLineId === 'deepseek-director-v1') {
+      if (
+        voiceLineId === 'qwen-social-v1' ||
+        voiceLineId === 'glm-deep-v1' ||
+        voiceLineId === 'doubao-deep-v1' ||
+        voiceLineId === 'kimi-deep-v1' ||
+        voiceLineId === 'qwen-director-v1'
+      ) {
         return voiceLineId
       }
-      return 'deepseek-director-v1'
+      return 'qwen-director-v1'
     } catch {
-      return 'deepseek-director-v1'
+      return 'qwen-director-v1'
     }
   }
 

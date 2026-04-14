@@ -218,7 +218,7 @@ describe('InferenceProfileService', () => {
     expect(firstRoute.requestedTier).toBe('premium')
     expect(secondRoute.profile.challengerFamily).toBe('sage')
     expect(secondRoute.profile.migrationState).toBe('candidate')
-    expect(secondRoute.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
+    expect(secondRoute.profile.challengerVoiceLineId).toBe('doubao-deep-v1')
 
     const blocked = await service.setManualVoiceLineLock(agent.id, true)
     expect(blocked.manualVoiceLineLock).toBe(true)

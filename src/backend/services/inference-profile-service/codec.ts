@@ -152,8 +152,9 @@ export function parseBlockedReason(value: string | null): InferenceBlockedReason
 export function parseVoiceLine(value: string | null): VoiceLineId | null {
   return value === 'qwen-social-v1' ||
     value === 'glm-deep-v1' ||
-    value === 'deepseek-director-v1' ||
+    value === 'qwen-director-v1' ||
     value === 'minimax-her-v1' ||
+    value === 'doubao-deep-v1' ||
     value === 'kimi-deep-v1'
     ? value
     : null

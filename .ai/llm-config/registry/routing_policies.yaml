@@ -181,7 +181,7 @@ policies:
       - headroom
       - health
 
-  - profile_id: deepseek-director-public-observation-base
+  - profile_id: qwen-director-public-observation-base
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -189,7 +189,7 @@ policies:
       - headroom
       - health
 
-  - profile_id: deepseek-director-private-digest-base
+  - profile_id: qwen-director-private-digest-base
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -197,7 +197,7 @@ policies:
       - headroom
       - health
 
-  - profile_id: deepseek-director-private-digest-premium
+  - profile_id: qwen-director-private-digest-premium
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -205,7 +205,7 @@ policies:
       - headroom
       - health
 
-  - profile_id: deepseek-director-vision-summary-base
+  - profile_id: qwen-director-vision-summary-base
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -213,7 +213,7 @@ policies:
       - headroom
       - health
 
-  - profile_id: deepseek-director-director-plan-base
+  - profile_id: qwen-director-director-plan-base
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -221,7 +221,7 @@ policies:
       - headroom
       - health
 
-  - profile_id: deepseek-director-director-plan-premium
+  - profile_id: qwen-director-director-plan-premium
     route_order:
       - intent_scene_fit
       - profile_candidates
@@ -289,7 +289,67 @@ policies:
       - headroom
       - health
 
-  # ─── Kimi Deep v1 ───
+  # ─── Doubao Deep v1 ───
+
+  - profile_id: doubao-deep-chat-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: doubao-deep-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: doubao-deep-scheduled-post-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: doubao-deep-private-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: doubao-deep-proactive-opening-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: doubao-deep-identity-write-premium
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: doubao-deep-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
+  - profile_id: doubao-deep-private-digest-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
+  # ─── Kimi Deep v1 (shadow restored line) ───
 
   - profile_id: kimi-deep-chat-reply-lite
     route_order:

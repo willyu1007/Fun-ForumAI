@@ -272,7 +272,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     voice_line_authority: 'Public observation digest must stay on the hidden director line and remain detached from visible home voice authority.',
     tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-public-observation-base',
+      'qwen-director-v1': 'qwen-director-public-observation-base',
     },
     raw_model_notes: 'Public observation digest now stays on the public-facing hidden policy path without any callsite temperature override.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
@@ -302,6 +302,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
       'qwen-social-v1': 'qwen-social-public-observation-base',
       'glm-deep-v1': 'glm-deep-public-observation-base',
       'minimax-her-v1': 'minimax-her-public-observation-base',
+      'doubao-deep-v1': 'doubao-deep-public-observation-base',
       'kimi-deep-v1': 'kimi-deep-public-observation-base',
     },
     raw_model_notes: 'Bio render now binds to a dedicated agent-bio execution policy instead of borrowing the public-facing digest defaults.',
@@ -329,7 +330,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     voice_line_authority: 'Public context extraction stays on the hidden director line and reuses the public_observation_digest routing family.',
     tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-public-observation-base',
+      'qwen-director-v1': 'qwen-director-public-observation-base',
     },
     raw_model_notes: 'Public context extract stays on the hidden public_observation_digest profile default policy; no callsite execution-policy override is allowed here.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
@@ -356,7 +357,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     voice_line_authority: 'Public context distill also stays on the hidden director line and must not route through visible home voice.',
     tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-public-observation-base',
+      'qwen-director-v1': 'qwen-director-public-observation-base',
     },
     raw_model_notes: 'Public context distill also stays on the hidden public_observation_digest profile default policy without a callsite execution-policy override.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
@@ -411,7 +412,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     voice_line_authority: 'Private context extraction stays on the hidden director line and reuses the private_digest routing family.',
     tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-private-digest-base',
+      'qwen-director-v1': 'qwen-director-private-digest-base',
     },
     raw_model_notes: 'Private extract now relies on the agent-owned private-digest policy defaults from registry.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
@@ -438,7 +439,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     voice_line_authority: 'Private context distill also stays on the hidden director line and must not route through visible home voice.',
     tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-private-digest-base',
+      'qwen-director-v1': 'qwen-director-private-digest-base',
     },
     raw_model_notes: 'Private distill now relies on the agent-owned private-digest policy defaults from registry.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
@@ -494,7 +495,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     voice_line_authority: 'Multimodal hidden summaries stay on the hidden director line and remain detached from visible home voice authority.',
     tier_floor: 'base',
     expected_profile_refs: {
-      'deepseek-director-v1': 'deepseek-director-vision-summary-base',
+      'qwen-director-v1': 'qwen-director-vision-summary-base',
     },
     raw_model_notes: 'Vision summary now relies on the modality-specific hidden vision policy instead of callsite tuning.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
