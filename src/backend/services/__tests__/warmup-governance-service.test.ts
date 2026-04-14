@@ -5,10 +5,12 @@ import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.j
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
+import { InMemoryRoleAssignmentRepository } from '../../repos/role-assignment-repository.js'
 import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryWarmupGovernanceRepository } from '../../repos/warmup-governance-repository.js'
 import type { AgentCommunityMembership } from '../../repos/types/index.js'
 import type { ReconcileMembershipsResult } from '../agent-community-membership-service.js'
+import type { AftershowService } from '../aftershow-service.js'
 import type { LaunchProgrammingOpsPayload } from '../launch-programming-ops-service.js'
 import { WarmupGovernanceService } from '../warmup-governance-service.js'
 
@@ -520,13 +522,382 @@ describe('WarmupGovernanceService', () => {
 
     const fixture = await seedSuiteFixture(ctx)
 
-    await ctx.service.reviewSuite({
-      suite_id: fixture.suiteId,
-      reviewer_user_id: 'admin-1',
-      decision: 'pass_to_active',
-      confirm_activation: true,
+    await expect(
+      ctx.service.reviewSuite({
+        suite_id: fixture.suiteId,
+        reviewer_user_id: 'admin-1',
+        decision: 'pass_to_active',
+        confirm_activation: true,
+      }),
+    ).rejects.toThrow('suite is not ready for activation')
+
+    const detail = await ctx.service.getSuiteDetail(fixture.suiteId)
+    expect(detail.activation_readiness.ok).toBe(false)
+    expect(detail.activation_readiness.reasons).toEqual(expect.arrayContaining([
+      'key_shelves_not_ready',
+      'key_communities_not_ready',
+      'media_access_not_ready',
+      'aftershow_pipeline_not_ready',
+    ]))
+  })
+
+  it('retimes generated kickoff content and backfills aftershow plus community assignments', async () => {
+    const warmupGovernanceRepo = new InMemoryWarmupGovernanceRepository()
+    const postRepo = new InMemoryPostRepository()
+    const publicStageThreadRepo = new InMemoryPublicStageThreadRepository()
+    const publicStageTurnRepo = new InMemoryPublicStageTurnRepository()
+    const postMediaRepo = new InMemoryPostMediaRepository()
+    const voteRepo = new InMemoryVoteRepository()
+    const roleAssignmentRepo = new InMemoryRoleAssignmentRepository()
+    const communityRepo = new InMemoryCommunityRepository()
+    const agentRepo = new InMemoryAgentRepository()
+    const agentConfigRepo = new InMemoryAgentConfigRepository()
+    const refreshPost = vi.fn(async () => {})
+    const refreshThread = vi.fn(async () => {})
+    const community = communityRepo.create({
+      name: 'Aftershow Town',
+      slug: 'aftershow-town',
+      rules_json: {
+        cross_route_policy: {
+          allow_aftershow_export: true,
+        },
+      },
+    })
+    const agent = agentRepo.create({
+      owner_id: 'owner-1',
+      display_name: 'Warmup Bot',
+    })
+    const post = await postRepo.create({
+      community_id: community.id,
+      author_agent_id: agent.id,
+      title: 'Scheduled kickoff',
+      body: 'body',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      moderation_metadata: {
+        distribution_state: 'NO_RECOMMEND',
+      },
+      warm_start_batch_id: 'batch-1',
+      generation_mode: 'warmup_candidate',
+    })
+    const thread = await publicStageThreadRepo.create({
+      post_id: post.id,
+      community_id: community.id,
+      author_agent_id: agent.id,
+      body: 'thread',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      warm_start_batch_id: 'batch-1',
+      generation_mode: 'warmup_candidate',
+    })
+    const turn = await publicStageTurnRepo.create({
+      thread_id: thread.id,
+      post_id: post.id,
+      author_agent_id: agent.id,
+      turn_index: 0,
+      body: 'turn',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      warm_start_batch_id: 'batch-1',
+      generation_mode: 'warmup_candidate',
+    })
+    const assign = vi.fn(async (input: {
+      community_id: string
+      scope: 'COMMUNITY'
+      scope_id: string
+      role: string
+      agent_id: string
+      actor_user_id: string
+    }) =>
+      roleAssignmentRepo.create({
+        community_id: input.community_id,
+        post_id: null,
+        agent_id: input.agent_id,
+        scope: input.scope,
+        scope_id: input.scope_id,
+        role: input.role,
+        status: 'ACTIVE',
+        assigned_by: input.actor_user_id,
+      }))
+    const trigger = vi.fn(async (): Promise<Awaited<ReturnType<AftershowService['trigger']>>> => ({
+      run: {
+        id: 'run-1',
+        post_id: post.id,
+        community_id: community.id,
+        mode: 'THRESHOLD',
+        status: 'COMPLETED',
+        threshold_min_audience_comments: 0,
+        threshold_min_human_vote_score: 0,
+        comments_at_trigger: 0,
+        audience_message_count_at_trigger: 0,
+        human_vote_score_at_trigger: 0,
+        audience_summary_ref: null,
+        threshold_detail: {
+          audience_comments: {
+            required: 0,
+            actual: 0,
+          },
+          human_vote_score: {
+            required: 0,
+            actual: 0,
+          },
+        },
+        triggered_by_user_id: null,
+        triggered_by_agent_id: null,
+        trigger_mode: 'AUTO',
+        force_trigger: true,
+        threshold_pass: true,
+        reason: 'forced_for_kickoff',
+        used_stage_fallback: false,
+        stage_spec_errors: [],
+        created_at: new Date('2026-04-13T15:25:00.000Z'),
+        updated_at: new Date('2026-04-13T15:25:00.000Z'),
+      },
+      threshold_pass: true,
+      reason: 'forced_for_kickoff',
+      audience_message_count: 0,
+      summary_ref: null,
+      threshold_detail: {
+        audience_comments: {
+          required: 0,
+          actual: 0,
+        },
+        human_vote_score: {
+          required: 0,
+          actual: 0,
+        },
+      },
+      artifact: null,
+      callouts: [],
+      notifications_created: 0,
+    }))
+    const service = new WarmupGovernanceService({
+      warmupGovernanceRepo,
+      postRepo,
+      publicStageThreadRepo,
+      publicStageTurnRepo,
+      postMediaRepo,
+      voteRepo,
+      communityRepo,
+      agentRepo,
+      agentConfigRepo,
+      roleAssignmentRepo,
+      membershipService: {
+        reconcileMemberships: async () => ({
+          agent_id: agent.id,
+          active_memberships: [],
+          updated: {
+            added: [],
+            removed: [],
+            role_changed: [],
+            blocked: [],
+            source: 'DERIVED',
+          },
+        }),
+        listActive: () => [],
+      },
+      forumWriteService: {
+        createPost: vi.fn(async () => {
+          throw new Error('unused')
+        }),
+        createThread: vi.fn(async () => {
+          throw new Error('unused')
+        }),
+        addThreadTurn: vi.fn(async () => {
+          throw new Error('unused')
+        }),
+        upsertVote: vi.fn(async () => {
+          throw new Error('unused')
+        }),
+      },
+      launchProgrammingOpsService: {
+        getAdminPayload: vi.fn(async () => ({
+          enabled: true,
+          timezone: 'Asia/Shanghai',
+          active_daypart_id: null,
+          dayparts: [],
+          slots: [],
+          health: {
+            required_daily_outcomes: {},
+            observed_daily_outcomes: {},
+            daypart_readiness: [],
+            community_supply_floor: [],
+            visual_ratio_ok: true,
+            aftershow_pipeline_ok: true,
+            warning_count: 0,
+            warnings: [],
+          },
+          observations: {
+            visual_ratio: {
+              root_cover_ratio: null,
+              note_cover_ratio: null,
+              highlight_visual_ratio: null,
+              reject_reason_counts: {},
+              budget_remaining_cny: null,
+              cost_gate_active: false,
+            },
+            highlight_candidates: [],
+            aftershow: [],
+          },
+          governance_references: {
+            communities: [],
+            incubation: [],
+          },
+          rollback_order: [],
+          drill_checklist: [],
+          meta: {
+            generated_at: '2026-04-13T06:30:00.000Z',
+            source: 'launch-programming-ops-v1',
+          },
+        } satisfies LaunchProgrammingOpsPayload)),
+      },
+      roleAssignmentService: {
+        assign,
+      },
+      aftershowService: {
+        trigger,
+      },
+      searchProjectionService: {
+        refreshPost,
+        refreshThread,
+      },
     })
 
+    await (service as unknown as {
+      orchestrateGeneratedPost(input: {
+        generated: {
+          summary: {
+            spec_id: string
+            post_id: string
+            title: string
+            agent_id: string
+            community_id: string
+            community_slug: string
+            batch_id: string
+            batch_kind: 'kickoff'
+          }
+          spec: {
+            scheduled_local_time: string
+            programming_daypart: 'evening_prime'
+            community_slug: string
+            content_kind: 'mainline_root'
+            editorial_shelf_id: 'conflict_rising'
+            id: string
+            pass: 'occupancy'
+            phase: 'escalation'
+            title: string
+            body: string
+            tags: string[]
+            storyline: {
+              id: string
+              title: string
+              hook: string
+            }
+          }
+          post_id: string
+          author_agent_id: string
+          community_id: string
+          community_slug: string
+          thread_id: string
+          turn_ids: string[]
+        }
+        now: Date
+      }): Promise<void>
+    }).orchestrateGeneratedPost({
+      generated: {
+        summary: {
+          spec_id: 'spec-1',
+          post_id: post.id,
+          title: post.title,
+          agent_id: agent.id,
+          community_id: community.id,
+          community_slug: community.slug,
+          batch_id: 'batch-1',
+          batch_kind: 'kickoff',
+        },
+        spec: {
+          id: 'spec-1',
+          pass: 'occupancy',
+          community_slug: community.slug,
+          programming_daypart: 'evening_prime',
+          scheduled_local_time: '19:20',
+          phase: 'escalation',
+          title: post.title,
+          body: post.body,
+          tags: ['launch-warm-start'],
+          storyline: {
+            id: 'story-1',
+            title: 'Story',
+            hook: 'Hook',
+          },
+          editorial_shelf_id: 'conflict_rising',
+          content_kind: 'mainline_root',
+        },
+        post_id: post.id,
+        author_agent_id: agent.id,
+        community_id: community.id,
+        community_slug: community.slug,
+        thread_id: thread.id,
+        turn_ids: [turn.id],
+      },
+      now: new Date('2026-04-13T15:25:00.000Z'),
+    })
+
+    const scheduledPost = await postRepo.findById(post.id)
+    const scheduledThread = await publicStageThreadRepo.findById(thread.id)
+    const scheduledTurn = await publicStageTurnRepo.findById(turn.id)
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+
+    expect(formatter.format(scheduledPost?.created_at ?? new Date(0))).toBe('13/04/2026, 19:20')
+    expect((scheduledThread?.created_at?.getTime() ?? 0)).toBeGreaterThan(scheduledPost?.created_at.getTime() ?? 0)
+    expect((scheduledTurn?.created_at?.getTime() ?? 0)).toBeGreaterThan(scheduledThread?.created_at.getTime() ?? 0)
+    expect(assign).toHaveBeenCalledWith({
+      community_id: community.id,
+      scope: 'COMMUNITY',
+      scope_id: community.id,
+      role: 'resident',
+      agent_id: agent.id,
+      actor_user_id: 'warmup-governance-service',
+    })
+    expect(trigger).toHaveBeenCalledWith({
+      post_id: post.id,
+      mode: 'AUTO',
+      force: true,
+    })
+    expect(refreshPost).toHaveBeenCalledWith(post.id)
+    expect(refreshThread).toHaveBeenCalledWith(thread.id)
+    expect(roleAssignmentRepo.listActiveByScope('COMMUNITY', community.id)).toHaveLength(1)
+  })
+
+  it('fails runtime growth admission when programming health gates are red in active baseline', async () => {
+    const ctx = createService()
+    ctx.programmingOpsPayload.health.daypart_readiness = [{
+      daypart_id: 'evening_prime',
+      label: '晚高峰主冲突',
+      ok: false,
+      required: { root_posts: 2 },
+      observed: { root_posts: 0 },
+    }]
+    ctx.programmingOpsPayload.health.community_supply_floor = [{
+      community_slug: 'warmup-arena',
+      community_name: 'Warm-up Arena',
+      ok: false,
+      missed_slots: 1,
+      required: { root_posts: 1 },
+      observed: { root_posts: 0 },
+    }]
+    ctx.programmingOpsPayload.health.visual_ratio_ok = false
+    ctx.programmingOpsPayload.health.aftershow_pipeline_ok = false
+
+    await seedSuiteFixture(ctx, { suiteState: 'active' })
     const admission = await ctx.service.getRuntimeBaselineAdmission()
     expect(admission.key_shelves_ready).toBe(false)
     expect(admission.key_communities_ready).toBe(false)

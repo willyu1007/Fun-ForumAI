@@ -195,4 +195,5 @@ Project: `main`
 | T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 | T-962 warmup-richness-admission-gap-closure-v1 | in-progress | F-000 | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
 | T-963 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
+| T-964 kickoff-data-governance-alignment-temp | in-progress | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
 <!-- AUTO-GENERATED:END task-index -->

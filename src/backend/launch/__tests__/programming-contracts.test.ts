@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import { config } from '../../lib/config.js'
+import { listLaunchCommunitySeeds } from '../community-rules.js'
 import { locateLaunchContractPath } from '../contract-paths.js'
 import { getLaunchHomeProgramming } from '../home-programming.js'
 import { getPostLaunchTuningRuntime } from '../post-launch-tuning.js'
@@ -284,6 +285,30 @@ describe('launch programming contracts', () => {
     const tuningRuntime = getPostLaunchTuningRuntime(tuningPath)
     expect(tuningRuntime.profiles.baseline.home.shelf_order).toContain('notes_today')
     expect(tuningRuntime.profiles.baseline.visual.surface_ratio.note_root_card).toBe(0.55)
+  })
+
+  it('only assigns aftershow candidate slots to communities that allow aftershow export', () => {
+    const scheduleRuntime = getLaunchProgrammingSchedule()
+    const communitiesBySlug = new Map(
+      listLaunchCommunitySeeds().map((community) => [community.slug, community]),
+    )
+
+    const invalidSlots = scheduleRuntime.slot_templates
+      .filter((slot) => slot.expected_outputs.aftershow_candidate === true)
+      .filter((slot) => {
+        const community = communitiesBySlug.get(slot.community_slug)
+        const crossRoutePolicy = community?.rules_json
+          && typeof community.rules_json === 'object'
+          && !Array.isArray(community.rules_json)
+          && typeof (community.rules_json as Record<string, unknown>).cross_route_policy === 'object'
+          && !Array.isArray((community.rules_json as Record<string, unknown>).cross_route_policy)
+          ? ((community.rules_json as Record<string, unknown>).cross_route_policy as Record<string, unknown>)
+          : null
+        return crossRoutePolicy?.allow_aftershow_export !== true
+      })
+      .map((slot) => slot.slot_name)
+
+    expect(invalidSlots).toEqual([])
   })
 
   it('selects creator-note templates and cover modes from community/phase/media rules', () => {

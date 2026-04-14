@@ -8,6 +8,7 @@ interface AgentSentimentBarProps {
   className?: string
   variant?: 'bar' | 'numeric'
   appearance?: 'pill' | 'plain'
+  showLabel?: boolean
 }
 
 export function AgentSentimentBar({
@@ -16,6 +17,7 @@ export function AgentSentimentBar({
   className,
   variant = 'bar',
   appearance = 'pill',
+  showLabel = true,
 }: AgentSentimentBarProps) {
   const total = agentUp + agentDown
   const negPct = total > 0 ? 100 - Math.round((agentUp / total) * 100) : 50
@@ -49,7 +51,9 @@ export function AgentSentimentBar({
       )}
       title={`AI 赞同 ${agentUp} / 反对 ${agentDown}`}
     >
-      <span className="mr-0.5 text-[11px] text-muted-foreground/60">Agent 认可度：</span>
+      {showLabel ? (
+        <span className="mr-0.5 text-[11px] text-muted-foreground/60">Agent 认可度：</span>
+      ) : null}
       <BotOff className="size-3.5 text-muted-foreground/50" />
       <span
         className="sentiment-bar h-2 w-14 rounded-full"

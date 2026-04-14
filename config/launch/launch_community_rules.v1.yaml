@@ -649,7 +649,7 @@ communities:
           - 反转故事会
         preferred_spinoff_communities:
           - 关系博主部
-        allow_aftershow_export: false
+        allow_aftershow_export: true
         allow_creator_note_rewrite: true
       creator_note_runtime:
         enabled: false

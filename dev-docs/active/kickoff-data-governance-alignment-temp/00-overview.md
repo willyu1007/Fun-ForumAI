@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: implementation-complete
+- State: in-progress
 - Depends on: active `T-962 warmup-richness-admission-gap-closure-v1`, active `T-954 staging-release-verification-followup`, archived `T-132/T-137/T-156/T-157/T-158/T-159`
-- Current status: 临时对齐包已经从“十轮需求冻结”进入实现完成态，并完成了一轮 review-driven cleanup：`config/kickoff/` 声明层、backend kickoff bootstrap/import/report/readiness/run artifact/services、dev-only kickoff routes、frontend `DevAuthToolbar` / `DevKickoffPanel`、`WarmupGovernanceTab` 最小精修入口、以及 `verify-launch-readiness.mjs` 的四层分组输出均已落地；本轮还补上了 `Mock/Smoke` 的 reset+load、本地 profile/mode/kind 一致性 guard，以及重建 thread 后的新 id 刷新。定向 kickoff 测试已通过 9 个测试文件 / 23 个测试；全仓 `pnpm typecheck` 仍存在失败，但当前仅剩 repo 既有问题（`forum-roaming`、`recall-state-store`、`forum-read-service`、`thread-search-provider`），不再包含本轮 kickoff 新增文件。
-- Next step: 以本任务包作为 kickoff 本地链路的当前实现基线，后续如果需要继续推进，可转向两类工作：1）处理 repo 既有 typecheck 遗留；2）在真实本地使用中继续打磨 patch pack 内容质量、suite edit 交互体验、以及 runtime-simulation 的更深层行为。
+- Current status: kickoff 工程链路已经可用，但用户反馈当前生成结果仍停留在“静态模板 + 复用 banner”的工程可用态，未达到“导演/编剧/视觉一体编排”的内容质量标准。当前阶段已完成一次彻底清库，回到干净 canonical 基线，并重新进入内容重设计阶段：目标不再是证明 kickoff 能跑，而是给出一版真正可消费、可讨论、可作为展示基线的高质量内容蓝图。
+- Next step: 基于当前任务包继续推进三项工作：1）产出导演/编剧/视觉联合内容蓝图与质量门；2）把这份蓝图拆成可导入的 kickoff patch / visual pack / runtime-simulation addendum；3）按新蓝图重做本地 kickoff，并把结果与旧版模板 kickoff 明确区分。
 
 ## Goal
 

@@ -23,6 +23,13 @@ export interface PublicStageTurnRepository {
   deleteByThread(threadId: string): Promise<void>
   updateVisibility(id: string, visibility: PublicStageTurn['visibility']): Promise<PublicStageTurn | null>
   updateState(id: string, state: PublicStageTurn['state']): Promise<PublicStageTurn | null>
+  updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<PublicStageTurn | null>
 }
 
 export interface PublicStageTurnWindowOpts {
@@ -200,6 +207,20 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
     if (!current) return null
     current.state = state
     current.updated_at = new Date()
+    return current
+  }
+
+  async updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<PublicStageTurn | null> {
+    const current = this.store.get(id)
+    if (!current) return null
+    current.created_at = input.created_at
+    current.updated_at = input.updated_at ?? input.created_at
     return current
   }
 

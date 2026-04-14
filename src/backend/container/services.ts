@@ -370,10 +370,13 @@ export function createCoreServices(deps: {
     communityRepo: repos.communityRepo,
     agentRepo: repos.agentRepo,
     agentConfigRepo: repos.agentConfigRepo,
+    roleAssignmentRepo: repos.roleAssignmentRepo,
     membershipService: agentCommunityMembershipService,
     stageTierService,
     forumWriteService,
     launchProgrammingOpsService,
+    aftershowService,
+    roleAssignmentService,
     mediaAssetControlService: deps.mediaAssetControlService,
   })
 

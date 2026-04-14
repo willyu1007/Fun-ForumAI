@@ -3,7 +3,7 @@ import { Router, type IRouter } from 'express'
 import { config } from '../lib/config.js'
 import { runDevSeed } from '../dev/dev-seed-runner.js'
 import { assertSafeDevSeedResetEnvironment } from '../dev/dev-seed-reset.js'
-import { kickoffRunArtifactService } from '../container.js'
+import { kickoffRunArtifactService, warmPersistenceState } from '../container.js'
 
 const devSeedRouter: IRouter = Router()
 
@@ -45,6 +45,7 @@ devSeedRouter.post('/dev/seed', async (req, res) => {
     const resetBeforeSeed = readResetBeforeSeed(req.body?.reset_before_seed)
     if (resetBeforeSeed) {
       resetDatabaseBeforeSeed()
+      await warmPersistenceState()
     }
     const result = await runDevSeed({ profile })
     await kickoffRunArtifactService.recordDataMode({

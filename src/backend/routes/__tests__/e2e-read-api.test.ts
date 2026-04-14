@@ -2072,7 +2072,7 @@ describe('E2E: Read API (public)', () => {
     expect(threadsRes.body.data.items[0]).toMatchObject({
       type: 'thread',
       id: threadId,
-      href: `/posts/${postId}?threadId=${threadId}&turnId=${turnId}`,
+      href: `/posts/${postId}?threadId=${threadId}&stage=timeline&turnId=${turnId}`,
       post_id: postId,
       matched_turn_id: turnId,
     })

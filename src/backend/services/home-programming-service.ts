@@ -135,6 +135,8 @@ function toPublicHomeShelfLabel(shelfId: string, fallback: string): string {
 }
 
 const NOTES_TODAY_TARGET_COUNT = 4
+const MUST_WATCH_TARGET_COUNT = 4
+const MUST_WATCH_MIN_IMAGE_COUNT = 2
 
 export function buildDisabledHomeProgrammingPayload(now = new Date()): HomeProgrammingPayload {
   const contract = getLaunchHomeProgramming()
@@ -359,6 +361,21 @@ export class HomeProgrammingService {
     const rankedHotFeed = sortPostsByViewerContext(hotFeed, viewerRuntime, {
       preferStorylineRevisit: true,
     })
+    const rankedAftershow = sortPostsByViewerContext(aftershowCandidates, viewerRuntime, {
+      preferStorylineRevisit: true,
+      preferCreatorNoteRevisit: true,
+    })
+    const recentStorylines = new Set(viewerRuntime.recentSignals?.recent_storyline_ids ?? [])
+    const postPool = this.mergeUniquePosts(rankedHighlights, rankedHotFeed)
+      .filter((item) => !isCreatorNoteEntry(item))
+    const reservedForContinuation = viewerRuntime.enabled
+      ? postPool.filter((item) => {
+          const storylineId = readStorylineId(item)
+          return Boolean(storylineId && recentStorylines.has(storylineId))
+        })
+      : []
+    const prioritizedPostPool = postPool.filter((item) => !reservedForContinuation.includes(item))
+    const preferredPostPool = prioritizedPostPool.length > 0 ? prioritizedPostPool : postPool
     const highlightHero = rankedHighlights.find((item) => readHeroEligible(item))
     const hotHero = rankedHotFeed.find((item) => readHeroEligible(item))
     const chosen = highlightHero
@@ -368,12 +385,64 @@ export class HomeProgrammingService {
             heroReason: '热帖主线',
             contentKind: readContentKind(hotHero) ?? 'mainline_root',
           })
-        : aftershowCandidates[0] ?? null
+        : preferredPostPool[0]
+          ? this.asPostShelfItem(preferredPostPool[0], {
+              heroReason: '热帖主线',
+              contentKind: readContentKind(preferredPostPool[0]) ?? 'mainline_root',
+            })
+          : rankedAftershow[0] ?? null
     if (!chosen) {
       return []
     }
-    usedPostIds.add(chosen.id)
-    return [chosen]
+
+    const items: HomeProgrammingPostItem[] = []
+    const selectedIds = new Set<string>()
+    const addItem = (item: HomeProgrammingPostItem | null | undefined) => {
+      if (!item || selectedIds.has(item.id)) {
+        return false
+      }
+      items.push(item)
+      selectedIds.add(item.id)
+      return true
+    }
+    const countImageItems = () => items.filter((item) => this.hasImageMedia(item)).length
+
+    addItem(chosen)
+
+    if (countImageItems() < MUST_WATCH_MIN_IMAGE_COUNT) {
+      for (const post of preferredPostPool) {
+        if (items.length >= MUST_WATCH_TARGET_COUNT || countImageItems() >= MUST_WATCH_MIN_IMAGE_COUNT) {
+          break
+        }
+        if (!this.hasImageMedia(post)) continue
+        addItem(this.asPostShelfItem(post))
+      }
+
+      for (const item of rankedAftershow) {
+        if (items.length >= MUST_WATCH_TARGET_COUNT || countImageItems() >= MUST_WATCH_MIN_IMAGE_COUNT) {
+          break
+        }
+        if (!this.hasImageMedia(item)) continue
+        addItem(item)
+      }
+    }
+
+    for (const post of preferredPostPool) {
+      if (items.length >= MUST_WATCH_TARGET_COUNT) {
+        break
+      }
+      addItem(this.asPostShelfItem(post))
+    }
+
+    for (const item of rankedAftershow) {
+      if (items.length >= MUST_WATCH_TARGET_COUNT) {
+        break
+      }
+      addItem(item)
+    }
+
+    items.forEach((item) => usedPostIds.add(item.id))
+    return items
   }
 
   private pickConflictRising(
@@ -884,5 +953,9 @@ export class HomeProgrammingService {
     if (!input) return 0
     const value = new Date(input).getTime()
     return Number.isFinite(value) ? value : 0
+  }
+
+  private hasImageMedia(item: Pick<PostWithMeta, 'media'>): boolean {
+    return item.media.some((entry) => entry.mime_type.startsWith('image/'))
   }
 }

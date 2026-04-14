@@ -611,6 +611,7 @@ export const kickoffBootstrapService = new KickoffBootstrapService({
   warmupGovernanceService: core.warmupGovernanceService,
   runtimeReadinessService: kickoffRuntimeReadinessService,
   runArtifactService: kickoffRunArtifactService,
+  refreshPersistenceState: warmPersistenceState,
 })
 export const kickoffPatchImportService = new KickoffPatchImportService({
   warmupGovernanceService: core.warmupGovernanceService,

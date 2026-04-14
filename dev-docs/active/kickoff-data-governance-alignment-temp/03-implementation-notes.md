@@ -98,3 +98,18 @@
 
 - 本轮检查后，没有保留任何额外的 tracked 废弃文件；`config/kickoff/`、dev kickoff routes/services、frontend debug/control surface、以及新增测试都仍然属于当前有效实现。
 - 已删除本轮测试在 `.ai/.tmp/` 下遗留的 kickoff 临时目录，避免后续本地调试和真实 kickoff run 混淆。
+
+## 2026-04-14 Content Redesign Planning Phase
+
+- 用户明确指出当前 kickoff 虽然链路可用，但内容与图片仍表现为“重复、像原来就有、没有营养和深度”，不满足“一人分饰多角色”的导演式 kickoff 目标。
+- 复盘后确认该判断成立：
+  - 文本主源仍是 `src/backend/launch/launch-warm-start.ts` 中的静态 `CURATED_LAUNCH_WARM_START_POSTS`
+  - 图片仍由 `WarmupGovernanceService` 从固定 `LOCAL_WARMUP_MEDIA_ASSETS` 池中按社区 hash 选取
+  - 这套实现完成了 operator/integrator/debugger 责任，但没有完成真正的 `showrunner / writer room / visual director` 责任
+- 为避免旧 kickoff 信息继续污染评估，本阶段先执行了彻底清理：
+  - 停掉本地 backend
+  - 删除 `.ai/.tmp/kickoff-runs/`
+  - destructive reset 本地数据库
+  - 回到干净 `canonical` 基线
+- 本阶段新增内容：
+  - `06-content-redesign.md`：新的 kickoff 内容蓝图，明确导演主线、writer room 节奏、视觉 shot list、质量门、以及后续实现落点

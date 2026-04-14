@@ -37,7 +37,8 @@ async function buildKickoffStatus() {
     : candidateSuite
       ? 'kickoff-candidate'
       : 'unknown'
-  const currentMode = marker?.mode ?? inferredMode
+  const preferInferredMode = marker?.mode === 'unknown' && inferredMode !== 'unknown'
+  const currentMode = preferInferredMode ? inferredMode : (marker?.mode ?? inferredMode)
   const shouldExposeKickoffState = currentMode === 'kickoff-candidate' || currentMode === 'kickoff-active'
   const currentSuiteId = shouldExposeKickoffState
     ? (marker?.suite_id ?? activeSuite?.id ?? candidateSuite?.id ?? null)
@@ -49,7 +50,7 @@ async function buildKickoffStatus() {
   return {
     data: {
       current_data_mode: currentMode,
-      mode_source: marker?.source ?? 'inferred',
+      mode_source: preferInferredMode ? 'inferred' : (marker?.source ?? 'inferred'),
       latest_run: latestRun?.summary ?? null,
       latest_import_report: latestRun?.import_report ?? null,
       latest_runtime_readiness:
@@ -104,6 +105,17 @@ devKickoffRouter.post(
 devKickoffRouter.get('/dev/kickoff/status', async (_req, res) => {
   try {
     res.json(await buildKickoffStatus())
+  } catch (err) {
+    if (tryHandleAppError(res, err)) return
+    throw err
+  }
+})
+
+devKickoffRouter.get('/dev/kickoff/runs', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 10, 20)
+    const data = await kickoffRunArtifactService.listRecentRuns(limit)
+    res.json({ data })
   } catch (err) {
     if (tryHandleAppError(res, err)) return
     throw err

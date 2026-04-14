@@ -75,8 +75,10 @@ export function FeedPage() {
   return (
     <div
       className={cn(
-        'grid gap-8 lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)]',
-        view === 'compact' ? 'lg:gap-6' : 'lg:gap-10',
+        'grid gap-8',
+        view === 'compact'
+          ? 'lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-5'
+          : 'lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)] lg:gap-10',
       )}
     >
       <div className="min-w-0">

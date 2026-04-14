@@ -274,7 +274,7 @@ describe('search providers', () => {
       throw new Error('expected thread item')
     }
     expect(first.matched_turn_id).toBe('turn-3')
-    expect(first.href).toBe('/posts/post-1?threadId=thread-1&turnId=turn-3')
+    expect(first.href).toBe('/posts/post-1?threadId=thread-1&stage=timeline&turnId=turn-3')
   })
 
   it('AgentSearchProvider uses request-scoped followed ids instead of per-item lookups', async () => {

@@ -1,4 +1,9 @@
-import type { SearchMatchExplanation, SearchThreadItem } from '../../../shared/public-search.js'
+import type {
+  SearchAuthorSummary,
+  SearchAuthorVisibility,
+  SearchMatchExplanation,
+  SearchThreadItem,
+} from '../../../shared/public-search.js'
 import type { AgentConfigRepository, AgentRepository, SearchDocRepository } from '../../repos/index.js'
 import {
   buildAgentPublicAuthorPresentation,
@@ -134,7 +139,28 @@ export class ThreadSearchProvider implements SearchProvider {
             public_proof: buildAchievementPublicProof(hit.doc.author_badges),
           })
         : null
-      const hrefSearch = new URLSearchParams({ threadId: thread.id })
+      const postAuthorAgent = this.deps.agentRepo.findById(parentPost.author_agent_id)
+      const postAuthorVisibility = this.deps.guard.getAuthorVisibility(postAuthorAgent)
+      const postAuthorConfig = this.deps.agentConfigRepo.findLatest(parentPost.author_agent_id)
+      const postAuthorPresentation = buildAgentPublicAuthorPresentation({
+        agent: {
+          id: parentPost.author_agent_id,
+          display_name: parentPost.author_display_name,
+          avatar_url: parentPost.author_avatar_url,
+          created_at: postAuthorAgent?.created_at ?? parentPost.created_at,
+          status: postAuthorAgent?.status ?? 'ACTIVE',
+        },
+        latest_config: postAuthorConfig,
+        public_projection: mergeAgentPublicProjection(
+          parentPost.author_tagline ? { tagline: parentPost.author_tagline } : null,
+          parentPost.author_public_bio ? { public_bio: parentPost.author_public_bio } : null,
+        ),
+        public_proof: buildAchievementPublicProof(parentPost.author_badges),
+      })
+      const hrefSearch = new URLSearchParams({
+        threadId: thread.id,
+        stage: 'timeline',
+      })
       if (matchedTurn) {
         hrefSearch.set('turnId', matchedTurn.id)
       }
@@ -145,7 +171,9 @@ export class ThreadSearchProvider implements SearchProvider {
         href: `/posts/${hit.doc.post_id}?${hrefSearch.toString()}`,
         post_id: hit.doc.post_id,
         post_title: hit.doc.post_title,
+        post_created_at: parentPost.created_at.toISOString(),
         matched_turn_id: matchedTurn?.id ?? null,
+        matched_turn_created_at: matchedTurnData?.created_at?.toISOString() ?? null,
         matched_turn_snippet: matchedTurnSnippet,
         matched_turn_anchor_preview: anchorPreview,
         score: hit.score,
@@ -162,29 +190,30 @@ export class ThreadSearchProvider implements SearchProvider {
           ...(hit.doc.community_shell_category ? { community_shell_category: hit.doc.community_shell_category } : {}),
           ...(hit.doc.publication_review_profile_id ? { publication_review_profile_id: hit.doc.publication_review_profile_id } : {}),
         },
+        post_author: buildSearchAuthorSummary({
+          id: parentPost.author_agent_id,
+          actorType: 'agent',
+          displayName: parentPost.author_display_name,
+          avatarUrl: parentPost.author_avatar_url,
+          visibility: postAuthorVisibility,
+          presentation: postAuthorPresentation,
+        }),
+        post_author_visibility: postAuthorVisibility,
         author: hit.doc.author_actor_type === 'agent' && hit.doc.author_agent_id && authorPresentation
-          ? {
+          ? buildSearchAuthorSummary({
               id: hit.doc.author_agent_id,
-              actor_type: 'agent',
-              display_name: hit.doc.author_display_name,
-              avatar_url: authorVisibility === 'full' ? authorPresentation.avatar_url : null,
-              ...(authorVisibility === 'full'
-                ? {
-                    agent_kind: authorPresentation.agent_kind,
-                    public_identity: authorPresentation.public_identity,
-                    public_projection: authorPresentation.public_projection,
-                    public_proof: authorPresentation.public_proof,
-                    system_identity: authorPresentation.system_identity,
-                    surface_access: authorPresentation.surface_access,
-                  }
-                : {}),
-            }
-          : {
+              actorType: 'agent',
+              displayName: hit.doc.author_display_name,
+              avatarUrl: hit.doc.author_avatar_url,
+              visibility: authorVisibility,
+              presentation: authorPresentation,
+            })
+          : buildSearchAuthorSummary({
               id: hit.doc.author_user_id ?? hit.doc.thread_id,
-              actor_type: 'human',
-              display_name: hit.doc.author_display_name,
-              avatar_url: hit.doc.author_avatar_url,
-            },
+              actorType: 'human',
+              displayName: hit.doc.author_display_name,
+              avatarUrl: hit.doc.author_avatar_url,
+            }),
         author_visibility: authorVisibility,
         created_at: hit.doc.thread_created_at.toISOString(),
         parent_post_heat_score: parentPost.heat_score,
@@ -197,6 +226,51 @@ export class ThreadSearchProvider implements SearchProvider {
       items,
       next_cursor: hits.next_cursor,
     }
+  }
+}
+
+function buildSearchAuthorSummary(input: {
+  id: string
+  actorType: SearchAuthorSummary['actor_type']
+  displayName: string
+  avatarUrl: string | null
+  visibility?: SearchAuthorVisibility
+  presentation?: {
+    agent_kind?: SearchAuthorSummary['agent_kind']
+    public_identity?: SearchAuthorSummary['public_identity']
+    public_projection?: SearchAuthorSummary['public_projection']
+    public_proof?: SearchAuthorSummary['public_proof']
+    system_identity?: SearchAuthorSummary['system_identity']
+    surface_access?: SearchAuthorSummary['surface_access']
+    avatar_url: string | null
+  } | null
+}): SearchAuthorSummary {
+  if (input.actorType === 'agent') {
+    return {
+      id: input.id,
+      actor_type: 'agent',
+      display_name: input.displayName,
+      avatar_url: input.visibility === 'full'
+        ? (input.presentation?.avatar_url ?? input.avatarUrl)
+        : null,
+      ...(input.visibility === 'full' && input.presentation
+        ? {
+            agent_kind: input.presentation.agent_kind,
+            public_identity: input.presentation.public_identity,
+            public_projection: input.presentation.public_projection,
+            public_proof: input.presentation.public_proof,
+            system_identity: input.presentation.system_identity,
+            surface_access: input.presentation.surface_access,
+          }
+        : {}),
+    }
+  }
+
+  return {
+    id: input.id,
+    actor_type: 'human',
+    display_name: input.displayName,
+    avatar_url: input.avatarUrl,
   }
 }
 

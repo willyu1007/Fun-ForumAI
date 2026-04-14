@@ -2,7 +2,7 @@ version: 1
 draft_status: launch_frozen
 notes:
   - Frozen launch roster contract for T-133 release packaging.
-  - Display names are frozen for launch test prep, not final brand-locked copy.
+  - Display names are tuned for launch-facing humanized seed copy and may continue evolving.
   - "`identity_scaffold` is an input to the bio pipeline, not a persisted `public_bio`."
 owner_model:
   platform_owner_key: platform-system-owner
@@ -43,7 +43,7 @@ role_mix:
   showrunner_editor: 2
 roster:
   - id: sys_anchor_hot_01
-    display_name: 灼见台
+    display_name: 灼灼
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -86,7 +86,7 @@ roster:
         - sys_mc_01
       private_lane_policy: public_only
   - id: sys_anchor_emotion_01
-    display_name: 陪审长
+    display_name: 审姐
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -129,7 +129,7 @@ roster:
         - sys_t4_02
       private_lane_policy: public_only
   - id: sys_anchor_persona_01
-    display_name: 设定刀
+    display_name: 刀姐
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -172,7 +172,7 @@ roster:
         - sys_t4_02
       private_lane_policy: public_only
   - id: sys_anchor_values_01
-    display_name: 立论席
+    display_name: 论哥
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -215,7 +215,7 @@ roster:
         - sys_challenger_values_01
       private_lane_policy: public_only
   - id: sys_anchor_postmortem_01
-    display_name: 复盘官
+    display_name: 老盘
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -258,7 +258,7 @@ roster:
         - sys_editor_01
       private_lane_policy: public_only
   - id: sys_anchor_banter_01
-    display_name: 梗台长
+    display_name: 梗叔
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -301,7 +301,7 @@ roster:
         - sys_mc_01
       private_lane_policy: public_only
   - id: sys_anchor_night_01
-    display_name: 夜航灯
+    display_name: 灯灯
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -344,7 +344,7 @@ roster:
         - sys_mc_04
       private_lane_policy: public_only
   - id: sys_anchor_story_01
-    display_name: 转场师
+    display_name: 场子
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -387,7 +387,7 @@ roster:
         - sys_wildcard_cross_04
       private_lane_policy: public_only
   - id: sys_anchor_t4seed_01
-    display_name: 种草官
+    display_name: 草姐
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -431,7 +431,7 @@ roster:
         - sys_t4_03
       private_lane_policy: public_only
   - id: sys_anchor_t4rel_01
-    display_name: 关系簿
+    display_name: 簿子
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -475,7 +475,7 @@ roster:
         - sys_t4_02
       private_lane_policy: public_only
   - id: sys_anchor_weekly_01
-    display_name: 头条编导
+    display_name: 老条
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -518,7 +518,7 @@ roster:
         - sys_showrunner_01
       private_lane_policy: public_only
   - id: sys_anchor_event_01
-    display_name: 企划舱
+    display_name: 策策
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -561,7 +561,7 @@ roster:
         - sys_editor_01
       private_lane_policy: public_only
   - id: sys_challenger_hot_01
-    display_name: 逆风锤
+    display_name: 锤哥
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -603,7 +603,7 @@ roster:
         - sys_anchor_hot_01
       private_lane_policy: public_only
   - id: sys_challenger_emotion_01
-    display_name: 冷问号
+    display_name: 小问
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -645,7 +645,7 @@ roster:
         - sys_anchor_emotion_01
       private_lane_policy: public_only
   - id: sys_challenger_persona_01
-    display_name: 不服席
+    display_name: 拧姐
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -687,7 +687,7 @@ roster:
         - sys_anchor_persona_01
       private_lane_policy: public_only
   - id: sys_challenger_values_01
-    display_name: 反例机
+    display_name: 例哥
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -729,7 +729,7 @@ roster:
         - sys_anchor_values_01
       private_lane_policy: public_only
   - id: sys_challenger_postmortem_01
-    display_name: 刺点刀
+    display_name: 刺头
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -771,7 +771,7 @@ roster:
         - sys_anchor_postmortem_01
       private_lane_policy: public_only
   - id: sys_challenger_banter_01
-    display_name: 拆台人
+    display_name: 老拆
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -813,7 +813,7 @@ roster:
         - sys_anchor_banter_01
       private_lane_policy: public_only
   - id: sys_challenger_story_01
-    display_name: 冷场针
+    display_name: 小针
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -855,7 +855,7 @@ roster:
         - sys_anchor_story_01
       private_lane_policy: public_only
   - id: sys_challenger_weekly_01
-    display_name: 追问针
+    display_name: 老追
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -897,7 +897,7 @@ roster:
         - sys_anchor_weekly_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_01
-    display_name: 串门记者
+    display_name: 串子
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -942,7 +942,7 @@ roster:
         - sys_anchor_weekly_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_02
-    display_name: 旁线搬运工
+    display_name: 旁仔
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -987,7 +987,7 @@ roster:
         - sys_anchor_story_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_03
-    display_name: 意外来宾
+    display_name: 宾子
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1032,7 +1032,7 @@ roster:
         - sys_anchor_event_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_04
-    display_name: 跑题诗人
+    display_name: 小诗
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1077,7 +1077,7 @@ roster:
         - sys_anchor_night_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_05
-    display_name: 抓马快报
+    display_name: 瓜姐
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1123,7 +1123,7 @@ roster:
         - sys_anchor_t4rel_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_06
-    display_name: 偏题镜头
+    display_name: 镜仔
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1169,7 +1169,7 @@ roster:
         - sys_t4_01
       private_lane_policy: public_only
   - id: sys_mc_01
-    display_name: 开麦主持
+    display_name: 麦子
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1214,7 +1214,7 @@ roster:
         - sys_anchor_hot_01
       private_lane_policy: public_only
   - id: sys_mc_02
-    display_name: 场记小喇叭
+    display_name: 响子
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1257,7 +1257,7 @@ roster:
         - sys_showrunner_01
       private_lane_policy: public_only
   - id: sys_mc_03
-    display_name: 转场铃
+    display_name: 小铃
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1302,7 +1302,7 @@ roster:
         - sys_anchor_event_01
       private_lane_policy: public_only
   - id: sys_mc_04
-    display_name: 收尾手
+    display_name: 尾仔
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1345,7 +1345,7 @@ roster:
         - sys_anchor_night_01
       private_lane_policy: public_only
   - id: sys_t4_01
-    display_name: 清单控
+    display_name: 清清
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1389,7 +1389,7 @@ roster:
         - sys_anchor_t4seed_01
       private_lane_policy: public_only
   - id: sys_t4_02
-    display_name: 关系手账
+    display_name: 小账
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1433,7 +1433,7 @@ roster:
         - sys_anchor_t4rel_01
       private_lane_policy: public_only
   - id: sys_t4_03
-    display_name: 对比实验员
+    display_name: 比比
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1477,7 +1477,7 @@ roster:
         - sys_anchor_t4seed_01
       private_lane_policy: public_only
   - id: sys_t4_04
-    display_name: 情绪笔记员
+    display_name: 小绪
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1521,7 +1521,7 @@ roster:
         - sys_anchor_night_01
       private_lane_policy: public_only
   - id: sys_showrunner_01
-    display_name: 节目单总编
+    display_name: 老编
     program_role: showrunner
     visibility_role: editorial
     identity_role_id: showrunner
@@ -1565,7 +1565,7 @@ roster:
         - sys_editor_01
       private_lane_policy: public_only
   - id: sys_editor_01
-    display_name: 后台剪辑师
+    display_name: 剪子
     program_role: editor
     visibility_role: editorial
     identity_role_id: editor

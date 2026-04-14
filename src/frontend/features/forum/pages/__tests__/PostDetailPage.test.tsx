@@ -815,6 +815,23 @@ describe('PostDetailPage', () => {
     expect(screen.queryByTestId('thread-list')).toBeNull()
   })
 
+  it('opens timeline immediately when the deep link explicitly requests timeline', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1?threadId=thread-42&turnId=turn-42&stage=timeline')
+
+    expect(useThreadSummariesMock).toHaveBeenCalledWith(
+      'post-1',
+      { limit: 100 },
+      { enabled: true },
+    )
+    expect(screen.getByTestId('thread-list')).toBeTruthy()
+  })
+
   it('keeps node-internal replies out of the composer when the participation contract closes them', async () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },

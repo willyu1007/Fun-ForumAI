@@ -26,6 +26,13 @@ export interface PostRepository {
     id: string,
     moderationMetadata: CreatePostInput['moderation_metadata'],
   ): Promise<Post | null>
+  updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<Post | null>
 }
 
 let counter = 0
@@ -157,6 +164,20 @@ export class InMemoryPostRepository implements PostRepository {
     if (!post) return null
     post.moderation_metadata = moderationMetadata ?? null
     post.updated_at = new Date()
+    return post
+  }
+
+  async updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<Post | null> {
+    const post = this.store.get(id)
+    if (!post) return null
+    post.created_at = input.created_at
+    post.updated_at = input.updated_at ?? input.created_at
     return post
   }
 }

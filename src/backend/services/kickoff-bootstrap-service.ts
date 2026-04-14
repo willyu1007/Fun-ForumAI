@@ -20,6 +20,7 @@ export class KickoffBootstrapService {
       >
       runtimeReadinessService: KickoffRuntimeReadinessService
       runArtifactService: KickoffRunArtifactService
+      refreshPersistenceState?: (() => Promise<void>) | null
     },
   ) {}
 
@@ -59,6 +60,10 @@ export class KickoffBootstrapService {
       if (shouldReset) {
         failedPhase = 'reset'
         this.resetAndSeedLaunch()
+        if (this.deps.refreshPersistenceState) {
+          failedPhase = 'rehydrate'
+          await this.deps.refreshPersistenceState()
+        }
       }
 
       failedPhase = 'create_suite'

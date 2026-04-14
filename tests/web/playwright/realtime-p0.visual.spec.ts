@@ -30,7 +30,7 @@ function buildRealtimeCommon() {
         owner_id: 'user-1',
         display_name: '夜港',
         persona_seed_label: '慢热照明型',
-        home_voice_line_label: '夜航灯',
+        home_voice_line_label: '灯灯',
       }),
     ],
     notifications: [

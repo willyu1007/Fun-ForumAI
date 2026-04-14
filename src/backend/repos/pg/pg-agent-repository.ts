@@ -40,6 +40,7 @@ function isEffectiveConfig(config: AgentConfig): boolean {
 
 export class PgAgentRepository implements AgentRepository {
   private cache = new Map<string, Agent>()
+  private pendingIds = new Set<string>()
   private refreshInFlight: Promise<void> | null = null
 
   constructor(
@@ -62,11 +63,11 @@ export class PgAgentRepository implements AgentRepository {
     const nextCache = new Map<string, Agent>()
     for (const row of rows) {
       nextCache.set(row.id, this.toDomain(row))
+      this.pendingIds.delete(row.id)
     }
-    for (const [id, agent] of this.cache) {
-      if (!nextCache.has(id)) {
-        nextCache.set(id, agent)
-      }
+    for (const id of this.pendingIds) {
+      const pending = this.cache.get(id)
+      if (pending) nextCache.set(id, pending)
     }
     this.cache = nextCache
   }
@@ -84,6 +85,7 @@ export class PgAgentRepository implements AgentRepository {
     const now = new Date()
     const agent = this.newAgent(input, id, now)
     this.cache.set(id, agent)
+    this.pendingIds.add(id)
     this.prisma.agent
       .create({
         data: {
@@ -99,7 +101,14 @@ export class PgAgentRepository implements AgentRepository {
           updatedAt: now,
         },
       })
-      .catch((err) => console.error('[PgAgentRepo] create error:', err))
+      .then(() => {
+        this.pendingIds.delete(id)
+      })
+      .catch((err) => {
+        this.pendingIds.delete(id)
+        this.cache.delete(id)
+        console.error('[PgAgentRepo] create error:', err)
+      })
     return agent
   }
 
@@ -124,11 +133,13 @@ export class PgAgentRepository implements AgentRepository {
         updatedAt: now,
       },
     })
+    this.pendingIds.delete(id)
     this.cache.set(id, agent)
     return agent
   }
 
   async deletePersisted(id: string): Promise<void> {
+    this.pendingIds.delete(id)
     this.cache.delete(id)
     await this.prisma.agent.deleteMany({ where: { id } })
   }
@@ -289,6 +300,7 @@ export class PgAgentRepository implements AgentRepository {
 export class PgAgentConfigRepository implements AgentConfigRepository {
   private cache = new Map<string, AgentConfig>()
   private agentLatest = new Map<string, string>()
+  private pendingIds = new Set<string>()
   private refreshInFlight: Promise<void> | null = null
 
   constructor(
@@ -315,14 +327,15 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
     for (const row of rows) {
       const config = this.toDomain(row)
       nextCache.set(config.id, config)
+      this.pendingIds.delete(config.id)
       if (!nextLatest.has(config.agent_id)) {
         nextLatest.set(config.agent_id, config.id)
       }
     }
-    for (const [id, config] of this.cache) {
-      if (!nextCache.has(id)) {
-        nextCache.set(id, config)
-      }
+    for (const id of this.pendingIds) {
+      const config = this.cache.get(id)
+      if (!config) continue
+      nextCache.set(id, config)
       if (!nextLatest.has(config.agent_id)) {
         nextLatest.set(config.agent_id, id)
       }
@@ -356,6 +369,7 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
     }
     this.cache.set(id, config)
     this.agentLatest.set(input.agent_id, id)
+    this.pendingIds.add(id)
     this.prisma.agentConfig
       .create({
         data: {
@@ -371,9 +385,17 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
           updatedBy: config.updated_by,
         },
       })
-      .catch((err) =>
-        console.error('[PgAgentConfigRepo] create error:', err),
-      )
+      .then(() => {
+        this.pendingIds.delete(id)
+      })
+      .catch((err) => {
+        this.pendingIds.delete(id)
+        this.cache.delete(id)
+        if (this.agentLatest.get(input.agent_id) === id) {
+          this.agentLatest.delete(input.agent_id)
+        }
+        console.error('[PgAgentConfigRepo] create error:', err)
+      })
     return config
   }
 
@@ -409,6 +431,7 @@ export class PgAgentConfigRepository implements AgentConfigRepository {
         updatedBy: config.updated_by,
       },
     })
+    this.pendingIds.delete(id)
     this.cache.set(id, config)
     this.agentLatest.set(input.agent_id, id)
     return config

@@ -263,6 +263,28 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     }
   }
 
+  async updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<PublicStageTurn | null> {
+    try {
+      const row = await this.prisma.publicStageTurn.update({
+        where: { id },
+        data: {
+          createdAt: input.created_at,
+          ...(input.updated_at !== undefined ? { updatedAt: input.updated_at } : {}),
+        },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
   private toDomain(row: PrismaPublicStageTurn): PublicStageTurn {
     return {
       id: row.id,

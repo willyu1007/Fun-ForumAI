@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronRight, Copy, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sheet,
@@ -11,7 +16,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { useDevKickoffLatestRun, useDevKickoffRun, useDevKickoffStatus } from '@/api/hooks/dev'
+import { cn } from '@/lib/utils'
+import {
+  useDevKickoffLatestRun,
+  useDevKickoffRecentRuns,
+  useDevKickoffRun,
+  useDevKickoffStatus,
+} from '@/api/hooks/dev'
 
 interface DevKickoffPanelProps {
   open: boolean
@@ -21,7 +32,9 @@ interface DevKickoffPanelProps {
 export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
   const statusQuery = useDevKickoffStatus(open)
   const latestRunQuery = useDevKickoffLatestRun(open)
+  const recentRunsQuery = useDevKickoffRecentRuns(open)
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [artifactsExpanded, setArtifactsExpanded] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -34,215 +47,257 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
   const runQuery = useDevKickoffRun(selectedRunId, open)
 
   const currentMode = statusQuery.data?.data.current_data_mode ?? 'unknown'
+  const modeSource = statusQuery.data?.data.mode_source ?? null
   const currentSuite = statusQuery.data?.data.current_suite ?? null
+  const hasSuite = Boolean(currentSuite?.id)
   const readiness = statusQuery.data?.data.latest_runtime_readiness ?? null
   const latestImportReport = statusQuery.data?.data.latest_import_report ?? null
   const latestRun = latestRunQuery.data?.data ?? null
   const selectedRun = runQuery.data?.data ?? latestRun
   const failureMessage =
     typeof selectedRun?.failure_log?.message === 'string' ? selectedRun.failure_log.message : null
+  const recentRuns = recentRunsQuery.data?.data ?? []
+
+  const activationOk = readiness?.activation_readiness.ok ?? false
+  const kickoffOk = readiness?.layer_readiness.kickoff_layer_ready ?? false
+  const warmupOk = readiness?.layer_readiness.warmup_layer_ready ?? false
+  const allReady = activationOk && kickoffOk && warmupOk
+
+  const handleRefresh = () => {
+    void statusQuery.refetch()
+    void latestRunQuery.refetch()
+    void recentRunsQuery.refetch()
+    if (selectedRunId) {
+      void runQuery.refetch()
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" showCloseButton={false} className="w-full p-0 sm:max-w-2xl">
+      <SheetContent side="right" showCloseButton={false} className="w-full p-0 sm:max-w-xl">
         <SheetHeader className="border-b border-border/60 px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <SheetTitle className="text-sm">Local Kickoff 调试台</SheetTitle>
-              <SheetDescription className="mt-1 text-xs">
-                只显示 kickoff import / readiness / run artifact，不混入 release 验证。
-              </SheetDescription>
-            </div>
+            <SheetTitle className="text-sm">Kickoff 调控台</SheetTitle>
+            <SheetDescription className="sr-only">Kickoff 运行状态与导入摘要</SheetDescription>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="font-mono text-[10px]">
                 {currentMode}
               </Badge>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => {
-                  void statusQuery.refetch()
-                  void latestRunQuery.refetch()
-                  if (selectedRunId) {
-                    void runQuery.refetch()
-                  }
-                }}
+                onClick={handleRefresh}
                 aria-label="刷新 kickoff 调试状态"
               >
                 <RefreshCw className="size-3.5" />
               </Button>
             </div>
           </div>
+
+          <div className="mt-2 flex items-center gap-3" data-testid="readiness-lights">
+            <ReadinessLight label="activation" ok={activationOk} />
+            <ReadinessLight label="kickoff" ok={kickoffOk} />
+            <ReadinessLight label="warmup" ok={warmupOk} />
+            {allReady && (
+              <span className="ml-auto text-[11px] text-muted-foreground">全部就绪</span>
+            )}
+          </div>
         </SheetHeader>
 
-        <ScrollArea className="h-[calc(100vh-5rem)]">
-          <div className="space-y-4 px-4 py-4">
+        <ScrollArea className="h-[calc(100vh-6.5rem)]">
+          <div className="divide-y divide-border/50">
             {(statusQuery.error || latestRunQuery.error || runQuery.error) && (
-              <div className="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-3 text-xs">
+              <div className="flex items-start gap-3 bg-destructive/5 px-4 py-3 text-xs">
                 <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
-                <div className="space-y-1">
-                  <p className="font-medium text-foreground">Kickoff 调试数据读取失败</p>
+                <div className="space-y-0.5">
+                  <p className="font-medium text-foreground">数据读取失败</p>
                   <p className="text-muted-foreground">
-                    {readErrorMessage(statusQuery.error) ?? readErrorMessage(latestRunQuery.error) ?? readErrorMessage(runQuery.error)}
+                    {readErrorMessage(statusQuery.error) ??
+                      readErrorMessage(latestRunQuery.error) ??
+                      readErrorMessage(runQuery.error)}
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="grid gap-4 xl:grid-cols-2">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Current Status</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs">
-                  <KeyValue label="mode" value={currentMode} />
-                  <KeyValue label="mode source" value={statusQuery.data?.data.mode_source ?? 'n/a'} />
-                  <KeyValue label="suite_id" value={currentSuite?.id ?? 'n/a'} />
-                  <KeyValue label="suite_label" value={currentSuite?.label ?? 'n/a'} />
-                  <KeyValue label="kickoff_batch_id" value={currentSuite?.kickoff_batch_id ?? 'n/a'} />
-                  <KeyValue label="warmup_batch_id" value={currentSuite?.warmup_batch_id ?? 'n/a'} />
-                  <KeyValue label="baseline_id" value={currentSuite?.active_baseline_id ?? 'n/a'} />
-                </CardContent>
-              </Card>
+            {/* ── 系统状态 ── */}
+            <section className="space-y-3 px-4 py-4">
+              <SectionTitle>系统状态</SectionTitle>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Runtime Readiness</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={readiness?.activation_readiness.ok ? 'secondary' : 'destructive'}>
-                      activation {readiness?.activation_readiness.ok ? 'ready' : 'blocked'}
+              <div className="space-y-1.5 text-xs">
+                <Row label="模式" value={currentMode} note={modeSource ? `(${modeSource})` : undefined} />
+
+                {hasSuite ? (
+                  <>
+                    <Row label="Suite" value={currentSuite!.label ?? currentSuite!.id ?? ''} />
+                    {currentSuite!.kickoff_batch_id && (
+                      <Row label="Kickoff batch" value={currentSuite!.kickoff_batch_id} mono />
+                    )}
+                    {currentSuite!.warmup_batch_id && (
+                      <Row label="Warmup batch" value={currentSuite!.warmup_batch_id} mono />
+                    )}
+                    {currentSuite!.active_baseline_id && (
+                      <Row label="Baseline" value={currentSuite!.active_baseline_id} mono />
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">未关联 Suite</p>
+                )}
+              </div>
+
+              {readiness && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>warnings <strong className="text-foreground">{readiness.quality_state.warning_count}</strong></span>
+                  <span>media <strong className="text-foreground">{readiness.quality_state.summary.media_coverage_ratio}</strong></span>
+                  <span>growth <strong className={readiness.admission.allow_public_growth ? 'text-foreground' : 'text-destructive'}>{String(readiness.admission.allow_public_growth)}</strong></span>
+                </div>
+              )}
+
+              {readiness?.activation_readiness.reasons.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {readiness.activation_readiness.reasons.map((reason) => (
+                    <Badge key={reason} variant="outline" className="text-[10px]">
+                      {reason}
                     </Badge>
-                    <Badge variant={readiness?.layer_readiness.kickoff_layer_ready ? 'secondary' : 'destructive'}>
-                      kickoff {readiness?.layer_readiness.kickoff_layer_ready ? 'ok' : 'blocked'}
-                    </Badge>
-                    <Badge variant={readiness?.layer_readiness.warmup_layer_ready ? 'secondary' : 'destructive'}>
-                      warmup {readiness?.layer_readiness.warmup_layer_ready ? 'ok' : 'blocked'}
-                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
+            {/* ── 最近导入 ── */}
+            <section className="space-y-3 px-4 py-4">
+              <SectionTitle>
+                最近导入
+                {latestImportReport && (
+                  <Badge variant="outline" className="ml-2 text-[10px]">
+                    {latestImportReport.report_meta.dry_run ? 'dry-run' : 'apply'}
+                  </Badge>
+                )}
+              </SectionTitle>
+
+              {latestImportReport ? (
+                <div className="space-y-2 text-xs">
+                  <Row label="Run" value={shortId(latestImportReport.report_meta.run_id)} mono />
+                  {latestImportReport.report_meta.patch_id && (
+                    <Row label="Patch" value={shortId(latestImportReport.report_meta.patch_id)} mono />
+                  )}
+                  {latestImportReport.failure_phase && (
+                    <Row label="失败阶段" value={latestImportReport.failure_phase} />
+                  )}
+
+                  <p className="text-muted-foreground">
+                    posts <strong className="text-foreground">{latestImportReport.summary_after_import.posts}</strong>
+                    {' · '}threads <strong className="text-foreground">{latestImportReport.summary_after_import.threads}</strong>
+                    {' · '}turns <strong className="text-foreground">{latestImportReport.summary_after_import.turns}</strong>
+                    {' · '}media <strong className="text-foreground">{latestImportReport.summary_after_import.media}</strong>
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                    <span>ops: {latestImportReport.op_results?.length ?? 0}</span>
+                    <span>refs: {latestImportReport.resolution_map?.length ?? 0}</span>
                   </div>
-                  <KeyValue label="warnings" value={String(readiness?.quality_state.warning_count ?? 0)} />
-                  <KeyValue
-                    label="media ratio"
-                    value={String(readiness?.quality_state.summary.media_coverage_ratio ?? 0)}
-                  />
-                  <KeyValue label="allow growth" value={String(readiness?.admission.allow_public_growth ?? false)} />
-                  {readiness?.activation_readiness.reasons.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {readiness.activation_readiness.reasons.map((reason) => (
-                        <Badge key={reason} variant="outline">
-                          {reason}
+
+                  {latestImportReport.recommended_next_actions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {latestImportReport.recommended_next_actions.map((action) => (
+                        <Badge key={action} variant="secondary" className="text-[10px]">
+                          {action}
                         </Badge>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground">当前没有 activation blocker。</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-sm">Latest Import Summary</CardTitle>
-                  {latestImportReport && (
-                    <Badge variant="outline" className="text-[10px]">
-                      {latestImportReport.report_meta.dry_run ? 'dry-run' : 'apply'}
-                    </Badge>
                   )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                {latestImportReport ? (
-                  <>
-                    <KeyValue label="run_id" value={latestImportReport.report_meta.run_id} />
-                    <KeyValue label="patch_id" value={latestImportReport.report_meta.patch_id ?? 'n/a'} />
-                    <KeyValue label="failure_phase" value={latestImportReport.failure_phase ?? 'none'} />
-                    <KeyValue
-                      label="op_results"
-                      value={String(latestImportReport.op_results?.length ?? 0)}
-                    />
-                    <KeyValue
-                      label="resolution_map"
-                      value={String(latestImportReport.resolution_map?.length ?? 0)}
-                    />
-                    <p className="text-muted-foreground">
-                      posts {latestImportReport.summary_after_import.posts} · threads {latestImportReport.summary_after_import.threads}
-                      {' · '}
-                      turns {latestImportReport.summary_after_import.turns} · media {latestImportReport.summary_after_import.media}
-                    </p>
-                    {latestImportReport.recommended_next_actions.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {latestImportReport.recommended_next_actions.map((action) => (
-                          <Badge key={action} variant="secondary">
-                            {action}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-muted-foreground">当前没有 kickoff import report。</p>
-                )}
-              </CardContent>
-            </Card>
+              ) : (
+                <p className="text-xs text-muted-foreground">暂无导入记录</p>
+              )}
+            </section>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-sm">Run Detail</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {latestRun && (
-                      <Button
+            {/* ── 运行详情 ── */}
+            <section className="space-y-3 px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <SectionTitle>运行详情</SectionTitle>
+                {recentRuns.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
                         type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedRunId(latestRun.summary.run_id)}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        打开最新 Run
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        if (typeof window !== 'undefined') {
-                          window.location.assign('/admin?tab=warmup')
-                        }
-                      }}
-                    >
-                      跳转 Warm-up
-                      <ExternalLink className="ml-1 size-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                {selectedRun ? (
-                  <>
-                    <KeyValue label="run_id" value={selectedRun.summary.run_id} />
-                    <KeyValue label="run_type" value={selectedRun.summary.run_type} />
-                    <KeyValue label="profile_id" value={selectedRun.summary.profile_id ?? 'n/a'} />
-                    <KeyValue label="patch_id" value={selectedRun.summary.patch_id ?? 'n/a'} />
-                    <KeyValue label="failed_phase" value={selectedRun.summary.failed_phase ?? 'none'} />
-                    {failureMessage ? <KeyValue label="failure_message" value={failureMessage} /> : null}
-                    <KeyValue label="artifact_dir" value={selectedRun.summary.artifact_dir} mono />
-                    <KeyValue label="context-pack" value={selectedRun.artifacts.context_pack_path ?? 'n/a'} mono />
-                    <KeyValue label="generated-patch" value={selectedRun.artifacts.generated_patch_path ?? 'n/a'} mono />
-                    <KeyValue label="import-report" value={selectedRun.artifacts.import_report_path ?? 'n/a'} mono />
-                    <KeyValue label="readiness" value={selectedRun.artifacts.readiness_snapshot_path ?? 'n/a'} mono />
-                    <KeyValue label="repair-patch" value={selectedRun.artifacts.repair_patch_path ?? 'n/a'} mono />
-                    <KeyValue label="failure-log" value={selectedRun.artifacts.failure_log_path ?? 'n/a'} mono />
-                  </>
-                ) : (
-                  <p className="text-muted-foreground">当前没有 kickoff run artifact。</p>
+                        {selectedRunId ? shortId(selectedRunId) : '选择 Run'}
+                        <ChevronDown className="size-3" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-h-64 w-72 overflow-y-auto">
+                      {recentRuns.map((run) => (
+                        <DropdownMenuItem
+                          key={run.run_id}
+                          onClick={() => setSelectedRunId(run.run_id)}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                            {shortId(run.run_id)}
+                          </span>
+                          <span className="shrink-0 text-muted-foreground">{run.run_type}</span>
+                          {run.failed_phase && (
+                            <span className="shrink-0 text-destructive">failed</span>
+                          )}
+                          {selectedRunId === run.run_id && (
+                            <Check className="ml-auto size-3 shrink-0 text-primary" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+
+              {selectedRun ? (
+                <div className="space-y-2 text-xs">
+                  <Row label="Run" value={shortId(selectedRun.summary.run_id)} mono />
+                  <Row label="类型" value={selectedRun.summary.run_type} />
+                  {selectedRun.summary.profile_id && (
+                    <Row label="Profile" value={selectedRun.summary.profile_id} mono />
+                  )}
+                  {selectedRun.summary.patch_id && (
+                    <Row label="Patch" value={shortId(selectedRun.summary.patch_id)} mono />
+                  )}
+                  {selectedRun.summary.failed_phase && (
+                    <Row label="失败阶段" value={selectedRun.summary.failed_phase} />
+                  )}
+                  {failureMessage && (
+                    <div className="rounded-md bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      {failureMessage}
+                    </div>
+                  )}
+
+                  {/* artifact paths - collapsible */}
+                  <button
+                    type="button"
+                    className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => setArtifactsExpanded((v) => !v)}
+                  >
+                    <ChevronRight className={cn('size-3 transition-transform', artifactsExpanded && 'rotate-90')} />
+                    Artifact 路径
+                  </button>
+
+                  {artifactsExpanded && (
+                    <div className="space-y-1.5 pl-4">
+                      <ArtifactRow label="dir" value={selectedRun.summary.artifact_dir} hint="产物根目录" />
+                      <ArtifactRow label="context-pack" value={selectedRun.artifacts.context_pack_path} hint="上下文快照" />
+                      <ArtifactRow label="patch" value={selectedRun.artifacts.generated_patch_path} hint="生成的内容补丁" />
+                      <ArtifactRow label="import" value={selectedRun.artifacts.import_report_path} hint="导入结果报告" />
+                      <ArtifactRow label="readiness" value={selectedRun.artifacts.readiness_snapshot_path} hint="就绪状态快照" />
+                      <ArtifactRow label="repair" value={selectedRun.artifacts.repair_patch_path} hint="修复补丁" />
+                      <ArtifactRow label="failure" value={selectedRun.artifacts.failure_log_path} hint="失败日志" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">暂无运行记录</p>
+              )}
+            </section>
           </div>
         </ScrollArea>
       </SheetContent>
@@ -250,21 +305,106 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
   )
 }
 
-function KeyValue({
+/* ── Primitives ── */
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-semibold text-foreground">{children}</h3>
+}
+
+function ReadinessLight({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px]">
+      <span
+        className={cn(
+          'inline-block size-2 rounded-full',
+          ok ? 'bg-emerald-500' : 'bg-destructive',
+        )}
+      />
+      <span className={ok ? 'text-muted-foreground' : 'text-foreground'}>{label}</span>
+    </span>
+  )
+}
+
+function Row({
   label,
   value,
   mono = false,
+  note,
 }: {
   label: string
   value: string
   mono?: boolean
+  note?: string
 }) {
   return (
-    <div className="flex gap-2">
-      <span className="w-28 shrink-0 text-muted-foreground">{label}</span>
-      <span className={mono ? 'break-all font-mono text-[11px]' : 'break-all'}>{value}</span>
+    <div className="flex items-baseline gap-2">
+      <span className="w-24 shrink-0 text-muted-foreground">{label}</span>
+      <span className={cn('min-w-0 break-all', mono && 'font-mono text-[11px]')}>
+        {value}
+      </span>
+      {note && <span className="text-[11px] text-muted-foreground">{note}</span>}
     </div>
   )
+}
+
+function ArtifactRow({
+  label,
+  value,
+  hint,
+}: {
+  label: string
+  value: string | null | undefined
+  hint?: string
+}) {
+  const canCopy = Boolean(value)
+  const display = value ? toRelativePath(value) : 'n/a'
+
+  const handleCopy = () => {
+    if (value) {
+      void navigator.clipboard.writeText(value)
+    }
+  }
+
+  return (
+    <div className="group flex items-baseline gap-2 text-[11px]">
+      <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
+      <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+        <span className="min-w-0 truncate font-mono text-muted-foreground">{display}</span>
+        {canCopy && (
+          <button
+            type="button"
+            className="shrink-0 text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+            onClick={handleCopy}
+            aria-label={`复制 ${label} 路径`}
+          >
+            <Copy className="size-3" />
+          </button>
+        )}
+      </div>
+      {hint && <span className="shrink-0 text-[10px] text-muted-foreground/60">{hint}</span>}
+    </div>
+  )
+}
+
+function shortId(id: string): string {
+  if (id.length <= 24) return id
+  return `${id.slice(0, 20)}…${id.slice(-6)}`
+}
+
+function toRelativePath(absolutePath: string): string {
+  const cwd = typeof window !== 'undefined'
+    ? (window as unknown as Record<string, unknown>).__CWD__ as string | undefined
+    : undefined
+  if (cwd && absolutePath.startsWith(cwd)) {
+    const rel = absolutePath.slice(cwd.length)
+    return rel.startsWith('/') ? rel.slice(1) : rel
+  }
+  const marker = '/.ai/'
+  const idx = absolutePath.indexOf(marker)
+  if (idx !== -1) {
+    return absolutePath.slice(idx + 1)
+  }
+  return absolutePath
 }
 
 function readErrorMessage(error: unknown): string | null {

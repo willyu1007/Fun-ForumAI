@@ -10,6 +10,7 @@ import type {
   KickoffImportReport,
   KickoffProfileId,
   KickoffRunDetail,
+  KickoffRunSummary,
   KickoffStatusPayload,
 } from '../types'
 
@@ -18,6 +19,7 @@ type DevSeedProfile = 'canonical' | 'smoke-minimal' | 'launch'
 function invalidateKickoffQueries(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: queryKeys.devKickoffStatus })
   qc.invalidateQueries({ queryKey: queryKeys.devKickoffLatestRun })
+  qc.invalidateQueries({ queryKey: queryKeys.devKickoffRecentRuns })
   qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
   qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures })
   qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
@@ -101,6 +103,15 @@ export function useDevKickoffStatus(enabled = true) {
     enabled,
     staleTime: 10_000,
     refetchInterval: enabled ? 15_000 : false,
+  })
+}
+
+export function useDevKickoffRecentRuns(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.devKickoffRecentRuns,
+    queryFn: () => api.get('dev/kickoff/runs?limit=10').json<ApiResponse<KickoffRunSummary[]>>(),
+    enabled,
+    staleTime: 10_000,
   })
 }
 

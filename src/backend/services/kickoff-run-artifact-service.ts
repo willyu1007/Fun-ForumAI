@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
@@ -151,6 +151,26 @@ export class KickoffRunArtifactService {
     await this.writeJson(summaryPath, next)
     await this.writeJson(LATEST_RUN_PATH, { run_id: runId })
     return next
+  }
+
+  async listRecentRuns(limit = 10): Promise<KickoffRunSummary[]> {
+    let entries: string[]
+    try {
+      entries = await readdir(RUNS_ROOT)
+    } catch {
+      return []
+    }
+    const candidates = entries.filter((e) => !e.endsWith('.json'))
+    candidates.sort().reverse()
+
+    const summaries: KickoffRunSummary[] = []
+    for (const dir of candidates.slice(0, limit)) {
+      const summary = await safeReadJson<KickoffRunSummary>(
+        resolve(RUNS_ROOT, dir, 'run-summary.json'),
+      )
+      if (summary) summaries.push(summary)
+    }
+    return summaries
   }
 
   async readLatestRun(): Promise<KickoffRunDetail | null> {

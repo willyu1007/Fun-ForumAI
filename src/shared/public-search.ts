@@ -206,7 +206,9 @@ export interface SearchThreadItem {
   href: string
   post_id: string
   post_title: string
+  post_created_at: string
   matched_turn_id: string | null
+  matched_turn_created_at: string | null
   matched_turn_snippet: string | null
   matched_turn_anchor_preview: string | null
   score: number
@@ -216,6 +218,8 @@ export interface SearchThreadItem {
   match_reasons: string[]
   match_reason_codes: SearchMatchReasonCode[]
   community: SearchCommunitySummary
+  post_author: SearchAuthorSummary
+  post_author_visibility: SearchAuthorVisibility
   author: SearchAuthorSummary
   author_visibility: SearchAuthorVisibility
   created_at: string

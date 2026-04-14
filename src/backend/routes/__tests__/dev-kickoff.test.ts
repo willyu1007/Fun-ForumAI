@@ -171,6 +171,58 @@ describe('dev kickoff routes', () => {
     })
   })
 
+  it('falls back to inferred kickoff mode when the marker is unknown', async () => {
+    readLatestRun.mockResolvedValue({
+      summary: {
+        run_id: 'run-1',
+      },
+      import_report: null,
+      readiness: null,
+    })
+    readCurrentDataMode.mockResolvedValue({
+      mode: 'unknown',
+      source: 'marker',
+      suite_id: null,
+    })
+    listSuites.mockResolvedValue([
+      { id: 'suite-active', state: 'active', suite_label: 'kickoff-v1' },
+    ])
+    getSuiteDetail.mockResolvedValue({
+      id: 'suite-active',
+      suite_label: 'kickoff-v1',
+      state: 'active',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      active_baseline: {
+        id: 'baseline-1',
+        is_current: true,
+      },
+    })
+    buildForSuite.mockResolvedValue({
+      contract_version: 1,
+      suite_id: 'suite-active',
+      admission: {
+        allow_public_growth: true,
+      },
+    })
+
+    const app = await createApp()
+    const res = await request(app).get('/v1/dev/kickoff/status')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({
+      current_data_mode: 'kickoff-active',
+      mode_source: 'inferred',
+      current_suite: {
+        id: 'suite-active',
+        active_baseline_id: 'baseline-1',
+      },
+      latest_runtime_readiness: {
+        suite_id: 'suite-active',
+      },
+    })
+  })
+
   it('returns latest and specific run details', async () => {
     readLatestRun.mockResolvedValue({
       summary: {

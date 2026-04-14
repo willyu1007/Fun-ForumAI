@@ -169,3 +169,34 @@ pnpm typecheck
   - suite-level safe editing
   - verify 分层输出
 - 剩余阻塞只来自 repo 既有全仓 typecheck 失败，不是 kickoff 本轮新增内容。
+
+## 2026-04-14 Content Redesign and Cleanup Verification
+
+### Commands
+
+```bash
+curl -s http://localhost:4000/v1/dev/kickoff/status | jq .
+psql 'postgresql://yurui@localhost:5432/llm_forum_dev' -P pager=off -c "select 'warmup_suites' as table_name, count(*) as count from warmup_suites union all select 'warm_start_batches', count(*) from warm_start_batches union all select 'active_baselines', count(*) from active_baselines;"
+find .ai/.tmp/kickoff-runs -maxdepth 1 \( -type f -o -type d \) | sort
+sed -n '1,220p' config/kickoff/quality/acceptance.v1.yaml
+sed -n '320,430p' dev-docs/active/kickoff-data-governance-alignment-temp/roadmap.md
+sed -n '1,220p' config/launch/launch_programming_schedule.v1.yaml
+node .ai/scripts/ctl-project-governance.mjs sync --apply --project main
+```
+
+### Outcomes
+
+- kickoff 历史运行痕迹已清空：
+  - `/v1/dev/kickoff/status` 返回 `current_data_mode = unknown`
+  - `latest_run = null`
+  - `current_suite.id = null`
+- 数据库中的 kickoff 治理对象已归零：
+  - `warmup_suites = 0`
+  - `warm_start_batches = 0`
+  - `active_baselines = 0`
+- `.ai/.tmp/kickoff-runs` 目录已清空，只保留空目录本身，不再残留 run artifact / marker
+- 内容重设计的输入合同已复核：
+  - `config/kickoff/quality/acceptance.v1.yaml` 继续作为最低 readiness 合同
+  - `config/launch/launch_programming_schedule.v1.yaml` 继续作为 daypart / slot contract
+  - `roadmap.md` 中的 local-llm-assisted workflow 继续作为 assistant 角色边界
+- 新阶段已从“链路可用性”转到“内容质量重构”，task 状态将重新回到 `in-progress`

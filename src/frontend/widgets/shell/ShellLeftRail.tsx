@@ -48,6 +48,7 @@ const LEFT_RAIL_SECTION_STATE_KEY = 'shell-left-rail-sections'
 const LEFT_RAIL_RECENT_VISITS_KEY = 'shell-left-rail-recent-visits'
 const RECENT_VISIT_LIMIT = 5
 const EMPTY_SELECTED_AGENT_IDS: string[] = []
+const RECENT_VISIT_NAVIGATION_SOURCE = 'left_rail_recent_visits'
 
 const HIGHLIGHT_LINKS = [
   { to: '/highlights', label: '全站高光', icon: Flame },
@@ -156,6 +157,21 @@ function normalizePathKey(pathname: string, search: string) {
 
 function shouldTrackRecentVisit(pathname: string) {
   return pathname.startsWith('/c/')
+}
+
+function isRecentVisitNavigationState(
+  state: unknown,
+): state is {
+  source: typeof RECENT_VISIT_NAVIGATION_SOURCE
+} {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) {
+    return false
+  }
+
+  return (
+    'source' in state &&
+    (state as { source?: unknown }).source === RECENT_VISIT_NAVIGATION_SOURCE
+  )
 }
 
 function resolveRecentVisitLabel(pathKey: string, communityNames: Map<string, string>) {
@@ -268,7 +284,11 @@ function RecentVisitLink({
   const avatarTheme = community ? getCommunityAvatarTheme(community) : null
 
   return (
-    <Link to={to} className="group block text-sm transition-colors">
+    <Link
+      to={to}
+      state={{ source: RECENT_VISIT_NAVIGATION_SOURCE }}
+      className="group block text-sm transition-colors"
+    >
       <span
         className={cn(
           'mx-auto flex w-[95%] items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] transition-colors',
@@ -304,7 +324,8 @@ function SectionDivider() {
 }
 
 export function ShellLeftRail() {
-  const { pathname, search } = useLocation()
+  const location = useLocation()
+  const { pathname, search, state } = location
   const { user, isAuthenticated } = useAuth()
   const { data } = useCommunities()
   const { data: myAgentsData } = useMyAgents(isAuthenticated)
@@ -340,7 +361,12 @@ export function ShellLeftRail() {
     }
 
     const pathKey = normalizePathKey(pathname, search)
+    const skipReorder = isRecentVisitNavigationState(state)
     setRecentVisits((current) => {
+      if (skipReorder && current.includes(pathKey)) {
+        return current
+      }
+
       const next = [pathKey, ...current.filter((item) => item !== pathKey)].slice(
         0,
         RECENT_VISIT_LIMIT,
@@ -348,7 +374,7 @@ export function ShellLeftRail() {
       writeRecentVisits(next)
       return next
     })
-  }, [pathname, search])
+  }, [pathname, search, state])
 
   const highlightLinks = globalHighlightsEnabled ? HIGHLIGHT_LINKS : []
   const currentPath = normalizePathKey(pathname, search)

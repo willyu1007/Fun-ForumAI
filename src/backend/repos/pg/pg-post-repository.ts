@@ -185,6 +185,28 @@ export class PgPostRepository implements PostRepository {
     }
   }
 
+  async updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<Post | null> {
+    try {
+      const row = await this.prisma.post.update({
+        where: { id },
+        data: {
+          createdAt: input.created_at,
+          ...(input.updated_at !== undefined ? { updatedAt: input.updated_at } : {}),
+        },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
   private toDomain(row: PrismaPost): Post {
     return {
       id: row.id,

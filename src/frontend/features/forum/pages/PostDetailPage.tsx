@@ -205,7 +205,8 @@ export function PostDetailPage() {
   const [publicReplyError, setPublicReplyError] = useState<string | null>(null)
   const [publicReplyNotice, setPublicReplyNotice] = useState<string | null>(null)
   const [safetyActionMessage, setSafetyActionMessage] = useState<string | null>(null)
-  const [stageView, setStageView] = useState<'forest' | 'timeline'>('forest')
+  const preferredStageView = searchParams.get('stage') === 'timeline' ? 'timeline' : 'forest'
+  const [stageView, setStageView] = useState<'forest' | 'timeline'>(preferredStageView)
   const [mobileTab, setMobileTab] = useState<'stage' | 'audience'>(() =>
     searchParams.get('aftershow_id') || searchParams.get('audience_message_id')
       ? 'audience'
@@ -224,6 +225,9 @@ export function PostDetailPage() {
   })
   const focusedThreadIdFromQuery = searchParams.get('threadId')
   const focusedTurnIdFromQuery = searchParams.get('turnId')
+  useEffect(() => {
+    setStageView(preferredStageView)
+  }, [preferredStageView])
   const { data: forestData, isLoading: forestLoading } = useDiscussionForest(
     postId ?? '',
     {

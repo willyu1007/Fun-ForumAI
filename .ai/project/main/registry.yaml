@@ -1763,3 +1763,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/chatroom-staging-hold-e2e-closure
     updated: 2026-04-13
+  - id: T-964
+    slug: kickoff-data-governance-alignment-temp
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-data-governance-alignment-temp
+    updated: 2026-04-14

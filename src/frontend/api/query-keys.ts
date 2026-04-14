@@ -14,6 +14,7 @@ export const queryKeys = {
   devBadgeDebugCatalog: ['devBadgeDebugCatalog'] as const,
   devKickoffStatus: ['devKickoffStatus'] as const,
   devKickoffLatestRun: ['devKickoffLatestRun'] as const,
+  devKickoffRecentRuns: ['devKickoffRecentRuns'] as const,
   devKickoffRun: (runId: string) => ['devKickoffRun', runId] as const,
   homeProgramming: ['homeProgramming'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const runDevSeed = vi.fn()
 const recordDataMode = vi.fn()
+const warmPersistenceState = vi.fn()
 const execFileSync = vi.fn()
 
 vi.mock('../../lib/config.js', () => ({
@@ -20,6 +21,7 @@ vi.mock('../../container.js', () => ({
   kickoffRunArtifactService: {
     recordDataMode,
   },
+  warmPersistenceState,
 }))
 
 vi.mock('../../dev/dev-seed-reset.js', () => ({
@@ -89,6 +91,7 @@ describe('dev seed route', () => {
         stdio: 'inherit',
       }),
     )
+    expect(warmPersistenceState).toHaveBeenCalledTimes(1)
     expect(runDevSeed).toHaveBeenCalledWith({ profile: 'canonical' })
     expect(recordDataMode).toHaveBeenCalledWith({
       mode: 'canonical',

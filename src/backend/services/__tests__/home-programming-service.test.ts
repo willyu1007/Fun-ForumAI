@@ -585,9 +585,9 @@ describe('HomeProgrammingService', () => {
       expect(mustWatchShelf?.collapsed).toBe(false)
       expect(mustWatchShelf?.items[0]).toMatchObject({
         id: 'post-escalating-1',
-        hero_reason: '冲突升级回填',
+        hero_reason: '今日最值得先点开的主线。',
       })
-      expect(conflictShelf?.items.map((item) => item.id)).toEqual(['post-escalating-2'])
+      expect(conflictShelf?.items.map((item) => item.id)).toEqual([])
     } finally {
       featureFlags.homeProgrammingV1 = originalFlag
     }
@@ -681,12 +681,136 @@ describe('HomeProgrammingService', () => {
 
       expect(mustWatchShelf?.items[0]).toMatchObject({
         id: 'post-escalating-1',
-        hero_reason: '冲突升级回填',
+        hero_reason: '今日最值得先点开的主线。',
       })
-      expect(conflictShelf?.items.map((item) => item.id)).toEqual([
-        'post-fallback-1',
-        'post-fallback-2',
+      expect(conflictShelf?.items.map((item) => item.id)).toEqual([])
+    } finally {
+      featureFlags.homeProgrammingV1 = originalFlag
+    }
+  })
+
+  it('stabilizes must_watch_today to four items and keeps at least two image posts when available', async () => {
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.homeProgrammingV1
+    featureFlags.homeProgrammingV1 = true
+
+    try {
+      const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
+      const imageMedia = (id: string) => [{
+        id: `media-${id}`,
+        media_url: `https://example.com/${id}.jpg`,
+        mime_type: 'image/jpeg',
+        alt_text: id,
+      }]
+      const service = new HomeProgrammingService({
+        forumReadService: {
+          getFeed: async () => ({
+            items: [
+              makePost({
+                id: 'post-hero',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '主 Hero 带图',
+                hero_eligible: true,
+                media: imageMedia('post-hero'),
+                heat_score: 96,
+              }),
+              makePost({
+                id: 'post-image-2',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '第二条带图',
+                media: imageMedia('post-image-2'),
+                heat_score: 88,
+              }),
+              makePost({
+                id: 'post-text-1',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '第三条纯文本',
+                heat_score: 80,
+              }),
+              makePost({
+                id: 'post-text-2',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '第四条纯文本',
+                heat_score: 76,
+              }),
+              makePost({
+                id: 'post-note',
+                community_id: 'community-creator-note',
+                community_slug: 'creator-recommendation',
+                community_name: '种草研究所',
+                title: '创作者笔记应保留给 notes_today',
+                content_kind: 'note_entry',
+                editorial_shelf_id: 'notes_today',
+                note_template_id: 'comparison_note',
+                cover_mode: 'comparison_cover',
+                media: imageMedia('post-note'),
+                heat_score: 90,
+              }),
+            ],
+            next_cursor: null,
+          }),
+          getPost: async () => {
+            throw new Error('unexpected getPost')
+          },
+          getThreads: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+        } as never,
+        globalHighlightsService: {
+          collectToday: async () => ({
+            hot_threads: [],
+            featured_agents: [],
+            controversy: [],
+            wildcard_cameos: [],
+            meta: {
+              range: 'today',
+              generated_at: '2026-03-31T00:00:00.000Z',
+              source: 'global-highlights-v1',
+            },
+          }),
+        } as never,
+        aftershowService: {
+          getLatestByPost: async () => ({
+            artifact: null,
+            callouts: [],
+          }),
+        } as never,
+        communityRepo: {
+          findById: (communityId: string) => ({
+            id: communityId,
+            slug: communityId === 'community-creator-note' ? 'creator-recommendation' : 'hot-arena',
+            name: communityId === 'community-creator-note' ? '种草研究所' : '热点擂台',
+            rules_json: hotArenaRules,
+          }),
+          findBySlug: () => null,
+        } as never,
+      })
+
+      const payload = await service.getHome()
+      const mustWatchShelf = payload.shelves.find((item) => item.id === 'must_watch_today')
+      const notesShelf = payload.shelves.find((item) => item.id === 'notes_today')
+      const mustWatchPosts = mustWatchShelf?.items ?? []
+      const imageCount = mustWatchPosts.filter((item) => 'media' in item && item.media.some((entry) => entry.mime_type.startsWith('image/'))).length
+
+      expect(mustWatchPosts.map((item) => item.id)).toEqual([
+        'post-hero',
+        'post-image-2',
+        'post-text-1',
+        'post-text-2',
       ])
+      expect(imageCount).toBeGreaterThanOrEqual(2)
+      expect(notesShelf?.items[0]).toMatchObject({
+        id: 'post-note',
+      })
     } finally {
       featureFlags.homeProgrammingV1 = originalFlag
     }
@@ -763,7 +887,7 @@ describe('HomeProgrammingService', () => {
               thumbnail_policy: 'required_if_available',
               lead_seats: [{
                 agent_id: 'sys_anchor_hot_01',
-                display_name: '灼见台',
+                display_name: '灼灼',
                 role: 'anchor',
               }],
               next_jump_target: '/c/hot-arena',

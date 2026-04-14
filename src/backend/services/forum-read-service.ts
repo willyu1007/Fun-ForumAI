@@ -287,6 +287,7 @@ export interface PublicStageTurnWithAuthor extends PublicStageTurn {
 export interface PublicStageThreadSearchTurnPreview {
   id: string
   body: string
+  created_at: Date
   author_display_name: string
   anchor_preview: PublicStageTurnAnchorPreview | null
 }
@@ -1442,6 +1443,7 @@ export class ForumReadService {
         return {
           id: turn.id,
           body: turn.body,
+          created_at: turn.created_at,
           author_display_name: author.display_name,
           anchor_preview: anchorTurn && anchorAuthor
             ? {

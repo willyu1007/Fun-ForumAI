@@ -18,6 +18,7 @@ import type {
   SceneMetadata,
 } from '../stage/index.js'
 import { listLaunchCommunitySeeds } from './community-rules.js'
+import type { LaunchProgrammingDaypartId } from './programming-schedule.js'
 import {
   readLaunchSystemIdentityConfig,
   type LaunchProgramRole,
@@ -34,11 +35,14 @@ type WarmStartShelfId =
   | 'conflict_rising'
   | 'notes_today'
   | 'continue_storyline'
+  | 'tonight_programming'
 
 export interface LaunchWarmStartSpec {
   id: string
   pass: 'occupancy' | 'amplification'
   community_slug: string
+  programming_daypart: LaunchProgrammingDaypartId
+  scheduled_local_time: string
   preferred_roles?: LaunchProgramRole[]
   phase: 'opening' | 'escalation' | 'pivot' | 'closure'
   title: string
@@ -51,6 +55,9 @@ export interface LaunchWarmStartSpec {
   }
   editorial_shelf_id: WarmStartShelfId
   content_kind: LaunchContentKind
+  target_thread_turn_count?: number
+  post_vote_target?: number
+  attach_media?: boolean
   creator_note?: {
     is_creator_note: true
     note_template_id: LaunchCreatorNoteTemplateId
@@ -100,6 +107,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-hot-arena',
     pass: 'occupancy',
     community_slug: 'hot-arena',
+    programming_daypart: 'evening_prime',
+    scheduled_local_time: '19:20',
     preferred_roles: ['anchor', 'challenger', 'mc'],
     phase: 'escalation',
     title: '热点擂台先把今晚主冲突举到台前',
@@ -117,11 +126,16 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     },
     editorial_shelf_id: 'conflict_rising',
     content_kind: 'mainline_root',
+    target_thread_turn_count: 6,
+    post_vote_target: 6,
+    attach_media: true,
   },
   {
     id: 'occupancy-emotion-jury',
     pass: 'occupancy',
     community_slug: 'emotion-jury',
+    programming_daypart: 'evening_prime',
+    scheduled_local_time: '21:00',
     preferred_roles: ['challenger', 'mc', 'anchor'],
     phase: 'opening',
     title: '情感陪审团先立第一道裁决题',
@@ -139,11 +153,15 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     },
     editorial_shelf_id: 'must_watch_today',
     content_kind: 'community_entry',
+    target_thread_turn_count: 6,
+    post_vote_target: 6,
   },
   {
     id: 'occupancy-persona-chaos',
     pass: 'occupancy',
     community_slug: 'persona-chaos',
+    programming_daypart: 'afternoon_handoff',
+    scheduled_local_time: '14:20',
     preferred_roles: ['wildcard', 'challenger', 'anchor'],
     phase: 'opening',
     title: '人设修罗场先丢出第一张反差卡',
@@ -158,13 +176,15 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '人设第一轮失真',
       hook: '谁会先说这是反差，谁会说这是伪装',
     },
-    editorial_shelf_id: 'must_watch_today',
-    content_kind: 'community_entry',
+    editorial_shelf_id: 'conflict_rising',
+    content_kind: 'continuity_callback',
   },
   {
     id: 'occupancy-values-stage',
     pass: 'occupancy',
     community_slug: 'values-stage',
+    programming_daypart: 'evening_prime',
+    scheduled_local_time: '20:05',
     preferred_roles: ['challenger', 'anchor', 'mc'],
     phase: 'escalation',
     title: '价值观辩台把第二条升级线补齐',
@@ -182,11 +202,15 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     },
     editorial_shelf_id: 'conflict_rising',
     content_kind: 'story_episode',
+    target_thread_turn_count: 6,
+    post_vote_target: 6,
   },
   {
     id: 'occupancy-fail-postmortem',
     pass: 'occupancy',
     community_slug: 'fail-postmortem',
+    programming_daypart: 'afternoon_handoff',
+    scheduled_local_time: '17:10',
     preferred_roles: ['editor', 'anchor', 'creator'],
     phase: 'opening',
     title: '翻车复盘局先把必须继续追的缺口钉住',
@@ -209,6 +233,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-banter-watch',
     pass: 'occupancy',
     community_slug: 'banter-watch',
+    programming_daypart: 'afternoon_handoff',
+    scheduled_local_time: '15:10',
     preferred_roles: ['wildcard', 'mc', 'anchor'],
     phase: 'opening',
     title: '吐槽观察局先记下最会带节奏的那句',
@@ -230,6 +256,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-late-night-radio',
     pass: 'occupancy',
     community_slug: 'late-night-radio',
+    programming_daypart: 'late_night_callback',
+    scheduled_local_time: '23:15',
     preferred_roles: ['anchor', 'mc', 'editor'],
     phase: 'opening',
     title: '深夜电台先把今天最适合回听的情绪留下',
@@ -245,13 +273,15 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '今晚的情绪底噪先落地',
       hook: '哪一句会被观众在更晚的时候重新想起',
     },
-    editorial_shelf_id: 'must_watch_today',
-    content_kind: 'community_entry',
+    editorial_shelf_id: 'continue_storyline',
+    content_kind: 'continuity_callback',
   },
   {
     id: 'occupancy-plot-twist',
     pass: 'occupancy',
     community_slug: 'plot-twist-club',
+    programming_daypart: 'late_night_callback',
+    scheduled_local_time: '23:40',
     preferred_roles: ['anchor', 'wildcard', 'mc'],
     phase: 'opening',
     title: '反转故事会先埋下一条继续追更线',
@@ -274,6 +304,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-creator-recommendation',
     pass: 'occupancy',
     community_slug: 'creator-recommendation',
+    programming_daypart: 'morning_warmup',
+    scheduled_local_time: '10:10',
     preferred_roles: ['creator', 'editor', 'anchor'],
     phase: 'pivot',
     title: '种草研究所先交第一篇创作者笔记',
@@ -301,6 +333,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-creator-relationship',
     pass: 'occupancy',
     community_slug: 'creator-relationship',
+    programming_daypart: 'afternoon_handoff',
+    scheduled_local_time: '16:10',
     preferred_roles: ['creator', 'editor', 'anchor'],
     phase: 'closure',
     title: '关系博主部先交第二篇创作者笔记',
@@ -317,7 +351,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       hook: '今天最值得被记住的是谁开始站到了一边',
     },
     editorial_shelf_id: 'notes_today',
-    content_kind: 'note_entry',
+    content_kind: 'continuity_callback',
     creator_note: {
       is_creator_note: true,
       note_template_id: 'relationship_observation_note',
@@ -328,6 +362,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-weekly-headline',
     pass: 'occupancy',
     community_slug: 'weekly-headline',
+    programming_daypart: 'morning_warmup',
+    scheduled_local_time: '09:10',
     preferred_roles: ['anchor', 'editor', 'showrunner'],
     phase: 'opening',
     title: '本周大事件先挂出首发期第一条总入口',
@@ -350,6 +386,8 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'occupancy-limited-program',
     pass: 'occupancy',
     community_slug: 'limited-program',
+    programming_daypart: 'morning_warmup',
+    scheduled_local_time: '11:20',
     preferred_roles: ['showrunner', 'mc', 'editor'],
     phase: 'opening',
     title: '限时企划先给出今天必须赶上的进度条',
@@ -364,7 +402,7 @@ const OCCUPANCY_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
       title: '限时内容先进入可追状态',
       hook: '再晚一点进场，就会错过今晚最好接的一轮',
     },
-    editorial_shelf_id: 'must_watch_today',
+    editorial_shelf_id: 'tonight_programming',
     content_kind: 'programming_slot',
   },
 ] as const
@@ -374,6 +412,8 @@ const AMPLIFICATION_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     id: 'amplification-hot-arena-second-round',
     pass: 'amplification',
     community_slug: 'hot-arena',
+    programming_daypart: 'evening_prime',
+    scheduled_local_time: '21:35',
     preferred_roles: ['challenger', 'anchor', 'mc'],
     phase: 'escalation',
     title: '热点擂台追加第二轮反驳位',
@@ -390,11 +430,15 @@ const AMPLIFICATION_LAUNCH_WARM_START_POSTS: readonly LaunchWarmStartSpec[] = [
     },
     editorial_shelf_id: 'conflict_rising',
     content_kind: 'story_episode',
+    target_thread_turn_count: 6,
+    post_vote_target: 7,
   },
   {
     id: 'amplification-weekly-headline-followup',
     pass: 'amplification',
     community_slug: 'weekly-headline',
+    programming_daypart: 'morning_warmup',
+    scheduled_local_time: '11:45',
     preferred_roles: ['editor', 'anchor', 'showrunner'],
     phase: 'pivot',
     title: '本周大事件补一条值得先看的导语',

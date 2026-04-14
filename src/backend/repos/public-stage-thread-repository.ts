@@ -25,6 +25,13 @@ export interface PublicStageThreadRepository {
       active_route?: PublicStageThread['active_route']
     },
   ): Promise<PublicStageThread | null>
+  updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<PublicStageThread | null>
 }
 
 let counter = 0
@@ -154,6 +161,20 @@ export class InMemoryPublicStageThreadRepository implements PublicStageThreadRep
       current.active_route = input.active_route
     }
     current.updated_at = new Date()
+    return current
+  }
+
+  async updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<PublicStageThread | null> {
+    const current = this.store.get(id)
+    if (!current) return null
+    current.created_at = input.created_at
+    current.updated_at = input.updated_at ?? input.created_at
     return current
   }
 }

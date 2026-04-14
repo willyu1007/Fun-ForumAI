@@ -1,17 +1,59 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useDevKickoffLatestRun, useDevKickoffRun, useDevKickoffStatus } from '@/api/hooks/dev'
+import {
+  useDevKickoffLatestRun,
+  useDevKickoffRecentRuns,
+  useDevKickoffRun,
+  useDevKickoffStatus,
+} from '@/api/hooks/dev'
 import { DevKickoffPanel } from '../DevKickoffPanel'
 
 vi.mock('@/api/hooks/dev', () => ({
   useDevKickoffStatus: vi.fn(),
   useDevKickoffLatestRun: vi.fn(),
+  useDevKickoffRecentRuns: vi.fn(),
   useDevKickoffRun: vi.fn(),
 }))
 
 const useDevKickoffStatusMock = vi.mocked(useDevKickoffStatus)
 const useDevKickoffLatestRunMock = vi.mocked(useDevKickoffLatestRun)
+const useDevKickoffRecentRunsMock = vi.mocked(useDevKickoffRecentRuns)
 const useDevKickoffRunMock = vi.mocked(useDevKickoffRun)
+
+const RECENT_RUNS = [
+  {
+    run_id: 'run-1',
+    run_type: 'import' as const,
+    mode: null,
+    profile_id: 'local-llm-assisted-candidate',
+    patch_id: null,
+    suite_id: null,
+    suite_label: null,
+    kickoff_batch_id: null,
+    warmup_batch_id: null,
+    baseline_id: null,
+    failed_phase: null,
+    artifact_dir: '/tmp/run-1',
+    started_at: '2026-04-13T14:00:00.000Z',
+    completed_at: '2026-04-13T14:01:00.000Z',
+  },
+  {
+    run_id: 'run-2',
+    run_type: 'bootstrap' as const,
+    mode: null,
+    profile_id: 'local-llm-assisted-candidate',
+    patch_id: null,
+    suite_id: null,
+    suite_label: null,
+    kickoff_batch_id: null,
+    warmup_batch_id: null,
+    baseline_id: null,
+    failed_phase: 'create_suite',
+    artifact_dir: '/tmp/run-2',
+    started_at: '2026-04-13T13:00:00.000Z',
+    completed_at: '2026-04-13T13:01:00.000Z',
+  },
+]
 
 describe('DevKickoffPanel', () => {
   beforeEach(() => {
@@ -89,6 +131,11 @@ describe('DevKickoffPanel', () => {
       error: null,
       refetch: vi.fn(),
     } as never)
+    useDevKickoffRecentRunsMock.mockReturnValue({
+      data: { data: RECENT_RUNS },
+      error: null,
+      refetch: vi.fn(),
+    } as never)
     useDevKickoffRunMock.mockReturnValue({
       data: null,
       error: null,
@@ -96,15 +143,78 @@ describe('DevKickoffPanel', () => {
     } as never)
   })
 
-  it('renders current mode, latest import summary, and artifact paths', () => {
+  it('renders section titles, mode badge, readiness lights, and import summary', () => {
     render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
 
-    expect(screen.getByText('Local Kickoff 调试台')).toBeTruthy()
+    expect(screen.getByText('Kickoff 调控台')).toBeTruthy()
     expect(screen.getAllByText('kickoff-candidate').length).toBeGreaterThan(0)
-    expect(screen.getByText('Current Status')).toBeTruthy()
-    expect(screen.getByText('Latest Import Summary')).toBeTruthy()
-    expect(screen.getByText('Run Detail')).toBeTruthy()
+    expect(screen.getByText('系统状态')).toBeTruthy()
+    expect(screen.getByText('最近导入')).toBeTruthy()
+    expect(screen.getByText('运行详情')).toBeTruthy()
+
+    const lights = screen.getByTestId('readiness-lights')
+    expect(lights).toBeTruthy()
+    expect(screen.getByText('全部就绪')).toBeTruthy()
+
+    expect(screen.getByText('kickoff-v1')).toBeTruthy()
+    expect(screen.getByText('review suite')).toBeTruthy()
+  })
+
+  it('hides suite details when no suite is associated', () => {
+    useDevKickoffStatusMock.mockReturnValue({
+      data: {
+        data: {
+          current_data_mode: 'unknown',
+          mode_source: 'inferred',
+          latest_run: null,
+          latest_import_report: null,
+          latest_runtime_readiness: null,
+          current_suite: { id: null, label: null, state: null, kickoff_batch_id: null, warmup_batch_id: null, active_baseline_id: null },
+        },
+      },
+      error: null,
+      refetch: vi.fn(),
+    } as never)
+    useDevKickoffLatestRunMock.mockReturnValue({ data: null, error: null, refetch: vi.fn() } as never)
+    useDevKickoffRecentRunsMock.mockReturnValue({ data: { data: [] }, error: null, refetch: vi.fn() } as never)
+
+    render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
+
+    expect(screen.getByText('未关联 Suite')).toBeTruthy()
+    expect(screen.getByText('暂无导入记录')).toBeTruthy()
+    expect(screen.getByText('暂无运行记录')).toBeTruthy()
+  })
+
+  it('reveals artifact paths with hints when toggle is clicked', () => {
+    render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
+
+    expect(screen.queryByText('产物根目录')).toBeNull()
+
+    fireEvent.click(screen.getByText('Artifact 路径'))
+
     expect(screen.getByText('/tmp/run-1')).toBeTruthy()
-    expect(screen.getByText('/tmp/run-1/generated-patch.yaml')).toBeTruthy()
+    expect(screen.getByText('产物根目录')).toBeTruthy()
+    expect(screen.getByText('生成的内容补丁')).toBeTruthy()
+    expect(screen.getByText('导入结果报告')).toBeTruthy()
+  })
+
+  it('renders run selector dropdown trigger when recent runs exist', () => {
+    render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: /run-1/i })
+    expect(trigger).toBeTruthy()
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu')
+  })
+
+  it('hides run selector when no recent runs', () => {
+    useDevKickoffRecentRunsMock.mockReturnValue({
+      data: { data: [] },
+      error: null,
+      refetch: vi.fn(),
+    } as never)
+
+    render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /run-1/i })).toBeNull()
   })
 })

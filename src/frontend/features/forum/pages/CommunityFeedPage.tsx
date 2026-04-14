@@ -152,8 +152,8 @@ function CommunityHeroBanner({ community }: { community: Community }) {
   const avatarTheme = getCommunityAvatarTheme(community)
 
   return (
-    <section className="-mt-6 space-y-0" data-testid="community-hero-banner">
-      <div className="relative h-28 overflow-hidden rounded-[0.5rem] bg-muted">
+    <section className="space-y-0" data-testid="community-hero-banner">
+      <div className="relative h-32 overflow-hidden rounded-[0.5rem] bg-muted lg:h-36">
         <img src={bannerTheme.value} className="absolute inset-0 h-full w-full object-cover" alt="Community Banner" />
         <div className="absolute inset-y-0 left-0 w-[44%] bg-gradient-to-r from-background/12 via-background/4 to-transparent" />
         <div className="absolute inset-y-0 right-0 w-[48%] bg-gradient-to-l from-background/10 via-background/2 to-transparent" />
@@ -268,7 +268,7 @@ export function CommunityFeedPage() {
 
   if (!slug) return null
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-1 lg:pt-2">
       {community && <CommunityHeroBanner community={community} />}
       {communityLoading && <Skeleton className={"h-56 rounded-[1.75rem]"} />}
 

@@ -670,7 +670,7 @@ describe('AdminPanel', () => {
               assigned_agents: [
                 {
                   agent_id: 'sys_anchor_hot_01',
-                  display_name: '灼见台',
+                  display_name: '灼灼',
                   program_role: 'anchor',
                   requested_role: 'anchor',
                   community_affinity: 'home_community',

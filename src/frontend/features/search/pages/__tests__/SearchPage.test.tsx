@@ -10,8 +10,6 @@ vi.mock('@/api/hooks', () => ({
   useSearch: vi.fn(),
   useSearchInfinite: vi.fn(),
   useRecordSearchTelemetry: vi.fn(),
-  useFollowAgent: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
-  useUnfollowAgent: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -136,6 +134,10 @@ function renderSearchPage(initialEntry: string) {
       },
       {
         path: '/c/:communitySlug',
+        element: <LocationProbe />,
+      },
+      {
+        path: '/recommended',
         element: <LocationProbe />,
       },
     ],
@@ -267,11 +269,8 @@ describe('SearchPage', () => {
     renderSearchPage('/search?q=talk%20show&tab=agents')
 
     expect(screen.getByText('Agent 1')).toBeTruthy()
-    expect(screen.getByText('常驻席')).toBeTruthy()
-    expect(screen.getByText('Community 1')).toBeTruthy()
-    expect(screen.getByText('会把火花抬高半格')).toBeTruthy()
-    expect(screen.getByText('已关注')).toBeTruthy()
-    expect(document.querySelector('img[src="/badges/agent/system-resident.svg"]')).toBeTruthy()
+    expect(screen.getByText('活跃度 4.5')).toBeTruthy()
+    expect(screen.getByText('活跃社区 1')).toBeTruthy()
   })
 
   it('reads tab and query from URL search params', () => {
@@ -299,7 +298,7 @@ describe('SearchPage', () => {
     expect(screen.getByTestId('search-page')).toBeTruthy()
   })
 
-  it('renders blank-query discovery suggestions and featured sections', () => {
+  it('redirects blank-query search visits to the recommendation page', () => {
     mockSidebarCommunities()
     mockInfiniteSearch({
       query: '',
@@ -335,9 +334,7 @@ describe('SearchPage', () => {
 
     renderSearchPage('/search')
 
-    expect(screen.getByRole('button', { name: 'talk show' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '精选帖子' })).toBeTruthy()
-    expect(screen.getByText('精选帖子标题')).toBeTruthy()
+    expect(screen.getByTestId('location-probe').textContent).toBe('/recommended')
   })
 
   it('renders community sidebar avatars with object-cover to avoid vertical stretching', () => {
@@ -417,7 +414,8 @@ describe('SearchPage', () => {
 
     expect(screen.getAllByTestId('agent-hover-card')).toHaveLength(2)
     expect(screen.getAllByTestId('agent-link-agent-1')).toHaveLength(2)
-    expect(screen.getByText('公开介绍')).toBeTruthy()
+    expect(screen.getByText('活跃度 3.4')).toBeTruthy()
+    expect(screen.getByText('活跃社区 0')).toBeTruthy()
   })
 
   it('renders post results with homepage-style agent sentiment bar', () => {
@@ -459,7 +457,8 @@ describe('SearchPage', () => {
     expect(screen.getByTestId('agent-sentiment-bar').textContent).toBe('9/4')
     expect(screen.getAllByTestId('agent-link-agent-2')).toHaveLength(2)
     const thumbnail = screen.getByAltText('')
-    expect(thumbnail.getAttribute('class') ?? '').toContain('h-[80px]')
+    expect(thumbnail.getAttribute('class') ?? '').toContain('h-[95px]')
+    expect(thumbnail.getAttribute('class') ?? '').toContain('w-[124px]')
     expect(thumbnail.getAttribute('class') ?? '').toContain('rounded-md')
   })
 
@@ -516,10 +515,12 @@ describe('SearchPage', () => {
         {
           type: 'thread',
           id: 'thread-1',
-          href: '/posts/post-1?threadId=thread-1&turnId=turn-9',
+          href: '/posts/post-1?threadId=thread-1&stage=timeline&turnId=turn-9',
           post_id: 'post-1',
           post_title: '今天用 Stable Diffusion 生成了一组赛博朋克城市',
+          post_created_at: '2026-03-23T00:00:00.000Z',
           matched_turn_id: 'turn-9',
+          matched_turn_created_at: '2026-03-23T00:30:00.000Z',
           matched_turn_snippet: '命中回复内容',
           matched_turn_anchor_preview: '回应 @开发用户',
           score: 1.2,
@@ -529,6 +530,8 @@ describe('SearchPage', () => {
           match_reasons: ['命中标题'],
           match_reason_codes: ['title'],
           community: { id: 'community-1', name: '种草研究所', slug: 'creator-recommendation' },
+          post_author: { id: 'agent-post-1', display_name: '俳句师', avatar_url: null },
+          post_author_visibility: 'full',
           author: { id: 'agent-1', display_name: '代码审查官', avatar_url: null },
           author_visibility: 'full',
           created_at: null,
@@ -544,11 +547,13 @@ describe('SearchPage', () => {
 
     const router = renderSearchPage('/search?q=%E8%B5%9B%E5%8D%9A%E6%9C%8B%E5%85%8B&tab=threads')
 
+    expect(screen.getByText('俳句师')).toBeTruthy()
+    expect(screen.getByText('代码审查官')).toBeTruthy()
     const row = screen.getByRole('link', { name: '打开回帖：今天用 Stable Diffusion 生成了一组赛博朋克城市' })
     fireEvent.keyDown(row, { key: 'Enter' })
 
     expect(router.state.location.pathname).toBe('/posts/post-1')
-    expect(router.state.location.search).toBe('?threadId=thread-1&turnId=turn-9')
+    expect(router.state.location.search).toBe('?threadId=thread-1&stage=timeline&turnId=turn-9')
   })
 
   it('does not render avatar or profile links for restricted authors in search results', () => {

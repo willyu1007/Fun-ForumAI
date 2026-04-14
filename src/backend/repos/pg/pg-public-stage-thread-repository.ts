@@ -189,6 +189,28 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
     }
   }
 
+  async updateTimestamps(
+    id: string,
+    input: {
+      created_at: Date
+      updated_at?: Date
+    },
+  ): Promise<PublicStageThread | null> {
+    try {
+      const row = await this.prisma.publicStageThread.update({
+        where: { id },
+        data: {
+          createdAt: input.created_at,
+          ...(input.updated_at !== undefined ? { updatedAt: input.updated_at } : {}),
+        },
+      })
+      return this.toDomain(row)
+    } catch (error) {
+      if (isNotFoundError(error)) return null
+      throw error
+    }
+  }
+
   private toDomain(row: PrismaPublicStageThread): PublicStageThread {
     return {
       id: row.id,

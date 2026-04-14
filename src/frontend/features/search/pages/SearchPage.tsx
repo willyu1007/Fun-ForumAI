@@ -2,16 +2,13 @@ import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from '
 import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentSentimentBar } from '@/features/forum/components/AgentSentimentBar'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import {
-  useFollowAgent,
-  useUnfollowAgent,
   useRecordSearchTelemetry,
   useSearch,
   useSearchInfinite,
 } from '@/api/hooks'
 import { LoadMore } from '@/shared/components/LoadMore'
-import { useAuth } from '@/shared/hooks/use-auth'
 import type {
   PublicSearchItem,
   SearchAuthorSummary,
@@ -22,7 +19,6 @@ import type {
   SearchTab,
 } from '@/api/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import {
@@ -33,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArrowRight, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   getCommunityAvatarTheme,
@@ -45,9 +41,7 @@ import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   readAuthorBadgeChipItems,
   canOpenPublicAuthorProfile,
-  readProjectionText,
 } from '@/shared/utils/public-author'
-import { humanParticipationEnabled } from '@/shared/config/frontend-capabilities'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 const TAB_LABELS: Record<SearchTab, string> = {
@@ -117,27 +111,20 @@ function handleResultRowKeyDown(event: KeyboardEvent<HTMLElement>, onActivate: (
   onActivate()
 }
 
-function hasExplanationCode(
-  item: Pick<PublicSearchItem, 'match_explanations' | 'match_reason_codes'>,
-  code: string,
-): boolean {
-  const matchExplanations = Array.isArray(item.match_explanations) ? item.match_explanations : []
-  const matchReasonCodes = Array.isArray(item.match_reason_codes)
-    ? item.match_reason_codes.map((entry) => String(entry))
-    : []
-  return matchExplanations.some((entry) => entry.code === code) || matchReasonCodes.includes(code)
-}
-
 /* ─── Result rows (flat, no card borders) ─── */
 
 function SearchAgentIdentity({
   author,
   interactive = true,
   showProof = false,
+  showIdentityBadge = true,
+  compact = false,
 }: {
   author: SearchAuthorSummary
   interactive?: boolean
   showProof?: boolean
+  showIdentityBadge?: boolean
+  compact?: boolean
 }) {
   const { identityChip, proofChips } = readAuthorBadgeChipItems(author, {
     maxProofChips: showProof ? 1 : 0,
@@ -149,7 +136,7 @@ function SearchAgentIdentity({
     return (
       <>
         <span className="font-medium text-foreground/80">{author.display_name}</span>
-        {identityChip && (
+        {showIdentityBadge && identityChip && (
           <BadgeVisualChip
             label={identityChip.label}
             code={identityChip.code}
@@ -178,9 +165,9 @@ function SearchAgentIdentity({
   })
 
   const avatar = (
-    <Avatar className="h-7 w-7">
+    <Avatar className={compact ? 'h-6 w-6' : 'h-7 w-7'}>
       <AvatarImage src={avatarSrc} alt={author.display_name} className="object-cover" />
-      <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
+      <AvatarFallback className={cn('bg-primary/10 text-primary', compact ? 'text-[9px]' : 'text-[10px]')}>
         {initials(author.display_name)}
       </AvatarFallback>
     </Avatar>
@@ -205,7 +192,7 @@ function SearchAgentIdentity({
             <AgentLink
               agentId={author.id}
               data-stop-row-click
-              className="font-medium text-foreground/80 hover:underline"
+              className={cn('font-medium text-foreground/80 hover:underline', compact && 'text-[13px]')}
             >
               {author.display_name}
             </AgentLink>
@@ -214,10 +201,12 @@ function SearchAgentIdentity({
       ) : (
         <>
           {avatar}
-          <span className="font-medium text-foreground/80">{author.display_name}</span>
+          <span className={cn('font-medium text-foreground/80', compact && 'text-[13px]')}>
+            {author.display_name}
+          </span>
         </>
       )}
-      {identityChip && (
+      {showIdentityBadge && identityChip && (
         <BadgeVisualChip
           label={identityChip.label}
           code={identityChip.code}
@@ -248,7 +237,6 @@ function PostResultRow({
 }) {
   const navigate = useNavigate()
   const time = formatRelativeTime(item.last_activity_at)
-  const showProof = hasExplanationCode(item, 'author_achievement_badge')
   const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
   const activate = () => {
     onOpen(item)
@@ -257,7 +245,7 @@ function PostResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      className="group cursor-pointer border-b border-border/40 px-3 py-3 transition-colors hover:bg-muted/60"
       role="link"
       tabIndex={0}
       aria-label={`打开帖子：${item.title}`}
@@ -269,26 +257,16 @@ function PostResultRow({
     >
       <div
         className={cn(
-          'gap-4',
-          item.thumbnail_url ? 'grid items-start sm:grid-cols-[100px_minmax(0,1fr)]' : 'block',
+          item.thumbnail_url ? 'grid items-center gap-7 sm:grid-cols-[minmax(0,1fr)_124px]' : 'block',
         )}
       >
-        {item.thumbnail_url && (
-          <div className="hidden shrink-0 sm:block">
-            <img
-              src={item.thumbnail_url}
-              alt=""
-              className="h-[80px] w-[100px] rounded-md object-cover"
-            />
-          </div>
-        )}
-
         <div className="min-w-0">
           <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
             <SearchAgentIdentity
               author={item.author}
               interactive={canLinkAuthor}
-              showProof={showProof}
+              showProof={false}
+              showIdentityBadge={false}
             />
             {time && (
               <>
@@ -317,6 +295,16 @@ function PostResultRow({
             />
           </div>
         </div>
+
+        {item.thumbnail_url && (
+          <div className="hidden shrink-0 sm:block">
+            <img
+              src={item.thumbnail_url}
+              alt=""
+              className="h-[95px] w-[124px] rounded-md object-cover"
+            />
+          </div>
+        )}
       </div>
     </article>
   )
@@ -334,9 +322,11 @@ function CommunityResultRow({
     onOpen(item)
     navigate(item.href)
   }
+  const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
+  const category = item.community_shell_category ?? 'theme'
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      className="group cursor-pointer border-b border-border/40 px-3 py-3 transition-colors hover:bg-muted/60"
       role="link"
       tabIndex={0}
       aria-label={`打开社区：${item.name}`}
@@ -346,89 +336,37 @@ function CommunityResultRow({
       }}
       onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-4">
+        <Avatar className="h-12 w-12 shrink-0">
+          <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
+          <AvatarFallback
+            className={cn('text-sm font-semibold', getCommunityAvatarToneClassName(category))}
+          >
+            {getCommunityCategoryGlyph(category)}
+          </AvatarFallback>
+        </Avatar>
+
         <div className="min-w-0 flex-1">
-          <span className="text-base font-semibold leading-snug text-foreground">{item.name}</span>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            c/{item.slug} · {item.active_member_count} 常驻成员
+          <h3 className="text-[1.05rem] font-semibold leading-snug text-foreground">
+            {item.name}
+          </h3>
+          <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-foreground/75">
+            {item.snippet || item.description || '暂无简介'}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {item.active_member_count} 成员 · {item.activity_7d} 周活跃
           </p>
         </div>
       </div>
-      <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-foreground/75">
-        {item.snippet || item.description || '暂无简介'}
-      </p>
-      {item.dominant_tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {item.dominant_tags.slice(0, 5).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[10px]">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
     </article>
-  )
-}
-
-function AgentFollowButton({
-  agent,
-  searchQuery,
-}: {
-  agent: SearchAgentItem
-  searchQuery: string
-}) {
-  const { isAuthenticated } = useAuth()
-  const follow = useFollowAgent(agent.id)
-  const unfollow = useUnfollowAgent(agent.id)
-  const telemetry = useRecordSearchTelemetry()
-
-  if (!humanParticipationEnabled) return null
-
-  if (!isAuthenticated) {
-    return (
-      <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-        <Link to="/login">关注</Link>
-      </Button>
-    )
-  }
-
-  const busy = follow.isPending || unfollow.isPending
-  const followed = agent.is_followed
-
-  return (
-    <Button
-      size="sm"
-      variant={followed ? 'secondary' : 'default'}
-      className="h-7 text-xs"
-      disabled={busy}
-      onClick={async (e) => {
-        e.stopPropagation()
-        if (followed) {
-          await unfollow.mutateAsync()
-        } else {
-          await follow.mutateAsync()
-          telemetry.mutate({
-            event_type: 'follow',
-            query: searchQuery,
-            tab: 'agents',
-            result_type: 'agent',
-            result_id: agent.id,
-          })
-        }
-      }}
-    >
-      {busy ? '…' : followed ? '已关注' : '+ 关注'}
-    </Button>
   )
 }
 
 function AgentResultRow({
   item,
-  searchQuery,
   onOpen,
 }: {
   item: SearchAgentItem
-  searchQuery: string
   onOpen: (item: SearchAgentItem) => void
 }) {
   const agentAvatarSrc = resolveAgentAvatarSrc({
@@ -440,15 +378,13 @@ function AgentResultRow({
     onOpen(item)
     useAgentModalStore.getState().openModal(item.id, 'readonly', 'intro')
   }
-  const { identityChip, proofChips } = readAuthorBadgeChipItems(item, {
-    maxProofChips: hasExplanationCode(item, 'author_achievement_badge') ? 1 : 0,
-    policyId: 'public_author_medium',
-  })
-  const projectionText = readProjectionText(item) ?? item.persona_seed_label
+  const activityScoreLabel = Number.isInteger(item.public_activity_score)
+    ? String(item.public_activity_score)
+    : item.public_activity_score.toFixed(1)
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      className="group cursor-pointer border-b border-border/40 px-3 py-3 transition-colors hover:bg-muted/60"
       role="button"
       tabIndex={0}
       aria-label={`打开智能体：${item.display_name}`}
@@ -488,39 +424,13 @@ function AgentResultRow({
                 {item.display_name}
               </AgentLink>
             </AgentHoverCard>
-            {identityChip && (
-              <BadgeVisualChip
-                label={identityChip.label}
-                code={identityChip.code}
-                variant="outline"
-                className="px-1 py-0 text-[9px]"
-                iconClassName="size-3"
-              />
-            )}
-            {proofChips.map((badge) => (
-              <BadgeVisualChip
-                key={`${badge.code ?? 'display'}:${badge.label}`}
-                label={badge.label}
-                code={badge.code}
-                variant="secondary"
-                className="px-1 py-0 text-[9px]"
-                iconClassName="size-3"
-              />
-            ))}
-            <AgentFollowButton agent={item} searchQuery={searchQuery} />
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{projectionText}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>活跃度 {activityScoreLabel}</span>
+            <span>活跃社区 {item.active_communities.length}</span>
+          </div>
         </div>
       </div>
-      {item.active_communities.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {item.active_communities.slice(0, 4).map((c) => (
-            <Badge key={c.id} variant="secondary" className="text-[10px]">
-              {c.name}
-            </Badge>
-          ))}
-        </div>
-      )}
     </article>
   )
 }
@@ -533,9 +443,11 @@ function ThreadResultRow({
   onOpen: (item: SearchThreadItem) => void
 }) {
   const navigate = useNavigate()
-  const time = formatRelativeTime(item.last_activity_at ?? item.created_at)
-  const showProof = hasExplanationCode(item, 'author_achievement_badge')
+  const postTime = formatRelativeTime(item.post_created_at)
+  const matchedTurnTime = formatRelativeTime(item.matched_turn_created_at ?? item.created_at)
+  const canLinkPostAuthor = item.post_author_visibility === 'full' && canOpenPublicAuthorProfile(item.post_author)
   const canLinkAuthor = item.author_visibility === 'full' && canOpenPublicAuthorProfile(item.author)
+  const matchedSnippet = item.matched_turn_snippet ?? item.snippet
   const activate = () => {
     onOpen(item)
     navigate(item.href)
@@ -543,7 +455,7 @@ function ThreadResultRow({
 
   return (
     <article
-      className="group cursor-pointer border-b border-border/40 px-3 py-4 transition-colors hover:bg-muted/30"
+      className="group cursor-pointer border-b border-border/40 px-3 py-3 transition-colors hover:bg-muted/60"
       role="link"
       tabIndex={0}
       aria-label={`打开回帖：${item.post_title}`}
@@ -553,37 +465,67 @@ function ThreadResultRow({
       }}
       onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
-      <div className="flex items-center gap-x-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-x-2 text-[11px] text-muted-foreground">
         <SearchAgentIdentity
-          author={item.author}
-          interactive={canLinkAuthor}
-          showProof={showProof}
+          author={item.post_author}
+          interactive={canLinkPostAuthor}
+          showProof={false}
+          showIdentityBadge={false}
+          compact
         />
-        {time && (
+        {postTime && (
           <>
             <span>·</span>
-            <span>{time}</span>
+            <span>{postTime}</span>
           </>
         )}
       </div>
 
-      <h3 className="mt-2.5 text-base font-semibold leading-snug text-foreground">
+      <h3 className="mt-2 text-[14px] font-medium leading-snug text-foreground">
         {item.post_title}
       </h3>
 
-      {item.snippet && (
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground/70">
-          {item.snippet}
-        </p>
-      )}
-      {item.matched_turn_snippet && (
-        <div className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-foreground/80">
-          <span className="font-medium text-foreground/90">命中回复：</span>
-          {item.matched_turn_snippet}
+      <div className="mt-3 rounded-[1.5rem] bg-muted/55 px-4 py-4 transition-colors group-hover:bg-muted/80">
+        <div className="flex items-center gap-x-2 text-[11px] text-muted-foreground">
+          <SearchAgentIdentity
+            author={item.author}
+            interactive={canLinkAuthor}
+            showProof={false}
+            showIdentityBadge={false}
+            compact
+          />
+          {matchedTurnTime && (
+            <>
+              <span>·</span>
+              <span>{matchedTurnTime}</span>
+            </>
+          )}
         </div>
-      )}
-      <div className="mt-2.5 flex items-center gap-x-3 text-xs text-muted-foreground">
-        <span>{item.turn_count} 条回复</span>
+
+        {matchedSnippet && (
+          <p className="mt-3.5 text-[14px] font-normal leading-relaxed text-foreground/82">
+            {matchedSnippet}
+          </p>
+        )}
+
+        <div className="mt-5 text-xs text-muted-foreground">
+          <span>{item.turn_count} 条回复</span>
+        </div>
+      </div>
+
+      <div className="mt-3.5 flex items-center gap-x-3 text-[12px]">
+        <button
+          type="button"
+          data-stop-row-click
+          className="font-medium text-primary transition-colors hover:text-primary/80"
+          onClick={(e) => {
+            e.stopPropagation()
+            activate()
+          }}
+        >
+          前往讨论串
+        </button>
+        <span className="text-muted-foreground">{item.turn_count} 条回复</span>
       </div>
     </article>
   )
@@ -686,111 +628,9 @@ function CommunitySidebar({
   )
 }
 
-/* ─── Discovery (empty query) ─── */
-
-function DiscoverySection({
-  discovery,
-  onSearch,
-}: {
-  discovery: NonNullable<ReturnType<typeof useSearch>['data']>['data']['discovery']
-  onSearch: (q: string) => void
-}) {
-  if (!discovery) return null
-
-  return (
-    <div className="space-y-6">
-      {discovery.suggested_queries?.length ? (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">热门搜索</h2>
-          <div className="flex flex-wrap gap-2">
-            {discovery.suggested_queries.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => onSearch(q)}
-                className="rounded-full border bg-muted/50 px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted hover:shadow-sm"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {discovery.featured_posts?.length ? (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">精选帖子</h2>
-          <div className="space-y-2">
-            {discovery.featured_posts.slice(0, 4).map((item) => (
-              <Link
-                key={item.id}
-                to={item.href}
-                className="flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors hover:bg-muted/30"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{item.title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {item.community.name} · {item.thread_turn_count} 条发言
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {discovery.featured_agents?.length ? (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">活跃智能体</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {discovery.featured_agents.slice(0, 8).map((agent) => (
-              <AgentLink
-                key={agent.id}
-                agentId={agent.id}
-                className="flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-lg p-2 text-center transition-colors hover:bg-muted/40"
-              >
-                <Avatar className="h-12 w-12">
-                  {agent.avatar_url ? (
-                    <AvatarImage src={agent.avatar_url} alt={agent.display_name} />
-                  ) : null}
-                  <AvatarFallback>{initials(agent.display_name)}</AvatarFallback>
-                </Avatar>
-                <span className="w-full truncate text-xs font-medium text-foreground">
-                  {agent.display_name}
-                </span>
-              </AgentLink>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {discovery.featured_communities?.length ? (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">活跃社区</h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {discovery.featured_communities.slice(0, 4).map((item) => (
-              <Link
-                key={item.id}
-                to={item.href}
-                className="rounded-lg border px-4 py-2.5 text-sm transition-colors hover:bg-muted/30"
-              >
-                <p className="font-medium text-foreground">{item.name}</p>
-                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                  {item.description || `c/${item.slug}`} · {item.active_member_count} 成员
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-    </div>
-  )
-}
-
 /* ─── Main Page ─── */
 
-export function SearchPage() {
+function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const sidebarSlotRef = useRef<HTMLElement | null>(null)
   const floatingSidebarRef = useRef<HTMLDivElement | null>(null)
@@ -828,8 +668,6 @@ export function SearchPage() {
   const firstPage = infiniteData?.pages[0]?.data
   const allItems = infiniteData?.pages.flatMap((p) => p.data?.items ?? []) ?? []
   const counts = firstPage?.counts
-  const discovery = firstPage?.discovery
-
   const openResult = (item: PublicSearchItem) => {
     telemetry.mutate({
       event_type: 'result_click',
@@ -926,7 +764,7 @@ export function SearchPage() {
   }, [showGrid, sidebarSlotRect])
 
   return (
-    <div data-testid="search-page">
+    <div data-testid="search-page" className="pt-6 lg:pt-7">
       {/* Row 1: Pill tabs */}
       <div
         role="tablist"
@@ -970,7 +808,7 @@ export function SearchPage() {
       </div>
 
       {/* Row 2: Filters (left) + separator line (fills remaining) */}
-      <div className="mt-2.5 flex items-center gap-2">
+      <div className="mt-2.5 flex min-h-9 items-center gap-2">
         {currentQuery.trim() && activeFilters.length > 0 && (
           <div className="flex shrink-0 items-center gap-0.5">
             {activeFilters.includes('sort') && (
@@ -1047,19 +885,14 @@ export function SearchPage() {
 
       {/* Content grid: results + stable sidebar column */}
       <div
-        className={`mt-4 ${
+        className={`mt-1.5 ${
           showGrid ? 'grid gap-8 lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)] lg:gap-10' : ''
         }`}
       >
         {/* Main column */}
         <div className="min-w-0">
-          {/* Discovery: empty query */}
-          {!currentQuery.trim() && !isLoading && !isError && (
-            <DiscoverySection discovery={discovery} onSearch={(q) => updateSearch({ q })} />
-          )}
-
           {/* Loading (initial) */}
-          {currentQuery.trim() && isLoading && (
+          {isLoading && (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-20 animate-pulse border-b border-border/40 bg-muted/20" />
@@ -1068,7 +901,7 @@ export function SearchPage() {
           )}
 
           {/* Error */}
-          {currentQuery.trim() && isError && (
+          {isError && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
               <p className="text-sm font-medium text-destructive">搜索失败</p>
               <p className="mt-1 text-xs text-muted-foreground">请稍后重试</p>
@@ -1076,7 +909,7 @@ export function SearchPage() {
           )}
 
           {/* Empty results */}
-          {currentQuery.trim() && !isLoading && !isError && allItems.length === 0 && (
+          {!isLoading && !isError && allItems.length === 0 && (
             <div className="py-12 text-center">
               <p className="text-base font-medium text-foreground">
                 没有找到相关的{TAB_LABELS[currentTab]}结果
@@ -1147,4 +980,15 @@ export function SearchPage() {
       ) : null}
     </div>
   )
+}
+
+export function SearchPage() {
+  const [searchParams] = useSearchParams()
+  const currentQuery = searchParams.get('q') ?? ''
+
+  if (!currentQuery.trim()) {
+    return <Navigate to="/recommended" replace />
+  }
+
+  return <SearchResultsPage />
 }

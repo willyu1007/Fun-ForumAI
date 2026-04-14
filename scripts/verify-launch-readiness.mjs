@@ -380,12 +380,11 @@ async function runStagingChecks() {
       : `status=${suitesResponse.status}`,
   )
 
-  let activeSuiteDetail = null
   if (activeSuite?.id) {
     const detailResponse = await fetchJson(`${webBaseUrl}/v1/admin/warm-start/suites/${activeSuite.id}`, {
       headers: authHeaders,
     })
-    activeSuiteDetail = detailResponse.body?.data ?? null
+    const activeSuiteDetail = detailResponse.body?.data ?? null
     pushResult(
       'Runtime Readiness',
       'Active suite review readiness',

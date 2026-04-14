@@ -8,12 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 185 (planned: 2, in-progress: 6, blocked: 0, done: 0, archived: 177)
+- Tasks: 186 (planned: 2, in-progress: 7, blocked: 0, done: 0, archived: 177)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-964 kickoff-data-governance-alignment-temp | in-progress | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
 | T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
 | T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
 | T-146 search-analytics-backfill-and-compat-cleanup | archived | F-100 | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
-| T-915 search-correctness-convergence-and-discovery-hardening-v1 | archived | F-000 | dev-docs/archive/search-correctness-convergence-and-discovery-hardening-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

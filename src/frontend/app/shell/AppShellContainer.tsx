@@ -47,7 +47,10 @@ export function AppShellContainer() {
     pathname === '/search' ||
     pathname === '/communities' ||
     pathname === '/highlights'
-  const useCompactStretchFrame = (pathname === '/feed' || pathname.startsWith('/c/') || pathname === '/search') && view === 'compact'
+  const useCompactStretchFrame =
+    (pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/')) &&
+    view === 'compact'
+  const useNaturalCompactHomeFrame = (pathname === '/' || pathname === '/feed') && view === 'compact'
   const useWidePageFrame = useWideFeedFrame || pathname.startsWith('/posts/')
   const useFullWidthPageFrame = pathname.startsWith('/help') || pathname === '/terms' || pathname === '/privacy' || pathname === '/feedback' || pathname === '/safety'
   const contentSafeAreaClass = getAppShellContentSafeAreaClass(
@@ -125,14 +128,17 @@ export function AppShellContainer() {
         <div
           data-testid="shell-page-frame"
           className={cn(
-            'mx-auto pb-4 transition-all duration-200',
+            'pb-4 transition-all duration-200',
+            useNaturalCompactHomeFrame ? 'w-full' : 'mx-auto',
             useFullWidthPageFrame ? 'px-4 sm:px-8 lg:px-12' : 'px-4 md:px-3',
             (useWidePageFrame || useFullWidthPageFrame) ? 'pt-0' : 'pt-4',
             useFullWidthPageFrame
               ? 'max-w-5xl'
               : useWidePageFrame
                 ? useCompactStretchFrame
-                  ? 'max-w-[96rem] 2xl:max-w-[108rem]'
+                  ? useNaturalCompactHomeFrame
+                    ? 'max-w-none'
+                    : 'max-w-[96rem] 2xl:max-w-[108rem]'
                   : 'max-w-6xl'
                 : 'max-w-3xl',
           )}
