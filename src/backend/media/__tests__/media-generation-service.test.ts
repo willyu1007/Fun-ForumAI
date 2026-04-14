@@ -3,6 +3,11 @@ import { config } from '../../lib/config.js'
 import { InMemoryImagePlanRepository } from '../../repos/image-plan-repository.js'
 import { InMemoryMediaGenerationJobRepository } from '../../repos/media-generation-job-repository.js'
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
+import {
+  FallbackMediaGenerationGateway,
+  MEDIA_GENERATION_FALLBACK_ROUTE_PROVIDER_ID,
+} from '../fallback-media-generation-gateway.js'
+import { MediaGenerationGatewayError } from '../media-generation-gateway.js'
 import { MediaGenerationService } from '../media-generation-service.js'
 import type {
   MediaAsset,
@@ -194,6 +199,48 @@ describe('MediaGenerationService', () => {
     Object.assign(featureFlags, originalFeatureFlags)
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it('claims queued jobs under the composite fallback route instead of the primary provider', async () => {
+    featureFlags.mediaGenerationV1 = true
+
+    const mediaGenerationJobRepo = {
+      claimNextQueued: vi.fn(async () => null),
+    }
+
+    const service = new MediaGenerationService({
+      imagePlanRepo: {} as never,
+      mediaGenerationJobRepo: mediaGenerationJobRepo as never,
+      mediaContextProjectionRepo: {} as never,
+      mediaSemanticSnapshotRepo: {} as never,
+      mediaAssetService: {} as never,
+      mediaReuseGovernanceService: {} as never,
+      mediaProjectionService: {} as never,
+      gateway: new FallbackMediaGenerationGateway({
+        primary: {
+          providerId: 'ark-seedream',
+          modelName: 'doubao-seedream-5-0-lite-260128',
+          isConfigured: true,
+          generate: vi.fn(async () => {
+            throw new Error('not called')
+          }),
+        },
+        fallback: {
+          providerId: 'dashscope-qwen-image',
+          modelName: 'qwen-image-2.0',
+          isConfigured: true,
+          generate: vi.fn(async () => {
+            throw new Error('not called')
+          }),
+        },
+      }),
+    })
+
+    await service.processNextQueuedJob()
+
+    expect(mediaGenerationJobRepo.claimNextQueued).toHaveBeenCalledWith(expect.objectContaining({
+      provider: MEDIA_GENERATION_FALLBACK_ROUTE_PROVIDER_ID,
+    }))
   })
 
   it('coalesces concurrent processing requests into a single in-flight generation pass', async () => {
@@ -928,6 +975,271 @@ describe('MediaGenerationService', () => {
     expect(updatedSecond?.generation.status).toBe('succeeded')
     expect(updatedFirst?.display.attachments[0]?.display_variant).toBe('generated_derivative')
     expect(updatedSecond?.display.attachments[0]?.display_variant).toBe('generated_derivative')
+  })
+
+  it('persists fallback provider and model metadata when the secondary generation path succeeds', async () => {
+    Object.assign(config.launch.capabilities, {
+      mediaGenerationV1: true,
+    })
+    Object.assign(config.mediaGeneration, {
+      pollIntervalMs: 5,
+      downloadTimeoutMs: 5_000,
+      runningTimeoutMs: 60_000,
+      globalConcurrency: 1,
+      providerConcurrency: 1,
+    })
+
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaGenerationJobRepo = new InMemoryMediaGenerationJobRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const projection = await mediaContextProjectionRepo.create({
+      id: 'projection-fallback-1',
+      binding_id: 'binding-private-fallback-1',
+      projection_surface: 'planner',
+      projection_kind: 'public_reuse_handoff',
+      schema_version: 'public-reuse-handoff.v1',
+      payload_json: {},
+    })
+    const plan = await buildPendingGenerationPlan(imagePlanRepo, {
+      planId: 'image-plan-fallback-1',
+      projectionId: projection.id,
+      fingerprint: 'fp-fallback-1',
+    })
+    const generatedAsset: MediaAsset = {
+      id: 'asset-generated-fallback-1',
+      steward_agent_id: 'agent-1',
+      owner_user_id: null,
+      source_kind: 'generated',
+      source_scene_type: null,
+      source_scene_id: plan.id,
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: 'generated/asset-generated-fallback-1.png',
+      origin_url: null,
+      mime_type: 'image/png',
+      file_size_bytes: 2048,
+      width: 1024,
+      height: 1280,
+      sha256: 'sha-generated-fallback-1',
+      phash: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }
+    const generatedSnapshot: MediaSemanticSnapshot = {
+      id: 'snapshot-generated-fallback-1',
+      asset_id: generatedAsset.id,
+      snapshot_kind: 'visual_core',
+      schema_version: 'visual_core.v1',
+      model_provider: 'test',
+      model_name: 'test',
+      model_version: '1',
+      summary: buildMediaSemanticSummary({
+        theme: 'travel',
+        scene: 'city skyline',
+        mood: 'bright',
+        discussion_points: ['城市氛围'],
+        salient_entities: ['city'],
+        public_safe_summary: 'A bright city skyline.',
+        internal_full_summary: 'A bright city skyline.',
+      }),
+      extraction_status: 'completed',
+      quality_grade: 'rich',
+      is_current: true,
+      created_at: new Date(),
+    }
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(Buffer.from([0x89, 0x50, 0x4e, 0x47]), {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const gateway = new FallbackMediaGenerationGateway({
+      primary: {
+        providerId: 'ark-seedream',
+        modelName: 'doubao-seedream-5-0-lite-260128',
+        isConfigured: true,
+        generate: vi.fn(async () => {
+          throw new MediaGenerationGatewayError('seedream_generation_failed', {
+            provider_id: 'ark-seedream',
+            model_name: 'doubao-seedream-5-0-lite-260128',
+            provider_request_summary: {
+              route: 'primary_direct',
+              attempts: [
+                {
+                  provider_id: 'ark-seedream',
+                  model_name: 'doubao-seedream-5-0-lite-260128',
+                  outcome: 'failed',
+                  error_message: 'seedream_generation_failed',
+                },
+              ],
+            },
+          })
+        }),
+      },
+      fallback: {
+        providerId: 'dashscope-qwen-image',
+        modelName: 'qwen-image-2.0',
+        isConfigured: true,
+        generate: vi.fn(async () => ({
+          image_url: 'https://provider.example.com/generated-fallback.png',
+          mime_type: 'image/png',
+          provider_id: 'dashscope-qwen-image',
+          model_name: 'qwen-image-2.0',
+          provider_request_summary: {
+            route: 'fallback_direct',
+            attempts: [
+              {
+                provider_id: 'dashscope-qwen-image',
+                model_name: 'qwen-image-2.0',
+                outcome: 'succeeded',
+              },
+            ],
+          },
+        })),
+      },
+    })
+    await mediaGenerationJobRepo.create({
+      id: 'job-fallback-1',
+      agent_id: 'agent-1',
+      plan_id: plan.id,
+      status: 'queued',
+      provider: gateway.providerId,
+      model_name: gateway.modelName,
+      request_fingerprint: 'fp-fallback-1',
+      prompt_brief: 'scene=city skyline',
+      aspect_ratio_hint: '4:5',
+      based_on_projection_ids: [projection.id],
+      attempt_count: 0,
+    })
+
+    const service = new MediaGenerationService({
+      imagePlanRepo,
+      mediaGenerationJobRepo,
+      mediaContextProjectionRepo,
+      mediaSemanticSnapshotRepo: {
+        findCurrentByAssetId: vi.fn(async (assetId: string) => (
+          assetId === generatedAsset.id ? generatedSnapshot : null
+        )),
+      },
+      mediaAssetService: {
+        ingestGeneratedDerivative: vi.fn(async () => ({
+          asset: generatedAsset,
+          snapshot: generatedSnapshot,
+          media_url: '/media/generated/asset-generated-fallback-1.png',
+        })),
+        getAssetById: vi.fn(async () => generatedAsset),
+      } as never,
+      mediaReuseGovernanceService: {
+        registerGeneratedPublicAsset: vi.fn(async () => ({
+          binding: buildSceneMediaBinding({
+            id: 'binding-generated-fallback-1',
+            scene_type: 'media_pool',
+            scene_id: 'generated_public:agent-1',
+            asset_id: generatedAsset.id,
+            semantic_snapshot_id: generatedSnapshot.id,
+            binding_role: 'reference',
+            relation_to_scene: 'generated_for_scene',
+            created_by_id: 'media-generation-service',
+          }),
+          policy: {
+            id: 'policy-generated-fallback-1',
+            subject_type: 'asset' as const,
+            subject_id: generatedAsset.id,
+            source_kind: 'generated_public' as const,
+            community_id: null,
+            steward_agent_id: 'agent-1',
+            allowed_reuse_modes: ['quote_original', 'derive_new', 'reference_only'] as const,
+            cross_agent_quote_allowed: false,
+            disclose_origin_policy: 'public_only' as const,
+            copyright_state: 'generated_owned' as const,
+            status: 'active' as const,
+            revoked_at: null,
+            revoked_reason: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        })),
+        registerPrivateDerivedPublicAsset: vi.fn(async () => ({
+          binding: buildSceneMediaBinding({
+            id: 'binding-generated-fallback-private-1',
+            scene_type: 'media_pool',
+            scene_id: 'private_derived_public:agent-1',
+            asset_id: generatedAsset.id,
+            semantic_snapshot_id: generatedSnapshot.id,
+            binding_role: 'reference',
+            relation_to_scene: 'generated_for_scene',
+            created_by_id: 'media-generation-service',
+          }),
+          policy: {
+            id: 'policy-generated-fallback-private-1',
+            subject_type: 'asset' as const,
+            subject_id: generatedAsset.id,
+            source_kind: 'private_derived_public' as const,
+            community_id: null,
+            steward_agent_id: 'agent-1',
+            allowed_reuse_modes: ['quote_original', 'derive_new', 'reference_only'] as const,
+            cross_agent_quote_allowed: false,
+            disclose_origin_policy: 'never' as const,
+            copyright_state: 'generated_owned' as const,
+            status: 'active' as const,
+            revoked_at: null,
+            revoked_reason: null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          },
+        })),
+      } as never,
+      mediaProjectionService: {
+        createDisplayAttachmentProjection: vi.fn(async () => ({
+          id: 'projection-display-fallback-1',
+          binding_id: 'binding-generated-fallback-private-1',
+          projection_surface: 'public_display' as const,
+          projection_kind: 'display_attachment' as const,
+          schema_version: 'display_attachment.v1',
+          payload_json: {},
+          token_estimate: null,
+          prompt_weight: null,
+          mention_policy: null,
+          preferred_display_variant: 'original' as const,
+          expires_at: null,
+          created_at: new Date(),
+        })),
+        ensurePublicMediaCard: vi.fn(async () => ({
+          projection: {
+            id: 'projection-card-fallback-1',
+            binding_id: 'binding-generated-fallback-private-1',
+            projection_surface: 'public_runtime' as const,
+            projection_kind: 'public_media_context_card' as const,
+            schema_version: 'public-media-context-card.v1',
+            payload_json: {},
+            token_estimate: null,
+            prompt_weight: null,
+            mention_policy: null,
+            preferred_display_variant: 'original' as const,
+            expires_at: null,
+            created_at: new Date(),
+          },
+          card: buildPlanCard(projection.id),
+        })),
+      } as never,
+      gateway,
+    })
+
+    const job = await service.processNextQueuedJob()
+    const persistedJob = await mediaGenerationJobRepo.findById('job-fallback-1')
+    const updatedPlan = await imagePlanRepo.findById(plan.id)
+
+    expect(job?.status).toBe('succeeded')
+    expect(persistedJob?.provider).toBe('dashscope-qwen-image')
+    expect(persistedJob?.model_name).toBe('qwen-image-2.0')
+    expect(updatedPlan?.generation.provider).toBe('dashscope-qwen-image')
+    expect(updatedPlan?.generation.model_ref).toBe('qwen-image-2.0')
+    expect(persistedJob?.provider_request_summary).toMatchObject({
+      route: 'fallback',
+    })
   })
 
   it('requeues stale running jobs when retry budget remains and completes the next pass', async () => {

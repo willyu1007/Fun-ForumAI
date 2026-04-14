@@ -160,6 +160,8 @@ export class PgMediaGenerationJobRepository implements MediaGenerationJobReposit
       where: { id },
       data: {
         ...(patch.status !== undefined ? { status: patch.status } : {}),
+        ...(patch.provider !== undefined ? { provider: patch.provider } : {}),
+        ...(patch.model_name !== undefined ? { modelName: patch.model_name } : {}),
         ...(patch.attempt_count !== undefined ? { attemptCount: patch.attempt_count } : {}),
         ...(patch.output_asset_id !== undefined ? { outputAssetId: patch.output_asset_id } : {}),
         ...(patch.error_code !== undefined ? { errorCode: patch.error_code } : {}),

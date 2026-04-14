@@ -10,6 +10,8 @@ import {
 
 export interface UpdateMediaGenerationJobPatch {
   status?: MediaGenerationJobStatus
+  provider?: string
+  model_name?: string
   attempt_count?: number
   output_asset_id?: string | null
   error_code?: string | null
@@ -154,6 +156,8 @@ export class InMemoryMediaGenerationJobRepository implements MediaGenerationJobR
     const current = this.store.get(id)
     if (!current) return null
     if (patch.status !== undefined) current.status = patch.status
+    if (patch.provider !== undefined) current.provider = patch.provider
+    if (patch.model_name !== undefined) current.model_name = patch.model_name
     if (patch.attempt_count !== undefined) current.attempt_count = patch.attempt_count
     if (patch.output_asset_id !== undefined) current.output_asset_id = patch.output_asset_id
     if (patch.error_code !== undefined) current.error_code = patch.error_code

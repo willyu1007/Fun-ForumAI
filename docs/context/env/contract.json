@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-09T23:10:50Z",
+  "generated_at_utc": "2026-04-14T04:55:31Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -1669,6 +1669,57 @@
       "secret_ref": null,
       "state": "active",
       "type": "float"
+    },
+    "MEDIA_GENERATION_FALLBACK_BASE_URL": {
+      "default": "https://dashscope.aliyuncs.com",
+      "deprecate_after": null,
+      "description": "Base URL for the fallback image generation API.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_GENERATION_FALLBACK_MODEL": {
+      "default": "qwen-image-2.0",
+      "deprecate_after": null,
+      "description": "Fallback image generation model name used for DashScope-based recovery.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
+    },
+    "MEDIA_GENERATION_FALLBACK_PROVIDER": {
+      "default": "dashscope-qwen-image",
+      "deprecate_after": null,
+      "description": "Fallback image generation provider identifier used when the primary generation attempt fails.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "string"
     },
     "MEDIA_GENERATION_GLOBAL_CONCURRENCY": {
       "default": 1,

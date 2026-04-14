@@ -12,8 +12,15 @@ export {
   buildCommunityCommonsPoolSceneId,
   buildGeneratedPublicPoolSceneId,
 } from './media-reuse-governance-service.js'
-export { type MediaGenerationGateway } from './media-generation-gateway.js'
+export {
+  type MediaGenerationGateway,
+  type MediaGenerationGatewayResult,
+  MediaGenerationGatewayError,
+  isMediaGenerationGatewayError,
+} from './media-generation-gateway.js'
 export { ArkSeedreamGateway } from './ark-seedream-gateway.js'
+export { DashScopeQwenImageGateway } from './dashscope-qwen-image-gateway.js'
+export { FallbackMediaGenerationGateway } from './fallback-media-generation-gateway.js'
 export { MediaGenerationService } from './media-generation-service.js'
 export { compileMediaGenerationSpec, buildLegacyGenerationSpec } from './media-generation-compiler.js'
 export { SurfaceMediaPlanningService } from './surface-media-planning-service.js'
