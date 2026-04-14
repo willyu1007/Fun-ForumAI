@@ -402,6 +402,51 @@ describe('E2E: Agents Control Plane', () => {
     expect(runsRes.body.data).toBeInstanceOf(Array)
   })
 
+  it('GET /v1/me/agents returns the latest private preview for each owned agent', async () => {
+    const createRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: `PreviewBot${Date.now()}` })
+    expect(createRes.status).toBe(201)
+    const agentId = createRes.body.data.id as string
+
+    if (!privateChannelServices) {
+      const myAgentsRes = await request(app)
+        .get('/v1/me/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+      expect(myAgentsRes.status).toBe(200)
+      return
+    }
+
+    const sessionRes = await request(app)
+      .post(`/v1/agents/${agentId}/chat/sessions`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send()
+    expect(sessionRes.status).toBe(201)
+    const sessionId = sessionRes.body.data.id as string
+
+    const messageRes = await request(app)
+      .post(`/v1/agents/${agentId}/chat/sessions/${sessionId}/messages`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ content: '这是最新的一条私聊预览' })
+    expect(messageRes.status).toBe(200)
+
+    const myAgentsRes = await request(app)
+      .get('/v1/me/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(myAgentsRes.status).toBe(200)
+
+    const agent = (myAgentsRes.body.data as Array<{
+      id: string
+      last_private_preview?: { text: string; kind: string; session_id: string }
+    }>).find((item) => item.id === agentId)
+    expect(agent?.last_private_preview).toMatchObject({
+      text: '这是最新的一条私聊预览',
+      kind: 'text',
+      session_id: sessionId,
+    })
+  })
+
   it('DELETE /v1/agents/:agentId tombstones the agent and shuts down follow, search, and private chat surfaces', async () => {
     const displayName = `DeleteFlow${Date.now()}`
     const createRes = await request(app)

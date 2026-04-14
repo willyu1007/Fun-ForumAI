@@ -109,8 +109,22 @@ vi.mock('@/widgets/shell/LeftRailAgentDisplayEditor', () => ({
 }))
 
 vi.mock('@/features/agents/components/AgentCreateWizard', () => ({
-  AgentCreateWizard: ({ open }: { open: boolean }) => (
-    <div data-testid="agent-create-wizard" data-open={open ? 'true' : 'false'} />
+  AgentCreateWizard: ({
+    open,
+    onCreated,
+  }: {
+    open: boolean
+    onCreated: (agent: { id: string }) => void
+  }) => (
+    <div data-testid="agent-create-wizard" data-open={open ? 'true' : 'false'}>
+      <button
+        type="button"
+        data-testid="agent-create-wizard-complete"
+        onClick={() => onCreated({ id: 'agent-2' })}
+      >
+        complete
+      </button>
+    </div>
   ),
 }))
 
@@ -215,6 +229,9 @@ describe('AgentInteractionModal geometry updates', () => {
         data: {
           id: agentId,
           display_name: agentId === 'agent-1' ? '合规助手' : '智能体',
+          social_bio: {
+            presence_note: '安静些，像在等一件真正想记住的事。',
+          },
         },
       },
     }))
@@ -332,6 +349,19 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.transform).toMatch(/^translate3d\(\d+px, \d+px, 0\)$/)
     expect(modal.style.width).toMatch(/px$/)
     expect(modal.style.height).toMatch(/px$/)
+  })
+
+  it('shows the presence note beside the header name while the chat tab is active', () => {
+    renderOpenModal()
+
+    act(() => {
+      useAgentModalStore.setState({ activeTab: 'chat' })
+    })
+
+    expect(screen.getByText('合规助手')).toBeTruthy()
+    expect(screen.getByTestId('agent-modal-header-presence-note').textContent).toBe(
+      '安静些，像在等一件真正想记住的事。',
+    )
   })
 
   it('applies the manage-mode minimum width within the viewport budget on first render', () => {
@@ -558,6 +588,26 @@ describe('AgentInteractionModal geometry updates', () => {
     reopenModal()
 
     expect(screen.getByTestId('agent-create-wizard').getAttribute('data-open')).toBe('false')
+  })
+
+  it('opens a newly created agent in manage intro instead of keeping the previous browsing tab', () => {
+    renderOpenModal()
+
+    act(() => {
+      useAgentModalStore.setState({
+        activeTab: 'history',
+      })
+      fireEvent.click(screen.getByTestId('agent-modal-create-button'))
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('agent-create-wizard-complete'))
+    })
+
+    const state = useAgentModalStore.getState()
+    expect(state.activeAgentId).toBe('agent-2')
+    expect(state.viewMode).toBe('manage')
+    expect(state.activeTab).toBe('intro')
   })
 
   it('allows resizing down to the reduced minimum height', () => {

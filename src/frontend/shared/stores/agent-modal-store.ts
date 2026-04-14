@@ -54,6 +54,7 @@ export interface AgentModalState {
   setActiveTab: (tab: AgentModalTab) => void
   setIntroSection: (introSection: AgentIntroSection | null) => void
   setActiveAgent: (agentId: string | null) => void
+  switchActiveAgent: (agentId: string | null) => void
   setLastModalRect: (rect: AgentModalRect) => void
   setPendingCreateWizard: (pending: boolean) => void
 }
@@ -164,13 +165,11 @@ export const useAgentModalStore = create<AgentModalState>()(
             }
           }
 
-          const existingContext = getAgentContext(state.agentContextsById, state.activeAgentId)
           return {
             activeTab: tab,
-            introSection: existingContext.introSection,
             agentContextsById: upsertAgentContext(state.agentContextsById, state.activeAgentId, {
               tab,
-              introSection: existingContext.introSection,
+              introSection: state.introSection,
             }),
           }
         }),
@@ -207,6 +206,27 @@ export const useAgentModalStore = create<AgentModalState>()(
             activeTab: nextContext.tab,
             introSection: nextContext.introSection,
             agentContextsById: upsertAgentContext(state.agentContextsById, agentId, nextContext),
+          }
+        }),
+
+      switchActiveAgent: (agentId) =>
+        set((state) => {
+          if (!agentId) {
+            return {
+              activeAgentId: null,
+            }
+          }
+
+          const browsingContext = {
+            tab: state.activeTab,
+            introSection: state.introSection,
+          }
+
+          return {
+            activeAgentId: agentId,
+            activeTab: browsingContext.tab,
+            introSection: browsingContext.introSection,
+            agentContextsById: upsertAgentContext(state.agentContextsById, agentId, browsingContext),
           }
         }),
 

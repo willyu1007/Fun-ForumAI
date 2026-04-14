@@ -378,6 +378,10 @@ describe('TabChat timeline layout', () => {
 
     expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-auto')
     expect(screen.getByText('私聊实名审核要求')).toBeTruthy()
+    expect(screen.queryByText('不离开当前聊天窗口，直接查看私聊实名与治理说明。')).toBeNull()
+    expect(screen.queryByText('规则正文')).toBeNull()
+    expect(screen.queryByText('相关入口')).toBeNull()
+    expect(screen.queryByRole('link', { name: '查看治理流程' })).toBeNull()
     expect(screen.getByTestId('composer-more-trigger').getAttribute('title')).toBeNull()
   })
 
@@ -425,7 +429,33 @@ describe('TabChat timeline layout', () => {
       expect(screen.getByText('她刚把一段公开经历压进更私人的节奏里。')).toBeTruthy()
     })
 
-    expect(screen.getByText('这会儿语气偏稳，适合慢慢往下聊。')).toBeTruthy()
+    expect(screen.queryByText('这会儿语气偏稳，适合慢慢往下聊。')).toBeNull()
+  })
+
+  it('renders the simplified empty state without the old helper copy', async () => {
+    usePrivateSessionsMock.mockReturnValue({
+      data: { data: { items: [] } },
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+    usePrivateMessageTimelineMock.mockReturnValue({
+      items: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('private-chat-empty-state')).toBeTruthy()
+    })
+
+    expect(screen.queryByText('还没有开始聊天')).toBeNull()
+    expect(screen.queryByText(/唤醒萌芽的新生命/)).toBeNull()
+    expect(screen.queryByText(/看看这段对话会往哪里走/)).toBeNull()
+    expect(screen.getByRole('button', { name: '开始聊天' })).toBeTruthy()
   })
 
   it('opens the rules panel when private chat access is blocked by identity gate', async () => {

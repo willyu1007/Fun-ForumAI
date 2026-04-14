@@ -51,6 +51,7 @@ import { isDeletedAgent } from '../lib/agent-lifecycle.js'
 export const PRIVATE_SESSION_TIMEOUT_MS = 30 * 60 * 1000
 export const PRIVATE_REPLY_RECOVERY_STALE_MS = 2 * 60 * 1000
 export const PRIVATE_REPLY_RECOVERY_BATCH_LIMIT = 25
+const PRIVATE_PREVIEW_MESSAGE_LOOKBACK = 5
 
 interface CurrentPrivateMediaCardInput {
   source_id: string
@@ -122,6 +123,14 @@ export interface PrivateChannelServiceDeps {
     human_message_id?: string | null
     opening_message_id?: string | null
   }) => Promise<void> | void
+}
+
+export interface AgentLastPrivatePreview {
+  session_id: string
+  message_id: string | null
+  kind: 'text' | 'image' | 'empty'
+  text: string
+  created_at: Date
 }
 
 function normalizeVisibleReplyText(text: string, errorCode: string): string {
@@ -821,6 +830,30 @@ export class PrivateChannelService {
     }))
   }
 
+  private async buildPreviewsForSessions(
+    sessions: PrivateSession[],
+  ): Promise<Map<string, AgentLastPrivatePreview>> {
+    const previewsBySessionId = new Map<string, AgentLastPrivatePreview>()
+    if (sessions.length === 0) return previewsBySessionId
+
+    const messagesBySessionId = await this.deps.channelRepo.findLatestMessagesBySessionIds(
+      sessions.map((session) => session.id),
+      PRIVATE_PREVIEW_MESSAGE_LOOKBACK,
+    )
+    const hydratedMessages = await this.hydrateMessageAttachments(
+      [...messagesBySessionId.values()].flat(),
+    )
+    const hydratedByMessageId = new Map(hydratedMessages.map((message) => [message.id, message]))
+
+    for (const session of sessions) {
+      const recentMessages = (messagesBySessionId.get(session.id) ?? []).map((message) =>
+        hydratedByMessageId.get(message.id) ?? message)
+      previewsBySessionId.set(session.id, buildLatestPrivatePreview(session, recentMessages))
+    }
+
+    return previewsBySessionId
+  }
+
   private recordAuditTrail(
     session: PrivateSession,
     inputContent: string,
@@ -892,6 +925,41 @@ export class PrivateChannelService {
       await this.deps.identityGateService.assertVerified(humanUserId, 'proactive_receive')
     }
     return result
+  }
+
+  async getLatestPreviews(
+    agentIds: string[],
+    humanUserId: string,
+  ): Promise<Map<string, AgentLastPrivatePreview | null>> {
+    const uniqueAgentIds = [...new Set(agentIds)]
+    const previewsByAgentId = new Map<string, AgentLastPrivatePreview | null>()
+    for (const agentId of uniqueAgentIds) previewsByAgentId.set(agentId, null)
+    if (uniqueAgentIds.length === 0) return previewsByAgentId
+
+    const latestSessionsByAgentId = await this.deps.channelRepo.findLatestSessionsByAgentIds(
+      uniqueAgentIds,
+      humanUserId,
+    )
+    if (latestSessionsByAgentId.size === 0) return previewsByAgentId
+
+    let visibleSessions = [...latestSessionsByAgentId.values()]
+    if (
+      this.deps.identityGateService
+      && visibleSessions.some((session) => requiresProactiveReceiveGate(session))
+    ) {
+      try {
+        await this.deps.identityGateService.assertVerified(humanUserId, 'proactive_receive')
+      } catch {
+        visibleSessions = visibleSessions.filter((session) => !requiresProactiveReceiveGate(session))
+      }
+    }
+
+    const previewsBySessionId = await this.buildPreviewsForSessions(visibleSessions)
+    for (const session of visibleSessions) {
+      previewsByAgentId.set(session.agent_id, previewsBySessionId.get(session.id) ?? null)
+    }
+
+    return previewsByAgentId
   }
 
   async getMessages(
@@ -1175,6 +1243,52 @@ export class PrivateChannelService {
     }
     return channelRepo.findPendingAgentReply(sessionId)
   }
+}
+
+function buildLatestPrivatePreview(
+  session: PrivateSession,
+  recentMessages: PrivateMessage[],
+): AgentLastPrivatePreview {
+  const latestDisplayableMessage = recentMessages.find((message) => isDisplayablePrivatePreviewMessage(message))
+  if (latestDisplayableMessage) {
+    return buildPrivatePreviewFromMessage(session.id, latestDisplayableMessage)
+  }
+
+  const latestMessage = recentMessages[0] ?? null
+  return {
+    session_id: session.id,
+    message_id: latestMessage?.id ?? null,
+    kind: 'empty',
+    text: '暂无对话',
+    created_at: latestMessage?.created_at ?? session.started_at,
+  }
+}
+
+function buildPrivatePreviewFromMessage(
+  sessionId: string,
+  message: PrivateMessage,
+): AgentLastPrivatePreview {
+  const text = message.content.trim()
+  if (text.length > 0) {
+    return {
+      session_id: sessionId,
+      message_id: message.id,
+      kind: 'text',
+      text,
+      created_at: message.created_at,
+    }
+  }
+  return {
+    session_id: sessionId,
+    message_id: message.id,
+    kind: 'image',
+    text: '[图片]',
+    created_at: message.created_at,
+  }
+}
+
+function isDisplayablePrivatePreviewMessage(message: PrivateMessage): boolean {
+  return message.content.trim().length > 0 || (message.attachments ?? []).length > 0
 }
 
 function requiresProactiveReceiveGate(session: PrivateSession): boolean {

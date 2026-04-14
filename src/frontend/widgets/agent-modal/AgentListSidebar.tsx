@@ -5,7 +5,6 @@ import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readProjectionText } from '@/shared/utils/public-author'
 
 type AgentListSidebarProps = {
   className?: string
@@ -15,7 +14,7 @@ type AgentListSidebarProps = {
 export function AgentListSidebar({ className, onCreateAgent }: AgentListSidebarProps) {
   const { data } = useMyAgents()
   const agents = data?.data ?? []
-  const { activeAgentId, setActiveAgent } = useAgentModalStore()
+  const { activeAgentId, switchActiveAgent } = useAgentModalStore()
 
   return (
     <div className={cn('flex h-full w-64 flex-col border-r bg-muted/10', className)}>
@@ -40,7 +39,7 @@ export function AgentListSidebar({ className, onCreateAgent }: AgentListSidebarP
           agents.map((agent) => (
             <button
               key={agent.id}
-              onClick={() => setActiveAgent(agent.id)}
+              onClick={() => switchActiveAgent(agent.id)}
               className={cn(
                 'w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left',
                 activeAgentId === agent.id
@@ -64,7 +63,7 @@ export function AgentListSidebar({ className, onCreateAgent }: AgentListSidebarP
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm truncate">{agent.display_name}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {readProjectionText(agent) || '暂无简介'}
+                  {agent.last_private_preview?.text ?? '暂无对话'}
                 </div>
               </div>
             </button>

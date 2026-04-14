@@ -337,7 +337,7 @@ export function AgentInteractionModal() {
   const activeTab = useAgentModalStore((state) => state.activeTab)
   const setActiveTab = useAgentModalStore((state) => state.setActiveTab)
   const activeAgentId = useAgentModalStore((state) => state.activeAgentId)
-  const setActiveAgent = useAgentModalStore((state) => state.setActiveAgent)
+  const openModal = useAgentModalStore((state) => state.openModal)
   const viewMode = useAgentModalStore((state) => state.viewMode)
   const pendingCreateWizard = useAgentModalStore((state) => state.pendingCreateWizard)
   const setPendingCreateWizard = useAgentModalStore((state) => state.setPendingCreateWizard)
@@ -370,6 +370,8 @@ export function AgentInteractionModal() {
     [activeAgent?.status],
   )
   const headerAgentName = activeAgentData?.data?.display_name ?? ''
+  const headerPresenceNote =
+    activeTab === 'chat' ? activeAgent?.social_bio?.presence_note?.trim() ?? '' : ''
   const isCropperActive = Boolean(screenshotDraft)
   const shouldBlockDialogDismiss = isCaptureHidden || isCropperActive
 
@@ -464,7 +466,7 @@ export function AgentInteractionModal() {
         onClose={() => setWizardOpen(false)}
         onCreated={(agent) => {
           setWizardOpen(false)
-          setActiveAgent(agent.id)
+          openModal(agent.id, 'manage', 'intro')
         }}
       />
       <DialogContent
@@ -534,8 +536,18 @@ export function AgentInteractionModal() {
           <div className="flex flex-1 items-center bg-background/75 pl-5 pr-4 backdrop-blur-xl">
             <div className="min-w-0 flex-1">
               {headerAgentName && (
-                <div className="truncate text-sm font-semibold text-foreground">
-                  {headerAgentName}
+                <div className="flex items-baseline gap-2">
+                  <div className="truncate text-sm font-semibold text-foreground">
+                    {headerAgentName}
+                  </div>
+                  {headerPresenceNote ? (
+                    <div
+                      className="min-w-0 truncate text-xs text-muted-foreground"
+                      data-testid="agent-modal-header-presence-note"
+                    >
+                      {headerPresenceNote}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

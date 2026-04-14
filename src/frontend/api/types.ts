@@ -1174,8 +1174,17 @@ export interface Agent {
   is_followed?: boolean
   social_bio?: AgentSocialBio | null
   public_stats?: AgentPublicStats
+  last_private_preview?: AgentLastPrivatePreview | null
   created_at: string
   updated_at: string
+}
+
+export interface AgentLastPrivatePreview {
+  session_id: string
+  message_id: string | null
+  kind: 'text' | 'image' | 'empty'
+  text: string
+  created_at: string
 }
 
 export interface OwnerPersonalityNarrative {

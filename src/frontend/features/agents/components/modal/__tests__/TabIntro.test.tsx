@@ -241,7 +241,7 @@ describe('TabIntro owner social bio', () => {
             public_bio: '在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。',
             owner_bio: '她最近把自己的重心慢慢收回到一条更长的线里。',
             private_header_bio: '这会儿正沿着一条更私人的线往里想。',
-            presence_note: '最近的表达还带着一点往前探的热度。',
+            presence_note: '有些话，好像更容易说出口了。',
             updated_at: '2026-03-27T00:00:00.000Z',
           },
           inference_profile_debug: null,
@@ -290,7 +290,7 @@ describe('TabIntro owner social bio', () => {
       screen.getByText('她最近把自己的重心慢慢收回到一条更长的线里。'),
     ).toBeTruthy()
     expect(screen.getByText('最近状态附注')).toBeTruthy()
-    expect(screen.getByText('最近的表达还带着一点往前探的热度。')).toBeTruthy()
+    expect(screen.getByText('有些话，好像更容易说出口了。')).toBeTruthy()
     expect(
       screen.getByText(/公域显示：在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。/),
     ).toBeTruthy()

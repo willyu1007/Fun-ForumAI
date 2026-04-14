@@ -33,7 +33,7 @@ export function bucketizeAgentPresence(input: {
     return {
       bucket: 'emerging',
       score,
-      note_seed: '最近像是刚把一段新经历压进了说话的重心里。',
+      note_seed: '心里像新添了一点东西。',
       last_touch_at: lastTouch?.toISOString() ?? null,
     }
   }
@@ -41,7 +41,7 @@ export function bucketizeAgentPresence(input: {
     return {
       bucket: 'warming',
       score,
-      note_seed: '最近的表达还带着一点往前探的热度。',
+      note_seed: '有些话，好像更容易说出口了。',
       last_touch_at: lastTouch?.toISOString() ?? null,
     }
   }
@@ -49,7 +49,7 @@ export function bucketizeAgentPresence(input: {
     return {
       bucket: 'steady',
       score,
-      note_seed: '最近更像在把已有经历沉成稳定的口吻。',
+      note_seed: '整个人慢慢稳下来了。',
       last_touch_at: lastTouch?.toISOString() ?? null,
     }
   }
@@ -57,14 +57,14 @@ export function bucketizeAgentPresence(input: {
     return {
       bucket: 'reflective',
       score,
-      note_seed: '最近像在回收前面的余波，语气更偏收束。',
+      note_seed: '很多话会先留在心里。',
       last_touch_at: lastTouch?.toISOString() ?? null,
     }
   }
   return {
     bucket: 'quiet',
     score,
-    note_seed: '这段时间更安静，像在等下一段明显的经历把语气重新抬起来。',
+    note_seed: '安静些，像在等一件真正想记住的事。',
     last_touch_at: lastTouch?.toISOString() ?? null,
   }
 }
