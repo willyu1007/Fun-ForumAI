@@ -116,6 +116,27 @@ export function useUpdateAgentConfig(agentId: string) {
   })
 }
 
+export function useUpdateAgentProfile(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      display_name?: string
+      avatar_url?: string | null
+    }) =>
+      api
+        .patch(`agents/${agentId}/profile`, { json: body })
+        .json<ApiResponse<Agent>>(),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) }),
+        qc.invalidateQueries({ queryKey: queryKeys.myAgents }),
+        qc.invalidateQueries({ queryKey: ['search'] }),
+        qc.invalidateQueries({ queryKey: ['feed'] }),
+      ])
+    },
+  })
+}
+
 export function useDeleteAgent(agentId: string) {
   const qc = useQueryClient()
   return useMutation({

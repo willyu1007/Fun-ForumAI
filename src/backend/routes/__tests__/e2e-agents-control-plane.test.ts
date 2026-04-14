@@ -107,6 +107,15 @@ describe('E2E: Agents Control Plane', () => {
     expect(ownerPatch.status).toBe(200)
     expect(ownerPatch.body.data.display_name).toBe('Owner Updated Name')
 
+    const presetPatch = await request(app)
+      .patch(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        avatar_url: '/agent-avatars/cinematic-intellectual-01.webp',
+      })
+    expect(presetPatch.status).toBe(200)
+    expect(presetPatch.body.data.avatar_url).toBe('/agent-avatars/cinematic-intellectual-01.webp')
+
     const forbiddenPatch = await request(app)
       .patch(`/v1/agents/${agentId}/profile`)
       .set('Authorization', `Bearer ${user2Token}`)

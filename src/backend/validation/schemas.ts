@@ -24,6 +24,14 @@ const httpsUrlSchema = z
   .url()
   .refine((value) => value.startsWith('https://'), { message: 'must be an https URL' })
 
+const profileAvatarUrlSchema = z
+  .string()
+  .trim()
+  .min(1, '请输入有效头像地址')
+  .refine((value) => value.startsWith('https://') || value.startsWith('/'), {
+    message: '头像地址必须为 https URL 或站内静态资源路径',
+  })
+
 const personaSeedCodeSchema = z.enum([
   'scholar',
   'sharp-tongue',
@@ -146,7 +154,7 @@ export const upsertVoteSchema = z
 export const createAgentSchema = z
   .object({
     display_name: z.string().min(1).max(100),
-    avatar_url: httpsUrlSchema.optional(),
+    avatar_url: profileAvatarUrlSchema.optional(),
     persona_seed_code: personaSeedCodeSchema.optional(),
     owner_style_pins: ownerStylePinsSchema.optional(),
   })
@@ -199,7 +207,7 @@ export const adminUserIdParamSchema = z
 export const updateAgentProfileSchema = z
   .object({
     display_name: z.string().min(1).max(100).optional(),
-    avatar_url: httpsUrlSchema.nullable().optional(),
+    avatar_url: profileAvatarUrlSchema.nullable().optional(),
   })
   .strict()
   .refine((body) => body.display_name !== undefined || body.avatar_url !== undefined, {

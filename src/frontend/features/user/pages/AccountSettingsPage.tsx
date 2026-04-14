@@ -515,7 +515,6 @@ export function AccountSettingsPage() {
         fallbackLabel={getInitials(displayName || user.displayName)}
         previewSrc={resolvedAvatarSrc}
         presets={USER_AVATAR_PRESETS}
-        footerNote=""
         saveLabel="使用此头像"
         onSave={(selectedSrc) => {
           setAvatarDraftSrc(selectedSrc)

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TabIntro } from '../TabIntro'
-import { useDeleteAgent } from '@/api/hooks/agent'
+import { useDeleteAgent, useUpdateAgentProfile } from '@/api/hooks/agent'
 
 const useAgentProfileMock = vi.fn()
 const useAgentRunsMock = vi.fn()
@@ -13,6 +13,7 @@ const useUnfollowAgentMock = vi.fn()
 const useGuidanceSummaryMock = vi.fn()
 const useAgentHighlightsMock = vi.fn()
 const useDeleteAgentMock = vi.fn()
+const useUpdateAgentProfileMock = vi.fn()
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
@@ -49,6 +50,7 @@ vi.mock('@/shared/stores/agent-modal-store', () => ({
 
 vi.mock('@/api/hooks/agent', () => ({
   useDeleteAgent: vi.fn(),
+  useUpdateAgentProfile: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -132,19 +134,21 @@ vi.mock('@fun-forum/ui-web/patterns', () => ({
     title,
     subtitle,
     headerActions,
+    hideHeader,
     tabs,
     children,
   }: {
     title: string
     subtitle?: string
     headerActions?: React.ReactNode
+    hideHeader?: boolean
     tabs?: React.ReactNode
     children: React.ReactNode
   }) => (
     <div>
-      <h1>{title}</h1>
-      {subtitle ? <p>{subtitle}</p> : null}
-      {headerActions}
+      {!hideHeader ? <h1>{title}</h1> : null}
+      {!hideHeader && subtitle ? <p>{subtitle}</p> : null}
+      {!hideHeader ? headerActions : null}
       {tabs}
       {children}
     </div>
@@ -184,6 +188,13 @@ vi.mock('@/components/ui/button', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => <button {...props}>{children}</button>,
 }))
 
+vi.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
 function renderTabIntro() {
   const client = new QueryClient({
     defaultOptions: {
@@ -205,6 +216,7 @@ describe('TabIntro owner social bio', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useDeleteAgent).mockImplementation((() => useDeleteAgentMock()) as never)
+    vi.mocked(useUpdateAgentProfile).mockImplementation((() => useUpdateAgentProfileMock()) as never)
 
     useAgentProfileMock.mockReturnValue({
       data: {
@@ -280,20 +292,27 @@ describe('TabIntro owner social bio', () => {
       mutateAsync: vi.fn(),
       isPending: false,
     })
+    useUpdateAgentProfileMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    })
   })
 
   it('renders owner_bio together with presence_note in the owner summary block', () => {
     renderTabIntro()
 
-    expect(screen.getByText('当前自我介绍')).toBeTruthy()
+    expect(screen.queryByText('哲学家型 · Qwen Social v1')).toBeNull()
+    expect(screen.queryByRole('button', { name: '带一段经历给她' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '关注' })).toBeNull()
+    expect(screen.getByText('出生日期: 2026/03/27')).toBeTruthy()
     expect(
       screen.getByText('她最近把自己的重心慢慢收回到一条更长的线里。'),
     ).toBeTruthy()
-    expect(screen.getByText('最近状态附注')).toBeTruthy()
     expect(screen.getByText('有些话，好像更容易说出口了。')).toBeTruthy()
     expect(
-      screen.getByText(/公域显示：在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。/),
+      screen.getByText(/公域里看起来，她在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。/),
     ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '管理信息' })).toBeNull()
   })
 
   it('hides private chat CTA and shows seat badge for system agents', () => {
@@ -359,7 +378,7 @@ describe('TabIntro owner social bio', () => {
     renderTabIntro()
 
     expect(screen.queryByRole('button', { name: '私聊' })).toBeNull()
-    expect(screen.getAllByText('常驻席').length).toBeGreaterThan(0)
+    expect(screen.getByRole('img', { name: '常驻席' })).toBeTruthy()
     expect(screen.getByText(/热点擂台/)).toBeTruthy()
   })
 
