@@ -22,6 +22,7 @@ import type {
   PublicMediaContextCard,
 } from '../repos/types.js'
 import type { MediaGenerationGateway } from './media-generation-gateway.js'
+import { isMediaGenerationGatewayError } from './media-generation-gateway.js'
 import type { MediaObservabilityService } from './media-observability-service.js'
 import { resolveMediaObservabilitySurface } from './media-observability-service.js'
 import { MEDIA_SEMANTIC_SCHEMA_VERSION } from './media-contract-utils.js'
@@ -53,6 +54,22 @@ function terminalGenerationStatus(status: PersistedImagePlan['generation']['stat
     || status === 'failed'
     || status === 'timed_out'
     || status === 'cancelled'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function mergeProviderRequestSummary(
+  current: MediaGenerationJob['provider_request_summary'],
+  next: Record<string, unknown> | null | undefined,
+): MediaGenerationJob['provider_request_summary'] {
+  if (!next) return current ?? null
+  if (!isRecord(current)) return next
+  return {
+    ...current,
+    ...next,
+  }
 }
 
 export interface MediaGenerationServiceDeps {
@@ -452,14 +469,16 @@ export class MediaGenerationService {
 
       const finished = await this.deps.mediaGenerationJobRepo.update(job.id, {
         status: shouldBlock ? 'cancelled' : 'succeeded',
+        provider: result.provider_id ?? job.provider,
+        model_name: result.model_name ?? job.model_name,
         output_asset_id: generated.asset.id,
         error_code: shouldBlock ? 'policy_revoked' : null,
         error_message: shouldBlock ? 'source projection expired after provider execution' : null,
-        provider_request_summary: {
-          ...(job.provider_request_summary ?? {}),
+        provider_request_summary: mergeProviderRequestSummary(job.provider_request_summary, {
           provider_image_url: result.image_url,
           mime_type: result.mime_type ?? downloaded.mime_type,
-        },
+          ...(result.provider_request_summary ?? {}),
+        }),
         finished_at: new Date(),
       })
       if (!shouldBlock) {
@@ -491,10 +510,18 @@ export class MediaGenerationService {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'media_generation_failed'
       const nextStatus = job.attempt_count >= MEDIA_GENERATION_MAX_ATTEMPTS ? 'failed' : 'queued'
+      const failedProviderId = isMediaGenerationGatewayError(err) ? err.provider_id : null
+      const failedModelName = isMediaGenerationGatewayError(err) ? err.model_name : null
+      const providerRequestSummary = isMediaGenerationGatewayError(err)
+        ? mergeProviderRequestSummary(job.provider_request_summary, err.provider_request_summary)
+        : job.provider_request_summary
       const updated = await this.deps.mediaGenerationJobRepo.update(job.id, {
         status: nextStatus,
+        ...(nextStatus === 'failed' && failedProviderId ? { provider: failedProviderId } : {}),
+        ...(nextStatus === 'failed' && failedModelName ? { model_name: failedModelName } : {}),
         error_code: nextStatus === 'queued' ? 'provider_retryable' : 'provider_failed',
         error_message: errorMessage,
+        provider_request_summary: providerRequestSummary,
         finished_at: nextStatus === 'queued' ? null : new Date(),
       })
       if (updated) {

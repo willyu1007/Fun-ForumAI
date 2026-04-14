@@ -301,7 +301,7 @@ export class PublicObservationDigestService {
         modality: 'text',
         responseMode: 'json_object',
         agentId,
-        homeVoiceLineId: 'deepseek-director-v1',
+        homeVoiceLineId: 'qwen-director-v1',
         promptRef: PROMPT_TEMPLATE_REFS.internalPublicObservationDigest,
         variables: {
           transcript,
@@ -411,7 +411,7 @@ export class PublicObservationDigestService {
       coverageStatus: 'hidden_partial',
       personaSeedCode: identity?.persona_seed_code,
       homeVoiceLineId: identity?.home_voice_line_id,
-      routingVoiceLineId: 'deepseek-director-v1',
+      routingVoiceLineId: 'qwen-director-v1',
       promptRef: { id: 'internal-public-observation-digest', version: 1 },
       requestedTier: 'base',
       resolvedTier: 'base',

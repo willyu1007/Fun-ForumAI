@@ -72,6 +72,7 @@
     "media:backfill-lineage": "tsx src/backend/dev/backfill-media-lineage.ts",
     "agent-bio:backfill": "tsx src/backend/dev/backfill-agent-social-bio.ts",
     "agent-bio:measure": "tsx src/backend/dev/measure-agent-social-bio.ts",
+    "voice-line:canonicalize-doubao": "tsx src/backend/dev/canonicalize-doubao-voice-line.ts",
     "package:dry-run": "node ops/packaging/scripts/build.mjs --dry-run",
     "package:build": "node ops/packaging/scripts/build.mjs",
     "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run --env staging",

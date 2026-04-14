@@ -229,7 +229,7 @@ describe('ShellLeftRail', () => {
       viewMode: 'manage',
       agentContextsById: {
         'agent-1': {
-          tab: 'history',
+          tab: 'social',
           introSection: null,
         },
       },

@@ -498,7 +498,7 @@ function buildHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): G
     modality: 'text',
     responseMode: 'json_object',
     agentId: 'agent-1',
-    homeVoiceLineId: 'deepseek-director-v1',
+    homeVoiceLineId: 'qwen-director-v1',
     promptRef: { id: 'internal-private-chat-summary-extract', version: 1 },
     variables: {},
     promptMessages: [{ role: 'user', content: 'summarize' }],
@@ -518,7 +518,7 @@ function buildVisionRequest(overrides: Partial<GatewayRequestInput> = {}): Gatew
     modality: 'vision',
     responseMode: 'json_object',
     agentId: 'agent-1',
-    homeVoiceLineId: 'deepseek-director-v1',
+    homeVoiceLineId: 'qwen-director-v1',
     promptRef: { id: 'internal-vision-summary', version: 2 },
     variables: {},
     promptMessages: [{ role: 'user', content: 'summarize image' }],
@@ -733,8 +733,8 @@ describe('LLMGateway', () => {
   it('filters incompatible candidates before ordering when intent_scene_fit requires vision json output', async () => {
     const bundle = buildBundle()
     bundle.modelProfiles.profiles.push({
-      profile_id: 'deepseek-director-vision-summary-base',
-      voice_line_id: 'deepseek-director-v1',
+      profile_id: 'qwen-director-vision-summary-base',
+      voice_line_id: 'qwen-director-v1',
       tier: 'base',
       intent: 'vision_summary',
       visibility: 'hidden',
@@ -762,7 +762,7 @@ describe('LLMGateway', () => {
       fallback: [],
     })
     bundle.routingPolicies.policies.push({
-      profile_id: 'deepseek-director-vision-summary-base',
+      profile_id: 'qwen-director-vision-summary-base',
       route_order: [
         'intent_scene_fit',
         'voice_line_tier',
@@ -1283,8 +1283,8 @@ describe('LLMGateway', () => {
   it('allows callsites to override execution policy only on explicit lanes', async () => {
     const bundle = buildBundle()
     bundle.modelProfiles.profiles.push({
-      profile_id: 'deepseek-director-private-digest-premium',
-      voice_line_id: 'deepseek-director-v1',
+      profile_id: 'qwen-director-private-digest-premium',
+      voice_line_id: 'qwen-director-v1',
       tier: 'premium',
       intent: 'private_digest',
       visibility: 'hidden',
@@ -1303,7 +1303,7 @@ describe('LLMGateway', () => {
       fallback: [],
     })
     bundle.routingPolicies.policies.push({
-      profile_id: 'deepseek-director-private-digest-premium',
+      profile_id: 'qwen-director-private-digest-premium',
       route_order: [
         'intent_scene_fit',
         'voice_line_tier',
@@ -1381,7 +1381,7 @@ describe('LLMGateway', () => {
         max_tokens: 640,
       }),
     )
-    expect(response.renderDecision.profileId).toBe('deepseek-director-private-digest-premium')
+    expect(response.renderDecision.profileId).toBe('qwen-director-private-digest-premium')
     expect(response.renderDecision.policyId).toBe('hidden-private_digest-premium-override')
     expect(response.executionPlan.policy.policy_id).toBe('hidden-private_digest-premium-override')
   })
@@ -1715,8 +1715,8 @@ describe('LLMGateway', () => {
       },
     })
     bundle.modelProfiles.profiles.push({
-      profile_id: 'deepseek-director-private-digest-premium',
-      voice_line_id: 'deepseek-director-v1',
+      profile_id: 'qwen-director-private-digest-premium',
+      voice_line_id: 'qwen-director-v1',
       tier: 'premium',
       intent: 'private_digest',
       visibility: 'hidden',
@@ -1766,7 +1766,7 @@ describe('LLMGateway', () => {
       allowed_model_ids: ['qwen-max'],
     })
     bundle.routingPolicies.policies.push({
-      profile_id: 'deepseek-director-private-digest-premium',
+      profile_id: 'qwen-director-private-digest-premium',
       route_order: [
         'intent_scene_fit',
         'voice_line_tier',
@@ -1808,7 +1808,7 @@ describe('LLMGateway', () => {
       traceId: 'trace-hidden-fallback',
     }))
 
-    expect(response.renderDecision.profileId).toBe('deepseek-director-private-digest-premium')
+    expect(response.renderDecision.profileId).toBe('qwen-director-private-digest-premium')
     expect(response.renderDecision.modelId).toBe('qwen-max')
     expect(chatSpy).toHaveBeenCalledTimes(1)
     expect(usageLedger.list()).toHaveLength(2)
@@ -1960,8 +1960,8 @@ describe('LLMGateway', () => {
   it('falls back from llm_api_vision to llm_api_default for hidden multimodal routing', async () => {
     const bundle = buildBundle()
     bundle.modelProfiles.profiles.push({
-      profile_id: 'deepseek-director-vision-summary-base',
-      voice_line_id: 'deepseek-director-v1',
+      profile_id: 'qwen-director-vision-summary-base',
+      voice_line_id: 'qwen-director-v1',
       tier: 'base',
       intent: 'vision_summary',
       visibility: 'hidden',
@@ -2008,7 +2008,7 @@ describe('LLMGateway', () => {
       },
     ]
     bundle.routingPolicies.policies.push({
-      profile_id: 'deepseek-director-vision-summary-base',
+      profile_id: 'qwen-director-vision-summary-base',
       route_order: [
         'intent_scene_fit',
         'voice_line_tier',
@@ -2058,7 +2058,7 @@ describe('LLMGateway', () => {
         model: 'qwen-vl-plus',
       }),
     )
-    expect(response.renderDecision.profileId).toBe('deepseek-director-vision-summary-base')
+    expect(response.renderDecision.profileId).toBe('qwen-director-vision-summary-base')
     expect(response.renderDecision.modelId).toBe('qwen-vl-plus')
   })
 

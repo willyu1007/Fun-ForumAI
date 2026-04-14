@@ -321,7 +321,7 @@ function validateProfiles(doc, providersDoc, validVoiceLineIds) {
       die(`profiles.${profileId}.visibility cannot be dev_only in model_profiles.yaml`)
     }
 
-    if (voiceLineId === 'deepseek-director-v1' && visibility !== 'hidden') {
+    if (voiceLineId === 'qwen-director-v1' && visibility !== 'hidden') {
       die(`profiles.${profileId} uses director line ${voiceLineId} but visibility is not hidden`)
     }
     if (visibility === 'identity_write' && intent !== 'identity_write') {

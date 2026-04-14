@@ -137,7 +137,7 @@ describe('E2E: Inference Profile Control Plane', () => {
       },
     )
 
-    expect(shadowDebug.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
+    expect(shadowDebug.profile.challengerVoiceLineId).toBe('doubao-deep-v1')
 
     const startRes = await request(app)
       .patch(`/v1/agents/${agentId}/inference-profile`)
@@ -159,7 +159,7 @@ describe('E2E: Inference Profile Control Plane', () => {
     expect(
       debugProfileAfterStart.body.data.inference_profile_debug.shadowReview
         .challengerVoiceLineId,
-    ).toBe('kimi-deep-v1')
+    ).toBe('doubao-deep-v1')
 
     for (let index = 0; index < 3; index += 1) {
       await usageLedgerRepo.insert({
@@ -231,7 +231,7 @@ describe('E2E: Inference Profile Control Plane', () => {
 
     const profileRes = await request(app).get(`/v1/agents/${agentId}/profile`)
     expect(profileRes.status).toBe(200)
-    expect(profileRes.body.data.home_voice_line_id).toBe('kimi-deep-v1')
+    expect(profileRes.body.data.home_voice_line_id).toBe('doubao-deep-v1')
   })
 
   it('PATCH /v1/agents/:agentId/inference-profile returns 400 for invalid transition', async () => {

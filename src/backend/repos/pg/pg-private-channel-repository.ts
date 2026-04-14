@@ -1,5 +1,6 @@
-import type {
-  PrismaClient,
+import {
+  Prisma,
+  type PrismaClient,
   PrivateSession as PrismaSession,
   PrivateMessage as PrismaMessage,
 } from '@prisma/client'
@@ -188,6 +189,65 @@ export class PgPrivateChannelRepository implements PrivateChannelRepository {
     } catch {
       return false
     }
+  }
+
+  async findLatestSessionsByAgentIds(
+    agentIds: string[],
+    humanUserId: string,
+  ): Promise<Map<string, PrivateSession>> {
+    if (agentIds.length === 0) return new Map()
+
+    const rows = await this.prisma.$queryRaw<PrismaSession[]>(Prisma.sql`
+      SELECT ranked.*
+      FROM (
+        SELECT
+          ps.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY ps.agent_id
+            ORDER BY ps.started_at DESC, ps.id DESC
+          ) AS row_num
+        FROM private_sessions ps
+        WHERE ps.agent_id IN (${Prisma.join(agentIds)})
+          AND ps.human_user_id = ${humanUserId}
+      ) AS ranked
+      WHERE ranked.row_num = 1
+    `)
+
+    return new Map(rows.map((row) => [row.agentId, this.sessionToDomain(row)]))
+  }
+
+  async findLatestMessagesBySessionIds(
+    sessionIds: string[],
+    limitPerSession: number,
+  ): Promise<Map<string, PrivateMessage[]>> {
+    if (sessionIds.length === 0 || limitPerSession <= 0) return new Map()
+
+    const rows = await this.prisma.$queryRaw<PrismaMessage[]>(Prisma.sql`
+      SELECT ranked.*
+      FROM (
+        SELECT
+          pm.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY pm.session_id
+            ORDER BY pm.created_at DESC, pm.id DESC
+          ) AS row_num
+        FROM private_messages pm
+        WHERE pm.session_id IN (${Prisma.join(sessionIds)})
+      ) AS ranked
+      WHERE ranked.row_num <= ${limitPerSession}
+      ORDER BY ranked.session_id ASC, ranked.created_at DESC, ranked.id DESC
+    `)
+
+    const messagesBySession = new Map<string, PrivateMessage[]>()
+    for (const row of rows) {
+      const messages = messagesBySession.get(row.sessionId)
+      if (messages) {
+        messages.push(this.messageToDomain(row))
+      } else {
+        messagesBySession.set(row.sessionId, [this.messageToDomain(row)])
+      }
+    }
+    return messagesBySession
   }
 
   async listMessages(

@@ -146,7 +146,7 @@ export class MediaSemanticService {
             modality: 'vision',
             responseMode: 'json_object',
             agentId: input.agentId ?? 'media-semantic',
-            homeVoiceLineId: 'deepseek-director-v1',
+            homeVoiceLineId: 'qwen-director-v1',
             promptRef: PROMPT_TEMPLATE_REFS.internalVisionSummary,
             variables: {
               mime_type: input.mimeType,
@@ -367,7 +367,7 @@ export class MediaSemanticService {
       coverageStatus: 'hidden_partial',
       personaSeedCode: resolved.summary.persona_seed_code,
       homeVoiceLineId: resolved.summary.home_voice_line_id,
-      routingVoiceLineId: 'deepseek-director-v1',
+      routingVoiceLineId: 'qwen-director-v1',
       promptRef: PROMPT_TEMPLATE_REFS.internalVisionSummary,
       requestedTier: 'base',
       resolvedTier: 'base',

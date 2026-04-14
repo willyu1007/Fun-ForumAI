@@ -24,6 +24,19 @@ function resolveAgentSpecificContext(agentId: string): {
   introSection: AgentIntroSection | null
 } {
   const state = readAgentModalState()
+  const hasBrowsingContext =
+    'activeAgentId' in state
+    && 'activeTab' in state
+    && 'introSection' in state
+    && state.activeAgentId != null
+
+  if (hasBrowsingContext) {
+    return {
+      tab: state.activeTab,
+      introSection: state.activeTab === 'intro' ? state.introSection : null,
+    }
+  }
+
   const context = state.agentContextsById[agentId]
 
   if (!context) {

@@ -12,6 +12,8 @@ import { BudgetGuard } from '../llm/budget-guard.js'
 import { MediaAssetControlService } from '../services/media-asset-control-service.js'
 import {
   ArkSeedreamGateway,
+  DashScopeQwenImageGateway,
+  FallbackMediaGenerationGateway,
   MediaAssetService,
   MediaBindingService,
   MediaGenerationService,
@@ -177,7 +179,10 @@ export function createLlmServices(deps: {
     mediaObservabilityService,
     mediaLineageService,
   })
-  const mediaGenerationGateway = new ArkSeedreamGateway()
+  const mediaGenerationGateway = new FallbackMediaGenerationGateway({
+    primary: new ArkSeedreamGateway(),
+    fallback: new DashScopeQwenImageGateway(),
+  })
   const mediaGenerationService = new MediaGenerationService({
     imagePlanRepo: deps.imagePlanRepo,
     mediaGenerationJobRepo: deps.mediaGenerationJobRepo,

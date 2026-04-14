@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PrivateChannelService } from '../private-channel-service.js'
 import type { PromptOrchestrator } from '../../runtime/prompt-orchestrator.js'
-import type { PrivateSession } from '../../repos/types.js'
+import type { PrivateMessage, PrivateSession } from '../../repos/types.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 
 function buildSession(): PrivateSession {
@@ -26,6 +26,22 @@ function buildMediaAssetServiceMock() {
     attachAssetToPrivateMessage: vi.fn(),
     listPrivateMessageAttachmentViews: vi.fn(async () => new Map()),
     rollbackPrivateMessageAttachmentArtifacts: vi.fn(),
+  }
+}
+
+function buildMessage(overrides: Partial<PrivateMessage> = {}): PrivateMessage {
+  return {
+    id: overrides.id ?? 'message-1',
+    session_id: overrides.session_id ?? 'session-1',
+    author_type: overrides.author_type ?? 'HUMAN',
+    reply_to_message_id: overrides.reply_to_message_id ?? null,
+    runtime_status: overrides.runtime_status ?? 'READY',
+    runtime_error_code: overrides.runtime_error_code ?? null,
+    content: overrides.content ?? 'hello',
+    attachments: overrides.attachments ?? [],
+    delivery_status: overrides.delivery_status ?? 'DELIVERED',
+    moderation_metadata: overrides.moderation_metadata ?? null,
+    created_at: overrides.created_at ?? new Date('2026-04-14T00:00:00.000Z'),
   }
 }
 
@@ -1610,5 +1626,130 @@ describe('PrivateChannelService', () => {
     })
     expect(updateSessionStatus).toHaveBeenCalledTimes(3)
     expect(broadcastToSession).toHaveBeenCalledTimes(3)
+  })
+
+  it('skips empty THINKING placeholders when building batched previews', async () => {
+    const session: PrivateSession = { ...buildSession(), agent_id: 'agent-1' }
+    const placeholder = buildMessage({
+      id: 'msg-thinking',
+      author_type: 'AGENT',
+      runtime_status: 'THINKING',
+      content: '   ',
+      created_at: new Date('2026-04-14T02:00:00.000Z'),
+    })
+    const visibleMessage = buildMessage({
+      id: 'msg-visible',
+      content: '上一句可见内容',
+      created_at: new Date('2026-04-14T01:00:00.000Z'),
+    })
+    const findLatestMessagesBySessionIds = vi.fn(async () =>
+      new Map([[session.id, [placeholder, visibleMessage]]]))
+    const channelRepo = {
+      findLatestSessionsByAgentIds: vi.fn(async () => new Map([[session.agent_id, session]])),
+      findLatestMessagesBySessionIds,
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: { getAgent: vi.fn(), getLatestConfig: vi.fn(() => null) } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: buildMediaAssetServiceMock() as never,
+      sseHub: null,
+    })
+
+    const previews = await service.getLatestPreviews([session.agent_id], 'user-1')
+
+    expect(previews.get(session.agent_id)).toMatchObject({
+      session_id: session.id,
+      message_id: visibleMessage.id,
+      kind: 'text',
+      text: '上一句可见内容',
+    })
+    expect(findLatestMessagesBySessionIds).toHaveBeenCalledWith([session.id], 5)
+  })
+
+  it('batches latest previews across agents and returns [图片] for attachment-only messages', async () => {
+    const sessionA: PrivateSession = { ...buildSession(), id: 'session-a', agent_id: 'agent-a' }
+    const sessionB: PrivateSession = { ...buildSession(), id: 'session-b', agent_id: 'agent-b' }
+    const imageMessage = buildMessage({
+      id: 'msg-image',
+      session_id: sessionB.id,
+      content: '',
+      created_at: new Date('2026-04-14T03:00:00.000Z'),
+    })
+    const textMessage = buildMessage({
+      id: 'msg-text',
+      session_id: sessionA.id,
+      content: '批量预览文本',
+      created_at: new Date('2026-04-14T04:00:00.000Z'),
+    })
+    const findLatestSessionsByAgentIds = vi.fn(async () =>
+      new Map([
+        [sessionA.agent_id, sessionA],
+        [sessionB.agent_id, sessionB],
+      ]))
+    const findLatestMessagesBySessionIds = vi.fn(async () =>
+      new Map([
+        [sessionA.id, [textMessage]],
+        [sessionB.id, [imageMessage]],
+      ]))
+    const mediaAssetService = buildMediaAssetServiceMock()
+    mediaAssetService.listPrivateMessageAttachmentViews.mockResolvedValue(
+      new Map([
+        [
+          imageMessage.id,
+          [{
+            asset_id: 'asset-1',
+            display_variant: 'original',
+            display_url: 'https://example.com/image.png',
+            placeholder: null,
+            mime_type: 'image/png',
+            alt_text: null,
+            width: 128,
+            height: 128,
+            state: 'ready',
+          }],
+        ],
+      ]),
+    )
+    const channelRepo = {
+      findLatestSessionsByAgentIds,
+      findLatestMessagesBySessionIds,
+    }
+
+    const service = new PrivateChannelService({
+      channelRepo: channelRepo as never,
+      memoryRepo: { listMemories: vi.fn(async () => ({ items: [], next_cursor: null })) } as never,
+      agentService: { getAgent: vi.fn(), getLatestConfig: vi.fn(() => null) } as never,
+      llmGateway: { generateVisibleText: vi.fn() } as never,
+      eventRepo: { create: vi.fn(() => ({ id: 'evt-1' })) } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      budgetService: null,
+      costTracker: null,
+      mediaAssetService: mediaAssetService as never,
+      sseHub: null,
+    })
+
+    const previews = await service.getLatestPreviews(['agent-a', 'agent-b'], 'user-1')
+
+    expect(findLatestSessionsByAgentIds).toHaveBeenCalledWith(['agent-a', 'agent-b'], 'user-1')
+    expect(findLatestMessagesBySessionIds).toHaveBeenCalledWith([sessionA.id, sessionB.id], 5)
+    expect(previews.get('agent-a')).toMatchObject({
+      session_id: sessionA.id,
+      message_id: textMessage.id,
+      kind: 'text',
+      text: '批量预览文本',
+    })
+    expect(previews.get('agent-b')).toMatchObject({
+      session_id: sessionB.id,
+      message_id: imageMessage.id,
+      kind: 'image',
+      text: '[图片]',
+    })
   })
 })

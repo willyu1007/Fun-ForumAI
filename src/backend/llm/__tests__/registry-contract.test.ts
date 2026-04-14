@@ -223,15 +223,15 @@ describe('LLM registry contract', () => {
       )
     }
 
-    const directorLine = VOICE_LINE_CATALOG['deepseek-director-v1']
+    const directorLine = VOICE_LINE_CATALOG['qwen-director-v1']
     expect(directorLine.visible).toBe(false)
     expect(directorLine.directorOnly).toBe(true)
-    expect(resolveIdentityWriteProfileRef('deepseek-director-v1', 'premium')).toBeNull()
-    expect(resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'base')).toBe(
-      'deepseek-director-director-plan-base',
+    expect(resolveIdentityWriteProfileRef('qwen-director-v1', 'premium')).toBeNull()
+    expect(resolveVoiceLineTierProfileRef('qwen-director-v1', 'director_plan', 'base')).toBe(
+      'qwen-director-director-plan-base',
     )
-    expect(resolveVoiceLineTierProfileRef('deepseek-director-v1', 'director_plan', 'premium')).toBe(
-      'deepseek-director-director-plan-premium',
+    expect(resolveVoiceLineTierProfileRef('qwen-director-v1', 'director_plan', 'premium')).toBe(
+      'qwen-director-director-plan-premium',
     )
   })
 
@@ -248,7 +248,7 @@ describe('LLM registry contract', () => {
       'qwen-social-identity-write-premium',
     )
     expect(profilesById.get('qwen-social-identity-write-base')?.candidates[0]?.model_id).toBe(
-      'qwen-plus-character',
+      'qwen3.5-plus',
     )
     expect(profilesById.get('qwen-social-identity-write-base')?.policy_id).toBe(
       'identity_write-identity_write-base',
@@ -256,7 +256,7 @@ describe('LLM registry contract', () => {
     expect(
       profilesById
         .get('qwen-social-identity-write-premium')
-        ?.candidates.some((candidate) => candidate.model_id === 'qwen-plus-character'),
+        ?.candidates.some((candidate) => candidate.model_id === 'qwen3.5-plus'),
     ).toBe(true)
     expect(
       profilesById
@@ -275,10 +275,10 @@ describe('LLM registry contract', () => {
       'qwen-social-forum-reply-lite',
     )
     expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[0]?.model_id).toBe(
-      'qwen-flash-character',
+      'qwen3.5-flash',
     )
     expect(profilesById.get('qwen-social-forum-reply-base')?.candidates[0]?.model_id).toBe(
-      'qwen-plus-character',
+      'qwen3.5-plus',
     )
   })
 
@@ -299,14 +299,13 @@ describe('LLM registry contract', () => {
 
       expect(profile?.candidates[0]).toMatchObject({
         provider_id: 'dashscope-openai',
-        model_id: 'qwen-plus-character',
+        model_id: 'qwen3.5-plus',
       })
       expect(candidateKeys).toEqual(
         expect.arrayContaining([
-          'dashscope-openai/qwen-plus-character',
-          'tencent-openai/hunyuan-2.0-instruct-20251111',
+          'dashscope-openai/qwen3.5-plus',
           'ark-openai/doubao-seed-2-0-lite-260215',
-          'dashscope-openai/qwen-flash-character',
+          'dashscope-openai/qwen3.5-flash',
         ]),
       )
       expect(
@@ -318,6 +317,12 @@ describe('LLM registry contract', () => {
   it('falls back to the nearest available tier when a requested tier is not explicitly defined', () => {
     expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'scheduled_post', 'premium')).toBe(
       'qwen-social-scheduled-post-base',
+    )
+    expect(resolveVoiceLineTierProfileRef('doubao-deep-v1', 'scheduled_post', 'premium')).toBe(
+      'doubao-deep-scheduled-post-base',
+    )
+    expect(resolveIdentityWriteProfileRef('doubao-deep-v1', 'base')).toBe(
+      'doubao-deep-identity-write-premium',
     )
     expect(resolveVoiceLineTierProfileRef('kimi-deep-v1', 'scheduled_post', 'premium')).toBe(
       'kimi-deep-scheduled-post-base',
@@ -343,7 +348,7 @@ describe('LLM registry contract', () => {
     const profilesById = new Map(
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
     )
-    const visionProfile = profilesById.get('deepseek-director-vision-summary-base')
+    const visionProfile = profilesById.get('qwen-director-vision-summary-base')
     const dashscopeVisionPrimary = bundle.credentialPools.pools.find(
       (entry) => entry.credential_id === 'dashscope-vision-primary',
     )
@@ -351,15 +356,15 @@ describe('LLM registry contract', () => {
 
     expect(visionProfile?.candidates[0]).toMatchObject({
       provider_id: 'dashscope-openai',
-      model_id: 'qwen-vl-plus',
+      model_id: 'qwen3.5-plus',
     })
     expect(
       visionProfile?.candidates.some((candidate) =>
-        candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen-vl-plus'),
+        candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen3.5-plus'),
     ).toBe(true)
     expect(
       visionProfile?.candidates.some((candidate) =>
-        candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen-vl-max'),
+        candidate.provider_id === 'dashscope-openai' && candidate.model_id === 'qwen3.5-flash'),
     ).toBe(true)
     expect(
       visionProfile?.candidates.every((candidate) => candidate.provider_id === 'dashscope-openai'),

@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-09T23:10:50Z`
+Generated at (UTC): `2026-04-14T04:55:30Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -106,6 +106,9 @@ Generated at (UTC): `2026-04-09T23:10:50Z`
 | `MEDIA_GENERATION_DOWNLOAD_TIMEOUT_MS` | `active` | `int` | no | no | `30000` | `` | `*` | `` | `` | `` | Timeout for downloading provider-hosted generated image bytes. |
 | `MEDIA_GENERATION_ESTIMATED_COST_CNY_PER_IMAGE` | `active` | `float` | no | no | `0` | `` | `*` | `` | `` | `` | Estimated cost in CNY charged to each media generation request when provider billing details are unavailable. |
 | `MEDIA_GENERATION_ESTIMATED_DAILY_BUDGET_CNY` | `active` | `float` | no | no | `0` | `` | `*` | `` | `` | `` | Daily estimated generation budget used by the media rollout controller. Zero disables cost gating. |
+| `MEDIA_GENERATION_FALLBACK_BASE_URL` | `active` | `string` | no | no | `https://dashscope.aliyuncs.com` | `` | `*` | `` | `` | `` | Base URL for the fallback image generation API. |
+| `MEDIA_GENERATION_FALLBACK_MODEL` | `active` | `string` | no | no | `qwen-image-2.0` | `` | `*` | `` | `` | `` | Fallback image generation model name used for DashScope-based recovery. |
+| `MEDIA_GENERATION_FALLBACK_PROVIDER` | `active` | `string` | no | no | `dashscope-qwen-image` | `` | `*` | `` | `` | `` | Fallback image generation provider identifier used when the primary generation attempt fails. |
 | `MEDIA_GENERATION_GLOBAL_CONCURRENCY` | `active` | `int` | no | no | `1` | `` | `*` | `` | `` | `` | Global concurrent media generation job cap. |
 | `MEDIA_GENERATION_MODEL` | `active` | `string` | no | no | `doubao-seedream-5-0-lite-260128` | `` | `*` | `` | `` | `` | Dedicated image generation model name. |
 | `MEDIA_GENERATION_POLL_INTERVAL_MS` | `active` | `int` | no | no | `150` | `` | `*` | `` | `` | `` | Poll interval for waiting on generation job completion. |

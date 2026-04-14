@@ -12,7 +12,9 @@ export interface DetailPageLayoutProps {
   subtitle?: React.ReactNode
   headerActions?: React.ReactNode
   backLink?: React.ReactNode
+  hideHeader?: boolean
   tabs?: React.ReactNode
+  showTabsDivider?: boolean
   children: React.ReactNode
   sidebar?: React.ReactNode
   footer?: React.ReactNode
@@ -24,7 +26,9 @@ export function DetailPageLayout({
   subtitle,
   headerActions,
   backLink,
+  hideHeader = false,
   tabs,
+  showTabsDivider = true,
   children,
   sidebar,
   footer,
@@ -32,29 +36,33 @@ export function DetailPageLayout({
 }: DetailPageLayoutProps) {
   return (
     <div {...dataUi('page', { layout: 'app' })} className={className}>
-      {/* Header */}
-      <header {...dataUi('section', { padding: 'md' })}>
-        {backLink && <div className="mb-2">{backLink}</div>}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 {...dataUi('text', { variant: 'h1' })}>{title}</h1>
-            {subtitle && (
-              <p {...dataUi('text', { variant: 'body', tone: 'secondary' })} className="mt-1">
-                {subtitle}
-              </p>
+      {!hideHeader && (
+        <header {...dataUi('section', { padding: 'md' })}>
+          {backLink && <div className="mb-2">{backLink}</div>}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 {...dataUi('text', { variant: 'h1' })}>{title}</h1>
+              {subtitle && (
+                <p {...dataUi('text', { variant: 'body', tone: 'secondary' })} className="mt-1">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+            {headerActions && (
+              <div {...dataUi('toolbar', { align: 'end' })}>
+                {headerActions}
+              </div>
             )}
           </div>
-          {headerActions && (
-            <div {...dataUi('toolbar', { align: 'end' })}>
-              {headerActions}
-            </div>
-          )}
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Tabs */}
       {tabs && (
-        <div {...dataUi('tabs', { variant: 'line' })} className="border-b">
+        <div
+          {...dataUi('tabs', { variant: 'line' })}
+          className={showTabsDivider ? 'border-b' : undefined}
+        >
           {tabs}
         </div>
       )}

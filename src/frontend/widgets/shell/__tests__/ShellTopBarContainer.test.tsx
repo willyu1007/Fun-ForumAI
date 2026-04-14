@@ -804,7 +804,7 @@ describe('ShellTopBarContainer', () => {
       viewMode: 'manage',
       agentContextsById: {
         'agent-1': {
-          tab: 'social',
+          tab: 'history',
           introSection: null,
         },
       },

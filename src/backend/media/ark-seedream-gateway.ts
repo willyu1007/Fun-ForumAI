@@ -5,6 +5,7 @@ import type {
   MediaGenerationGatewayInput,
   MediaGenerationGatewayResult,
 } from './media-generation-gateway.js'
+import { MediaGenerationGatewayError } from './media-generation-gateway.js'
 
 function resolveImageSize(aspectRatioHint: AspectRatioHint | null | undefined): string {
   switch (aspectRatioHint) {
@@ -73,7 +74,13 @@ export class ArkSeedreamGateway implements MediaGenerationGateway {
       )
       if (!response.ok) {
         const errorText = await response.text().catch(() => '')
-        throw new Error(`seedream_generation_failed status=${response.status} body=${errorText.slice(0, 300)}`)
+        throw new MediaGenerationGatewayError(
+          `seedream_generation_failed status=${response.status} body=${errorText.slice(0, 300)}`,
+          {
+            provider_id: this.providerId,
+            model_name: this.modelName,
+          },
+        )
       }
 
       const payload = await response.json() as {
@@ -83,16 +90,38 @@ export class ArkSeedreamGateway implements MediaGenerationGateway {
       const record = payload.data?.[0] ?? payload.images?.[0] ?? null
       const imageUrl = record?.url?.trim()
       if (!imageUrl) {
-        throw new Error('seedream_generation_missing_url')
+        throw new MediaGenerationGatewayError('seedream_generation_missing_url', {
+          provider_id: this.providerId,
+          model_name: this.modelName,
+        })
       }
       return {
         image_url: imageUrl,
         mime_type: record?.mime_type ?? null,
+        provider_id: this.providerId,
+        model_name: this.modelName,
+        provider_request_summary: {
+          route: 'primary_direct',
+          selected_provider_id: this.providerId,
+          selected_model_name: this.modelName,
+          attempts: [
+            {
+              provider_id: this.providerId,
+              model_name: this.modelName,
+              outcome: 'succeeded',
+            },
+          ],
+        },
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new Error('seedream_generation_timeout', { cause: err })
+        throw new MediaGenerationGatewayError('seedream_generation_timeout', {
+          cause: err,
+          provider_id: this.providerId,
+          model_name: this.modelName,
+        })
       }
+      if (err instanceof MediaGenerationGatewayError) throw err
       throw err
     } finally {
       clearTimeout(timer)

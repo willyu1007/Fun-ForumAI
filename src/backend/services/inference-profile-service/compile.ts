@@ -14,17 +14,18 @@ import {
 
 export const FAMILY_LINE_PREFERENCE: Record<CoreFamily, VoiceLineId[]> = {
   hearth: ['minimax-her-v1', 'qwen-social-v1', 'glm-deep-v1'],
-  blade: ['glm-deep-v1', 'qwen-social-v1', 'kimi-deep-v1'],
+  blade: ['glm-deep-v1', 'qwen-social-v1', 'doubao-deep-v1'],
   spark: ['qwen-social-v1', 'glm-deep-v1', 'minimax-her-v1'],
-  sage: ['kimi-deep-v1', 'glm-deep-v1', 'qwen-social-v1'],
-  anchor: ['qwen-social-v1', 'glm-deep-v1', 'kimi-deep-v1'],
+  sage: ['doubao-deep-v1', 'glm-deep-v1', 'qwen-social-v1'],
+  anchor: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1'],
 }
 
 export const HOME_LINE_FAMILY_MAP: Record<VoiceLineId, CoreFamily> = {
   'qwen-social-v1': 'anchor',
   'glm-deep-v1': 'sage',
-  'deepseek-director-v1': 'anchor',
+  'qwen-director-v1': 'anchor',
   'minimax-her-v1': 'hearth',
+  'doubao-deep-v1': 'sage',
   'kimi-deep-v1': 'sage',
 }
 

@@ -439,6 +439,24 @@ variables:
     default: https://ark.cn-beijing.volces.com
     description: Base URL for the dedicated image generation API.
 
+  MEDIA_GENERATION_FALLBACK_PROVIDER:
+    type: string
+    required: false
+    default: dashscope-qwen-image
+    description: Fallback image generation provider identifier used when the primary generation attempt fails.
+
+  MEDIA_GENERATION_FALLBACK_MODEL:
+    type: string
+    required: false
+    default: qwen-image-2.0
+    description: Fallback image generation model name used for DashScope-based recovery.
+
+  MEDIA_GENERATION_FALLBACK_BASE_URL:
+    type: string
+    required: false
+    default: https://dashscope.aliyuncs.com
+    description: Base URL for the fallback image generation API.
+
   MEDIA_GENERATION_TIMEOUT_MS:
     type: int
     required: false

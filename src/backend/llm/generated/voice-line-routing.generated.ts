@@ -4,20 +4,30 @@
 import type { VoiceLineRoutingArtifact } from '../voice-line-routing-artifact.js'
 
 export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
-  "deepseek-director-v1": {
-    "director_plan": {
-      "base": "deepseek-director-director-plan-base",
-      "premium": "deepseek-director-director-plan-premium"
+  "doubao-deep-v1": {
+    "chat_reply": {
+      "lite": "doubao-deep-chat-reply-lite"
+    },
+    "forum_reply": {
+      "base": "doubao-deep-forum-reply-base"
+    },
+    "identity_write": {
+      "premium": "doubao-deep-identity-write-premium"
     },
     "private_digest": {
-      "base": "deepseek-director-private-digest-base",
-      "premium": "deepseek-director-private-digest-premium"
+      "base": "doubao-deep-private-digest-base"
+    },
+    "private_reply": {
+      "base": "doubao-deep-private-reply-base"
+    },
+    "proactive_opening": {
+      "base": "doubao-deep-proactive-opening-base"
     },
     "public_observation_digest": {
-      "base": "deepseek-director-public-observation-base"
+      "base": "doubao-deep-public-observation-base"
     },
-    "vision_summary": {
-      "base": "deepseek-director-vision-summary-base"
+    "scheduled_post": {
+      "base": "doubao-deep-scheduled-post-base"
     }
   },
   "glm-deep-v1": {
@@ -97,6 +107,22 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
     },
     "scheduled_post": {
       "base": "minimax-her-scheduled-post-base"
+    }
+  },
+  "qwen-director-v1": {
+    "director_plan": {
+      "base": "qwen-director-director-plan-base",
+      "premium": "qwen-director-director-plan-premium"
+    },
+    "private_digest": {
+      "base": "qwen-director-private-digest-base",
+      "premium": "qwen-director-private-digest-premium"
+    },
+    "public_observation_digest": {
+      "base": "qwen-director-public-observation-base"
+    },
+    "vision_summary": {
+      "base": "qwen-director-vision-summary-base"
     }
   },
   "qwen-social-v1": {

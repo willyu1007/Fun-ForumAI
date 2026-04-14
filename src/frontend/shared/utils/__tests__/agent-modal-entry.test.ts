@@ -47,7 +47,7 @@ describe('agent modal entry helpers', () => {
 
   it('defaults a specific agent entrypoint to chat when there is no prior agent context', () => {
     useAgentModalStore.setState({
-      activeAgentId: 'agent-other',
+      activeAgentId: null,
       activeTab: 'history',
       viewMode: 'manage',
     })
@@ -62,8 +62,11 @@ describe('agent modal entry helpers', () => {
     expect(state.introSection).toBeNull()
   })
 
-  it('inherits the last active tab when opening a specific agent', () => {
+  it('inherits the current modal browsing tab when opening a specific agent', () => {
     useAgentModalStore.setState({
+      activeAgentId: 'agent-last',
+      activeTab: 'history',
+      introSection: null,
       agentContextsById: {
         'agent-beta': {
           tab: 'social',
@@ -76,16 +79,19 @@ describe('agent modal entry helpers', () => {
 
     const state = useAgentModalStore.getState()
     expect(state.activeAgentId).toBe('agent-beta')
-    expect(state.activeTab).toBe('social')
+    expect(state.activeTab).toBe('history')
     expect(state.introSection).toBeNull()
   })
 
-  it('inherits the last intro section when the prior context was intro', () => {
+  it('inherits the current intro section when the browsing context is intro', () => {
     useAgentModalStore.setState({
+      activeAgentId: 'agent-last',
+      activeTab: 'intro',
+      introSection: 'privacy',
       agentContextsById: {
         'agent-gamma': {
-          tab: 'intro',
-          introSection: 'privacy',
+          tab: 'social',
+          introSection: null,
         },
       },
     })
@@ -114,5 +120,45 @@ describe('agent modal entry helpers', () => {
     expect(state.activeAgentId).toBe('agent-zeta')
     expect(state.activeTab).toBe('moments')
     expect(state.introSection).toBe('stats')
+  })
+
+  it('keeps the current browsing context when switching agents inside the modal', () => {
+    useAgentModalStore.setState({
+      activeAgentId: 'agent-alpha',
+      activeTab: 'history',
+      introSection: 'privacy',
+      agentContextsById: {
+        'agent-beta': {
+          tab: 'social',
+          introSection: null,
+        },
+      },
+    })
+
+    useAgentModalStore.getState().switchActiveAgent('agent-beta')
+
+    const state = useAgentModalStore.getState()
+    expect(state.activeAgentId).toBe('agent-beta')
+    expect(state.activeTab).toBe('history')
+    expect(state.introSection).toBe('privacy')
+    expect(state.agentContextsById['agent-beta']).toEqual({
+      tab: 'history',
+      introSection: 'privacy',
+    })
+  })
+
+  it('lets explicit modal targets override the current browsing context', () => {
+    useAgentModalStore.setState({
+      activeAgentId: 'agent-alpha',
+      activeTab: 'history',
+      introSection: 'privacy',
+    })
+
+    useAgentModalStore.getState().openModal('agent-beta', 'readonly', 'chat')
+
+    const state = useAgentModalStore.getState()
+    expect(state.activeAgentId).toBe('agent-beta')
+    expect(state.activeTab).toBe('chat')
+    expect(state.introSection).toBeNull()
   })
 })

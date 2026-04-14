@@ -1,0 +1,19 @@
+version: 1
+task_id: T-201
+project: main
+slug: llm-matrix-refresh-and-media-fallback-v1
+status: in-progress
+updated: "2026-04-14"
+keywords:
+  - llm
+  - model-matrix
+  - qwen
+  - glm
+  - kimi
+  - minimax
+  - hunyuan
+  - deepseek
+  - ark
+  - seedream
+  - media
+  - fallback

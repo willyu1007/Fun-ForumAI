@@ -36,7 +36,8 @@ import { usePrivateSessionSse } from '@/features/private-chat/hooks/use-private-
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import { getPrivateDigestFallbackNotice } from '@/features/private-chat/digest-guidance'
-import { PrivateChatVerificationContent } from '@/features/help/components/PrivateChatVerificationContent'
+import { HelpMarkdown } from '@/features/help/components/HelpMarkdown'
+import { PRIVATE_CHAT_VERIFICATION_DOC } from '@/features/help/components/private-chat-verification-doc'
 import { resolveAgentAvatarSrc, resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
 
 const DELIVERY_BADGE: Partial<Record<NonNullable<PrivateMessage['delivery_status']>, string>> = {
@@ -129,8 +130,7 @@ export function TabChat({
   const createReport = useCreateReport()
   const agent = agentData?.data
   const privateHeaderBio = agent?.social_bio?.private_header_bio?.trim() || ''
-  const presenceNote = agent?.social_bio?.presence_note?.trim() || ''
-  const showBioHeader = privateHeaderBio.length > 0 || presenceNote.length > 0
+  const showBioHeader = privateHeaderBio.length > 0
   const sessionItems = sessionsData?.data?.items
   const sessions = useMemo(() => sortSessionsByStartTime(sessionItems ?? []), [sessionItems])
   const currentSession = useMemo(() => getCurrentSession(sessions), [sessions])
@@ -259,9 +259,6 @@ export function TabChat({
               {privateHeaderBio ? (
                 <p className="text-sm leading-relaxed text-foreground">{privateHeaderBio}</p>
               ) : null}
-              {presenceNote ? (
-                <p className="text-xs text-muted-foreground">{presenceNote}</p>
-              ) : null}
             </div>
           </div>
         )}
@@ -292,7 +289,6 @@ export function TabChat({
           />
         ) : (
           <ChatEmptyState
-            agentName={agent.display_name}
             onNewSession={handleNewSession}
             isCreating={createSession.isPending}
             errorMessage={
@@ -864,13 +860,11 @@ function ToolbarIconButton({
 }
 
 function ChatEmptyState({
-  agentName,
   onNewSession,
   isCreating,
   errorMessage,
   onOpenRules,
 }: {
-  agentName: string
   onNewSession: () => void
   isCreating: boolean
   errorMessage: string | null
@@ -878,19 +872,19 @@ function ChatEmptyState({
 }) {
   return (
     <div className={"flex flex-1 items-center justify-center px-5 py-10 text-center"} data-testid="private-chat-empty-state">
-      <div className={"w-full max-w-md rounded-[2rem] border bg-muted/10 px-6 py-8"}>
-        <p className={"text-lg font-semibold text-foreground"}>还没有开始聊天</p>
-        <p className={"mt-2 text-sm text-muted-foreground"}>
-          先跟 {agentName} 打个招呼，看看这段对话会往哪里走。
-        </p>
+      <div className={"flex w-full max-w-xl flex-col items-center px-6 py-8"}>
         {errorMessage && <p className={"mt-4 text-sm text-destructive"}>{errorMessage}</p>}
-        <div className={"mt-6 flex flex-col items-center gap-3"}>
-          <Button className={"rounded-full px-5"} onClick={onNewSession} disabled={isCreating}>
+        <div className={"flex flex-col items-center gap-3"}>
+          <Button className={"rounded-full px-6"} onClick={onNewSession} disabled={isCreating}>
             {isCreating ? '正在打开…' : '开始聊天'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onOpenRules}>
+          <button
+            type="button"
+            className="text-xs font-medium tracking-[0.01em] text-muted-foreground transition-colors hover:text-foreground"
+            onClick={onOpenRules}
+          >
             查看私聊规则
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -984,10 +978,7 @@ function PrivateChatRulesPanel({
         )}
       >
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <div>
-            <div className="text-sm font-semibold text-foreground">私聊规则</div>
-            <div className="text-xs text-muted-foreground">不离开当前聊天窗口，直接查看私聊实名与治理说明。</div>
-          </div>
+          <div className="text-sm font-semibold text-foreground">私聊实名审核要求</div>
           <Button
             type="button"
             variant="ghost"
@@ -1000,8 +991,8 @@ function PrivateChatRulesPanel({
             <X className="size-4" />
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <PrivateChatVerificationContent compact />
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <HelpMarkdown markdown={PRIVATE_CHAT_VERIFICATION_DOC.body} compact />
         </div>
       </div>
     </div>

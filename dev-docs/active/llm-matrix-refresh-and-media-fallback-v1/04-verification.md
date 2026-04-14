@@ -1,0 +1,79 @@
+# 04 Verification — T-201
+
+## Automated checks
+- Bundle creation / governance:
+  - task directory contains `.ai-task.yaml`, `roadmap.md`, `00-overview.md`, `01-plan.md`, `02-architecture.md`, `03-implementation-notes.md`, `04-verification.md`, `05-pitfalls.md`
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+- Executed during implementation:
+  - `pnpm llm:routing:generate`
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/check-llm-config-keys.mjs`
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py validate --root . --out .ai/.tmp/t201-env/03-validation-log.md`
+  - `python3 -B -S .ai/skills/features/environment/env-contractctl/scripts/env_contractctl.py generate --root . --out .ai/.tmp/t201-env/04-context-refresh.md`
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/media/__tests__/ark-seedream-gateway.test.ts src/backend/media/__tests__/dashscope-qwen-image-gateway.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/media/__tests__/media-semantic-service.test.ts`
+  - `pnpm typecheck`
+- Executed for the temporary Doubao carrier-line cutover:
+  - `pnpm llm:routing:generate`
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts`
+  - `pnpm exec vitest run src/backend/services/__tests__/inference-profile-service.test.ts src/backend/routes/__tests__/e2e-inference-profile-control-plane.test.ts`
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+- Executed for canonical Doubao/Kimi line migration:
+  - `pnpm llm:routing:generate`
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/check-llm-config-keys.mjs`
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/services/__tests__/inference-profile-service.test.ts src/backend/routes/__tests__/e2e-inference-profile-control-plane.test.ts src/backend/context-memory/__tests__/runtime.test.ts`
+  - `pnpm voice-line:canonicalize-doubao --dry-run`
+  - `pnpm typecheck`
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+- Executed for semantic cleanup / stale-artifact removal:
+  - `pnpm llm:routing:generate`
+  - `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/media/__tests__/media-semantic-service.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/media/__tests__/fallback-media-generation-gateway.test.ts src/backend/services/__tests__/agent-service.test.ts`
+  - `pnpm exec eslint src/shared/agent-persona-catalog.ts src/backend/media/media-semantic-service.ts src/backend/services/public-observation-digest-service.ts src/backend/services/inference-profile-service/compile.ts src/backend/services/inference-profile-service/codec.ts src/backend/llm/callsite-inventory.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/media/__tests__/media-semantic-service.test.ts src/backend/media/__tests__/media-generation-service.test.ts src/backend/services/__tests__/agent-service.test.ts src/backend/context-memory/runtime.ts src/backend/media/fallback-media-generation-gateway.ts src/backend/media/__tests__/fallback-media-generation-gateway.test.ts .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+- Current result summary:
+  - registry validation passed
+  - llm config key check passed
+  - env contract validate/generate passed
+  - targeted LLM/media test suite passed (`64` tests)
+  - temporary `kimi-deep-v1` -> Doubao carrier-line cutover validated:
+    - routing artifact regenerated successfully
+    - registry validator passed with `42` profiles / `4` provider admission pools
+    - LLM contract/gateway tests passed (`49` tests)
+    - inference-profile/control-plane tests passed (`8` tests)
+    - project governance sync completed; final lint passes with only pre-existing unrelated warnings (`kickoff-data-governance-alignment-temp`, missing archive paths for `T-960` / `T-961`)
+  - canonical `doubao-deep-v1` migration validated:
+    - routing artifact regenerated successfully with `50` profiles / `5` provider admission pools
+    - registry validator passed after restoring Kimi as a semantically real line and moving active Doubao routing to `doubao-deep-*`
+    - targeted routing/control-plane/runtime tests passed (`43` tests)
+    - `voice-line:canonicalize-doubao --dry-run` executed successfully against the current persistence state (`0` rows needed canonicalization in this workspace)
+    - the new backfill CLI is covered by repository `typecheck`; no new canonicalization-specific compile failures surfaced
+  - hidden director / media fallback cleanup validated:
+    - `deepseek-director-*` no longer appears in active source, registry, or generated routing artifacts; only historical archive docs still retain the old id
+    - targeted LLM/media/agent-service suite passed after canonicalizing the hidden director line to `qwen-director-*` (`92` tests)
+    - lint passed across the touched source/test files
+  - `pnpm typecheck` still fails in untouched files under `src/backend/runtime/__tests__/forum-roaming.test.ts`, `src/backend/services/__tests__/recall-state-store.test.ts`, `src/backend/services/forum-read-service.ts`, and `src/backend/services/search/thread-search-provider.ts`
+
+## Manual smoke checks
+- Planning stage:
+  - read `roadmap.md` and confirm open questions are actionable rather than hidden assumptions
+  - confirm the roadmap distinguishes registry-only work from runtime-change work
+- Planned implementation stage:
+  - inspect routing artifact changes for removed/added model IDs
+  - run a dev smoke for Ark `Seedream 5.0 Lite`
+  - run an injected-failure smoke to verify DashScope generation fallback
+  - inspect media job/provider metadata after a fallback run
+
+## Rollout / Backout (if applicable)
+- Rollout:
+  - registry migration first
+  - hidden/vision convergence second
+  - media generation fallback third
+  - typed provider extensions only after explicit alignment
+- Backout:
+  - revert the implementation by phase boundary
+  - restore prior registry files if routing regresses
+  - restore single-provider Ark generation if fallback introduces instability

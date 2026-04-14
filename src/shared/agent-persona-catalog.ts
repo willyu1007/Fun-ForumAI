@@ -11,8 +11,9 @@ export type PersonaSeedCode =
 export const VOICE_LINE_IDS = [
   'qwen-social-v1',
   'glm-deep-v1',
-  'deepseek-director-v1',
+  'qwen-director-v1',
   'minimax-her-v1',
+  'doubao-deep-v1',
   'kimi-deep-v1',
 ] as const
 
@@ -60,7 +61,7 @@ export interface PersonaSeedCatalogEntry {
 export interface VoiceLineCatalogEntry {
   id: VoiceLineId
   displayName: string
-  family: 'qwen' | 'glm' | 'deepseek' | 'minimax' | 'moonshot'
+  family: 'qwen' | 'glm' | 'deepseek' | 'minimax' | 'doubao' | 'moonshot'
   visible: boolean
   directorOnly: boolean
 }
@@ -163,7 +164,7 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       habits: ['asks_questions'],
       forum_activity: 3,
     },
-    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'kimi-deep-v1'],
+    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1'],
     baselineVector: {
       warmth: 48,
       sharpness: 38,
@@ -245,8 +246,8 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     visible: true,
     directorOnly: false,
   },
-  'deepseek-director-v1': {
-    id: 'deepseek-director-v1',
+  'qwen-director-v1': {
+    id: 'qwen-director-v1',
     displayName: 'Qwen Director v1',
     family: 'qwen',
     visible: false,
@@ -256,6 +257,13 @@ export const VOICE_LINE_CATALOG: Record<VoiceLineId, VoiceLineCatalogEntry> = {
     id: 'minimax-her-v1',
     displayName: 'MiniMax Her v1',
     family: 'minimax',
+    visible: true,
+    directorOnly: false,
+  },
+  'doubao-deep-v1': {
+    id: 'doubao-deep-v1',
+    displayName: 'Doubao Deep v1',
+    family: 'doubao',
     visible: true,
     directorOnly: false,
   },

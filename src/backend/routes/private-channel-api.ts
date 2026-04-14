@@ -13,6 +13,7 @@ import {
 import { trackGuidanceEventFromRequest } from '../guidance/http.js'
 import type { SourceDimension } from '../../shared/owner-life-overview.js'
 import type { Agent } from '../repos/types.js'
+import type { AgentLastPrivatePreview } from '../services/private-channel-service.js'
 
 const DEV_SEED_AGENT_KEYS = new Set([
   'dev-user-001::苏格拉底-7B',
@@ -659,6 +660,11 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
     const rawAgents = container.agentRepo.findByOwner(req.user!.userId)
     const agents = collapseManagedSeedAgentDuplicates(rawAgents)
     await Promise.all(agents.map((agent) => container.agentService.getLatestConfigPersisted(agent.id)))
+    const previewByAgentId: Map<string, AgentLastPrivatePreview | null> = getServices()?.channelService
+      ? await getServices()!.channelService
+        .getLatestPreviews(agents.map((agent) => agent.id), req.user!.userId)
+        .catch(() => new Map<string, AgentLastPrivatePreview | null>())
+      : new Map<string, AgentLastPrivatePreview | null>()
     const items = await Promise.all(agents.map(async (agent) => {
       const latestConfig = container.agentService.getLatestConfig(agent.id)
       const [semanticPresentation, projection] = await Promise.all([
@@ -672,6 +678,7 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
           allow_minor_refresh: false,
         }).catch(() => null),
       ])
+      const lastPrivatePreview = previewByAgentId.get(agent.id) ?? null
       const publicPresentation = buildAgentPublicAuthorPresentation({
         agent,
         latest_config: latestConfig,
@@ -686,6 +693,15 @@ privateChannelRouter.get('/me/agents', requireHumanAuth, async (req, res) => {
         public_identity: publicPresentation.public_identity,
         public_projection: publicPresentation.public_projection,
         public_proof: publicPresentation.public_proof,
+        last_private_preview: lastPrivatePreview
+          ? {
+              session_id: lastPrivatePreview.session_id,
+              message_id: lastPrivatePreview.message_id,
+              kind: lastPrivatePreview.kind,
+              text: lastPrivatePreview.text,
+              created_at: lastPrivatePreview.created_at.toISOString(),
+            }
+          : null,
       }
     }))
     res.json({

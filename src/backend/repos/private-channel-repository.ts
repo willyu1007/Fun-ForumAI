@@ -42,6 +42,14 @@ export interface PrivateChannelRepository {
   findPendingAgentReply(sessionId: string): Promise<PrivateMessage | null>
   listPendingAgentRepliesOlderThan(cutoff: Date, limit: number): Promise<PrivateMessage[]>
   deleteMessage(id: string): Promise<boolean>
+  findLatestSessionsByAgentIds(
+    agentIds: string[],
+    humanUserId: string,
+  ): Promise<Map<string, PrivateSession>>
+  findLatestMessagesBySessionIds(
+    sessionIds: string[],
+    limitPerSession: number,
+  ): Promise<Map<string, PrivateMessage[]>>
   listMessages(
     sessionId: string,
     opts: PaginationOpts,

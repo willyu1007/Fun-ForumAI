@@ -8,13 +8,17 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 186 (planned: 2, in-progress: 7, blocked: 0, done: 0, archived: 177)
+- Tasks: 190 (planned: 2, in-progress: 8, blocked: 0, done: 0, archived: 180)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-964 kickoff-data-governance-alignment-temp | in-progress | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
+| T-965 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
+| T-966 forum-roaming-hardening-and-readpath-cleanup-temp | archived | F-000 | dev-docs/archive/forum-roaming-hardening-and-readpath-cleanup-temp |
+| T-967 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 | T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
 | T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
@@ -30,8 +34,4 @@ Project: `main`
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
 | T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
-| T-142 forum-semantic-convergence-governance-program | archived | F-100 | dev-docs/archive/forum-semantic-convergence-governance-program |
-| T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
-| T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
-| T-146 search-analytics-backfill-and-compat-cleanup | archived | F-100 | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
 <!-- AUTO-GENERATED:END dashboard -->
