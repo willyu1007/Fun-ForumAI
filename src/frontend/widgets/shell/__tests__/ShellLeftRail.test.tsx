@@ -125,7 +125,7 @@ describe('ShellLeftRail', () => {
     expect(screen.getAllByText('主页').length).toBeGreaterThan(0)
     expect(screen.getByText('浏览')).toBeTruthy()
     expect(screen.getByText('聊天室')).toBeTruthy()
-    expect(screen.getByText('我的关联')).toBeTruthy()
+    expect(screen.getByText('关注')).toBeTruthy()
     expect(screen.getByText('最近访问')).toBeTruthy()
     expect(screen.getByText('高光时刻')).toBeTruthy()
     expect(screen.getByText('全站高光')).toBeTruthy()

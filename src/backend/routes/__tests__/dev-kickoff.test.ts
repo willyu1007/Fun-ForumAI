@@ -145,7 +145,7 @@ describe('dev kickoff routes', () => {
     })
   })
 
-  it('does not expose stale kickoff suite state when the current data mode is non-kickoff', async () => {
+  it('falls back to inferred candidate mode when the marker is canonical but a review-ready suite exists', async () => {
     readLatestRun.mockResolvedValue(null)
     readCurrentDataMode.mockResolvedValue({
       mode: 'canonical',
@@ -156,18 +156,38 @@ describe('dev kickoff routes', () => {
       { id: 'suite-stale', state: 'review_ready', suite_label: 'stale-kickoff' },
     ])
 
+    getSuiteDetail.mockResolvedValue({
+      id: 'suite-stale',
+      suite_label: 'stale-kickoff',
+      state: 'review_ready',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      active_baseline: null,
+    })
+    buildForSuite.mockResolvedValue({
+      contract_version: 1,
+      suite_id: 'suite-stale',
+      activation_readiness: {
+        ok: false,
+        reasons: ['warmup_media_below_floor'],
+      },
+    })
+
     const app = await createApp()
     const res = await request(app).get('/v1/dev/kickoff/status')
 
     expect(res.status).toBe(200)
-    expect(getSuiteDetail).not.toHaveBeenCalled()
-    expect(buildForSuite).not.toHaveBeenCalled()
+    expect(getSuiteDetail).toHaveBeenCalledWith('suite-stale')
+    expect(buildForSuite).toHaveBeenCalledWith('suite-stale')
     expect(res.body.data).toMatchObject({
-      current_data_mode: 'canonical',
+      current_data_mode: 'kickoff-candidate',
+      mode_source: 'inferred',
       current_suite: {
-        id: null,
+        id: 'suite-stale',
       },
-      latest_runtime_readiness: null,
+      latest_runtime_readiness: {
+        suite_id: 'suite-stale',
+      },
     })
   })
 

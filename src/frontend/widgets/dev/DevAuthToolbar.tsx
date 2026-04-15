@@ -47,6 +47,7 @@ export function DevAuthToolbar() {
     ?? kickoffStatusQuery.data?.data.latest_run?.suite_label
     ?? kickoffStatusQuery.data?.data.latest_run?.run_id
     ?? null
+  const isMutating = seedMutation.isPending || kickoffBootstrapMutation.isPending
 
   const handleSeed = async (profile: 'canonical' | 'smoke-minimal') => {
     setToolsOpen(false)
@@ -173,6 +174,7 @@ export function DevAuthToolbar() {
               <PopoverContent align="end" side="top" sideOffset={8} className="w-52 p-1.5">
                 <button
                   type="button"
+                  disabled={isMutating}
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => {
                     void handleSeed('canonical')
@@ -183,6 +185,7 @@ export function DevAuthToolbar() {
                 </button>
                 <button
                   type="button"
+                  disabled={isMutating}
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => {
                     void handleSeed('smoke-minimal')
@@ -193,6 +196,7 @@ export function DevAuthToolbar() {
                 </button>
                 <button
                   type="button"
+                  disabled={isMutating}
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => {
                     void handleKickoffBootstrap('candidate')
@@ -203,6 +207,7 @@ export function DevAuthToolbar() {
                 </button>
                 <button
                   type="button"
+                  disabled={isMutating}
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => {
                     void handleKickoffBootstrap('active')

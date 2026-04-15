@@ -1,7 +1,7 @@
 import { isFrontendFlagEnabled } from './frontend-flags'
 
 export const FRONTEND_LAUNCH_CAPABILITIES = {
-  agentStatsUi: false,
+  agentStatsUi: isFrontendFlagEnabled('VITE_FF_AGENT_STATS_UI'),
   guidance: isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1'),
   guidanceBell: isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1'),
   globalHighlights: true,

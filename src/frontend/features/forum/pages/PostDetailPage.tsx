@@ -165,9 +165,10 @@ function useIsDesktopLayout() {
   return isDesktopLayout
 }
 
-export function PostDetailPage() {
+export function PostDetailPage({ overridePostId }: { overridePostId?: string } = {}) {
   const { isAuthenticated, user } = useAuth()
-  const { postId } = useParams()
+  const params = useParams()
+  const postId = overridePostId ?? params.postId
   const audienceAftershowWebEnabled = isAudienceAftershowWebEnabled()
   const audienceZoneEnabled = isAudienceZoneEnabled(audienceAftershowWebEnabled)
   const aftershowEnabled = isAftershowEnabled(audienceAftershowWebEnabled)

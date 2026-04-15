@@ -5,6 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TabIntro } from '../TabIntro'
 import { useDeleteAgent, useUpdateAgentProfile } from '@/api/hooks/agent'
 
+const frontendCapabilities = vi.hoisted(() => ({
+  agentStatsUiEnabled: true,
+  multimodalAgentMediaEnabled: true,
+}))
+
 const useAgentProfileMock = vi.fn()
 const useAgentRunsMock = vi.fn()
 const useAgentXpMock = vi.fn()
@@ -14,6 +19,14 @@ const useGuidanceSummaryMock = vi.fn()
 const useAgentHighlightsMock = vi.fn()
 const useDeleteAgentMock = vi.fn()
 const useUpdateAgentProfileMock = vi.fn()
+const mockModalState = {
+  viewMode: 'manage',
+  setActiveTab: vi.fn(),
+  setIntroSection: vi.fn(),
+  introSection: 'overview',
+  sourceSessionId: null as string | null,
+  closeModal: vi.fn(),
+}
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
@@ -36,15 +49,7 @@ vi.mock('@/shared/stores/agent-modal-store', () => ({
     sourceSessionId: string | null
     closeModal: ReturnType<typeof vi.fn>
   }) => unknown) => {
-    const state = {
-      viewMode: 'manage',
-      setActiveTab: vi.fn(),
-      setIntroSection: vi.fn(),
-      introSection: 'overview',
-      sourceSessionId: null,
-      closeModal: vi.fn(),
-    }
-    return selector ? selector(state) : state
+    return selector ? selector(mockModalState) : mockModalState
   },
 }))
 
@@ -66,6 +71,8 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 vi.mock('@/features/guidance/feature-flags', () => ({
   isGuidanceEnabled: () => false,
 }))
+
+vi.mock('@/shared/config/frontend-capabilities', () => frontendCapabilities)
 
 vi.mock('@/features/guidance/contextual-guidance', () => ({
   buildAgentSpectatorRail: () => null,
@@ -102,11 +109,11 @@ vi.mock('@/features/agents/components/OwnerLifeOverviewPanel', () => ({
 }))
 
 vi.mock('@/features/agents/components/StyleControlPanel', () => ({
-  StyleControlPanel: () => null,
+  StyleControlPanel: () => <div>style-control-panel</div>,
 }))
 
 vi.mock('@/features/agents/components/InstructionList', () => ({
-  InstructionList: () => null,
+  InstructionList: () => <div>instruction-list</div>,
 }))
 
 vi.mock('@/features/agents/components/PromptOverrideEditor', () => ({
@@ -118,7 +125,7 @@ vi.mock('@/features/agents/components/PrivacySettingsPanel', () => ({
 }))
 
 vi.mock('@/features/agents/components/StatsPanel', () => ({
-  StatsPanel: () => null,
+  StatsPanel: () => <div>stats-panel</div>,
 }))
 
 vi.mock('@/features/agents/components/AgentMediaPanel', () => ({
@@ -215,6 +222,11 @@ function renderTabIntro() {
 describe('TabIntro owner social bio', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    frontendCapabilities.agentStatsUiEnabled = true
+    frontendCapabilities.multimodalAgentMediaEnabled = true
+    mockModalState.viewMode = 'manage'
+    mockModalState.introSection = 'overview'
+    mockModalState.sourceSessionId = null
     vi.mocked(useDeleteAgent).mockImplementation((() => useDeleteAgentMock()) as never)
     vi.mocked(useUpdateAgentProfile).mockImplementation((() => useUpdateAgentProfileMock()) as never)
 
@@ -447,5 +459,54 @@ describe('TabIntro owner social bio', () => {
     const firstButton = screen.getByRole('button', { name: '删除智能体' })
     fireEvent.click(firstButton)
     expect(screen.getByRole('button', { name: '确认删除' })).toBeTruthy()
+  })
+
+  it('does not keep the overview shell visible on non-overview tabs', () => {
+    mockModalState.introSection = 'privacy'
+
+    renderTabIntro()
+
+    const lightHeader = screen.getByTestId('agent-profile-light-header')
+    expect(lightHeader).toBeTruthy()
+    expect(lightHeader.textContent).toContain('在这里处理权限边界、隐私设置和安全相关操作。')
+    expect(screen.queryByTestId('agent-profile-summary')).toBeNull()
+    expect(screen.queryByText('出生日期: 2026/03/27')).toBeNull()
+  })
+
+  it('merges style and instructions into the shaping tab', () => {
+    mockModalState.introSection = 'stats'
+
+    renderTabIntro()
+
+    const tabsNav = screen.getByText('概览').parentElement
+    expect(tabsNav?.textContent).toContain('塑造')
+    expect(tabsNav?.textContent).not.toContain('设定')
+    expect(tabsNav?.textContent).not.toContain('指令')
+    expect(screen.getByText('stats-panel')).toBeTruthy()
+    expect(screen.getByText('style-control-panel')).toBeTruthy()
+    expect(screen.getByText('instruction-list')).toBeTruthy()
+  })
+
+  it('maps legacy style deep-links into the shaping tab', () => {
+    mockModalState.introSection = 'style'
+
+    renderTabIntro()
+
+    const lightHeader = screen.getByTestId('agent-profile-light-header')
+    expect(lightHeader.textContent).toContain('在这里统一处理成长、加点、角色设定和行为指令。')
+    expect(screen.getByText('stats-panel')).toBeTruthy()
+    expect(screen.getByText('style-control-panel')).toBeTruthy()
+    expect(screen.getByText('instruction-list')).toBeTruthy()
+  })
+
+  it('hides the stats panel when the stats UI capability is off', () => {
+    frontendCapabilities.agentStatsUiEnabled = false
+    mockModalState.introSection = 'stats'
+
+    renderTabIntro()
+
+    expect(screen.queryByText('stats-panel')).toBeNull()
+    expect(screen.getByText('style-control-panel')).toBeTruthy()
+    expect(screen.getByText('instruction-list')).toBeTruthy()
   })
 })

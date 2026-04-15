@@ -48,11 +48,11 @@ import {
 } from '@/features/private-chat/lib/capture-display-frame'
 
 const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
-  { id: 'intro', icon: User, label: '介绍与管理' },
-  { id: 'chat', icon: MessageSquare, label: '主聊天' },
+  { id: 'intro', icon: User, label: '档案' },
+  { id: 'chat', icon: MessageSquare, label: '对话' },
   { id: 'moments', icon: Compass, label: '动态' },
-  { id: 'history', icon: BookOpen, label: '成长编年史' },
-  { id: 'social', icon: Users, label: '社会关系' },
+  { id: 'social', icon: Users, label: '关系' },
+  { id: 'history', icon: BookOpen, label: '编年史' },
 ]
 
 const MIN_W_READONLY = 608

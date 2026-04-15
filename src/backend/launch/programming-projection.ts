@@ -11,6 +11,7 @@ import {
   deriveFormatKindFromContentKind,
   normalizeContentKind,
   normalizeEditorialShelfId,
+  normalizeStorylineState,
   type ContentKind,
   type ContentSemanticProjection,
   type EditorialShelfId,
@@ -113,10 +114,11 @@ export function buildLaunchProgrammingProjection(input: {
   const storylineHook = readString(launchStoryline?.hook)
     ?? payload?.episode_brief.open_loops.find((item) => item.trim().length > 0)
     ?? storylineTitle
-  const storylineState = resolveStorylineState({
-    phase: input.scene_metadata?.phase,
-    has_aftershow_artifact: input.has_aftershow_artifact,
-  })
+  const storylineState = normalizeStorylineState(readString(launchStoryline?.state))
+    ?? resolveStorylineState({
+      phase: input.scene_metadata?.phase,
+      has_aftershow_artifact: input.has_aftershow_artifact,
+    })
   const creatorNoteProjection = resolveLaunchCreatorNoteProjection({
     community_slug: input.community_slug,
     phase: input.scene_metadata?.phase ?? payload?.scene_metadata.phase ?? null,

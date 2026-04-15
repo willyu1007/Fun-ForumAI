@@ -23,6 +23,15 @@ describe('frontend-flags', () => {
     expect(readFrontendFlagSource('VITE_FF_HOME_PROGRAMMING_V1')).toBe('vite-env')
   })
 
+  it('reads the stats UI env override when it is provided', async () => {
+    vi.stubEnv('VITE_FF_AGENT_STATS_UI', 'true')
+
+    const { isFrontendFlagEnabled, readFrontendFlagSource } = await import('../frontend-flags')
+
+    expect(isFrontendFlagEnabled('VITE_FF_AGENT_STATS_UI')).toBe(true)
+    expect(readFrontendFlagSource('VITE_FF_AGENT_STATS_UI')).toBe('vite-env')
+  })
+
   it('exposes read-only debug entries for the panel', async () => {
     vi.stubEnv('VITE_FF_CHATROOM_STAGING_HOLD_V1', 'true')
 

@@ -200,3 +200,103 @@ node .ai/scripts/ctl-project-governance.mjs sync --apply --project main
   - `config/launch/launch_programming_schedule.v1.yaml` 继续作为 daypart / slot contract
   - `roadmap.md` 中的 local-llm-assisted workflow 继续作为 assistant 角色边界
 - 新阶段已从“链路可用性”转到“内容质量重构”，task 状态将重新回到 `in-progress`
+
+## 2026-04-14 Bootstrap Concurrency Verification
+
+### Commands
+
+```bash
+pnpm vitest src/backend/services/__tests__/kickoff-bootstrap-service.test.ts
+pnpm vitest src/backend/routes/__tests__/dev-seed.test.ts
+pnpm vitest src/frontend/widgets/dev/__tests__/DevAuthToolbar.test.tsx
+curl -s -o /tmp/kickoff-bootstrap-1.json -w '%{http_code}' -X POST http://localhost:4000/v1/dev/kickoff/bootstrap -H 'content-type: application/json' --data '{"mode":"active","profile_id":"local-llm-assisted-runtime-simulation"}'
+curl -s -o /tmp/kickoff-bootstrap-2.json -w '%{http_code}' -X POST http://localhost:4000/v1/dev/kickoff/bootstrap -H 'content-type: application/json' --data '{"mode":"active","profile_id":"local-llm-assisted-runtime-simulation"}'
+```
+
+### Outcomes
+
+- 回归测试：`pass`
+  - `kickoff-bootstrap-service`：第二条 bootstrap 会被拒绝，不再并发 reset/create-suite
+  - `dev-seed route`：共享锁被占用时返回 `409 CONFLICT`
+  - `DevAuthToolbar`：mutation pending 时 destructive 动作按钮被禁用
+- 实机并发验证：
+  - 第二条 `POST /v1/dev/kickoff/bootstrap` 已稳定返回 `409`
+  - 本地不会再因为双击 / 连点再造并发 kickoff run
+- 额外定位结论：
+  - 先前的 FK 失败并不只是媒体层单点故障，还和 bootstrap 期间有其他 dev data 操作插入有关
+  - 后续本地 kickoff 验收，必须把 `dev/seed` / `kickoff/bootstrap` 视作同一条 destructive lane
+
+## 2026-04-14 Narrative Kickoff Final Verification
+
+### Commands
+
+```bash
+pnpm vitest src/backend/launch/__tests__/programming-contracts.test.ts
+pnpm vitest src/backend/services/__tests__/warmup-governance-service.test.ts
+
+curl -s -X POST http://localhost:4000/v1/dev/kickoff/bootstrap \
+  -H 'Content-Type: application/json' \
+  --data '{"mode":"active","profile_id":"local-llm-assisted-runtime-simulation"}'
+
+curl -s http://localhost:4000/v1/dev/kickoff/status
+
+TOKEN=$(node -e "process.stdout.write(Buffer.from(JSON.stringify({userId:'dev-admin-001',email:'dev-admin-001@dev.local',role:'admin'})).toString('base64url'))")
+curl -s http://localhost:4000/v1/admin/launch/programming-ops -H "Authorization: Bearer $TOKEN"
+
+psql 'postgresql://yurui@localhost:5432/llm_forum_dev' -At -F $'\t' -c "
+select 'warmup_suites', count(*) from warmup_suites
+union all select 'warm_start_batches', count(*) from warm_start_batches
+union all select 'active_baselines', count(*) from active_baselines
+union all select 'posts', count(*) from posts
+union all select 'threads', count(*) from public_stage_threads
+union all select 'turns', count(*) from public_stage_turns
+union all select 'votes', count(*) from votes
+union all select 'media_assets', count(*) from media_assets;
+"
+```
+
+### Outcomes
+
+- 语义修复回归：`pass`
+  - `programming-contracts.test.ts` 新增显式 `storyline.state=callback` 回归，通过
+  - `warmup-governance-service.test.ts` 继续通过，未引入 suite-level 回归
+- 最终成功 run：
+  - `run_id = 2026-04-14T15-19-41-652Z-362f1e0c`
+  - `suite_id = cmnyrpcu00000pwnoy5gxks4q`
+  - `kickoff_batch_id = cmnyrpcu20001pwnot7digk0f`
+  - `warmup_batch_id = cmnyrzycu00xjpwno8wx5zh5d`
+  - `baseline_id = cmnys45zc015ipwnoww8u4n2v`
+- `/v1/dev/kickoff/status`：`pass`
+  - `current_data_mode = kickoff-active`
+  - `activation_readiness.ok = true`
+  - `key_communities_ready = true`
+  - `key_shelves_ready = true`
+  - `media_access_ok = true`
+  - `aftershow_pipeline_ok = true`
+  - `allow_public_growth = true`
+- `/v1/admin/launch/programming-ops`：`pass`
+  - `daypart_readiness` 四个时段全部 `ok = true`
+  - `community_supply_floor` 关键社区全部 `ok = true`
+  - 之前失败的两个社区已被修正：
+    - `persona-chaos.continuity_callbacks = 1`
+    - `creator-relationship.continuity_callbacks = 1`
+- 数据规模与媒体覆盖：`pass`
+  - `posts = 14`
+  - `threads = 14`
+  - `turns = 44`
+  - `votes = 131`
+  - `media_assets = 7`
+  - `communities = 12`
+  - `media_coverage_ratio = 0.5`
+
+### Closure Assessment
+
+- kickoff 工程链：`pass`
+- 内容治理链：`pass`
+- runtime programming health：`pass`
+- local kickoff 可消费性：`pass`
+
+当前结论：
+
+- 这份任务包的目标已经完成：本地 kickoff 现在既能完整生成，也能通过 runtime programming / admission / media / aftershow 质量门。
+- 后续如果继续推进，只属于“增量内容优化”或“staging 扩展验证”，不再是本任务的完成条件。

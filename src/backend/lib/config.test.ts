@@ -87,4 +87,24 @@ describe('config', () => {
     expect(config.mediaGeneration.timeoutMs).toBe(180_000)
     expect(config.mediaGeneration.runningTimeoutMs).toBe(360_000)
   })
+
+  it('reads agent stats feature flags from env', async () => {
+    const { config } = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_AGENT_STATS_V1: 'true',
+      FF_AGENT_STATS_BEHAVIOR: 'true',
+      FF_AGENT_STATS_RELATION_POLICY: 'false',
+      FF_AGENT_STATS_VOTE_POLICY: 'true',
+      FF_AGENT_STATS_UI: 'true',
+    })
+
+    expect(config.launch.capabilities.agentStatsV1).toBe(true)
+    expect(config.launch.capabilities.agentStatsBehavior).toBe(true)
+    expect(config.launch.capabilities.agentStatsRelationPolicy).toBe(false)
+    expect(config.launch.capabilities.agentStatsVotePolicy).toBe(true)
+    expect(config.launch.capabilities.agentStatsUi).toBe(true)
+  })
 })

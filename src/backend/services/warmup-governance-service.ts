@@ -401,6 +401,9 @@ function buildReviewFreshness(
 }
 
 function shouldAttachMedia(spec: LaunchWarmStartSpec): boolean {
+  if (spec.visual_asset_path) {
+    return true
+  }
   if (spec.attach_media !== undefined) {
     return spec.attach_media
   }
@@ -411,6 +414,9 @@ function shouldAttachMedia(spec: LaunchWarmStartSpec): boolean {
 }
 
 function pickLocalWarmupMediaAsset(spec: LaunchWarmStartSpec): string {
+  if (spec.visual_asset_path) {
+    return spec.visual_asset_path
+  }
   let hash = 0
   for (const char of spec.community_slug) {
     hash = (hash * 31 + char.charCodeAt(0)) % LOCAL_WARMUP_MEDIA_ASSETS.length

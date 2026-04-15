@@ -98,4 +98,29 @@ describe('dev seed route', () => {
       profile: 'canonical',
     })
   })
+
+  it('returns 409 when another dev data operation is already running', async () => {
+    const app = await createApp()
+    const { devDataOperationLock } = await import('../../services/dev-data-operation-lock.js')
+    const token = devDataOperationLock.acquire({
+      kind: 'kickoff_bootstrap',
+      label: 'run-123',
+    })
+
+    try {
+      const res = await request(app)
+        .post('/v1/dev/seed')
+        .send({
+          profile: 'canonical',
+          reset_before_seed: true,
+        })
+
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('CONFLICT')
+      expect(runDevSeed).not.toHaveBeenCalled()
+      expect(execFileSync).not.toHaveBeenCalled()
+    } finally {
+      devDataOperationLock.release(token)
+    }
+  })
 })

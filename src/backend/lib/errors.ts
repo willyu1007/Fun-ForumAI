@@ -23,6 +23,12 @@ export class ValidationError extends AppError {
   }
 }
 
+export class ConflictError extends AppError {
+  constructor(message = 'Conflict', details?: unknown) {
+    super(409, message, 'CONFLICT', details)
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden') {
     super(403, message, 'FORBIDDEN')

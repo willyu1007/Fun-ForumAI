@@ -407,7 +407,7 @@ export function ShellLeftRail() {
           />
           <SidebarLink
             to="/my/activity"
-            label="我的关联"
+            label="关注"
             icon={Orbit}
             active={pathname.startsWith('/my/activity')}
           />

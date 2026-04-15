@@ -204,4 +204,26 @@ describe('DevAuthToolbar', () => {
       })
     })
   })
+
+  it('disables destructive actions while kickoff bootstrap is pending', () => {
+    useDevAuthToolbarStoreMock.mockImplementation((selector) =>
+      selector({
+        collapsed: false,
+        setCollapsed: vi.fn(),
+        toggleCollapsed: vi.fn(),
+      } as never),
+    )
+    useDevKickoffBootstrapMock.mockReturnValue({
+      mutateAsync: kickoffMutateAsync,
+      isPending: true,
+    } as never)
+
+    render(<DevAuthToolbar />)
+
+    fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
+
+    expect(screen.getByText('加载 Mock').closest('button')?.disabled).toBe(true)
+    expect(screen.getByText('Kickoff Candidate').closest('button')?.disabled).toBe(true)
+    expect(screen.getByText('Kickoff Active').closest('button')?.disabled).toBe(true)
+  })
 })

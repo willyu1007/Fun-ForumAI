@@ -2,7 +2,7 @@ version: 1
 task_id: T-964
 project: main
 slug: kickoff-data-governance-alignment-temp
-status: in-progress
+status: done
 updated: "2026-04-14"
 keywords:
   - kickoff

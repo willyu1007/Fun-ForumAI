@@ -1382,12 +1382,12 @@ tasks:
     dev_docs_path: dev-docs/archive/batch-slice-governance-and-review-console-v1
     updated: 2026-04-13
   - id: T-201
-    slug: llm-matrix-refresh-and-media-fallback-v1
-    status: in-progress
+    slug: t-201-following-feed-revamp
+    status: planned
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/llm-matrix-refresh-and-media-fallback-v1
-    updated: 2026-04-14
+    dev_docs_path: dev-docs/active/t-201-following-feed-revamp
+    updated: 2026-04-15
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
@@ -1772,11 +1772,11 @@ tasks:
     updated: 2026-04-13
   - id: T-964
     slug: kickoff-data-governance-alignment-temp
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/kickoff-data-governance-alignment-temp
-    updated: 2026-04-14
+    updated: 2026-04-15
   - id: T-965
     slug: forum-post-level-roaming-definition-temp
     status: archived
@@ -1798,3 +1798,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/live-e2e-regression-and-service-split-temp
     updated: 2026-04-14
+  - id: T-968
+    slug: kickoff-planning-requirements-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-planning-requirements-v1
+    updated: 2026-04-15
+  - id: T-969
+    slug: agent-stats-capability-chain-reenable-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-stats-capability-chain-reenable-v1
+    updated: 2026-04-15

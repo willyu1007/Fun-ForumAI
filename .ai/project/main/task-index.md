@@ -143,7 +143,7 @@ Project: `main`
 | T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
 | T-159 batch-slice-governance-and-review-console-v1 | archived | F-000 | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
-| T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
+| T-201 t-201-following-feed-revamp | planned | F-000 | dev-docs/active/t-201-following-feed-revamp |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | F-000 | dev-docs/archive/owner-mindset-residual-risk-closure |
@@ -196,8 +196,10 @@ Project: `main`
 | T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 | T-962 warmup-richness-admission-gap-closure-v1 | in-progress | F-000 | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
 | T-963 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
-| T-964 kickoff-data-governance-alignment-temp | in-progress | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
+| T-964 kickoff-data-governance-alignment-temp | done | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
 | T-965 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-966 forum-roaming-hardening-and-readpath-cleanup-temp | archived | F-000 | dev-docs/archive/forum-roaming-hardening-and-readpath-cleanup-temp |
 | T-967 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
+| T-968 kickoff-planning-requirements-v1 | in-progress | F-000 | dev-docs/active/kickoff-planning-requirements-v1 |
+| T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 <!-- AUTO-GENERATED:END task-index -->

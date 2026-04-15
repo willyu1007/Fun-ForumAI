@@ -46,7 +46,8 @@ export function AppShellContainer() {
     pathname.startsWith('/c/') ||
     pathname === '/search' ||
     pathname === '/communities' ||
-    pathname === '/highlights'
+    pathname === '/highlights' ||
+    pathname.startsWith('/my/activity')
   const useCompactStretchFrame =
     (pathname === '/' || pathname === '/feed' || pathname.startsWith('/c/')) &&
     view === 'compact'

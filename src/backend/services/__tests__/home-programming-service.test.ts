@@ -125,6 +125,12 @@ describe('HomeProgrammingService', () => {
                 storyline_id: 'episode-creator-note',
                 storyline_title: '种草线',
                 storyline_state: 'opening',
+                media: [{
+                  id: 'media-post-creator-note',
+                  media_url: 'https://example.com/post-creator-note.jpg',
+                  mime_type: 'image/jpeg',
+                  alt_text: 'post-creator-note',
+                }],
               }),
             ],
             next_cursor: 'cursor-2',
@@ -262,24 +268,50 @@ describe('HomeProgrammingService', () => {
                   note_template_id: 'recommendation_note',
                   cover_mode: 'comparison_cover',
                   heat_score: 18,
+                  media: [{
+                    id: 'media-post-note-recommendation',
+                    media_url: 'https://example.com/post-note-recommendation.jpg',
+                    mime_type: 'image/jpeg',
+                    alt_text: 'post-note-recommendation',
+                  }],
                 })],
                 next_cursor: null,
               }
             }
             if (opts?.communityId === 'community-creator-relationship') {
               return {
-                items: [makePost({
-                  id: 'post-note-relationship',
-                  community_id: 'community-creator-relationship',
-                  community_slug: 'creator-relationship',
-                  community_name: '关系博主部',
-                  title: '关系博主部补进首页的创作者笔记',
-                  content_kind: 'note_entry',
-                  editorial_shelf_id: 'notes_today',
-                  note_template_id: 'relationship_observation_note',
-                  cover_mode: 'relationship_map_card',
-                  heat_score: 16,
-                })],
+                items: [
+                  makePost({
+                    id: 'post-note-relationship',
+                    community_id: 'community-creator-relationship',
+                    community_slug: 'creator-relationship',
+                    community_name: '关系博主部',
+                    title: '关系博主部补进首页的创作者笔记',
+                    content_kind: 'note_entry',
+                    editorial_shelf_id: 'notes_today',
+                    note_template_id: 'relationship_observation_note',
+                    cover_mode: 'relationship_map_card',
+                    heat_score: 16,
+                    media: [{
+                      id: 'media-post-note-relationship',
+                      media_url: 'https://example.com/post-note-relationship.jpg',
+                      mime_type: 'image/jpeg',
+                      alt_text: 'post-note-relationship',
+                    }],
+                  }),
+                  makePost({
+                    id: 'post-note-relationship-no-image',
+                    community_id: 'community-creator-relationship',
+                    community_slug: 'creator-relationship',
+                    community_name: '关系博主部',
+                    title: '无图创作者笔记不应进入首页',
+                    content_kind: 'note_entry',
+                    editorial_shelf_id: 'notes_today',
+                    note_template_id: 'relationship_observation_note',
+                    cover_mode: 'relationship_map_card',
+                    heat_score: 99,
+                  }),
+                ],
                 next_cursor: null,
               }
             }
@@ -382,6 +414,140 @@ describe('HomeProgrammingService', () => {
         'post-note-recommendation',
         'post-note-relationship',
       ])
+      expect(notesToday.find((item) => item.id === 'post-note-relationship-no-image')).toBeUndefined()
+    } finally {
+      featureFlags.homeProgrammingV1 = originalFlag
+    }
+  })
+
+  it('allows conflict and continuation posts to remain in hot_feed_continuation', async () => {
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
+    const originalFlag = featureFlags.homeProgrammingV1
+    featureFlags.homeProgrammingV1 = true
+
+    try {
+      const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
+      const service = new HomeProgrammingService({
+        forumReadService: {
+          getFeed: async () => ({
+            items: [
+              makePost({
+                id: 'post-main',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '头部主线',
+                hero_eligible: true,
+                heat_score: 90,
+              }),
+              makePost({
+                id: 'post-filler-1',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '普通热帖一',
+                heat_score: 84,
+              }),
+              makePost({
+                id: 'post-filler-2',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '普通热帖二',
+                heat_score: 80,
+              }),
+              makePost({
+                id: 'post-filler-3',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '普通热帖三',
+                heat_score: 78,
+              }),
+              makePost({
+                id: 'post-conflict',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '冲突升级仍应出现在热门广场',
+                storyline_id: 'episode-conflict',
+                storyline_state: 'escalating',
+                heat_score: 82,
+              }),
+              makePost({
+                id: 'post-storyline',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '剧情追更也允许重复出现',
+                storyline_id: 'episode-storyline',
+                storyline_state: 'callback',
+                heat_score: 76,
+              }),
+              makePost({
+                id: 'post-note',
+                community_id: 'community-creator-note',
+                community_slug: 'creator-recommendation',
+                community_name: '种草研究所',
+                title: '创作者笔记仍然不应回流',
+                content_kind: 'note_entry',
+                editorial_shelf_id: 'notes_today',
+                note_template_id: 'comparison_note',
+                media: [{
+                  id: 'media-post-note-dup',
+                  media_url: 'https://example.com/post-note-dup.jpg',
+                  mime_type: 'image/jpeg',
+                  alt_text: 'post-note-dup',
+                }],
+                heat_score: 88,
+              }),
+            ],
+            next_cursor: null,
+          }),
+          getPost: async () => {
+            throw new Error('unexpected getPost')
+          },
+          getThreads: async () => ({
+            items: [],
+            next_cursor: null,
+          }),
+        } as never,
+        globalHighlightsService: {
+          collectToday: async () => ({
+            hot_threads: [],
+            featured_agents: [],
+            controversy: [],
+            wildcard_cameos: [],
+            meta: {
+              range: 'today',
+              generated_at: '2026-03-31T00:00:00.000Z',
+              source: 'global-highlights-v1',
+            },
+          }),
+        } as never,
+        aftershowService: {
+          getLatestByPost: async () => ({
+            artifact: null,
+            callouts: [],
+          }),
+        } as never,
+        communityRepo: {
+          findById: (communityId: string) => ({
+            id: communityId,
+            slug: communityId === 'community-creator-note' ? 'creator-recommendation' : 'hot-arena',
+            name: communityId === 'community-creator-note' ? '种草研究所' : '热点擂台',
+            rules_json: hotArenaRules,
+          }),
+          findBySlug: () => null,
+        } as never,
+      })
+
+      const payload = await service.getHome()
+
+      expect(payload.hot_feed_continuation.items.map((item) => item.id)).toContain('post-conflict')
+      expect(payload.hot_feed_continuation.items.map((item) => item.id)).toContain('post-storyline')
+      expect(payload.hot_feed_continuation.items.map((item) => item.id)).not.toContain('post-main')
+      expect(payload.hot_feed_continuation.items.map((item) => item.id)).not.toContain('post-note')
     } finally {
       featureFlags.homeProgrammingV1 = originalFlag
     }
@@ -816,19 +982,174 @@ describe('HomeProgrammingService', () => {
     }
   })
 
-  it('injects tonight_programming slots only when programming ops is enabled', async () => {
+  it('builds tonight_programming from soon-to-develop posts', async () => {
     const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     const originalHomeProgrammingFlag = featureFlags.homeProgrammingV1
-    const originalProgrammingOpsFlag = featureFlags.programmingOpsV1
     featureFlags.homeProgrammingV1 = true
-    featureFlags.programmingOpsV1 = true
 
     try {
       const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
       const service = new HomeProgrammingService({
         forumReadService: {
           getFeed: async () => ({
-            items: [],
+            items: [
+              makePost({
+                id: 'post-tonight-opening',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '今晚大概率会先有这条进展',
+                storyline_id: 'episode-opening',
+                storyline_state: 'opening',
+                thread_turn_count: 7,
+                participant_count: 5,
+                human_vote_up: 4,
+                agent_vote_up: 6,
+                heat_score: 84,
+              }),
+              makePost({
+                id: 'post-tonight-callback',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '已经有回响的后续帖子',
+                storyline_id: 'episode-callback',
+                storyline_state: 'callback',
+                thread_turn_count: 6,
+                participant_count: 4,
+                human_vote_up: 3,
+                agent_vote_up: 5,
+                heat_score: 80,
+              }),
+              makePost({
+                id: 'post-tonight-followup-1',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '下一条也快有动静',
+                storyline_id: 'episode-followup-1',
+                storyline_state: 'opening',
+                thread_turn_count: 5,
+                participant_count: 3,
+                human_vote_up: 2,
+                agent_vote_up: 4,
+                heat_score: 70,
+              }),
+              makePost({
+                id: 'post-tonight-followup-2',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '这条也值得先盯住',
+                storyline_id: 'episode-followup-2',
+                storyline_state: 'callback',
+                thread_turn_count: 4,
+                participant_count: 3,
+                human_vote_up: 2,
+                agent_vote_up: 3,
+                heat_score: 68,
+              }),
+              makePost({
+                id: 'post-tonight-filler-1',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '这条也快有后续动静',
+                thread_turn_count: 3,
+                participant_count: 2,
+                human_vote_up: 2,
+                agent_vote_up: 2,
+                heat_score: 54,
+              }),
+              makePost({
+                id: 'post-tonight-filler-2',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '这条也值得稍后盯一下',
+                thread_turn_count: 2,
+                participant_count: 2,
+                human_vote_up: 1,
+                agent_vote_up: 2,
+                heat_score: 50,
+              }),
+              makePost({
+                id: 'post-tonight-filler-3',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '再往后也可能有新进展',
+                thread_turn_count: 2,
+                participant_count: 1,
+                human_vote_up: 1,
+                agent_vote_up: 1,
+                heat_score: 46,
+              }),
+              makePost({
+                id: 'post-tonight-filler-4',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '更后面的新进展候选一',
+                thread_turn_count: 2,
+                participant_count: 1,
+                human_vote_up: 1,
+                agent_vote_up: 1,
+                heat_score: 42,
+              }),
+              makePost({
+                id: 'post-tonight-filler-5',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '更后面的新进展候选二',
+                thread_turn_count: 2,
+                participant_count: 1,
+                human_vote_up: 1,
+                agent_vote_up: 1,
+                heat_score: 40,
+              }),
+              makePost({
+                id: 'post-tonight-filler-6',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '更后面的新进展候选三',
+                thread_turn_count: 1,
+                participant_count: 1,
+                human_vote_up: 1,
+                agent_vote_up: 1,
+                heat_score: 38,
+              }),
+              makePost({
+                id: 'post-tonight-filler-7',
+                community_id: 'community-hot',
+                community_slug: 'hot-arena',
+                community_name: '热点擂台',
+                title: '更后面的新进展候选四',
+                thread_turn_count: 1,
+                participant_count: 1,
+                human_vote_up: 1,
+                agent_vote_up: 1,
+                heat_score: 36,
+              }),
+              makePost({
+                id: 'post-note-excluded',
+                community_id: 'community-creator-note',
+                community_slug: 'creator-recommendation',
+                community_name: '种草研究所',
+                title: '创作者笔记不应进入新动向',
+                content_kind: 'note_entry',
+                editorial_shelf_id: 'notes_today',
+                note_template_id: 'comparison_note',
+                media: [{
+                  id: 'media-post-note-excluded',
+                  media_url: 'https://example.com/post-note-excluded.jpg',
+                  mime_type: 'image/jpeg',
+                  alt_text: 'post-note-excluded',
+                }],
+              }),
+            ],
             next_cursor: null,
           }),
           getPost: async () => {
@@ -861,40 +1182,12 @@ describe('HomeProgrammingService', () => {
         communityRepo: {
           findById: (communityId: string) => ({
             id: communityId,
-            slug: 'hot-arena',
-            name: '热点擂台',
+            slug: communityId === 'community-creator-note' ? 'creator-recommendation' : 'hot-arena',
+            name: communityId === 'community-creator-note' ? '种草研究所' : '热点擂台',
             rules_json: hotArenaRules,
           }),
           findBySlug: () => null,
         } as never,
-        launchProgrammingOpsService: {
-          getHomeItems: async () => ([
-            {
-              id: 'programming-slot:main_conflict_slot',
-              item_kind: 'programming_slot',
-              content_kind: 'programming_slot',
-              slot_name: 'main_conflict_slot',
-              daypart_id: 'evening_prime',
-              daypart_label: '晚高峰主冲突',
-              daypart_time_range: '19:00-23:00',
-              community_slug: 'hot-arena',
-              community_name: '热点擂台',
-              objective: '形成当天主线、节目高点和 highlight candidate。',
-              expected_output_summary: '主线帖 1 条 · 进入高光候选',
-              editorial_shelf_id: 'tonight_programming',
-              surface_kind: 'home_root_card',
-              card_mode: 'program_card',
-              thumbnail_policy: 'required_if_available',
-              lead_seats: [{
-                agent_id: 'sys_anchor_hot_01',
-                display_name: '灼灼',
-                role: 'anchor',
-              }],
-              next_jump_target: '/c/hot-arena',
-              assignment_source: 'recommended_contract',
-            },
-          ]),
-        },
       })
 
       const payload = await service.getHome()
@@ -903,14 +1196,18 @@ describe('HomeProgrammingService', () => {
       expect(tonightShelf).toMatchObject({
         collapsed: false,
       })
+      expect(tonightShelf?.items.map((item) => item.id)).toEqual([
+        'post-tonight-filler-5',
+        'post-tonight-filler-6',
+        'post-tonight-filler-7',
+      ])
       expect(tonightShelf?.items[0]).toMatchObject({
-        item_kind: 'programming_slot',
-        slot_name: 'main_conflict_slot',
-        community_name: '热点擂台',
+        item_kind: 'post',
+        title: '更后面的新进展候选二',
+        next_jump_target: '/posts/post-tonight-filler-5',
       })
     } finally {
       featureFlags.homeProgrammingV1 = originalHomeProgrammingFlag
-      featureFlags.programmingOpsV1 = originalProgrammingOpsFlag
     }
   })
 
@@ -955,6 +1252,12 @@ describe('HomeProgrammingService', () => {
                 note_template_id: 'comparison_note',
                 storyline_id: 'episode-creator-note',
                 storyline_state: 'opening',
+                media: [{
+                  id: 'media-post-creator-note-focus',
+                  media_url: 'https://example.com/post-creator-note-focus.jpg',
+                  mime_type: 'image/jpeg',
+                  alt_text: 'post-creator-note-focus',
+                }],
               }),
               makePost({
                 id: 'post-match',

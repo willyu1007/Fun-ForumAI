@@ -24,6 +24,12 @@ function safeFloat(raw: string | undefined, fallback: number): number {
   return Number.isNaN(n) ? fallback : n
 }
 
+function readBooleanFlag(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === 'true') return true
+  if (raw === 'false') return false
+  return fallback
+}
+
 function parseStringList(raw: string | undefined): string[] {
   if (!raw) return []
   return raw
@@ -142,11 +148,11 @@ const launchCapabilities = {
   publicObservationMemory: true,
   socialGraphEffective: true,
   socialGraphExplainer: false,
-  agentStatsV1: false,
-  agentStatsBehavior: false,
-  agentStatsRelationPolicy: false,
-  agentStatsVotePolicy: false,
-  agentStatsUi: false,
+  agentStatsV1: readBooleanFlag(env.FF_AGENT_STATS_V1, false),
+  agentStatsBehavior: readBooleanFlag(env.FF_AGENT_STATS_BEHAVIOR, false),
+  agentStatsRelationPolicy: readBooleanFlag(env.FF_AGENT_STATS_RELATION_POLICY, false),
+  agentStatsVotePolicy: readBooleanFlag(env.FF_AGENT_STATS_VOTE_POLICY, false),
+  agentStatsUi: readBooleanFlag(env.FF_AGENT_STATS_UI, false),
   humanParticipationV1: true,
   multimodalAgentMediaV1: true,
   mediaGenerationV1: true,

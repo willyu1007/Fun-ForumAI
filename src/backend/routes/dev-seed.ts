@@ -3,7 +3,9 @@ import { Router, type IRouter } from 'express'
 import { config } from '../lib/config.js'
 import { runDevSeed } from '../dev/dev-seed-runner.js'
 import { assertSafeDevSeedResetEnvironment } from '../dev/dev-seed-reset.js'
+import { AppError } from '../lib/errors.js'
 import { kickoffRunArtifactService, warmPersistenceState } from '../container.js'
+import { devDataOperationLock } from '../services/dev-data-operation-lock.js'
 
 const devSeedRouter: IRouter = Router()
 
@@ -40,9 +42,17 @@ devSeedRouter.post('/dev/seed', async (req, res) => {
     return
   }
 
+  let lockToken: symbol | null = null
   try {
     const profile = readProfile(req.body?.profile)
     const resetBeforeSeed = readResetBeforeSeed(req.body?.reset_before_seed)
+    lockToken = devDataOperationLock.acquire({
+      kind: 'dev_seed',
+      label: `${profile}${resetBeforeSeed ? ':reset' : ''}`,
+    })
+    devDataOperationLock.update(lockToken, {
+      label: `${profile}${resetBeforeSeed ? ':reset' : ''}`,
+    })
     if (resetBeforeSeed) {
       resetDatabaseBeforeSeed()
       await warmPersistenceState()
@@ -61,8 +71,22 @@ devSeedRouter.post('/dev/seed', async (req, res) => {
       },
     })
   } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        error: {
+          code: err.code,
+          message: err.message,
+          ...(err.details !== undefined ? { details: err.details } : {}),
+        },
+      })
+      return
+    }
     const message = err instanceof Error ? err.message : 'Unknown error'
     res.status(500).json({ error: { code: 'SEED_ERROR', message } })
+  } finally {
+    if (lockToken) {
+      devDataOperationLock.release(lockToken)
+    }
   }
 })
 

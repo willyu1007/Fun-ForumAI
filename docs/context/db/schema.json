@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-12T22:29:02.404Z",
+  "updatedAt": "2026-04-14T22:03:49.489Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -9471,6 +9471,15 @@
           "references": []
         },
         {
+          "field": "humanFollowers",
+          "to": "HumanCommunityFollow",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "incubationJobs",
           "to": "IncubationJob",
           "optional": false,
@@ -15238,6 +15247,222 @@
       ]
     },
     {
+      "name": "HumanCommunityFollow",
+      "dbName": "human_community_follows",
+      "schema": null,
+      "columns": [
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "community",
+          "to": "Community",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "communityId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "user",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "userId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "userId",
+            "communityId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "HumanThreadFollow",
+      "dbName": "human_thread_follows",
+      "schema": null,
+      "columns": [
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "threadId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "thread",
+          "to": "PublicStageThread",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "threadId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "user",
+          "to": "HumanUser",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "threadId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "userId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "userId",
+            "threadId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "HumanUser",
       "dbName": "human_users",
       "schema": null,
@@ -15457,6 +15682,15 @@
           "references": []
         },
         {
+          "field": "communityFollows",
+          "to": "HumanCommunityFollow",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "configApprovalEvents",
           "to": "CommunityConfigApproval",
           "optional": false,
@@ -15637,6 +15871,15 @@
           "optional": false,
           "list": true,
           "relationName": "CommunityProposalSubmittedBy",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "threadFollows",
+          "to": "HumanThreadFollow",
+          "optional": false,
+          "list": true,
+          "relationName": null,
           "fields": [],
           "references": []
         },
@@ -23234,6 +23477,15 @@
           "references": [
             "id"
           ]
+        },
+        {
+          "field": "humanFollowers",
+          "to": "HumanThreadFollow",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
         },
         {
           "field": "post",

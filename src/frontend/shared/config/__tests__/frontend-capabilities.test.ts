@@ -21,4 +21,12 @@ describe('frontend-capabilities', () => {
 
     expect(chatroomStagingHoldEnabled).toBe(true)
   })
+
+  it('enables agent stats UI when the VITE flag is true', async () => {
+    vi.stubEnv('VITE_FF_AGENT_STATS_UI', 'true')
+
+    const { agentStatsUiEnabled } = await import('../frontend-capabilities')
+
+    expect(agentStatsUiEnabled).toBe(true)
+  })
 })

@@ -113,3 +113,33 @@
   - 回到干净 `canonical` 基线
 - 本阶段新增内容：
   - `06-content-redesign.md`：新的 kickoff 内容蓝图，明确导演主线、writer room 节奏、视觉 shot list、质量门、以及后续实现落点
+
+## 2026-04-14 Bootstrap Concurrency Hardening
+
+- 用户重新触发 `Kickoff Active` 时，调控台再次显示 `media_assets_steward_agent_id_fkey` 失败。
+- 复盘发现，这类失败不只是媒体写入单点问题，还可能来自 **bootstrap 期间有别的 dev data 操作把数据库切走**。
+- 本次定位拿到了明确证据：
+  - 一次失败 run 的时间窗内，服务端同时出现了 `POST /v1/dev/seed 200`
+  - 这会把 bootstrap 刚 reset + launch seed 的状态改回别的 data mode，最终让 `create_suite` 在媒体写入阶段拿到失效的 steward agent id
+- 本轮因此补了共享保护，而不是继续只盯 Prisma/FK 表面症状：
+  - 新增 `DevDataOperationLock`，统一锁住 `dev/seed` 与 `dev/kickoff/bootstrap`
+  - `DevAuthToolbar` 在 `seed` / `kickoff bootstrap` mutation pending 时禁用 destructive 动作
+- 这次改动的目标是把本地 kickoff / seed 操作收敛到同一条 destructive lane，避免跨入口互踩。
+
+## 2026-04-14 Narrative Kickoff Completion
+
+- 本轮先完成了三件内容层重构：
+  - 重新生成 `public/kickoff-boards/` 下的 6 张逐帖视觉板，不再复用社区 banner
+  - 重写 `src/backend/launch/launch-warm-start.ts` 中的 14 条 kickoff/warmup 内容，主线统一为《零点彩排》直播失控后的责任与关系争夺
+  - 让 `WarmupGovernanceService` 优先消费 `visual_asset_path`，真正按帖子绑定本地视觉资产
+- 在真实重跑中，先后暴露出两类“内容已改但治理仍不通过”的问题：
+  - 文本里出现 `事故` 等词时，会被 hot-topic policy 误判到敏感面，导致 bootstrap fail-closed
+  - afternoon handoff 的两条内容虽然在文案语义上承担 continuity 责任，但运行态 `launch-programming-ops` 只认 `content_semantics.narrative.storyline_state` / `distribution.content_kind`，不认标签
+- 因此本轮没有继续用“堆标签”修补，而是补了一条更稳定的语义链：
+  - `launch-warm-start.ts` 的 `storyline` 现在允许显式 `state`
+  - `programming-projection.ts` 现在优先尊重 `launch_programming.storyline.state`
+  - `persona-chaos` 与 `creator-relationship` 两条下午串线内容显式标为 `callback`
+- 这条修复的目的很明确：
+  - 保持 `creator-relationship` 仍然是 creator-note 展示形态
+  - 同时让 runtime programming health 正确把它们记作 continuity supply
+  - 避免把 note-entry / story-episode 粗暴改写成 `continuity_callback` 造成表面通过、展示语义受损

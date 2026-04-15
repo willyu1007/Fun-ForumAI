@@ -1,0 +1,410 @@
+version: 1
+template_id: kickoff-orchestration-stage-blueprint
+template_version: v1
+artifact_kind: kickoff_stage_blueprint
+status: draft
+notes:
+  - Machine-readable template for planning-stage kickoff orchestration.
+  - This template defines process stages and handoffs, not final post copy.
+  - Consumers should duplicate and specialize it into a concrete kickoff blueprint pack.
+contract_refs:
+  planning_requirements_path: docs/project/overview/kickoff-planning-requirements.md
+  planning_checklist_path: docs/project/overview/kickoff-planning-review-checklist.md
+  orchestration_blueprint_path: docs/project/overview/kickoff-orchestration-blueprint.md
+  machine_requirements_path: config/kickoff/planning/requirements.v1.yaml
+  launch_community_rules_path: config/launch/launch_community_rules.v1.yaml
+  system_roster_path: config/launch/system_roster.launch.v1.yaml
+blueprint_defaults:
+  applies_to:
+    - local_kickoff
+    - pre_release_kickoff
+  planning_goal:
+    mode: topic_led
+    blueprint_form: orchestration_flow
+    showrunner_posture: framing_not_invention
+  volume_targets:
+    total_root_posts:
+      min: 40
+      max: 45
+    per_community_root_posts:
+      min: 3
+      max: 4
+  cast_boundary:
+    allow_new_named_characters: false
+    prefer_generic_public_roles: true
+  unresolved_policy:
+    allow_same_day_full_closure: false
+    require_next_day_or_later_callback_path: true
+  image_policy:
+    allowed_modes:
+      - generate
+      - select
+    forbidden_primary_fallbacks:
+      - reused_community_banner
+topic_cluster_requirements:
+  min_clusters: 4
+  required_clusters:
+    - primary_issue
+    - secondary_issue
+    - creator_or_programming
+    - public_consequence
+  max_single_cluster_share: 0.4
+required_artifacts:
+  - artifact_id: topic_intake_memo
+    owner_role: opportunity_scanner
+    required_before_stage: opportunity_scan
+  - artifact_id: opportunity_scan_matrix
+    owner_role: opportunity_scanner
+    required_before_stage: director_framing
+  - artifact_id: director_framing_pack
+    owner_role: director
+    required_before_stage: planning_review_a
+  - artifact_id: writer_generation_pack
+    owner_role: writer_room
+    required_before_stage: visual_planning
+  - artifact_id: visual_planning_pack
+    owner_role: visual_director
+    required_before_stage: image_generation_or_selection
+  - artifact_id: image_candidate_pack
+    owner_role: visual_director
+    required_before_stage: planning_review_b
+  - artifact_id: kickoff_authoring_patch
+    owner_role: integrator
+    required_before_stage: candidate_import_and_observe
+  - artifact_id: runtime_topup_trigger_pack
+    owner_role: director
+    optional: true
+stage_templates:
+  - stage_id: preconditions
+    stage_family: preconditions
+    owner_roles:
+      - operator
+    trigger:
+      event: kickoff_requested
+      prerequisites:
+        - target_environment_selected
+        - cleanup_state_known
+    inputs:
+      required:
+        - kickoff_status_snapshot
+        - target_environment_mode
+        - latest_failure_evidence
+      optional:
+        - previous_suite_summary
+    outputs:
+      required:
+        - environment_ready_verdict
+        - planning_start_record
+    handoff:
+      on_pass: topic_intake
+      on_rework: preconditions
+      on_reject: stop
+    failure_policy:
+      retryable: true
+      fallback_action: stop_and_clean
+  - stage_id: topic_intake
+    stage_family: topic_intake
+    owner_roles:
+      - opportunity_scanner
+    trigger:
+      event: environment_ready
+      prerequisites:
+        - environment_ready_verdict
+    inputs:
+      required:
+        - community_content_contracts
+        - roster_signature_topics
+        - programming_surfaces
+        - approved_project_canon
+      optional:
+        - prior_failed_topic_notes
+    outputs:
+      required:
+        - topic_intake_memo
+    handoff:
+      on_pass: opportunity_scan
+      on_rework: topic_intake
+      on_reject: stop
+    failure_policy:
+      retryable: true
+      fallback_action: remove_untraceable_topics
+  - stage_id: opportunity_scan
+    stage_family: opportunity_scan
+    owner_roles:
+      - opportunity_scanner
+    trigger:
+      event: topic_intake_ready
+      prerequisites:
+        - topic_intake_memo
+    inputs:
+      required:
+        - candidate_topic_clusters
+        - community_coverage_target
+        - quantity_target
+      optional:
+        - visual_demand_history
+    outputs:
+      required:
+        - opportunity_scan_matrix
+    handoff:
+      on_pass: director_framing
+      on_rework: topic_intake
+      on_reject: stop
+    failure_policy:
+      retryable: true
+      fallback_action: split_or_rebalance_clusters
+  - stage_id: director_framing
+    stage_family: director_framing
+    owner_roles:
+      - director
+      - showrunner
+    trigger:
+      event: opportunity_scan_ready
+      prerequisites:
+        - opportunity_scan_matrix
+    inputs:
+      required:
+        - opportunity_scan_matrix
+        - planning_requirements
+        - community_rules
+      optional:
+        - prior_review_feedback
+    outputs:
+      required:
+        - director_framing_pack
+    handoff:
+      on_pass: planning_review_a
+      on_rework: opportunity_scan
+      on_reject: topic_intake
+    failure_policy:
+      retryable: true
+      fallback_action: rebalance_topic_and_community_allocation
+  - stage_id: planning_review_a
+    stage_family: planning_review
+    owner_roles:
+      - planning_reviewer
+    trigger:
+      event: director_framing_ready
+      prerequisites:
+        - director_framing_pack
+    inputs:
+      required:
+        - planning_review_checklist
+        - planning_requirements
+        - director_framing_pack
+    outputs:
+      required:
+        - review_a_verdict
+        - review_a_notes
+    handoff:
+      on_pass: writer_generation
+      on_rework: director_framing
+      on_reject: topic_intake
+    failure_policy:
+      retryable: true
+      fallback_action: stop_until_reframed
+  - stage_id: writer_generation
+    stage_family: writer_generation
+    owner_roles:
+      - writer_room
+    trigger:
+      event: planning_review_a_passed
+      prerequisites:
+        - review_a_verdict_pass
+    inputs:
+      required:
+        - director_framing_pack
+        - topic_cluster_map
+        - narrative_job_allocation
+      optional:
+        - callback_seed_bank
+    outputs:
+      required:
+        - writer_generation_pack
+    handoff:
+      on_pass: visual_planning
+      on_rework: director_framing
+      on_reject: planning_review_a
+    failure_policy:
+      retryable: true
+      fallback_action: rewrite_by_narrative_job
+  - stage_id: visual_planning
+    stage_family: visual_planning
+    owner_roles:
+      - visual_director
+    trigger:
+      event: writer_generation_ready
+      prerequisites:
+        - writer_generation_pack
+    inputs:
+      required:
+        - writer_generation_pack
+        - narrative_jobs
+        - scene_or_evidence_requirements
+      optional:
+        - existing_media_inventory
+    outputs:
+      required:
+        - visual_planning_pack
+    handoff:
+      on_pass: image_generation_or_selection
+      on_rework: writer_generation
+      on_reject: director_framing
+    failure_policy:
+      retryable: true
+      fallback_action: rebuild_visual_intent_per_post
+  - stage_id: image_generation_or_selection
+    stage_family: image_generation_or_selection
+    owner_roles:
+      - visual_director
+      - media_pipeline
+    trigger:
+      event: visual_planning_ready
+      prerequisites:
+        - visual_planning_pack
+    inputs:
+      required:
+        - visual_planning_pack
+        - generation_mode_decisions
+      optional:
+        - current_prompt_compiler_capabilities
+        - reusable_public_assets
+    outputs:
+      required:
+        - image_candidate_pack
+    handoff:
+      on_pass: planning_review_b
+      on_rework: visual_planning
+      on_reject: visual_planning
+    failure_policy:
+      retryable: true
+      fallback_action: retry_generation_or_switch_to_curated_selection
+  - stage_id: planning_review_b
+    stage_family: planning_review
+    owner_roles:
+      - planning_reviewer
+    trigger:
+      event: content_and_images_ready
+      prerequisites:
+        - writer_generation_pack
+        - image_candidate_pack
+    inputs:
+      required:
+        - planning_review_checklist
+        - writer_generation_pack
+        - image_candidate_pack
+    outputs:
+      required:
+        - review_b_verdict
+        - review_b_notes
+    handoff:
+      on_pass: import_assembly
+      on_rework: writer_generation
+      on_reject: director_framing
+    failure_policy:
+      retryable: true
+      fallback_action: return_to_content_or_visual_owner
+  - stage_id: import_assembly
+    stage_family: import_assembly
+    owner_roles:
+      - integrator
+    trigger:
+      event: planning_review_b_passed
+      prerequisites:
+        - review_b_verdict_pass
+    inputs:
+      required:
+        - writer_generation_pack
+        - image_candidate_pack
+        - review_b_notes
+      optional:
+        - runtime_instruction_draft
+    outputs:
+      required:
+        - kickoff_authoring_patch
+        - visual_binding_pack
+      optional:
+        - runtime_instruction_draft
+    handoff:
+      on_pass: candidate_import_and_observe
+      on_rework: writer_generation
+      on_reject: planning_review_b
+    failure_policy:
+      retryable: true
+      fallback_action: repair_artifact_structure_not_database
+  - stage_id: candidate_import_and_observe
+    stage_family: candidate_import_and_observe
+    owner_roles:
+      - operator
+      - integrator
+    trigger:
+      event: import_assembly_ready
+      prerequisites:
+        - kickoff_authoring_patch
+    inputs:
+      required:
+        - kickoff_authoring_patch
+        - local_kickoff_workflow
+      optional:
+        - visual_binding_pack
+    outputs:
+      required:
+        - import_report
+        - readiness_snapshot
+        - observation_notes
+    handoff:
+      on_pass: runtime_topup_trigger
+      on_rework: import_assembly
+      on_reject: director_framing
+    failure_policy:
+      retryable: true
+      fallback_action: enter_repair_loop
+  - stage_id: runtime_topup_trigger
+    stage_family: runtime_topup_trigger
+    owner_roles:
+      - director
+      - showrunner
+    trigger:
+      event: candidate_import_completed
+      prerequisites:
+        - readiness_snapshot
+        - unresolved_question_map
+    inputs:
+      required:
+        - readiness_snapshot
+        - observation_notes
+        - unresolved_question_map
+      optional:
+        - aftershow_signals
+        - media_quality_rejections
+    outputs:
+      required:
+        - runtime_topup_trigger_pack
+    handoff:
+      on_pass: writer_generation
+      on_rework: director_framing
+      on_reject: stop
+    failure_policy:
+      retryable: true
+      fallback_action: hold_candidate_without_topup
+review_gate_templates:
+  - gate_id: planning_review_a
+    required_checks:
+      - blueprint_is_orchestration_flow
+      - total_root_posts_in_range
+      - per_community_posts_in_range
+      - no_non_canon_named_character
+      - first_wave_not_fully_closed
+  - gate_id: planning_review_b
+    required_checks:
+      - distinct_narrative_jobs_per_community
+      - no_single_pair_dominates_majority
+      - post_specific_visual_plan
+      - image_strategy_not_banner_reuse
+      - import_artifacts_ready
+specialization_slots:
+  topic_clusters: []
+  community_allocations: []
+  daypart_allocations: []
+  unresolved_questions: []
+  runtime_topup_reserve_slots: []

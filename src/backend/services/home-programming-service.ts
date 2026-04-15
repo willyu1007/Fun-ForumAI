@@ -134,9 +134,10 @@ function toPublicHomeShelfLabel(shelfId: string, fallback: string): string {
   return normalizedShelfId ? EDITORIAL_SHELF_LABELS[normalizedShelfId] : fallback
 }
 
-const NOTES_TODAY_TARGET_COUNT = 4
+const NOTES_TODAY_TARGET_COUNT = 2
 const MUST_WATCH_TARGET_COUNT = 4
 const MUST_WATCH_MIN_IMAGE_COUNT = 2
+const TONIGHT_PROGRAMMING_TARGET_COUNT = 6
 
 export function buildDisabledHomeProgrammingPayload(now = new Date()): HomeProgrammingPayload {
   const contract = getLaunchHomeProgramming()
@@ -236,30 +237,33 @@ export class HomeProgrammingService {
       usedPostIds,
       viewerRuntime,
     )
+    let tonightProgramming = this.pickTonightProgramming(
+      hotFeed.items,
+      usedPostIds,
+      viewerRuntime,
+    )
     ;({ mustWatch, conflictRising } = this.applyShelfFallbackPolicies({
       mustWatch,
       conflictRising,
     }))
     const resolvedTargets = await this.resolveNextJumpTargets(
-      [...mustWatch, ...conflictRising, ...notesToday, ...continueStoryline],
+      [...mustWatch, ...conflictRising, ...notesToday, ...continueStoryline, ...tonightProgramming],
       input.viewerUserId,
     )
     mustWatch = this.applyResolvedTargets(mustWatch, resolvedTargets)
     conflictRising = this.applyResolvedTargets(conflictRising, resolvedTargets)
     notesToday = this.applyResolvedTargets(notesToday, resolvedTargets)
     continueStoryline = this.applyResolvedTargets(continueStoryline, resolvedTargets)
-    ;[mustWatch, conflictRising, notesToday, continueStoryline] = await Promise.all([
+    tonightProgramming = this.applyResolvedTargets(tonightProgramming, resolvedTargets)
+    ;[mustWatch, conflictRising, notesToday, continueStoryline, tonightProgramming] = await Promise.all([
       this.attachRelationTeasersToShelfItems(mustWatch, viewerRuntime.viewer),
       this.attachRelationTeasersToShelfItems(conflictRising, viewerRuntime.viewer),
       this.attachRelationTeasersToShelfItems(notesToday, viewerRuntime.viewer),
       this.attachRelationTeasersToShelfItems(continueStoryline, viewerRuntime.viewer),
+      this.attachRelationTeasersToShelfItems(tonightProgramming, viewerRuntime.viewer),
     ])
 
     const allCommunities = this.pickAllCommunities()
-    const tonightProgramming = config.launch.capabilities.programmingOpsV1
-      ? await this.deps.launchProgrammingOpsService?.getHomeItems()
-          .catch(() => []) ?? []
-      : []
 
     const shelvesById = new Map<string, HomeShelf>([
       ['must_watch_today', {
@@ -323,8 +327,12 @@ export class HomeProgrammingService {
       .map((shelfId) => shelvesById.get(shelfId))
       .filter((item): item is HomeShelf => item !== undefined)
 
+    const hotFeedExcludedIds = new Set<string>([
+      ...mustWatch.map((item) => item.id),
+      ...notesToday.map((item) => item.id),
+    ])
     const hotFeedContinuation = await this.attachRelationTeasersToFeedPosts(
-      hotFeed.items.filter((item) => !usedPostIds.has(item.id)),
+      hotFeed.items.filter((item) => !hotFeedExcludedIds.has(item.id)),
       viewerRuntime.viewer,
     )
 
@@ -557,11 +565,12 @@ export class HomeProgrammingService {
   }
 
   private isNotesTodayCandidate(
-    item: Pick<PostWithMeta, 'community_slug' | 'content_semantics'>,
+    item: Pick<PostWithMeta, 'community_slug' | 'content_semantics' | 'media'>,
   ): boolean {
     return isCreatorNoteEntry(item)
       && isLaunchNativeCreatorNoteCommunity(item.community_slug)
       && Boolean(readNoteTemplateId(item))
+      && this.hasImageMedia(item)
   }
 
   private pickContinueStoryline(
@@ -598,6 +607,34 @@ export class HomeProgrammingService {
 
     continuityItems.forEach((item) => usedPostIds.add(item.id))
     return items.concat(continuityItems)
+  }
+
+  private pickTonightProgramming(
+    hotFeed: PostWithMeta[],
+    usedPostIds: Set<string>,
+    viewerRuntime: HomeViewerRuntime,
+  ): HomeProgrammingPostItem[] {
+    const rankedPool = sortPostsByViewerContext(
+      hotFeed
+        .filter((item) => !usedPostIds.has(item.id))
+        .filter((item) => !isCreatorNoteEntry(item)),
+      viewerRuntime,
+      { preferStorylineRevisit: true },
+    )
+
+    const items = rankedPool
+      .slice()
+      .sort((a, b) =>
+        this.readTonightProgrammingScore(b, viewerRuntime)
+          - this.readTonightProgrammingScore(a, viewerRuntime)
+        || this.toMillis(b.last_reply_at) - this.toMillis(a.last_reply_at)
+        || b.heat_score - a.heat_score,
+      )
+      .slice(0, TONIGHT_PROGRAMMING_TARGET_COUNT)
+      .map((item) => this.asPostShelfItem(item))
+
+    items.forEach((item) => usedPostIds.add(item.id))
+    return items
   }
 
   private applyShelfFallbackPolicies(input: {
@@ -733,6 +770,31 @@ export class HomeProgrammingService {
       }
     })
     return Array.from(byId.values())
+  }
+
+  private readTonightProgrammingScore(
+    item: PostWithMeta,
+    viewerRuntime: HomeViewerRuntime,
+  ): number {
+    const storylineState = readStorylineState(item)
+    const storylineScore = storylineState === 'opening'
+      ? 18
+      : storylineState === 'callback'
+        ? 14
+        : storylineState === 'escalating'
+          ? 10
+          : readStorylineId(item)
+            ? 6
+            : 0
+    const freshnessScore = Math.max(
+      0,
+      12 - Math.floor((Date.now() - this.toMillis(item.last_reply_at)) / (1000 * 60 * 60 * 6)),
+    )
+    const activityScore = Math.min(item.thread_turn_count, 10) + Math.min(item.participant_count, 8)
+    const sentimentScore = Math.min(item.human_vote_up + item.agent_vote_up, 12)
+    const viewerScore = computeViewerScore(item, viewerRuntime, { preferStorylineRevisit: true })
+
+    return storylineScore + freshnessScore + activityScore + sentimentScore + viewerScore + item.heat_score / 20
   }
 
   private async resolveNextJumpTargets(

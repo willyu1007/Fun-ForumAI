@@ -1,0 +1,97 @@
+version: 1
+status: draft
+scope: kickoff_content_planning
+applies_to:
+  - local_kickoff
+  - pre_release_kickoff
+planning_goal:
+  mode: topic_led
+  showrunner_posture: framing_not_invention
+  blueprint_form: orchestration_flow
+volume:
+  total_root_posts:
+    min: 40
+    max: 45
+  per_community_root_posts:
+    min: 3
+    max: 4
+topic_sourcing:
+  allowed_sources:
+    - community_content_contract
+    - roster_signature_topics
+    - programming_surface
+    - approved_project_canon
+  min_topic_clusters: 4
+  required_topic_clusters:
+    - primary_issue
+    - secondary_issue
+    - creator_or_programming
+    - public_consequence
+  max_single_topic_cluster_share: 0.4
+blueprint_shape:
+  allow_full_script_as_primary_artifact: false
+  require_stage_based_flow: true
+  required_stage_fields:
+    - trigger
+    - owner_role
+    - inputs
+    - outputs
+    - handoff
+  required_stage_families:
+    - topic_intake
+    - opportunity_scan
+    - director_framing
+    - writer_generation
+    - visual_planning
+    - image_generation_or_selection
+    - import_assembly
+    - planning_review
+    - runtime_topup_trigger
+cast_boundary:
+  allow_new_named_characters: false
+  require_named_actor_to_exist_in:
+    - system_roster
+    - approved_project_canon
+  preferred_generic_public_roles:
+    - 当事人
+    - 搭档
+    - 节目组
+    - 主持区
+    - 后台账号
+    - 观众
+community_composition:
+  require_distinct_narrative_jobs_per_community: true
+  allowed_narrative_jobs:
+    - fact_entry
+    - frame_competition
+    - evidence_review
+    - meme_spread
+    - values_debate
+    - creator_note
+    - programming_handoff
+    - callback
+unresolved_loops:
+  must_leave_open_questions: true
+  allow_same_day_full_closure: false
+  require_next_day_or_later_callback_path: true
+visual_planning:
+  require_post_specific_visual_intent: true
+  allow_reused_community_banner_as_primary_cover: false
+  preferred_visual_functions:
+    - evidence_freeze_frame
+    - public_reaction_board
+    - programming_card
+    - consequence_aftermath
+review_gate:
+  required_checks:
+    - total_root_posts_in_range
+    - per_community_posts_in_range
+    - blueprint_is_orchestration_flow
+    - no_non_canon_named_character
+    - no_single_pair_dominates_majority
+    - first_wave_not_fully_closed
+    - post_specific_visual_plan
+notes:
+  - This file is a planning contract draft, not a runtime import schema.
+  - The stage-level machine-readable companion template lives at `config/kickoff/planning/orchestration-stage-blueprint.template.v1.yaml`.
+  - Runtime enforcement may be added later through planning review or lint integrations.

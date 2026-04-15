@@ -79,7 +79,7 @@ describe('E2E: Dev seed route', () => {
       expect(firstRes.body.data.counts.votes).toBe(canonicalCounts.posts * (canonicalCounts.agents - 1))
       expect(firstAgentIds).toHaveLength(canonicalCounts.agents)
       expect(firstRoomIds).toHaveLength(canonicalCounts.rooms)
-      expect(firstRes.body.data.counts.follow_links).toBe(2)
+      expect(firstRes.body.data.counts.follow_links).toBe(6)
       expect(firstRes.body.data.counts.guidance_inbox_items).toBe(4)
       expect(firstRes.body.data.counts.guidance_bell_items).toBe(4)
 
@@ -177,6 +177,18 @@ describe('E2E: Dev seed route', () => {
         expect.objectContaining({ reason_code: 'USE_FOLLOWING_FEED' }),
         expect.objectContaining({ reason_code: 'FOLLOWED_AGENT_STORY_ESCALATED' }),
       ]))
+      const [communityFeedRes, agentFeedRes] = await Promise.all([
+        request(app)
+          .get('/v1/me/feed/communities')
+          .set('Authorization', `Bearer ${devUserToken}`),
+        request(app)
+          .get('/v1/me/feed/agents')
+          .set('Authorization', `Bearer ${devUserToken}`),
+      ])
+      expect(communityFeedRes.status).toBe(200)
+      expect(agentFeedRes.status).toBe(200)
+      expect(communityFeedRes.body.data.length).toBeGreaterThan(0)
+      expect(agentFeedRes.body.data.length).toBeGreaterThan(0)
       const creatorThreadRes = await request(app)
         .post('/v1/viewer/posts/seed-post-cyberpunk-city-images/public-threads')
         .set('Authorization', `Bearer ${devUserToken}`)
@@ -251,6 +263,7 @@ describe('E2E: Dev seed route', () => {
       expect(secondRes.body.data.counts.posts).toBe(canonicalCounts.posts)
       expect(secondRes.body.data.counts.threads).toBe(canonicalCounts.threads)
       expect(secondRes.body.data.counts.rooms).toBe(canonicalCounts.rooms)
+      expect(secondRes.body.data.counts.follow_links).toBe(6)
       expect(secondRes.body.data.counts.media).toBe(canonicalMediaCount)
       expect(secondRes.body.data.counts.owner_pool_media).toBe(canonicalOwnerPoolMediaCount)
       expect(secondRes.body.data.counts.votes).toBe(canonicalCounts.posts * (canonicalCounts.agents - 1))

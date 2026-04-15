@@ -1,6 +1,7 @@
 export type FrontendFlagValue = 'true' | 'false'
 
 export const FRONTEND_FLAG_KEYS = [
+  'VITE_FF_AGENT_STATS_UI',
   'VITE_FF_GUIDANCE_V1',
   'VITE_FF_HOME_PROGRAMMING_V1',
   'VITE_FF_PROGRAMMING_OPS_V1',
@@ -33,6 +34,17 @@ export interface FrontendFlagDebugEntry extends FrontendFlagDefinition {
 }
 
 export const FRONTEND_FLAG_DEFINITIONS: readonly FrontendFlagDefinition[] = [
+  {
+    key: 'VITE_FF_AGENT_STATS_UI',
+    label: 'Agent Stats UI',
+    summary: '智能体 Stats 面板',
+    feature: 'Owner agent modal 中的 Stats / 塑造能力面板。',
+    surfaces: ['Agent modal / 塑造'],
+    effect: '开启后 Owner 可在塑造页看到 Stats 能力区与相关解释面板。',
+    recommendation: '与 backend `FF_AGENT_STATS_*` 配套开启，避免只暴露半开入口。',
+    defaultValue: 'false',
+    contractStatus: 'declared',
+  },
   {
     key: 'VITE_FF_GUIDANCE_V1',
     label: 'Guidance',
@@ -114,6 +126,8 @@ function isFrontendFlagValue(value: unknown): value is FrontendFlagValue {
 
 function readFlagFromImportMetaEnv(key: FrontendFlagKey): string | undefined {
   switch (key) {
+    case 'VITE_FF_AGENT_STATS_UI':
+      return import.meta.env.VITE_FF_AGENT_STATS_UI
     case 'VITE_FF_GUIDANCE_V1':
       return import.meta.env.VITE_FF_GUIDANCE_V1
     case 'VITE_FF_HOME_PROGRAMMING_V1':

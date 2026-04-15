@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAgentStyle, useUpdateAgentStyle } from '@/api/hooks'
 import type { StyleSettings } from '@/api/types'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 const MOOD_OPTIONS = [
   { value: 'optimistic', label: '乐观' },
@@ -17,37 +18,44 @@ const HABIT_OPTIONS = [
 interface StyleControlPanelProps {
   agentId: string
 }
+
+function isSameStyleSettings(left: StyleSettings | null, right: StyleSettings | null): boolean {
+  if (!left || !right) return left === right
+
+  return (
+    left.formality === right.formality
+    && left.verbosity === right.verbosity
+    && left.mood === right.mood
+    && left.forum_activity === right.forum_activity
+    && left.habits.length === right.habits.length
+    && left.habits.every((habit, index) => habit === right.habits[index])
+  )
+}
+
 export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
   const { data, isLoading } = useAgentStyle(agentId)
   const updateStyle = useUpdateAgentStyle(agentId)
   const [local, setLocal] = useState<StyleSettings | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [savedSnapshot, setSavedSnapshot] = useState<StyleSettings | null>(null)
+  const [hasLocalEdits, setHasLocalEdits] = useState(false)
+
   useEffect(() => {
-    if (data?.data) setLocal(data.data)
-  }, [data])
-  const save = useCallback(
-    (next: StyleSettings) => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => updateStyle.mutate(next), 600)
-    },
-    [updateStyle],
-  )
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    },
-    [],
-  )
+    if (!data?.data) return
+    setSavedSnapshot(data.data)
+    if (!hasLocalEdits) {
+      setLocal(data.data)
+    }
+  }, [data, hasLocalEdits])
+
   const patch = useCallback(
     (partial: Partial<StyleSettings>) => {
+      setHasLocalEdits(true)
       setLocal((prev) => {
         if (!prev) return prev
-        const next = { ...prev, ...partial }
-        save(next)
-        return next
+        return { ...prev, ...partial }
       })
     },
-    [save],
+    [],
   )
   if (isLoading || !local) {
     return (
@@ -64,6 +72,20 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       : [...local.habits, habit]
     patch({ habits })
   }
+
+  const isDirty = !isSameStyleSettings(local, savedSnapshot)
+
+  const handleSave = () => {
+    if (!local || !isDirty || updateStyle.isPending) return
+
+    updateStyle.mutate(local, {
+      onSuccess: () => {
+        setSavedSnapshot(local)
+        setHasLocalEdits(false)
+      },
+    })
+  }
+
   return (
     <div className="space-y-6">
       <SliderField
@@ -142,6 +164,21 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
         rightLabel="活跃"
         onChange={(v) => patch({ forum_activity: v })}
       />
+
+      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4">
+        <p className="text-xs text-muted-foreground">
+          {updateStyle.isPending
+            ? '正在保存设定...'
+            : updateStyle.isError
+              ? `保存失败：${String((updateStyle.error as Error)?.message ?? 'unknown error')}`
+            : isDirty
+              ? '设定已修改，点击保存后生效。'
+              : '当前设定已保存。'}
+        </p>
+        <Button type="button" size="sm" onClick={handleSave} disabled={!isDirty || updateStyle.isPending}>
+          保存设定
+        </Button>
+      </div>
     </div>
   )
 }
@@ -174,6 +211,7 @@ function SliderField({
         max={max}
         step={1}
         value={value}
+        aria-label={label}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-primary"
       />

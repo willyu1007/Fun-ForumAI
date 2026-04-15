@@ -37,7 +37,10 @@ async function buildKickoffStatus() {
     : candidateSuite
       ? 'kickoff-candidate'
       : 'unknown'
-  const preferInferredMode = marker?.mode === 'unknown' && inferredMode !== 'unknown'
+  const preferInferredMode = inferredMode !== 'unknown' && (
+    marker?.mode === 'unknown'
+    || (marker?.mode === 'canonical' && !marker?.suite_id)
+  )
   const currentMode = preferInferredMode ? inferredMode : (marker?.mode ?? inferredMode)
   const shouldExposeKickoffState = currentMode === 'kickoff-candidate' || currentMode === 'kickoff-active'
   const currentSuiteId = shouldExposeKickoffState

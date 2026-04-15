@@ -513,4 +513,74 @@ describe('launch programming contracts', () => {
       cover_mode: 'portrait_cover',
     })
   })
+
+  it('honors an explicit storyline callback state without forcing creator notes out of note formatting', () => {
+    const projection = buildLaunchProgrammingProjection({
+      community_slug: 'creator-relationship',
+      community_rules_json: {
+        launch_profile: {
+          default_editorial_shelf_ids: ['创作者笔记', '剧情继续看'],
+        },
+        cross_route_policy: {
+          allow_aftershow_export: true,
+        },
+      },
+      scene_metadata: {
+        id: 'scene-3',
+        target_type: 'POST',
+        community_id: 'community-3',
+        post_id: 'post-3',
+        thread_id: null,
+        turn_id: null,
+        episode_id: 'episode-3',
+        selection_id: 'selection-3',
+        episode_plan_id: 'plan-3',
+        local_intent_id: 'intent-3',
+        director_surface: 'forum',
+        actor_surface: 'forum_post',
+        scene_template_id: 'launch-template',
+        scene_template_version: 'v1',
+        scene_binding_id: 'binding-3',
+        overlay_id: null,
+        beat_id: null,
+        phase: 'pivot',
+        selection_mode: 'pool_guided',
+        expires_at: null,
+        payload_json: buildPublicScenePayloadJson({
+          ...makeSceneWritePayload('pivot'),
+          launch_programming: {
+            storyline: {
+              id: 'storyline-callback-note',
+              title: '显式 callback 笔记',
+              hook: '这一条既是笔记，也是 continuity',
+              state: 'callback',
+            },
+            creator_note: {
+              is_creator_note: true,
+              note_template_id: 'relationship_observation_note',
+              cover_mode: 'relationship_map_card',
+            },
+            editorial_intent: {
+              primary_shelf_id: '创作者笔记',
+              content_kind: 'note_entry',
+            },
+          },
+        }),
+        created_at: new Date('2026-03-23T00:00:00.000Z'),
+        updated_at: new Date('2026-03-23T00:00:00.000Z'),
+      },
+      media_count: 1,
+      has_aftershow_artifact: false,
+    })
+
+    expect(projection).toMatchObject({
+      storyline_state: 'callback',
+      editorial_shelf_id: 'notes_today',
+      content_kind: 'note_entry',
+      format_kind: 'note',
+      note_template_id: 'relationship_observation_note',
+      cover_mode: 'relationship_map_card',
+      aftershow_export_bias: 0.6,
+    })
+  })
 })

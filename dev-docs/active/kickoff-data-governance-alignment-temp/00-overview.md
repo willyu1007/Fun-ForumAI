@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: in-progress
+- State: done
 - Depends on: active `T-962 warmup-richness-admission-gap-closure-v1`, active `T-954 staging-release-verification-followup`, archived `T-132/T-137/T-156/T-157/T-158/T-159`
-- Current status: kickoff 工程链路已经可用，但用户反馈当前生成结果仍停留在“静态模板 + 复用 banner”的工程可用态，未达到“导演/编剧/视觉一体编排”的内容质量标准。当前阶段已完成一次彻底清库，回到干净 canonical 基线，并重新进入内容重设计阶段：目标不再是证明 kickoff 能跑，而是给出一版真正可消费、可讨论、可作为展示基线的高质量内容蓝图。
-- Next step: 基于当前任务包继续推进三项工作：1）产出导演/编剧/视觉联合内容蓝图与质量门；2）把这份蓝图拆成可导入的 kickoff patch / visual pack / runtime-simulation addendum；3）按新蓝图重做本地 kickoff，并把结果与旧版模板 kickoff 明确区分。
+- Current status: 已完成从“链路可用”到“内容可用”的闭环重做。当前本地最新 kickoff run `2026-04-14T15-19-41-652Z-362f1e0c` 已成功落成 active baseline `cmnys45zc015ipwnoww8u4n2v`，并通过 `kickoff_layer / warmup_layer / key_communities / key_shelves / media_access / aftershow_pipeline / allow_public_growth` 全部质量门。最终产物不再是“静态模板 + 复用 banner”，而是基于导演主线、writer room 节奏与逐帖视觉板重新编排的一套可消费 kickoff。
+- Next step: 可选后续项仅剩两类：1）继续做更高密度的 runtime-simulation top-up；2）把这套本地有效 kickoff 继续推向 staging 验收链。当前任务本身已完成。
 
 ## Goal
 
