@@ -28,6 +28,19 @@ spec:
       containers:
         - name: postgres
           image: postgres:18-alpine
+          command:
+            - /bin/sh
+            - -lc
+          args:
+            - |
+              set -e
+              if [ ! -f /usr/local/share/postgresql/extension/vector.control ] || [ ! -f /usr/local/lib/postgresql/vector.so ]; then
+                apk add --no-cache postgresql-pgvector
+                mkdir -p /usr/local/share/postgresql/extension /usr/local/lib/postgresql
+                cp -f /usr/share/postgresql18/extension/vector* /usr/local/share/postgresql/extension/
+                cp -f /usr/lib/postgresql18/vector.so /usr/local/lib/postgresql/
+              fi
+              exec docker-entrypoint.sh postgres
           ports:
             - containerPort: 5432
           env:

@@ -8,4 +8,7 @@ data:
   NODE_OPTIONS: "--max-old-space-size=1536"
   CORS_ORIGINS: http://localhost:3000,http://localhost:3001
   MEDIA_LOCAL_DIR: /var/media-assets
+  FF_MEDIA_INJECTION_V1: "true"
+  FF_MEDIA_RETRIEVAL_V1: "true"
+  FF_MEDIA_PLANNER_RETRIEVAL_V1: "true"
   RUNTIME_LEADER_TTL_MS: "120000"

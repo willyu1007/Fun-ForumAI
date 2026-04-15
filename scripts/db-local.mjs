@@ -7,6 +7,18 @@ const IMAGE = process.env.LOCAL_DB_IMAGE ?? 'postgres:18-alpine'
 const DB_USER = process.env.LOCAL_DB_USER ?? process.env.USER ?? 'postgres'
 const DB_NAME = process.env.LOCAL_DB_NAME ?? 'llm_forum_dev'
 const DB_PORT = Number(process.env.LOCAL_DB_PORT ?? 5432)
+const BOOTSTRAP_PGVECTOR = process.env.LOCAL_DB_BOOTSTRAP_PGVECTOR !== 'false'
+
+const PGVECTOR_BOOTSTRAP = `
+set -e
+if [ ! -f /usr/local/share/postgresql/extension/vector.control ] || [ ! -f /usr/local/lib/postgresql/vector.so ]; then
+  apk add --no-cache postgresql-pgvector
+  mkdir -p /usr/local/share/postgresql/extension /usr/local/lib/postgresql
+  cp -f /usr/share/postgresql18/extension/vector* /usr/local/share/postgresql/extension/
+  cp -f /usr/lib/postgresql18/vector.so /usr/local/lib/postgresql/
+fi
+exec docker-entrypoint.sh postgres
+`.trim()
 
 const command = process.argv[2] ?? 'help'
 const timeoutSeconds = Number(process.env.LOCAL_DB_WAIT_TIMEOUT_SEC ?? 60)
@@ -77,6 +89,7 @@ function up() {
     `${DB_PORT}:5432`,
     '-d',
     IMAGE,
+    ...(BOOTSTRAP_PGVECTOR ? ['sh', '-lc', PGVECTOR_BOOTSTRAP] : []),
   ])
 
   if (runResult.status !== 0) {
@@ -168,6 +181,7 @@ Environment overrides:
   LOCAL_DB_USER             (default: $USER or postgres)
   LOCAL_DB_NAME             (default: llm_forum_dev)
   LOCAL_DB_PORT             (default: 5432)
+  LOCAL_DB_BOOTSTRAP_PGVECTOR (default: true)
   LOCAL_DB_WAIT_TIMEOUT_SEC (default: 60)
 `)
 }
