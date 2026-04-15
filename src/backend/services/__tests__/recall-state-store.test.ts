@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import os from 'node:os'
@@ -18,14 +18,18 @@ const describeIfRedis = REDIS_SERVER_BIN
 describeIfRedis('RedisRecallStateStore', () => {
   let port = 0
   let tempDir = ''
-  let processRef: ChildProcessWithoutNullStreams | null = null
+  let processRef: ChildProcess | null = null
   let redis: Redis | null = null
   let startupError = ''
 
   beforeAll(async () => {
+    if (!REDIS_SERVER_BIN) {
+      throw new Error('redis-server not found')
+    }
+
     port = await findFreePort()
     tempDir = await mkdtemp(path.join(os.tmpdir(), 'ff-recall-store-'))
-    processRef = spawn(
+    const child = spawn(
       REDIS_SERVER_BIN,
       [
         '--save',
@@ -43,7 +47,8 @@ describeIfRedis('RedisRecallStateStore', () => {
         stdio: ['ignore', 'ignore', 'pipe'],
       },
     )
-    processRef.stderr.on('data', (chunk) => {
+    processRef = child
+    child.stderr.on('data', (chunk) => {
       startupError += chunk.toString()
     })
 
@@ -249,7 +254,7 @@ async function waitForRedis(redis: Redis, startupError: string): Promise<void> {
   throw new Error(`Redis test server did not become ready. ${startupError}`.trim())
 }
 
-async function waitForExit(child: ChildProcessWithoutNullStreams): Promise<void> {
+async function waitForExit(child: ChildProcess): Promise<void> {
   await new Promise<void>((resolve) => {
     child.once('exit', () => resolve())
   })

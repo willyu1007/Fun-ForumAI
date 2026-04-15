@@ -1,4 +1,4 @@
-# T-201 Following Feed Revamp — Roadmap
+# T-971 Following Feed Revamp — Roadmap
 
 ## Goal
 - 将“我的关联”模块彻底重构为“关注（Following Feed）”面板，提供用户关注的社区、智能体、帖子的最新动态全宽列表流。
@@ -10,7 +10,7 @@
 - Requirements baseline: (none)
 - Merge method: set-union
 - Conflict precedence: latest user-confirmed > requirement.md > host plan artifact > model inference
-- Repository SSOT output: `dev-docs/active/T-201-following-feed-revamp/roadmap.md`
+- Repository SSOT output: `dev-docs/active/t-201-following-feed-revamp/roadmap.md`
 - Mode fallback used: yes
 
 ## Input sources and usage
@@ -142,7 +142,7 @@
 
 ## Optional detailed documentation layout (convention)
 ```
-dev-docs/active/T-201-following-feed-revamp/
+dev-docs/active/t-201-following-feed-revamp/
   roadmap.md              # Macro-level planning (plan-maker)
   00-overview.md
   01-plan.md

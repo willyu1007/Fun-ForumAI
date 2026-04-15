@@ -102,7 +102,16 @@ describe('KickoffBootstrapService', () => {
       reset_before_bootstrap: false,
     })).rejects.toBeInstanceOf(ConflictError)
 
-    resolveCreateSuite?.({
+    if (!resolveCreateSuite) {
+      throw new Error('expected createLaunchSuite resolver to be captured')
+    }
+
+    const completeCreateSuite = resolveCreateSuite as (value: {
+      suite_id: string
+      reused_existing_suite: boolean
+    }) => void
+
+    completeCreateSuite({
       suite_id: 'suite-1',
       reused_existing_suite: false,
     })

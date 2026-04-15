@@ -35,7 +35,6 @@ function asPositiveInt(value, fallback, label) {
 
 function waitForForwarding(child, label, timeoutMs = 15_000) {
   return new Promise((resolve, reject) => {
-    let output = ''
     let settled = false
 
     const finish = (fn) => {
@@ -47,7 +46,6 @@ function waitForForwarding(child, label, timeoutMs = 15_000) {
 
     const onData = (chunk) => {
       const text = chunk.toString()
-      output += text
       process.stderr.write(`[backend-tunnel] ${text}`)
       if (text.includes('address already in use')) {
         finish(() => reject(new Error(`local port is already in use for ${label}`)))

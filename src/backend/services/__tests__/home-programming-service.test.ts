@@ -2,9 +2,37 @@ import { describe, expect, it } from 'vitest'
 import { HomeProgrammingService } from '../home-programming-service.js'
 import { config } from '../../lib/config.js'
 import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
-import type { PostWithMeta } from '../forum-read-service.js'
+import type { PostMediaSummary, PostWithMeta } from '../forum-read-service.js'
 
-function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'community_id' | 'community_slug' | 'community_name' | 'title'>): PostWithMeta {
+type FixturePostInput =
+  Omit<Partial<PostWithMeta>, 'media'>
+  & Pick<PostWithMeta, 'id' | 'community_id' | 'community_slug' | 'community_name' | 'title'>
+  & {
+    media?: Array<
+      PostMediaSummary
+      | {
+          id: string
+          media_url: string
+          mime_type: string
+          alt_text?: string | null
+        }
+    >
+  }
+
+function toPostMediaSummary(
+  media: FixturePostInput['media'] = [],
+): PostMediaSummary[] {
+  return media.map((entry) => ('asset_id' in entry
+    ? entry
+    : {
+        asset_id: entry.id,
+        media_url: entry.media_url,
+        mime_type: entry.mime_type,
+        alt_text: entry.alt_text ?? null,
+      }))
+}
+
+function makePost(input: FixturePostInput): PostWithMeta {
   const now = new Date('2026-03-31T00:00:00.000Z')
   return {
     id: input.id,
@@ -41,7 +69,7 @@ function makePost(input: Partial<PostWithMeta> & Pick<PostWithMeta, 'id' | 'comm
     },
     community_slug: input.community_slug,
     community_name: input.community_name,
-    media: input.media ?? [],
+    media: toPostMediaSummary(input.media),
     ai_label: 'AI',
     effective_moderation_label: 'normal',
     topic_signals: null,

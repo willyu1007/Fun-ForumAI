@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import type {
+  ReplyBudgetSnapshot,
+  RouteHandoff,
+  ThreadCapsule,
+  ThreadLifecycleSnapshot,
+  ThreadWriteabilitySnapshot,
+} from '../../../shared/forum-orchestration.js'
 import type { ExecutionContext, RoamingArrivalCandidate } from '../types.js'
 import {
   buildDecisionHint,
@@ -103,6 +110,65 @@ function buildBaseContext(overrides: Partial<ExecutionContext> = {}): ExecutionC
   } as ExecutionContext
 }
 
+const FIXTURE_TIME = new Date('2026-04-12T00:00:00.000Z').toISOString()
+
+function makeReplyBudget(
+  threadId: string,
+  overrides: Partial<ReplyBudgetSnapshot> = {},
+): ReplyBudgetSnapshot {
+  return {
+    schema_version: 'forum-reply-budget.v1',
+    thread_id: threadId,
+    limit: 6,
+    used: 2,
+    remaining: 4,
+    exhausted: false,
+    mode: 'SOFT_CAP',
+    soft_cap_turns: 6,
+    hard_cap_turns: null,
+    remaining_turns: 4,
+    cooldown_seconds: null,
+    late_entry_reserved_slots: 1,
+    revive_reserved_slots: 1,
+    same_pair_cap: 2,
+    last_evaluated_at: FIXTURE_TIME,
+    ...overrides,
+  }
+}
+
+function makeWriteability(
+  threadId: string,
+  overrides: Partial<ThreadWriteabilitySnapshot> = {},
+): ThreadWriteabilitySnapshot {
+  return {
+    schema_version: 'forum-thread-writeability.v1',
+    thread_id: threadId,
+    reply_mode: 'OPEN',
+    reply_allowed: true,
+    preferred_action: 'REPLY_IN_THREAD',
+    reason_code: 'THREAD_OPEN',
+    ...overrides,
+  }
+}
+
+function makeLifecycle(
+  threadId: string,
+  overrides: Partial<ThreadLifecycleSnapshot> = {},
+): ThreadLifecycleSnapshot {
+  return {
+    schema_version: 'forum-thread-lifecycle.v1',
+    thread_id: threadId,
+    state: 'HEATING',
+    thread_state: 'HEATING',
+    reply_budget: overrides.reply_budget ?? makeReplyBudget(threadId),
+    active_route: overrides.active_route ?? null,
+    writeability: overrides.writeability ?? makeWriteability(threadId),
+    lifecycle_label: 'ACTIVE',
+    updated_at: FIXTURE_TIME,
+    ...overrides,
+  }
+}
+
 describe('forum-roaming', () => {
   it('builds a compact decision hint and keeps it within two lines', () => {
     const lowVerbosity = buildDecisionHint({
@@ -149,40 +215,7 @@ describe('forum-roaming', () => {
       turn_count: 2,
       latest_turn_id: 'turn-2',
       latest_activity_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-      lifecycle: {
-        schema_version: 'forum-thread-lifecycle.v1',
-        thread_id: 'thread-1',
-        state: 'HEATING',
-        thread_state: 'HEATING',
-        reply_budget: {
-          schema_version: 'forum-reply-budget.v1',
-          thread_id: 'thread-1',
-          limit: 6,
-          used: 2,
-          remaining: 4,
-          exhausted: false,
-          mode: 'SOFT_CAP',
-          soft_cap_turns: 6,
-          hard_cap_turns: null,
-          remaining_turns: 4,
-          cooldown_seconds: null,
-          late_entry_reserved_slots: 1,
-          revive_reserved_slots: 1,
-          same_pair_cap: 2,
-          last_evaluated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-        },
-        active_route: null,
-        writeability: {
-          schema_version: 'forum-thread-writeability.v1',
-          thread_id: 'thread-1',
-          reply_mode: 'OPEN',
-          reply_allowed: true,
-          preferred_action: 'REPLY_IN_THREAD',
-          reason_code: 'THREAD_OPEN',
-        },
-        lifecycle_label: 'ACTIVE',
-        updated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-      },
+      lifecycle: makeLifecycle('thread-1'),
       route_handoff: null,
       role: 'COUNTERPOINT',
       summary: 'Current branch summary',
@@ -197,46 +230,41 @@ describe('forum-roaming', () => {
       public_persona_cues: [],
       public_growth_cues: [],
       updated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
+    } satisfies ThreadCapsule
+    const audienceRouteHandoff: RouteHandoff = {
+      schema_version: 'forum-route-handoff.v1',
+      route_id: 'route-1',
+      route_type: 'AUDIENCE',
+      route_kind: 'AUDIENCE',
+      route_state: 'READY',
+      state: 'ACTIVE',
+      reason_code: 'AUDIENCE_ONLY',
+      handoff_label: '去观众区',
+      handoff_payload: null,
+      cta: null,
+      target_ref: null,
+      suggested_at: FIXTURE_TIME,
+      activated_at: null,
+      completed_at: null,
+      expires_at: null,
     }
     const audienceThread = {
       ...currentThread,
       thread_id: 'thread-audience',
       latest_turn_id: 'turn-audience',
-      lifecycle: {
-        ...currentThread.lifecycle,
-        thread_id: 'thread-audience',
-        active_route: {
-          route_type: 'AUDIENCE',
-          route_state: 'READY',
-        },
-        writeability: {
-          ...currentThread.lifecycle.writeability,
-          thread_id: 'thread-audience',
+      lifecycle: makeLifecycle('thread-audience', {
+        active_route: audienceRouteHandoff,
+        writeability: makeWriteability('thread-audience', {
           reply_mode: 'ROUTE_ONLY',
           reply_allowed: false,
           preferred_action: 'FOLLOW_ROUTE',
           reason_code: 'THREAD_HANDOFFED',
-        },
-      },
-      route_handoff: {
-        route_id: 'route-1',
-        route_type: 'AUDIENCE',
-        route_kind: 'AUDIENCE',
-        route_state: 'READY',
-        state: 'OPEN',
-        reason_code: 'AUDIENCE_ONLY',
-        handoff_label: '去观众区',
-        handoff_payload: null,
-        cta: null,
-        target_ref: null,
-        suggested_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-        activated_at: null,
-        completed_at: null,
-        expires_at: null,
-      },
+        }),
+      }),
+      route_handoff: audienceRouteHandoff,
       summary: 'Audience route thread',
       salient_turn_ids: ['turn-audience'],
-    }
+    } satisfies ThreadCapsule
 
     const ctx = buildBaseContext({
       semantic_post_capsule: {
@@ -457,41 +485,9 @@ describe('forum-roaming', () => {
       participant_count: 2,
       turn_count: 2,
       latest_activity_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-      lifecycle: {
-        schema_version: 'forum-thread-lifecycle.v1',
-        state: 'HEATING',
-        thread_state: 'HEATING',
-        reply_budget: {
-          schema_version: 'forum-reply-budget.v1',
-          thread_id: 'thread-1',
-          limit: 6,
-          used: 2,
-          remaining: 4,
-          exhausted: false,
-          mode: 'SOFT_CAP',
-          soft_cap_turns: 6,
-          hard_cap_turns: null,
-          remaining_turns: 4,
-          cooldown_seconds: null,
-          late_entry_reserved_slots: 1,
-          revive_reserved_slots: 1,
-          same_pair_cap: 2,
-          last_evaluated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-        },
-        active_route: null,
-        writeability: {
-          schema_version: 'forum-thread-writeability.v1',
-          thread_id: 'thread-1',
-          reply_mode: 'OPEN',
-          reply_allowed: true,
-          preferred_action: 'REPLY_IN_THREAD',
-          reason_code: 'THREAD_OPEN',
-        },
-        lifecycle_label: 'ACTIVE',
-        updated_at: new Date('2026-04-12T00:00:00.000Z').toISOString(),
-      },
+      lifecycle: makeLifecycle('thread-1'),
       route_handoff: null,
-      role: 'COUNTERPOINT',
+      role: 'COUNTERPOINT' as const,
       unresolved_points: ['Question 1'],
       resolved_points: [],
       reason_badges: [],
@@ -507,43 +503,21 @@ describe('forum-roaming', () => {
       thread_id: 'thread-1',
       participant_ids: ['agent-2', 'agent-3'],
       latest_turn_id: 'turn-2',
-      lifecycle: {
-        ...baseThread.lifecycle,
-        thread_id: 'thread-1',
-        reply_budget: {
-          ...baseThread.lifecycle.reply_budget,
-          thread_id: 'thread-1',
-        },
-        writeability: {
-          ...baseThread.lifecycle.writeability,
-          thread_id: 'thread-1',
-        },
-      },
+      lifecycle: makeLifecycle('thread-1'),
       summary: 'Current branch summary',
       salient_turn_ids: ['turn-2'],
       guide_score: 7,
-    }
+    } satisfies ThreadCapsule
     const targetedThread = {
       ...baseThread,
       thread_id: 'thread-2',
       participant_ids: ['agent-4', 'agent-5'],
       latest_turn_id: 'turn-5',
-      lifecycle: {
-        ...baseThread.lifecycle,
-        thread_id: 'thread-2',
-        reply_budget: {
-          ...baseThread.lifecycle.reply_budget,
-          thread_id: 'thread-2',
-        },
-        writeability: {
-          ...baseThread.lifecycle.writeability,
-          thread_id: 'thread-2',
-        },
-      },
+      lifecycle: makeLifecycle('thread-2'),
       summary: 'Targeted branch summary',
       salient_turn_ids: ['turn-5'],
       guide_score: 2,
-    }
+    } satisfies ThreadCapsule
 
     const ctx = buildBaseContext({
       agent: {
@@ -812,6 +786,7 @@ describe('forum-roaming', () => {
         branch_root_turn_id: 'thread-1',
         local_evidence: [],
         reason_codes: [],
+        ranking_reasons: [],
         allowed_actions: ['reply_in_branch', 'observe_only'],
         expires_at: new Date('2026-04-12T01:00:00.000Z').toISOString(),
         route_handoff: null,
@@ -882,6 +857,7 @@ describe('forum-roaming', () => {
       branch_root_turn_id: 'thread-1',
       local_evidence: [],
       reason_codes: [],
+      ranking_reasons: [],
       allowed_actions: ['handoff_or_route_elsewhere', 'observe_only'],
       expires_at: new Date('2099-04-12T01:00:00.000Z').toISOString(),
       route_handoff: {

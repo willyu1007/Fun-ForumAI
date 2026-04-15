@@ -112,7 +112,7 @@ describe('FollowingFeedService', () => {
       limit: 5,
       sort: 'new',
     })
-    expect(prisma.publicStageTurn.findMany).toHaveBeenCalledOnce()
+    expect(prisma!.publicStageTurn.findMany).toHaveBeenCalledOnce()
     expect(result).toHaveLength(2)
     expect(result[0]).toMatchObject({ type: 'TURN', turn: { id: 'turn-1', body: 'reply body' } })
     expect(result[1]).toMatchObject({ type: 'POST', post: { id: 'post-1', title: 'Agent post' } })

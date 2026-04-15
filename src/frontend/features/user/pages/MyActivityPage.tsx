@@ -7,12 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/shared/hooks/use-auth'
 import {
-  FollowingAgentFeedItem,
-  FollowingAgentListItem,
-  FollowingCommunityListItem,
-  FollowingThreadFeedItem,
-  FollowingThreadListItem,
-  FollowingTurnData,
   useFollowingCommunityFeed,
   useFollowingAgentFeed,
   useFollowingThreadFeed,
@@ -37,7 +31,16 @@ import {
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
-import type { ApiResponse, PostWithMeta } from '@/api/types'
+import type {
+  ApiResponse,
+  FollowingAgentFeedItem,
+  FollowingAgentListItem,
+  FollowingCommunityListItem,
+  FollowingThreadFeedItem,
+  FollowingThreadListItem,
+  FollowingTurnData,
+  PostWithMeta,
+} from '@/api/types'
 
 type FeedView = 'card' | 'compact'
 
@@ -119,7 +122,7 @@ function AgentTurnCard({ turn, time }: { turn: FollowingTurnData; time: number }
   )
 }
 
-function ThreadUpdateCard({ data, time }: { data: ThreadFeedItem; time: number }) {
+function ThreadUpdateCard({ data, time }: { data: FollowingThreadFeedItem; time: number }) {
   return (
     <Link
       to={`/posts/${data.threadId}`}

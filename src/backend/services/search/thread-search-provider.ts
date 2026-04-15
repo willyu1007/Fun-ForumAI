@@ -10,7 +10,11 @@ import {
   buildAchievementPublicProof,
   mergeAgentPublicProjection,
 } from '../../identity/public-author-presentation.js'
-import type { ForumReadService, PublicStageThreadSearchCardBundle } from '../forum-read-service.js'
+import type {
+  ForumReadService,
+  PublicStageThreadSearchCardBundle,
+  PublicStageThreadSearchTurnPreview,
+} from '../forum-read-service.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type { SearchProvider, SearchProviderInput, SearchProviderResult } from './search-provider.js'
@@ -80,7 +84,7 @@ export class ThreadSearchProvider implements SearchProvider {
       const matchedTurn = resolveMatchedTurn(thread, input.query)
       const matchedTurnSnippet = matchedTurn ? buildSnippet(matchedTurn.body, input.query) : null
       const matchedTurnData = matchedTurn
-        ? thread.turns.find((turn) => turn.id === matchedTurn.id)
+        ? thread.turns.find((turn: PublicStageThreadSearchTurnPreview) => turn.id === matchedTurn.id)
         : null
       const anchorPreview = matchedTurnData?.anchor_preview
         ? `回应 @${matchedTurnData.anchor_preview.author_display_name}: ${matchedTurnData.anchor_preview.body_excerpt}`

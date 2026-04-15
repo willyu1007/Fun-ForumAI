@@ -157,7 +157,7 @@ describe('AppShellContainer', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-3xl')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-6xl')
   })
 
   it('uses the wider page frame on post detail routes', () => {
@@ -250,7 +250,7 @@ describe('AppShellContainer', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[96rem]')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-none')
   })
 
   it('stretches the page frame in compact mode on /feed even when the left rail remains open', () => {
@@ -273,7 +273,7 @@ describe('AppShellContainer', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-[96rem]')
+    expect(screen.getByTestId('shell-page-frame').className).toContain('max-w-none')
   })
 
   it('opens the agent modal when the user lands on an agent route directly', async () => {

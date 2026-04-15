@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AdminPanel } from '../AdminPanel'
 import type { ComplaintTicket, ReviewCaseDetail, ReviewEvidenceExport } from '@/api/types'
 import {
+  useApplyAdminWarmupSuiteEdit,
   useAdminAgentRiskProfile,
   useAdminCommunityProposals,
   useAdminHotTopicAlerts,
@@ -28,6 +29,7 @@ import {
   useModerationEvidenceExport,
   useModerationQueue,
   usePreviewAdminWarmupGovernanceBatch,
+  usePreviewAdminWarmupSuiteEdit,
   useRebuildAdminWarmupSuite,
   useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
@@ -59,6 +61,7 @@ vi.mock('../admin-panel/WarmupGovernanceTab', () => ({
 }))
 
 vi.mock('@/api/hooks', () => ({
+  useApplyAdminWarmupSuiteEdit: vi.fn(),
   useAdminAgentRiskProfile: vi.fn(),
   useAdminCommunityProposals: vi.fn(),
   useAdminHotTopicAlerts: vi.fn(),
@@ -84,6 +87,7 @@ vi.mock('@/api/hooks', () => ({
   useModerationEvidenceExport: vi.fn(),
   useModerationQueue: vi.fn(),
   usePreviewAdminWarmupGovernanceBatch: vi.fn(),
+  usePreviewAdminWarmupSuiteEdit: vi.fn(),
   useRebuildAdminWarmupSuite: vi.fn(),
   useReleaseDisclosureCapOverride: vi.fn(),
   useReleaseModerationCase: vi.fn(),
@@ -103,6 +107,7 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 
 const useAssignModerationCaseMock = vi.mocked(useAssignModerationCase)
 const useClaimModerationTaskMock = vi.mocked(useClaimModerationTask)
+const useApplyAdminWarmupSuiteEditMock = vi.mocked(useApplyAdminWarmupSuiteEdit)
 const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
 const useAdminCommunityProposalsMock = vi.mocked(useAdminCommunityProposals)
 const useAdminHotTopicAlertsMock = vi.mocked(useAdminHotTopicAlerts)
@@ -128,6 +133,7 @@ const useModerationCaseMock = vi.mocked(useModerationCase)
 const useModerationEvidenceExportMock = vi.mocked(useModerationEvidenceExport)
 const useModerationQueueMock = vi.mocked(useModerationQueue)
 const usePreviewAdminWarmupGovernanceBatchMock = vi.mocked(usePreviewAdminWarmupGovernanceBatch)
+const usePreviewAdminWarmupSuiteEditMock = vi.mocked(usePreviewAdminWarmupSuiteEdit)
 const useRebuildAdminWarmupSuiteMock = vi.mocked(useRebuildAdminWarmupSuite)
 const useReleaseDisclosureCapOverrideMock = vi.mocked(useReleaseDisclosureCapOverride)
 const useReleaseModerationCaseMock = vi.mocked(useReleaseModerationCase)
@@ -494,6 +500,16 @@ describe('AdminPanel', () => {
     useExecuteAdminWarmupGovernanceBatchMock.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
+    } as never)
+    usePreviewAdminWarmupSuiteEditMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      data: undefined,
+    } as never)
+    useApplyAdminWarmupSuiteEditMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      data: undefined,
     } as never)
     useCreateDisclosureCapOverrideMock.mockReturnValue({
       mutateAsync: vi.fn(),

@@ -1346,16 +1346,6 @@ export class ForumReadService {
     return this.deps.publicStageTurnRepo.findRecentByThread(threadId, limit)
   }
 
-  private async findMatchingVisibleTurnsByThread(
-    threadId: string,
-    query: string | null | undefined,
-    limit: number,
-  ): Promise<PublicStageTurn[]> {
-    const normalizedQuery = (query ?? '').trim()
-    if (!normalizedQuery) return []
-    return this.deps.publicStageTurnRepo.findMatchingByThread(threadId, normalizedQuery, limit)
-  }
-
   private findMatchingVisibleTurnsFromList(
     turns: PublicStageTurn[],
     query: string | null | undefined,

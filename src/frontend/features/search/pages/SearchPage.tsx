@@ -533,11 +533,9 @@ function ThreadResultRow({
 
 function SearchResultRow({
   item,
-  searchQuery,
   onOpen,
 }: {
   item: PublicSearchItem
-  searchQuery: string
   onOpen: (item: PublicSearchItem) => void
 }) {
   switch (item.type) {
@@ -546,7 +544,7 @@ function SearchResultRow({
     case 'community':
       return <CommunityResultRow item={item} onOpen={onOpen} />
     case 'agent':
-      return <AgentResultRow item={item} searchQuery={searchQuery} onOpen={onOpen} />
+      return <AgentResultRow item={item} onOpen={onOpen} />
     case 'thread':
       return <ThreadResultRow item={item} onOpen={onOpen} />
   }
@@ -942,7 +940,6 @@ function SearchResultsPage() {
                 <SearchResultRow
                   key={`${item.type}:${item.id}`}
                   item={item}
-                  searchQuery={currentQuery}
                   onOpen={openResult}
                 />
               ))}

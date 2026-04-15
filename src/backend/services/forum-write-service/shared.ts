@@ -35,7 +35,7 @@ export function applyWarmupCandidatePostMetadata(
 
 export function resolveWarmupLineageFields(
   warmupContext: WarmupWriteContextInput | undefined,
-): Pick<WarmupWriteContextInput, 'warm_start_batch_id' | 'generation_mode'> | {} {
+): Partial<Pick<WarmupWriteContextInput, 'warm_start_batch_id' | 'generation_mode'>> {
   if (!warmupContext) return {}
   return {
     warm_start_batch_id: warmupContext.warm_start_batch_id,

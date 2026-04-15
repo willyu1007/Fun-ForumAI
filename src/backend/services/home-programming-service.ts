@@ -1011,7 +1011,7 @@ export class HomeProgrammingService {
     }
   }
 
-  private toMillis(input: string | null | undefined): number {
+  private toMillis(input: string | Date | null | undefined): number {
     if (!input) return 0
     const value = new Date(input).getTime()
     return Number.isFinite(value) ? value : 0

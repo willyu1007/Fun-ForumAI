@@ -239,12 +239,19 @@ export interface RoamingDecisionPromptInput {
   arrival_candidates_json: string
 }
 
-export interface RoamingDecisionResult {
-  status: RoamingDecisionStatus
-  candidate_id: string | null
-  action: RoamingDecisionAction | null
-  raw_output: string
-}
+export type RoamingDecisionResult =
+  | {
+      status: 'selected'
+      candidate_id: string
+      action: RoamingDecisionAction
+      raw_output: string
+    }
+  | {
+      status: Exclude<RoamingDecisionStatus, 'selected'>
+      candidate_id: string | null
+      action: RoamingDecisionAction | null
+      raw_output: string
+    }
 
 export interface ResolvedForumExecutionPlan {
   candidate_id: string | null
