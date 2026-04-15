@@ -9,6 +9,7 @@ import {
   useAdminHotTopicRoomControl,
   useAdminWarmupSuiteDetail,
   useAdminWarmupSuites,
+  useAdminWarmupVerifierLatestRun,
   useApplyCommunityProposalAction,
   useApplyCommunityHotTopicPolicy,
   useArchiveAdminWarmupSuite,
@@ -31,6 +32,7 @@ import {
   useReleaseModerationCase,
   useReopenModerationCase,
   useReviewAdminWarmupSuite,
+  useRunAdminWarmupVerifier,
   useRetryAdminWarmupSuite,
   useResolveIdentityReview,
   useResolveModerationCase,
@@ -113,11 +115,13 @@ export function useAdminPanelController() {
   const { data: riskProfile } = useAdminAgentRiskProfile(riskProfileAgentId || null)
   const { data: disclosureCaps } = useDisclosureCaps(capScopeType, capScopeId || null)
   const { data: warmupSuites } = useAdminWarmupSuites()
+  const { data: warmupVerifierLatestRun } = useAdminWarmupVerifierLatestRun()
   const createWarmupSuite = useCreateAdminWarmupSuite()
   const reviewWarmupSuite = useReviewAdminWarmupSuite()
   const retryWarmupSuite = useRetryAdminWarmupSuite()
   const rebuildWarmupSuite = useRebuildAdminWarmupSuite()
   const archiveWarmupSuite = useArchiveAdminWarmupSuite()
+  const runWarmupVerifier = useRunAdminWarmupVerifier()
   const previewWarmupGovernance = usePreviewAdminWarmupGovernanceBatch()
   const executeWarmupGovernance = useExecuteAdminWarmupGovernanceBatch()
   const previewWarmupSuiteEdit = usePreviewAdminWarmupSuiteEdit()
@@ -348,6 +352,10 @@ export function useAdminPanelController() {
     }))
   }
 
+  const handleRunWarmupVerifier = async () => {
+    await runWarmupVerifier.mutateAsync()
+  }
+
   return {
     auth: {
       currentIdentity,
@@ -440,11 +448,13 @@ export function useAdminPanelController() {
       selectedSuiteId: selectedWarmupSuiteId,
       setSelectedSuiteId: setSelectedWarmupSuiteId,
       detail: warmupSuiteDetail?.data ?? null,
+      latestVerifierRun: warmupVerifierLatestRun?.data ?? null,
       createMutation: createWarmupSuite,
       reviewMutation: reviewWarmupSuite,
       retryMutation: retryWarmupSuite,
       rebuildMutation: rebuildWarmupSuite,
       archiveMutation: archiveWarmupSuite,
+      runVerifierMutation: runWarmupVerifier,
       previewMutation: previewWarmupGovernance,
       executeMutation: executeWarmupGovernance,
       previewEditMutation: previewWarmupSuiteEdit,
@@ -485,6 +495,7 @@ export function useAdminPanelController() {
       handleExecuteGovernance: handleExecuteWarmupGovernance,
       handlePreviewEdit: handlePreviewWarmupEdit,
       handleApplyEdit: handleApplyWarmupEdit,
+      handleRunVerifier: handleRunWarmupVerifier,
     },
     communityGovernance: {
       proposals: communityProposals?.data ?? [],

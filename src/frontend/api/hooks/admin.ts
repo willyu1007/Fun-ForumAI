@@ -38,6 +38,7 @@ import type {
   TransferredReviewCase,
   WarmupGovernancePreview,
   WarmupLaunchResult,
+  WarmupVerifierRunDetail,
   WarmupReviewDecision,
   WarmupReviewReasonCode,
   WarmupSuiteDetail,
@@ -197,6 +198,32 @@ export function useAdminWarmupSuiteDetail(suiteId: string | null) {
   })
 }
 
+export function useAdminWarmupVerifierLatestRun() {
+  return useQuery({
+    queryKey: queryKeys.adminWarmupVerifierLatestRun,
+    queryFn: async () => {
+      try {
+        return await api.get('admin/warm-start/verifier/runs/latest').json<ApiResponse<WarmupVerifierRunDetail>>()
+      } catch (error) {
+        if (hasHttpStatus(error, 404)) {
+          return { data: null } as ApiResponse<WarmupVerifierRunDetail | null>
+        }
+        throw error
+      }
+    },
+    refetchInterval: 15_000,
+    retry: false,
+  })
+}
+
+export function useAdminWarmupVerifierRun(runId: string | null) {
+  return useQuery({
+    queryKey: runId ? queryKeys.adminWarmupVerifierRun(runId) : ['admin', 'warmup-verifier-run', 'idle'],
+    queryFn: () => api.get(`admin/warm-start/verifier/runs/${runId}`).json<ApiResponse<WarmupVerifierRunDetail>>(),
+    enabled: Boolean(runId),
+  })
+}
+
 export function useCreateAdminWarmupSuite() {
   const qc = useQueryClient()
   return useMutation({
@@ -209,6 +236,29 @@ export function useCreateAdminWarmupSuite() {
       qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures })
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(payload.data.suite_id) })
+    },
+  })
+}
+
+export function useRunAdminWarmupVerifier() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post('admin/warm-start/verifier/runs', {
+        json: {},
+      }).json<ApiResponse<WarmupVerifierRunDetail>>(),
+    onSuccess: (response) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupVerifierLatestRun })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      if (response.data.summary.suite_id) {
+        qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(response.data.summary.suite_id) })
+      }
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+      qc.invalidateQueries({ queryKey: ['search'] })
+      qc.invalidateQueries({ queryKey: ['globalHighlights'] })
     },
   })
 }

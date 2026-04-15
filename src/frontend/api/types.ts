@@ -1946,6 +1946,10 @@ export interface KickoffSuiteEditApplyPayload extends KickoffSuiteEditApplyResul
   suite_detail: WarmupSuiteDetail
 }
 
+export type WarmupVerifierDiagnosis = import('../../shared/warmup-verifier.js').WarmupVerifierDiagnosis
+export type WarmupVerifierRunSummary = import('../../shared/warmup-verifier.js').WarmupVerifierRunSummary
+export type WarmupVerifierRunDetail = import('../../shared/warmup-verifier.js').WarmupVerifierRunDetail
+
 export interface WarmupGovernancePreview {
   action: WarmupGovernanceAction
   suite_id: string | null

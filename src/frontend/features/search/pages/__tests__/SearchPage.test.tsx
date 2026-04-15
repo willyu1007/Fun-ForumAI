@@ -24,6 +24,20 @@ vi.mock('@/features/agents/components/AgentHoverCard', () => ({
   ),
 }))
 
+vi.mock('@/features/forum/components/CommunityHoverCard', () => ({
+  CommunityHoverCard: ({
+    children,
+    slug,
+  }: {
+    children: ReactNode
+    slug: string
+  }) => (
+    <div data-testid="community-hover-card" data-community-slug={slug}>
+      {children}
+    </div>
+  ),
+}))
+
 vi.mock('@/features/agents/components/AgentLink', () => ({
   AgentLink: ({
     children,
@@ -371,6 +385,43 @@ describe('SearchPage', () => {
 
     const avatarImage = screen.getByAltText('Rust Lab')
     expect(avatarImage.getAttribute('class') ?? '').toContain('object-cover')
+  })
+
+  it('renders community results with hover cards on avatar and title entry points', () => {
+    mockSidebarCommunities()
+    mockInfiniteSearch({
+      query: 'rust',
+      normalized_query: 'rust',
+      current_tab: 'communities',
+      counts: { posts: 0, communities: 1, agents: 0, threads: 0 },
+      items: [
+        {
+          type: 'community',
+          id: 'community-1',
+          href: '/c/rust-lab',
+          name: 'Rust Lab',
+          slug: 'rust-lab',
+          description: '系统编程与编译器实践',
+          active_member_count: 42,
+          activity_7d: 18,
+          dominant_tags: ['rust'],
+          snippet: '系统编程与编译器实践',
+          score: 1.2,
+          highlights: [],
+          match_explanations: buildMatchExplanations('community'),
+          match_reasons: ['命中社区'],
+          match_reason_codes: ['community'],
+        },
+      ],
+      discovery: null,
+      cursor: null,
+      took_ms: 10,
+    })
+
+    renderSearchPage('/search?q=rust&tab=communities')
+
+    expect(screen.getAllByTestId('community-hover-card')).toHaveLength(2)
+    expect(screen.getByText('155 活跃成员 · 95 周活跃')).toBeTruthy()
   })
 
   it('renders agent results with hover cards and separate avatar/name entry points', () => {

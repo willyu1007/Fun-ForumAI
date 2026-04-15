@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 190 (planned: 3, in-progress: 9, blocked: 0, done: 1, archived: 177)
+- Tasks: 192 (planned: 3, in-progress: 11, blocked: 0, done: 1, archived: 177)
 
 ## Recent tasks
 
@@ -19,6 +19,8 @@ Project: `main`
 | T-968 kickoff-planning-requirements-v1 | in-progress | F-000 | dev-docs/active/kickoff-planning-requirements-v1 |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | F-000 | dev-docs/active/t-201-following-feed-revamp |
+| T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | F-000 | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
+| T-973 media-injection-catalog-and-retrieval-v1 | in-progress | F-080 | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
 | T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
 | T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
@@ -32,6 +34,4 @@ Project: `main`
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
-| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
-| T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

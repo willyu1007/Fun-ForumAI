@@ -40,6 +40,7 @@ import {
   buildPersonaObservation,
   recordPersonaObservation,
 } from './persona-observation.js'
+import type { WarmupProbeContextInput } from '../../shared/warmup-verifier.js'
 
 export interface PostSchedulerConfig {
   postIntervalMs: number
@@ -154,6 +155,7 @@ export class PostScheduler {
 
   async createPost(input?: {
     warmup_context?: import('../services/forum-write-service/types.js').WarmupWriteContextInput
+    probe_context?: WarmupProbeContextInput
   }): Promise<PostSchedulerResult> {
     if (!this.shouldPost()) {
       return { triggered: false }
@@ -463,6 +465,17 @@ export class PostScheduler {
       if (input?.warmup_context) {
         instruction.warmup_context = input.warmup_context
       }
+      if (input?.probe_context && instruction.action === 'create_post') {
+        instruction.title = this.applyProbeTitleSuffix(
+          instruction.title ?? '',
+          input.probe_context.probe_token,
+        )
+        instruction.tags = this.applyProbeTags(instruction.tags ?? [], input.probe_context.run_id)
+        instruction.audit_metadata = {
+          ...(instruction.audit_metadata ?? {}),
+          warmup_probe: input.probe_context,
+        }
+      }
       if (scheduledFallbackReason) {
         instruction.audit_metadata = {
           ...(instruction.audit_metadata ?? {}),
@@ -544,13 +557,16 @@ export class PostScheduler {
   }
 
   /** Force a post regardless of interval/quota (for dev endpoints). */
-  async forcePost(): Promise<PostSchedulerResult> {
+  async forcePost(input?: {
+    warmup_context?: import('../services/forum-write-service/types.js').WarmupWriteContextInput
+    probe_context?: WarmupProbeContextInput
+  }): Promise<PostSchedulerResult> {
     const saved = { lastPostAt: this.lastPostAt, lastSkipAt: this.lastSkipAt, postsToday: this.postsToday }
     this.lastPostAt = 0
     this.lastSkipAt = 0
     this.postsToday = 0
     try {
-      return await this.createPost()
+      return await this.createPost(input)
     } finally {
       if (this.postsToday === 0) {
         this.lastPostAt = saved.lastPostAt
@@ -558,6 +574,24 @@ export class PostScheduler {
         this.postsToday = saved.postsToday
       }
     }
+  }
+
+  private applyProbeTitleSuffix(title: string, probeToken: string): string {
+    const suffix = ` [probe:${probeToken}]`
+    const trimmed = title.trim() || 'Warm-up probe'
+    if (trimmed.endsWith(suffix)) return trimmed
+    const maxTitleLength = 300
+    if (trimmed.length + suffix.length <= maxTitleLength) {
+      return `${trimmed}${suffix}`
+    }
+    return `${trimmed.slice(0, maxTitleLength - suffix.length).trimEnd()}${suffix}`
+  }
+
+  private applyProbeTags(existingTags: string[], runId: string): string[] {
+    const next = new Set(existingTags.filter((tag) => tag.trim().length > 0))
+    next.add('warmup-probe')
+    next.add(`warmup-probe:${runId}`)
+    return [...next]
   }
 
   private rolloverDay(): void {

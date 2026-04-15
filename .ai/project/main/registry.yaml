@@ -239,6 +239,10 @@ requirements:
     title: "Media Observability, Lifecycle, and Rollout Control"
     status: planned
     feature_id: F-080
+  - id: R-087
+    title: "Media Injection Scaffold and Semantic Retrieval Index"
+    status: in-progress
+    feature_id: F-080
   - id: R-090
     title: "Launch Release Packaging Master"
     status: done
@@ -1797,4 +1801,20 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/t-201-following-feed-revamp
+    updated: 2026-04-15
+  - id: T-972
+    slug: warmup-closure-verifier-and-diagnostics-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/warmup-closure-verifier-and-diagnostics-v1
+    updated: 2026-04-15
+  - id: T-973
+    slug: media-injection-catalog-and-retrieval-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-080
+    requirement_ids:
+      - R-087
+    dev_docs_path: dev-docs/active/media-injection-catalog-and-retrieval-v1
     updated: 2026-04-15

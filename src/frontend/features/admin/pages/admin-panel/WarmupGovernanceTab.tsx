@@ -116,8 +116,18 @@ function Metric({ label, value }: { label: string; value: number }) {
   )
 }
 
+function VerifierStatusBadge({
+  status,
+}: {
+  status: 'running' | 'passed' | 'failed'
+}) {
+  const variant = status === 'passed' ? 'secondary' : status === 'failed' ? 'destructive' : 'outline'
+  return <Badge variant={variant}>{status}</Badge>
+}
+
 export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
   const detail = warmup.detail
+  const latestVerifierRun = warmup.latestVerifierRun
 
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -184,6 +194,151 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
       </div>
 
       <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-sm">Warm-up Verifier</CardTitle>
+              {latestVerifierRun?.summary ? (
+                <VerifierStatusBadge status={latestVerifierRun.summary.status} />
+              ) : (
+                <Badge variant="outline">no runs</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 text-xs">
+            <Button
+              size="sm"
+              disabled={warmup.runVerifierMutation.isPending}
+              onClick={() => {
+                void warmup.handleRunVerifier()
+              }}
+            >
+              {warmup.runVerifierMutation.isPending ? '执行中…' : '重新执行 verifier'}
+            </Button>
+
+            {!latestVerifierRun?.summary && (
+              <p className="text-muted-foreground">尚无 warm-up closure verifier 运行记录。</p>
+            )}
+
+            {latestVerifierRun?.summary && (
+              <>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <Metric label="Suite" value={latestVerifierRun.summary.suite_id ? 1 : 0} />
+                  <Metric label="Probe" value={latestVerifierRun.summary.probe_post_id ? 1 : 0} />
+                  <Metric label="Diagnoses" value={latestVerifierRun.diagnoses.length} />
+                  <Metric
+                    label="Artifacts"
+                    value={latestVerifierRun.summary.artifact_dir ? 1 : 0}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <p className="font-medium">Latest Run</p>
+                  <p className="text-muted-foreground">run {latestVerifierRun.summary.run_id}</p>
+                  <p className="text-muted-foreground">
+                    suite {latestVerifierRun.summary.suite_id ?? 'none'}
+                    {' · '}
+                    baseline {latestVerifierRun.summary.active_baseline_id ?? 'none'}
+                    {' · '}
+                    probe {latestVerifierRun.summary.probe_post_id ?? 'none'}
+                  </p>
+                  {latestVerifierRun.summary.failed_phase && (
+                    <p className="text-muted-foreground">
+                      failed phase: {latestVerifierRun.summary.failed_phase}
+                    </p>
+                  )}
+                </div>
+
+                {latestVerifierRun.top_diagnosis && (
+                  <div className="rounded-md border bg-card px-3 py-2">
+                    <p className="font-medium">{latestVerifierRun.top_diagnosis.summary_zh}</p>
+                    <p className="mt-1 text-muted-foreground">
+                      {latestVerifierRun.top_diagnosis.code}
+                      {' · '}
+                      {latestVerifierRun.top_diagnosis.phase}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <p className="font-medium">Surface Matrix</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['feed', 'home', 'highlights', 'search'] as const).map((surface) => {
+                      const ok = latestVerifierRun.summary.surface_matrix[surface]
+                      return (
+                        <Badge
+                          key={surface}
+                          variant={ok === true ? 'secondary' : ok === false ? 'destructive' : 'outline'}
+                        >
+                          {surface} {ok === true ? 'ok' : ok === false ? 'fail' : 'n/a'}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="font-medium">Governance Drill</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge
+                      variant={
+                        latestVerifierRun.summary.governance_drill.quarantine_ok === true
+                          ? 'secondary'
+                          : latestVerifierRun.summary.governance_drill.quarantine_ok === false
+                            ? 'destructive'
+                            : 'outline'
+                      }
+                    >
+                      quarantine {latestVerifierRun.summary.governance_drill.quarantine_ok === true
+                        ? 'ok'
+                        : latestVerifierRun.summary.governance_drill.quarantine_ok === false
+                          ? 'fail'
+                          : 'n/a'}
+                    </Badge>
+                    <Badge
+                      variant={
+                        latestVerifierRun.summary.governance_drill.restore_ok === true
+                          ? 'secondary'
+                          : latestVerifierRun.summary.governance_drill.restore_ok === false
+                            ? 'destructive'
+                            : 'outline'
+                      }
+                    >
+                      restore {latestVerifierRun.summary.governance_drill.restore_ok === true
+                        ? 'ok'
+                        : latestVerifierRun.summary.governance_drill.restore_ok === false
+                          ? 'fail'
+                          : 'n/a'}
+                    </Badge>
+                    <Badge
+                      variant={
+                        latestVerifierRun.summary.governance_drill.cleanup_ok === true
+                          ? 'secondary'
+                          : latestVerifierRun.summary.governance_drill.cleanup_ok === false
+                            ? 'destructive'
+                            : 'outline'
+                      }
+                    >
+                      cleanup {latestVerifierRun.summary.governance_drill.cleanup_ok === true
+                        ? 'ok'
+                        : latestVerifierRun.summary.governance_drill.cleanup_ok === false
+                          ? 'fail'
+                          : 'n/a'}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="font-medium">Artifacts</p>
+                  <p className="break-all text-muted-foreground">
+                    {latestVerifierRun.summary.artifact_dir}
+                  </p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {!detail && (
           <Card>
             <CardContent className="py-10 text-sm text-muted-foreground">

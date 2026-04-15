@@ -11,6 +11,7 @@ import {
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
+import { formatCommunityAudienceMembers } from '@/shared/utils/community-public-metrics-contract'
 import { COMMUNITY_FAMILY_IDS, readCommunityFamily, type CommunityFamily } from '../../../../shared/semantic-taxonomy'
 import { cn } from '@/lib/utils'
 import type { Community } from '@/api/types'
@@ -22,17 +23,12 @@ const FAMILY_FILTERS = COMMUNITY_FAMILY_IDS.map((key) => ({
 }))
 const FILTERS = [ALL_FILTER, ...FAMILY_FILTERS]
 
-function formatCommunityVisitorCount(activeMemberCount: number): string {
-  const safeActiveMemberCount = Number.isFinite(activeMemberCount) ? activeMemberCount : 0
-  return Math.round(safeActiveMemberCount * 2.5 + 50).toLocaleString('zh-CN')
-}
-
 function CommunityCell({ community }: { community: Community }) {
   const category = resolveCommunityCategory(community)
   const avatarTheme = getCommunityAvatarTheme(community)
   const toneClass = getCommunityAvatarToneClassName(category)
   const glyph = getCommunityCategoryGlyph(category)
-  const visitorCountLabel = formatCommunityVisitorCount(community.active_member_count)
+  const audienceMembersLabel = formatCommunityAudienceMembers(community.active_member_count)
 
   return (
     <Link
@@ -52,7 +48,7 @@ function CommunityCell({ community }: { community: Community }) {
               {community.name}
             </h3>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {visitorCountLabel} 个活跃成员
+              {audienceMembersLabel ? `${audienceMembersLabel} 个活跃成员` : '暂无活跃成员数据'}
             </p>
           </div>
         </div>

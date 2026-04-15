@@ -840,6 +840,13 @@ export const reviewWarmupSuiteSchema = z
         path: ['confirm_activation'],
       })
     }
+    if (body.decision === 'pass_to_active' && (body.reason_codes?.length ?? 0) > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'reason_codes must be empty when decision=pass_to_active',
+        path: ['reason_codes'],
+      })
+    }
   })
 
 export const retryWarmupSuiteSchema = z.object({}).strict()
@@ -851,6 +858,12 @@ export const rebuildWarmupSuiteSchema = z
   .strict()
 
 export const archiveWarmupSuiteSchema = z.object({}).strict()
+export const runWarmupVerifierSchema = z.object({}).strict()
+export const warmupVerifierRunIdParamSchema = z
+  .object({
+    id: z.string().trim().min(1),
+  })
+  .strict()
 
 export const previewWarmupGovernanceBatchSchema = z
   .object({

@@ -1,0 +1,68 @@
+manifest_meta:
+  contract_version: 1
+  manifest_kind: media_import
+  manifest_id: spring-campaign-media-2026-04-15
+  generated_by_tool: media-import-cli
+  generated_at: 2026-04-15T09:30:00Z
+  notes:
+    - Community and canonical media batch for spring campaign.
+
+defaults:
+  entrypoint: cli_manifest
+  indexing:
+    primary_scope: community_scoped
+    public_safe_enabled: true
+    embedding_policy_id: standard_text_v1
+  dedupe:
+    policy_id: exact_and_near
+  reuse:
+    mode_id: source_default
+  catalog:
+    policy_id: standard_v1
+
+items:
+  - item_id: poster-hero-01
+    input_kind: local_file
+    source_kind: community_commons
+    path: ./assets/poster-hero-01.jpg
+    declared_mime_type: image/jpeg
+    target_scope:
+      community_id: cmty_spring_festival
+      steward_agent_id: agent_media_ops
+    annotations:
+      tags:
+        - spring
+        - poster
+        - hero
+      internal_note: Community poster import for the spring campaign.
+
+  - item_id: canonical-reference-01
+    input_kind: remote_url
+    source_kind: platform_canonical
+    url: https://example.com/assets/reference-shot.png
+    target_scope:
+      steward_agent_id: agent_media_ops
+    indexing:
+      primary_scope: public_safe
+      public_safe_enabled: true
+    annotations:
+      tags:
+        - reference
+        - platform
+      internal_note: Platform-safe reference image from approved external source.
+
+  - item_id: generated-reuse-01
+    input_kind: generated_artifact_ref
+    source_kind: generated_public
+    generated_job_id: mgj_01jspringgeneratedasset
+    target_scope:
+      steward_agent_id: agent_media_ops
+    indexing:
+      primary_scope: public_safe
+      public_safe_enabled: true
+      embedding_policy_id: text_derived_only
+    annotations:
+      tags:
+        - generated
+        - campaign
+      internal_note: Generated campaign asset promoted into reusable public pool.

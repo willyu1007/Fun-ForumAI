@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from '
 import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { AgentSentimentBar } from '@/features/forum/components/AgentSentimentBar'
+import { CommunityHoverCard } from '@/features/forum/components/CommunityHoverCard'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import {
   useRecordSearchTelemetry,
@@ -36,6 +37,7 @@ import {
   getCommunityAvatarToneClassName,
   getCommunityCategoryGlyph,
 } from '@/shared/utils/community-shell-meta'
+import { buildCommunityMetricsSummary } from '@/shared/utils/community-public-metrics-contract'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
@@ -324,6 +326,10 @@ function CommunityResultRow({
   }
   const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
   const category = item.community_shell_category ?? 'theme'
+  const metricsSummary = buildCommunityMetricsSummary({
+    activeMemberCount: item.active_member_count,
+    activity7d: item.activity_7d,
+  })
   return (
     <article
       className="group cursor-pointer border-b border-border/40 px-3 py-3 transition-colors hover:bg-muted/60"
@@ -337,25 +343,39 @@ function CommunityResultRow({
       onKeyDown={(e) => handleResultRowKeyDown(e, activate)}
     >
       <div className="flex items-start gap-4">
-        <Avatar className="h-12 w-12 shrink-0">
-          <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
-          <AvatarFallback
-            className={cn('text-sm font-semibold', getCommunityAvatarToneClassName(category))}
-          >
-            {getCommunityCategoryGlyph(category)}
-          </AvatarFallback>
-        </Avatar>
+        <CommunityHoverCard slug={item.slug} preview={item}>
+          <Link to={item.href} data-stop-row-click className="shrink-0 hover:no-underline">
+            <Avatar className="h-12 w-12 shrink-0">
+              <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
+              <AvatarFallback
+                className={cn('text-sm font-semibold', getCommunityAvatarToneClassName(category))}
+              >
+                {getCommunityCategoryGlyph(category)}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
+        </CommunityHoverCard>
 
         <div className="min-w-0 flex-1">
-          <h3 className="text-[1.05rem] font-semibold leading-snug text-foreground">
-            {item.name}
-          </h3>
+          <CommunityHoverCard slug={item.slug} preview={item}>
+            <Link
+              to={item.href}
+              data-stop-row-click
+              className="inline-flex max-w-full hover:underline"
+            >
+              <h3 className="truncate text-[1.05rem] font-semibold leading-snug text-foreground">
+                {item.name}
+              </h3>
+            </Link>
+          </CommunityHoverCard>
           <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-foreground/75">
             {item.snippet || item.description || '暂无简介'}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {item.active_member_count} 成员 · {item.activity_7d} 周活跃
-          </p>
+          {metricsSummary.audienceMembersLabel || metricsSummary.weeklyActivityLabel ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {[metricsSummary.audienceMembersLabel, metricsSummary.weeklyActivityLabel].filter(Boolean).join(' · ')}
+            </p>
+          ) : null}
         </div>
       </div>
     </article>
@@ -590,26 +610,34 @@ function CommunitySidebar({
         {displayItems.map((item) => {
           const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
           const category = item.community_shell_category ?? 'theme'
+          const metricsSummary = buildCommunityMetricsSummary({
+            activeMemberCount: item.active_member_count,
+            activity7d: item.activity_7d,
+          })
           return (
-            <Link key={item.id} to={item.href} className="flex items-start gap-5">
-              <Avatar className="h-10 w-10 shrink-0">
-                <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
-                <AvatarFallback
-                  className={`text-sm font-semibold ${getCommunityAvatarToneClassName(category)}`}
-                >
-                  {getCommunityCategoryGlyph(category)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                  {item.description || `c/${item.slug}`}
-                </p>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  {item.active_member_count} 成员 · {item.activity_7d} 周活跃
-                </p>
-              </div>
-            </Link>
+            <CommunityHoverCard key={item.id} slug={item.slug} preview={item}>
+              <Link to={item.href} className="flex items-start gap-5">
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarImage src={avatarTheme.value} alt={item.name} className="object-cover" />
+                  <AvatarFallback
+                    className={`text-sm font-semibold ${getCommunityAvatarToneClassName(category)}`}
+                  >
+                    {getCommunityCategoryGlyph(category)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">{item.name}</p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                    {item.description || `c/${item.slug}`}
+                  </p>
+                  {metricsSummary.audienceMembersLabel || metricsSummary.weeklyActivityLabel ? (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {[metricsSummary.audienceMembersLabel, metricsSummary.weeklyActivityLabel].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : null}
+                </div>
+              </Link>
+            </CommunityHoverCard>
           )
         })}
       </div>

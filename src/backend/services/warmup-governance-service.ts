@@ -1033,6 +1033,10 @@ export class WarmupGovernanceService {
       throw new ValidationError('pass_to_active requires explicit confirm_activation=true')
     }
 
+    if (input.decision === 'pass_to_active' && (input.reason_codes?.length ?? 0) > 0) {
+      throw new ValidationError('pass_to_active review must not include structured reason codes')
+    }
+
     if (input.decision === 'pass_to_active' && !detail.activation_readiness.ok) {
       throw new ValidationError('suite is not ready for activation', {
         reasons: detail.activation_readiness.reasons,

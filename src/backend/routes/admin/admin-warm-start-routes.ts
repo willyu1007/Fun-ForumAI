@@ -1,5 +1,9 @@
 import type { IRouter, Response } from 'express'
-import { kickoffSuiteEditService, warmupGovernanceService } from '../../container.js'
+import {
+  kickoffSuiteEditService,
+  warmupClosureVerifierService,
+  warmupGovernanceService,
+} from '../../container.js'
 import { AppError } from '../../lib/errors.js'
 import { requireAdmin, requireHumanAuth } from '../../middleware/human-auth.js'
 import {
@@ -10,7 +14,9 @@ import {
   rebuildWarmupSuiteSchema,
   retryWarmupSuiteSchema,
   reviewWarmupSuiteSchema,
+  runWarmupVerifierSchema,
   warmupSuiteIdParamSchema,
+  warmupVerifierRunIdParamSchema,
 } from '../../validation/schemas.js'
 import { kickoffSuiteEditSchema } from '../../validation/kickoff-schemas.js'
 import { validate } from '../../validation/validate.js'
@@ -46,6 +52,73 @@ export function registerAdminWarmStartRoutes(router: IRouter): void {
           created_by_user_id: req.user!.userId,
         })
         res.status(data.reused_existing_suite ? 200 : 201).json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        throw err
+      }
+    },
+  )
+
+  router.post(
+    '/admin/warm-start/verifier/runs',
+    requireHumanAuth,
+    requireAdmin,
+    validate(runWarmupVerifierSchema),
+    async (req, res) => {
+      try {
+        const data = await warmupClosureVerifierService.run({
+          triggered_by_user_id: req.user!.userId,
+        })
+        res.status(201).json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        throw err
+      }
+    },
+  )
+
+  router.get(
+    '/admin/warm-start/verifier/runs/latest',
+    requireHumanAuth,
+    requireAdmin,
+    async (_req, res) => {
+      try {
+        const data = await warmupClosureVerifierService.getLatestRun()
+        if (!data) {
+          res.status(404).json({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'No warm-up verifier run found',
+            },
+          })
+          return
+        }
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        throw err
+      }
+    },
+  )
+
+  router.get(
+    '/admin/warm-start/verifier/runs/:id',
+    requireHumanAuth,
+    requireAdmin,
+    validate(warmupVerifierRunIdParamSchema, 'params'),
+    async (req, res) => {
+      try {
+        const data = await warmupClosureVerifierService.getRun(String(req.params.id))
+        if (!data) {
+          res.status(404).json({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Warm-up verifier run not found',
+            },
+          })
+          return
+        }
+        res.json({ data })
       } catch (err) {
         if (tryHandleAppError(res, err)) return
         throw err

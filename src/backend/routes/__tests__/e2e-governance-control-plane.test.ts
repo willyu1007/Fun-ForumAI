@@ -132,6 +132,45 @@ describe('E2E: Governance Control Plane', () => {
     )
   })
 
+  it('POST/GET /v1/admin/warm-start/verifier/runs executes a verifier run and exposes latest run diagnostics', async () => {
+    const createRes = await request(app)
+      .post('/v1/admin/warm-start/verifier/runs')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+
+    expect(createRes.status).toBe(201)
+    expect(createRes.body.data.summary).toEqual(
+      expect.objectContaining({
+        run_id: expect.any(String),
+        status: expect.stringMatching(/^(running|passed|failed)$/),
+        artifact_dir: expect.any(String),
+      }),
+    )
+    expect(createRes.body.data).toHaveProperty('artifacts.run_summary_path')
+    expect(Array.isArray(createRes.body.data.diagnoses)).toBe(true)
+
+    const latestRes = await request(app)
+      .get('/v1/admin/warm-start/verifier/runs/latest')
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(latestRes.status).toBe(200)
+    expect(latestRes.body.data.summary.run_id).toBe(createRes.body.data.summary.run_id)
+
+    const detailRes = await request(app)
+      .get(`/v1/admin/warm-start/verifier/runs/${createRes.body.data.summary.run_id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(detailRes.status).toBe(200)
+    expect(detailRes.body.data.summary.run_id).toBe(createRes.body.data.summary.run_id)
+    expect(detailRes.body.data.summary.surface_matrix).toHaveProperty('feed')
+    expect(detailRes.body.data.summary.surface_matrix).toHaveProperty('home')
+    expect(detailRes.body.data.summary.surface_matrix).toHaveProperty('highlights')
+    expect(detailRes.body.data.summary.surface_matrix).toHaveProperty('search')
+    for (const value of Object.values(detailRes.body.data.summary.surface_matrix)) {
+      expect([true, false, null]).toContain(value)
+    }
+  })
+
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
     await withFeatureFlags({
       runtimeFeaturesV1: true,

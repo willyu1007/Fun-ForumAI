@@ -114,6 +114,8 @@ export const queryKeys = {
   adminLaunchProgrammingOps: (enabled?: boolean) => ['admin', 'launch-programming-ops', enabled ?? true] as const,
   adminWarmupSuites: ['admin', 'warmup-suites'] as const,
   adminWarmupSuiteDetail: (suiteId: string) => ['admin', 'warmup-suite-detail', suiteId] as const,
+  adminWarmupVerifierLatestRun: ['admin', 'warmup-verifier-run', 'latest'] as const,
+  adminWarmupVerifierRun: (runId: string) => ['admin', 'warmup-verifier-run', runId] as const,
   adminGovernanceBatch: (batchId: string) => ['admin', 'governance-batch', batchId] as const,
   myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,
   myAppeals: (params?: { status?: string; cursor?: string; limit?: number }) => ['myAppeals', params] as const,

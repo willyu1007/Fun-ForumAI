@@ -10,6 +10,7 @@ import {
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
+import { formatCommunityAudienceMembers } from '@/shared/utils/community-public-metrics-contract'
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -314,6 +315,7 @@ export function TopBarSearch() {
                       {communityItems.map((item) => {
                         const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
                         const category = resolveCommunityCategory({ slug: item.slug, name: item.name, description: item.description })
+                        const audienceMembersLabel = formatCommunityAudienceMembers(item.active_member_count)
                         return (
                           <button
                             key={item.id}
@@ -330,7 +332,7 @@ export function TopBarSearch() {
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
                               <p className="truncate text-xs text-muted-foreground">
-                                {item.active_member_count} 成员
+                                {audienceMembersLabel ? `${audienceMembersLabel} 活跃成员` : '暂无活跃成员数据'}
                               </p>
                             </div>
                           </button>

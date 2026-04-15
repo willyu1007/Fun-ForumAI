@@ -200,4 +200,6 @@ Project: `main`
 | T-968 kickoff-planning-requirements-v1 | in-progress | F-000 | dev-docs/active/kickoff-planning-requirements-v1 |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | F-000 | dev-docs/active/t-201-following-feed-revamp |
+| T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | F-000 | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
+| T-973 media-injection-catalog-and-retrieval-v1 | in-progress | F-080 | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
 <!-- AUTO-GENERATED:END task-index -->

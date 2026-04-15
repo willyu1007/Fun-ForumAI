@@ -102,6 +102,7 @@ describe('TopBarSearch', () => {
 
     const avatarImage = screen.getByAltText('Rust Lab')
     expect(avatarImage.getAttribute('class') ?? '').toContain('object-cover')
+    expect(screen.getByText('155 活跃成员')).toBeTruthy()
   })
 
   it('shows a clear button for the active search query in collapsed state', async () => {

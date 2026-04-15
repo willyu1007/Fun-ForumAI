@@ -274,16 +274,20 @@ export function useAsideSeats(postId: string, options?: { enabled?: boolean }) {
   })
 }
 
-export function useCommunities(params?: PaginationParams) {
+export function useCommunities(
+  params?: PaginationParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: queryKeys.communities(params),
     queryFn: () =>
       api.get(`communities${toSearchString(params)}`).json<ApiResponse<Community[]>>(),
+    enabled: options?.enabled ?? true,
   })
 }
 
-export function useCommunityBySlug(slug: string) {
-  const { data, ...rest } = useCommunities()
+export function useCommunityBySlug(slug: string, options?: { enabled?: boolean }) {
+  const { data, ...rest } = useCommunities(undefined, options)
   const community = data?.data?.find((c) => c.slug === slug) ?? null
   return { data: community, ...rest }
 }

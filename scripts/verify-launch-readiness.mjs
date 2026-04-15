@@ -78,6 +78,28 @@ function runCommand(group, name, command) {
   }
 }
 
+function runNodeScriptCheck(group, name, filePath, args, options = {}) {
+  const { env = {} } = options
+  try {
+    const output = execFileSync('node', [filePath, ...args], {
+      cwd: ROOT,
+      stdio: 'pipe',
+      timeout: 120_000,
+      maxBuffer: 50 * 1024 * 1024,
+      env: {
+        ...process.env,
+        ...env,
+      },
+    }).toString()
+    pushResult(group, name, true, output.trim())
+  } catch (error) {
+    const stdout = error?.stdout?.toString?.() ?? ''
+    const stderr = error?.stderr?.toString?.() ?? ''
+    const detail = `${stdout}${stderr}`.trim() || `node ${filePath} failed`
+    pushResult(group, name, false, detail)
+  }
+}
+
 async function fetchJson(url, input = {}) {
   const response = await fetch(url, input)
   const text = await response.text()
@@ -404,9 +426,9 @@ async function runStagingChecks() {
         ? `threads=${activeSuiteDetail?.summary?.threads ?? 0} turns=${activeSuiteDetail?.summary?.turns ?? 0} votes=${activeSuiteDetail?.summary?.votes ?? 0}`
         : `status=${detailResponse.status}`,
     )
-    pushResult(
-      'Runtime Readiness',
-      'Active suite media floor',
+  pushResult(
+    'Runtime Readiness',
+    'Active suite media floor',
       detailResponse.status === 200
         && (activeSuiteDetail?.summary?.media ?? 0) > 0
         && typeof activeSuiteDetail?.summary?.media_coverage_ratio === 'number'
@@ -416,6 +438,18 @@ async function runStagingChecks() {
         : `status=${detailResponse.status}`,
     )
   }
+
+  runNodeScriptCheck(
+    'Runtime Readiness',
+    'Warm-up closure verifier',
+    'scripts/verify-warmup-closure.mjs',
+    ['--web-base-url', webBaseUrl],
+    {
+      env: {
+        LAUNCH_ADMIN_TOKEN: adminToken,
+      },
+    },
+  )
 
   const frontendFlags = await fetchJson(`${webBaseUrl}/frontend-build-capabilities.json`)
   const proofProfile = frontendFlags.body?.profile === 'launch'

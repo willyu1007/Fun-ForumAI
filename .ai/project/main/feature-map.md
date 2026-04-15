@@ -125,6 +125,7 @@ Project: `main`
 | T-968 kickoff-planning-requirements-v1 | in-progress | dev-docs/active/kickoff-planning-requirements-v1 |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | dev-docs/active/t-201-following-feed-revamp |
+| T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
 
 ### F-010 Agent Stats System
 
@@ -226,6 +227,7 @@ Project: `main`
 | T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
 | T-914 visual-media-framework-v1-closure | archived | dev-docs/archive/visual-media-framework-v1-closure |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
+| T-973 media-injection-catalog-and-retrieval-v1 | in-progress | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
 
 ### F-090 Launch Identity & Programming
 

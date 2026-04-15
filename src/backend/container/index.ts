@@ -47,6 +47,8 @@ import { KickoffRuntimeReadinessService } from '../services/kickoff-runtime-read
 import { KickoffBootstrapService } from '../services/kickoff-bootstrap-service.js'
 import { KickoffPatchImportService } from '../services/kickoff-patch-import-service.js'
 import { KickoffSuiteEditService } from '../services/kickoff-suite-edit-service.js'
+import { WarmupRunArtifactService } from '../services/warmup-run-artifact-service.js'
+import { WarmupClosureVerifierService } from '../services/warmup-closure-verifier-service.js'
 import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 import { createHealthService } from '../health/service.js'
 import { healthState } from '../health/state.js'
@@ -640,6 +642,20 @@ export const kickoffSuiteEditService = new KickoffSuiteEditService({
   mediaAssetControlService: llm.mediaAssetControlService,
   agentRepo: repos.agentRepo,
   searchProjectionService,
+})
+export const warmupRunArtifactService = new WarmupRunArtifactService()
+export const warmupClosureVerifierService = new WarmupClosureVerifierService({
+  artifactService: warmupRunArtifactService,
+  warmupGovernanceService: core.warmupGovernanceService,
+  postScheduler: rt.postScheduler,
+  postRepo: repos.postRepo,
+  forumReadService: core.forumReadService,
+  searchService,
+  homeProgrammingService: core.homeProgrammingService,
+  globalHighlightsService: core.globalHighlightsService,
+  searchProjectionService,
+  runtimeLoop: rt.runtimeLoop,
+  llmGateway: llm.llmGateway,
 })
 
 // ─── 8. Event Hook Wiring ───────────────────────────────────

@@ -422,6 +422,21 @@ describe('WarmupGovernanceService', () => {
     ).rejects.toThrow('not_passed review requires at least one structured reason code')
   })
 
+  it('rejects structured reason codes for pass_to_active reviews', async () => {
+    const ctx = createService()
+    const fixture = await seedSuiteFixture(ctx)
+
+    await expect(
+      ctx.service.reviewSuite({
+        suite_id: fixture.suiteId,
+        reviewer_user_id: 'admin-1',
+        decision: 'pass_to_active',
+        reason_codes: ['process_issue'],
+        confirm_activation: true,
+      }),
+    ).rejects.toThrow('pass_to_active review must not include structured reason codes')
+  })
+
   it('blocks pass_to_active when activation readiness is incomplete', async () => {
     const ctx = createService()
     const suite = await ctx.repos.warmupGovernanceRepo.createSuite({

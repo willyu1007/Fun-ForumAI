@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   validateCanonicalLaunchBuildProfile,
@@ -40,5 +41,11 @@ describe('launch readiness repo checks', () => {
     expect(validatePublishWorkflowWireup()).toMatchObject({ ok: true })
     expect(validateDevOnlyStartupHardening()).toMatchObject({ ok: true })
     expect(validateStrictSemanticConvergence()).toMatchObject({ ok: true })
+  })
+
+  it('wires the warm-up closure verifier into staging checks', () => {
+    const script = readFileSync('scripts/verify-launch-readiness.mjs', 'utf8')
+    expect(script).toContain('Warm-up closure verifier')
+    expect(script).toContain('scripts/verify-warmup-closure.mjs')
   })
 })
