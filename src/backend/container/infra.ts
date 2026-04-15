@@ -43,6 +43,7 @@ export interface InfraResult {
     guidanceRecallScheduler: LeaderElector
     mediaGenerationWorker: LeaderElector
     mediaLifecycleWorker: LeaderElector
+    mediaImportJobWorker: LeaderElector
   }
 }
 
@@ -198,6 +199,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       guidanceRecallScheduler: createLeaderElector('guidance-recall-scheduler'),
       mediaGenerationWorker: createLeaderElector('media-generation-worker'),
       mediaLifecycleWorker: createLeaderElector('media-lifecycle-worker'),
+      mediaImportJobWorker: createLeaderElector('media-import-job-worker'),
     },
   }
 }

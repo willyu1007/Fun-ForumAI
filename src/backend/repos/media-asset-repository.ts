@@ -14,12 +14,17 @@ export interface UpdateMediaAssetPatch {
   height?: number | null
   storage_key?: string | null
   origin_url?: string | null
+  duplicate_cluster_id?: string | null
+  duplicate_distance?: number | null
 }
 
 export interface MediaAssetRepository {
   create(input: CreateMediaAssetInput): Promise<MediaAsset>
   findById(id: string): Promise<MediaAsset | null>
   findByIds(ids: string[]): Promise<MediaAsset[]>
+  listBySha256(sha256: string): Promise<MediaAsset[]>
+  listByPhash(phash: string): Promise<MediaAsset[]>
+  listByDuplicateClusterId(clusterId: string): Promise<MediaAsset[]>
   listRecent(opts?: {
     limit?: number
     lifecycle_statuses?: MediaLifecycleStatus[]
@@ -70,6 +75,8 @@ export class InMemoryMediaAssetRepository implements MediaAssetRepository {
       height: input.height ?? null,
       sha256: input.sha256,
       phash: input.phash ?? null,
+      duplicate_cluster_id: input.duplicate_cluster_id ?? null,
+      duplicate_distance: input.duplicate_distance ?? null,
       created_at: now,
       updated_at: now,
     }
@@ -85,6 +92,24 @@ export class InMemoryMediaAssetRepository implements MediaAssetRepository {
     const lookup = new Set(ids)
     return Array.from(this.store.values())
       .filter((item) => lookup.has(item.id))
+      .sort(compareRecent)
+  }
+
+  async listBySha256(sha256: string): Promise<MediaAsset[]> {
+    return Array.from(this.store.values())
+      .filter((item) => item.sha256 === sha256)
+      .sort(compareRecent)
+  }
+
+  async listByPhash(phash: string): Promise<MediaAsset[]> {
+    return Array.from(this.store.values())
+      .filter((item) => item.phash === phash)
+      .sort(compareRecent)
+  }
+
+  async listByDuplicateClusterId(clusterId: string): Promise<MediaAsset[]> {
+    return Array.from(this.store.values())
+      .filter((item) => item.duplicate_cluster_id === clusterId)
       .sort(compareRecent)
   }
 
@@ -160,6 +185,8 @@ export class InMemoryMediaAssetRepository implements MediaAssetRepository {
     if (patch.height !== undefined) current.height = patch.height
     if (patch.storage_key !== undefined) current.storage_key = patch.storage_key
     if (patch.origin_url !== undefined) current.origin_url = patch.origin_url
+    if (patch.duplicate_cluster_id !== undefined) current.duplicate_cluster_id = patch.duplicate_cluster_id
+    if (patch.duplicate_distance !== undefined) current.duplicate_distance = patch.duplicate_distance
     current.updated_at = new Date()
     return current
   }

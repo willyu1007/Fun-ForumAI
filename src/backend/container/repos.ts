@@ -19,6 +19,13 @@ import { InMemoryMediaGenerationJobRepository } from '../repos/media-generation-
 import { InMemoryMediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
 import { InMemoryMediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import { InMemoryMediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
+import { InMemoryMediaCatalogCardRepository } from '../repos/media-catalog-card-repository.js'
+import { InMemoryMediaRetrievalDocumentRepository } from '../repos/media-retrieval-document-repository.js'
+import { InMemoryMediaEmbeddingSnapshotRepository } from '../repos/media-embedding-snapshot-repository.js'
+import { InMemoryMediaDuplicateClusterRepository } from '../repos/media-duplicate-cluster-repository.js'
+import { InMemoryMediaImportJobRepository } from '../repos/media-import-job-repository.js'
+import { InMemoryMediaImportJobItemRepository } from '../repos/media-import-job-item-repository.js'
+import { InMemoryMediaRetrievalSearchRepository } from '../repos/media-retrieval-search-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../repos/agent-repository.js'
 import { InMemoryAgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import { InMemoryAgentSignalLogRepository } from '../repos/agent-signal-log-repository.js'
@@ -77,6 +84,13 @@ import type { MediaGenerationJobRepository } from '../repos/media-generation-job
 import type { MediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import type { MediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
+import type { MediaCatalogCardRepository } from '../repos/media-catalog-card-repository.js'
+import type { MediaRetrievalDocumentRepository } from '../repos/media-retrieval-document-repository.js'
+import type { MediaEmbeddingSnapshotRepository } from '../repos/media-embedding-snapshot-repository.js'
+import type { MediaDuplicateClusterRepository } from '../repos/media-duplicate-cluster-repository.js'
+import type { MediaImportJobRepository } from '../repos/media-import-job-repository.js'
+import type { MediaImportJobItemRepository } from '../repos/media-import-job-item-repository.js'
+import type { MediaRetrievalSearchRepository } from '../repos/media-retrieval-search-repository.js'
 import type { AgentRepository, AgentConfigRepository } from '../repos/agent-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { AgentSignalLogRepository } from '../repos/agent-signal-log-repository.js'
@@ -138,6 +152,13 @@ export interface Repositories {
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
   mediaLineageEdgeRepo: MediaLineageEdgeRepository
+  mediaCatalogCardRepo: MediaCatalogCardRepository
+  mediaRetrievalDocumentRepo: MediaRetrievalDocumentRepository
+  mediaEmbeddingSnapshotRepo: MediaEmbeddingSnapshotRepository
+  mediaRetrievalSearchRepo: MediaRetrievalSearchRepository
+  mediaDuplicateClusterRepo: MediaDuplicateClusterRepository
+  mediaImportJobRepo: MediaImportJobRepository
+  mediaImportJobItemRepo: MediaImportJobItemRepository
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   agentCommunityMembershipRepo: AgentCommunityMembershipRepository
@@ -212,6 +233,13 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgMediaObservabilityEventRepository } = await import('../repos/pg/pg-media-observability-event-repository.js')
     const { PgMediaRolloutControllerOverrideRepository } = await import('../repos/pg/pg-media-rollout-controller-override-repository.js')
     const { PgMediaLineageEdgeRepository } = await import('../repos/pg/pg-media-lineage-edge-repository.js')
+    const { PgMediaCatalogCardRepository } = await import('../repos/pg/pg-media-catalog-card-repository.js')
+    const { PgMediaRetrievalDocumentRepository } = await import('../repos/pg/pg-media-retrieval-document-repository.js')
+    const { PgMediaEmbeddingSnapshotRepository } = await import('../repos/pg/pg-media-embedding-snapshot-repository.js')
+    const { PgMediaRetrievalSearchRepository } = await import('../repos/pg/pg-media-retrieval-search-repository.js')
+    const { PgMediaDuplicateClusterRepository } = await import('../repos/pg/pg-media-duplicate-cluster-repository.js')
+    const { PgMediaImportJobRepository } = await import('../repos/pg/pg-media-import-job-repository.js')
+    const { PgMediaImportJobItemRepository } = await import('../repos/pg/pg-media-import-job-item-repository.js')
     const { PgAgentRepository, PgAgentConfigRepository } = await import('../repos/pg/pg-agent-repository.js')
     const { PgAgentCommunityMembershipRepository } = await import('../repos/pg/pg-agent-community-membership-repository.js')
     const { PgAgentSignalLogRepository } = await import('../repos/pg/pg-agent-signal-log-repository.js')
@@ -272,6 +300,13 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const moer = new PgMediaObservabilityEventRepository(prisma)
     const mrcor = new PgMediaRolloutControllerOverrideRepository(prisma)
     const mler = new PgMediaLineageEdgeRepository(prisma)
+    const mediaCatalogCardRepo = new PgMediaCatalogCardRepository(prisma)
+    const mediaRetrievalDocumentRepo = new PgMediaRetrievalDocumentRepository(prisma)
+    const mediaEmbeddingSnapshotRepo = new PgMediaEmbeddingSnapshotRepository(prisma)
+    const mediaRetrievalSearchRepo = new PgMediaRetrievalSearchRepository(prisma)
+    const mediaDuplicateClusterRepo = new PgMediaDuplicateClusterRepository(prisma)
+    const mediaImportJobRepo = new PgMediaImportJobRepository(prisma)
+    const mediaImportJobItemRepo = new PgMediaImportJobItemRepository(prisma)
     const ar = new PgAgentRepository(prisma)
     const acr = new PgAgentConfigRepository(prisma)
     const amr = new PgAgentCommunityMembershipRepository(prisma)
@@ -333,6 +368,13 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         mediaObservabilityEventRepo: moer,
         mediaRolloutControllerOverrideRepo: mrcor,
         mediaLineageEdgeRepo: mler,
+        mediaCatalogCardRepo,
+        mediaRetrievalDocumentRepo,
+        mediaEmbeddingSnapshotRepo,
+        mediaRetrievalSearchRepo,
+        mediaDuplicateClusterRepo,
+        mediaImportJobRepo,
+        mediaImportJobItemRepo,
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
@@ -363,6 +405,8 @@ export async function createRepositories(usePrisma: boolean): Promise<{
   const eventRepo = new InMemoryEventRepository()
   const agentRunRepo = new InMemoryAgentRunRepository()
   const userRepo = new InMemoryUserRepository()
+  const mediaRetrievalDocumentRepo = new InMemoryMediaRetrievalDocumentRepository()
+  const mediaEmbeddingSnapshotRepo = new InMemoryMediaEmbeddingSnapshotRepository()
 
   return {
     repos: {
@@ -387,6 +431,16 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       mediaObservabilityEventRepo: new InMemoryMediaObservabilityEventRepository(),
       mediaRolloutControllerOverrideRepo: new InMemoryMediaRolloutControllerOverrideRepository(),
       mediaLineageEdgeRepo: new InMemoryMediaLineageEdgeRepository(),
+      mediaCatalogCardRepo: new InMemoryMediaCatalogCardRepository(),
+      mediaRetrievalDocumentRepo,
+      mediaEmbeddingSnapshotRepo,
+      mediaRetrievalSearchRepo: new InMemoryMediaRetrievalSearchRepository({
+        listDocuments: () => mediaRetrievalDocumentRepo.listAll(),
+        listSnapshots: () => mediaEmbeddingSnapshotRepo.listAll(),
+      }),
+      mediaDuplicateClusterRepo: new InMemoryMediaDuplicateClusterRepository(),
+      mediaImportJobRepo: new InMemoryMediaImportJobRepository(),
+      mediaImportJobItemRepo: new InMemoryMediaImportJobItemRepository(),
       agentRepo: new InMemoryAgentRepository(),
       agentConfigRepo: new InMemoryAgentConfigRepository(),
       agentCommunityMembershipRepo: new InMemoryAgentCommunityMembershipRepository(),

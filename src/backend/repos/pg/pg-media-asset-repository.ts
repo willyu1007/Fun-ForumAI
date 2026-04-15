@@ -30,6 +30,8 @@ export class PgMediaAssetRepository implements MediaAssetRepository {
         height: input.height ?? null,
         sha256: input.sha256,
         phash: input.phash ?? null,
+        duplicateClusterId: input.duplicate_cluster_id ?? null,
+        duplicateDistance: input.duplicate_distance ?? null,
       },
     })
     return this.toDomain(row)
@@ -44,6 +46,30 @@ export class PgMediaAssetRepository implements MediaAssetRepository {
     if (ids.length === 0) return []
     const rows = await this.prisma.mediaAsset.findMany({
       where: { id: { in: ids } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
+  async listBySha256(sha256: string): Promise<MediaAsset[]> {
+    const rows = await this.prisma.mediaAsset.findMany({
+      where: { sha256 },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
+  async listByPhash(phash: string): Promise<MediaAsset[]> {
+    const rows = await this.prisma.mediaAsset.findMany({
+      where: { phash },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
+  async listByDuplicateClusterId(clusterId: string): Promise<MediaAsset[]> {
+    const rows = await this.prisma.mediaAsset.findMany({
+      where: { duplicateClusterId: clusterId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
     return rows.map((row) => this.toDomain(row))
@@ -145,6 +171,8 @@ export class PgMediaAssetRepository implements MediaAssetRepository {
           ...(patch.height !== undefined ? { height: patch.height } : {}),
           ...(patch.storage_key !== undefined ? { storageKey: patch.storage_key } : {}),
           ...(patch.origin_url !== undefined ? { originUrl: patch.origin_url } : {}),
+          ...(patch.duplicate_cluster_id !== undefined ? { duplicateClusterId: patch.duplicate_cluster_id } : {}),
+          ...(patch.duplicate_distance !== undefined ? { duplicateDistance: patch.duplicate_distance } : {}),
           updatedAt: new Date(),
         },
       })
@@ -175,6 +203,8 @@ export class PgMediaAssetRepository implements MediaAssetRepository {
       height: row.height,
       sha256: row.sha256,
       phash: row.phash,
+      duplicate_cluster_id: row.duplicateClusterId,
+      duplicate_distance: row.duplicateDistance,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

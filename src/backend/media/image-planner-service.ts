@@ -1,3 +1,4 @@
+import { config } from '../lib/config.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
 import type { MediaSemanticSnapshotRepository } from '../repos/media-semantic-snapshot-repository.js'
 import type { SceneMediaBindingRepository } from '../repos/scene-media-binding-repository.js'
@@ -7,6 +8,7 @@ import type { MediaContextProjectionRepository } from '../repos/media-context-pr
 import type { MediaProjectionService } from './media-projection-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
 import type { MediaLineageService } from './media-lineage-service.js'
+import type { MediaRetrievalService } from './media-retrieval-service.js'
 import type { StorageAdapter } from '../services/storage-adapter.js'
 import type {
   AspectRatioHint,
@@ -97,6 +99,7 @@ export interface ImagePlannerServiceDeps {
   mediaProjectionService: MediaProjectionService
   mediaReuseGovernanceService: MediaReuseGovernanceService
   mediaLineageService?: MediaLineageService | null
+  mediaRetrievalService?: Pick<MediaRetrievalService, 'searchPlannerCandidates'> | null
   storage?: Pick<StorageAdapter, 'getObject'> | null
 }
 
@@ -727,6 +730,18 @@ export class ImagePlannerService {
           if (safeMode) break
           await addPoolCandidates([buildPrivateDerivedPublicPoolSceneId(agentId)], 'private_derived_public')
           break
+      }
+    }
+
+    if (config.launch.capabilities.mediaPlannerRetrievalV1 && this.deps.mediaRetrievalService) {
+      try {
+        const retrievalCandidates = await this.deps.mediaRetrievalService.searchPlannerCandidates({
+          agent_id: agentId,
+          directive,
+        })
+        candidates.push(...retrievalCandidates)
+      } catch (error) {
+        console.warn('[ImagePlannerService] semantic retrieval fallback to legacy candidates:', error)
       }
     }
 

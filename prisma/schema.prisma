@@ -806,6 +806,8 @@ model MediaAsset {
   height           Int?
   sha256           String
   phash            String?
+  duplicateClusterId String? @map("duplicate_cluster_id")
+  duplicateDistance  Float?  @map("duplicate_distance")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -815,12 +817,19 @@ model MediaAsset {
   sceneBindings       SceneMediaBinding[]
   postMedia           PostMedia[]
   generatedOutputJobs MediaGenerationJobRecord[] @relation("GeneratedJobOutputAsset")
+  catalogCards        MediaCatalogCardRecord[]
+  retrievalDocuments  MediaRetrievalDocumentRecord[]
+  duplicateCluster    MediaDuplicateClusterRecord? @relation("MediaDuplicateClusterMembership", fields: [duplicateClusterId], references: [id])
+  canonicalDuplicateClusters MediaDuplicateClusterRecord[] @relation("MediaDuplicateClusterCanonicalAsset")
+  resolvedImportItems MediaImportJobItemRecord[] @relation("MediaImportResolvedAsset")
+  sourceImportItems   MediaImportJobItemRecord[] @relation("MediaImportSourceAsset")
 
   @@index([stewardAgentId, createdAt])
   @@index([ownerUserId, createdAt])
   @@index([sourceKind, createdAt])
   @@index([visibilityPolicy, lifecycleStatus, createdAt])
   @@index([sha256])
+  @@index([duplicateClusterId, createdAt])
   @@map("media_assets")
 }
 
@@ -838,8 +847,9 @@ model MediaSemanticSnapshot {
   isCurrent        Boolean  @default(true) @map("is_current")
   createdAt        DateTime @default(now()) @map("created_at")
 
-  asset         MediaAsset          @relation(fields: [assetId], references: [id])
+  asset         MediaAsset               @relation(fields: [assetId], references: [id])
   sceneBindings SceneMediaBinding[]
+  catalogCards  MediaCatalogCardRecord[]
 
   @@index([assetId, isCurrent, createdAt])
   @@map("media_semantic_snapshots")
@@ -986,8 +996,9 @@ model MediaGenerationJobRecord {
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
 
-  plan        ImagePlanRecord? @relation(fields: [planId], references: [id])
-  outputAsset MediaAsset?      @relation("GeneratedJobOutputAsset", fields: [outputAssetId], references: [id])
+  plan        ImagePlanRecord?          @relation(fields: [planId], references: [id])
+  outputAsset MediaAsset?               @relation("GeneratedJobOutputAsset", fields: [outputAssetId], references: [id])
+  importItems MediaImportJobItemRecord[]
 
   @@index([agentId, createdAt])
   @@index([planId, createdAt])
@@ -996,6 +1007,212 @@ model MediaGenerationJobRecord {
   @@index([provider, status, createdAt])
   @@index([startedAt])
   @@map("media_generation_jobs")
+}
+
+model MediaCatalogCardRecord {
+  id                 String   @id @default(cuid())
+  assetId            String   @map("asset_id")
+  semanticSnapshotId String?  @map("semantic_snapshot_id")
+  schemaVersion      String   @default("media-catalog-card.v1") @map("schema_version")
+  modality           String
+  sourceKind         String   @map("source_kind")
+  contentHash        String   @map("content_hash")
+  buildStatus        String   @map("build_status")
+  payloadJson        Json     @map("payload_json")
+  isCurrent          Boolean  @default(true) @map("is_current")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  asset              MediaAsset               @relation(fields: [assetId], references: [id])
+  semanticSnapshot   MediaSemanticSnapshot?   @relation(fields: [semanticSnapshotId], references: [id])
+  retrievalDocuments MediaRetrievalDocumentRecord[]
+
+  @@index([assetId, isCurrent, createdAt])
+  @@index([sourceKind, buildStatus, createdAt])
+  @@index([semanticSnapshotId, createdAt])
+  @@map("media_catalog_cards")
+}
+
+model MediaRetrievalDocumentRecord {
+  id                 String   @id @default(cuid())
+  docKey             String   @unique @map("doc_key")
+  assetId            String   @map("asset_id")
+  catalogCardId      String?  @map("catalog_card_id")
+  duplicateClusterId String?  @map("duplicate_cluster_id")
+  schemaVersion      String   @default("media-retrieval-doc.v1") @map("schema_version")
+  docScope           String   @map("doc_scope")
+  modality           String
+  trackKind          String?  @map("track_kind")
+  segmentStartMs     Int?     @map("segment_start_ms")
+  segmentEndMs       Int?     @map("segment_end_ms")
+  sourceKind         String   @map("source_kind")
+  ownerUserId        String?  @map("owner_user_id")
+  stewardAgentId     String?  @map("steward_agent_id")
+  communityId        String?  @map("community_id")
+  isCanonical        Boolean  @default(true) @map("is_canonical")
+  lifecycleStatus    String   @default("active") @map("lifecycle_status")
+  documentText       String   @map("document_text") @db.Text
+  documentHash       String   @map("document_hash")
+  documentMetaJson   Json     @map("document_meta_json")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  asset              MediaAsset                  @relation(fields: [assetId], references: [id])
+  catalogCard        MediaCatalogCardRecord?     @relation(fields: [catalogCardId], references: [id])
+  duplicateCluster   MediaDuplicateClusterRecord? @relation(fields: [duplicateClusterId], references: [id])
+  embeddingSnapshots MediaEmbeddingSnapshotRecord[]
+
+  @@index([assetId, docScope, createdAt])
+  @@index([docScope, sourceKind, createdAt])
+  @@index([communityId, docScope, createdAt])
+  @@index([ownerUserId, docScope, createdAt])
+  @@index([duplicateClusterId, isCanonical, createdAt])
+  @@index([lifecycleStatus, createdAt])
+  @@map("media_retrieval_documents")
+}
+
+model MediaEmbeddingSnapshotRecord {
+  id                  String                @id @default(cuid())
+  retrievalDocumentId String                @map("retrieval_document_id")
+  indexProfileId      String                @map("index_profile_id")
+  provider            String
+  modelName           String                @map("model_name")
+  outputType          String                @map("output_type")
+  vectorDimension     Int                   @map("vector_dimension")
+  documentContentHash String                @map("document_content_hash")
+  embeddingHash       String                @map("embedding_hash")
+  embeddingVector     Unsupported("vector(1024)")? @map("embedding_vector")
+  searchStatus        String                @map("search_status")
+  isActive            Boolean               @default(false) @map("is_active")
+  activatedAt         DateTime?             @map("activated_at")
+  errorCode           String?               @map("error_code")
+  errorMessage        String?               @map("error_message") @db.Text
+  providerRequestSummary Json?              @map("provider_request_summary")
+  createdAt           DateTime              @default(now()) @map("created_at")
+
+  retrievalDocument MediaRetrievalDocumentRecord @relation(fields: [retrievalDocumentId], references: [id])
+
+  @@index([retrievalDocumentId, indexProfileId, isActive, createdAt])
+  @@index([indexProfileId, searchStatus, createdAt])
+  @@index([createdAt])
+  @@map("media_embedding_snapshots")
+}
+
+model MediaDuplicateClusterRecord {
+  id               String   @id @default(cuid())
+  duplicateKind    String   @map("duplicate_kind")
+  canonicalAssetId String   @map("canonical_asset_id")
+  evidenceJson     Json     @map("evidence_json")
+  status           String
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  canonicalAsset     MediaAsset                    @relation("MediaDuplicateClusterCanonicalAsset", fields: [canonicalAssetId], references: [id])
+  assets             MediaAsset[]                  @relation("MediaDuplicateClusterMembership")
+  retrievalDocuments MediaRetrievalDocumentRecord[]
+  importItems        MediaImportJobItemRecord[]
+
+  @@index([duplicateKind, status, createdAt])
+  @@index([canonicalAssetId])
+  @@map("media_duplicate_clusters")
+}
+
+model MediaImportJobRecord {
+  id                   String    @id @default(cuid())
+  status               String
+  phase                String
+  entrypoint           String
+  requestedByType      String    @map("requested_by_type")
+  requestedById        String    @map("requested_by_id")
+  manifestVersion      Int       @map("manifest_version")
+  intentFingerprint    String    @map("intent_fingerprint")
+  requestFingerprint   String    @unique @map("request_fingerprint")
+  stagingManifestKey   String?   @map("staging_manifest_key")
+  normalizedManifestKey String?  @map("normalized_manifest_key")
+  resultManifestKey    String?   @map("result_manifest_key")
+  failureLogKey        String?   @map("failure_log_key")
+  scopeSummaryJson     Json      @map("scope_summary_json")
+  totalItems           Int       @default(0) @map("total_items")
+  processedItems       Int       @default(0) @map("processed_items")
+  createdItems         Int       @default(0) @map("created_items")
+  reusedItems          Int       @default(0) @map("reused_items")
+  suppressedItems      Int       @default(0) @map("suppressed_items")
+  failedItems          Int       @default(0) @map("failed_items")
+  attemptCount         Int       @default(0) @map("attempt_count")
+  failedPhase          String?   @map("failed_phase")
+  errorCode            String?   @map("error_code")
+  errorMessage         String?   @map("error_message") @db.Text
+  claimedByWorker      String?   @map("claimed_by_worker")
+  startedAt            DateTime? @map("started_at")
+  finishedAt           DateTime? @map("finished_at")
+  lastHeartbeatAt      DateTime? @map("last_heartbeat_at")
+  retryOfJobId         String?   @map("retry_of_job_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  items      MediaImportJobItemRecord[]
+  retryOfJob MediaImportJobRecord?  @relation("MediaImportJobRetryChain", fields: [retryOfJobId], references: [id])
+  retries    MediaImportJobRecord[] @relation("MediaImportJobRetryChain")
+
+  @@index([intentFingerprint, createdAt])
+  @@index([status, createdAt])
+  @@index([phase, updatedAt])
+  @@index([entrypoint, createdAt])
+  @@index([requestedByType, requestedById, createdAt])
+  @@index([retryOfJobId])
+  @@index([lastHeartbeatAt])
+  @@map("media_import_jobs")
+}
+
+model MediaImportJobItemRecord {
+  id                 String    @id @default(cuid())
+  jobId              String    @map("job_id")
+  itemId             String    @map("item_id")
+  itemIndex          Int       @map("item_index")
+  status             String
+  inputKind          String    @map("input_kind")
+  sourceKind         String    @map("source_kind")
+  indexScope         String    @map("index_scope")
+  ownerUserId        String?   @map("owner_user_id")
+  stewardAgentId     String?   @map("steward_agent_id")
+  communityId        String?   @map("community_id")
+  stagingObjectKey   String?   @map("staging_object_key")
+  originUrl          String?   @map("origin_url")
+  sourceAssetId      String?   @map("source_asset_id")
+  generatedJobId     String?   @map("generated_job_id")
+  duplicateClusterId String?   @map("duplicate_cluster_id")
+  declaredSha256     String?   @map("declared_sha256")
+  mimeType           String?   @map("mime_type")
+  fileSizeBytes      Int?      @map("file_size_bytes")
+  width              Int?
+  height             Int?
+  failedPhase        String?   @map("failed_phase")
+  errorCode          String?   @map("error_code")
+  errorMessage       String?   @map("error_message") @db.Text
+  resolvedAssetId    String?   @map("resolved_asset_id")
+  resolvedRequestJson Json     @map("resolved_request_json")
+  resultSummaryJson  Json?     @map("result_summary_json")
+  startedAt          DateTime? @map("started_at")
+  finishedAt         DateTime? @map("finished_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  job              MediaImportJobRecord       @relation(fields: [jobId], references: [id])
+  sourceAsset      MediaAsset?                @relation("MediaImportSourceAsset", fields: [sourceAssetId], references: [id])
+  resolvedAsset    MediaAsset?                @relation("MediaImportResolvedAsset", fields: [resolvedAssetId], references: [id])
+  generatedJob     MediaGenerationJobRecord?  @relation(fields: [generatedJobId], references: [id])
+  duplicateCluster MediaDuplicateClusterRecord? @relation(fields: [duplicateClusterId], references: [id])
+
+  @@unique([jobId, itemId])
+  @@index([jobId, itemIndex])
+  @@index([jobId, status, itemIndex])
+  @@index([resolvedAssetId])
+  @@index([sourceAssetId])
+  @@index([generatedJobId])
+  @@index([duplicateClusterId])
+  @@index([communityId, createdAt])
+  @@index([ownerUserId, createdAt])
+  @@index([stewardAgentId, createdAt])
+  @@map("media_import_job_items")
 }
 
 model PostMedia {

@@ -87,6 +87,8 @@ export interface GeneratedMediaRecord {
   media_url: string
 }
 
+export type ManagedMediaRecord = GeneratedMediaRecord
+
 export interface MediaAssetServiceDeps {
   mediaAssetRepo: MediaAssetRepository
   mediaSemanticSnapshotRepo: MediaSemanticSnapshotRepository
@@ -109,6 +111,95 @@ interface DownloadedRemoteMedia {
 
 export class MediaAssetService {
   constructor(private readonly deps: MediaAssetServiceDeps) {}
+
+  async ingestManagedAsset(input: {
+    asset_id?: string
+    steward_agent_id?: string | null
+    owner_user_id?: string | null
+    source_kind: MediaAsset['source_kind']
+    source_scene_type?: string | null
+    source_scene_id?: string | null
+    origin_url?: string | null
+    mime_type: string
+    bytes: Buffer
+    visibility_policy?: MediaAsset['visibility_policy']
+    lifecycle_status?: MediaAsset['lifecycle_status']
+  }): Promise<ManagedMediaRecord> {
+    const normalizedMimeType = input.mime_type.toLowerCase()
+    this.assertMimeType(normalizedMimeType)
+    this.assertSize(input.bytes.byteLength)
+    this.assertImageSignature(normalizedMimeType, input.bytes)
+
+    const dimensions = this.readImageDimensions(normalizedMimeType, input.bytes)
+    const stored = await this.storeBytes({
+      agent_id: input.steward_agent_id ?? input.owner_user_id ?? 'media-ingestion',
+      mime_type: normalizedMimeType,
+      bytes: input.bytes,
+    })
+    const semantic = await this.deps.mediaSemanticService.extract({
+      agentId: input.steward_agent_id ?? undefined,
+      mimeType: normalizedMimeType,
+      sourceUrl: pickModelReachableMediaUrl(stored.url, input.origin_url ?? undefined),
+      uploadBuffer: input.bytes,
+      width: dimensions.width,
+      height: dimensions.height,
+    })
+    const asset = await this.deps.mediaAssetRepo.create({
+      ...(input.asset_id ? { id: input.asset_id } : {}),
+      steward_agent_id: input.steward_agent_id ?? null,
+      owner_user_id: input.owner_user_id ?? null,
+      source_kind: input.source_kind,
+      source_scene_type: input.source_scene_type ?? null,
+      source_scene_id: input.source_scene_id ?? null,
+      visibility_policy: input.visibility_policy ?? 'public_original_allowed',
+      lifecycle_status: input.lifecycle_status ?? 'active',
+      storage_key: stored.key,
+      origin_url: input.origin_url ?? null,
+      mime_type: normalizedMimeType,
+      file_size_bytes: input.bytes.byteLength,
+      width: dimensions.width,
+      height: dimensions.height,
+      sha256: createHash('sha256').update(input.bytes).digest('hex'),
+      phash: null,
+    })
+    const snapshot = await this.createCurrentSnapshot({
+      asset,
+      semantic,
+      surface: 'injection',
+    })
+    return {
+      asset,
+      snapshot,
+      media_url: stored.url,
+    }
+  }
+
+  async ingestManagedRemoteAsset(input: {
+    asset_id?: string
+    steward_agent_id?: string | null
+    owner_user_id?: string | null
+    source_kind: MediaAsset['source_kind']
+    source_scene_type?: string | null
+    source_scene_id?: string | null
+    source_url: string
+    visibility_policy?: MediaAsset['visibility_policy']
+    lifecycle_status?: MediaAsset['lifecycle_status']
+  }): Promise<ManagedMediaRecord> {
+    const downloaded = await this.downloadRemoteImage(this.requireHttpsUrl(input.source_url))
+    return this.ingestManagedAsset({
+      asset_id: input.asset_id,
+      steward_agent_id: input.steward_agent_id ?? null,
+      owner_user_id: input.owner_user_id ?? null,
+      source_kind: input.source_kind,
+      source_scene_type: input.source_scene_type ?? null,
+      source_scene_id: input.source_scene_id ?? null,
+      origin_url: downloaded.source_url,
+      mime_type: downloaded.mime_type,
+      bytes: downloaded.bytes,
+      visibility_policy: input.visibility_policy,
+      lifecycle_status: input.lifecycle_status,
+    })
+  }
 
   async ingestOwnerUpload(input: {
     agent_id: string
@@ -1140,7 +1231,7 @@ export class MediaAssetService {
   private async createCurrentSnapshot(input: {
     asset: MediaAsset
     semantic: Awaited<ReturnType<MediaSemanticService['extract']>>
-    surface: 'planner' | 'private_message' | 'generation' | 'lifecycle'
+    surface: 'planner' | 'private_message' | 'generation' | 'lifecycle' | 'injection'
   },
   ): Promise<MediaSemanticSnapshot> {
     const snapshot = await this.deps.mediaSemanticSnapshotRepo.replaceCurrent({

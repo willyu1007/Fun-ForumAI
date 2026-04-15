@@ -12,15 +12,23 @@ import { BudgetGuard } from '../llm/budget-guard.js'
 import { MediaAssetControlService } from '../services/media-asset-control-service.js'
 import {
   ArkSeedreamGateway,
+  DashScopeTextEmbeddingGateway,
   DashScopeQwenImageGateway,
   FallbackMediaGenerationGateway,
   MediaAssetService,
+  MediaCatalogService,
   MediaBindingService,
+  MediaDuplicateService,
+  MediaEmbeddingService,
   MediaGenerationService,
+  MediaImportArtifactService,
+  MediaInjectionService,
+  MediaInjectionWorker,
   MediaLineageService,
   MediaLifecycleService,
   MediaObservabilityService,
   MediaRolloutControllerService,
+  MediaRetrievalService,
   ImagePlannerService,
   MediaProjectionService,
   MediaReuseGovernanceService,
@@ -48,6 +56,13 @@ import type { MediaGenerationJobRepository } from '../repos/media-generation-job
 import type { MediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import type { MediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
+import type { MediaCatalogCardRepository } from '../repos/media-catalog-card-repository.js'
+import type { MediaRetrievalDocumentRepository } from '../repos/media-retrieval-document-repository.js'
+import type { MediaEmbeddingSnapshotRepository } from '../repos/media-embedding-snapshot-repository.js'
+import type { MediaRetrievalSearchRepository } from '../repos/media-retrieval-search-repository.js'
+import type { MediaDuplicateClusterRepository } from '../repos/media-duplicate-cluster-repository.js'
+import type { MediaImportJobRepository } from '../repos/media-import-job-repository.js'
+import type { MediaImportJobItemRepository } from '../repos/media-import-job-item-repository.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
@@ -67,6 +82,13 @@ export function createLlmServices(deps: {
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
   mediaLineageEdgeRepo: MediaLineageEdgeRepository
+  mediaCatalogCardRepo: MediaCatalogCardRepository
+  mediaRetrievalDocumentRepo: MediaRetrievalDocumentRepository
+  mediaEmbeddingSnapshotRepo: MediaEmbeddingSnapshotRepository
+  mediaRetrievalSearchRepo: MediaRetrievalSearchRepository
+  mediaDuplicateClusterRepo: MediaDuplicateClusterRepository
+  mediaImportJobRepo: MediaImportJobRepository
+  mediaImportJobItemRepo: MediaImportJobItemRepository
   forumSceneMetadataRepo: ForumSceneMetadataRepository
   messageRepo: MessageRepository
   eventRepo: EventRepository
@@ -124,6 +146,29 @@ export function createLlmServices(deps: {
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
     mediaLineageService,
   })
+  const mediaCatalogService = new MediaCatalogService({
+    mediaCatalogCardRepo: deps.mediaCatalogCardRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+  })
+  const mediaDuplicateService = new MediaDuplicateService({
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaDuplicateClusterRepo: deps.mediaDuplicateClusterRepo,
+  })
+  const mediaEmbeddingGateway = new DashScopeTextEmbeddingGateway()
+  const mediaEmbeddingService = new MediaEmbeddingService({
+    mediaEmbeddingSnapshotRepo: deps.mediaEmbeddingSnapshotRepo,
+    gateway: mediaEmbeddingGateway,
+  })
+  const mediaRetrievalService = new MediaRetrievalService({
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaRetrievalDocumentRepo: deps.mediaRetrievalDocumentRepo,
+    mediaRetrievalSearchRepo: deps.mediaRetrievalSearchRepo,
+    mediaCatalogService,
+    mediaEmbeddingService,
+    mediaDuplicateService,
+  })
   const visualDirectiveService = new VisualDirectiveService({
     visualDirectiveRepo: deps.visualDirectiveRepo,
     messageRepo: deps.messageRepo,
@@ -150,6 +195,7 @@ export function createLlmServices(deps: {
     mediaReuseGovernanceService,
     mediaLineageService,
     storage: mediaAssetStorage,
+    mediaRetrievalService,
   })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -197,6 +243,29 @@ export function createLlmServices(deps: {
     mediaObservabilityService,
     mediaLineageService,
     mediaRolloutControllerService,
+    mediaRetrievalService,
+  })
+  const mediaImportArtifactService = new MediaImportArtifactService({
+    storage: mediaAssetStorage,
+  })
+  const mediaInjectionService = new MediaInjectionService({
+    mediaImportJobRepo: deps.mediaImportJobRepo,
+    mediaImportJobItemRepo: deps.mediaImportJobItemRepo,
+    mediaImportArtifactService,
+    mediaDuplicateService,
+  })
+  const mediaInjectionWorker = new MediaInjectionWorker({
+    mediaImportJobRepo: deps.mediaImportJobRepo,
+    mediaImportJobItemRepo: deps.mediaImportJobItemRepo,
+    mediaAssetRepo: deps.mediaAssetRepo,
+    agentRepo: deps.agentRepo,
+    mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    mediaAssetService,
+    mediaReuseGovernanceService,
+    mediaRetrievalService,
+    mediaDuplicateService,
+    mediaImportArtifactService,
   })
   const surfaceMediaPlanningService = new SurfaceMediaPlanningService({
     visualDirectiveService,
@@ -232,6 +301,14 @@ export function createLlmServices(deps: {
     budgetGuard,
     mediaSemanticService,
     mediaProjectionService,
+    mediaCatalogService,
+    mediaEmbeddingGateway,
+    mediaEmbeddingService,
+    mediaRetrievalService,
+    mediaDuplicateService,
+    mediaImportArtifactService,
+    mediaInjectionService,
+    mediaInjectionWorker,
     mediaObservabilityService,
     mediaRolloutControllerService,
     mediaLineageService,

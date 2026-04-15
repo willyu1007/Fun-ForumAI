@@ -10,6 +10,7 @@ import { CommunityConfigScheduler } from '../runtime/community-config-scheduler.
 import { DirectorHistoryMaintenanceScheduler } from '../runtime/director-history-maintenance-scheduler.js'
 import { HomeProgrammingSnapshotScheduler } from '../runtime/home-programming-snapshot-scheduler.js'
 import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
+import { MediaImportJobWorker } from '../runtime/media-import-job-worker.js'
 import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
@@ -159,6 +160,13 @@ const llm = createLlmServices({
   mediaObservabilityEventRepo: repos.mediaObservabilityEventRepo,
   mediaRolloutControllerOverrideRepo: repos.mediaRolloutControllerOverrideRepo,
   mediaLineageEdgeRepo: repos.mediaLineageEdgeRepo,
+  mediaCatalogCardRepo: repos.mediaCatalogCardRepo,
+  mediaRetrievalDocumentRepo: repos.mediaRetrievalDocumentRepo,
+  mediaEmbeddingSnapshotRepo: repos.mediaEmbeddingSnapshotRepo,
+  mediaRetrievalSearchRepo: repos.mediaRetrievalSearchRepo,
+  mediaDuplicateClusterRepo: repos.mediaDuplicateClusterRepo,
+  mediaImportJobRepo: repos.mediaImportJobRepo,
+  mediaImportJobItemRepo: repos.mediaImportJobItemRepo,
   forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
   messageRepo: repos.messageRepo,
   eventRepo: repos.eventRepo,
@@ -408,6 +416,17 @@ const mediaLifecycleWorker = new MediaLifecycleWorker(
   {
     intervalMs: config.mediaLifecycle.workerIntervalMs,
     startupDelayMs: config.mediaLifecycle.workerStartupDelayMs,
+  },
+)
+
+const mediaImportJobWorker = new MediaImportJobWorker(
+  {
+    service: llm.mediaInjectionWorker,
+    leaderElector: infra.leaderElectors.mediaImportJobWorker,
+  },
+  {
+    intervalMs: config.mediaInjection.workerIntervalMs,
+    startupDelayMs: config.mediaInjection.workerStartupDelayMs,
   },
 )
 
@@ -843,6 +862,7 @@ export {
   directorHistoryMaintenanceScheduler,
   mediaGenerationWorker,
   mediaLifecycleWorker,
+  mediaImportJobWorker,
 }
 export {
   guidanceBellService,

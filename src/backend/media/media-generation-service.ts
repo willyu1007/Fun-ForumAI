@@ -9,6 +9,7 @@ import type { MediaReuseGovernanceService } from './media-reuse-governance-servi
 import type { MediaLineageService } from './media-lineage-service.js'
 import type { MediaRolloutControllerService } from './media-rollout-controller-service.js'
 import type { MediaWriteBridge } from './media-write-bridge.js'
+import type { MediaRetrievalService } from './media-retrieval-service.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type {
   CompiledMediaPrompt,
@@ -86,6 +87,7 @@ export interface MediaGenerationServiceDeps {
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'getEstimatedGenerationCostCny'> | null
   mediaLineageService?: MediaLineageService | null
   mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
+  mediaRetrievalService?: Pick<MediaRetrievalService, 'ensureAssetIndexed'> | null
 }
 
 interface MediaGenerationHardeningSettings {
@@ -465,6 +467,28 @@ export class MediaGenerationService {
             actor_role: 'system',
           },
         })
+        if (config.launch.capabilities.mediaRetrievalV1 && this.deps.mediaRetrievalService) {
+          await this.deps.mediaRetrievalService.ensureAssetIndexed({
+            asset: generated.asset,
+            snapshot: generated.snapshot,
+            source_kind: outputSourceKind,
+            target_scope: {
+              owner_user_id: null,
+              steward_agent_id: job.agent_id,
+              community_id: null,
+            },
+            requested_scopes: ['public_safe'],
+            generated_from: 'generated_text_derived',
+            reason: job.prompt_brief,
+            annotations: {
+              tags: [],
+              internal_note: null,
+              owner_note: null,
+            },
+          }).catch((error) => {
+            console.warn('[MediaGenerationService] retrieval backfill failed:', error)
+          })
+        }
       }
 
       const finished = await this.deps.mediaGenerationJobRepo.update(job.id, {

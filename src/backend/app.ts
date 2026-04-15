@@ -31,6 +31,7 @@ import {
   directorHistoryMaintenanceScheduler,
   guidanceRecallScheduler,
   mediaGenerationWorker,
+  mediaImportJobWorker,
   mediaLifecycleWorker,
   promptOrchestrator,
   agentService,
@@ -300,6 +301,7 @@ if (config.allowDevTools) {
         director_history_maintenance_scheduler_running:
           directorHistoryMaintenanceScheduler?.isRunning ?? false,
         media_generation_worker_running: mediaGenerationWorker?.isRunning ?? false,
+        media_import_job_worker_running: mediaImportJobWorker?.isRunning ?? false,
         media_lifecycle_worker_running: mediaLifecycleWorker?.isRunning ?? false,
       },
     })
@@ -594,6 +596,10 @@ export function startBackgroundServices(): void {
     mediaGenerationWorker.start()
   }
 
+  if (config.launch.capabilities.mediaInjectionV1) {
+    mediaImportJobWorker.start()
+  }
+
   if (config.launch.capabilities.mediaLifecycleV1) {
     mediaLifecycleWorker.start()
   }
@@ -616,6 +622,7 @@ export function stopBackgroundServices(): void {
   directorHistoryMaintenanceScheduler?.stop()
   guidanceRecallScheduler?.stop()
   mediaGenerationWorker?.stop()
+  mediaImportJobWorker?.stop()
   mediaLifecycleWorker?.stop()
 }
 

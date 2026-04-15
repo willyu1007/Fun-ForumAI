@@ -92,6 +92,8 @@ export interface MediaAsset {
   height: number | null
   sha256: string
   phash: string | null
+  duplicate_cluster_id: string | null
+  duplicate_distance: number | null
   created_at: Date
   updated_at: Date
 }
@@ -113,6 +115,8 @@ export interface CreateMediaAssetInput {
   height?: number | null
   sha256: string
   phash?: string | null
+  duplicate_cluster_id?: string | null
+  duplicate_distance?: number | null
 }
 
 export interface MediaSemanticSnapshot {
@@ -504,6 +508,577 @@ export interface CreateMediaGenerationJobInput {
   error_message?: string | null
   started_at?: Date | null
   finished_at?: Date | null
+}
+
+export type MediaCatalogCardBuildStatus =
+  | 'current'
+  | 'stale'
+  | 'failed'
+
+export interface MediaCatalogCardPayload {
+  modality: 'image' | 'video'
+  source_kind: VisualSourceKind
+  theme: string
+  scene: string
+  mood: string
+  public_safe_summary: string
+  alt_text: string
+  tags: string[]
+  discussion_points: string[]
+  salient_entities: string[]
+  scope_hints: {
+    owner_user_id: string | null
+    steward_agent_id: string | null
+    community_id: string | null
+  }
+  annotations: {
+    internal_note: string | null
+    owner_note: string | null
+  }
+}
+
+export interface MediaCatalogCard {
+  id: string
+  asset_id: string
+  semantic_snapshot_id: string | null
+  schema_version: string
+  modality: MediaCatalogCardPayload['modality']
+  source_kind: VisualSourceKind
+  content_hash: string
+  build_status: MediaCatalogCardBuildStatus
+  payload_json: MediaCatalogCardPayload
+  is_current: boolean
+  created_at: Date
+}
+
+export interface CreateMediaCatalogCardInput {
+  id?: string
+  asset_id: string
+  semantic_snapshot_id?: string | null
+  schema_version?: string
+  modality: MediaCatalogCardPayload['modality']
+  source_kind: VisualSourceKind
+  content_hash: string
+  build_status: MediaCatalogCardBuildStatus
+  payload_json: MediaCatalogCardPayload
+  is_current?: boolean
+}
+
+export interface UpdateMediaCatalogCardPatch {
+  build_status?: MediaCatalogCardBuildStatus
+  payload_json?: MediaCatalogCardPayload
+  content_hash?: string
+  is_current?: boolean
+}
+
+export type MediaRetrievalDocScope =
+  | 'private_internal'
+  | 'community_scoped'
+  | 'public_safe'
+  | 'planner_only'
+
+export type MediaRetrievalDocumentLifecycleStatus =
+  | 'active'
+  | 'archived'
+  | 'blocked'
+
+export interface MediaRetrievalDocumentMeta {
+  source_kind: VisualSourceKind
+  scope_hints: {
+    owner_user_id: string | null
+    steward_agent_id: string | null
+    community_id: string | null
+  }
+  retrieval_terms: string[]
+  reason: string | null
+  public_safe_enabled: boolean
+  generated_from: 'catalog_card' | 'generated_text_derived' | 'projection_handoff'
+}
+
+export interface MediaRetrievalDocument {
+  id: string
+  doc_key: string
+  asset_id: string
+  catalog_card_id: string | null
+  duplicate_cluster_id: string | null
+  schema_version: string
+  doc_scope: MediaRetrievalDocScope
+  modality: 'image' | 'video'
+  track_kind: string | null
+  segment_start_ms: number | null
+  segment_end_ms: number | null
+  source_kind: VisualSourceKind
+  owner_user_id: string | null
+  steward_agent_id: string | null
+  community_id: string | null
+  is_canonical: boolean
+  lifecycle_status: MediaRetrievalDocumentLifecycleStatus
+  document_text: string
+  document_hash: string
+  document_meta_json: MediaRetrievalDocumentMeta
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaRetrievalDocumentInput {
+  id?: string
+  doc_key: string
+  asset_id: string
+  catalog_card_id?: string | null
+  duplicate_cluster_id?: string | null
+  schema_version?: string
+  doc_scope: MediaRetrievalDocScope
+  modality: 'image' | 'video'
+  track_kind?: string | null
+  segment_start_ms?: number | null
+  segment_end_ms?: number | null
+  source_kind: VisualSourceKind
+  owner_user_id?: string | null
+  steward_agent_id?: string | null
+  community_id?: string | null
+  is_canonical?: boolean
+  lifecycle_status?: MediaRetrievalDocumentLifecycleStatus
+  document_text: string
+  document_hash: string
+  document_meta_json: MediaRetrievalDocumentMeta
+}
+
+export interface UpdateMediaRetrievalDocumentPatch {
+  catalog_card_id?: string | null
+  duplicate_cluster_id?: string | null
+  is_canonical?: boolean
+  lifecycle_status?: MediaRetrievalDocumentLifecycleStatus
+  document_text?: string
+  document_hash?: string
+  document_meta_json?: MediaRetrievalDocumentMeta
+}
+
+export type MediaEmbeddingIndexProfileId = 'text-embedding-v4-1024'
+
+export type MediaEmbeddingOutputType = 'dense' | 'sparse' | 'dense+sparse'
+
+export type MediaEmbeddingSearchStatus =
+  | 'pending'
+  | 'searchable'
+  | 'failed'
+  | 'backfill_required'
+
+export interface MediaEmbeddingSnapshot {
+  id: string
+  retrieval_document_id: string
+  index_profile_id: MediaEmbeddingIndexProfileId
+  provider: string
+  model_name: string
+  output_type: MediaEmbeddingOutputType
+  vector_dimension: number
+  document_content_hash: string
+  embedding_hash: string
+  embedding_vector: number[] | null
+  search_status: MediaEmbeddingSearchStatus
+  is_active: boolean
+  activated_at: Date | null
+  error_code: string | null
+  error_message: string | null
+  provider_request_summary: Record<string, unknown> | null
+  created_at: Date
+}
+
+export interface CreateMediaEmbeddingSnapshotInput {
+  id?: string
+  retrieval_document_id: string
+  index_profile_id: MediaEmbeddingIndexProfileId
+  provider: string
+  model_name: string
+  output_type: MediaEmbeddingOutputType
+  vector_dimension: number
+  document_content_hash: string
+  embedding_hash: string
+  embedding_vector?: number[] | null
+  search_status: MediaEmbeddingSearchStatus
+  is_active?: boolean
+  activated_at?: Date | null
+  error_code?: string | null
+  error_message?: string | null
+  provider_request_summary?: Record<string, unknown> | null
+}
+
+export interface UpdateMediaEmbeddingSnapshotPatch {
+  search_status?: MediaEmbeddingSearchStatus
+  is_active?: boolean
+  activated_at?: Date | null
+  error_code?: string | null
+  error_message?: string | null
+  embedding_hash?: string
+  embedding_vector?: number[] | null
+  provider_request_summary?: Record<string, unknown> | null
+}
+
+export type MediaDuplicateKind = 'exact' | 'near' | 'semantic'
+
+export type MediaDuplicateClusterStatus =
+  | 'active'
+  | 'suppressed'
+  | 'archived'
+
+export interface MediaDuplicateCluster {
+  id: string
+  duplicate_kind: MediaDuplicateKind
+  canonical_asset_id: string
+  evidence_json: Record<string, unknown>
+  status: MediaDuplicateClusterStatus
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaDuplicateClusterInput {
+  id?: string
+  duplicate_kind: MediaDuplicateKind
+  canonical_asset_id: string
+  evidence_json: Record<string, unknown>
+  status?: MediaDuplicateClusterStatus
+}
+
+export interface UpdateMediaDuplicateClusterPatch {
+  canonical_asset_id?: string
+  evidence_json?: Record<string, unknown>
+  status?: MediaDuplicateClusterStatus
+}
+
+export type MediaImportEntrypoint = 'cli_manifest'
+
+export type MediaImportRequestedByType = 'user' | 'agent' | 'system'
+
+export type MediaImportJobStatus =
+  | 'staged'
+  | 'queued'
+  | 'running'
+  | 'succeeded'
+  | 'partial_succeeded'
+  | 'failed'
+  | 'cancelled'
+
+export type MediaImportJobPhase =
+  | 'validate_manifest'
+  | 'hydrate_inputs'
+  | 'dedupe'
+  | 'materialize_assets'
+  | 'build_catalog'
+  | 'build_retrieval'
+  | 'embed'
+  | 'finalize'
+
+export type MediaImportJobItemStatus =
+  | 'pending'
+  | 'processing'
+  | 'created'
+  | 'reused'
+  | 'suppressed'
+  | 'failed'
+  | 'cancelled'
+
+export type MediaImportInputKind =
+  | 'local_file'
+  | 'remote_url'
+  | 'existing_asset_ref'
+  | 'generated_artifact_ref'
+
+export interface MediaImportScopeSummary {
+  source_kinds: VisualSourceKind[]
+  doc_scopes: MediaRetrievalDocScope[]
+  owner_user_id: string | null
+  steward_agent_id: string | null
+  community_id: string | null
+  public_safe_enabled: boolean
+}
+
+export interface MediaImportJob {
+  id: string
+  status: MediaImportJobStatus
+  phase: MediaImportJobPhase
+  entrypoint: MediaImportEntrypoint
+  requested_by_type: MediaImportRequestedByType
+  requested_by_id: string
+  manifest_version: number
+  intent_fingerprint: string
+  request_fingerprint: string
+  staging_manifest_key: string | null
+  normalized_manifest_key: string | null
+  result_manifest_key: string | null
+  failure_log_key: string | null
+  scope_summary_json: MediaImportScopeSummary
+  total_items: number
+  processed_items: number
+  created_items: number
+  reused_items: number
+  suppressed_items: number
+  failed_items: number
+  attempt_count: number
+  failed_phase: MediaImportJobPhase | null
+  error_code: string | null
+  error_message: string | null
+  claimed_by_worker: string | null
+  started_at: Date | null
+  finished_at: Date | null
+  last_heartbeat_at: Date | null
+  retry_of_job_id: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaImportJobInput {
+  id?: string
+  status: MediaImportJobStatus
+  phase: MediaImportJobPhase
+  entrypoint: MediaImportEntrypoint
+  requested_by_type: MediaImportRequestedByType
+  requested_by_id: string
+  manifest_version: number
+  intent_fingerprint: string
+  request_fingerprint: string
+  staging_manifest_key: string
+  normalized_manifest_key?: string | null
+  result_manifest_key?: string | null
+  failure_log_key?: string | null
+  scope_summary_json: MediaImportScopeSummary
+  total_items?: number
+  processed_items?: number
+  created_items?: number
+  reused_items?: number
+  suppressed_items?: number
+  failed_items?: number
+  attempt_count?: number
+  failed_phase?: MediaImportJobPhase | null
+  error_code?: string | null
+  error_message?: string | null
+  claimed_by_worker?: string | null
+  started_at?: Date | null
+  finished_at?: Date | null
+  last_heartbeat_at?: Date | null
+  retry_of_job_id?: string | null
+}
+
+export interface UpdateMediaImportJobPatch {
+  status?: MediaImportJobStatus
+  phase?: MediaImportJobPhase
+  staging_manifest_key?: string | null
+  normalized_manifest_key?: string | null
+  result_manifest_key?: string | null
+  failure_log_key?: string | null
+  scope_summary_json?: MediaImportScopeSummary
+  total_items?: number
+  processed_items?: number
+  created_items?: number
+  reused_items?: number
+  suppressed_items?: number
+  failed_items?: number
+  attempt_count?: number
+  failed_phase?: MediaImportJobPhase | null
+  error_code?: string | null
+  error_message?: string | null
+  claimed_by_worker?: string | null
+  started_at?: Date | null
+  finished_at?: Date | null
+  last_heartbeat_at?: Date | null
+}
+
+export interface MediaImportJobItem {
+  id: string
+  job_id: string
+  item_id: string
+  item_index: number
+  status: MediaImportJobItemStatus
+  input_kind: MediaImportInputKind
+  source_kind: VisualSourceKind
+  index_scope: MediaRetrievalDocScope
+  owner_user_id: string | null
+  steward_agent_id: string | null
+  community_id: string | null
+  staging_object_key: string | null
+  origin_url: string | null
+  source_asset_id: string | null
+  generated_job_id: string | null
+  duplicate_cluster_id: string | null
+  declared_sha256: string | null
+  mime_type: string | null
+  file_size_bytes: number | null
+  width: number | null
+  height: number | null
+  failed_phase: MediaImportJobPhase | null
+  error_code: string | null
+  error_message: string | null
+  resolved_asset_id: string | null
+  resolved_request_json: MediaInjectionRequest
+  result_summary_json: Record<string, unknown> | null
+  started_at: Date | null
+  finished_at: Date | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface CreateMediaImportJobItemInput {
+  id?: string
+  job_id: string
+  item_id: string
+  item_index: number
+  status: MediaImportJobItemStatus
+  input_kind: MediaImportInputKind
+  source_kind: VisualSourceKind
+  index_scope: MediaRetrievalDocScope
+  owner_user_id?: string | null
+  steward_agent_id?: string | null
+  community_id?: string | null
+  staging_object_key?: string | null
+  origin_url?: string | null
+  source_asset_id?: string | null
+  generated_job_id?: string | null
+  duplicate_cluster_id?: string | null
+  declared_sha256?: string | null
+  mime_type?: string | null
+  file_size_bytes?: number | null
+  width?: number | null
+  height?: number | null
+  failed_phase?: MediaImportJobPhase | null
+  error_code?: string | null
+  error_message?: string | null
+  resolved_asset_id?: string | null
+  resolved_request_json: MediaInjectionRequest
+  result_summary_json?: Record<string, unknown> | null
+  started_at?: Date | null
+  finished_at?: Date | null
+}
+
+export interface UpdateMediaImportJobItemPatch {
+  status?: MediaImportJobItemStatus
+  staging_object_key?: string | null
+  duplicate_cluster_id?: string | null
+  failed_phase?: MediaImportJobPhase | null
+  error_code?: string | null
+  error_message?: string | null
+  resolved_asset_id?: string | null
+  result_summary_json?: Record<string, unknown> | null
+  started_at?: Date | null
+  finished_at?: Date | null
+}
+
+export interface MediaImportTargetScope {
+  owner_user_id: string | null
+  steward_agent_id: string | null
+  community_id: string | null
+}
+
+export interface MediaImportIndexingPolicy {
+  primary_scope: MediaRetrievalDocScope
+  public_safe_enabled: boolean
+  embedding_policy_id: MediaEmbeddingIndexProfileId
+}
+
+export interface MediaImportDedupePolicy {
+  policy_id: 'exact_only' | 'exact_and_near'
+}
+
+export interface MediaImportReusePolicy {
+  mode_id: 'default' | 'public_safe_only'
+}
+
+export interface MediaImportCatalogPolicy {
+  policy_id: 'standard' | 'generated_text_derived'
+}
+
+export interface MediaImportAnnotations {
+  tags: string[]
+  internal_note: string | null
+  owner_note: string | null
+}
+
+export interface MediaImportManifestDefaults {
+  entrypoint: MediaImportEntrypoint
+  target_scope?: Partial<MediaImportTargetScope>
+  indexing?: Partial<MediaImportIndexingPolicy>
+  dedupe?: Partial<MediaImportDedupePolicy>
+  reuse?: Partial<MediaImportReusePolicy>
+  catalog?: Partial<MediaImportCatalogPolicy>
+}
+
+export interface MediaImportManifestMeta {
+  contract_version: 1
+  manifest_kind: 'media_import'
+  manifest_id: string
+  generated_by_tool: string
+  generated_at: string
+  notes?: string[]
+}
+
+export interface MediaImportManifestItemBase {
+  item_id: string
+  source_kind: VisualSourceKind
+  target_scope?: Partial<MediaImportTargetScope>
+  indexing?: Partial<MediaImportIndexingPolicy>
+  dedupe?: Partial<MediaImportDedupePolicy>
+  reuse?: Partial<MediaImportReusePolicy>
+  catalog?: Partial<MediaImportCatalogPolicy>
+  annotations?: Partial<MediaImportAnnotations>
+}
+
+export interface LocalFileMediaImportManifestItem extends MediaImportManifestItemBase {
+  input_kind: 'local_file'
+  path: string
+  declared_mime_type?: string
+  declared_sha256?: string
+}
+
+export interface RemoteUrlMediaImportManifestItem extends MediaImportManifestItemBase {
+  input_kind: 'remote_url'
+  url: string
+  expected_sha256?: string
+}
+
+export interface ExistingAssetMediaImportManifestItem extends MediaImportManifestItemBase {
+  input_kind: 'existing_asset_ref'
+  asset_id: string
+}
+
+export interface GeneratedArtifactMediaImportManifestItem extends MediaImportManifestItemBase {
+  input_kind: 'generated_artifact_ref'
+  generated_job_id: string
+}
+
+export type MediaImportManifestItem =
+  | LocalFileMediaImportManifestItem
+  | RemoteUrlMediaImportManifestItem
+  | ExistingAssetMediaImportManifestItem
+  | GeneratedArtifactMediaImportManifestItem
+
+export interface MediaImportManifestV1 {
+  manifest_meta: MediaImportManifestMeta
+  defaults: MediaImportManifestDefaults
+  items: MediaImportManifestItem[]
+}
+
+export interface MediaInjectionRequest {
+  item_id: string
+  input_kind: MediaImportInputKind
+  source_kind: VisualSourceKind
+  target_scope: MediaImportTargetScope
+  indexing: MediaImportIndexingPolicy
+  dedupe: MediaImportDedupePolicy
+  reuse: MediaImportReusePolicy
+  catalog: MediaImportCatalogPolicy
+  annotations: MediaImportAnnotations
+  local_file?: {
+    path: string
+    declared_mime_type: string | null
+    declared_sha256: string | null
+  }
+  remote_url?: {
+    url: string
+    expected_sha256: string | null
+  }
+  existing_asset_ref?: {
+    asset_id: string
+  }
+  generated_artifact_ref?: {
+    generated_job_id: string
+  }
 }
 
 export type MediaObservabilitySeverity =
