@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-118` media domain foundation, `T-121` public media reuse governance, `T-122` media generation broker, `T-123` multi-surface adapters, `T-124` media observability, `T-918` contract/lineage hardening
-- Current status: 任务建包、治理映射、规划冻结、Prisma schema V1、repository contract V1 与 service interface/orchestration contract V1 收敛已完成；当前可继续进入具体 interface/type 文件草案与实现。
-- Next step: 基于本 bundle 进入具体 `repos/types`、repository interface 文件、service interface/gateway 文件和 migration 草案的代码实现。
+- Current status: 任务建包、治理映射、规划冻结、Prisma schema / repository / service contract 收敛已完成；代码实现已落地到 schema、repositories、services、worker、CLI、generation/planner 接线，并已完成真实 PG + pgvector migration、worker/retry/duplicate/retrieval 集成测试、artifact TTL 清理补齐、runtime fingerprint 去歧义，以及基于 kind k8s 环境的真实注入/检索冒烟验证。当前 local-kind backend 已切到最新代码和重生成的 Prisma client；在注入有效 DashScope key 后，fresh embedding 已在真实 pod 冒烟中成功进入 `searchable`，duplicate reuse 与 semantic retrieval 命中也已完成闭环验证。
+- Next step: 进入后续 rollout / staging 持续观测与更大样本回归验证；本轮 local-kind 功能闭环已完成。
 
 ## Goal
 

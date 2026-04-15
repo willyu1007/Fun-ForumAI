@@ -44,3 +44,34 @@
   - 将第一版批量导入收敛为 `external CLI -> OSS staging -> internal ECS worker -> PG + canonical OSS`。
 - Prevention:
   - 任何后续实现若依赖“外部 CLI 直连 ECS 内部 API”，都应被视为偏离当前冻结架构。
+
+### 2026-04-15 - Source overlay without Prisma regenerate caused runtime/client drift
+- Symptom:
+  - local-kind backend 在切到最新媒体注入源码后，`MediaImportJobWorker` 仍在 `purgeExpiredArtifacts()` 抛 `PrismaClientValidationError`，job 长时间停留在 `staged`，真实冒烟卡死。
+- What we tried:
+  - 先按日志怀疑是 repo 接口未更新，随后进入 pod 比较 `/app/src/backend/repos/media-import-job-repository.ts` 与本地源码，确认源码已经更新，但 runtime 行为仍像旧 client。
+- Fix / workaround:
+  - 根因是镜像只覆盖了 TS 源码，没有同步重生成 Prisma client，导致 pod 落入“新源码 + 旧 Prisma client”的混合状态。
+  - 使用新的唯一镜像 tag 重新构建 local-kind backend，并在镜像构建时强制执行 `pnpm prisma generate`。
+- Prevention:
+  - 只要 Prisma schema 或依赖新 model/filter 的 runtime 代码变化，就不能只 overlay `src/backend`；镜像刷新必须同时重生成 Prisma client。
+
+### 2026-04-15 - Runtime fingerprint omitted new media execution path
+- Symptom:
+  - backend pod 已切到新的媒体注入/检索代码，但 `RuntimeFeatures.startup` 打印的 `code_fingerprint` 仍与旧版本一致，造成“环境看起来没变、代码其实已变”的观测歧义。
+- What we tried:
+  - 检查 `src/backend/lib/runtime-build-info.ts`，发现 fingerprint basis 仍只覆盖旧的 LLM/runtime 文件集合，没有包含新媒体注入/检索/worker/repository 文件。
+- Fix / workaround:
+  - 将 `container/llm.ts`、`container/repos.ts`、`media-injection-service.ts`、`media-injection-worker.ts`、`media-retrieval-service.ts`、`runtime/media-import-job-worker.ts` 及相关 repository 文件加入 fingerprint basis。
+- Prevention:
+  - 任何新增的长任务 worker、检索平面、或 provider 集成，如果会改变 runtime 行为，就必须同步更新 `runtime-build-info.ts`，避免 observability 指纹与真实执行路径分叉。
+
+### 2026-04-15 - local-kind DashScope secret may look configured but is still unusable
+- Symptom:
+  - kind k8s 端到端冒烟中，import job 能创建 retrieval doc，但 fresh embedding 一直返回 `401 InvalidApiKey`，worker 最终以 `media retrieval embedding is not searchable ... error_code=http_error` 失败。
+- What we tried:
+  - 读取 pod 内环境变量长度并对照 secret 内容，确认 `DASHSCOPE_API_KEY` / `DASHSCOPE_API_KEY_SECONDARY` 实际都是 placeholder `REPLACE_ME`。
+- Fix / workaround:
+  - 代码层已把这类失败显式收口为 import job/item failure，并通过 fallback searchable snapshot 验证 PG/pgvector 搜索链仍可工作。
+- Prevention:
+  - local-kind 若要验证 fresh embedding success，必须先注入真实 DashScope key；不要把“secret 存在”误判成“provider 可用”。

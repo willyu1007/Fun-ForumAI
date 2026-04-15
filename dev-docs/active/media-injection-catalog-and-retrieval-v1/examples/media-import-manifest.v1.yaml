@@ -12,13 +12,13 @@ defaults:
   indexing:
     primary_scope: community_scoped
     public_safe_enabled: true
-    embedding_policy_id: standard_text_v1
+    embedding_policy_id: text-embedding-v4-1024
   dedupe:
     policy_id: exact_and_near
   reuse:
-    mode_id: source_default
+    mode_id: default
   catalog:
-    policy_id: standard_v1
+    policy_id: standard
 
 items:
   - item_id: poster-hero-01
@@ -45,6 +45,7 @@ items:
     indexing:
       primary_scope: public_safe
       public_safe_enabled: true
+      embedding_policy_id: text-embedding-v4-1024
     annotations:
       tags:
         - reference
@@ -60,7 +61,7 @@ items:
     indexing:
       primary_scope: public_safe
       public_safe_enabled: true
-      embedding_policy_id: text_derived_only
+      embedding_policy_id: text-embedding-v4-1024
     annotations:
       tags:
         - generated

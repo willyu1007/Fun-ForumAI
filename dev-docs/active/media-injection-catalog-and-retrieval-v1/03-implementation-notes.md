@@ -2,7 +2,7 @@
 
 ## Status
 
-- Current status: `service_interfaces_converged_ready_for_code_scaffolding`
+- Current status: `implementation_validated_ready_for_rollout`
 - Last updated: 2026-04-15
 
 ## What changed
@@ -32,6 +32,40 @@
 - 2026-04-15: 收敛 repository type 边界：`MediaAsset` 继续使用 `MediaSourceKind`，retrieval/import/pool 侧统一使用 `VisualSourceKind`，避免把 asset origin 与 planner source scope 混成同一类型。
 - 2026-04-15: 收敛 service interface V1：`MediaInjectionService` 负责 dry-run / stage apply，`MediaInjectionWorker` 负责 claim/process/heartbeat，`MediaCatalogService / MediaRetrievalService / MediaEmbeddingService / MediaDuplicateService` 各自承载独立域职责。
 - 2026-04-15: 收敛 embedding gateway 契约：新增 `MediaEmbeddingGateway` 与 `MediaEmbeddingGatewayError`，并要求 `DashScopeTextEmbeddingGateway` 只负责 provider call，不负责 snapshot rotation 或 repository write。
+- 2026-04-15: 已完成第一轮代码实现：`prisma/schema.prisma` 新增 catalog / retrieval / embedding / duplicate / import models 与 `MediaAsset` duplicate 字段，配套 migration scaffold 已落到 `prisma/migrations/20260415083000_t973_media_injection_retrieval_v1/`。
+- 2026-04-15: 已完成 repository 实装：新增 catalog / retrieval / embedding / duplicate / import / retrieval-search repositories，并扩展 `MediaAssetRepository` 支持 `sha256 / phash / duplicate_cluster_id` 查询。
+- 2026-04-15: 已完成 media service 实装：新增 `MediaCatalogService / MediaEmbeddingService / MediaDuplicateService / MediaRetrievalService / MediaImportArtifactService / MediaInjectionService / MediaInjectionWorker`，并补 `DashScopeTextEmbeddingGateway` 调用链。
+- 2026-04-15: 已完成运行时与 CLI 实装：新增 `MediaImportJobWorker` runtime wrapper 与 `pnpm media:inject --manifest ... --dry-run|--apply` CLI。
+- 2026-04-15: 已完成 generation/planner 灰度接线：generation success path 可同步创建最小 retrieval doc；planner 在 `FF_MEDIA_PLANNER_RETRIEVAL_V1` 下追加 semantic retrieval 候选，并保留 legacy fallback。
+- 2026-04-15: 已完成第一轮验证：`prisma validate`、全量 TypeScript 编译、CLI `dry-run` 冒烟、in-memory `stageApply -> worker.processJob` 端到端冒烟，以及新增 `media-injection-manifest.test.ts`。
+- 2026-04-15: 在真实 PG + pgvector 环境上执行 migration 时发现两个实现问题并已修复：
+  - 本地 / local-kind PostgreSQL 镜像缺少可加载的 `vector` extension；已在 `scripts/db-local.mjs` 与 `ops/deploy/k8s/overlays/local-kind/postgres.yaml` 中加入 pgvector bootstrap。
+  - `media_embedding_snapshots.embedding_vector` 初始 migration 使用无维度 `vector`，导致 HNSW index 创建失败；已修正为 `vector(1024)`，并在 `DashScopeTextEmbeddingGateway` 增加向量维度守卫。
+- 2026-04-15: 已补 worker / retrieval / duplicate 集成测试：覆盖 timed-out running job retry、exact duplicate reuse、canonical-only retrieval hit。
+- 2026-04-15: 发现并修复 artifact TTL 漏洞：原实现仅有 retention 配置与 job 过期标记，没有真正删除 staging/result artifact。现已补 `MediaInjectionWorker.purgeExpiredArtifacts()`、artifact delete 流程、repo candidate query，以及 `20260415143000_t973_media_import_artifact_cleanup` migration（允许清理后将 `staging_manifest_key` 置空）。
+- 2026-04-15: 已使用 kind k8s 环境中的真实 PostgreSQL 与 backend pod 中的 DashScope 配置执行端到端冒烟：验证 `dryRun -> stageApply -> worker.processJob -> retrieval doc -> embedding snapshot -> retrieval hit -> duplicate reuse` 全链路收敛。
+- 2026-04-15: 深度清理时删除了未被任何运行时消费的 `config.mediaStorage.canonicalPrefix`，避免后续沿着不存在的 canonical prefix 配置继续双轨扩展。
+- 2026-04-15: 收紧 feature flag 语义：`mediaInjectionService.dryRun()` 仍允许在 `FF_MEDIA_INJECTION_V1=false` 时帮助外部准备 manifest，但 `stageApply()` 已明确受 `FF_MEDIA_INJECTION_V1` 守卫，避免“dry-run 关闭/开启”和“真实 apply 关闭/开启”语义漂移。
+- 2026-04-15: 修复 CLI `media:inject` 在真实环境中因 Prisma pool 未断开而挂住的问题；`src/backend/dev/media-inject.ts` 现已在 `finally` 中执行 `disconnectPrisma()`。
+- 2026-04-15: 修复 import worker 的两个质量问题：
+  - `steward_agent_id` 现在会在 worker 中预校验，避免运行到 `media_assets_steward_agent_id_fkey` 才以底层 DB 错误失败。
+  - 当 `FF_MEDIA_RETRIEVAL_V1=true` 时，若新建 retrieval doc 对应的 embedding snapshot 不是 `searchable + active`，job/item 会显式失败，而不是把“不可检索资产”误报为成功导入。
+- 2026-04-15: 修复 local-kind backend 的运行时代码漂移：
+  - 仅覆盖源码到旧镜像会让 pod 处于“新 TS 源码 + 旧 Prisma client”组合，进而在 artifact cleanup 查询中触发 `PrismaClientValidationError`。
+  - local-kind backend 现通过新的唯一镜像 tag 刷新，并在镜像构建时强制 `pnpm prisma generate`，确保 pod 中的 Prisma client 与当前 schema 同步。
+- 2026-04-15: 修复 runtime build fingerprint 歧义：`src/backend/lib/runtime-build-info.ts` 已把媒体注入/检索/duplicate/import worker 相关文件纳入 `code_fingerprint` 计算，避免“backend 实际代码已切换，但 runtime fingerprint 仍显示旧版本基线”的观测漂移。
+- 2026-04-15: kind k8s 真实冒烟最终结论：
+  - duplicate reuse 真实生效，两个重复导入请求最终指向同一 asset/document。
+  - 新鲜 embedding 在当前 local-kind 集群内仍被 `DASHSCOPE_API_KEY=REPLACE_ME` 阻塞，worker 会以 `media retrieval embedding is not searchable ... error_code=http_error` 明确失败。
+  - fallback retrieval 仍可命中已有 `searchable` snapshot，证明 PG/pgvector 检索链在真实集群内可用。
+- 2026-04-15: 使用有效 DashScope key 注入 local-kind `forum-app-secret` 并重启 backend 后，真实 pod 冒烟已验证 fresh embedding success：
+  - `embedding_env_blocked=false`
+  - 首次 import job `succeeded + created`
+  - 第二次重复导入 `succeeded + reused`
+  - `retrieval_document_count=1`
+  - active snapshot 与 searchable snapshot 同一 id
+  - semantic retrieval `search_hit_count=1`
+  - duplicate reuse 指向同一 asset
 - 2026-04-15: 记录关键设计警戒线：
   - 不直接向量化现有带 `owner_note` 的 retrieval caption 作为统一 public-safe 索引。
   - generated asset 若会回流复用，不能整体跳过 retrieval doc。
@@ -48,7 +82,8 @@
 
 ## Open design points to settle against roadmap
 
-- 当前规划冻结阶段无剩余设计阻塞项；可进入 Prisma schema / repo contract / service slice 实现设计。
+- 当前已无设计或实现阻塞项；后续工作转为 rollout 观测、样本扩展与视频能力 follow-up。
+- 当前已无代码或 local-kind 环境阻塞项；若后续继续在其他环境验证，只需保证 DashScope key 非 placeholder。
 
 ## Decisions now settled
 
@@ -74,5 +109,5 @@
 
 ## Known follow-ups
 
-- roadmap 对齐完成后，需要进入 Prisma schema / repo contracts / service slices 的正式实现包。
 - project registry 的 requirement 目前新增为 `R-087`，后续若 scope 扩展到视频，需要单独判断是扩 requirement 还是拆新 requirement。
+- 若后续进入更大规模运营导入，需要继续关注 `purgeExpiredArtifacts()` 的批处理吞吐与 observability 指标。

@@ -4,6 +4,15 @@
 
 - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
 - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+- `pnpm prisma validate`
+- `pnpm prisma generate`
+- `pnpm tsc -p tsconfig.json --noEmit`
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts`
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:deploy`
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:deploy`
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:status`
+- `DASHSCOPE_API_KEY=<from backend pod> DB_PERSISTENCE=true DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum MEDIA_LOCAL_DIR=/tmp/funforum-media-k8s-storage FF_MEDIA_INJECTION_V1=true FF_MEDIA_RETRIEVAL_V1=true FF_MEDIA_PLANNER_RETRIEVAL_V1=true pnpm tsx .ai/.tmp/k8s-media-injection-smoke.ts`
 
 ## Manual checks
 
@@ -40,6 +49,26 @@
 - 2026-04-15 17:56 CST:
   - 确认 `02-architecture.md` 已包含 service interface / orchestration contract V1，包括 `MediaInjectionService`、`MediaInjectionWorker`、`MediaCatalogService`、`MediaRetrievalService`、`MediaEmbeddingService`、`MediaDuplicateService` 与 `MediaEmbeddingGateway`。
   - 确认错误边界、事务边界和 gateway 责任边界已经在文档中显式收敛。
+- 2026-04-15 19:45 CST:
+  - 确认第一轮代码实现已覆盖 schema、repository、service、runtime worker、CLI、generation/planner 接线和 migration scaffold。
+  - 确认示例 manifest 已与当前冻结 schema 枚举值对齐，不再残留 `standard_text_v1 / source_default / standard_v1` 这类旧值。
+- 2026-04-15 19:51 CST:
+  - 通过 `pnpm media:inject --manifest <tmp>/manifest.yaml --dry-run` 验证 CLI manifest 解析、默认值归一化、scope summary 和 dry-run item plan。
+- 2026-04-15 19:50 CST:
+  - 通过 in-memory `stageApply -> mediaInjectionWorker.processJob(job.id)` smoke 验证 staged import job、item 状态推进、资产创建、catalog/retrieval doc 建立与 result artifact 回写。
+- 2026-04-15 20:20 CST:
+  - 在真实 PG + pgvector migration 中捕获并修复 `vector extension unavailable` 与 `vector column missing dimensions for HNSW` 两个问题。
+  - 确认 local DB bootstrap 与 local-kind postgres overlay 已具备 pgvector 自举能力。
+- 2026-04-15 20:35 CST:
+  - 通过 `media-injection-retrieval.integration.test.ts` 验证 timed-out running job retry、exact duplicate reuse、canonical-only retrieval，以及 artifact retention cleanup。
+- 2026-04-15 20:41 CST:
+  - 使用 kind k8s 环境中的真实 PostgreSQL 与 backend pod 的 DashScope 配置执行端到端冒烟，验证：
+    - 第一次注入链路能收敛到 `succeeded`
+    - retrieval doc 与 active embedding snapshot 已创建
+    - semantic retrieval 可命中导入资产
+    - 后续重复导入会稳定落到 `reuse`
+- 2026-04-15 20:46 CST:
+  - 通过定向 `eslint`、`tsc`、`vitest` 复验确认 artifact cleanup 补丁与 runtime 去重扫描精简没有引入回归。
 
 ## Results
 
@@ -67,6 +96,74 @@
   - 结果：通过。
 - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`（2026-04-15 17:56 CST）
   - 结果：通过。
+- `pnpm prisma validate`（2026-04-15 19:47 CST）
+  - 结果：通过。
+- `pnpm prisma generate`（2026-04-15 19:53 CST）
+  - 结果：通过。
+- `pnpm tsc -p tsconfig.json --noEmit`（2026-04-15 19:47 CST）
+  - 结果：通过。
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts`（2026-04-15 19:51 CST）
+  - 结果：通过，3/3 tests passed。
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`（2026-04-15 20:46 CST）
+  - 结果：通过，7/7 tests passed。
+- `pnpm eslint src/backend/media src/backend/repos src/backend/container src/backend/runtime/media-import-job-worker.ts src/backend/lib/config.ts src/backend/app.ts src/backend/dev/media-inject.ts`（2026-04-15 20:46 CST）
+  - 结果：通过。
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`（2026-04-15 22:09 CST）
+  - 结果：通过，10/10 tests passed。
+  - 说明：覆盖 deep-cleanup 后新增的 `steward agent pre-validation`、`non-searchable embedding fails import job`、worker retry、duplicate reuse、retrieval search。
+- `pnpm tsc -p tsconfig.json --noEmit`（2026-04-15 22:09 CST）
+  - 结果：通过。
+- `pnpm eslint src/backend/media src/backend/repos src/backend/runtime src/backend/lib/config.ts src/backend/container src/backend/dev/media-inject.ts scripts/db-local.mjs`（2026-04-15 22:09 CST）
+  - 结果：通过。
+- `docker build -f /tmp/funforum-media-cleanup-image-v4/Dockerfile -t fun-forum-api:media-cleanup-v4 . && kind load docker-image ... && kubectl set image ... && kubectl rollout status ...`（2026-04-15 22:08 CST）
+  - 结果：通过。
+  - 说明：local-kind backend 已刷新为“最新 backend 源码 + 重新生成的 Prisma client”，修复了旧 client 导致的 `PrismaClientValidationError`。
+- `kubectl exec deploy/backend -- sh -lc 'cd /app && node /usr/local/bin/tsx /tmp/funforum-k8s-media-smoke.ts'`（2026-04-15 22:10 CST）
+  - 结果：通过。
+  - 说明：真实 pod 冒烟输出：
+    - `embedding_env_blocked=true`
+    - 两个 import job 都以 `media retrieval embedding is not searchable ... error_code=http_error` 失败
+    - `duplicate_reused_same_asset=true`
+    - `fallback_search_hit_count=1`
+  - 结论：代码链路闭环、失败语义清晰、duplicate reuse 与 fallback retrieval 在真实集群中成立；fresh embedding 被环境密钥阻塞而非代码阻塞。
+- `kubectl exec deploy/backend -- sh -lc 'printf \"primary=%s secondary=%s\\n\" ...'`（2026-04-15 22:12 CST）
+  - 结果：通过。
+  - 说明：当前 local-kind secret 中 `DASHSCOPE_API_KEY` 与 `DASHSCOPE_API_KEY_SECONDARY` 长度均为 `10`，对应 placeholder 值 `REPLACE_ME`，可解释 fresh embedding 的 401 `InvalidApiKey`。
+- `kubectl exec deploy/backend -- sh -lc 'cd /app && node /usr/local/bin/tsx <<\"TS\" ... getRuntimeBuildInfo() ... TS'`（2026-04-15 22:12 CST）
+  - 结果：通过。
+  - 说明：runtime `code_fingerprint` 已更新为 `sha256:f19468da...`，且 `fingerprint_basis` 已包含 media injection / retrieval / duplicate / import worker 相关文件，不再存在 runtime 指纹与实际代码脱节的问题。
+- `kubectl create secret generic forum-app-secret ... && kubectl rollout restart deploy/backend && kubectl rollout status ...`（2026-04-15 22:18 CST）
+  - 结果：通过。
+  - 说明：local-kind 运行时 secret 已注入有效 DashScope key，backend 已重新加载新 secret。
+- `kubectl exec deploy/backend -- sh -lc 'printf \"primary=%s secondary=%s\\n\" ...'`（2026-04-15 22:18 CST）
+  - 结果：通过。
+  - 说明：pod 内 `DASHSCOPE_API_KEY` 与 `DASHSCOPE_API_KEY_SECONDARY` 长度均为 `35`，不再是 placeholder。
+- `kubectl exec deploy/backend -- sh -lc 'cd /app && node /usr/local/bin/tsx /tmp/funforum-k8s-media-smoke.ts'`（2026-04-15 22:19 CST）
+  - 结果：通过。
+  - 说明：真实 pod 冒烟输出：
+    - `embedding_env_blocked=false`
+    - `job_1.status=succeeded`, `item_status=created`
+    - `job_2.status=succeeded`, `item_status=reused`
+    - `retrieval_document_count=1`
+    - `active_snapshot_ids == searchable_snapshot_ids`
+    - `search_hit_count=1`
+    - `duplicate_reused_same_asset=true`
+  - 结论：fresh embedding、active searchable snapshot、semantic retrieval、duplicate reuse 已在真实 local-kind pod 中完成闭环验证。
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:deploy`（2026-04-15 20:31 CST）
+  - 结果：通过，新增 migration `20260415143000_t973_media_import_artifact_cleanup` 已应用。
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:deploy`（2026-04-15 20:31 CST）
+  - 结果：通过，主 k8s 库已同步到最新 schema。
+- `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:status`（2026-04-15 20:33 CST）
+  - 结果：通过，数据库 schema up to date。
+- `DASHSCOPE_API_KEY=<from backend pod> DB_PERSISTENCE=true DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum MEDIA_LOCAL_DIR=/tmp/funforum-media-k8s-storage FF_MEDIA_INJECTION_V1=true FF_MEDIA_RETRIEVAL_V1=true FF_MEDIA_PLANNER_RETRIEVAL_V1=true pnpm tsx .ai/.tmp/k8s-media-injection-smoke.ts`（2026-04-15 20:42 CST）
+  - 结果：通过。
+  - 说明：真实环境冒烟输出表明 job1 与 job2 均成功收敛，retrieval doc 与 active embedding snapshot 已存在，semantic retrieval hit count=1，duplicate import 稳定复用同一 asset。
+- `DB_PERSISTENCE=false pnpm media:inject --manifest <tmp>/manifest.yaml --dry-run`（2026-04-15 19:49 CST）
+  - 结果：通过。
+  - 说明：CLI 输出了 normalized request、intent fingerprint、scope summary 和 `item_plan[action=create]`。
+- in-memory smoke `stageApply -> mediaInjectionWorker.processJob(job.id)`（2026-04-15 19:50 CST）
+  - 结果：通过。
+  - 说明：job 收敛为 `succeeded`，item 收敛为 `created`，并成功创建 `MediaAsset + MediaCatalogCard + MediaRetrievalDocument`，artifact key 与 staging key 均有输出。
 - 文档一致性检查（2026-04-15 17:30 CST）
   - 结果：通过。
   - 说明：retrieval plane 已冻结为“逻辑文档 + append-only 一对多 embedding 快照”，active snapshot 规则已在 bundle 关键文档中同步。
