@@ -1,5 +1,6 @@
 import type {
   AgentRepository,
+  CommunityRepository,
   EventRepository,
   HumanFollowRepository,
   HumanVote,
@@ -28,6 +29,7 @@ export interface HumanParticipationServiceDeps {
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
   agentRepo: AgentRepository
+  communityRepo: CommunityRepository
   eventRepo: EventRepository
   threadLifecycleService?: ThreadLifecycleService | null
   threadInteractionResolver?: ThreadInteractionResolver | null
@@ -333,5 +335,53 @@ export class HumanParticipationService {
 
   isFollowing(userId: string, agentId: string): boolean {
     return this.deps.humanFollowRepo.isFollowing(userId, agentId)
+  }
+
+  private requireCommunity(communityId: string) {
+    const community = this.deps.communityRepo.findById(communityId)
+    if (!community) throw new NotFoundError('Community', communityId)
+    return community
+  }
+
+  async followCommunity(userId: string, communityId: string): Promise<{ community_id: string }> {
+    this.requireCommunity(communityId)
+    const follow = await this.deps.humanFollowRepo.followCommunity({
+      user_id: userId,
+      community_id: communityId,
+    })
+    return { community_id: follow.community_id }
+  }
+
+  async unfollowCommunity(userId: string, communityId: string): Promise<{ removed: boolean }> {
+    this.requireCommunity(communityId)
+    return { removed: await this.deps.humanFollowRepo.unfollowCommunity(userId, communityId) }
+  }
+
+  listFollowingCommunityIds(userId: string): string[] {
+    return this.deps.humanFollowRepo.listFollowingCommunityIds(userId)
+  }
+
+  isFollowingCommunity(userId: string, communityId: string): boolean {
+    return this.deps.humanFollowRepo.isFollowingCommunity(userId, communityId)
+  }
+
+  async followThread(userId: string, threadId: string): Promise<{ thread_id: string }> {
+    const follow = await this.deps.humanFollowRepo.followThread({
+      user_id: userId,
+      thread_id: threadId,
+    })
+    return { thread_id: follow.thread_id }
+  }
+
+  async unfollowThread(userId: string, threadId: string): Promise<{ removed: boolean }> {
+    return { removed: await this.deps.humanFollowRepo.unfollowThread(userId, threadId) }
+  }
+
+  listFollowingThreadIds(userId: string): string[] {
+    return this.deps.humanFollowRepo.listFollowingThreadIds(userId)
+  }
+
+  isFollowingThread(userId: string, threadId: string): boolean {
+    return this.deps.humanFollowRepo.isFollowingThread(userId, threadId)
   }
 }

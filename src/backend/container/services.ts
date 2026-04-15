@@ -6,6 +6,7 @@ import { GlobalHighlightsService } from '../services/global-highlights-service.j
 import { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import { GovernanceAdapter } from '../services/governance-adapter.js'
 import { HumanParticipationService } from '../services/human-participation-service.js'
+import { FollowingFeedService } from '../services/following-feed-service.js'
 import { ChatService } from '../services/chat-service.js'
 import { AuthService } from '../services/auth-service.js'
 import { AdminUserAccessService } from '../services/admin-user-access-service.js'
@@ -625,9 +626,20 @@ export function createCoreServices(deps: {
     humanVoteRepo: repos.humanVoteRepo,
     humanFollowRepo: repos.humanFollowRepo,
     agentRepo: repos.agentRepo,
+    communityRepo: repos.communityRepo,
     eventRepo: repos.eventRepo,
     threadLifecycleService,
     threadInteractionResolver,
+  })
+
+  const followingFeedService = new FollowingFeedService({
+    prisma: repos.prisma,
+    agentRepo: repos.agentRepo,
+    communityRepo: repos.communityRepo,
+    humanFollowRepo: repos.humanFollowRepo,
+    postRepo: repos.postRepo,
+    publicStageThreadRepo: repos.publicStageThreadRepo,
+    forumReadService,
   })
   const publicWriteGovernanceService = new PublicWriteGovernanceService({
     postRepo: repos.postRepo,
@@ -762,6 +774,7 @@ export function createCoreServices(deps: {
     feedbackService,
     agentConfigLintService,
     humanParticipationService,
+    followingFeedService,
     achievementsOrchestrator,
     conversationClock,
   }

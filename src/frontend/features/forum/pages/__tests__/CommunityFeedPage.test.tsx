@@ -4,7 +4,12 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommunityFeedPage } from '../CommunityFeedPage'
 import { useCommunityBySlug } from '@/api/hooks'
-import { useMyAgents } from '@/api/hooks/user'
+import {
+  useFollowCommunity,
+  useFollowingCommunitiesList,
+  useMyAgents,
+  useUnfollowCommunity,
+} from '@/api/hooks/user'
 import { useSseNewCounts } from '@/api/use-sse'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
@@ -19,6 +24,9 @@ vi.mock('@/api/hooks', () => ({
 
 vi.mock('@/api/hooks/user', () => ({
   useMyAgents: vi.fn(),
+  useFollowingCommunitiesList: vi.fn(),
+  useFollowCommunity: vi.fn(),
+  useUnfollowCommunity: vi.fn(),
 }))
 
 vi.mock('@/api/use-sse', () => ({
@@ -72,6 +80,9 @@ vi.mock('@/shared/components/LoadMore', () => ({
 const useInfiniteQueryMock = vi.mocked(useInfiniteQuery)
 const useCommunityBySlugMock = vi.mocked(useCommunityBySlug)
 const useMyAgentsMock = vi.mocked(useMyAgents)
+const useFollowingCommunitiesListMock = vi.mocked(useFollowingCommunitiesList)
+const useFollowCommunityMock = vi.mocked(useFollowCommunity)
+const useUnfollowCommunityMock = vi.mocked(useUnfollowCommunity)
 const useSseNewCountsMock = vi.mocked(useSseNewCounts)
 const useAuthMock = vi.mocked(useAuth)
 const useFeedViewStoreMock = vi.mocked(useFeedViewStore)
@@ -89,8 +100,21 @@ function renderPage() {
 describe('CommunityFeedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     useAuthMock.mockReturnValue({ isAuthenticated: true } as never)
     useMyAgentsMock.mockReturnValue({ data: { data: [] } } as never)
+    useFollowingCommunitiesListMock.mockReturnValue({
+      data: { data: [] },
+      isLoading: false,
+    } as never)
+    useFollowCommunityMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    useUnfollowCommunityMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
     useFeedViewStoreMock.mockReturnValue({ view: 'card' } as never)
     useSseNewCountsMock.mockReturnValue({
       newPostCount: 0,
@@ -137,8 +161,8 @@ describe('CommunityFeedPage', () => {
     expect(screen.getByTestId('community-hero-banner')).toBeTruthy()
     expect(screen.getByAltText('Community Banner').getAttribute('src')).toMatch(/^\/community-banners\/.+\.webp$/)
     expect(screen.getAllByText('Night Show').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: '订阅社区' })).toBeTruthy()
     const inviteButton = screen.getByRole('button', { name: '邀请智能体，让我的智能体加入社区' })
-    expect(screen.getByText('社区订阅即将开放')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /关注/ })).toBeNull()
     expect(inviteButton).toBeTruthy()
     expect(screen.getByRole('button', { name: '社区更多操作' })).toBeTruthy()
@@ -151,6 +175,52 @@ describe('CommunityFeedPage', () => {
     expect(screen.getByText(/本社区允许围观的热点域：娱乐、体育/)).toBeTruthy()
     expect(screen.getByText('热点内容会先做灰度复核。')).toBeTruthy()
     expect(screen.getByRole('link', { name: '查看热点治理规则与推荐说明' }).getAttribute('href')).toBe('/help/hot-topic-rules')
+  })
+
+  it('scrolls to the top when entering a community page', () => {
+    useCommunityBySlugMock.mockReturnValue({
+      data: {
+        id: 'community-1',
+        name: 'Night Show',
+        slug: 'night-show',
+        description: 'Agent talk show',
+        rules_json: null,
+        visibility_default: 'PUBLIC',
+        created_at: '2026-03-10T10:00:00.000Z',
+        updated_at: '2026-03-10T10:00:00.000Z',
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage()
+
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' })
+  })
+
+  it('shows subscribed state when the community is already followed', () => {
+    useFollowingCommunitiesListMock.mockReturnValue({
+      data: {
+        data: [{ id: 'community-1', name: 'Night Show', slug: 'night-show' }],
+      },
+      isLoading: false,
+    } as never)
+    useCommunityBySlugMock.mockReturnValue({
+      data: {
+        id: 'community-1',
+        name: 'Night Show',
+        slug: 'night-show',
+        description: 'Agent talk show',
+        rules_json: null,
+        visibility_default: 'PUBLIC',
+        created_at: '2026-03-10T10:00:00.000Z',
+        updated_at: '2026-03-10T10:00:00.000Z',
+      },
+      isLoading: false,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: '已订阅' })).toBeTruthy()
   })
 
   it('renders only the mobile feed toolbar for authenticated users', () => {

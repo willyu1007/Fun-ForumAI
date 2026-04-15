@@ -1,9 +1,14 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { MoreHorizontal } from 'lucide-react'
 import { useCommunityBySlug } from '@/api/hooks'
-import { useMyAgents } from '@/api/hooks/user'
+import {
+  useFollowCommunity,
+  useFollowingCommunitiesList,
+  useMyAgents,
+  useUnfollowCommunity,
+} from '@/api/hooks/user'
 import { api } from '@/api/client'
 import { PostCard } from '../components/PostCard'
 import { PostCompact } from '../components/PostCompact'
@@ -146,6 +151,60 @@ function InviteAgentAction() {
   )
 }
 
+function CommunitySubscriptionAction({ community }: { community: Community }) {
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
+  const currentPath = locationToPath(location)
+  const { data: followingCommunitiesData, isLoading: followingCommunitiesLoading } =
+    useFollowingCommunitiesList(isAuthenticated)
+  const followCommunity = useFollowCommunity(community.id)
+  const unfollowCommunity = useUnfollowCommunity(community.id)
+
+  const followedCommunities = followingCommunitiesData?.data ?? []
+  const isSubscribed = followedCommunities.some((item) => item.id === community.id)
+  const isPending = followCommunity.isPending || unfollowCommunity.isPending
+
+  if (!isAuthenticated) {
+    return (
+      <CommunityHeaderActionTooltip label="登录后订阅社区">
+        <Link
+          className={communityHeaderActionClassName('accent')}
+          aria-label="订阅社区"
+          to="/login"
+          state={buildAuthRedirectState(currentPath)}
+        >
+          订阅社区
+        </Link>
+      </CommunityHeaderActionTooltip>
+    )
+  }
+
+  const buttonLabel = isPending
+    ? (isSubscribed ? '取消中...' : '订阅中...')
+    : (isSubscribed ? '已订阅' : '订阅社区')
+  const tooltipLabel = isSubscribed ? '取消社区订阅' : '订阅社区动态'
+
+  return (
+    <CommunityHeaderActionTooltip label={tooltipLabel}>
+      <button
+        type="button"
+        className={communityHeaderActionClassName(isSubscribed ? 'accent' : 'primary')}
+        aria-label={buttonLabel}
+        disabled={isPending || followingCommunitiesLoading}
+        onClick={() => {
+          if (isSubscribed) {
+            void unfollowCommunity.mutateAsync()
+            return
+          }
+          void followCommunity.mutateAsync()
+        }}
+      >
+        {buttonLabel}
+      </button>
+    </CommunityHeaderActionTooltip>
+  )
+}
+
 function CommunityHeroBanner({ community }: { community: Community }) {
   const category = resolveCommunityCategory(community)
   const bannerTheme = getCommunityBannerTheme(community)
@@ -184,11 +243,7 @@ function CommunityHeroBanner({ community }: { community: Community }) {
 
           <TooltipProvider delayDuration={80}>
             <div className="flex items-center gap-2 pl-[5.55rem] pt-8 lg:pl-0">
-              <CommunityHeaderActionTooltip label="社区订阅能力将在首发后的个性化能力中开放">
-                <span className="inline-flex h-9 items-center justify-center rounded-full border border-dashed border-primary/25 px-4 text-[13px] font-medium text-muted-foreground">
-                  社区订阅即将开放
-                </span>
-              </CommunityHeaderActionTooltip>
+              <CommunitySubscriptionAction community={community} />
               <InviteAgentAction />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -256,6 +311,11 @@ export function CommunityFeedPage() {
   const isLoading = communityLoading || feedLoading
   const hotTopicPolicy = community ? readCommunityHotTopicPolicy(community.rules_json) : null
 
+  useEffect(() => {
+    if (!slug) return
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [slug])
+
   const handleSortChange = (nextSort: SortMode) => {
     const next = new URLSearchParams(searchParams)
     if (nextSort === 'hot') {
@@ -270,7 +330,7 @@ export function CommunityFeedPage() {
   return (
     <div className="space-y-8 pt-1 lg:pt-2">
       {community && <CommunityHeroBanner community={community} />}
-      {communityLoading && <Skeleton className={"h-56 rounded-[1.75rem]"} />}
+      {communityLoading && <Skeleton className="h-56 rounded-[1.75rem]" />}
 
       <div
         className={cn(
@@ -280,7 +340,7 @@ export function CommunityFeedPage() {
       >
         <div className="min-w-0">
           {community && hotTopicPolicy && (
-            <div className={"rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground"}>
+            <div className="rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">热点模式 · {HOT_TOPIC_MODE_LABELS[hotTopicPolicy.mode]}</Badge>
                 {hotTopicPolicy.allowedDomains.map((domain) => (
@@ -289,18 +349,18 @@ export function CommunityFeedPage() {
                   </Badge>
                 ))}
               </div>
-              <p className={"mt-2 text-sm"}>
+              <p className="mt-2 text-sm">
                 本社区允许围观的热点域：{hotTopicPolicy.allowedDomains.map((domain) => HOT_TOPIC_DOMAIN_LABELS[domain]).join('、')}。
                 {hotTopicPolicy.blockedDomains.length > 0 && (
                   <>不进入推荐的域：{hotTopicPolicy.blockedDomains.map((domain) => HOT_TOPIC_DOMAIN_LABELS[domain]).join('、')}。</>
                 )}
               </p>
               {(hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary) && (
-                <p className={"mt-1 text-warning"}>
+                <p className="mt-1 text-warning">
                   {hotTopicPolicy.userCopy.community_banner ?? hotTopicPolicy.userCopy.summary}
                 </p>
               )}
-              <p className={"mt-1 text-warning"}>
+              <p className="mt-1 text-warning">
                 <Link to="/help/hot-topic-rules" className="underline underline-offset-4">
                   查看热点治理规则与推荐说明
                 </Link>
@@ -309,9 +369,9 @@ export function CommunityFeedPage() {
           )}
 
           {!communityLoading && !community && (
-            <div className={"rounded-md border p-10 text-center"}>
-              <p className={"text-sm font-medium"}>未找到该社区</p>
-              <p className={"mt-1 text-xs text-muted-foreground"}>社区 c/{slug} 不存在。</p>
+            <div className="rounded-md border p-10 text-center">
+              <p className="text-sm font-medium">未找到该社区</p>
+              <p className="mt-1 text-xs text-muted-foreground">社区 c/{slug} 不存在。</p>
             </div>
           )}
 
@@ -342,12 +402,12 @@ export function CommunityFeedPage() {
                 </div>
               )}
 
-              {error && <div className={"mt-3 rounded-md border p-6 text-center text-sm text-muted-foreground"}>加载失败，请稍后重试。</div>}
+              {error && <div className="mt-3 rounded-md border p-6 text-center text-sm text-muted-foreground">加载失败，请稍后重试。</div>}
 
               {!isLoading && posts.length === 0 && !error && (
-                <div className={"mt-3 rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
-                  <p className={"text-sm font-medium"}>暂无帖子</p>
-                  <p className={"mt-1 text-xs text-muted-foreground"}>该社区还没有内容。</p>
+                <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-10 text-center">
+                  <p className="text-sm font-medium">暂无帖子</p>
+                  <p className="mt-1 text-xs text-muted-foreground">该社区还没有内容。</p>
                 </div>
               )}
 

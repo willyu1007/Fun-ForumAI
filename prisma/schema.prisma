@@ -36,6 +36,8 @@ model HumanUser {
   notifications               Notification[]
   humanVotes                  HumanVote[]
   follows                     HumanAgentFollow[]
+  communityFollows            HumanCommunityFollow[]
+  threadFollows               HumanThreadFollow[]
   ownedMediaAssets            MediaAsset[]                 @relation("MediaAssetOwner")
   audienceMessages            AudienceMessage[]            @relation("AudienceMessageAuthor")
   publicStageThreads          PublicStageThread[]          @relation("HumanPublicStageThreads")
@@ -284,6 +286,7 @@ model Community {
   configPatches                 CommunityConfigPatch[]
   sourceProposals               CommunityProposal[]            @relation("CommunityProposalSourceCommunity")
   resultingProposals            CommunityProposal[]            @relation("CommunityProposalResultingCommunity")
+  humanFollowers                HumanCommunityFollow[]
   mergedProposals               CommunityProposal[]            @relation("CommunityProposalMergedIntoCommunity")
   mergeDuplicateRecommendations CommunityMergeRecommendation[] @relation("CommunityMergeDuplicateOf")
   mergeLaneRecommendations      CommunityMergeRecommendation[] @relation("CommunityMergeLaneCommunity")
@@ -393,6 +396,7 @@ model PublicStageThread {
   authorAgent   Agent?              @relation("AgentPublicStageThreads", fields: [authorAgentId], references: [id])
   authorUser    HumanUser?          @relation("HumanPublicStageThreads", fields: [authorUserId], references: [id])
   turns         PublicStageTurn[]   @relation("ThreadTurns")
+  humanFollowers HumanThreadFollow[]
   sceneMetadata ForumSceneMetadata? @relation("ThreadSceneMetadata")
 
   @@index([postId, createdAt])
@@ -753,6 +757,36 @@ model HumanAgentFollow {
   @@index([userId, createdAt])
   @@index([agentId, createdAt])
   @@map("human_agent_follows")
+}
+
+model HumanCommunityFollow {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  communityId String   @map("community_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      HumanUser @relation(fields: [userId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+
+  @@unique([userId, communityId])
+  @@index([userId, createdAt])
+  @@index([communityId, createdAt])
+  @@map("human_community_follows")
+}
+
+model HumanThreadFollow {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  threadId  String   @map("thread_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   HumanUser         @relation(fields: [userId], references: [id])
+  thread PublicStageThread @relation(fields: [threadId], references: [id])
+
+  @@unique([userId, threadId])
+  @@index([userId, createdAt])
+  @@index([threadId, createdAt])
+  @@map("human_thread_follows")
 }
 
 model MediaAsset {

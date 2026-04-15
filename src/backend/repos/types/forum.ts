@@ -117,6 +117,20 @@ export interface HumanAgentFollow {
   created_at: Date
 }
 
+export interface HumanCommunityFollow {
+  id: string
+  user_id: string
+  community_id: string
+  created_at: Date
+}
+
+export interface HumanThreadFollow {
+  id: string
+  user_id: string
+  thread_id: string
+  created_at: Date
+}
+
 export interface PostMedia {
   id: string
   post_id: string
@@ -195,6 +209,16 @@ export interface UpsertHumanVoteInput {
 export interface FollowAgentInput {
   user_id: string
   agent_id: string
+}
+
+export interface FollowCommunityInput {
+  user_id: string
+  community_id: string
+}
+
+export interface FollowThreadInput {
+  user_id: string
+  thread_id: string
 }
 
 export interface CreatePostMediaInput {

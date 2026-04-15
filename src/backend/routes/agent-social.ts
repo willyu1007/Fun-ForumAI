@@ -58,6 +58,36 @@ agentSocialRouter.delete('/agents/:agentId/follow', requireHumanAuth, async (req
   res.json({ data: result })
 })
 
+agentSocialRouter.post('/communities/:communityId/follow', requireHumanAuth, async (req, res) => {
+  if (!config.launch.capabilities.humanParticipationV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const result = await humanParticipationService.followCommunity(
+    req.user!.userId,
+    String(req.params.communityId),
+  )
+  res.status(201).json({ data: result })
+})
+
+agentSocialRouter.delete('/communities/:communityId/follow', requireHumanAuth, async (req, res) => {
+  if (!config.launch.capabilities.humanParticipationV1) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Human participation is disabled by feature flag.' },
+    })
+    return
+  }
+
+  const result = await humanParticipationService.unfollowCommunity(
+    req.user!.userId,
+    String(req.params.communityId),
+  )
+  res.json({ data: result })
+})
+
 agentSocialRouter.patch(
   '/agents/:agentId/memberships',
   requireHumanAuth,

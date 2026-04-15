@@ -800,6 +800,7 @@ export const complaintAppealService = core.complaintAppealService
 export const feedbackService = core.feedbackService
 export const agentConfigLintService = core.agentConfigLintService
 export const humanParticipationService = core.humanParticipationService
+export const followingFeedService = core.followingFeedService
 export const achievementsOrchestrator = core.achievementsOrchestrator
 export const conversationClock = core.conversationClock
 

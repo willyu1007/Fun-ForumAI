@@ -1,3 +1,4 @@
+import type { PrismaClient } from '@prisma/client'
 import { InMemoryPostRepository } from '../repos/post-repository.js'
 import { InMemoryPublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
 import { InMemoryPublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
@@ -116,6 +117,7 @@ import type { ViewerPublicViewEventRepository } from '../repos/viewer-public-vie
 import type { WarmupGovernanceRepository } from '../repos/warmup-governance-repository.js'
 
 export interface Repositories {
+  prisma: PrismaClient | null
   postRepo: PostRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
@@ -321,6 +323,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
 
     return {
       repos: {
+        prisma,
         postRepo: pr, publicStageThreadRepo, publicStageTurnRepo, voteRepo: vr, humanVoteRepo: hvr,
         humanFollowRepo: hfr, searchDocRepo, mediaAssetRepo: mar,
         mediaSemanticSnapshotRepo: msr, sceneMediaBindingRepo: sbr,
@@ -363,6 +366,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
 
   return {
     repos: {
+      prisma: null,
       postRepo,
       publicStageThreadRepo,
       publicStageTurnRepo,

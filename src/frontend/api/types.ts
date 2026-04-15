@@ -1583,6 +1583,69 @@ export interface Community {
   updated_at: string
 }
 
+export type FollowingCommunityListItem = Pick<Community, 'id' | 'name' | 'slug'>
+
+export interface FollowingAgentListItem {
+  id: string
+  displayName?: string
+  display_name?: string
+  avatarUrl?: string | null
+  avatar_url?: string | null
+}
+
+export interface FollowingThreadListItem {
+  id: string
+  title: string
+  replyCount: number
+}
+
+export interface FollowingTurnAuthorAgent {
+  id?: string
+  displayName?: string
+  display_name?: string
+  name?: string
+  avatarUrl?: string | null
+  avatar_url?: string | null
+}
+
+export interface FollowingTurnData {
+  body: string
+  authorAgentId?: string
+  authorAgent?: FollowingTurnAuthorAgent | null
+  thread?: {
+    post?: {
+      id?: string
+      title?: string
+    }
+  }
+}
+
+export type FollowingAgentFeedItem =
+  | {
+      type: 'POST'
+      post?: PostWithMeta
+      createdAt: string
+    }
+  | {
+      type: 'TURN'
+      turn?: FollowingTurnData
+      createdAt: string
+    }
+
+export interface FollowingThreadFeedItem {
+  threadId: string
+  postTitle: string
+  latestTurn?: {
+    body: string
+    authorAgent?: {
+      displayName?: string
+      name?: string
+    } | null
+  }
+  newReplyCount: number
+  createdAt: string
+}
+
 export type CommunityLifecycleState =
   | 'launch_core'
   | 'launch_support'

@@ -6,6 +6,7 @@ import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import { InMemoryHumanFollowRepository } from '../../repos/human-follow-repository.js'
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryEventRepository } from '../../repos/event-repository.js'
 import { HumanParticipationService, HUMAN_VOTE_WEIGHT } from '../human-participation-service.js'
 
@@ -17,6 +18,7 @@ function createService() {
   const humanVoteRepo = new InMemoryHumanVoteRepository()
   const humanFollowRepo = new InMemoryHumanFollowRepository()
   const agentRepo = new InMemoryAgentRepository()
+  const communityRepo = new InMemoryCommunityRepository()
   const eventRepo = new InMemoryEventRepository()
 
   const service = new HumanParticipationService({
@@ -27,10 +29,22 @@ function createService() {
     humanVoteRepo,
     humanFollowRepo,
     agentRepo,
+    communityRepo,
     eventRepo,
   })
 
-  return { service, postRepo, publicStageThreadRepo, publicStageTurnRepo, voteRepo, humanVoteRepo, humanFollowRepo, agentRepo, eventRepo }
+  return {
+    service,
+    postRepo,
+    publicStageThreadRepo,
+    publicStageTurnRepo,
+    voteRepo,
+    humanVoteRepo,
+    humanFollowRepo,
+    agentRepo,
+    communityRepo,
+    eventRepo,
+  }
 }
 
 describe('HumanParticipationService', () => {
@@ -229,6 +243,25 @@ describe('HumanParticipationService', () => {
 
     it('throws NotFoundError when agent does not exist', async () => {
       await expect(ctx.service.followAgent('user1', 'nonexistent')).rejects.toThrow('Agent')
+    })
+  })
+
+  describe('followCommunity / unfollowCommunity', () => {
+    it('follows an existing community', async () => {
+      const community = ctx.communityRepo.create({
+        name: 'Night Show',
+        slug: 'night-show',
+      })
+
+      const result = await ctx.service.followCommunity('user1', community.id)
+
+      expect(result).toEqual({ community_id: community.id })
+      expect(ctx.service.isFollowingCommunity('user1', community.id)).toBe(true)
+    })
+
+    it('throws NotFoundError when community does not exist', async () => {
+      await expect(ctx.service.followCommunity('user1', 'missing-community')).rejects.toThrow('Community')
+      await expect(ctx.service.unfollowCommunity('user1', 'missing-community')).rejects.toThrow('Community')
     })
   })
 })

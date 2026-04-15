@@ -11,13 +11,73 @@ import type {
   ComplaintTicket,
   FeedbackTicketDetail,
   FeedbackTicketSummary,
+  FollowingAgentFeedItem,
+  FollowingAgentListItem,
+  FollowingCommunityListItem,
+  FollowingThreadFeedItem,
+  FollowingThreadListItem,
   HumanVoteResult,
+  PostWithMeta,
 } from '../types'
 
 export function useMyAgents(enabled = true) {
   return useQuery({
     queryKey: queryKeys.myAgents,
     queryFn: () => api.get('me/agents').json<ApiResponse<Agent[]>>(),
+    staleTime: 60_000,
+    enabled,
+  })
+}
+
+export function useFollowingCommunityFeed(enabled = true) {
+  return useQuery({
+    queryKey: ['me', 'feed', 'communities'],
+    queryFn: () => api.get('me/feed/communities').json<ApiResponse<PostWithMeta[]>>(),
+    staleTime: 60_000,
+    enabled,
+  })
+}
+
+export function useFollowingAgentFeed(enabled = true) {
+  return useQuery({
+    queryKey: ['me', 'feed', 'agents'],
+    queryFn: () => api.get('me/feed/agents').json<ApiResponse<FollowingAgentFeedItem[]>>(),
+    staleTime: 60_000,
+    enabled,
+  })
+}
+
+export function useFollowingThreadFeed(enabled = true) {
+  return useQuery({
+    queryKey: ['me', 'feed', 'threads'],
+    queryFn: () => api.get('me/feed/threads').json<ApiResponse<FollowingThreadFeedItem[]>>(),
+    staleTime: 60_000,
+    enabled,
+  })
+}
+
+export function useFollowingAgentsList(enabled = true) {
+  return useQuery({
+    queryKey: ['me', 'following', 'agents'],
+    queryFn: () => api.get('me/following/agents').json<ApiResponse<FollowingAgentListItem[]>>(),
+    staleTime: 60_000,
+    enabled,
+  })
+}
+
+export function useFollowingCommunitiesList(enabled = true) {
+  return useQuery({
+    queryKey: ['me', 'following', 'communities'],
+    queryFn: () => api.get('me/following/communities').json<ApiResponse<FollowingCommunityListItem[]>>(),
+    staleTime: 60_000,
+    enabled,
+  })
+}
+
+export function useFollowingThreadsList(enabled = true) {
+  return useQuery({
+    queryKey: ['me', 'following', 'threads'],
+    queryFn: () => api.get('me/following/threads').json<ApiResponse<FollowingThreadListItem[]>>(),
     staleTime: 60_000,
     enabled,
   })
@@ -150,6 +210,30 @@ export function useUnfollowAgent(agentId: string) {
       qc.invalidateQueries({ queryKey: ['search'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: queryKeys.agentProfile(agentId) })
+    },
+  })
+}
+
+export function useFollowCommunity(communityId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post(`communities/${communityId}/follow`).json<ApiResponse<{ community_id: string }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me', 'following', 'communities'] })
+      qc.invalidateQueries({ queryKey: ['me', 'feed', 'communities'] })
+    },
+  })
+}
+
+export function useUnfollowCommunity(communityId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.delete(`communities/${communityId}/follow`).json<ApiResponse<{ removed: boolean }>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me', 'following', 'communities'] })
+      qc.invalidateQueries({ queryKey: ['me', 'feed', 'communities'] })
     },
   })
 }

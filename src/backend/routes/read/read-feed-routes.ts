@@ -6,6 +6,7 @@ import {
   homeProgrammingService,
   humanParticipationService,
   mediaAssetControlService,
+  followingFeedService,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
 import { ValidationError } from '../../lib/errors.js'
@@ -241,6 +242,58 @@ export function registerReadFeedRoutes(router: IRouter): void {
       },
       meta: payload.meta,
     })
+  })
+
+  router.get('/me/following/agents', requireHumanAuth, async (req, res) => {
+    const agents = await followingFeedService.listFollowingAgents(req.user!.userId)
+    res.json({ data: agents })
+  })
+
+  router.get('/me/following/communities', requireHumanAuth, async (req, res) => {
+    const communities = await followingFeedService.listFollowingCommunities(req.user!.userId)
+    res.json({ data: communities })
+  })
+
+  router.get('/me/following/threads', requireHumanAuth, async (req, res) => {
+    const threads = await followingFeedService.listFollowingThreads(req.user!.userId)
+    res.json({ data: threads })
+  })
+
+  router.get('/me/feed/communities', requireHumanAuth, async (req, res) => {
+    const { limit } = req.query as Record<string, string | undefined>
+    const parsedLimit = limit ? parseInt(limit, 10) : 20
+    const posts = await followingFeedService.getCommunityFeed(req.user!.userId, parsedLimit)
+    const viewer = await resolveViewerContext(req, res)
+    const enriched = await attachRelationTeasersToPosts(posts, viewer)
+    res.json({ data: enriched.map((item) => serializePublicPost(item)) })
+  })
+
+  router.get('/me/feed/agents', requireHumanAuth, async (req, res) => {
+    const { limit } = req.query as Record<string, string | undefined>
+    const parsedLimit = limit ? parseInt(limit, 10) : 20
+    const feed = await followingFeedService.getAgentFeed(req.user!.userId, parsedLimit)
+    const viewer = await resolveViewerContext(req, res)
+    
+    // 我们需要把 post 也 enrich 一下
+    const postsToEnrich = feed.filter(f => f.type === 'POST' && f.post).map(f => f.post!)
+    const enrichedPosts = await attachRelationTeasersToPosts(postsToEnrich, viewer)
+    const enrichedPostMap = new Map(enrichedPosts.map(p => [p.id, serializePublicPost(p)]))
+
+    const data = feed.map(item => {
+      if (item.type === 'POST' && item.post) {
+        return { type: 'POST', post: enrichedPostMap.get(item.post.id), createdAt: item.createdAt }
+      }
+      return item
+    })
+
+    res.json({ data })
+  })
+
+  router.get('/me/feed/threads', requireHumanAuth, async (req, res) => {
+    const { limit } = req.query as Record<string, string | undefined>
+    const parsedLimit = limit ? parseInt(limit, 10) : 20
+    const feed = await followingFeedService.getThreadFeed(req.user!.userId, parsedLimit)
+    res.json({ data: feed })
   })
 
   router.get('/communities', async (req, res) => {
