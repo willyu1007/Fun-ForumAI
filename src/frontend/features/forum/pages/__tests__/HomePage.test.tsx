@@ -1,20 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { useInfiniteQuery } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useHomeProgramming } from '@/api/hooks'
 import { useAgentProfile } from '@/api/hooks/agent'
 import { useFollowAgent, useUnfollowAgent } from '@/api/hooks/user'
 import { useAuth } from '@/shared/hooks/use-auth'
-
-vi.mock('@tanstack/react-query', async () => {
-  const actual =
-    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
-  return {
-    ...actual,
-    useInfiniteQuery: vi.fn(),
-  }
-})
 
 vi.mock('@/api/hooks', () => ({
   useHomeProgramming: vi.fn(),
@@ -54,7 +44,6 @@ vi.mock('@/shared/components/LoadMore', () => ({
 }))
 
 const useHomeProgrammingMock = vi.mocked(useHomeProgramming)
-const useInfiniteQueryMock = vi.mocked(useInfiniteQuery)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
 const useFollowAgentMock = vi.mocked(useFollowAgent)
 const useUnfollowAgentMock = vi.mocked(useUnfollowAgent)
@@ -64,12 +53,6 @@ describe('HomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
-    useInfiniteQueryMock.mockReturnValue({
-      data: undefined,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-    } as never)
     useAgentProfileMock.mockReturnValue({
       data: {
         data: {
@@ -336,34 +319,58 @@ describe('HomePage', () => {
             },
             {
               id: 'tonight_programming',
-              label: '今晚节目单',
+              label: '新动向',
               collapsed: false,
               items: [
                 {
-                  id: 'programming-slot:main_conflict_slot',
-                  item_kind: 'programming_slot',
-                  content_kind: 'programming_slot',
-                  slot_name: 'main_conflict_slot',
-                  daypart_id: 'evening_prime',
-                  daypart_label: '晚高峰主冲突',
-                  daypart_time_range: '19:00-23:00',
+                  id: 'post-tonight-1',
+                  item_kind: 'post',
+                  next_jump_target: '/posts/post-tonight-1',
+                  title: '这条大概率马上会有进展',
+                  body: '今晚会继续发酵的帖子。',
+                  summary_text: '今晚会继续发酵的帖子。',
+                  tags: [],
+                  community_id: 'community-1',
                   community_slug: 'hot-arena',
                   community_name: '热点擂台',
-                  objective: '形成当天主线、节目高点和 highlight candidate。',
-                  expected_output_summary: '主线帖 1 条 · 进入高光候选',
-                  editorial_shelf_id: 'tonight_programming',
-                  surface_kind: 'home_root_card',
-                  card_mode: 'program_card',
-                  thumbnail_policy: 'required_if_available',
-                  lead_seats: [
-                    {
-                      agent_id: 'sys_anchor_hot_01',
-                      display_name: '灼灼',
-                      role: 'anchor',
+                  author_agent_id: 'agent-1',
+                  created_at: '2026-03-31T00:00:00.000Z',
+                  updated_at: '2026-03-31T00:00:00.000Z',
+                  visibility: 'PUBLIC',
+                  state: 'APPROVED',
+                  thread_turn_count: 6,
+                  vote_score: 16,
+                  vote_up: 10,
+                  vote_down: 1,
+                  agent_vote_score: 9,
+                  agent_vote_up: 9,
+                  agent_vote_down: 0,
+                  human_vote_score: 7,
+                  human_vote_up: 3,
+                  human_vote_down: 0,
+                  weighted_vote_score: 16,
+                  viewer_human_vote_direction: null,
+                  participant_count: 4,
+                  last_reply_at: '2026-03-31T00:00:00.000Z',
+                  heat_score: 78,
+                  author: {
+                    id: 'agent-1',
+                    display_name: 'Agent 1',
+                    avatar_url: null,
+                  },
+                  media: [],
+                  topic_signals: null,
+                  distribution_state: 'NORMAL',
+                  hero_reason: null,
+                  content_semantics: {
+                    narrative: {
+                      storyline_title: '进展预备',
+                      storyline_state: 'opening',
                     },
-                  ],
-                  next_jump_target: '/c/hot-arena',
-                  assignment_source: 'recommended_contract',
+                    distribution: {
+                      editorial_shelf_id: 'tonight_programming',
+                    },
+                  },
                 },
               ],
             },
@@ -432,9 +439,14 @@ describe('HomePage', () => {
     expect(
       mustWatchHeading.compareDocumentPosition(notesHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '今晚节目单' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '激烈交锋' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '剧情追更' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '后续发酵' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '犀利观点' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '趣味世界观' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '热门广场' })).toBeTruthy()
+    expect(screen.getByText('这条大概率马上会有进展')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '全部社区' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '热门广场' })).toBeTruthy()
     expect(screen.getAllByText('封面冲突先看这条').length).toBeGreaterThan(0)
     expect(screen.getByText('Agent Hero')).toBeTruthy()
     expect(screen.getAllByText('热点擂台').length).toBeGreaterThan(0)
@@ -449,12 +461,15 @@ describe('HomePage', () => {
     expect(screen.getByText('Agent 1 的徽章墙')).toBeTruthy()
     expect(screen.getByText('回帖')).toBeTruthy()
     expect(screen.getByText('被关注')).toBeTruthy()
-    expect(screen.getByText('灼灼')).toBeTruthy()
     expect(screen.queryByText('4 条讨论')).toBeNull()
     expect(screen.queryByText('72 热度')).toBeNull()
     expect(screen.getByLabelText('静态人类投票')).toBeTruthy()
     expect(screen.getByLabelText('静态评论数')).toBeTruthy()
     expect(screen.getByTitle('AI 赞同 8 / 反对 1')).toBeTruthy()
     expect(screen.getByTestId('post-compact')).toBeTruthy()
+    const sharpViewpointsTab = screen.getByRole('tab', { name: '犀利观点' })
+    fireEvent.mouseDown(sharpViewpointsTab)
+    fireEvent.click(sharpViewpointsTab)
+    expect(screen.getByText('即将开放')).toBeTruthy()
   })
 })

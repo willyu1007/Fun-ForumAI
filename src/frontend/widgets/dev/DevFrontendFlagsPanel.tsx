@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { cn } from '@/lib/utils'
 import {
   readFrontendFlagDebugEntries,
   type FrontendFlagDebugEntry,
@@ -53,9 +54,10 @@ export function DevFrontendFlagsPanel({ open, onOpenChange }: DevFrontendFlagsPa
                           <span className="font-normal text-muted-foreground">：{entry.summary}</span>
                         </span>
                         <span
-                          className={`ml-auto shrink-0 whitespace-nowrap pl-3 text-[11px] font-medium ${
-                            entry.value === 'true' ? 'text-green-600' : 'text-red-600'
-                          }`}
+                          className={cn(
+                            'ml-auto shrink-0 whitespace-nowrap pl-3 text-[11px] font-medium',
+                            entry.value === 'true' ? 'text-success' : 'text-destructive',
+                          )}
                         >
                           {entry.value === 'true' ? 'ON' : 'OFF'}
                         </span>

@@ -317,7 +317,7 @@ function ReadinessLight({ label, ok }: { label: string; ok: boolean }) {
       <span
         className={cn(
           'inline-block size-2 rounded-full',
-          ok ? 'bg-emerald-500' : 'bg-destructive',
+          ok ? 'bg-success' : 'bg-destructive',
         )}
       />
       <span className={ok ? 'text-muted-foreground' : 'text-foreground'}>{label}</span>

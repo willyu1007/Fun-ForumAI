@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 import {
   ArrowRight,
@@ -11,18 +10,17 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react'
-import { api } from '@/api/client'
 import { useHomeProgramming } from '@/api/hooks'
 import { useAgentProfile } from '@/api/hooks/agent'
 import { useFollowAgent, useUnfollowAgent } from '@/api/hooks/user'
 import { isAgentTargetString } from '@/shared/utils/agent-target'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { PostCompact } from '../components/PostCompact'
-import { LoadMore } from '@/shared/components/LoadMore'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { AgentLink } from '@/features/agents/components/AgentLink'
 import { BadgeIconStack } from '@/shared/components/BadgeIconStack'
@@ -37,7 +35,6 @@ import { readProjectionText, readSemanticBadgeItems } from '@/shared/utils/publi
 import { getCommunityAvatarTheme } from '@/shared/utils/community-shell-meta'
 import type {
   Agent,
-  ApiResponse,
   HomeProgrammingCommunityItem,
   HomeProgrammingItem,
   HomeProgrammingPayload,
@@ -49,11 +46,25 @@ import type {
 import { FeedPage } from './FeedPage'
 import {
   isCreatorNoteEntry,
-  readEditorialShelfId,
 } from '../../../../shared/semantic-taxonomy.js'
 
 const MUST_WATCH_HERO_HEIGHT = 'min-h-[14rem] md:h-[18.75rem]'
 const MUST_WATCH_COVER_MIN_HEIGHT = 'min-h-[10rem]'
+const MUST_WATCH_TRACK_TRANSLATE_CLASSNAMES = [
+  'translate-x-0',
+  '-translate-x-full',
+  '-translate-x-[200%]',
+  '-translate-x-[300%]',
+  '-translate-x-[400%]',
+] as const
+const HOME_TAB_SHELVES = [
+  { id: 'conflict_rising', label: '激烈交锋' },
+  { id: 'continue_storyline', label: '剧情追更' },
+  { id: 'tonight_programming', label: '后续发酵' },
+  { id: 'sharp_viewpoints', label: '犀利观点' },
+  { id: 'worldbuilding', label: '趣味世界观' },
+  { id: 'hot_feed', label: '热门广场' },
+] as const
 
 function isCommunityItem(item: HomeProgrammingItem): item is HomeProgrammingCommunityItem {
   return item.item_kind === 'community_entry'
@@ -65,16 +76,6 @@ function isPostItem(item: HomeProgrammingItem): item is HomeProgrammingPostItem 
 
 function isProgrammingSlotItem(item: HomeProgrammingItem): item is HomeProgrammingSlotItem {
   return item.item_kind === 'programming_slot'
-}
-
-function buildHotFeedPath(cursor?: string | null) {
-  const params = new URLSearchParams()
-  params.set('sort', 'hot')
-  params.set('limit', '20')
-  if (cursor) {
-    params.set('cursor', cursor)
-  }
-  return `feed?${params.toString()}`
 }
 
 function readContentBadge(item: HomeProgrammingPostItem) {
@@ -242,7 +243,6 @@ function HomeProgrammingCard({
 }) {
   const cover = readCoverImage(item)
   const isNoteCard = isCreatorNoteEntry(item)
-  const creatorNotesLabel = readEditorialShelfLabel(readEditorialShelfId(item)) ?? '创作者笔记'
   const target = appendSourceContext(item.next_jump_target, {
     sourceSurface: 'home',
     sourceShelf,
@@ -253,72 +253,99 @@ function HomeProgrammingCard({
       <HomeTargetSurface
         target={target}
         className={cn(
-          'group block overflow-hidden rounded-2xl border border-border/60 bg-background transition-colors hover:border-primary/30 hover:bg-primary/[0.04]',
-          isNoteCard &&
-            'border-warning/40 bg-warning/10 hover:border-warning/60 hover:bg-warning/15',
+          'group block overflow-hidden bg-background transition-colors',
+          isNoteCard ? 'rounded-xl' : 'rounded-2xl',
+          isNoteCard
+            ? 'bg-warning/10 hover:bg-warning/15'
+            : 'border border-border/60 hover:border-primary/30 hover:bg-primary/[0.04]',
           featured ? 'min-h-[20rem]' : 'min-h-[13rem]',
         )}
       >
-        <div
-          className={cn('grid h-full gap-0', featured && cover ? 'md:grid-cols-[1.2fr_1fr]' : '')}
-        >
-          {cover ? (
-            <div
-              className={cn(
-                'min-h-[12rem] overflow-hidden bg-muted/30',
-                featured ? 'md:min-h-full' : '',
-              )}
-            >
-              <img
-                src={cover}
-                alt={item.title}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              />
-            </div>
-          ) : null}
-          <div className="flex h-full flex-col gap-3 p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              {isNoteCard ? (
-                <Badge className="border-0 bg-warning text-[10px] text-warning-foreground hover:bg-warning/90">
-                  {creatorNotesLabel}
-                </Badge>
-              ) : null}
-              <Badge variant="outline" className="text-[10px]">
-                {readContentBadge(item)}
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              <h2
-                className={cn(
-                  'font-semibold tracking-tight text-foreground',
-                  featured ? 'text-2xl leading-8' : 'text-lg leading-7',
-                )}
-              >
-                {item.title}
-              </h2>
-              <p
-                className={cn(
-                  'line-clamp-3 text-sm leading-6 text-muted-foreground',
-                  featured && 'line-clamp-4',
-                )}
-              >
-                {readPreviewText(item)}
-              </p>
-            </div>
-
-            <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <div className="flex flex-wrap items-center gap-3">
-                <span>{item.community_name}</span>
-                <span>{item.thread_turn_count} 条讨论</span>
-                <span>{item.heat_score} 热度</span>
+        {isNoteCard && cover ? (
+          <div className="relative min-h-[20rem] overflow-hidden bg-muted/30">
+            <img
+              src={cover}
+              alt={item.title}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-overlay/80 via-overlay/24 to-transparent" />
+            <div className="relative flex min-h-[20rem] flex-col justify-end p-5 md:p-6">
+              <div className="space-y-3">
+                <h2 className="max-w-[22ch] text-[1.5rem] font-semibold leading-[1.95rem] tracking-tight text-on-overlay md:text-[1.75rem] md:leading-[2.15rem]">
+                  {item.title}
+                </h2>
+                <div className="flex items-center justify-between gap-3 text-xs text-on-overlay/82">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span>{item.community_name}</span>
+                    <span>{item.thread_turn_count} 条讨论</span>
+                    <span>{item.heat_score} 热度</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-on-overlay/92">
+                    去看 <ArrowRight className="size-3.5" />
+                  </span>
+                </div>
               </div>
-              <span className="inline-flex items-center gap-1 text-foreground/80">
-                去看 <ArrowRight className="size-3.5" />
-              </span>
             </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className={cn('grid h-full gap-0', featured && cover ? 'md:grid-cols-[1.2fr_1fr]' : '')}
+          >
+            {cover ? (
+              <div
+                className={cn(
+                  'min-h-[12rem] overflow-hidden bg-muted/30',
+                  featured ? 'md:min-h-full' : '',
+                )}
+              >
+                <img
+                  src={cover}
+                  alt={item.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                />
+              </div>
+            ) : null}
+            <div className="flex h-full flex-col gap-3 p-5">
+              {!isNoteCard ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="text-[10px]">
+                    {readContentBadge(item)}
+                  </Badge>
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <h2
+                  className={cn(
+                    'font-semibold tracking-tight text-foreground',
+                    featured ? 'text-2xl leading-8' : 'text-lg leading-7',
+                  )}
+                >
+                  {item.title}
+                </h2>
+                <p
+                  className={cn(
+                    'line-clamp-3 text-sm leading-6 text-muted-foreground',
+                    featured && 'line-clamp-4',
+                  )}
+                >
+                  {readPreviewText(item)}
+                </p>
+              </div>
+
+              <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span>{item.community_name}</span>
+                  <span>{item.thread_turn_count} 条讨论</span>
+                  <span>{item.heat_score} 热度</span>
+                </div>
+                <span className="inline-flex items-center gap-1 text-foreground/80">
+                  去看 <ArrowRight className="size-3.5" />
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </HomeTargetSurface>
       <RelationTeaserCard
         agentId={item.author.id}
@@ -533,13 +560,6 @@ function MustWatchCarousel({
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
 
-  if (carouselItems.length === 0) {
-    return null
-  }
-
-  const activeItem = carouselItems[activeIndex] ?? carouselItems[0]
-  const isNoteCard = isCreatorNoteEntry(activeItem)
-
   const move = (direction: 'left' | 'right') => {
     setActiveIndex((current) => {
       if (direction === 'left') {
@@ -570,6 +590,15 @@ function MustWatchCarousel({
     }
   }, [carouselItems.length, isPaused])
 
+  if (carouselItems.length === 0) {
+    return null
+  }
+
+  const activeItem = carouselItems[activeIndex] ?? carouselItems[0]
+  const isNoteCard = isCreatorNoteEntry(activeItem)
+  const trackTranslateClassName =
+    MUST_WATCH_TRACK_TRANSLATE_CLASSNAMES[activeIndex] ?? MUST_WATCH_TRACK_TRANSLATE_CLASSNAMES[0]
+
   return (
     <div className="space-y-3">
       <div
@@ -582,10 +611,7 @@ function MustWatchCarousel({
         onFocus={() => setIsPaused(true)}
         onBlur={() => setIsPaused(false)}
       >
-        <div
-          className="flex transition-transform duration-500 ease-out"
-          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-        >
+        <div className={cn('flex transition-transform duration-500 ease-out', trackTranslateClassName)}>
           {carouselItems.map((item, index) => {
             const itemCover = readCoverImage(item)
             const preview = readPlainTextPreview(item)
@@ -644,7 +670,7 @@ function MustWatchCarousel({
 
                           <button
                             type="button"
-                            className="flex items-center gap-3 text-left text-muted-foreground transition-colors hover:text-[#1f3b6d]"
+                            className="flex items-center gap-3 text-left text-muted-foreground transition-colors hover:text-primary"
                             onClick={(event) => {
                               event.preventDefault()
                               event.stopPropagation()
@@ -662,7 +688,7 @@ function MustWatchCarousel({
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
-                              <span className="block truncate text-base font-semibold leading-none text-[#1f3b6d]">
+                              <span className="block truncate text-base font-semibold leading-none text-primary">
                                 {item.community_name}
                               </span>
                             </div>
@@ -698,7 +724,7 @@ function MustWatchCarousel({
                   <div className="grid h-full items-stretch gap-0 md:grid-cols-[1.15fr_0.85fr]">
                     <Link
                       to={target}
-                      className="relative flex h-full min-h-0 flex-col justify-between overflow-hidden bg-gradient-to-br from-muted/95 via-muted/75 to-primary/[0.18] px-6 py-5 transition-colors hover:bg-[linear-gradient(135deg,hsl(var(--muted)/0.98),hsl(var(--muted)/0.78),hsl(var(--primary)/0.22))] md:px-8 md:py-6"
+                      className="relative flex h-full min-h-0 flex-col justify-between overflow-hidden bg-gradient-to-br from-muted/95 via-muted/75 to-primary/[0.18] px-6 py-5 transition-colors hover:from-muted hover:via-muted/80 hover:to-primary/[0.24] md:px-8 md:py-6"
                     >
                       <div className="relative z-10 max-w-3xl space-y-3 md:space-y-4">
                         <h3 className="max-w-2xl text-[1.8rem] font-semibold leading-[2.35rem] tracking-tight text-foreground md:text-[2.2rem] md:leading-[2.8rem]">
@@ -736,7 +762,7 @@ function MustWatchCarousel({
                   event.stopPropagation()
                   move('left')
                 }}
-                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-overlay/40 text-on-overlay transition-colors hover:bg-overlay/60"
+                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-on-overlay/25 bg-overlay/40 text-on-overlay transition-colors hover:bg-overlay/60"
                 aria-label="上一条今日必看"
               >
                 <ChevronLeft className="size-4.5" />
@@ -748,7 +774,7 @@ function MustWatchCarousel({
                   event.stopPropagation()
                   move('right')
                 }}
-                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-overlay/40 text-on-overlay transition-colors hover:bg-overlay/60"
+                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-on-overlay/25 bg-overlay/40 text-on-overlay transition-colors hover:bg-overlay/60"
                 aria-label="下一条今日必看"
               >
                 <ChevronRight className="size-4.5" />
@@ -847,12 +873,72 @@ function ProgrammingSlotCard({ item }: { item: HomeProgrammingSlotItem }) {
   )
 }
 
+function renderShelfBody(shelf: HomeShelf) {
+  const featured = shelf.id === 'must_watch_today'
+
+  if (shelf.id === 'all_communities') {
+    return (
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {shelf.items.filter(isCommunityItem).map((item) => (
+          <CommunityEntryCard key={item.id} item={item} />
+        ))}
+      </div>
+    )
+  }
+
+  if (shelf.id === 'tonight_programming' && shelf.items.some(isProgrammingSlotItem)) {
+    return (
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {shelf.items.filter(isProgrammingSlotItem).map((item) => (
+          <ProgrammingSlotCard key={item.id} item={item} />
+        ))}
+      </div>
+    )
+  }
+
+  if (featured) {
+    return <MustWatchCarousel items={shelf.items.filter(isPostItem)} shelfId={shelf.id} />
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {shelf.items.filter(isPostItem).map((item, index) => (
+        <HomeProgrammingCard
+          key={item.id}
+          item={item}
+          sourceShelf={shelf.id}
+          sourcePosition={index}
+        />
+      ))}
+    </div>
+  )
+}
+
+function TabbedPostFeed({
+  posts,
+  detailHrefBuilder,
+}: {
+  posts: PostWithMeta[]
+  detailHrefBuilder?: (post: PostWithMeta) => string
+}) {
+  return (
+    <div className="divide-y divide-border/60 border-t border-border/60">
+      {posts.map((post) => (
+        <PostCompact
+          key={post.id}
+          post={post}
+          detailHref={detailHrefBuilder ? detailHrefBuilder(post) : undefined}
+        />
+      ))}
+    </div>
+  )
+}
+
 function ShelfSection({ shelf }: { shelf: HomeShelf }) {
   if (shelf.collapsed || shelf.items.length === 0) {
     return null
   }
 
-  const featured = shelf.id === 'must_watch_today'
   const shelfLabel = readEditorialShelfLabel(shelf.id) ?? shelf.label
 
   return (
@@ -862,39 +948,12 @@ function ShelfSection({ shelf }: { shelf: HomeShelf }) {
           <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelfLabel}</h2>
         </div>
       </div>
-
-      {shelf.id === 'all_communities' ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {shelf.items.filter(isCommunityItem).map((item) => (
-            <CommunityEntryCard key={item.id} item={item} />
-          ))}
-        </div>
-      ) : shelf.id === 'tonight_programming' ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {shelf.items.filter(isProgrammingSlotItem).map((item) => (
-            <ProgrammingSlotCard key={item.id} item={item} />
-          ))}
-        </div>
-      ) : featured ? (
-        <MustWatchCarousel items={shelf.items.filter(isPostItem)} shelfId={shelf.id} />
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {shelf.items.filter(isPostItem).map((item, index) => (
-            <HomeProgrammingCard
-              key={item.id}
-              item={item}
-              sourceShelf={shelf.id}
-              sourcePosition={index}
-            />
-          ))}
-        </div>
-      )}
+      {renderShelfBody(shelf)}
     </section>
   )
 }
 
 function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
-  const continuation = payload.hot_feed_continuation
   const orderedShelves = useMemo(() => {
     const shelves = [...payload.shelves]
     const mustWatchIndex = shelves.findIndex((shelf) => shelf.id === 'must_watch_today')
@@ -908,60 +967,113 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
     shelves.splice(mustWatchIndex + 1, 0, notesShelf)
     return shelves
   }, [payload.shelves])
-  const {
-    data: continuationPages,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['homeHotFeedContinuation', continuation.next_cursor],
-    queryFn: ({ pageParam }) =>
-      api.get(buildHotFeedPath(pageParam)).json<
-        ApiResponse<PostWithMeta[]> & {
-          meta: { cursor: string | null }
-        }
-      >(),
-    initialPageParam: continuation.next_cursor ?? undefined,
-    getNextPageParam: (lastPage) => lastPage.meta?.cursor ?? undefined,
-    enabled: Boolean(continuation.next_cursor),
-  })
-
+  const shelfMap = useMemo(
+    () => new Map(orderedShelves.map((shelf) => [shelf.id, shelf] as const)),
+    [orderedShelves],
+  )
+  const topShelves = useMemo(
+    () => orderedShelves.filter((shelf) => shelf.id === 'must_watch_today' || shelf.id === 'notes_today'),
+    [orderedShelves],
+  )
+  const remainingShelves = useMemo(
+    () => orderedShelves.filter(
+      (shelf) => !['must_watch_today', 'notes_today', ...HOME_TAB_SHELVES.map((tab) => tab.id)].includes(shelf.id),
+    ),
+    [orderedShelves],
+  )
   const hotFeedPosts = useMemo(() => {
-    const extraItems = continuationPages?.pages.flatMap((page) => page.data) ?? []
     const seen = new Set<string>()
-    return [...continuation.items, ...extraItems].filter((item) => {
+    return payload.hot_feed_continuation.items.filter((item) => {
       if (seen.has(item.id)) return false
       seen.add(item.id)
       return true
     })
-  }, [continuation.items, continuationPages])
+  }, [payload.hot_feed_continuation.items])
+  const tabEntries = useMemo(() => HOME_TAB_SHELVES.map((tab) => {
+    if (tab.id === 'hot_feed') {
+      return {
+        id: tab.id,
+        label: tab.label,
+        posts: hotFeedPosts.slice(0, 6),
+        detailHrefBuilder: undefined as ((post: PostWithMeta) => string) | undefined,
+        emptyMessage: '暂时还没有内容',
+      }
+    }
+
+    if (tab.id === 'sharp_viewpoints' || tab.id === 'worldbuilding') {
+      return {
+        id: tab.id,
+        label: tab.label,
+        posts: [] as PostWithMeta[],
+        detailHrefBuilder: undefined as ((post: PostWithMeta) => string) | undefined,
+        emptyMessage: '即将开放',
+      }
+    }
+
+    const shelf = shelfMap.get(tab.id) ?? {
+      id: tab.id,
+      label: tab.label,
+      collapsed: true,
+      items: [],
+    }
+    const posts = shelf.items.filter(isPostItem).slice(0, 6)
+    return {
+      id: tab.id,
+      label: tab.label,
+      posts,
+      detailHrefBuilder: (post: PostWithMeta) => {
+        const sourcePosition = posts.findIndex((item) => item.id === post.id)
+        return appendSourceContext(`/posts/${post.id}`, {
+          sourceSurface: 'home',
+          sourceShelf: shelf.id,
+          sourcePosition: sourcePosition >= 0 ? sourcePosition : undefined,
+        })
+      },
+      emptyMessage: '暂时还没有内容',
+    }
+  }), [hotFeedPosts, shelfMap])
+  const hasTabbedContent = tabEntries.some((entry) => entry.posts.length > 0)
+  const defaultTabValue = tabEntries.find((entry) => entry.posts.length > 0)?.id ?? tabEntries[0]?.id
 
   return (
     <div className="space-y-8 pt-4">
-      {orderedShelves.map((shelf) => (
+      {topShelves.map((shelf) => (
         <ShelfSection key={shelf.id} shelf={shelf} />
       ))}
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">热门广场</h2>
-          </div>
-          <Link to="/feed" className="text-sm text-primary transition-colors hover:text-primary/80">
-            去完整广场
-          </Link>
-        </div>
-        <div className="divide-y divide-border/60 border-t border-border/60">
-          {hotFeedPosts.map((post) => (
-            <PostCompact key={post.id} post={post} />
-          ))}
-        </div>
-        <LoadMore
-          hasMore={Boolean(hasNextPage)}
-          isLoading={isFetchingNextPage}
-          onLoadMore={() => fetchNextPage()}
-        />
-      </section>
+      {hasTabbedContent ? (
+        <section className="space-y-4">
+          <Tabs defaultValue={defaultTabValue} className="space-y-4">
+            <TabsList className="h-auto w-full justify-start gap-2 bg-transparent p-0">
+              {tabEntries.map((entry) => (
+                <TabsTrigger
+                  key={entry.id}
+                  value={entry.id}
+                  className="flex-none rounded-none border-none bg-transparent px-0 py-0 text-base font-semibold text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground"
+                >
+                  {entry.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {tabEntries.map((entry) => (
+              <TabsContent key={entry.id} value={entry.id} className="mt-0 min-h-[18rem]">
+                {entry.posts.length > 0 ? (
+                  <TabbedPostFeed posts={entry.posts} detailHrefBuilder={entry.detailHrefBuilder} />
+                ) : (
+                  <div className="flex min-h-[18rem] items-center justify-center text-sm text-muted-foreground">
+                    {entry.emptyMessage}
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </section>
+      ) : null}
+
+      {remainingShelves.map((shelf) => (
+        <ShelfSection key={shelf.id} shelf={shelf} />
+      ))}
     </div>
   )
 }
