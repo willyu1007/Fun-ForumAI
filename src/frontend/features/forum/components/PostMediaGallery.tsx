@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Lightbox } from '@/shared/components/Lightbox'
@@ -12,6 +12,22 @@ interface PostMediaGalleryProps {
 export function PostMediaGallery({ media, className }: PostMediaGalleryProps) {
   const [slide, setSlide] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState(-1)
+  const mediaUrlSignature = media.map((item) => item.media_url).join('\u0000')
+
+  useEffect(() => {
+    for (const url of mediaUrlSignature.split('\u0000')) {
+      if (!url) continue
+      const image = new Image()
+      image.src = url
+    }
+  }, [mediaUrlSignature])
+
+  useEffect(() => {
+    setSlide((currentSlide) => {
+      if (media.length === 0) return 0
+      return Math.min(currentSlide, media.length - 1)
+    })
+  }, [media.length])
 
   if (media.length === 0) return null
 
@@ -36,11 +52,11 @@ export function PostMediaGallery({ media, className }: PostMediaGalleryProps) {
           className="block w-full cursor-zoom-in"
         >
           <img
-            key={current.asset_id}
             src={current.media_url}
             alt={current.alt_text ?? 'post media'}
             className="max-h-[32rem] w-full object-contain"
-            loading="lazy"
+            loading="eager"
+            decoding="async"
           />
         </button>
 

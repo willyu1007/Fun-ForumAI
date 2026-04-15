@@ -165,7 +165,13 @@ function useIsDesktopLayout() {
   return isDesktopLayout
 }
 
-export function PostDetailPage({ overridePostId }: { overridePostId?: string } = {}) {
+export function PostDetailPage({
+  overridePostId,
+  hideDiscussionArea = false,
+}: {
+  overridePostId?: string
+  hideDiscussionArea?: boolean
+} = {}) {
   const { isAuthenticated, user } = useAuth()
   const params = useParams()
   const postId = overridePostId ?? params.postId
@@ -222,7 +228,7 @@ export function PostDetailPage({ overridePostId }: { overridePostId?: string } =
   const authorAgentId = postPayload?.author.id ?? ''
   const authorProfile = useAgentProfile(authorAgentId)
   const { data: participationContractData } = usePostParticipationContract(postId ?? '', {
-    enabled: postPayload !== null,
+    enabled: postPayload !== null && !hideDiscussionArea,
   })
   const focusedThreadIdFromQuery = searchParams.get('threadId')
   const focusedTurnIdFromQuery = searchParams.get('turnId')
@@ -235,16 +241,17 @@ export function PostDetailPage({ overridePostId }: { overridePostId?: string } =
       focus_thread_id: focusedThreadIdFromQuery ?? null,
       focus_turn_id: focusedTurnIdFromQuery ?? null,
     },
-    { enabled: true },
+    { enabled: !hideDiscussionArea },
   )
   const { data: threadSummariesData, isLoading: threadSummariesLoading } = useThreadSummaries(
     postId ?? '',
     { limit: 100 },
-    { enabled: stageView === 'timeline' },
+    { enabled: hideDiscussionArea || stageView === 'timeline' },
   )
   const { data: audienceThreadData } = useAudienceThread(postId ?? '', {
     enabled:
       postPayload !== null &&
+      !hideDiscussionArea &&
       audienceZoneEnabled &&
       Boolean(participationContractData?.data?.audience_lane?.enabled),
   })
@@ -252,15 +259,15 @@ export function PostDetailPage({ overridePostId }: { overridePostId?: string } =
     postId ?? '',
     hasViewSourceParams
       ? {
-          enabled: postPayload !== null && aftershowEnabled,
+          enabled: postPayload !== null && !hideDiscussionArea && aftershowEnabled,
           params: viewSourceParams,
         }
       : {
-          enabled: postPayload !== null && aftershowEnabled,
+          enabled: postPayload !== null && !hideDiscussionArea && aftershowEnabled,
         },
   )
   const { data: asideSeatsData } = useAsideSeats(postId ?? '', {
-    enabled: postPayload !== null && asideSeatsEnabled,
+    enabled: postPayload !== null && !hideDiscussionArea && asideSeatsEnabled,
   })
   const createAudienceMessage = useCreateAudienceMessage(postId ?? '')
   const createPublicThread = useCreatePublicThread(postId ?? '')
@@ -919,213 +926,233 @@ export function PostDetailPage({ overridePostId }: { overridePostId?: string } =
         )}
       </article>
 
-      <section className="space-y-4 px-[25px]" data-testid="post-detail-thread-section">
-        <NewContentBanner
-          count={newThreadTurnCount}
-          label="条新舞台发言"
-          onRefresh={() => {
-            if (postId) clearNewThreadTurns(postId)
-          }}
-          queryKey={['discussionForest', postId]}
-        />
-        {openReplyEnabled &&
-          (isAuthenticated ? (
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {composerAnchorNode
-                      ? '沿这个点继续'
-                      : stageThreadEntryEnabled
-                        ? '发起新的公开分支'
-                        : '选择一个节点后公开回应'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {composerAnchorNode
-                      ? `你的下一条公开发言会沿着 ${composerAnchorNode.author.display_name} 的这条${composerAnchorNode.entry_kind === 'TURN' ? '发言' : '分支开场'}继续，不会新开一条分支；发送前会保留引用预览。`
-                      : stageThreadEntryEnabled && stageTurnReplyEnabled
-                        ? '你可以直接新开公开分支；如果想沿着某个节点继续，请先在讨论森林里点击“回应这里”，发送前会显示锚点预览。'
+      {!hideDiscussionArea ? (
+        <section className="space-y-4 px-[25px]" data-testid="post-detail-thread-section">
+          <NewContentBanner
+            count={newThreadTurnCount}
+            label="条新舞台发言"
+            onRefresh={() => {
+              if (postId) clearNewThreadTurns(postId)
+            }}
+            queryKey={['discussionForest', postId]}
+          />
+          {openReplyEnabled &&
+            (isAuthenticated ? (
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {composerAnchorNode
+                        ? '沿这个点继续'
                         : stageThreadEntryEnabled
-                          ? '你的发言会直接进入主舞台，并形成新的公开讨论分支。'
-                          : '当前帖子只开放节点内公开回应，请先在讨论森林中选中一个可回应的节点。'}
-                  </p>
+                          ? '发起新的公开分支'
+                          : '选择一个节点后公开回应'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {composerAnchorNode
+                        ? `你的下一条公开发言会沿着 ${composerAnchorNode.author.display_name} 的这条${composerAnchorNode.entry_kind === 'TURN' ? '发言' : '分支开场'}继续，不会新开一条分支；发送前会保留引用预览。`
+                        : stageThreadEntryEnabled && stageTurnReplyEnabled
+                          ? '你可以直接新开公开分支；如果想沿着某个节点继续，请先在讨论森林里点击“回应这里”，发送前会显示锚点预览。'
+                          : stageThreadEntryEnabled
+                            ? '你的发言会直接进入主舞台，并形成新的公开讨论分支。'
+                            : '当前帖子只开放节点内公开回应，请先在讨论森林中选中一个可回应的节点。'}
+                    </p>
+                  </div>
+                  {canClearComposerAnchor ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setComposerAnchorNodeId(null)}
+                    >
+                      清除锚点
+                    </Button>
+                  ) : null}
                 </div>
-                {canClearComposerAnchor ? (
+                {composerAnchorNode ? (
+                  <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      公开回应锚点 · {composerAnchorNode.author.display_name}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">发送前引用预览</p>
+                    <RichTextLite
+                      text={composerAnchorNode.body}
+                      className="mt-1 text-xs leading-6 text-foreground/80"
+                    />
+                  </div>
+                ) : null}
+                {selectedForestNode && !composerAnchorNode ? (
+                  <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      当前聚焦节点 · {selectedForestNode.author.display_name}
+                    </p>
+                    <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                      {selectedForestWriteability &&
+                      !allowsDirectThreadReply(selectedForestWriteability)
+                        ? selectedForestRouteCtaLabel
+                          ? `当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“${selectedForestRouteCtaLabel}”，或者直接发起新的公开分支。`
+                          : '当前聚焦节点已经收口，不能再沿原线程公开回复；如需继续，请直接发起新的公开分支。'
+                        : stageThreadEntryEnabled && stageTurnReplyEnabled
+                          ? '当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。'
+                          : stageThreadEntryEnabled
+                            ? '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'
+                            : '当前帖子只开放节点内公开回应，请沿着这个节点继续。'}
+                    </p>
+                  </div>
+                ) : null}
+                <Textarea
+                  id="public-stage-composer"
+                  name="public-stage-composer"
+                  aria-label={composerAnchorNode ? '公开节点回应输入框' : '公开分支输入框'}
+                  value={publicReplyDraft}
+                  onChange={(event) => {
+                    setPublicReplyDraft(event.target.value)
+                    if (publicReplyError) setPublicReplyError(null)
+                    if (publicReplyNotice) setPublicReplyNotice(null)
+                  }}
+                  placeholder={
+                    composerAnchorNode
+                      ? '顺着这个节点继续回应…'
+                      : '补充你的观点、提问，或给出新的线索…'
+                  }
+                  className="mt-3 min-h-[120px] resize-y text-sm"
+                />
+                {publicReplyError && (
+                  <p className="mt-2 text-xs text-destructive">{publicReplyError}</p>
+                )}
+                {!publicReplyError && publicReplyNotice && (
+                  <p className="mt-2 text-xs text-muted-foreground">{publicReplyNotice}</p>
+                )}
+                <div className="mt-3 flex justify-end">
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => setComposerAnchorNodeId(null)}
+                    disabled={
+                      createPublicThread.isPending ||
+                      createPublicTurn.isPending ||
+                      (!composerAnchorNode && !stageThreadEntryEnabled)
+                    }
+                    onClick={() => {
+                      void handleSubmitStageReply()
+                    }}
                   >
-                    清除锚点
-                  </Button>
-                ) : null}
-              </div>
-              {composerAnchorNode ? (
-                <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    公开回应锚点 · {composerAnchorNode.author.display_name}
-                  </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">发送前引用预览</p>
-                  <RichTextLite
-                    text={composerAnchorNode.body}
-                    className="mt-1 text-xs leading-6 text-foreground/80"
-                  />
-                </div>
-              ) : null}
-              {selectedForestNode && !composerAnchorNode ? (
-                <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-background/70 px-3 py-2">
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    当前聚焦节点 · {selectedForestNode.author.display_name}
-                  </p>
-                  <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                    {selectedForestWriteability &&
-                    !allowsDirectThreadReply(selectedForestWriteability)
-                      ? selectedForestRouteCtaLabel
-                        ? `当前聚焦节点已经转去新的续接入口，不能再沿原线程公开回复。请在分支里使用“${selectedForestRouteCtaLabel}”，或者直接发起新的公开分支。`
-                        : '当前聚焦节点已经收口，不能再沿原线程公开回复；如需继续，请直接发起新的公开分支。'
-                      : stageThreadEntryEnabled && stageTurnReplyEnabled
-                        ? '当前聚焦节点只用于观看；点击“回应这里”后，它会成为明确锚点，并在发送前显示引用预览。否则你的发言会作为新的公开分支发布。'
+                    {createPublicThread.isPending || createPublicTurn.isPending
+                      ? '提交中…'
+                      : composerAnchorNode
+                        ? '发送回应'
                         : stageThreadEntryEnabled
-                          ? '当前帖子只开放新公开分支，未开放节点内回复；你的发言会作为新的公开分支发布。'
-                          : '当前帖子只开放节点内公开回应，请沿着这个节点继续。'}
-                  </p>
+                          ? '发起公开回复'
+                          : '先选择节点'}
+                  </Button>
                 </div>
-              ) : null}
-              <Textarea
-                id="public-stage-composer"
-                name="public-stage-composer"
-                aria-label={composerAnchorNode ? '公开节点回应输入框' : '公开分支输入框'}
-                value={publicReplyDraft}
-                onChange={(event) => {
-                  setPublicReplyDraft(event.target.value)
-                  if (publicReplyError) setPublicReplyError(null)
-                  if (publicReplyNotice) setPublicReplyNotice(null)
-                }}
-                placeholder={
-                  composerAnchorNode
-                    ? '顺着这个节点继续回应…'
-                    : '补充你的观点、提问，或给出新的线索…'
-                }
-                className="mt-3 min-h-[120px] resize-y text-sm"
-              />
-              {publicReplyError && (
-                <p className="mt-2 text-xs text-destructive">{publicReplyError}</p>
-              )}
-              {!publicReplyError && publicReplyNotice && (
-                <p className="mt-2 text-xs text-muted-foreground">{publicReplyNotice}</p>
-              )}
-              <div className="mt-3 flex justify-end">
-                <Button
-                  type="button"
-                  disabled={
-                    createPublicThread.isPending ||
-                    createPublicTurn.isPending ||
-                    (!composerAnchorNode && !stageThreadEntryEnabled)
-                  }
-                  onClick={() => {
-                    void handleSubmitStageReply()
-                  }}
-                >
-                  {createPublicThread.isPending || createPublicTurn.isPending
-                    ? '提交中…'
-                    : composerAnchorNode
-                      ? '发送回应'
-                      : stageThreadEntryEnabled
-                        ? '发起公开回复'
-                        : '先选择节点'}
-                </Button>
               </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
-              登录后可加入这条公开主线程。
-            </div>
-          ))}
-        <Tabs
-          value={stageView}
-          onValueChange={(value) => setStageView(value as 'forest' | 'timeline')}
-        >
-          <TabsList variant="line" className="w-full justify-start">
-            <TabsTrigger value="forest">讨论森林</TabsTrigger>
-            <TabsTrigger value="timeline">时间线</TabsTrigger>
-          </TabsList>
-          <TabsContent value="forest" className="pt-4">
-            <DiscussionForest
-              postId={post.id}
-              forest={forest}
-              isLoading={forestLoading}
-              selectedNodeId={selectedForestNodeId}
-              composerAnchorNodeId={composerAnchorNode?.id ?? null}
-              replyActionLabel={stageTurnReplyEnabled ? '回应这里' : null}
-              onSelectNode={(node, source) => {
-                setSelectedForestNodeId(node.id)
-                if (source === 'guide') {
-                  recordWatchTelemetry({
-                    event_type: 'guide_click',
-                    thread_id: node.thread_id,
-                    turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
-                    source_shelf: 'forest',
-                  })
-                  return
-                }
-                if (source === 'reply') {
-                  if (!isThreadReplyable(node.thread_id)) {
-                    setComposerAnchorNodeId(null)
-                    setPublicReplyError(null)
-                    const ctaLabel =
-                      typeof branchGroupByThreadId.get(node.thread_id)?.lifecycle?.active_route?.cta
-                        ?.label === 'string'
-                        ? branchGroupByThreadId.get(node.thread_id)?.lifecycle.active_route?.cta
-                            ?.label
-                        : null
-                    setPublicReplyNotice(
-                      ctaLabel
-                        ? `这条分支已经转去新的续接入口，请使用“${ctaLabel}”。`
-                        : '这条分支当前不再接受沿原线程继续公开回复。',
-                    )
+            ) : (
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                登录后可加入这条公开主线程。
+              </div>
+            ))}
+          <Tabs
+            value={stageView}
+            onValueChange={(value) => setStageView(value as 'forest' | 'timeline')}
+          >
+            <TabsList variant="line" className="w-full justify-start">
+              <TabsTrigger value="forest">讨论森林</TabsTrigger>
+              <TabsTrigger value="timeline">时间线</TabsTrigger>
+            </TabsList>
+            <TabsContent value="forest" className="pt-4">
+              <DiscussionForest
+                postId={post.id}
+                forest={forest}
+                isLoading={forestLoading}
+                selectedNodeId={selectedForestNodeId}
+                composerAnchorNodeId={composerAnchorNode?.id ?? null}
+                replyActionLabel={stageTurnReplyEnabled ? '回应这里' : null}
+                onSelectNode={(node, source) => {
+                  setSelectedForestNodeId(node.id)
+                  if (source === 'guide') {
+                    recordWatchTelemetry({
+                      event_type: 'guide_click',
+                      thread_id: node.thread_id,
+                      turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
+                      source_shelf: 'forest',
+                    })
+                    return
+                  }
+                  if (source === 'reply') {
+                    if (!isThreadReplyable(node.thread_id)) {
+                      setComposerAnchorNodeId(null)
+                      setPublicReplyError(null)
+                      const ctaLabel =
+                        typeof branchGroupByThreadId.get(node.thread_id)?.lifecycle?.active_route?.cta
+                          ?.label === 'string'
+                          ? branchGroupByThreadId.get(node.thread_id)?.lifecycle.active_route?.cta
+                              ?.label
+                          : null
+                      setPublicReplyNotice(
+                        ctaLabel
+                          ? `这条分支已经转去新的续接入口，请使用“${ctaLabel}”。`
+                          : '这条分支当前不再接受沿原线程继续公开回复。',
+                      )
+                      return
+                    }
+                    setPublicReplyNotice(null)
+                    setComposerAnchorNodeId(node.id)
+                    recordWatchTelemetry({
+                      event_type: 'reply_anchor_select',
+                      thread_id: node.thread_id,
+                      turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
+                      source_shelf: 'forest',
+                    })
                     return
                   }
                   setPublicReplyNotice(null)
-                  setComposerAnchorNodeId(node.id)
                   recordWatchTelemetry({
-                    event_type: 'reply_anchor_select',
+                    event_type: 'node_focus',
                     thread_id: node.thread_id,
                     turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
                     source_shelf: 'forest',
                   })
-                  return
-                }
-                setPublicReplyNotice(null)
-                recordWatchTelemetry({
-                  event_type: 'node_focus',
-                  thread_id: node.thread_id,
-                  turn_id: node.entry_kind === 'TURN' ? node.id : undefined,
-                  source_shelf: 'forest',
-                })
-              }}
-              onBranchExpand={(group) => {
-                recordWatchTelemetry({
-                  event_type: 'branch_expand',
-                  thread_id: group.thread_id,
-                  branch_group_id: group.id,
-                  source_shelf: 'forest',
-                })
-              }}
-            />
-          </TabsContent>
-          <TabsContent value="timeline" className="pt-4">
-            <ThreadList
-              summaries={threadSummaries}
-              isLoading={threadSummariesLoading}
-              targetThreadId={timelineFocus.threadId}
-              targetTurnId={timelineFocus.turnId}
-              enablePublicReplies={openReplyEnabled}
-            />
-          </TabsContent>
-        </Tabs>
-      </section>
+                }}
+                onBranchExpand={(group) => {
+                  recordWatchTelemetry({
+                    event_type: 'branch_expand',
+                    thread_id: group.thread_id,
+                    branch_group_id: group.id,
+                    source_shelf: 'forest',
+                  })
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="timeline" className="pt-4">
+              <ThreadList
+                summaries={threadSummaries}
+                isLoading={threadSummariesLoading}
+                targetThreadId={timelineFocus.threadId}
+                targetTurnId={timelineFocus.turnId}
+                enablePublicReplies={openReplyEnabled}
+              />
+            </TabsContent>
+          </Tabs>
+        </section>
+      ) : (
+        <section className="space-y-4 px-[25px]" data-testid="post-detail-thread-section">
+          <NewContentBanner
+            count={newThreadTurnCount}
+            label="条新回帖"
+            onRefresh={() => {
+              if (postId) clearNewThreadTurns(postId)
+            }}
+            queryKey={['threadSummaries', postId]}
+          />
+          <ThreadList
+            summaries={threadSummaries}
+            isLoading={threadSummariesLoading}
+            targetThreadId={null}
+            targetTurnId={null}
+            enablePublicReplies={false}
+          />
+        </section>
+      )}
     </div>
   )
 
@@ -1261,6 +1288,9 @@ export function PostDetailPage({ overridePostId }: { overridePostId?: string } =
   return (
     <div className="space-y-4 pt-2 lg:pt-4">
       {isDesktopLayout ? (
+        hideDiscussionArea ? (
+          <div className="min-w-0">{stageContent}</div>
+        ) : (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)] lg:gap-10">
           <div className="min-w-0">{stageContent}</div>
           <aside className="hidden min-h-0 lg:block lg:self-stretch" data-testid="post-detail-rail">
@@ -1278,7 +1308,8 @@ export function PostDetailPage({ overridePostId }: { overridePostId?: string } =
             </div>
           </aside>
         </div>
-      ) : hasAudienceRail ? (
+        )
+      ) : hasAudienceRail && !hideDiscussionArea ? (
         <Tabs
           value={mobileTab}
           onValueChange={(value) => setMobileTab(value as 'stage' | 'audience')}

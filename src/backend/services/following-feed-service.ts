@@ -84,6 +84,7 @@ export class FollowingFeedService {
           const post = await this.deps.postRepo.findById(thread.post_id)
           return {
             id: thread.id,
+            postId: thread.post_id,
             title: post?.title ?? '帖子',
             replyCount: await this.deps.publicStageThreadRepo.countByPost(thread.post_id),
           }
@@ -97,12 +98,13 @@ export class FollowingFeedService {
       where: { id: { in: threadIds } },
       select: {
         id: true,
-        post: { select: { title: true } },
+        post: { select: { id: true, title: true } },
         _count: { select: { turns: true } },
       },
     })
     return threads.map(t => ({
       id: t.id,
+      postId: t.post.id,
       title: t.post.title,
       replyCount: t._count.turns,
     }))
@@ -212,6 +214,7 @@ export class FollowingFeedService {
       if (turns.length > 0) {
         results.push({
           threadId,
+          postId: turns[0].thread.post.id,
           postTitle: turns[0].thread.post.title,
           latestTurn: turns[0],
           newReplyCount: turns.length, // 简单统计总数

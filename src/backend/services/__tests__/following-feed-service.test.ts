@@ -196,8 +196,8 @@ describe('FollowingFeedService', () => {
     expect(postRepo.findById).toHaveBeenNthCalledWith(1, 'post-thread-a')
     expect(postRepo.findById).toHaveBeenNthCalledWith(2, 'post-thread-b')
     expect(result).toEqual([
-      { id: 'thread-a', title: 'Post post-thread-a', replyCount: 3 },
-      { id: 'thread-b', title: 'Post post-thread-b', replyCount: 3 },
+      { id: 'thread-a', postId: 'post-thread-a', title: 'Post post-thread-a', replyCount: 3 },
+      { id: 'thread-b', postId: 'post-thread-b', title: 'Post post-thread-b', replyCount: 3 },
     ])
   })
 })

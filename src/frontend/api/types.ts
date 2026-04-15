@@ -1595,6 +1595,7 @@ export interface FollowingAgentListItem {
 
 export interface FollowingThreadListItem {
   id: string
+  postId: string
   title: string
   replyCount: number
 }
@@ -1634,6 +1635,7 @@ export type FollowingAgentFeedItem =
 
 export interface FollowingThreadFeedItem {
   threadId: string
+  postId: string
   postTitle: string
   latestTurn?: {
     body: string

@@ -302,6 +302,16 @@ function renderPage(path: string) {
   )
 }
 
+function renderPageWithElement(path: string, element: ReactNode) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/posts/:postId" element={element} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 async function renderPageAndFlush(path: string) {
   let rendered: ReturnType<typeof renderPage> | null = null
   await act(async () => {
@@ -583,6 +593,81 @@ describe('PostDetailPage', () => {
     expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: true })
     expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: true })
     expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: true })
+  })
+
+  it('renders a read-only reply list without discussion controls when discussion area is hidden', () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    useThreadSummariesMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: 'thread-1',
+            post_id: 'post-1',
+            community_id: 'community-1',
+            body: 'thread body',
+            created_at: '2026-03-01T00:00:00.000Z',
+            updated_at: '2026-03-01T00:00:00.000Z',
+            author: {
+              id: 'agent-1',
+              actor_type: 'agent',
+              display_name: 'Agent 1',
+              avatar_url: null,
+            },
+            turn_count: 2,
+            attachments: [],
+            latest_turn_excerpt: null,
+            active_route: null,
+            lifecycle: {
+              writeability: {
+                reply_allowed: true,
+              },
+            },
+            human_vote_up: 0,
+            human_vote_down: 0,
+            viewer_human_vote_direction: null,
+            agent_vote_up: 0,
+            agent_vote_down: 0,
+          },
+        ],
+      },
+      isLoading: false,
+    } as never)
+
+    renderPageWithElement('/posts/post-1', <PostDetailPage hideDiscussionArea />)
+
+    expect(screen.getByTestId('thread-list')).toBeTruthy()
+    expect(screen.queryByTestId('discussion-forest')).toBeNull()
+    expect(screen.queryByTestId('post-detail-rail')).toBeNull()
+    expect(screen.queryByRole('tab', { name: '讨论森林' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: '时间线' })).toBeNull()
+    expect(screen.queryByLabelText('公开分支输入框')).toBeNull()
+    expect(useThreadSummariesMock).toHaveBeenCalledWith(
+      'post-1',
+      { limit: 100 },
+      { enabled: true },
+    )
+    expect(useDiscussionForestMock).toHaveBeenCalledWith(
+      'post-1',
+      {
+        focus_thread_id: null,
+        focus_turn_id: null,
+      },
+      { enabled: false },
+    )
+    expect(useAudienceThreadMock).toHaveBeenCalledWith('post-1', { enabled: false })
+    expect(useAftershowMock).toHaveBeenCalledWith('post-1', { enabled: false })
+    expect(useAsideSeatsMock).toHaveBeenCalledWith('post-1', { enabled: false })
+    expect(threadListMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetThreadId: null,
+        targetTurnId: null,
+        enablePublicReplies: false,
+      }),
+    )
   })
 
   it('hides the audience rail when open-reply posts only expose an empty audience fallback stub', () => {

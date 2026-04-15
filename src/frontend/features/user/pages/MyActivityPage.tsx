@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useEffect, useMemo, useRef } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -21,16 +21,16 @@ import { cn } from '@/lib/utils'
 import { PostDetailPage } from '@/features/forum/pages/PostDetailPage'
 import { PostCompact } from '@/features/forum/components/PostCompact'
 import { PostCard } from '@/features/forum/components/PostCard'
-import { FeedToolbar, type SortMode } from '@/features/forum/components/FeedToolbar'
+import { CommunityHoverCard } from '@/features/forum/components/CommunityHoverCard'
+import type { SortMode } from '@/features/forum/components/FeedToolbar'
 import { LoadMore } from '@/shared/components/LoadMore'
 import { useFeedViewStore } from '@/shared/stores/feed-view-store'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import {
   getCommunityAvatarTheme,
-  getCommunityAvatarToneClassName,
-  getCommunityCategoryGlyph,
-  resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
+import { buildAgentTarget, openAppTarget } from '@/shared/utils/agent-target'
 import type {
   ApiResponse,
   FollowingAgentFeedItem,
@@ -125,7 +125,7 @@ function AgentTurnCard({ turn, time }: { turn: FollowingTurnData; time: number }
 function ThreadUpdateCard({ data, time }: { data: FollowingThreadFeedItem; time: number }) {
   return (
     <Link
-      to={`/posts/${data.threadId}`}
+      to={`/posts/${data.postId}`}
       className="block px-5 py-4 transition-colors hover:bg-muted/30"
     >
       <div className="flex items-center gap-2">
@@ -268,40 +268,32 @@ function AggregatedTimeline() {
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="sticky top-0 z-10 border-b bg-background/95 px-5 py-3 backdrop-blur">
-        <h2 className="text-sm font-semibold">最近动态</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          来自你关注的所有社区、智能体和帖子
-        </p>
-      </div>
-      <div className="divide-y divide-border/60">
-        {timeline.map((item, idx) => {
-          if (item.kind === 'post') {
-            return (
-              <div key={`post-${item.post.id}`} className="px-2">
-                <FeedPostItem post={item.post} view={view} />
-              </div>
-            )
-          }
-          if (item.kind === 'turn') {
-            return (
-              <AgentTurnCard
-                key={`turn-${idx}`}
-                turn={item.turn}
-                time={item.time}
-              />
-            )
-          }
+    <div>
+      {timeline.map((item, idx) => {
+        if (item.kind === 'post') {
           return (
-            <ThreadUpdateCard
-              key={`thread-${idx}`}
-              data={item.data}
+            <div key={`post-${item.post.id}`} className="px-2">
+              <FeedPostItem post={item.post} view={view} />
+            </div>
+          )
+        }
+        if (item.kind === 'turn') {
+          return (
+            <AgentTurnCard
+              key={`turn-${idx}`}
+              turn={item.turn}
               time={item.time}
             />
           )
-        })}
-      </div>
+        }
+        return (
+          <ThreadUpdateCard
+            key={`thread-${idx}`}
+            data={item.data}
+            time={item.time}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -309,7 +301,7 @@ function AggregatedTimeline() {
 // ─── Light Community Detail ───────────────────────────────────────────
 
 function LightCommunityDetail({ slug }: { slug: string }) {
-  const [sort, setSort] = useState<SortMode>('hot')
+  const sort: SortMode = 'hot'
   const { view } = useFeedViewStore()
   const { data: community, isLoading: communityLoading } =
     useCommunityBySlug(slug)
@@ -342,47 +334,10 @@ function LightCommunityDetail({ slug }: { slug: string }) {
 
   const posts = feedData?.pages.flatMap((p) => p.data) ?? []
   const isLoading = communityLoading || feedLoading
-  const category = community ? resolveCommunityCategory(community) : null
-  const avatarTheme = community ? getCommunityAvatarTheme(community) : null
 
   return (
     <div className="flex flex-col">
-      {community && (
-        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-5 py-3 backdrop-blur">
-          <Avatar className="size-9 shrink-0">
-            {avatarTheme && (
-              <AvatarImage
-                src={avatarTheme.value}
-                className="object-cover"
-                alt={community.name}
-              />
-            )}
-            <AvatarFallback
-              className={cn(
-                'text-sm font-semibold',
-                category && getCommunityAvatarToneClassName(category),
-              )}
-            >
-              {category
-                ? getCommunityCategoryGlyph(category)
-                : community.name.slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold">{community.name}</h2>
-            <p className="text-[11px] text-muted-foreground">
-              c/{community.slug}
-            </p>
-          </div>
-          <Link
-            to={`/c/${slug}`}
-            className="ml-auto shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            查看完整页面
-          </Link>
-        </div>
-      )}
-      {communityLoading && <Skeleton className="h-14 rounded-none" />}
+      {communityLoading && <Skeleton className="h-10 rounded-none" />}
 
       {!communityLoading && !community && (
         <div className="p-10 text-center">
@@ -394,16 +349,9 @@ function LightCommunityDetail({ slug }: { slug: string }) {
       )}
 
       {community && (
-        <div className="px-3 pt-1">
-          <FeedToolbar
-            sort={sort}
-            onSortChange={setSort}
-            showSortControls
-            showViewControls
-          />
-
+        <div className="px-3 pt-3">
           {isLoading && (
-            <div className="mt-3 space-y-2">
+            <div className="space-y-2">
               {[1, 2, 3].map((i) => (
                 <Skeleton
                   key={i}
@@ -416,13 +364,13 @@ function LightCommunityDetail({ slug }: { slug: string }) {
           )}
 
           {!isLoading && feedError && (
-            <div className="mt-3">
+            <div>
               <FeedErrorFallback />
             </div>
           )}
 
           {!isLoading && !feedError && posts.length === 0 && (
-            <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-10 text-center">
+            <div className="rounded-md border border-dashed bg-muted/30 p-10 text-center">
               <p className="text-sm font-medium">暂无帖子</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 该社区还没有内容。
@@ -431,7 +379,7 @@ function LightCommunityDetail({ slug }: { slug: string }) {
           )}
 
           {posts.length > 0 && (
-            <div className="mt-1.5 divide-y divide-border/60 border-t border-border/60">
+            <div>
               {posts.map((post) => (
                 <FeedPostItem key={post.id} post={post} view={view} />
               ))}
@@ -453,11 +401,8 @@ function LightCommunityDetail({ slug }: { slug: string }) {
 
 function AgentProfileDetail({ agentId }: { agentId: string }) {
   const { data, isLoading, error } = useFollowingAgentFeed(true)
-  const { data: agentsData } = useFollowingAgentsList(true)
   const { view } = useFeedViewStore()
   const feed = (data?.data ?? []) as FollowingAgentFeedItem[]
-  const agents = (agentsData?.data ?? []) as FollowingAgentListItem[]
-  const agent = agents.find((a) => a.id === agentId)
 
   const agentFeed = feed.filter(
     (item) =>
@@ -467,18 +412,9 @@ function AgentProfileDetail({ agentId }: { agentId: string }) {
           item.turn?.authorAgent?.id === agentId)),
   )
 
-  const avatarSrc = agent
-    ? resolveAgentAvatarSrc({
-        id: agent.id,
-        display_name: agent.displayName ?? agent.display_name ?? '',
-        avatar_url: agent.avatarUrl ?? agent.avatar_url ?? null,
-      })
-    : undefined
-
   if (isLoading) {
     return (
       <div className="space-y-3 p-5">
-        <Skeleton className="h-14 w-full rounded-md" />
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-24 w-full rounded-md" />
         ))}
@@ -488,25 +424,6 @@ function AgentProfileDetail({ agentId }: { agentId: string }) {
 
   return (
     <div className="flex flex-col">
-      {agent && (
-        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-5 py-3 backdrop-blur">
-          <Avatar className="size-9 shrink-0">
-            {avatarSrc && (
-              <AvatarImage src={avatarSrc} className="object-cover" />
-            )}
-            <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
-              {(agent.displayName ?? agent.display_name ?? '').slice(0, 1)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold">
-              {agent.displayName ?? agent.display_name}
-            </h2>
-            <p className="text-[11px] text-muted-foreground">智能体</p>
-          </div>
-        </div>
-      )}
-
       {!isLoading && error ? (
         <div className="p-5">
           <FeedErrorFallback />
@@ -519,7 +436,7 @@ function AgentProfileDetail({ agentId }: { agentId: string }) {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-border/60">
+        <div>
           {agentFeed.map((item, idx) => {
             if (item.type === 'POST' && item.post) {
               return (
@@ -579,7 +496,7 @@ function MobileCommunityTab() {
   }
 
   return (
-    <div className="divide-y divide-border/60 border-t border-border/60">
+    <div>
       {feed.map((post) => (
         <FeedPostItem key={post.id} post={post} view={view} />
       ))}
@@ -615,7 +532,7 @@ function MobileAgentTab() {
   }
 
   return (
-    <div className="divide-y divide-border/60 border-t border-border/60">
+    <div>
       {feed.map((item, idx) => {
         if (item.type === 'POST' && item.post) {
           return (
@@ -664,7 +581,7 @@ function MobileThreadTab() {
   }
 
   return (
-    <div className="divide-y divide-border/60 border-t border-border/60">
+    <div>
       {feed.map((item, idx) => (
         <ThreadUpdateCard
           key={idx}
@@ -680,9 +597,11 @@ function MobileThreadTab() {
 
 export function MyActivityPage() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') ?? 'communities'
   const activeId = searchParams.get('id')
+  const detailScrollRef = useRef<HTMLDivElement | null>(null)
 
   const { data: agentsData } = useFollowingAgentsList(isAuthenticated)
   const { data: communitiesData } = useFollowingCommunitiesList(isAuthenticated)
@@ -691,6 +610,18 @@ export function MyActivityPage() {
   const agentsList = (agentsData?.data ?? []) as FollowingAgentListItem[]
   const communitiesList = (communitiesData?.data ?? []) as FollowingCommunityListItem[]
   const threadsList = (threadsData?.data ?? []) as FollowingThreadListItem[]
+  const firstThreadPostId = threadsList[0]?.postId ?? null
+  const activeThreadPostId =
+    activeTab === 'threads'
+      ? threadsList.find((thread) => thread.postId === activeId || thread.id === activeId)?.postId ?? activeId
+      : null
+
+  useEffect(() => {
+    if (activeTab !== 'threads') return
+    if (!firstThreadPostId) return
+    if (activeThreadPostId) return
+    setSearchParams({ tab: 'threads', id: firstThreadPostId })
+  }, [activeTab, activeThreadPostId, firstThreadPostId, setSearchParams])
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value })
@@ -699,6 +630,10 @@ export function MyActivityPage() {
   const handleSelect = (id: string) => {
     setSearchParams({ tab: activeTab, id })
   }
+
+  useEffect(() => {
+    detailScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+  }, [activeId, activeTab])
 
   if (!isAuthenticated) {
     return (
@@ -734,7 +669,7 @@ export function MyActivityPage() {
     .join(' · ')
 
   return (
-    <div className="flex min-h-[calc(100vh-52px)] flex-col md:flex-row">
+    <div className="flex flex-col md:h-[calc(100vh-52px)] md:min-h-0 md:flex-row md:overflow-hidden">
       {/* ── Mobile: single-column tabbed feed ── */}
       <div className="block w-full md:hidden">
         <div className="px-4 pb-3 pt-1">
@@ -764,33 +699,30 @@ export function MyActivityPage() {
       </div>
 
       {/* ── Desktop: master-detail layout ── */}
-      <div className="hidden h-full w-full flex-row border-x md:flex">
+      <div className="hidden h-full min-h-0 w-full flex-row gap-3 overflow-hidden md:flex lg:gap-4">
         {/* Left rail: follow list */}
-        <div className="flex h-full w-[340px] shrink-0 flex-col overflow-y-auto border-r bg-background">
-          <div className="sticky top-0 z-10 shrink-0 border-b bg-background/95 p-4 backdrop-blur">
-            <h1 className="text-lg font-bold tracking-tight">关注</h1>
-            {statsLine && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {statsLine}
-              </p>
-            )}
-          </div>
-
+        <div className="flex h-full min-h-0 w-[306px] shrink-0 flex-col rounded-2xl bg-muted/35">
           <Tabs
             value={activeTab}
             onValueChange={handleTabChange}
-            className="flex flex-1 flex-col"
+            className="flex min-h-0 flex-1 flex-col"
           >
             <TabsList
               variant="line"
-              className="sticky top-[61px] z-10 shrink-0 bg-background/95 px-4 backdrop-blur"
+              className="shrink-0 bg-muted/35 px-4 pt-4 backdrop-blur"
             >
-              <TabsTrigger value="communities">社区</TabsTrigger>
-              <TabsTrigger value="agents">智能体</TabsTrigger>
-              <TabsTrigger value="threads">帖子</TabsTrigger>
+              <TabsTrigger value="communities" className="text-[16px] font-semibold">
+                社区
+              </TabsTrigger>
+              <TabsTrigger value="agents" className="text-[16px] font-semibold">
+                智能体
+              </TabsTrigger>
+              <TabsTrigger value="threads" className="text-[16px] font-semibold">
+                帖子
+              </TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto border-t border-border/35">
               {/* Communities */}
               <TabsContent
                 value="communities"
@@ -813,28 +745,35 @@ export function MyActivityPage() {
                     {communitiesList.map((c) => {
                       const avatar = getCommunityAvatarTheme({ slug: c.slug })
                       return (
-                        <button
+                        <CommunityHoverCard
                           key={c.id}
-                          onClick={() => handleSelect(c.slug)}
-                          className={cn(
-                            'flex items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
-                            activeId === c.slug && 'border-l-primary bg-primary/5',
-                          )}
+                          slug={c.slug}
+                          preview={c}
                         >
-                          <Avatar className="size-10 shrink-0">
-                            <AvatarImage
-                              src={avatar.value}
-                              alt={c.name}
-                              className="object-cover"
-                            />
-                            <AvatarFallback className="bg-muted text-sm font-semibold">
-                              {c.name.slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate text-[15px] font-medium">
-                            {c.name}
-                          </span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelect(c.slug)}
+                            onDoubleClick={() => navigate(`/c/${c.slug}`)}
+                            className={cn(
+                              'flex w-full items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
+                              activeId === c.slug && 'border-l-primary bg-primary/5',
+                            )}
+                          >
+                            <Avatar className="size-10 shrink-0">
+                              <AvatarImage
+                                src={avatar.value}
+                                alt={c.name}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-muted text-sm font-semibold">
+                                {c.name.slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate text-[15px] font-medium">
+                              {c.name}
+                            </span>
+                          </button>
+                        </CommunityHoverCard>
                       )
                     })}
                   </div>
@@ -869,32 +808,41 @@ export function MyActivityPage() {
                           a.avatarUrl ?? a.avatar_url ?? null,
                       })
                       return (
-                        <button
-                          key={a.id}
-                          onClick={() => handleSelect(a.id)}
-                          className={cn(
-                            'flex items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
-                            activeId === a.id &&
-                              'border-l-primary bg-primary/5',
-                          )}
-                        >
-                          <Avatar className="size-10 shrink-0">
-                            <AvatarImage
-                              src={src}
-                              className="object-cover"
-                            />
-                            <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
-                              {(
-                                a.displayName ??
-                                a.display_name ??
-                                ''
-                              ).slice(0, 1)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate text-[15px] font-medium">
-                            {a.displayName ?? a.display_name}
-                          </span>
-                        </button>
+                        <AgentHoverCard key={a.id} agentId={a.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelect(a.id)}
+                            onDoubleClick={() =>
+                              openAppTarget(
+                                navigate,
+                                buildAgentTarget({ agentId: a.id, mode: 'readonly' }),
+                                'readonly',
+                              )
+                            }
+                            className={cn(
+                              'flex w-full items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
+                              activeId === a.id &&
+                                'border-l-primary bg-primary/5',
+                            )}
+                          >
+                            <Avatar className="size-10 shrink-0">
+                              <AvatarImage
+                                src={src}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+                                {(
+                                  a.displayName ??
+                                  a.display_name ??
+                                  ''
+                                ).slice(0, 1)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate text-[15px] font-medium">
+                              {a.displayName ?? a.display_name}
+                            </span>
+                          </button>
+                        </AgentHoverCard>
                       )
                     })}
                   </div>
@@ -923,10 +871,12 @@ export function MyActivityPage() {
                     {threadsList.map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => handleSelect(t.id)}
+                        type="button"
+                        onClick={() => handleSelect(t.postId)}
+                        onDoubleClick={() => navigate(`/posts/${t.postId}`)}
                         className={cn(
                           'flex items-baseline gap-2 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
-                          activeId === t.id &&
+                          activeThreadPostId === t.postId &&
                             'border-l-primary bg-primary/5',
                         )}
                       >
@@ -946,22 +896,31 @@ export function MyActivityPage() {
         </div>
 
         {/* Right panel: detail / aggregated timeline */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background">
-          {!activeId ? (
-            <AggregatedTimeline />
-          ) : (
-            <div className="flex-1">
-              {activeTab === 'communities' && (
-                <LightCommunityDetail key={activeId} slug={activeId} />
-              )}
-              {activeTab === 'agents' && (
-                <AgentProfileDetail key={activeId} agentId={activeId} />
-              )}
-              {activeTab === 'threads' && (
-                <PostDetailPage key={activeId} overridePostId={activeId} />
-              )}
-            </div>
-          )}
+        <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden bg-background">
+          <div
+            ref={detailScrollRef}
+            className="min-h-0 flex-1 overflow-y-auto"
+          >
+            {!activeId ? (
+              <AggregatedTimeline />
+            ) : (
+              <div className="flex-1">
+                {activeTab === 'communities' && (
+                  <LightCommunityDetail key={activeId} slug={activeId} />
+                )}
+                {activeTab === 'agents' && (
+                  <AgentProfileDetail key={activeId} agentId={activeId} />
+                )}
+                {activeTab === 'threads' && (
+                  <PostDetailPage
+                    key={activeThreadPostId ?? activeId}
+                    overridePostId={activeThreadPostId ?? activeId}
+                    hideDiscussionArea
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
