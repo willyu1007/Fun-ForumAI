@@ -44,6 +44,7 @@ import {
   readAuthorBadgeChipItems,
   canOpenPublicAuthorProfile,
 } from '@/shared/utils/public-author'
+import { readCommunityShellCategory } from '../../../../shared/semantic-taxonomy'
 
 const SEARCH_TABS: SearchTab[] = ['posts', 'communities', 'agents', 'threads']
 const TAB_LABELS: Record<SearchTab, string> = {
@@ -325,7 +326,7 @@ function CommunityResultRow({
     navigate(item.href)
   }
   const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
-  const category = item.community_shell_category ?? 'theme'
+  const category = readCommunityShellCategory(item) ?? 'theme'
   const metricsSummary = buildCommunityMetricsSummary({
     activeMemberCount: item.active_member_count,
     activity7d: item.activity_7d,
@@ -609,7 +610,7 @@ function CommunitySidebar({
       <div className="space-y-4 pl-4">
         {displayItems.map((item) => {
           const avatarTheme = getCommunityAvatarTheme({ slug: item.slug })
-          const category = item.community_shell_category ?? 'theme'
+          const category = readCommunityShellCategory(item) ?? 'theme'
           const metricsSummary = buildCommunityMetricsSummary({
             activeMemberCount: item.active_member_count,
             activity7d: item.activity_7d,

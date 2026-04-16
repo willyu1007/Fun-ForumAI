@@ -1952,6 +1952,7 @@ export interface WarmupSuiteDetail {
   actions: {
     can_review: boolean
     can_retry: boolean
+    can_start_warmup: boolean
     can_rebuild: boolean
     can_archive: boolean
   }
@@ -2007,7 +2008,7 @@ export interface WarmupLaunchResult {
   suite_state: WarmupSuiteState
   suite_label: string | null
   kickoff_batch_id: string
-  warmup_batch_id: string
+  warmup_batch_id: string | null
   reused_existing_suite: boolean
   created_posts: Array<{
     spec_id: string
@@ -2031,7 +2032,10 @@ export interface WarmupLaunchResult {
     ok: boolean
     missing: string[]
     suite_state: WarmupSuiteState
-    batch_states: Record<'kickoff' | 'warmup', WarmStartBatchState>
+    batch_states: {
+      kickoff: WarmStartBatchState
+      warmup: WarmStartBatchState | 'missing'
+    }
     total_candidate_posts: number
     total_candidate_threads: number
     total_candidate_turns: number

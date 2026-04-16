@@ -10,6 +10,7 @@ const readRun = vi.fn()
 const buildForSuite = vi.fn()
 const listSuites = vi.fn()
 const getSuiteDetail = vi.fn()
+const warmPersistenceState = vi.fn()
 
 vi.mock('../../container.js', () => ({
   kickoffBootstrapService: {
@@ -30,6 +31,7 @@ vi.mock('../../container.js', () => ({
     listSuites,
     getSuiteDetail,
   },
+  warmPersistenceState,
 }))
 
 async function createApp() {
@@ -44,6 +46,7 @@ async function createApp() {
 describe('dev kickoff routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    warmPersistenceState.mockResolvedValue(undefined)
   })
 
   it('boots kickoff through the dedicated bootstrap route', async () => {
@@ -73,12 +76,10 @@ describe('dev kickoff routes', () => {
     })
 
     const app = await createApp()
-    const res = await request(app)
-      .post('/v1/dev/kickoff/bootstrap')
-      .send({
-        mode: 'candidate',
-        profile_id: 'local-llm-assisted-candidate',
-      })
+    const res = await request(app).post('/v1/dev/kickoff/bootstrap').send({
+      mode: 'candidate',
+      profile_id: 'local-llm-assisted-candidate',
+    })
 
     expect(res.status).toBe(201)
     expect(bootstrap).toHaveBeenCalledWith({
@@ -132,15 +133,79 @@ describe('dev kickoff routes', () => {
     const res = await request(app).get('/v1/dev/kickoff/status')
 
     expect(res.status).toBe(200)
+    expect(warmPersistenceState).toHaveBeenCalledTimes(1)
     expect(res.body.data).toMatchObject({
       current_data_mode: 'kickoff-candidate',
-      mode_source: 'marker',
+      mode_source: 'inferred',
+      flow: {
+        phase: 'activation',
+        title: '等待激活',
+        next_action: 'Review / Activate',
+      },
       current_suite: {
         id: 'suite-1',
         kickoff_batch_id: 'kickoff-batch-1',
       },
       latest_runtime_readiness: {
         suite_id: 'suite-1',
+      },
+    })
+  })
+
+  it('prefers live runtime readiness over the stored latest-run snapshot', async () => {
+    readLatestRun.mockResolvedValue({
+      summary: {
+        run_id: 'run-1',
+      },
+      import_report: {
+        report_meta: {
+          run_id: 'run-1',
+        },
+      },
+      readiness: {
+        contract_version: 1,
+        suite_id: 'suite-1',
+        activation_readiness: {
+          ok: false,
+          reasons: ['aftershow_pipeline_not_ready'],
+        },
+      },
+    })
+    readCurrentDataMode.mockResolvedValue({
+      mode: 'kickoff-candidate',
+      source: 'marker',
+      suite_id: 'suite-1',
+    })
+    listSuites.mockResolvedValue([
+      { id: 'suite-1', state: 'review_ready', suite_label: 'kickoff-v1' },
+    ])
+    getSuiteDetail.mockResolvedValue({
+      id: 'suite-1',
+      suite_label: 'kickoff-v1',
+      state: 'review_ready',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      active_baseline: null,
+    })
+    buildForSuite.mockResolvedValue({
+      contract_version: 1,
+      suite_id: 'suite-1',
+      activation_readiness: {
+        ok: true,
+        reasons: [],
+      },
+    })
+
+    const app = await createApp()
+    const res = await request(app).get('/v1/dev/kickoff/status')
+
+    expect(res.status).toBe(200)
+    expect(buildForSuite).toHaveBeenCalledWith('suite-1')
+    expect(res.body.data.latest_runtime_readiness).toMatchObject({
+      suite_id: 'suite-1',
+      activation_readiness: {
+        ok: true,
+        reasons: [],
       },
     })
   })
@@ -182,6 +247,11 @@ describe('dev kickoff routes', () => {
     expect(res.body.data).toMatchObject({
       current_data_mode: 'kickoff-candidate',
       mode_source: 'inferred',
+      flow: {
+        phase: 'foundation',
+        title: '补齐基础内容',
+        next_action: '补齐基础内容',
+      },
       current_suite: {
         id: 'suite-stale',
       },
@@ -221,6 +291,9 @@ describe('dev kickoff routes', () => {
     buildForSuite.mockResolvedValue({
       contract_version: 1,
       suite_id: 'suite-active',
+      layer_readiness: {
+        warmup_layer_ready: true,
+      },
       admission: {
         allow_public_growth: true,
       },
@@ -233,8 +306,81 @@ describe('dev kickoff routes', () => {
     expect(res.body.data).toMatchObject({
       current_data_mode: 'kickoff-active',
       mode_source: 'inferred',
+      flow: {
+        phase: 'runtime',
+        title: 'Warmup Runtime 运行中',
+        next_action: null,
+      },
       current_suite: {
         id: 'suite-active',
+        active_baseline_id: 'baseline-1',
+      },
+      latest_runtime_readiness: {
+        suite_id: 'suite-active',
+      },
+    })
+  })
+
+  it('prefers the active suite from the database over a stale candidate marker', async () => {
+    readLatestRun.mockResolvedValue({
+      summary: {
+        run_id: 'run-old',
+      },
+      import_report: null,
+      readiness: null,
+    })
+    readCurrentDataMode.mockResolvedValue({
+      mode: 'kickoff-candidate',
+      source: 'marker',
+      suite_id: 'suite-stale',
+    })
+    listSuites.mockResolvedValue([
+      { id: 'suite-active', state: 'active', suite_label: 'kickoff-foundation-v1' },
+      { id: 'suite-stale', state: 'review_ready', suite_label: 'kickoff-old-v1' },
+    ])
+    getSuiteDetail.mockResolvedValue({
+      id: 'suite-active',
+      suite_label: 'kickoff-foundation-v1',
+      state: 'active',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      active_baseline: {
+        id: 'baseline-1',
+        is_current: true,
+      },
+    })
+    buildForSuite.mockResolvedValue({
+      contract_version: 1,
+      suite_id: 'suite-active',
+      activation_readiness: {
+        ok: true,
+        reasons: [],
+      },
+      layer_readiness: {
+        warmup_layer_ready: true,
+      },
+      admission: {
+        allow_public_growth: true,
+      },
+    })
+
+    const app = await createApp()
+    const res = await request(app).get('/v1/dev/kickoff/status')
+
+    expect(res.status).toBe(200)
+    expect(getSuiteDetail).toHaveBeenCalledWith('suite-active')
+    expect(buildForSuite).toHaveBeenCalledWith('suite-active')
+    expect(res.body.data).toMatchObject({
+      current_data_mode: 'kickoff-active',
+      mode_source: 'inferred',
+      flow: {
+        phase: 'runtime',
+        title: 'Warmup Runtime 运行中',
+        next_action: null,
+      },
+      current_suite: {
+        id: 'suite-active',
+        label: 'kickoff-foundation-v1',
         active_baseline_id: 'baseline-1',
       },
       latest_runtime_readiness: {

@@ -121,11 +121,11 @@ Project: `main`
 | T-961 live-e2e-regression-and-service-split-temp | archived | dev-docs/archive/live-e2e-regression-and-service-split-temp |
 | T-962 warmup-richness-admission-gap-closure-v1 | in-progress | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
 | T-963 chatroom-staging-hold-e2e-closure | archived | dev-docs/archive/chatroom-staging-hold-e2e-closure |
-| T-964 kickoff-data-governance-alignment-temp | done | dev-docs/active/kickoff-data-governance-alignment-temp |
-| T-968 kickoff-planning-requirements-v1 | in-progress | dev-docs/active/kickoff-planning-requirements-v1 |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | dev-docs/active/t-201-following-feed-revamp |
 | T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
+| T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
+| T-977 agent-overview-engagement-stats-v1 | in-progress | dev-docs/active/agent-overview-engagement-stats-v1 |
 
 ### F-010 Agent Stats System
 

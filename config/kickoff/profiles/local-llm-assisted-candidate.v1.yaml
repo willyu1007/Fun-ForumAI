@@ -6,13 +6,13 @@ bootstrap:
   reset_before_bootstrap: true
   seed_profile: launch
   activate_after_import: false
-  default_target_batch: warmup
+  default_target_batch: kickoff
   max_runtime_topup_posts: 0
 import_defaults:
   allow_inline_patch: true
   allow_patch_pack_lookup: true
   allow_runtime_instruction_payload: false
-  default_generation_mode: warmup_candidate
+  default_generation_mode: kickoff_candidate
   require_real_service_import: true
 observability:
   emit_context_pack: true

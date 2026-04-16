@@ -269,7 +269,7 @@ function toDomain(row: PrismaMediaImportJobRecord): MediaImportJob {
     normalized_manifest_key: row.normalizedManifestKey,
     result_manifest_key: row.resultManifestKey,
     failure_log_key: row.failureLogKey,
-    scope_summary_json: row.scopeSummaryJson as MediaImportJob['scope_summary_json'],
+    scope_summary_json: row.scopeSummaryJson as unknown as MediaImportJob['scope_summary_json'],
     total_items: row.totalItems,
     processed_items: row.processedItems,
     created_items: row.createdItems,

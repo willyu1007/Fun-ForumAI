@@ -1,6 +1,7 @@
 # 04 Verification — T-201
 
 ## Automated checks
+
 - Bundle creation / governance:
   - task directory contains `.ai-task.yaml`, `roadmap.md`, `00-overview.md`, `01-plan.md`, `02-architecture.md`, `03-implementation-notes.md`, `04-verification.md`, `05-pitfalls.md`
   - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
@@ -44,7 +45,7 @@
     - registry validator passed with `42` profiles / `4` provider admission pools
     - LLM contract/gateway tests passed (`49` tests)
     - inference-profile/control-plane tests passed (`8` tests)
-    - project governance sync completed; final lint passes with only pre-existing unrelated warnings (`kickoff-data-governance-alignment-temp`, missing archive paths for `T-960` / `T-961`)
+    - project governance sync completed; final lint passes with only pre-existing unrelated warnings (legacy archive-path drift for unrelated historical tasks)
   - canonical `doubao-deep-v1` migration validated:
     - routing artifact regenerated successfully with `50` profiles / `5` provider admission pools
     - registry validator passed after restoring Kimi as a semantically real line and moving active Doubao routing to `doubao-deep-*`
@@ -58,6 +59,7 @@
   - `pnpm typecheck` still fails in untouched files under `src/backend/runtime/__tests__/forum-roaming.test.ts`, `src/backend/services/__tests__/recall-state-store.test.ts`, `src/backend/services/forum-read-service.ts`, and `src/backend/services/search/thread-search-provider.ts`
 
 ## Manual smoke checks
+
 - Planning stage:
   - read `roadmap.md` and confirm open questions are actionable rather than hidden assumptions
   - confirm the roadmap distinguishes registry-only work from runtime-change work
@@ -68,6 +70,7 @@
   - inspect media job/provider metadata after a fallback run
 
 ## Rollout / Backout (if applicable)
+
 - Rollout:
   - registry migration first
   - hidden/vision convergence second

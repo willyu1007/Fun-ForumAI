@@ -134,17 +134,17 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
       <div className="space-y-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Create Candidate Suite</CardTitle>
+            <CardTitle className="text-sm">Create Kickoff</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Input
-              placeholder="suite label（默认 launch-warm-start-v1）"
+              placeholder="suite label（默认自动生成 kickoff-foundation-v1）"
               value={warmup.suiteLabel}
               onChange={(event) => warmup.setSuiteLabel(event.target.value)}
               className="h-8 text-xs"
             />
             <Input
-              placeholder="runtime top-up posts"
+              placeholder="warmup runtime top-up posts"
               value={warmup.topupPosts}
               onChange={(event) => warmup.setTopupPosts(event.target.value)}
               className="h-8 text-xs"
@@ -156,7 +156,7 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
                 void warmup.handleCreateSuite()
               }}
             >
-              {warmup.createMutation.isPending ? '生成中…' : '创建 Candidate'}
+              {warmup.createMutation.isPending ? '生成中…' : '初始化 Kickoff'}
             </Button>
           </CardContent>
         </Card>
@@ -187,7 +187,7 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
               </button>
             ))}
             {warmup.suites.length === 0 && (
-              <p className="text-xs text-muted-foreground">暂无 warm-up suite</p>
+              <p className="text-xs text-muted-foreground">暂无 Kickoff</p>
             )}
           </CardContent>
         </Card>
@@ -197,7 +197,7 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-sm">Warm-up Verifier</CardTitle>
+              <CardTitle className="text-sm">Warmup Runtime Verifier</CardTitle>
               {latestVerifierRun?.summary ? (
                 <VerifierStatusBadge status={latestVerifierRun.summary.status} />
               ) : (
@@ -217,7 +217,7 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
             </Button>
 
             {!latestVerifierRun?.summary && (
-              <p className="text-muted-foreground">尚无 warm-up closure verifier 运行记录。</p>
+              <p className="text-muted-foreground">尚无 Warmup Runtime verifier 运行记录。</p>
             )}
 
             {latestVerifierRun?.summary && (
@@ -406,6 +406,16 @@ export function WarmupGovernanceTab({ warmup }: { warmup: WarmupSlice }) {
                     }}
                   >
                     Retry
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!detail.actions.can_start_warmup || warmup.startMutation.isPending}
+                    onClick={() => {
+                      void warmup.handleStartWarmupSuite()
+                    }}
+                  >
+                    {warmup.startMutation.isPending ? '启动中…' : 'Start Warmup'}
                   </Button>
                   <Button
                     size="sm"

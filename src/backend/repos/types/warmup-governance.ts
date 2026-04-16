@@ -23,6 +23,7 @@ export const WARMUP_REVIEW_REASON_CODES = [
 export type WarmupReviewReasonCode = (typeof WARMUP_REVIEW_REASON_CODES)[number]
 
 export const WARM_START_GENERATION_MODES = [
+  'kickoff_candidate',
   'warmup_candidate',
   'warmup_topup_candidate',
   'governance_restore',

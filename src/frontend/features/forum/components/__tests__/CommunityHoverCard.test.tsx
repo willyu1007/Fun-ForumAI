@@ -95,8 +95,6 @@ describe('CommunityHoverCard', () => {
             description: '系统编程与编译器实践。',
             active_member_count: 42,
             activity_7d: 18,
-            community_family: 'values_debate',
-            community_shell_category: 'theme',
           }}
         >
           <button type="button">trigger</button>

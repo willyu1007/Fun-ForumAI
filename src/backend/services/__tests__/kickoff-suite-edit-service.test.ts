@@ -81,6 +81,7 @@ describe('KickoffSuiteEditService', () => {
       actions: {
         can_review: true,
         can_retry: true,
+        can_start_warmup: false,
         can_rebuild: true,
         can_archive: true,
       },
@@ -275,6 +276,7 @@ describe('KickoffSuiteEditService', () => {
       actions: {
         can_review: true,
         can_retry: true,
+        can_start_warmup: false,
         can_rebuild: true,
         can_archive: true,
       },
@@ -441,6 +443,7 @@ describe('KickoffSuiteEditService', () => {
       actions: {
         can_review: true,
         can_retry: true,
+        can_start_warmup: false,
         can_rebuild: true,
         can_archive: true,
       },

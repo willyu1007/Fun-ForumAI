@@ -17,6 +17,7 @@ import {
   readKickoffWorkflowProfile,
   resolveKickoffPatchPackPath,
 } from '../launch/kickoff-workflow.js'
+import { getLaunchProgrammingSchedule } from '../launch/programming-schedule.js'
 import { getLaunchSystemRoster } from '../launch/system-roster.js'
 import type {
   AgentRepository,
@@ -27,6 +28,7 @@ import type {
   PublicStageTurnRepository,
   WarmupGovernanceRepository,
 } from '../repos/index.js'
+import type { AftershowService } from './aftershow-service.js'
 import type { ForumWriteService } from './forum-write-service.js'
 import type { MediaAssetControlService } from './media-asset-control-service.js'
 import type { KickoffRunArtifactService } from './kickoff-run-artifact-service.js'
@@ -47,12 +49,82 @@ interface ResolvedOperationContext {
   resolutionMap: Map<string, KickoffResolvedRef>
   affectedPostIds: Set<string>
   affectedThreadIds: Set<string>
+  now: Date
+  daypartOrdinals: Map<string, number>
+  postCreatedAt: Map<string, Date>
+  threadCreatedAt: Map<string, Date>
+  threadTurnOrdinals: Map<string, number>
+  aftershowCandidatePostIds: Set<string>
+}
+
+function hasTag(tags: string[] | undefined, expected: string): boolean {
+  return (tags ?? []).includes(expected)
+}
+
+function readTagValue(tags: string[] | undefined, prefix: string): string | null {
+  const hit = (tags ?? []).find((tag) => tag.startsWith(prefix))
+  return hit ? hit.slice(prefix.length) : null
+}
+
+function toLocalDateKey(date: Date, timeZone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  return formatter.format(date)
+}
+
+function resolveFixedTimezoneOffsetMinutes(timeZone: string): number {
+  switch (timeZone) {
+    case 'Asia/Shanghai':
+      return 8 * 60
+    case 'UTC':
+      return 0
+    default:
+      return 0
+  }
+}
+
+function resolveScheduledPostTimestamp(input: {
+  tags: string[] | undefined
+  now: Date
+  daypartOrdinals: Map<string, number>
+}): Date | null {
+  const daypartId = readTagValue(input.tags, 'daypart:')
+  if (!daypartId) return null
+  const schedule = getLaunchProgrammingSchedule()
+  const daypart = schedule.dayparts.find((item) => item.id === daypartId)
+  if (!daypart) return null
+
+  const ordinal = input.daypartOrdinals.get(daypartId) ?? 0
+  input.daypartOrdinals.set(daypartId, ordinal + 1)
+
+  const [dateYear, dateMonth, dateDay] = toLocalDateKey(
+    input.now,
+    schedule.launch_window.schedule_timezone,
+  )
+    .split('-')
+    .map((value) => Number(value))
+  const [startRaw] = daypart.time_range.split('-')
+  const [hourRaw, minuteRaw] = startRaw.split(':').map((value) => Number(value))
+  const totalLocalMinutes = hourRaw * 60 + minuteRaw + ordinal * 8
+  const offsetMinutes = resolveFixedTimezoneOffsetMinutes(schedule.launch_window.schedule_timezone)
+  return new Date(
+    Date.UTC(dateYear, dateMonth - 1, dateDay, 0, 0, 0, 0) -
+      offsetMinutes * 60_000 +
+      totalLocalMinutes * 60_000,
+  )
 }
 
 export class KickoffPatchImportService {
   constructor(
     private readonly deps: {
-      warmupGovernanceService: Pick<WarmupGovernanceService, 'listSuites' | 'getSuiteDetail' | 'getRuntimeBaselineAdmission'>
+      warmupGovernanceService: Pick<
+        WarmupGovernanceService,
+        'listSuites' | 'getSuiteDetail' | 'getRuntimeBaselineAdmission'
+      >
       warmupGovernanceRepo: WarmupGovernanceRepository
       communityRepo: CommunityRepository
       agentRepo: AgentRepository
@@ -60,12 +132,19 @@ export class KickoffPatchImportService {
       publicStageThreadRepo: PublicStageThreadRepository
       publicStageTurnRepo: PublicStageTurnRepository
       postMediaRepo: PostMediaRepository
-      forumWriteService: Pick<ForumWriteService, 'createPost' | 'createThread' | 'addThreadTurn' | 'upsertVote'>
+      forumWriteService: Pick<
+        ForumWriteService,
+        'createPost' | 'createThread' | 'addThreadTurn' | 'upsertVote'
+      >
       mediaAssetControlService: Pick<
         MediaAssetControlService,
         'createFromUpload' | 'promoteAsset' | 'attachPostMediaAndConsume'
       >
-      searchProjectionService?: Pick<SearchProjectionService, 'refreshPost' | 'refreshThread'> | null
+      aftershowService?: Pick<AftershowService, 'trigger'> | null
+      searchProjectionService?: Pick<
+        SearchProjectionService,
+        'refreshPost' | 'refreshThread'
+      > | null
       runtimeReadinessService: KickoffRuntimeReadinessService
       runArtifactService: KickoffRunArtifactService
     },
@@ -114,6 +193,12 @@ export class KickoffPatchImportService {
       resolutionMap: new Map(),
       affectedPostIds: new Set(),
       affectedThreadIds: new Set(),
+      now: new Date(),
+      daypartOrdinals: new Map(),
+      postCreatedAt: new Map(),
+      threadCreatedAt: new Map(),
+      threadTurnOrdinals: new Map(),
+      aftershowCandidatePostIds: new Set(),
     }
 
     await this.deps.runArtifactService.writeContextPack(run.run_id, {
@@ -131,8 +216,10 @@ export class KickoffPatchImportService {
       { check: 'target_suite_resolved', ok: true, detail: `suite ${ctx.suite.suite_id}` },
       {
         check: 'target_batches_resolved',
-        ok: Boolean(ctx.suite.kickoff_batch_id && ctx.suite.warmup_batch_id),
-        detail: `kickoff=${ctx.suite.kickoff_batch_id ?? 'missing'} warmup=${ctx.suite.warmup_batch_id ?? 'missing'}`,
+        ok:
+          Boolean(ctx.suite.kickoff_batch_id) &&
+          (Boolean(ctx.suite.warmup_batch_id) || ctx.suite.mode === 'candidate'),
+        detail: `kickoff=${ctx.suite.kickoff_batch_id ?? 'missing'} warmup=${ctx.suite.warmup_batch_id ?? 'deferred->kickoff'}`,
       },
     )
 
@@ -149,6 +236,7 @@ export class KickoffPatchImportService {
       }
 
       if (!input.dry_run) {
+        await this.publishAftershowCandidates(ctx)
         await this.refreshSearchDocs(ctx)
       }
 
@@ -234,13 +322,14 @@ export class KickoffPatchImportService {
     suiteLabel: string,
   ): Promise<ResolvedTargetSuite> {
     const suites = await this.deps.warmupGovernanceService.listSuites()
-    const matched = suites.find((item) => item.suite_label === suiteLabel)
-      ?? (mode === 'active'
+    const matched =
+      suites.find((item) => item.suite_label === suiteLabel) ??
+      (mode === 'active'
         ? suites.find((item) => item.state === 'active')
-        : suites.find((item) => item.state === 'review_ready'))
-      ?? null
+        : suites.find((item) => item.state === 'review_ready')) ??
+      null
     if (!matched) {
-      throw new ValidationError(`No warmup suite available for mode=${mode} label=${suiteLabel}`)
+      throw new ValidationError(`No kickoff suite available for mode=${mode} label=${suiteLabel}`)
     }
     const detail = await this.deps.warmupGovernanceService.getSuiteDetail(matched.id)
     return {
@@ -252,10 +341,15 @@ export class KickoffPatchImportService {
     }
   }
 
-  private assertDependencies(operation: KickoffAuthoringOperation, ctx: ResolvedOperationContext): void {
+  private assertDependencies(
+    operation: KickoffAuthoringOperation,
+    ctx: ResolvedOperationContext,
+  ): void {
     for (const dep of operation.depends_on ?? []) {
       if (!ctx.resolutionMap.has(dep)) {
-        throw new ValidationError(`Operation ${operation.op_id} depends on unresolved logical key "${dep}"`)
+        throw new ValidationError(
+          `Operation ${operation.op_id} depends on unresolved logical key "${dep}"`,
+        )
       }
     }
   }
@@ -300,7 +394,10 @@ export class KickoffPatchImportService {
     if (operation.entity_kind === 'post') {
       const agent = this.resolveAgent(operation.actor_selector)
       const community = this.resolveCommunity(operation.community_selector.slug)
-      const batchId = this.resolveBatchId(operation.target_batch_kind ?? 'kickoff', ctx.suite)
+      const targetBatch = this.resolveBatchBinding(
+        operation.target_batch_kind ?? 'kickoff',
+        ctx.suite,
+      )
       const created = await this.deps.forumWriteService.createPost({
         actor_agent_id: agent.id,
         run_id: runId,
@@ -309,10 +406,28 @@ export class KickoffPatchImportService {
         body: operation.payload.body,
         tags: operation.payload.tags ?? [],
         warmup_context: {
-          warm_start_batch_id: batchId,
-          generation_mode: operation.generation_mode ?? 'warmup_candidate',
+          warm_start_batch_id: targetBatch.batch_id,
+          generation_mode: this.resolveGenerationMode({
+            requested_mode: operation.generation_mode,
+            effective_batch_kind: targetBatch.batch_kind,
+          }),
         },
       })
+      const scheduledPostAt = resolveScheduledPostTimestamp({
+        tags: operation.payload.tags ?? [],
+        now: ctx.now,
+        daypartOrdinals: ctx.daypartOrdinals,
+      })
+      if (scheduledPostAt) {
+        await this.deps.postRepo.updateTimestamps(created.post.id, {
+          created_at: scheduledPostAt,
+          updated_at: scheduledPostAt,
+        })
+        ctx.postCreatedAt.set(created.post.id, scheduledPostAt)
+      }
+      if (hasTag(operation.payload.tags, 'content:aftershow-candidate')) {
+        ctx.aftershowCandidatePostIds.add(created.post.id)
+      }
       ctx.resolutionMap.set(operation.logical_key, {
         logical_key: operation.logical_key,
         entity_kind: 'post',
@@ -327,7 +442,10 @@ export class KickoffPatchImportService {
       const postRef = this.requireResolvedRef(ctx, operation.payload.post_ref_key, 'post')
       const post = await this.deps.postRepo.findById(postRef.id)
       if (!post) throw new ValidationError(`Resolved post not found: ${postRef.id}`)
-      const batchId = this.resolveBatchId(operation.target_batch_kind ?? 'warmup', ctx.suite)
+      const targetBatch = this.resolveBatchBinding(
+        operation.target_batch_kind ?? 'warmup',
+        ctx.suite,
+      )
       const created = await this.deps.forumWriteService.createThread({
         actor_agent_id: agent.id,
         run_id: runId,
@@ -335,10 +453,22 @@ export class KickoffPatchImportService {
         body: operation.payload.body,
         channel: operation.payload.channel,
         warmup_context: {
-          warm_start_batch_id: batchId,
-          generation_mode: operation.generation_mode ?? 'warmup_candidate',
+          warm_start_batch_id: targetBatch.batch_id,
+          generation_mode: this.resolveGenerationMode({
+            requested_mode: operation.generation_mode,
+            effective_batch_kind: targetBatch.batch_kind,
+          }),
         },
       })
+      const postCreatedAt = ctx.postCreatedAt.get(post.id) ?? null
+      if (postCreatedAt) {
+        const threadCreatedAt = new Date(postCreatedAt.getTime() + 2 * 60_000)
+        await this.deps.publicStageThreadRepo.updateTimestamps(created.entry.id, {
+          created_at: threadCreatedAt,
+          updated_at: threadCreatedAt,
+        })
+        ctx.threadCreatedAt.set(created.entry.id, threadCreatedAt)
+      }
       ctx.resolutionMap.set(operation.logical_key, {
         logical_key: operation.logical_key,
         entity_kind: 'thread',
@@ -352,7 +482,10 @@ export class KickoffPatchImportService {
     if (operation.entity_kind === 'turn') {
       const agent = this.resolveAgent(operation.actor_selector)
       const threadRef = this.requireResolvedRef(ctx, operation.payload.thread_ref_key, 'thread')
-      const batchId = this.resolveBatchId(operation.target_batch_kind ?? 'warmup', ctx.suite)
+      const targetBatch = this.resolveBatchBinding(
+        operation.target_batch_kind ?? 'warmup',
+        ctx.suite,
+      )
       const created = await this.deps.forumWriteService.addThreadTurn({
         actor_agent_id: agent.id,
         run_id: runId,
@@ -361,10 +494,23 @@ export class KickoffPatchImportService {
         body: operation.payload.body,
         channel: operation.payload.channel,
         warmup_context: {
-          warm_start_batch_id: batchId,
-          generation_mode: operation.generation_mode ?? 'warmup_candidate',
+          warm_start_batch_id: targetBatch.batch_id,
+          generation_mode: this.resolveGenerationMode({
+            requested_mode: operation.generation_mode,
+            effective_batch_kind: targetBatch.batch_kind,
+          }),
         },
       })
+      const threadCreatedAt = ctx.threadCreatedAt.get(threadRef.id) ?? null
+      if (threadCreatedAt) {
+        const turnOrdinal = ctx.threadTurnOrdinals.get(threadRef.id) ?? 0
+        const turnCreatedAt = new Date(threadCreatedAt.getTime() + (turnOrdinal + 1) * 2 * 60_000)
+        await this.deps.publicStageTurnRepo.updateTimestamps(created.entry.id, {
+          created_at: turnCreatedAt,
+          updated_at: turnCreatedAt,
+        })
+        ctx.threadTurnOrdinals.set(threadRef.id, turnOrdinal + 1)
+      }
       ctx.resolutionMap.set(operation.logical_key, {
         logical_key: operation.logical_key,
         entity_kind: 'turn',
@@ -377,11 +523,12 @@ export class KickoffPatchImportService {
     if (operation.entity_kind === 'vote') {
       const agent = this.resolveAgent(operation.actor_selector)
       const targetRef = this.requireResolvedRef(ctx, operation.payload.target_ref_key)
-      const targetType = targetRef.entity_kind === 'post'
-        ? 'POST'
-        : targetRef.entity_kind === 'thread'
-          ? 'THREAD'
-          : 'TURN'
+      const targetType =
+        targetRef.entity_kind === 'post'
+          ? 'POST'
+          : targetRef.entity_kind === 'thread'
+            ? 'THREAD'
+            : 'TURN'
       const created = await this.deps.forumWriteService.upsertVote({
         actor_agent_id: agent.id,
         run_id: runId,
@@ -421,8 +568,15 @@ export class KickoffPatchImportService {
         asset_id: promoted.asset_id,
         post_id: post.id,
         warmup_context: {
-          warm_start_batch_id: post.warm_start_batch_id ?? this.resolveBatchId('warmup', ctx.suite),
-          generation_mode: post.generation_mode ?? 'warmup_candidate',
+          warm_start_batch_id:
+            post.warm_start_batch_id ?? this.resolveBatchBinding('warmup', ctx.suite).batch_id,
+          generation_mode:
+            post.generation_mode ??
+            this.resolveGenerationMode({
+              requested_mode: undefined,
+              effective_batch_kind:
+                post.warm_start_batch_id === ctx.suite.kickoff_batch_id ? 'kickoff' : 'warmup',
+            }),
         },
       })
       ctx.resolutionMap.set(operation.logical_key, {
@@ -435,12 +589,19 @@ export class KickoffPatchImportService {
     }
 
     if (operation.entity_kind === 'runtime_instruction') {
-      if (!readKickoffWorkflowProfile(profileId).import_defaults.allow_runtime_instruction_payload) {
-        throw new ValidationError(`Profile ${profileId} does not allow runtime instruction payloads`)
+      if (
+        !readKickoffWorkflowProfile(profileId).import_defaults.allow_runtime_instruction_payload
+      ) {
+        throw new ValidationError(
+          `Profile ${profileId} does not allow runtime instruction payloads`,
+        )
       }
       const agent = this.resolveAgent(operation.payload.actor_selector)
       const community = this.resolveCommunity(operation.payload.community_selector.slug)
-      const batchId = this.resolveBatchId(operation.target_batch_kind ?? 'warmup', ctx.suite)
+      const targetBatch = this.resolveBatchBinding(
+        operation.target_batch_kind ?? 'warmup',
+        ctx.suite,
+      )
       const created = await this.deps.forumWriteService.createPost({
         actor_agent_id: agent.id,
         run_id: runId,
@@ -451,13 +612,20 @@ export class KickoffPatchImportService {
           '',
           `#director_goal ${operation.payload.director_goal}`,
           operation.payload.scene_hint ? `#scene_hint ${operation.payload.scene_hint}` : '',
-          operation.payload.placement_goal ? `#placement_goal ${operation.payload.placement_goal}` : '',
+          operation.payload.placement_goal
+            ? `#placement_goal ${operation.payload.placement_goal}`
+            : '',
           operation.payload.topup_reason ? `#topup_reason ${operation.payload.topup_reason}` : '',
-        ].filter(Boolean).join('\n'),
+        ]
+          .filter(Boolean)
+          .join('\n'),
         tags: operation.payload.tags ?? [],
         warmup_context: {
-          warm_start_batch_id: batchId,
-          generation_mode: operation.generation_mode ?? 'warmup_topup_candidate',
+          warm_start_batch_id: targetBatch.batch_id,
+          generation_mode: this.resolveGenerationMode({
+            requested_mode: operation.generation_mode ?? 'warmup_topup_candidate',
+            effective_batch_kind: targetBatch.batch_kind,
+          }),
         },
       })
       ctx.resolutionMap.set(operation.logical_key, {
@@ -466,7 +634,11 @@ export class KickoffPatchImportService {
         id: created.post.id,
       })
       ctx.affectedPostIds.add(created.post.id)
-      return this.successResult(operation, created.post.id, `runtime-simulated post ${created.post.id} created`)
+      return this.successResult(
+        operation,
+        created.post.id,
+        `runtime-simulated post ${created.post.id} created`,
+      )
     }
 
     throw new ValidationError('Unsupported kickoff operation entity')
@@ -510,8 +682,12 @@ export class KickoffPatchImportService {
       return
     }
     if (operation.entity_kind === 'runtime_instruction') {
-      if (!readKickoffWorkflowProfile(profileId).import_defaults.allow_runtime_instruction_payload) {
-        throw new ValidationError(`Profile ${profileId} does not allow runtime instruction payloads`)
+      if (
+        !readKickoffWorkflowProfile(profileId).import_defaults.allow_runtime_instruction_payload
+      ) {
+        throw new ValidationError(
+          `Profile ${profileId} does not allow runtime instruction payloads`,
+        )
       }
       this.resolveAgent(operation.payload.actor_selector)
       this.resolveCommunity(operation.payload.community_selector.slug)
@@ -532,7 +708,8 @@ export class KickoffPatchImportService {
       const agent = this.deps.agentRepo
         .findByOwner(roster.owner_model.owner_id)
         .find((item) => item.display_name === entry.display_name)
-      if (!agent) throw new ValidationError(`Missing launch roster agent for ${selector.roster_entry_id}`)
+      if (!agent)
+        throw new ValidationError(`Missing launch roster agent for ${selector.roster_entry_id}`)
       return agent
     }
     if (selector.display_name) {
@@ -540,7 +717,9 @@ export class KickoffPatchImportService {
       if (!agent) throw new ValidationError(`Unknown display_name: ${selector.display_name}`)
       return agent
     }
-    throw new ValidationError('actor_selector must provide agent_id, roster_entry_id, or display_name')
+    throw new ValidationError(
+      'actor_selector must provide agent_id, roster_entry_id, or display_name',
+    )
   }
 
   private resolveCommunity(slug: string) {
@@ -552,11 +731,57 @@ export class KickoffPatchImportService {
   }
 
   private resolveBatchId(kind: 'kickoff' | 'warmup', suite: ResolvedTargetSuite): string {
-    const batchId = kind === 'kickoff' ? suite.kickoff_batch_id : suite.warmup_batch_id
-    if (!batchId) {
-      throw new ValidationError(`Suite ${suite.suite_id} is missing its ${kind} batch`)
+    return this.resolveBatchBinding(kind, suite).batch_id
+  }
+
+  private resolveBatchBinding(
+    requestedKind: 'kickoff' | 'warmup',
+    suite: ResolvedTargetSuite,
+  ): { batch_id: string; batch_kind: 'kickoff' | 'warmup' } {
+    if (requestedKind === 'kickoff') {
+      if (!suite.kickoff_batch_id) {
+        throw new ValidationError(`Suite ${suite.suite_id} is missing its kickoff batch`)
+      }
+      return {
+        batch_id: suite.kickoff_batch_id,
+        batch_kind: 'kickoff',
+      }
     }
-    return batchId
+
+    if (suite.warmup_batch_id) {
+      return {
+        batch_id: suite.warmup_batch_id,
+        batch_kind: 'warmup',
+      }
+    }
+
+    if (suite.mode === 'candidate' && suite.kickoff_batch_id) {
+      return {
+        batch_id: suite.kickoff_batch_id,
+        batch_kind: 'kickoff',
+      }
+    }
+
+    throw new ValidationError(`Suite ${suite.suite_id} is missing its warmup batch`)
+  }
+
+  private resolveGenerationMode(input: {
+    requested_mode?: KickoffAuthoringOperation['generation_mode']
+    effective_batch_kind: 'kickoff' | 'warmup'
+  }) {
+    if (input.effective_batch_kind === 'kickoff') {
+      if (!input.requested_mode || input.requested_mode === 'warmup_candidate') {
+        return 'kickoff_candidate' as const
+      }
+    }
+
+    if (input.requested_mode) {
+      return input.requested_mode
+    }
+
+    return input.effective_batch_kind === 'kickoff'
+      ? ('kickoff_candidate' as const)
+      : ('warmup_candidate' as const)
   }
 
   private requireResolvedRef(
@@ -569,7 +794,9 @@ export class KickoffPatchImportService {
       throw new ValidationError(`Unknown logical reference: ${logicalKey}`)
     }
     if (kind && resolved.entity_kind !== kind) {
-      throw new ValidationError(`Logical reference ${logicalKey} is ${resolved.entity_kind}, expected ${kind}`)
+      throw new ValidationError(
+        `Logical reference ${logicalKey} is ${resolved.entity_kind}, expected ${kind}`,
+      )
     }
     return resolved
   }
@@ -607,7 +834,9 @@ export class KickoffPatchImportService {
     }
   }
 
-  private buildRecommendedNextActions(readiness: KickoffImportReport['readiness_snapshot']): string[] {
+  private buildRecommendedNextActions(
+    readiness: KickoffImportReport['readiness_snapshot'],
+  ): string[] {
     if (readiness.activation_readiness.ok && !readiness.admission.has_active_baseline) {
       return ['review_candidate_suite', 'activate_baseline_if_approved']
     }
@@ -617,11 +846,26 @@ export class KickoffPatchImportService {
     return readiness.activation_readiness.reasons.map((reason) => `repair:${reason}`)
   }
 
+  private async publishAftershowCandidates(ctx: ResolvedOperationContext): Promise<void> {
+    if (!this.deps.aftershowService || ctx.aftershowCandidatePostIds.size === 0) return
+    for (const postId of ctx.aftershowCandidatePostIds) {
+      await this.deps.aftershowService.trigger({
+        post_id: postId,
+        mode: 'AUTO',
+        force: true,
+      })
+    }
+  }
+
   private async refreshSearchDocs(ctx: ResolvedOperationContext): Promise<void> {
     if (!this.deps.searchProjectionService) return
     await Promise.all([
-      ...[...ctx.affectedPostIds].map((postId) => this.deps.searchProjectionService!.refreshPost(postId)),
-      ...[...ctx.affectedThreadIds].map((threadId) => this.deps.searchProjectionService!.refreshThread(threadId)),
+      ...[...ctx.affectedPostIds].map((postId) =>
+        this.deps.searchProjectionService!.refreshPost(postId),
+      ),
+      ...[...ctx.affectedThreadIds].map((threadId) =>
+        this.deps.searchProjectionService!.refreshThread(threadId),
+      ),
     ])
   }
 }

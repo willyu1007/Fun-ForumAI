@@ -72,6 +72,9 @@ export class InMemoryMediaCatalogCardRepository implements MediaCatalogCardRepos
       if (exceptCardId && entity.id === exceptCardId) continue
       if (!entity.is_current) continue
       entity.is_current = false
+      if (entity.build_status === 'current') {
+        entity.build_status = 'stale'
+      }
       updated += 1
     }
     return updated

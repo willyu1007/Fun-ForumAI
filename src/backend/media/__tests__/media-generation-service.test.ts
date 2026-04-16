@@ -577,6 +577,8 @@ describe('MediaGenerationService', () => {
       height: 1280,
       sha256: 'sha-generated-1',
       phash: null,
+      duplicate_cluster_id: null,
+      duplicate_distance: null,
       created_at: new Date(),
       updated_at: new Date(),
     }
@@ -821,6 +823,8 @@ describe('MediaGenerationService', () => {
       height: 1280,
       sha256: 'sha-generated-dedup-1',
       phash: null,
+      duplicate_cluster_id: null,
+      duplicate_distance: null,
       created_at: new Date(),
       updated_at: new Date(),
     }
@@ -1022,6 +1026,8 @@ describe('MediaGenerationService', () => {
       height: 1280,
       sha256: 'sha-generated-fallback-1',
       phash: null,
+      duplicate_cluster_id: null,
+      duplicate_distance: null,
       created_at: new Date(),
       updated_at: new Date(),
     }

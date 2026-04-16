@@ -7,6 +7,7 @@ const ALLOWED_SERVICE_IDENTITIES = ['agent-runtime'] as const
 const NONCE_CACHE = new Map<string, number>()
 const NONCE_CLEANUP_INTERVAL_MS = 60_000
 const NONCE_MAX_AGE_MS = config.serviceAuth.timestampToleranceMs * 2
+const HEX_SIGNATURE_PATTERN = /^[0-9a-f]+$/i
 
 setInterval(() => {
   const now = Date.now()
@@ -39,8 +40,15 @@ function verifyServiceToken(token: string, bodyRaw: string): { identity: string 
   const bodyHash = crypto.createHash('sha256').update(bodyRaw || '').digest('hex')
   const payload = `${identity}:${timestamp}:${nonce}:${bodyHash}`
   const expected = crypto.createHmac('sha256', config.serviceAuth.secret).update(payload).digest('hex')
+  const expectedBuffer = Buffer.from(expected, 'hex')
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'))) {
+  if (!HEX_SIGNATURE_PATTERN.test(signature) || signature.length !== expected.length) {
+    throw new UnauthorizedError('Invalid service token signature')
+  }
+
+  const signatureBuffer = Buffer.from(signature, 'hex')
+
+  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
     throw new UnauthorizedError('Invalid service token signature')
   }
 

@@ -23,6 +23,7 @@ const baseOperationSchema = z.object({
   depends_on: z.array(z.string().trim().min(1)).optional(),
   target_batch_kind: z.enum(['kickoff', 'warmup']).optional(),
   generation_mode: z.enum([
+    'kickoff_candidate',
     'warmup_candidate',
     'warmup_topup_candidate',
     'governance_restore',

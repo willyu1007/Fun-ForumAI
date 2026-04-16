@@ -63,6 +63,18 @@ describe('DevKickoffPanel', () => {
         data: {
           current_data_mode: 'kickoff-candidate',
           mode_source: 'marker',
+          flow: {
+            phase: 'activation',
+            title: '等待激活',
+            summary: 'Kickoff Foundation 已通过检查，下一步是 review / activate。',
+            next_action: 'Review / Activate',
+            checkpoints: {
+              foundation_ready: true,
+              activation_ready: true,
+              active_baseline_ready: false,
+              runtime_ready: false,
+            },
+          },
           latest_run: null,
           latest_import_report: {
             report_meta: {
@@ -143,21 +155,23 @@ describe('DevKickoffPanel', () => {
     } as never)
   })
 
-  it('renders section titles, mode badge, readiness lights, and import summary', () => {
+  it('renders the simplified kickoff flow summary and key checkpoints', () => {
     render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
 
-    expect(screen.getByText('Kickoff 调控台')).toBeTruthy()
-    expect(screen.getAllByText('kickoff-candidate').length).toBeGreaterThan(0)
-    expect(screen.getByText('系统状态')).toBeTruthy()
-    expect(screen.getByText('最近导入')).toBeTruthy()
-    expect(screen.getByText('运行详情')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Kickoff' })).toBeTruthy()
+    expect(screen.getAllByText('Kickoff / 待激活').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('等待激活').length).toBeGreaterThan(0)
+    expect(screen.getByText('关键步骤')).toBeTruthy()
+    expect(screen.getByText('当前结论')).toBeTruthy()
+    expect(screen.getByText('调试详情')).toBeTruthy()
 
-    const lights = screen.getByTestId('readiness-lights')
-    expect(lights).toBeTruthy()
-    expect(screen.getByText('全部就绪')).toBeTruthy()
+    const checkpoints = screen.getByTestId('flow-checkpoints')
+    expect(checkpoints).toBeTruthy()
+    expect(screen.getByText('基础内容')).toBeTruthy()
+    expect(screen.getByText('激活准备')).toBeTruthy()
+    expect(screen.getByText('激活基线')).toBeTruthy()
 
     expect(screen.getByText('kickoff-v1')).toBeTruthy()
-    expect(screen.getByText('review suite')).toBeTruthy()
   })
 
   it('hides suite details when no suite is associated', () => {
@@ -166,6 +180,18 @@ describe('DevKickoffPanel', () => {
         data: {
           current_data_mode: 'unknown',
           mode_source: 'inferred',
+          flow: {
+            phase: 'idle',
+            title: '未初始化 Kickoff',
+            summary: '当前没有 Kickoff Foundation。',
+            next_action: '初始化 Kickoff',
+            checkpoints: {
+              foundation_ready: false,
+              activation_ready: false,
+              active_baseline_ready: false,
+              runtime_ready: false,
+            },
+          },
           latest_run: null,
           latest_import_report: null,
           latest_runtime_readiness: null,
@@ -180,9 +206,69 @@ describe('DevKickoffPanel', () => {
 
     render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
 
-    expect(screen.getByText('未关联 Suite')).toBeTruthy()
+    expect(screen.getByText('当前没有 Kickoff')).toBeTruthy()
+    fireEvent.click(screen.getByText('调试详情'))
+    expect(screen.getByText('当前调试信息')).toBeTruthy()
     expect(screen.getByText('暂无导入记录')).toBeTruthy()
     expect(screen.getByText('暂无运行记录')).toBeTruthy()
+  })
+
+  it('shows activation as the current step for a review-ready kickoff', () => {
+    useDevKickoffStatusMock.mockReturnValue({
+      data: {
+        data: {
+          current_data_mode: 'kickoff-candidate',
+          mode_source: 'marker',
+          flow: {
+            phase: 'activation',
+            title: '等待激活',
+            summary: 'Kickoff Foundation 已通过检查，下一步是 review / activate。',
+            next_action: 'Review / Activate',
+            checkpoints: {
+              foundation_ready: true,
+              activation_ready: true,
+              active_baseline_ready: false,
+              runtime_ready: false,
+            },
+          },
+          latest_run: null,
+          latest_import_report: null,
+          latest_runtime_readiness: {
+            activation_readiness: { ok: true, reasons: [] },
+            layer_readiness: {
+              kickoff_layer_ready: true,
+              warmup_layer_ready: false,
+            },
+            quality_state: {
+              warning_count: 0,
+              summary: {
+                media_coverage_ratio: 0.5,
+              },
+            },
+            admission: {
+              allow_public_growth: false,
+            },
+          },
+          current_suite: {
+            id: 'suite-1',
+            label: 'kickoff-v1',
+            state: 'review_ready',
+            kickoff_batch_id: 'batch-kickoff',
+            warmup_batch_id: null,
+            active_baseline_id: null,
+          },
+        },
+      },
+      error: null,
+      refetch: vi.fn(),
+    } as never)
+    useDevKickoffLatestRunMock.mockReturnValue({ data: null, error: null, refetch: vi.fn() } as never)
+    useDevKickoffRecentRunsMock.mockReturnValue({ data: { data: [] }, error: null, refetch: vi.fn() } as never)
+
+    render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
+
+    expect(screen.getAllByText('等待激活').length).toBeGreaterThan(0)
+    expect(screen.getByText('kickoff-v1')).toBeTruthy()
   })
 
   it('reveals artifact paths with hints when toggle is clicked', () => {
@@ -190,6 +276,8 @@ describe('DevKickoffPanel', () => {
 
     expect(screen.queryByText('产物根目录')).toBeNull()
 
+    fireEvent.click(screen.getByText('调试详情'))
+    expect(screen.getByText('当前调试信息')).toBeTruthy()
     fireEvent.click(screen.getByText('Artifact 路径'))
 
     expect(screen.getByText('/tmp/run-1')).toBeTruthy()
@@ -201,6 +289,7 @@ describe('DevKickoffPanel', () => {
   it('renders run selector dropdown trigger when recent runs exist', () => {
     render(<DevKickoffPanel open onOpenChange={vi.fn()} />)
 
+    fireEvent.click(screen.getByText('调试详情'))
     const trigger = screen.getByRole('button', { name: /run-1/i })
     expect(trigger).toBeTruthy()
     expect(trigger.getAttribute('aria-haspopup')).toBe('menu')

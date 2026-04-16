@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { InMemoryAgentConfigRepository, InMemoryAgentRepository } from '../../repos/agent-repository.js'
+import { listLaunchCommunitySeeds } from '../../launch/community-rules.js'
+import { getLaunchProgrammingSchedule } from '../../launch/programming-schedule.js'
+import {
+  InMemoryAgentConfigRepository,
+  InMemoryAgentRepository,
+} from '../../repos/agent-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
@@ -26,6 +31,7 @@ function createService() {
   const agentConfigRepo = new InMemoryAgentConfigRepository()
   const refreshPost = vi.fn(async () => {})
   const refreshThread = vi.fn(async () => {})
+  const publishedAftershowPostIds = new Set<string>()
   const community = communityRepo.create({
     name: 'Warm-up Arena',
     slug: 'warmup-arena',
@@ -117,6 +123,18 @@ function createService() {
     launchProgrammingOpsService: {
       getAdminPayload: vi.fn(async () => programmingOpsPayload),
     },
+    aftershowService: {
+      trigger: vi.fn(async (input: { post_id: string }) => {
+        publishedAftershowPostIds.add(input.post_id)
+        return {
+          artifact: {},
+        }
+      }),
+      getLatestByPost: vi.fn(async (postId: string) => ({
+        artifact: publishedAftershowPostIds.has(postId) ? {} : null,
+        callouts: [],
+      })),
+    } as never,
     runtimeLoop: {
       isRunning: true,
     },
@@ -130,6 +148,7 @@ function createService() {
     service,
     repos: {
       warmupGovernanceRepo,
+      communityRepo,
       postRepo,
       publicStageThreadRepo,
       publicStageTurnRepo,
@@ -139,6 +158,7 @@ function createService() {
     mocks: {
       refreshPost,
       refreshThread,
+      publishedAftershowPostIds,
     },
     programmingOpsPayload,
     seed: {
@@ -408,6 +428,277 @@ describe('WarmupGovernanceService', () => {
     expect(baselines).toHaveLength(1)
   })
 
+  it('activates kickoff-only suites while deferring warmup to a later runtime step', async () => {
+    const ctx = createService()
+    const suite = await ctx.repos.warmupGovernanceRepo.createSuite({
+      state: 'review_ready',
+      suite_label: 'kickoff-only-suite',
+      created_by_user_id: 'admin-1',
+    })
+    const kickoffBatch = await ctx.repos.warmupGovernanceRepo.createBatch({
+      suite_id: suite.id,
+      batch_kind: 'kickoff',
+      state: 'review_ready',
+      revision_key: 'kickoff:v1',
+      package_hash: 'kickoff:v1',
+    })
+    const kickoffPost = await ctx.repos.postRepo.create({
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      title: 'Kickoff foundation',
+      body: 'Kickoff body',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      moderation_metadata: {
+        distribution_state: 'NO_RECOMMEND',
+      },
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    const kickoffThread = await ctx.repos.publicStageThreadRepo.create({
+      post_id: kickoffPost.id,
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      body: 'Kickoff thread',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    const kickoffTurn = await ctx.repos.publicStageTurnRepo.create({
+      thread_id: kickoffThread.id,
+      post_id: kickoffPost.id,
+      author_agent_id: ctx.seed.agent.id,
+      turn_index: 0,
+      body: 'Kickoff turn',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    ctx.repos.postMediaRepo.create({
+      post_id: kickoffPost.id,
+      asset_id: 'asset-kickoff-only',
+      media_url: 'https://example.com/kickoff-only.png',
+      mime_type: 'image/png',
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'POST',
+      target_id: kickoffPost.id,
+      direction: 'UP',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'THREAD',
+      target_id: kickoffThread.id,
+      direction: 'UP',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'TURN',
+      target_id: kickoffTurn.id,
+      direction: 'UP',
+    })
+    await ctx.repos.warmupGovernanceRepo.updateSuite(suite.id, {
+      kickoff_batch_id: kickoffBatch.id,
+      warmup_batch_id: null,
+    })
+
+    const reviewed = await ctx.service.reviewSuite({
+      suite_id: suite.id,
+      reviewer_user_id: 'admin-1',
+      decision: 'pass_to_active',
+      confirm_activation: true,
+    })
+
+    expect(reviewed.suite.state).toBe('active')
+    expect(reviewed.suite.warmup_batch_id).toBeTruthy()
+    expect(reviewed.suite.warmup_batch?.state).toBe('draft')
+    expect(reviewed.suite.actions.can_start_warmup).toBe(true)
+
+    const admission = await ctx.service.getRuntimeBaselineAdmission()
+    expect(admission.kickoff_layer_ready).toBe(true)
+    expect(admission.warmup_layer_ready).toBe(false)
+    expect(admission.allow_public_growth).toBe(false)
+    expect(admission.reasons).toContain('warmup_layer_not_ready')
+  })
+
+  it('keeps public growth admission open after the deferred warmup batch becomes active', async () => {
+    const ctx = createService()
+    const suite = await ctx.repos.warmupGovernanceRepo.createSuite({
+      state: 'review_ready',
+      suite_label: 'kickoff-only-suite',
+      created_by_user_id: 'admin-1',
+    })
+    const kickoffBatch = await ctx.repos.warmupGovernanceRepo.createBatch({
+      suite_id: suite.id,
+      batch_kind: 'kickoff',
+      state: 'review_ready',
+      revision_key: 'kickoff:v1',
+      package_hash: 'kickoff:v1',
+    })
+    const kickoffPost = await ctx.repos.postRepo.create({
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      title: 'Kickoff foundation',
+      body: 'Kickoff body',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      moderation_metadata: {
+        distribution_state: 'NO_RECOMMEND',
+      },
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    const kickoffThread = await ctx.repos.publicStageThreadRepo.create({
+      post_id: kickoffPost.id,
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      body: 'Kickoff thread',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    const kickoffTurn = await ctx.repos.publicStageTurnRepo.create({
+      thread_id: kickoffThread.id,
+      post_id: kickoffPost.id,
+      author_agent_id: ctx.seed.agent.id,
+      turn_index: 0,
+      body: 'Kickoff turn',
+      visibility: 'GRAY',
+      state: 'PENDING',
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    ctx.repos.postMediaRepo.create({
+      post_id: kickoffPost.id,
+      asset_id: 'asset-kickoff-only',
+      media_url: 'https://example.com/kickoff-only.png',
+      mime_type: 'image/png',
+      warm_start_batch_id: kickoffBatch.id,
+      generation_mode: 'kickoff_candidate',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'POST',
+      target_id: kickoffPost.id,
+      direction: 'UP',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'THREAD',
+      target_id: kickoffThread.id,
+      direction: 'UP',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'TURN',
+      target_id: kickoffTurn.id,
+      direction: 'UP',
+    })
+    await ctx.repos.warmupGovernanceRepo.updateSuite(suite.id, {
+      kickoff_batch_id: kickoffBatch.id,
+      warmup_batch_id: null,
+    })
+
+    const reviewed = await ctx.service.reviewSuite({
+      suite_id: suite.id,
+      reviewer_user_id: 'admin-1',
+      decision: 'pass_to_active',
+      confirm_activation: true,
+    })
+    const warmupBatchId = reviewed.suite.warmup_batch_id
+    expect(reviewed.suite.warmup_batch?.state).toBe('draft')
+    expect(warmupBatchId).toBeTruthy()
+
+    const warmupPost = await ctx.repos.postRepo.create({
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      title: 'Warmup extension',
+      body: 'Warmup body',
+      visibility: 'NORMAL',
+      state: 'PUBLISHED',
+      moderation_metadata: {
+        distribution_state: 'NORMAL',
+      },
+      warm_start_batch_id: warmupBatchId!,
+      generation_mode: 'warmup_candidate',
+    })
+    const warmupThread = await ctx.repos.publicStageThreadRepo.create({
+      post_id: warmupPost.id,
+      community_id: ctx.seed.community.id,
+      author_agent_id: ctx.seed.agent.id,
+      body: 'Warmup thread',
+      visibility: 'NORMAL',
+      state: 'PUBLISHED',
+      warm_start_batch_id: warmupBatchId!,
+      generation_mode: 'warmup_candidate',
+    })
+    const warmupTurn = await ctx.repos.publicStageTurnRepo.create({
+      thread_id: warmupThread.id,
+      post_id: warmupPost.id,
+      author_agent_id: ctx.seed.agent.id,
+      turn_index: 0,
+      body: 'Warmup turn',
+      visibility: 'NORMAL',
+      state: 'PUBLISHED',
+      warm_start_batch_id: warmupBatchId!,
+      generation_mode: 'warmup_candidate',
+    })
+    ctx.repos.postMediaRepo.create({
+      post_id: warmupPost.id,
+      asset_id: 'asset-warmup-only',
+      media_url: 'https://example.com/warmup-only.png',
+      mime_type: 'image/png',
+      warm_start_batch_id: warmupBatchId!,
+      generation_mode: 'warmup_candidate',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'POST',
+      target_id: warmupPost.id,
+      direction: 'UP',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'THREAD',
+      target_id: warmupThread.id,
+      direction: 'UP',
+    })
+    ctx.repos.voteRepo.upsert({
+      voter_agent_id: ctx.seed.agent.id,
+      target_type: 'TURN',
+      target_id: warmupTurn.id,
+      direction: 'UP',
+    })
+    await ctx.repos.warmupGovernanceRepo.updateBatch(warmupBatchId!, {
+      state: 'active',
+      activated_at: new Date('2026-04-16T00:30:00.000Z'),
+    })
+    const admission = await ctx.service.getRuntimeBaselineAdmission()
+
+    expect(admission.warmup_layer_ready).toBe(true)
+    expect(admission.last_review_decision_ok).toBe(true)
+    expect(admission.allow_public_growth).toBe(true)
+    expect(admission.reasons).toEqual([])
+  })
+
+  it('rejects warmup start before the suite is active', async () => {
+    const ctx = createService()
+    const fixture = await seedSuiteFixture(ctx)
+
+    await expect(
+      ctx.service.startWarmup({
+        suite_id: fixture.suiteId,
+        actor_user_id: 'admin-1',
+      }),
+    ).rejects.toThrow('warmup can only start after the suite is active')
+  })
+
   it('requires structured reason codes for not_passed reviews', async () => {
     const ctx = createService()
     const fixture = await seedSuiteFixture(ctx)
@@ -517,21 +808,25 @@ describe('WarmupGovernanceService', () => {
 
   it('fails runtime growth admission when programming health gates are red', async () => {
     const ctx = createService()
-    ctx.programmingOpsPayload.health.daypart_readiness = [{
-      daypart_id: 'evening_prime',
-      label: '晚高峰主冲突',
-      ok: false,
-      required: { root_posts: 2 },
-      observed: { root_posts: 0 },
-    }]
-    ctx.programmingOpsPayload.health.community_supply_floor = [{
-      community_slug: 'warmup-arena',
-      community_name: 'Warm-up Arena',
-      ok: false,
-      missed_slots: 1,
-      required: { root_posts: 1 },
-      observed: { root_posts: 0 },
-    }]
+    ctx.programmingOpsPayload.health.daypart_readiness = [
+      {
+        daypart_id: 'evening_prime',
+        label: '晚高峰主冲突',
+        ok: false,
+        required: { root_posts: 2 },
+        observed: { root_posts: 0 },
+      },
+    ]
+    ctx.programmingOpsPayload.health.community_supply_floor = [
+      {
+        community_slug: 'warmup-arena',
+        community_name: 'Warm-up Arena',
+        ok: false,
+        missed_slots: 1,
+        required: { root_posts: 1 },
+        observed: { root_posts: 0 },
+      },
+    ]
     ctx.programmingOpsPayload.health.visual_ratio_ok = false
     ctx.programmingOpsPayload.health.aftershow_pipeline_ok = false
 
@@ -548,12 +843,14 @@ describe('WarmupGovernanceService', () => {
 
     const detail = await ctx.service.getSuiteDetail(fixture.suiteId)
     expect(detail.activation_readiness.ok).toBe(false)
-    expect(detail.activation_readiness.reasons).toEqual(expect.arrayContaining([
-      'key_shelves_not_ready',
-      'key_communities_not_ready',
-      'media_access_not_ready',
-      'aftershow_pipeline_not_ready',
-    ]))
+    expect(detail.activation_readiness.reasons).toEqual(
+      expect.arrayContaining([
+        'key_shelves_not_ready',
+        'key_communities_not_ready',
+        'media_access_not_ready',
+        'aftershow_pipeline_not_ready',
+      ]),
+    )
   })
 
   it('retimes generated kickoff content and backfills aftershow plus community assignments', async () => {
@@ -616,37 +913,65 @@ describe('WarmupGovernanceService', () => {
       warm_start_batch_id: 'batch-1',
       generation_mode: 'warmup_candidate',
     })
-    const assign = vi.fn(async (input: {
-      community_id: string
-      scope: 'COMMUNITY'
-      scope_id: string
-      role: string
-      agent_id: string
-      actor_user_id: string
-    }) =>
-      roleAssignmentRepo.create({
-        community_id: input.community_id,
-        post_id: null,
-        agent_id: input.agent_id,
-        scope: input.scope,
-        scope_id: input.scope_id,
-        role: input.role,
-        status: 'ACTIVE',
-        assigned_by: input.actor_user_id,
-      }))
-    const trigger = vi.fn(async (): Promise<Awaited<ReturnType<AftershowService['trigger']>>> => ({
-      run: {
-        id: 'run-1',
-        post_id: post.id,
-        community_id: community.id,
-        mode: 'THRESHOLD',
-        status: 'COMPLETED',
-        threshold_min_audience_comments: 0,
-        threshold_min_human_vote_score: 0,
-        comments_at_trigger: 0,
-        audience_message_count_at_trigger: 0,
-        human_vote_score_at_trigger: 0,
-        audience_summary_ref: null,
+    const assign = vi.fn(
+      async (input: {
+        community_id: string
+        scope: 'COMMUNITY'
+        scope_id: string
+        role: string
+        agent_id: string
+        actor_user_id: string
+      }) =>
+        roleAssignmentRepo.create({
+          community_id: input.community_id,
+          post_id: null,
+          agent_id: input.agent_id,
+          scope: input.scope,
+          scope_id: input.scope_id,
+          role: input.role,
+          status: 'ACTIVE',
+          assigned_by: input.actor_user_id,
+        }),
+    )
+    const trigger = vi.fn(
+      async (): Promise<Awaited<ReturnType<AftershowService['trigger']>>> => ({
+        run: {
+          id: 'run-1',
+          post_id: post.id,
+          community_id: community.id,
+          mode: 'THRESHOLD',
+          status: 'COMPLETED',
+          threshold_min_audience_comments: 0,
+          threshold_min_human_vote_score: 0,
+          comments_at_trigger: 0,
+          audience_message_count_at_trigger: 0,
+          human_vote_score_at_trigger: 0,
+          audience_summary_ref: null,
+          threshold_detail: {
+            audience_comments: {
+              required: 0,
+              actual: 0,
+            },
+            human_vote_score: {
+              required: 0,
+              actual: 0,
+            },
+          },
+          triggered_by_user_id: null,
+          triggered_by_agent_id: null,
+          trigger_mode: 'AUTO',
+          force_trigger: true,
+          threshold_pass: true,
+          reason: 'forced_for_kickoff',
+          used_stage_fallback: false,
+          stage_spec_errors: [],
+          created_at: new Date('2026-04-13T15:25:00.000Z'),
+          updated_at: new Date('2026-04-13T15:25:00.000Z'),
+        },
+        threshold_pass: true,
+        reason: 'forced_for_kickoff',
+        audience_message_count: 0,
+        summary_ref: null,
         threshold_detail: {
           audience_comments: {
             required: 0,
@@ -657,35 +982,11 @@ describe('WarmupGovernanceService', () => {
             actual: 0,
           },
         },
-        triggered_by_user_id: null,
-        triggered_by_agent_id: null,
-        trigger_mode: 'AUTO',
-        force_trigger: true,
-        threshold_pass: true,
-        reason: 'forced_for_kickoff',
-        used_stage_fallback: false,
-        stage_spec_errors: [],
-        created_at: new Date('2026-04-13T15:25:00.000Z'),
-        updated_at: new Date('2026-04-13T15:25:00.000Z'),
-      },
-      threshold_pass: true,
-      reason: 'forced_for_kickoff',
-      audience_message_count: 0,
-      summary_ref: null,
-      threshold_detail: {
-        audience_comments: {
-          required: 0,
-          actual: 0,
-        },
-        human_vote_score: {
-          required: 0,
-          actual: 0,
-        },
-      },
-      artifact: null,
-      callouts: [],
-      notifications_created: 0,
-    }))
+        artifact: null,
+        callouts: [],
+        notifications_created: 0,
+      }),
+    )
     const service = new WarmupGovernanceService({
       warmupGovernanceRepo,
       postRepo,
@@ -726,45 +1027,48 @@ describe('WarmupGovernanceService', () => {
         }),
       },
       launchProgrammingOpsService: {
-        getAdminPayload: vi.fn(async () => ({
-          enabled: true,
-          timezone: 'Asia/Shanghai',
-          active_daypart_id: null,
-          dayparts: [],
-          slots: [],
-          health: {
-            required_daily_outcomes: {},
-            observed_daily_outcomes: {},
-            daypart_readiness: [],
-            community_supply_floor: [],
-            visual_ratio_ok: true,
-            aftershow_pipeline_ok: true,
-            warning_count: 0,
-            warnings: [],
-          },
-          observations: {
-            visual_ratio: {
-              root_cover_ratio: null,
-              note_cover_ratio: null,
-              highlight_visual_ratio: null,
-              reject_reason_counts: {},
-              budget_remaining_cny: null,
-              cost_gate_active: false,
-            },
-            highlight_candidates: [],
-            aftershow: [],
-          },
-          governance_references: {
-            communities: [],
-            incubation: [],
-          },
-          rollback_order: [],
-          drill_checklist: [],
-          meta: {
-            generated_at: '2026-04-13T06:30:00.000Z',
-            source: 'launch-programming-ops-v1',
-          },
-        } satisfies LaunchProgrammingOpsPayload)),
+        getAdminPayload: vi.fn(
+          async () =>
+            ({
+              enabled: true,
+              timezone: 'Asia/Shanghai',
+              active_daypart_id: null,
+              dayparts: [],
+              slots: [],
+              health: {
+                required_daily_outcomes: {},
+                observed_daily_outcomes: {},
+                daypart_readiness: [],
+                community_supply_floor: [],
+                visual_ratio_ok: true,
+                aftershow_pipeline_ok: true,
+                warning_count: 0,
+                warnings: [],
+              },
+              observations: {
+                visual_ratio: {
+                  root_cover_ratio: null,
+                  note_cover_ratio: null,
+                  highlight_visual_ratio: null,
+                  reject_reason_counts: {},
+                  budget_remaining_cny: null,
+                  cost_gate_active: false,
+                },
+                highlight_candidates: [],
+                aftershow: [],
+              },
+              governance_references: {
+                communities: [],
+                incubation: [],
+              },
+              rollback_order: [],
+              drill_checklist: [],
+              meta: {
+                generated_at: '2026-04-13T06:30:00.000Z',
+                source: 'launch-programming-ops-v1',
+              },
+            }) satisfies LaunchProgrammingOpsPayload,
+        ),
       },
       roleAssignmentService: {
         assign,
@@ -778,47 +1082,49 @@ describe('WarmupGovernanceService', () => {
       },
     })
 
-    await (service as unknown as {
-      orchestrateGeneratedPost(input: {
-        generated: {
-          summary: {
-            spec_id: string
+    await (
+      service as unknown as {
+        orchestrateGeneratedPost(input: {
+          generated: {
+            summary: {
+              spec_id: string
+              post_id: string
+              title: string
+              agent_id: string
+              community_id: string
+              community_slug: string
+              batch_id: string
+              batch_kind: 'kickoff'
+            }
+            spec: {
+              scheduled_local_time: string
+              programming_daypart: 'evening_prime'
+              community_slug: string
+              content_kind: 'mainline_root'
+              editorial_shelf_id: 'conflict_rising'
+              id: string
+              pass: 'occupancy'
+              phase: 'escalation'
+              title: string
+              body: string
+              tags: string[]
+              storyline: {
+                id: string
+                title: string
+                hook: string
+              }
+            }
             post_id: string
-            title: string
-            agent_id: string
+            author_agent_id: string
             community_id: string
             community_slug: string
-            batch_id: string
-            batch_kind: 'kickoff'
+            thread_id: string
+            turn_ids: string[]
           }
-          spec: {
-            scheduled_local_time: string
-            programming_daypart: 'evening_prime'
-            community_slug: string
-            content_kind: 'mainline_root'
-            editorial_shelf_id: 'conflict_rising'
-            id: string
-            pass: 'occupancy'
-            phase: 'escalation'
-            title: string
-            body: string
-            tags: string[]
-            storyline: {
-              id: string
-              title: string
-              hook: string
-            }
-          }
-          post_id: string
-          author_agent_id: string
-          community_id: string
-          community_slug: string
-          thread_id: string
-          turn_ids: string[]
-        }
-        now: Date
-      }): Promise<void>
-    }).orchestrateGeneratedPost({
+          now: Date
+        }): Promise<void>
+      }
+    ).orchestrateGeneratedPost({
       generated: {
         summary: {
           spec_id: 'spec-1',
@@ -872,8 +1178,12 @@ describe('WarmupGovernanceService', () => {
     })
 
     expect(formatter.format(scheduledPost?.created_at ?? new Date(0))).toBe('13/04/2026, 19:20')
-    expect((scheduledThread?.created_at?.getTime() ?? 0)).toBeGreaterThan(scheduledPost?.created_at.getTime() ?? 0)
-    expect((scheduledTurn?.created_at?.getTime() ?? 0)).toBeGreaterThan(scheduledThread?.created_at.getTime() ?? 0)
+    expect(scheduledThread?.created_at?.getTime() ?? 0).toBeGreaterThan(
+      scheduledPost?.created_at.getTime() ?? 0,
+    )
+    expect(scheduledTurn?.created_at?.getTime() ?? 0).toBeGreaterThan(
+      scheduledThread?.created_at.getTime() ?? 0,
+    )
     expect(assign).toHaveBeenCalledWith({
       community_id: community.id,
       scope: 'COMMUNITY',
@@ -894,21 +1204,25 @@ describe('WarmupGovernanceService', () => {
 
   it('fails runtime growth admission when programming health gates are red in active baseline', async () => {
     const ctx = createService()
-    ctx.programmingOpsPayload.health.daypart_readiness = [{
-      daypart_id: 'evening_prime',
-      label: '晚高峰主冲突',
-      ok: false,
-      required: { root_posts: 2 },
-      observed: { root_posts: 0 },
-    }]
-    ctx.programmingOpsPayload.health.community_supply_floor = [{
-      community_slug: 'warmup-arena',
-      community_name: 'Warm-up Arena',
-      ok: false,
-      missed_slots: 1,
-      required: { root_posts: 1 },
-      observed: { root_posts: 0 },
-    }]
+    ctx.programmingOpsPayload.health.daypart_readiness = [
+      {
+        daypart_id: 'evening_prime',
+        label: '晚高峰主冲突',
+        ok: false,
+        required: { root_posts: 2 },
+        observed: { root_posts: 0 },
+      },
+    ]
+    ctx.programmingOpsPayload.health.community_supply_floor = [
+      {
+        community_slug: 'warmup-arena',
+        community_name: 'Warm-up Arena',
+        ok: false,
+        missed_slots: 1,
+        required: { root_posts: 1 },
+        observed: { root_posts: 0 },
+      },
+    ]
     ctx.programmingOpsPayload.health.visual_ratio_ok = false
     ctx.programmingOpsPayload.health.aftershow_pipeline_ok = false
 
@@ -919,12 +1233,161 @@ describe('WarmupGovernanceService', () => {
     expect(admission.media_access_ok).toBe(false)
     expect(admission.aftershow_pipeline_ok).toBe(false)
     expect(admission.allow_public_growth).toBe(false)
-    expect(admission.reasons).toEqual(expect.arrayContaining([
-      'key_shelves_not_ready',
-      'key_communities_not_ready',
-      'media_access_not_ready',
-      'aftershow_pipeline_not_ready',
-    ]))
+    expect(admission.reasons).toEqual(
+      expect.arrayContaining([
+        'key_shelves_not_ready',
+        'key_communities_not_ready',
+        'media_access_not_ready',
+        'aftershow_pipeline_not_ready',
+      ]),
+    )
+  })
+
+  it('derives suite programming health from kickoff tags and explicit aftershow artifacts', async () => {
+    const ctx = createService()
+    const schedule = getLaunchProgrammingSchedule()
+    for (const seed of listLaunchCommunitySeeds()) {
+      if (!ctx.repos.communityRepo.findBySlug(seed.slug)) {
+        ctx.repos.communityRepo.create({
+          name: seed.name,
+          slug: seed.slug,
+          rules_json: seed.rules_json,
+        })
+      }
+    }
+
+    const suite = await ctx.repos.warmupGovernanceRepo.createSuite({
+      state: 'review_ready',
+      suite_label: 'tag-derived-suite',
+      created_by_user_id: 'admin-1',
+    })
+    const kickoffBatch = await ctx.repos.warmupGovernanceRepo.createBatch({
+      suite_id: suite.id,
+      batch_kind: 'kickoff',
+      state: 'review_ready',
+      revision_key: 'kickoff:v1',
+      package_hash: 'kickoff:v1',
+    })
+    const warmupBatch = await ctx.repos.warmupGovernanceRepo.createBatch({
+      suite_id: suite.id,
+      batch_kind: 'warmup',
+      state: 'review_ready',
+      revision_key: 'warmup:v1',
+      package_hash: 'warmup:v1',
+    })
+
+    const createTaggedPost = async (input: {
+      community_slug: string
+      title: string
+      tags: string[]
+      with_media?: boolean
+    }) => {
+      const community = ctx.repos.communityRepo.findBySlug(input.community_slug)
+      expect(community).toBeTruthy()
+      const post = await ctx.repos.postRepo.create({
+        community_id: community!.id,
+        author_agent_id: ctx.seed.agent.id,
+        title: input.title,
+        body: `${input.title} body`,
+        tags: input.tags,
+        visibility: 'GRAY',
+        state: 'PENDING',
+        moderation_metadata: {
+          distribution_state: 'NO_RECOMMEND',
+        },
+        warm_start_batch_id: kickoffBatch.id,
+        generation_mode: 'warmup_candidate',
+      })
+      if (input.with_media) {
+        ctx.repos.postMediaRepo.create({
+          post_id: post.id,
+          asset_id: `asset-${post.id}`,
+          media_url: `https://example.com/${post.id}.png`,
+          mime_type: 'image/png',
+          warm_start_batch_id: kickoffBatch.id,
+          generation_mode: 'warmup_candidate',
+        })
+      }
+      return post
+    }
+
+    const eveningCommunities = schedule.slot_templates
+      .filter((slot) => slot.daypart === 'evening_prime')
+      .map((slot) => slot.community_slug)
+    const lateNightCommunity = schedule.slot_templates.find(
+      (slot) => slot.expected_outputs.aftershow_candidate,
+    )?.community_slug
+    expect(eveningCommunities).toHaveLength(3)
+    expect(lateNightCommunity).toBeTruthy()
+
+    await createTaggedPost({
+      community_slug: 'creator-recommendation',
+      title: 'Morning creator note',
+      tags: [
+        'kickoff',
+        'daypart:morning_warmup',
+        'content:creator-note',
+        'content-kind:note_entry',
+      ],
+      with_media: true,
+    })
+    await createTaggedPost({
+      community_slug: 'creator-relationship',
+      title: 'Afternoon creator note',
+      tags: [
+        'kickoff',
+        'daypart:afternoon_handoff',
+        'content:creator-note',
+        'content-kind:note_entry',
+        'content:continuity-seed',
+      ],
+    })
+    for (const communitySlug of eveningCommunities) {
+      await createTaggedPost({
+        community_slug: communitySlug,
+        title: `Highlight ${communitySlug}`,
+        tags: ['kickoff', 'daypart:evening_prime', 'content-kind:highlight_hero'],
+      })
+    }
+    const aftershowPost = await createTaggedPost({
+      community_slug: lateNightCommunity!,
+      title: 'Late night callback',
+      tags: [
+        'kickoff',
+        'daypart:late_night_callback',
+        'content:aftershow-candidate',
+        'content:continuity-seed',
+        'content-kind:story_episode',
+      ],
+      with_media: true,
+    })
+    ctx.mocks.publishedAftershowPostIds.add(aftershowPost.id)
+
+    const health = await (
+      ctx.service as WarmupGovernanceService & {
+        buildSuiteProgrammingHealth(batchIds: string[]): Promise<{
+          observed_daily_outcomes: Record<string, number>
+          daypart_readiness: Array<{ daypart_id: string; observed: Record<string, number> }>
+          aftershow_pipeline_ok: boolean
+          warning_count: number
+        } | null>
+      }
+    ).buildSuiteProgrammingHealth([kickoffBatch.id, warmupBatch.id])
+
+    expect(health).not.toBeNull()
+    expect(health?.observed_daily_outcomes.creator_note_entries).toBeGreaterThanOrEqual(2)
+    expect(health?.observed_daily_outcomes.highlight_candidates).toBeGreaterThanOrEqual(2)
+    expect(health?.observed_daily_outcomes.continuity_callbacks).toBeGreaterThanOrEqual(2)
+    expect(
+      health?.daypart_readiness.find((item) => item.daypart_id === 'morning_warmup')?.observed
+        .creator_note_entries,
+    ).toBeGreaterThanOrEqual(1)
+    expect(
+      health?.daypart_readiness.find((item) => item.daypart_id === 'afternoon_handoff')?.observed
+        .creator_note_entries,
+    ).toBeGreaterThanOrEqual(1)
+    expect(health?.aftershow_pipeline_ok).toBe(true)
+    expect(health?.warning_count).toBe(0)
   })
 
   it('previews quarantine scope and restores candidate exposure', async () => {
@@ -950,7 +1413,9 @@ describe('WarmupGovernanceService', () => {
       requested_by_user_id: 'admin-1',
     })
     const quarantinedPost = await ctx.repos.postRepo.findById(fixture.kickoffPostId)
-    const quarantinedThread = await ctx.repos.publicStageThreadRepo.findById(fixture.kickoffThreadId)
+    const quarantinedThread = await ctx.repos.publicStageThreadRepo.findById(
+      fixture.kickoffThreadId,
+    )
     const quarantinedTurn = await ctx.repos.publicStageTurnRepo.findById(fixture.kickoffTurnId)
 
     expect(quarantinedPost?.visibility).toBe('QUARANTINE')

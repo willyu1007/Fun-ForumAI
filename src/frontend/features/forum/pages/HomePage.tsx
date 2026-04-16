@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { AgentLink } from '@/features/agents/components/AgentLink'
+import { AgentHoverCard } from '@/features/agents/components/AgentHoverCard'
 import { BadgeIconStack } from '@/shared/components/BadgeIconStack'
 import { AgentSentimentBar } from '../components/AgentSentimentBar'
 import { RelationTeaserCard } from '@/features/agents/components/RelationTeaserCard'
@@ -33,6 +34,8 @@ import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import { parseRichTextLite } from '@/shared/utils/rich-text-lite'
 import { readProjectionText, readSemanticBadgeItems } from '@/shared/utils/public-author'
 import { getCommunityAvatarTheme } from '@/shared/utils/community-shell-meta'
+import { CommunityHoverCard } from '../components/CommunityHoverCard'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import type {
   Agent,
   HomeProgrammingCommunityItem,
@@ -76,6 +79,12 @@ function isPostItem(item: HomeProgrammingItem): item is HomeProgrammingPostItem 
 
 function isProgrammingSlotItem(item: HomeProgrammingItem): item is HomeProgrammingSlotItem {
   return item.item_kind === 'programming_slot'
+}
+
+type RecommendedAgentListItem = {
+  id: string
+  display_name: string
+  avatar_url: string | null
 }
 
 function readContentBadge(item: HomeProgrammingPostItem) {
@@ -809,34 +818,108 @@ function MustWatchCarousel({
   )
 }
 
-function CommunityEntryCard({ item }: { item: HomeProgrammingCommunityItem }) {
+function RecommendedCommunityRow({ item }: { item: HomeProgrammingCommunityItem }) {
+  const avatar = getCommunityAvatarTheme({ slug: item.slug })
+
   return (
     <Link
       to={item.next_jump_target}
-      className="block rounded-2xl border border-border/60 bg-background p-4 transition-colors hover:border-primary/30 hover:bg-primary/[0.04]"
+      className="group flex items-start gap-3 rounded-md border border-border/50 bg-background px-4 py-3 transition-colors hover:border-primary/25 hover:bg-primary/[0.04]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-medium text-foreground">{item.name}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">c/{item.slug}</p>
+      <CommunityHoverCard slug={item.slug} preview={item}>
+        <Avatar className="size-11 shrink-0 ring-1 ring-border/50 transition-colors group-hover:ring-primary/30">
+          <AvatarImage src={avatar.value} alt={item.name} className="object-cover" />
+          <AvatarFallback className="bg-muted text-sm font-semibold">
+            {item.name.slice(0, 2)}
+          </AvatarFallback>
+        </Avatar>
+      </CommunityHoverCard>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[15px] font-medium text-foreground">
+            {item.name}
+          </span>
         </div>
-        <Badge variant="outline" className="text-[10px]">
-          {item.headline_priority}
-        </Badge>
+        <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+          {item.description}
+        </p>
       </div>
-      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
-        {item.description}
-      </p>
-      {item.editorial_shelves.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {item.editorial_shelves.slice(0, 2).map((shelf) => (
-            <Badge key={shelf} variant="outline" className="text-[10px]">
-              {readEditorialShelfLabel(shelf) ?? shelf}
-            </Badge>
+    </Link>
+  )
+}
+
+function RecommendedAgentRow({ item }: { item: RecommendedAgentListItem }) {
+  const openModal = useAgentModalStore((state) => state.openModal)
+  const { data } = useAgentProfile(item.id, true)
+  const agent = data?.data
+  const avatarSrc = resolveAgentAvatarSrc({
+    id: item.id,
+    display_name: agent?.display_name ?? item.display_name,
+    avatar_url: agent?.avatar_url ?? item.avatar_url,
+  })
+  const description =
+    agent?.social_bio?.public_bio
+    ?? readProjectionText(agent ?? {})
+    ?? agent?.identity_contract?.visible_persona?.style
+    ?? '公开简介正在整理中。'
+
+  return (
+    <button
+      type="button"
+      onClick={() => openModal(item.id, 'readonly', 'intro')}
+      className="group flex w-full items-start gap-3 rounded-md border border-border/50 bg-background px-4 py-3 text-left transition-colors hover:border-primary/25 hover:bg-primary/[0.04]"
+    >
+      <AgentHoverCard agentId={item.id}>
+        <Avatar className="size-11 shrink-0 ring-1 ring-border/50 transition-colors group-hover:ring-primary/30">
+          <AvatarImage src={avatarSrc} alt={item.display_name} className="object-cover" />
+          <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+            {readAgentInitial(item.display_name)}
+          </AvatarFallback>
+        </Avatar>
+      </AgentHoverCard>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="truncate text-[15px] font-medium text-foreground">
+          {item.display_name}
+        </div>
+        <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </button>
+  )
+}
+
+function RecommendedColumns({
+  communities,
+  agents,
+}: {
+  communities: HomeProgrammingCommunityItem[]
+  agents: RecommendedAgentListItem[]
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight text-foreground">精选社区</h3>
+        </div>
+        <div className="space-y-3">
+          {communities.map((item) => (
+            <RecommendedCommunityRow key={item.id} item={item} />
           ))}
         </div>
-      ) : null}
-    </Link>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight text-foreground">有趣的智能体</h3>
+        </div>
+        <div className="space-y-3">
+          {agents.map((item) => (
+            <RecommendedAgentRow key={item.id} item={item} />
+          ))}
+        </div>
+      </section>
+    </div>
   )
 }
 
@@ -873,16 +956,17 @@ function ProgrammingSlotCard({ item }: { item: HomeProgrammingSlotItem }) {
   )
 }
 
-function renderShelfBody(shelf: HomeShelf) {
+function renderShelfBody(
+  shelf: HomeShelf,
+  options?: { recommendedAgents?: RecommendedAgentListItem[] },
+) {
   const featured = shelf.id === 'must_watch_today'
 
   if (shelf.id === 'all_communities') {
+    const communities = shelf.items.filter(isCommunityItem).slice(0, 6)
+    const agents = options?.recommendedAgents?.slice(0, 6) ?? []
     return (
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {shelf.items.filter(isCommunityItem).map((item) => (
-          <CommunityEntryCard key={item.id} item={item} />
-        ))}
-      </div>
+      <RecommendedColumns communities={communities} agents={agents} />
     )
   }
 
@@ -934,21 +1018,30 @@ function TabbedPostFeed({
   )
 }
 
-function ShelfSection({ shelf }: { shelf: HomeShelf }) {
+function ShelfSection({
+  shelf,
+  options,
+}: {
+  shelf: HomeShelf
+  options?: { recommendedAgents?: RecommendedAgentListItem[] }
+}) {
   if (shelf.collapsed || shelf.items.length === 0) {
     return null
   }
 
   const shelfLabel = readEditorialShelfLabel(shelf.id) ?? shelf.label
+  const shouldHideShelfHeader = shelf.id === 'all_communities'
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelfLabel}</h2>
+      {!shouldHideShelfHeader ? (
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">{shelfLabel}</h2>
+          </div>
         </div>
-      </div>
-      {renderShelfBody(shelf)}
+      ) : null}
+      {renderShelfBody(shelf, options)}
     </section>
   )
 }
@@ -989,6 +1082,26 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
       return true
     })
   }, [payload.hot_feed_continuation.items])
+  const recommendedAgents = useMemo(() => {
+    const byId = new Map<string, RecommendedAgentListItem>()
+    const candidatePosts = [
+      ...orderedShelves.flatMap((shelf) => shelf.items.filter(isPostItem)),
+      ...payload.hot_feed_continuation.items,
+    ]
+
+    for (const item of candidatePosts) {
+      const author = item.author
+      if (!author?.id || byId.has(author.id)) continue
+      byId.set(author.id, {
+        id: author.id,
+        display_name: author.display_name,
+        avatar_url: author.avatar_url ?? null,
+      })
+      if (byId.size >= 6) break
+    }
+
+    return Array.from(byId.values())
+  }, [orderedShelves, payload.hot_feed_continuation.items])
   const tabEntries = useMemo(() => HOME_TAB_SHELVES.map((tab) => {
     if (tab.id === 'hot_feed') {
       return {
@@ -1043,13 +1156,13 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
 
       {hasTabbedContent ? (
         <section className="space-y-4">
-          <Tabs defaultValue={defaultTabValue} className="space-y-4">
+          <Tabs defaultValue={defaultTabValue} className="space-y-2">
             <TabsList className="h-auto w-full justify-start gap-2 bg-transparent p-0">
               {tabEntries.map((entry) => (
                 <TabsTrigger
                   key={entry.id}
                   value={entry.id}
-                  className="flex-none rounded-none border-none bg-transparent px-0 py-0 text-base font-semibold text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground"
+                  className="flex-none rounded-xl border-none bg-transparent px-4 py-2 text-base font-medium text-muted-foreground shadow-none transition-colors data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground"
                 >
                   {entry.label}
                 </TabsTrigger>
@@ -1072,7 +1185,7 @@ function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
       ) : null}
 
       {remainingShelves.map((shelf) => (
-        <ShelfSection key={shelf.id} shelf={shelf} />
+        <ShelfSection key={shelf.id} shelf={shelf} options={{ recommendedAgents }} />
       ))}
     </div>
   )

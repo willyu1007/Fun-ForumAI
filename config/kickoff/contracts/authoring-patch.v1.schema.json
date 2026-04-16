@@ -85,7 +85,7 @@
           "target_batch_kind": { "type": "string", "enum": ["kickoff", "warmup"] },
           "generation_mode": {
             "type": "string",
-            "enum": ["warmup_candidate", "warmup_topup_candidate", "governance_restore"]
+            "enum": ["kickoff_candidate", "warmup_candidate", "warmup_topup_candidate", "governance_restore"]
           }
         }
       }

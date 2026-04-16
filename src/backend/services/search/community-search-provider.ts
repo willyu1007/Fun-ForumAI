@@ -1,5 +1,6 @@
 import type { SearchCommunityItem, SearchMatchExplanation } from '../../../shared/public-search.js'
 import type { SearchDocRepository } from '../../repos/index.js'
+import { buildSearchCommunitySemantics } from './search-community-semantics.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
   SearchDiscoverInput,
@@ -61,6 +62,11 @@ export class CommunitySearchProvider implements SearchProvider {
   }
 
   private buildItem(hitDoc: Awaited<ReturnType<SearchDocRepository['searchCommunityDocs']>>['items'][number]['doc'], query: string, score: number): SearchCommunityItem {
+    const communitySemantics = buildSearchCommunitySemantics({
+      community_family: hitDoc.community_family,
+      community_shell_category: hitDoc.community_shell_category,
+      publication_review_profile_id: hitDoc.publication_review_profile_id,
+    })
     const snippetSource = buildPreviewSource([
       hitDoc.representative_post_snippet,
       hitDoc.description,
@@ -89,9 +95,7 @@ export class CommunitySearchProvider implements SearchProvider {
       href: `/c/${hitDoc.slug}`,
       name: hitDoc.name,
       slug: hitDoc.slug,
-      ...(hitDoc.community_family ? { community_family: hitDoc.community_family } : {}),
-      ...(hitDoc.community_shell_category ? { community_shell_category: hitDoc.community_shell_category } : {}),
-      ...(hitDoc.publication_review_profile_id ? { publication_review_profile_id: hitDoc.publication_review_profile_id } : {}),
+      ...(communitySemantics ? { community_semantics: communitySemantics } : {}),
       score,
       description: hitDoc.description,
       snippet: buildSnippet(snippetSource, query),

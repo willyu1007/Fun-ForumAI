@@ -324,6 +324,27 @@ export function useRebuildAdminWarmupSuite() {
   })
 }
 
+export function useStartAdminWarmupSuite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { suiteId: string; max_runtime_topup_posts?: number }) =>
+      api.post(`admin/warm-start/suites/${input.suiteId}/warmup`, {
+        json: {
+          max_runtime_topup_posts: input.max_runtime_topup_posts ?? 0,
+        },
+      }).json<ApiResponse<WarmupSuiteDetail>>(),
+    onSuccess: (_response, input) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suiteId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+      qc.invalidateQueries({ queryKey: ['search'] })
+      qc.invalidateQueries({ queryKey: ['globalHighlights'] })
+    },
+  })
+}
+
 export function useArchiveAdminWarmupSuite() {
   const qc = useQueryClient()
   return useMutation({

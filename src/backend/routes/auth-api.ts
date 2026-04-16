@@ -20,6 +20,7 @@ import {
 import { requireHumanAuth } from '../middleware/human-auth.js'
 import type { AuthService } from '../services/auth-service.js'
 import { config } from '../lib/config.js'
+import { getTrustedClientIp } from '../lib/request-client-ip.js'
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -27,14 +28,6 @@ const COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
-}
-
-function getClientIp(req: { ip?: string; headers: Record<string, unknown> }): string | null {
-  const forwardedFor = req.headers['x-forwarded-for']
-  if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
-    return forwardedFor.split(',')[0]?.trim() ?? null
-  }
-  return req.ip ?? null
 }
 
 export function createAuthRouter(authService: AuthService): Router {
@@ -48,7 +41,7 @@ export function createAuthRouter(authService: AuthService): Router {
         password,
         displayName,
         inviteCode,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -72,7 +65,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const { challengeId } = req.body
       const result = await authService.resendEmailRegistration({
         challengeId,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -96,7 +89,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const { email } = req.body
       const result = await authService.startEmailPasswordReset({
         email,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -109,7 +102,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const { challengeId } = req.body
       const result = await authService.resendEmailPasswordReset({
         challengeId,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -198,7 +191,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const result = await authService.startEmailChange({
         userId: req.user!.userId,
         newEmail: req.body.newEmail,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -224,7 +217,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const result = await authService.startPhoneChange({
         userId: req.user!.userId,
         newPhone: req.body.newPhone,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -250,7 +243,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const result = await authService.resendContactChange({
         userId: req.user!.userId,
         challengeId: req.body.challengeId,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -264,7 +257,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const result = await authService.startSmsAuth({
         phone,
         inviteCode,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {
@@ -288,7 +281,7 @@ export function createAuthRouter(authService: AuthService): Router {
       const { challengeId } = req.body
       const result = await authService.resendSmsAuth({
         challengeId,
-        ipAddress: getClientIp(req),
+        ipAddress: getTrustedClientIp(req),
       })
       res.json({ data: result })
     } catch (err) {

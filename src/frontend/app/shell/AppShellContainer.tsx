@@ -85,6 +85,11 @@ export function AppShellContainer() {
   }, [openModal, routeBackedTarget, routeBackedTargetKey])
 
   useEffect(() => {
+    if (!routeBackedTargetKey) {
+      routeBackedModalWasOpenedRef.current = false
+      return
+    }
+
     if (routeBackedModalKeyRef.current !== routeBackedTargetKey) {
       routeBackedModalWasOpenedRef.current = false
       return

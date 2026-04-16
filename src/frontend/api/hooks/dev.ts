@@ -16,6 +16,13 @@ import type {
 
 type DevSeedProfile = 'canonical' | 'smoke-minimal' | 'launch'
 
+// Dev data operations can run destructive reset/seed/bootstrap/import flows
+// and regularly exceed the default 30s API timeout in local environments.
+const longRunningDevApi = api.extend({
+  timeout: 10 * 60_000,
+  retry: { limit: 0 },
+})
+
 function invalidateKickoffQueries(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: queryKeys.devKickoffStatus })
   qc.invalidateQueries({ queryKey: queryKeys.devKickoffLatestRun })
@@ -30,7 +37,10 @@ function invalidateKickoffQueries(qc: ReturnType<typeof useQueryClient>) {
 export function useBadgeDebugCatalog(enabled = true) {
   return useQuery({
     queryKey: queryKeys.devBadgeDebugCatalog,
-    queryFn: () => api.get('dev/badges/debug').json<ApiResponse<BadgeDebugCatalogItem[]> & { meta: BadgeDebugMeta }>(),
+    queryFn: () =>
+      api
+        .get('dev/badges/debug')
+        .json<ApiResponse<BadgeDebugCatalogItem[]> & { meta: BadgeDebugMeta }>(),
     enabled,
     staleTime: 60_000,
   })
@@ -39,13 +49,12 @@ export function useBadgeDebugCatalog(enabled = true) {
 export function useDevSeedMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: {
-      profile: DevSeedProfile
-      reset_before_seed?: boolean
-    }) =>
-      api.post('dev/seed', {
-        json: input,
-      }).json<ApiResponse<{ counts: Record<string, number> }>>(),
+    mutationFn: (input: { profile: DevSeedProfile; reset_before_seed?: boolean }) =>
+      longRunningDevApi
+        .post('dev/seed', {
+          json: input,
+        })
+        .json<ApiResponse<{ counts: Record<string, number> }>>(),
     onSuccess: () => {
       invalidateKickoffQueries(qc)
     },
@@ -61,7 +70,12 @@ export function useDevKickoffBootstrap() {
       profile_id: KickoffProfileId
       max_runtime_topup_posts?: number
       reset_before_bootstrap?: boolean
-    }) => api.post('dev/kickoff/bootstrap', { json: body }).json<ApiResponse<KickoffBootstrapResult>>(),
+    }) =>
+      longRunningDevApi
+        .post('dev/kickoff/bootstrap', {
+          json: body,
+        })
+        .json<ApiResponse<KickoffBootstrapResult>>(),
     onSuccess: (response) => {
       invalidateKickoffQueries(qc)
       if (response.data.run_id) {
@@ -82,7 +96,12 @@ export function useDevKickoffImport() {
       patch: KickoffAuthoringPatch
       patch_pack_id?: string | null
       profile_id: KickoffProfileId
-    }) => api.post('dev/kickoff/imports', { json: body }).json<ApiResponse<KickoffImportReport>>(),
+    }) =>
+      longRunningDevApi
+        .post('dev/kickoff/imports', {
+          json: body,
+        })
+        .json<ApiResponse<KickoffImportReport>>(),
     onSuccess: (response) => {
       invalidateKickoffQueries(qc)
       const runId = response.data.report_meta.run_id
@@ -90,7 +109,9 @@ export function useDevKickoffImport() {
         qc.invalidateQueries({ queryKey: queryKeys.devKickoffRun(runId) })
       }
       if (response.data.resolved_context.suite_id) {
-        qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(response.data.resolved_context.suite_id) })
+        qc.invalidateQueries({
+          queryKey: queryKeys.adminWarmupSuiteDetail(response.data.resolved_context.suite_id),
+        })
       }
     },
   })

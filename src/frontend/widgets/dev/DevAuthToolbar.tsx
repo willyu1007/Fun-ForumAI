@@ -24,6 +24,21 @@ import { DevKickoffPanel } from './DevKickoffPanel'
 
 type Identity = 'anonymous' | 'user' | 'admin'
 
+function formatKickoffModeLabel(mode: string): string {
+  switch (mode) {
+    case 'canonical':
+      return 'Mock'
+    case 'smoke-minimal':
+      return 'Smoke'
+    case 'kickoff-candidate':
+      return 'Kickoff / 待激活'
+    case 'kickoff-active':
+      return 'Kickoff / 已激活'
+    default:
+      return '无 Kickoff'
+  }
+}
+
 const IDENTITIES: Array<{ id: Identity; label: string }> = [
   { id: 'anonymous', label: '游客' },
   { id: 'user', label: '用户' },
@@ -44,8 +59,10 @@ export function DevAuthToolbar() {
   const kickoffStatusQuery = useDevKickoffStatus(true, shouldPollKickoffStatus)
   const refetchKickoffStatus = kickoffStatusQuery.refetch
   const currentKickoffMode = kickoffStatusQuery.data?.data.current_data_mode ?? 'unknown'
+  const currentKickoffModeLabel = formatKickoffModeLabel(currentKickoffMode)
   const currentKickoffSummary =
-    kickoffStatusQuery.data?.data.current_suite.label
+    kickoffStatusQuery.data?.data.flow?.title
+    ?? kickoffStatusQuery.data?.data.current_suite.label
     ?? kickoffStatusQuery.data?.data.latest_run?.suite_label
     ?? kickoffStatusQuery.data?.data.latest_run?.run_id
     ?? null
@@ -75,18 +92,15 @@ export function DevAuthToolbar() {
     }
   }
 
-  const handleKickoffBootstrap = async (mode: 'candidate' | 'active') => {
+  const handleKickoffBootstrap = async () => {
     setToolsOpen(false)
     try {
       const res = await kickoffBootstrapMutation.mutateAsync({
-        mode,
-        profile_id:
-          mode === 'active'
-            ? 'local-llm-assisted-runtime-simulation'
-            : 'local-llm-assisted-candidate',
+        mode: 'candidate',
+        profile_id: 'local-llm-assisted-candidate',
       })
       alert(
-        `Kickoff ${mode} 已完成：suite ${res.data.suite_label ?? res.data.suite_id ?? 'n/a'} · activation ${res.data.readiness.activation_readiness.ok ? 'ready' : 'blocked'}`,
+        `Kickoff 基础内容已生成：suite ${res.data.suite_label ?? res.data.suite_id ?? 'n/a'} · activation ${res.data.readiness.activation_readiness.ok ? 'ready' : 'blocked'}`,
       )
       window.location.reload()
     } catch (err) {
@@ -136,7 +150,7 @@ export function DevAuthToolbar() {
               DEV
             </Badge>
             <Badge variant="secondary" className="shrink-0 text-[10px]">
-              {currentKickoffMode}
+              {currentKickoffModeLabel}
             </Badge>
             {currentKickoffSummary ? (
               <span className="max-w-[10rem] truncate text-[10px] text-muted-foreground">
@@ -208,22 +222,11 @@ export function DevAuthToolbar() {
                   disabled={isMutating}
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => {
-                    void handleKickoffBootstrap('candidate')
+                    void handleKickoffBootstrap()
                   }}
                 >
                   <Rocket className="size-3.5 text-muted-foreground" />
-                  Kickoff Candidate
-                </button>
-                <button
-                  type="button"
-                  disabled={isMutating}
-                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={() => {
-                    void handleKickoffBootstrap('active')
-                  }}
-                >
-                  <Rocket className="size-3.5 text-muted-foreground" />
-                  Kickoff Active
+                  初始化 Kickoff
                 </button>
                 <button
                   type="button"
@@ -234,7 +237,7 @@ export function DevAuthToolbar() {
                   }}
                 >
                   <Rocket className="size-3.5 text-muted-foreground" />
-                  Kickoff 调试台
+                  Kickoff
                 </button>
                 <button
                   type="button"

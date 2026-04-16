@@ -5,6 +5,7 @@ import { ValidationError } from '../lib/errors.js'
 import type {
   MediaImportCatalogPolicy,
   MediaImportDedupePolicy,
+  MediaImportEntrypoint,
   MediaImportIndexingPolicy,
   MediaImportManifestV1,
   MediaImportReusePolicy,

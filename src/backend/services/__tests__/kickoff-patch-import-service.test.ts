@@ -58,7 +58,7 @@ function createPatch() {
         payload: {
           title: 'Kickoff primary post',
           body: 'Primary kickoff body',
-          tags: ['kickoff'],
+          tags: ['kickoff', 'daypart:late_night_callback', 'content:aftershow-candidate'],
         },
       },
       {
@@ -178,12 +178,19 @@ describe('KickoffPatchImportService', () => {
     actions: {
       can_review: true,
       can_retry: true,
+      can_start_warmup: false,
       can_rebuild: true,
       can_archive: true,
     },
   } as const
 
-  function createService() {
+  function createService(options: { warmupBatchId?: string | null } = {}) {
+    const warmupBatchId =
+      options.warmupBatchId === undefined ? 'warmup-batch-1' : options.warmupBatchId
+    const localSuiteDetail = {
+      ...suiteDetail,
+      warmup_batch_id: warmupBatchId,
+    } as const
     const communityRepo = new InMemoryCommunityRepository()
     const agentRepo = new InMemoryAgentRepository()
     const postRepo = new InMemoryPostRepository()
@@ -201,91 +208,119 @@ describe('KickoffPatchImportService', () => {
       display_name: 'Kickoff Bot',
     })
 
-    const createPost = vi.fn(async (input: {
-      actor_agent_id: string
-      run_id: string
-      community_id: string
-      title: string
-      body: string
-      tags?: string[]
-      warmup_context: {
-        warm_start_batch_id: string
-        generation_mode: 'warmup_candidate' | 'warmup_topup_candidate' | 'governance_restore'
-      }
-    }) => {
-      const post = await postRepo.create({
-        community_id: input.community_id,
-        author_agent_id: input.actor_agent_id,
-        title: input.title,
-        body: input.body,
-        visibility: 'GRAY',
-        state: 'PENDING',
-        moderation_metadata: {
-          distribution_state: 'NO_RECOMMEND',
-        },
-        warm_start_batch_id: input.warmup_context.warm_start_batch_id,
-        generation_mode: input.warmup_context.generation_mode,
-      })
-      return { post }
-    })
+    const createPost = vi.fn(
+      async (input: {
+        actor_agent_id: string
+        run_id: string
+        community_id: string
+        title: string
+        body: string
+        tags?: string[]
+        warmup_context: {
+          warm_start_batch_id: string
+          generation_mode:
+            | 'kickoff_candidate'
+            | 'warmup_candidate'
+            | 'warmup_topup_candidate'
+            | 'governance_restore'
+        }
+      }) => {
+        const post = await postRepo.create({
+          community_id: input.community_id,
+          author_agent_id: input.actor_agent_id,
+          title: input.title,
+          body: input.body,
+          tags: input.tags,
+          visibility: 'GRAY',
+          state: 'PENDING',
+          moderation_metadata: {
+            distribution_state: 'NO_RECOMMEND',
+          },
+          warm_start_batch_id: input.warmup_context.warm_start_batch_id,
+          generation_mode: input.warmup_context.generation_mode,
+        })
+        return { post }
+      },
+    )
 
-    const createThread = vi.fn(async (input: {
-      actor_agent_id: string
-      run_id: string
-      post_id: string
-      body: string
-      channel?: 'STAGE' | 'ASIDE'
-      warmup_context: {
-        warm_start_batch_id: string
-        generation_mode: 'warmup_candidate' | 'warmup_topup_candidate' | 'governance_restore'
-      }
-    }) => {
-      const post = await postRepo.findById(input.post_id)
-      if (!post) {
-        throw new Error(`missing post ${input.post_id}`)
-      }
-      const entry = await publicStageThreadRepo.create({
-        post_id: post.id,
-        community_id: post.community_id,
-        author_agent_id: input.actor_agent_id,
-        body: input.body,
-        visibility: 'GRAY',
-        state: 'PENDING',
-        warm_start_batch_id: input.warmup_context.warm_start_batch_id,
-        generation_mode: input.warmup_context.generation_mode,
-      })
-      return { entry } as never
-    })
+    const createThread = vi.fn(
+      async (input: {
+        actor_agent_id: string
+        run_id: string
+        post_id: string
+        body: string
+        channel?: 'STAGE' | 'ASIDE'
+        warmup_context: {
+          warm_start_batch_id: string
+          generation_mode:
+            | 'kickoff_candidate'
+            | 'warmup_candidate'
+            | 'warmup_topup_candidate'
+            | 'governance_restore'
+        }
+      }) => {
+        const post = await postRepo.findById(input.post_id)
+        if (!post) {
+          throw new Error(`missing post ${input.post_id}`)
+        }
+        const entry = await publicStageThreadRepo.create({
+          post_id: post.id,
+          community_id: post.community_id,
+          author_agent_id: input.actor_agent_id,
+          body: input.body,
+          visibility: 'GRAY',
+          state: 'PENDING',
+          warm_start_batch_id: input.warmup_context.warm_start_batch_id,
+          generation_mode: input.warmup_context.generation_mode,
+        })
+        return { entry } as never
+      },
+    )
+    const aftershowTrigger = vi.fn(async () => ({
+      run: null,
+      threshold_pass: true,
+      reason: 'forced-by-test',
+      audience_message_count: 0,
+      summary_ref: null,
+      threshold_detail: {},
+      artifact: null,
+      callouts: [],
+      notifications_created: 0,
+    }))
 
     const service = new KickoffPatchImportService({
       warmupGovernanceService: {
-        listSuites: vi.fn(async (): Promise<WarmupSuiteListItem[]> => [{
-          id: 'suite-1',
-          state: 'review_ready',
-          suite_label: 'kickoff-v1',
-          created_at: '2026-04-13T00:00:00.000Z',
-          updated_at: '2026-04-13T00:00:00.000Z',
-          activated_at: null,
-          archived_at: null,
-          latest_review: null,
-          summary: {
-            posts: 0,
-            threads: 0,
-            turns: 0,
-            votes: 0,
-            media: 0,
-            communities: 0,
-            media_coverage_ratio: 0,
-          },
-          kickoff_batch: null,
-          warmup_batch: null,
-        }]),
-        getSuiteDetail: vi.fn(async () => suiteDetail as never),
+        listSuites: vi.fn(
+          async (): Promise<WarmupSuiteListItem[]> => [
+            {
+              id: 'suite-1',
+              state: 'review_ready',
+              suite_label: 'kickoff-v1',
+              created_at: '2026-04-13T00:00:00.000Z',
+              updated_at: '2026-04-13T00:00:00.000Z',
+              activated_at: null,
+              archived_at: null,
+              latest_review: null,
+              summary: {
+                posts: 0,
+                threads: 0,
+                turns: 0,
+                votes: 0,
+                media: 0,
+                communities: 0,
+                media_coverage_ratio: 0,
+              },
+              kickoff_batch: null,
+              warmup_batch: null,
+            },
+          ],
+        ),
+        getSuiteDetail: vi.fn(async () => localSuiteDetail as never),
         getRuntimeBaselineAdmission: vi.fn(async () => ({
           active_baseline_id: null,
           suite_id: 'suite-1',
           kickoff_batch_id: 'kickoff-batch-1',
-          warmup_batch_id: 'warmup-batch-1',
+          warmup_batch_id: warmupBatchId,
           has_active_baseline: false,
           kickoff_layer_ready: true,
           warmup_layer_ready: true,
@@ -317,6 +352,9 @@ describe('KickoffPatchImportService', () => {
         createFromUpload: vi.fn(),
         promoteAsset: vi.fn(),
         attachPostMediaAndConsume: vi.fn(),
+      },
+      aftershowService: {
+        trigger: aftershowTrigger as never,
       },
       searchProjectionService: {
         refreshPost: vi.fn(async () => {}),
@@ -357,6 +395,7 @@ describe('KickoffPatchImportService', () => {
       mocks: {
         createPost,
         createThread,
+        aftershowTrigger,
       },
     }
   }
@@ -387,7 +426,7 @@ describe('KickoffPatchImportService', () => {
       }),
     ])
     expect(ctx.mocks.createPost).not.toHaveBeenCalled()
-    expect((await ctx.repos.postRepo.findByWarmStartBatch('kickoff-batch-1'))).toHaveLength(0)
+    expect(await ctx.repos.postRepo.findByWarmStartBatch('kickoff-batch-1')).toHaveLength(0)
   })
 
   it('imports candidate content through real forum services and returns an import report', async () => {
@@ -401,22 +440,64 @@ describe('KickoffPatchImportService', () => {
 
     expect(ctx.mocks.createPost).toHaveBeenCalledTimes(1)
     expect(ctx.mocks.createThread).toHaveBeenCalledTimes(1)
+    expect(ctx.mocks.aftershowTrigger).toHaveBeenCalledTimes(1)
     const posts = await ctx.repos.postRepo.findByWarmStartBatch('kickoff-batch-1')
     expect(posts).toHaveLength(1)
+    expect(posts[0]!.tags).toEqual(
+      expect.arrayContaining(['daypart:late_night_callback', 'content:aftershow-candidate']),
+    )
     const threads = await ctx.repos.publicStageThreadRepo.findByPostAll(posts[0]!.id, { limit: 20 })
     expect(threads.items).toHaveLength(1)
-    expect(report.resolution_map).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        logical_key: 'post.primary',
-        entity_kind: 'post',
-      }),
-      expect.objectContaining({
-        logical_key: 'thread.primary',
-        entity_kind: 'thread',
-      }),
-    ]))
+    expect(report.resolution_map).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          logical_key: 'post.primary',
+          entity_kind: 'post',
+        }),
+        expect.objectContaining({
+          logical_key: 'thread.primary',
+          entity_kind: 'thread',
+        }),
+      ]),
+    )
     expect(report.summary_after_import.posts).toBe(1)
     expect(report.readiness_snapshot.activation_readiness.ok).toBe(true)
+  })
+
+  it('falls back to the kickoff batch when a candidate suite has no warmup batch yet', async () => {
+    const ctx = createService({ warmupBatchId: null })
+
+    const report = await ctx.service.importPatch({
+      dry_run: false,
+      patch: createPatch() as never,
+      profile_id: 'local-llm-assisted-candidate',
+    })
+
+    expect(ctx.mocks.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warmup_context: expect.objectContaining({
+          warm_start_batch_id: 'kickoff-batch-1',
+          generation_mode: 'kickoff_candidate',
+        }),
+      }),
+    )
+    expect(ctx.mocks.createThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warmup_context: expect.objectContaining({
+          warm_start_batch_id: 'kickoff-batch-1',
+          generation_mode: 'kickoff_candidate',
+        }),
+      }),
+    )
+    expect(report.resolved_context.warmup_batch_id).toBeNull()
+    expect(report.preflight_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          check: 'target_batches_resolved',
+          ok: true,
+        }),
+      ]),
+    )
   })
 
   it('imports runtime-simulated instructions without requiring provider configuration', async () => {
@@ -433,29 +514,29 @@ describe('KickoffPatchImportService', () => {
         mode: 'active',
       },
       operations: [
-      {
-        op_id: 'runtime-topup',
-        action: 'runtime_instruction',
-        entity_kind: 'runtime_instruction',
-        logical_key: 'runtime.topup',
-        target_batch_kind: 'warmup',
-        generation_mode: 'warmup_topup_candidate',
-        payload: {
-          community_selector: {
-            slug: 'warmup-arena',
+        {
+          op_id: 'runtime-topup',
+          action: 'runtime_instruction',
+          entity_kind: 'runtime_instruction',
+          logical_key: 'runtime.topup',
+          target_batch_kind: 'warmup',
+          generation_mode: 'warmup_topup_candidate',
+          payload: {
+            community_selector: {
+              slug: 'warmup-arena',
+            },
+            actor_selector: {
+              display_name: 'Kickoff Bot',
+            },
+            title: 'Runtime simulated top-up',
+            body: 'Top-up content generated via local assistant.',
+            tags: ['runtime-sim'],
+            director_goal: 'Raise the temperature for the next visible exchange',
+            scene_hint: 'aftershow-prep',
+            placement_goal: 'notes_today',
+            topup_reason: 'fill local runtime simulation gap',
           },
-          actor_selector: {
-            display_name: 'Kickoff Bot',
-          },
-          title: 'Runtime simulated top-up',
-          body: 'Top-up content generated via local assistant.',
-          tags: ['runtime-sim'],
-          director_goal: 'Raise the temperature for the next visible exchange',
-          scene_hint: 'aftershow-prep',
-          placement_goal: 'notes_today',
-          topup_reason: 'fill local runtime simulation gap',
         },
-      },
       ],
     }
 
@@ -466,12 +547,14 @@ describe('KickoffPatchImportService', () => {
     })
 
     expect(ctx.mocks.createPost).toHaveBeenCalledTimes(1)
-    expect(report.resolution_map).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        logical_key: 'runtime.topup',
-        entity_kind: 'runtime_instruction',
-      }),
-    ]))
+    expect(report.resolution_map).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          logical_key: 'runtime.topup',
+          entity_kind: 'runtime_instruction',
+        }),
+      ]),
+    )
     expect(report.op_results[0]).toMatchObject({
       op_id: 'runtime-topup',
       status: 'success',
@@ -482,10 +565,12 @@ describe('KickoffPatchImportService', () => {
     const ctx = createService()
     const patch = createPatch()
 
-    await expect(ctx.service.importPatch({
-      dry_run: true,
-      patch: patch as never,
-      profile_id: 'local-llm-assisted-runtime-simulation',
-    })).rejects.toThrow(/does not match requested profile/u)
+    await expect(
+      ctx.service.importPatch({
+        dry_run: true,
+        patch: patch as never,
+        profile_id: 'local-llm-assisted-runtime-simulation',
+      }),
+    ).rejects.toThrow(/does not match requested profile/u)
   })
 })

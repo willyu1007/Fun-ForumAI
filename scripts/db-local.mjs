@@ -12,10 +12,17 @@ const BOOTSTRAP_PGVECTOR = process.env.LOCAL_DB_BOOTSTRAP_PGVECTOR !== 'false'
 const PGVECTOR_BOOTSTRAP = `
 set -e
 if [ ! -f /usr/local/share/postgresql/extension/vector.control ] || [ ! -f /usr/local/lib/postgresql/vector.so ]; then
+  apk update
   apk add --no-cache postgresql-pgvector
+  EXT_DIR="$(find /usr/share -path '/usr/share/postgresql*/extension/vector.control' | head -n 1 | xargs dirname)"
+  SO_PATH="$(find /usr/lib -path '/usr/lib/postgresql*/vector.so' | head -n 1)"
+  if [ -z "$EXT_DIR" ] || [ -z "$SO_PATH" ]; then
+    echo "pgvector install succeeded but extension files were not found" >&2
+    exit 1
+  fi
   mkdir -p /usr/local/share/postgresql/extension /usr/local/lib/postgresql
-  cp -f /usr/share/postgresql18/extension/vector* /usr/local/share/postgresql/extension/
-  cp -f /usr/lib/postgresql18/vector.so /usr/local/lib/postgresql/
+  cp -f "$EXT_DIR"/vector* /usr/local/share/postgresql/extension/
+  cp -f "$SO_PATH" /usr/local/lib/postgresql/
 fi
 exec docker-entrypoint.sh postgres
 `.trim()

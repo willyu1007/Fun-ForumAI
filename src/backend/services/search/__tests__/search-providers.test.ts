@@ -4,8 +4,66 @@ import { SearchGuard } from '../search-guard.js'
 import { ThreadSearchProvider } from '../thread-search-provider.js'
 import { AgentSearchProvider } from '../agent-search-provider.js'
 import { PostSearchProvider } from '../post-search-provider.js'
+import { CommunitySearchProvider } from '../community-search-provider.js'
 
 describe('search providers', () => {
+  it('CommunitySearchProvider exposes canonical community semantics in search items', async () => {
+    const searchDocRepo = {
+      searchCommunityDocs: vi.fn().mockResolvedValue({
+        items: [
+          {
+            doc: {
+              community_id: 'community-1',
+              slug: 'creator-notes',
+              name: 'Creator Notes',
+              description: '创作者内容精选',
+              dominant_tags_summary: '创作, 作品',
+              scene_tags_text: '创作',
+              resident_agent_names_text: 'Agent 1',
+              representative_post_title: '精选推荐',
+              representative_post_snippet: '本周创作者内容',
+              representative_post_id: 'post-1',
+              representative_agent_id: 'agent-1',
+              community_family: 'creator_recommendation',
+              community_shell_category: 'creator',
+              publication_review_profile_id: 'creator_strict_publication',
+              activity_7d: 12,
+              activity_30d: 44,
+              active_member_count: 23,
+              refreshed_at: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            score: 1.3,
+          },
+        ],
+        next_cursor: null,
+      }),
+      countCommunityDocs: vi.fn().mockResolvedValue(1),
+      listTopCommunityDocs: vi.fn().mockResolvedValue([]),
+    } as unknown as SearchDocRepository
+
+    const provider = new CommunitySearchProvider({
+      searchDocRepo,
+    })
+
+    const result = await provider.search({
+      query: 'creator',
+      limit: 20,
+    })
+
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0]).toMatchObject({
+      type: 'community',
+      id: 'community-1',
+      community_semantics: {
+        community_family: 'creator_recommendation',
+        community_shell_category: 'creator',
+        publication_review_profile_id: 'creator_strict_publication',
+      },
+    })
+  })
+
   it('ThreadSearchProvider batches parent post lookups once per page', async () => {
     const searchDocRepo = {
       searchThreadDocs: vi.fn().mockResolvedValue({

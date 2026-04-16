@@ -9,15 +9,18 @@ export function NewContentBanner({ count, label, onRefresh, queryKey }: NewConte
   const qc = useQueryClient()
   if (count <= 0) return null
   return (
-    <button
-      onClick={() => {
-        qc.invalidateQueries({ queryKey })
-        onRefresh()
-      }}
-      className={"mb-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"}
-    >
-      <span className={"inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"}>{count}</span>
-      {label}，点击查看
-    </button>
+    <div className="mb-3 flex items-center gap-2 px-[18px]">
+      <button
+        type="button"
+        onClick={() => {
+          qc.invalidateQueries({ queryKey })
+          onRefresh()
+        }}
+        className="inline-flex shrink-0 items-center text-[11px] font-medium text-muted-foreground/70 transition-colors hover:text-muted-foreground"
+      >
+        {count} 条更新
+      </button>
+      <div className="h-px flex-1 bg-border/60" aria-hidden="true" />
+    </div>
   )
 }

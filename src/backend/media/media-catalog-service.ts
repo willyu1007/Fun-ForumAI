@@ -48,7 +48,7 @@ export class MediaCatalogService {
     })
     const contentHash = computeMediaContentHash(payload)
     const current = await this.deps.mediaCatalogCardRepo.findCurrentByAssetId(input.asset.id)
-    if (current && current.content_hash === contentHash && current.build_status === 'ready') {
+    if (current && current.content_hash === contentHash && current.build_status === 'current') {
       return current
     }
 
@@ -62,7 +62,7 @@ export class MediaCatalogService {
       modality: 'image',
       source_kind: payload.source_kind,
       content_hash: contentHash,
-      build_status: 'ready',
+      build_status: 'current',
       payload_json: payload,
       is_current: true,
     })

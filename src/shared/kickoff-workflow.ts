@@ -11,7 +11,10 @@ export type KickoffDataMode =
   | 'kickoff-active'
   | 'unknown'
 
+export type KickoffFlowPhase = 'idle' | 'foundation' | 'activation' | 'active' | 'runtime'
+
 export type KickoffGenerationMode =
+  | 'kickoff_candidate'
   | 'warmup_candidate'
   | 'warmup_topup_candidate'
   | 'governance_restore'
@@ -380,9 +383,23 @@ export interface KickoffRunDetail {
   failure_log?: Record<string, unknown> | null
 }
 
+export interface KickoffFlowStatus {
+  phase: KickoffFlowPhase
+  title: string
+  summary: string
+  next_action: string | null
+  checkpoints: {
+    foundation_ready: boolean
+    activation_ready: boolean
+    active_baseline_ready: boolean
+    runtime_ready: boolean
+  }
+}
+
 export interface KickoffStatusPayload {
   current_data_mode: KickoffDataMode
   mode_source: 'marker' | 'inferred'
+  flow: KickoffFlowStatus
   latest_run: KickoffRunSummary | null
   latest_import_report: KickoffImportReport | null
   latest_runtime_readiness: KickoffRuntimeReadiness | null

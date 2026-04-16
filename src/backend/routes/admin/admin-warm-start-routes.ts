@@ -13,6 +13,7 @@ import {
   previewWarmupGovernanceBatchSchema,
   rebuildWarmupSuiteSchema,
   retryWarmupSuiteSchema,
+  startWarmupSuiteSchema,
   reviewWarmupSuiteSchema,
   runWarmupVerifierSchema,
   warmupSuiteIdParamSchema,
@@ -195,6 +196,27 @@ export function registerAdminWarmStartRoutes(router: IRouter): void {
     async (req, res) => {
       try {
         const data = await warmupGovernanceService.rebuildSuite({
+          suite_id: String(req.params.id),
+          actor_user_id: req.user!.userId,
+          max_runtime_topup_posts: req.body.max_runtime_topup_posts ?? 0,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        throw err
+      }
+    },
+  )
+
+  router.post(
+    '/admin/warm-start/suites/:id/warmup',
+    requireHumanAuth,
+    requireAdmin,
+    validate(warmupSuiteIdParamSchema, 'params'),
+    validate(startWarmupSuiteSchema),
+    async (req, res) => {
+      try {
+        const data = await warmupGovernanceService.startWarmup({
           suite_id: String(req.params.id),
           actor_user_id: req.user!.userId,
           max_runtime_topup_posts: req.body.max_runtime_topup_posts ?? 0,

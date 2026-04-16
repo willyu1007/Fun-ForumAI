@@ -857,6 +857,12 @@ export const rebuildWarmupSuiteSchema = z
   })
   .strict()
 
+export const startWarmupSuiteSchema = z
+  .object({
+    max_runtime_topup_posts: z.number().int().min(0).max(50).optional(),
+  })
+  .strict()
+
 export const archiveWarmupSuiteSchema = z.object({}).strict()
 export const runWarmupVerifierSchema = z.object({}).strict()
 export const warmupVerifierRunIdParamSchema = z

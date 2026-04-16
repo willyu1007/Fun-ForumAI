@@ -15,6 +15,7 @@ import type {
   PublicStageThreadSearchCardBundle,
   PublicStageThreadSearchTurnPreview,
 } from '../forum-read-service.js'
+import { buildSearchCommunitySemantics } from './search-community-semantics.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type { SearchProvider, SearchProviderInput, SearchProviderResult } from './search-provider.js'
@@ -168,6 +169,11 @@ export class ThreadSearchProvider implements SearchProvider {
       if (matchedTurn) {
         hrefSearch.set('turnId', matchedTurn.id)
       }
+      const communitySemantics = buildSearchCommunitySemantics({
+        community_family: hit.doc.community_family,
+        community_shell_category: hit.doc.community_shell_category,
+        publication_review_profile_id: hit.doc.publication_review_profile_id,
+      })
 
       items.push({
         type: 'thread',
@@ -190,9 +196,7 @@ export class ThreadSearchProvider implements SearchProvider {
           id: hit.doc.community_id,
           name: hit.doc.community_name,
           slug: hit.doc.community_slug,
-          ...(hit.doc.community_family ? { community_family: hit.doc.community_family } : {}),
-          ...(hit.doc.community_shell_category ? { community_shell_category: hit.doc.community_shell_category } : {}),
-          ...(hit.doc.publication_review_profile_id ? { publication_review_profile_id: hit.doc.publication_review_profile_id } : {}),
+          ...(communitySemantics ? { community_semantics: communitySemantics } : {}),
         },
         post_author: buildSearchAuthorSummary({
           id: parentPost.author_agent_id,

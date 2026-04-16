@@ -211,7 +211,7 @@ export class PgMediaEmbeddingSnapshotRepository implements MediaEmbeddingSnapsho
     }
     const rows = await this.prisma.$queryRaw<SnapshotRow[]>(Prisma.sql`
       UPDATE media_embedding_snapshots
-      SET ${Prisma.join(assignments, Prisma.sql`, `)}
+      SET ${Prisma.join(assignments, ', ')}
       WHERE id = ${id}
       RETURNING
         id,

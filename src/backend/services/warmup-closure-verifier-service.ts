@@ -74,13 +74,13 @@ export class WarmupClosureVerifierService {
     let suiteDetail: WarmupSuiteDetail | null = null
     let admissionBefore: RuntimeBaselineAdmission | null = null
     let admissionAfter: RuntimeBaselineAdmission | null = null
-    let surfaceAudit: WarmupVerifierSurfaceAudit = {
+    const surfaceAudit: WarmupVerifierSurfaceAudit = {
       initial: null,
       after_quarantine: null,
       after_restore: null,
       after_cleanup: null,
     }
-    let governanceDrill: WarmupVerifierGovernanceDrill = {
+    const governanceDrill: WarmupVerifierGovernanceDrill = {
       quarantine: null,
       restore: null,
       cleanup: null,
@@ -150,9 +150,11 @@ export class WarmupClosureVerifierService {
         addDiagnosis(mapBaselineReasonToDiagnosis('no_active_baseline', '$.reasons[0]'))
         throw new Error('missing_active_baseline')
       }
+      const activeSuiteId = admissionBefore.suite_id
 
+      const activeAdmission = admissionBefore
       suiteDetail = await runOrDiagnose(
-        () => this.deps.warmupGovernanceService.getSuiteDetail(admissionBefore!.suite_id),
+        () => this.deps.warmupGovernanceService.getSuiteDetail(activeSuiteId),
         (message) => createVerifierDiagnosis({
           phase: 'suite_resolution',
           subsystem: 'warmup_governance',
@@ -297,7 +299,7 @@ export class WarmupClosureVerifierService {
       }
 
       const baselinePostIds = await runOrDiagnose(
-        () => this.loadBaselinePostIds(admissionBefore),
+        () => this.loadBaselinePostIds(activeAdmission),
         (message) => createVerifierDiagnosis({
           phase: 'suite_resolution',
           subsystem: 'warmup_governance',
@@ -424,7 +426,7 @@ export class WarmupClosureVerifierService {
         failedPhase ??= 'artifact_persist'
       }
       const refreshedSuite = await runOrDiagnose(
-        () => this.deps.warmupGovernanceService.getSuiteDetail(admissionBefore!.suite_id),
+        () => this.deps.warmupGovernanceService.getSuiteDetail(activeSuiteId),
         (message) => createVerifierDiagnosis({
           phase: 'suite_resolution',
           subsystem: 'warmup_governance',
@@ -562,7 +564,7 @@ export class WarmupClosureVerifierService {
     input: {
       suiteDetail: WarmupSuiteDetail | null
       admissionBefore: RuntimeBaselineAdmission | null
-      status: WarmupVerifierRunStatus
+      status: Exclude<WarmupVerifierRunStatus, 'running'>
       diagnoses: WarmupVerifierDiagnosis[]
       probeManifest: WarmupVerifierProbeManifest | null
       surfaceAudit: WarmupVerifierSurfaceAudit

@@ -37,6 +37,7 @@ import {
   useResolveIdentityReview,
   useResolveModerationCase,
   useRefreshCommunityProposalRecommendation,
+  useStartAdminWarmupSuite,
   useTransferModerationCase,
   useCommunities,
 } from '@/api/hooks'
@@ -120,6 +121,7 @@ export function useAdminPanelController() {
   const reviewWarmupSuite = useReviewAdminWarmupSuite()
   const retryWarmupSuite = useRetryAdminWarmupSuite()
   const rebuildWarmupSuite = useRebuildAdminWarmupSuite()
+  const startWarmupSuite = useStartAdminWarmupSuite()
   const archiveWarmupSuite = useArchiveAdminWarmupSuite()
   const runWarmupVerifier = useRunAdminWarmupVerifier()
   const previewWarmupGovernance = usePreviewAdminWarmupGovernanceBatch()
@@ -305,6 +307,14 @@ export function useAdminPanelController() {
     })
   }
 
+  const handleStartWarmupSuite = async () => {
+    if (!selectedWarmupSuiteId) return
+    await startWarmupSuite.mutateAsync({
+      suiteId: selectedWarmupSuiteId,
+      max_runtime_topup_posts: Number.parseInt(warmupTopupPosts, 10) || 0,
+    })
+  }
+
   const handleArchiveWarmupSuite = async () => {
     if (!selectedWarmupSuiteId) return
     await archiveWarmupSuite.mutateAsync(selectedWarmupSuiteId)
@@ -453,6 +463,7 @@ export function useAdminPanelController() {
       reviewMutation: reviewWarmupSuite,
       retryMutation: retryWarmupSuite,
       rebuildMutation: rebuildWarmupSuite,
+      startMutation: startWarmupSuite,
       archiveMutation: archiveWarmupSuite,
       runVerifierMutation: runWarmupVerifier,
       previewMutation: previewWarmupGovernance,
@@ -490,6 +501,7 @@ export function useAdminPanelController() {
       handleReviewSuite: handleReviewWarmupSuite,
       handleRetrySuite: handleRetryWarmupSuite,
       handleRebuildSuite: handleRebuildWarmupSuite,
+      handleStartWarmupSuite,
       handleArchiveSuite: handleArchiveWarmupSuite,
       handlePreviewGovernance: handlePreviewWarmupGovernance,
       handleExecuteGovernance: handleExecuteWarmupGovernance,

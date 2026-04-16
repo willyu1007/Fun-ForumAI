@@ -41,6 +41,7 @@ export type WarmupVerifierSurface = (typeof WARMUP_VERIFIER_SURFACES)[number]
 
 export type WarmupVerifierSeverity = 'error' | 'warning'
 export type WarmupVerifierRunStatus = 'running' | 'passed' | 'failed'
+export type WarmupVerifierTerminalRunStatus = Exclude<WarmupVerifierRunStatus, 'running'>
 export type WarmupVerifierSurfaceExpectation =
   | 'probe_visible'
   | 'probe_hidden'

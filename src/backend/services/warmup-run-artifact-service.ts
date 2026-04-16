@@ -10,6 +10,7 @@ import type {
   WarmupVerifierRunDetail,
   WarmupVerifierRunSummary,
   WarmupVerifierSurfaceAudit,
+  WarmupVerifierTerminalRunStatus,
 } from '../../shared/warmup-verifier.js'
 
 const DEFAULT_RUNS_ROOT = resolve(process.cwd(), '.ai/.tmp/warmup-runs')
@@ -161,7 +162,7 @@ export class WarmupRunArtifactService {
   }
 
   async completeRun(runId: string, input: {
-    status: 'passed' | 'failed'
+    status: WarmupVerifierTerminalRunStatus
     failed_phase?: WarmupVerifierRunSummary['failed_phase']
     suite_id?: string | null
     suite_label?: string | null

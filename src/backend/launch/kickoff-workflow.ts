@@ -60,6 +60,7 @@ const kickoffProfileSchema = z.object({
     allow_patch_pack_lookup: z.boolean(),
     allow_runtime_instruction_payload: z.boolean(),
     default_generation_mode: z.enum([
+      'kickoff_candidate',
       'warmup_candidate',
       'warmup_topup_candidate',
       'governance_restore',

@@ -8,6 +8,7 @@ import {
   type LaunchWarmStartSpec,
   pickRosterEntryForSpec,
 } from '../launch/launch-warm-start.js'
+import { listLaunchCommunitySeeds } from '../launch/community-rules.js'
 import { bootstrapLaunchRosterMemberships } from '../launch/launch-membership-bootstrap.js'
 import { getLaunchSystemRoster, type LaunchSystemRosterRuntime } from '../launch/system-roster.js'
 import { getLaunchProgrammingSchedule } from '../launch/programming-schedule.js'
@@ -41,13 +42,16 @@ import type { AgentCommunityMembershipService } from './agent-community-membersh
 import type { AgentStageTierService } from './agent-stage-tier-service.js'
 import type { AftershowService } from './aftershow-service.js'
 import type { ForumWriteService } from './forum-write-service.js'
-import type { LaunchProgrammingOpsService } from './launch-programming-ops-service.js'
+import type {
+  LaunchProgrammingOpsService,
+  ProgrammingWarning,
+} from './launch-programming-ops-service.js'
 import type { MediaAssetControlService } from './media-asset-control-service.js'
 import type { RoleAssignmentService } from './role-assignment-service.js'
 import type { PostSchedulerResult } from '../runtime/post-scheduler.js'
 import type { WarmupWriteContextInput } from './forum-write-service/types.js'
 
-const DEFAULT_SUITE_LABEL = 'launch-warm-start-v1'
+const DEFAULT_SUITE_LABEL = 'kickoff-foundation-v1'
 const DEFAULT_SAMPLE_LIMIT = 6
 const LOCAL_WARMUP_MEDIA_ASSETS = [
   'public/community-banners/sea-glow.webp',
@@ -245,6 +249,7 @@ export interface WarmupSuiteDetail {
   actions: {
     can_review: boolean
     can_retry: boolean
+    can_start_warmup: boolean
     can_rebuild: boolean
     can_archive: boolean
   }
@@ -290,11 +295,9 @@ export interface LaunchWarmupSuiteResult {
   suite_state: WarmupSuite['state']
   suite_label: string | null
   kickoff_batch_id: string
-  warmup_batch_id: string
+  warmup_batch_id: string | null
   reused_existing_suite: boolean
-  bootstrap_memberships: Awaited<
-    ReturnType<typeof bootstrapLaunchRosterMemberships>
-  >
+  bootstrap_memberships: Awaited<ReturnType<typeof bootstrapLaunchRosterMemberships>>
   created_posts: Array<{
     spec_id: string
     post_id: string
@@ -317,7 +320,10 @@ export interface LaunchWarmupSuiteResult {
     ok: boolean
     missing: string[]
     suite_state: WarmupSuite['state']
-    batch_states: Record<'kickoff' | 'warmup', WarmStartBatch['state']>
+    batch_states: {
+      kickoff: WarmStartBatch['state']
+      warmup: WarmStartBatch['state'] | 'missing'
+    }
     total_candidate_posts: number
     total_candidate_threads: number
     total_candidate_turns: number
@@ -338,10 +344,7 @@ interface WarmupGovernanceServiceDeps {
   agentRepo: AgentRepository
   agentConfigRepo: AgentConfigRepository
   roleAssignmentRepo?: Pick<RoleAssignmentRepository, 'listActiveByScope'> | null
-  membershipService: Pick<
-    AgentCommunityMembershipService,
-    'reconcileMemberships' | 'listActive'
-  >
+  membershipService: Pick<AgentCommunityMembershipService, 'reconcileMemberships' | 'listActive'>
   stageTierService?: Pick<AgentStageTierService, 'ensureBootstrapSnapshot'> | null
   forumWriteService: Pick<
     ForumWriteService,
@@ -355,9 +358,7 @@ interface WarmupGovernanceServiceDeps {
     'createFromUpload' | 'promoteAsset' | 'attachPostMediaAndConsume'
   > | null
   postScheduler?: {
-    createPost(
-      input?: { warmup_context?: WarmupWriteContextInput },
-    ): Promise<PostSchedulerResult>
+    createPost(input?: { warmup_context?: WarmupWriteContextInput }): Promise<PostSchedulerResult>
   } | null
   runtimeLoop?: {
     isRunning: boolean
@@ -382,7 +383,7 @@ function ensureBatch(
 ): WarmStartBatch {
   const batch = batches.find((item) => item.batch_kind === kind) ?? null
   if (!batch) {
-    throw new ValidationError(`warmup suite is missing its ${kind} batch`)
+    throw new ValidationError(`kickoff suite is missing its ${kind} batch`)
   }
   return batch
 }
@@ -394,8 +395,8 @@ function buildReviewFreshness(
 ): boolean {
   if (!review) return false
   const latestBatchCreatedAt = Math.max(
-    kickoffBatch?.created_at.getTime() ?? 0,
-    warmupBatch?.created_at.getTime() ?? 0,
+    kickoffBatch && kickoffBatch.state !== 'draft' ? kickoffBatch.created_at.getTime() : 0,
+    warmupBatch && warmupBatch.state !== 'draft' ? warmupBatch.created_at.getTime() : 0,
   )
   return review.created_at.getTime() >= latestBatchCreatedAt
 }
@@ -407,10 +408,12 @@ function shouldAttachMedia(spec: LaunchWarmStartSpec): boolean {
   if (spec.attach_media !== undefined) {
     return spec.attach_media
   }
-  return spec.content_kind === 'note_entry'
-    || spec.content_kind === 'highlight_hero'
-    || spec.content_kind === 'programming_slot'
-    || spec.id === 'amplification-hot-arena-second-round'
+  return (
+    spec.content_kind === 'note_entry' ||
+    spec.content_kind === 'highlight_hero' ||
+    spec.content_kind === 'programming_slot' ||
+    spec.id === 'amplification-hot-arena-second-round'
+  )
 }
 
 function pickLocalWarmupMediaAsset(spec: LaunchWarmStartSpec): string {
@@ -448,13 +451,9 @@ async function readLocalWarmupMediaAsset(relativeAssetPath: string): Promise<{
   throw lastError ?? new Error(`warmup media asset not found: ${relativeAssetPath}`)
 }
 
-function buildWarmupThreadBody(input: {
-  spec: LaunchWarmStartSpec
-  ordinal: number
-}): string {
-  const prefix = input.ordinal === 0
-    ? '我先接住这条主判断。'
-    : '如果要把这条线继续顶上去，我会补这一层。'
+function buildWarmupThreadBody(input: { spec: LaunchWarmStartSpec; ordinal: number }): string {
+  const prefix =
+    input.ordinal === 0 ? '我先接住这条主判断。' : '如果要把这条线继续顶上去，我会补这一层。'
   return [
     prefix,
     `${input.spec.storyline.hook} 不能只停在标题里，至少要把下一步最值得追的人和代价点出来。`,
@@ -462,10 +461,7 @@ function buildWarmupThreadBody(input: {
   ].join('\n')
 }
 
-function buildWarmupTurnBody(input: {
-  spec: LaunchWarmStartSpec
-  ordinal: number
-}): string {
+function buildWarmupTurnBody(input: { spec: LaunchWarmStartSpec; ordinal: number }): string {
   if (input.ordinal === 0) {
     return [
       `我同意先把追问压在“${input.spec.storyline.hook}”上。`,
@@ -489,7 +485,10 @@ function toLocalDateKey(date: Date, timeZone: string): string {
   return formatter.format(date)
 }
 
-function readLocalDateTimeParts(date: Date, timeZone: string): {
+function readLocalDateTimeParts(
+  date: Date,
+  timeZone: string,
+): {
   year: number
   month: number
   day: number
@@ -535,11 +534,11 @@ function resolveLocalScheduleInstant(input: {
     const candidate = new Date(baseUtcMs + offsetMinutes * 60_000)
     const local = readLocalDateTimeParts(candidate, input.time_zone)
     if (
-      local.year === year
-      && local.month === month
-      && local.day === day
-      && local.hour === hour
-      && local.minute === minute
+      local.year === year &&
+      local.month === month &&
+      local.day === day &&
+      local.hour === hour &&
+      local.minute === minute
     ) {
       return candidate
     }
@@ -580,35 +579,30 @@ function buildProgrammingHealthReadinessReasons(input: {
   return reasons
 }
 
-function hasObservedSupply(observed: Record<string, number> | undefined): boolean {
-  return Object.values(observed ?? {}).some((value) => value > 0)
-}
-
-function isColdStartProgrammingHealth(input: {
-  observed_daily_outcomes: Record<string, number>
-  daypart_readiness: Array<{ observed?: Record<string, number> }>
-  community_supply_floor: Array<{ observed?: Record<string, number> }>
-  visual_ratio_ok: boolean
-  aftershow_pipeline_ok: boolean
-}): boolean {
-  const outcomesObserved = hasObservedSupply(input.observed_daily_outcomes)
-  const daypartsObserved = input.daypart_readiness.some((item) => hasObservedSupply(item.observed))
-  const communitiesObserved = input.community_supply_floor.some((item) => hasObservedSupply(item.observed))
-
-  return !outcomesObserved
-    && !daypartsObserved
-    && !communitiesObserved
-    && input.visual_ratio_ok
-    && input.aftershow_pipeline_ok
-}
-
 function readAllowAftershowExport(rulesJson: unknown): boolean {
   if (!rulesJson || typeof rulesJson !== 'object' || Array.isArray(rulesJson)) return false
   const crossRoutePolicy = (rulesJson as Record<string, unknown>).cross_route_policy
-  if (!crossRoutePolicy || typeof crossRoutePolicy !== 'object' || Array.isArray(crossRoutePolicy)) {
+  if (
+    !crossRoutePolicy ||
+    typeof crossRoutePolicy !== 'object' ||
+    Array.isArray(crossRoutePolicy)
+  ) {
     return false
   }
   return (crossRoutePolicy as Record<string, unknown>).allow_aftershow_export === true
+}
+
+function getLaunchCommunityName(slug: string): string {
+  return listLaunchCommunitySeeds().find((community) => community.slug === slug)?.name ?? slug
+}
+
+function hasPostTag(post: Pick<Post, 'tags'>, expected: string): boolean {
+  return post.tags.includes(expected)
+}
+
+function readPostTagValue(post: Pick<Post, 'tags'>, prefix: string): string | null {
+  const hit = post.tags.find((tag) => tag.startsWith(prefix))
+  return hit ? hit.slice(prefix.length) : null
 }
 
 function batchReadinessReasons(
@@ -670,13 +664,15 @@ export class WarmupGovernanceService {
     }
   }
 
-  async createLaunchSuite(input: {
-    suite_label?: string | null
-    max_runtime_topup_posts?: number
-    roster?: LaunchSystemRosterRuntime
-    created_by_user_id?: string | null
-    now?: Date
-  } = {}): Promise<LaunchWarmupSuiteResult> {
+  async createLaunchSuite(
+    input: {
+      suite_label?: string | null
+      max_runtime_topup_posts?: number
+      roster?: LaunchSystemRosterRuntime
+      created_by_user_id?: string | null
+      now?: Date
+    } = {},
+  ): Promise<LaunchWarmupSuiteResult> {
     const suiteLabel = input.suite_label?.trim() || DEFAULT_SUITE_LABEL
     const existingReviewReady = (await this.deps.warmupGovernanceRepo.listSuites()).find(
       (suite) => suite.state === 'review_ready',
@@ -684,7 +680,7 @@ export class WarmupGovernanceService {
     if (existingReviewReady) {
       if (existingReviewReady.suite_label !== suiteLabel) {
         throw new ValidationError(
-          'archive or activate the current review_ready warmup suite before creating another candidate suite',
+          'archive or activate the current review_ready kickoff suite before creating another kickoff foundation',
         )
       }
       return this.buildLaunchSuiteResult(existingReviewReady, {
@@ -751,7 +747,7 @@ export class WarmupGovernanceService {
       communityByAlias,
       usedAgentIds,
       now,
-      generation_mode: 'warmup_candidate',
+      generation_mode: 'kickoff_candidate',
     }).catch(async (error) => {
       await this.deps.warmupGovernanceRepo.updateBatch(kickoffBatch.id, {
         state: 'failed',
@@ -765,54 +761,26 @@ export class WarmupGovernanceService {
       notes: `generated ${kickoffPosts.length} kickoff candidate posts`,
     })
 
-    const warmupBatch = await this.deps.warmupGovernanceRepo.createBatch({
-      suite_id: suite.id,
-      batch_kind: 'warmup',
-      state: 'generating',
-      revision_key: 'warmup:v1',
-      package_hash: 'launch-warm-start:warmup:v1',
-    })
-
-    const warmupPosts = await this.generateBatch({
-      batch: warmupBatch,
-      specs: CURATED_LAUNCH_WARM_START_POSTS.filter((item) => item.pass === 'amplification'),
-      roster,
-      indexes,
-      communityByAlias,
-      usedAgentIds,
-      now,
-      generation_mode: 'warmup_candidate',
-    }).catch(async (error) => {
-      await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
-        state: 'failed',
-        notes: error instanceof Error ? error.message : 'warmup generation failed',
-      })
-      throw error
-    })
-
-    const runtimeTopUp = await this.runWarmupTopUp({
-      warmupBatchId: warmupBatch.id,
-      max_runtime_topup_posts: input.max_runtime_topup_posts ?? 0,
-    })
-
-    await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
-      state: 'review_ready',
-      notes: `generated ${warmupPosts.length} warmup candidate posts`,
-    })
     const readySuite = await this.deps.warmupGovernanceRepo.updateSuite(suite.id, {
       state: 'review_ready',
       kickoff_batch_id: kickoffBatch.id,
-      warmup_batch_id: warmupBatch.id,
+      warmup_batch_id: null,
     })
     if (!readySuite) {
-      throw new NotFoundError('warmup suite', suite.id)
+      throw new NotFoundError('kickoff suite', suite.id)
     }
 
     return this.buildLaunchSuiteResult(readySuite, {
       bootstrap_memberships: bootstrapMemberships,
-      runtime_top_up: runtimeTopUp,
+      runtime_top_up: {
+        enabled: false,
+        running: this.runtimeDeps.runtimeLoop?.isRunning === true,
+        attempted: 0,
+        triggered: 0,
+        errors: [],
+      },
       reused_existing_suite: false,
-      created_posts: [...kickoffPosts, ...warmupPosts].map((item) => item.summary),
+      created_posts: kickoffPosts.map((item) => item.summary),
     })
   }
 
@@ -860,7 +828,7 @@ export class WarmupGovernanceService {
 
   async getSuiteDetail(suiteId: string): Promise<WarmupSuiteDetail> {
     const suite = await this.deps.warmupGovernanceRepo.findSuiteById(suiteId)
-    if (!suite) throw new NotFoundError('warmup suite', suiteId)
+    if (!suite) throw new NotFoundError('kickoff suite', suiteId)
 
     const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(suite.id)
     const kickoffBatch = batches.find((item) => item.batch_kind === 'kickoff') ?? null
@@ -873,11 +841,10 @@ export class WarmupGovernanceService {
     const latestReview = reviews[0] ?? null
     const reviewFresh = buildReviewFreshness(latestReview, kickoffBatch, warmupBatch)
     const baselines = await this.deps.warmupGovernanceRepo.listBaselines()
-    const suiteBaseline = baselines.find(
-      (item) => item.suite_id === suite.id && item.is_current,
-    )
-      ?? baselines.find((item) => item.suite_id === suite.id)
-      ?? null
+    const suiteBaseline =
+      baselines.find((item) => item.suite_id === suite.id && item.is_current) ??
+      baselines.find((item) => item.suite_id === suite.id) ??
+      null
     const opsPayload = await this.deps.launchProgrammingOpsService.getAdminPayload({
       now: new Date(),
     })
@@ -885,13 +852,9 @@ export class WarmupGovernanceService {
       kickoffBatch?.id ?? null,
       warmupBatch?.id ?? null,
     ])
-    const programmingHealthForActivation = (
-      suite.state === 'active'
-      || !isColdStartProgrammingHealth(opsPayload.health)
-      || !suiteProgrammingHealth
-    )
-      ? opsPayload.health
-      : suiteProgrammingHealth
+    const suiteScopedProgrammingHealth = suite.state === 'active' ? null : suiteProgrammingHealth
+    const programmingHealthForActivation = suiteScopedProgrammingHealth ?? opsPayload.health
+    const programmingHealthForDisplay = suiteScopedProgrammingHealth ?? opsPayload.health
 
     const coverageMap = new Map<string, WarmupSuiteDetail['coverage'][number]>()
     for (const batch of [kickoffReadModel, warmupReadModel]) {
@@ -907,26 +870,24 @@ export class WarmupGovernanceService {
 
     const summary = {
       posts: (kickoffReadModel?.stats.posts ?? 0) + (warmupReadModel?.stats.posts ?? 0),
-      threads:
-        (kickoffReadModel?.stats.threads ?? 0) + (warmupReadModel?.stats.threads ?? 0),
+      threads: (kickoffReadModel?.stats.threads ?? 0) + (warmupReadModel?.stats.threads ?? 0),
       turns: (kickoffReadModel?.stats.turns ?? 0) + (warmupReadModel?.stats.turns ?? 0),
       votes: (kickoffReadModel?.stats.votes ?? 0) + (warmupReadModel?.stats.votes ?? 0),
       media: (kickoffReadModel?.stats.media ?? 0) + (warmupReadModel?.stats.media ?? 0),
       communities: coverageMap.size,
       media_covered_posts:
-        (kickoffReadModel?.stats.media_covered_posts ?? 0)
-        + (warmupReadModel?.stats.media_covered_posts ?? 0),
-      media_coverage_ratio: this.computeMediaCoverageRatio([
-        kickoffReadModel?.stats.posts ?? 0,
-        warmupReadModel?.stats.posts ?? 0,
-      ], [
-        kickoffReadModel?.stats.media_covered_posts ?? 0,
-        warmupReadModel?.stats.media_covered_posts ?? 0,
-      ]),
+        (kickoffReadModel?.stats.media_covered_posts ?? 0) +
+        (warmupReadModel?.stats.media_covered_posts ?? 0),
+      media_coverage_ratio: this.computeMediaCoverageRatio(
+        [kickoffReadModel?.stats.posts ?? 0, warmupReadModel?.stats.posts ?? 0],
+        [
+          kickoffReadModel?.stats.media_covered_posts ?? 0,
+          warmupReadModel?.stats.media_covered_posts ?? 0,
+        ],
+      ),
     }
     const activationReadiness = this.evaluateActivationReadiness({
       kickoffBatch: kickoffReadModel,
-      warmupBatch: warmupReadModel,
       summary,
       programming_health: programmingHealthForActivation,
     })
@@ -968,26 +929,26 @@ export class WarmupGovernanceService {
       coverage: [...coverageMap.values()].sort((a, b) => b.post_count - a.post_count),
       programming_health: {
         required_daily_outcomes: {
-          ...opsPayload.health.required_daily_outcomes,
+          ...programmingHealthForDisplay.required_daily_outcomes,
         },
         observed_daily_outcomes: {
-          ...opsPayload.health.observed_daily_outcomes,
+          ...programmingHealthForDisplay.observed_daily_outcomes,
         },
-        daypart_readiness: opsPayload.health.daypart_readiness.map((item) => ({
+        daypart_readiness: programmingHealthForDisplay.daypart_readiness.map((item) => ({
           daypart_id: item.daypart_id,
           label: item.label,
           ok: item.ok,
         })),
-        community_supply_floor: opsPayload.health.community_supply_floor.map((item) => ({
+        community_supply_floor: programmingHealthForDisplay.community_supply_floor.map((item) => ({
           community_slug: item.community_slug,
           community_name: item.community_name,
           ok: item.ok,
           missed_slots: item.missed_slots,
         })),
-        visual_ratio_ok: opsPayload.health.visual_ratio_ok,
-        aftershow_pipeline_ok: opsPayload.health.aftershow_pipeline_ok,
-        warning_count: opsPayload.health.warning_count,
-        warnings: opsPayload.health.warnings.map((item) => ({
+        visual_ratio_ok: programmingHealthForDisplay.visual_ratio_ok,
+        aftershow_pipeline_ok: programmingHealthForDisplay.aftershow_pipeline_ok,
+        warning_count: programmingHealthForDisplay.warning_count,
+        warnings: programmingHealthForDisplay.warnings.map((item) => ({
           code: item.code,
           severity: item.severity,
           message: item.message,
@@ -1000,9 +961,11 @@ export class WarmupGovernanceService {
       actions: {
         can_review: suite.state === 'review_ready',
         can_retry:
-          suite.state === 'review_ready'
-          && latestReview?.decision === 'pass_to_active'
-          && reviewFresh,
+          suite.state === 'review_ready' &&
+          latestReview?.decision === 'pass_to_active' &&
+          reviewFresh,
+        can_start_warmup:
+          suite.state === 'active' && (warmupBatch === null || warmupBatch.state === 'draft'),
         can_rebuild: suite.state !== 'active' && warmupBatch !== null,
         can_archive: suite.state === 'review_ready' || suite.state === 'active',
       },
@@ -1025,7 +988,10 @@ export class WarmupGovernanceService {
       throw new ValidationError('only review_ready suites can be reviewed')
     }
 
-    if (input.decision === 'not_passed' && (!input.reason_codes || input.reason_codes.length === 0)) {
+    if (
+      input.decision === 'not_passed' &&
+      (!input.reason_codes || input.reason_codes.length === 0)
+    ) {
       throw new ValidationError('not_passed review requires at least one structured reason code')
     }
 
@@ -1074,7 +1040,10 @@ export class WarmupGovernanceService {
       return detail
     }
     const latestReview = detail.latest_review
-    if (latestReview?.decision !== 'pass_to_active' || latestReview.is_fresh_for_current_batches !== true) {
+    if (
+      latestReview?.decision !== 'pass_to_active' ||
+      latestReview.is_fresh_for_current_batches !== true
+    ) {
       return detail
     }
     return this.activateSuite({
@@ -1091,7 +1060,7 @@ export class WarmupGovernanceService {
     now?: Date
   }): Promise<WarmupSuiteDetail> {
     const suite = await this.deps.warmupGovernanceRepo.findSuiteById(input.suite_id)
-    if (!suite) throw new NotFoundError('warmup suite', input.suite_id)
+    if (!suite) throw new NotFoundError('kickoff suite', input.suite_id)
     if (suite.state === 'active') {
       throw new ValidationError('active suites must be archived before rebuild')
     }
@@ -1102,9 +1071,7 @@ export class WarmupGovernanceService {
     const kickoffBatch = ensureBatch(batches, 'kickoff')
     const previousWarmupBatch = ensureBatch(batches, 'warmup')
     const kickoffPosts = await this.deps.postRepo.findByWarmStartBatch(kickoffBatch.id)
-    const usedAgentIds = new Set(
-      kickoffPosts.map((post) => post.author_agent_id).filter(Boolean),
-    )
+    const usedAgentIds = new Set(kickoffPosts.map((post) => post.author_agent_id).filter(Boolean))
     const { communityByAlias } = buildCommunityAliasMap(this.deps.communityRepo)
     const indexes = buildSystemAgentIndexes({
       agentRepo: this.deps.agentRepo,
@@ -1164,12 +1131,103 @@ export class WarmupGovernanceService {
     return this.getSuiteDetail(suite.id)
   }
 
+  async startWarmup(input: {
+    suite_id: string
+    actor_user_id?: string | null
+    max_runtime_topup_posts?: number
+    roster?: LaunchSystemRosterRuntime
+    now?: Date
+  }): Promise<WarmupSuiteDetail> {
+    const suite = await this.deps.warmupGovernanceRepo.findSuiteById(input.suite_id)
+    if (!suite) throw new NotFoundError('kickoff suite', input.suite_id)
+    if (suite.state !== 'active') {
+      throw new ValidationError('warmup can only start after the suite is active')
+    }
+
+    const now = input.now ?? new Date()
+    const roster = input.roster ?? getLaunchSystemRoster()
+    const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(suite.id)
+    const kickoffBatch = ensureBatch(batches, 'kickoff')
+    let warmupBatch = batches.find((item) => item.batch_kind === 'warmup') ?? null
+
+    if (warmupBatch?.state === 'active') {
+      return this.getSuiteDetail(suite.id)
+    }
+    if (warmupBatch && warmupBatch.state !== 'draft') {
+      throw new ValidationError(
+        `warmup batch must be draft before start, current state=${warmupBatch.state}`,
+      )
+    }
+
+    if (!warmupBatch) {
+      warmupBatch = await this.deps.warmupGovernanceRepo.createBatch({
+        suite_id: suite.id,
+        batch_kind: 'warmup',
+        state: 'draft',
+        revision_key: 'warmup:v1',
+        package_hash: 'launch-warm-start:warmup:v1',
+        notes: 'warmup deferred until runtime start',
+      })
+      await this.deps.warmupGovernanceRepo.updateSuite(suite.id, {
+        warmup_batch_id: warmupBatch.id,
+      })
+    }
+
+    const kickoffPosts = await this.deps.postRepo.findByWarmStartBatch(kickoffBatch.id)
+    const usedAgentIds = new Set(
+      kickoffPosts.map((post) => post.author_agent_id).filter((id): id is string => Boolean(id)),
+    )
+    const { communityByAlias } = buildCommunityAliasMap(this.deps.communityRepo)
+    const indexes = buildSystemAgentIndexes({
+      agentRepo: this.deps.agentRepo,
+      agentConfigRepo: this.deps.agentConfigRepo,
+      ownerId: roster.owner_model.owner_id,
+    })
+
+    await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
+      state: 'generating',
+      notes: `warmup runtime started by ${input.actor_user_id ?? 'system'}`,
+    })
+
+    const warmupPosts = await this.generateBatch({
+      batch: warmupBatch,
+      specs: CURATED_LAUNCH_WARM_START_POSTS.filter((item) => item.pass === 'amplification'),
+      roster,
+      indexes,
+      communityByAlias,
+      usedAgentIds,
+      now,
+      generation_mode: 'warmup_candidate',
+    }).catch(async (error) => {
+      await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
+        state: 'failed',
+        notes: error instanceof Error ? error.message : 'warmup generation failed',
+      })
+      throw error
+    })
+
+    await this.runWarmupTopUp({
+      warmupBatchId: warmupBatch.id,
+      max_runtime_topup_posts: input.max_runtime_topup_posts ?? 0,
+    })
+
+    await this.applyBatchExposure(warmupBatch.id, 'active')
+    await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
+      state: 'active',
+      activated_at: now,
+      archived_at: null,
+      notes: `warmup runtime published ${warmupPosts.length} posts`,
+    })
+
+    return this.getSuiteDetail(suite.id)
+  }
+
   async archiveSuite(input: {
     suite_id: string
     actor_user_id?: string | null
   }): Promise<WarmupSuiteDetail> {
     const suite = await this.deps.warmupGovernanceRepo.findSuiteById(input.suite_id)
-    if (!suite) throw new NotFoundError('warmup suite', input.suite_id)
+    if (!suite) throw new NotFoundError('kickoff suite', input.suite_id)
 
     const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(suite.id)
     const now = new Date()
@@ -1248,7 +1306,10 @@ export class WarmupGovernanceService {
 
     const targetSuites = preview.suite_id ? [preview.suite_id] : []
     const suiteStates = await Promise.all(
-      targetSuites.map(async (suiteId) => [suiteId, await this.deps.warmupGovernanceRepo.findSuiteById(suiteId)] as const),
+      targetSuites.map(
+        async (suiteId) =>
+          [suiteId, await this.deps.warmupGovernanceRepo.findSuiteById(suiteId)] as const,
+      ),
     )
     const suiteStateById = new Map(
       suiteStates.filter((entry): entry is [string, WarmupSuite] => entry[1] !== null),
@@ -1260,9 +1321,15 @@ export class WarmupGovernanceService {
 
     if (input.action === 'quarantine') {
       await Promise.all([
-        ...posts.map((post) => this.deps.postRepo.updateContent(post.id, { visibility: 'QUARANTINE' })),
-        ...threads.map((thread) => this.deps.publicStageThreadRepo.updateVisibility(thread.id, 'QUARANTINE')),
-        ...turns.map((turn) => this.deps.publicStageTurnRepo.updateVisibility(turn.id, 'QUARANTINE')),
+        ...posts.map((post) =>
+          this.deps.postRepo.updateContent(post.id, { visibility: 'QUARANTINE' }),
+        ),
+        ...threads.map((thread) =>
+          this.deps.publicStageThreadRepo.updateVisibility(thread.id, 'QUARANTINE'),
+        ),
+        ...turns.map((turn) =>
+          this.deps.publicStageTurnRepo.updateVisibility(turn.id, 'QUARANTINE'),
+        ),
       ])
       await this.refreshSearchDocs({
         postIds: posts.map((post) => post.id),
@@ -1274,21 +1341,15 @@ export class WarmupGovernanceService {
       await Promise.all([
         ...posts.map((post) => {
           const suiteId = this.getSuiteIdForPost(post, preview)
-          return this.restorePost(post, suiteId ? suiteStateById.get(suiteId) ?? null : null)
+          return this.restorePost(post, suiteId ? (suiteStateById.get(suiteId) ?? null) : null)
         }),
         ...threads.map((thread) => {
           const suiteId = this.getSuiteIdForBatch(thread.warm_start_batch_id, preview)
-          return this.restoreThread(
-            thread,
-            suiteId ? suiteStateById.get(suiteId) ?? null : null,
-          )
+          return this.restoreThread(thread, suiteId ? (suiteStateById.get(suiteId) ?? null) : null)
         }),
         ...turns.map((turn) => {
           const suiteId = this.getSuiteIdForBatch(turn.warm_start_batch_id, preview)
-          return this.restoreTurn(
-            turn,
-            suiteId ? suiteStateById.get(suiteId) ?? null : null,
-          )
+          return this.restoreTurn(turn, suiteId ? (suiteStateById.get(suiteId) ?? null) : null)
         }),
       ])
       await this.refreshSearchDocs({
@@ -1337,38 +1398,41 @@ export class WarmupGovernanceService {
     }
 
     const suite = await this.deps.warmupGovernanceRepo.findSuiteById(currentBaseline.suite_id)
-    const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(currentBaseline.suite_id)
-    const kickoffBatch = batches.find((item) => item.id === currentBaseline.kickoff_batch_id) ?? null
+    const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(
+      currentBaseline.suite_id,
+    )
+    const kickoffBatch =
+      batches.find((item) => item.id === currentBaseline.kickoff_batch_id) ?? null
     const warmupBatch = batches.find((item) => item.id === currentBaseline.warmup_batch_id) ?? null
     const [kickoffReadModel, warmupReadModel] = await Promise.all([
       kickoffBatch ? this.buildBatchReadModel(kickoffBatch) : Promise.resolve(null),
       warmupBatch ? this.buildBatchReadModel(warmupBatch) : Promise.resolve(null),
     ])
-    const latestReview = await this.deps.warmupGovernanceRepo.findLatestReviewBySuite(currentBaseline.suite_id)
+    const latestReview = await this.deps.warmupGovernanceRepo.findLatestReviewBySuite(
+      currentBaseline.suite_id,
+    )
     const freshReview = buildReviewFreshness(latestReview, kickoffBatch, warmupBatch)
     const opsPayload = await this.deps.launchProgrammingOpsService.getAdminPayload({
       now: new Date(),
     })
 
-    const kickoffLayerReady =
-      kickoffBatch?.state === 'active' && kickoffBatch.activated_at !== null
-    const warmupLayerReady =
-      warmupBatch?.state === 'active' && warmupBatch.activated_at !== null
+    const kickoffLayerReady = kickoffBatch?.state === 'active' && kickoffBatch.activated_at !== null
+    const warmupLayerReady = warmupBatch?.state === 'active' && warmupBatch.activated_at !== null
     const keyCommunitiesReady = opsPayload.health.community_supply_floor.every((item) => item.ok)
-    const keyShelvesReady = opsPayload.health.daypart_readiness.every((item) => item.ok)
-      && Object.entries(opsPayload.health.required_daily_outcomes).every(([key, required]) => {
+    const keyShelvesReady =
+      opsPayload.health.daypart_readiness.every((item) => item.ok) &&
+      Object.entries(opsPayload.health.required_daily_outcomes).every(([key, required]) => {
         const observed = opsPayload.health.observed_daily_outcomes[key.replace(/_min$/, '')] ?? 0
         return observed >= required
       })
     const mediaAccessOk = opsPayload.health.visual_ratio_ok
     const aftershowPipelineOk = opsPayload.health.aftershow_pipeline_ok
-    const lastReviewDecisionOk =
-      suite?.state === 'active'
-      && latestReview?.decision === 'pass_to_active'
-      && freshReview
+    // Active baseline admission is anchored to the kickoff activation review.
+    // Once the suite is active, the deferred warmup runtime should not invalidate
+    // that review simply by promoting the already-created draft warmup batch.
+    const lastReviewDecisionOk = suite?.state === 'active' && latestReview?.decision === 'pass_to_active'
     const activationReadiness = this.evaluateActivationReadiness({
       kickoffBatch: kickoffReadModel,
-      warmupBatch: warmupReadModel,
       summary: {
         posts: (kickoffReadModel?.stats.posts ?? 0) + (warmupReadModel?.stats.posts ?? 0),
         threads: (kickoffReadModel?.stats.threads ?? 0) + (warmupReadModel?.stats.threads ?? 0),
@@ -1380,15 +1444,15 @@ export class WarmupGovernanceService {
           ...(warmupReadModel?.coverage.map((item) => item.community_id) ?? []),
         ]).size,
         media_covered_posts:
-          (kickoffReadModel?.stats.media_covered_posts ?? 0)
-          + (warmupReadModel?.stats.media_covered_posts ?? 0),
-        media_coverage_ratio: this.computeMediaCoverageRatio([
-          kickoffReadModel?.stats.posts ?? 0,
-          warmupReadModel?.stats.posts ?? 0,
-        ], [
-          kickoffReadModel?.stats.media_covered_posts ?? 0,
-          warmupReadModel?.stats.media_covered_posts ?? 0,
-        ]),
+          (kickoffReadModel?.stats.media_covered_posts ?? 0) +
+          (warmupReadModel?.stats.media_covered_posts ?? 0),
+        media_coverage_ratio: this.computeMediaCoverageRatio(
+          [kickoffReadModel?.stats.posts ?? 0, warmupReadModel?.stats.posts ?? 0],
+          [
+            kickoffReadModel?.stats.media_covered_posts ?? 0,
+            warmupReadModel?.stats.media_covered_posts ?? 0,
+          ],
+        ),
       },
       programming_health: opsPayload.health,
     })
@@ -1420,20 +1484,34 @@ export class WarmupGovernanceService {
     }
   }
 
-  private async buildSuiteProgrammingHealth(
-    batchIds: Array<string | null | undefined>,
-  ): Promise<{
+  private async buildSuiteProgrammingHealth(batchIds: Array<string | null | undefined>): Promise<{
     required_daily_outcomes: Record<string, number>
     observed_daily_outcomes: Record<string, number>
-    daypart_readiness: Array<{ ok: boolean }>
-    community_supply_floor: Array<{ ok: boolean }>
+    daypart_readiness: Array<{
+      daypart_id: string
+      label: string
+      ok: boolean
+      required: Record<string, number>
+      observed: Record<string, number>
+    }>
+    community_supply_floor: Array<{
+      community_slug: string
+      community_name: string
+      ok: boolean
+      missed_slots: number
+      required: Record<string, number>
+      observed: Record<string, number>
+    }>
     visual_ratio_ok: boolean
     aftershow_pipeline_ok: boolean
+    warning_count: number
+    warnings: ProgrammingWarning[]
   } | null> {
     const schedule = getLaunchProgrammingSchedule()
     const contents = await Promise.all(
-      batchIds.filter((batchId): batchId is string => Boolean(batchId)).map((batchId) =>
-        this.readBatchContent(batchId)),
+      batchIds
+        .filter((batchId): batchId is string => Boolean(batchId))
+        .map((batchId) => this.readBatchContent(batchId)),
     )
     const posts = contents.flatMap((content) => content.posts)
     const threads = contents.flatMap((content) => content.threads)
@@ -1449,65 +1527,93 @@ export class WarmupGovernanceService {
       turnCountsByPost.set(turn.post_id, (turnCountsByPost.get(turn.post_id) ?? 0) + 1)
     }
     const mediaCoveredPosts = new Set(media.map((item) => item.post_id))
-    const aftershowReader = this.deps.aftershowService as
-      | {
-          getLatestByPost?: (postId: string) => Promise<{ artifact: unknown | null }>
+    const aftershowReader = this.deps.aftershowService as {
+      getLatestByPost?: (postId: string) => Promise<{ artifact: unknown | null }>
+    } | null
+
+    const normalizedPosts = await Promise.all(
+      posts.map(async (post) => {
+        const community = this.deps.communityRepo.findById(post.community_id)
+        const communitySlug = community?.slug ?? post.community_id
+        const matchedSpec =
+          CURATED_LAUNCH_WARM_START_POSTS.find(
+            (spec) => spec.community_slug === communitySlug && spec.title === post.title,
+          ) ?? null
+        const hasAftershowArtifact = aftershowReader?.getLatestByPost
+          ? (await aftershowReader.getLatestByPost(post.id)).artifact !== null
+          : false
+
+        return {
+          post,
+          community_slug: communitySlug,
+          matched_spec: matchedSpec,
+          derived_daypart: matchedSpec?.programming_daypart ?? readPostTagValue(post, 'daypart:'),
+          derived_content_kind:
+            matchedSpec?.content_kind ?? readPostTagValue(post, 'content-kind:'),
+          derived_storyline_state: readPostTagValue(post, 'storyline-state:'),
+          thread_turn_count:
+            (threadCountsByPost.get(post.id) ?? 0) + (turnCountsByPost.get(post.id) ?? 0),
+          has_media: mediaCoveredPosts.has(post.id),
+          allow_aftershow_export: readAllowAftershowExport(community?.rules_json ?? null),
+          has_aftershow_artifact: hasAftershowArtifact,
+          is_creator_note:
+            Boolean(matchedSpec?.creator_note) ||
+            matchedSpec?.content_kind === 'note_entry' ||
+            matchedSpec?.editorial_shelf_id === 'notes_today' ||
+            hasPostTag(post, 'creator-note') ||
+            hasPostTag(post, 'content:creator-note'),
+          is_continuity:
+            matchedSpec?.content_kind === 'continuity_callback' ||
+            hasPostTag(post, 'continuity') ||
+            hasPostTag(post, 'content:continuity-seed') ||
+            readPostTagValue(post, 'storyline-state:') === 'callback',
+          is_aftershow_candidate:
+            hasPostTag(post, 'content:aftershow-candidate') ||
+            (readAllowAftershowExport(community?.rules_json ?? null) &&
+              (matchedSpec?.programming_daypart === 'late_night_callback' ||
+                matchedSpec?.content_kind === 'continuity_callback')),
+          is_highlight_candidate:
+            matchedSpec?.content_kind === 'highlight_hero' ||
+            readPostTagValue(post, 'content-kind:') === 'highlight_hero',
         }
-      | null
-
-    const normalizedPosts = await Promise.all(posts.map(async (post) => {
-      const community = this.deps.communityRepo.findById(post.community_id)
-      const communitySlug = community?.slug ?? post.community_id
-      const matchedSpec = CURATED_LAUNCH_WARM_START_POSTS.find((spec) =>
-        spec.community_slug === communitySlug && spec.title === post.title)
-        ?? null
-      const hasAftershowArtifact = aftershowReader?.getLatestByPost
-        ? (await aftershowReader.getLatestByPost(post.id)).artifact !== null
-        : false
-
-      return {
-        post,
-        community_slug: communitySlug,
-        matched_spec: matchedSpec,
-        thread_turn_count:
-          (threadCountsByPost.get(post.id) ?? 0) + (turnCountsByPost.get(post.id) ?? 0),
-        has_media: mediaCoveredPosts.has(post.id),
-        allow_aftershow_export: readAllowAftershowExport(community?.rules_json ?? null),
-        has_aftershow_artifact: hasAftershowArtifact,
-      }
-    }))
-    if (!normalizedPosts.some((item) => item.matched_spec)) {
+      }),
+    )
+    if (!normalizedPosts.some((item) => item.matched_spec || hasPostTag(item.post, 'kickoff'))) {
       return null
     }
 
     const readCounts = (items: typeof normalizedPosts) => {
-      const creatorNoteEntries = items.filter((item) =>
-        item.matched_spec?.creator_note
-        || item.matched_spec?.content_kind === 'note_entry'
-        || item.matched_spec?.editorial_shelf_id === 'notes_today'
-        || item.post.tags.includes('creator-note')).length
+      const creatorNoteEntries = items.filter((item) => item.is_creator_note).length
       return {
-        root_posts: items.filter((item) => item.matched_spec?.content_kind !== 'aftershow_recap').length,
+        root_posts: items.filter(
+          (item) => item.derived_content_kind !== 'aftershow_recap' && !item.is_creator_note,
+        ).length,
         creator_note_entries: creatorNoteEntries,
-        priority_threads: items.filter((item) => item.thread_turn_count >= 6).length,
-        highlight_candidates: items.filter((item) =>
-          item.thread_turn_count >= 6
-          && (item.matched_spec?.programming_daypart === 'evening_prime'
-            || item.matched_spec?.content_kind === 'highlight_hero')).length,
-        continuity_callbacks: items.filter((item) =>
-          item.matched_spec?.content_kind === 'continuity_callback'
-          || item.post.tags.includes('continuity')).length,
-        aftershow_candidates: items.filter((item) => item.allow_aftershow_export).length,
+        priority_threads: items.filter(
+          (item) => item.thread_turn_count >= 6 || item.is_highlight_candidate,
+        ).length,
+        highlight_candidates: items.filter(
+          (item) =>
+            item.is_highlight_candidate ||
+            (item.thread_turn_count >= 6 && item.derived_daypart === 'evening_prime'),
+        ).length,
+        continuity_callbacks: items.filter((item) => item.is_continuity).length,
+        aftershow_candidates: items.filter((item) => item.is_aftershow_candidate).length,
       }
     }
 
     const daypartReadiness = schedule.dayparts.map((daypart) => {
-      const daypartPosts = normalizedPosts.filter((item) =>
-        item.matched_spec?.programming_daypart === daypart.id)
+      const daypartPosts = normalizedPosts.filter((item) => item.derived_daypart === daypart.id)
       const observedCounts = readCounts(daypartPosts)
       return {
-        ok: Object.entries(daypart.supply_floor).every(([key, requiredValue]) =>
-          (observedCounts[key as keyof typeof observedCounts] ?? 0) >= requiredValue),
+        daypart_id: daypart.id,
+        label: daypart.label,
+        required: { ...daypart.supply_floor },
+        observed: { ...observedCounts },
+        ok: Object.entries(daypart.supply_floor).every(
+          ([key, requiredValue]) =>
+            (observedCounts[key as keyof typeof observedCounts] ?? 0) >= requiredValue,
+        ),
       }
     })
 
@@ -1515,41 +1621,88 @@ export class WarmupGovernanceService {
     schedule.slot_templates.forEach((slot) => {
       const current = requiredCommunityCounts.get(slot.community_slug) ?? {}
       current.root_posts = (current.root_posts ?? 0) + (slot.expected_outputs.root_posts ?? 0)
-      current.creator_note_entries = (current.creator_note_entries ?? 0) + (slot.expected_outputs.creator_note_entries ?? 0)
-      current.priority_threads = (current.priority_threads ?? 0) + (slot.expected_outputs.priority_threads ?? 0)
-      current.highlight_candidates = (current.highlight_candidates ?? 0) + (slot.expected_outputs.highlight_candidate ? 1 : 0)
-      current.continuity_callbacks = (current.continuity_callbacks ?? 0) + (slot.expected_outputs.continuity_entry ? 1 : 0)
-      current.aftershow_candidates = (current.aftershow_candidates ?? 0) + (slot.expected_outputs.aftershow_candidate ? 1 : 0)
+      current.creator_note_entries =
+        (current.creator_note_entries ?? 0) + (slot.expected_outputs.creator_note_entries ?? 0)
+      current.priority_threads =
+        (current.priority_threads ?? 0) + (slot.expected_outputs.priority_threads ?? 0)
+      current.highlight_candidates =
+        (current.highlight_candidates ?? 0) + (slot.expected_outputs.highlight_candidate ? 1 : 0)
+      current.continuity_callbacks =
+        (current.continuity_callbacks ?? 0) + (slot.expected_outputs.continuity_entry ? 1 : 0)
+      current.aftershow_candidates =
+        (current.aftershow_candidates ?? 0) + (slot.expected_outputs.aftershow_candidate ? 1 : 0)
       requiredCommunityCounts.set(slot.community_slug, current)
     })
-    const communitySupplyFloor = Array.from(requiredCommunityCounts.entries()).map(([communitySlug, required]) => {
-      const observedCounts = readCounts(
-        normalizedPosts.filter((item) => item.community_slug === communitySlug),
-      )
-      return {
-        ok: Object.entries(required).every(([key, requiredValue]) =>
-          (observedCounts[key as keyof typeof observedCounts] ?? 0) >= requiredValue),
-      }
-    })
+    const communitySupplyFloor = Array.from(requiredCommunityCounts.entries()).map(
+      ([communitySlug, required]) => {
+        const observedCounts = readCounts(
+          normalizedPosts.filter((item) => item.community_slug === communitySlug),
+        )
+        return {
+          community_slug: communitySlug,
+          community_name: getLaunchCommunityName(communitySlug),
+          required: { ...required },
+          observed: { ...observedCounts },
+          ok: Object.entries(required).every(
+            ([key, requiredValue]) =>
+              (observedCounts[key as keyof typeof observedCounts] ?? 0) >= requiredValue,
+          ),
+          missed_slots: schedule.slot_templates.filter(
+            (slot) =>
+              slot.community_slug === communitySlug &&
+              Object.entries(slot.expected_outputs).some(([key, requiredValue]) => {
+                if (typeof requiredValue !== 'number') return false
+                return (observedCounts[key as keyof typeof observedCounts] ?? 0) < requiredValue
+              }),
+          ).length,
+        }
+      },
+    )
 
     const requiredDailyOutcomes = {
       ...schedule.health_thresholds.required_daily_outcomes,
     }
+    const observedCountsAll = readCounts(normalizedPosts)
     const observedDailyOutcomes = {
-      mainline_roots: normalizedPosts.filter((item) =>
-        !item.matched_spec?.creator_note
-        && item.matched_spec?.content_kind !== 'note_entry'
-        && !item.post.tags.includes('creator-note')).length,
-      highlight_candidates: readCounts(normalizedPosts).highlight_candidates,
-      creator_note_entries: readCounts(normalizedPosts).creator_note_entries,
-      continuity_callbacks: readCounts(normalizedPosts).continuity_callbacks,
+      mainline_roots: normalizedPosts.filter(
+        (item) =>
+          !item.is_creator_note &&
+          item.derived_content_kind !== 'note_entry' &&
+          !hasPostTag(item.post, 'creator-note'),
+      ).length,
+      highlight_candidates: observedCountsAll.highlight_candidates,
+      creator_note_entries: observedCountsAll.creator_note_entries,
+      continuity_callbacks: observedCountsAll.continuity_callbacks,
     }
-    const eligibleAftershowPosts = normalizedPosts.filter((item) => item.allow_aftershow_export)
-    const publishedAftershowPosts = eligibleAftershowPosts.filter((item) => item.has_aftershow_artifact)
-    const aftershowPipelineOk = eligibleAftershowPosts.length === 0
-      ? true
-      : publishedAftershowPosts.length / eligibleAftershowPosts.length >= 0.5
+    const eligibleAftershowPosts = normalizedPosts.filter((item) => item.is_aftershow_candidate)
+    const publishedAftershowPosts = eligibleAftershowPosts.filter(
+      (item) => item.has_aftershow_artifact,
+    )
+    const aftershowPipelineOk =
+      eligibleAftershowPosts.length === 0
+        ? true
+        : publishedAftershowPosts.length / eligibleAftershowPosts.length >= 0.5
     const mediaCoverageRatio = posts.length === 0 ? 0 : mediaCoveredPosts.size / posts.length
+    const warnings: ProgrammingWarning[] = []
+    const emptyCreatorNoteDayparts = daypartReadiness.filter(
+      (item) =>
+        ['morning_warmup', 'afternoon_handoff'].includes(item.daypart_id) &&
+        (item.observed.creator_note_entries ?? 0) === 0,
+    )
+    if (emptyCreatorNoteDayparts.length > 1) {
+      warnings.push({
+        code: 'creator_note_supply_empty_multi_daypart',
+        severity: 'warn',
+        message: '创作者笔记供给连续超过一个 daypart 为空。',
+      })
+    }
+    if (!aftershowPipelineOk) {
+      warnings.push({
+        code: 'aftershow_publish_below_threshold',
+        severity: 'warn',
+        message: 'Aftershow 发布成功率低于 50%。',
+      })
+    }
 
     return {
       required_daily_outcomes: requiredDailyOutcomes,
@@ -1559,6 +1712,8 @@ export class WarmupGovernanceService {
       visual_ratio_ok:
         mediaCoverageRatio >= SUITE_MEDIA_RATIO_MIN && mediaCoverageRatio <= SUITE_MEDIA_RATIO_MAX,
       aftershow_pipeline_ok: aftershowPipelineOk,
+      warning_count: warnings.length,
+      warnings,
     }
   }
 
@@ -1568,7 +1723,7 @@ export class WarmupGovernanceService {
   }): Promise<WarmupSuiteDetail> {
     const detail = await this.getSuiteDetail(input.suite_id)
     const suite = await this.deps.warmupGovernanceRepo.findSuiteById(input.suite_id)
-    if (!suite) throw new NotFoundError('warmup suite', input.suite_id)
+    if (!suite) throw new NotFoundError('kickoff suite', input.suite_id)
     if (!detail.activation_readiness.ok) {
       throw new ValidationError('suite is not ready for activation', {
         reasons: detail.activation_readiness.reasons,
@@ -1577,11 +1732,11 @@ export class WarmupGovernanceService {
 
     const batches = await this.deps.warmupGovernanceRepo.listBatchesBySuite(suite.id)
     const kickoffBatch = ensureBatch(batches, 'kickoff')
-    const warmupBatch = ensureBatch(batches, 'warmup')
+    let warmupBatch = batches.find((item) => item.batch_kind === 'warmup') ?? null
     const latestReview = await this.deps.warmupGovernanceRepo.findLatestReviewBySuite(suite.id)
     if (
-      latestReview?.decision !== 'pass_to_active'
-      || !buildReviewFreshness(latestReview, kickoffBatch, warmupBatch)
+      latestReview?.decision !== 'pass_to_active' ||
+      !buildReviewFreshness(latestReview, kickoffBatch, warmupBatch)
     ) {
       throw new ValidationError('suite activation requires a fresh pass_to_active review')
     }
@@ -1620,18 +1775,34 @@ export class WarmupGovernanceService {
       }
     }
 
+    if (!warmupBatch) {
+      warmupBatch = await this.deps.warmupGovernanceRepo.createBatch({
+        suite_id: suite.id,
+        batch_kind: 'warmup',
+        state: 'draft',
+        revision_key: 'warmup:v1',
+        package_hash: 'launch-warm-start:warmup:v1',
+        notes: 'warmup deferred until runtime start',
+      })
+      await this.deps.warmupGovernanceRepo.updateSuite(suite.id, {
+        warmup_batch_id: warmupBatch.id,
+      })
+    }
+
     await this.applyBatchExposure(kickoffBatch.id, 'active')
-    await this.applyBatchExposure(warmupBatch.id, 'active')
     await this.deps.warmupGovernanceRepo.updateBatch(kickoffBatch.id, {
       state: 'active',
       activated_at: now,
       archived_at: null,
     })
-    await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
-      state: 'active',
-      activated_at: now,
-      archived_at: null,
-    })
+    if (warmupBatch.state !== 'draft') {
+      await this.applyBatchExposure(warmupBatch.id, 'active')
+      await this.deps.warmupGovernanceRepo.updateBatch(warmupBatch.id, {
+        state: 'active',
+        activated_at: now,
+        archived_at: null,
+      })
+    }
     await this.deps.warmupGovernanceRepo.createBaseline({
       suite_id: suite.id,
       kickoff_batch_id: kickoffBatch.id,
@@ -1652,7 +1823,6 @@ export class WarmupGovernanceService {
 
   private evaluateActivationReadiness(input: {
     kickoffBatch: WarmupBatchReadModel | null
-    warmupBatch: WarmupBatchReadModel | null
     summary: WarmupSuiteDetail['summary']
     programming_health?: {
       required_daily_outcomes: Record<string, number>
@@ -1666,10 +1836,7 @@ export class WarmupGovernanceService {
     ok: boolean
     reasons: string[]
   } {
-    const reasons = [
-      ...batchReadinessReasons(input.kickoffBatch, 'kickoff'),
-      ...batchReadinessReasons(input.warmupBatch, 'warmup'),
-    ]
+    const reasons = [...batchReadinessReasons(input.kickoffBatch, 'kickoff')]
 
     const suiteMediaFloor = Math.min(Math.max(1, input.summary.posts), 6)
     if (input.summary.media < suiteMediaFloor) {
@@ -1685,9 +1852,7 @@ export class WarmupGovernanceService {
     }
 
     if (input.programming_health) {
-      reasons.push(
-        ...buildProgrammingHealthReadinessReasons(input.programming_health),
-      )
+      reasons.push(...buildProgrammingHealthReadinessReasons(input.programming_health))
     }
 
     return {
@@ -1797,7 +1962,9 @@ export class WarmupGovernanceService {
     })
     const [threadAuthor, turnAuthorA, turnAuthorB, voteAuthorA, voteAuthorB] = supportAgents
     if (!threadAuthor || !turnAuthorA || !turnAuthorB) {
-      throw new ValidationError(`warmup engagement is blocked: not enough support agents for ${input.spec.community_slug}`)
+      throw new ValidationError(
+        `warmup engagement is blocked: not enough support agents for ${input.spec.community_slug}`,
+      )
     }
     const warmupContext = {
       warm_start_batch_id: input.batch.id,
@@ -1820,9 +1987,7 @@ export class WarmupGovernanceService {
       threadAuthor,
       { id: input.rootAuthorAgentId },
       ...supportAgents.slice(5),
-    ].filter(
-      (agent): agent is { id: string } => Boolean(agent),
-    )
+    ].filter((agent): agent is { id: string } => Boolean(agent))
     const turnCount = Math.max(2, targetThreadTurnCount - 1)
     const turnIds: string[] = []
     let lastTurnId: string | null = null
@@ -1846,9 +2011,7 @@ export class WarmupGovernanceService {
       voteAuthorA,
       voteAuthorB,
       ...supportAgents.slice(5),
-    ].filter(
-      (agent): agent is { id: string } => Boolean(agent),
-    )
+    ].filter((agent): agent is { id: string } => Boolean(agent))
     for (const [index, voter] of postVoters.slice(0, targetPostVoteCount).entries()) {
       await this.deps.forumWriteService.upsertVote({
         actor_agent_id: voter.id,
@@ -1947,7 +2110,8 @@ export class WarmupGovernanceService {
         this.deps.publicStageTurnRepo.updateTimestamps(turnId, {
           created_at: new Date(threadCreatedAt.getTime() + (index + 1) * 4 * 60_000),
           updated_at: new Date(threadCreatedAt.getTime() + (index + 1) * 4 * 60_000),
-        })),
+        }),
+      ),
     )
 
     await this.ensureCommunityRoleAssignment({
@@ -1968,7 +2132,9 @@ export class WarmupGovernanceService {
     if (!this.deps.roleAssignmentRepo || !this.deps.roleAssignmentService) {
       return
     }
-    if (this.deps.roleAssignmentRepo.listActiveByScope('COMMUNITY', input.community_id).length > 0) {
+    if (
+      this.deps.roleAssignmentRepo.listActiveByScope('COMMUNITY', input.community_id).length > 0
+    ) {
       return
     }
 
@@ -1987,13 +2153,17 @@ export class WarmupGovernanceService {
       return
     }
     const community = this.deps.communityRepo.findById(communityId)
-    const crossRoutePolicy = community?.rules_json
-      && typeof community.rules_json === 'object'
-      && !Array.isArray(community.rules_json)
-      && typeof (community.rules_json as Record<string, unknown>).cross_route_policy === 'object'
-      && !Array.isArray((community.rules_json as Record<string, unknown>).cross_route_policy)
-      ? ((community.rules_json as Record<string, unknown>).cross_route_policy as Record<string, unknown>)
-      : null
+    const crossRoutePolicy =
+      community?.rules_json &&
+      typeof community.rules_json === 'object' &&
+      !Array.isArray(community.rules_json) &&
+      typeof (community.rules_json as Record<string, unknown>).cross_route_policy === 'object' &&
+      !Array.isArray((community.rules_json as Record<string, unknown>).cross_route_policy)
+        ? ((community.rules_json as Record<string, unknown>).cross_route_policy as Record<
+            string,
+            unknown
+          >)
+        : null
     if (crossRoutePolicy?.allow_aftershow_export !== true) {
       return
     }
@@ -2015,7 +2185,11 @@ export class WarmupGovernanceService {
     const support: Array<{ id: string }> = []
     const used = new Set(input.excludeAgentIds)
 
-    for (let index = 0; index < input.roster.roster.length && support.length < input.limit; index += 1) {
+    for (
+      let index = 0;
+      index < input.roster.roster.length && support.length < input.limit;
+      index += 1
+    ) {
       const agent = pickRosterEntryForSpec({
         roster: input.roster,
         spec: input.spec,
@@ -2053,17 +2227,20 @@ export class WarmupGovernanceService {
     const kickoffBatch = detail.kickoff_batch
     const warmupBatch = detail.warmup_batch
     const missing: string[] = []
-    if (!kickoffBatch || kickoffBatch.state !== 'review_ready' && kickoffBatch.state !== 'active') {
+    if (
+      !kickoffBatch ||
+      (kickoffBatch.state !== 'review_ready' && kickoffBatch.state !== 'active')
+    ) {
       missing.push('kickoff_batch_not_ready')
     }
-    if (!warmupBatch || warmupBatch.state !== 'review_ready' && warmupBatch.state !== 'active') {
+    if (!warmupBatch || (warmupBatch.state !== 'review_ready' && warmupBatch.state !== 'active')) {
       missing.push('warmup_batch_not_ready')
     }
     if (detail.state !== 'review_ready' && detail.state !== 'active') {
       missing.push('suite_not_ready')
     }
-    if (!detail.kickoff_batch_id || !detail.warmup_batch_id) {
-      missing.push('suite_batches_not_linked')
+    if (!detail.kickoff_batch_id) {
+      missing.push('kickoff_batch_not_linked')
     }
 
     return {
@@ -2071,7 +2248,7 @@ export class WarmupGovernanceService {
       suite_state: detail.state,
       suite_label: detail.suite_label,
       kickoff_batch_id: detail.kickoff_batch_id!,
-      warmup_batch_id: detail.warmup_batch_id!,
+      warmup_batch_id: detail.warmup_batch_id,
       reused_existing_suite: input.reused_existing_suite,
       bootstrap_memberships: input.bootstrap_memberships,
       created_posts: createdPosts,
@@ -2083,7 +2260,7 @@ export class WarmupGovernanceService {
         suite_state: detail.state,
         batch_states: {
           kickoff: kickoffBatch?.state ?? 'failed',
-          warmup: warmupBatch?.state ?? 'failed',
+          warmup: warmupBatch?.state ?? 'missing',
         },
         total_candidate_posts: detail.summary.posts,
         total_candidate_threads: detail.summary.threads,
@@ -2115,13 +2292,14 @@ export class WarmupGovernanceService {
       mediaByPost.set(media.post_id, (mediaByPost.get(media.post_id) ?? 0) + 1)
     }
     for (const vote of content.votes) {
-      const postId = vote.target_type === 'POST'
-        ? vote.target_id
-        : vote.target_type === 'THREAD'
-          ? threadPostIndex.get(vote.target_id)
-          : vote.target_type === 'TURN'
-            ? turnPostIndex.get(vote.target_id)
-            : null
+      const postId =
+        vote.target_type === 'POST'
+          ? vote.target_id
+          : vote.target_type === 'THREAD'
+            ? threadPostIndex.get(vote.target_id)
+            : vote.target_type === 'TURN'
+              ? turnPostIndex.get(vote.target_id)
+              : null
       if (!postId) continue
       votesByPost.set(postId, (votesByPost.get(postId) ?? 0) + 1)
     }
@@ -2228,11 +2406,7 @@ export class WarmupGovernanceService {
       triggered: 0,
       errors: [],
     }
-    if (
-      !runtimeTopUp.enabled
-      || !runtimeTopUp.running
-      || !this.runtimeDeps.postScheduler
-    ) {
+    if (!runtimeTopUp.enabled || !runtimeTopUp.running || !this.runtimeDeps.postScheduler) {
       return runtimeTopUp
     }
 
@@ -2255,10 +2429,7 @@ export class WarmupGovernanceService {
     return runtimeTopUp
   }
 
-  private async applyBatchExposure(
-    batchId: string,
-    mode: 'candidate' | 'active',
-  ): Promise<void> {
+  private async applyBatchExposure(batchId: string, mode: 'candidate' | 'active'): Promise<void> {
     const content = await this.readBatchContent(batchId)
     await Promise.all([
       ...content.posts.map((post) => this.applyPostExposure(post, mode)),
@@ -2276,11 +2447,7 @@ export class WarmupGovernanceService {
     await this.deps.postRepo.updateContent(post.id, {
       state: mode === 'candidate' ? 'PENDING' : 'APPROVED',
       visibility:
-        mode === 'candidate'
-          ? 'GRAY'
-          : post.visibility === 'QUARANTINE'
-            ? 'GRAY'
-            : post.visibility,
+        mode === 'candidate' ? 'GRAY' : post.visibility === 'QUARANTINE' ? 'GRAY' : post.visibility,
     })
     await this.deps.postRepo.updateModerationMetadata(post.id, {
       ...(post.moderation_metadata ?? {}),
@@ -2295,10 +2462,7 @@ export class WarmupGovernanceService {
     })
   }
 
-  private async applyThreadExposure(
-    threadId: string,
-    mode: 'candidate' | 'active',
-  ): Promise<void> {
+  private async applyThreadExposure(threadId: string, mode: 'candidate' | 'active'): Promise<void> {
     await Promise.all([
       this.deps.publicStageThreadRepo.updateState(
         threadId,
@@ -2311,10 +2475,7 @@ export class WarmupGovernanceService {
     ])
   }
 
-  private async applyTurnExposure(
-    turnId: string,
-    mode: 'candidate' | 'active',
-  ): Promise<void> {
+  private async applyTurnExposure(turnId: string, mode: 'candidate' | 'active'): Promise<void> {
     await Promise.all([
       this.deps.publicStageTurnRepo.updateState(
         turnId,
@@ -2343,7 +2504,7 @@ export class WarmupGovernanceService {
     const batchIds = new Set(input.warm_start_batch_ids ?? [])
     if (input.suite_id) {
       const suite = await this.deps.warmupGovernanceRepo.findSuiteById(input.suite_id)
-      if (!suite) throw new NotFoundError('warmup suite', input.suite_id)
+      if (!suite) throw new NotFoundError('kickoff suite', input.suite_id)
       if (suite.kickoff_batch_id) batchIds.add(suite.kickoff_batch_id)
       if (suite.warmup_batch_id) batchIds.add(suite.warmup_batch_id)
     }
@@ -2399,7 +2560,8 @@ export class WarmupGovernanceService {
   ): Promise<PublicStageThread[]> {
     const threads = await Promise.all(
       preview.warm_start_batch_ids.map((batchId) =>
-        this.deps.publicStageThreadRepo.findByWarmStartBatch(batchId)),
+        this.deps.publicStageThreadRepo.findByWarmStartBatch(batchId),
+      ),
     )
     const scope = new Set(preview.scope.threads)
     return threads.flat().filter((thread) => scope.has(thread.id))
@@ -2410,7 +2572,8 @@ export class WarmupGovernanceService {
   ): Promise<PublicStageTurn[]> {
     const turns = await Promise.all(
       preview.warm_start_batch_ids.map((batchId) =>
-        this.deps.publicStageTurnRepo.findByWarmStartBatch(batchId)),
+        this.deps.publicStageTurnRepo.findByWarmStartBatch(batchId),
+      ),
     )
     const scope = new Set(preview.scope.turns)
     return turns.flat().filter((turn) => scope.has(turn.id))
@@ -2427,10 +2590,7 @@ export class WarmupGovernanceService {
     })
   }
 
-  private async restoreThread(
-    thread: PublicStageThread,
-    suite: WarmupSuite | null,
-  ): Promise<void> {
+  private async restoreThread(thread: PublicStageThread, suite: WarmupSuite | null): Promise<void> {
     await Promise.all([
       this.deps.publicStageThreadRepo.updateVisibility(thread.id, 'GRAY'),
       this.deps.publicStageThreadRepo.updateState(
@@ -2440,10 +2600,7 @@ export class WarmupGovernanceService {
     ])
   }
 
-  private async restoreTurn(
-    turn: PublicStageTurn,
-    suite: WarmupSuite | null,
-  ): Promise<void> {
+  private async restoreTurn(turn: PublicStageTurn, suite: WarmupSuite | null): Promise<void> {
     await Promise.all([
       this.deps.publicStageTurnRepo.updateVisibility(turn.id, 'GRAY'),
       this.deps.publicStageTurnRepo.updateState(
@@ -2467,7 +2624,9 @@ export class WarmupGovernanceService {
       await Promise.all(postIds.map((postId) => searchProjectionService.refreshPost(postId)))
     }
     if (threadIds.length > 0) {
-      await Promise.all(threadIds.map((threadId) => searchProjectionService.refreshThread(threadId)))
+      await Promise.all(
+        threadIds.map((threadId) => searchProjectionService.refreshThread(threadId)),
+      )
     }
   }
 

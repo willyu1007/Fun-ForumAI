@@ -29,12 +29,28 @@ interface DevKickoffPanelProps {
   onOpenChange: (open: boolean) => void
 }
 
+function formatKickoffModeLabel(mode: string): string {
+  switch (mode) {
+    case 'canonical':
+      return 'Mock'
+    case 'smoke-minimal':
+      return 'Smoke'
+    case 'kickoff-candidate':
+      return 'Kickoff / 待激活'
+    case 'kickoff-active':
+      return 'Kickoff / 已激活'
+    default:
+      return '无 Kickoff'
+  }
+}
+
 export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
   const statusQuery = useDevKickoffStatus(open)
   const latestRunQuery = useDevKickoffLatestRun(open)
   const recentRunsQuery = useDevKickoffRecentRuns(open)
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const [artifactsExpanded, setArtifactsExpanded] = useState(false)
+  const [debugExpanded, setDebugExpanded] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -47,6 +63,19 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
   const runQuery = useDevKickoffRun(selectedRunId, open)
 
   const currentMode = statusQuery.data?.data.current_data_mode ?? 'unknown'
+  const currentModeLabel = formatKickoffModeLabel(currentMode)
+  const flow = statusQuery.data?.data.flow ?? {
+    phase: 'idle',
+    title: '未初始化 Kickoff',
+    summary: '当前没有 Kickoff Foundation。',
+    next_action: '初始化 Kickoff',
+    checkpoints: {
+      foundation_ready: false,
+      activation_ready: false,
+      active_baseline_ready: false,
+      runtime_ready: false,
+    },
+  }
   const modeSource = statusQuery.data?.data.mode_source ?? null
   const currentSuite = statusQuery.data?.data.current_suite ?? null
   const hasSuite = Boolean(currentSuite?.id)
@@ -57,11 +86,6 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
   const failureMessage =
     typeof selectedRun?.failure_log?.message === 'string' ? selectedRun.failure_log.message : null
   const recentRuns = recentRunsQuery.data?.data ?? []
-
-  const activationOk = readiness?.activation_readiness.ok ?? false
-  const kickoffOk = readiness?.layer_readiness.kickoff_layer_ready ?? false
-  const warmupOk = readiness?.layer_readiness.warmup_layer_ready ?? false
-  const allReady = activationOk && kickoffOk && warmupOk
 
   const handleRefresh = () => {
     void statusQuery.refetch()
@@ -77,11 +101,11 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
       <SheetContent side="right" showCloseButton={false} className="w-full p-0 sm:max-w-xl">
         <SheetHeader className="border-b border-border/60 px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <SheetTitle className="text-sm">Kickoff 调控台</SheetTitle>
+            <SheetTitle className="text-sm">Kickoff</SheetTitle>
             <SheetDescription className="sr-only">Kickoff 运行状态与导入摘要</SheetDescription>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="font-mono text-[10px]">
-                {currentMode}
+                {currentModeLabel}
               </Badge>
               <Button
                 type="button"
@@ -97,11 +121,14 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
           </div>
 
           <div className="mt-2 flex items-center gap-3" data-testid="readiness-lights">
-            <ReadinessLight label="activation" ok={activationOk} />
-            <ReadinessLight label="kickoff" ok={kickoffOk} />
-            <ReadinessLight label="warmup" ok={warmupOk} />
-            {allReady && (
-              <span className="ml-auto text-[11px] text-muted-foreground">全部就绪</span>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-foreground">{flow.title}</p>
+              <p className="text-[11px] text-muted-foreground">{flow.summary}</p>
+            </div>
+            {flow.next_action && (
+              <Badge variant="secondary" className="ml-auto text-[10px]">
+                下一步：{flow.next_action}
+              </Badge>
             )}
           </div>
         </SheetHeader>
@@ -122,181 +149,240 @@ export function DevKickoffPanel({ open, onOpenChange }: DevKickoffPanelProps) {
               </div>
             )}
 
-            {/* ── 系统状态 ── */}
+            {/* ── 关键步骤 ── */}
             <section className="space-y-3 px-4 py-4">
-              <SectionTitle>系统状态</SectionTitle>
+              <SectionTitle>关键步骤</SectionTitle>
+
+              <div className="grid gap-2 sm:grid-cols-2" data-testid="flow-checkpoints">
+                <FlowCheckpoint
+                  label="基础内容"
+                  state={flow.checkpoints.foundation_ready ? 'done' : 'current'}
+                />
+                <FlowCheckpoint
+                  label="激活准备"
+                  state={
+                    flow.checkpoints.activation_ready
+                      ? 'done'
+                      : flow.checkpoints.foundation_ready
+                        ? 'current'
+                        : 'todo'
+                  }
+                />
+                <FlowCheckpoint
+                  label="激活基线"
+                  state={
+                    flow.checkpoints.active_baseline_ready
+                      ? 'done'
+                      : flow.checkpoints.activation_ready
+                        ? 'current'
+                        : 'todo'
+                  }
+                />
+                <FlowCheckpoint
+                  label="Warmup Runtime"
+                  state={
+                    flow.checkpoints.runtime_ready
+                      ? 'done'
+                      : flow.checkpoints.active_baseline_ready
+                        ? 'current'
+                        : 'todo'
+                  }
+                />
+              </div>
+            </section>
+
+            {/* ── 当前结论 ── */}
+            <section className="space-y-3 px-4 py-4">
+              <SectionTitle>当前结论</SectionTitle>
 
               <div className="space-y-1.5 text-xs">
-                <Row label="模式" value={currentMode} note={modeSource ? `(${modeSource})` : undefined} />
-
                 {hasSuite ? (
-                  <>
-                    <Row label="Suite" value={currentSuite!.label ?? currentSuite!.id ?? ''} />
-                    {currentSuite!.kickoff_batch_id && (
-                      <Row label="Kickoff batch" value={currentSuite!.kickoff_batch_id} mono />
-                    )}
-                    {currentSuite!.warmup_batch_id && (
-                      <Row label="Warmup batch" value={currentSuite!.warmup_batch_id} mono />
-                    )}
-                    {currentSuite!.active_baseline_id && (
-                      <Row label="Baseline" value={currentSuite!.active_baseline_id} mono />
-                    )}
-                  </>
+                  <Row label="Kickoff" value={currentSuite!.label ?? currentSuite!.id ?? ''} />
                 ) : (
-                  <p className="text-xs text-muted-foreground">未关联 Suite</p>
+                  <p className="text-xs text-muted-foreground">当前没有 Kickoff</p>
                 )}
+
+                <Row label="当前阶段" value={flow.title} />
+                {flow.next_action ? <Row label="下一步" value={flow.next_action} /> : null}
               </div>
-
-              {readiness && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>warnings <strong className="text-foreground">{readiness.quality_state.warning_count}</strong></span>
-                  <span>media <strong className="text-foreground">{readiness.quality_state.summary.media_coverage_ratio}</strong></span>
-                  <span>growth <strong className={readiness.admission.allow_public_growth ? 'text-foreground' : 'text-destructive'}>{String(readiness.admission.allow_public_growth)}</strong></span>
-                </div>
-              )}
-
-              {readiness?.activation_readiness.reasons.length ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {readiness.activation_readiness.reasons.map((reason) => (
-                    <Badge key={reason} variant="outline" className="text-[10px]">
-                      {reason}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
             </section>
 
-            {/* ── 最近导入 ── */}
+            {/* ── 调试详情 ── */}
             <section className="space-y-3 px-4 py-4">
-              <SectionTitle>
-                最近导入
-                {latestImportReport && (
-                  <Badge variant="outline" className="ml-2 text-[10px]">
-                    {latestImportReport.report_meta.dry_run ? 'dry-run' : 'apply'}
-                  </Badge>
-                )}
-              </SectionTitle>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                onClick={() => setDebugExpanded((value) => !value)}
+              >
+                <ChevronRight
+                  className={cn('size-3.5 transition-transform', debugExpanded && 'rotate-90')}
+                />
+                调试详情
+              </button>
 
-              {latestImportReport ? (
-                <div className="space-y-2 text-xs">
-                  <Row label="Run" value={shortId(latestImportReport.report_meta.run_id)} mono />
-                  {latestImportReport.report_meta.patch_id && (
-                    <Row label="Patch" value={shortId(latestImportReport.report_meta.patch_id)} mono />
-                  )}
-                  {latestImportReport.failure_phase && (
-                    <Row label="失败阶段" value={latestImportReport.failure_phase} />
-                  )}
-
-                  <p className="text-muted-foreground">
-                    posts <strong className="text-foreground">{latestImportReport.summary_after_import.posts}</strong>
-                    {' · '}threads <strong className="text-foreground">{latestImportReport.summary_after_import.threads}</strong>
-                    {' · '}turns <strong className="text-foreground">{latestImportReport.summary_after_import.turns}</strong>
-                    {' · '}media <strong className="text-foreground">{latestImportReport.summary_after_import.media}</strong>
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
-                    <span>ops: {latestImportReport.op_results?.length ?? 0}</span>
-                    <span>refs: {latestImportReport.resolution_map?.length ?? 0}</span>
+              {debugExpanded ? (
+                <div className="space-y-4">
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">当前调试信息</p>
+                      <Badge variant="outline" className="text-[10px]">
+                        {currentModeLabel}
+                      </Badge>
+                      {modeSource && (
+                        <Badge variant="outline" className="text-[10px]">
+                          mode: {modeSource}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      {hasSuite ? (
+                        <>
+                          {currentSuite?.kickoff_batch_id && (
+                            <Row label="基础批次" value={currentSuite.kickoff_batch_id} mono />
+                          )}
+                          {currentSuite?.warmup_batch_id && (
+                            <Row label="Runtime 批次" value={currentSuite.warmup_batch_id} mono />
+                          )}
+                          {currentSuite?.active_baseline_id && (
+                            <Row label="Active baseline" value={currentSuite.active_baseline_id} mono />
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">当前没有 Kickoff</p>
+                      )}
+                      {readiness && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
+                          <span>warnings <strong className="text-foreground">{readiness.quality_state.warning_count}</strong></span>
+                          <span>media <strong className="text-foreground">{readiness.quality_state.summary.media_coverage_ratio}</strong></span>
+                          <span>growth <strong className={readiness.admission.allow_public_growth ? 'text-foreground' : 'text-destructive'}>{String(readiness.admission.allow_public_growth)}</strong></span>
+                        </div>
+                      )}
+                      {readiness?.activation_readiness.reasons.length ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {readiness.activation_readiness.reasons.map((reason) => (
+                            <Badge key={reason} variant="outline" className="text-[10px]">
+                              {reason}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
 
-                  {latestImportReport.recommended_next_actions.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {latestImportReport.recommended_next_actions.map((action) => (
-                        <Badge key={action} variant="secondary" className="text-[10px]">
-                          {action}
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">最近导入</p>
+                      {latestImportReport && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {latestImportReport.report_meta.dry_run ? 'dry-run' : 'apply'}
                         </Badge>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">暂无导入记录</p>
-              )}
-            </section>
+                    {latestImportReport ? (
+                      <>
+                        <Row label="Run" value={shortId(latestImportReport.report_meta.run_id)} mono />
+                        {latestImportReport.report_meta.patch_id && (
+                          <Row label="Patch" value={shortId(latestImportReport.report_meta.patch_id)} mono />
+                        )}
+                        {latestImportReport.failure_phase && (
+                          <Row label="失败阶段" value={latestImportReport.failure_phase} />
+                        )}
+                        <p className="text-muted-foreground">
+                          posts <strong className="text-foreground">{latestImportReport.summary_after_import.posts}</strong>
+                          {' · '}threads <strong className="text-foreground">{latestImportReport.summary_after_import.threads}</strong>
+                          {' · '}turns <strong className="text-foreground">{latestImportReport.summary_after_import.turns}</strong>
+                          {' · '}media <strong className="text-foreground">{latestImportReport.summary_after_import.media}</strong>
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">暂无导入记录</p>
+                    )}
+                  </div>
 
-            {/* ── 运行详情 ── */}
-            <section className="space-y-3 px-4 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <SectionTitle>运行详情</SectionTitle>
-                {recentRuns.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {selectedRunId ? shortId(selectedRunId) : '选择 Run'}
-                        <ChevronDown className="size-3" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="max-h-64 w-72 overflow-y-auto">
-                      {recentRuns.map((run) => (
-                        <DropdownMenuItem
-                          key={run.run_id}
-                          onClick={() => setSelectedRunId(run.run_id)}
-                          className="flex items-center gap-2 text-xs"
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-medium text-foreground">运行记录</p>
+                      {recentRuns.length > 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              {selectedRunId ? shortId(selectedRunId) : '选择 Run'}
+                              <ChevronDown className="size-3" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="max-h-64 w-72 overflow-y-auto">
+                            {recentRuns.map((run) => (
+                              <DropdownMenuItem
+                                key={run.run_id}
+                                onClick={() => setSelectedRunId(run.run_id)}
+                                className="flex items-center gap-2 text-xs"
+                              >
+                                <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                                  {shortId(run.run_id)}
+                                </span>
+                                <span className="shrink-0 text-muted-foreground">{run.run_type}</span>
+                                {run.failed_phase && (
+                                  <span className="shrink-0 text-destructive">failed</span>
+                                )}
+                                {selectedRunId === run.run_id && (
+                                  <Check className="ml-auto size-3 shrink-0 text-primary" />
+                                )}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+
+                    {selectedRun ? (
+                      <div className="space-y-2 text-xs">
+                        <Row label="Run" value={shortId(selectedRun.summary.run_id)} mono />
+                        <Row label="类型" value={selectedRun.summary.run_type} />
+                        {selectedRun.summary.profile_id && (
+                          <Row label="Profile" value={selectedRun.summary.profile_id} mono />
+                        )}
+                        {selectedRun.summary.patch_id && (
+                          <Row label="Patch" value={shortId(selectedRun.summary.patch_id)} mono />
+                        )}
+                        {selectedRun.summary.failed_phase && (
+                          <Row label="失败阶段" value={selectedRun.summary.failed_phase} />
+                        )}
+                        {failureMessage && (
+                          <div className="rounded-md bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                            {failureMessage}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                          onClick={() => setArtifactsExpanded((v) => !v)}
                         >
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
-                            {shortId(run.run_id)}
-                          </span>
-                          <span className="shrink-0 text-muted-foreground">{run.run_type}</span>
-                          {run.failed_phase && (
-                            <span className="shrink-0 text-destructive">failed</span>
-                          )}
-                          {selectedRunId === run.run_id && (
-                            <Check className="ml-auto size-3 shrink-0 text-primary" />
-                          )}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
+                          <ChevronRight className={cn('size-3 transition-transform', artifactsExpanded && 'rotate-90')} />
+                          Artifact 路径
+                        </button>
 
-              {selectedRun ? (
-                <div className="space-y-2 text-xs">
-                  <Row label="Run" value={shortId(selectedRun.summary.run_id)} mono />
-                  <Row label="类型" value={selectedRun.summary.run_type} />
-                  {selectedRun.summary.profile_id && (
-                    <Row label="Profile" value={selectedRun.summary.profile_id} mono />
-                  )}
-                  {selectedRun.summary.patch_id && (
-                    <Row label="Patch" value={shortId(selectedRun.summary.patch_id)} mono />
-                  )}
-                  {selectedRun.summary.failed_phase && (
-                    <Row label="失败阶段" value={selectedRun.summary.failed_phase} />
-                  )}
-                  {failureMessage && (
-                    <div className="rounded-md bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      {failureMessage}
-                    </div>
-                  )}
-
-                  {/* artifact paths - collapsible */}
-                  <button
-                    type="button"
-                    className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-                    onClick={() => setArtifactsExpanded((v) => !v)}
-                  >
-                    <ChevronRight className={cn('size-3 transition-transform', artifactsExpanded && 'rotate-90')} />
-                    Artifact 路径
-                  </button>
-
-                  {artifactsExpanded && (
-                    <div className="space-y-1.5 pl-4">
-                      <ArtifactRow label="dir" value={selectedRun.summary.artifact_dir} hint="产物根目录" />
-                      <ArtifactRow label="context-pack" value={selectedRun.artifacts.context_pack_path} hint="上下文快照" />
-                      <ArtifactRow label="patch" value={selectedRun.artifacts.generated_patch_path} hint="生成的内容补丁" />
-                      <ArtifactRow label="import" value={selectedRun.artifacts.import_report_path} hint="导入结果报告" />
-                      <ArtifactRow label="readiness" value={selectedRun.artifacts.readiness_snapshot_path} hint="就绪状态快照" />
-                      <ArtifactRow label="repair" value={selectedRun.artifacts.repair_patch_path} hint="修复补丁" />
-                      <ArtifactRow label="failure" value={selectedRun.artifacts.failure_log_path} hint="失败日志" />
-                    </div>
-                  )}
+                        {artifactsExpanded && (
+                          <div className="space-y-1.5 pl-4">
+                            <ArtifactRow label="dir" value={selectedRun.summary.artifact_dir} hint="产物根目录" />
+                            <ArtifactRow label="context-pack" value={selectedRun.artifacts.context_pack_path} hint="上下文快照" />
+                            <ArtifactRow label="patch" value={selectedRun.artifacts.generated_patch_path} hint="生成的内容补丁" />
+                            <ArtifactRow label="import" value={selectedRun.artifacts.import_report_path} hint="导入结果报告" />
+                            <ArtifactRow label="readiness" value={selectedRun.artifacts.readiness_snapshot_path} hint="就绪状态快照" />
+                            <ArtifactRow label="repair" value={selectedRun.artifacts.repair_patch_path} hint="修复补丁" />
+                            <ArtifactRow label="failure" value={selectedRun.artifacts.failure_log_path} hint="失败日志" />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">暂无运行记录</p>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">暂无运行记录</p>
-              )}
+              ) : null}
             </section>
           </div>
         </ScrollArea>
@@ -311,17 +397,32 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-xs font-semibold text-foreground">{children}</h3>
 }
 
-function ReadinessLight({ label, ok }: { label: string; ok: boolean }) {
+function FlowCheckpoint({
+  label,
+  state,
+}: {
+  label: string
+  state: 'done' | 'current' | 'todo'
+}) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px]">
-      <span
-        className={cn(
-          'inline-block size-2 rounded-full',
-          ok ? 'bg-success' : 'bg-destructive',
-        )}
-      />
-      <span className={ok ? 'text-muted-foreground' : 'text-foreground'}>{label}</span>
-    </span>
+    <div className="rounded-md border bg-card px-3 py-2 text-xs">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'inline-block size-2 rounded-full',
+            state === 'done'
+              ? 'bg-success'
+              : state === 'current'
+                ? 'bg-primary'
+                : 'bg-muted-foreground/30',
+          )}
+        />
+        <span className="font-medium text-foreground">{label}</span>
+      </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {state === 'done' ? '已完成' : state === 'current' ? '当前步骤' : '未开始'}
+      </p>
+    </div>
   )
 }
 

@@ -292,10 +292,12 @@ core.achievementChronicleService.setRecordHook((input) => {
   }
   return core.agentPublicProjectionService
     .refresh(input.agent_id, { reason: 'chronicle' })
-    .then(() => searchProjectionService.reconcileAgent(input.agent_id, {
-      reason: 'chronicle_public_highlight',
-      scopes: ['agent', 'posts', 'threads'],
-    }))
+    .then(() =>
+      searchProjectionService.reconcileAgent(input.agent_id, {
+        reason: 'chronicle_public_highlight',
+        scopes: ['agent', 'posts', 'threads'],
+      }),
+    )
     .then(() => undefined)
 })
 
@@ -324,10 +326,13 @@ core.governanceAdapter.setExecutedHook(async ({ action }) => {
     return
   }
   if (action.target_type === 'thread_turn') {
-    const entry = await findPublicStageThreadTurnById({
-      publicStageThreadRepo: repos.publicStageThreadRepo,
-      publicStageTurnRepo: repos.publicStageTurnRepo,
-    }, action.target_id)
+    const entry = await findPublicStageThreadTurnById(
+      {
+        publicStageThreadRepo: repos.publicStageThreadRepo,
+        publicStageTurnRepo: repos.publicStageTurnRepo,
+      },
+      action.target_id,
+    )
     if (entry?.entry_kind === 'THREAD') {
       await searchProjectionService.refreshThread(entry.id)
     } else if (entry?.thread_id) {
@@ -384,12 +389,10 @@ const roleAssignmentExpiryScheduler = new RoleAssignmentExpiryScheduler(
   },
 )
 
-const agentBioRefreshScheduler = new AgentBioRefreshScheduler(
-  {
-    service: core.agentBioRefreshService,
-    leaderElector: infra.leaderElectors.agentBioRefreshScheduler,
-  },
-)
+const agentBioRefreshScheduler = new AgentBioRefreshScheduler({
+  service: core.agentBioRefreshService,
+  leaderElector: infra.leaderElectors.agentBioRefreshScheduler,
+})
 
 const directorHistoryMaintenanceScheduler = config.db.usePrisma
   ? new DirectorHistoryMaintenanceScheduler({
@@ -645,6 +648,7 @@ export const kickoffPatchImportService = new KickoffPatchImportService({
   postMediaRepo: repos.postMediaRepo,
   forumWriteService: core.forumWriteService,
   mediaAssetControlService: llm.mediaAssetControlService,
+  aftershowService: core.aftershowService,
   searchProjectionService,
   runtimeReadinessService: kickoffRuntimeReadinessService,
   runArtifactService: kickoffRunArtifactService,

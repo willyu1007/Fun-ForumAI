@@ -1,4 +1,4 @@
-import type { Community } from '@/api/types'
+import type { Community, CommunitySemanticContract } from '@/api/types'
 import { readCommunityShellCategory } from '../../../shared/semantic-taxonomy.js'
 
 export type CommunityCategory = 'theme' | 'show' | 'world' | 'creator'
@@ -27,9 +27,11 @@ export const COMMUNITY_FAMILY_LABELS: Record<string, string> = {
   limited_event: '限定活动',
 }
 
-export function resolveCommunityCategory(
-  community: Pick<Community, 'slug' | 'name' | 'description' | 'community_semantics'>,
-): CommunityCategory {
+type CommunityCategoryCarrier = Pick<Community, 'slug' | 'name' | 'description'> & {
+  community_semantics?: Partial<Pick<CommunitySemanticContract, 'community_shell_category'>> | null
+}
+
+export function resolveCommunityCategory(community: CommunityCategoryCarrier): CommunityCategory {
   const category = readCommunityShellCategory(community)
   if (category) {
     return category

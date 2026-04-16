@@ -1094,6 +1094,7 @@ export type MediaObservabilitySurface =
   | 'private_message'
   | 'highlights'
   | 'planner'
+  | 'injection'
   | 'generation'
   | 'lifecycle'
   | 'governance'
@@ -1684,7 +1685,7 @@ export type MediaLineageNodeType =
   | 'post_media_attachment'
 
 export type MediaLineageGenerationMode = 'none' | 'sync' | 'async'
-export type MediaLineageSurface = 'planner' | 'private_message' | 'generation' | 'lifecycle'
+export type MediaLineageSurface = 'planner' | 'private_message' | 'injection' | 'generation' | 'lifecycle'
 
 export interface MediaLineageEdge {
   id: string

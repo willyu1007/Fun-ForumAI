@@ -8,16 +8,16 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 192 (planned: 3, in-progress: 11, blocked: 0, done: 1, archived: 177)
+- Tasks: 192 (planned: 4, in-progress: 11, blocked: 0, done: 0, archived: 177)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
+| T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | F-000 | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
+| T-977 agent-overview-engagement-stats-v1 | in-progress | F-000 | dev-docs/active/agent-overview-engagement-stats-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
-| T-964 kickoff-data-governance-alignment-temp | done | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
-| T-968 kickoff-planning-requirements-v1 | in-progress | F-000 | dev-docs/active/kickoff-planning-requirements-v1 |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | F-000 | dev-docs/active/t-201-following-feed-revamp |
 | T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | F-000 | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |

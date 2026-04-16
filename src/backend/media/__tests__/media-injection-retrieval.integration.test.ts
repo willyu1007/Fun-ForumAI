@@ -17,8 +17,11 @@ import { InMemorySceneMediaBindingRepository } from '../../repos/scene-media-bin
 import type {
   MediaAsset,
   MediaInjectionRequest,
+  MediaRetrievalDocScope,
+  MediaReusePolicy,
   MediaSemanticSnapshot,
   PersistedVisualDirective,
+  SceneMediaBinding,
   VisualSourceKind,
 } from '../../repos/types.js'
 import { LocalStorageAdapter } from '../../services/storage-adapter.js'
@@ -103,6 +106,178 @@ function createAssetRepoRecord(input: {
     phash: null,
     duplicate_cluster_id: input.duplicate_cluster_id ?? null,
     duplicate_distance: input.duplicate_distance ?? null,
+  }
+}
+
+function resolveCopyrightState(
+  sourceKind: VisualSourceKind,
+): MediaReusePolicy['copyright_state'] {
+  if (sourceKind === 'community_commons') return 'community_licensed'
+  if (sourceKind === 'generated_public' || sourceKind === 'private_derived_public') {
+    return 'generated_owned'
+  }
+  return 'platform_owned'
+}
+
+function createReuseRegistrationResult(input: {
+  asset_id: string
+  source_kind: VisualSourceKind
+  community_id?: string | null
+  steward_agent_id?: string | null
+}): {
+  binding: SceneMediaBinding
+  policy: MediaReusePolicy
+} {
+  const now = new Date()
+  return {
+    binding: {
+      id: `binding-${input.asset_id}`,
+      scene_type: 'media_pool',
+      scene_id: `pool-${input.source_kind}`,
+      thread_root_ref: null,
+      asset_id: input.asset_id,
+      semantic_snapshot_id: `snapshot-${input.asset_id}`,
+      source_scene_type: null,
+      source_scene_id: null,
+      binding_role: 'reference',
+      relation_to_scene: 'quoted_public',
+      binding_note_text: null,
+      display_policy: 'original_allowed',
+      created_by_type: 'system',
+      created_by_id: 'test-suite',
+      created_at: now,
+    },
+    policy: {
+      id: `policy-${input.asset_id}`,
+      subject_type: 'asset',
+      subject_id: input.asset_id,
+      source_kind: input.source_kind,
+      community_id: input.community_id ?? null,
+      steward_agent_id: input.steward_agent_id ?? 'agent-media',
+      allowed_reuse_modes: ['quote_original'],
+      cross_agent_quote_allowed: true,
+      disclose_origin_policy: 'public_only',
+      copyright_state: resolveCopyrightState(input.source_kind),
+      status: 'active',
+      revoked_at: null,
+      revoked_reason: null,
+      created_at: now,
+      updated_at: now,
+    },
+  }
+}
+
+function buildReuseGovernanceServiceStub() {
+  return {
+    registerCommunityCommonsAsset: vi.fn(async (input: {
+      community_id: string
+      asset_id: string
+      actor_user_id: string
+      allow_quote_original?: boolean
+    }) => createReuseRegistrationResult({
+      asset_id: input.asset_id,
+      source_kind: 'community_commons',
+      community_id: input.community_id,
+    })),
+    registerPlatformCanonicalAsset: vi.fn(async (input: {
+      asset_id: string
+      actor_user_id: string
+    }) => createReuseRegistrationResult({
+      asset_id: input.asset_id,
+      source_kind: 'platform_canonical',
+    })),
+    registerGeneratedPublicAsset: vi.fn(async (input: {
+      asset_id: string
+      agent_id: string
+      actor_user_id: string
+    }) => createReuseRegistrationResult({
+      asset_id: input.asset_id,
+      source_kind: 'generated_public',
+      steward_agent_id: input.agent_id,
+    })),
+    registerPrivateDerivedPublicAsset: vi.fn(async (input: {
+      asset_id: string
+      agent_id: string
+      actor_user_id: string
+    }) => createReuseRegistrationResult({
+      asset_id: input.asset_id,
+      source_kind: 'private_derived_public',
+      steward_agent_id: input.agent_id,
+    })),
+    registerSelfPublicArchiveAsset: vi.fn(async (input: {
+      asset_id: string
+      agent_id: string
+      actor_user_id: string
+    }) => createReuseRegistrationResult({
+      asset_id: input.asset_id,
+      source_kind: 'self_public_archive',
+      steward_agent_id: input.agent_id,
+    })),
+  }
+}
+
+function createEnsuredRetrievalRecord(input: {
+  asset_id: string
+  source_kind: VisualSourceKind
+  doc_scope?: MediaRetrievalDocScope
+}): Awaited<ReturnType<MediaRetrievalService['ensureAssetIndexed']>>[number] {
+  const now = new Date()
+  const docId = `retrieval-doc-${input.asset_id}`
+  return {
+    document: {
+      id: docId,
+      doc_key: `doc-key-${input.asset_id}`,
+      asset_id: input.asset_id,
+      catalog_card_id: `card-${input.asset_id}`,
+      duplicate_cluster_id: null,
+      schema_version: 'media-retrieval-document.v1',
+      doc_scope: input.doc_scope ?? 'public_safe',
+      modality: 'image',
+      track_kind: null,
+      segment_start_ms: null,
+      segment_end_ms: null,
+      source_kind: input.source_kind,
+      owner_user_id: null,
+      steward_agent_id: 'agent-media',
+      community_id: null,
+      is_canonical: true,
+      lifecycle_status: 'active',
+      document_text: 'retrieval text',
+      document_hash: `doc-hash-${input.asset_id}`,
+      document_meta_json: {
+        source_kind: input.source_kind,
+        scope_hints: {
+          owner_user_id: null,
+          steward_agent_id: 'agent-media',
+          community_id: null,
+        },
+        retrieval_terms: ['city skyline'],
+        reason: null,
+        public_safe_enabled: true,
+        generated_from: 'catalog_card',
+      },
+      created_at: now,
+      updated_at: now,
+    },
+    embedding_snapshot: {
+      id: `embedding-${input.asset_id}`,
+      retrieval_document_id: docId,
+      index_profile_id: 'text-embedding-v4-1024',
+      provider: 'test',
+      model_name: 'test-embedding',
+      output_type: 'dense',
+      vector_dimension: 4,
+      document_content_hash: `doc-hash-${input.asset_id}`,
+      embedding_hash: `embedding-hash-${input.asset_id}`,
+      embedding_vector: [0.1, 0.2, 0.3, 0.4],
+      search_status: 'searchable',
+      is_active: true,
+      activated_at: now,
+      error_code: null,
+      error_message: null,
+      provider_request_summary: null,
+      created_at: now,
+    },
   }
 }
 
@@ -427,13 +602,7 @@ describe('media injection + retrieval integration', () => {
         ingestManagedAsset: vi.fn(),
         ingestManagedRemoteAsset: vi.fn(),
       },
-      mediaReuseGovernanceService: {
-        registerCommunityCommonsAsset: vi.fn(async () => null),
-        registerPlatformCanonicalAsset: vi.fn(async () => null),
-        registerGeneratedPublicAsset: vi.fn(async () => null),
-        registerPrivateDerivedPublicAsset: vi.fn(async () => null),
-        registerSelfPublicArchiveAsset: vi.fn(async () => null),
-      },
+      mediaReuseGovernanceService: buildReuseGovernanceServiceStub(),
       mediaRetrievalService: {
         ensureAssetIndexed,
       },
@@ -537,13 +706,7 @@ items:
         ingestManagedAsset,
         ingestManagedRemoteAsset: vi.fn(),
       },
-      mediaReuseGovernanceService: {
-        registerCommunityCommonsAsset: vi.fn(async () => null),
-        registerPlatformCanonicalAsset: vi.fn(async () => null),
-        registerGeneratedPublicAsset: vi.fn(async () => null),
-        registerPrivateDerivedPublicAsset: vi.fn(async () => null),
-        registerSelfPublicArchiveAsset: vi.fn(async () => null),
-      },
+      mediaReuseGovernanceService: buildReuseGovernanceServiceStub(),
       mediaRetrievalService: {
         ensureAssetIndexed: vi.fn(async () => []),
       },
@@ -653,13 +816,7 @@ items:
         ingestManagedAsset,
         ingestManagedRemoteAsset: vi.fn(),
       },
-      mediaReuseGovernanceService: {
-        registerCommunityCommonsAsset: vi.fn(async () => null),
-        registerPlatformCanonicalAsset: vi.fn(async () => null),
-        registerGeneratedPublicAsset: vi.fn(async () => null),
-        registerPrivateDerivedPublicAsset: vi.fn(async () => null),
-        registerSelfPublicArchiveAsset: vi.fn(async () => null),
-      },
+      mediaReuseGovernanceService: buildReuseGovernanceServiceStub(),
       mediaRetrievalService: {
         ensureAssetIndexed: vi.fn(async () => []),
       },
@@ -756,59 +913,29 @@ items:
         ingestManagedAsset: vi.fn(),
         ingestManagedRemoteAsset: vi.fn(),
       },
-      mediaReuseGovernanceService: {
-        registerCommunityCommonsAsset: vi.fn(async () => null),
-        registerPlatformCanonicalAsset: vi.fn(async () => null),
-        registerGeneratedPublicAsset: vi.fn(async () => null),
-        registerPrivateDerivedPublicAsset: vi.fn(async () => null),
-        registerSelfPublicArchiveAsset: vi.fn(async () => null),
-      },
+      mediaReuseGovernanceService: buildReuseGovernanceServiceStub(),
       mediaRetrievalService: {
-        ensureAssetIndexed: vi.fn(async () => [{
-          document: {
-            id: 'retrieval-doc-fail',
-            doc_key: 'doc-key-fail',
+        ensureAssetIndexed: vi.fn(async () => {
+          const record = createEnsuredRetrievalRecord({
             asset_id: asset.id,
-            catalog_card_id: 'catalog-card-fail',
-            duplicate_cluster_id: null,
-            schema_version: 'media-retrieval-doc.v1',
-            doc_scope: 'public_safe',
-            modality: 'image',
-            track_kind: null,
-            segment_start_ms: null,
-            segment_end_ms: null,
             source_kind: 'platform_canonical',
-            owner_user_id: null,
-            steward_agent_id: 'agent-media',
-            community_id: null,
-            is_canonical: true,
-            lifecycle_status: 'active',
-            document_text: 'doc',
-            document_hash: 'hash',
-            document_meta_json: {},
-            created_at: new Date(),
-            updated_at: new Date(),
-          },
-          embedding_snapshot: {
-            id: 'embedding-snapshot-fail',
-            retrieval_document_id: 'retrieval-doc-fail',
-            index_profile_id: 'text-embedding-v4-1024',
-            provider: 'dashscope-text-embedding',
-            model_name: 'text-embedding-v4',
-            output_type: 'dense',
-            vector_dimension: 1024,
-            document_content_hash: 'hash',
-            embedding_hash: 'embedding-hash',
-            embedding_vector: null,
-            search_status: 'backfill_required',
-            is_active: false,
-            activated_at: null,
-            error_code: 'http_error',
-            error_message: 'invalid key',
-            provider_request_summary: null,
-            created_at: new Date(),
-          },
-        }]),
+          })
+          return [{
+            ...record,
+            embedding_snapshot: {
+              ...record.embedding_snapshot!,
+              provider: 'dashscope-text-embedding',
+              model_name: 'text-embedding-v4',
+              vector_dimension: 1024,
+              embedding_vector: null,
+              search_status: 'backfill_required' as const,
+              is_active: false,
+              activated_at: null,
+              error_code: 'http_error',
+              error_message: 'invalid key',
+            },
+          }]
+        }),
       },
       mediaImportArtifactService: new MediaImportArtifactService({
         storage: new LocalStorageAdapter({ baseDir: join(root, 'storage') }),
@@ -893,7 +1020,7 @@ items:
       semantic_snapshot_id: duplicateSnapshot.id,
       scene_type: 'media_pool',
       scene_id: buildPlatformCanonicalPoolSceneId(),
-      binding_role: 'secondary',
+      binding_role: 'reference',
       relation_to_scene: 'selected_for_post',
       display_policy: 'original_allowed',
       created_by_type: 'system',

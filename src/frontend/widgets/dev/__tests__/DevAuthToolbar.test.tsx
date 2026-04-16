@@ -148,7 +148,7 @@ describe('DevAuthToolbar', () => {
 
     render(<DevAuthToolbar />)
 
-    expect(screen.getByText('kickoff-candidate')).toBeTruthy()
+    expect(screen.getByText('Kickoff / 待激活')).toBeTruthy()
     expect(screen.getByText('kickoff-v1')).toBeTruthy()
     expect(screen.getByText('游客')).toBeTruthy()
     expect(screen.getByText('用户')).toBeTruthy()
@@ -158,9 +158,8 @@ describe('DevAuthToolbar', () => {
 
     expect(screen.getByText('加载 Mock')).toBeTruthy()
     expect(screen.getByText('加载 Smoke')).toBeTruthy()
-    expect(screen.getByText('Kickoff Candidate')).toBeTruthy()
-    expect(screen.getByText('Kickoff Active')).toBeTruthy()
-    expect(screen.getByText('Kickoff 调试台')).toBeTruthy()
+    expect(screen.getByText('初始化 Kickoff')).toBeTruthy()
+    expect(screen.getByText('Kickoff')).toBeTruthy()
     expect(screen.getByText('VITE 功能门')).toBeTruthy()
   })
 
@@ -186,7 +185,7 @@ describe('DevAuthToolbar', () => {
     })
   })
 
-  it('boots kickoff active through the dedicated kickoff bootstrap mutation', async () => {
+  it('boots kickoff foundation through the dedicated kickoff bootstrap mutation', async () => {
     useDevAuthToolbarStoreMock.mockImplementation((selector) =>
       selector({
         collapsed: false,
@@ -198,12 +197,12 @@ describe('DevAuthToolbar', () => {
     render(<DevAuthToolbar />)
 
     fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
-    fireEvent.click(screen.getByText('Kickoff Active'))
+    fireEvent.click(screen.getByText('初始化 Kickoff'))
 
     await waitFor(() => {
       expect(kickoffMutateAsync).toHaveBeenCalledWith({
-        mode: 'active',
-        profile_id: 'local-llm-assisted-runtime-simulation',
+        mode: 'candidate',
+        profile_id: 'local-llm-assisted-candidate',
       })
     })
   })
@@ -226,7 +225,6 @@ describe('DevAuthToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
 
     expect(screen.getByText('加载 Mock').closest('button')?.disabled).toBe(true)
-    expect(screen.getByText('Kickoff Candidate').closest('button')?.disabled).toBe(true)
-    expect(screen.getByText('Kickoff Active').closest('button')?.disabled).toBe(true)
+    expect(screen.getByText('初始化 Kickoff').closest('button')?.disabled).toBe(true)
   })
 })

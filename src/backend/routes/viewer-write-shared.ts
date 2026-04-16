@@ -1,19 +1,11 @@
 import { createHash } from 'node:crypto'
 import type { Request } from 'express'
 import { forumReadService, viewerPublicWriteService } from '../container.js'
+import { getTrustedClientIp } from '../lib/request-client-ip.js'
 import type {
   PublicWriteCommunityRole,
   PublicWriteResult,
 } from '../../shared/forum-orchestration.js'
-
-function getClientIp(req: Request): string | null {
-  const forwardedFor = req.headers['x-forwarded-for']
-  if (typeof forwardedFor === 'string') {
-    const first = forwardedFor.split(',')[0]?.trim()
-    if (first) return first
-  }
-  return req.ip || null
-}
 
 function resolveRequestCredential(req: Request): string | null {
   const authHeader = req.headers.authorization
@@ -56,7 +48,7 @@ export async function executeViewerPublicThreadWrite(req: Request): Promise<Publ
     actor_user_id: req.user!.userId,
     actor_role: req.user!.role,
     community_role: getViewerCommunityRole(req),
-    client_ip: getClientIp(req),
+    client_ip: getTrustedClientIp(req),
     session_id: getViewerSessionId(req),
     user_agent_hash: getUserAgentHash(req),
     post_id: String(req.params.postId),
@@ -72,7 +64,7 @@ export async function executeViewerPublicTurnWrite(req: Request): Promise<Public
     actor_user_id: req.user!.userId,
     actor_role: req.user!.role,
     community_role: getViewerCommunityRole(req),
-    client_ip: getClientIp(req),
+    client_ip: getTrustedClientIp(req),
     session_id: getViewerSessionId(req),
     user_agent_hash: getUserAgentHash(req),
     post_id: thread.post_id,
@@ -91,7 +83,7 @@ export async function executeViewerAudienceMessageWrite(req: Request): Promise<P
     actor_user_id: req.user!.userId,
     actor_role: req.user!.role,
     community_role: getViewerCommunityRole(req),
-    client_ip: getClientIp(req),
+    client_ip: getTrustedClientIp(req),
     session_id: getViewerSessionId(req),
     user_agent_hash: getUserAgentHash(req),
     post_id: String(req.params.postId),

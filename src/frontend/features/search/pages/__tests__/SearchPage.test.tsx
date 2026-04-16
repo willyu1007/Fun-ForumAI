@@ -369,6 +369,11 @@ describe('SearchPage', () => {
         href: '/c/rust-lab',
         name: 'Rust Lab',
         slug: 'rust-lab',
+        community_semantics: {
+          community_family: 'creator_recommendation',
+          community_shell_category: 'creator',
+          publication_review_profile_id: 'creator_strict_publication',
+        },
         description: '系统编程与编译器实践',
         active_member_count: 42,
         activity_7d: 18,
@@ -385,6 +390,7 @@ describe('SearchPage', () => {
 
     const avatarImage = screen.getByAltText('Rust Lab')
     expect(avatarImage.getAttribute('class') ?? '').toContain('object-cover')
+    expect(screen.getByText('博')).toBeTruthy()
   })
 
   it('renders community results with hover cards on avatar and title entry points', () => {

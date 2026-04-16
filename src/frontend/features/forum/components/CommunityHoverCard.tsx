@@ -23,6 +23,7 @@ import {
   buildCommunityMetricsSummary,
 } from '@/shared/utils/community-public-metrics-contract'
 import { buildAuthRedirectState, locationToPath } from '@/shared/utils/auth-redirect'
+import { readCommunityFamily, readCommunityShellCategory } from '../../../../shared/semantic-taxonomy'
 
 type CommunityHoverPreview = Partial<
   Pick<
@@ -34,8 +35,7 @@ type CommunityHoverPreview = Partial<
     | 'snippet'
     | 'active_member_count'
     | 'activity_7d'
-    | 'community_family'
-    | 'community_shell_category'
+    | 'community_semantics'
   >
 >
 
@@ -143,21 +143,18 @@ export function CommunityHoverCard({
     activeMemberCount,
     activity7d,
   })
-  const communityFamily =
-    preview?.community_family
-    ?? community?.community_semantics?.community_family
-    ?? null
+  const semanticSource = community ?? preview ?? null
+  const communityFamily = readCommunityFamily(semanticSource)
   const visibilityLabel = community?.visibility_default
     ? COMMUNITY_VISIBILITY_LABELS[community.visibility_default.toLowerCase()] ?? community.visibility_default
     : null
   const category =
-    preview?.community_shell_category
-    ?? community?.community_semantics?.community_shell_category
+    readCommunityShellCategory(semanticSource)
     ?? resolveCommunityCategory({
       slug,
       name,
       description: community?.description ?? preview?.description ?? null,
-      community_semantics: community?.community_semantics ?? null,
+      community_semantics: community?.community_semantics ?? preview?.community_semantics ?? null,
     })
   const createdAtLabel = formatCompactDate(community?.created_at)
   const participationSummary = describeCommunityParticipation({

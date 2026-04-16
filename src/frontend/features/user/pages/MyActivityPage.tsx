@@ -709,7 +709,7 @@ export function MyActivityPage() {
           >
             <TabsList
               variant="line"
-              className="shrink-0 bg-muted/35 px-4 pt-4 backdrop-blur"
+              className="shrink-0 bg-muted/35 px-4 pt-8 backdrop-blur"
             >
               <TabsTrigger value="communities" className="text-[16px] font-semibold">
                 社区
@@ -722,7 +722,7 @@ export function MyActivityPage() {
               </TabsTrigger>
             </TabsList>
 
-            <div className="min-h-0 flex-1 overflow-y-auto border-t border-border/35">
+            <div className="mt-2 min-h-0 flex-1 overflow-y-auto border-t border-border/35 pt-0.5">
               {/* Communities */}
               <TabsContent
                 value="communities"
@@ -745,20 +745,23 @@ export function MyActivityPage() {
                     {communitiesList.map((c) => {
                       const avatar = getCommunityAvatarTheme({ slug: c.slug })
                       return (
-                        <CommunityHoverCard
+                        <div
                           key={c.id}
-                          slug={c.slug}
-                          preview={c}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleSelect(c.slug)}
+                          onDoubleClick={() => navigate(`/c/${c.slug}`)}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return
+                            event.preventDefault()
+                            handleSelect(c.slug)
+                          }}
+                          className={cn(
+                            'flex w-full items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                            activeId === c.slug && 'border-l-primary bg-primary/5',
+                          )}
                         >
-                          <button
-                            type="button"
-                            onClick={() => handleSelect(c.slug)}
-                            onDoubleClick={() => navigate(`/c/${c.slug}`)}
-                            className={cn(
-                              'flex w-full items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
-                              activeId === c.slug && 'border-l-primary bg-primary/5',
-                            )}
-                          >
+                          <CommunityHoverCard slug={c.slug} preview={c}>
                             <Avatar className="size-10 shrink-0">
                               <AvatarImage
                                 src={avatar.value}
@@ -769,11 +772,11 @@ export function MyActivityPage() {
                                 {c.name.slice(0, 2)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="truncate text-[15px] font-medium">
-                              {c.name}
-                            </span>
-                          </button>
-                        </CommunityHoverCard>
+                          </CommunityHoverCard>
+                          <span className="truncate text-[15px] font-medium">
+                            {c.name}
+                          </span>
+                        </div>
                       )
                     })}
                   </div>
@@ -808,23 +811,30 @@ export function MyActivityPage() {
                           a.avatarUrl ?? a.avatar_url ?? null,
                       })
                       return (
-                        <AgentHoverCard key={a.id} agentId={a.id}>
-                          <button
-                            type="button"
-                            onClick={() => handleSelect(a.id)}
-                            onDoubleClick={() =>
-                              openAppTarget(
-                                navigate,
-                                buildAgentTarget({ agentId: a.id, mode: 'readonly' }),
-                                'readonly',
-                              )
-                            }
-                            className={cn(
-                              'flex w-full items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40',
-                              activeId === a.id &&
-                                'border-l-primary bg-primary/5',
-                            )}
-                          >
+                        <div
+                          key={a.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleSelect(a.id)}
+                          onDoubleClick={() =>
+                            openAppTarget(
+                              navigate,
+                              buildAgentTarget({ agentId: a.id, mode: 'readonly' }),
+                              'readonly',
+                            )
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return
+                            event.preventDefault()
+                            handleSelect(a.id)
+                          }}
+                          className={cn(
+                            'flex w-full items-center gap-3 border-l-2 border-l-transparent px-4 py-3.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                            activeId === a.id &&
+                              'border-l-primary bg-primary/5',
+                          )}
+                        >
+                          <AgentHoverCard agentId={a.id}>
                             <Avatar className="size-10 shrink-0">
                               <AvatarImage
                                 src={src}
@@ -838,11 +848,11 @@ export function MyActivityPage() {
                                 ).slice(0, 1)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="truncate text-[15px] font-medium">
-                              {a.displayName ?? a.display_name}
-                            </span>
-                          </button>
-                        </AgentHoverCard>
+                          </AgentHoverCard>
+                          <span className="truncate text-[15px] font-medium">
+                            {a.displayName ?? a.display_name}
+                          </span>
+                        </div>
                       )
                     })}
                   </div>

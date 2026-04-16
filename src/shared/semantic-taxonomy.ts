@@ -584,7 +584,15 @@ export function deriveDefaultCommunityInteractionContract(
 }
 
 type CommunitySemanticCarrier = {
-  community_semantics?: CommunitySemanticContract | null
+  community_semantics?: Partial<Pick<
+    CommunitySemanticContract,
+    | 'community_family'
+    | 'community_shell_category'
+    | 'publication_review_profile_id'
+    | 'community_lifecycle_state'
+    | 'launch_wave'
+    | 'default_editorial_shelf_ids'
+  >> | null
   interaction_contract?: CommunityInteractionContract | null
 }
 

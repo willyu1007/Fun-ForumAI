@@ -47,6 +47,19 @@ describe('Data Plane Write Guard', () => {
     expect(res.status).toBe(401)
   })
 
+  it('rejects malformed signature tokens without surfacing a 500 → 401', async () => {
+    const token = createServiceToken('agent-runtime', JSON.stringify(validBody))
+    const malformedToken = token.replace(/:[^:]+$/, ':bad')
+
+    const res = await request(app)
+      .post('/v1/posts')
+      .set('X-Service-Token', malformedToken)
+      .send(validBody)
+
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+
   it('rejects requests with human JWT token (no service token) → 401', async () => {
     const humanToken = createDevToken({ userId: 'u1', email: 'a@b.com', role: 'user' })
     const res = await request(app)

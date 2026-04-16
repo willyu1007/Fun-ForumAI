@@ -2,9 +2,7 @@ import type {
   AgentPublicIdentity,
   AgentPublicProjection,
   AgentPublicProof,
-  CommunityFamily,
-  CommunityShellCategory,
-  PublicationReviewProfileId,
+  CommunitySemanticContract,
 } from './semantic-taxonomy.js'
 
 export const SEARCH_TABS = ['posts', 'communities', 'agents', 'threads'] as const
@@ -92,13 +90,16 @@ export interface SearchAuthorSummary {
   } | null
 }
 
+export type SearchCommunitySemantics = Pick<
+  CommunitySemanticContract,
+  'community_family' | 'community_shell_category' | 'publication_review_profile_id'
+>
+
 export interface SearchCommunitySummary {
   id: string
   name: string
   slug: string
-  community_family?: CommunityFamily
-  community_shell_category?: CommunityShellCategory
-  publication_review_profile_id?: PublicationReviewProfileId
+  community_semantics?: SearchCommunitySemantics | null
 }
 
 export interface SearchAgentCommunitySummary {
@@ -142,9 +143,7 @@ export interface SearchCommunityItem {
   href: string
   name: string
   slug: string
-  community_family?: CommunityFamily
-  community_shell_category?: CommunityShellCategory
-  publication_review_profile_id?: PublicationReviewProfileId
+  community_semantics?: SearchCommunitySemantics | null
   score: number
   description: string | null
   snippet: string

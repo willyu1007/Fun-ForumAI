@@ -9,306 +9,306 @@ project:
 
 milestones:
   - id: M-000
-    title: "Inbox / Triage"
+    title: 'Inbox / Triage'
     status: in-progress
-    description: "Triage queue for new or unplanned work."
+    description: 'Triage queue for new or unplanned work.'
   - id: M-010
-    title: "Mainland Launch Safety"
+    title: 'Mainland Launch Safety'
     status: done
-    description: "Mainland launch risk-control, review, identity gating, provenance, and topic-policy delivery."
+    description: 'Mainland launch risk-control, review, identity gating, provenance, and topic-policy delivery.'
   - id: M-020
-    title: "Launch Release Packaging"
+    title: 'Launch Release Packaging'
     status: done
-    description: "Release-prep packaging for launch identity, roster, communities, homepage storytelling, creator-note enablement, and programming ops."
+    description: 'Release-prep packaging for launch identity, roster, communities, homepage storytelling, creator-note enablement, and programming ops.'
   - id: M-030
-    title: "Forum Semantic Convergence & Governance"
+    title: 'Forum Semantic Convergence & Governance'
     status: done
-    description: "Cross-system semantic convergence for community taxonomy, public participation, governance contracts, agent public semantics, and search/analytics compatibility cleanup."
+    description: 'Cross-system semantic convergence for community taxonomy, public participation, governance contracts, agent public semantics, and search/analytics compatibility cleanup.'
 
 features:
   - id: F-000
-    title: "Inbox / Untriaged"
+    title: 'Inbox / Untriaged'
     status: in-progress
-    description: "Untriaged tasks live here until mapped to a real feature."
+    description: 'Untriaged tasks live here until mapped to a real feature.'
     milestone_id: M-000
   - id: F-010
-    title: "Agent Stats System"
+    title: 'Agent Stats System'
     status: in-progress
-    description: "Stats v1 core + behavior wiring + owner panel onboarding."
+    description: 'Stats v1 core + behavior wiring + owner panel onboarding.'
     milestone_id: M-000
   - id: F-020
-    title: "Agent Personality Experience V1"
+    title: 'Agent Personality Experience V1'
     status: in-progress
-    description: "Cross-scene personality experience upgrades across input fidelity, prompt orchestration, growth presentation, and provider/runtime alignment."
+    description: 'Cross-scene personality experience upgrades across input fidelity, prompt orchestration, growth presentation, and provider/runtime alignment.'
     milestone_id: M-000
   - id: F-030
-    title: "Mobile Runtime Delivery"
+    title: 'Mobile Runtime Delivery'
     status: done
-    description: "Expo development build baseline and iOS/Android runtime smoke enablement for the mobile app."
+    description: 'Expo development build baseline and iOS/Android runtime smoke enablement for the mobile app.'
     milestone_id: M-000
   - id: F-040
-    title: "Guidance & Onboarding V1"
+    title: 'Guidance & Onboarding V1'
     status: in-progress
-    description: "Server-owned guidance and onboarding system for dual-track spectator/owner activation, Web-first core experience, and recall/observability."
+    description: 'Server-owned guidance and onboarding system for dual-track spectator/owner activation, Web-first core experience, and recall/observability.'
     milestone_id: M-000
   - id: F-050
-    title: "Risk Control & Review Launch Track"
+    title: 'Risk Control & Review Launch Track'
     status: done
-    description: "Unified mainland launch moderation, identity gating, review case management, provenance governance, hot-topic transparency, public help surfaces, and hot-topic ops."
+    description: 'Unified mainland launch moderation, identity gating, review case management, provenance governance, hot-topic transparency, public help surfaces, and hot-topic ops.'
     milestone_id: M-010
   - id: F-060
-    title: "Public Scene Pool & Director Orchestration"
+    title: 'Public Scene Pool & Director Orchestration'
     status: done
-    description: "Unified public scene pool, director orchestration, scene selection, and chatroom/forum alignment with explicit private-channel boundary hardening."
+    description: 'Unified public scene pool, director orchestration, scene selection, and chatroom/forum alignment with explicit private-channel boundary hardening.'
     milestone_id: M-000
   - id: F-070
-    title: "Owner Nurture & Life Overview"
+    title: 'Owner Nurture & Life Overview'
     status: in-progress
-    description: "Owner-first life overview, story-beat chronicle read model, nurture suggestion lanes, and breathing cadence signals built on top of existing personality, guidance, and public-scene foundations."
+    description: 'Owner-first life overview, story-beat chronicle read model, nurture suggestion lanes, and breathing cadence signals built on top of existing personality, guidance, and public-scene foundations.'
     milestone_id: M-000
   - id: F-080
-    title: "Visual Media Framework V1"
+    title: 'Visual Media Framework V1'
     status: in-progress
-    description: "Unified image/media asset domain, dual display/cognition projections, public scene image planning, private media cognition, reuse governance, generation broker delivery, multi-surface expansion, and lifecycle/observability control."
+    description: 'Unified image/media asset domain, dual display/cognition projections, public scene image planning, private media cognition, reuse governance, generation broker delivery, multi-surface expansion, and lifecycle/observability control.'
     milestone_id: M-000
   - id: F-090
-    title: "Launch Identity & Programming"
+    title: 'Launch Identity & Programming'
     status: done
-    description: "Launch packaging for system roster identity, 12-community contracts, editorial home IA, creator-note tracks, and programming operations."
+    description: 'Launch packaging for system roster identity, 12-community contracts, editorial home IA, creator-note tracks, and programming operations.'
     milestone_id: M-020
   - id: F-100
-    title: "Forum Semantic Convergence & Governance"
+    title: 'Forum Semantic Convergence & Governance'
     status: done
-    description: "Canonical taxonomy, governance contract separation, agent identity/projection/proof alignment, and search/analytics semantic convergence."
+    description: 'Canonical taxonomy, governance contract separation, agent identity/projection/proof alignment, and search/analytics semantic convergence.'
     milestone_id: M-030
 
 requirements:
   - id: R-010
-    title: "Stats Core Schema and Derivation"
+    title: 'Stats Core Schema and Derivation'
     status: in-progress
     feature_id: F-010
   - id: R-011
-    title: "Behavior/Relation/Vote Wiring"
+    title: 'Behavior/Relation/Vote Wiring'
     status: planned
     feature_id: F-010
   - id: R-012
-    title: "Stats Web Panel and Onboarding"
+    title: 'Stats Web Panel and Onboarding'
     status: planned
     feature_id: F-010
   - id: R-020
-    title: "Personality Foundation Inputs and Identity"
+    title: 'Personality Foundation Inputs and Identity'
     status: planned
     feature_id: F-020
   - id: R-021
-    title: "Cross-scene Prompt Orchestration Governance"
+    title: 'Cross-scene Prompt Orchestration Governance'
     status: in-progress
     feature_id: F-020
   - id: R-022
-    title: "Achievement Chronicle Surface"
+    title: 'Achievement Chronicle Surface'
     status: in-progress
     feature_id: F-020
   - id: R-023
-    title: "XP Deleveling and Growth Point Simplification"
+    title: 'XP Deleveling and Growth Point Simplification'
     status: in-progress
     feature_id: F-020
   - id: R-024
-    title: "Expo Development Build Foundation"
+    title: 'Expo Development Build Foundation'
     status: done
     feature_id: F-030
   - id: R-025
-    title: "iOS Android Runtime Smoke Enablement"
+    title: 'iOS Android Runtime Smoke Enablement'
     status: done
     feature_id: F-030
   - id: R-026
-    title: "Persona Seed and Voice Contract Alignment"
+    title: 'Persona Seed and Voice Contract Alignment'
     status: done
     feature_id: F-020
   - id: R-027
-    title: "LLM Gateway Routing Profiles and Prompt Version Contract"
+    title: 'LLM Gateway Routing Profiles and Prompt Version Contract'
     status: in-progress
     feature_id: F-020
   - id: R-028
-    title: "Persona Projection Overlay and Tier Runtime"
+    title: 'Persona Projection Overlay and Tier Runtime'
     status: done
     feature_id: F-020
   - id: R-029
-    title: "Persona Observability and Evaluation Gates"
+    title: 'Persona Observability and Evaluation Gates'
     status: in-progress
     feature_id: F-020
   - id: R-030
-    title: "Context and Memory Plane"
+    title: 'Context and Memory Plane'
     status: in-progress
     feature_id: F-020
   - id: R-031
-    title: "Derived Personality Compiler and Inference Profile"
+    title: 'Derived Personality Compiler and Inference Profile'
     status: in-progress
     feature_id: F-020
   - id: R-032
-    title: "Agent Social Bio Projection"
+    title: 'Agent Social Bio Projection'
     status: in-progress
     feature_id: F-020
   - id: R-040
-    title: "Guidance Contract and Orchestration"
+    title: 'Guidance Contract and Orchestration'
     status: in-progress
     feature_id: F-040
   - id: R-041
-    title: "Guidance Platform Foundation"
+    title: 'Guidance Platform Foundation'
     status: planned
     feature_id: F-040
   - id: R-042
-    title: "Guidance Web Core Experience"
+    title: 'Guidance Web Core Experience'
     status: planned
     feature_id: F-040
   - id: R-043
-    title: "Guidance Recall and Observability"
+    title: 'Guidance Recall and Observability'
     status: planned
     feature_id: F-040
   - id: R-050
-    title: "Policy Gateway and Channel Hardening"
+    title: 'Policy Gateway and Channel Hardening'
     status: done
     feature_id: F-050
   - id: R-051
-    title: "Review Case and Complaint Full Foundation"
+    title: 'Review Case and Complaint Full Foundation'
     status: done
     feature_id: F-050
   - id: R-052
-    title: "Private Influence Provenance and Config Governance"
+    title: 'Private Influence Provenance and Config Governance'
     status: done
     feature_id: F-050
   - id: R-053
-    title: "Hot Topic Policy and User Transparency"
+    title: 'Hot Topic Policy and User Transparency'
     status: done
     feature_id: F-050
   - id: R-060
-    title: "Public Director Boundary and Scene Contract"
+    title: 'Public Director Boundary and Scene Contract'
     status: done
     feature_id: F-060
   - id: R-061
-    title: "Scene Selector and Scheduled Post Forum Entry"
+    title: 'Scene Selector and Scheduled Post Forum Entry'
     status: done
     feature_id: F-060
   - id: R-062
-    title: "Director Runtime State and Chatroom Unification"
+    title: 'Director Runtime State and Chatroom Unification'
     status: done
     feature_id: F-060
   - id: R-063
-    title: "Scene Pool Authoring Schema Migration and Legacy Projector Removal"
+    title: 'Scene Pool Authoring Schema Migration and Legacy Projector Removal'
     status: done
     feature_id: F-060
   - id: R-064
-    title: "Director History Lifecycle and Report Segmentation"
+    title: 'Director History Lifecycle and Report Segmentation'
     status: done
     feature_id: F-060
   - id: R-070
-    title: "Owner Life Overview Surface"
+    title: 'Owner Life Overview Surface'
     status: in-progress
     feature_id: F-070
   - id: R-071
-    title: "Chronicle Story Beat Seals and Suggestion Lanes"
+    title: 'Chronicle Story Beat Seals and Suggestion Lanes'
     status: in-progress
     feature_id: F-070
   - id: R-072
-    title: "Breathing Cadence and Projection Signals"
+    title: 'Breathing Cadence and Projection Signals'
     status: in-progress
     feature_id: F-070
   - id: R-080
-    title: "Media Domain Foundation and V1 Semantics Correction"
+    title: 'Media Domain Foundation and V1 Semantics Correction'
     status: planned
     feature_id: F-080
   - id: R-081
-    title: "Public Visual Planning and Prompt-Safe Projection"
+    title: 'Public Visual Planning and Prompt-Safe Projection'
     status: planned
     feature_id: F-080
   - id: R-082
-    title: "Private Media Attachment and Memory Projection"
+    title: 'Private Media Attachment and Memory Projection'
     status: planned
     feature_id: F-080
   - id: R-083
-    title: "Public Media Reuse and Revocation Governance"
+    title: 'Public Media Reuse and Revocation Governance'
     status: planned
     feature_id: F-080
   - id: R-084
-    title: "Media Generation Broker and Derivative Delivery"
+    title: 'Media Generation Broker and Derivative Delivery'
     status: planned
     feature_id: F-080
   - id: R-085
-    title: "Multi-Surface Media Expansion and Shared Surface Adapters"
+    title: 'Multi-Surface Media Expansion and Shared Surface Adapters'
     status: planned
     feature_id: F-080
   - id: R-086
-    title: "Media Observability, Lifecycle, and Rollout Control"
+    title: 'Media Observability, Lifecycle, and Rollout Control'
     status: planned
     feature_id: F-080
   - id: R-087
-    title: "Media Injection Scaffold and Semantic Retrieval Index"
+    title: 'Media Injection Scaffold and Semantic Retrieval Index'
     status: in-progress
     feature_id: F-080
   - id: R-090
-    title: "Launch Release Packaging Master"
+    title: 'Launch Release Packaging Master'
     status: done
     feature_id: F-090
   - id: R-091
-    title: "System Roster and Identity Packaging"
+    title: 'System Roster and Identity Packaging'
     status: done
     feature_id: F-090
   - id: R-092
-    title: "Launch Communities and Rules Pack"
+    title: 'Launch Communities and Rules Pack'
     status: done
     feature_id: F-090
   - id: R-093
-    title: "Home IA, Storyline, and Highlights Packaging"
+    title: 'Home IA, Storyline, and Highlights Packaging'
     status: done
     feature_id: F-090
   - id: R-094
-    title: "Creator Community Enablement"
+    title: 'Creator Community Enablement'
     status: done
     feature_id: F-090
   - id: R-095
-    title: "Programming Ops and Rollout"
+    title: 'Programming Ops and Rollout'
     status: done
     feature_id: F-090
   - id: R-096
-    title: "Lightweight Personalization and Relation Hints"
+    title: 'Lightweight Personalization and Relation Hints'
     status: done
     feature_id: F-090
   - id: R-097
-    title: "Shelf Template Optimization and Incubation"
+    title: 'Shelf Template Optimization and Incubation'
     status: done
     feature_id: F-090
   - id: R-098
-    title: "Launch Visual Rollout and Packaging"
+    title: 'Launch Visual Rollout and Packaging'
     status: done
     feature_id: F-090
   - id: R-099
-    title: "Launch Community Governance and Incubation"
+    title: 'Launch Community Governance and Incubation'
     status: done
     feature_id: F-090
   - id: R-100
-    title: "Launch Identity and Programming Closure and Acceptance"
+    title: 'Launch Identity and Programming Closure and Acceptance'
     status: done
     feature_id: F-090
   - id: R-101
-    title: "Semantic Convergence Program Governance and Terminology Constitution"
+    title: 'Semantic Convergence Program Governance and Terminology Constitution'
     status: done
     feature_id: F-100
   - id: R-102
-    title: "Shared Taxonomy Spine and Canonical Loader Cutover"
+    title: 'Shared Taxonomy Spine and Canonical Loader Cutover'
     status: done
     feature_id: F-100
   - id: R-103
-    title: "Governance and Public Participation Contract Cutover"
+    title: 'Governance and Public Participation Contract Cutover'
     status: done
     feature_id: F-100
   - id: R-104
-    title: "Agent Public Identity Projection Proof Alignment"
+    title: 'Agent Public Identity Projection Proof Alignment'
     status: done
     feature_id: F-100
   - id: R-105
-    title: "Search Analytics Backfill and Compatibility Cleanup"
+    title: 'Search Analytics Backfill and Compatibility Cleanup'
     status: done
     feature_id: F-100
   - id: R-106
-    title: "Badge Semantic SoT and Surface Usage Governance"
+    title: 'Badge Semantic SoT and Surface Usage Governance'
     status: done
     feature_id: F-100
 
@@ -1774,20 +1774,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/chatroom-staging-hold-e2e-closure
     updated: 2026-04-13
-  - id: T-964
-    slug: kickoff-data-governance-alignment-temp
-    status: done
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/kickoff-data-governance-alignment-temp
-    updated: 2026-04-15
-  - id: T-968
-    slug: kickoff-planning-requirements-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/kickoff-planning-requirements-v1
-    updated: 2026-04-15
   - id: T-969
     slug: agent-stats-capability-chain-reenable-v1
     status: in-progress
@@ -1818,3 +1804,17 @@ tasks:
       - R-087
     dev_docs_path: dev-docs/active/media-injection-catalog-and-retrieval-v1
     updated: 2026-04-15
+  - id: T-974
+    slug: guidance-stage-rail-lifecycle-and-semantic-alignment
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment
+    updated: 2026-04-16
+  - id: T-977
+    slug: agent-overview-engagement-stats-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-overview-engagement-stats-v1
+    updated: 2026-04-16

@@ -5,6 +5,7 @@ import {
   buildAchievementPublicProof,
   mergeAgentPublicProjection,
 } from '../../identity/public-author-presentation.js'
+import { buildSearchCommunitySemantics } from './search-community-semantics.js'
 import { SearchGuard } from './search-guard.js'
 import { buildMatchPresentation, buildPreviewSource, buildSnippet } from './search-snippet.js'
 import type {
@@ -120,6 +121,11 @@ export class PostSearchProvider implements SearchProvider {
       ),
       public_proof: buildAchievementPublicProof(hitDoc.author_badges),
     })
+    const communitySemantics = buildSearchCommunitySemantics({
+      community_family: hitDoc.community_family,
+      community_shell_category: hitDoc.community_shell_category,
+      publication_review_profile_id: hitDoc.publication_review_profile_id,
+    })
 
     return {
       type: 'post',
@@ -136,9 +142,7 @@ export class PostSearchProvider implements SearchProvider {
         id: hitDoc.community_id,
         name: hitDoc.community_name,
         slug: hitDoc.community_slug,
-        ...(hitDoc.community_family ? { community_family: hitDoc.community_family } : {}),
-        ...(hitDoc.community_shell_category ? { community_shell_category: hitDoc.community_shell_category } : {}),
-        ...(hitDoc.publication_review_profile_id ? { publication_review_profile_id: hitDoc.publication_review_profile_id } : {}),
+        ...(communitySemantics ? { community_semantics: communitySemantics } : {}),
       },
       author: {
         id: hitDoc.author_agent_id,

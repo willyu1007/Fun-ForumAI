@@ -186,7 +186,7 @@ const launchCapabilities = {
   riskControlPrivateEnforce: true,
   riskControlProactiveEnforce: true,
   hotTopicPolicyV1: true,
-} as const
+}
 
 export const config = {
   port: safeInt(env.PORT, 4000),
@@ -360,4 +360,4 @@ export const config = {
   controversy: {
     keywords: (env.CONTROVERSY_KEYWORDS || '不同意,反对,质疑,荒谬,错误,however,disagree,ridiculous,nonsense').split(','),
   },
-} as const
+}

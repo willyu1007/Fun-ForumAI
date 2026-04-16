@@ -11,6 +11,7 @@ import {
   useAdminLaunchProgrammingOps,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
+  useAdminWarmupVerifierLatestRun,
   useAdminWarmupSuiteDetail,
   useAdminWarmupSuites,
   useApplyCommunityProposalAction,
@@ -35,6 +36,7 @@ import {
   useReleaseModerationCase,
   useReopenModerationCase,
   useReviewAdminWarmupSuite,
+  useRunAdminWarmupVerifier,
   useRetryAdminWarmupSuite,
   useResolveIdentityReview,
   useResolveModerationCase,
@@ -69,6 +71,7 @@ vi.mock('@/api/hooks', () => ({
   useAdminLaunchProgrammingOps: vi.fn(),
   useAdminHotTopicPostDistribution: vi.fn(),
   useAdminHotTopicRoomControl: vi.fn(),
+  useAdminWarmupVerifierLatestRun: vi.fn(),
   useAdminWarmupSuiteDetail: vi.fn(),
   useAdminWarmupSuites: vi.fn(),
   useApplyCommunityProposalAction: vi.fn(),
@@ -93,6 +96,7 @@ vi.mock('@/api/hooks', () => ({
   useReleaseModerationCase: vi.fn(),
   useReopenModerationCase: vi.fn(),
   useReviewAdminWarmupSuite: vi.fn(),
+  useRunAdminWarmupVerifier: vi.fn(),
   useRetryAdminWarmupSuite: vi.fn(),
   useResolveIdentityReview: vi.fn(),
   useResolveModerationCase: vi.fn(),
@@ -115,6 +119,7 @@ const useAdminHotTopicDashboardMock = vi.mocked(useAdminHotTopicDashboard)
 const useAdminLaunchProgrammingOpsMock = vi.mocked(useAdminLaunchProgrammingOps)
 const useAdminHotTopicPostDistributionMock = vi.mocked(useAdminHotTopicPostDistribution)
 const useAdminHotTopicRoomControlMock = vi.mocked(useAdminHotTopicRoomControl)
+const useAdminWarmupVerifierLatestRunMock = vi.mocked(useAdminWarmupVerifierLatestRun)
 const useAdminWarmupSuiteDetailMock = vi.mocked(useAdminWarmupSuiteDetail)
 const useAdminWarmupSuitesMock = vi.mocked(useAdminWarmupSuites)
 const useApplyCommunityProposalActionMock = vi.mocked(useApplyCommunityProposalAction)
@@ -139,6 +144,7 @@ const useReleaseDisclosureCapOverrideMock = vi.mocked(useReleaseDisclosureCapOve
 const useReleaseModerationCaseMock = vi.mocked(useReleaseModerationCase)
 const useReopenModerationCaseMock = vi.mocked(useReopenModerationCase)
 const useReviewAdminWarmupSuiteMock = vi.mocked(useReviewAdminWarmupSuite)
+const useRunAdminWarmupVerifierMock = vi.mocked(useRunAdminWarmupVerifier)
 const useRetryAdminWarmupSuiteMock = vi.mocked(useRetryAdminWarmupSuite)
 const useResolveIdentityReviewMock = vi.mocked(useResolveIdentityReview)
 const useResolveModerationCaseMock = vi.mocked(useResolveModerationCase)
@@ -469,6 +475,9 @@ describe('AdminPanel', () => {
     useAdminWarmupSuitesMock.mockReturnValue({
       data: { data: [] },
     } as never)
+    useAdminWarmupVerifierLatestRunMock.mockReturnValue({
+      data: { data: null },
+    } as never)
     useAdminWarmupSuiteDetailMock.mockReturnValue({
       data: undefined,
     } as never)
@@ -489,6 +498,10 @@ describe('AdminPanel', () => {
       isPending: false,
     } as never)
     useArchiveAdminWarmupSuiteMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+    useRunAdminWarmupVerifierMock.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     } as never)

@@ -72,7 +72,10 @@ export class PgMediaCatalogCardRepository implements MediaCatalogCardRepository 
         isCurrent: true,
         ...(exceptCardId ? { id: { not: exceptCardId } } : {}),
       },
-      data: { isCurrent: false },
+      data: {
+        isCurrent: false,
+        buildStatus: 'stale',
+      },
     })
     return result.count
   }

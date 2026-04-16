@@ -80,6 +80,7 @@ function createWarmupState() {
     reviewMutation: { isPending: false },
     retryMutation: { isPending: false },
     rebuildMutation: { isPending: false },
+    startMutation: { isPending: false },
     archiveMutation: { isPending: false },
     runVerifierMutation: { isPending: false },
     previewMutation: { isPending: false },
@@ -117,6 +118,7 @@ function createWarmupState() {
     handleReviewSuite: vi.fn(),
     handleRetrySuite: vi.fn(),
     handleRebuildSuite: vi.fn(),
+    handleStartWarmupSuite: vi.fn(),
     handleArchiveSuite: vi.fn(),
     handleRunVerifier: vi.fn(),
     handlePreviewGovernance: vi.fn(),
@@ -132,7 +134,7 @@ describe('WarmupGovernanceTab', () => {
 
     render(<WarmupGovernanceTab warmup={warmup as never} />)
 
-    expect(screen.getByText('Warm-up Verifier')).toBeTruthy()
+    expect(screen.getByText('Warmup Runtime Verifier')).toBeTruthy()
     expect(screen.getByText('search 没有命中 probe 内容。')).toBeTruthy()
     expect(screen.getByText('/tmp/warmup-run-1')).toBeTruthy()
     expect(screen.getByText('failed')).toBeTruthy()

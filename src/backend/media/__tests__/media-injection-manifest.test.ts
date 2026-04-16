@@ -158,7 +158,9 @@ items:
     const normalized = await artifactService.readText(job.normalized_manifest_key!)
     expect(normalized).toContain('"item_id": "asset-1"')
 
-    const stagedItemKey = `${job.staging_manifest_key.replace('/raw-manifest.yaml', '')}/items/asset-1.png`
+    const stagingManifestKey = job.staging_manifest_key
+    expect(stagingManifestKey).not.toBeNull()
+    const stagedItemKey = `${stagingManifestKey!.replace('/raw-manifest.yaml', '')}/items/asset-1.png`
     const stagedAsset = await artifactService.readBuffer(stagedItemKey)
     expect(stagedAsset?.content_type).toBe('image/png')
     expect((await readFile(assetPath)).byteLength).toBe(stagedAsset?.data.byteLength)

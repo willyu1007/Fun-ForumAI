@@ -143,6 +143,7 @@ function createHarness(options: HarnessOptions = {}) {
     actions: {
       can_review: false,
       can_retry: false,
+      can_start_warmup: false,
       can_rebuild: false,
       can_archive: true,
     },
