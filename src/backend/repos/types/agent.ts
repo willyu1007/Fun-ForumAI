@@ -105,7 +105,12 @@ export interface HumanUser {
 }
 
 export type AuthVerificationChannel = 'EMAIL' | 'SMS'
-export type AuthVerificationPurpose = 'EMAIL_SIGNUP' | 'SMS_AUTH' | 'EMAIL_CHANGE' | 'PHONE_CHANGE'
+export type AuthVerificationPurpose =
+  | 'EMAIL_SIGNUP'
+  | 'EMAIL_PASSWORD_RESET'
+  | 'SMS_AUTH'
+  | 'EMAIL_CHANGE'
+  | 'PHONE_CHANGE'
 
 export interface AuthVerificationChallenge {
   id: string

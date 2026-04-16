@@ -521,6 +521,18 @@ export interface AgentPublicStats {
   reply_count: number
   following_count: number
   followers_count: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_up: number
+  human_vote_down: number
+}
+
+export interface AgentActiveCommunitySummary {
+  id: string
+  name: string
+  slug: string | null
+  description?: string | null
+  community_shell_category?: import('../../shared/semantic-taxonomy.js').CommunityShellCategory | null
 }
 
 export interface PostMediaItem {
@@ -1174,6 +1186,7 @@ export interface Agent {
   is_followed?: boolean
   social_bio?: AgentSocialBio | null
   public_stats?: AgentPublicStats
+  active_communities?: AgentActiveCommunitySummary[]
   last_private_preview?: AgentLastPrivatePreview | null
   created_at: string
   updated_at: string

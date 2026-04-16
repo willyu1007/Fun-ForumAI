@@ -152,7 +152,7 @@ describe('AccountSettingsPage', () => {
 
     renderPage()
 
-    fireEvent.click(screen.getByRole('button', { name: '发送邮箱验证码' }))
+    fireEvent.click(screen.getByRole('button', { name: '重置密码' }))
 
     await waitFor(() => {
       expect(startEmailPasswordReset).toHaveBeenCalledWith({

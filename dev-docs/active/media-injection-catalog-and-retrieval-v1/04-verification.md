@@ -9,6 +9,8 @@
 - `pnpm tsc -p tsconfig.json --noEmit`
 - `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts`
 - `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts src/backend/media/__tests__/media-injection-medium-regression.integration.test.ts`
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/image-planner-retrieval-regression.integration.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:deploy`
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:deploy`
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:status`
@@ -69,6 +71,33 @@
     - 后续重复导入会稳定落到 `reuse`
 - 2026-04-15 20:46 CST:
   - 通过定向 `eslint`、`tsc`、`vitest` 复验确认 artifact cleanup 补丁与 runtime 去重扫描精简没有引入回归。
+- 2026-04-15 23:10 CST:
+  - 通过 `media-injection-medium-regression.integration.test.ts` 验证 mixed-batch 中等样本回归：
+    - `existing_asset_ref` 与 `generated_artifact_ref` 在 dry-run 中已正确标记为 `reuse`
+    - exact duplicate 在同批次中稳定复用 canonical asset，且 dry-run 已提前显示 `reuse`
+    - `public_safe / community_scoped / private_internal` 三类 retrieval scope 的搜索边界正确
+    - invalid steward 会使 job 收敛为 `partial_succeeded` 而不是误报成功
+- 2026-04-15 23:18 CST:
+  - 使用 local-kind backend pod 执行真实 mixed-batch 冒烟，验证：
+    - dry-run 中 `seeded-existing` 与 `generated-reuse` 的动作均为 `reuse`
+    - final job 收敛为 `partial_succeeded`，计数为 `created=3 / reused=3 / failed=1`
+    - community/private/public 三类 active snapshot 均为 `searchable`
+    - public query 不会召回 owner-private doc，private query 可稳定命中私域 doc
+    - duplicate local file 继续稳定复用同一 asset
+- 2026-04-15 23:32 CST:
+  - 通过 `image-planner-retrieval-regression.integration.test.ts` 验证大样本 planner 质量回归：
+    - retrieval 关闭时会稳定选择 legacy 强匹配素材
+    - retrieval 打开时会稳定提升 tagged canonical target
+    - retrieval provider 抛错时会打印 warning 并回退到 legacy 路径
+    - duplicate cluster 中的非 canonical doc 不会再被当作 canonical retrieval hit
+- 2026-04-15 23:39 CST:
+  - 使用 local-kind backend pod 执行真实大样本 planner 冒烟，验证：
+    - `sample_size=19`
+    - retrieval 关闭时 `selected_asset_id=legacy-strong`
+    - retrieval 打开时 `selected_asset_id=target-canonical`
+    - `semantic_retrieval_bonus > 0`
+    - duplicate cluster 的 canonical / duplicate distance 为 `0 / 1`
+    - top retrieval hits 不会再把同 cluster 的 duplicate 当作 canonical 命中
 
 ## Results
 
@@ -111,9 +140,19 @@
 - `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`（2026-04-15 22:09 CST）
   - 结果：通过，10/10 tests passed。
   - 说明：覆盖 deep-cleanup 后新增的 `steward agent pre-validation`、`non-searchable embedding fails import job`、worker retry、duplicate reuse、retrieval search。
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/media-injection-manifest.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts src/backend/media/__tests__/media-injection-medium-regression.integration.test.ts`（2026-04-15 23:10 CST）
+  - 结果：通过，11/11 tests passed。
+  - 说明：新增 mixed-batch 中等样本回归，覆盖 `existing_asset_ref` / `generated_artifact_ref` dry-run 复用判定、同批 duplicate reuse、multi-scope retrieval 与 partial failure 收敛。
+- `node scripts/run-vitest.mjs run src/backend/media/__tests__/image-planner-retrieval-regression.integration.test.ts src/backend/media/__tests__/image-planner-service.test.ts src/backend/media/__tests__/media-injection-retrieval.integration.test.ts`（2026-04-15 23:32 CST）
+  - 结果：通过，20/20 tests passed。
+  - 说明：新增大样本 planner 质量回归，覆盖 retrieval bonus、legacy fallback、canonical duplicate hit 修正。
 - `pnpm tsc -p tsconfig.json --noEmit`（2026-04-15 22:09 CST）
   - 结果：通过。
+- `pnpm tsc -p tsconfig.json --noEmit`（2026-04-15 23:10 CST）
+  - 结果：通过。
 - `pnpm eslint src/backend/media src/backend/repos src/backend/runtime src/backend/lib/config.ts src/backend/container src/backend/dev/media-inject.ts scripts/db-local.mjs`（2026-04-15 22:09 CST）
+  - 结果：通过。
+- `pnpm eslint src/backend/media/media-injection-service.ts src/backend/container/llm.ts src/backend/media/__tests__/media-injection-medium-regression.integration.test.ts`（2026-04-15 23:10 CST）
   - 结果：通过。
 - `docker build -f /tmp/funforum-media-cleanup-image-v4/Dockerfile -t fun-forum-api:media-cleanup-v4 . && kind load docker-image ... && kubectl set image ... && kubectl rollout status ...`（2026-04-15 22:08 CST）
   - 结果：通过。
@@ -149,6 +188,30 @@
     - `search_hit_count=1`
     - `duplicate_reused_same_asset=true`
   - 结论：fresh embedding、active searchable snapshot、semantic retrieval、duplicate reuse 已在真实 local-kind pod 中完成闭环验证。
+- `kubectl exec deploy/backend -- sh -lc 'cd /app && node /usr/local/bin/tsx /tmp/funforum-k8s-medium-regression.ts'`（2026-04-15 23:18 CST）
+  - 结果：通过。
+  - 说明：真实 pod mixed-batch 冒烟输出：
+    - `dry_run_actions.platform-duplicate=reuse`
+    - `dry_run_actions.seeded-existing=reuse`
+    - `dry_run_actions.generated-reuse=reuse`
+    - `final_job.status=partial_succeeded`
+    - `created_items=3`, `reused_items=3`, `failed_items=1`
+    - `platform doc_scope=public_safe`
+    - `community doc_scopes=public_safe + community_scoped`
+    - `owner doc_scope=private_internal`
+    - `public/community/private` 三类 active snapshot 均为 `searchable`
+    - `duplicate_reused_same_asset=true`
+  - 结论：中等样本 mixed-batch 在真实 local-kind pod 中验证通过；dry-run/apply 语义已对齐，multi-scope retrieval 边界和 partial failure 收敛稳定成立。
+- `kubectl exec deploy/backend -- sh -lc 'cd /app && node /usr/local/bin/tsx /tmp/funforum-k8s-planner-large-regression.ts'`（2026-04-15 23:39 CST）
+  - 结果：通过。
+  - 说明：真实 pod 大样本 planner 冒烟输出：
+    - `sample_size=19`
+    - `retrieval_disabled.selected_asset_id=<run>-legacy-strong`
+    - `retrieval_enabled.selected_asset_id=<run>-target-canonical`
+    - `retrieval_enabled.semantic_retrieval_bonus=0.29`
+    - `cluster.canonical_distance=0`
+    - `cluster.duplicate_distance=1`
+  - 结论：planner 在真实 local-kind pod 中已完成 retrieval 开关前后质量差异验证；semantic retrieval 能提升 canonical target，duplicate cluster canonical 约束在真实检索链上成立。
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum_t973_verify pnpm db:migrate:deploy`（2026-04-15 20:31 CST）
   - 结果：通过，新增 migration `20260415143000_t973_media_import_artifact_cleanup` 已应用。
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/llm_forum pnpm db:migrate:deploy`（2026-04-15 20:31 CST）

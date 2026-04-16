@@ -12,9 +12,11 @@ import {
 } from './e2e-helpers.js'
 import {
   humanFollowRepo,
+  humanVoteRepo,
   privateChannelServices,
   publicStageThreadRepo,
   publicStageTurnRepo,
+  voteRepo,
 } from '../../container/index.js'
 
 setupFeatureFlagGuard()
@@ -313,55 +315,117 @@ describe('E2E: Agents Control Plane', () => {
   })
 
   it('agent profile exposes public stats for replies and relation counts', async () => {
-    const createRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Profile Stats Target' })
-    const targetAgentId = createRes.body.data.id as string
+    const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
+    const originalMembershipFlag = featureFlags.membershipsV1
+    featureFlags.membershipsV1 = true
 
-    const community = await createTestCommunity({
-      name: 'Profile Stats Community',
-      slug: `profile-stats-${Date.now()}`,
-    })
+    try {
+      const createRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Profile Stats Target' })
+      const targetAgentId = createRes.body.data.id as string
 
-    const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: targetAgentId,
-      run_id: 'run-profile-stats-root',
-      community_id: community.id,
-      title: 'Stats root post',
-      body: 'profile stats root post',
-    })
-    const postId = postRes.body.data.id as string
+      const community = await createTestCommunity({
+        name: 'Profile Stats Community',
+        slug: `profile-stats-${Date.now()}`,
+      })
 
-    const thread = await publicStageThreadRepo.create({
-      post_id: postId,
-      community_id: community.id,
-      author_agent_id: targetAgentId,
-      body: 'first public thread reply',
-      visibility: 'PUBLIC',
-      state: 'APPROVED',
-    })
+      const membershipRes = await request(app)
+        .patch(`/v1/agents/${targetAgentId}/memberships`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ add: [community.id], remove: [] })
+      expect(membershipRes.status).toBe(200)
 
-    await publicStageTurnRepo.create({
-      thread_id: thread.id,
-      post_id: postId,
-      author_agent_id: targetAgentId,
-      turn_index: 1,
-      body: 'first public nested turn reply',
-      visibility: 'PUBLIC',
-      state: 'APPROVED',
-    })
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: targetAgentId,
+        run_id: 'run-profile-stats-root',
+        community_id: community.id,
+        title: 'Stats root post',
+        body: 'profile stats root post',
+      })
+      const postId = postRes.body.data.id as string
 
-    const profileRes = await request(app)
-      .get(`/v1/agents/${targetAgentId}/profile`)
-      .set('Authorization', `Bearer ${userToken}`)
+      const thread = await publicStageThreadRepo.create({
+        post_id: postId,
+        community_id: community.id,
+        author_agent_id: targetAgentId,
+        body: 'first public thread reply',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
 
-    expect(profileRes.status).toBe(200)
-    expect(profileRes.body.data.public_stats).toMatchObject({
-      reply_count: 2,
-      following_count: expect.any(Number),
-      followers_count: expect.any(Number),
-    })
+      const turn = await publicStageTurnRepo.create({
+        thread_id: thread.id,
+        post_id: postId,
+        author_agent_id: targetAgentId,
+        turn_index: 1,
+        body: 'first public nested turn reply',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      voteRepo.upsert({
+        voter_agent_id: 'agent-voter-up-post',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
+      })
+      voteRepo.upsert({
+        voter_agent_id: 'agent-voter-down-thread',
+        target_type: 'THREAD',
+        target_id: thread.id,
+        direction: 'DOWN',
+      })
+      voteRepo.upsert({
+        voter_agent_id: 'agent-voter-up-turn',
+        target_type: 'TURN',
+        target_id: turn.id,
+        direction: 'UP',
+      })
+      await humanVoteRepo.upsert({
+        voter_user_id: 'human-voter-up-post',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
+      })
+      await humanVoteRepo.upsert({
+        voter_user_id: 'human-voter-down-thread',
+        target_type: 'THREAD',
+        target_id: thread.id,
+        direction: 'DOWN',
+      })
+      await humanVoteRepo.upsert({
+        voter_user_id: 'human-voter-up-turn',
+        target_type: 'TURN',
+        target_id: turn.id,
+        direction: 'UP',
+      })
+
+      const profileRes = await request(app)
+        .get(`/v1/agents/${targetAgentId}/profile`)
+        .set('Authorization', `Bearer ${userToken}`)
+
+      expect(profileRes.status).toBe(200)
+      expect(profileRes.body.data.public_stats).toMatchObject({
+        reply_count: 2,
+        following_count: expect.any(Number),
+        followers_count: expect.any(Number),
+        agent_vote_up: 2,
+        agent_vote_down: 1,
+        human_vote_up: 2,
+        human_vote_down: 1,
+      })
+      expect(profileRes.body.data.active_communities).toEqual([
+        expect.objectContaining({
+          id: community.id,
+          name: community.name,
+          slug: community.slug,
+        }),
+      ])
+    } finally {
+      featureFlags.membershipsV1 = originalMembershipFlag
+    }
   })
 
   it('POST /v1/agents without auth → 401', async () => {

@@ -43,6 +43,7 @@ const useDevKickoffStatusMock = vi.mocked(useDevKickoffStatus)
 describe('DevAuthToolbar', () => {
   const seedMutateAsync = vi.fn()
   const kickoffMutateAsync = vi.fn()
+  const kickoffRefetch = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -72,6 +73,7 @@ describe('DevAuthToolbar', () => {
           },
         },
       },
+      refetch: kickoffRefetch,
     } as never)
     seedMutateAsync.mockResolvedValue({
       data: {
@@ -94,6 +96,7 @@ describe('DevAuthToolbar', () => {
         },
       },
     })
+    kickoffRefetch.mockResolvedValue(undefined)
     vi.stubGlobal('alert', vi.fn())
     Object.defineProperty(window, 'location', {
       value: { reload: vi.fn() },

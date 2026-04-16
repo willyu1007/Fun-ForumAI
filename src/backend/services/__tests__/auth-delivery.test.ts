@@ -48,6 +48,7 @@ describe('auth-delivery senders', () => {
         to: 'user@example.com',
         code: '123456',
         expiresInSec: 600,
+        purpose: 'EMAIL_SIGNUP',
       }),
     ).rejects.toMatchObject({
       statusCode: 503,

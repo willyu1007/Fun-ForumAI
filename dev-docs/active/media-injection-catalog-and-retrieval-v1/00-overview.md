@@ -4,8 +4,8 @@
 
 - State: in-progress
 - Depends on: `T-118` media domain foundation, `T-121` public media reuse governance, `T-122` media generation broker, `T-123` multi-surface adapters, `T-124` media observability, `T-918` contract/lineage hardening
-- Current status: 任务建包、治理映射、规划冻结、Prisma schema / repository / service contract 收敛已完成；代码实现已落地到 schema、repositories、services、worker、CLI、generation/planner 接线，并已完成真实 PG + pgvector migration、worker/retry/duplicate/retrieval 集成测试、artifact TTL 清理补齐、runtime fingerprint 去歧义，以及基于 kind k8s 环境的真实注入/检索冒烟验证。当前 local-kind backend 已切到最新代码和重生成的 Prisma client；在注入有效 DashScope key 后，fresh embedding 已在真实 pod 冒烟中成功进入 `searchable`，duplicate reuse 与 semantic retrieval 命中也已完成闭环验证。
-- Next step: 进入后续 rollout / staging 持续观测与更大样本回归验证；本轮 local-kind 功能闭环已完成。
+- Current status: 任务建包、治理映射、规划冻结、Prisma schema / repository / service contract 收敛已完成；代码实现已落地到 schema、repositories、services、worker、CLI、generation/planner 接线，并已完成真实 PG + pgvector migration、worker/retry/duplicate/retrieval 集成测试、artifact TTL 清理补齐、runtime fingerprint 去歧义，以及基于 kind k8s 环境的真实注入/检索冒烟验证。当前 local-kind backend 已切到最新代码和重生成的 Prisma client；在注入有效 DashScope key 后，fresh embedding 已在真实 pod 冒烟中成功进入 `searchable`。随后又完成了中等样本 mixed-batch 回归与大样本 planner 质量回归，确认 `existing_asset_ref`、`generated_artifact_ref` 以及同一 manifest 内 exact duplicate 的 dry-run 动作均已与 apply 语义对齐为 `reuse`，并且 planner 在 retrieval 关闭时会稳定选择 legacy 强匹配素材，在 retrieval 打开时会稳定提升 tagged canonical target，同时不会把 duplicate cluster 中的非 canonical doc 误当作 canonical hit。
+- Next step: 进入后续 rollout / staging 持续观测、planner 在线质量观测与更大规模真实样本覆盖；本轮 local-kind 功能闭环、中等样本定向回归和大样本 planner 质量回归已完成。
 
 ## Goal
 

@@ -14,6 +14,7 @@ Project: `main`
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-964 kickoff-data-governance-alignment-temp | done | F-000 | dev-docs/active/kickoff-data-governance-alignment-temp |
 | T-968 kickoff-planning-requirements-v1 | in-progress | F-000 | dev-docs/active/kickoff-planning-requirements-v1 |
@@ -33,5 +34,4 @@ Project: `main`
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
-| T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 <!-- AUTO-GENERATED:END dashboard -->

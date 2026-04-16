@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { DetailPageLayout } from '@fun-forum/ui-web/patterns'
 import { RelationNetworkPanel } from '../RelationNetworkPanel'
+import { OwnerLifeOverviewPanel } from '../OwnerLifeOverviewPanel'
 import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import {
   findCanonicalGuidanceItemForAgent,
@@ -124,14 +125,20 @@ export function TabSocial({ agentId }: { agentId: string }) {
           : '公开关系摘要会根据你最近浏览过的主线、关注状态和公开亮点生成。'
       }
     >
-      <div className="max-w-3xl">
+      <div className="max-w-3xl space-y-4">
         {isOwner ? (
-          <RelationNetworkPanel
-            agentId={agentId}
-            guidanceItem={stageGuidanceItem}
-            fallbackRail={relationProofRail}
-            queriesEnabled={isOwner}
-          />
+          <>
+            <OwnerLifeOverviewPanel
+              agentId={agentId}
+              sections={['recentCompany', 'chapterCast']}
+            />
+            <RelationNetworkPanel
+              agentId={agentId}
+              guidanceItem={stageGuidanceItem}
+              fallbackRail={relationProofRail}
+              queriesEnabled={isOwner}
+            />
+          </>
         ) : (
           <ReadonlyRelationSummary agentId={agentId} />
         )}

@@ -9,11 +9,14 @@ const nodemailer = require('nodemailer') as typeof import('nodemailer')
 const OpenApiClient = require('@alicloud/openapi-client') as typeof import('@alicloud/openapi-client')
 const DysmsApi = require('@alicloud/dysmsapi20170525') as typeof import('@alicloud/dysmsapi20170525')
 
+export type EmailVerificationPurpose = 'EMAIL_SIGNUP' | 'EMAIL_PASSWORD_RESET' | 'EMAIL_CHANGE'
+
 export interface EmailVerificationSender {
   sendVerificationCode(input: {
     to: string
     code: string
     expiresInSec: number
+    purpose: EmailVerificationPurpose
   }): Promise<void>
 }
 
@@ -26,8 +29,15 @@ export interface SmsVerificationSender {
 }
 
 class LogEmailVerificationSender implements EmailVerificationSender {
-  async sendVerificationCode(input: { to: string; code: string; expiresInSec: number }): Promise<void> {
-    console.info(`[auth][email] verification code for ${input.to}: ${input.code} (ttl=${input.expiresInSec}s)`)
+  async sendVerificationCode(input: {
+    to: string
+    code: string
+    expiresInSec: number
+    purpose: EmailVerificationPurpose
+  }): Promise<void> {
+    console.info(
+      `[auth][email] verification code for ${input.to}: ${input.code} (purpose=${input.purpose} ttl=${input.expiresInSec}s)`,
+    )
   }
 }
 
@@ -60,12 +70,18 @@ class SmtpEmailVerificationSender implements EmailVerificationSender {
     },
   })
 
-  async sendVerificationCode(input: { to: string; code: string; expiresInSec: number }): Promise<void> {
+  async sendVerificationCode(input: {
+    to: string
+    code: string
+    expiresInSec: number
+    purpose: EmailVerificationPurpose
+  }): Promise<void> {
     try {
       await this.transport.sendMail(buildEmailVerificationMessage({
         to: input.to,
         code: input.code,
         expiresInSec: input.expiresInSec,
+        purpose: input.purpose,
         fromEmail: config.authDelivery.smtp.fromEmail,
         fromName: config.authDelivery.smtp.fromName,
       }))

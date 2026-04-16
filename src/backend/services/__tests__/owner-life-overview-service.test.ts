@@ -95,7 +95,7 @@ describe('OwnerLifeOverviewService', () => {
     agentConfigRepo.create({
       agent_id: agent.id,
       config_json: buildInitialIdentityConfig({
-        ownerStylePins: { interests: ['音乐', '播客'] },
+        ownerStylePins: { interests: ['辩论', '逻辑学', '伦理', '社会学'] },
         selectedAt: new Date('2026-03-10T00:00:00.000Z'),
       }),
       updated_by: agent.owner_id,
@@ -211,7 +211,7 @@ describe('OwnerLifeOverviewService', () => {
               source_ref_id: null,
               source_event_id: null,
               summary_text: 'owner said secret phrase',
-              topic_tags: ['private'],
+              topic_tags: ['辩论'],
               key_facts: ['secret phrase'],
               sentiment: 'warm',
               importance_score: 0.9,
@@ -304,7 +304,12 @@ describe('OwnerLifeOverviewService', () => {
         label: '再带一点经历给她',
       },
     })
-    expect(overview.owner_projection.headline).toContain('只对你可见')
+    expect(overview.owner_projection.headline).toContain('状态、偏好和表达方式')
+    expect(overview.owner_projection.carryover_theme).toBe('最近更容易被带有判断和推理感的内容触发。')
+    expect(overview.owner_projection.carryover_topics).toEqual(['辩论', '逻辑学', '伦理', '社会学'])
+    expect(overview.owner_projection.privacy_mode_note).toBe('这里只展示互动带来的变化，不展示私聊原话。')
+    expect(overview.owner_projection.emotional_residue_label).toBe('当前状态更主动一些。')
+    expect(overview.now.next_tendency_label).toBe('表达上会更偏向先从明确话题开始。')
     expect(overview.entry_points.system).toMatchObject({
       label: '打开设置面板',
       hint: '设置面板放在二级导航里，需要时再进去。',

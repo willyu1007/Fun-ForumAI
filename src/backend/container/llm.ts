@@ -253,6 +253,8 @@ export function createLlmServices(deps: {
     mediaImportJobItemRepo: deps.mediaImportJobItemRepo,
     mediaImportArtifactService,
     mediaDuplicateService,
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
   })
   const mediaInjectionWorker = new MediaInjectionWorker({
     mediaImportJobRepo: deps.mediaImportJobRepo,

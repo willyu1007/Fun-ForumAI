@@ -1,4 +1,13 @@
-CREATE EXTENSION IF NOT EXISTS vector;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_available_extensions
+    WHERE name = 'vector'
+  ) THEN
+    EXECUTE 'CREATE EXTENSION IF NOT EXISTS vector';
+  END IF;
+END $$;
 
 ALTER TABLE "media_assets"
   ADD COLUMN "duplicate_cluster_id" TEXT,
@@ -66,7 +75,6 @@ CREATE TABLE "media_embedding_snapshots" (
   "vector_dimension" INTEGER NOT NULL,
   "document_content_hash" TEXT NOT NULL,
   "embedding_hash" TEXT NOT NULL,
-  "embedding_vector" vector(1024),
   "search_status" TEXT NOT NULL,
   "is_active" BOOLEAN NOT NULL DEFAULT false,
   "activated_at" TIMESTAMP(3),
@@ -76,6 +84,19 @@ CREATE TABLE "media_embedding_snapshots" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "media_embedding_snapshots_pkey" PRIMARY KEY ("id")
 );
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_extension
+    WHERE extname = 'vector'
+  ) THEN
+    EXECUTE 'ALTER TABLE "media_embedding_snapshots" ADD COLUMN "embedding_vector" vector(1024)';
+  ELSE
+    EXECUTE 'ALTER TABLE "media_embedding_snapshots" ADD COLUMN "embedding_vector" TEXT';
+  END IF;
+END $$;
 
 CREATE TABLE "media_import_jobs" (
   "id" TEXT NOT NULL,
@@ -167,11 +188,20 @@ CREATE INDEX "media_embedding_snapshots_retrieval_document_id_index_profile_id_i
 CREATE INDEX "media_embedding_snapshots_index_profile_id_search_status_created_at_idx" ON "media_embedding_snapshots"("index_profile_id", "search_status", "created_at");
 CREATE INDEX "media_embedding_snapshots_created_at_idx" ON "media_embedding_snapshots"("created_at");
 CREATE UNIQUE INDEX "media_embedding_snapshots_one_active_per_doc_profile" ON "media_embedding_snapshots"("retrieval_document_id", "index_profile_id") WHERE "is_active" = true;
-CREATE INDEX "media_embedding_snapshots_hnsw_active_text_embedding_v4_1024" ON "media_embedding_snapshots" USING hnsw ("embedding_vector" vector_cosine_ops)
-  WHERE "index_profile_id" = 'text-embedding-v4-1024'
-    AND "is_active" = true
-    AND "search_status" = 'searchable'
-    AND "embedding_vector" IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_extension
+    WHERE extname = 'vector'
+  ) THEN
+    EXECUTE 'CREATE INDEX "media_embedding_snapshots_hnsw_active_text_embedding_v4_1024" ON "media_embedding_snapshots" USING hnsw ("embedding_vector" vector_cosine_ops)
+      WHERE "index_profile_id" = ''text-embedding-v4-1024''
+        AND "is_active" = true
+        AND "search_status" = ''searchable''
+        AND "embedding_vector" IS NOT NULL';
+  END IF;
+END $$;
 CREATE INDEX "media_import_jobs_intent_fingerprint_created_at_idx" ON "media_import_jobs"("intent_fingerprint", "created_at");
 CREATE INDEX "media_import_jobs_status_created_at_idx" ON "media_import_jobs"("status", "created_at");
 CREATE INDEX "media_import_jobs_phase_updated_at_idx" ON "media_import_jobs"("phase", "updated_at");

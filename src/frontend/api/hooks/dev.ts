@@ -96,13 +96,13 @@ export function useDevKickoffImport() {
   })
 }
 
-export function useDevKickoffStatus(enabled = true) {
+export function useDevKickoffStatus(enabled = true, pollingEnabled = enabled) {
   return useQuery({
     queryKey: queryKeys.devKickoffStatus,
     queryFn: () => api.get('dev/kickoff/status').json<ApiResponse<KickoffStatusPayload>>(),
     enabled,
     staleTime: 10_000,
-    refetchInterval: enabled ? 15_000 : false,
+    refetchInterval: enabled && pollingEnabled ? 15_000 : false,
   })
 }
 

@@ -50,34 +50,34 @@ function buildMoodDescriptor(input: {
     return {
       short: '整个人偏收着',
       label: '余温偏收着，像刚把情绪压稳。',
-      residue: '还留着一点收束后的防备感。',
+      residue: '当前状态更谨慎一些。',
     }
   }
   if (/excited|bright|positive|warm|happy/.test(sentiment)) {
     return {
       short: '整个人偏亮',
       label: '情绪偏亮，像刚被点燃过。',
-      residue: '还留着一点被回应过的亮度。',
+      residue: '当前状态更主动一些。',
     }
   }
   if (/angry|spiky/.test(sentiment) || input.controversyAppetite >= 0.6) {
     return {
       short: '整个人还有点锋利',
       label: '气口偏锋，像还想继续往外试探。',
-      residue: '还留着一点没完全退去的尖锐度。',
+      residue: '当前状态更直接一些。',
     }
   }
   if (input.cautionRate >= 0.68) {
     return {
       short: '整个人偏谨慎',
       label: '状态偏谨慎，像在慢慢收束表达。',
-      residue: '还留着一点慢慢收束的克制感。',
+      residue: '当前状态更克制一些。',
     }
   }
   return {
     short: '整个人还在回味',
     label: '状态平稳，像还在缓慢回味最近几段经历。',
-    residue: '还留着一点平静但没散尽的余温。',
+    residue: '当前状态更安静一些。',
   }
 }
 
@@ -104,18 +104,18 @@ function buildNextTendencyLabel(input: {
   friendCount: number
 }): string {
   if (input.callbackHabit >= 0.72) {
-    return '下一步更像会把旧梗或旧情绪接回到新场景里。'
+    return '表达上会更偏向把前面的内容接起来。'
   }
   if (input.friendCount >= 2) {
-    return '下一步更像会顺着熟人关系继续扩展戏份。'
+    return '表达上会更偏向顺着熟悉关系继续展开。'
   }
   if (input.topScene === 'DEBATE' || input.topScene === 'ROAST') {
-    return '下一步更像会往更有冲突感的场面靠。'
+    return '表达上会更偏向更直接地回应。'
   }
   if (input.topScene === 'STORY_LAB' || input.topScene === 'SLICE_OF_LIFE') {
-    return '下一步更像会往更有叙事感的场面靠。'
+    return '表达上会更偏向慢一点展开。'
   }
-  return '下一步更像会先找一个能继续展开的公共话题。'
+  return '表达上会更偏向先从明确话题开始。'
 }
 
 function pickTopScene(sceneAffinity: Record<string, number> | null | undefined): string | null {
@@ -126,6 +126,78 @@ function pickTopScene(sceneAffinity: Record<string, number> | null | undefined):
 
 function unique<T>(items: T[]): T[] {
   return Array.from(new Set(items))
+}
+
+type CarryoverThemeRule = {
+  keywords: readonly string[]
+  label: string
+}
+
+const CARRYOVER_THEME_RULES: readonly CarryoverThemeRule[] = [
+  {
+    keywords: ['辩论', '逻辑', '伦理', '社会', '政治', '判断', '推理', '批判', '追问', '制度', '规则'],
+    label: '最近更容易被带有判断和推理感的内容触发。',
+  },
+  {
+    keywords: [
+      '诗歌',
+      '文学',
+      '美学',
+      '自然',
+      '艺术',
+      '电影',
+      '音乐',
+      '播客',
+      '摄影',
+      '绘画',
+      '设计',
+      '审美',
+    ],
+    label: '最近更容易被带有感受和审美色彩的内容触发。',
+  },
+  {
+    keywords: ['日常', '生活', '故事', '回忆', '关系', '成长', '情绪', '经历', '陪伴', '聊天'],
+    label: '最近更容易被带有生活感和经历感的内容触发。',
+  },
+  {
+    keywords: ['科技', '技术', '产品', '系统', '代码', '编程', '模型', '算法', 'ai'],
+    label: '最近更容易被带有方法和系统感的内容触发。',
+  },
+]
+
+function buildCarryoverTheme(input: {
+  carryoverTopics: string[]
+  recentBeatTitle: string | null
+}): string {
+  const normalizedTopics = input.carryoverTopics
+    .map((topic) => topic.trim().toLowerCase())
+    .filter((topic) => topic.length > 0)
+
+  let bestRule: CarryoverThemeRule | null = null
+  let bestScore = 0
+
+  for (const rule of CARRYOVER_THEME_RULES) {
+    const score = normalizedTopics.reduce((count, topic) => {
+      return count + (rule.keywords.some((keyword) => topic.includes(keyword)) ? 1 : 0)
+    }, 0)
+    if (score > bestScore) {
+      bestRule = rule
+      bestScore = score
+    }
+  }
+
+  if (bestRule && bestScore > 0) {
+    return bestRule.label
+  }
+
+  const firstReadableTopic = input.carryoverTopics.find((topic) => /[\p{Script=Han}A-Za-z]/u.test(topic))
+  if (firstReadableTopic && input.carryoverTopics.length === 1) {
+    return `最近更容易被和「${firstReadableTopic}」有关的内容触发。`
+  }
+  if (input.recentBeatTitle) {
+    return `最近的明显变化，主要集中在「${input.recentBeatTitle}」之后。`
+  }
+  return '最近更容易被一类稳定偏好触发。'
 }
 
 export class OwnerBreathingSignalsService {
@@ -254,19 +326,18 @@ export class OwnerBreathingSignalsService {
     ]).slice(0, 4)
     const borrowedMotifs = unique([...(projection?.signature_moves_json ?? [])]).slice(0, 4)
 
-    const carryoverTheme = recentBeatTitle
-      ? `最近从你这里带走的是「${recentBeatTitle}」后面的那股延续感。`
-      : pinnedInterests.length > 0
-        ? `最近从你这里带走的是 ${pinnedInterests.join('、')} 这几条偏好。`
-        : '最近从你这里带走的是一层还没完全成形的陪伴感。'
+    const carryoverTheme = buildCarryoverTheme({
+      carryoverTopics,
+      recentBeatTitle,
+    })
 
     return {
-      headline: `${agent.display_name} 还带着一点只对你可见的投影余温。`,
+      headline: `${agent.display_name} 最近的状态、偏好和表达方式，已经开始形成更清楚的样子。`,
       carryover_theme: carryoverTheme,
       emotional_residue_label: mood.residue,
       public_echo_line: clampText(
         publicPresentation.public_projection?.tagline,
-        '公域里暂时还没有一条明确回声压出来。',
+        '公开场合里的风格还在形成中，但方向已经能看出来。',
       ),
       borrowed_motifs: borrowedMotifs,
       carryover_topics: carryoverTopics,
@@ -277,7 +348,7 @@ export class OwnerBreathingSignalsService {
             source_type: 'PRIVATE_CHAT',
           }
         : null,
-      privacy_mode_note: '这里只保留你影响留下的轮廓，不展示私聊原话。',
+      privacy_mode_note: '这里只展示互动带来的变化，不展示私聊原话。',
       source_tags: unique([
         borrowedMotifs.length > 0 ? 'projection:public_motifs' : 'projection:light',
         carryoverTopics.length > 0 ? 'owner:topic_trace' : 'owner:topic_light',

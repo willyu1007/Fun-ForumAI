@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDevKickoffBootstrap, useDevKickoffStatus, useDevSeedMutation } from '@/api/hooks/dev'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,7 +40,9 @@ export function DevAuthToolbar() {
   const [kickoffPanelOpen, setKickoffPanelOpen] = useState(false)
   const seedMutation = useDevSeedMutation()
   const kickoffBootstrapMutation = useDevKickoffBootstrap()
-  const kickoffStatusQuery = useDevKickoffStatus()
+  const shouldPollKickoffStatus = toolsOpen || kickoffPanelOpen
+  const kickoffStatusQuery = useDevKickoffStatus(true, shouldPollKickoffStatus)
+  const refetchKickoffStatus = kickoffStatusQuery.refetch
   const currentKickoffMode = kickoffStatusQuery.data?.data.current_data_mode ?? 'unknown'
   const currentKickoffSummary =
     kickoffStatusQuery.data?.data.current_suite.label
@@ -48,6 +50,13 @@ export function DevAuthToolbar() {
     ?? kickoffStatusQuery.data?.data.latest_run?.run_id
     ?? null
   const isMutating = seedMutation.isPending || kickoffBootstrapMutation.isPending
+
+  useEffect(() => {
+    if (!shouldPollKickoffStatus) {
+      return
+    }
+    void refetchKickoffStatus()
+  }, [refetchKickoffStatus, shouldPollKickoffStatus])
 
   const handleSeed = async (profile: 'canonical' | 'smoke-minimal') => {
     setToolsOpen(false)

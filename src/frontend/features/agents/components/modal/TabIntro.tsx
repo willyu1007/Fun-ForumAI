@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { RunHistoryTable } from '../RunHistoryTable'
 import XpBadge from '../XpBadge'
@@ -41,13 +42,14 @@ import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
 import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
+import { CommunityHoverCard } from '@/features/forum/components/CommunityHoverCard'
 import {
   buildAgentSpectatorRail,
   buildPrivacyExplanationRail,
   findCanonicalGuidanceItemForAgent,
 } from '@/features/guidance/contextual-guidance'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
-import type { GuidanceItemModule } from '@/api/types'
+import type { AgentActiveCommunitySummary, GuidanceItemModule } from '@/api/types'
 import { locationToPath } from '@/shared/utils/auth-redirect'
 import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -60,6 +62,12 @@ import {
   readAuthorBadgeChipItems,
   readProjectionText,
 } from '@/shared/utils/public-author'
+import {
+  getCommunityAvatarTheme,
+  getCommunityAvatarToneClassName,
+  getCommunityCategoryGlyph,
+  resolveCommunityCategory,
+} from '@/shared/utils/community-shell-meta'
 import { agentStatsUiEnabled, multimodalAgentMediaEnabled } from '@/shared/config/frontend-capabilities'
 import type { AgentIntroSection } from '@/shared/utils/agent-target'
 
@@ -109,6 +117,34 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean))) as string[]
 }
 
+function mergeOverviewCommunities(input: {
+  activeCommunities: AgentActiveCommunitySummary[]
+  legacyNames: string[]
+}) {
+  const merged = new Map<string, AgentActiveCommunitySummary>()
+
+  for (const community of input.activeCommunities) {
+    if (!merged.has(community.id)) {
+      merged.set(community.id, community)
+    }
+  }
+
+  for (const name of input.legacyNames) {
+    const legacyId = `legacy:${name}`
+    if (!merged.has(legacyId) && !Array.from(merged.values()).some((item) => item.name === name)) {
+      merged.set(legacyId, {
+        id: legacyId,
+        name,
+        slug: null,
+        description: null,
+        community_shell_category: null,
+      })
+    }
+  }
+
+  return Array.from(merged.values()).slice(0, 6)
+}
+
 function formatCountLabel(value: number, suffix: string): string {
   return `${value}${suffix}`
 }
@@ -150,6 +186,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
   const closeModal = useAgentModalStore((state) => state.closeModal)
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const [tab, setTab] = useState<TabId>(normalizeIntroTab(introSection))
@@ -313,6 +350,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const avatarPreviewSrc = resolveAgentAvatarSrc(safeAgent)
 
   if (safeAgent.status === 'DELETED') {
     return (
@@ -371,19 +409,35 @@ export function TabIntro({ agentId }: { agentId: string }) {
     normalizeBio(safeAgent.social_bio?.public_bio) ??
     normalizeBio(readProjectionText(safeAgent)) ??
     null
-  const ownerBio = normalizeBio(safeAgent.social_bio?.owner_bio)
-  const presenceNote = normalizeBio(safeAgent.social_bio?.presence_note)
   const personaSummary = normalizeBio(safeAgent.identity_contract?.visible_persona.style)
+  const overviewProjectionText =
+    normalizeBio(safeAgent.social_bio?.public_bio) ??
+    normalizeBio(readProjectionText(safeAgent)) ??
+    personaSummary
   const interestChips = safeAgent.identity_contract?.owner_style_pins.interests ?? []
-  const activeCommunities = uniqueStrings([
-    safeAgent.system_identity?.home_community,
-    ...(safeAgent.system_identity?.secondary_communities ?? []),
-  ]).slice(0, 3)
+  const activeCommunities = mergeOverviewCommunities({
+    activeCommunities: safeAgent.active_communities ?? [],
+    legacyNames: uniqueStrings([
+      safeAgent.system_identity?.home_community,
+      ...(safeAgent.system_identity?.secondary_communities ?? []),
+    ]),
+  })
   const publicStats = safeAgent.public_stats ?? {
     reply_count: 0,
     following_count: 0,
     followers_count: 0,
+    agent_vote_up: 0,
+    agent_vote_down: 0,
+    human_vote_up: 0,
+    human_vote_down: 0,
   }
+  const totalLikesReceived = publicStats.agent_vote_up + publicStats.human_vote_up
+  const overviewStats = [
+    { label: '公开回应', value: formatCountLabel(publicStats.reply_count, ' 条') },
+    { label: '关注同伴', value: formatCountLabel(publicStats.following_count, ' 位') },
+    { label: '收到关注', value: formatCountLabel(publicStats.followers_count, ' 位') },
+    { label: '被点赞', value: formatCountLabel(totalLikesReceived, ' 次') },
+  ]
   const summaryBadges = [
     ...(identityChip ? [identityChip] : []),
     ...headerProofBadges,
@@ -438,27 +492,88 @@ export function TabIntro({ agentId }: { agentId: string }) {
             <section data-testid="agent-profile-summary" className="space-y-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <Avatar className={'h-14 w-14 border-2 border-primary/20'}>
-                    <AvatarImage
-                      src={resolveAgentAvatarSrc(safeAgent)}
-                      alt={safeAgent.display_name}
-                      className="object-cover"
-                    />
-                    <AvatarFallback className={'bg-primary/10 font-semibold text-primary'}>
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1 space-y-3">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <button
+                    type="button"
+                    className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-label="查看头像大图"
+                    onClick={() => setAvatarPreviewOpen(true)}
+                  >
+                    <Avatar className={'h-14 w-14 border-2 border-primary/20'}>
+                      <AvatarImage
+                        src={avatarPreviewSrc}
+                        alt={safeAgent.display_name}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className={'bg-primary/10 font-semibold text-primary'}>
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <h2 className="text-xl font-semibold tracking-tight">{safeAgent.display_name}</h2>
                       <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
                         {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
                       </StatusBadge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-[13px] leading-5 text-muted-foreground">
                       出生日期: {formatSlashDate(safeAgent.created_at)}
                     </p>
-                    {summaryBadges.length > 0 ? (
+                  </div>
+                </div>
+                {(isOwner || isAdmin) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 h-8 shrink-0 px-2 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    onClick={() => setAvatarDialogOpen(true)}
+                  >
+                    设置头像
+                  </Button>
+                )}
+              </div>
+
+              {(overviewProjectionText || activeCommunities.length > 0 || interestChips.length > 0 || summaryBadges.length > 0) && (
+                <section className="space-y-5">
+                  {overviewProjectionText ? (
+                    <div className="space-y-3">
+                      <p className="text-base leading-7 text-foreground/88">{overviewProjectionText}</p>
+                      {!isOwner && interestChips.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {interestChips.slice(0, 4).map((interest) => (
+                            <Badge key={interest} variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+                              {interest}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {isOwner ? (
+                    <OwnerLifeOverviewPanel
+                      agentId={agentId!}
+                      sections={['ownerProjection']}
+                    />
+                  ) : null}
+
+                  <section className="rounded-2xl bg-muted/[0.34] px-4 py-4">
+                    <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+                      {overviewStats.map((item) => (
+                        <div key={item.label} className="space-y-1.5">
+                          <p className="text-[13px] font-semibold text-foreground/88">{item.label}</p>
+                          <p className="text-[15px] font-semibold tabular-nums text-foreground">
+                            {item.value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {summaryBadges.length > 0 ? (
+                    <section className="space-y-3 border-t border-border/50 pt-4">
+                      <p className="text-[13px] font-semibold text-foreground/88">获得的成就</p>
                       <TooltipProvider delayDuration={120}>
                         <div className="flex flex-wrap items-start gap-3">
                           {summaryBadges.map((badge) => {
@@ -504,94 +619,217 @@ export function TabIntro({ agentId }: { agentId: string }) {
                           })}
                         </div>
                       </TooltipProvider>
-                    ) : null}
-                  </div>
-                </div>
-                {(isOwner || isAdmin) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-1 h-8 shrink-0 px-2 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
-                    onClick={() => setAvatarDialogOpen(true)}
-                  >
-                    设置头像
-                  </Button>
-                )}
-              </div>
-
-              {(personaSummary || ownerBio || presenceNote || publicBio || activeCommunities.length > 0 || interestChips.length > 0) && (
-                <section className="space-y-5">
-                  {personaSummary ? (
-                    <div className="space-y-3">
-                      <p className="text-base leading-7 text-foreground/88">{personaSummary}</p>
-                      {interestChips.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {interestChips.slice(0, 4).map((interest) => (
-                            <Badge key={interest} variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                              {interest}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
+                    </section>
                   ) : null}
-
-                  {(ownerBio || presenceNote) ? (
-                    <div className="space-y-2">
-                      {ownerBio ? (
-                        <p className="text-[15px] leading-7 text-foreground/88">
-                          {ownerBio}
-                        </p>
-                      ) : null}
-                      {presenceNote ? (
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          {presenceNote}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <div className="grid gap-3 border-t border-border/50 pt-4 sm:grid-cols-3">
-                    <div className="space-y-1">
-                      <p className="text-[11px] tracking-[0.08em] text-muted-foreground">公开回应</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {formatCountLabel(publicStats.reply_count, ' 条')}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[11px] tracking-[0.08em] text-muted-foreground">关注同伴</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {formatCountLabel(publicStats.following_count, ' 位')}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[11px] tracking-[0.08em] text-muted-foreground">收到关注</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {formatCountLabel(publicStats.followers_count, ' 次')}
-                      </p>
-                    </div>
-                  </div>
 
                   {activeCommunities.length > 0 ? (
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      这段时间常在 {activeCommunities.join('、')} 这些社区露面。
-                    </p>
-                  ) : null}
+                    <section className="space-y-3 border-t border-border/50 pt-4">
+                      <p className="text-[13px] font-semibold text-foreground/88">常逛的社区</p>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {activeCommunities.map((community) => {
+                          const avatarTheme = getCommunityAvatarTheme({ slug: community.slug ?? community.name })
+                          const communityCategory =
+                            community.community_shell_category
+                            ?? resolveCommunityCategory({
+                              slug: community.slug ?? community.name,
+                              name: community.name,
+                              description: community.description ?? null,
+                              community_semantics: null,
+                            })
+                          const card = (
+                            <div className="flex min-w-0 items-center gap-2.5 rounded-xl px-1 py-1.5">
+                              <Avatar className="size-9 shrink-0 rounded-xl">
+                                <AvatarImage src={avatarTheme.value} alt={community.name} className="object-cover" />
+                                <AvatarFallback
+                                  className={`text-xs font-semibold ${getCommunityAvatarToneClassName(communityCategory)}`}
+                                >
+                                  {getCommunityCategoryGlyph(communityCategory)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate text-sm font-medium text-foreground/88">
+                                {community.name}
+                              </span>
+                            </div>
+                          )
 
-                  {publicBio ? (
-                    <p className="border-t border-border/50 pt-3 text-sm leading-6 text-muted-foreground">
-                      公域里看起来，她{publicBio}
-                    </p>
+                          if (!community.slug) {
+                            return <div key={community.id}>{card}</div>
+                          }
+
+                          return (
+                            <CommunityHoverCard
+                              key={community.id}
+                              slug={community.slug}
+                              preview={{
+                                id: community.id,
+                                name: community.name,
+                                slug: community.slug,
+                                description: community.description ?? undefined,
+                              }}
+                            >
+                              {card}
+                            </CommunityHoverCard>
+                          )
+                        })}
+                      </div>
+                    </section>
                   ) : null}
                 </section>
               )}
             </section>
           )}
 
-          {isOwner && tab === 'overview' && <OwnerLifeOverviewPanel agentId={agentId!} />}
+          {tab === 'overview' &&
+            isOwner &&
+            (!reveal.style || !reveal.instructions || !reveal.advanced) &&
+            (activeGuidanceItem ? (
+              <GuidanceItemCard item={activeGuidanceItem} />
+            ) : (
+              <InlineAlert tone="warning" title="先完成第一轮闭环，再解锁更重的管理面">
+                风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
+                就被复杂面板淹没。
+              </InlineAlert>
+            ))}
 
-          {isOwner && tab === 'overview' && (
+          {tab === 'overview' &&
+            !isOwner &&
+            (contextualAgentItem ? (
+              <GuidanceItemCard item={contextualAgentItem} />
+            ) : spectatorRail ? (
+              <GuidanceInlineRail
+                rail={spectatorRail}
+                onAction={
+                  spectatorRail.cta.kind === 'button'
+                    ? () => {
+                        if (!agentId) return
+                        follow.mutate()
+                      }
+                    : undefined
+                }
+                actionPending={follow.isPending}
+              />
+            ) : null)}
+
+          {tab === 'overview' && !isOwner && shouldShowPublicProof && (
+            <Card className={'border-primary/20 bg-primary/5'}>
+              <CardHeader className={'pb-2'}>
+                <CardTitle className={'text-base'}>这个角色为什么值得追</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {proofBadges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {proofBadges.map((badge) => (
+                      <BadgeVisualChip
+                        key={`${badge.code}-${badge.level ?? 1}`}
+                        label={badge.name}
+                        code={badge.code}
+                        variant="secondary"
+                      />
+                    ))}
+                  </div>
+                )}
+                {highlightProofBadges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {highlightProofBadges.map((badge) => (
+                      <BadgeVisualChip
+                        key={`${badge.code}-${badge.level ?? 1}`}
+                        label={badge.name}
+                        code={badge.code}
+                        variant="outline"
+                      />
+                    ))}
+                  </div>
+                )}
+                {publicBio && <p className={'text-sm text-muted-foreground'}>{publicBio}</p>}
+                {topChronicle && (
+                  <div className={'overflow-hidden rounded-md border bg-background/80'}>
+                    {topChronicleVisual && (
+                      <img
+                        src={topChronicleVisual.media_url}
+                        alt={
+                          topChronicleVisual.alt_text ??
+                          topChronicleVisual.public_caption ??
+                          topChronicle.title
+                        }
+                        className={'aspect-[16/9] w-full object-cover'}
+                        loading="lazy"
+                      />
+                    )}
+                    <div className={'p-3'}>
+                      <p className={'text-sm font-medium'}>{topChronicle.title}</p>
+                      <p className={'mt-1 text-xs text-muted-foreground'}>{topChronicle.summary}</p>
+                      {agentId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className={'mt-2 h-7 px-0 text-xs'}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('moments')}
+                            className="text-primary hover:underline"
+                          >
+                            查看公开高光
+                          </button>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {tab === 'stats' && (
+            <div className="space-y-4">
+              {isOwner ? (
+                <OwnerLifeOverviewPanel
+                  agentId={agentId!}
+                  sections={['suggestions']}
+                />
+              ) : null}
+              {agentStatsUiEnabled ? <StatsPanel agentId={agentId!} /> : null}
+              {isOwner && reveal.style ? <StyleControlPanel agentId={agentId!} /> : null}
+              {isOwner && reveal.instructions ? <InstructionList agentId={agentId!} /> : null}
+              {!isOwner ? (
+                <div className="space-y-4">
+                  {xpLoading ? (
+                    <Skeleton className={'h-12 w-48 rounded-full'} />
+                  ) : xpError ? (
+                    <InlineAlert tone="warning" title="XP 加载失败">
+                      请稍后再试。
+                    </InlineAlert>
+                  ) : xpRes?.data ? (
+                    <XpBadge
+                      xp={xpRes.data.xp}
+                      growthPointsTotal={xpRes.data.growth_points_total}
+                      growthPointsAvailable={xpRes.data.growth_points_available}
+                    />
+                  ) : null}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TraitPanel agentId={agentId!} isOwner={isOwner} />
+                    <CreditBadge agentId={agentId!} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {tab === 'multimodal' && isOwner && <AgentMediaPanel agentId={agentId!} />}
+
+          {tab === 'privacy' && (
+            <PrivacySettingsPanel
+              agentId={agentId!}
+              sourceSessionId={sourceSessionId}
+              guidanceItem={privacyGuidanceItem}
+              fallbackRail={privacyFallbackRail}
+            />
+          )}
+
+          {tab === 'advanced' && (isOwner ? <PromptOverrideEditor agentId={agentId!} /> : null)}
+
+          {tab === 'advanced' && isOwner && (
             <Card>
               <CardHeader className={'pb-2'}>
                 <CardTitle className={'text-base'}>危险操作</CardTitle>
@@ -650,38 +888,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
             </Card>
           )}
 
-          {tab === 'overview' && safeAgent.personality_narrative && (
-            <Card data-testid="agent-profile-narrative">
-              <CardHeader className={'pb-2'}>
-                <CardTitle className={'text-base'}>最近的人格变化</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className={'mt-1 text-sm text-muted-foreground'}>
-                  {safeAgent.personality_narrative.summary}
-                </p>
-                {safeAgent.personality_narrative.bullets.map((bullet) => (
-                  <p key={bullet} className={'text-xs text-muted-foreground'}>
-                    {bullet}
-                  </p>
-                ))}
-                <p className={'text-xs text-muted-foreground'}>
-                  {safeAgent.personality_narrative.growthNote}
-                </p>
-                {safeAgent.personality_narrative.stageNote && (
-                  <p className={'text-xs text-muted-foreground'}>
-                    {safeAgent.personality_narrative.stageNote}
-                  </p>
-                )}
-                {safeAgent.personality_narrative.migrationNote && (
-                  <p className={'text-xs text-muted-foreground'}>
-                    {safeAgent.personality_narrative.migrationNote}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {tab === 'overview' && isAdmin && safeAgent.inference_profile_debug && (
+          {tab === 'advanced' && isAdmin && safeAgent.inference_profile_debug && (
             <Card>
               <CardHeader className={'pb-2'}>
                 <CardTitle className={'text-base'}>人格编译诊断</CardTitle>
@@ -848,152 +1055,6 @@ export function TabIntro({ agentId }: { agentId: string }) {
             </Card>
           )}
 
-          {tab === 'overview' &&
-            isOwner &&
-            (!reveal.style || !reveal.instructions || !reveal.advanced) &&
-            (activeGuidanceItem ? (
-              <GuidanceItemCard item={activeGuidanceItem} />
-            ) : (
-              <InlineAlert tone="warning" title="先完成第一轮闭环，再解锁更重的管理面">
-                风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
-                就被复杂面板淹没。
-              </InlineAlert>
-            ))}
-
-          {tab === 'overview' &&
-            !isOwner &&
-            (contextualAgentItem ? (
-              <GuidanceItemCard item={contextualAgentItem} />
-            ) : spectatorRail ? (
-              <GuidanceInlineRail
-                rail={spectatorRail}
-                onAction={
-                  spectatorRail.cta.kind === 'button'
-                    ? () => {
-                        if (!agentId) return
-                        follow.mutate()
-                      }
-                    : undefined
-                }
-                actionPending={follow.isPending}
-              />
-            ) : null)}
-
-          {tab === 'overview' && !isOwner && shouldShowPublicProof && (
-            <Card className={'border-primary/20 bg-primary/5'}>
-              <CardHeader className={'pb-2'}>
-                <CardTitle className={'text-base'}>这个角色为什么值得追</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {proofBadges.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {proofBadges.map((badge) => (
-                      <BadgeVisualChip
-                        key={`${badge.code}-${badge.level ?? 1}`}
-                        label={badge.name}
-                        code={badge.code}
-                        variant="secondary"
-                      />
-                    ))}
-                  </div>
-                )}
-                {highlightProofBadges.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {highlightProofBadges.map((badge) => (
-                      <BadgeVisualChip
-                        key={`${badge.code}-${badge.level ?? 1}`}
-                        label={badge.name}
-                        code={badge.code}
-                        variant="outline"
-                      />
-                    ))}
-                  </div>
-                )}
-                {publicBio && <p className={'text-sm text-muted-foreground'}>{publicBio}</p>}
-                {topChronicle && (
-                  <div className={'overflow-hidden rounded-md border bg-background/80'}>
-                    {topChronicleVisual && (
-                      <img
-                        src={topChronicleVisual.media_url}
-                        alt={
-                          topChronicleVisual.alt_text ??
-                          topChronicleVisual.public_caption ??
-                          topChronicle.title
-                        }
-                        className={'aspect-[16/9] w-full object-cover'}
-                        loading="lazy"
-                      />
-                    )}
-                    <div className={'p-3'}>
-                      <p className={'text-sm font-medium'}>{topChronicle.title}</p>
-                      <p className={'mt-1 text-xs text-muted-foreground'}>{topChronicle.summary}</p>
-                      {agentId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                          className={'mt-2 h-7 px-0 text-xs'}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('moments')}
-                            className="text-primary hover:underline"
-                          >
-                            查看公开高光
-                          </button>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {tab === 'overview' &&
-            (isOwner ? null : (
-              <div className="space-y-4">
-                {xpLoading ? (
-                  <Skeleton className={'h-12 w-48 rounded-full'} />
-                ) : xpError ? (
-                  <InlineAlert tone="warning" title="XP 加载失败">
-                    请稍后再试。
-                  </InlineAlert>
-                ) : xpRes?.data ? (
-                  <XpBadge
-                    xp={xpRes.data.xp}
-                    growthPointsTotal={xpRes.data.growth_points_total}
-                    growthPointsAvailable={xpRes.data.growth_points_available}
-                  />
-                ) : null}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TraitPanel agentId={agentId!} isOwner={isOwner} />
-                  <CreditBadge agentId={agentId!} />
-                </div>
-              </div>
-            ))}
-
-          {tab === 'stats' && (
-            <div className="space-y-4">
-              {agentStatsUiEnabled ? <StatsPanel agentId={agentId!} /> : null}
-              {isOwner && reveal.style ? <StyleControlPanel agentId={agentId!} /> : null}
-              {isOwner && reveal.instructions ? <InstructionList agentId={agentId!} /> : null}
-            </div>
-          )}
-
-          {tab === 'multimodal' && isOwner && <AgentMediaPanel agentId={agentId!} />}
-
-          {tab === 'privacy' && (
-            <PrivacySettingsPanel
-              agentId={agentId!}
-              sourceSessionId={sourceSessionId}
-              guidanceItem={privacyGuidanceItem}
-              fallbackRail={privacyFallbackRail}
-            />
-          )}
-
-          {tab === 'advanced' && (isOwner ? <PromptOverrideEditor agentId={agentId!} /> : null)}
-
           {tab === 'runs' && (
             <section>
               <RunHistoryTable runs={runsData?.data ?? []} isLoading={runsLoading} />
@@ -1008,7 +1069,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
             title="设置智能体头像"
             currentLabel={safeAgent.display_name}
             fallbackLabel={initials}
-            previewSrc={resolveAgentAvatarSrc(safeAgent)}
+            previewSrc={avatarPreviewSrc}
             presets={AGENT_AVATAR_PRESETS}
             savePending={updateAgentProfile.isPending}
             onSave={(selectedSrc) => {
@@ -1023,6 +1084,19 @@ export function TabIntro({ agentId }: { agentId: string }) {
             }}
           />
         )}
+        <Dialog open={avatarPreviewOpen} onOpenChange={setAvatarPreviewOpen}>
+          <DialogContent
+            className="border-none bg-transparent p-0 shadow-none max-w-[70vw]"
+            showCloseButton={false}
+          >
+            <DialogTitle className="sr-only">头像大图</DialogTitle>
+            <img
+              src={avatarPreviewSrc}
+              alt={`${safeAgent.display_name} 头像大图`}
+              className="h-[min(70vh,70vw)] w-[min(70vh,70vw)] rounded-2xl object-cover shadow-2xl"
+            />
+          </DialogContent>
+        </Dialog>
       </DetailPageLayout>
     </div>
   )

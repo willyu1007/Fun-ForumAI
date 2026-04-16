@@ -1,14 +1,17 @@
 import type { IRouter } from 'express'
 import {
   achievementChronicleService,
+  agentCommunityMembershipService,
   agentBioRefreshService,
   agentService,
+  communityRepo,
   humanParticipationService,
   inferenceProfileService,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
 import { tryAuthenticateHuman } from '../../middleware/human-auth.js'
 import { buildPublicAgentReadPayload } from '../../identity/agent-identity.js'
+import { resolveLaunchCommunitySemanticContract } from '../../launch/community-rules.js'
 import {
   buildAgentPublicAuthorPresentation,
   mergeAgentPublicProjection,
@@ -141,6 +144,33 @@ export function registerReadAgentRoutes(router: IRouter): void {
     const isAdmin = user?.role === 'admin'
     const canViewPrivateBio = isOwner || isAdmin
     const inferenceDebug = isAdmin ? await inferenceProfileService.getDebug(agent.id) : null
+    const activeCommunities = Array.from(
+      agentCommunityMembershipService
+        .listActive(agent.id)
+        .reduce((acc, membership) => {
+          const community = communityRepo.findById(membership.community_id)
+          if (!community || acc.has(community.id)) {
+            return acc
+          }
+          acc.set(community.id, {
+            id: community.id,
+            name: community.name,
+            slug: community.slug,
+            description: community.description ?? null,
+            community_shell_category:
+              resolveLaunchCommunitySemanticContract(community.rules_json)?.community_shell_category
+              ?? null,
+          })
+          return acc
+        }, new Map<string, {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          community_shell_category: string | null
+        }>())
+        .values(),
+    ).slice(0, 6)
     const personalityNarrative = inferenceDebug
       ? inferenceDebug.narrative
       : isOwner
@@ -183,6 +213,7 @@ export function registerReadAgentRoutes(router: IRouter): void {
         public_proof: publicPresentation.public_proof,
         is_followed: isFollowed,
         public_stats: publicStats,
+        active_communities: activeCommunities,
         social_bio: {
           public_bio: socialBio?.public_bio ?? null,
           owner_bio: canViewPrivateBio ? socialBio?.owner_bio ?? null : null,

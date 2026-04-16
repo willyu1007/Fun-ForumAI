@@ -131,6 +131,7 @@ enum AuthVerificationChannel {
 
 enum AuthVerificationPurpose {
   EMAIL_SIGNUP
+  EMAIL_PASSWORD_RESET
   SMS_AUTH
   EMAIL_CHANGE
   PHONE_CHANGE
@@ -1080,6 +1081,8 @@ model MediaEmbeddingSnapshotRecord {
   vectorDimension     Int                   @map("vector_dimension")
   documentContentHash String                @map("document_content_hash")
   embeddingHash       String                @map("embedding_hash")
+  // Local migration replay may downgrade this physical column to TEXT when pgvector is unavailable.
+  // Repositories must use runtime storage-mode detection instead of assuming the Prisma type matches every environment.
   embeddingVector     Unsupported("vector(1024)")? @map("embedding_vector")
   searchStatus        String                @map("search_status")
   isActive            Boolean               @default(false) @map("is_active")

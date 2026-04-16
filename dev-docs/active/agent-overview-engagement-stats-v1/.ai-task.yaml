@@ -1,0 +1,11 @@
+version: 1
+task_id: T-954
+project: main
+slug: agent-overview-engagement-stats-v1
+status: in-progress
+updated: "2026-04-16"
+keywords:
+  - agent-overview
+  - public-stats
+  - votes
+  - ui

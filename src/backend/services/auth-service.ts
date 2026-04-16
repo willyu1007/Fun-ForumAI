@@ -310,6 +310,7 @@ export class AuthService {
       to: email,
       code,
       expiresInSec: config.auth.otp.ttlSeconds,
+      purpose: 'EMAIL_SIGNUP',
     })
 
     return this.toChallengeResult(challenge, maskEmail(email), code)
@@ -331,7 +332,7 @@ export class AuthService {
     const now = new Date()
     await this.ensureChallengeRateLimit({
       channel: 'EMAIL',
-      purpose: 'EMAIL_SIGNUP',
+      purpose: 'EMAIL_PASSWORD_RESET',
       target: email,
       ipAddress: input.ipAddress ?? null,
       now,
@@ -340,11 +341,11 @@ export class AuthService {
     const code = createVerificationCode()
     const challenge = await this.challengeRepo.createReplacingActive({
       channel: 'EMAIL',
-      purpose: 'EMAIL_SIGNUP',
+      purpose: 'EMAIL_PASSWORD_RESET',
       target: email,
       code_hash: hashVerificationCode({
         channel: 'EMAIL',
-        purpose: 'EMAIL_SIGNUP',
+        purpose: 'EMAIL_PASSWORD_RESET',
         target: email,
         code,
       }),
@@ -359,6 +360,7 @@ export class AuthService {
       to: email,
       code,
       expiresInSec: config.auth.otp.ttlSeconds,
+      purpose: 'EMAIL_PASSWORD_RESET',
     })
 
     return this.toChallengeResult(challenge, maskEmail(email), code)
@@ -420,6 +422,7 @@ export class AuthService {
       to: email,
       code,
       expiresInSec: config.auth.otp.ttlSeconds,
+      purpose: 'EMAIL_SIGNUP',
     })
 
     return this.toChallengeResult(challenge, maskEmail(email), code)
@@ -430,7 +433,7 @@ export class AuthService {
     ipAddress?: string | null
   }): Promise<AuthChallengeResult> {
     const existingChallenge = await this.challengeRepo.findById(input.challengeId)
-    if (!existingChallenge || existingChallenge.purpose !== 'EMAIL_SIGNUP') {
+    if (!existingChallenge || existingChallenge.purpose !== 'EMAIL_PASSWORD_RESET') {
       throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
     }
     if (existingChallenge.consumed_at) {
@@ -456,7 +459,7 @@ export class AuthService {
     this.assertResendCooldown(existingChallenge, now)
     await this.ensureChallengeRateLimit({
       channel: 'EMAIL',
-      purpose: 'EMAIL_SIGNUP',
+      purpose: 'EMAIL_PASSWORD_RESET',
       target: email,
       ipAddress: input.ipAddress ?? null,
       now,
@@ -465,11 +468,11 @@ export class AuthService {
     const code = createVerificationCode()
     const challenge = await this.challengeRepo.createReplacingActive({
       channel: 'EMAIL',
-      purpose: 'EMAIL_SIGNUP',
+      purpose: 'EMAIL_PASSWORD_RESET',
       target: email,
       code_hash: hashVerificationCode({
         channel: 'EMAIL',
-        purpose: 'EMAIL_SIGNUP',
+        purpose: 'EMAIL_PASSWORD_RESET',
         target: email,
         code,
       }),
@@ -484,6 +487,7 @@ export class AuthService {
       to: email,
       code,
       expiresInSec: config.auth.otp.ttlSeconds,
+      purpose: 'EMAIL_PASSWORD_RESET',
     })
 
     return this.toChallengeResult(challenge, maskEmail(email), code)
@@ -556,7 +560,7 @@ export class AuthService {
     password: string
   }): Promise<AuthResult> {
     const challenge = await this.challengeRepo.findById(input.challengeId)
-    if (!challenge || challenge.purpose !== 'EMAIL_SIGNUP') {
+    if (!challenge || challenge.purpose !== 'EMAIL_PASSWORD_RESET') {
       throw new AppError(400, '验证码已失效，请重新获取', 'CODE_EXPIRED')
     }
 
@@ -888,7 +892,12 @@ export class AuthService {
       resend_count: 0,
     })
 
-    await this.emailSender.sendVerificationCode({ to: newEmail, code, expiresInSec: config.auth.otp.ttlSeconds })
+    await this.emailSender.sendVerificationCode({
+      to: newEmail,
+      code,
+      expiresInSec: config.auth.otp.ttlSeconds,
+      purpose: 'EMAIL_CHANGE',
+    })
     return this.toChallengeResult(challenge, maskEmail(newEmail), code)
   }
 
@@ -1053,7 +1062,12 @@ export class AuthService {
 
     const masked = existing.channel === 'EMAIL' ? maskEmail(existing.target) : maskPhone(existing.target)
     if (existing.channel === 'EMAIL') {
-      await this.emailSender.sendVerificationCode({ to: existing.target, code, expiresInSec: config.auth.otp.ttlSeconds })
+      await this.emailSender.sendVerificationCode({
+        to: existing.target,
+        code,
+        expiresInSec: config.auth.otp.ttlSeconds,
+        purpose: 'EMAIL_CHANGE',
+      })
     } else {
       await this.smsSender.sendVerificationCode({ phone: existing.target, code, expiresInSec: config.auth.otp.ttlSeconds })
     }

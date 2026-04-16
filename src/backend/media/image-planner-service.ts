@@ -66,6 +66,7 @@ interface PlannerCandidate {
   snapshot: MediaSemanticSnapshot | null
   binding: SceneMediaBinding | null
   projection: MediaContextProjection | null
+  retrieval_score?: number
   summary: CandidateSummary
   why_relevant_hint?: string
   continuity_ref?: {
@@ -1177,15 +1178,36 @@ function isPrivateGenerationSource(sourceKind: VisualSourceKind): boolean {
 }
 
 function dedupeCandidates(candidates: PlannerCandidate[]): PlannerCandidate[] {
-  const seen = new Set<string>()
-  const out: PlannerCandidate[] = []
+  const deduped = new Map<string, PlannerCandidate>()
   for (const candidate of candidates) {
     const key = `${candidate.source_kind}:${candidate.projection?.id ?? candidate.asset?.id ?? candidate.binding?.id ?? 'unknown'}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push(candidate)
+    const existing = deduped.get(key)
+    if (!existing) {
+      deduped.set(key, candidate)
+      continue
+    }
+    deduped.set(key, mergePlannerCandidate(existing, candidate))
   }
-  return out
+  return Array.from(deduped.values())
+}
+
+function mergePlannerCandidate(
+  existing: PlannerCandidate,
+  incoming: PlannerCandidate,
+): PlannerCandidate {
+  const preferIncoming = (incoming.retrieval_score ?? 0) > (existing.retrieval_score ?? 0)
+  const base = preferIncoming ? incoming : existing
+  const fallback = preferIncoming ? existing : incoming
+  return {
+    ...base,
+    asset: base.asset ?? fallback.asset,
+    snapshot: base.snapshot ?? fallback.snapshot,
+    binding: base.binding ?? fallback.binding,
+    projection: base.projection ?? fallback.projection,
+    retrieval_score: Math.max(existing.retrieval_score ?? 0, incoming.retrieval_score ?? 0) || undefined,
+    why_relevant_hint: base.why_relevant_hint ?? fallback.why_relevant_hint,
+    continuity_ref: base.continuity_ref ?? fallback.continuity_ref,
+  }
 }
 
 function scoreCandidate(
@@ -1205,6 +1227,9 @@ function scoreCandidate(
     candidate.summary.public_safe_caption,
   ].filter((item) => item.trim().length > 0)
   const relevance = clamp(0.45 + overlapRatio(relevanceSignals), 0, 1)
+  const semanticRetrievalBonus = candidate.retrieval_score
+    ? clamp(candidate.retrieval_score - relevance, 0, 0.6)
+    : 0
   const continuity = candidate.source_kind === 'same_episode_public'
     ? 1
     : candidate.source_kind === 'same_thread_public'
@@ -1242,6 +1267,7 @@ function scoreCandidate(
   const repeatPenalty = candidate.binding?.scene_type === 'forum_post' ? 0.18 : 0
   const riskPenalty = context.allowedReuseModes.length === 0 ? 1 : 0
   const total = relevance
+    + semanticRetrievalBonus
     + continuity
     + novelty
     + privacySafety
@@ -1253,6 +1279,7 @@ function scoreCandidate(
 
   return {
     relevance: round2(relevance),
+    semantic_retrieval_bonus: round2(semanticRetrievalBonus),
     continuity: round2(continuity),
     novelty: round2(novelty),
     privacy_safety: round2(privacySafety),
@@ -1541,6 +1568,7 @@ function buildAllowAuditDecision(reason = 'planner_public_safe_generation_spec')
 function zeroScoreBreakdown(): PlannerScoreBreakdown {
   return {
     relevance: 0,
+    semantic_retrieval_bonus: 0,
     continuity: 0,
     novelty: 0,
     privacy_safety: 0,

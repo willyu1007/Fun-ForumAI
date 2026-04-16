@@ -88,6 +88,10 @@ vi.mock('@/features/guidance/components/GuidanceInlineRail', () => ({
   GuidanceInlineRail: () => null,
 }))
 
+vi.mock('@/features/forum/components/CommunityHoverCard', () => ({
+  CommunityHoverCard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
 vi.mock('@/features/agents/components/RunHistoryTable', () => ({
   RunHistoryTable: () => null,
 }))
@@ -193,6 +197,16 @@ vi.mock('@/components/ui/skeleton', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => <button {...props}>{children}</button>,
+}))
+
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+  DialogContent: ({
+    children,
+    showCloseButton: _showCloseButton,
+    ...props
+  }: React.ComponentProps<'div'> & { showCloseButton?: boolean }) => <div {...props}>{children}</div>,
+  DialogTitle: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
 }))
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -310,7 +324,7 @@ describe('TabIntro owner social bio', () => {
     })
   })
 
-  it('renders owner_bio together with presence_note in the owner summary block', () => {
+  it('keeps the owner summary block concise for owner mode', () => {
     renderTabIntro()
 
     expect(screen.queryByText('哲学家型 · Qwen Social v1')).toBeNull()
@@ -318,13 +332,70 @@ describe('TabIntro owner social bio', () => {
     expect(screen.queryByRole('button', { name: '关注' })).toBeNull()
     expect(screen.getByText('出生日期: 2026/03/27')).toBeTruthy()
     expect(
-      screen.getByText('她最近把自己的重心慢慢收回到一条更长的线里。'),
+      screen.getByText('在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。'),
     ).toBeTruthy()
-    expect(screen.getByText('有些话，好像更容易说出口了。')).toBeTruthy()
-    expect(
-      screen.getByText(/公域里看起来，她在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。/),
-    ).toBeTruthy()
+    expect(screen.queryByText('状态')).toBeNull()
+    expect(screen.getByText('公开回应')).toBeTruthy()
+    expect(screen.queryByText('获得的成就')).toBeNull()
+    expect(screen.queryByText('常逛的社区')).toBeNull()
+    expect(screen.queryByText('她最近把自己的重心慢慢收回到一条更长的线里。')).toBeNull()
+    expect(screen.queryByText('有些话，好像更容易说出口了。')).toBeNull()
     expect(screen.queryByRole('button', { name: '管理信息' })).toBeNull()
+  })
+
+  it('opens the avatar preview when the overview avatar is clicked', () => {
+    renderTabIntro()
+
+    fireEvent.click(screen.getByRole('button', { name: '查看头像大图' }))
+
+    expect(screen.getByRole('img', { name: 'Bio Owner 头像大图' })).toBeTruthy()
+  })
+
+  it('shows active communities from profile fallback data', () => {
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-1',
+          owner_id: 'user-1',
+          display_name: 'Bio Owner',
+          status: 'ACTIVE',
+          created_at: '2026-03-27T00:00:00.000Z',
+          is_followed: false,
+          active_communities: [
+            { id: 'community-1', name: '热点擂台', slug: 'hot-arena', description: '讨论热点议题。' },
+            { id: 'community-2', name: '夜航船', slug: 'night-boat', description: '深夜慢聊。' },
+          ],
+          public_projection: {
+            tagline: '旧 tag',
+            public_bio: '在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。',
+          },
+          identity_contract: {
+            visible_persona: {
+              style: '正式、展开、善于追问',
+            },
+            owner_style_pins: {
+              interests: ['盐湖风噪', '故障诗学'],
+            },
+          },
+          social_bio: {
+            public_bio: '在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
+          inference_profile_debug: null,
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderTabIntro()
+
+    expect(screen.getByText('常逛的社区')).toBeTruthy()
+    expect(screen.getByText('热点擂台')).toBeTruthy()
+    expect(screen.getByText('夜航船')).toBeTruthy()
   })
 
   it('hides private chat CTA and shows seat badge for system agents', () => {
@@ -449,7 +520,9 @@ describe('TabIntro owner social bio', () => {
     expect(screen.queryByRole('button', { name: '删除这个智能体' })).toBeNull()
   })
 
-  it('shows the delete danger zone for the owner view and requires explicit confirmation', () => {
+  it('shows the delete danger zone in the advanced tab and requires explicit confirmation', () => {
+    mockModalState.introSection = 'advanced'
+
     renderTabIntro()
 
     expect(screen.getByText('危险操作')).toBeTruthy()

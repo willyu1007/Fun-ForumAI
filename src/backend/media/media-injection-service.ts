@@ -6,6 +6,8 @@ import { ValidationError } from '../lib/errors.js'
 import type { MediaImportJob, MediaInjectionRequest } from '../repos/types.js'
 import type { MediaImportJobRepository } from '../repos/media-import-job-repository.js'
 import type { MediaImportJobItemRepository } from '../repos/media-import-job-item-repository.js'
+import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
+import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { MediaDuplicateService } from './media-duplicate-service.js'
 import {
   buildMediaImportRequestFingerprint,
@@ -18,6 +20,8 @@ export interface MediaInjectionServiceDeps {
   mediaImportJobItemRepo: MediaImportJobItemRepository
   mediaImportArtifactService: MediaImportArtifactService
   mediaDuplicateService?: MediaDuplicateService | null
+  mediaAssetRepo?: Pick<MediaAssetRepository, 'findById'> | null
+  mediaGenerationJobRepo?: Pick<MediaGenerationJobRepository, 'findById'> | null
 }
 
 export interface StageMediaImportManifestInput {
@@ -52,11 +56,27 @@ export class MediaInjectionService {
       format: input.format,
     })
     const manifestDir = dirname(resolve(input.manifest_path))
-    const itemPlan = await Promise.all(parsed.requests.map(async (request) => ({
-      item_id: request.item_id,
-      action: await this.resolveDryRunAction(request, manifestDir),
-      reusable_asset_id: await this.resolveReusableAssetId(request, manifestDir),
-    })))
+    const plannedCreateKeys = new Set<string>()
+    const itemPlan = [] as Array<{
+      item_id: string
+      action: 'create' | 'reuse'
+      reusable_asset_id: string | null
+    }>
+    for (const request of parsed.requests) {
+      const reusableAssetId = await this.resolveReusableAssetId(request, manifestDir)
+      const plannedReuseKey = await this.resolvePlannedReuseKey(request, manifestDir)
+      const action: 'create' | 'reuse' = reusableAssetId || (plannedReuseKey && plannedCreateKeys.has(plannedReuseKey))
+        ? 'reuse'
+        : 'create'
+      if (action === 'create' && plannedReuseKey) {
+        plannedCreateKeys.add(plannedReuseKey)
+      }
+      itemPlan.push({
+        item_id: request.item_id,
+        action,
+        reusable_asset_id: reusableAssetId,
+      })
+    }
     return {
       request_count: parsed.requests.length,
       intent_fingerprint: parsed.intent_fingerprint,
@@ -239,30 +259,70 @@ export class MediaInjectionService {
     }
   }
 
-  private async resolveDryRunAction(
+  private async resolveLocalFileSha256(
     request: MediaInjectionRequest,
     manifestDir: string,
-  ): Promise<'create' | 'reuse'> {
-    return (await this.resolveReusableAssetId(request, manifestDir)) ? 'reuse' : 'create'
+  ): Promise<string | null> {
+    if (request.input_kind !== 'local_file') return null
+    const resolvedPath = resolve(manifestDir, request.local_file!.path)
+    return request.local_file?.declared_sha256
+      ?? createHash('sha256').update(await readFile(resolvedPath)).digest('hex')
+  }
+
+  private async resolvePlannedReuseKey(
+    request: MediaInjectionRequest,
+    manifestDir: string,
+  ): Promise<string | null> {
+    const sha256 = await this.resolveLocalFileSha256(request, manifestDir)
+    if (!sha256) return null
+    if (request.source_kind === 'owner_private_pool') {
+      return [
+        sha256,
+        request.source_kind,
+        request.target_scope.owner_user_id ?? '',
+        request.target_scope.steward_agent_id ?? '',
+      ].join(':')
+    }
+    return [sha256, 'public'].join(':')
   }
 
   private async resolveReusableAssetId(
     request: MediaInjectionRequest,
     manifestDir: string,
   ): Promise<string | null> {
-    if (!this.deps.mediaDuplicateService || request.input_kind !== 'local_file') return null
-    const resolvedPath = resolve(manifestDir, request.local_file!.path)
-    const sha256 = request.local_file?.declared_sha256
-      ?? createHash('sha256').update(await readFile(resolvedPath)).digest('hex')
-    const reusable = await this.deps.mediaDuplicateService.findReusableExactAsset({
-      sha256,
-      source_kind: request.source_kind,
-      target_scope: {
-        owner_user_id: request.target_scope.owner_user_id,
-        steward_agent_id: request.target_scope.steward_agent_id,
-      },
-    })
-    return reusable?.id ?? null
+    switch (request.input_kind) {
+      case 'existing_asset_ref': {
+        if (!this.deps.mediaAssetRepo) {
+          return request.existing_asset_ref?.asset_id ?? null
+        }
+        const assetId = request.existing_asset_ref?.asset_id ?? null
+        if (!assetId) return null
+        return (await this.deps.mediaAssetRepo.findById(assetId))?.id ?? null
+      }
+      case 'generated_artifact_ref': {
+        if (!this.deps.mediaGenerationJobRepo) return null
+        const generatedJobId = request.generated_artifact_ref?.generated_job_id ?? null
+        if (!generatedJobId) return null
+        return (await this.deps.mediaGenerationJobRepo.findById(generatedJobId))?.output_asset_id ?? null
+      }
+      case 'local_file': {
+        if (!this.deps.mediaDuplicateService) return null
+        const sha256 = await this.resolveLocalFileSha256(request, manifestDir)
+        if (!sha256) return null
+        const reusable = await this.deps.mediaDuplicateService.findReusableExactAsset({
+          sha256,
+          source_kind: request.source_kind,
+          target_scope: {
+            owner_user_id: request.target_scope.owner_user_id,
+            steward_agent_id: request.target_scope.steward_agent_id,
+          },
+        })
+        return reusable?.id ?? null
+      }
+      case 'remote_url':
+      default:
+        return null
+    }
   }
 }
 

@@ -75,6 +75,7 @@ export interface RetrievalPlannerCandidate {
   snapshot: MediaSemanticSnapshot
   binding: SceneMediaBinding | null
   projection: MediaContextProjection | null
+  retrieval_score?: number
   summary: {
     theme: string
     scene: string
@@ -112,6 +113,9 @@ export class MediaRetrievalService {
     const docScopes = resolveDocScopes(input)
     const ensured: EnsuredMediaRetrievalRecord[] = []
     for (const docScope of docScopes) {
+      const resolvedDuplicateClusterId = input.duplicate_cluster_id ?? input.asset.duplicate_cluster_id ?? null
+      const resolvedIsCanonical = input.is_canonical
+        ?? (!resolvedDuplicateClusterId || input.asset.duplicate_distance === 0)
       const built = buildDocumentFromCard({
         asset: input.asset,
         snapshot,
@@ -120,8 +124,8 @@ export class MediaRetrievalService {
         target_scope: input.target_scope,
         generated_from: input.generated_from ?? 'catalog_card',
         reason: input.reason ?? null,
-        duplicate_cluster_id: input.duplicate_cluster_id ?? input.asset.duplicate_cluster_id ?? null,
-        is_canonical: input.is_canonical ?? (!input.duplicate_cluster_id || input.asset.duplicate_distance === 0),
+        duplicate_cluster_id: resolvedDuplicateClusterId,
+        is_canonical: resolvedIsCanonical,
       })
       const current = await this.deps.mediaRetrievalDocumentRepo.findByAssetIdAndScope(input.asset.id, docScope)
       const document = current
@@ -204,6 +208,7 @@ export class MediaRetrievalService {
         snapshot,
         binding,
         projection: null,
+        retrieval_score: hit.score,
         why_relevant_hint: `semantic retrieval score=${hit.score.toFixed(3)}`,
         summary: {
           theme: snapshot.summary.theme,

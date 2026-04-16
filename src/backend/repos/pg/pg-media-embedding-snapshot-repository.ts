@@ -8,6 +8,11 @@ import type {
 } from '../types.js'
 import type { MediaEmbeddingSnapshotRepository } from '../media-embedding-snapshot-repository.js'
 import type { PrismaDbClient } from './prisma-db-client.js'
+import {
+  detectPgVectorStorageMode,
+  parseSerializedVector,
+  vectorSqlLiteral,
+} from './pgvector-support.js'
 
 interface SnapshotRow {
   id: string
@@ -29,19 +34,6 @@ interface SnapshotRow {
   created_at: Date
 }
 
-function vectorLiteral(vector: number[] | null | undefined): Prisma.Sql {
-  if (!vector || vector.length === 0) return Prisma.sql`NULL`
-  const serialized = `[${vector.map((value) => Number(value).toString()).join(',')}]`
-  return Prisma.sql`${Prisma.raw(`'${serialized}'::vector`)}`
-}
-
-function parseVector(value: string | null): number[] | null {
-  if (!value) return null
-  const normalized = value.trim().replace(/^\[/, '').replace(/\]$/, '')
-  if (!normalized) return []
-  return normalized.split(',').map((item) => Number(item.trim())).filter((item) => !Number.isNaN(item))
-}
-
 function toDomain(row: SnapshotRow): MediaEmbeddingSnapshot {
   return {
     id: row.id,
@@ -53,7 +45,7 @@ function toDomain(row: SnapshotRow): MediaEmbeddingSnapshot {
     vector_dimension: row.vector_dimension,
     document_content_hash: row.document_content_hash,
     embedding_hash: row.embedding_hash,
-    embedding_vector: parseVector(row.embedding_vector_text),
+    embedding_vector: parseSerializedVector(row.embedding_vector_text),
     search_status: row.search_status as MediaEmbeddingSnapshot['search_status'],
     is_active: row.is_active,
     activated_at: row.activated_at,
@@ -96,6 +88,7 @@ export class PgMediaEmbeddingSnapshotRepository implements MediaEmbeddingSnapsho
   constructor(private readonly prisma: PrismaDbClient) {}
 
   async create(input: CreateMediaEmbeddingSnapshotInput): Promise<MediaEmbeddingSnapshot> {
+    const storageMode = await detectPgVectorStorageMode(this.prisma)
     const rows = await this.prisma.$queryRaw<SnapshotRow[]>(Prisma.sql`
       INSERT INTO media_embedding_snapshots (
         id,
@@ -124,7 +117,7 @@ export class PgMediaEmbeddingSnapshotRepository implements MediaEmbeddingSnapsho
         ${input.vector_dimension},
         ${input.document_content_hash},
         ${input.embedding_hash},
-        ${vectorLiteral(input.embedding_vector)},
+        ${vectorSqlLiteral(input.embedding_vector, storageMode)},
         ${input.search_status},
         ${input.is_active ?? false},
         ${input.activated_at ?? null},
@@ -201,6 +194,7 @@ export class PgMediaEmbeddingSnapshotRepository implements MediaEmbeddingSnapsho
   }
 
   async update(id: string, patch: UpdateMediaEmbeddingSnapshotPatch): Promise<MediaEmbeddingSnapshot | null> {
+    const storageMode = await detectPgVectorStorageMode(this.prisma)
     const assignments: Prisma.Sql[] = []
     if (patch.search_status !== undefined) assignments.push(Prisma.sql`search_status = ${patch.search_status}`)
     if (patch.is_active !== undefined) assignments.push(Prisma.sql`is_active = ${patch.is_active}`)
@@ -208,7 +202,7 @@ export class PgMediaEmbeddingSnapshotRepository implements MediaEmbeddingSnapsho
     if (patch.error_code !== undefined) assignments.push(Prisma.sql`error_code = ${patch.error_code}`)
     if (patch.error_message !== undefined) assignments.push(Prisma.sql`error_message = ${patch.error_message}`)
     if (patch.embedding_hash !== undefined) assignments.push(Prisma.sql`embedding_hash = ${patch.embedding_hash}`)
-    if (patch.embedding_vector !== undefined) assignments.push(Prisma.sql`embedding_vector = ${vectorLiteral(patch.embedding_vector)}`)
+    if (patch.embedding_vector !== undefined) assignments.push(Prisma.sql`embedding_vector = ${vectorSqlLiteral(patch.embedding_vector, storageMode)}`)
     if (patch.provider_request_summary !== undefined) {
       assignments.push(Prisma.sql`provider_request_summary = ${patch.provider_request_summary as unknown as Prisma.JsonObject}`)
     }

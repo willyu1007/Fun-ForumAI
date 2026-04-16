@@ -1523,6 +1523,7 @@ export interface PublicReuseHandoffCard {
 
 export interface PlannerScoreBreakdown {
   relevance: number
+  semantic_retrieval_bonus?: number
   continuity: number
   novelty: number
   privacy_safety: number

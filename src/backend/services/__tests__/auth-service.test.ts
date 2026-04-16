@@ -160,16 +160,20 @@ describe('AuthService', () => {
     setBootstrapAdmins({ emails: ['bootstrap-reset@example.com'] })
 
     const userRepo = new InMemoryUserRepository()
+    const challengeRepo = new InMemoryAuthVerificationChallengeRepository()
     const service = new AuthService(
       userRepo,
       new InMemoryInviteCodeRepository(userRepo),
-      new InMemoryAuthVerificationChallengeRepository(),
+      challengeRepo,
       { sendVerificationCode: async () => {} },
       { sendVerificationCode: async () => {} },
       new AdminUserAccessService(userRepo),
     )
 
     const start = await service.startEmailPasswordReset({ email: 'bootstrap-reset@example.com' })
+    await expect(challengeRepo.findById(start.challengeId)).resolves.toMatchObject({
+      purpose: 'EMAIL_PASSWORD_RESET',
+    })
     await expect(
       service.verifyEmailPasswordReset({
         challengeId: start.challengeId,

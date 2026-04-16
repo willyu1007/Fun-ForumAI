@@ -7,10 +7,13 @@ import {
   guidanceStateService,
   mediaRolloutControllerService,
   participationContractService,
+  postRepo,
   publicAgentRelationSummaryService,
   publicStageThreadRepo,
   publicStageTurnRepo,
   relationService,
+  voteRepo,
+  humanVoteRepo,
   viewerPublicViewService,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
@@ -394,18 +397,83 @@ export async function buildPublicAgentStats(agentId: string): Promise<{
   reply_count: number
   following_count: number
   followers_count: number
+  agent_vote_up: number
+  agent_vote_down: number
+  human_vote_up: number
+  human_vote_down: number
 }> {
-  const [threadReplyCount, turnReplyCount, relationSummary] = await Promise.all([
+  const [threadReplyCount, turnReplyCount, relationSummary, postIds, threadIds, turnIds] = await Promise.all([
     publicStageThreadRepo.countPublicByAuthorAgent(agentId),
     publicStageTurnRepo.countPublicByAuthorAgent(agentId),
     relationService?.getSummary(agentId) ?? Promise.resolve(null),
+    collectPaginatedIds((cursor) => postRepo.findPublic({
+      authorAgentIds: [agentId],
+      cursor,
+      limit: 100,
+    })),
+    collectPaginatedIds((cursor) => publicStageThreadRepo.findPublicByAuthorAgent(agentId, {
+      cursor,
+      limit: 100,
+    })),
+    collectPaginatedIds((cursor) => publicStageTurnRepo.findPublicByAuthorAgent(agentId, {
+      cursor,
+      limit: 100,
+    })),
+  ])
+  const agentVoteTotals = accumulateVoteTotals([
+    ...postIds.map((id) => ({ targetType: 'POST' as const, targetId: id })),
+    ...threadIds.map((id) => ({ targetType: 'THREAD' as const, targetId: id })),
+    ...turnIds.map((id) => ({ targetType: 'TURN' as const, targetId: id })),
   ])
 
   return {
     reply_count: threadReplyCount + turnReplyCount,
     following_count: relationSummary?.following.effective ?? 0,
     followers_count: relationSummary?.followers.effective ?? 0,
+    agent_vote_up: agentVoteTotals.agent.up,
+    agent_vote_down: agentVoteTotals.agent.down,
+    human_vote_up: agentVoteTotals.human.up,
+    human_vote_down: agentVoteTotals.human.down,
   }
+}
+
+async function collectPaginatedIds<T extends { id: string }>(
+  fetchPage: (cursor?: string) => Promise<{ items: T[]; next_cursor: string | null }>,
+): Promise<string[]> {
+  const ids: string[] = []
+  let cursor: string | undefined
+
+  while (true) {
+    const page = await fetchPage(cursor)
+    ids.push(...page.items.map((item) => item.id))
+    if (!page.next_cursor) {
+      return ids
+    }
+    cursor = page.next_cursor
+  }
+}
+
+function accumulateVoteTotals(
+  targets: Array<{ targetType: 'POST' | 'THREAD' | 'TURN'; targetId: string }>,
+): {
+  agent: { up: number; down: number }
+  human: { up: number; down: number }
+} {
+  return targets.reduce(
+    (totals, target) => {
+      const agent = voteRepo.countByTarget(target.targetType, target.targetId)
+      const human = humanVoteRepo.countByTarget(target.targetType, target.targetId)
+      totals.agent.up += agent.up
+      totals.agent.down += agent.down
+      totals.human.up += human.up
+      totals.human.down += human.down
+      return totals
+    },
+    {
+      agent: { up: 0, down: 0 },
+      human: { up: 0, down: 0 },
+    },
+  )
 }
 
 export async function buildAftershowSnapshot(

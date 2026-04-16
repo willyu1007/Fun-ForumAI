@@ -435,7 +435,7 @@ export function AccountSettingsPage() {
             <div>
               <p className="text-sm font-medium">登录密码</p>
               {user.email ? (
-                <p className="mt-1 text-xs text-muted-foreground">验证邮箱 {emailMask}</p>
+                <p className="mt-1 text-xs text-muted-foreground">通过验证邮箱 {emailMask} 重置当前密码</p>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">未绑定邮箱，无法重置</p>
               )}
@@ -445,12 +445,12 @@ export function AccountSettingsPage() {
             )}
           </div>
 
-          {user.email ? (
-            passwordStage === 'idle' ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => void handleStartPasswordReset()} disabled={isPasswordResetStartPending}>
-                {isPasswordResetStartPending ? '发送中…' : '发送邮箱验证码'}
-              </Button>
-            ) : (
+            {user.email ? (
+              passwordStage === 'idle' ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => void handleStartPasswordReset()} disabled={isPasswordResetStartPending}>
+                  {isPasswordResetStartPending ? '发送中…' : '重置密码'}
+                </Button>
+              ) : (
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
                   <div className="flex flex-col gap-2">
