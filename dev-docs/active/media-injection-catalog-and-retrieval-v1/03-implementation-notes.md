@@ -66,6 +66,44 @@
   - active snapshot 与 searchable snapshot 同一 id
   - semantic retrieval `search_hit_count=1`
   - duplicate reuse 指向同一 asset
+- 2026-04-15: 在中等样本 mixed-batch 回归中发现 `MediaInjectionService.dryRun()` 与真实 apply 存在一处语义漂移：
+  - `existing_asset_ref` 与 `generated_artifact_ref` 在 apply 时稳定复用现有 asset，但 dry-run 仍报告 `action=create`。
+  - 已通过在 `MediaInjectionService` 中注入 `mediaAssetRepo` 与 `mediaGenerationJobRepo` 修复；现在 dry-run 会分别基于 `asset_id` 与 `generation_job.output_asset_id` 解析 `reusable_asset_id`，与 apply 语义保持一致。
+- 2026-04-15: 同一轮 mixed-batch 回归继续发现第二处 dry-run/apply 漂移：同一 manifest 内的 exact duplicate local file 只能在 apply 时复用，dry-run 仍报告 `create`。
+  - 已将 dry-run 改成 batch-aware 规划：会记住本次 manifest 中已计划创建的 exact duplicate key，因此后续同批次 duplicate 现在会直接显示为 `action=reuse`，即使其 `reusable_asset_id` 仍为 `null`（因为复用目标来自本批次尚未 materialize 的 asset）。
+- 2026-04-15: 在大样本 planner 回归中发现 retrieval 链还有两处真实质量问题：
+  - retrieval candidate 追加到候选池后，默认会被同 `source_kind + asset_id` 的 legacy candidate 吞掉，且 retrieval score 本身不会进入 `scoreCandidate()`，导致 semantic retrieval 对排序几乎没有真实影响。
+  - `MediaRetrievalService.ensureAssetIndexed()` 的 canonical 默认判定使用了 `!input.duplicate_cluster_id`，当调用方未显式传 `duplicate_cluster_id` 时，即使 asset 已经在 duplicate cluster 中，也会把 retrieval doc 误标成 canonical。
+- 2026-04-15: 上述 planner 质量问题已修复：
+  - `dedupeCandidates()` 现在会合并同 asset/source 的 retrieval 与 legacy candidate，并保留更强的 retrieval signal。
+  - `scoreCandidate()` 新增 `semantic_retrieval_bonus`，按“retrieval score 补足 lexical relevance 缺口”的方式进入总分，而不是固定弱加成。
+  - `ensureAssetIndexed()` 现在基于 `input.asset.duplicate_cluster_id / duplicate_distance` 计算 canonical 默认值，避免 duplicate doc 被误标成 canonical。
+- 2026-04-15: 已新增 `media-injection-medium-regression.integration.test.ts`，覆盖 mixed-source batch：
+  - `platform_canonical` 新建
+  - exact duplicate 同批复用，且 dry-run 已提前显示 `reuse`
+  - `community_commons` 生成 `public_safe + community_scoped`
+  - `owner_private_pool` 仅生成 `private_internal`
+  - `existing_asset_ref` 复用
+  - `generated_artifact_ref` 复用
+  - invalid steward 触发显式失败
+- 2026-04-15: 已在 local-kind backend pod 中完成真实 mixed-batch 冒烟：
+  - `dry_run_actions` 中 `platform-duplicate`、`seeded-existing` 与 `generated-reuse` 均为 `reuse`
+  - final job 收敛为 `partial_succeeded`
+  - `created_items=3`, `reused_items=3`, `failed_items=1`
+  - public/community/private 三类 scope 的 active snapshot 均为 `searchable`
+  - public query 不会召回 owner-private doc，private query 可稳定命中私域 doc
+  - duplicate local file 仍稳定复用同一 asset
+- 2026-04-15: 已新增 `image-planner-retrieval-regression.integration.test.ts`，覆盖大样本 planner 质量回归：
+  - retrieval 关闭时，planner 会稳定选择 legacy 强匹配素材
+  - retrieval 打开时，planner 会稳定提升语义 tag 更强的 canonical target
+  - retrieval provider 抛错时，planner 会记录 warning 并回退到 legacy 路径
+- 2026-04-15: 已在 local-kind backend pod 中完成真实大样本 planner 冒烟：
+  - `sample_size=19`
+  - retrieval 关闭时选择 `legacy-strong`
+  - retrieval 打开后选择 `target-canonical`
+  - `semantic_retrieval_bonus > 0`
+  - duplicate cluster 中 canonical / duplicate distance 分别为 `0 / 1`
+  - 非 canonical duplicate 不再被误当作 canonical retrieval hit
 - 2026-04-15: 记录关键设计警戒线：
   - 不直接向量化现有带 `owner_note` 的 retrieval caption 作为统一 public-safe 索引。
   - generated asset 若会回流复用，不能整体跳过 retrieval doc。
@@ -109,5 +147,16 @@
 
 ## Known follow-ups
 
+- 2026-04-16: 对照 repo 中的 cloud/staging contract 再做了一轮 parity 审核，结论是 local-kind 功能闭环不能直接等价为真实 staging closeout；仍有四类必须在真实 staging 采证的差异：
+  - `ecs` / `aliyun-eci-container-group` 拓扑，而不是 retained local-kind K8s
+  - 真实 `s3` media storage，而不是本地 PVC / `MEDIA_LOCAL_DIR`
+  - `NODE_ENV=production` + Redis runtime backends，而不是 local-kind development baseline
+  - 多进程 / 云上 rollout 语义，而不是单机功能验证
+- 2026-04-16: 上述真实 staging 待验证项已挂接到 `T-954 staging-release-verification-followup`，作为同一 staging release window 中的 media follow-up tranche，范围固定为：
+  - media feature flags/env render
+  - `s3` promote / cleanup
+  - ECS/ECI worker claim / heartbeat / retry
+  - `searchable` retrieval hit 与 private/public scope isolation
+  - planner retrieval on/off 与 duplicate-cluster suppression 的真实 staging 证据
 - project registry 的 requirement 目前新增为 `R-087`，后续若 scope 扩展到视频，需要单独判断是扩 requirement 还是拆新 requirement。
 - 若后续进入更大规模运营导入，需要继续关注 `purgeExpiredArtifacts()` 的批处理吞吐与 observability 指标。
