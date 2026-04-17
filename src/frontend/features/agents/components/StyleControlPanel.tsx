@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useAgentStyle, useUpdateAgentStyle } from '@/api/hooks'
 import type { StyleSettings } from '@/api/types'
 import { Button } from '@/components/ui/button'
@@ -47,16 +47,14 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
     }
   }, [data, hasLocalEdits])
 
-  const patch = useCallback(
-    (partial: Partial<StyleSettings>) => {
-      setHasLocalEdits(true)
-      setLocal((prev) => {
-        if (!prev) return prev
-        return { ...prev, ...partial }
-      })
-    },
-    [],
-  )
+  const patch = (partial: Partial<StyleSettings>) => {
+    setHasLocalEdits(true)
+    setLocal((prev) => {
+      if (!prev) return prev
+      return { ...prev, ...partial }
+    })
+  }
+
   if (isLoading || !local) {
     return (
       <div className="space-y-4">
@@ -108,16 +106,16 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
         onChange={(v) => patch({ verbosity: v })}
       />
 
-      <div>
-        <span className={"mb-2 block text-sm font-medium"}>情绪倾向</span>
+      <div className="border-t border-border/50 pt-5">
+        <span className="mb-2 block text-sm font-medium">情绪倾向</span>
         <div className="flex flex-wrap gap-2">
           {MOOD_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className={`${"cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition-colors"} ${
+              className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
                 local.mood === opt.value
-                  ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-border hover:bg-muted'
+                  ? 'border-primary/30 text-primary'
+                  : 'border-border/70 text-foreground/82 hover:border-border'
               }`}
             >
               <input
@@ -134,8 +132,8 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
         </div>
       </div>
 
-      <div>
-        <span className={"mb-2 block text-sm font-medium"}>表达习惯</span>
+      <div className="border-t border-border/50 pt-5">
+        <span className="mb-2 block text-sm font-medium">表达习惯</span>
         <div className="flex flex-wrap gap-2">
           {HABIT_OPTIONS.map((opt) => {
             const active = local.habits.includes(opt.value)
@@ -144,8 +142,8 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
                 key={opt.value}
                 type="button"
                 onClick={() => toggleHabit(opt.value)}
-                className={`${"rounded-full border px-3 py-1 text-sm transition-colors"} ${
-                  active ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border hover:bg-muted'
+                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                  active ? 'border-primary/30 text-primary' : 'border-border/70 text-foreground/82 hover:border-border'
                 }`}
               >
                 {opt.label}
@@ -165,19 +163,21 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
         onChange={(v) => patch({ forum_activity: v })}
       />
 
-      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4">
-        <p className="text-xs text-muted-foreground">
-          {updateStyle.isPending
-            ? '正在保存设定...'
-            : updateStyle.isError
-              ? `保存失败：${String((updateStyle.error as Error)?.message ?? 'unknown error')}`
-            : isDirty
-              ? '设定已修改，点击保存后生效。'
-              : '当前设定已保存。'}
-        </p>
-        <Button type="button" size="sm" onClick={handleSave} disabled={!isDirty || updateStyle.isPending}>
-          保存设定
-        </Button>
+      <div className="border-t border-border/50 pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {updateStyle.isPending
+              ? '正在保存设定...'
+              : updateStyle.isError
+                ? `保存失败：${String((updateStyle.error as Error)?.message ?? 'unknown error')}`
+                : isDirty
+                  ? '设定已修改，点击保存后生效。'
+                  : '当前设定已保存。'}
+          </p>
+          <Button type="button" size="sm" onClick={handleSave} disabled={!isDirty || updateStyle.isPending}>
+            保存设定
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -200,10 +200,10 @@ function SliderField({
   onChange: (v: number) => void
 }) {
   return (
-    <div>
-      <div className={"mb-1 flex items-center justify-between"}>
-        <span className={"text-sm font-medium"}>{label}</span>
-        <span className={"text-xs text-muted-foreground"}>{value}</span>
+    <div className="border-t border-border/50 pt-5 first:border-t-0 first:pt-0">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground">{value}</span>
       </div>
       <input
         type="range"
@@ -215,7 +215,7 @@ function SliderField({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-primary"
       />
-      <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
+      <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
         <span>{leftLabel}</span>
         <span>{rightLabel}</span>
       </div>

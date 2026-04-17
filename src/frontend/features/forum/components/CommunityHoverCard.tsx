@@ -43,6 +43,7 @@ interface CommunityHoverCardProps {
   slug: string
   preview?: CommunityHoverPreview
   children: React.ReactNode
+  onNavigate?: () => void
 }
 
 function formatCompactDate(value: string | null | undefined): string | null {
@@ -116,6 +117,7 @@ export function CommunityHoverCard({
   slug,
   preview,
   children,
+  onNavigate,
 }: CommunityHoverCardProps) {
   const [open, setOpen] = React.useState(false)
   const location = useLocation()
@@ -290,6 +292,7 @@ export function CommunityHoverCard({
                   <Link
                     to={`/c/${slug}`}
                     className="ml-auto text-[12px] font-semibold text-foreground transition-colors hover:text-primary"
+                    onClick={() => onNavigate?.()}
                   >
                     进入社区
                   </Link>

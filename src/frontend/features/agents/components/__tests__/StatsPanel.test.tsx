@@ -4,23 +4,17 @@ import { StatsPanel } from '../StatsPanel'
 import type { AgentStatsSnapshot, StatsAllocationPreview } from '@/api/types'
 import {
   useAgentStats,
-  useAgentStatsEvents,
-  useAgentStateTimeline,
   usePreviewStatsAllocation,
   useAllocateStats,
 } from '@/api/hooks'
 
 vi.mock('@/api/hooks', () => ({
   useAgentStats: vi.fn(),
-  useAgentStatsEvents: vi.fn(),
-  useAgentStateTimeline: vi.fn(),
   usePreviewStatsAllocation: vi.fn(),
   useAllocateStats: vi.fn(),
 }))
 
 const useAgentStatsMock = vi.mocked(useAgentStats)
-const useAgentStatsEventsMock = vi.mocked(useAgentStatsEvents)
-const useAgentStateTimelineMock = vi.mocked(useAgentStateTimeline)
 const usePreviewStatsAllocationMock = vi.mocked(usePreviewStatsAllocation)
 const useAllocateStatsMock = vi.mocked(useAllocateStats)
 
@@ -145,39 +139,7 @@ function setupHooks(options: HookSetupOptions = {}) {
   useAgentStatsMock.mockReturnValue({
     isLoading: false,
     data: { data: snapshot },
-  } as never)
-
-  useAgentStatsEventsMock.mockReturnValue({
-    data: {
-      data: {
-        items: [
-          {
-            id: 'evt-1',
-            event_type: 'stats.allocate',
-            source: 'owner',
-            idempotency_key: 'idem-1',
-            delta_json: {},
-            created_at: '2026-02-27T00:00:00.000Z',
-          },
-        ],
-        next_cursor: null,
-      },
-    },
-  } as never)
-
-  useAgentStateTimelineMock.mockReturnValue({
-    data: {
-      data: [
-        {
-          at: '2026-02-27T00:00:00.000Z',
-          valence: 0,
-          arousal: 0,
-          confidence: 0,
-          irritability: 0,
-          fatigue: 0,
-        },
-      ],
-    },
+    error: null,
   } as never)
 
   usePreviewStatsAllocationMock.mockReturnValue({
@@ -291,5 +253,31 @@ describe('StatsPanel', () => {
 
     expect(screen.getByText('预览失败：preview boom')).toBeTruthy()
     expect(screen.getByText('提交失败：allocate boom')).toBeTruthy()
+  })
+
+  it('shows a specific unavailable message when stats access is forbidden', () => {
+    useAgentStatsMock.mockReturnValue({
+      isLoading: false,
+      data: undefined,
+      error: { code: 'FORBIDDEN' },
+    } as never)
+    usePreviewStatsAllocationMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    } as never)
+    useAllocateStatsMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+
+    render(<StatsPanel agentId="agent-1" />)
+
+    expect(screen.getByText('Stats 当前不可用')).toBeTruthy()
+    expect(screen.getByText('你当前没有这个 Agent 的 Stats 管理权限。')).toBeTruthy()
   })
 })

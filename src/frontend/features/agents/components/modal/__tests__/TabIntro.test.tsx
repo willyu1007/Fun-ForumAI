@@ -6,7 +6,6 @@ import { TabIntro } from '../TabIntro'
 import { useDeleteAgent, useUpdateAgentProfile } from '@/api/hooks/agent'
 
 const frontendCapabilities = vi.hoisted(() => ({
-  agentStatsUiEnabled: true,
   multimodalAgentMediaEnabled: true,
 }))
 
@@ -114,10 +113,6 @@ vi.mock('@/features/agents/components/OwnerLifeOverviewPanel', () => ({
 
 vi.mock('@/features/agents/components/StyleControlPanel', () => ({
   StyleControlPanel: () => <div>style-control-panel</div>,
-}))
-
-vi.mock('@/features/agents/components/InstructionList', () => ({
-  InstructionList: () => <div>instruction-list</div>,
 }))
 
 vi.mock('@/features/agents/components/PromptOverrideEditor', () => ({
@@ -236,7 +231,6 @@ function renderTabIntro() {
 describe('TabIntro owner social bio', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    frontendCapabilities.agentStatsUiEnabled = true
     frontendCapabilities.multimodalAgentMediaEnabled = true
     mockModalState.viewMode = 'manage'
     mockModalState.introSection = 'overview'
@@ -398,6 +392,55 @@ describe('TabIntro owner social bio', () => {
     expect(screen.getByText('夜航船')).toBeTruthy()
   })
 
+  it('renders active communities as links and closes the modal before navigation', () => {
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-1',
+          owner_id: 'viewer-2',
+          display_name: 'Bio Owner',
+          status: 'ACTIVE',
+          created_at: '2026-03-27T00:00:00.000Z',
+          is_followed: false,
+          active_communities: [
+            { id: 'community-1', name: '热点擂台', slug: 'hot-arena', description: '讨论热点议题。' },
+          ],
+          public_projection: {
+            tagline: '旧 tag',
+            public_bio: '在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。',
+          },
+          identity_contract: {
+            visible_persona: {
+              style: '正式、展开、善于追问',
+            },
+            owner_style_pins: {
+              interests: ['盐湖风噪', '故障诗学'],
+            },
+          },
+          social_bio: {
+            public_bio: '在FREE_CHAT里常驻，喜欢盐湖风噪与故障诗学。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
+          inference_profile_debug: null,
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderTabIntro()
+
+    const link = screen.getByRole('link', { name: /热点擂台/ })
+    expect(link.getAttribute('href')).toBe('/c/hot-arena')
+
+    fireEvent.click(link)
+
+    expect(mockModalState.closeModal).toHaveBeenCalledTimes(1)
+  })
+
   it('hides private chat CTA and shows seat badge for system agents', () => {
     useAgentProfileMock.mockReturnValue({
       data: {
@@ -555,9 +598,13 @@ describe('TabIntro owner social bio', () => {
     expect(tabsNav?.textContent).toContain('塑造')
     expect(tabsNav?.textContent).not.toContain('设定')
     expect(tabsNav?.textContent).not.toContain('指令')
-    expect(screen.getByText('stats-panel')).toBeTruthy()
+    expect(screen.getAllByText('stats-panel')).toHaveLength(1)
+    expect(screen.getByText('基础风格')).toBeTruthy()
+    expect(screen.getByText('性格底色')).toBeTruthy()
+    expect(screen.getByText('培养建议')).toBeTruthy()
     expect(screen.getByText('style-control-panel')).toBeTruthy()
-    expect(screen.getByText('instruction-list')).toBeTruthy()
+    expect(screen.queryByText('instruction-list')).toBeNull()
+    expect(screen.queryByText('预览、审计与时间线')).toBeNull()
   })
 
   it('maps legacy style deep-links into the shaping tab', () => {
@@ -566,20 +613,23 @@ describe('TabIntro owner social bio', () => {
     renderTabIntro()
 
     const lightHeader = screen.getByTestId('agent-profile-light-header')
-    expect(lightHeader.textContent).toContain('在这里统一处理成长、加点、角色设定和行为指令。')
-    expect(screen.getByText('stats-panel')).toBeTruthy()
+    expect(lightHeader.textContent).toContain('在这里处理风格、性格底色和培养建议。')
+    expect(screen.getAllByText('stats-panel')).toHaveLength(1)
     expect(screen.getByText('style-control-panel')).toBeTruthy()
-    expect(screen.getByText('instruction-list')).toBeTruthy()
   })
 
-  it('hides the stats panel when the stats UI capability is off', () => {
-    frontendCapabilities.agentStatsUiEnabled = false
+  it('collapses and expands each shaping section with a single arrow button', () => {
     mockModalState.introSection = 'stats'
 
     renderTabIntro()
 
-    expect(screen.queryByText('stats-panel')).toBeNull()
+    const toggle = screen.getByRole('button', { name: '收起基础风格' })
+
+    fireEvent.click(toggle)
+    expect(screen.queryByText('style-control-panel')).toBeNull()
+    expect(screen.getByRole('button', { name: '展开基础风格' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '展开基础风格' }))
     expect(screen.getByText('style-control-panel')).toBeTruthy()
-    expect(screen.getByText('instruction-list')).toBeTruthy()
   })
 })

@@ -331,41 +331,36 @@ export function OwnerLifeOverviewPanel({
       ) : null}
 
       {shouldRender('suggestions') ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>下一段怎么走</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {suggestions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">等下一段经历落下来，这里会出现更合适的养法。</p>
-            ) : (
-              suggestions.map((item) => (
-                <div key={item.id} className="rounded-lg border p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{suggestionLaneLabel(item.lane)}</Badge>
-                    <Badge variant="secondary">{suggestionPriorityLabel(item.priority)}</Badge>
-                    <p className="font-medium">{item.title}</p>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{item.body}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">为什么现在：{item.why_now}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">预计推进：{item.expected_progress}</p>
-                  <div className="mt-2 flex flex-wrap gap-3">
-                    {item.primary_action.href ? (
-                      <ActionLink href={item.primary_action.href} tone="primary">
-                        {item.primary_action.label}
-                      </ActionLink>
-                    ) : null}
-                    {item.secondary_action?.href ? (
-                      <ActionLink href={item.secondary_action.href} tone="muted">
-                        {item.secondary_action.label}
-                      </ActionLink>
-                    ) : null}
-                  </div>
+        <section className="space-y-3">
+          {suggestions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">等下一段经历落下来，这里会出现更合适的养法。</p>
+          ) : (
+            suggestions.map((item) => (
+              <div key={item.id} className="border-b border-border/50 pb-3 last:border-b-0 last:pb-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{suggestionLaneLabel(item.lane)}</Badge>
+                  <Badge variant="secondary">{suggestionPriorityLabel(item.priority)}</Badge>
+                  <p className="font-medium text-foreground">{item.title}</p>
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                <p className="text-sm text-muted-foreground">{item.body}</p>
+                <p className="mt-1 text-xs text-muted-foreground">为什么现在：{item.why_now}</p>
+                <p className="mt-1 text-xs text-muted-foreground">预计推进：{item.expected_progress}</p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {item.primary_action.href ? (
+                    <ActionLink href={item.primary_action.href} tone="primary">
+                      {item.primary_action.label}
+                    </ActionLink>
+                  ) : null}
+                  {item.secondary_action?.href ? (
+                    <ActionLink href={item.secondary_action.href} tone="muted">
+                      {item.secondary_action.label}
+                    </ActionLink>
+                  ) : null}
+                </div>
+              </div>
+            ))
+          )}
+        </section>
       ) : null}
 
       {shouldRender('entryPoints') ? (

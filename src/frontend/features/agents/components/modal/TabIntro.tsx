@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useLocation } from 'react-router'
+import { Link, useLocation } from 'react-router'
+import { ChevronDown } from 'lucide-react'
 import {
   DetailPageLayout,
   EmptyState,
@@ -33,7 +34,6 @@ import TraitPanel from '../TraitPanel'
 import CreditBadge from '../CreditBadge'
 import { OwnerLifeOverviewPanel } from '../OwnerLifeOverviewPanel'
 import { StyleControlPanel } from '../StyleControlPanel'
-import { InstructionList } from '../InstructionList'
 import { PromptOverrideEditor } from '../PromptOverrideEditor'
 import { PrivacySettingsPanel } from '../PrivacySettingsPanel'
 import { StatsPanel } from '../StatsPanel'
@@ -68,7 +68,7 @@ import {
   getCommunityCategoryGlyph,
   resolveCommunityCategory,
 } from '@/shared/utils/community-shell-meta'
-import { agentStatsUiEnabled, multimodalAgentMediaEnabled } from '@/shared/config/frontend-capabilities'
+import { multimodalAgentMediaEnabled } from '@/shared/config/frontend-capabilities'
 import type { AgentIntroSection } from '@/shared/utils/agent-target'
 
 const STATUS_TONES: Record<string, StatusTone> = {
@@ -149,11 +149,43 @@ function formatCountLabel(value: number, suffix: string): string {
   return `${value}${suffix}`
 }
 
+function ShapingSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <section className="border-t border-border/50 pt-5 first:border-t-0 first:pt-0">
+      <div className="flex items-start justify-between gap-4">
+        <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-label={`${open ? '收起' : '展开'}${title}`}
+          className="shrink-0 rounded-full p-1 text-primary transition-colors hover:bg-primary/[0.08]"
+        >
+          <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : 'rotate-0'}`} />
+        </button>
+      </div>
+      {open ? (
+        <div className="mt-4">
+          {children}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 type TabId = Exclude<AgentIntroSection, 'style' | 'instructions'>
 
 const TAB_DESCRIPTIONS: Record<TabId, string> = {
   overview: '先看这个角色当前是谁，以及它现在处在什么状态。',
-  stats: '在这里统一处理成长、加点、角色设定和行为指令。',
+  stats: '在这里处理风格、性格底色和培养建议。',
   privacy: '在这里处理权限边界、隐私设置和安全相关操作。',
   runs: '在这里回看运行痕迹、执行结果和问题记录。',
   multimodal: '在这里查看和管理角色使用的媒体素材。',
@@ -558,7 +590,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
                     />
                   ) : null}
 
-                  <section className="rounded-2xl bg-muted/[0.34] px-4 py-4">
+                  <section className="rounded-lg bg-muted/[0.48] px-4 py-4">
                     <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
                       {overviewStats.map((item) => (
                         <div key={item.label} className="space-y-1.5">
@@ -666,8 +698,15 @@ export function TabIntro({ agentId }: { agentId: string }) {
                                 slug: community.slug,
                                 description: community.description ?? undefined,
                               }}
+                              onNavigate={closeModal}
                             >
-                              {card}
+                              <Link
+                                to={`/c/${community.slug}`}
+                                onClick={closeModal}
+                                className="group block rounded-xl transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                              >
+                                {card}
+                              </Link>
                             </CommunityHoverCard>
                           )
                         })}
@@ -783,15 +822,26 @@ export function TabIntro({ agentId }: { agentId: string }) {
 
           {tab === 'stats' && (
             <div className="space-y-4">
-              {isOwner ? (
-                <OwnerLifeOverviewPanel
-                  agentId={agentId!}
-                  sections={['suggestions']}
-                />
+              {isOwner && reveal.style ? (
+                <ShapingSection
+                  title="基础风格"
+                >
+                  <StyleControlPanel agentId={agentId!} />
+                </ShapingSection>
               ) : null}
-              {agentStatsUiEnabled ? <StatsPanel agentId={agentId!} /> : null}
-              {isOwner && reveal.style ? <StyleControlPanel agentId={agentId!} /> : null}
-              {isOwner && reveal.instructions ? <InstructionList agentId={agentId!} /> : null}
+              <ShapingSection title="性格底色">
+                <StatsPanel agentId={agentId!} />
+              </ShapingSection>
+              {isOwner ? (
+                <ShapingSection
+                  title="培养建议"
+                >
+                  <OwnerLifeOverviewPanel
+                    agentId={agentId!}
+                    sections={['suggestions']}
+                  />
+                </ShapingSection>
+              ) : null}
               {!isOwner ? (
                 <div className="space-y-4">
                   {xpLoading ? (
