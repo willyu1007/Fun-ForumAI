@@ -49,7 +49,7 @@ import {
   findCanonicalGuidanceItemForAgent,
 } from '@/features/guidance/contextual-guidance'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
-import type { AgentActiveCommunitySummary, GuidanceItemModule } from '@/api/types'
+import type { AgentActiveCommunitySummary } from '@/api/types'
 import { locationToPath } from '@/shared/utils/auth-redirect'
 import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -268,27 +268,14 @@ export function TabIntro({ agentId }: { agentId: string }) {
     },
   })
   const guidanceData = guidanceEnabled ? guidanceSummary.data?.data : undefined
-  const guidanceModules = guidanceEnabled ? (guidanceData?.modules ?? []) : []
   const reveal = guidanceEnabled
     ? (guidanceData?.actor.reveal ?? {
-        style: true,
-        instructions: true,
         advanced: true,
       })
     : {
-        style: true,
-        instructions: true,
         advanced: true,
       }
   const currentPath = locationToPath(routerLocation)
-  const activeGuidanceItem =
-    guidanceModules
-      .filter(
-        (module): module is GuidanceItemModule =>
-          module.type === 'CARD' || module.type === 'RECEIPT',
-      )
-      .map((module) => module.item)
-      .find((item) => item.related_agent_id === agentId) ?? null
   const contextualAgentItem =
     guidanceEnabled && agentId
       ? findCanonicalGuidanceItemForAgent(guidanceData, agentId, { includeReceipt: false })
@@ -719,18 +706,6 @@ export function TabIntro({ agentId }: { agentId: string }) {
           )}
 
           {tab === 'overview' &&
-            isOwner &&
-            (!reveal.style || !reveal.instructions || !reveal.advanced) &&
-            (activeGuidanceItem ? (
-              <GuidanceItemCard item={activeGuidanceItem} />
-            ) : (
-              <InlineAlert tone="warning" title="先完成第一轮闭环，再解锁更重的管理面">
-                风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现，避免 Day 0
-                就被复杂面板淹没。
-              </InlineAlert>
-            ))}
-
-          {tab === 'overview' &&
             !isOwner &&
             (contextualAgentItem ? (
               <GuidanceItemCard item={contextualAgentItem} />
@@ -822,7 +797,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
 
           {tab === 'stats' && (
             <div className="space-y-4">
-              {isOwner && reveal.style ? (
+              {isOwner ? (
                 <ShapingSection
                   title="基础风格"
                 >

@@ -8,6 +8,9 @@ import { useDeleteAgent, useUpdateAgentProfile } from '@/api/hooks/agent'
 const frontendCapabilities = vi.hoisted(() => ({
   multimodalAgentMediaEnabled: true,
 }))
+const guidanceFlags = vi.hoisted(() => ({
+  enabled: false,
+}))
 
 const useAgentProfileMock = vi.fn()
 const useAgentRunsMock = vi.fn()
@@ -68,7 +71,7 @@ vi.mock('@/shared/hooks/use-auth', () => ({
 }))
 
 vi.mock('@/features/guidance/feature-flags', () => ({
-  isGuidanceEnabled: () => false,
+  isGuidanceEnabled: () => guidanceFlags.enabled,
 }))
 
 vi.mock('@/shared/config/frontend-capabilities', () => frontendCapabilities)
@@ -232,6 +235,7 @@ describe('TabIntro owner social bio', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     frontendCapabilities.multimodalAgentMediaEnabled = true
+    guidanceFlags.enabled = false
     mockModalState.viewMode = 'manage'
     mockModalState.introSection = 'overview'
     mockModalState.sourceSessionId = null
@@ -288,7 +292,19 @@ describe('TabIntro owner social bio', () => {
       isLoading: false,
     })
     useAgentXpMock.mockReturnValue({
-      data: { data: { xp: 0, level: 1, xp_to_next: 100 } },
+      data: {
+        data: {
+          xp: 0,
+          xp_per_growth_point: 50,
+          growth_points_total: 0,
+          growth_points_spent: 0,
+          growth_points_available: 0,
+          level: 1,
+          xp_into_level: 0,
+          xp_to_next_level: 50,
+          level_progress: 0,
+        },
+      },
       isLoading: false,
       error: null,
     })
@@ -631,5 +647,53 @@ describe('TabIntro owner social bio', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '展开基础风格' }))
     expect(screen.getByText('style-control-panel')).toBeTruthy()
+  })
+
+  it('still shows the base style section when guidance reveal.style is false', () => {
+    guidanceFlags.enabled = true
+    mockModalState.introSection = 'stats'
+    useGuidanceSummaryMock.mockReturnValue({
+      data: {
+        data: {
+          actor: {
+            reveal: {
+              style: false,
+              instructions: false,
+              advanced: true,
+            },
+          },
+          modules: [],
+        },
+      },
+    })
+
+    renderTabIntro()
+
+    expect(screen.getByText('基础风格')).toBeTruthy()
+    expect(screen.getByText('style-control-panel')).toBeTruthy()
+  })
+
+  it('does not render the overview-bottom owner guidance block when advanced reveal is locked', () => {
+    guidanceFlags.enabled = true
+    mockModalState.introSection = 'overview'
+    useGuidanceSummaryMock.mockReturnValue({
+      data: {
+        data: {
+          actor: {
+            reveal: {
+              style: false,
+              instructions: false,
+              advanced: false,
+            },
+          },
+          modules: [],
+        },
+      },
+    })
+
+    renderTabIntro()
+
+    expect(screen.queryByText('先完成第一轮闭环，再解锁更重的管理面')).toBeNull()
+    expect(screen.queryByText('风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现')).toBeNull()
   })
 })

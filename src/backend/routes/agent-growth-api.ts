@@ -52,7 +52,16 @@ function singletons() {
 agentNurtureRouter.get('/agents/:agentId/xp', async (req, res) => {
   const agentId = asParam(req.params.agentId)
   const [summary, stats] = await Promise.all([
-    xpService?.getXpSummary(agentId) ?? Promise.resolve({ xp: 0, xp_per_growth_point: XP_PER_GROWTH_POINT, growth_points_total: 0 }),
+    xpService?.getXpSummary(agentId) ??
+      Promise.resolve({
+        xp: 0,
+        xp_per_growth_point: XP_PER_GROWTH_POINT,
+        growth_points_total: 0,
+        level: 1,
+        xp_into_level: 0,
+        xp_to_next_level: XP_PER_GROWTH_POINT,
+        level_progress: 0,
+      }),
     getPrismaOrNull()?.agentStats.findUnique({ where: { agentId } }) ?? Promise.resolve(null),
   ])
   const growthPointsAvailable = stats?.unspentPoints ?? summary.growth_points_total
@@ -63,6 +72,10 @@ agentNurtureRouter.get('/agents/:agentId/xp', async (req, res) => {
       growth_points_total: summary.growth_points_total,
       growth_points_spent: Math.max(summary.growth_points_total - growthPointsAvailable, 0),
       growth_points_available: growthPointsAvailable,
+      level: summary.level,
+      xp_into_level: summary.xp_into_level,
+      xp_to_next_level: summary.xp_to_next_level,
+      level_progress: summary.level_progress,
     },
   })
 })

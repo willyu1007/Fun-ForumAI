@@ -17,6 +17,10 @@ describe('XpService', () => {
     expect(first.xp).toBe(XP_PER_GROWTH_POINT * 2)
     expect(second.skipped).toBe(true)
     expect(summary.growth_points_total).toBe(2)
+    expect(summary.level).toBe(3)
+    expect(summary.xp_into_level).toBe(0)
+    expect(summary.xp_to_next_level).toBe(XP_PER_GROWTH_POINT)
+    expect(summary.level_progress).toBe(0)
     expect(events).toHaveLength(1)
     expect(
       await service.hasRecentXpDedupKey('agent-1', 'bootstrap', 60 * 1000),

@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-14T04:55:30Z`
+Generated at (UTC): `2026-04-17T11:42:45Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -51,7 +51,7 @@ Generated at (UTC): `2026-04-14T04:55:30Z`
 | `FF_AGENT_STATS_BEHAVIOR` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats-derived behavior bias wiring in allocator/chat/memory paths. |
 | `FF_AGENT_STATS_RELATION_POLICY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats-aware relation policy multipliers and thresholds. |
 | `FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats UI exposure for owner panel and related explainers. |
-| `FF_AGENT_STATS_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stats v1 data model and owner APIs. |
+| `FF_AGENT_STATS_V1` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enable Agent Stats v1 data model and owner APIs. |
 | `FF_AGENT_STATS_VOTE_POLICY` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stats-aware vote policy derivation and vote->relation signal wiring. |
 | `FF_ALLOCATOR_PPR_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable allocator GraphRelevanceProvider (offline PPR snapshot) scoring term. |
 | `FF_AUDIENCE_AFTERSHOW_WEB_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable audience + aftershow web presentation fields on post detail. |

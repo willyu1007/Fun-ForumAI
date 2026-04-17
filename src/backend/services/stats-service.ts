@@ -677,8 +677,8 @@ function defaultStats(agentId: string): AgentStats {
   const now = new Date()
   return {
     agent_id: agentId,
-    unspent_points: 0,
-    granted_points_total: 0,
+    unspent_points: 25,
+    granted_points_total: 25,
     sociability: 0,
     curiosity: 0,
     assertiveness: 0,

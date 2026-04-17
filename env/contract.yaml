@@ -915,7 +915,7 @@ variables:
     type: enum
     enum: ["true", "false"]
     required: false
-    default: "false"
+    default: "true"
     description: Enable Agent Stats v1 data model and owner APIs.
 
   FF_AGENT_STATS_BEHAVIOR:

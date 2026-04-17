@@ -45,7 +45,7 @@ export class PgStatsRepository implements StatsRepository {
 
     const row = await this.prisma.agentStats.upsert({
       where: { agentId },
-      create: { agentId },
+      create: { agentId, unspentPoints: 25, grantedPointsTotal: 25 },
       update: {},
     })
 

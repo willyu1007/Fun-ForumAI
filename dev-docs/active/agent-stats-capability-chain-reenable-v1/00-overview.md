@@ -2,14 +2,14 @@
 
 ## Status
 - State: in-progress
-- Next step: 用打开 `FF_AGENT_STATS_*` 的运行环境做一次联调 smoke，确认前端始终可见的 Stats 区在后端可用/不可用两种状态下都能给出正确反馈。
+- Next step: 在浏览器里补一轮 owner 视角 smoke，确认 `性格底色` 的 `+/-` 分配交互、初始 `25/25` 点数和提交链路在真实页面上表现一致。
 
 ## Goal
 恢复 Agent Stats 能力链路，并让 Owner 面板中的 `塑造`/Stats 在当前产品方向下稳定可见、语义一致，不再出现前端入口与后端能力状态相互打架的半暴露状态。
 
 ## Non-goals
-- 不重做 Stats 交互设计本身。
-- 不改 Stats 数据模型或加点规则。
+- 不改 Stats 底层加点规则（4/3/1 分段步进、能力项 0..100）。
+- 不引入可重置 / respec 机制。
 - 不修改移动端 Stats 能力。
 
 ## Context
@@ -18,5 +18,7 @@
 ## Acceptance criteria (high level)
 - [ ] `TabIntro` 中的 Stats 区域与当前塑造页信息架构保持一致，不再受旧的前端 gate 语义牵引。
 - [ ] 当前端拿不到 Stats 数据时，Owner 面板给出单点、准确、不重复的不可用反馈。
+- [ ] `性格底色` 编辑区采用真正的点数分配交互：无待分配点数时不能继续加点，但允许撤回当前草稿。
+- [ ] Stats 初次创建时默认拥有 `25` 点 `granted/unspent`，便于 owner 在首次进入时直接调节。
 - [ ] 后端 `FF_AGENT_STATS_V1` / `FF_AGENT_STATS_BEHAVIOR` / `FF_AGENT_STATS_RELATION_POLICY` / `FF_AGENT_STATS_VOTE_POLICY` / `FF_AGENT_STATS_UI` 从 env 正确读取。
 - [ ] 定向测试覆盖前端折叠结构、Stats 不可用反馈和后端 flag wiring，避免再次回归。

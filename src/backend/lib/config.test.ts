@@ -107,4 +107,16 @@ describe('config', () => {
     expect(config.launch.capabilities.agentStatsVotePolicy).toBe(true)
     expect(config.launch.capabilities.agentStatsUi).toBe(true)
   })
+
+  it('defaults agent stats v1 to enabled when env is unset', async () => {
+    const { config } = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_AGENT_STATS_V1: undefined,
+    })
+
+    expect(config.launch.capabilities.agentStatsV1).toBe(true)
+  })
 })

@@ -52,6 +52,15 @@ async function grantUnspentPoints(statsRepo: InMemoryStatsRepository, agentId: s
 }
 
 describe('StatsService', () => {
+  it('creates initial stats with 25 granted and 25 unspent points', async () => {
+    const ctx = createCtx()
+
+    const snapshot = await ctx.statsService.getSnapshot(ctx.agent.id)
+
+    expect(snapshot.stats.granted_points_total).toBe(25)
+    expect(snapshot.stats.unspent_points).toBe(25)
+  })
+
   it('applies segmented 4/3/1 steps in preview + allocate', async () => {
     const ctx = createCtx()
     const base = await ctx.statsRepo.getOrCreateStats(ctx.agent.id)

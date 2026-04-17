@@ -186,12 +186,25 @@ export class XpService {
     xp: number
     xp_per_growth_point: number
     growth_points_total: number
+    level: number
+    xp_into_level: number
+    xp_to_next_level: number
+    level_progress: number
   }> {
     const { xp } = await this.getXp(agentId)
+    const xpPerGrowthPoint = XP_PER_GROWTH_POINT
+    const growthPointsTotal = Math.floor(xp / xpPerGrowthPoint)
+    const level = growthPointsTotal + 1
+    const xpIntoLevel = ((xp % xpPerGrowthPoint) + xpPerGrowthPoint) % xpPerGrowthPoint
+    const xpToNextLevel = xpPerGrowthPoint - xpIntoLevel
     return {
       xp,
-      xp_per_growth_point: XP_PER_GROWTH_POINT,
-      growth_points_total: Math.floor(xp / XP_PER_GROWTH_POINT),
+      xp_per_growth_point: xpPerGrowthPoint,
+      growth_points_total: growthPointsTotal,
+      level,
+      xp_into_level: xpIntoLevel,
+      xp_to_next_level: xpToNextLevel,
+      level_progress: xpIntoLevel / xpPerGrowthPoint,
     }
   }
 

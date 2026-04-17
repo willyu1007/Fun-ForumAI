@@ -1,42 +1,64 @@
 import { useMemo, useState } from 'react'
 import {
   useAgentStats,
-  usePreviewStatsAllocation,
+  useAgentXp,
   useAllocateStats,
 } from '@/api/hooks'
-import type { StatsAllocationInput } from '@/api/types'
+import type { AgentStatsSnapshot, StatsAllocationInput } from '@/api/types'
 import { getApiErrorCode } from '@/api/client'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+
 const ALLOCATION_FIELDS: Array<{
   key: keyof StatsAllocationInput
   label: string
-  helper: string
+  leftLabel: string
+  rightLabel: string
+  min: number
+  max: number
+  neutralTrack?: boolean
 }> = [
-  { key: 'sociability', label: '社交倾向', helper: '内向(-) ↔ 外向(+)' },
-  { key: 'curiosity', label: '探索倾向', helper: '深挖(-) ↔ 发散(+)' },
-  { key: 'assertiveness', label: '对抗倾向', helper: '退让(-) ↔ 强硬(+)' },
-  { key: 'empathy', label: '共情风格', helper: '疏离(-) ↔ 温暖(+)' },
-  { key: 'brashness', label: '莽劲', helper: '谨慎(-) ↔ 冒进(+)' },
-  { key: 'cynicism', label: '刻薄/犬儒', helper: '直球(-) ↔ 阴阳(+)' },
-  { key: 'stubbornness', label: '死磕', helper: '灵活(-) ↔ 固执(+)' },
-  { key: 'volatility', label: '波动性', helper: '稳定(-) ↔ 易爆(+)' },
-  { key: 'memory', label: '记忆力', helper: '每点 +2（0..100）' },
-  { key: 'learning', label: '学习力', helper: '每点 +2（0..100）' },
+  { key: 'sociability', label: '社交倾向', leftLabel: '内向', rightLabel: '外向', min: -100, max: 100 },
+  { key: 'curiosity', label: '探索倾向', leftLabel: '深挖', rightLabel: '发散', min: -100, max: 100 },
+  { key: 'assertiveness', label: '对抗倾向', leftLabel: '退让', rightLabel: '强硬', min: -100, max: 100 },
+  { key: 'empathy', label: '共情风格', leftLabel: '疏离', rightLabel: '温暖', min: -100, max: 100 },
+  { key: 'brashness', label: '莽劲', leftLabel: '谨慎', rightLabel: '冒进', min: -100, max: 100 },
+  { key: 'cynicism', label: '说话风格', leftLabel: '直球', rightLabel: '阴阳', min: -100, max: 100 },
+  { key: 'stubbornness', label: '死磕', leftLabel: '灵活', rightLabel: '固执', min: -100, max: 100 },
+  { key: 'volatility', label: '波动性', leftLabel: '稳定', rightLabel: '易爆', min: -100, max: 100 },
+  { key: 'memory', label: '记忆力', leftLabel: '低', rightLabel: '高', min: 0, max: 100, neutralTrack: true },
+  { key: 'learning', label: '学习力', leftLabel: '低', rightLabel: '高', min: 0, max: 100, neutralTrack: true },
 ]
+
+const ALLOCATION_GRID_ROWS: Array<Array<keyof StatsAllocationInput>> = [
+  ['sociability', 'empathy'],
+  ['curiosity', 'cynicism'],
+  ['assertiveness', 'stubbornness'],
+  ['brashness', 'volatility'],
+  ['memory', 'learning'],
+]
+
 interface StatsPanelProps {
   agentId: string
 }
+
 export function StatsPanel({ agentId }: StatsPanelProps) {
   const statsQuery = useAgentStats(agentId)
-  const previewMutation = usePreviewStatsAllocation(agentId)
+  const xpQuery = useAgentXp(agentId)
   const allocateMutation = useAllocateStats(agentId)
   const [draft, setDraft] = useState<StatsAllocationInput>({})
-  const [confirmedNoRespec, setConfirmedNoRespec] = useState(false)
-  const [previewSignature, setPreviewSignature] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const normalizedDraft = useMemo(() => normalizeDraft(draft), [draft])
-  const currentDraftSignature = useMemo(() => draftSignature(normalizedDraft), [normalizedDraft])
   const hasDraft = useMemo(() => Object.keys(normalizedDraft).length > 0, [normalizedDraft])
+  const draftCostPoints = allocationCost(normalizedDraft)
   if (statsQuery.isLoading) {
     return (
       <div className="space-y-4">
@@ -46,6 +68,7 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
     )
   }
   const statsData = statsQuery.data?.data
+  const xpData = xpQuery.data?.data
   if (!statsData) {
     const errorCode = getApiErrorCode(statsQuery.error)
     const unavailableMessage =
@@ -64,18 +87,9 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
       </div>
     )
   }
-  const grantedPointsTotal = Number.isFinite(statsData.stats.granted_points_total)
-    ? statsData.stats.granted_points_total
-    : statsData.stats.unspent_points
-  const spentPoints = Math.max(grantedPointsTotal - statsData.stats.unspent_points, 0)
-  const previewData = previewMutation.data?.data
-  const previewIsStale = previewSignature !== null && previewSignature !== currentDraftSignature
-  const onPreview = () => {
-    if (!hasDraft) return
-    setPreviewSignature(currentDraftSignature)
-    previewMutation.mutate({ allocation: normalizedDraft, version: statsData.stats.version })
-  }
+  const availablePoints = Math.max(statsData.stats.unspent_points - draftCostPoints, 0)
   const onAllocate = () => {
+    if (!hasDraft) return
     allocateMutation.mutate(
       {
         allocation: normalizedDraft,
@@ -85,155 +99,152 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
       },
       {
         onSuccess: () => {
+          setConfirmOpen(false)
           setDraft({})
-          setPreviewSignature(null)
-          setConfirmedNoRespec(false)
-          previewMutation.reset()
         },
       },
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-x-6 gap-y-1 text-sm text-muted-foreground md:grid-cols-3">
-        <p>
-          待分配成长点：
-          <span className="ml-1 font-medium text-foreground">{statsData.stats.unspent_points}</span>
-        </p>
-        <p>
-          已分配成长点：
-          <span className="ml-1 font-medium text-foreground">{spentPoints}</span>
-        </p>
-        <p>
-          累计成长点：
-          <span className="ml-1 font-medium text-foreground">{grantedPointsTotal}</span>
-        </p>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        成长点只由 XP 累积产生；成就、编年史和舞台身份不会影响这里的点数。
-      </p>
-
-      <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
-        {ALLOCATION_FIELDS.map((field) => {
-          const value = draft[field.key] ?? 0
-          const isAbility = field.key === 'memory' || field.key === 'learning'
-          return (
-            <label key={field.key} className="space-y-1.5 border-b border-border/50 pb-3 text-sm">
-              <div className="font-medium">{field.label}</div>
-              <div className="text-xs text-muted-foreground">{field.helper}</div>
-              <input
-                type="number"
-                value={value}
-                min={isAbility ? 0 : -50}
-                max={50}
-                step={1}
-                onChange={(event) => {
-                  const next = Number(event.target.value)
-                  setDraft((prev) => ({
-                    ...prev,
-                    [field.key]: Number.isFinite(next) ? next : 0,
-                  }))
-                  setConfirmedNoRespec(false)
-                  previewMutation.reset()
-                }}
-                className="mt-1 w-full border-0 border-b border-border bg-transparent px-0 py-1 outline-none focus:border-primary focus:ring-0"
-              />
-            </label>
-          )
-        })}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onPreview}
-          disabled={!hasDraft || previewMutation.isPending}
-        >
-          预览分配
-        </Button>
-        <Button
-          type="button"
-          onClick={onAllocate}
-          disabled={
-            !previewData || previewIsStale || !confirmedNoRespec || allocateMutation.isPending
-          }
-        >
-          确认分配
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setDraft({})
-            setPreviewSignature(null)
-            setConfirmedNoRespec(false)
-            previewMutation.reset()
-          }}
-        >
-          清空草稿
-        </Button>
-      </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={confirmedNoRespec}
-          onChange={(event) => setConfirmedNoRespec(event.target.checked)}
-        />
-        我确认此加点不可重置（no-respec）。
-      </label>
-
-      {previewData ? (
-        <div className="border-l-2 border-success/40 pl-4 text-sm">
-          <p>
-            本次消耗点数：
-            <span className="ml-1 font-medium">{previewData.cost_points}</span>
-          </p>
-          <p className="mt-1">
-            提交后剩余：
-            <span className="ml-1 font-medium">{previewData.remaining_points}</span>
-          </p>
-          <p className="mt-1">
-            预估 talkativeness：
-            <span className="ml-1 font-medium">{previewData.derived.chat.talkativeness_1_5}</span>
-          </p>
-          <p className="mt-1">
-            预估记忆 budget/topK：
-            <span className="ml-1 font-medium">
-              {previewData.derived.memory.effective_budget}/{previewData.derived.memory.effective_top_k}
-            </span>
-          </p>
-          {previewData.personality_narrative ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {previewData.personality_narrative.summary}
-            </p>
-          ) : null}
+    <div className="space-y-4 pb-3">
+      <div className="grid grid-cols-3 items-center rounded-sm bg-muted/[0.48] px-3 py-2.5">
+        {xpData ? (
+          <div className="relative flex min-w-0 items-center gap-3 pr-4 after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']">
+            <div className="flex items-baseline gap-1.5 text-sm">
+              <span className="text-foreground">等级：</span>
+              <span className="font-semibold text-foreground">{xpData.level}</span>
+            </div>
+            <div className="w-24 max-w-full">
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted-foreground/15">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${Math.max(0, Math.min(100, xpData.level_progress * 100))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="relative after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']" />
+        )}
+        <div className="relative flex items-baseline justify-center gap-1.5 px-4 text-sm after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']">
+          <span className="text-foreground">可用点数：</span>
+          <span className="font-semibold text-foreground">
+            {availablePoints}/{statsData.stats.unspent_points}
+          </span>
         </div>
-      ) : null}
+        <div className="flex items-center justify-end gap-1.5 pl-4">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setDraft({})}
+            disabled={!hasDraft || allocateMutation.isPending}
+          >
+            复原
+          </Button>
+          <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="bg-primary/[0.06] text-primary hover:bg-primary/[0.1] hover:text-primary"
+              onClick={() => setConfirmOpen(true)}
+              disabled={!hasDraft || allocateMutation.isPending}
+            >
+              确认
+            </Button>
+            <DialogContent className="sm:max-w-sm" showCloseButton={false}>
+              <DialogHeader className="gap-1.5">
+                <DialogTitle className="text-base">确认本次加点？</DialogTitle>
+                <DialogDescription>
+                  提交后本次加点会立即生效，且不可重置。
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={allocateMutation.isPending}
+                >
+                  取消
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-primary/90 hover:bg-primary"
+                  onClick={onAllocate}
+                  disabled={!hasDraft || allocateMutation.isPending}
+                >
+                  确认加点
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      <div className="space-y-5">
+        {ALLOCATION_GRID_ROWS.map((row) => (
+          <div key={row.join('-')} className="grid gap-5 md:grid-cols-2">
+            {row.map((fieldKey) => {
+              const field = ALLOCATION_FIELDS.find((item) => item.key === fieldKey)
+              if (!field) return null
+              const value = draft[field.key] ?? 0
+              const currentValue = currentStatsValue(statsData, field.key)
+              const projectedValue = projectFieldValue(field, currentValue, value)
+              const updateDraft = (delta: -1 | 1) => {
+                const next = nextDraftValue(field, value, delta)
+                if (next === value) return
+                const candidateDraft = setDraftPoint(normalizedDraft, field.key, next)
+                if (allocationCost(candidateDraft) > statsData.stats.unspent_points) return
+                if (!canProjectFieldValue(field, currentValue, next)) return
+                setDraft((prev) => setDraftPoint(prev, field.key, next))
+              }
 
-      {previewIsStale ? (
-        <p className="text-sm text-warning">草稿已变更，请重新预览后再提交。</p>
-      ) : null}
+              if (field.neutralTrack) {
+                return (
+                  <AbilityAllocationField
+                    key={field.key}
+                    label={field.label}
+                    leftLabel={field.leftLabel}
+                    rightLabel={field.rightLabel}
+                    value={projectedValue}
+                    draftPoints={value}
+                    min={field.min}
+                    max={field.max}
+                    canDecrease={canAdjustField(field, currentValue, value, -1, normalizedDraft, statsData.stats.unspent_points)}
+                    canIncrease={canAdjustField(field, currentValue, value, 1, normalizedDraft, statsData.stats.unspent_points)}
+                    onAdjust={updateDraft}
+                  />
+                )
+              }
 
-      {previewMutation.isError ? (
-        <p className="text-sm text-destructive">
-          预览失败：{String((previewMutation.error as Error)?.message ?? 'unknown error')}
-        </p>
-      ) : null}
+              return (
+                <AxisAllocationField
+                  key={field.key}
+                  label={field.label}
+                  leftLabel={field.leftLabel}
+                  rightLabel={field.rightLabel}
+                  value={projectedValue}
+                  draftPoints={value}
+                  min={field.min}
+                  max={field.max}
+                  canTowardLeft={canAdjustField(field, currentValue, value, -1, normalizedDraft, statsData.stats.unspent_points)}
+                  canTowardRight={canAdjustField(field, currentValue, value, 1, normalizedDraft, statsData.stats.unspent_points)}
+                  onAdjust={updateDraft}
+                />
+              )
+            })}
+          </div>
+        ))}
+      </div>
 
       {allocateMutation.isError ? (
         <p className="text-sm text-destructive">
           提交失败：{String((allocateMutation.error as Error)?.message ?? 'unknown error')}
         </p>
       ) : null}
-
-      <div className="border-l-2 border-border/60 pl-4 text-sm text-muted-foreground">
-        <p>手动硬控制：`agent.status`、`talkativeness`、`allow_wandering`、`forum_activity`。</p>
-        <p className="mt-1">Stats 软偏置：参与倾向、表达风格、关系策略、vote 概率、记忆/学习上限。</p>
-        <p className="mt-1">合成原则：Final = Hard Gate × Stats Bias。Stats 不会越过手动预算和治理限制。</p>
-      </div>
     </div>
   )
 }
@@ -247,6 +258,253 @@ function normalizeDraft(draft: StatsAllocationInput): StatsAllocationInput {
   }
   return normalized
 }
-function draftSignature(draft: StatsAllocationInput): string {
-  return JSON.stringify(Object.entries(draft).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)))
+
+function allocationCost(draft: StatsAllocationInput): number {
+  let cost = 0
+  for (const field of ALLOCATION_FIELDS) {
+    const raw = draft[field.key] ?? 0
+    if (!Number.isFinite(raw) || raw === 0) continue
+    cost += field.neutralTrack ? Math.max(raw, 0) : Math.abs(raw)
+  }
+  return cost
+}
+
+function AxisAllocationField({
+  label,
+  leftLabel,
+  rightLabel,
+  value,
+  draftPoints,
+  min,
+  max,
+  canTowardLeft,
+  canTowardRight,
+  onAdjust,
+}: {
+  label: string
+  leftLabel: string
+  rightLabel: string
+  value: number
+  draftPoints: number
+  min: number
+  max: number
+  canTowardLeft: boolean
+  canTowardRight: boolean
+  onAdjust: (delta: -1 | 1) => void
+}) {
+  const markerPercent = ((value - min) / Math.max(max - min, 1)) * 100
+  const draftAccent =
+    draftPoints === 0 ? 'text-foreground/92' : draftPoints > 0 ? 'text-[#d07a3c]' : 'text-[#2b569d]'
+
+  return (
+    <div className="space-y-2.5">
+      <div className="text-sm font-medium tracking-tight text-foreground/92">{label}</div>
+      <div className="flex items-center justify-between gap-4 text-[12px] leading-5">
+        <div className="flex items-center gap-1 text-[#48668f]">
+          <span>{leftLabel}</span>
+          <button
+            type="button"
+            aria-label={`${label}向${leftLabel}加点`}
+            onClick={() => onAdjust(-1)}
+            disabled={!canTowardLeft}
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-[#48668f] transition-colors hover:bg-[#48668f]/8 disabled:cursor-not-allowed disabled:opacity-25"
+          >
+            +
+          </button>
+        </div>
+        <div className="flex items-center gap-1 text-[#a36540]">
+          <span>{rightLabel}</span>
+          <button
+            type="button"
+            aria-label={`${label}向${rightLabel}加点`}
+            onClick={() => onAdjust(1)}
+            disabled={!canTowardRight}
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-[#a36540] transition-colors hover:bg-[#a36540]/8 disabled:cursor-not-allowed disabled:opacity-25"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div
+        className="relative h-1.5 rounded-full"
+        style={{
+          background:
+            'linear-gradient(90deg, rgba(54,90,140,0.94) 0%, rgba(215,221,230,0.92) 50%, rgba(184,109,58,0.94) 100%)',
+        }}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 h-4 min-w-7 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-border/60 bg-background px-1 text-center text-[10px] font-semibold leading-4 shadow-sm"
+          style={{ left: `${markerPercent}%` }}
+        >
+          <span className={draftAccent}>{formatSignedValue(value)}</span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function AbilityAllocationField({
+  label,
+  leftLabel,
+  rightLabel,
+  value,
+  draftPoints,
+  min,
+  max,
+  canDecrease,
+  canIncrease,
+  onAdjust,
+}: {
+  label: string
+  leftLabel: string
+  rightLabel: string
+  value: number
+  draftPoints: number
+  min: number
+  max: number
+  canDecrease: boolean
+  canIncrease: boolean
+  onAdjust: (delta: -1 | 1) => void
+}) {
+  const markerPercent = ((value - min) / Math.max(max - min, 1)) * 100
+  const draftAccent = draftPoints === 0 ? 'text-foreground/92' : 'text-[#2b569d]'
+
+  return (
+    <div className="space-y-2.5">
+      <div className="text-sm font-medium tracking-tight text-foreground/92">{label}</div>
+      <div className="flex items-center justify-between gap-4 text-[12px] leading-5 text-muted-foreground">
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <span>{leftLabel}</span>
+          <button
+            type="button"
+            aria-label={`${label}减少`}
+            onClick={() => onAdjust(-1)}
+            disabled={!canDecrease}
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-25"
+          >
+            −
+          </button>
+        </div>
+        <div className="flex items-center gap-1 text-[#48668f]">
+          <span>{rightLabel}</span>
+          <button
+            type="button"
+            aria-label={`${label}增加`}
+            onClick={() => onAdjust(1)}
+            disabled={!canIncrease}
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-[#48668f] transition-colors hover:bg-[#48668f]/8 disabled:cursor-not-allowed disabled:opacity-25"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div
+        className="relative h-1.5 rounded-full"
+        style={{
+          background: 'rgba(54,90,140,0.9)',
+        }}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 h-4 min-w-7 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-border/60 bg-background px-1 text-center text-[10px] font-semibold leading-4 shadow-sm"
+          style={{ left: `${markerPercent}%` }}
+        >
+          <span className={draftAccent}>{value}</span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function formatSignedValue(value: number): string {
+  return value > 0 ? `+${value}` : `${value}`
+}
+
+function currentStatsValue(statsData: AgentStatsSnapshot, key: keyof StatsAllocationInput): number {
+  return statsData.stats[key] ?? 0
+}
+
+function projectFieldValue(
+  field: (typeof ALLOCATION_FIELDS)[number],
+  currentValue: number,
+  draftPoints: number,
+): number {
+  if (field.neutralTrack) {
+    return clamp(currentValue + Math.max(draftPoints, 0) * 2, field.min, field.max)
+  }
+
+  let value = currentValue
+  const direction = Math.sign(draftPoints)
+  for (let i = 0; i < Math.abs(draftPoints); i += 1) {
+    const step = axisStep(Math.abs(value))
+    value = clamp(value + direction * step, field.min, field.max)
+  }
+  return value
+}
+
+function nextDraftValue(
+  field: (typeof ALLOCATION_FIELDS)[number],
+  currentDraftPoints: number,
+  delta: -1 | 1,
+): number {
+  if (field.neutralTrack) {
+    return Math.max(currentDraftPoints + delta, 0)
+  }
+  return currentDraftPoints + delta
+}
+
+function canProjectFieldValue(
+  field: (typeof ALLOCATION_FIELDS)[number],
+  currentValue: number,
+  draftPoints: number,
+): boolean {
+  try {
+    projectFieldValue(field, currentValue, draftPoints)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function setDraftPoint(
+  draft: StatsAllocationInput,
+  key: keyof StatsAllocationInput,
+  nextValue: number,
+): StatsAllocationInput {
+  const nextDraft = { ...draft }
+  if (!Number.isFinite(nextValue) || nextValue === 0) {
+    delete nextDraft[key]
+    return nextDraft
+  }
+  nextDraft[key] = nextValue
+  return nextDraft
+}
+
+function canAdjustField(
+  field: (typeof ALLOCATION_FIELDS)[number],
+  currentValue: number,
+  currentDraftPoints: number,
+  delta: -1 | 1,
+  draft: StatsAllocationInput,
+  availableUnspentPoints: number,
+): boolean {
+  const next = nextDraftValue(field, currentDraftPoints, delta)
+  if (next === currentDraftPoints) return false
+  if (!canProjectFieldValue(field, currentValue, next)) return false
+  const candidateDraft = setDraftPoint(draft, field.key, next)
+  return allocationCost(candidateDraft) <= availableUnspentPoints
+}
+
+function axisStep(absValue: number): number {
+  if (absValue <= 40) return 4
+  if (absValue <= 70) return 3
+  return 1
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  if (value < min) return min
+  if (value > max) return max
+  return value
 }

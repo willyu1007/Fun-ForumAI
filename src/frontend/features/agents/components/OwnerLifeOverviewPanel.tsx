@@ -28,50 +28,18 @@ const DEFAULT_SECTIONS: OwnerLifeOverviewSection[] = [
   'entryPoints',
 ]
 
-function suggestionLaneLabel(lane: 'WORLD' | 'SOCIAL' | 'OWNER' | 'TUNING') {
-  switch (lane) {
-    case 'WORLD':
-      return '论坛里'
-    case 'SOCIAL':
-      return '和别人'
-    case 'OWNER':
-      return '来自你'
-    case 'TUNING':
-    default:
-      return '设置面'
-  }
-}
-
-function suggestionPriorityLabel(priority: 'now' | 'soon' | 'optional') {
-  switch (priority) {
-    case 'now':
-      return '现在适合'
-    case 'soon':
-      return '下一步'
-    case 'optional':
-    default:
-      return '精修时'
-  }
-}
-
 function ActionLink({
   href,
-  tone,
   children,
 }: {
   href: string
-  tone: 'primary' | 'muted'
   children: React.ReactNode
 }) {
   const navigate = useNavigate()
   return (
     <button
       type="button"
-      className={
-        tone === 'primary'
-          ? 'text-sm font-medium text-primary underline-offset-4 hover:underline'
-          : 'text-sm text-muted-foreground underline-offset-4 hover:underline'
-      }
+      className="text-xs font-medium tracking-tight text-primary/88 underline-offset-4 hover:underline"
       onClick={() => {
         if (!tryOpenAgentModal(href, 'manage')) {
           navigate(href)
@@ -336,27 +304,19 @@ export function OwnerLifeOverviewPanel({
             <p className="text-sm text-muted-foreground">等下一段经历落下来，这里会出现更合适的养法。</p>
           ) : (
             suggestions.map((item) => (
-              <div key={item.id} className="border-b border-border/50 pb-3 last:border-b-0 last:pb-0">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{suggestionLaneLabel(item.lane)}</Badge>
-                  <Badge variant="secondary">{suggestionPriorityLabel(item.priority)}</Badge>
-                  <p className="font-medium text-foreground">{item.title}</p>
-                </div>
-                <p className="text-sm text-muted-foreground">{item.body}</p>
-                <p className="mt-1 text-xs text-muted-foreground">为什么现在：{item.why_now}</p>
-                <p className="mt-1 text-xs text-muted-foreground">预计推进：{item.expected_progress}</p>
-                <div className="mt-2 flex flex-wrap gap-3">
-                  {item.primary_action.href ? (
-                    <ActionLink href={item.primary_action.href} tone="primary">
-                      {item.primary_action.label}
+              <div
+                key={item.id}
+                className="space-y-2 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/[0.42]"
+              >
+                <p className="font-medium text-foreground">{item.title}</p>
+                <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
+                {item.primary_action.href && item.primary_action.label ? (
+                  <div>
+                    <ActionLink href={item.primary_action.href}>
+                      推荐动作：{item.primary_action.label}
                     </ActionLink>
-                  ) : null}
-                  {item.secondary_action?.href ? (
-                    <ActionLink href={item.secondary_action.href} tone="muted">
-                      {item.secondary_action.label}
-                    </ActionLink>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
             ))
           )}

@@ -80,17 +80,18 @@ export type {
   BadgeDebugMeta,
   BadgeDebugSemanticContract,
 } from '../../shared/badges/debug-catalog.js'
-export type { BadgeSurfacePolicy, BadgeSurfacePolicyId } from '../../shared/badges/surface-policy.js'
+export type {
+  BadgeSurfacePolicy,
+  BadgeSurfacePolicyId,
+} from '../../shared/badges/surface-policy.js'
 export type {
   KickoffAuthoringPatch,
-  KickoffBootstrapMode,
-  KickoffBootstrapResult,
   KickoffDataMode,
-  KickoffGenerationMode,
   KickoffImportReport,
   KickoffImportSummary,
   KickoffProfileId,
   KickoffRunDetail,
+  KickoffSeedPayload,
   KickoffRunSummary,
   KickoffRuntimeReadiness,
   KickoffStatusPayload,
@@ -98,6 +99,7 @@ export type {
   KickoffSuiteEditApplyResult,
   KickoffSuiteEditPreview,
   KickoffSuiteEditRequest,
+  WarmStartGenerationMode,
 } from '../../shared/kickoff-workflow.js'
 
 export interface ApiResponse<T = unknown> {
@@ -119,32 +121,16 @@ export interface ApiError {
 }
 
 export type GuidanceActorType = 'VISITOR' | 'USER'
-export type GuidanceTrack = 'UNDECIDED' | 'SPECTATOR' | 'OWNER'
 export type GuidanceStage = 'NEW_VISITOR' | 'EXPLORING' | 'FIRST_SUCCESS' | 'RETAINED'
 export type GuidanceInboxStatus = 'ACTIVE' | 'COMPLETED' | 'DISMISSED'
 export type GuidanceItemModuleType = 'CARD' | 'RECEIPT'
-export type GuidanceSummaryModuleType = 'DUAL_ENTRY' | 'CHECKLIST' | 'CARD' | 'RECEIPT'
+export type GuidanceSummaryModuleType = 'CHECKLIST' | 'CARD' | 'RECEIPT'
 
 export interface GuidanceCta {
   label: string
   target: string
   event_name?: string
   payload?: Record<string, unknown>
-}
-
-export interface GuidanceDualEntryCard {
-  track: Exclude<GuidanceTrack, 'UNDECIDED'>
-  title: string
-  promise: string
-  entry_cta: GuidanceCta
-  return_hook: string
-}
-
-export interface GuidanceDualEntryModule {
-  type: 'DUAL_ENTRY'
-  reason_code: string
-  hero_body: string
-  cards: GuidanceDualEntryCard[]
 }
 
 export interface GuidanceChecklistItem {
@@ -182,19 +168,12 @@ export interface GuidanceItemModule {
   item: GuidanceItemCard
 }
 
-export type GuidanceSummaryModule =
-  | GuidanceDualEntryModule
-  | GuidanceChecklistModule
-  | GuidanceItemModule
+export type GuidanceSummaryModule = GuidanceChecklistModule | GuidanceItemModule
 
 export interface GuidanceActorState {
   actor_type: GuidanceActorType
   actor_id: string
-  current_track: GuidanceTrack
   stage: GuidanceStage
-  explained: {
-    two_tracks: boolean
-  }
   completed: {
     followed_first_agent: boolean
     used_following_feed: boolean
@@ -251,6 +230,21 @@ export interface GuidanceRuntimeData {
     daily_cap_count: number
   }
   teaching_first_violation_count: number
+}
+
+export type DevGuidanceScenarioId =
+  | 'RECENT_ACTIVITY_BASELINE'
+  | 'NO_AGENT_BOOTSTRAP'
+  | 'UNREAD_RECEIPT_READY'
+  | 'FIRST_PRIVATE_CHAT_BLOCKER'
+  | 'PUBLIC_EFFECT_READY'
+
+export interface DevGuidanceScenarioApplyResult {
+  scenario: DevGuidanceScenarioId
+  actor_id: string
+  actor_type: GuidanceActorType
+  latest_owner_agent_id: string | null
+  latest_receipt_session_id: string | null
 }
 
 export interface RuntimeFeaturesData {
@@ -532,7 +526,9 @@ export interface AgentActiveCommunitySummary {
   name: string
   slug: string | null
   description?: string | null
-  community_shell_category?: import('../../shared/semantic-taxonomy.js').CommunityShellCategory | null
+  community_shell_category?:
+    | import('../../shared/semantic-taxonomy.js').CommunityShellCategory
+    | null
 }
 
 export interface PostMediaItem {
@@ -573,11 +569,7 @@ export type LaunchCardMode =
   | 'relationship_map_card'
   | 'program_card'
 
-export type LaunchThumbnailPolicy =
-  | 'required'
-  | 'required_if_available'
-  | 'optional'
-  | 'forbidden'
+export type LaunchThumbnailPolicy = 'required' | 'required_if_available' | 'optional' | 'forbidden'
 
 export interface LaunchVisualPackagingFields {
   surface_kind?: LaunchSurfaceKind
@@ -668,7 +660,9 @@ export interface PostWithMeta extends Post {
   topic_signals: Record<string, unknown> | null
   distribution_state: string
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
-  interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
+  interaction_contract?:
+    | import('../../shared/semantic-taxonomy.js').CommunityInteractionContract
+    | null
   content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
   aftershow_summary?: AftershowSummary | null
   aftershow_callouts?: AftershowCalloutItem[]
@@ -715,7 +709,9 @@ export interface AftershowSnapshot {
   aftershow_callouts: AftershowCalloutItem[]
   audience_thread_meta: AudienceThreadMeta | null
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
-  interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
+  interaction_contract?:
+    | import('../../shared/semantic-taxonomy.js').CommunityInteractionContract
+    | null
   content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
   relation_teaser?: RelationSummaryTeaser | null
 }
@@ -1535,7 +1531,11 @@ export interface AgentMediaSemanticSummary {
 
 export interface AgentMediaAsset {
   asset_id: string
-  visibility_policy: 'private_only' | 'public_original_allowed' | 'public_derivative_only' | 'blocked'
+  visibility_policy:
+    | 'private_only'
+    | 'public_original_allowed'
+    | 'public_derivative_only'
+    | 'blocked'
   lifecycle_status: 'active' | 'archived' | 'blocked'
   media_url: string
   mime_type: string
@@ -1593,7 +1593,9 @@ export interface Community {
   rules_json: Record<string, unknown> | null
   active_member_count: number
   community_semantics?: import('../../shared/semantic-taxonomy.js').CommunitySemanticContract | null
-  interaction_contract?: import('../../shared/semantic-taxonomy.js').CommunityInteractionContract | null
+  interaction_contract?:
+    | import('../../shared/semantic-taxonomy.js').CommunityInteractionContract
+    | null
   visibility_default: ContentVisibility
   created_at: string
   updated_at: string
@@ -1965,9 +1967,12 @@ export interface KickoffSuiteEditApplyPayload extends KickoffSuiteEditApplyResul
   suite_detail: WarmupSuiteDetail
 }
 
-export type WarmupVerifierDiagnosis = import('../../shared/warmup-verifier.js').WarmupVerifierDiagnosis
-export type WarmupVerifierRunSummary = import('../../shared/warmup-verifier.js').WarmupVerifierRunSummary
-export type WarmupVerifierRunDetail = import('../../shared/warmup-verifier.js').WarmupVerifierRunDetail
+export type WarmupVerifierDiagnosis =
+  import('../../shared/warmup-verifier.js').WarmupVerifierDiagnosis
+export type WarmupVerifierRunSummary =
+  import('../../shared/warmup-verifier.js').WarmupVerifierRunSummary
+export type WarmupVerifierRunDetail =
+  import('../../shared/warmup-verifier.js').WarmupVerifierRunDetail
 
 export interface WarmupGovernancePreview {
   action: WarmupGovernanceAction
@@ -2433,11 +2438,7 @@ export interface AppealRequest {
   updated_at: string
 }
 
-export type FeedbackCategory =
-  | 'PRODUCT_SUGGESTION'
-  | 'BUG_REPORT'
-  | 'UX_ISSUE'
-  | 'OTHER'
+export type FeedbackCategory = 'PRODUCT_SUGGESTION' | 'BUG_REPORT' | 'UX_ISSUE' | 'OTHER'
 
 export type FeedbackStatus = 'RECEIVED' | 'UNDER_REVIEW' | 'PLANNED' | 'CLOSED'
 
@@ -2853,6 +2854,10 @@ export interface AgentXpInfo {
   growth_points_total: number
   growth_points_spent: number
   growth_points_available: number
+  level: number
+  xp_into_level: number
+  xp_to_next_level: number
+  level_progress: number
 }
 
 export interface AgentBudgetInfo {

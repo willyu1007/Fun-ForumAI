@@ -1,21 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { StatsPanel } from '../StatsPanel'
-import type { AgentStatsSnapshot, StatsAllocationPreview } from '@/api/types'
+import type { AgentStatsSnapshot } from '@/api/types'
 import {
   useAgentStats,
-  usePreviewStatsAllocation,
+  useAgentXp,
   useAllocateStats,
 } from '@/api/hooks'
 
 vi.mock('@/api/hooks', () => ({
   useAgentStats: vi.fn(),
-  usePreviewStatsAllocation: vi.fn(),
+  useAgentXp: vi.fn(),
   useAllocateStats: vi.fn(),
 }))
 
 const useAgentStatsMock = vi.mocked(useAgentStats)
-const usePreviewStatsAllocationMock = vi.mocked(usePreviewStatsAllocation)
+const useAgentXpMock = vi.mocked(useAgentXp)
 const useAllocateStatsMock = vi.mocked(useAllocateStats)
 
 function buildSnapshot(): AgentStatsSnapshot {
@@ -103,37 +103,8 @@ function buildSnapshot(): AgentStatsSnapshot {
   }
 }
 
-function buildPreview(snapshot: AgentStatsSnapshot): StatsAllocationPreview {
-  return {
-    before: snapshot.stats,
-    after: { ...snapshot.stats, sociability: 4, unspent_points: 2, version: 8 },
-    cost_points: 1,
-    remaining_points: 2,
-    derived: {
-      ...snapshot.derived,
-      chat: {
-        ...snapshot.derived.chat,
-        talkativeness_1_5: 4,
-      },
-      memory: {
-        ...snapshot.derived.memory,
-        effective_budget: 1250,
-        effective_top_k: 13,
-      },
-    },
-  }
-}
-
-interface HookSetupOptions {
-  previewData?: StatsAllocationPreview
-  previewError?: Error | null
-  allocateError?: Error | null
-}
-
-function setupHooks(options: HookSetupOptions = {}) {
-  const snapshot = buildSnapshot()
-  const previewMutate = vi.fn()
-  const previewReset = vi.fn()
+function setupHooks(options?: { allocateError?: Error | null; snapshot?: AgentStatsSnapshot }) {
+  const snapshot = options?.snapshot ?? buildSnapshot()
   const allocateMutate = vi.fn()
 
   useAgentStatsMock.mockReturnValue({
@@ -142,23 +113,32 @@ function setupHooks(options: HookSetupOptions = {}) {
     error: null,
   } as never)
 
-  usePreviewStatsAllocationMock.mockReturnValue({
-    mutate: previewMutate,
-    data: options.previewData ? { data: options.previewData } : undefined,
-    isPending: false,
-    isError: Boolean(options.previewError),
-    error: options.previewError ?? null,
-    reset: previewReset,
+  useAgentXpMock.mockReturnValue({
+    isLoading: false,
+    data: {
+      data: {
+        xp: 60,
+        xp_per_growth_point: 50,
+        growth_points_total: 1,
+        growth_points_spent: 0,
+        growth_points_available: 1,
+        level: 2,
+        xp_into_level: 10,
+        xp_to_next_level: 40,
+        level_progress: 0.2,
+      },
+    },
+    error: null,
   } as never)
 
   useAllocateStatsMock.mockReturnValue({
     mutate: allocateMutate,
     isPending: false,
-    isError: Boolean(options.allocateError),
-    error: options.allocateError ?? null,
+    isError: Boolean(options?.allocateError),
+    error: options?.allocateError ?? null,
   } as never)
 
-  return { snapshot, previewMutate, previewReset, allocateMutate }
+  return { snapshot, allocateMutate }
 }
 
 describe('StatsPanel', () => {
@@ -166,38 +146,19 @@ describe('StatsPanel', () => {
     vi.clearAllMocks()
   })
 
-  it('calls preview API with draft allocation and version', () => {
-    const { previewMutate } = setupHooks()
+  it('calls allocate API with draft allocation and version', () => {
+    const { allocateMutate } = setupHooks()
     render(<StatsPanel agentId="agent-1" />)
 
-    const input = screen.getAllByRole('spinbutton')[0]
-    fireEvent.change(input, { target: { value: '2' } })
-    fireEvent.click(screen.getByRole('button', { name: '预览分配' }))
+    fireEvent.click(screen.getByRole('button', { name: '社交倾向向外向加点' }))
+    fireEvent.click(screen.getByRole('button', { name: '社交倾向向外向加点' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认' }))
 
-    expect(previewMutate).toHaveBeenCalledTimes(1)
-    expect(previewMutate).toHaveBeenCalledWith({
-      allocation: expect.objectContaining({ sociability: 2 }),
-      version: 7,
-    })
-  })
+    expect(screen.getByText('确认本次加点？')).toBeTruthy()
+    expect(allocateMutate).toHaveBeenCalledTimes(0)
 
-  it('enforces no-respec confirmation before allocate', () => {
-    const snapshot = buildSnapshot()
-    const previewData = buildPreview(snapshot)
-    const { allocateMutate } = setupHooks({ previewData })
-    render(<StatsPanel agentId="agent-1" />)
+    fireEvent.click(screen.getByRole('button', { name: '确认加点' }))
 
-    const input = screen.getAllByRole('spinbutton')[0]
-    fireEvent.change(input, { target: { value: '1' } })
-    fireEvent.click(screen.getByRole('button', { name: '预览分配' }))
-
-    const confirmButton = screen.getByRole('button', { name: '确认分配' }) as HTMLButtonElement
-    expect(confirmButton.disabled).toBe(true)
-
-    fireEvent.click(screen.getByRole('checkbox'))
-    expect(confirmButton.disabled).toBe(false)
-
-    fireEvent.click(confirmButton)
     expect(allocateMutate).toHaveBeenCalledTimes(1)
     const payload = allocateMutate.mock.calls[0]?.[0] as {
       allocation: Record<string, number>
@@ -207,51 +168,32 @@ describe('StatsPanel', () => {
     }
     expect(payload.confirm_no_respec).toBe(true)
     expect(payload.version).toBe(7)
-    expect(payload.allocation.sociability).toBe(1)
+    expect(payload.allocation.sociability).toBe(2)
     expect(payload.idempotency_key).toMatch(/^stats-ui-agent-1-/)
   })
 
-  it('invalidates preview when draft changes and forces re-preview', () => {
-    const snapshot = buildSnapshot()
-    const previewData = buildPreview(snapshot)
-    const { previewReset } = setupHooks({ previewData })
+  it('restore clears draft and disables confirm again', () => {
+    setupHooks()
     render(<StatsPanel agentId="agent-1" />)
 
-    const input = screen.getAllByRole('spinbutton')[0]
-    fireEvent.change(input, { target: { value: '1' } })
-    fireEvent.click(screen.getByRole('button', { name: '预览分配' }))
-    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: '社交倾向向外向加点' }))
 
-    const confirmButton = screen.getByRole('button', { name: '确认分配' }) as HTMLButtonElement
+    const confirmButton = screen.getByRole('button', { name: '确认' }) as HTMLButtonElement
     expect(confirmButton.disabled).toBe(false)
 
-    fireEvent.change(input, { target: { value: '2' } })
+    fireEvent.click(screen.getByRole('button', { name: '复原' }))
 
-    expect(previewReset).toHaveBeenCalled()
-    expect(confirmButton.disabled).toBe(true)
-    expect(screen.getByText('草稿已变更，请重新预览后再提交。')).toBeTruthy()
+    expect((screen.getByRole('button', { name: '确认' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    )
   })
 
-  it('renders preview summary from preview response', () => {
-    const snapshot = buildSnapshot()
-    const previewData = buildPreview(snapshot)
-    setupHooks({ previewData })
-    render(<StatsPanel agentId="agent-1" />)
-
-    expect(screen.getByText(/本次消耗点数/)).toBeTruthy()
-    expect(screen.getByText(/提交后剩余/)).toBeTruthy()
-    expect(screen.getByText(/预估 talkativeness/)).toBeTruthy()
-    expect(screen.getByText(/预估记忆 budget\/topK/)).toBeTruthy()
-  })
-
-  it('shows preview and allocate error messages', () => {
+  it('shows allocate error messages', () => {
     setupHooks({
-      previewError: new Error('preview boom'),
       allocateError: new Error('allocate boom'),
     })
     render(<StatsPanel agentId="agent-1" />)
 
-    expect(screen.getByText('预览失败：preview boom')).toBeTruthy()
     expect(screen.getByText('提交失败：allocate boom')).toBeTruthy()
   })
 
@@ -261,12 +203,10 @@ describe('StatsPanel', () => {
       data: undefined,
       error: { code: 'FORBIDDEN' },
     } as never)
-    usePreviewStatsAllocationMock.mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-      isError: false,
+    useAgentXpMock.mockReturnValue({
+      isLoading: false,
+      data: undefined,
       error: null,
-      reset: vi.fn(),
     } as never)
     useAllocateStatsMock.mockReturnValue({
       mutate: vi.fn(),
@@ -279,5 +219,72 @@ describe('StatsPanel', () => {
 
     expect(screen.getByText('Stats 当前不可用')).toBeTruthy()
     expect(screen.getByText('你当前没有这个 Agent 的 Stats 管理权限。')).toBeTruthy()
+  })
+
+  it('disables positive allocation actions when no unspent points remain', () => {
+    const snapshot = buildSnapshot()
+    snapshot.stats.unspent_points = 0
+    snapshot.stats.granted_points_total = 0
+
+    setupHooks({ snapshot })
+    render(<StatsPanel agentId="agent-1" />)
+
+    expect(
+      (screen.getByRole('button', { name: '社交倾向向外向加点' }) as HTMLButtonElement).disabled,
+    ).toBe(true)
+    expect((screen.getByRole('button', { name: '记忆力增加' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    )
+  })
+
+  it('still allows rolling back draft points after available points reach zero', () => {
+    const snapshot = buildSnapshot()
+    snapshot.stats.unspent_points = 1
+    snapshot.stats.granted_points_total = 1
+
+    setupHooks({ snapshot })
+    render(<StatsPanel agentId="agent-1" />)
+
+    const increaseButton = screen.getByRole('button', {
+      name: '社交倾向向外向加点',
+    }) as HTMLButtonElement
+    const decreaseButton = screen.getByRole('button', {
+      name: '社交倾向向内向加点',
+    }) as HTMLButtonElement
+
+    fireEvent.click(increaseButton)
+
+    expect(increaseButton.disabled).toBe(true)
+    expect(decreaseButton.disabled).toBe(false)
+
+    fireEvent.click(decreaseButton)
+
+    expect(
+      (screen.getByRole('button', { name: '社交倾向向外向加点' }) as HTMLButtonElement).disabled,
+    ).toBe(false)
+  })
+
+  it('renders top summary with level, available points, restore and confirm', () => {
+    setupHooks()
+    render(<StatsPanel agentId="agent-1" />)
+
+    expect(screen.getByText('等级：')).toBeTruthy()
+    expect(screen.getByText('可用点数：')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '复原' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '确认' })).toBeTruthy()
+  })
+
+  it('opens a confirmation dialog before submitting allocation', () => {
+    const { allocateMutate } = setupHooks()
+    render(<StatsPanel agentId="agent-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: '社交倾向向外向加点' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认' }))
+
+    expect(screen.getByText('提交后本次加点会立即生效，且不可重置。')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+
+    expect(allocateMutate).toHaveBeenCalledTimes(0)
   })
 })

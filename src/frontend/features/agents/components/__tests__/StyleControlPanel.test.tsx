@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { StyleControlPanel } from '../StyleControlPanel'
 import { useAgentStyle, useUpdateAgentStyle } from '@/api/hooks'
@@ -27,7 +27,7 @@ describe('StyleControlPanel', () => {
     vi.clearAllMocks()
   })
 
-  it('enables save after local changes and submits the edited settings', () => {
+  it('autosaves rounded settings after local changes', async () => {
     const mutate = vi.fn()
 
     useAgentStyleMock.mockReturnValue({
@@ -44,17 +44,13 @@ describe('StyleControlPanel', () => {
 
     render(<StyleControlPanel agentId="agent-1" />)
 
-    const saveButton = screen.getByRole('button', { name: '保存设定' })
-    expect((saveButton as HTMLButtonElement).disabled).toBe(true)
-
     fireEvent.change(screen.getByRole('slider', { name: '正式度' }), {
-      target: { value: '5' },
+      target: { value: '4.6' },
     })
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.click(saveButton)
+    expect(mutate).not.toHaveBeenCalled()
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1))
 
-    expect(mutate).toHaveBeenCalledTimes(1)
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
         formality: 5,
@@ -69,7 +65,7 @@ describe('StyleControlPanel', () => {
     )
   })
 
-  it('does not submit immediately when local controls change', () => {
+  it('does not submit immediately before the autosave debounce window elapses', async () => {
     const mutate = vi.fn()
 
     useAgentStyleMock.mockReturnValue({
@@ -90,7 +86,41 @@ describe('StyleControlPanel', () => {
       target: { value: '4' },
     })
 
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
     expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('autosaves forum activity after debounce', async () => {
+    const mutate = vi.fn()
+
+    useAgentStyleMock.mockReturnValue({
+      data: { data: buildStyleSettings() },
+      isLoading: false,
+    } as never)
+
+    useUpdateAgentStyleMock.mockReturnValue({
+      mutate,
+      isPending: false,
+      isError: false,
+      error: null,
+    } as never)
+
+    render(<StyleControlPanel agentId="agent-1" />)
+
+    fireEvent.change(screen.getByRole('slider', { name: '论坛活跃度' }), {
+      target: { value: '2' },
+    })
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1))
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        forum_activity: 2,
+      }),
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
   })
 
   it('preserves unsaved local edits when fresh query data arrives', () => {
@@ -114,7 +144,7 @@ describe('StyleControlPanel', () => {
     const { rerender } = render(<StyleControlPanel agentId="agent-1" />)
 
     fireEvent.change(screen.getByRole('slider', { name: '正式度' }), {
-      target: { value: '5' },
+      target: { value: '4.6' },
     })
 
     serverStyle = {
@@ -124,7 +154,6 @@ describe('StyleControlPanel', () => {
 
     rerender(<StyleControlPanel agentId="agent-1" />)
 
-    expect((screen.getByRole('slider', { name: '正式度' }) as HTMLInputElement).value).toBe('5')
-    expect(screen.getByText('设定已修改，点击保存后生效。')).toBeTruthy()
+    expect((screen.getByRole('slider', { name: '正式度' }) as HTMLInputElement).value).toBe('4.6')
   })
 })

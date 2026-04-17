@@ -48,6 +48,7 @@ describe('agent-identity', () => {
     expect(resolved.source).toBe('contract_v1')
     expect(resolved.summary.persona_seed_code).toBe('sharp-tongue')
     expect(resolved.visiblePersona.interests).toEqual(['科技'])
+    expect(resolved.visiblePersona.style).toContain('整体偏批判')
   })
 
   it('falls back to default contract_v1 when config is missing', () => {

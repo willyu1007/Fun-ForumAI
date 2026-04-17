@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAgentStyle, useUpdateAgentStyle } from '@/api/hooks'
 import type { StyleSettings } from '@/api/types'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 const MOOD_OPTIONS = [
   { value: 'optimistic', label: '乐观' },
@@ -19,6 +18,15 @@ interface StyleControlPanelProps {
   agentId: string
 }
 
+function normalizeStyleSettings(settings: StyleSettings): StyleSettings {
+  return {
+    ...settings,
+    formality: Math.round(settings.formality),
+    verbosity: Math.round(settings.verbosity),
+    forum_activity: Math.round(settings.forum_activity),
+  }
+}
+
 function isSameStyleSettings(left: StyleSettings | null, right: StyleSettings | null): boolean {
   if (!left || !right) return left === right
 
@@ -32,20 +40,48 @@ function isSameStyleSettings(left: StyleSettings | null, right: StyleSettings | 
   )
 }
 
+function styleSettingsSignature(settings: StyleSettings | null): string {
+  if (!settings) return 'null'
+  return JSON.stringify({
+    formality: settings.formality,
+    verbosity: settings.verbosity,
+    mood: settings.mood,
+    habits: settings.habits,
+    forum_activity: settings.forum_activity,
+  })
+}
+
 export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
   const { data, isLoading } = useAgentStyle(agentId)
   const updateStyle = useUpdateAgentStyle(agentId)
+  const mutateStyle = updateStyle.mutate
+  const isSaving = updateStyle.isPending
+  const saveError = updateStyle.isError ? updateStyle.error : null
   const [local, setLocal] = useState<StyleSettings | null>(null)
   const [savedSnapshot, setSavedSnapshot] = useState<StyleSettings | null>(null)
   const [hasLocalEdits, setHasLocalEdits] = useState(false)
+  const latestLocalRef = useRef<StyleSettings | null>(null)
+  const lastSubmittedSignatureRef = useRef<string>('null')
+  const savedSignature = styleSettingsSignature(savedSnapshot)
+  const localSignature = styleSettingsSignature(local)
 
   useEffect(() => {
     if (!data?.data) return
-    setSavedSnapshot(data.data)
-    if (!hasLocalEdits) {
-      setLocal(data.data)
+    const normalized = normalizeStyleSettings(data.data)
+    const incomingSignature = styleSettingsSignature(normalized)
+
+    if (incomingSignature !== savedSignature) {
+      setSavedSnapshot(normalized)
     }
-  }, [data, hasLocalEdits])
+    lastSubmittedSignatureRef.current = incomingSignature
+    if (!hasLocalEdits && incomingSignature !== localSignature) {
+      setLocal(normalized)
+    }
+  }, [data, hasLocalEdits, localSignature, savedSignature])
+
+  useEffect(() => {
+    latestLocalRef.current = local
+  }, [local])
 
   const patch = (partial: Partial<StyleSettings>) => {
     setHasLocalEdits(true)
@@ -54,6 +90,37 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
       return { ...prev, ...partial }
     })
   }
+
+  const isDirty = !isSameStyleSettings(local, savedSnapshot)
+
+  useEffect(() => {
+    if (!local || !isDirty || isSaving) return
+
+    const normalized = normalizeStyleSettings(local)
+    const signature = styleSettingsSignature(normalized)
+    if (signature === lastSubmittedSignatureRef.current) return
+
+    const timeoutId = window.setTimeout(() => {
+      lastSubmittedSignatureRef.current = signature
+      mutateStyle(normalized, {
+        onSuccess: () => {
+          setSavedSnapshot(normalized)
+          setLocal((prev) => {
+            if (!prev) return prev
+            const normalizedPrev = normalizeStyleSettings(prev)
+            return isSameStyleSettings(normalizedPrev, normalized) ? normalized : prev
+          })
+
+          const latestLocal = latestLocalRef.current
+          if (latestLocal && isSameStyleSettings(normalizeStyleSettings(latestLocal), normalized)) {
+            setHasLocalEdits(false)
+          }
+        },
+      })
+    }, 400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isDirty, isSaving, local, mutateStyle])
 
   if (isLoading || !local) {
     return (
@@ -71,112 +138,98 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
     patch({ habits })
   }
 
-  const isDirty = !isSameStyleSettings(local, savedSnapshot)
-
-  const handleSave = () => {
-    if (!local || !isDirty || updateStyle.isPending) return
-
-    updateStyle.mutate(local, {
-      onSuccess: () => {
-        setSavedSnapshot(local)
-        setHasLocalEdits(false)
-      },
-    })
-  }
-
   return (
-    <div className="space-y-6">
-      <SliderField
-        label="正式度"
-        value={local.formality}
-        min={1}
-        max={5}
-        leftLabel="随意"
-        rightLabel="正式"
-        onChange={(v) => patch({ formality: v })}
-      />
-
-      <SliderField
-        label="详细度"
-        value={local.verbosity}
-        min={1}
-        max={5}
-        leftLabel="简洁"
-        rightLabel="详细"
-        onChange={(v) => patch({ verbosity: v })}
-      />
-
-      <div className="border-t border-border/50 pt-5">
-        <span className="mb-2 block text-sm font-medium">情绪倾向</span>
-        <div className="flex flex-wrap gap-2">
-          {MOOD_OPTIONS.map((opt) => (
-            <label
-              key={opt.value}
-              className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                local.mood === opt.value
-                  ? 'border-primary/30 text-primary'
-                  : 'border-border/70 text-foreground/82 hover:border-border'
-              }`}
-            >
-              <input
-                type="radio"
-                name="mood"
-                value={opt.value}
-                checked={local.mood === opt.value}
-                onChange={() => patch({ mood: opt.value })}
-                className="sr-only"
-              />
-              {opt.label}
-            </label>
-          ))}
+    <div className="space-y-5">
+      <div className="grid gap-x-6 gap-y-5 lg:grid-cols-[minmax(0,3fr)_minmax(15rem,2fr)] lg:items-start">
+        <div className="lg:pr-5">
+          <SliderField
+            label="正式"
+            ariaLabel="正式度"
+            hint="语气更书面、更克制"
+            value={local.formality}
+            min={1}
+            max={5}
+            onChange={(v) => patch({ formality: v })}
+          />
         </div>
-      </div>
 
-      <div className="border-t border-border/50 pt-5">
-        <span className="mb-2 block text-sm font-medium">表达习惯</span>
-        <div className="flex flex-wrap gap-2">
-          {HABIT_OPTIONS.map((opt) => {
-            const active = local.habits.includes(opt.value)
-            return (
-              <button
+        <div className="grid gap-x-3 gap-y-1.5 lg:grid-cols-[4.5rem_minmax(0,1fr)] lg:items-start">
+          <span className="text-[13px] font-semibold leading-6 tracking-tight text-foreground/90">情绪倾向</span>
+          <div className="flex flex-wrap items-start gap-1.5">
+            {MOOD_OPTIONS.map((opt) => (
+              <label
                 key={opt.value}
-                type="button"
-                onClick={() => toggleHabit(opt.value)}
-                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-                  active ? 'border-primary/30 text-primary' : 'border-border/70 text-foreground/82 hover:border-border'
+                className={`cursor-pointer rounded-md px-2.5 py-0.5 text-xs font-medium leading-6 transition-colors ${
+                  local.mood === opt.value
+                    ? 'bg-[#e7edf7] text-[#233a63]'
+                    : 'text-foreground/68 hover:bg-muted/55 hover:text-foreground/88'
                 }`}
               >
+                <input
+                  type="radio"
+                  name="mood"
+                  value={opt.value}
+                  checked={local.mood === opt.value}
+                  onChange={() => patch({ mood: opt.value })}
+                  className="sr-only"
+                />
                 {opt.label}
-              </button>
-            )
-          })}
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <SliderField
-        label="论坛活跃度"
-        value={local.forum_activity}
-        min={1}
-        max={5}
-        leftLabel="低调"
-        rightLabel="活跃"
-        onChange={(v) => patch({ forum_activity: v })}
-      />
+        <div className="lg:pr-5">
+          <SliderField
+            label="详细"
+            ariaLabel="详细度"
+            hint="回答更展开、信息更完整"
+            value={local.verbosity}
+            min={1}
+            max={5}
+            onChange={(v) => patch({ verbosity: v })}
+          />
+        </div>
 
-      <div className="border-t border-border/50 pt-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            {updateStyle.isPending
-              ? '正在保存设定...'
-              : updateStyle.isError
-                ? `保存失败：${String((updateStyle.error as Error)?.message ?? 'unknown error')}`
-                : isDirty
-                  ? '设定已修改，点击保存后生效。'
-                  : '当前设定已保存。'}
+        <div className="grid gap-x-3 gap-y-1.5 lg:grid-cols-[4.5rem_minmax(0,1fr)] lg:items-start">
+          <span className="text-[13px] font-semibold leading-6 tracking-tight text-foreground/90">表达习惯</span>
+          <div className="flex flex-wrap items-start gap-1.5">
+            {HABIT_OPTIONS.map((opt) => {
+              const active = local.habits.includes(opt.value)
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => toggleHabit(opt.value)}
+                  className={`rounded-md px-2.5 py-0.5 text-xs font-medium leading-6 transition-colors ${
+                    active
+                      ? 'bg-[#e7edf7] text-[#233a63]'
+                      : 'text-foreground/68 hover:bg-muted/55 hover:text-foreground/88'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="lg:pr-5">
+          <SliderField
+            label="活跃"
+            ariaLabel="论坛活跃度"
+            hint="更容易主动参与公开讨论"
+            value={local.forum_activity}
+            min={1}
+            max={5}
+            onChange={(v) => patch({ forum_activity: v })}
+          />
+        </div>
+
+        <div className="flex min-h-[4.5rem] items-start justify-end pt-1">
+          <p className="text-right text-xs leading-6 text-muted-foreground">
+            {saveError ? `保存失败：${String((saveError as Error)?.message ?? 'unknown error')}` : ''}
           </p>
-          <Button type="button" size="sm" onClick={handleSave} disabled={!isDirty || updateStyle.isPending}>
-            保存设定
-          </Button>
         </div>
       </div>
     </div>
@@ -184,41 +237,71 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
 }
 function SliderField({
   label,
+  ariaLabel,
+  hint,
   value,
   min,
   max,
-  leftLabel,
-  rightLabel,
   onChange,
 }: {
   label: string
+  ariaLabel?: string
+  hint: string
   value: number
   min: number
   max: number
-  leftLabel: string
-  rightLabel: string
   onChange: (v: number) => void
 }) {
+  const [showHint, setShowHint] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const showValue = showHint || isDragging
+
   return (
-    <div className="border-t border-border/50 pt-5 first:border-t-0 first:pt-0">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
-        <span className="text-xs text-muted-foreground">{value}</span>
+    <div className="space-y-1.5">
+      <div className="space-y-1">
+        <div className="flex min-h-6 items-start gap-3">
+          <button
+            type="button"
+            aria-label={`${ariaLabel ?? label}说明`}
+            aria-describedby={showHint ? `${(ariaLabel ?? label).replace(/\s+/g, '-')}-hint` : undefined}
+            onMouseEnter={() => setShowHint(true)}
+            onMouseLeave={() => setShowHint(false)}
+            onFocus={() => setShowHint(true)}
+            onBlur={() => setShowHint(false)}
+            className="inline-flex min-h-6 items-start rounded-sm text-[13px] font-semibold leading-6 tracking-tight text-foreground/90 transition-colors hover:text-primary focus-visible:text-primary"
+          >
+            {label}
+          </button>
+          {showValue ? (
+            <span className="text-[11px] leading-6 text-muted-foreground">
+              {value.toFixed(2)}
+            </span>
+          ) : null}
+        </div>
+        <p
+          id={`${(ariaLabel ?? label).replace(/\s+/g, '-')}-hint`}
+          aria-hidden={!showHint}
+          className={`overflow-hidden text-[11px] leading-4 text-muted-foreground transition-all ${
+            showHint ? 'max-h-5 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          {hint}
+        </p>
       </div>
       <input
         type="range"
         min={min}
         max={max}
-        step={1}
+        step={0.01}
         value={value}
-        aria-label={label}
+        aria-label={ariaLabel ?? label}
+        onPointerDown={() => setIsDragging(true)}
+        onPointerUp={() => setIsDragging(false)}
+        onPointerCancel={() => setIsDragging(false)}
+        onBlur={() => setIsDragging(false)}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-primary"
       />
-      <div className="mt-0.5 flex justify-between text-xs text-muted-foreground">
-        <span>{leftLabel}</span>
-        <span>{rightLabel}</span>
-      </div>
     </div>
   )
 }

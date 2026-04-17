@@ -118,8 +118,8 @@ const mediaAssetsConfig = {
 }
 
 const launchCapabilities = {
-  guidanceV1: false,
-  guidanceRecallV1: false,
+  guidanceV1: readBooleanFlag(env.FF_GUIDANCE_V1, allowDevTools),
+  guidanceRecallV1: readBooleanFlag(env.FF_GUIDANCE_RECALL_V1, allowDevTools),
   homeProgrammingV1: true,
   programmingOpsV1: true,
   lightweightPersonalizationV1: true,
@@ -148,7 +148,7 @@ const launchCapabilities = {
   publicObservationMemory: true,
   socialGraphEffective: true,
   socialGraphExplainer: false,
-  agentStatsV1: readBooleanFlag(env.FF_AGENT_STATS_V1, false),
+  agentStatsV1: readBooleanFlag(env.FF_AGENT_STATS_V1, true),
   agentStatsBehavior: readBooleanFlag(env.FF_AGENT_STATS_BEHAVIOR, false),
   agentStatsRelationPolicy: readBooleanFlag(env.FF_AGENT_STATS_RELATION_POLICY, false),
   agentStatsVotePolicy: readBooleanFlag(env.FF_AGENT_STATS_VOTE_POLICY, false),

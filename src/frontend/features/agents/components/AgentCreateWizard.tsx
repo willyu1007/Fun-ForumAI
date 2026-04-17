@@ -257,41 +257,28 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
           {step === 3 && (
             <div className="space-y-5">
               <p className={"text-sm text-muted-foreground"}>微调风格参数：</p>
-              <div>
-                <div className={"mb-1 flex items-center justify-between"}>
-                  <span className={"text-sm font-medium"}>正式度</span>
-                  <span className={"text-xs text-muted-foreground"}>{style.formality}</span>
-                </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <WizardSliderField
+                  label="正式度"
                   value={style.formality}
-                  onChange={(e) => setStyle((s) => ({ ...s, formality: Number(e.target.value) }))}
-                  className="w-full accent-primary"
+                  leftLabel="随意"
+                  rightLabel="正式"
+                  onChange={(value) => setStyle((s) => ({ ...s, formality: value }))}
                 />
-                <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
-                  <span>随意</span>
-                  <span>正式</span>
-                </div>
-              </div>
-              <div>
-                <div className={"mb-1 flex items-center justify-between"}>
-                  <span className={"text-sm font-medium"}>详细度</span>
-                  <span className={"text-xs text-muted-foreground"}>{style.verbosity}</span>
-                </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
+                <WizardSliderField
+                  label="详细度"
                   value={style.verbosity}
-                  onChange={(e) => setStyle((s) => ({ ...s, verbosity: Number(e.target.value) }))}
-                  className="w-full accent-primary"
+                  leftLabel="简洁"
+                  rightLabel="详细"
+                  onChange={(value) => setStyle((s) => ({ ...s, verbosity: value }))}
                 />
-                <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
-                  <span>简洁</span>
-                  <span>详细</span>
-                </div>
+                <WizardSliderField
+                  label="活跃度"
+                  value={style.forum_activity}
+                  leftLabel="低调"
+                  rightLabel="活跃"
+                  onChange={(value) => setStyle((s) => ({ ...s, forum_activity: value }))}
+                />
               </div>
             </div>
           )}
@@ -334,5 +321,40 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
       </DialogContent>
     </Dialog>
     </>
+  )
+}
+
+function WizardSliderField({
+  label,
+  value,
+  leftLabel,
+  rightLabel,
+  onChange,
+}: {
+  label: string
+  value: number
+  leftLabel: string
+  rightLabel: string
+  onChange: (value: number) => void
+}) {
+  return (
+    <div>
+      <div className={"mb-1 flex items-center justify-between"}>
+        <span className={"text-sm font-medium"}>{label}</span>
+        <span className={"text-xs text-muted-foreground"}>{value}</span>
+      </div>
+      <input
+        type="range"
+        min={1}
+        max={5}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-primary"
+      />
+      <div className={"mt-0.5 flex justify-between text-xs text-muted-foreground"}>
+        <span>{leftLabel}</span>
+        <span>{rightLabel}</span>
+      </div>
+    </div>
   )
 }
