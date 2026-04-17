@@ -364,6 +364,12 @@ describe('AgentInteractionModal geometry updates', () => {
     )
   })
 
+  it('uses 朋友圈 as the social tab label', () => {
+    renderOpenModal()
+
+    expect(screen.getByTitle('朋友圈')).toBeTruthy()
+  })
+
   it('applies the manage-mode minimum width within the viewport budget on first render', () => {
     renderOpenModal()
 

@@ -11,6 +11,7 @@ const useGuidanceInboxMock = vi.fn()
 const usePrivateSessionsMock = vi.fn()
 const usePrivateMessageTimelineMock = vi.fn()
 const useCreatePrivateSessionMock = vi.fn()
+const createPrivateSessionMutateAsyncMock = vi.fn()
 const useSendPrivateMessageMock = vi.fn()
 const useUploadPrivateMessageAttachmentMock = vi.fn()
 const useEndPrivateSessionMock = vi.fn()
@@ -129,7 +130,7 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  TooltipContent: () => null,
+  TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 function buildSession(input: {
@@ -182,8 +183,10 @@ describe('TabChat timeline layout', () => {
       isPending: false,
     })
     useGuidanceInboxMock.mockReturnValue({ data: { data: { items: [] } } })
+    createPrivateSessionMutateAsyncMock.mockReset()
+    createPrivateSessionMutateAsyncMock.mockImplementation(async () => ({ data: { id: 'session-agent-2-new' } }))
     useCreatePrivateSessionMock.mockReturnValue({
-      mutateAsync: vi.fn(async () => ({ data: { id: 'session-agent-2-new' } })),
+      mutateAsync: createPrivateSessionMutateAsyncMock,
       isPending: false,
       isError: false,
       error: null,
@@ -422,13 +425,14 @@ describe('TabChat timeline layout', () => {
     expect(screen.getByTestId('private-chat-thread-scroll-area').className).toContain('min-h-0')
   })
 
-  it('renders the private social bio header from profile data', async () => {
+  it('does not render the private social bio header copy inside the chat tab', async () => {
     renderWithRouter(<TabChat agentId="agent-2" />)
 
     await waitFor(() => {
-      expect(screen.getByText('她刚把一段公开经历压进更私人的节奏里。')).toBeTruthy()
+      expect(screen.getByTestId('session-timeline-session-agent-2-active')).toBeTruthy()
     })
 
+    expect(screen.queryByText('她刚把一段公开经历压进更私人的节奏里。')).toBeNull()
     expect(screen.queryByText('这会儿语气偏稳，适合慢慢往下聊。')).toBeNull()
   })
 
@@ -472,11 +476,50 @@ describe('TabChat timeline layout', () => {
     renderWithRouter(<TabChat agentId="agent-2" />)
 
     await waitFor(() => {
-      expect(screen.getByText('接收主动私信需要先完成实名审核')).toBeTruthy()
+      expect(screen.getByRole('button', { name: '私聊暂不可用' })).toBeTruthy()
     })
 
+    expect(screen.queryByText('接收主动私信需要先完成实名审核')).toBeNull()
+    expect(screen.getByText('需实名')).toBeTruthy()
     expect(screen.getByTestId('private-chat-rules-panel').className).toContain('pointer-events-auto')
     expect(screen.getByText('私聊实名审核要求')).toBeTruthy()
+  })
+
+  it('shows database unavailability inline and disables the empty-state CTA before click', async () => {
+    usePrivateSessionsMock.mockReturnValue({
+      data: {
+        data: { items: [] },
+        meta: {
+          private_chat_available: false,
+          unavailable_reason: 'DB_UNAVAILABLE',
+          unavailable_message: '私聊当前不可用，请先启动本地数据库并启用持久化。',
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+    usePrivateMessageTimelineMock.mockReturnValue({
+      items: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    renderWithRouter(<TabChat agentId="agent-2" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '私聊暂不可用' })).toBeTruthy()
+    })
+
+    expect(screen.queryByText('私聊当前不可用，请先启动本地数据库并启用持久化。')).toBeNull()
+    expect(screen.getByText('数据库未启用')).toBeTruthy()
+    const cta = screen.getByRole('button', { name: '私聊暂不可用' })
+    expect(cta.getAttribute('disabled')).not.toBeNull()
+
+    fireEvent.click(cta)
+
+    expect(createPrivateSessionMutateAsyncMock).not.toHaveBeenCalled()
   })
 
   it('closes an auto-opened rules panel once private chat access is restored', async () => {
@@ -541,7 +584,7 @@ describe('TabChat timeline layout', () => {
     })
   })
 
-  it('shows a public-only notice when the agent does not allow private chat', () => {
+  it('shows the unavailable CTA with a disabled status when the agent does not allow private chat', () => {
     useAgentProfileMock.mockReturnValue({
       data: {
         data: {
@@ -572,7 +615,8 @@ describe('TabChat timeline layout', () => {
 
     renderWithRouter(<TabChat agentId="agent-system-1" />)
 
-    expect(screen.getByText('该角色未开放私域聊天')).toBeTruthy()
-    expect(screen.getByText(/只参与公域内容和关注关系/)).toBeTruthy()
+    expect(screen.queryByText('该角色未开放私域聊天')).toBeNull()
+    expect(screen.getByRole('button', { name: '私聊暂不可用' })).toBeTruthy()
+    expect(screen.getByText('未开放私聊')).toBeTruthy()
   })
 })

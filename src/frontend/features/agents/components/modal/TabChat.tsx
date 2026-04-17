@@ -11,6 +11,7 @@ import {
   useUploadPrivateMessageAttachment,
   useEndPrivateSession,
 } from '@/api/hooks'
+import { getApiErrorCode } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -100,6 +101,27 @@ function isIdentityGateError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('实名审核')
 }
 
+function isDatabaseUnavailableError(error: unknown): boolean {
+  return getApiErrorCode(error) === 'DB_UNAVAILABLE'
+}
+
+function readUnavailableMetaReason(meta: unknown): string | null {
+  if (!meta || typeof meta !== 'object') return null
+  const unavailableReason = (meta as { unavailable_reason?: unknown }).unavailable_reason
+  return typeof unavailableReason === 'string' && unavailableReason.trim().length > 0
+    ? unavailableReason
+    : null
+}
+
+function mapUnavailableStatusLabel(reason: string | null): string | null {
+  switch (reason) {
+    case 'DB_UNAVAILABLE':
+      return '数据库未启用'
+    default:
+      return null
+  }
+}
+
 function isPendingAgentReply(message: PrivateMessage): boolean {
   return message.author_type === 'AGENT' && (message.runtime_status ?? 'READY') === 'THINKING'
 }
@@ -129,12 +151,23 @@ export function TabChat({
   const createSession = useCreatePrivateSession(agentId)
   const createReport = useCreateReport()
   const agent = agentData?.data
-  const privateHeaderBio = agent?.social_bio?.private_header_bio?.trim() || ''
-  const showBioHeader = privateHeaderBio.length > 0
   const sessionItems = sessionsData?.data?.items
   const sessions = useMemo(() => sortSessionsByStartTime(sessionItems ?? []), [sessionItems])
   const currentSession = useMemo(() => getCurrentSession(sessions), [sessions])
   const timeline = usePrivateMessageTimeline(agentId, sessions)
+  const identityGateBlocked =
+    isIdentityGateError(sessionsQueryError)
+    || isIdentityGateError(createSession.error)
+    || isIdentityGateError(timeline.error)
+  const privateChatDisabledByAgent = agent?.surface_access?.private_chat_enabled === false
+  const privateChatUnavailableStatus =
+    privateChatDisabledByAgent
+      ? '未开放私聊'
+      : identityGateBlocked
+        ? '需实名'
+        : mapUnavailableStatusLabel(readUnavailableMetaReason(sessionsData?.meta))
+          ?? (isDatabaseUnavailableError(createSession.error) ? '数据库未启用' : null)
+  const privateChatUnavailable = privateChatUnavailableStatus !== null
   const currentTimelineChunk =
     timeline.items.find((item) => item.session.id === currentSession?.id) ?? null
   const visibleTimelineItems = useMemo(
@@ -173,18 +206,14 @@ export function TabChat({
   }, [agentId])
 
   useEffect(() => {
-    const hasGateError =
-      isIdentityGateError(sessionsQueryError)
-      || isIdentityGateError(createSession.error)
-      || isIdentityGateError(timeline.error)
-    if (hasGateError) {
+    if (identityGateBlocked) {
       openRules(true)
       return
     }
     if (rulesAutoOpenedRef.current) {
       closeRules()
     }
-  }, [createSession.error, sessionsQueryError, timeline.error])
+  }, [identityGateBlocked])
 
   useEffect(() => {
     if (!resolvedVisibleFocusSessionId) return
@@ -193,6 +222,9 @@ export function TabChat({
   }, [resolvedVisibleFocusSessionId, visibleTimelineItems.length])
 
   const handleNewSession = async () => {
+    if (privateChatUnavailable) {
+      return
+    }
     try {
       const result = await createSession.mutateAsync()
       setFocusedSessionId(result.data.id)
@@ -237,31 +269,9 @@ export function TabChat({
     return <div className={"p-4 text-destructive"}>Agent 不存在</div>
   }
 
-  if (agent.surface_access?.private_chat_enabled === false) {
-    return (
-      <div className="mx-auto flex h-full w-full max-w-2xl items-center justify-center p-6">
-        <div className="rounded-[2rem] border border-border/70 bg-background/95 px-6 py-8 text-center shadow-sm">
-          <p className="text-sm font-medium text-foreground">该角色未开放私域聊天</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            这个节目席位只参与公域内容和关注关系，不进入私聊通道。
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="relative flex h-full min-h-0 w-full overflow-hidden" data-testid="private-chat-root">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-testid="private-chat-main-area">
-        {showBioHeader && (
-          <div className="border-b bg-background/90">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-1 px-6 py-4">
-              {privateHeaderBio ? (
-                <p className="text-sm leading-relaxed text-foreground">{privateHeaderBio}</p>
-              ) : null}
-            </div>
-          </div>
-        )}
         {currentSession ? (
           <ChatTimeline
             agentId={agentId}
@@ -291,10 +301,18 @@ export function TabChat({
           <ChatEmptyState
             onNewSession={handleNewSession}
             isCreating={createSession.isPending}
+            unavailableStatus={privateChatUnavailableStatus}
+            actionDisabled={privateChatUnavailable}
             errorMessage={
               createSession.isError
-                ? createSession.error.message
-                : sessionErrorMessage
+                ? (
+                  isDatabaseUnavailableError(createSession.error) || identityGateBlocked
+                    ? null
+                    : createSession.error.message
+                )
+                : identityGateBlocked
+                  ? null
+                  : sessionErrorMessage
             }
             onOpenRules={() => openRules(false)}
           />
@@ -862,11 +880,15 @@ function ToolbarIconButton({
 function ChatEmptyState({
   onNewSession,
   isCreating,
+  unavailableStatus,
+  actionDisabled,
   errorMessage,
   onOpenRules,
 }: {
   onNewSession: () => void
   isCreating: boolean
+  unavailableStatus: string | null
+  actionDisabled: boolean
   errorMessage: string | null
   onOpenRules: () => void
 }) {
@@ -875,9 +897,24 @@ function ChatEmptyState({
       <div className={"flex w-full max-w-xl flex-col items-center px-6 py-8"}>
         {errorMessage && <p className={"mt-4 text-sm text-destructive"}>{errorMessage}</p>}
         <div className={"flex flex-col items-center gap-3"}>
-          <Button className={"rounded-full px-6"} onClick={onNewSession} disabled={isCreating}>
-            {isCreating ? '正在打开…' : '开始聊天'}
-          </Button>
+          {actionDisabled && unavailableStatus ? (
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button className={"rounded-full px-6"} onClick={onNewSession} disabled>
+                      私聊暂不可用
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>{unavailableStatus}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button className={"rounded-full px-6"} onClick={onNewSession} disabled={isCreating}>
+              {isCreating ? '正在打开…' : '开始聊天'}
+            </Button>
+          )}
           <button
             type="button"
             className="text-xs font-medium tracking-[0.01em] text-muted-foreground transition-colors hover:text-foreground"

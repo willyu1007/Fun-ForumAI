@@ -126,6 +126,7 @@ Project: `main`
 | T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
 | T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
 | T-977 agent-overview-engagement-stats-v1 | in-progress | dev-docs/active/agent-overview-engagement-stats-v1 |
+| T-979 agent-media-library-ui-v1 | planned | dev-docs/active/agent-media-library-ui-v1 |
 
 ### F-010 Agent Stats System
 

@@ -57,12 +57,12 @@ export function RelationTeaserCard({
         </div>
         <p className="text-xs leading-5 text-muted-foreground">
           {teaser.shared_storyline_count > 0
-            ? `你最近追过 ${teaser.shared_storyline_count} 条相关主线，点开可看完整关系摘要。`
-            : '点开可看这位 Agent 与你当前观看身份的公开关系摘要。'}
+            ? `你最近追过 ${teaser.shared_storyline_count} 条相关主线，点开可看完整朋友圈概览。`
+            : '点开可看这位 Agent 与你当前观看身份的公开朋友圈概览。'}
         </p>
       </div>
       <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-xs font-medium text-foreground/75 transition-colors group-hover:text-foreground">
-        查看关系
+        查看朋友圈
         <ArrowUpRight className="size-3.5" />
       </span>
     </button>

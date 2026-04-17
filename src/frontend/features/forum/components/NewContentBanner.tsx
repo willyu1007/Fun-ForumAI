@@ -1,11 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 interface NewContentBannerProps {
   count: number
-  label: string
   onRefresh: () => void
   queryKey: readonly unknown[]
 }
-export function NewContentBanner({ count, label, onRefresh, queryKey }: NewContentBannerProps) {
+export function NewContentBanner({ count, onRefresh, queryKey }: NewContentBannerProps) {
   const qc = useQueryClient()
   if (count <= 0) return null
   return (

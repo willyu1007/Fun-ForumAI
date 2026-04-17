@@ -5,6 +5,8 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { REQUIRED_LAUNCH_FRONTEND_CAPABILITIES } from '../../ops/packaging/scripts/frontend-build-profile.mjs'
 
+export const IMAGE_REPO_TEST_SEARCH_PATHS = ['src', 'scripts', 'dist', 'config', 'docs', 'env', '.ai', 'packages']
+
 function parseArgs(argv) {
   const result = {}
   for (let index = 2; index < argv.length; index += 1) {
@@ -43,6 +45,37 @@ function runDocker(args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim()
+}
+
+function readImageRepoTestMatches(imageRef) {
+  const searchRoots = IMAGE_REPO_TEST_SEARCH_PATHS.map((path) => `"${path}"`).join(' ')
+  return runDocker([
+    'run',
+    '--rm',
+    '--entrypoint',
+    'sh',
+    imageRef,
+    '-lc',
+    `for path in ${searchRoots}; do
+       if [ -e "$path" ]; then
+         find "$path" \\( -path '*/__tests__' -o -path '*/__tests__/*' -o -name '*.test.*' -o -name '*.spec.*' \\) -print
+       fi
+     done | sort`,
+  ])
+}
+
+export function validateImageHasNoRepoTestFiles(matches) {
+  if (!Array.isArray(matches)) {
+    throw new Error('repo test file matches must be an array')
+  }
+  const normalized = [...new Set(matches.map((value) => String(value).trim()).filter(Boolean))].sort()
+  if (normalized.length > 0) {
+    throw new Error(`image contains repo test files: ${normalized.join(', ')}`)
+  }
+  return {
+    checked_paths: [...IMAGE_REPO_TEST_SEARCH_PATHS],
+    matched_paths: 0,
+  }
 }
 
 export function validateLaunchImageProof(
@@ -130,6 +163,11 @@ function main() {
       ? { chatroom_staging_hold: expectedChatroomHold }
       : {}),
   })
+  const repoTestMatches = readImageRepoTestMatches(imageRef)
+    .split('\n')
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const repoTestSummary = validateImageHasNoRepoTestFiles(repoTestMatches)
   console.log(
     JSON.stringify(
       {
@@ -137,6 +175,8 @@ function main() {
         profile: summary.profile,
         enabled_capabilities: summary.enabled_capabilities,
         build_env_flags: summary.build_env_flags,
+        checked_repo_paths: repoTestSummary.checked_paths,
+        repo_test_matches: repoTestSummary.matched_paths,
       },
       null,
       2,

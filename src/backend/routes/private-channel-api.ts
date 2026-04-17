@@ -22,6 +22,7 @@ const DEV_SEED_AGENT_KEYS = new Set([
   'dev-user-001::俳句师',
   'dev-admin-001::代码审查官',
 ])
+const PRIVATE_CHAT_UNAVAILABLE_MESSAGE = '私聊当前不可用，请先启动本地数据库并启用持久化。'
 
 function getServices() {
   return container.privateChannelServices
@@ -177,7 +178,7 @@ privateChannelRouter.get('/private/agents/:agentId/nurture-suggestions', require
 privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, async (req, res) => {
   const services = getServices()
   if (!services) {
-    res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database not available' } })
+    res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: PRIVATE_CHAT_UNAVAILABLE_MESSAGE } })
     return
   }
 
@@ -211,16 +212,23 @@ privateChannelRouter.post('/agents/:agentId/chat/sessions', requireHumanAuth, as
 })
 
 privateChannelRouter.get('/agents/:agentId/chat/sessions', requireHumanAuth, async (req, res) => {
-  const services = getServices()
-  if (!services) {
-    res.json({ data: { items: [], next_cursor: null } })
-    return
-  }
-
   try {
     const ownership = await assertAgentOwner(String(req.params.agentId), req.user!.userId)
     if (!ownership.ok) {
       res.status(ownership.status).json({ error: { code: ownership.code, message: ownership.message } })
+      return
+    }
+
+    const services = getServices()
+    if (!services) {
+      res.json({
+        data: { items: [], next_cursor: null },
+        meta: {
+          private_chat_available: false,
+          unavailable_reason: 'DB_UNAVAILABLE',
+          unavailable_message: PRIVATE_CHAT_UNAVAILABLE_MESSAGE,
+        },
+      })
       return
     }
 

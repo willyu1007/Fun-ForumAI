@@ -51,7 +51,7 @@ const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
   { id: 'intro', icon: User, label: '档案' },
   { id: 'chat', icon: MessageSquare, label: '对话' },
   { id: 'moments', icon: Compass, label: '动态' },
-  { id: 'social', icon: Users, label: '关系' },
+  { id: 'social', icon: Users, label: '朋友圈' },
   { id: 'history', icon: BookOpen, label: '编年史' },
 ]
 

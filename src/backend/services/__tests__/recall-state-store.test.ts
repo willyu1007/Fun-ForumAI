@@ -1,123 +1,17 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { createServer } from 'node:net'
-import os from 'node:os'
-import path from 'node:path'
-import { Redis } from 'ioredis'
+import { describe, expect, it } from 'vitest'
+import type { RecallGrantAttemptInput } from '../recall-state-store.js'
 import { RedisRecallStateStore } from '../recall-state-store.js'
 
-const REDIS_SERVER_BIN = spawnSync('sh', ['-lc', 'command -v redis-server'], {
-  encoding: 'utf8',
-}).stdout.trim() || null
-
-const describeIfRedis = REDIS_SERVER_BIN
-  ? describe.sequential
-  : describe.skip
-
-describeIfRedis('RedisRecallStateStore', () => {
-  let port = 0
-  let tempDir = ''
-  let processRef: ChildProcess | null = null
-  let redis: Redis | null = null
-  let startupError = ''
-
-  beforeAll(async () => {
-    if (!REDIS_SERVER_BIN) {
-      throw new Error('redis-server not found')
-    }
-
-    port = await findFreePort()
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'ff-recall-store-'))
-    const child = spawn(
-      REDIS_SERVER_BIN,
-      [
-        '--save',
-        '',
-        '--appendonly',
-        'no',
-        '--bind',
-        '127.0.0.1',
-        '--port',
-        String(port),
-        '--dir',
-        tempDir,
-      ],
-      {
-        stdio: ['ignore', 'ignore', 'pipe'],
-      },
-    )
-    processRef = child
-    child.stderr.on('data', (chunk) => {
-      startupError += chunk.toString()
-    })
-
-    redis = new Redis(port, '127.0.0.1', {
-      lazyConnect: false,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    })
-    redis.on('error', () => {
-      // Startup retries are expected before the child process begins accepting connections.
-    })
-    await waitForRedis(redis, startupError)
-  })
-
-  afterAll(async () => {
-    if (redis) {
-      await redis.quit().catch(() => undefined)
-    }
-    if (processRef && !processRef.killed) {
-      processRef.kill('SIGTERM')
-      await waitForExit(processRef)
-    }
-    if (tempDir) {
-      await rm(tempDir, { recursive: true, force: true })
-    }
-  })
-
-  beforeEach(async () => {
-    await redis?.flushdb()
-  })
-
+describe('RedisRecallStateStore', () => {
   it('enforces pair-window caps atomically across concurrent store instances', async () => {
-    const storeA = new RedisRecallStateStore(redis!, { keyPrefix: 'test:recall:atomic' })
-    const storeB = new RedisRecallStateStore(redis!, { keyPrefix: 'test:recall:atomic' })
+    const backend = new FakeRedisEvalBackend()
+    const storeA = new RedisRecallStateStore(backend, { keyPrefix: 'test:recall:atomic' })
+    const storeB = new RedisRecallStateStore(backend, { keyPrefix: 'test:recall:atomic' })
 
     const attempts = await Promise.all([
-      storeA.attemptGrant({
-        thread_id: 'thread-1',
-        event_author_key: 'agent-author',
-        candidate_agent_id: 'agent-target',
-        pair_window_seconds: 30,
-        pair_max_exchanges: 1,
-        quota_kind: 'neutral',
-        reactive_recall_decay: 'moderate',
-        is_revive_branch: false,
-        revive_old_branch_budget: 1,
-      }),
-      storeB.attemptGrant({
-        thread_id: 'thread-1',
-        event_author_key: 'agent-author',
-        candidate_agent_id: 'agent-target',
-        pair_window_seconds: 30,
-        pair_max_exchanges: 1,
-        quota_kind: 'neutral',
-        reactive_recall_decay: 'moderate',
-        is_revive_branch: false,
-        revive_old_branch_budget: 1,
-      }),
-      storeA.attemptGrant({
-        thread_id: 'thread-1',
-        event_author_key: 'agent-author',
-        candidate_agent_id: 'agent-target',
-        pair_window_seconds: 30,
-        pair_max_exchanges: 1,
-        quota_kind: 'neutral',
-        reactive_recall_decay: 'moderate',
-        is_revive_branch: false,
-        revive_old_branch_budget: 1,
-      }),
+      storeA.attemptGrant(makeInput()),
+      storeB.attemptGrant(makeInput()),
+      storeA.attemptGrant(makeInput()),
     ])
 
     expect(attempts.filter((attempt) => attempt.granted)).toHaveLength(1)
@@ -125,34 +19,26 @@ describeIfRedis('RedisRecallStateStore', () => {
       expect.objectContaining({ suppression_reason: 'pair_window_cap' }),
       expect.objectContaining({ suppression_reason: 'pair_window_cap' }),
     ])
+    expect(backend.scriptChecks).toBeGreaterThan(0)
   })
 
   it('shares revive-old-branch budgets across store instances', async () => {
-    const storeA = new RedisRecallStateStore(redis!, { keyPrefix: 'test:recall:revive' })
-    const storeB = new RedisRecallStateStore(redis!, { keyPrefix: 'test:recall:revive' })
+    const backend = new FakeRedisEvalBackend()
+    const storeA = new RedisRecallStateStore(backend, { keyPrefix: 'test:recall:revive' })
+    const storeB = new RedisRecallStateStore(backend, { keyPrefix: 'test:recall:revive' })
 
-    const first = await storeA.attemptGrant({
-      thread_id: 'thread-1',
-      event_author_key: 'agent-author',
-      candidate_agent_id: 'agent-target-a',
-      pair_window_seconds: 30,
-      pair_max_exchanges: 3,
-      quota_kind: 'neutral',
-      reactive_recall_decay: 'moderate',
-      is_revive_branch: true,
-      revive_old_branch_budget: 1,
-    })
-    const second = await storeB.attemptGrant({
-      thread_id: 'thread-1',
-      event_author_key: 'agent-author',
-      candidate_agent_id: 'agent-target-b',
-      pair_window_seconds: 30,
-      pair_max_exchanges: 3,
-      quota_kind: 'neutral',
-      reactive_recall_decay: 'moderate',
-      is_revive_branch: true,
-      revive_old_branch_budget: 1,
-    })
+    const first = await storeA.attemptGrant(
+      makeInput({
+        candidate_agent_id: 'agent-target-a',
+        is_revive_branch: true,
+      }),
+    )
+    const second = await storeB.attemptGrant(
+      makeInput({
+        candidate_agent_id: 'agent-target-b',
+        is_revive_branch: true,
+      }),
+    )
 
     expect(first).toMatchObject({
       granted: true,
@@ -167,45 +53,28 @@ describeIfRedis('RedisRecallStateStore', () => {
     })
   })
 
-  it('respects pair-window TTL expiry in Redis-backed recall state', async () => {
-    const store = new RedisRecallStateStore(redis!, { keyPrefix: 'test:recall:ttl' })
+  it('expires pair-window counters after the Lua TTL elapses', async () => {
+    const backend = new FakeRedisEvalBackend()
+    const store = new RedisRecallStateStore(backend, { keyPrefix: 'test:recall:ttl' })
 
-    const first = await store.attemptGrant({
-      thread_id: 'thread-1',
-      event_author_key: 'agent-author',
-      candidate_agent_id: 'agent-target',
-      pair_window_seconds: 1,
-      pair_max_exchanges: 1,
-      quota_kind: 'neutral',
-      reactive_recall_decay: 'moderate',
-      is_revive_branch: false,
-      revive_old_branch_budget: 1,
-    })
-    const blocked = await store.attemptGrant({
-      thread_id: 'thread-1',
-      event_author_key: 'agent-author',
-      candidate_agent_id: 'agent-target',
-      pair_window_seconds: 1,
-      pair_max_exchanges: 1,
-      quota_kind: 'neutral',
-      reactive_recall_decay: 'moderate',
-      is_revive_branch: false,
-      revive_old_branch_budget: 1,
-    })
+    const first = await store.attemptGrant(
+      makeInput({
+        pair_window_seconds: 1,
+      }),
+    )
+    const blocked = await store.attemptGrant(
+      makeInput({
+        pair_window_seconds: 1,
+      }),
+    )
 
-    await sleep(1_100)
+    backend.advance(1_100)
 
-    const afterExpiry = await store.attemptGrant({
-      thread_id: 'thread-1',
-      event_author_key: 'agent-author',
-      candidate_agent_id: 'agent-target',
-      pair_window_seconds: 1,
-      pair_max_exchanges: 1,
-      quota_kind: 'neutral',
-      reactive_recall_decay: 'moderate',
-      is_revive_branch: false,
-      revive_old_branch_budget: 1,
-    })
+    const afterExpiry = await store.attemptGrant(
+      makeInput({
+        pair_window_seconds: 1,
+      }),
+    )
 
     expect(first.granted).toBe(true)
     expect(blocked.suppression_reason).toBe('pair_window_cap')
@@ -217,49 +86,121 @@ describeIfRedis('RedisRecallStateStore', () => {
   })
 })
 
-async function findFreePort(): Promise<number> {
-  return await new Promise<number>((resolve, reject) => {
-    const server = createServer()
-    server.once('error', reject)
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address()
-      server.close((error) => {
-        if (error) {
-          reject(error)
-          return
-        }
-        if (!address || typeof address === 'string') {
-          reject(new Error('Failed to resolve free port'))
-          return
-        }
-        resolve(address.port)
-      })
-    })
-  })
-}
-
-async function waitForRedis(redis: Redis, startupError: string): Promise<void> {
-  const deadline = Date.now() + 5_000
-  while (Date.now() < deadline) {
-    try {
-      const pong = await redis.ping()
-      if (pong === 'PONG') {
-        return
-      }
-    } catch {
-      // Retry until the child process finishes booting.
-    }
-    await sleep(50)
+function makeInput(overrides: Partial<RecallGrantAttemptInput> = {}): RecallGrantAttemptInput {
+  return {
+    thread_id: 'thread-1',
+    event_author_key: 'agent-author',
+    candidate_agent_id: 'agent-target',
+    pair_window_seconds: 30,
+    pair_max_exchanges: 1,
+    quota_kind: 'neutral',
+    reactive_recall_decay: 'moderate',
+    is_revive_branch: false,
+    revive_old_branch_budget: 1,
+    ...overrides,
   }
-  throw new Error(`Redis test server did not become ready. ${startupError}`.trim())
 }
 
-async function waitForExit(child: ChildProcess): Promise<void> {
-  await new Promise<void>((resolve) => {
-    child.once('exit', () => resolve())
-  })
+type CounterWindow = {
+  count: number
+  expiresAt: number
 }
 
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms))
+class FakeRedisEvalBackend {
+  private readonly pairWindows = new Map<string, CounterWindow>()
+  private readonly reviveWindows = new Map<string, CounterWindow>()
+  private now = 0
+  scriptChecks = 0
+
+  async eval(script: string, numKeys: number, ...args: string[]): Promise<unknown> {
+    this.validateLuaContract(script, numKeys, args)
+
+    const [pairKey, reviveKey, pairMaxRaw, pairTtlMsRaw, isIncumbentRaw, decayMode, isReviveRaw, reviveBudgetRaw, reviveTtlMsRaw] = args
+    const pairMax = Number(pairMaxRaw)
+    const pairTtlMs = Number(pairTtlMsRaw)
+    const isIncumbent = isIncumbentRaw === '1'
+    const isRevive = isReviveRaw === '1'
+    const reviveBudget = Number(reviveBudgetRaw)
+    const reviveTtlMs = Number(reviveTtlMsRaw)
+
+    const pairCount = this.readWindow(this.pairWindows, pairKey)
+    const reviveCount = isRevive ? this.readWindow(this.reviveWindows, reviveKey) : 0
+    const decayStage = resolveDecayStage(pairCount)
+
+    if (isRevive && reviveCount >= reviveBudget) {
+      return [0, pairCount, pairCount, reviveCount, reviveCount, 'revive_budget_exhausted', decayStage]
+    }
+
+    if (shouldSuppressForDecay(isIncumbent, decayMode, pairCount)) {
+      return [0, pairCount, pairCount, reviveCount, reviveCount, 'reactive_recall_decay', decayStage]
+    }
+
+    if (pairCount >= pairMax) {
+      return [0, pairCount, pairCount, reviveCount, reviveCount, 'pair_window_cap', decayStage]
+    }
+
+    const nextPairCount = pairCount + 1
+    this.writeWindow(this.pairWindows, pairKey, nextPairCount, pairTtlMs)
+
+    let nextReviveCount = reviveCount
+    if (isRevive) {
+      nextReviveCount += 1
+      this.writeWindow(this.reviveWindows, reviveKey, nextReviveCount, reviveTtlMs)
+    }
+
+    return [1, pairCount, nextPairCount, reviveCount, nextReviveCount, '', decayStage]
+  }
+
+  advance(ms: number) {
+    this.now += ms
+  }
+
+  private validateLuaContract(script: string, numKeys: number, args: string[]) {
+    expect(numKeys).toBe(2)
+    expect(args).toHaveLength(9)
+    expect(script).toContain('local pairKey = KEYS[1]')
+    expect(script).toContain('local reviveKey = KEYS[2]')
+    expect(script).toContain('redis.call("GET", pairKey)')
+    expect(script).toContain('redis.call("SET", pairKey, tostring(nextPairCount), "PX", pairTtlMs)')
+    expect(script).toContain('redis.call("SET", reviveKey, tostring(nextReviveCount), "PX", reviveTtlMs)')
+    this.scriptChecks += 1
+  }
+
+  private readWindow(store: Map<string, CounterWindow>, key: string): number {
+    const window = store.get(key)
+    if (!window || window.expiresAt <= this.now) {
+      store.delete(key)
+      return 0
+    }
+    return window.count
+  }
+
+  private writeWindow(store: Map<string, CounterWindow>, key: string, count: number, ttlMs: number) {
+    store.set(key, {
+      count,
+      expiresAt: this.now + ttlMs,
+    })
+  }
+}
+
+function resolveDecayStage(pairCount: number): 'fresh' | 'repeat' | 'decayed' {
+  if (pairCount === 1) return 'repeat'
+  if (pairCount >= 2) return 'decayed'
+  return 'fresh'
+}
+
+function shouldSuppressForDecay(isIncumbent: boolean, decayMode: string, pairCount: number) {
+  if (!isIncumbent) {
+    return false
+  }
+  if (decayMode === 'steep') {
+    return pairCount >= 1
+  }
+  if (decayMode === 'moderate') {
+    return pairCount >= 2
+  }
+  if (decayMode === 'light') {
+    return pairCount >= 3
+  }
+  return false
 }

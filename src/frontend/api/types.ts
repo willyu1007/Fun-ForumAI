@@ -1546,15 +1546,18 @@ export interface AgentMediaAsset {
   semantic_summary: AgentMediaSemanticSummary
   created_at: string
   latest_post_id: string | null
+  latest_public_attachment_at: string | null
 }
 
-export interface AgentMediaCurrentState {
+export interface AgentMediaLibraryState {
   pool: {
     anchor_scene_id: string
     active_count: number
-    latest_asset: AgentMediaAsset | null
+    archived_count: number
+    total_count: number
   }
   latest_public_attachment: AgentMediaAsset | null
+  assets: AgentMediaAsset[]
 }
 
 export interface AgentConfig {

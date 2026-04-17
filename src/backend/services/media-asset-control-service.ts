@@ -17,6 +17,7 @@ export interface MediaAssetControlView {
   semantic_summary: MediaSemanticSummary
   created_at: string
   latest_post_id: string | null
+  latest_public_attachment_at: string | null
 }
 
 export interface AgentMediaCurrentState {
@@ -26,6 +27,17 @@ export interface AgentMediaCurrentState {
     latest_asset: MediaAssetControlView | null
   }
   latest_public_attachment: MediaAssetControlView | null
+}
+
+export interface AgentMediaLibraryState {
+  pool: {
+    anchor_scene_id: string
+    active_count: number
+    archived_count: number
+    total_count: number
+  }
+  latest_public_attachment: MediaAssetControlView | null
+  assets: MediaAssetControlView[]
 }
 
 export { ScheduledMediaCandidate }
@@ -89,10 +101,52 @@ export class MediaAssetControlService {
     }
   }
 
+  async getLibrary(agentId: string, ownerUserId: string): Promise<AgentMediaLibraryState> {
+    this.assertOwner(agentId, ownerUserId)
+    const state = await this.deps.mediaAssetService.listOwnerPoolAssets(agentId)
+    return {
+      pool: state.pool,
+      latest_public_attachment: state.latest_public_attachment
+        ? this.toView(state.latest_public_attachment)
+        : null,
+      assets: state.assets.map((item) => this.toView(item)),
+    }
+  }
+
   async cancelCurrent(agentId: string, ownerUserId: string): Promise<{ removed: boolean }> {
     this.assertOwner(agentId, ownerUserId)
     const removed = await this.deps.mediaAssetService.archiveLatestOwnerPoolAsset(agentId)
     return { removed }
+  }
+
+  async archiveAsset(input: {
+    agent_id: string
+    owner_user_id: string
+    asset_id: string
+  }): Promise<MediaAssetControlView> {
+    this.assertOwner(input.agent_id, input.owner_user_id)
+    const archived = await this.deps.mediaAssetService.setOwnerPoolAssetLifecycle({
+      agent_id: input.agent_id,
+      asset_id: input.asset_id,
+      lifecycle_status: 'archived',
+    })
+    if (!archived) throw new NotFoundError('MediaAsset', input.asset_id)
+    return this.toView(archived)
+  }
+
+  async restoreAsset(input: {
+    agent_id: string
+    owner_user_id: string
+    asset_id: string
+  }): Promise<MediaAssetControlView> {
+    this.assertOwner(input.agent_id, input.owner_user_id)
+    const restored = await this.deps.mediaAssetService.setOwnerPoolAssetLifecycle({
+      agent_id: input.agent_id,
+      asset_id: input.asset_id,
+      lifecycle_status: 'active',
+    })
+    if (!restored) throw new NotFoundError('MediaAsset', input.asset_id)
+    return this.toView(restored)
   }
 
   async promoteAsset(input: {
@@ -193,6 +247,7 @@ export class MediaAssetControlService {
       semantic_summary: MediaAssetService.readSummaryOrFallback(record.snapshot, record.asset.mime_type),
       created_at: record.created_at.toISOString(),
       latest_post_id: record.latest_post_id,
+      latest_public_attachment_at: record.latest_public_attachment_at?.toISOString() ?? null,
     }
   }
 

@@ -1413,9 +1413,9 @@ describe('PostDetailPage', () => {
     renderPage('/posts/post-1')
 
     expect(
-      within(screen.getByTestId('post-detail-stage-article')).queryByText('查看关系'),
+      within(screen.getByTestId('post-detail-stage-article')).queryByText('查看朋友圈'),
     ).toBeNull()
-    expect(screen.getByText('查看关系')).toBeTruthy()
+    expect(screen.getByText('查看朋友圈')).toBeTruthy()
   })
 
   it('uses list-style pills in the footer and keeps AI sentiment on the right', () => {

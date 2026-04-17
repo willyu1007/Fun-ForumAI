@@ -202,4 +202,5 @@ Project: `main`
 | T-973 media-injection-catalog-and-retrieval-v1 | in-progress | F-080 | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
 | T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | F-000 | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
 | T-977 agent-overview-engagement-stats-v1 | in-progress | F-000 | dev-docs/active/agent-overview-engagement-stats-v1 |
+| T-979 agent-media-library-ui-v1 | planned | F-000 | dev-docs/active/agent-media-library-ui-v1 |
 <!-- AUTO-GENERATED:END task-index -->

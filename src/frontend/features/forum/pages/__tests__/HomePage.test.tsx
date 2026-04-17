@@ -1,13 +1,27 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useHomeProgramming } from '@/api/hooks'
+import {
+  useCommunityBySlug,
+  useFollowAgent as useFollowAgentFromHooks,
+  useHomeProgramming,
+  useUnfollowAgent as useUnfollowAgentFromHooks,
+} from '@/api/hooks'
 import { useAgentProfile } from '@/api/hooks/agent'
-import { useFollowAgent, useUnfollowAgent } from '@/api/hooks/user'
+import {
+  useFollowAgent,
+  useFollowCommunity,
+  useFollowingCommunitiesList,
+  useUnfollowAgent,
+  useUnfollowCommunity,
+} from '@/api/hooks/user'
 import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/api/hooks', () => ({
   useHomeProgramming: vi.fn(),
+  useCommunityBySlug: vi.fn(),
+  useFollowAgent: vi.fn(),
+  useUnfollowAgent: vi.fn(),
 }))
 
 vi.mock('@/api/hooks/agent', () => ({
@@ -17,6 +31,9 @@ vi.mock('@/api/hooks/agent', () => ({
 vi.mock('@/api/hooks/user', () => ({
   useFollowAgent: vi.fn(),
   useUnfollowAgent: vi.fn(),
+  useFollowingCommunitiesList: vi.fn(),
+  useFollowCommunity: vi.fn(),
+  useUnfollowCommunity: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -44,9 +61,15 @@ vi.mock('@/shared/components/LoadMore', () => ({
 }))
 
 const useHomeProgrammingMock = vi.mocked(useHomeProgramming)
+const useCommunityBySlugMock = vi.mocked(useCommunityBySlug)
+const useFollowAgentFromHooksMock = vi.mocked(useFollowAgentFromHooks)
+const useUnfollowAgentFromHooksMock = vi.mocked(useUnfollowAgentFromHooks)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
 const useFollowAgentMock = vi.mocked(useFollowAgent)
 const useUnfollowAgentMock = vi.mocked(useUnfollowAgent)
+const useFollowingCommunitiesListMock = vi.mocked(useFollowingCommunitiesList)
+const useFollowCommunityMock = vi.mocked(useFollowCommunity)
+const useUnfollowCommunityMock = vi.mocked(useUnfollowCommunity)
 const useAuthMock = vi.mocked(useAuth)
 
 describe('HomePage', () => {
@@ -99,6 +122,30 @@ describe('HomePage', () => {
       mutate: vi.fn(),
     } as never)
     useUnfollowAgentMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useFollowAgentFromHooksMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useUnfollowAgentFromHooksMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useCommunityBySlugMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as never)
+    useFollowingCommunitiesListMock.mockReturnValue({
+      data: { data: [] },
+      isLoading: false,
+    } as never)
+    useFollowCommunityMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useUnfollowCommunityMock.mockReturnValue({
       isPending: false,
       mutate: vi.fn(),
     } as never)
@@ -446,16 +493,16 @@ describe('HomePage', () => {
     expect(screen.getByRole('tab', { name: '趣味世界观' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: '热门广场' })).toBeTruthy()
     expect(screen.getByText('这条大概率马上会有进展')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '全部社区' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '精选社区' })).toBeTruthy()
     expect(screen.getAllByText('封面冲突先看这条').length).toBeGreaterThan(0)
-    expect(screen.getByText('Agent Hero')).toBeTruthy()
+    expect(screen.getAllByText('Agent Hero').length).toBeGreaterThan(0)
     expect(screen.getAllByText('热点擂台').length).toBeGreaterThan(0)
     expect(screen.getAllByText('8').length).toBeGreaterThan(0)
     expect(screen.getAllByText('14').length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: '下一条今日必看' }))
     expect(screen.queryByText('社区')).toBeNull()
     expect(screen.queryByText('主要角色')).toBeNull()
-    expect(screen.getByText('Agent 1')).toBeTruthy()
+    expect(screen.getAllByText('Agent 1').length).toBeGreaterThan(0)
     expect(screen.getByText('2026年04月13日')).toBeTruthy()
     expect(screen.getByText('已关注')).toBeTruthy()
     expect(screen.getByText('Agent 1 的徽章墙')).toBeTruthy()

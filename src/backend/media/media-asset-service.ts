@@ -63,6 +63,7 @@ interface MediaAssetRecord {
   owner_note: string | null
   media_url: string
   latest_post_id: string | null
+  latest_public_attachment_at: Date | null
   created_at: Date
 }
 
@@ -73,6 +74,17 @@ export interface OwnerPoolCurrentState {
     latest_asset: MediaAssetRecord | null
   }
   latest_public_attachment: MediaAssetRecord | null
+}
+
+export interface OwnerPoolLibraryState {
+  pool: {
+    anchor_scene_id: string
+    active_count: number
+    archived_count: number
+    total_count: number
+  }
+  latest_public_attachment: MediaAssetRecord | null
+  assets: MediaAssetRecord[]
 }
 
 export interface ScheduledMediaCandidate {
@@ -343,6 +355,7 @@ export class MediaAssetService {
       owner_note: null,
       media_url: stored.url,
       latest_post_id: null,
+      latest_public_attachment_at: null,
       created_at: asset.created_at,
     }
   }
@@ -1049,6 +1062,7 @@ export class MediaAssetService {
         {
           ownerSceneId,
           latestPostId: latestPublicBinding.scene_id,
+          latestPublicAttachmentAt: latestPublicBinding.created_at,
           createdAt: latestPublicBinding.created_at,
           mediaUrlOverride: projectionMediaUrl,
         },
@@ -1065,6 +1079,44 @@ export class MediaAssetService {
     }
   }
 
+  async listOwnerPoolAssets(agentId: string): Promise<OwnerPoolLibraryState> {
+    const assets = await this.deps.mediaAssetRepo.listByStewardAgentId(agentId)
+    const bindings = await this.deps.sceneMediaBindingRepo.findByAssetIds(assets.map((item) => item.id))
+    const ownerSceneId = buildOwnerPrivatePoolSceneId(agentId)
+
+    const assetRecords = await Promise.all(
+      assets.map(async (asset) => {
+        const assetBindings = bindings.filter((binding) => binding.asset_id === asset.id)
+        const latestPublicBinding = assetBindings
+          .filter((binding) => binding.scene_type === 'forum_post')
+          .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())[0] ?? null
+        return this.buildRecord(asset, assetBindings, {
+          ownerSceneId,
+          latestPostId: latestPublicBinding?.scene_id ?? null,
+          latestPublicAttachmentAt: latestPublicBinding?.created_at ?? null,
+          createdAt: asset.created_at,
+        })
+      }),
+    )
+
+    return {
+      pool: {
+        anchor_scene_id: ownerSceneId,
+        active_count: assets.filter((asset) => asset.lifecycle_status === 'active').length,
+        archived_count: assets.filter((asset) => asset.lifecycle_status === 'archived').length,
+        total_count: assets.length,
+      },
+      latest_public_attachment:
+        assetRecords
+          .filter((item): item is MediaAssetRecord => Boolean(item?.latest_public_attachment_at))
+          .sort(
+            (a, b) =>
+              (b.latest_public_attachment_at?.getTime() ?? 0) - (a.latest_public_attachment_at?.getTime() ?? 0),
+          )[0] ?? null,
+      assets: assetRecords.filter((item): item is MediaAssetRecord => Boolean(item)),
+    }
+  }
+
   async archiveLatestOwnerPoolAsset(agentId: string): Promise<boolean> {
     const assets = await this.deps.mediaAssetRepo.listByStewardAgentId(agentId, {
       lifecycle_statuses: ['active'],
@@ -1077,6 +1129,29 @@ export class MediaAssetService {
     if (!latest) return false
     await this.deps.mediaAssetRepo.update(latest.id, { lifecycle_status: 'archived' })
     return true
+  }
+
+  async setOwnerPoolAssetLifecycle(input: {
+    agent_id: string
+    asset_id: string
+    lifecycle_status: MediaAsset['lifecycle_status']
+  }): Promise<MediaAssetRecord | null> {
+    const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
+    if (!asset || asset.steward_agent_id !== input.agent_id) return null
+    const updated = await this.deps.mediaAssetRepo.update(asset.id, {
+      lifecycle_status: input.lifecycle_status,
+    })
+    if (!updated) return null
+    const bindings = await this.deps.sceneMediaBindingRepo.findByAssetIds([updated.id])
+    const latestPublicBinding = bindings
+      .filter((binding) => binding.scene_type === 'forum_post')
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())[0] ?? null
+    return this.buildRecord(updated, bindings, {
+      ownerSceneId: buildOwnerPrivatePoolSceneId(input.agent_id),
+      latestPostId: latestPublicBinding?.scene_id ?? null,
+      latestPublicAttachmentAt: latestPublicBinding?.created_at ?? null,
+      createdAt: updated.created_at,
+    })
   }
 
   async listEligibleOwnerPoolAgentIds(limit = 100): Promise<string[]> {
@@ -1224,6 +1299,7 @@ export class MediaAssetService {
       owner_note: input.owner_note,
       media_url: input.media_url,
       latest_post_id: null,
+      latest_public_attachment_at: null,
       created_at: asset.created_at,
     }
   }
@@ -1279,6 +1355,7 @@ export class MediaAssetService {
     options: {
       ownerSceneId?: string
       latestPostId?: string | null
+      latestPublicAttachmentAt?: Date | null
       createdAt?: Date
       mediaUrlOverride?: string | null
     } = {},
@@ -1298,6 +1375,7 @@ export class MediaAssetService {
       owner_note: ownerBinding?.binding_note_text ?? null,
       media_url: mediaUrl,
       latest_post_id: options.latestPostId ?? null,
+      latest_public_attachment_at: options.latestPublicAttachmentAt ?? null,
       created_at: options.createdAt ?? asset.created_at,
     }
   }

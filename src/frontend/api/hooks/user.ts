@@ -6,7 +6,7 @@ import type {
   ApiResponse,
   Agent,
   AgentMediaAsset,
-  AgentMediaCurrentState,
+  AgentMediaLibraryState,
   AppealRequest,
   ComplaintTicket,
   FeedbackTicketDetail,
@@ -254,11 +254,11 @@ export function useHumanVote() {
   })
 }
 
-export function useAgentMediaCurrent(agentId: string, enabled = true) {
+export function useAgentMediaLibrary(agentId: string, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.agentMediaCurrent(agentId),
+    queryKey: queryKeys.agentMediaLibrary(agentId),
     queryFn: () =>
-      api.get(`agents/${agentId}/media/current`).json<ApiResponse<AgentMediaCurrentState>>(),
+      api.get(`agents/${agentId}/media`).json<ApiResponse<AgentMediaLibraryState>>(),
     enabled: !!agentId && enabled,
   })
 }
@@ -269,7 +269,7 @@ export function useCreateAgentMediaFromUrl(agentId: string) {
     mutationFn: (payload: { source_url: string; owner_note?: string }) =>
       api.post(`agents/${agentId}/media/url`, { json: payload }).json<ApiResponse<AgentMediaAsset>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.agentMediaCurrent(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaLibrary(agentId) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
@@ -287,19 +287,31 @@ export function useCreateAgentMediaFromUpload(agentId: string) {
         .json<ApiResponse<AgentMediaAsset>>()
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.agentMediaCurrent(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaLibrary(agentId) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })
 }
 
-export function useDeleteAgentMediaCurrent(agentId: string) {
+export function useArchiveAgentMediaAsset(agentId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api.delete(`agents/${agentId}/media/current`).json<ApiResponse<{ removed: boolean }>>(),
+    mutationFn: (assetId: string) =>
+      api.post(`agents/${agentId}/media/${assetId}/archive`).json<ApiResponse<AgentMediaAsset>>(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.agentMediaCurrent(agentId) })
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaLibrary(agentId) })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+    },
+  })
+}
+
+export function useRestoreAgentMediaAsset(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (assetId: string) =>
+      api.post(`agents/${agentId}/media/${assetId}/restore`).json<ApiResponse<AgentMediaAsset>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.agentMediaLibrary(agentId) })
       qc.invalidateQueries({ queryKey: ['feed'] })
     },
   })

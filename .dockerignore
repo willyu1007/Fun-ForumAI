@@ -24,3 +24,8 @@ ci
 !ops/
 !ops/packaging/
 !ops/packaging/**
+**/__tests__/
+**/__tests__/**
+**/*.test.*
+**/*.spec.*
+tests/

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { validateLaunchImageProof } from '../check-image-launch-proof.mjs'
+import {
+  IMAGE_REPO_TEST_SEARCH_PATHS,
+  validateImageHasNoRepoTestFiles,
+  validateLaunchImageProof,
+} from '../check-image-launch-proof.mjs'
 
 describe('check-image-launch-proof', () => {
   it('accepts canonical launch proof payloads', () => {
@@ -79,5 +83,21 @@ describe('check-image-launch-proof', () => {
         },
       ),
     ).toThrow(/build_env_flags\.chatroom_staging_hold/)
+  })
+
+  it('accepts images whose repo-owned paths do not contain test files', () => {
+    expect(validateImageHasNoRepoTestFiles([])).toEqual({
+      checked_paths: IMAGE_REPO_TEST_SEARCH_PATHS,
+      matched_paths: 0,
+    })
+  })
+
+  it('rejects images that still contain repo test files', () => {
+    expect(() =>
+      validateImageHasNoRepoTestFiles([
+        'src/backend/__tests__/example.test.ts',
+        'src/frontend/features/forum/pages/__tests__/HomePage.test.tsx',
+      ]),
+    ).toThrow(/image contains repo test files/)
   })
 })

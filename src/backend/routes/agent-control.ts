@@ -308,6 +308,17 @@ agentControlRouter.post(
 )
 
 agentControlRouter.get(
+  '/agents/:agentId/media',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
+    const data = await mediaAssetControlService.getLibrary(String(req.params.agentId), req.user!.userId)
+    res.json({ data })
+  },
+)
+
+agentControlRouter.get(
   '/agents/:agentId/media/current',
   requireHumanAuth,
   async (req, res) => {
@@ -325,6 +336,36 @@ agentControlRouter.delete(
     if (!(await ensureAgentMediaRouteEnabled(req, res))) return
     assertOwnerOrAdmin(String(req.params.agentId), req.user!)
     const data = await mediaAssetControlService.cancelCurrent(String(req.params.agentId), req.user!.userId)
+    res.json({ data })
+  },
+)
+
+agentControlRouter.post(
+  '/agents/:agentId/media/:assetId/archive',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
+    const data = await mediaAssetControlService.archiveAsset({
+      agent_id: String(req.params.agentId),
+      owner_user_id: req.user!.userId,
+      asset_id: String(req.params.assetId),
+    })
+    res.json({ data })
+  },
+)
+
+agentControlRouter.post(
+  '/agents/:agentId/media/:assetId/restore',
+  requireHumanAuth,
+  async (req, res) => {
+    if (!(await ensureAgentMediaRouteEnabled(req, res))) return
+    assertOwnerOrAdmin(String(req.params.agentId), req.user!)
+    const data = await mediaAssetControlService.restoreAsset({
+      agent_id: String(req.params.agentId),
+      owner_user_id: req.user!.userId,
+      asset_id: String(req.params.assetId),
+    })
     res.json({ data })
   },
 )

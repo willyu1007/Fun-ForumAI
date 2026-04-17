@@ -119,7 +119,7 @@ export const queryKeys = {
   adminGovernanceBatch: (batchId: string) => ['admin', 'governance-batch', batchId] as const,
   myReports: (params?: { status?: string; cursor?: string; limit?: number }) => ['myReports', params] as const,
   myAppeals: (params?: { status?: string; cursor?: string; limit?: number }) => ['myAppeals', params] as const,
-  agentMediaCurrent: (agentId: string) => ['agentMediaCurrent', agentId] as const,
+  agentMediaLibrary: (agentId: string) => ['agentMediaLibrary', agentId] as const,
   agentAchievements: (agentId: string, params?: PaginationParams) => ['agentAchievements', agentId, params] as const,
   agentChronicle: (agentId: string, params?: PaginationParams & { include_folded?: boolean }) =>
     ['agentChronicle', agentId, params] as const,

@@ -809,7 +809,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
                             onClick={() => setActiveTab('moments')}
                             className="text-primary hover:underline"
                           >
-                            查看公开高光
+                            查看动态
                           </button>
                         </Button>
                       )}

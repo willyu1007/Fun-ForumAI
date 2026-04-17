@@ -148,6 +148,59 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
     expect(deleteRes.body.data.removed).toBe(true)
   })
 
+  it('lists media assets and supports archive/restore by asset id', async () => {
+    const createAgentRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Multimodal Library Agent' })
+    const agentId = createAgentRes.body.data.id
+
+    const firstUploadRes = await request(app)
+      .post(`/v1/agents/${agentId}/media/upload`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .field('owner_note', '第一张素材')
+      .attach('file', VALID_PNG_BUFFER, {
+        filename: 'library-first.png',
+        contentType: 'image/png',
+      })
+    expect(firstUploadRes.status).toBe(201)
+
+    const secondUploadRes = await request(app)
+      .post(`/v1/agents/${agentId}/media/upload`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .field('owner_note', '第二张素材')
+      .attach('file', VALID_PNG_BUFFER, {
+        filename: 'library-second.png',
+        contentType: 'image/png',
+      })
+    expect(secondUploadRes.status).toBe(201)
+
+    const firstAssetId = firstUploadRes.body.data.asset_id as string
+
+    const archiveRes = await request(app)
+      .post(`/v1/agents/${agentId}/media/${firstAssetId}/archive`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(archiveRes.status).toBe(200)
+    expect(archiveRes.body.data.asset_id).toBe(firstAssetId)
+    expect(archiveRes.body.data.lifecycle_status).toBe('archived')
+
+    const libraryRes = await request(app)
+      .get(`/v1/agents/${agentId}/media`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(libraryRes.status).toBe(200)
+    expect(libraryRes.body.data.pool.active_count).toBe(1)
+    expect(libraryRes.body.data.pool.archived_count).toBe(1)
+    expect(libraryRes.body.data.pool.total_count).toBe(2)
+    expect(libraryRes.body.data.assets).toHaveLength(2)
+    expect(libraryRes.body.data.assets.map((item: { asset_id: string }) => item.asset_id)).toContain(firstAssetId)
+
+    const restoreRes = await request(app)
+      .post(`/v1/agents/${agentId}/media/${firstAssetId}/restore`)
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(restoreRes.status).toBe(200)
+    expect(restoreRes.body.data.lifecycle_status).toBe('active')
+  })
+
   it('rejects non-https URL assets', async () => {
     const createAgentRes = await request(app)
       .post('/v1/agents')

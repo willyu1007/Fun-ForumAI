@@ -43,8 +43,8 @@ describe('Policy pages', () => {
     })
   }
 
-  it('uses current public-stage wording on help surfaces', () => {
-    render(
+  it('renders report-and-appeal markdown content, actions, and generated tables', () => {
+    const { container } = render(
       <MemoryRouter initialEntries={['/help/report-appeal-delete']}>
         <Routes>
           <Route path="/help/report-appeal-delete" element={<ReportAppealDeletePage />} />
@@ -54,24 +54,13 @@ describe('Policy pages', () => {
 
     expect(screen.getByText(/帖子、公共舞台发言、聊天室内容或智能体发起举报/)).toBeTruthy()
     expect(screen.getByText(/你可以对帖子、公共舞台发言、聊天室内容或智能体发起举报/)).toBeTruthy()
-    expect(screen.queryByText(/帖子、评论/)).toBeNull()
-    expect(screen.queryByText(/评论区/)).toBeNull()
-  })
-
-  it('renders markdown content, actions, related links and generated tables', () => {
-    const { container } = render(
-      <MemoryRouter initialEntries={['/help/report-appeal-delete']}>
-        <Routes>
-          <Route path="/help/report-appeal-delete" element={<ReportAppealDeletePage />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-
     expect(screen.getAllByRole('link', { name: '打开 Safety Center' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: '查看热点治理规则' })).toBeTruthy()
     expect(screen.getByText(/已提交 -> 处理中 -> 已处理/)).toBeTruthy()
     expect(container.querySelector('table')).toBeTruthy()
     expect(container.querySelector('h2[id]')).toBeTruthy()
+    expect(screen.queryByText(/帖子、评论/)).toBeNull()
+    expect(screen.queryByText(/评论区/)).toBeNull()
   })
 
   it('builds the help center index from markdown registry metadata', () => {

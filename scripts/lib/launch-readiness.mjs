@@ -365,19 +365,36 @@ export function validatePackagingWireup() {
     'COPY config ./config',
     'COPY env/contract.yaml ./env/contract.yaml',
     'COPY env/secrets ./env/secrets',
+    'Unexpected repo test files in image:',
   ]
   const missing = requiredSnippets.filter((snippet) => !dockerfile.includes(snippet))
+  const dockerignorePath = '.dockerignore'
+  if (!existsSync(resolve(ROOT, dockerignorePath))) {
+    return { ok: false, detail: `missing ${dockerignorePath}` }
+  }
+  const dockerignore = readText(dockerignorePath)
+  const requiredDockerignorePatterns = [
+    '**/__tests__/',
+    '**/*.test.*',
+    '**/*.spec.*',
+    'tests/',
+  ]
+  const missingDockerignorePatterns = requiredDockerignorePatterns.filter(
+    (pattern) => !dockerignore.includes(pattern),
+  )
   const hasLegacyDevDocsCopy =
     dockerfile.includes('COPY dev-docs/active ./dev-docs/active') ||
     dockerfile.includes('COPY dev-docs/archive ./dev-docs/archive')
   return {
-    ok: missing.length === 0 && !hasLegacyDevDocsCopy,
+    ok: missing.length === 0 && missingDockerignorePatterns.length === 0 && !hasLegacyDevDocsCopy,
     detail:
-      missing.length === 0 && !hasLegacyDevDocsCopy
-        ? 'Dockerfile wires launch build args and proof artifact'
+      missing.length === 0 && missingDockerignorePatterns.length === 0 && !hasLegacyDevDocsCopy
+        ? 'Dockerfile and dockerignore enforce launch build proof and repo test-file exclusion'
         : hasLegacyDevDocsCopy
           ? 'Dockerfile still copies runtime launch contracts from dev-docs'
-          : `missing Dockerfile snippets: ${missing.join(' | ')}`,
+          : missing.length > 0
+            ? `missing Dockerfile snippets: ${missing.join(' | ')}`
+            : `missing dockerignore patterns: ${missingDockerignorePatterns.join(' | ')}`,
   }
 }
 
