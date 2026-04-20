@@ -117,6 +117,8 @@ export function PrivacySettingsPanel({
       ? '登录后继续追剧情'
       : guidanceItem?.cta?.label
   const guidanceIsAgentTarget = Boolean(resolvedGuidanceTarget && isAgentTargetString(resolvedGuidanceTarget))
+  const fallbackRailRouteTarget =
+    fallbackRail?.cta.kind === 'route' ? fallbackRail.cta.target : null
 
   const handleSave = async () => {
     const data: Record<string, number> = {}
@@ -198,17 +200,17 @@ export function PrivacySettingsPanel({
                 >
                   {fallbackRail.cta.label}
                 </Link>
-              ) : isAgentTargetString(fallbackRail.cta.target) ? (
+              ) : fallbackRailRouteTarget && isAgentTargetString(fallbackRailRouteTarget) ? (
                 <button
                   type="button"
                   className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
-                  onClick={() => openAppTarget(navigate, fallbackRail.cta.target, 'manage')}
+                  onClick={() => openAppTarget(navigate, fallbackRailRouteTarget, 'manage')}
                 >
                   {fallbackRail.cta.label}
                 </button>
               ) : (
                 <Link
-                  to={fallbackRail.cta.target}
+                  to={fallbackRailRouteTarget ?? '/login'}
                   className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
                 >
                   {fallbackRail.cta.label}

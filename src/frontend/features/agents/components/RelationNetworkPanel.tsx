@@ -64,6 +64,7 @@ export function RelationNetworkPanel({
   )
   const summaryQuery = useAgentRelationSummary(agentId, queriesEnabled)
   const listQuery = useAgentRelations(agentId, params, queriesEnabled)
+
   return (
     <div className="space-y-3">
       {guidanceItem ? (
@@ -72,58 +73,47 @@ export function RelationNetworkPanel({
         <GuidanceInlineRail rail={fallbackRail} />
       ) : null}
 
-      {!queriesEnabled && (
-        <Card>
-          <CardHeader className={"pb-2"}>
-            <CardTitle className={"text-sm"}>关系网详情仅对所有者开放</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className={"text-xs text-muted-foreground"}>
-              这里的详细关系数据需要你拥有这个 Agent 后才会展开；当前只保留站内闭环说明，不再请求
-              仅管理态可见的接口。
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className={"pb-2"}>
+          <CardTitle className={"text-sm"}>关系概览</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!queriesEnabled ? (
+            <LockedRelationPanelCopy heading="关系网详情仅对所有者开放" />
+          ) : summaryQuery.isLoading ? (
+            <Skeleton className="h-16" />
+          ) : (
+            <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
+              <MetricBlock
+                label="我关注"
+                value={`${summaryQuery.data?.data.following.effective ?? 0} / ${summaryQuery.data?.data.following.shadow ?? 0}`}
+                hint="effective / shadow"
+              />
+              <MetricBlock
+                label="关注我"
+                value={`${summaryQuery.data?.data.followers.effective ?? 0} / ${summaryQuery.data?.data.followers.shadow ?? 0}`}
+                hint="effective / shadow"
+              />
+              <MetricBlock
+                label="好友"
+                value={`${summaryQuery.data?.data.friends ?? 0}`}
+                hint="双向 effective"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {queriesEnabled && (
-        <Card>
-          <CardHeader className={"pb-2"}>
-            <CardTitle className={"text-sm"}>关系概览</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summaryQuery.isLoading ? (
-              <Skeleton className="h-16" />
-            ) : (
-              <div className={"grid grid-cols-2 gap-3 text-xs sm:grid-cols-3"}>
-                <MetricBlock
-                  label="我关注"
-                  value={`${summaryQuery.data?.data.following.effective ?? 0} / ${summaryQuery.data?.data.following.shadow ?? 0}`}
-                  hint="effective / shadow"
-                />
-                <MetricBlock
-                  label="关注我"
-                  value={`${summaryQuery.data?.data.followers.effective ?? 0} / ${summaryQuery.data?.data.followers.shadow ?? 0}`}
-                  hint="effective / shadow"
-                />
-                <MetricBlock
-                  label="好友"
-                  value={`${summaryQuery.data?.data.friends ?? 0}`}
-                  hint="双向 effective"
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {queriesEnabled && (
-        <Card>
-          <CardHeader className={"pb-2"}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className={"text-sm"}>关系列表</CardTitle>
+      <Card>
+        <CardHeader className={"pb-2"}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className={"text-sm"}>关系列表</CardTitle>
+            {queriesEnabled ? (
               <div className="flex gap-2">
-                <Select value={view} onValueChange={(value) => setView(value as AgentRelationView)}>
+                <Select
+                  value={view}
+                  onValueChange={(value) => setView(value as AgentRelationView)}
+                >
                   <SelectTrigger className={"h-8 w-[130px]"}>
                     <SelectValue />
                   </SelectTrigger>
@@ -151,54 +141,62 @@ export function RelationNetworkPanel({
                   </SelectContent>
                 </Select>
               </div>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!queriesEnabled ? (
+            <LockedRelationPanelCopy heading="详细关系列表仅对所有者开放" />
+          ) : listQuery.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
             </div>
-          </CardHeader>
-          <CardContent>
-            {listQuery.isLoading && (
-              <div className="space-y-2">
-                <Skeleton className="h-12" />
-                <Skeleton className="h-12" />
-                <Skeleton className="h-12" />
-              </div>
-            )}
-
-            {!listQuery.isLoading && (listQuery.data?.data.items?.length ?? 0) === 0 && (
-              <div className={"rounded-md border border-dashed p-5 text-center text-xs text-muted-foreground"}>当前视图无关系数据</div>
-            )}
-
-            {!listQuery.isLoading && (listQuery.data?.data.items?.length ?? 0) > 0 && (
-              <div className="space-y-2">
-                {listQuery.data?.data.items.map((item) => (
-                  <div key={item.relation_id} className={"rounded-md border bg-card px-3 py-2"}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className={"font-mono text-xs"}>{item.pair_agent_id}</p>
-                        <p className={"text-[10px] text-muted-foreground"}>
-                          {item.direction} · 更新于 {relativeTime(item.updated_at)}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATE_BADGE[item.state])}
-                      >
-                        {item.state}
-                      </Badge>
+          ) : (listQuery.data?.data.items?.length ?? 0) === 0 ? (
+            <div className={"rounded-md border border-dashed p-5 text-center text-xs text-muted-foreground"}>当前视图无关系数据</div>
+          ) : (
+            <div className="space-y-2">
+              {listQuery.data?.data.items.map((item) => (
+                <div key={item.relation_id} className={"rounded-md border bg-card px-3 py-2"}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className={"font-mono text-xs"}>{item.pair_agent_id}</p>
+                      <p className={"text-[10px] text-muted-foreground"}>
+                        {item.direction} · 更新于 {relativeTime(item.updated_at)}
+                      </p>
                     </div>
-                    <div className={"mt-2 grid grid-cols-3 gap-2 text-[10px] text-muted-foreground"}>
-                      <span>R {item.relation_score.toFixed(2)}</span>
-                      <span>I {item.interaction_score.toFixed(2)}</span>
-                      <span>P {item.persona_score.toFixed(2)}</span>
-                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATE_BADGE[item.state])}
+                    >
+                      {item.state}
+                    </Badge>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  <div className={"mt-2 grid grid-cols-3 gap-2 text-[10px] text-muted-foreground"}>
+                    <span>R {item.relation_score.toFixed(2)}</span>
+                    <span>I {item.interaction_score.toFixed(2)}</span>
+                    <span>P {item.persona_score.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
+
+function LockedRelationPanelCopy({ heading }: { heading: string }) {
+  return (
+    <div className={"space-y-1 text-xs leading-6 text-muted-foreground"}>
+      <p>{heading}</p>
+      <p>这里的详细关系数据需要你拥有这个 Agent 后才会展开。</p>
+    </div>
+  )
+}
+
 function MetricBlock({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className={"rounded-md border bg-card px-3 py-2"}>

@@ -11,6 +11,12 @@ const frontendCapabilities = vi.hoisted(() => ({
 const guidanceFlags = vi.hoisted(() => ({
   enabled: false,
 }))
+const authState = vi.hoisted(() => ({
+  user: {
+    id: 'user-1',
+    role: 'user',
+  },
+}))
 
 const useAgentProfileMock = vi.fn()
 const useAgentRunsMock = vi.fn()
@@ -63,10 +69,7 @@ vi.mock('@/api/hooks/agent', () => ({
 vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: () => ({
     isAuthenticated: true,
-    user: {
-      id: 'user-1',
-      role: 'user',
-    },
+    user: authState.user,
   }),
 }))
 
@@ -95,7 +98,7 @@ vi.mock('@/features/forum/components/CommunityHoverCard', () => ({
 }))
 
 vi.mock('@/features/agents/components/RunHistoryTable', () => ({
-  RunHistoryTable: () => null,
+  RunHistoryTable: () => <div>run-history-table</div>,
 }))
 
 vi.mock('@/features/agents/components/TraitPanel', () => ({
@@ -111,7 +114,7 @@ vi.mock('@/features/agents/components/CreditBadge', () => ({
 }))
 
 vi.mock('@/features/agents/components/OwnerLifeOverviewPanel', () => ({
-  OwnerLifeOverviewPanel: () => null,
+  OwnerLifeOverviewPanel: ({ agentId }: { agentId: string }) => <div>owner-life-overview {agentId}</div>,
 }))
 
 vi.mock('@/features/agents/components/StyleControlPanel', () => ({
@@ -197,6 +200,10 @@ vi.mock('@/components/ui/button', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => <button {...props}>{children}</button>,
 }))
 
+vi.mock('@/components/ui/input', () => ({
+  Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
+}))
+
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
   DialogContent: ({
@@ -207,6 +214,21 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogTitle: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
 }))
 
+vi.mock('@/components/ui/sheet', () => ({
+  Sheet: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+  }) => (open ? <div>{children}</div> : null),
+  SheetContent: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+  SheetDescription: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+  SheetFooter: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+  SheetHeader: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+  SheetTitle: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+}))
+
 vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -214,7 +236,7 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-function renderTabIntro() {
+function renderTabIntro(props?: Partial<React.ComponentProps<typeof TabIntro>>) {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -225,7 +247,7 @@ function renderTabIntro() {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TabIntro agentId="agent-1" />
+        <TabIntro agentId="agent-1" onRequestDelete={vi.fn()} {...props} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -236,6 +258,8 @@ describe('TabIntro owner social bio', () => {
     vi.clearAllMocks()
     frontendCapabilities.multimodalAgentMediaEnabled = true
     guidanceFlags.enabled = false
+    authState.user.id = 'user-1'
+    authState.user.role = 'user'
     mockModalState.viewMode = 'manage'
     mockModalState.introSection = 'overview'
     mockModalState.sourceSessionId = null
@@ -581,16 +605,39 @@ describe('TabIntro owner social bio', () => {
 
   it('shows the delete danger zone in the advanced tab and requires explicit confirmation', () => {
     mockModalState.introSection = 'advanced'
+    const onRequestDelete = vi.fn()
+
+    renderTabIntro({ onRequestDelete })
+
+    expect(screen.getByText('危险操作')).toBeTruthy()
+    const firstButton = screen.getByRole('button', { name: '删除…' })
+    fireEvent.click(firstButton)
+    expect(onRequestDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the advanced tab available for owners when guidance advanced reveal is locked', () => {
+    guidanceFlags.enabled = true
+    mockModalState.introSection = 'advanced'
+    useGuidanceSummaryMock.mockReturnValue({
+      data: {
+        data: {
+          actor: {
+            reveal: {
+              style: false,
+              instructions: false,
+              advanced: false,
+            },
+          },
+          modules: [],
+        },
+      },
+    })
 
     renderTabIntro()
 
+    expect(screen.getByText('高级')).toBeTruthy()
     expect(screen.getByText('危险操作')).toBeTruthy()
-    expect(
-      screen.getByText('删除后，这个智能体会离场；历史公开帖子仍会保留，但不再开放关注、私聊或进一步互动。'),
-    ).toBeTruthy()
-    const firstButton = screen.getByRole('button', { name: '删除智能体' })
-    fireEvent.click(firstButton)
-    expect(screen.getByRole('button', { name: '确认删除' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '删除…' })).toBeTruthy()
   })
 
   it('does not keep the overview shell visible on non-overview tabs', () => {
@@ -621,6 +668,14 @@ describe('TabIntro owner social bio', () => {
     expect(screen.getByText('style-control-panel')).toBeTruthy()
     expect(screen.queryByText('instruction-list')).toBeNull()
     expect(screen.queryByText('预览、审计与时间线')).toBeNull()
+  })
+
+  it('hides the runs tab for non-admin owners', () => {
+    renderTabIntro()
+
+    const tabsNav = screen.getByText('概览').parentElement
+    expect(tabsNav?.textContent).toContain('权限')
+    expect(tabsNav?.textContent).not.toContain('记录')
   })
 
   it('maps legacy style deep-links into the shaping tab', () => {
@@ -695,5 +750,98 @@ describe('TabIntro owner social bio', () => {
 
     expect(screen.queryByText('先完成第一轮闭环，再解锁更重的管理面')).toBeNull()
     expect(screen.queryByText('风格、指令和高阶控制会在你完成私聊回执、看到公开效果后逐步出现')).toBeNull()
+  })
+
+  it('limits non-owner intro tabs to overview only', () => {
+    mockModalState.viewMode = 'readonly'
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-1',
+          owner_id: 'owner-2',
+          display_name: 'Public Agent',
+          status: 'ACTIVE',
+          created_at: '2026-03-27T00:00:00.000Z',
+          is_followed: false,
+          public_projection: {
+            tagline: '公开投影',
+            public_bio: '对外展示。',
+          },
+          identity_contract: {
+            visible_persona: {
+              style: '公开表达风格',
+            },
+            owner_style_pins: {
+              interests: [],
+            },
+          },
+          social_bio: {
+            public_bio: '对外展示。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
+          inference_profile_debug: null,
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderTabIntro()
+
+    expect(screen.queryByRole('button', { name: '概览' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '塑造' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '权限' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '记录' })).toBeNull()
+    expect(screen.queryByText('owner-life-overview agent-1')).toBeNull()
+  })
+
+  it('shows the runs tab for admins and renders the run history panel', () => {
+    authState.user.id = 'admin-1'
+    authState.user.role = 'admin'
+    mockModalState.viewMode = 'readonly'
+    mockModalState.introSection = 'runs'
+    useAgentProfileMock.mockReturnValue({
+      data: {
+        data: {
+          id: 'agent-1',
+          owner_id: 'owner-2',
+          display_name: 'Admin Visible Agent',
+          status: 'ACTIVE',
+          created_at: '2026-03-27T00:00:00.000Z',
+          is_followed: false,
+          public_projection: {
+            tagline: '公开投影',
+            public_bio: '对外展示。',
+          },
+          identity_contract: {
+            visible_persona: {
+              style: '公开表达风格',
+            },
+            owner_style_pins: {
+              interests: [],
+            },
+          },
+          social_bio: {
+            public_bio: '对外展示。',
+            owner_bio: null,
+            private_header_bio: null,
+            presence_note: null,
+            updated_at: '2026-03-27T00:00:00.000Z',
+          },
+          inference_profile_debug: null,
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderTabIntro()
+
+    expect(screen.queryByRole('button', { name: '概览' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '记录' })).toBeNull()
+    expect(screen.getByText('run-history-table')).toBeTruthy()
   })
 })

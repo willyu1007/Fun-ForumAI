@@ -169,11 +169,11 @@ describe('owner explanation surfaces', () => {
         agentId="agent-1"
         sourceSessionId="session-1"
         fallbackRail={{
-          title: '这次私聊已经沉淀成记忆',
-          body: '这里展示的是这轮对话真正留下的记忆痕迹。',
+          title: '这次私聊已经留下了记忆',
+          body: '这些是这轮对话留下的真实痕迹。',
           cta: {
             kind: 'route',
-            label: '回到私聊继续塑形',
+            label: '回到私聊继续',
             target: buildAgentTarget({
               agentId: 'agent-1',
               mode: 'manage',
@@ -184,8 +184,8 @@ describe('owner explanation surfaces', () => {
       />,
     )
 
-    expect(screen.getByText('这次私聊已经沉淀成记忆')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '回到私聊继续塑形' })).toBeTruthy()
+    expect(screen.getByText('这次私聊已经留下了记忆')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '回到私聊继续' })).toBeTruthy()
   })
 
   it('prefers the canonical item over the fallback rail on the achievement surface', () => {
@@ -194,11 +194,11 @@ describe('owner explanation surfaces', () => {
         agentId="agent-1"
         guidanceItem={guidanceItem}
         fallbackRail={{
-          title: '成就线是养成结果在公开舞台上的外显',
+          title: '成就线记录的是角色已经被看见的阶段性成果',
           body: 'fallback body',
           cta: {
             kind: 'route',
-            label: '去看看公开舞台最近的动静',
+            label: '查看公开亮点',
             target: '/highlights',
           },
         }}
@@ -207,7 +207,7 @@ describe('owner explanation surfaces', () => {
     )
 
     expect(screen.getByText('去看它在公开场合的变化')).toBeTruthy()
-    expect(screen.queryByText('成就线是养成结果在公开舞台上的外显')).toBeNull()
+    expect(screen.queryByText('成就线记录的是角色已经被看见的阶段性成果')).toBeNull()
     expect(useAgentRelationsMock).toHaveBeenCalledWith('agent-1', { view: 'friends', limit: 3 }, false)
   })
 
@@ -343,20 +343,21 @@ describe('owner explanation surfaces', () => {
         agentId="agent-1"
         queriesEnabled={false}
         fallbackRail={{
-          title: '关系网反映的是公开互动和长期积累',
-          body: '这里看到的是角色之间慢慢累积出来的走向。',
+          title: '关系网反映的是角色之间的长期积累',
+          body: '这里展示的是角色之间通过公开互动慢慢累积出来的走向。',
           cta: {
             kind: 'route',
-            label: '去看看公开舞台最近的动静',
+            label: '查看互动记录',
             target: '/highlights',
           },
         }}
       />,
     )
 
-    expect(screen.getByText('关系网反映的是公开互动和长期积累')).toBeTruthy()
-    expect(screen.getByRole('link', { name: '去看看公开舞台最近的动静' })).toBeTruthy()
+    expect(screen.getByText('关系网反映的是角色之间的长期积累')).toBeTruthy()
+    expect(screen.getByRole('link', { name: '查看互动记录' })).toBeTruthy()
     expect(screen.getByText('关系网详情仅对所有者开放')).toBeTruthy()
+    expect(screen.queryByRole('combobox')).toBeNull()
     expect(useAgentRelationSummaryMock).toHaveBeenCalledWith('agent-1', false)
     expect(useAgentRelationsMock).toHaveBeenCalledWith('agent-1', { view: 'following', limit: 50 }, false)
   })

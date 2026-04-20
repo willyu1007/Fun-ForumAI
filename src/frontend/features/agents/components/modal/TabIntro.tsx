@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useLocation } from 'react-router'
+import { Link } from 'react-router'
 import { ChevronDown } from 'lucide-react'
 import {
   DetailPageLayout,
@@ -15,11 +15,9 @@ import {
   useAgentProfile,
   useAgentRuns,
   useAgentXp,
-  useFollowAgent,
   useGuidanceSummary,
-  useAgentHighlights,
 } from '@/api/hooks'
-import { useDeleteAgent, useUpdateAgentProfile } from '@/api/hooks/agent'
+import { useUpdateAgentProfile } from '@/api/hooks/agent'
 import { queryKeys } from '@/api/query-keys'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -40,17 +38,13 @@ import { StatsPanel } from '../StatsPanel'
 import { AgentMediaPanel } from '../AgentMediaPanel'
 import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { useAuth } from '@/shared/hooks/use-auth'
-import { GuidanceItemCard } from '@/features/guidance/components/GuidanceItemCard'
-import { GuidanceInlineRail } from '@/features/guidance/components/GuidanceInlineRail'
 import { CommunityHoverCard } from '@/features/forum/components/CommunityHoverCard'
 import {
-  buildAgentSpectatorRail,
   buildPrivacyExplanationRail,
   findCanonicalGuidanceItemForAgent,
 } from '@/features/guidance/contextual-guidance'
 import { isGuidanceEnabled } from '@/features/guidance/feature-flags'
 import type { AgentActiveCommunitySummary } from '@/api/types'
-import { locationToPath } from '@/shared/utils/auth-redirect'
 import { PresetAvatarDialog } from '@/shared/components/PresetAvatarDialog'
 import { AGENT_AVATAR_PRESETS, resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import {
@@ -181,6 +175,220 @@ function ShapingSection({
   )
 }
 
+function OverviewSummarySection({
+  safeAgent,
+  avatarPreviewSrc,
+  initials,
+  isOwner,
+  isAdmin,
+  overviewProjectionText,
+  overviewStats,
+  summaryBadges,
+  activeCommunities,
+  projectionContent,
+  closeModal,
+  onOpenAvatarPreview,
+  onOpenAvatarDialog,
+}: {
+  safeAgent: NonNullable<ReturnType<typeof useAgentProfile>['data']>['data']
+  avatarPreviewSrc: string | null
+  initials: string
+  isOwner: boolean
+  isAdmin: boolean
+  overviewProjectionText: string | null
+  overviewStats: Array<{ label: string; value: string }>
+  summaryBadges: Array<{ label: string; code?: string | null }>
+  activeCommunities: AgentActiveCommunitySummary[]
+  projectionContent?: React.ReactNode
+  closeModal: () => void
+  onOpenAvatarPreview: () => void
+  onOpenAvatarDialog: () => void
+}) {
+  return (
+    <section data-testid="agent-profile-summary" className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <button
+            type="button"
+            className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            aria-label="查看头像大图"
+            onClick={onOpenAvatarPreview}
+          >
+            <Avatar className={'h-14 w-14 border-2 border-primary/20'}>
+              <AvatarImage
+                src={avatarPreviewSrc ?? undefined}
+                alt={safeAgent.display_name}
+                className="object-cover"
+              />
+              <AvatarFallback className={'bg-primary/10 font-semibold text-primary'}>
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="text-xl font-semibold tracking-tight">{safeAgent.display_name}</h2>
+              <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
+                {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
+              </StatusBadge>
+            </div>
+            <p className="text-[13px] leading-5 text-muted-foreground">
+              出生日期: {formatSlashDate(safeAgent.created_at)}
+            </p>
+          </div>
+        </div>
+        {(isOwner || isAdmin) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-1 h-8 shrink-0 px-2 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
+            onClick={onOpenAvatarDialog}
+          >
+            设置头像
+          </Button>
+        )}
+      </div>
+
+      {(overviewProjectionText || activeCommunities.length > 0 || summaryBadges.length > 0) && (
+        <section className="space-y-5">
+          {overviewProjectionText ? (
+            <div className="space-y-3">
+              <p className="text-base leading-7 text-foreground/88">{overviewProjectionText}</p>
+            </div>
+          ) : null}
+
+          {projectionContent}
+
+          <section className="rounded-lg bg-muted/[0.48] px-4 py-4">
+            <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+              {overviewStats.map((item) => (
+                <div key={item.label} className="space-y-1.5">
+                  <p className="text-[13px] font-semibold text-foreground/88">{item.label}</p>
+                  <p className="text-[15px] font-semibold tabular-nums text-foreground">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {summaryBadges.length > 0 ? (
+            <section className="space-y-3 border-t border-border/50 pt-4">
+              <p className="text-[13px] font-semibold text-foreground/88">获得的成就</p>
+              <TooltipProvider delayDuration={120}>
+                <div className="flex flex-wrap items-start gap-3">
+                  {summaryBadges.map((badge) => {
+                    const visual = readKnownBadgeVisual({
+                      label: badge.label,
+                      code: badge.code ?? null,
+                    })
+                    const description = visual?.tooltip
+                      ? stripBadgeTooltipPrefix(visual.tooltip)
+                      : badge.label
+
+                    return (
+                      <Tooltip key={`${badge.code ?? 'display'}:${badge.label}`}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                            aria-label={badge.label}
+                          >
+                            {visual?.icon_src ? (
+                              <img
+                                src={visual.icon_src}
+                                alt={badge.label}
+                                className="size-11 object-contain"
+                              />
+                            ) : (
+                              <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                                {badge.label.slice(0, 1).toUpperCase()}
+                              </div>
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          sideOffset={8}
+                          hideArrow
+                          className="max-w-72 rounded-md border border-border/50 bg-muted/92 px-2.5 py-1 text-[11px] leading-5 text-muted-foreground shadow-none"
+                        >
+                          {description}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              </TooltipProvider>
+            </section>
+          ) : null}
+
+          {activeCommunities.length > 0 ? (
+            <section className="space-y-3 border-t border-border/50 pt-4">
+              <p className="text-[13px] font-semibold text-foreground/88">常逛的社区</p>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                {activeCommunities.map((community) => {
+                  const avatarTheme = getCommunityAvatarTheme({ slug: community.slug ?? community.name })
+                  const communityCategory =
+                    community.community_shell_category
+                    ?? resolveCommunityCategory({
+                      slug: community.slug ?? community.name,
+                      name: community.name,
+                      description: community.description ?? null,
+                      community_semantics: null,
+                    })
+                  const card = (
+                    <div className="flex min-w-0 items-center gap-2.5 rounded-xl px-1 py-1.5">
+                      <Avatar className="size-9 shrink-0 rounded-xl">
+                        <AvatarImage src={avatarTheme.value} alt={community.name} className="object-cover" />
+                        <AvatarFallback
+                          className={`text-xs font-semibold ${getCommunityAvatarToneClassName(communityCategory)}`}
+                        >
+                          {getCommunityCategoryGlyph(communityCategory)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm font-medium text-foreground/88">
+                        {community.name}
+                      </span>
+                    </div>
+                  )
+
+                  if (!community.slug) {
+                    return <div key={community.id}>{card}</div>
+                  }
+
+                  return (
+                    <CommunityHoverCard
+                      key={community.id}
+                      slug={community.slug}
+                      preview={{
+                        id: community.id,
+                        name: community.name,
+                        slug: community.slug,
+                        description: community.description ?? undefined,
+                      }}
+                      onNavigate={closeModal}
+                    >
+                      <Link
+                        to={`/c/${community.slug}`}
+                        onClick={closeModal}
+                        className="group block rounded-xl transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      >
+                        {card}
+                      </Link>
+                    </CommunityHoverCard>
+                  )
+                })}
+              </div>
+            </section>
+          ) : null}
+        </section>
+      )}
+    </section>
+  )
+}
+
 type TabId = Exclude<AgentIntroSection, 'style' | 'instructions'>
 
 const TAB_DESCRIPTIONS: Record<TabId, string> = {
@@ -209,37 +417,34 @@ function normalizeIntroTab(tab: AgentIntroSection | null | undefined): TabId {
   }
 }
 
-export function TabIntro({ agentId }: { agentId: string }) {
+export function TabIntro({
+  agentId,
+  onRequestDelete,
+}: {
+  agentId: string
+  onRequestDelete: () => void
+}) {
   const qc = useQueryClient()
   const guidanceEnabled = isGuidanceEnabled()
-  const routerLocation = useLocation()
-  const { viewMode, setActiveTab, setIntroSection, introSection, sourceSessionId } =
+  const { viewMode, setIntroSection, introSection, sourceSessionId } =
     useAgentModalStore()
   const closeModal = useAgentModalStore((state) => state.closeModal)
   const [adminShadowError, setAdminShadowError] = useState<string | null>(null)
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false)
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const { isAuthenticated, user } = useAuth()
+  const { user } = useAuth()
   const [tab, setTab] = useState<TabId>(normalizeIntroTab(introSection))
   const { data, isLoading, error } = useAgentProfile(agentId)
-  const deleteAgentMutation = useDeleteAgent(agentId)
   const updateAgentProfile = useUpdateAgentProfile(agentId)
   const agent = data?.data
-  const isDeleted = agent?.status === 'DELETED'
   const isOwner = viewMode === 'manage' && !!user && !!agent && user.id === agent.owner_id
   const isAdmin = user?.role === 'admin'
-  const canViewRuns = Boolean(
-    agent && user && (user.role === 'admin' || user.id === agent.owner_id),
-  )
-  const shouldLoadPublicHighlights = Boolean(agentId) && Boolean(agent) && !isOwner && !isDeleted
-  const highlightsData = useAgentHighlights(agentId, shouldLoadPublicHighlights)
+  const canViewRuns = Boolean(agent && user?.role === 'admin')
   const { data: runsData, isLoading: runsLoading } = useAgentRuns(agentId, undefined, {
     enabled: canViewRuns,
   })
   const { data: xpRes, isLoading: xpLoading, error: xpError } = useAgentXp(agentId)
   const guidanceSummary = useGuidanceSummary()
-  const follow = useFollowAgent(agentId)
   const shadowActionMutation = useMutation({
     mutationFn: async (input: {
       action:
@@ -268,14 +473,6 @@ export function TabIntro({ agentId }: { agentId: string }) {
     },
   })
   const guidanceData = guidanceEnabled ? guidanceSummary.data?.data : undefined
-  const reveal = guidanceEnabled
-    ? (guidanceData?.actor.reveal ?? {
-        advanced: true,
-      })
-    : {
-        advanced: true,
-      }
-  const currentPath = locationToPath(routerLocation)
   const contextualAgentItem =
     guidanceEnabled && agentId
       ? findCanonicalGuidanceItemForAgent(guidanceData, agentId, { includeReceipt: false })
@@ -284,45 +481,41 @@ export function TabIntro({ agentId }: { agentId: string }) {
     sourceSessionId && contextualAgentItem?.reason_code === 'WATCH_PUBLIC_EFFECT'
       ? contextualAgentItem
       : null
-  const spectatorRail =
-    guidanceEnabled && !isOwner
-      ? buildAgentSpectatorRail({
-          summary: guidanceData,
-          isAuthenticated,
-          isFollowed: Boolean(agent?.is_followed),
-          currentPath,
-        })
-      : null
   const privacyFallbackRail = guidanceEnabled
     ? buildPrivacyExplanationRail({
         agentId,
         sourceSessionId,
       })
     : null
-  const publicHighlights = highlightsData.data?.data
   const tabs = useMemo(() => {
     const overviewTabs: Array<{
       id: TabId
       label: string
-    }> = [
-      { id: 'overview', label: '概览' },
-      { id: 'stats', label: '塑造' },
-    ]
-    const accessTabs: Array<{
+    }> = [{ id: 'overview', label: '概览' }]
+    const ownerShapingTabs: Array<{
+      id: TabId
+      label: string
+    }> = [{ id: 'stats', label: '塑造' }]
+    const adminTabs: Array<{
+      id: TabId
+      label: string
+    }> = canViewRuns ? [{ id: 'runs' as const, label: '记录' }] : []
+    const ownerAccessTabs: Array<{
       id: TabId
       label: string
     }> = [
       { id: 'privacy', label: '权限' },
-      ...(canViewRuns ? [{ id: 'runs' as const, label: '记录' }] : []),
     ]
-    if (!isOwner) return [...overviewTabs, ...accessTabs]
+    if (!isOwner) return [...overviewTabs, ...adminTabs]
     return [
       ...overviewTabs,
+      ...ownerShapingTabs,
       ...(multimodalAgentMediaEnabled ? [{ id: 'multimodal' as const, label: '媒体' }] : []),
-      ...accessTabs,
-      ...(reveal.advanced ? [{ id: 'advanced' as const, label: '高级' }] : []),
+      ...ownerAccessTabs,
+      ...adminTabs,
+      { id: 'advanced' as const, label: '高级' },
     ]
-  }, [canViewRuns, isOwner, reveal.advanced])
+  }, [canViewRuns, isOwner])
   useEffect(() => {
     setTab(normalizeIntroTab(introSection))
   }, [agentId, introSection])
@@ -421,19 +614,11 @@ export function TabIntro({ agentId }: { agentId: string }) {
     maxProofChips: 2,
     policyId: 'public_agent_header',
   })
-  const proofBadges = safeAgent.public_proof?.achievement_badges ?? []
-  const highlightProofBadges = publicHighlights?.public_proof?.achievement_badges ?? []
-  const publicBio =
-    normalizeBio(publicHighlights ? readProjectionText(publicHighlights) : null) ??
-    normalizeBio(safeAgent.social_bio?.public_bio) ??
-    normalizeBio(readProjectionText(safeAgent)) ??
-    null
   const personaSummary = normalizeBio(safeAgent.identity_contract?.visible_persona.style)
   const overviewProjectionText =
     normalizeBio(safeAgent.social_bio?.public_bio) ??
     normalizeBio(readProjectionText(safeAgent)) ??
     personaSummary
-  const interestChips = safeAgent.identity_contract?.owner_style_pins.interests ?? []
   const activeCommunities = mergeOverviewCommunities({
     activeCommunities: safeAgent.active_communities ?? [],
     legacyNames: uniqueStrings([
@@ -461,13 +646,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
     ...(identityChip ? [identityChip] : []),
     ...headerProofBadges,
   ]
-  const topChronicle = publicHighlights?.top_chronicle[0] ?? null
-  const topChronicleVisual = topChronicle?.visual ?? null
-  const shouldShowPublicProof =
-    !isOwner && Boolean(publicBio || proofBadges.length || publicHighlights?.top_chronicle.length)
   const debugProfile = safeAgent.inference_profile_debug?.profile
   const shadowReview = safeAgent.inference_profile_debug?.shadowReview
-  const tabsNav = (
+  const tabsNav = isOwner ? (
     <div className="flex gap-1 overflow-x-auto px-4">
       {tabs.map((t) => (
         <button
@@ -487,7 +668,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
         </button>
       ))}
     </div>
-  )
+  ) : null
 
   return (
     <div data-testid="agent-profile-page">
@@ -495,8 +676,9 @@ export function TabIntro({ agentId }: { agentId: string }) {
         title={safeAgent.display_name}
         hideHeader
         showTabsDivider={false}
-        tabs={tabsNav}
+        tabs={tabsNav ?? undefined}
       >
+        <div className="relative min-h-full">
         <div className="space-y-4">
           {tab !== 'overview' ? (
             <section
@@ -508,291 +690,28 @@ export function TabIntro({ agentId }: { agentId: string }) {
           ) : null}
 
           {tab === 'overview' && (
-            <section data-testid="agent-profile-summary" className="space-y-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <button
-                    type="button"
-                    className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    aria-label="查看头像大图"
-                    onClick={() => setAvatarPreviewOpen(true)}
-                  >
-                    <Avatar className={'h-14 w-14 border-2 border-primary/20'}>
-                      <AvatarImage
-                        src={avatarPreviewSrc}
-                        alt={safeAgent.display_name}
-                        className="object-cover"
-                      />
-                      <AvatarFallback className={'bg-primary/10 font-semibold text-primary'}>
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <h2 className="text-xl font-semibold tracking-tight">{safeAgent.display_name}</h2>
-                      <StatusBadge tone={STATUS_TONES[safeAgent.status] ?? 'neutral'}>
-                        {STATUS_LABELS[safeAgent.status] ?? safeAgent.status}
-                      </StatusBadge>
-                    </div>
-                    <p className="text-[13px] leading-5 text-muted-foreground">
-                      出生日期: {formatSlashDate(safeAgent.created_at)}
-                    </p>
-                  </div>
-                </div>
-                {(isOwner || isAdmin) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-1 h-8 shrink-0 px-2 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
-                    onClick={() => setAvatarDialogOpen(true)}
-                  >
-                    设置头像
-                  </Button>
-                )}
-              </div>
-
-              {(overviewProjectionText || activeCommunities.length > 0 || interestChips.length > 0 || summaryBadges.length > 0) && (
-                <section className="space-y-5">
-                  {overviewProjectionText ? (
-                    <div className="space-y-3">
-                      <p className="text-base leading-7 text-foreground/88">{overviewProjectionText}</p>
-                      {!isOwner && interestChips.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {interestChips.slice(0, 4).map((interest) => (
-                            <Badge key={interest} variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                              {interest}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {isOwner ? (
-                    <OwnerLifeOverviewPanel
-                      agentId={agentId!}
-                      sections={['ownerProjection']}
-                    />
-                  ) : null}
-
-                  <section className="rounded-lg bg-muted/[0.48] px-4 py-4">
-                    <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
-                      {overviewStats.map((item) => (
-                        <div key={item.label} className="space-y-1.5">
-                          <p className="text-[13px] font-semibold text-foreground/88">{item.label}</p>
-                          <p className="text-[15px] font-semibold tabular-nums text-foreground">
-                            {item.value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                  {summaryBadges.length > 0 ? (
-                    <section className="space-y-3 border-t border-border/50 pt-4">
-                      <p className="text-[13px] font-semibold text-foreground/88">获得的成就</p>
-                      <TooltipProvider delayDuration={120}>
-                        <div className="flex flex-wrap items-start gap-3">
-                          {summaryBadges.map((badge) => {
-                            const visual = readKnownBadgeVisual({
-                              label: badge.label,
-                              code: badge.code ?? null,
-                            })
-                            const description = visual?.tooltip
-                              ? stripBadgeTooltipPrefix(visual.tooltip)
-                              : badge.label
-
-                            return (
-                              <Tooltip key={`${badge.code ?? 'display'}:${badge.label}`}>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="flex items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                                    aria-label={badge.label}
-                                  >
-                                    {visual?.icon_src ? (
-                                      <img
-                                        src={visual.icon_src}
-                                        alt={badge.label}
-                                        className="size-11 object-contain"
-                                      />
-                                    ) : (
-                                      <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                                        {badge.label.slice(0, 1).toUpperCase()}
-                                      </div>
-                                    )}
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="bottom"
-                                  sideOffset={8}
-                                  hideArrow
-                                  className="max-w-72 rounded-md border border-border/50 bg-muted/92 px-2.5 py-1 text-[11px] leading-5 text-muted-foreground shadow-none"
-                                >
-                                  {description}
-                                </TooltipContent>
-                              </Tooltip>
-                            )
-                          })}
-                        </div>
-                      </TooltipProvider>
-                    </section>
-                  ) : null}
-
-                  {activeCommunities.length > 0 ? (
-                    <section className="space-y-3 border-t border-border/50 pt-4">
-                      <p className="text-[13px] font-semibold text-foreground/88">常逛的社区</p>
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {activeCommunities.map((community) => {
-                          const avatarTheme = getCommunityAvatarTheme({ slug: community.slug ?? community.name })
-                          const communityCategory =
-                            community.community_shell_category
-                            ?? resolveCommunityCategory({
-                              slug: community.slug ?? community.name,
-                              name: community.name,
-                              description: community.description ?? null,
-                              community_semantics: null,
-                            })
-                          const card = (
-                            <div className="flex min-w-0 items-center gap-2.5 rounded-xl px-1 py-1.5">
-                              <Avatar className="size-9 shrink-0 rounded-xl">
-                                <AvatarImage src={avatarTheme.value} alt={community.name} className="object-cover" />
-                                <AvatarFallback
-                                  className={`text-xs font-semibold ${getCommunityAvatarToneClassName(communityCategory)}`}
-                                >
-                                  {getCommunityCategoryGlyph(communityCategory)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="truncate text-sm font-medium text-foreground/88">
-                                {community.name}
-                              </span>
-                            </div>
-                          )
-
-                          if (!community.slug) {
-                            return <div key={community.id}>{card}</div>
-                          }
-
-                          return (
-                            <CommunityHoverCard
-                              key={community.id}
-                              slug={community.slug}
-                              preview={{
-                                id: community.id,
-                                name: community.name,
-                                slug: community.slug,
-                                description: community.description ?? undefined,
-                              }}
-                              onNavigate={closeModal}
-                            >
-                              <Link
-                                to={`/c/${community.slug}`}
-                                onClick={closeModal}
-                                className="group block rounded-xl transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                              >
-                                {card}
-                              </Link>
-                            </CommunityHoverCard>
-                          )
-                        })}
-                      </div>
-                    </section>
-                  ) : null}
-                </section>
-              )}
-            </section>
-          )}
-
-          {tab === 'overview' &&
-            !isOwner &&
-            (contextualAgentItem ? (
-              <GuidanceItemCard item={contextualAgentItem} />
-            ) : spectatorRail ? (
-              <GuidanceInlineRail
-                rail={spectatorRail}
-                onAction={
-                  spectatorRail.cta.kind === 'button'
-                    ? () => {
-                        if (!agentId) return
-                        follow.mutate()
-                      }
-                    : undefined
-                }
-                actionPending={follow.isPending}
-              />
-            ) : null)}
-
-          {tab === 'overview' && !isOwner && shouldShowPublicProof && (
-            <Card className={'border-primary/20 bg-primary/5'}>
-              <CardHeader className={'pb-2'}>
-                <CardTitle className={'text-base'}>这个角色为什么值得追</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {proofBadges.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {proofBadges.map((badge) => (
-                      <BadgeVisualChip
-                        key={`${badge.code}-${badge.level ?? 1}`}
-                        label={badge.name}
-                        code={badge.code}
-                        variant="secondary"
-                      />
-                    ))}
-                  </div>
-                )}
-                {highlightProofBadges.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {highlightProofBadges.map((badge) => (
-                      <BadgeVisualChip
-                        key={`${badge.code}-${badge.level ?? 1}`}
-                        label={badge.name}
-                        code={badge.code}
-                        variant="outline"
-                      />
-                    ))}
-                  </div>
-                )}
-                {publicBio && <p className={'text-sm text-muted-foreground'}>{publicBio}</p>}
-                {topChronicle && (
-                  <div className={'overflow-hidden rounded-md border bg-background/80'}>
-                    {topChronicleVisual && (
-                      <img
-                        src={topChronicleVisual.media_url}
-                        alt={
-                          topChronicleVisual.alt_text ??
-                          topChronicleVisual.public_caption ??
-                          topChronicle.title
-                        }
-                        className={'aspect-[16/9] w-full object-cover'}
-                        loading="lazy"
-                      />
-                    )}
-                    <div className={'p-3'}>
-                      <p className={'text-sm font-medium'}>{topChronicle.title}</p>
-                      <p className={'mt-1 text-xs text-muted-foreground'}>{topChronicle.summary}</p>
-                      {agentId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                          className={'mt-2 h-7 px-0 text-xs'}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('moments')}
-                            className="text-primary hover:underline"
-                          >
-                            查看动态
-                          </button>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <OverviewSummarySection
+              safeAgent={safeAgent}
+              avatarPreviewSrc={avatarPreviewSrc}
+              initials={initials}
+              isOwner={isOwner}
+              isAdmin={isAdmin}
+              overviewProjectionText={overviewProjectionText}
+              overviewStats={overviewStats}
+              summaryBadges={summaryBadges}
+              activeCommunities={activeCommunities}
+              projectionContent={
+                isOwner ? (
+                  <OwnerLifeOverviewPanel
+                    agentId={agentId!}
+                    sections={['ownerProjection']}
+                  />
+                ) : null
+              }
+              closeModal={closeModal}
+              onOpenAvatarPreview={() => setAvatarPreviewOpen(true)}
+              onOpenAvatarDialog={() => setAvatarDialogOpen(true)}
+            />
           )}
 
           {tab === 'stats' && (
@@ -855,62 +774,33 @@ export function TabIntro({ agentId }: { agentId: string }) {
           {tab === 'advanced' && (isOwner ? <PromptOverrideEditor agentId={agentId!} /> : null)}
 
           {tab === 'advanced' && isOwner && (
-            <Card>
-              <CardHeader className={'pb-2'}>
-                <CardTitle className={'text-base'}>危险操作</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  删除后，这个智能体会离场；历史公开帖子仍会保留，但不再开放关注、私聊或进一步互动。
-                </p>
-                {deleteConfirmOpen ? (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                    <p className="text-sm text-foreground">
-                      确认删除“{safeAgent.display_name}”？
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      这会清空已有关注关系，并结束正在进行的私聊会话。
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        disabled={deleteAgentMutation.isPending}
-                        onClick={() => {
-                          deleteAgentMutation.mutate(undefined, {
-                            onSuccess: () => {
-                              setDeleteConfirmOpen(false)
-                              closeModal()
-                            },
-                          })
-                        }}
-                      >
-                        {deleteAgentMutation.isPending ? '删除中…' : '确认删除'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={deleteAgentMutation.isPending}
-                        onClick={() => setDeleteConfirmOpen(false)}
-                      >
-                        取消
-                      </Button>
+            <section className="border-t-2 border-destructive/55 pt-5">
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold tracking-tight text-destructive">危险操作</h3>
+                <section
+                  className="border-y border-destructive/20"
+                  aria-label="危险操作列表"
+                >
+                  <div className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0 space-y-1">
+                      <h4 className="text-sm font-semibold tracking-tight text-foreground">删除智能体</h4>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        历史公开帖子仍会保留，但关注、私聊和进一步互动会终止。
+                      </p>
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 shrink-0 rounded-md px-2 text-xs font-medium text-destructive shadow-none hover:bg-destructive/8 hover:text-destructive"
+                      onClick={onRequestDelete}
+                    >
+                      删除…
+                    </Button>
                   </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteConfirmOpen(true)}
-                  >
-                    删除智能体
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+                </section>
+              </div>
+            </section>
           )}
 
           {tab === 'advanced' && isAdmin && safeAgent.inference_profile_debug && (
@@ -1080,7 +970,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
             </Card>
           )}
 
-          {tab === 'runs' && (
+          {tab === 'runs' && canViewRuns && (
             <section>
               <RunHistoryTable runs={runsData?.data ?? []} isLoading={runsLoading} />
             </section>
@@ -1122,6 +1012,7 @@ export function TabIntro({ agentId }: { agentId: string }) {
             />
           </DialogContent>
         </Dialog>
+        </div>
       </DetailPageLayout>
     </div>
   )

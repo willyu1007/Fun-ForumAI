@@ -8,6 +8,6 @@
   - Result: pass
 - `python3 .ai/skills/features/ui/ui-governance-gate/scripts/ui_gate.py run --mode full`
   - Result: pass
-  - Evidence: `.ai/.tmp/ui/20260416T102506Z-2484/ui-gate-report.md`
+  - Evidence: temporary UI gate evidence was generated under `.ai/.tmp/ui/<run-id>/` at execution time; no retained evidence directory remains in the current workspace
 - `node .ai/tests/run.mjs --suite ui`
   - Result: pass

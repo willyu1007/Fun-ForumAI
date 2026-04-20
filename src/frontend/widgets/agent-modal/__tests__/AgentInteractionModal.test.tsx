@@ -1,7 +1,10 @@
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import {
+  READONLY_MODAL_LAYOUT_VERSION,
+  useAgentModalStore,
+} from '@/shared/stores/agent-modal-store'
 import { AgentInteractionModal } from '../AgentInteractionModal'
 
 const renderCounts = vi.hoisted(() => ({
@@ -16,9 +19,14 @@ const useAgentProfileMock = vi.fn()
 const useMyAgentsMock = vi.fn()
 const useAuthMock = vi.fn()
 const captureDisplayFrameMock = vi.fn()
+const useDeleteAgentMock = vi.fn()
 
 vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
+}))
+
+vi.mock('@/api/hooks/agent', () => ({
+  useDeleteAgent: (agentId: string) => useDeleteAgentMock(agentId),
 }))
 
 vi.mock('@/api/hooks/user', () => ({
@@ -62,13 +70,18 @@ vi.mock('@/components/ui/dialog', async () => {
       hideOverlay: _hideOverlay,
       onInteractOutside,
       onPointerDownOutside,
-      onEscapeKeyDown: _onEscapeKeyDown,
+      onEscapeKeyDown,
       ...props
     }, ref) => (
       <div
         ref={ref}
         data-has-interact-outside-handler={onInteractOutside ? 'true' : undefined}
         data-has-pointer-down-outside-handler={onPointerDownOutside ? 'true' : undefined}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            onEscapeKeyDown?.(event as unknown as Event)
+          }
+        }}
         {...props}
       >
         {children}
@@ -129,9 +142,24 @@ vi.mock('@/features/agents/components/AgentCreateWizard', () => ({
 }))
 
 vi.mock('@/features/agents/components/modal/TabIntro', () => ({
-  TabIntro: ({ agentId }: { agentId: string }) => {
+  TabIntro: ({
+    agentId,
+    onRequestDelete,
+  }: {
+    agentId: string
+    onRequestDelete?: () => void
+  }) => {
     renderCounts.intro += 1
-    return <div data-testid="tab-intro">intro:{agentId}</div>
+    return (
+      <div data-testid="tab-intro">
+        intro:{agentId}
+        {onRequestDelete ? (
+          <button type="button" data-testid="tab-intro-request-delete" onClick={onRequestDelete}>
+            delete
+          </button>
+        ) : null}
+      </div>
+    )
   },
 }))
 
@@ -263,6 +291,10 @@ describe('AgentInteractionModal geometry updates', () => {
       mimeType: 'image/png',
       fileName: 'capture.png',
     })
+    useDeleteAgentMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    })
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight })
     ;(HTMLElement.prototype as { setPointerCapture?: (pointerId: number) => void }).setPointerCapture = vi.fn()
@@ -283,6 +315,8 @@ describe('AgentInteractionModal geometry updates', () => {
         introSection: null,
         sourceSessionId: null,
         lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
       })
     })
     window.localStorage.removeItem('agent-modal-state')
@@ -300,6 +334,8 @@ describe('AgentInteractionModal geometry updates', () => {
         introSection: null,
         sourceSessionId: null,
         lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
       })
     })
 
@@ -616,6 +652,39 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(state.activeTab).toBe('intro')
   })
 
+  it('opens the delete confirm panel inside the modal content area from TabIntro', () => {
+    renderOpenModal()
+
+    expect(screen.getByTestId('agent-delete-confirm-panel').className).toContain('pointer-events-none')
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('tab-intro-request-delete'))
+    })
+
+    const panel = screen.getByTestId('agent-delete-confirm-panel')
+    expect(panel.className).toContain('pointer-events-auto')
+    expect(screen.getByText('删除智能体')).toBeTruthy()
+    expect(screen.getByLabelText('输入智能体名称以确认')).toBeTruthy()
+  })
+
+  it('dismisses the delete confirm panel on Escape without closing the modal', () => {
+    renderOpenModal()
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('tab-intro-request-delete'))
+    })
+
+    const modal = screen.getByTestId('agent-modal-content')
+    expect(screen.getByTestId('agent-delete-confirm-panel').className).toContain('pointer-events-auto')
+
+    act(() => {
+      fireEvent.keyDown(modal, { key: 'Escape' })
+    })
+
+    expect(screen.getByTestId('agent-delete-confirm-panel').className).toContain('pointer-events-none')
+    expect(screen.getByTestId('agent-modal-content')).toBeTruthy()
+  })
+
   it('allows resizing down to the reduced minimum height', () => {
     renderOpenModal()
 
@@ -727,6 +796,8 @@ describe('AgentInteractionModal geometry updates', () => {
           w: 920,
           h: 640,
         },
+        lastModalRectMode: 'manage',
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
       })
     })
 
@@ -767,6 +838,8 @@ describe('AgentInteractionModal geometry updates', () => {
         introSection: null,
         sourceSessionId: null,
         lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
       })
     })
 
@@ -776,6 +849,105 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(screen.getByTestId('tab-intro').textContent).toContain('agent-external')
   })
 
+  it('applies the readonly-mode default size with the narrower and taller browsing footprint', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 })
+
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-external',
+        viewMode: 'readonly',
+        activeTab: 'intro',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    const modal = screen.getByTestId('agent-modal-content')
+    expect(modal.style.width).toBe('768px')
+    expect(modal.style.height).toBe('780px')
+  })
+
+  it('limits readonly mode to intro, moments, and social tabs', () => {
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-external',
+        viewMode: 'readonly',
+        activeTab: 'intro',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    expect(screen.getByTestId('agent-modal-readonly-tabs')).toBeTruthy()
+    expect(screen.getByTestId('agent-modal-readonly-tab-intro')).toBeTruthy()
+    expect(screen.getByTestId('agent-modal-readonly-tab-moments')).toBeTruthy()
+    expect(screen.getByTestId('agent-modal-readonly-tab-social')).toBeTruthy()
+    expect(screen.queryByTestId('agent-modal-tab-chat')).toBeNull()
+    expect(screen.queryByTestId('agent-modal-tab-history')).toBeNull()
+    expect(screen.queryByTestId('agent-modal-tab-intro')).toBeNull()
+    expect(screen.queryByTestId('left-rail-agent-display-editor')).toBeNull()
+  })
+
+  it('labels readonly tabs as overview, moments, and social browsing surfaces', () => {
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-external',
+        viewMode: 'readonly',
+        activeTab: 'intro',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    expect(screen.getByRole('button', { name: '概览' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '动态' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '朋友圈' })).toBeTruthy()
+  })
+
+  it('falls back to intro when readonly mode is opened on a disallowed tab', () => {
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-external',
+        viewMode: 'readonly',
+        activeTab: 'history',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    expect(screen.getByTestId('tab-intro').textContent).toContain('agent-external')
+    expect(useAgentModalStore.getState().activeTab).toBe('intro')
+  })
+
   it('renders an accessible dialog description', () => {
     act(() => {
       useAgentModalStore.setState({
@@ -783,11 +955,45 @@ describe('AgentInteractionModal geometry updates', () => {
         activeAgentId: 'agent-1',
         viewMode: 'manage',
         activeTab: 'intro',
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
       })
     })
 
     render(<AgentInteractionModal />)
 
     expect(screen.getByText('查看或管理智能体资料、互动入口与相关设置。')).toBeTruthy()
+  })
+
+  it('ignores stale readonly rects when the browsing layout version changes', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 })
+
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-external',
+        viewMode: 'readonly',
+        activeTab: 'intro',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: {
+          x: 48,
+          y: 36,
+          w: 1100,
+          h: 860,
+        },
+        lastModalRectMode: 'readonly',
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION - 1,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    const modal = screen.getByTestId('agent-modal-content')
+    expect(modal.style.width).toBe('768px')
+    expect(modal.style.height).toBe('780px')
+    expect(modal.style.transform).toBe('translate3d(416px, 110px, 0)')
   })
 })

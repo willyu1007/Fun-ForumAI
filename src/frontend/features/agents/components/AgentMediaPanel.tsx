@@ -27,6 +27,7 @@ const ACCEPTED_UPLOAD_TYPES = new Set([
 ])
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+const EMPTY_AGENT_MEDIA_ASSETS: AgentMediaAsset[] = []
 
 function renderError(error: unknown): string {
   if (error && typeof error === 'object') {
@@ -130,7 +131,7 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
 
   const busy = createFromUrl.isPending || createFromUpload.isPending
   const viewBusy = archiveAsset.isPending || restoreAsset.isPending
-  const assets = library.data?.data?.assets ?? []
+  const assets = library.data?.data?.assets ?? EMPTY_AGENT_MEDIA_ASSETS
   const errorMessage = useMemo(() => {
     return renderError(createFromUrl.error ?? createFromUpload.error)
   }, [createFromUrl.error, createFromUpload.error])

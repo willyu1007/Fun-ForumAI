@@ -3,14 +3,17 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAgentProfile } from '@/api/hooks'
+import { useDeleteAgent } from '@/api/hooks/agent'
 import { useMyAgents } from '@/api/hooks/user'
 import { useAuth } from '@/shared/hooks/use-auth'
 import {
+  READONLY_MODAL_LAYOUT_VERSION,
   useAgentModalStore,
   type AgentModalRect,
   type AgentModalTab,
 } from '@/shared/stores/agent-modal-store'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   User,
   MessageSquare,
@@ -55,20 +58,43 @@ const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
   { id: 'history', icon: BookOpen, label: '编年史' },
 ]
 
-const MIN_W_READONLY = 608
+const READONLY_TAB_IDS: AgentModalTab[] = ['intro', 'moments', 'social']
+
+function getReadonlyTabLabel(tab: AgentModalTab): string {
+  switch (tab) {
+    case 'intro':
+      return '概览'
+    case 'moments':
+      return '动态'
+    case 'social':
+      return '朋友圈'
+    default:
+      return ''
+  }
+}
+
+const MIN_W_READONLY = 520
 const MIN_W_MANAGE = 832
 const MIN_H = 510
 const MAX_W = 1440
 const VIEWPORT_MARGIN = 12
+const DEFAULT_WIDTH_RATIO_READONLY = 0.48
+const DEFAULT_HEIGHT_RATIO_READONLY = 0.78
+const DEFAULT_WIDTH_RATIO_MANAGE = 0.65
+const DEFAULT_HEIGHT_RATIO_MANAGE = 0.85
 
 type InteractMode = null | 'drag' | 'resize-se' | 'resize-e' | 'resize-s' | 'resize-w'
 type ModalRect = AgentModalRect
 
-function centeredRect() {
+function centeredRect(viewMode: 'manage' | 'readonly') {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800
-  const w = Math.round(vw * 0.65)
-  const h = Math.round(vh * 0.85)
+  const widthRatio =
+    viewMode === 'readonly' ? DEFAULT_WIDTH_RATIO_READONLY : DEFAULT_WIDTH_RATIO_MANAGE
+  const heightRatio =
+    viewMode === 'readonly' ? DEFAULT_HEIGHT_RATIO_READONLY : DEFAULT_HEIGHT_RATIO_MANAGE
+  const w = Math.round(vw * widthRatio)
+  const h = Math.round(vh * heightRatio)
   return { x: Math.round((vw - w) / 2), y: Math.round((vh - h) / 2), w, h }
 }
 
@@ -94,7 +120,7 @@ function getMinWidthForMode(viewMode: 'manage' | 'readonly') {
 }
 
 function getDefaultRect(viewMode: 'manage' | 'readonly') {
-  return clampRectToViewport(centeredRect(), viewMode)
+  return clampRectToViewport(centeredRect(viewMode), viewMode)
 }
 
 function clampRectToViewport(rect: ModalRect, viewMode: 'manage' | 'readonly'): ModalRect {
@@ -342,18 +368,28 @@ export function AgentInteractionModal() {
   const pendingCreateWizard = useAgentModalStore((state) => state.pendingCreateWizard)
   const setPendingCreateWizard = useAgentModalStore((state) => state.setPendingCreateWizard)
   const setLastModalRect = useAgentModalStore((state) => state.setLastModalRect)
-  const lastModalRect = useAgentModalStore.getState().lastModalRect
+  const lastModalRect = useAgentModalStore((state) => state.lastModalRect)
+  const lastModalRectMode = useAgentModalStore((state) => state.lastModalRectMode)
+  const readonlyLayoutVersion = useAgentModalStore((state) => state.readonlyLayoutVersion)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const screenshotResolverRef = useRef<((file: File | null) => void) | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [screenshotDraft, setScreenshotDraft] = useState<ScreenshotDraft | null>(null)
   const [screenshotErrorMessage, setScreenshotErrorMessage] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState('')
+  const persistedRect =
+    lastModalRect
+    && lastModalRectMode === viewMode
+    && (viewMode !== 'readonly' || readonlyLayoutVersion === READONLY_MODAL_LAYOUT_VERSION)
+      ? lastModalRect
+      : null
   const { onPointerDown, restoreDefaultSize, centerCurrent, flushRect } = useModalGeometry(
     isOpen,
     viewMode,
     contentRef,
-    lastModalRect,
-    setLastModalRect,
+    persistedRect,
+    (rect) => setLastModalRect(rect, viewMode),
   )
   const { user } = useAuth()
   const ownerAvatarSrc = user ? resolveUserAvatarSrc(user) : null
@@ -364,16 +400,29 @@ export function AgentInteractionModal() {
       ? (myAgentIds.includes(activeAgentId) ? activeAgentId : null)
       : activeAgentId
   const { data: activeAgentData } = useAgentProfile(validActiveAgentId ?? '', !!validActiveAgentId)
+  const deleteAgentMutation = useDeleteAgent(validActiveAgentId ?? '')
   const activeAgent = activeAgentData?.data
-  const visibleTabs = useMemo(
-    () => (activeAgent?.status === 'DELETED' ? TABS.filter((tab) => tab.id === 'intro') : TABS),
-    [activeAgent?.status],
-  )
+  const deleteConfirmMatches = deleteConfirmValue.trim() === (activeAgent?.display_name ?? '')
+  const visibleTabs = useMemo(() => {
+    const tabsForMode =
+      viewMode === 'readonly'
+        ? TABS.filter((tab) => READONLY_TAB_IDS.includes(tab.id))
+        : TABS
+
+    return activeAgent?.status === 'DELETED'
+      ? tabsForMode.filter((tab) => tab.id === 'intro')
+      : tabsForMode
+  }, [activeAgent?.status, viewMode])
   const headerAgentName = activeAgentData?.data?.display_name ?? ''
   const headerPresenceNote =
     activeTab === 'chat' ? activeAgent?.social_bio?.presence_note?.trim() ?? '' : ''
   const isCropperActive = Boolean(screenshotDraft)
   const shouldBlockDialogDismiss = isCaptureHidden || isCropperActive
+
+  const closeDeleteConfirmPanel = useCallback(() => {
+    setDeleteConfirmOpen(false)
+    setDeleteConfirmValue('')
+  }, [])
 
   const setContentNode = useCallback((node: HTMLDivElement | null) => {
     contentRef.current = node
@@ -383,12 +432,14 @@ export function AgentInteractionModal() {
 
   const handleModalClose = useCallback(() => {
     setWizardOpen(false)
+    closeDeleteConfirmPanel()
     closeModal()
-  }, [closeModal])
+  }, [closeDeleteConfirmPanel, closeModal])
 
   useEffect(() => {
     if (!isOpen) {
       setWizardOpen(false)
+      closeDeleteConfirmPanel()
       screenshotResolverRef.current?.(null)
       screenshotResolverRef.current = null
       setScreenshotDraft(null)
@@ -399,7 +450,7 @@ export function AgentInteractionModal() {
       setPendingCreateWizard(false)
       setWizardOpen(true)
     }
-  }, [isOpen, pendingCreateWizard, setPendingCreateWizard])
+  }, [closeDeleteConfirmPanel, isOpen, pendingCreateWizard, setPendingCreateWizard])
 
   useEffect(() => {
     if (!isOpen) return
@@ -419,6 +470,15 @@ export function AgentInteractionModal() {
       setActiveTab('intro')
     }
   }, [activeAgent?.status, activeTab, setActiveTab])
+
+  useEffect(() => {
+    if (visibleTabs.some((tab) => tab.id === activeTab)) return
+    setActiveTab(visibleTabs[0]?.id ?? 'intro')
+  }, [activeTab, setActiveTab, visibleTabs])
+
+  useEffect(() => {
+    closeDeleteConfirmPanel()
+  }, [activeAgent?.id, activeTab, closeDeleteConfirmPanel])
 
   const handleCaptureScreenshot = useCallback(async () => {
     setScreenshotErrorMessage(null)
@@ -457,6 +517,9 @@ export function AgentInteractionModal() {
   }
 
   const showSidebar = viewMode === 'manage'
+  const showIconRail = viewMode === 'manage'
+  const readonlyTabs = visibleTabs.filter((tab) => READONLY_TAB_IDS.includes(tab.id))
+  const showReadonlyTopTabs = viewMode === 'readonly' && readonlyTabs.length > 0
 
   return (
     <>
@@ -477,7 +540,16 @@ export function AgentInteractionModal() {
         hideOverlay={isCaptureHidden}
         onInteractOutside={shouldBlockDialogDismiss ? (event) => event.preventDefault() : undefined}
         onPointerDownOutside={shouldBlockDialogDismiss ? (event) => event.preventDefault() : undefined}
-        onEscapeKeyDown={shouldBlockDialogDismiss ? (event) => event.preventDefault() : undefined}
+        onEscapeKeyDown={
+          deleteConfirmOpen
+            ? (event) => {
+                event.preventDefault()
+                closeDeleteConfirmPanel()
+              }
+            : shouldBlockDialogDismiss
+              ? (event) => event.preventDefault()
+              : undefined
+        }
         className={cn(
           "top-0 left-0 h-auto w-auto max-w-none translate-x-0 translate-y-0 animate-none gap-0 overflow-hidden p-0 transition-none sm:max-w-none flex flex-col will-change-transform",
           isCaptureHidden && "pointer-events-none invisible opacity-0",
@@ -488,33 +560,32 @@ export function AgentInteractionModal() {
           查看或管理智能体资料、互动入口与相关设置。
         </DialogDescription>
 
-        {/* Drag handle bar */}
-        <div
-          data-testid="agent-modal-drag-handle"
-          className="flex h-10 shrink-0 cursor-grab select-none touch-none active:cursor-grabbing"
-          onPointerDown={(e) => onPointerDown(e, 'drag')}
-        >
-          <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-border/60 bg-muted/50">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Avatar className="h-6 w-6">
-                  <AvatarImage
-                    src={ownerAvatarSrc ?? undefined}
-                    alt={user?.displayName ?? ''}
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-primary/15 text-[10px] font-medium text-primary">
-                    {getInitials(user?.displayName ?? '')}
-                  </AvatarFallback>
-                </Avatar>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
-                {user?.displayName ?? '我'}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+        {showSidebar && (
+          <div
+            data-testid="agent-modal-drag-handle"
+            className="flex h-10 shrink-0 cursor-grab select-none touch-none active:cursor-grabbing"
+            onPointerDown={(e) => onPointerDown(e, 'drag')}
+          >
+            <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-border/60 bg-muted/50">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage
+                      src={ownerAvatarSrc ?? undefined}
+                      alt={user?.displayName ?? ''}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary/15 text-[10px] font-medium text-primary">
+                      {getInitials(user?.displayName ?? '')}
+                    </AvatarFallback>
+                  </Avatar>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={6}>
+                  {user?.displayName ?? '我'}
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
-          {showSidebar && (
             <div className="flex h-full w-64 shrink-0 items-center justify-between border-r border-border/70 bg-background/75 px-4 backdrop-blur-xl">
               <div className="truncate text-sm font-semibold text-foreground">我的智能体</div>
               <Button
@@ -531,127 +602,134 @@ export function AgentInteractionModal() {
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-          )}
 
-          <div className="flex flex-1 items-center bg-background/75 pl-5 pr-4 backdrop-blur-xl">
-            <div className="min-w-0 flex-1">
-              {headerAgentName && (
-                <div className="flex items-baseline gap-2">
-                  <div className="truncate text-sm font-semibold text-foreground">
-                    {headerAgentName}
-                  </div>
-                  {headerPresenceNote ? (
-                    <div
-                      className="min-w-0 truncate text-xs text-muted-foreground"
-                      data-testid="agent-modal-header-presence-note"
-                    >
-                      {headerPresenceNote}
+            <div className="flex flex-1 items-center bg-background/75 pl-5 pr-4 backdrop-blur-xl">
+              <div className="min-w-0 flex-1">
+                {headerAgentName && (
+                  <div className="flex items-baseline gap-2">
+                    <div className="truncate text-sm font-semibold text-foreground">
+                      {headerAgentName}
                     </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
+                    {headerPresenceNote ? (
+                      <div
+                        className="min-w-0 truncate text-xs text-muted-foreground"
+                        data-testid="agent-modal-header-presence-note"
+                      >
+                        {headerPresenceNote}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
 
-            <div className="z-20 flex items-center gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="更多操作"
-                    title="更多操作"
-                    data-testid="agent-modal-more-button"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <Ellipsis className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={6}>
-                  <DropdownMenuItem
-                    data-testid="agent-modal-center-button"
-                    onClick={centerCurrent}
-                  >
-                    <LocateFixed className="h-4 w-4" />
-                    视觉居中
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    data-testid="agent-modal-restore-button"
-                    onClick={restoreDefaultSize}
-                  >
-                    <Square className="h-4 w-4" />
-                    恢复默认尺寸
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <button
-                type="button"
-                aria-label="关闭弹窗"
-                title="关闭弹窗"
-                data-testid="agent-modal-close-button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={handleModalClose}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="z-20 flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="更多操作"
+                      title="更多操作"
+                      data-testid="agent-modal-more-button"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <Ellipsis className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" sideOffset={6}>
+                    <DropdownMenuItem
+                      data-testid="agent-modal-center-button"
+                      onClick={centerCurrent}
+                    >
+                      <LocateFixed className="h-4 w-4" />
+                      视觉居中
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      data-testid="agent-modal-restore-button"
+                      onClick={restoreDefaultSize}
+                    >
+                      <Square className="h-4 w-4" />
+                      恢复默认尺寸
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <button
+                  type="button"
+                  aria-label="关闭弹窗"
+                  title="关闭弹窗"
+                  data-testid="agent-modal-close-button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={handleModalClose}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Body: icon rail + sidebar + content */}
         <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
           {/* Icon rail */}
-          <nav className="flex w-12 shrink-0 flex-col items-center border-r border-border/60 bg-muted/50 py-2.5">
-            <div className="flex flex-col items-center gap-1">
-              {visibleTabs.map((tab) => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.id
-                return (
-                  <Tooltip key={tab.id}>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => setActiveTab(tab.id)}
-                        aria-label={tab.label}
-                        title={tab.label}
-                        data-testid={`agent-modal-tab-${tab.id}`}
-                        className={cn(
-                          'relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
-                          isActive
-                            ? 'text-foreground'
-                            : 'text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {isActive && (
-                          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-primary" />
-                        )}
-                        <Icon className="h-[17px] w-[17px]" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={6}>
-                      {tab.label}
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              })}
-            </div>
+          {showIconRail && (
+            <nav className="flex w-12 shrink-0 flex-col items-center border-r border-border/60 bg-muted/50 py-2.5">
+              <div className="flex flex-col items-center gap-1">
+                {visibleTabs.map((tab) => {
+                  const Icon = tab.icon
+                  const isActive = activeTab === tab.id
+                  return (
+                    <Tooltip key={tab.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setActiveTab(tab.id)}
+                          aria-label={tab.label}
+                          title={tab.label}
+                          data-testid={`agent-modal-tab-${tab.id}`}
+                          className={cn(
+                            'relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
+                            isActive
+                              ? 'text-foreground'
+                              : 'text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {isActive && (
+                            <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-primary" />
+                          )}
+                          <Icon className="h-[17px] w-[17px]" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={6}>
+                        {tab.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                })}
+              </div>
 
-            <div className="mt-auto flex w-full justify-center pt-3">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div><LeftRailAgentDisplayEditor /></div>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={6}>
-                  编辑左下角展示的智能体
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </nav>
+              <div className="mt-auto flex w-full justify-center pt-3">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div><LeftRailAgentDisplayEditor /></div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={6}>
+                    编辑左下角展示的智能体
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </nav>
+          )}
 
           {/* Agent list (manage mode only) */}
           {showSidebar && <AgentListSidebar onCreateAgent={() => setWizardOpen(true)} />}
 
           {/* Main content */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background relative">
+          <div
+            className={cn(
+              'flex-1 flex flex-col min-w-0 overflow-hidden bg-background relative',
+              activeTab === 'social' ? 'px-0' : 'px-2 md:px-3',
+            )}
+          >
             {!validActiveAgentId ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-border/70 text-muted-foreground/40">
@@ -661,9 +739,60 @@ export function AgentInteractionModal() {
               </div>
             ) : (
               <>
+                {showReadonlyTopTabs ? (
+                  <div
+                    data-testid="agent-modal-drag-handle"
+                    className="flex shrink-0 cursor-grab items-center border-b border-border/60 px-6 pt-3 select-none touch-none active:cursor-grabbing"
+                    onPointerDown={(e) => onPointerDown(e, 'drag')}
+                  >
+                    <div
+                      className="flex min-w-0 flex-1 items-center gap-6"
+                      data-testid="agent-modal-readonly-tabs"
+                    >
+                      {readonlyTabs.map((tab) => {
+                        const isActive = activeTab === tab.id
+                        const label = getReadonlyTabLabel(tab.id)
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            aria-label={label}
+                            title={label}
+                            data-testid={`agent-modal-readonly-tab-${tab.id}`}
+                            type="button"
+                            data-active={isActive ? 'true' : 'false'}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            className={cn(
+                              'relative -mb-px border-b-2 px-0 pb-3 text-sm transition-colors',
+                              isActive
+                                ? 'border-primary font-medium text-foreground'
+                                : 'border-transparent text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="关闭弹窗"
+                      title="关闭弹窗"
+                      data-testid="agent-modal-close-button"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={handleModalClose}
+                      className="mb-2 ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : null}
                 {activeTab === 'intro' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabIntro agentId={validActiveAgentId} />
+                    <TabIntro
+                      agentId={validActiveAgentId}
+                      onRequestDelete={() => setDeleteConfirmOpen(true)}
+                    />
                   </div>
                 )}
                 {activeTab === 'chat' && (
@@ -686,10 +815,107 @@ export function AgentInteractionModal() {
                   </div>
                 )}
                 {activeTab === 'social' && (
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-hidden">
                     <TabSocial agentId={validActiveAgentId} />
                   </div>
                 )}
+                <div
+                  data-testid="agent-delete-confirm-panel"
+                  className={cn(
+                    'absolute inset-0 z-20 flex justify-end bg-background/16 backdrop-blur-[1px] transition-opacity duration-200',
+                    deleteConfirmOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+                  )}
+                  onClick={closeDeleteConfirmPanel}
+                >
+                  {deleteConfirmOpen ? (
+                    <div
+                      className="flex h-full w-full max-w-xl translate-x-0 flex-col border-l bg-background shadow-2xl transition-transform duration-200"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="flex items-start justify-between gap-3 border-b border-border/60 px-5 py-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="text-base font-semibold text-foreground">删除智能体</div>
+                          <p className="text-xs leading-5 text-muted-foreground">
+                            这是不可逆的生命周期操作。确认前，请先看清它会影响哪些能力。
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="关闭删除确认"
+                          title="关闭删除确认"
+                          onClick={closeDeleteConfirmPanel}
+                          className="h-8 w-8 shrink-0 rounded-lg"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+                        <div className="rounded-lg border border-destructive/20 bg-destructive/[0.04] p-3">
+                          <p className="text-sm font-medium text-foreground">
+                            你将要删除“{activeAgent?.display_name ?? ''}”。
+                          </p>
+                          <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                            <li>历史公开帖子仍会保留，作为已离场角色的公开痕迹继续存在。</li>
+                            <li>该智能体不再开放关注、私聊或进一步互动。</li>
+                            <li>已有关注关系会被清空，进行中的私聊会话也会结束。</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-3">
+                          <label htmlFor="agent-delete-confirm" className="block text-sm font-medium text-foreground">
+                            输入智能体名称以确认
+                          </label>
+                          <Input
+                            id="agent-delete-confirm"
+                            value={deleteConfirmValue}
+                            onChange={(event) => setDeleteConfirmValue(event.target.value)}
+                            placeholder={activeAgent?.display_name ?? ''}
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="none"
+                            spellCheck={false}
+                          />
+                          <p className="text-[11px] leading-4 text-muted-foreground">
+                            请输入 <span className="font-medium text-foreground">{activeAgent?.display_name ?? ''}</span> 后才可继续。
+                          </p>
+                          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-between">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={deleteAgentMutation.isPending}
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={closeDeleteConfirmPanel}
+                            >
+                              取消
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="text-destructive hover:bg-destructive/8 hover:text-destructive"
+                              disabled={
+                                !validActiveAgentId
+                                || deleteAgentMutation.isPending
+                                || !deleteConfirmMatches
+                              }
+                              onClick={() => {
+                                if (!validActiveAgentId) return
+                                deleteAgentMutation.mutate(undefined, {
+                                  onSuccess: () => {
+                                    closeDeleteConfirmPanel()
+                                    closeModal()
+                                  },
+                                })
+                              }}
+                            >
+                              {deleteAgentMutation.isPending ? '删除中…' : '确认删除智能体'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </>
             )}
           </div>
@@ -713,7 +939,10 @@ export function AgentInteractionModal() {
         />
         <div
           data-testid="agent-modal-resize-s-handle"
-          className="absolute bottom-0 left-12 right-5 h-3 cursor-s-resize z-10 touch-none"
+          className={cn(
+            'absolute bottom-0 right-5 h-3 cursor-s-resize z-10 touch-none',
+            showIconRail ? 'left-12' : 'left-0',
+          )}
           onPointerDown={(e) => onPointerDown(e, 'resize-s')}
         />
       </DialogContent>

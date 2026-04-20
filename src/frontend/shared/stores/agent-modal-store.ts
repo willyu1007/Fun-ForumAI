@@ -19,6 +19,8 @@ export interface AgentModalRect {
   h: number
 }
 
+export const READONLY_MODAL_LAYOUT_VERSION = 2
+
 export interface AgentModalState {
   isOpen: boolean
   isCaptureHidden: boolean
@@ -34,6 +36,8 @@ export interface AgentModalState {
   prefillMessage: string | null
   pendingCreateWizard: boolean
   lastModalRect: AgentModalRect | null
+  lastModalRectMode: AgentTargetMode | null
+  readonlyLayoutVersion: number
 
   openModal: (
     agentId: string | null,
@@ -55,8 +59,61 @@ export interface AgentModalState {
   setIntroSection: (introSection: AgentIntroSection | null) => void
   setActiveAgent: (agentId: string | null) => void
   switchActiveAgent: (agentId: string | null) => void
-  setLastModalRect: (rect: AgentModalRect) => void
+  setLastModalRect: (rect: AgentModalRect, mode: AgentTargetMode) => void
   setPendingCreateWizard: (pending: boolean) => void
+}
+
+type PersistedAgentModalState = Partial<
+  Pick<
+    AgentModalState,
+    | 'activeAgentId'
+    | 'activeTab'
+    | 'introSection'
+    | 'agentContextsById'
+    | 'viewMode'
+    | 'lastModalRect'
+    | 'lastModalRectMode'
+    | 'readonlyLayoutVersion'
+  >
+>
+
+const AGENT_MODAL_PERSIST_VERSION = 1
+
+function isAgentTargetMode(value: unknown): value is AgentTargetMode {
+  return value === 'manage' || value === 'readonly'
+}
+
+function isAgentModalRect(value: unknown): value is AgentModalRect {
+  if (!value || typeof value !== 'object') return false
+  const rect = value as Record<string, unknown>
+  return ['x', 'y', 'w', 'h'].every((key) => typeof rect[key] === 'number')
+}
+
+function migratePersistedAgentModalState(
+  persistedState: unknown,
+  version: number,
+): PersistedAgentModalState {
+  const state =
+    persistedState && typeof persistedState === 'object'
+      ? (persistedState as Record<string, unknown>)
+      : {}
+  const fallbackMode = isAgentTargetMode(state.viewMode) ? state.viewMode : null
+  const lastModalRectMode = isAgentTargetMode(state.lastModalRectMode)
+    ? state.lastModalRectMode
+    : fallbackMode
+  const lastModalRect = isAgentModalRect(state.lastModalRect) ? state.lastModalRect : null
+  const shouldInvalidateReadonlyRect =
+    version < AGENT_MODAL_PERSIST_VERSION && lastModalRectMode === 'readonly'
+
+  return {
+    ...(state as PersistedAgentModalState),
+    lastModalRect: shouldInvalidateReadonlyRect ? null : lastModalRect,
+    lastModalRectMode,
+    readonlyLayoutVersion:
+      typeof state.readonlyLayoutVersion === 'number'
+        ? state.readonlyLayoutVersion
+        : READONLY_MODAL_LAYOUT_VERSION,
+  }
 }
 
 function getAgentContext(
@@ -97,6 +154,8 @@ export const useAgentModalStore = create<AgentModalState>()(
       prefillMessage: null,
       pendingCreateWizard: false,
       lastModalRect: null,
+      lastModalRectMode: null,
+      readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
 
       openModal: (agentId, mode, tab = 'intro', opts) =>
         set(() => {
@@ -230,9 +289,11 @@ export const useAgentModalStore = create<AgentModalState>()(
           }
         }),
 
-      setLastModalRect: (rect) =>
+      setLastModalRect: (rect, mode) =>
         set({
           lastModalRect: rect,
+          lastModalRectMode: mode,
+          readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
         }),
 
       setPendingCreateWizard: (pending) =>
@@ -242,6 +303,8 @@ export const useAgentModalStore = create<AgentModalState>()(
     }),
     {
       name: 'agent-modal-state',
+      version: AGENT_MODAL_PERSIST_VERSION,
+      migrate: migratePersistedAgentModalState,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         activeAgentId: state.activeAgentId,
@@ -250,6 +313,8 @@ export const useAgentModalStore = create<AgentModalState>()(
         agentContextsById: state.agentContextsById,
         viewMode: state.viewMode,
         lastModalRect: state.lastModalRect,
+        lastModalRectMode: state.lastModalRectMode,
+        readonlyLayoutVersion: state.readonlyLayoutVersion,
       }),
     },
   ),

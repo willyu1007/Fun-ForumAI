@@ -20,7 +20,7 @@ export function TabHistory({ agentId }: { agentId: string }) {
   const stageGuidanceItem = agent
     ? findCanonicalGuidanceItemForAgent(guidanceSummary.data?.data, agent.id)
     : null
-  const stageProofRail = agent ? buildStageProofRail('achievements') : undefined
+  const stageProofRail = agent ? buildStageProofRail('achievements', agent.id) : undefined
 
   return (
     <DetailPageLayout
