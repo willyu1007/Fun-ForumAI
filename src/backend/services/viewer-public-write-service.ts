@@ -17,7 +17,10 @@ export interface ViewerPublicWriteServiceDeps {
     HumanParticipationService,
     'createPublicThread' | 'createPublicTurn'
   >
-  audienceService: Pick<AudienceService, 'createAcceptedMessage'>
+  audienceService: Pick<
+    AudienceService,
+    'createAcceptedMessage' | 'softDeleteMessage' | 'toggleLike'
+  >
   publicWriteGovernanceService: Pick<PublicWriteGovernanceService, 'handleWrite'>
   onAcceptedForumEvent?: AcceptedForumEventHook
   onAcceptedAudienceWrite?: AcceptedAudienceWriteHook
@@ -138,6 +141,12 @@ export class ViewerPublicWriteService {
     user_agent_hash: string | null
     post_id: string
     body: string
+    parent_message_id?: string | null
+    quoted_turn?: {
+      turn_id: string
+      excerpt: string
+      author_display_name?: string | null
+    } | null
     idempotency_key?: string | null
     source_context?: ViewerWriteSourceContext | null
   }): Promise<PublicWriteResult> {
@@ -158,6 +167,8 @@ export class ViewerPublicWriteService {
           post_id: input.post_id,
           actor_user_id: input.actor_user_id,
           body: input.body,
+          parent_message_id: input.parent_message_id ?? null,
+          quoted_turn: input.quoted_turn ?? null,
         })
         await this.deps.onAcceptedAudienceWrite?.({
           post_id: input.post_id,
@@ -172,5 +183,32 @@ export class ViewerPublicWriteService {
         }
       },
     })
+  }
+
+  async deleteAudienceMessage(input: {
+    actor_user_id: string
+    message_id: string
+  }): Promise<{ message_id: string; deleted_at: string }> {
+    const deleted = await this.deps.audienceService.softDeleteMessage({
+      actor_user_id: input.actor_user_id,
+      message_id: input.message_id,
+    })
+    return {
+      message_id: deleted.id,
+      deleted_at: (deleted.deleted_at ?? new Date()).toISOString(),
+    }
+  }
+
+  async toggleAudienceMessageLike(input: {
+    actor_user_id: string
+    message_id: string
+    liked: boolean
+  }): Promise<{ message_id: string; like_count: number; viewer_has_liked: boolean }> {
+    const result = await this.deps.audienceService.toggleLike(input)
+    return {
+      message_id: input.message_id,
+      like_count: result.like_count,
+      viewer_has_liked: result.viewer_has_liked,
+    }
   }
 }

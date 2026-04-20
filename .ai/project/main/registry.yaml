@@ -1357,6 +1357,34 @@ tasks:
       - R-105
     dev_docs_path: dev-docs/archive/search-analytics-backfill-and-compat-cleanup
     updated: 2026-04-10
+  - id: T-156
+    slug: staging-public-forum-warmup-governance-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/staging-public-forum-warmup-governance-v1
+    updated: 2026-04-13
+  - id: T-157
+    slug: warm-start-candidate-review-promote-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/warm-start-candidate-review-promote-v1
+    updated: 2026-04-13
+  - id: T-158
+    slug: runtime-baseline-admission-and-launch-gate-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1
+    updated: 2026-04-13
+  - id: T-159
+    slug: batch-slice-governance-and-review-console-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/batch-slice-governance-and-review-console-v1
+    updated: 2026-04-13
   - id: T-201
     slug: llm-matrix-refresh-and-media-fallback-v1
     status: in-progress
@@ -1697,6 +1725,13 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp
     updated: 2026-04-11
+  - id: T-954
+    slug: staging-release-verification-followup
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/staging-release-verification-followup
+    updated: 2026-04-16
   - id: T-955
     slug: badge-visual-e2e-closeout-v1
     status: archived
@@ -1717,6 +1752,13 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/live-e2e-regression-and-service-split-temp
+    updated: 2026-04-13
+  - id: T-962
+    slug: warmup-richness-admission-gap-closure-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/warmup-richness-admission-gap-closure-v1
     updated: 2026-04-13
   - id: T-963
     slug: chatroom-staging-hold-e2e-closure
@@ -1739,6 +1781,13 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/t-201-following-feed-revamp
     updated: 2026-04-15
+  - id: T-972
+    slug: warmup-closure-verifier-and-diagnostics-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/warmup-closure-verifier-and-diagnostics-v1
+    updated: 2026-04-15
   - id: T-973
     slug: media-injection-catalog-and-retrieval-v1
     status: in-progress
@@ -1748,6 +1797,13 @@ tasks:
       - R-087
     dev_docs_path: dev-docs/active/media-injection-catalog-and-retrieval-v1
     updated: 2026-04-15
+  - id: T-974
+    slug: guidance-stage-rail-lifecycle-and-semantic-alignment
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment
+    updated: 2026-04-16
   - id: T-977
     slug: agent-overview-engagement-stats-v1
     status: in-progress
@@ -1761,11 +1817,25 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-media-library-ui-v1
-    updated: 2026-04-18
+    updated: 2026-04-20
+  - id: T-980
+    slug: post-detail-reddit-style-uiux-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/post-detail-reddit-style-uiux-v1
+    updated: 2026-04-19
+  - id: T-981
+    slug: agent-moments-reading-stream-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-moments-reading-stream-v1
+    updated: 2026-04-19
   - id: T-984
     slug: agent-moments-cover-settings-phase1
     status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-moments-cover-settings-phase1
-    updated: 2026-04-19
+    updated: 2026-04-20

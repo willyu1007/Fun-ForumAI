@@ -440,6 +440,16 @@ export const communityProposalActionSchema = z
 export const createAudienceMessageSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
+    parent_message_id: z.string().trim().min(1).max(80).nullable().optional(),
+    quoted_turn: z
+      .object({
+        turn_id: z.string().trim().min(1).max(80),
+        excerpt: z.string().trim().min(1).max(400),
+        author_display_name: z.string().trim().max(120).nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
@@ -459,6 +469,7 @@ export const createAudienceMessageSchema = z
       .optional(),
   })
   .strict()
+
 
 export const createPublicThreadSchema = z
   .object({
@@ -605,7 +616,6 @@ export const forumWatchTelemetrySchema = z
       'guide_click',
       'branch_expand',
       'node_focus',
-      'timeline_open',
       'reply_anchor_select',
     ]),
     thread_id: z.string().trim().min(1).max(200).optional(),

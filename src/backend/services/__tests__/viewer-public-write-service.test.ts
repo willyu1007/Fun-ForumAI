@@ -45,6 +45,8 @@ describe('ViewerPublicWriteService', () => {
       },
       audienceService: {
         createAcceptedMessage: vi.fn(),
+        softDeleteMessage: vi.fn(),
+        toggleLike: vi.fn(),
       },
       publicWriteGovernanceService: {
         handleWrite: vi.fn(async (input) => {
@@ -92,6 +94,8 @@ describe('ViewerPublicWriteService', () => {
           thread: { id: 'aud-thread-1' } as unknown as AudienceThread,
           message: { id: 'aud-message-1' } as unknown as AudienceMessage,
         })),
+        softDeleteMessage: vi.fn(),
+        toggleLike: vi.fn(),
       },
       publicWriteGovernanceService: {
         handleWrite: vi.fn(async (input) => {
@@ -142,6 +146,8 @@ describe('ViewerPublicWriteService', () => {
       humanParticipationService,
       audienceService: {
         createAcceptedMessage: vi.fn(),
+        softDeleteMessage: vi.fn(),
+        toggleLike: vi.fn(),
       },
       publicWriteGovernanceService: {
         handleWrite: vi.fn(async (input) => ({

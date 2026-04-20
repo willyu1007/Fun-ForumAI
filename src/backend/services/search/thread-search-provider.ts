@@ -164,7 +164,6 @@ export class ThreadSearchProvider implements SearchProvider {
       })
       const hrefSearch = new URLSearchParams({
         threadId: thread.id,
-        stage: 'timeline',
       })
       if (matchedTurn) {
         hrefSearch.set('turnId', matchedTurn.id)

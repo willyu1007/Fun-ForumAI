@@ -14,8 +14,36 @@ export interface AudienceMessage {
   thread_id: string
   author_user_id: string
   body: string
+  parent_message_id: string | null
+  quoted_turn_id: string | null
+  quoted_turn_excerpt: string | null
+  quoted_turn_author_name: string | null
+  deleted_at: Date | null
   created_at: Date
   updated_at: Date
+}
+
+export interface AudienceMessageAuthor {
+  id: string
+  display_name: string
+  avatar_url: string | null
+}
+
+/**
+ * Aggregated projection of an audience message returned by read paths:
+ * merges like counts + viewer-specific `viewer_has_liked` + author display info.
+ */
+export interface AudienceMessageAggregate extends AudienceMessage {
+  author: AudienceMessageAuthor
+  like_count: number
+  viewer_has_liked: boolean
+}
+
+export interface AudienceMessageLike {
+  id: string
+  message_id: string
+  user_id: string
+  created_at: Date
 }
 
 export interface AudienceSummary {
@@ -81,6 +109,15 @@ export interface CreateAudienceMessageInput {
   thread_id: string
   author_user_id: string
   body: string
+  parent_message_id?: string | null
+  quoted_turn_id?: string | null
+  quoted_turn_excerpt?: string | null
+  quoted_turn_author_name?: string | null
+}
+
+export interface ToggleAudienceMessageLikeInput {
+  message_id: string
+  user_id: string
 }
 
 export interface CreateAudienceSummaryInput {

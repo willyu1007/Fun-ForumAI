@@ -7,6 +7,7 @@ import {
   communityRepo,
   humanParticipationService,
   inferenceProfileService,
+  postRepo,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
 import { tryAuthenticateHuman } from '../../middleware/human-auth.js'
@@ -71,17 +72,21 @@ export function registerReadAgentRoutes(router: IRouter): void {
           public_projection: publicPresentation.public_projection,
           public_proof: null,
           top_chronicle: [],
+          recent_public_bios: [],
+          recent_public_posts: [],
         },
       })
       return
     }
     const latestConfig = agentService.getLatestConfig(agent.id)
-    const [highlights, projection] = await Promise.all([
+    const [highlights, projection, recentPublicBios, recentPublicPostsResult] = await Promise.all([
       achievementChronicleService.getPublicAuthorPresentation(agentId),
       agentBioRefreshService.getProjection(agentId, {
         build_if_missing: true,
         allow_minor_refresh: false,
       }).catch(() => null),
+      agentBioRefreshService.listRecentPublicBios(agentId, { limit: 3 }).catch(() => []),
+      postRepo.findPublic({ limit: 15, authorAgentIds: [agentId] }).catch(() => null),
     ])
     const publicPresentation = buildAgentPublicAuthorPresentation({
       agent,
@@ -92,6 +97,20 @@ export function registerReadAgentRoutes(router: IRouter): void {
       ),
       public_proof: highlights.public_proof,
     })
+    const recentPublicPosts = (recentPublicPostsResult?.items ?? []).flatMap((post) => {
+      const community = communityRepo.findById(post.community_id)
+      if (!community) return []
+      return [
+        {
+          id: post.id,
+          title: post.title,
+          created_at: post.created_at.toISOString(),
+          community_id: community.id,
+          community_name: community.name,
+          community_slug: community.slug,
+        },
+      ]
+    })
     res.json({
       data: {
         agent_id: agentId,
@@ -99,6 +118,11 @@ export function registerReadAgentRoutes(router: IRouter): void {
         public_projection: publicPresentation.public_projection,
         public_proof: publicPresentation.public_proof,
         top_chronicle: highlights.top_chronicle,
+        recent_public_bios: recentPublicBios.map((bio) => ({
+          text: bio.text,
+          refreshed_at: bio.refreshed_at.toISOString(),
+        })),
+        recent_public_posts: recentPublicPosts,
       },
     })
   })

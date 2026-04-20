@@ -872,7 +872,7 @@ describe('E2E: Read API (public)', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  it('GET /v1/posts/:postId/threads and GET /v1/threads/:threadId return thread-first public stage payloads', async () => {
+  it('GET /v1/posts/:postId/threads returns thread-first public stage payloads', async () => {
     const community = await createTestCommunity({
       name: 'Thread Read Community',
       slug: `thread-read-${Date.now()}`,
@@ -928,132 +928,7 @@ describe('E2E: Read API (public)', () => {
       thread_id: threadId,
       turn_index: 1,
     })
-
-    const detailRes = await request(app).get(`/v1/threads/${threadId}`)
-    expect(detailRes.status).toBe(200)
-    expect(detailRes.body.data).toMatchObject({
-      id: threadId,
-      post_id: postId,
-      turn_count: 1,
-    })
-    expect(detailRes.body.data.turns[0]).toMatchObject({
-      id: turnId,
-      thread_id: threadId,
-      body: 'First stage turn.',
-    })
   })
-
-  it('GET /v1/posts/:postId/threads-summary and GET /v1/threads/:threadId expose summary-first timeline contracts', async () => {
-    const community = await createTestCommunity({
-      name: 'Thread Summary Community',
-      slug: `thread-summary-${Date.now()}`,
-    })
-    const rootAuthorRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Thread Summary Root' })
-    expect(rootAuthorRes.status).toBe(201)
-    const turnAuthorRes = await request(app)
-      .post('/v1/agents')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ display_name: 'Thread Summary Turn' })
-    expect(turnAuthorRes.status).toBe(201)
-
-    const postRes = await servicePost('/v1/posts', {
-      actor_agent_id: rootAuthorRes.body.data.id,
-      run_id: `run-thread-summary-post-${Date.now()}`,
-      community_id: community.id,
-      title: 'Thread summary target',
-      body: 'Post body for thread summary reads.',
-    })
-    expect(postRes.status).toBe(201)
-    const postId = postRes.body.data.id as string
-
-    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
-      actor_agent_id: rootAuthorRes.body.data.id,
-      run_id: `run-thread-summary-root-${Date.now()}`,
-      body: 'Opening stage stance.',
-    })
-    expect(threadRes.status).toBe(201)
-    const threadId = threadRes.body.data.id as string
-
-    const firstTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
-      actor_agent_id: turnAuthorRes.body.data.id,
-      run_id: `run-thread-summary-turn-1-${Date.now()}`,
-      body: 'First stage turn.',
-    })
-    expect(firstTurnRes.status).toBe(201)
-    const firstTurnId = firstTurnRes.body.data.id as string
-
-    const secondTurnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
-      actor_agent_id: rootAuthorRes.body.data.id,
-      run_id: `run-thread-summary-turn-2-${Date.now()}`,
-      body: 'Second stage turn.',
-    })
-    expect(secondTurnRes.status).toBe(201)
-    const secondTurnId = secondTurnRes.body.data.id as string
-
-    const summaryRes = await request(app).get(`/v1/posts/${postId}/threads-summary`)
-    expect(summaryRes.status).toBe(200)
-    expect(summaryRes.body.data).toHaveLength(1)
-    expect(summaryRes.body.data[0]).toMatchObject({
-      id: threadId,
-      post_id: postId,
-      starter_excerpt: 'Opening stage stance.',
-      latest_turn_id: secondTurnId,
-      latest_turn_excerpt: 'Second stage turn.',
-    })
-    expect(summaryRes.body.data[0].turns).toBeUndefined()
-
-    const cursorRes = await request(app)
-      .get(`/v1/threads/${threadId}`)
-      .query({ turn_limit: 1, turn_cursor: firstTurnId })
-    expect(cursorRes.status).toBe(200)
-    expect(cursorRes.body.data.turns_meta).toMatchObject({
-      requested_cursor: firstTurnId,
-      next_cursor: null,
-      limit: 1,
-      around_turn_id: null,
-      returned_mode: 'cursor',
-    })
-    expect(cursorRes.body.data.turns).toHaveLength(1)
-    expect(cursorRes.body.data.turns[0]).toMatchObject({
-      id: secondTurnId,
-      body: 'Second stage turn.',
-    })
-
-    const detailRes = await request(app)
-      .get(`/v1/threads/${threadId}`)
-      .query({
-        turn_limit: 1,
-        around_turn_id: secondTurnId,
-        include_projection: true,
-        include_capsule: true,
-      })
-    expect(detailRes.status).toBe(200)
-    expect(detailRes.body.data.turns_meta).toMatchObject({
-      requested_cursor: null,
-      next_cursor: null,
-      limit: 1,
-      around_turn_id: secondTurnId,
-      returned_mode: 'around',
-    })
-    expect(detailRes.body.data.turns).toHaveLength(1)
-    expect(detailRes.body.data.turns[0]).toMatchObject({
-      id: secondTurnId,
-      body: 'Second stage turn.',
-    })
-    expect(detailRes.body.data.display_projection).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: threadId, entry_kind: 'THREAD' }),
-        expect.objectContaining({ id: secondTurnId, entry_kind: 'TURN' }),
-      ]),
-    )
-    expect(detailRes.body.data.thread_capsule).toMatchObject({
-      thread_id: threadId,
-      latest_turn_id: secondTurnId,
-    })
-  }, 15_000)
 
   it('GET /v1/posts/:postId/reading-guide and /v1/posts/:postId/discussion-forest return post-detail projections', async () => {
     const community = await createTestCommunity({
@@ -1515,6 +1390,7 @@ describe('E2E: Read API (public)', () => {
       expect(emptyAudienceThreadRes.status).toBe(200)
       expect(emptyAudienceThreadRes.body.data).toEqual({
         thread: null,
+        sort: 'latest',
         messages: [],
       })
 
@@ -1790,9 +1666,13 @@ describe('E2E: Read API (public)', () => {
     expect(duplicateViewerTurnRes.body.data.audit_id).toBe(viewerTurnRes.body.data.audit_id)
     expect(duplicateViewerTurnRes.body.data.turn_id).toBe(viewerTurnRes.body.data.turn_id)
 
-    const threadDetailRes = await request(app).get(`/v1/threads/${threadId}`)
-    expect(threadDetailRes.status).toBe(200)
-    expect(threadDetailRes.body.data.turns.at(-1)).toMatchObject({
+    const threadsListRes = await request(app).get(`/v1/posts/${postId}/threads`)
+    expect(threadsListRes.status).toBe(200)
+    const viewerThread = threadsListRes.body.data.find(
+      (entry: { id: string }) => entry.id === threadId,
+    )
+    expect(viewerThread).toBeDefined()
+    expect(viewerThread.turns.at(-1)).toMatchObject({
       thread_id: threadId,
       author_actor_type: 'human',
       author_user_id: 'user1',
@@ -1869,11 +1749,12 @@ describe('E2E: Read API (public)', () => {
 
       const audienceThreadRes = await request(app).get(`/v1/posts/${postId}/audience-thread`)
       expect(audienceThreadRes.status).toBe(200)
-      expect(audienceThreadRes.body.data.messages.at(-1)).toMatchObject({
+      const latestMessage = audienceThreadRes.body.data.messages.at(-1)
+      expect(latestMessage).toMatchObject({
         id: firstRes.body.data.audience_message_id,
-        author_user_id: 'user1',
         body: 'Audience sidecar message.',
       })
+      expect(latestMessage.author).toMatchObject({ id: 'user1' })
     })
   })
 
@@ -2072,7 +1953,7 @@ describe('E2E: Read API (public)', () => {
     expect(threadsRes.body.data.items[0]).toMatchObject({
       type: 'thread',
       id: threadId,
-      href: `/posts/${postId}?threadId=${threadId}&stage=timeline&turnId=${turnId}`,
+      href: `/posts/${postId}?threadId=${threadId}&turnId=${turnId}`,
       post_id: postId,
       matched_turn_id: turnId,
     })
@@ -2468,7 +2349,7 @@ describe('E2E: Read API (public)', () => {
       expect(audienceThreadRes.body.data.messages).toEqual(expect.arrayContaining([
         expect.objectContaining({
           body: 'Great show, keep it going.',
-          author_user_id: 'user1',
+          author: expect.objectContaining({ id: 'user1' }),
         }),
       ]))
 

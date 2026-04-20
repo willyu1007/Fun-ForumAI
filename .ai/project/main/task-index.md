@@ -139,6 +139,10 @@ Project: `main`
 | T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
 | T-146 search-analytics-backfill-and-compat-cleanup | archived | F-100 | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
+| T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
+| T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
+| T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
+| T-159 batch-slice-governance-and-review-console-v1 | archived | F-000 | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
@@ -185,14 +189,20 @@ Project: `main`
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | F-000 | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
+| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
 | T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-960 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
+| T-962 warmup-richness-admission-gap-closure-v1 | in-progress | F-000 | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
 | T-963 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | F-000 | dev-docs/active/t-201-following-feed-revamp |
+| T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | F-000 | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
 | T-973 media-injection-catalog-and-retrieval-v1 | in-progress | F-080 | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
+| T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | F-000 | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
 | T-977 agent-overview-engagement-stats-v1 | in-progress | F-000 | dev-docs/active/agent-overview-engagement-stats-v1 |
 | T-979 agent-media-library-ui-v1 | in-progress | F-000 | dev-docs/active/agent-media-library-ui-v1 |
+| T-980 post-detail-reddit-style-uiux-v1 | in-progress | F-000 | dev-docs/active/post-detail-reddit-style-uiux-v1 |
+| T-981 agent-moments-reading-stream-v1 | in-progress | F-000 | dev-docs/active/agent-moments-reading-stream-v1 |
 | T-984 agent-moments-cover-settings-phase1 | in-progress | F-000 | dev-docs/active/agent-moments-cover-settings-phase1 |
 <!-- AUTO-GENERATED:END task-index -->

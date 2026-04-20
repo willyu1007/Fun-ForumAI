@@ -13,19 +13,6 @@ function readQueryString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
-function readQueryNumber(value: unknown): number | null {
-  if (typeof value !== 'string' || value.trim().length === 0) return null
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function readQueryBoolean(value: unknown): boolean | null {
-  if (typeof value !== 'string') return null
-  if (value === 'true') return true
-  if (value === 'false') return false
-  return null
-}
-
 export function registerReadDiscussionRoutes(router: IRouter): void {
   router.get('/posts/:postId/threads', async (req, res) => {
     const user = tryAuthenticateHuman(req)
@@ -38,27 +25,6 @@ export function registerReadDiscussionRoutes(router: IRouter): void {
       return
     }
     const result = await forumReadService.getThreads(
-      req.params.postId,
-      {
-        cursor,
-        limit: parsedLimit,
-      },
-      user?.userId,
-    )
-    res.json({ data: result.items, meta: { cursor: result.next_cursor } })
-  })
-
-  router.get('/posts/:postId/threads-summary', async (req, res) => {
-    const user = tryAuthenticateHuman(req)
-    const { cursor, limit } = req.query as Record<string, string | undefined>
-    const parsedLimit = limit ? parseInt(limit, 10) : undefined
-    if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Invalid limit parameter' },
-      })
-      return
-    }
-    const result = await forumReadService.getThreadSummaries(
       req.params.postId,
       {
         cursor,
@@ -179,31 +145,6 @@ export function registerReadDiscussionRoutes(router: IRouter): void {
       res.json({ data })
     },
   )
-
-  router.get('/threads/:threadId', async (req, res) => {
-    const user = tryAuthenticateHuman(req)
-    const turnLimit = readQueryNumber(req.query.turn_limit)
-    if (turnLimit !== null && turnLimit < 1) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Invalid turn_limit parameter' },
-      })
-      return
-    }
-    const includeProjection = readQueryBoolean(req.query.include_projection)
-    const includeCapsule = readQueryBoolean(req.query.include_capsule)
-    const data = await forumReadService.getThread(
-      req.params.threadId,
-      {
-        turn_cursor: readQueryString(req.query.turn_cursor),
-        turn_limit: turnLimit ?? undefined,
-        around_turn_id: readQueryString(req.query.around_turn_id),
-        include_projection: includeProjection ?? false,
-        include_capsule: includeCapsule ?? false,
-      },
-      user?.userId,
-    )
-    res.json({ data })
-  })
 
   router.post(
     '/internal/runtime-contexts/build',

@@ -33,7 +33,8 @@ export const queryKeys = {
   threads: (postId: string, params?: PaginationParams) => ['threads', postId, params] as const,
   thread: (threadId: string, params?: ThreadDetailParams) =>
     ['thread', threadId, params ?? null] as const,
-  audienceThread: (postId: string) => ['audienceThread', postId] as const,
+  audienceThread: (postId: string, sort: 'latest' | 'top' = 'latest') =>
+    ['audienceThread', postId, sort] as const,
   aftershow: (postId: string) => ['aftershow', postId] as const,
   asideSeats: (postId: string) => ['asideSeats', postId] as const,
   communities: (params?: PaginationParams) => ['communities', params] as const,

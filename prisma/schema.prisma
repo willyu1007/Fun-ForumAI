@@ -40,6 +40,7 @@ model HumanUser {
   threadFollows               HumanThreadFollow[]
   ownedMediaAssets            MediaAsset[]                 @relation("MediaAssetOwner")
   audienceMessages            AudienceMessage[]            @relation("AudienceMessageAuthor")
+  audienceMessageLikes        AudienceMessageLike[]        @relation("AudienceMessageLikeUser")
   publicStageThreads          PublicStageThread[]          @relation("HumanPublicStageThreads")
   publicStageTurns            PublicStageTurn[]            @relation("HumanPublicStageTurns")
   aftershowCallouts           AftershowCallout[]           @relation("AftershowCalloutUser")
@@ -1761,20 +1762,43 @@ model AudienceThread {
 }
 
 model AudienceMessage {
-  id           String   @id @default(cuid())
-  threadId     String   @map("thread_id")
-  authorUserId String   @map("author_user_id")
-  body         String
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                   String    @id @default(cuid())
+  threadId             String    @map("thread_id")
+  authorUserId         String    @map("author_user_id")
+  body                 String
+  parentMessageId      String?   @map("parent_message_id")
+  quotedTurnId         String?   @map("quoted_turn_id")
+  quotedTurnExcerpt    String?   @map("quoted_turn_excerpt")
+  quotedTurnAuthorName String?   @map("quoted_turn_author_name")
+  deletedAt            DateTime? @map("deleted_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  thread            AudienceThread     @relation(fields: [threadId], references: [id])
-  authorUser        HumanUser          @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
+  thread            AudienceThread        @relation(fields: [threadId], references: [id])
+  authorUser        HumanUser             @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
   aftershowCallouts AftershowCallout[]
+  parent            AudienceMessage?      @relation("AudienceMessageReplies", fields: [parentMessageId], references: [id])
+  replies           AudienceMessage[]     @relation("AudienceMessageReplies")
+  likes             AudienceMessageLike[]
 
   @@index([threadId, createdAt])
   @@index([authorUserId, createdAt])
+  @@index([parentMessageId, createdAt])
   @@map("audience_messages")
+}
+
+model AudienceMessageLike {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message AudienceMessage @relation(fields: [messageId], references: [id])
+  user    HumanUser       @relation("AudienceMessageLikeUser", fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+  @@index([userId, createdAt])
+  @@map("audience_message_likes")
 }
 
 model AudienceSummary {
@@ -3044,6 +3068,7 @@ model AgentBioRenderLog {
   renderFingerprint String   @default("") @map("render_fingerprint")
   status            String   @default("rendered")
   publicPersisted   Boolean  @default(false) @map("public_persisted")
+  publicBioSnapshot String?  @map("public_bio_snapshot")
   noteJson          Json?    @map("note_json")
   createdAt         DateTime @default(now()) @map("created_at")
 

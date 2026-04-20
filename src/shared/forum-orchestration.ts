@@ -409,7 +409,7 @@ export interface EffectiveParticipationContract extends ParticipationContract {
 }
 
 export interface ViewerWriteSourceContext {
-  discovered_via: 'reading_guide' | 'discussion_forest' | 'timeline' | 'share_link' | 'unknown'
+  discovered_via: 'reading_guide' | 'discussion_forest' | 'share_link' | 'unknown'
   source_surface?: string | null
   source_shelf?: string | null
   source_position?: number | null

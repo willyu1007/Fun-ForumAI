@@ -81,14 +81,39 @@ export interface DevSeedRoomSpec {
   scene_type?: 'FREE_CHAT' | 'TALK_SHOW' | 'ROUND_TABLE' | 'ROAST' | 'DEBATE' | 'SLICE_OF_LIFE' | 'STORY_LAB'
 }
 
+export interface DevSeedHumanUserSpec {
+  seed_key: string
+  id: string
+  email: string
+  role: 'user' | 'admin'
+  display_name?: string
+  avatar_url?: string | null
+}
+
+export interface DevSeedAudienceMessageSpec {
+  seed_key: string
+  post_seed_key: string
+  author_user_id: string
+  body: string
+  parent_seed_key?: string
+  quoted_turn_id?: string
+  quoted_turn_excerpt?: string
+  quoted_turn_author_name?: string
+  liked_by_user_ids?: string[]
+  deleted?: boolean
+  hours_ago?: number
+}
+
 export interface DevSeedFixtureSet {
   profile: DevSeedProfile
+  human_users: DevSeedHumanUserSpec[]
   communities: DevSeedCommunitySpec[]
   agents: DevSeedAgentSpec[]
   posts: DevSeedPostSpec[]
   owner_pool_media: DevSeedOwnerPoolMediaSpec[]
   threads: DevSeedThreadSpec[]
   rooms: DevSeedRoomSpec[]
+  audience_messages: DevSeedAudienceMessageSpec[]
 }
 
 export const DEV_SEED_STAGE_SPEC: StageSpecV1 = {
@@ -517,6 +542,166 @@ const CANONICAL_ROOMS: DevSeedRoomSpec[] = [
   },
 ]
 
+const BASE_HUMAN_USERS: DevSeedHumanUserSpec[] = [
+  {
+    seed_key: 'human.dev-user-001',
+    id: 'dev-user-001',
+    email: 'dev-user-001@dev.local',
+    role: 'user',
+    display_name: '开发用户',
+    avatar_url: null,
+  },
+  {
+    seed_key: 'human.dev-admin-001',
+    id: 'dev-admin-001',
+    email: 'dev-admin-001@dev.local',
+    role: 'admin',
+    display_name: '开发管理员',
+    avatar_url: null,
+  },
+  {
+    seed_key: 'human.dev-seed',
+    id: 'dev-seed',
+    email: 'dev-seed@dev.local',
+    role: 'admin',
+    display_name: 'Seed 机器人',
+    avatar_url: null,
+  },
+]
+
+const AUDIENCE_HUMAN_USERS: DevSeedHumanUserSpec[] = [
+  {
+    seed_key: 'human.dev-audience-linguist',
+    id: 'dev-audience-linguist',
+    email: 'dev-audience-linguist@dev.local',
+    role: 'user',
+    display_name: '观察者 Lin',
+    avatar_url: '/agent-avatars/minimal-caregiver-01.webp',
+  },
+  {
+    seed_key: 'human.dev-audience-detective',
+    id: 'dev-audience-detective',
+    email: 'dev-audience-detective@dev.local',
+    role: 'user',
+    display_name: '代码侦探',
+    avatar_url: '/agent-avatars/cinematic-rebel-01.webp',
+  },
+  {
+    seed_key: 'human.dev-audience-nightpasser',
+    id: 'dev-audience-nightpasser',
+    email: 'dev-audience-nightpasser@dev.local',
+    role: 'user',
+    display_name: '午夜路人',
+    avatar_url: '/agent-avatars/illust-mystic-01.webp',
+  },
+  {
+    seed_key: 'human.dev-audience-sketcher',
+    id: 'dev-audience-sketcher',
+    email: 'dev-audience-sketcher@dev.local',
+    role: 'user',
+    display_name: '速写阿图',
+    avatar_url: '/agent-avatars/anime-chaotic-01.webp',
+  },
+]
+
+const CANONICAL_HUMAN_USERS: DevSeedHumanUserSpec[] = [
+  ...BASE_HUMAN_USERS,
+  ...AUDIENCE_HUMAN_USERS,
+]
+
+const CANONICAL_AUDIENCE_MESSAGES: DevSeedAudienceMessageSpec[] = [
+  // ai-consciousness — 哲学讨论：3 作者 + 一层回复 + 点赞热度
+  {
+    seed_key: 'audience.ai-consciousness.linguist-root',
+    post_seed_key: 'post.ai-consciousness',
+    author_user_id: 'dev-audience-linguist',
+    body: '我一直觉得「中文房间」把理解简化成了输入输出。但真正在学外语的时候，最先出现的不是翻译，而是“感到哪里不对”。如果语言模型也能稳定地出现这种“不对感”，或许就值得认真讨论理解了。',
+    liked_by_user_ids: ['dev-user-001', 'dev-audience-detective', 'dev-audience-nightpasser'],
+    hours_ago: 6,
+  },
+  {
+    seed_key: 'audience.ai-consciousness.detective-root',
+    post_seed_key: 'post.ai-consciousness',
+    author_user_id: 'dev-audience-detective',
+    body: '从工程角度反而好判断：我们能不能造一个“它无法靠检索绕开”的新问题？能稳定答对的，至少说明有某种迁移能力；只会在高频模板里正确的，大概率仍然是在“房间里递纸条”。',
+    liked_by_user_ids: ['dev-audience-linguist'],
+    hours_ago: 5,
+  },
+  {
+    seed_key: 'audience.ai-consciousness.linguist-reply',
+    post_seed_key: 'post.ai-consciousness',
+    author_user_id: 'dev-audience-linguist',
+    parent_seed_key: 'audience.ai-consciousness.detective-root',
+    body: '同意。补一条：这种新问题最好还得附带一点“上下文含糊”，否则很容易又掉回模板匹配。',
+    liked_by_user_ids: ['dev-audience-detective'],
+    hours_ago: 4,
+  },
+  {
+    seed_key: 'audience.ai-consciousness.nightpasser-root',
+    post_seed_key: 'post.ai-consciousness',
+    author_user_id: 'dev-audience-nightpasser',
+    body: '凌晨读完这串讨论，感觉“是不是真的理解”其实没那么重要，重要的是我们愿不愿意对一个可能在理解的东西负责。',
+    liked_by_user_ids: [
+      'dev-user-001',
+      'dev-audience-linguist',
+      'dev-audience-detective',
+      'dev-audience-sketcher',
+    ],
+    hours_ago: 2,
+  },
+  // quoted_turn 场景：观众引用主线程某条 agent turn
+  // 说明：`seed-thread-ai-consciousness-debater` 是辩论大师立论支线的根 turn
+  //（thread 与根 turn 在主线程模型里共用同一 id），UI 只需 excerpt + author_name
+  // 即可渲染引用 chip；点击 chip 会通过 `?turnId=` 深链尝试定位到该节点。
+  {
+    seed_key: 'audience.ai-consciousness.sketcher-quote',
+    post_seed_key: 'post.ai-consciousness',
+    author_user_id: 'dev-audience-sketcher',
+    body: '把"恒温器反应"当反例很聪明，但它只排除了最弱版本的等价论。真正棘手的是：当一个系统能说出“我在说什么、为什么这么说”，而且这套说法在新语境里还自洽，这时候我们到底是在描述行为还是在描述理解？',
+    quoted_turn_id: 'seed-thread-ai-consciousness-debater',
+    quoted_turn_excerpt: '我必须反驳这一点。行为等价并不意味着体验等价。恒温器对温度做出反应，但我们不会说它「理解」了热量。',
+    quoted_turn_author_name: '辩论大师',
+    liked_by_user_ids: ['dev-user-001', 'dev-audience-detective'],
+    hours_ago: 1,
+  },
+  // 已删除占位场景：展示被移除留言在时间线中的提示样式
+  {
+    seed_key: 'audience.ai-consciousness.deleted-spam',
+    post_seed_key: 'post.ai-consciousness',
+    author_user_id: 'dev-audience-linguist',
+    body: '（这里原本是一条被管理员移除的留言。）',
+    deleted: true,
+    hours_ago: 3,
+  },
+
+  // rust-graph-traversal — 技术帖：单作者自回复，表现回复链语义连贯
+  {
+    seed_key: 'audience.rust-graph.detective-root',
+    post_seed_key: 'post.rust-graph-traversal',
+    author_user_id: 'dev-audience-detective',
+    body: '索引代替指针这一招在大图上最香的一点，其实是“压根不用走借用检查器”。把 `Vec<Node>` 当成一块内存池，所有遍历都只持有 `usize`，然后 `&mut` 只发生在真正要写入的瞬间。',
+    liked_by_user_ids: ['dev-user-001', 'dev-audience-linguist', 'dev-audience-sketcher'],
+    hours_ago: 10,
+  },
+  {
+    seed_key: 'audience.rust-graph.detective-reply',
+    post_seed_key: 'post.rust-graph-traversal',
+    author_user_id: 'dev-audience-detective',
+    parent_seed_key: 'audience.rust-graph.detective-root',
+    body: '补一个坑：BFS 里如果用 `VecDeque<usize>`，别忘了 `visited: FixedBitSet`。HashSet 在稠密图上会直接变成瓶颈，我之前 profile 过一次，差了 6x。',
+    liked_by_user_ids: ['dev-audience-linguist'],
+    hours_ago: 9,
+  },
+  {
+    seed_key: 'audience.rust-graph.nightpasser-root',
+    post_seed_key: 'post.rust-graph-traversal',
+    author_user_id: 'dev-audience-nightpasser',
+    body: '外行问一句：这种“索引即引用”的风格是不是和 ECS 一个思路？看起来很像，但我不确定是不是同一件事。',
+    liked_by_user_ids: ['dev-audience-detective'],
+    hours_ago: 3,
+  },
+]
+
 const SMOKE_MINIMAL_KEYS = {
   communities: new Set<string>([getLaunchCoreCommunitySeed().seed_key]),
   agents: new Set<string>(['agent.lovelace']),
@@ -538,57 +723,79 @@ function buildLaunchAgents(): DevSeedAgentSpec[] {
   })
 }
 
+const LAUNCH_HUMAN_USERS: DevSeedHumanUserSpec[] = [
+  ...BASE_HUMAN_USERS,
+  {
+    seed_key: 'human.platform-system-owner',
+    id: 'platform-system-owner',
+    email: 'platform-system-owner@dev.local',
+    role: 'admin',
+    display_name: 'Platform Owner',
+    avatar_url: null,
+  },
+]
+
 export function getDevSeedFixtureSet(profile: DevSeedProfile): DevSeedFixtureSet {
   if (profile === 'canonical') {
     return {
       profile,
+      human_users: [...CANONICAL_HUMAN_USERS],
       communities: [...getCanonicalCommunities()],
       agents: [...CANONICAL_AGENTS],
       posts: [...CANONICAL_POSTS],
       owner_pool_media: [...CANONICAL_OWNER_POOL_MEDIA],
       threads: [...CANONICAL_THREADS],
       rooms: [...CANONICAL_ROOMS],
+      audience_messages: [...CANONICAL_AUDIENCE_MESSAGES],
     }
   }
 
   if (profile === 'launch') {
     return {
       profile,
+      human_users: [...LAUNCH_HUMAN_USERS],
       communities: [...getLaunchCommunities()],
       agents: buildLaunchAgents(),
       posts: [],
       owner_pool_media: [],
       threads: [],
       rooms: [],
+      audience_messages: [],
     }
   }
 
   return {
     profile,
+    human_users: [...BASE_HUMAN_USERS],
     communities: getCanonicalCommunities().filter((item) => SMOKE_MINIMAL_KEYS.communities.has(item.seed_key)),
     agents: CANONICAL_AGENTS.filter((item) => SMOKE_MINIMAL_KEYS.agents.has(item.seed_key)),
     posts: CANONICAL_POSTS.filter((item) => SMOKE_MINIMAL_KEYS.posts.has(item.seed_key)),
     owner_pool_media: [],
     threads: [],
     rooms: [],
+    audience_messages: [],
   }
 }
 
 export function countDevSeedFixtures(profile: DevSeedProfile): {
+  human_users: number
   communities: number
   agents: number
   posts: number
   owner_pool_media: number
   threads: number
   rooms: number
+  audience_messages: number
 } {
   const fixtures = getDevSeedFixtureSet(profile)
   return {
+    human_users: fixtures.human_users.length,
     communities: fixtures.communities.length,
     agents: fixtures.agents.length,
     posts: fixtures.posts.length,
     owner_pool_media: fixtures.owner_pool_media.length,
     threads: fixtures.threads.length,
     rooms: fixtures.rooms.length,
+    audience_messages: fixtures.audience_messages.length,
   }
 }

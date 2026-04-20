@@ -83,7 +83,6 @@ import type {
   RuntimeContextEnvelope,
   ThreadCapsule,
   ThreadLifecycleSnapshot,
-  TurnDisplayProjection,
 } from '../../shared/forum-orchestration.js'
 import { ThreadLifecycleService as DefaultThreadLifecycleService, type ThreadLifecycleService } from './thread-lifecycle-service.js'
 import type { SemanticProjectionService } from './semantic-projection-service.js'
@@ -330,26 +329,6 @@ export interface PublicStageThreadWithAuthor extends PublicStageThread {
   turns: PublicStageTurnWithAuthor[]
   active_route: RouteHandoff | null
   lifecycle: ThreadLifecycleSnapshot
-}
-
-export interface PublicStageThreadSummaryWithAuthor extends Omit<PublicStageThreadWithAuthor, 'turns'> {
-  starter_excerpt: string
-  latest_turn_id: string | null
-  latest_turn_excerpt: string | null
-}
-
-export interface PublicStageThreadDetailTurnsMeta {
-  requested_cursor: string | null
-  next_cursor: string | null
-  limit: number
-  around_turn_id: string | null
-  returned_mode: 'full' | 'cursor' | 'around'
-}
-
-export interface PublicStageThreadDetailWithAuthor extends PublicStageThreadWithAuthor {
-  turns_meta: PublicStageThreadDetailTurnsMeta
-  display_projection: TurnDisplayProjection[] | null
-  thread_capsule: ThreadCapsule | null
 }
 
 export type FeedSort = 'new' | 'hot' | 'top'
@@ -1266,59 +1245,6 @@ export class ForumReadService {
     }
   }
 
-  private async toPublicStageThreadSummaryWithAuthor(
-    thread: PublicStageThread,
-    turns: PublicStageTurn[],
-    opts: {
-      viewerUserId?: string
-      participationContract?: EffectiveParticipationContract | null
-      totalTurnCount: number
-      authorCache: Map<string, Promise<AuthorSummary>>
-      attachmentMap: Map<string, SurfaceMediaAttachmentView[]>
-    },
-  ): Promise<PublicStageThreadSummaryWithAuthor> {
-    const votes = this.getDetailedVoteSummary('THREAD', thread.id, opts.viewerUserId)
-    const topicPresentation = await this.resolveThreadTurnTopicSignals(thread.id)
-    const visibleTurns = turns.filter((turn) => isPubliclyVisibleContent(turn))
-    const lifecycle = this.resolveThreadLifecycleSnapshot(
-      thread,
-      opts.totalTurnCount,
-      opts.participationContract ?? null,
-    )
-    const participantIds = new Set<string>([
-      this.buildPublicActorKey(thread),
-      ...visibleTurns.map((turn) => this.buildPublicActorKey(turn)),
-    ])
-    const lastTurn = visibleTurns[visibleTurns.length - 1] ?? null
-
-    return {
-      ...thread,
-      author: await this.resolveAuthorCached(opts.authorCache, thread),
-      vote_score: votes.weighted_score,
-      agent_vote_score: votes.agent.score,
-      agent_vote_up: votes.agent.up,
-      agent_vote_down: votes.agent.down,
-      human_vote_score: votes.human.score,
-      human_vote_up: votes.human.up,
-      human_vote_down: votes.human.down,
-      weighted_vote_score: votes.weighted_score,
-      viewer_human_vote_direction: votes.viewer_direction,
-      ai_label: thread.author_actor_type === 'human' ? '用户' : 'AI生成',
-      effective_moderation_label: this.buildEffectiveModerationLabel(thread.visibility, thread.state),
-      topic_signals: topicPresentation.topic_signals,
-      distribution_state: topicPresentation.distribution_state,
-      attachments: opts.attachmentMap.get(thread.id) ?? [],
-      turn_count: opts.totalTurnCount,
-      participant_count: participantIds.size,
-      last_activity_at: lastTurn?.created_at ?? thread.created_at,
-      active_route: lifecycle.active_route,
-      lifecycle,
-      starter_excerpt: thread.body.slice(0, 180),
-      latest_turn_id: lastTurn?.id ?? null,
-      latest_turn_excerpt: lastTurn?.body.slice(0, 180) ?? null,
-    }
-  }
-
   private async findVisibleTurnWindowByThread(
     threadId: string,
     input: {
@@ -1329,7 +1255,7 @@ export class ForumReadService {
   ): Promise<{
     items: PublicStageTurn[]
     next_cursor: string | null
-    returned_mode: PublicStageThreadDetailTurnsMeta['returned_mode']
+    returned_mode: 'full' | 'cursor' | 'around'
   }> {
     const result = await this.deps.publicStageTurnRepo.findWindowByThread(threadId, {
       cursor: input.turn_cursor ?? null,
@@ -1501,66 +1427,10 @@ export class ForumReadService {
     return { items, next_cursor: result.next_cursor }
   }
 
-  async getThreadSummaries(
-    postId: string,
-    opts?: { cursor?: string; limit?: number },
-    viewerUserId?: string,
-  ): Promise<PaginatedResult<PublicStageThreadSummaryWithAuthor>> {
-    const post = await this.deps.postRepo.findById(postId)
-    if (!post) throw new NotFoundError('Post', postId)
-    if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
-
-    const limit = this.clampLimit(opts?.limit, 20, 200)
-    const result = await this.deps.publicStageThreadRepo.findByPost(postId, {
-      cursor: opts?.cursor,
-      limit,
-    })
-    const participationContract = await this.resolvePostParticipationContract(postId)
-    const turnEntries = await Promise.all(
-      result.items.map(async (thread) => ({
-        threadId: thread.id,
-        turns: await this.findRecentVisibleTurnsByThread(thread.id, 20),
-        totalTurnCount: await this.deps.publicStageTurnRepo.countByThread(thread.id),
-      })),
-    )
-    const attachmentMap = await this.resolveThreadTurnAttachmentViews(
-      result.items.map((thread) => ({ id: thread.id, entry_kind: 'THREAD' as const })),
-    )
-    const turnsByThreadId = new Map(turnEntries.map((entry) => [entry.threadId, entry.turns] as const))
-    const totalTurnCountByThreadId = new Map(turnEntries.map((entry) => [entry.threadId, entry.totalTurnCount] as const))
-    const authorCache = new Map<string, Promise<AuthorSummary>>()
-
-    const items = await Promise.all(
-      result.items.map((thread) =>
-        this.toPublicStageThreadSummaryWithAuthor(thread, turnsByThreadId.get(thread.id) ?? [], {
-          viewerUserId,
-          participationContract,
-          totalTurnCount: totalTurnCountByThreadId.get(thread.id) ?? 0,
-          authorCache,
-          attachmentMap,
-        })),
-    )
-
-    return { items, next_cursor: result.next_cursor }
-  }
-
   async getThread(
     threadId: string,
-    optsOrViewerUserId?: {
-      turn_cursor?: string | null
-      turn_limit?: number
-      around_turn_id?: string | null
-      include_projection?: boolean
-      include_capsule?: boolean
-    } | string,
-    maybeViewerUserId?: string,
-  ): Promise<PublicStageThreadDetailWithAuthor> {
-    const opts = typeof optsOrViewerUserId === 'string' || optsOrViewerUserId === undefined
-      ? undefined
-      : optsOrViewerUserId
-    const viewerUserId = typeof optsOrViewerUserId === 'string'
-      ? optsOrViewerUserId
-      : maybeViewerUserId
+    viewerUserId?: string,
+  ): Promise<PublicStageThreadWithAuthor> {
     const thread = await this.deps.publicStageThreadRepo.findById(threadId)
     if (!thread) throw new NotFoundError('Thread', threadId)
     if (!isPubliclyVisibleContent(thread)) throw new NotFoundError('Thread', threadId)
@@ -1568,18 +1438,12 @@ export class ForumReadService {
     const post = await this.deps.postRepo.findById(thread.post_id)
     if (!post || !isPubliclyVisibleContent(post)) throw new NotFoundError('Thread', threadId)
 
-    const hasDetailQuery =
-      Boolean(opts?.turn_cursor)
-      || typeof opts?.turn_limit === 'number'
-      || Boolean(opts?.around_turn_id)
-      || opts?.include_projection === true
-      || opts?.include_capsule === true
-    const turnLimit = this.clampLimit(opts?.turn_limit, hasDetailQuery ? 50 : 500, 500)
+    const turnLimit = this.clampLimit(undefined, 500, 500)
     const [turnsPage, totalTurnCount] = await Promise.all([
       this.findVisibleTurnWindowByThread(thread.id, {
-        turn_cursor: opts?.turn_cursor ?? null,
+        turn_cursor: null,
         turn_limit: turnLimit,
-        around_turn_id: opts?.around_turn_id ?? null,
+        around_turn_id: null,
       }),
       this.deps.publicStageTurnRepo.countByThread(thread.id),
     ])
@@ -1593,7 +1457,7 @@ export class ForumReadService {
     ])
     const authorCache = new Map<string, Promise<AuthorSummary>>()
     const participationContract = await this.resolvePostParticipationContract(thread.post_id)
-    const detail = await this.toPublicStageThreadWithAuthor(thread, turns, {
+    return this.toPublicStageThreadWithAuthor(thread, turns, {
       viewerUserId,
       participationContract,
       totalTurnCount,
@@ -1601,38 +1465,6 @@ export class ForumReadService {
       visibleTurnById,
       attachmentMap,
     })
-
-    let displayProjection: TurnDisplayProjection[] | null = null
-    let threadCapsule: ThreadCapsule | null = null
-    if (opts?.include_projection || opts?.include_capsule) {
-      const bundle = await this.buildThreadLocalProjectionBundle(
-        thread.post_id,
-        detail,
-        {
-          focus_turn_id: opts?.around_turn_id ?? null,
-        },
-        viewerUserId,
-      )
-      if (opts.include_projection) {
-        displayProjection = bundle.forest.nodes.filter((node) => node.thread_id === thread.id)
-      }
-      if (opts.include_capsule) {
-        threadCapsule = bundle.thread_capsule
-      }
-    }
-
-    return {
-      ...detail,
-      turns_meta: {
-        requested_cursor: opts?.turn_cursor ?? null,
-        next_cursor: turnsPage.next_cursor,
-        limit: turnLimit,
-        around_turn_id: opts?.around_turn_id ?? null,
-        returned_mode: turnsPage.returned_mode,
-      },
-      display_projection: displayProjection,
-      thread_capsule: threadCapsule,
-    }
   }
 
   async getThreadSearchCardBundle(
@@ -1736,38 +1568,6 @@ export class ForumReadService {
     }))
 
     return new Map(bundles)
-  }
-
-  private async buildThreadLocalProjectionBundle(
-    postId: string,
-    detail: PublicStageThreadWithAuthor,
-    input?: {
-      focus_turn_id?: string | null
-    },
-    viewerUserId?: string,
-  ): Promise<{
-    post_capsule: PostSemanticCapsule
-    forest: DiscussionForestProjection
-    thread_capsule: ThreadCapsule | null
-  }> {
-    const { semanticProjectionService, displayProjectionService } = this.requireProjectionServices()
-    const post = await this.getPostProjectionMeta(postId, [detail], viewerUserId)
-    const audienceSignals = await this.buildAudienceSignalCapsule(postId)
-    const postCapsule = semanticProjectionService.buildPostSemanticCapsule(post, [detail], audienceSignals)
-    const readingGuide = semanticProjectionService.buildReadingGuide(post, postCapsule)
-    const forest = displayProjectionService.buildDiscussionForest({
-      post_id: postId,
-      threads: [detail],
-      reading_guide: readingGuide,
-      focus_thread_id: detail.id,
-      focus_turn_id: input?.focus_turn_id ?? null,
-    })
-
-    return {
-      post_capsule: postCapsule,
-      forest,
-      thread_capsule: postCapsule.thread_capsules.find((item) => item.thread_id === detail.id) ?? null,
-    }
   }
 
   async getThreadLifecycle(threadId: string): Promise<ThreadLifecycleSnapshot> {

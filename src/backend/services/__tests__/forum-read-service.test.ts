@@ -1084,116 +1084,6 @@ describe('ForumReadService', () => {
       expect(result.turns[0]?.anchor_preview?.body_excerpt).not.toContain('Hidden anchor body')
     })
 
-    it('builds thread summaries and paged detail windows for timeline-first reads', async () => {
-      attachProjectionDeps(ctx)
-      const community = ctx.communityRepo.create({ name: 'Projection', slug: 'projection' })
-      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-root', display_name: 'Root Author' })
-      const replyAuthor = ctx.agentRepo.create({ owner_id: 'owner-reply', display_name: 'Reply Author' })
-      const post = await ctx.postRepo.create({
-        community_id: community.id,
-        author_agent_id: rootAuthor.id,
-        title: 'Projection target',
-        body: 'Body',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-
-      const thread = await ctx.commentRepo.create({
-        post_id: post.id,
-        author_agent_id: rootAuthor.id,
-        body: 'Visible thread root',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-
-      const firstTurn = await ctx.publicStageTurnRepo.create({
-        thread_id: thread.id,
-        post_id: post.id,
-        author_agent_id: replyAuthor.id,
-        turn_index: 1,
-        anchor_turn_id: null,
-        quoted_excerpt: null,
-        body: 'Visible reply body.',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-
-      const secondTurn = await ctx.publicStageTurnRepo.create({
-        thread_id: thread.id,
-        post_id: post.id,
-        author_agent_id: rootAuthor.id,
-        turn_index: 2,
-        anchor_turn_id: firstTurn.id,
-        quoted_excerpt: 'Visible reply body.',
-        body: 'Second visible reply.',
-        visibility: 'PUBLIC',
-        state: 'APPROVED',
-      })
-
-      const findByThreadSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findByThread')
-      const findWindowByThreadSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findWindowByThread')
-      const summaries = await ctx.svc.getThreadSummaries(post.id)
-
-      expect(summaries.items).toHaveLength(1)
-      expect(summaries.items[0]).toMatchObject({
-        id: thread.id,
-        starter_excerpt: 'Visible thread root',
-        latest_turn_id: secondTurn.id,
-        latest_turn_excerpt: 'Second visible reply.',
-      })
-
-      const cursorWindow = await ctx.svc.getThread(thread.id, {
-        turn_cursor: firstTurn.id,
-        turn_limit: 1,
-      })
-      expect(cursorWindow.turns).toHaveLength(1)
-      expect(cursorWindow.turns[0]).toMatchObject({
-        id: secondTurn.id,
-        body: 'Second visible reply.',
-      })
-      expect(cursorWindow.turns_meta).toMatchObject({
-        requested_cursor: firstTurn.id,
-        next_cursor: null,
-        limit: 1,
-        around_turn_id: null,
-        returned_mode: 'cursor',
-      })
-
-      const aroundWindow = await ctx.svc.getThread(thread.id, {
-        around_turn_id: secondTurn.id,
-        turn_limit: 1,
-        include_projection: true,
-        include_capsule: true,
-      })
-      expect(aroundWindow.turns).toHaveLength(1)
-      expect(aroundWindow.turns[0]).toMatchObject({
-        id: secondTurn.id,
-        body: 'Second visible reply.',
-      })
-      expect(aroundWindow.turns_meta).toMatchObject({
-        requested_cursor: null,
-        next_cursor: null,
-        limit: 1,
-        around_turn_id: secondTurn.id,
-        returned_mode: 'around',
-      })
-      expect(aroundWindow.display_projection).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ id: thread.id, entry_kind: 'THREAD' }),
-          expect.objectContaining({ id: secondTurn.id, entry_kind: 'TURN' }),
-        ]),
-      )
-      expect(aroundWindow.thread_capsule).toMatchObject({
-        thread_id: thread.id,
-        latest_turn_id: secondTurn.id,
-      })
-      expect(findWindowByThreadSpy).toHaveBeenCalledWith(
-        thread.id,
-        expect.objectContaining({ aroundTurnId: secondTurn.id, limit: 1 }),
-      )
-      expect(findByThreadSpy).not.toHaveBeenCalled()
-    })
-
     it('preserves matched search turns outside the recent card window', async () => {
       const community = ctx.communityRepo.create({ name: 'Search Cards', slug: 'search-cards' })
       const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-root', display_name: 'Root Author' })
@@ -1387,28 +1277,24 @@ describe('ForumReadService', () => {
         state: 'APPROVED',
       })
 
-      const summaries = await ctx.svc.getThreadSummaries(post.id)
+      const threads = await ctx.svc.getThreads(post.id, {})
       const detail = await ctx.svc.getThread(thread.id)
-      const findByThreadsSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findByThreads')
-      const findRecentByThreadSpy = vi.spyOn(ctx.publicStageTurnRepo, 'findRecentByThread')
       const forest = await ctx.svc.getDiscussionForest(post.id, { focus_thread_id: thread.id })
       const preview = await ctx.svc.buildRuntimeContextPreview({
         post_id: post.id,
         thread_id: thread.id,
       })
 
-      const summaryLifecycle = summaries.items[0]?.lifecycle
+      const threadsLifecycle = threads.items[0]?.lifecycle
       const detailLifecycle = detail.lifecycle
       const forestLifecycle = forest.branch_groups[0]?.lifecycle
       const previewLifecycle = preview.runtime_context?.focus_thread?.lifecycle
 
-      expect(summaryLifecycle).toBeDefined()
-      expect(summaryLifecycle).toEqual(detailLifecycle)
-      expect(summaryLifecycle).toEqual(forestLifecycle)
-      expect(summaryLifecycle).toEqual(previewLifecycle)
-      expect(findRecentByThreadSpy).toHaveBeenCalledWith(thread.id, expect.any(Number))
-      expect(findByThreadsSpy).not.toHaveBeenCalled()
-      expect(summaryLifecycle?.writeability).toMatchObject({
+      expect(threadsLifecycle).toBeDefined()
+      expect(threadsLifecycle).toEqual(detailLifecycle)
+      expect(threadsLifecycle).toEqual(forestLifecycle)
+      expect(threadsLifecycle).toEqual(previewLifecycle)
+      expect(threadsLifecycle?.writeability).toMatchObject({
         reply_mode: 'SOFT_CLOSE',
         reply_allowed: true,
         preferred_action: 'FOLLOW_ROUTE',

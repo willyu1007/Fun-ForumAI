@@ -3,7 +3,6 @@ export const FORUM_WATCH_TELEMETRY_EVENT_TYPES = [
   'guide_click',
   'branch_expand',
   'node_focus',
-  'timeline_open',
   'reply_anchor_select',
 ] as const
 
@@ -30,7 +29,6 @@ function createCounters(): ForumWatchTelemetryCounters {
     guide_click: 0,
     branch_expand: 0,
     node_focus: 0,
-    timeline_open: 0,
     reply_anchor_select: 0,
   }
 }

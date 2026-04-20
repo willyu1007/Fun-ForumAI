@@ -6,24 +6,20 @@ import type {
   ApiResponse,
   HomeProgrammingPayload,
   PostWithMeta,
-  ReadingGuideProjection,
   DiscussionForestProjection,
   EffectiveParticipationContract,
   ParticipationContract,
   ViewerWriteResult,
   ViewerWriteSourceContext,
-  PublicStageThreadData,
-  PublicStageThreadDetailData,
-  PublicStageThreadSummaryData,
   Community,
   HealthData,
   FeedParams,
-  PaginationParams,
-  ThreadDetailParams,
   AudienceThreadData,
-  AftershowSnapshot,
-  AsideSeatsData,
+  AudienceThreadSort,
+  AudienceMessageLikeResult,
+  AudienceMessageDeleteResult,
   ForumWatchTelemetryEventType,
+  PaginationParams,
   PublicSearchResponse,
   SearchTab,
 } from '../types'
@@ -68,14 +64,6 @@ export function usePost(postId: string, params?: ViewSourceParams) {
   })
 }
 
-export function useReadingGuide(postId: string) {
-  return useQuery({
-    queryKey: queryKeys.readingGuide(postId),
-    queryFn: () => api.get(`posts/${postId}/reading-guide`).json<ApiResponse<ReadingGuideProjection>>(),
-    enabled: !!postId,
-  })
-}
-
 export function useDiscussionForest(
   postId: string,
   params?: { focus_thread_id?: string | null; focus_turn_id?: string | null },
@@ -113,57 +101,24 @@ export function usePostParticipationContract(postId: string, options?: { enabled
   })
 }
 
-export function useThreads(
-  postId: string,
-  params?: PaginationParams,
-  options?: { enabled?: boolean },
-) {
-  return useQuery({
-    queryKey: queryKeys.threads(postId, params),
-    queryFn: () =>
-      api
-        .get(`posts/${postId}/threads${toSearchString(params)}`)
-        .json<ApiResponse<PublicStageThreadData[]>>(),
-    enabled: !!postId && (options?.enabled ?? true),
-  })
-}
-
-export function useThreadSummaries(
-  postId: string,
-  params?: PaginationParams,
-  options?: { enabled?: boolean },
-) {
-  return useQuery({
-    queryKey: queryKeys.threadSummaries(postId, params),
-    queryFn: () =>
-      api
-        .get(`posts/${postId}/threads-summary${toSearchString(params)}`)
-        .json<ApiResponse<PublicStageThreadSummaryData[]>>(),
-    enabled: !!postId && (options?.enabled ?? true),
-  })
-}
-
-export function useThread(
-  threadId: string,
-  params?: ThreadDetailParams,
-  options?: { enabled?: boolean },
-) {
-  return useQuery({
-    queryKey: queryKeys.thread(threadId, params),
-    queryFn: () => api.get(`threads/${threadId}${toSearchString(params ?? undefined)}`).json<ApiResponse<PublicStageThreadDetailData>>(),
-    enabled: !!threadId && (options?.enabled ?? true),
-  })
+export interface CreateAudienceMessageInput {
+  body: string
+  parent_message_id?: string | null
+  quoted_turn?: {
+    turn_id: string
+    excerpt: string
+    author_display_name?: string | null
+  } | null
+  idempotency_key?: string | null
+  source_context?: ViewerWriteSourceContext | null
 }
 
 export function useCreateAudienceMessage(postId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: string | {
-      body: string
-      idempotency_key?: string | null
-      source_context?: ViewerWriteSourceContext | null
-    }) => {
-      const payload = typeof input === 'string' ? { body: input } : input
+    mutationFn: (input: string | CreateAudienceMessageInput) => {
+      const payload: CreateAudienceMessageInput =
+        typeof input === 'string' ? { body: input } : input
       return api
         .post(`viewer/posts/${postId}/audience-messages`, { json: payload })
         .json<ApiResponse<ViewerWriteResult>>()
@@ -171,35 +126,37 @@ export function useCreateAudienceMessage(postId: string) {
     onSuccess: (response) => {
       if (response.data.result !== 'ACCEPTED') return
       qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
-      qc.invalidateQueries({ queryKey: queryKeys.aftershow(postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
     },
   })
 }
 
-export function useCreatePublicThread(postId: string) {
+export function useDeleteAudienceMessage(postId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: string | {
-      body: string
-      idempotency_key?: string | null
-      source_context?: ViewerWriteSourceContext | null
-    }) => {
-      const payload = typeof input === 'string' ? { body: input } : input
-      return api
-        .post(`viewer/posts/${postId}/public-threads`, { json: payload })
-        .json<ApiResponse<ViewerWriteResult>>()
+    mutationFn: (messageId: string) =>
+      api
+        .delete(`viewer/audience-messages/${messageId}`)
+        .json<ApiResponse<AudienceMessageDeleteResult>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
     },
-    onSuccess: (response) => {
-      if (response.data.result !== 'ACCEPTED') return
-      qc.invalidateQueries({ queryKey: ['threads', postId] })
-      qc.invalidateQueries({ queryKey: ['threadSummaries', postId] })
-      qc.invalidateQueries({ queryKey: ['discussionForest', postId] })
-      qc.invalidateQueries({ queryKey: queryKeys.readingGuide(postId) })
-      qc.invalidateQueries({ queryKey: queryKeys.post(postId) })
-      if (response.data.thread_id) {
-        qc.invalidateQueries({ queryKey: ['thread', response.data.thread_id] })
-      }
+  })
+}
+
+export function useToggleAudienceMessageLike(postId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ messageId, liked }: { messageId: string; liked: boolean }) =>
+      liked
+        ? api
+          .post(`viewer/audience-messages/${messageId}/likes`)
+          .json<ApiResponse<AudienceMessageLikeResult>>()
+        : api
+          .delete(`viewer/audience-messages/${messageId}/likes`)
+          .json<ApiResponse<AudienceMessageLikeResult>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
     },
   })
 }
@@ -231,44 +188,23 @@ export function useCreatePublicTurn() {
       }).json<ApiResponse<ViewerWriteResult>>(),
     onSuccess: (response, input) => {
       if (response.data.result !== 'ACCEPTED') return
-      qc.invalidateQueries({ queryKey: ['thread', input.threadId] })
-      qc.invalidateQueries({ queryKey: ['threads', input.postId] })
-      qc.invalidateQueries({ queryKey: ['threadSummaries', input.postId] })
       qc.invalidateQueries({ queryKey: ['discussionForest', input.postId] })
-      qc.invalidateQueries({ queryKey: queryKeys.readingGuide(input.postId) })
       qc.invalidateQueries({ queryKey: queryKeys.post(input.postId) })
     },
   })
 }
 
-export function useAudienceThread(postId: string, options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: queryKeys.audienceThread(postId),
-    queryFn: () => api.get(`posts/${postId}/audience-thread`).json<ApiResponse<AudienceThreadData>>(),
-    enabled: !!postId && (options?.enabled ?? true),
-    retry: false,
-  })
-}
-
-export function useAftershow(
+export function useAudienceThread(
   postId: string,
-  options?: { enabled?: boolean; params?: ViewSourceParams },
+  options?: { enabled?: boolean; sort?: AudienceThreadSort },
 ) {
+  const sort: AudienceThreadSort = options?.sort ?? 'latest'
   return useQuery({
-    queryKey: [...queryKeys.aftershow(postId), options?.params ?? null],
+    queryKey: queryKeys.audienceThread(postId, sort),
     queryFn: () =>
       api
-        .get(`posts/${postId}/aftershow${toSearchString(options?.params)}`)
-        .json<ApiResponse<AftershowSnapshot>>(),
-    enabled: !!postId && (options?.enabled ?? true),
-    retry: false,
-  })
-}
-
-export function useAsideSeats(postId: string, options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: queryKeys.asideSeats(postId),
-    queryFn: () => api.get(`posts/${postId}/aside-seats`).json<ApiResponse<AsideSeatsData>>(),
+        .get(`posts/${postId}/audience-thread${toSearchString({ sort })}`)
+        .json<ApiResponse<AudienceThreadData>>(),
     enabled: !!postId && (options?.enabled ?? true),
     retry: false,
   })

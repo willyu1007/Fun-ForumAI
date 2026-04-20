@@ -45,7 +45,6 @@ export type {
   DiscussionForestProjection,
   EffectiveParticipationContract,
   ParticipationContract,
-  ReadingGuideProjection,
   ThreadLifecycleSnapshot,
   ThreadPreferredAction,
   ThreadReplyMode,
@@ -534,6 +533,15 @@ export interface AgentActiveCommunitySummary {
     | null
 }
 
+export interface AgentRecentPublicPost {
+  id: string
+  title: string
+  created_at: string
+  community_id: string
+  community_name: string
+  community_slug: string
+}
+
 export interface PostMediaItem {
   asset_id: string
   media_url: string
@@ -718,7 +726,6 @@ export interface AftershowSnapshot {
   content_semantics?: import('../../shared/semantic-taxonomy.js').ContentSemanticProjection | null
   relation_teaser?: RelationSummaryTeaser | null
 }
-
 export interface HomeProgrammingPostItem extends PostWithMeta {
   item_kind: 'post' | 'aftershow_recap'
   next_jump_target: string
@@ -951,17 +958,42 @@ export interface AudienceThread {
   updated_at: string
 }
 
+export interface AudienceMessageAuthor {
+  id: string
+  display_name: string
+  avatar_url: string | null
+}
+
+export interface AudienceQuotedTurnRef {
+  turn_id: string
+  excerpt: string
+  author_display_name: string | null
+}
+
 export interface AudienceMessage {
   id: string
   thread_id: string
-  author_user_id: string
   body: string
+  author: AudienceMessageAuthor
+  parent_message_id: string | null
+  quoted_turn: AudienceQuotedTurnRef | null
+  like_count: number
+  viewer_has_liked: boolean
+  deleted_at: string | null
   created_at: string
+  updated_at: string
 }
+
+export interface AudienceMessageWithReplies extends AudienceMessage {
+  replies: AudienceMessage[]
+}
+
+export type AudienceThreadSort = 'latest' | 'top'
 
 export interface AudienceThreadData {
   thread: AudienceThread | null
-  messages: AudienceMessage[]
+  sort: AudienceThreadSort
+  messages: AudienceMessageWithReplies[]
 }
 
 export interface AudienceMessageCreateResult {
@@ -969,30 +1001,15 @@ export interface AudienceMessageCreateResult {
   message: AudienceMessage
 }
 
-export interface AsideSeat {
-  id: string
-  community_id: string
-  post_id: string | null
-  agent_id: string
-  scope: 'COMMUNITY' | 'POST'
-  scope_id: string
-  role: string
-  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED'
-  assigned_by: string | null
-  expires_at: string | null
-  revoked_at: string | null
-  meta: Record<string, unknown> | null
-  created_at: string
-  updated_at: string
+export interface AudienceMessageLikeResult {
+  message_id: string
+  like_count: number
+  viewer_has_liked: boolean
 }
 
-export interface AsideSeatsData {
-  post_id: string
-  seats: AsideSeat[]
-  stage_limits: {
-    capacity: number
-    cooldown_seconds: number
-  }
+export interface AudienceMessageDeleteResult {
+  message_id: string
+  deleted_at: string
 }
 
 export interface RouteHandoff {
@@ -1044,110 +1061,11 @@ export interface PublicStageTurnData {
   anchor_preview: PublicStageTurnAnchorPreview | null
 }
 
-export interface PublicStageThreadData {
-  id: string
-  post_id: string
-  community_id: string
-  author_actor_type: PublicActorType
-  author_agent_id: string | null
-  author_user_id: string | null
-  body: string
-  visibility: ContentVisibility
-  state: ContentState
-  thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
-  reply_budget: number
-  active_route: RouteHandoff | null
-  lifecycle: import('../../shared/forum-orchestration.js').ThreadLifecycleSnapshot
-  created_at: string
-  updated_at: string
-  author: AuthorSummary
-  vote_score: number
-  agent_vote_score: number
-  agent_vote_up: number
-  agent_vote_down: number
-  human_vote_score: number
-  human_vote_up: number
-  human_vote_down: number
-  weighted_vote_score: number
-  viewer_human_vote_direction: VoteDirection | null
-  ai_label: string
-  effective_moderation_label: string
-  topic_signals: Record<string, unknown> | null
-  distribution_state: string
-  attachments: SurfaceMediaAttachment[]
-  turn_count: number
-  participant_count: number
-  last_activity_at: string
-  turns: PublicStageTurnData[]
-}
-
-export interface PublicStageThreadSummaryData {
-  id: string
-  post_id: string
-  community_id: string
-  author_actor_type: PublicActorType
-  author_agent_id: string | null
-  author_user_id: string | null
-  body: string
-  visibility: ContentVisibility
-  state: ContentState
-  thread_state: 'OPEN' | 'PEAKED' | 'CLOSED' | 'SPINOFF'
-  reply_budget: number
-  active_route: RouteHandoff | null
-  lifecycle: import('../../shared/forum-orchestration.js').ThreadLifecycleSnapshot
-  created_at: string
-  updated_at: string
-  author: AuthorSummary
-  vote_score: number
-  agent_vote_score: number
-  agent_vote_up: number
-  agent_vote_down: number
-  human_vote_score: number
-  human_vote_up: number
-  human_vote_down: number
-  weighted_vote_score: number
-  viewer_human_vote_direction: VoteDirection | null
-  ai_label: string
-  effective_moderation_label: string
-  topic_signals: Record<string, unknown> | null
-  distribution_state: string
-  attachments: SurfaceMediaAttachment[]
-  turn_count: number
-  participant_count: number
-  last_activity_at: string
-  starter_excerpt: string
-  latest_turn_id: string | null
-  latest_turn_excerpt: string | null
-}
-
-export interface PublicStageThreadTurnsMeta {
-  requested_cursor: string | null
-  next_cursor: string | null
-  limit: number
-  around_turn_id: string | null
-  returned_mode: 'full' | 'cursor' | 'around'
-}
-
-export interface PublicStageThreadDetailData extends PublicStageThreadData {
-  turns_meta: PublicStageThreadTurnsMeta
-  display_projection?: import('../../shared/forum-orchestration.js').TurnDisplayProjection[] | null
-  thread_capsule?: import('../../shared/forum-orchestration.js').ThreadCapsule | null
-}
-
-export interface ThreadDetailParams {
-  turn_cursor?: string | null
-  turn_limit?: number
-  around_turn_id?: string | null
-  include_projection?: boolean
-  include_capsule?: boolean
-}
-
 export type ForumWatchTelemetryEventType =
   | 'guide_render'
   | 'guide_click'
   | 'branch_expand'
   | 'node_focus'
-  | 'timeline_open'
   | 'reply_anchor_select'
 
 export interface Vote {
@@ -1442,6 +1360,11 @@ export interface AgentHighlightsData {
     importance_score: number
     visual?: SurfaceMediaAttachment | null
   }>
+  recent_public_bios?: Array<{
+    text: string
+    refreshed_at: string
+  }>
+  recent_public_posts?: AgentRecentPublicPost[]
 }
 
 export interface GlobalHighlightsData {

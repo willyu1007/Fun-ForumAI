@@ -8,6 +8,7 @@ import {
   agentConfigRepo,
   agentRepo,
   agentService,
+  audienceRepo,
   chatService,
   chatroomControlService,
   communityRepo,
@@ -50,6 +51,7 @@ import {
   DEV_SEED_PROACTIVE_TRIGGER_TYPE,
   getDevSeedFixtureSet,
   type DevSeedAgentSpec,
+  type DevSeedAudienceMessageSpec,
   type DevSeedFixtureSet,
   type DevSeedOwnerPoolMediaSpec,
   type DevSeedPostSpec,
@@ -109,6 +111,9 @@ export interface DevSeedRunResult {
     follow_links: number
     guidance_inbox_items: number
     guidance_bell_items: number
+    audience_threads: number
+    audience_messages: number
+    audience_likes: number
   }
   ids: {
     communities: string[]
@@ -168,24 +173,10 @@ function findAgentByOwnerAndName(input: Pick<DevSeedAgentSpec, 'owner_id' | 'dis
 }
 
 async function ensureSeedUsers(
-  profile: DevSeedProfile,
+  fixtures: DevSeedFixtureSet['human_users'],
   tracker: RegistryTracker,
 ): Promise<void> {
   if (!userRepo) return
-
-  const fixtures = [
-    { seed_key: 'human.dev-user-001', id: 'dev-user-001', email: 'dev-user-001@dev.local', role: 'user' as const },
-    { seed_key: 'human.dev-admin-001', id: 'dev-admin-001', email: 'dev-admin-001@dev.local', role: 'admin' as const },
-    { seed_key: 'human.dev-seed', id: 'dev-seed', email: 'dev-seed@dev.local', role: 'admin' as const },
-    ...(profile === 'launch'
-      ? [{
-          seed_key: 'human.platform-system-owner',
-          id: 'platform-system-owner',
-          email: 'platform-system-owner@dev.local',
-          role: 'admin' as const,
-        }]
-      : []),
-  ]
 
   for (const fixture of fixtures) {
     const user = await userRepo.upsertDevIdentity({
@@ -193,6 +184,14 @@ async function ensureSeedUsers(
       email: fixture.email,
       role: fixture.role,
     })
+
+    if (fixture.display_name || fixture.avatar_url !== undefined) {
+      await userRepo.updateProfile(user.id, {
+        display_name: fixture.display_name ?? user.display_name,
+        avatar_url: fixture.avatar_url ?? null,
+      })
+    }
+
     await tracker.bind(fixture.seed_key, 'human_user', user.id)
   }
 }
@@ -1100,6 +1099,94 @@ async function rebuildSeedThreads(
   return { threadIds, threadsBySeedKey }
 }
 
+type RebuiltAudienceResult = {
+  thread_count: number
+  message_count: number
+  like_count: number
+}
+
+async function rebuildSeedAudienceMessages(
+  fixtures: DevSeedAudienceMessageSpec[],
+  postsBySeedKey: Map<string, Post>,
+): Promise<RebuiltAudienceResult> {
+  if (fixtures.length === 0) {
+    return { thread_count: 0, message_count: 0, like_count: 0 }
+  }
+
+  const messagesByPost = new Map<string, DevSeedAudienceMessageSpec[]>()
+  for (const fixture of fixtures) {
+    const bucket = messagesByPost.get(fixture.post_seed_key) ?? []
+    bucket.push(fixture)
+    messagesByPost.set(fixture.post_seed_key, bucket)
+  }
+
+  let threadCount = 0
+  let messageCount = 0
+  let likeCount = 0
+
+  for (const [postSeedKey, postFixtures] of messagesByPost.entries()) {
+    const post = postsBySeedKey.get(postSeedKey)
+    if (!post) continue
+
+    // Idempotence guard: if an audience thread already exists for this post (e.g. re-run
+    // without `pnpm dev:reset:seed`), skip re-seeding to avoid duplicate messages.
+    const existingThread = await audienceRepo.findThreadByPost(post.id)
+    if (existingThread) {
+      continue
+    }
+
+    const thread = await audienceRepo.upsertThreadByPost({
+      post_id: post.id,
+      community_id: post.community_id,
+      status: 'OPEN',
+    })
+    threadCount += 1
+
+    const messageIdsBySeedKey = new Map<string, string>()
+    const orderedFixtures = [
+      ...postFixtures.filter((item) => !item.parent_seed_key),
+      ...postFixtures.filter((item) => item.parent_seed_key),
+    ]
+
+    for (const fixture of orderedFixtures) {
+      const parentId = fixture.parent_seed_key
+        ? messageIdsBySeedKey.get(fixture.parent_seed_key) ?? null
+        : null
+
+      const message = await audienceRepo.createMessage({
+        thread_id: thread.id,
+        author_user_id: fixture.author_user_id,
+        body: fixture.body,
+        parent_message_id: parentId,
+        quoted_turn_id: fixture.quoted_turn_id ?? null,
+        quoted_turn_excerpt: fixture.quoted_turn_excerpt ?? null,
+        quoted_turn_author_name: fixture.quoted_turn_author_name ?? null,
+      })
+      messageIdsBySeedKey.set(fixture.seed_key, message.id)
+      messageCount += 1
+
+      if (typeof fixture.hours_ago === 'number') {
+        const backdated = buildDevSeedFixtureTimestamp(fixture.hours_ago)
+        await audienceRepo.updateMessageTimestamps(message.id, {
+          created_at: backdated,
+          updated_at: backdated,
+        })
+      }
+
+      for (const likerId of fixture.liked_by_user_ids ?? []) {
+        await audienceRepo.likeMessage({ message_id: message.id, user_id: likerId })
+        likeCount += 1
+      }
+
+      if (fixture.deleted) {
+        await audienceRepo.softDeleteMessage(message.id)
+      }
+    }
+  }
+
+  return { thread_count: threadCount, message_count: messageCount, like_count: likeCount }
+}
+
 async function ensureSeedRoomActive(roomId: string): Promise<Room | null> {
   const room = await roomRepo.findById(roomId)
   if (!room) return null
@@ -1712,7 +1799,7 @@ export async function runDevSeed(input: {
   await agentRepo.refreshPersisted?.()
   await eventQueue.clear()
   await resetWarmupGovernanceFixtures(prisma)
-  await ensureSeedUsers(profile, tracker)
+  await ensureSeedUsers(fixtures.human_users, tracker)
 
   const communitiesBySeedKey = new Map<string, Community>()
   for (const communitySpec of fixtures.communities) {
@@ -1836,6 +1923,11 @@ export async function runDevSeed(input: {
       })
     : { follow_links: 0, thread_turns: 0 }
 
+  const audienceFixtures = await rebuildSeedAudienceMessages(
+    fixtures.audience_messages,
+    postsBySeedKey,
+  )
+
   const agents = Array.from(agentsBySeedKey.values())
   if ((profile === 'canonical' || profile === 'launch') && input.refresh_bio !== false) {
     await refreshSeedAgentBios(seedBioTargets)
@@ -1868,6 +1960,9 @@ export async function runDevSeed(input: {
       follow_links: activityGuidanceFixtures.follows + followingFeedFixtures.follow_links,
       guidance_inbox_items: activityGuidanceFixtures.inbox_items,
       guidance_bell_items: activityGuidanceFixtures.bell_items,
+      audience_threads: audienceFixtures.thread_count,
+      audience_messages: audienceFixtures.message_count,
+      audience_likes: audienceFixtures.like_count,
     },
     ids: {
       communities: Array.from(communitiesBySeedKey.values()).map((item) => item.id),

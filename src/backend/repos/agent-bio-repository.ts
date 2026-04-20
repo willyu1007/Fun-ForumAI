@@ -25,6 +25,11 @@ export type CommitAgentBioRefreshResult =
       render_log: AgentBioRenderLog | null
     }
 
+export interface RecentPublicBioSnapshot {
+  text: string
+  refreshed_at: Date
+}
+
 export interface AgentBioRepository {
   hydrate?(): Promise<void>
   getWorldview(agentId: string): Promise<AgentWorldviewState | null>
@@ -34,6 +39,10 @@ export interface AgentBioRepository {
     opts: { limit: number },
   ): Promise<AgentBioRenderLog[]>
   findRenderLogByDedupKey(agentId: string, dedupKey: string): Promise<AgentBioRenderLog | null>
+  listRecentPublicBioSnapshots(
+    agentId: string,
+    opts: { limit: number },
+  ): Promise<RecentPublicBioSnapshot[]>
   commitRefresh(input: CommitAgentBioRefreshInput): Promise<CommitAgentBioRefreshResult>
 }
 
@@ -68,6 +77,35 @@ export class InMemoryAgentBioRepository implements AgentBioRepository {
     const existingId = this.dedupIndex.get(`${agentId}:${dedupKey}`)
     if (!existingId) return null
     return this.renderLogStore.get(existingId) ?? null
+  }
+
+  async listRecentPublicBioSnapshots(
+    agentId: string,
+    opts: { limit: number },
+  ): Promise<RecentPublicBioSnapshot[]> {
+    const limit = Math.max(0, Math.floor(opts.limit))
+    if (limit === 0) return []
+    const seenFingerprints = new Set<string>()
+    const results: RecentPublicBioSnapshot[] = []
+    const rows = Array.from(this.renderLogStore.values())
+      .filter((row) =>
+        row.agent_id === agentId
+        && row.status === 'rendered'
+        && row.public_persisted
+        && typeof row.public_bio_snapshot === 'string'
+        && row.public_bio_snapshot.length > 0,
+      )
+      .sort((left, right) => right.created_at.getTime() - left.created_at.getTime())
+    for (const row of rows) {
+      if (seenFingerprints.has(row.render_fingerprint)) continue
+      seenFingerprints.add(row.render_fingerprint)
+      results.push({
+        text: row.public_bio_snapshot as string,
+        refreshed_at: row.created_at,
+      })
+      if (results.length >= limit) break
+    }
+    return results
   }
 
   async commitRefresh(input: CommitAgentBioRefreshInput): Promise<CommitAgentBioRefreshResult> {
@@ -150,6 +188,7 @@ export class InMemoryAgentBioRepository implements AgentBioRepository {
       render_fingerprint: input.render_log.render_fingerprint,
       status: input.render_log.status,
       public_persisted: input.render_log.public_persisted,
+      public_bio_snapshot: input.render_log.public_bio_snapshot ?? null,
       note_json: input.render_log.note_json ?? null,
       created_at: now,
     }

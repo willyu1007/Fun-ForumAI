@@ -106,7 +106,6 @@ export function FeedPage() {
 
         <NewContentBanner
           count={newPostCount}
-          label="条新帖"
           onRefresh={clearNewPosts}
           queryKey={['feed']}
         />

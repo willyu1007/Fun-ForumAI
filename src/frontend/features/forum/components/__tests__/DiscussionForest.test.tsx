@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DiscussionForest } from '../DiscussionForest'
 import type { DiscussionForestProjection } from '@/api/types'
 
@@ -240,25 +240,25 @@ function buildForest(): DiscussionForestProjection {
 }
 
 describe('DiscussionForest', () => {
-  it('replaces dead-end reply affordances with the route CTA for route-only branches', () => {
+  it('replaces the inline reply affordance with the active route CTA on route-only branches', () => {
     render(
       <MemoryRouter>
         <DiscussionForest
           postId="post-1"
           forest={buildForest()}
           selectedNodeId="turn-late"
-          replyActionLabel="回应这里"
+          turnReplyEnabled
         />
       </MemoryRouter>,
     )
 
-    expect(screen.queryByRole('button', { name: '回应这里' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '回复' })).toBeNull()
     expect(screen.getAllByRole('link', { name: '查看 Aftershow' })[0]?.getAttribute('href')).toBe(
       '/posts/post-1#aftershow-panel',
     )
   })
 
-  it('renders branch clusters instead of a single thread-level card and surfaces late-entry cues', () => {
+  it('renders a flat tree of top-level nodes without cluster headers or reading-guide banners', () => {
     render(
       <MemoryRouter>
         <DiscussionForest
@@ -269,29 +269,91 @@ describe('DiscussionForest', () => {
       </MemoryRouter>,
     )
 
-    const clusters = screen.getAllByTestId('discussion-cluster')
-    expect(clusters).toHaveLength(2)
-    expect(screen.getByText('稍后接回')).toBeTruthy()
-    expect(screen.getByText('承接更早的 1 处上下文')).toBeTruthy()
+    expect(screen.queryByText('公共观看摘要')).toBeNull()
+    expect(screen.queryByText('先看这些公开支线')).toBeNull()
+    expect(screen.queryByText('支线簇')).toBeNull()
+    expect(screen.queryByText('已经转场的分支')).toBeNull()
+    expect(screen.queryByText('稍后接回')).toBeNull()
 
-    const primaryCluster = clusters[0]
-    expect(within(primaryCluster).getByText('原始支线节点')).toBeTruthy()
-    expect(within(primaryCluster).getByText('稍后重新贴回旧点')).toBeTruthy()
+    const trees = screen.getAllByTestId('discussion-tree')
+    expect(trees).toHaveLength(2)
+    const primaryTree = trees[0]!
+    expect(within(primaryTree).getByText('原始支线节点')).toBeTruthy()
+    expect(within(primaryTree).getByText('稍后重新贴回旧点')).toBeTruthy()
   })
 
-  it('shows the explicit composer anchor separately from the current focus node', () => {
+  it('collapses a subtree when the [-] toggle is pressed', () => {
     render(
       <MemoryRouter>
         <DiscussionForest
           postId="post-1"
           forest={buildForest()}
-          selectedNodeId="turn-root"
-          composerAnchorNodeId="turn-late"
+          selectedNodeId={null}
+          turnReplyEnabled
         />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('当前聚焦')).toBeTruthy()
-    expect(screen.getByText('准备回应')).toBeTruthy()
+    expect(screen.getByText('稍后重新贴回旧点')).toBeTruthy()
+
+    const rootNode = screen.getByTestId('discussion-forest-tree').querySelector(
+      '[data-node-id="turn-root"]',
+    ) as HTMLElement | null
+    expect(rootNode).toBeTruthy()
+    const toggle = within(rootNode as HTMLElement).getAllByTestId('node-collapse-toggle')[0]!
+    fireEvent.click(toggle)
+
+    expect(screen.queryByText('稍后重新贴回旧点')).toBeNull()
+    expect(screen.getByText(/已折叠 1 条回应/)).toBeTruthy()
+  })
+
+  it('exposes the audience-discussion entry only when audience posting is enabled', () => {
+    const onDiscussInAudience = vi.fn()
+    const { rerender } = render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={buildForest()}
+          selectedNodeId={null}
+          audiencePostingEnabled={false}
+          onDiscussInAudience={onDiscussInAudience}
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.queryAllByTestId('node-discuss-in-audience')).toHaveLength(0)
+
+    rerender(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={buildForest()}
+          selectedNodeId={null}
+          audiencePostingEnabled
+          onDiscussInAudience={onDiscussInAudience}
+        />
+      </MemoryRouter>,
+    )
+    const entries = screen.getAllByTestId('node-discuss-in-audience')
+    expect(entries.length).toBeGreaterThan(0)
+    fireEvent.click(entries[0]!)
+    expect(onDiscussInAudience).toHaveBeenCalled()
+  })
+
+  it('hides the inline reply button on all nodes when turnReplyEnabled is false', () => {
+    const forest = buildForest()
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_allowed = true
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          selectedNodeId={null}
+          turnReplyEnabled={false}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('button', { name: '回复' })).toBeNull()
   })
 })
