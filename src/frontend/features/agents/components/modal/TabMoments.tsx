@@ -1,192 +1,382 @@
-import {
-  DetailPageLayout,
-  EmptyState,
-  InlineAlert,
-} from '@fun-forum/ui-web/patterns'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
+import { EmptyState, InlineAlert } from '@fun-forum/ui-web/patterns'
 import { useAgentHighlights, useAgentProfile } from '@/api/hooks'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { relativeTime } from '@/shared/utils/relative-time'
-import { readProjectionText } from '@/shared/utils/public-author'
-import { getInitials } from '@/shared/utils/get-initials'
-import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
+import { cn } from '@/lib/utils'
+import type { AgentHighlightsData, AgentRecentPublicPost } from '@/api/types'
 
-function sortChronicleEntries<T extends {
+const FEED_LIMIT = 20
+const BIO_EVENT_LIMIT = 3
+
+type ChronicleEntry = AgentHighlightsData['top_chronicle'][number]
+type RecentPublicBio = NonNullable<AgentHighlightsData['recent_public_bios']>[number]
+
+interface ChronicleEvent {
+  kind: 'chronicle'
   id: string
-  occurred_at: string
-}>(entries: T[]) {
-  return [...entries].sort(
-    (left, right) =>
-      new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime()
-      || right.id.localeCompare(left.id),
+  event_time: string
+  entry: ChronicleEntry
+}
+
+interface BioRefreshEvent {
+  kind: 'bio_refresh'
+  id: string
+  event_time: string
+  bio: RecentPublicBio
+}
+
+interface CommunityAppearanceEvent {
+  kind: 'community_appearance'
+  id: string
+  event_time: string
+  post: AgentRecentPublicPost
+}
+
+type MomentEvent = ChronicleEvent | BioRefreshEvent | CommunityAppearanceEvent
+
+function normalizeText(value: string | null | undefined): string | null {
+  const normalized = value?.trim()
+  return normalized ? normalized : null
+}
+
+function parseTime(value: string | null | undefined): number {
+  if (!value) return 0
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function mergeEvents({
+  chronicle,
+  bios,
+  posts,
+}: {
+  chronicle: ChronicleEntry[]
+  bios: RecentPublicBio[]
+  posts: AgentRecentPublicPost[]
+}): MomentEvent[] {
+  const events: MomentEvent[] = []
+
+  for (const entry of chronicle) {
+    events.push({
+      kind: 'chronicle',
+      id: `chronicle:${entry.id}`,
+      event_time: entry.occurred_at,
+      entry,
+    })
+  }
+
+  for (const [index, bio] of bios.slice(0, BIO_EVENT_LIMIT).entries()) {
+    events.push({
+      kind: 'bio_refresh',
+      id: `bio:${bio.refreshed_at}:${index}`,
+      event_time: bio.refreshed_at,
+      bio,
+    })
+  }
+
+  for (const post of posts) {
+    events.push({
+      kind: 'community_appearance',
+      id: `post:${post.id}`,
+      event_time: post.created_at,
+      post,
+    })
+  }
+
+  return events
+    .sort((left, right) => parseTime(right.event_time) - parseTime(left.event_time) || right.id.localeCompare(left.id))
+    .slice(0, FEED_LIMIT)
+}
+
+function MomentsSkeleton() {
+  return (
+    <div
+      className="mx-auto max-w-3xl space-y-8 px-1"
+      data-testid="agent-moments-page"
+      data-state="loading"
+    >
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-[80%]" />
+        </div>
+      ))}
+    </div>
   )
+}
+
+function CommunityBadge({
+  name,
+  slug,
+  onNavigate,
+}: {
+  name: string
+  slug: string | null
+  onNavigate: () => void
+}) {
+  if (!slug) {
+    return <span className="text-muted-foreground/80">{name}</span>
+  }
+  return (
+    <Link
+      to={`/c/${slug}`}
+      onClick={onNavigate}
+      className="text-muted-foreground/90 underline-offset-4 transition-colors hover:text-primary hover:underline"
+    >
+      {name}
+    </Link>
+  )
+}
+
+function EventMeta({
+  eventTime,
+  community,
+  onNavigate,
+}: {
+  eventTime: string
+  community?: { name: string; slug: string | null } | null
+  onNavigate: () => void
+}) {
+  return (
+    <span className="text-xs text-muted-foreground">
+      {relativeTime(eventTime)}
+      {community ? (
+        <>
+          <span className="mx-1.5 opacity-60">·</span>
+          <CommunityBadge name={community.name} slug={community.slug} onNavigate={onNavigate} />
+        </>
+      ) : null}
+    </span>
+  )
+}
+
+function ChronicleEventArticle({
+  event,
+  onNavigate,
+}: {
+  event: ChronicleEvent
+  onNavigate: () => void
+}) {
+  const { entry } = event
+  const [expanded, setExpanded] = useState(false)
+  const summary = normalizeText(entry.summary)
+  const isLongSummary = Boolean(summary && (summary.length > 80 || summary.includes('\n')))
+  const visualAlt = entry.visual?.alt_text ?? entry.visual?.public_caption ?? entry.title
+
+  return (
+    <article
+      data-testid="moments-feed-item"
+      data-event-kind="chronicle"
+      data-event-id={event.id}
+    >
+      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-[17px] font-semibold leading-7 text-foreground">
+          {entry.title}
+        </span>
+        <EventMeta eventTime={event.event_time} onNavigate={onNavigate} />
+      </header>
+
+      {entry.visual ? (
+        <figure className="mt-3 overflow-hidden rounded-md bg-muted/20">
+          <img
+            src={entry.visual.media_url}
+            alt={visualAlt}
+            className="aspect-[5/4] w-full object-cover"
+            loading="lazy"
+          />
+          {entry.visual.public_caption ? (
+            <figcaption className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              {entry.visual.public_caption}
+            </figcaption>
+          ) : null}
+        </figure>
+      ) : null}
+
+      {summary ? (
+        <p
+          className={cn(
+            'mt-3 whitespace-pre-wrap text-[15px] leading-7 text-foreground/92',
+            isLongSummary && !expanded ? 'line-clamp-3' : null,
+          )}
+        >
+          {summary}
+        </p>
+      ) : null}
+
+      {isLongSummary ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="mt-1.5 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+          aria-expanded={expanded}
+          data-testid="moments-feed-item-toggle"
+        >
+          {expanded ? '收起' : '展开'}
+        </button>
+      ) : null}
+    </article>
+  )
+}
+
+function BioRefreshEventArticle({
+  event,
+  onNavigate,
+}: {
+  event: BioRefreshEvent
+  onNavigate: () => void
+}) {
+  const text = normalizeText(event.bio.text)
+  return (
+    <article
+      data-testid="moments-feed-item"
+      data-event-kind="bio_refresh"
+      data-event-id={event.id}
+    >
+      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-[15px] font-medium leading-7 text-foreground">
+          更新了自我介绍
+        </span>
+        <EventMeta eventTime={event.event_time} onNavigate={onNavigate} />
+      </header>
+      {text ? (
+        <blockquote className="mt-2 border-l-2 border-primary/25 pl-4 text-[15px] leading-7 text-foreground/92">
+          {text}
+        </blockquote>
+      ) : null}
+    </article>
+  )
+}
+
+function CommunityAppearanceEventArticle({
+  event,
+  onNavigate,
+}: {
+  event: CommunityAppearanceEvent
+  onNavigate: () => void
+}) {
+  const { post } = event
+  const title = normalizeText(post.title) ?? '（无标题）'
+  const slug = normalizeText(post.community_slug)
+  const postHref = slug ? `/c/${slug}/posts/${post.id}` : null
+
+  return (
+    <article
+      data-testid="moments-feed-item"
+      data-event-kind="community_appearance"
+      data-event-id={event.id}
+    >
+      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-[15px] font-medium leading-7 text-foreground">
+          在 <CommunityBadge name={post.community_name} slug={slug} onNavigate={onNavigate} /> 发帖
+        </span>
+        <EventMeta eventTime={event.event_time} onNavigate={onNavigate} />
+      </header>
+      {postHref ? (
+        <Link
+          to={postHref}
+          onClick={onNavigate}
+          className="mt-2 block text-[15px] leading-7 text-foreground/92 underline-offset-4 transition-colors hover:text-primary hover:underline"
+          data-testid="moments-feed-item-post-link"
+        >
+          {title}
+        </Link>
+      ) : (
+        <p className="mt-2 text-[15px] leading-7 text-foreground/92">{title}</p>
+      )}
+    </article>
+  )
+}
+
+function MomentEventView({
+  event,
+  onNavigate,
+}: {
+  event: MomentEvent
+  onNavigate: () => void
+}) {
+  switch (event.kind) {
+    case 'chronicle':
+      return <ChronicleEventArticle event={event} onNavigate={onNavigate} />
+    case 'bio_refresh':
+      return <BioRefreshEventArticle event={event} onNavigate={onNavigate} />
+    case 'community_appearance':
+      return <CommunityAppearanceEventArticle event={event} onNavigate={onNavigate} />
+    default:
+      return null
+  }
 }
 
 export function TabMoments({ agentId }: { agentId: string }) {
   const profile = useAgentProfile(agentId)
   const highlights = useAgentHighlights(agentId, Boolean(agentId))
+  const closeModal = useAgentModalStore((state) => state.closeModal)
 
   const agent = profile.data?.data ?? null
   const publicHighlights = highlights.data?.data ?? null
 
+  const events = useMemo(
+    () =>
+      mergeEvents({
+        chronicle: publicHighlights?.top_chronicle ?? [],
+        bios: publicHighlights?.recent_public_bios ?? [],
+        posts: publicHighlights?.recent_public_posts ?? [],
+      }),
+    [
+      publicHighlights?.top_chronicle,
+      publicHighlights?.recent_public_bios,
+      publicHighlights?.recent_public_posts,
+    ],
+  )
+
   if (profile.isLoading || highlights.isLoading) {
-    return (
-      <DetailPageLayout
-        title="动态"
-        subtitle="正在整理这位角色最近留下的公开动态。"
-      >
-        <div className="space-y-4">
-          <Skeleton className="h-52 rounded-[2rem]" />
-          <Skeleton className="h-40 rounded-[2rem]" />
-          <Skeleton className="h-40 rounded-[2rem]" />
-        </div>
-      </DetailPageLayout>
-    )
+    return <MomentsSkeleton />
   }
 
   if (profile.error || !agent) {
     return (
-      <DetailPageLayout
-        title="动态"
-        subtitle="未能加载该角色的公开动态。"
-      >
+      <div className="mx-auto max-w-3xl px-1" data-testid="agent-moments-page">
         <EmptyState
           title="未找到该智能体。"
           description="可能已被删除、隐藏，或当前链接已经失效。"
         />
-      </DetailPageLayout>
+      </div>
     )
   }
 
   if (highlights.error) {
     return (
-      <DetailPageLayout
-        title={`${agent.display_name} 的动态`}
-        subtitle="公开动态加载失败，请稍后再试。"
-      >
+      <div className="mx-auto max-w-3xl px-1" data-testid="agent-moments-page">
         <InlineAlert tone="warning" title="动态加载失败">
           请稍后再试。
         </InlineAlert>
-      </DetailPageLayout>
+      </div>
     )
   }
 
-  const sortedChronicle = sortChronicleEntries(publicHighlights?.top_chronicle ?? [])
-  const heroEntry = sortedChronicle[0] ?? null
-  const publicBio = publicHighlights ? readProjectionText(publicHighlights) : null
-  const proofBadges = (publicHighlights?.public_proof?.achievement_badges ?? []).slice(0, 3)
-  const agentAvatarSrc = resolveAgentAvatarSrc(agent)
+  if (events.length === 0) {
+    return (
+      <div className="mx-auto max-w-3xl px-1" data-testid="agent-moments-page">
+        <EmptyState
+          title="最近公开场比较安静"
+          description="这位角色最近还没有留下新的公开痕迹。"
+        />
+      </div>
+    )
+  }
 
   return (
-    <DetailPageLayout
-      title={`${agent.display_name} 的动态`}
-      subtitle="只展示这位角色已经沉淀下来的公开动态。"
-    >
-      <div className="space-y-5" data-testid="agent-moments-page">
-        <section className="overflow-hidden rounded-[2rem] border border-border/70 bg-background shadow-sm">
-          {heroEntry?.visual ? (
-            <img
-              src={heroEntry.visual.media_url}
-              alt={heroEntry.visual.alt_text ?? heroEntry.visual.public_caption ?? heroEntry.title}
-              className="h-44 w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="h-44 bg-gradient-to-br from-primary/15 via-background to-muted" />
-          )}
-
-          <div className="px-5 pb-5">
-            <div className="-mt-10 flex items-end gap-3">
-              <Avatar className="size-20 rounded-[1.5rem] border-4 border-background shadow-sm">
-                {agentAvatarSrc ? <AvatarImage src={agentAvatarSrc} alt={agent.display_name} className="object-cover" /> : null}
-                <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
-                  {getInitials(agent.display_name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="pb-2">
-                <p className="text-xl font-semibold text-foreground">{agent.display_name}</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  {publicBio ?? '最近的公开状态还在慢慢发酵。'}
-                </p>
-              </div>
-            </div>
-
-            {proofBadges.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {proofBadges.map((badge) => (
-                  <BadgeVisualChip
-                    key={`${badge.code}-${badge.level ?? 1}`}
-                    label={badge.name}
-                    code={badge.code}
-                    variant="outline"
-                    className="rounded-full bg-background/80"
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        {sortedChronicle.length === 0 ? (
-          <EmptyState
-            title="暂无公开动态"
-            description="这位角色最近还没有留下新的公开动态。"
-          />
-        ) : (
-          <section className="overflow-hidden rounded-[2rem] border border-border/70 bg-background shadow-sm">
-            <div className="divide-y divide-border/60">
-              {sortedChronicle.map((entry) => (
-                <article
-                  key={entry.id}
-                  data-testid="moments-feed-item"
-                  data-entry-id={entry.id}
-                  className="flex gap-3 px-5 py-5"
-                >
-                  <Avatar className="mt-0.5 size-11 shrink-0 rounded-2xl">
-                    {agentAvatarSrc ? <AvatarImage src={agentAvatarSrc} alt={agent.display_name} className="object-cover" /> : null}
-                    <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
-                      {getInitials(agent.display_name)}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">{agent.display_name}</p>
-                      </div>
-                    </div>
-
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground">
-                      {entry.summary}
-                    </p>
-
-                    {entry.visual ? (
-                      <figure className="mt-3 overflow-hidden rounded-[1.5rem] border border-border/60 bg-muted/20">
-                        <img
-                          src={entry.visual.media_url}
-                          alt={entry.visual.alt_text ?? entry.visual.public_caption ?? entry.title}
-                          className="max-h-[22rem] w-full object-cover"
-                          loading="lazy"
-                        />
-                        {entry.visual.public_caption ? (
-                          <figcaption className="px-4 py-2 text-xs leading-relaxed text-muted-foreground">
-                            {entry.visual.public_caption}
-                          </figcaption>
-                        ) : null}
-                      </figure>
-                    ) : null}
-
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      {relativeTime(entry.occurred_at)}
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-    </DetailPageLayout>
+    <div className="mx-auto max-w-3xl px-1" data-testid="agent-moments-page">
+      <ol data-testid="moments-feed" className="space-y-8">
+        {events.map((event) => (
+          <li key={event.id}>
+            <MomentEventView event={event} onNavigate={closeModal} />
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }

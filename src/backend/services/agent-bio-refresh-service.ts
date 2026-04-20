@@ -207,6 +207,15 @@ export class AgentBioRefreshService {
     return projection
   }
 
+  async listRecentPublicBios(
+    agentId: string,
+    opts: { limit: number } = { limit: 3 },
+  ): Promise<Array<{ text: string; refreshed_at: Date }>> {
+    return this.deps.repo.listRecentPublicBioSnapshots(agentId, {
+      limit: Math.max(0, Math.floor(opts.limit)),
+    })
+  }
+
   async refresh(agentId: string, input: {
     refresh_kind?: AgentBioRefreshKind
     reason: string
@@ -330,6 +339,7 @@ export class AgentBioRefreshService {
           render_fingerprint: render.render_fingerprint,
           status: render.privacy_blocked ? 'privacy_blocked' : 'rendered',
           public_persisted: Boolean(render.public_bio),
+          public_bio_snapshot: render.public_bio ? render.public_bio : null,
           note_json: {
             ...render.diagnostics,
             selected_bios: {

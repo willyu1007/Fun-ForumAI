@@ -3096,6 +3096,7 @@ model AgentBioRenderLog {
   renderFingerprint String   @default("") @map("render_fingerprint")
   status            String   @default("rendered")
   publicPersisted   Boolean  @default(false) @map("public_persisted")
+  publicBioSnapshot String?  @map("public_bio_snapshot")
   noteJson          Json?    @map("note_json")
   createdAt         DateTime @default(now()) @map("created_at")
 

@@ -3,6 +3,7 @@ import type { AgentBioProjection, AgentBioRenderLog, AgentWorldviewState } from 
 import type {
   AgentBioRepository,
   CommitAgentBioRefreshResult,
+  RecentPublicBioSnapshot,
 } from '../agent-bio-repository.js'
 import type { CommitAgentBioRefreshInput } from '../types.js'
 
@@ -53,6 +54,36 @@ export class PgAgentBioRepository implements AgentBioRepository {
       },
     })
     return row ? this.toRenderLog(row) : null
+  }
+
+  async listRecentPublicBioSnapshots(
+    agentId: string,
+    opts: { limit: number },
+  ): Promise<RecentPublicBioSnapshot[]> {
+    const limit = Math.max(0, Math.floor(opts.limit))
+    if (limit === 0) return []
+    const oversampleFactor = 4
+    const rows = await this.prisma.agentBioRenderLog.findMany({
+      where: {
+        agentId,
+        status: 'rendered',
+        publicPersisted: true,
+        publicBioSnapshot: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.max(limit * oversampleFactor, limit),
+    })
+    const seen = new Set<string>()
+    const results: RecentPublicBioSnapshot[] = []
+    for (const row of rows) {
+      if (seen.has(row.renderFingerprint)) continue
+      seen.add(row.renderFingerprint)
+      const text = row.publicBioSnapshot
+      if (!text) continue
+      results.push({ text, refreshed_at: row.createdAt })
+      if (results.length >= limit) break
+    }
+    return results
   }
 
   async commitRefresh(input: CommitAgentBioRefreshInput): Promise<CommitAgentBioRefreshResult> {
@@ -172,6 +203,7 @@ export class PgAgentBioRepository implements AgentBioRepository {
             renderFingerprint: input.render_log.render_fingerprint,
             status: input.render_log.status,
             publicPersisted: input.render_log.public_persisted,
+            publicBioSnapshot: input.render_log.public_bio_snapshot ?? null,
             noteJson: input.render_log.note_json ? toInputJson(input.render_log.note_json) : Prisma.JsonNull,
           }],
           skipDuplicates: true,
@@ -293,6 +325,7 @@ export class PgAgentBioRepository implements AgentBioRepository {
     renderFingerprint: string
     status: string
     publicPersisted: boolean
+    publicBioSnapshot: string | null
     noteJson: unknown
     createdAt: Date
   }): AgentBioRenderLog {
@@ -308,6 +341,7 @@ export class PgAgentBioRepository implements AgentBioRepository {
       render_fingerprint: row.renderFingerprint,
       status: row.status as AgentBioRenderLog['status'],
       public_persisted: row.publicPersisted,
+      public_bio_snapshot: row.publicBioSnapshot,
       note_json: row.noteJson === null ? null : toUnknownRecord(row.noteJson),
       created_at: row.createdAt,
     }

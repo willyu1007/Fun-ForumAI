@@ -14,14 +14,16 @@ import { useNotifications } from '@/api/hooks/notifications'
 import { useMyAgents } from '@/api/hooks/user'
 import type { Agent, Notification as NotifType } from '@/api/types'
 import { cn } from '@/lib/utils'
-import { BadgeIconStack } from '@/shared/components/BadgeIconStack'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readProjectionText, readSemanticBadgeItems } from '@/shared/utils/public-author'
+import {
+  readProjectionText,
+  selectSemanticAuthorBadgeSlots,
+} from '@/shared/utils/public-author'
 import {
   openMyAgentsWorkspace,
-  openSpecificAgentInLastContext,
 } from '@/shared/utils/agent-modal-entry'
+import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { ShellIconHint } from './ShellIconHint'
 import { TopBarCountBadge } from './TopBarCountBadge'
 import { topBarIconTriggerClassName } from './top-bar-icon-trigger'
@@ -37,7 +39,13 @@ function proactiveCountLabel(count: number) {
   return count > 9 ? '9+' : String(count)
 }
 
+function formatBadgeLabel(badge: { name: string; tier: 1 | 2 | 3 }) {
+  return `${badge.name} T${badge.tier}`
+}
+
 function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
+  const semanticBadges = selectSemanticAuthorBadgeSlots(agent)
+
   if (proactiveSummary) {
     return {
       text: proactiveSummary,
@@ -53,7 +61,30 @@ function buildAgentSummary(agent: Agent, proactiveSummary: string | null) {
     }
   }
 
-  return null
+  const proofSummary = semanticBadges.proofBadges
+    .slice(0, 2)
+    .map((badge) => formatBadgeLabel({ name: badge.label, tier: badge.level ?? 1 }))
+  if (proofSummary.length > 0) {
+    return {
+      text: `公开勋章：${proofSummary.join(' · ')}`,
+      tone: 'muted' as const,
+    }
+  }
+
+  const identitySummary = semanticBadges.identityBadges
+    .slice(0, 2)
+    .map((badge) => badge.label)
+  if (identitySummary.length > 0) {
+    return {
+      text: `公开身份：${identitySummary.join(' · ')}`,
+      tone: 'muted' as const,
+    }
+  }
+
+  return {
+    text: '还没有公开动态，先创建或继续培养这个智能体。',
+    tone: 'muted' as const,
+  }
 }
 
 function summaryMarqueeSpeedClass(text: string): string {
@@ -69,6 +100,7 @@ function summaryMarqueeSpeedClass(text: string): string {
 export function AgentPanelWidget() {
   const { data: agentsData } = useMyAgents()
   const { data: notifData } = useNotifications()
+  const openModal = useAgentModalStore((state) => state.openModal)
   const agents: Agent[] = agentsData?.data ?? []
   const notifications: NotifType[] = notifData?.data?.items ?? []
   const proactiveUnreadByAgent = new Map<string, NotifType[]>()
@@ -173,13 +205,6 @@ export function AgentPanelWidget() {
             const latestProactive = proactiveItems[0] ?? null
             const proactiveSummary = latestProactive?.body ?? latestProactive?.title ?? null
             const summary = buildAgentSummary(agent, proactiveSummary)
-            const badgeItems = readSemanticBadgeItems(agent, {
-              maxIdentityBadges: 1,
-              maxProofBadges: 2,
-            })
-            const fallbackSummary = badgeItems.length === 0
-              ? '还没有公开动态，先创建或继续培养这个智能体。'
-              : null
 
             return (
               <DropdownMenuItem
@@ -188,7 +213,7 @@ export function AgentPanelWidget() {
                   'flex cursor-pointer items-center gap-3 rounded-none px-5 py-3',
                   proactiveCount > 0 && 'bg-primary/5',
                 )}
-                onClick={() => openSpecificAgentInLastContext(agent.id)}
+                onClick={() => openModal(agent.id, 'manage', 'chat')}
               >
                 <div className="relative shrink-0">
                   <Avatar className="h-11 w-11">
@@ -250,17 +275,6 @@ export function AgentPanelWidget() {
                   ) : summary ? (
                     <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
                       {summary.text}
-                    </p>
-                  ) : null}
-                  {badgeItems.length > 0 ? (
-                    <BadgeIconStack
-                      badges={badgeItems}
-                      size="sm"
-                      className={cn(summary ? 'mt-1.5' : 'mt-1')}
-                    />
-                  ) : fallbackSummary ? (
-                    <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
-                      {fallbackSummary}
                     </p>
                   ) : null}
                 </div>

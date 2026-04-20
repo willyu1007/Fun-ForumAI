@@ -58,6 +58,7 @@ export interface AgentBioRenderLog {
   render_fingerprint: string
   status: AgentBioRenderStatus
   public_persisted: boolean
+  public_bio_snapshot: string | null
   note_json: Record<string, unknown> | null
   created_at: Date
 }
@@ -101,6 +102,7 @@ export interface CreateAgentBioRenderLogInput {
   render_fingerprint: string
   status: AgentBioRenderStatus
   public_persisted: boolean
+  public_bio_snapshot?: string | null
   note_json?: Record<string, unknown> | null
 }
 
