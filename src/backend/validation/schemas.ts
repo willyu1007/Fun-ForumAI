@@ -4,10 +4,6 @@ import {
   COMMUNITY_PROPOSAL_ACTIONS,
 } from '../repos/types/governance.js'
 import {
-  GOVERNANCE_BATCH_ACTIONS,
-  WARMUP_REVIEW_REASON_CODES,
-} from '../repos/types/warmup-governance.js'
-import {
   AGENT_HUMAN_RESPONSE_MODE_IDS,
   AUDIENCE_SIGNAL_INGESTION_IDS,
   COMMUNITY_FAMILY_IDS,
@@ -32,6 +28,14 @@ const profileAvatarUrlSchema = z
     message: '头像地址必须为 https URL 或站内静态资源路径',
   })
 
+const profileMomentsCoverUrlSchema = z
+  .string()
+  .trim()
+  .min(1, '请输入有效背景地址')
+  .refine((value) => value.startsWith('/agent-moments-covers/'), {
+    message: '背景地址必须使用系统提供的朋友圈背景图路径',
+  })
+
 const personaSeedCodeSchema = z.enum([
   'scholar',
   'sharp-tongue',
@@ -48,12 +52,7 @@ export const feedbackCategorySchema = z.enum([
   'OTHER',
 ])
 
-export const feedbackStatusSchema = z.enum([
-  'RECEIVED',
-  'UNDER_REVIEW',
-  'PLANNED',
-  'CLOSED',
-])
+export const feedbackStatusSchema = z.enum(['RECEIVED', 'UNDER_REVIEW', 'PLANNED', 'CLOSED'])
 
 const ownerStylePinsSchema = z
   .object({
@@ -177,12 +176,15 @@ export const patchAdminFeedbackSchema = z
     internal_note: z.string().trim().max(5_000).nullable().optional(),
   })
   .strict()
-  .refine((body) =>
-    body.status !== undefined
-    || body.public_resolution_note !== undefined
-    || body.internal_note !== undefined, {
+  .refine(
+    (body) =>
+      body.status !== undefined ||
+      body.public_resolution_note !== undefined ||
+      body.internal_note !== undefined,
+    {
       message: 'status, public_resolution_note, or internal_note is required',
-    })
+    },
+  )
 
 export const grantAdminAccessSchema = z
   .object({
@@ -191,12 +193,15 @@ export const grantAdminAccessSchema = z
     phone: z.string().trim().min(6).max(32).optional(),
   })
   .strict()
-  .refine((body) => {
-    const provided = [body.userId, body.email, body.phone].filter((value) => value !== undefined)
-    return provided.length === 1
-  }, {
-    message: 'exactly one of userId, email, or phone is required',
-  })
+  .refine(
+    (body) => {
+      const provided = [body.userId, body.email, body.phone].filter((value) => value !== undefined)
+      return provided.length === 1
+    },
+    {
+      message: 'exactly one of userId, email, or phone is required',
+    },
+  )
 
 export const adminUserIdParamSchema = z
   .object({
@@ -208,11 +213,18 @@ export const updateAgentProfileSchema = z
   .object({
     display_name: z.string().min(1).max(100).optional(),
     avatar_url: profileAvatarUrlSchema.nullable().optional(),
+    moments_cover_url: profileMomentsCoverUrlSchema.nullable().optional(),
   })
   .strict()
-  .refine((body) => body.display_name !== undefined || body.avatar_url !== undefined, {
-    message: 'display_name or avatar_url is required',
-  })
+  .refine(
+    (body) =>
+      body.display_name !== undefined
+      || body.avatar_url !== undefined
+      || body.moments_cover_url !== undefined,
+    {
+      message: 'display_name, avatar_url, or moments_cover_url is required',
+    },
+  )
 
 export const updateAgentConfigSchema = z
   .object({
@@ -398,28 +410,32 @@ export const patchCommunityStageSpecSchema = z
   })
   .strict()
 
-export const createCommunityProposalSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  slug_candidate: communitySlugSchema,
-  description: z.string().trim().min(1).max(500),
-  premise_text: z.string().trim().min(1).max(2_000),
-  target_audience: z.string().trim().max(500).nullable().optional(),
-  scene_types: z.array(z.string().trim().min(1).max(64)).max(12).default([]),
-  proposed_community_family: z.enum(COMMUNITY_FAMILY_IDS),
-  publication_review_profile_id: z.enum(PUBLICATION_REVIEW_PROFILE_IDS).optional(),
-  launch_wave: z.string().trim().min(1).max(120).nullable().optional(),
-  human_participation: humanParticipationInputSchema.optional(),
-  source_community_id: z.string().trim().min(1).nullable().optional(),
-}).strict()
+export const createCommunityProposalSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    slug_candidate: communitySlugSchema,
+    description: z.string().trim().min(1).max(500),
+    premise_text: z.string().trim().min(1).max(2_000),
+    target_audience: z.string().trim().max(500).nullable().optional(),
+    scene_types: z.array(z.string().trim().min(1).max(64)).max(12).default([]),
+    proposed_community_family: z.enum(COMMUNITY_FAMILY_IDS),
+    publication_review_profile_id: z.enum(PUBLICATION_REVIEW_PROFILE_IDS).optional(),
+    launch_wave: z.string().trim().min(1).max(120).nullable().optional(),
+    human_participation: humanParticipationInputSchema.optional(),
+    source_community_id: z.string().trim().min(1).nullable().optional(),
+  })
+  .strict()
 
 export const refreshCommunityProposalRecommendationSchema = z.object({}).strict()
 
-export const communityProposalActionSchema = z.object({
-  action: z.enum(COMMUNITY_PROPOSAL_ACTIONS),
-  target_community_id: z.string().trim().min(1).nullable().optional(),
-  incubation_visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
-  reason: z.string().trim().max(1_000).nullable().optional(),
-}).strict()
+export const communityProposalActionSchema = z
+  .object({
+    action: z.enum(COMMUNITY_PROPOSAL_ACTIONS),
+    target_community_id: z.string().trim().min(1).nullable().optional(),
+    incubation_visibility_mode: z.enum(COMMUNITY_INCUBATION_VISIBILITY_MODES).nullable().optional(),
+    reason: z.string().trim().max(1_000).nullable().optional(),
+  })
+  .strict()
 
 export const createAudienceMessageSchema = z
   .object({
@@ -427,7 +443,13 @@ export const createAudienceMessageSchema = z
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
-        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        discovered_via: z.enum([
+          'reading_guide',
+          'discussion_forest',
+          'timeline',
+          'share_link',
+          'unknown',
+        ]),
         source_surface: z.string().trim().max(80).nullable().optional(),
         source_shelf: z.string().trim().max(80).nullable().optional(),
         source_position: z.number().int().min(0).nullable().optional(),
@@ -444,7 +466,13 @@ export const createPublicThreadSchema = z
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
-        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        discovered_via: z.enum([
+          'reading_guide',
+          'discussion_forest',
+          'timeline',
+          'share_link',
+          'unknown',
+        ]),
         source_surface: z.string().trim().max(80).nullable().optional(),
         source_shelf: z.string().trim().max(80).nullable().optional(),
         source_position: z.number().int().min(0).nullable().optional(),
@@ -462,7 +490,13 @@ export const createPublicTurnSchema = z
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
-        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        discovered_via: z.enum([
+          'reading_guide',
+          'discussion_forest',
+          'timeline',
+          'share_link',
+          'unknown',
+        ]),
         source_surface: z.string().trim().max(80).nullable().optional(),
         source_shelf: z.string().trim().max(80).nullable().optional(),
         source_position: z.number().int().min(0).nullable().optional(),
@@ -498,14 +532,17 @@ export const updateParticipationContractOverrideSchema = z
       .optional(),
   })
   .strict()
-  .refine((value) =>
-    value.public_participation_mode !== undefined
-    || value.audience_signal_ingestion !== undefined
-    || value.agent_human_response_mode !== undefined
-    || value.stage_open_reply !== undefined
-    || value.audience_lane !== undefined, {
+  .refine(
+    (value) =>
+      value.public_participation_mode !== undefined ||
+      value.audience_signal_ingestion !== undefined ||
+      value.agent_human_response_mode !== undefined ||
+      value.stage_open_reply !== undefined ||
+      value.audience_lane !== undefined,
+    {
       message: 'at least one participation override field is required',
-    })
+    },
+  )
 
 export const buildRuntimeContextPreviewSchema = z
   .object({
@@ -550,13 +587,16 @@ export const updateOrchestrationPolicyOverrideSchema = z
       .optional(),
   })
   .strict()
-  .refine((value) =>
-    value.profile !== undefined
-    || value.recall_control !== undefined
-    || value.compare_debug !== undefined
-    || value.cutover !== undefined, {
+  .refine(
+    (value) =>
+      value.profile !== undefined ||
+      value.recall_control !== undefined ||
+      value.compare_debug !== undefined ||
+      value.cutover !== undefined,
+    {
       message: 'at least one orchestration override field is required',
-    })
+    },
+  )
 
 export const forumWatchTelemetrySchema = z
   .object({
@@ -720,9 +760,9 @@ export const patchMediaRolloutControllerSchema = z
   .strict()
   .superRefine((value, ctx) => {
     if (
-      value.target_min_rate !== undefined
-      && value.target_max_rate !== undefined
-      && value.target_min_rate >= value.target_max_rate
+      value.target_min_rate !== undefined &&
+      value.target_max_rate !== undefined &&
+      value.target_min_rate >= value.target_max_rate
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -732,18 +772,18 @@ export const patchMediaRolloutControllerSchema = z
     }
     if (value.mode === 'MANUAL') {
       const hasManualField =
-        value.target_min_rate !== undefined
-        || value.target_max_rate !== undefined
-        || value.threshold_delta !== undefined
-        || value.allow_generation !== undefined
-        || value.generation_tier !== undefined
-        || value.sync_generation_ms_budget !== undefined
-        || value.allow_private_runtime_projection !== undefined
-        || value.allow_private_inspired_generation !== undefined
-        || value.force_safe_mode !== undefined
-        || value.semantic_v3_enforced !== undefined
-        || value.strict_audit_enforced !== undefined
-        || value.lineage_required !== undefined
+        value.target_min_rate !== undefined ||
+        value.target_max_rate !== undefined ||
+        value.threshold_delta !== undefined ||
+        value.allow_generation !== undefined ||
+        value.generation_tier !== undefined ||
+        value.sync_generation_ms_budget !== undefined ||
+        value.allow_private_runtime_projection !== undefined ||
+        value.allow_private_inspired_generation !== undefined ||
+        value.force_safe_mode !== undefined ||
+        value.semantic_v3_enforced !== undefined ||
+        value.strict_audit_enforced !== undefined ||
+        value.lineage_required !== undefined
       if (!hasManualField) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -804,66 +844,6 @@ export const governanceActionSchema = z
   })
   .strict()
 
-export const warmupSuiteIdParamSchema = z
-  .object({
-    id: z.string().trim().min(1),
-  })
-  .strict()
-
-export const createWarmupSuiteSchema = z
-  .object({
-    suite_label: z.string().trim().min(1).max(120).nullable().optional(),
-    max_runtime_topup_posts: z.number().int().min(0).max(50).optional(),
-  })
-  .strict()
-
-export const reviewWarmupSuiteSchema = z
-  .object({
-    decision: z.enum(['pass_to_active', 'not_passed']),
-    reason_codes: z.array(z.enum(WARMUP_REVIEW_REASON_CODES)).max(10).optional(),
-    note: z.string().trim().max(5_000).nullable().optional(),
-    confirm_activation: z.boolean().optional(),
-  })
-  .strict()
-  .superRefine((body, ctx) => {
-    if (body.decision === 'not_passed' && (!body.reason_codes || body.reason_codes.length === 0)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'reason_codes is required when decision=not_passed',
-        path: ['reason_codes'],
-      })
-    }
-    if (body.decision === 'pass_to_active' && body.confirm_activation !== true) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'confirm_activation=true is required when decision=pass_to_active',
-        path: ['confirm_activation'],
-      })
-    }
-    if (body.decision === 'pass_to_active' && (body.reason_codes?.length ?? 0) > 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'reason_codes must be empty when decision=pass_to_active',
-        path: ['reason_codes'],
-      })
-    }
-  })
-
-export const retryWarmupSuiteSchema = z.object({}).strict()
-
-export const rebuildWarmupSuiteSchema = z
-  .object({
-    max_runtime_topup_posts: z.number().int().min(0).max(50).optional(),
-  })
-  .strict()
-
-export const startWarmupSuiteSchema = z
-  .object({
-    max_runtime_topup_posts: z.number().int().min(0).max(50).optional(),
-  })
-  .strict()
-
-export const archiveWarmupSuiteSchema = z.object({}).strict()
 export const runWarmupVerifierSchema = z.object({}).strict()
 export const warmupVerifierRunIdParamSchema = z
   .object({
@@ -871,16 +851,18 @@ export const warmupVerifierRunIdParamSchema = z
   })
   .strict()
 
-export const previewWarmupGovernanceBatchSchema = z
+export const warmupRunIdParamSchema = z
   .object({
-    action: z.enum(GOVERNANCE_BATCH_ACTIONS),
-    suite_id: z.string().trim().min(1).nullable().optional(),
-    warm_start_batch_ids: z.array(z.string().trim().min(1)).max(20).optional(),
-    content_ids: z.array(z.string().trim().min(1)).max(200).optional(),
+    id: z.string().trim().min(1),
   })
   .strict()
 
-export const executeWarmupGovernanceBatchSchema = previewWarmupGovernanceBatchSchema
+export const startWarmupRunSchema = z
+  .object({
+    target_posts: z.number().int().min(1).max(100),
+    max_attempts: z.number().int().min(1).max(200),
+  })
+  .strict()
 
 export const createDisclosureCapOverrideSchema = z
   .object({

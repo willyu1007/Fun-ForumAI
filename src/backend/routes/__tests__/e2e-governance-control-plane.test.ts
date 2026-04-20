@@ -13,76 +13,33 @@ import {
   createTestCommunity,
   withFeatureFlags,
 } from './e2e-helpers.js'
-import {
-  chatService,
-  eventRepo,
-} from '../../container.js'
+import { chatService, eventRepo } from '../../container.js'
 
 setupFeatureFlagGuard()
 
 describe('E2E: Governance Control Plane', () => {
-  it('POST /v1/admin/warm-start/suites creates an interaction-rich candidate suite', async () => {
-    const seedRes = await request(app)
-      .post('/v1/dev/seed')
-      .send({ profile: 'launch' })
+  it('GET /v1/admin/kickoff and /v1/admin/warmup/runs remain readable while legacy suite entry stays removed', async () => {
+    const seedRes = await request(app).post('/v1/dev/seed').send({ profile: 'launch' })
     expect(seedRes.status).toBe(200)
 
-    const suitesRes = await request(app)
-      .get('/v1/admin/warm-start/suites')
+    const kickoffRes = await request(app)
+      .get('/v1/admin/kickoff')
       .set('Authorization', `Bearer ${adminToken}`)
 
-    expect(suitesRes.status).toBe(200)
-    for (const suite of suitesRes.body.data as Array<{ id: string; state: string }>) {
-      if (suite.state !== 'review_ready') continue
-      const archiveRes = await request(app)
-        .post(`/v1/admin/warm-start/suites/${suite.id}/archive`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({})
-      expect(archiveRes.status).toBe(200)
-    }
+    expect(kickoffRes.status).toBe(200)
+
+    const runsRes = await request(app)
+      .get('/v1/admin/warmup/runs')
+      .set('Authorization', `Bearer ${adminToken}`)
+
+    expect(runsRes.status).toBe(200)
 
     const createRes = await request(app)
       .post('/v1/admin/warm-start/suites')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        suite_label: `e2e-rich-suite-${Date.now()}`,
-        max_runtime_topup_posts: 0,
-      })
+      .send({})
 
-    expect([200, 201]).toContain(createRes.status)
-    expect(createRes.body.data.verification).toEqual(
-      expect.objectContaining({
-        total_candidate_posts: expect.any(Number),
-        total_candidate_threads: expect.any(Number),
-        total_candidate_turns: expect.any(Number),
-        total_candidate_votes: expect.any(Number),
-        total_candidate_media: expect.any(Number),
-      }),
-    )
-    expect(createRes.body.data.verification.total_candidate_posts).toBeGreaterThan(0)
-    expect(createRes.body.data.verification.total_candidate_threads).toBeGreaterThan(0)
-    expect(createRes.body.data.verification.total_candidate_turns).toBeGreaterThan(0)
-    expect(createRes.body.data.verification.total_candidate_votes).toBeGreaterThan(0)
-    expect(createRes.body.data.verification.total_candidate_media).toBeGreaterThan(0)
-
-    const suiteId = createRes.body.data.suite_id as string
-    const detailRes = await request(app)
-      .get(`/v1/admin/warm-start/suites/${suiteId}`)
-      .set('Authorization', `Bearer ${adminToken}`)
-
-    expect(detailRes.status).toBe(200)
-    expect(detailRes.body.data.activation_readiness).toEqual(
-      expect.objectContaining({
-        ok: true,
-        reasons: [],
-      }),
-    )
-    expect(detailRes.body.data.kickoff_batch.stats.threads).toBeGreaterThan(0)
-    expect(detailRes.body.data.kickoff_batch.stats.turns).toBeGreaterThan(0)
-    expect(detailRes.body.data.kickoff_batch.stats.votes).toBeGreaterThan(0)
-    expect(detailRes.body.data.warmup_batch.stats.threads).toBeGreaterThan(0)
-    expect(detailRes.body.data.warmup_batch.stats.turns).toBeGreaterThan(0)
-    expect(detailRes.body.data.warmup_batch.stats.votes).toBeGreaterThan(0)
+    expect(createRes.status).toBe(404)
   })
 
   it('GET /v1/admin/runtime/stats returns runtime authority and identity gate state for admin', async () => {
@@ -104,26 +61,19 @@ describe('E2E: Governance Control Plane', () => {
     expect(res.body.data.runtime.identity_gate).toEqual(
       expect.objectContaining({
         app_env: expect.any(String),
-        configured_staging_mode: expect.stringMatching(/^(enforced|admin_bypass)$/),
-        effective_mode: expect.stringMatching(/^(enforced|staging_admin_bypass)$/),
-        bypass_scope: expect.stringMatching(/^(none|admin_users)$/),
-        bypass_active: expect.any(Boolean),
-        gated_operations: [
-          'private_session_create',
-          'private_message_send',
-          'proactive_receive',
-        ],
+        effective_mode: expect.stringMatching(/^(enforced_prod|disabled_non_prod)$/),
+        enforced: expect.any(Boolean),
+        gated_operations: ['private_session_create', 'private_message_send', 'proactive_receive'],
       }),
     )
     expect(res.body.data.runtime.baseline_admission).toEqual(
       expect.objectContaining({
-        has_active_baseline: expect.any(Boolean),
+        has_kickoff_baseline: expect.any(Boolean),
         kickoff_layer_ready: expect.any(Boolean),
         warmup_layer_ready: expect.any(Boolean),
         key_communities_ready: expect.any(Boolean),
         key_shelves_ready: expect.any(Boolean),
         media_access_ok: expect.any(Boolean),
-        last_review_decision_ok: expect.any(Boolean),
         worker_health_ok: expect.any(Boolean),
         llm_credentials_ok: expect.any(Boolean),
         allow_public_growth: expect.any(Boolean),
@@ -132,9 +82,9 @@ describe('E2E: Governance Control Plane', () => {
     )
   })
 
-  it('POST/GET /v1/admin/warm-start/verifier/runs executes a verifier run and exposes latest run diagnostics', async () => {
+  it('POST/GET /v1/admin/warmup/verifier/runs executes a verifier run and exposes latest run diagnostics', async () => {
     const createRes = await request(app)
-      .post('/v1/admin/warm-start/verifier/runs')
+      .post('/v1/admin/warmup/verifier/runs')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({})
 
@@ -150,14 +100,14 @@ describe('E2E: Governance Control Plane', () => {
     expect(Array.isArray(createRes.body.data.diagnoses)).toBe(true)
 
     const latestRes = await request(app)
-      .get('/v1/admin/warm-start/verifier/runs/latest')
+      .get('/v1/admin/warmup/verifier/runs/latest')
       .set('Authorization', `Bearer ${adminToken}`)
 
     expect(latestRes.status).toBe(200)
     expect(latestRes.body.data.summary.run_id).toBe(createRes.body.data.summary.run_id)
 
     const detailRes = await request(app)
-      .get(`/v1/admin/warm-start/verifier/runs/${createRes.body.data.summary.run_id}`)
+      .get(`/v1/admin/warmup/verifier/runs/${createRes.body.data.summary.run_id}`)
       .set('Authorization', `Bearer ${adminToken}`)
 
     expect(detailRes.status).toBe(200)
@@ -172,115 +122,116 @@ describe('E2E: Governance Control Plane', () => {
   })
 
   it('GET /v1/admin/runtime/features returns feature snapshot for admin', async () => {
-    await withFeatureFlags({
-      runtimeFeaturesV1: true,
-      guidanceRecallV1: true,
-    }, async () => {
-      const res = await request(app)
-        .get('/v1/admin/runtime/features')
-        .set('Authorization', `Bearer ${adminToken}`)
-      expect(res.status).toBe(200)
-      expect(typeof res.body.data.launch_capabilities).toBe('object')
-      expect(res.body.data.launch_capabilities).toEqual(
-        expect.objectContaining({
-          runtimeFeaturesV1: true,
-          guidanceRecallV1: true,
-        }),
-      )
-      expect(typeof res.body.data.counters).toBe('object')
-      expect(res.body.data.counters).toHaveProperty('allocator.ppr_hits')
-      expect(res.body.data.counters).toHaveProperty('director.selected_core')
-      expect(res.body.data.counters).toHaveProperty('prompt.trim_applied_calls')
-      expect(typeof res.body.data.runtime.build).toBe('object')
-      expect(typeof res.body.data.runtime.build.code_fingerprint).toBe('string')
-      expect(Array.isArray(res.body.data.runtime.build.fingerprint_basis)).toBe(true)
-      expect(res.body.data.runtime.routing_mode).toBe('policy_driven')
-      expect(res.body.data.runtime.identity_gate).toEqual(
-        expect.objectContaining({
-          app_env: expect.any(String),
-          configured_staging_mode: expect.stringMatching(/^(enforced|admin_bypass)$/),
-          effective_mode: expect.stringMatching(/^(enforced|staging_admin_bypass)$/),
-          bypass_scope: expect.stringMatching(/^(none|admin_users)$/),
-          bypass_active: expect.any(Boolean),
-          gated_operations: [
-            'private_session_create',
-            'private_message_send',
-            'proactive_receive',
-          ],
-        }),
-      )
-      expect(res.body.data.runtime.persona_runtime).toEqual(
-        expect.objectContaining({
-          enabled: expect.any(Boolean),
-          scenes: expect.any(Array),
-          writeback_enabled: expect.any(Boolean),
-        }),
-      )
-      expect(res.body.data.runtime.forum_orchestration).toEqual(
-        expect.objectContaining({
-          shadow: expect.any(Boolean),
-          selection_cutover: expect.any(Boolean),
-          envelope_cutover: expect.any(Boolean),
-          fallback_counters: expect.any(Object),
-          no_write_counters: expect.any(Object),
-          selection_path_counts: expect.any(Object),
-          recent_fallback_samples: expect.any(Array),
-          recent_no_write_samples: expect.any(Array),
-        }),
-      )
-      expect(res.body.data.guidance).toEqual(
-        expect.objectContaining({
-          flags: {
-            guidance_v1: expect.any(Boolean),
-            guidance_recall_v1: true,
-          },
-          bell: {
-            unread_count: expect.any(Number),
-            active_count: expect.any(Number),
-          },
-          per_reason: expect.any(Object),
-          suppression: {
-            same_reason_count: expect.any(Number),
-            daily_cap_count: expect.any(Number),
-          },
-          teaching_first_violation_count: expect.any(Number),
-        }),
-      )
-      expect(res.body.data.guidance).toHaveProperty('avg_delivery_delay_ms')
-      expect(res.body.data.observability).toHaveProperty('render_log.required_fields')
-      expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
-      expect(res.body.data.observability).toHaveProperty('rollout_gates')
-      expect(Array.isArray(res.body.data.observability.render_log_preview)).toBe(true)
-      expect(Array.isArray(res.body.data.observability.execution_plan_preview)).toBe(true)
-      expect(res.body.data.observability).toHaveProperty('fallback_or_degraded_preview.total')
-      expect(res.body.data.observability).toHaveProperty('attribution_summary.by_callsite')
-      expect(res.body.data.observability.authority_state).toEqual(
-        expect.objectContaining({
-          routing_mode: 'policy_driven',
-          env_pins: expect.any(Array),
-          env_pins_present: expect.any(Boolean),
-          debug_signal_sources: expect.any(Array),
-          debug_signals_present: expect.any(Boolean),
-        }),
-      )
-      expect(res.body.data.agent_bio).toEqual(
-        expect.objectContaining({
-          counts: expect.objectContaining({
-            attempted: expect.any(Number),
-            committed: expect.any(Number),
-            deduped: expect.any(Number),
-            conflicts: expect.any(Number),
-            privacy_blocked: expect.any(Number),
-            errors: expect.any(Number),
+    await withFeatureFlags(
+      {
+        runtimeFeaturesV1: true,
+        guidanceRecallV1: true,
+      },
+      async () => {
+        const res = await request(app)
+          .get('/v1/admin/runtime/features')
+          .set('Authorization', `Bearer ${adminToken}`)
+        expect(res.status).toBe(200)
+        expect(typeof res.body.data.launch_capabilities).toBe('object')
+        expect(res.body.data.launch_capabilities).toEqual(
+          expect.objectContaining({
+            runtimeFeaturesV1: true,
+            guidanceRecallV1: true,
           }),
-          by_kind: expect.objectContaining({
-            bootstrap: expect.any(Object),
-            major: expect.any(Object),
-            minor_presence: expect.any(Object),
+        )
+        expect(typeof res.body.data.counters).toBe('object')
+        expect(res.body.data.counters).toHaveProperty('allocator.ppr_hits')
+        expect(res.body.data.counters).toHaveProperty('director.selected_core')
+        expect(res.body.data.counters).toHaveProperty('prompt.trim_applied_calls')
+        expect(typeof res.body.data.runtime.build).toBe('object')
+        expect(typeof res.body.data.runtime.build.code_fingerprint).toBe('string')
+        expect(Array.isArray(res.body.data.runtime.build.fingerprint_basis)).toBe(true)
+        expect(res.body.data.runtime.routing_mode).toBe('policy_driven')
+        expect(res.body.data.runtime.identity_gate).toEqual(
+          expect.objectContaining({
+            app_env: expect.any(String),
+            effective_mode: expect.stringMatching(/^(enforced_prod|disabled_non_prod)$/),
+            enforced: expect.any(Boolean),
+            gated_operations: [
+              'private_session_create',
+              'private_message_send',
+              'proactive_receive',
+            ],
           }),
-        }),
-      )
-    })
+        )
+        expect(res.body.data.runtime.persona_runtime).toEqual(
+          expect.objectContaining({
+            enabled: expect.any(Boolean),
+            scenes: expect.any(Array),
+            writeback_enabled: expect.any(Boolean),
+          }),
+        )
+        expect(res.body.data.runtime.forum_orchestration).toEqual(
+          expect.objectContaining({
+            shadow: expect.any(Boolean),
+            selection_cutover: expect.any(Boolean),
+            envelope_cutover: expect.any(Boolean),
+            fallback_counters: expect.any(Object),
+            no_write_counters: expect.any(Object),
+            selection_path_counts: expect.any(Object),
+            recent_fallback_samples: expect.any(Array),
+            recent_no_write_samples: expect.any(Array),
+          }),
+        )
+        expect(res.body.data.guidance).toEqual(
+          expect.objectContaining({
+            flags: {
+              guidance_v1: expect.any(Boolean),
+              guidance_recall_v1: true,
+            },
+            bell: {
+              unread_count: expect.any(Number),
+              active_count: expect.any(Number),
+            },
+            per_reason: expect.any(Object),
+            suppression: {
+              same_reason_count: expect.any(Number),
+              daily_cap_count: expect.any(Number),
+            },
+            teaching_first_violation_count: expect.any(Number),
+          }),
+        )
+        expect(res.body.data.guidance).toHaveProperty('avg_delivery_delay_ms')
+        expect(res.body.data.observability).toHaveProperty('render_log.required_fields')
+        expect(res.body.data.observability).toHaveProperty('evaluation.blind_review_rubric')
+        expect(res.body.data.observability).toHaveProperty('rollout_gates')
+        expect(Array.isArray(res.body.data.observability.render_log_preview)).toBe(true)
+        expect(Array.isArray(res.body.data.observability.execution_plan_preview)).toBe(true)
+        expect(res.body.data.observability).toHaveProperty('fallback_or_degraded_preview.total')
+        expect(res.body.data.observability).toHaveProperty('attribution_summary.by_callsite')
+        expect(res.body.data.observability.authority_state).toEqual(
+          expect.objectContaining({
+            routing_mode: 'policy_driven',
+            env_pins: expect.any(Array),
+            env_pins_present: expect.any(Boolean),
+            debug_signal_sources: expect.any(Array),
+            debug_signals_present: expect.any(Boolean),
+          }),
+        )
+        expect(res.body.data.agent_bio).toEqual(
+          expect.objectContaining({
+            counts: expect.objectContaining({
+              attempted: expect.any(Number),
+              committed: expect.any(Number),
+              deduped: expect.any(Number),
+              conflicts: expect.any(Number),
+              privacy_blocked: expect.any(Number),
+              errors: expect.any(Number),
+            }),
+            by_kind: expect.objectContaining({
+              bootstrap: expect.any(Object),
+              major: expect.any(Object),
+              minor_presence: expect.any(Object),
+            }),
+          }),
+        )
+      },
+    )
   })
 
   it('POST/GET runtime closeout hidden-worker fixture create and inspect a stale private session', async () => {
@@ -313,7 +264,9 @@ describe('E2E: Governance Control Plane', () => {
     )
 
     const inspectRes = await request(app)
-      .get(`/v1/admin/runtime/closeout/hidden-worker/private-session-fixture/${createFixtureRes.body.data.session_id}`)
+      .get(
+        `/v1/admin/runtime/closeout/hidden-worker/private-session-fixture/${createFixtureRes.body.data.session_id}`,
+      )
       .set('Authorization', `Bearer ${adminToken}`)
 
     expect(inspectRes.status).toBe(200)

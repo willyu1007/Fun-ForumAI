@@ -9,5 +9,5 @@ keywords:
   - gray-release
   - publish
   - runtime-config
-  - warm-start
+  - baseline-import
   - readiness

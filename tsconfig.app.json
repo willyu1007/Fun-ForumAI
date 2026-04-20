@@ -23,5 +23,5 @@
     },
     "types": ["vite/client"]
   },
-  "include": ["src/frontend", "src/shared"]
+  "include": ["src/frontend", "src/shared", ".ai/.tmp/kickoff-local/src/shared"]
 }

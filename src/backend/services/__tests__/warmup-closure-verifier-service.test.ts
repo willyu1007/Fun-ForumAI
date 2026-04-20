@@ -11,10 +11,8 @@ type HarnessOptions = {
   hasBaseline?: boolean
   runtimeRunning?: boolean
   llmConfigured?: boolean
-  activationReadinessReasons?: string[]
   baselineReasons?: string[]
-  latestReviewDecision?: 'pass_to_active' | 'not_passed'
-  latestReviewReasonCodes?: Array<'content_quality' | 'distribution_density' | 'media_coverage' | 'kickoff_invalid' | 'process_issue'>
+  kickoffVerificationMissing?: string[]
   initialFeedVisible?: boolean
   initialSearchVisible?: boolean
   homeHealthy?: boolean
@@ -23,7 +21,7 @@ type HarnessOptions = {
   restoreShowsProbe?: boolean
   cleanupHidesProbe?: boolean
   throwOnAdmissionRead?: boolean
-  throwOnSuiteDetailRead?: boolean
+  throwOnKickoffDetailRead?: boolean
   throwOnBaselinePostsRead?: boolean
   throwOnFeedRead?: boolean
   throwOnSearchRead?: boolean
@@ -53,99 +51,73 @@ function createHarness(options: HarnessOptions = {}) {
 
   const admission = hasBaseline
     ? {
-        active_baseline_id: 'baseline-1',
-        suite_id: 'suite-1',
+        kickoff_baseline_id: 'kickoff-1',
         kickoff_batch_id: 'kickoff-batch-1',
         warmup_batch_id: 'warmup-batch-1',
-        has_active_baseline: true,
+        has_kickoff_baseline: true,
         kickoff_layer_ready: true,
         warmup_layer_ready: true,
         key_communities_ready: true,
         key_shelves_ready: true,
         media_access_ok: true,
         aftershow_pipeline_ok: true,
-        last_review_decision_ok: true,
         allow_public_growth: (options.baselineReasons ?? []).length === 0,
         reasons: options.baselineReasons ?? [],
       }
     : {
-        active_baseline_id: null,
-        suite_id: null,
+        kickoff_baseline_id: null,
         kickoff_batch_id: null,
         warmup_batch_id: null,
-        has_active_baseline: false,
+        has_kickoff_baseline: false,
         kickoff_layer_ready: false,
         warmup_layer_ready: false,
         key_communities_ready: false,
         key_shelves_ready: false,
         media_access_ok: false,
         aftershow_pipeline_ok: false,
-        last_review_decision_ok: false,
         allow_public_growth: false,
-        reasons: ['no_active_baseline'],
+        reasons: ['no_kickoff_baseline'],
       }
 
-  const suiteDetail = {
+  const kickoffDetail = {
     id: 'suite-1',
+    baseline_label: 'suite label',
     state: 'active',
-    suite_label: 'suite label',
     created_by_user_id: 'admin-1',
     created_at: '2026-04-15T08:00:00.000Z',
     updated_at: '2026-04-15T08:00:00.000Z',
     activated_at: '2026-04-15T08:00:00.000Z',
-    archived_at: null,
     kickoff_batch_id: 'kickoff-batch-1',
-    warmup_batch_id: 'warmup-batch-1',
-    latest_review: {
-      id: 'review-1',
-      reviewer_user_id: 'admin-1',
-      decision: options.latestReviewDecision ?? 'pass_to_active',
-      reason_codes: options.latestReviewReasonCodes ?? [],
-      note: null,
-      created_at: '2026-04-15T08:00:00.000Z',
-      is_fresh_for_current_batches: true,
-    },
-    active_baseline: {
-      id: 'baseline-1',
-      is_current: true,
-      previous_baseline_id: null,
-      activated_by_user_id: 'admin-1',
+    current_warmup_run_id: 'warmup-batch-1',
+    kickoff_batch: {
+      id: 'kickoff-batch-1',
+      batch_kind: 'kickoff',
+      state: 'active',
+      source_batch_id: null,
+      revision_key: 'kickoff:test',
+      package_hash: 'kickoff:test',
+      notes: null,
       activated_at: '2026-04-15T08:00:00.000Z',
-      deactivated_at: null,
+      archived_at: null,
+      created_at: '2026-04-15T08:00:00.000Z',
+      updated_at: '2026-04-15T08:00:00.000Z',
+      stats: {
+        posts: 6,
+        threads: 6,
+        turns: 12,
+        votes: 20,
+        media: 3,
+        communities: 2,
+        media_covered_posts: 3,
+        media_coverage_ratio: 0.5,
+      },
+      coverage: [],
+      samples: [],
     },
-    summary: {
-      posts: 6,
-      threads: 6,
-      turns: 12,
-      votes: 20,
-      media: 3,
-      communities: 2,
-      media_covered_posts: 3,
-      media_coverage_ratio: 0.5,
-    },
-    activation_readiness: {
-      ok: (options.activationReadinessReasons ?? []).length === 0,
-      reasons: options.activationReadinessReasons ?? [],
-    },
-    coverage: [],
-    programming_health: {
-      required_daily_outcomes: {},
-      observed_daily_outcomes: {},
-      daypart_readiness: [],
-      community_supply_floor: [],
-      visual_ratio_ok: true,
-      aftershow_pipeline_ok: true,
-      warning_count: 0,
-      warnings: [],
-    },
-    kickoff_batch: null,
-    warmup_batch: null,
-    actions: {
-      can_review: false,
-      can_retry: false,
-      can_start_warmup: false,
-      can_rebuild: false,
-      can_archive: true,
+    current_warmup_run: null,
+    verification: {
+      ok: (options.kickoffVerificationMissing ?? []).length === 0,
+      missing: options.kickoffVerificationMissing ?? [],
     },
   }
 
@@ -174,11 +146,11 @@ function createHarness(options: HarnessOptions = {}) {
           }
           return admission
         }),
-        getSuiteDetail: vi.fn(async () => {
-          if (options.throwOnSuiteDetailRead) {
-            throw new Error('suite detail crashed')
+        getKickoffDetail: vi.fn(async () => {
+          if (options.throwOnKickoffDetailRead) {
+            throw new Error('kickoff detail crashed')
           }
-          return suiteDetail
+          return kickoffDetail
         }),
       },
       postScheduler: {
@@ -209,13 +181,13 @@ function createHarness(options: HarnessOptions = {}) {
             visibility: probeVisibility,
             state: probeState,
             moderation_metadata: probeModerationMetadata,
-            warm_start_batch_id: null,
+            governance_batch_id: null,
             generation_mode: null,
             created_at: new Date(),
             updated_at: new Date(),
           }
         }),
-        findByWarmStartBatches: vi.fn(async () => {
+        findByGovernanceBatches: vi.fn(async () => {
           if (options.throwOnBaselinePostsRead) {
             throw new Error('baseline posts crashed')
           }
@@ -229,27 +201,34 @@ function createHarness(options: HarnessOptions = {}) {
             visibility: 'PUBLIC',
             state: 'APPROVED',
             moderation_metadata: { distribution_state: 'NORMAL' },
-            warm_start_batch_id: index === 0 ? 'kickoff-batch-1' : 'warmup-batch-1',
-            generation_mode: 'warmup_candidate',
+            governance_batch_id: index === 0 ? 'kickoff-batch-1' : 'warmup-batch-1',
+            generation_mode: 'warmup_runtime',
             created_at: new Date(),
             updated_at: new Date(),
           }))
         }),
-        updateContent: vi.fn(async (_id: string, patch: {
-          visibility?: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
-          state?: 'PENDING' | 'APPROVED' | 'REJECTED'
-        }) => {
-          if (patch.visibility) {
-            probeVisibility = patch.visibility as 'PUBLIC' | 'QUARANTINE'
-            if (patch.visibility === 'QUARANTINE') quarantineCount += 1
-          }
-          if (patch.state) probeState = patch.state as 'APPROVED' | 'PENDING'
-          return null
-        }),
-        updateModerationMetadata: vi.fn(async (_id: string, moderationMetadata: Record<string, unknown> | null) => {
-          probeModerationMetadata = moderationMetadata
-          return null
-        }),
+        updateContent: vi.fn(
+          async (
+            _id: string,
+            patch: {
+              visibility?: 'PUBLIC' | 'GRAY' | 'QUARANTINE'
+              state?: 'PENDING' | 'APPROVED' | 'REJECTED'
+            },
+          ) => {
+            if (patch.visibility) {
+              probeVisibility = patch.visibility as 'PUBLIC' | 'QUARANTINE'
+              if (patch.visibility === 'QUARANTINE') quarantineCount += 1
+            }
+            if (patch.state) probeState = patch.state as 'APPROVED' | 'PENDING'
+            return null
+          },
+        ),
+        updateModerationMetadata: vi.fn(
+          async (_id: string, moderationMetadata: Record<string, unknown> | null) => {
+            probeModerationMetadata = moderationMetadata
+            return null
+          },
+        ),
       },
       forumReadService: {
         getFeed: vi.fn(async () => {
@@ -259,9 +238,11 @@ function createHarness(options: HarnessOptions = {}) {
           return {
             items: [
               ...(initialFeedVisible && shouldExposeProbe() && probePostId
-                ? [{
-                    id: probePostId,
-                  }]
+                ? [
+                    {
+                      id: probePostId,
+                    },
+                  ]
                 : []),
               ...baselinePostIds.map((id) => ({ id })),
             ],
@@ -284,12 +265,15 @@ function createHarness(options: HarnessOptions = {}) {
               agents: 0,
               threads: 0,
             },
-            items: initialSearchVisible && shouldExposeProbe() && probePostId
-              ? [{
-                  type: 'post',
-                  id: probePostId,
-                }]
-              : [],
+            items:
+              initialSearchVisible && shouldExposeProbe() && probePostId
+                ? [
+                    {
+                      type: 'post',
+                      id: probePostId,
+                    },
+                  ]
+                : [],
             discovery: null,
             cursor: null,
             took_ms: 1,
@@ -305,17 +289,21 @@ function createHarness(options: HarnessOptions = {}) {
             enabled: homeHealthy,
             mode: 'launch',
             fallback_mode: 'legacy',
-            shelves: [{
-              id: 'must_watch_today',
-              label: 'Must Watch',
-              collapsed: false,
-              items: homeHealthy
-                ? [{
-                    id: baselinePostIds[0],
-                    item_kind: 'post',
-                  }]
-                : [],
-            }],
+            shelves: [
+              {
+                id: 'must_watch_today',
+                label: 'Must Watch',
+                collapsed: false,
+                items: homeHealthy
+                  ? [
+                      {
+                        id: baselinePostIds[0],
+                        item_kind: 'post',
+                      },
+                    ]
+                  : [],
+              },
+            ],
             hot_feed_continuation: {
               items: [],
               next_cursor: null,
@@ -401,7 +389,7 @@ describe('WarmupClosureVerifierService', () => {
     expect(harness.inspect.probeVisibility()).toBe('QUARANTINE')
   })
 
-  it('fails closed when no active baseline exists', async () => {
+  it('fails closed when no kickoff baseline exists', async () => {
     const { WarmupRunArtifactService } = await import('../warmup-run-artifact-service.js')
     const { WarmupClosureVerifierService } = await import('../warmup-closure-verifier-service.js')
     const harness = createHarness({ hasBaseline: false })
@@ -415,7 +403,7 @@ describe('WarmupClosureVerifierService', () => {
 
     expect(result.summary.status).toBe('failed')
     expect(result.summary.failed_phase).toBe('baseline_admission')
-    expect(result.top_diagnosis?.code).toBe('baseline.missing_active_baseline')
+    expect(result.top_diagnosis?.code).toBe('baseline.missing_kickoff_baseline')
     for (const path of Object.values(result.artifacts)) {
       expect(existsSync(path)).toBe(true)
     }
@@ -437,25 +425,6 @@ describe('WarmupClosureVerifierService', () => {
     expect(result.diagnoses.map((item) => item.code)).toEqual(
       expect.arrayContaining(['runtime.worker_not_running', 'runtime.llm_not_configured']),
     )
-  })
-
-  it('does not treat approved review reason codes as verifier blockers', async () => {
-    const { WarmupRunArtifactService } = await import('../warmup-run-artifact-service.js')
-    const { WarmupClosureVerifierService } = await import('../warmup-closure-verifier-service.js')
-    const harness = createHarness({
-      latestReviewDecision: 'pass_to_active',
-      latestReviewReasonCodes: ['process_issue'],
-    })
-    const artifactService = new WarmupRunArtifactService(harness.artifactRoot)
-    const service = new WarmupClosureVerifierService({
-      ...harness.deps,
-      artifactService,
-    } as never)
-
-    const result = await service.run({ triggered_by_user_id: 'admin-1' })
-
-    expect(result.summary.status).toBe('passed')
-    expect(result.diagnoses.map((item) => item.code)).not.toContain('review.process_issue')
   })
 
   it.each([
@@ -483,23 +452,31 @@ describe('WarmupClosureVerifierService', () => {
     ['feed', { throwOnFeedRead: true }, 'surface.feed.read_failed', 'surface_feed'],
     ['search', { throwOnSearchRead: true }, 'surface.search.read_failed', 'surface_search'],
     ['home', { throwOnHomeRead: true }, 'surface.home.read_failed', 'surface_home'],
-    ['highlights', { throwOnHighlightsRead: true }, 'surface.highlights.read_failed', 'surface_highlights'],
-  ])('classifies %s surface read exceptions to the correct subsystem', async (_label, override, expectedCode, expectedPhase) => {
-    const { WarmupRunArtifactService } = await import('../warmup-run-artifact-service.js')
-    const { WarmupClosureVerifierService } = await import('../warmup-closure-verifier-service.js')
-    const harness = createHarness(override)
-    const artifactService = new WarmupRunArtifactService(harness.artifactRoot)
-    const service = new WarmupClosureVerifierService({
-      ...harness.deps,
-      artifactService,
-    } as never)
+    [
+      'highlights',
+      { throwOnHighlightsRead: true },
+      'surface.highlights.read_failed',
+      'surface_highlights',
+    ],
+  ])(
+    'classifies %s surface read exceptions to the correct subsystem',
+    async (_label, override, expectedCode, expectedPhase) => {
+      const { WarmupRunArtifactService } = await import('../warmup-run-artifact-service.js')
+      const { WarmupClosureVerifierService } = await import('../warmup-closure-verifier-service.js')
+      const harness = createHarness(override)
+      const artifactService = new WarmupRunArtifactService(harness.artifactRoot)
+      const service = new WarmupClosureVerifierService({
+        ...harness.deps,
+        artifactService,
+      } as never)
 
-    const result = await service.run({ triggered_by_user_id: 'admin-1' })
+      const result = await service.run({ triggered_by_user_id: 'admin-1' })
 
-    expect(result.summary.status).toBe('failed')
-    expect(result.summary.failed_phase).toBe(expectedPhase)
-    expect(result.diagnoses.map((item) => item.code)).toContain(expectedCode)
-  })
+      expect(result.summary.status).toBe('failed')
+      expect(result.summary.failed_phase).toBe(expectedPhase)
+      expect(result.diagnoses.map((item) => item.code)).toContain(expectedCode)
+    },
+  )
 
   it('classifies governance quarantine drift when the probe remains visible', async () => {
     const { WarmupRunArtifactService } = await import('../warmup-run-artifact-service.js')
@@ -596,7 +573,9 @@ describe('WarmupClosureVerifierService', () => {
     expect(result.summary.status).toBe('failed')
     expect(result.summary.top_diagnosis_code).toBe(result.top_diagnosis?.code ?? null)
     expect(result.summary.top_diagnosis_code).toBe(result.diagnoses[0]?.code ?? null)
-    expect(result.diagnoses.map((item) => item.code)).toContain('artifact.result_summary_write_failed')
+    expect(result.diagnoses.map((item) => item.code)).toContain(
+      'artifact.result_summary_write_failed',
+    )
   })
 
   it('classifies dependency exceptions instead of collapsing them into artifact persistence', async () => {
@@ -609,13 +588,13 @@ describe('WarmupClosureVerifierService', () => {
       artifactService,
     } as never)
 
-    const result = await service.run({ triggered_by_user_id: 'admin-1' })
+      const result = await service.run({ triggered_by_user_id: 'admin-1' })
 
-    expect(result.summary.status).toBe('failed')
-    expect(result.summary.failed_phase).toBe('suite_resolution')
-    expect(result.diagnoses.map((item) => item.code)).toContain(
-      'suite_resolution.baseline_admission_read_failed',
-    )
+      expect(result.summary.status).toBe('failed')
+      expect(result.summary.failed_phase).toBe('kickoff_resolution')
+      expect(result.diagnoses.map((item) => item.code)).toContain(
+        'kickoff_resolution.baseline_admission_read_failed',
+      )
     expect(result.diagnoses.map((item) => item.code)).not.toContain(
       'verifier.admission read crashed',
     )

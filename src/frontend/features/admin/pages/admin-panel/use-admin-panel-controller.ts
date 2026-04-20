@@ -1,43 +1,36 @@
 import { useEffect, useState } from 'react'
 import {
-  useApplyAdminWarmupSuiteEdit,
   useAdminAgentRiskProfile,
   useAdminCommunityProposals,
   useAdminHotTopicAlerts,
   useAdminHotTopicDashboard,
   useAdminHotTopicPostDistribution,
   useAdminHotTopicRoomControl,
-  useAdminWarmupSuiteDetail,
-  useAdminWarmupSuites,
+  useAdminKickoffStatus,
+  useAdminWarmupRunDetail,
+  useAdminWarmupRuns,
   useAdminWarmupVerifierLatestRun,
   useApplyCommunityProposalAction,
   useApplyCommunityHotTopicPolicy,
-  useArchiveAdminWarmupSuite,
   useAssignModerationCase,
   useClaimModerationTask,
-  useCreateAdminWarmupSuite,
   useCreateDisclosureCapOverride,
   useDisclosureCaps,
-  useExecuteAdminWarmupGovernanceBatch,
   useGovernanceAction,
   useHealth,
   useIdentityReviews,
   useModerationCase,
   useModerationEvidenceExport,
   useModerationQueue,
-  usePreviewAdminWarmupGovernanceBatch,
-  usePreviewAdminWarmupSuiteEdit,
-  useRebuildAdminWarmupSuite,
   useReleaseDisclosureCapOverride,
   useReleaseModerationCase,
   useReopenModerationCase,
-  useReviewAdminWarmupSuite,
+  useRollbackAdminWarmupRun,
   useRunAdminWarmupVerifier,
-  useRetryAdminWarmupSuite,
   useResolveIdentityReview,
   useResolveModerationCase,
   useRefreshCommunityProposalRecommendation,
-  useStartAdminWarmupSuite,
+  useStartAdminWarmupRun,
   useTransferModerationCase,
   useCommunities,
 } from '@/api/hooks'
@@ -48,10 +41,6 @@ import type {
   GovernanceActionType,
   GovernanceResult,
   HotTopicDashboardItem,
-  KickoffSuiteEditAction,
-  WarmupGovernanceAction,
-  WarmupReviewDecision,
-  WarmupReviewReasonCode,
 } from '@/api/types'
 import { COMMUNITY_TOPIC_DOMAIN_OPTIONS, type EvidenceExportRedaction } from './constants'
 
@@ -111,45 +100,27 @@ export function useAdminPanelController() {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
 
   const { data: caseDetail } = useModerationCase(selectedCaseId)
-  const { data: evidenceExport, refetch: refetchEvidenceExport } =
-    useModerationEvidenceExport(selectedCaseId, evidenceExportRedaction)
+  const { data: evidenceExport, refetch: refetchEvidenceExport } = useModerationEvidenceExport(
+    selectedCaseId,
+    evidenceExportRedaction,
+  )
   const { data: riskProfile } = useAdminAgentRiskProfile(riskProfileAgentId || null)
   const { data: disclosureCaps } = useDisclosureCaps(capScopeType, capScopeId || null)
-  const { data: warmupSuites } = useAdminWarmupSuites()
+  const { data: kickoffStatus } = useAdminKickoffStatus()
+  const { data: warmupRuns } = useAdminWarmupRuns()
   const { data: warmupVerifierLatestRun } = useAdminWarmupVerifierLatestRun()
-  const createWarmupSuite = useCreateAdminWarmupSuite()
-  const reviewWarmupSuite = useReviewAdminWarmupSuite()
-  const retryWarmupSuite = useRetryAdminWarmupSuite()
-  const rebuildWarmupSuite = useRebuildAdminWarmupSuite()
-  const startWarmupSuite = useStartAdminWarmupSuite()
-  const archiveWarmupSuite = useArchiveAdminWarmupSuite()
+  const startWarmupRun = useStartAdminWarmupRun()
+  const rollbackWarmupRun = useRollbackAdminWarmupRun()
   const runWarmupVerifier = useRunAdminWarmupVerifier()
-  const previewWarmupGovernance = usePreviewAdminWarmupGovernanceBatch()
-  const executeWarmupGovernance = useExecuteAdminWarmupGovernanceBatch()
-  const previewWarmupSuiteEdit = usePreviewAdminWarmupSuiteEdit()
-  const applyWarmupSuiteEdit = useApplyAdminWarmupSuiteEdit()
-  const [selectedWarmupSuiteId, setSelectedWarmupSuiteId] = useState<string | null>(null)
-  const [warmupSuiteLabel, setWarmupSuiteLabel] = useState('')
-  const [warmupTopupPosts, setWarmupTopupPosts] = useState('0')
-  const [warmupReviewDecision, setWarmupReviewDecision] =
-    useState<WarmupReviewDecision>('pass_to_active')
-  const [warmupReviewNote, setWarmupReviewNote] = useState('')
-  const [warmupReviewReasons, setWarmupReviewReasons] = useState<WarmupReviewReasonCode[]>([])
-  const [warmupGovernanceAction, setWarmupGovernanceAction] =
-    useState<WarmupGovernanceAction>('quarantine')
-  const [warmupEditAction, setWarmupEditAction] =
-    useState<KickoffSuiteEditAction>('rewrite_post')
-  const [warmupEditReason, setWarmupEditReason] = useState('local kickoff repair')
-  const [warmupEditPostId, setWarmupEditPostId] = useState('')
-  const [warmupEditThreadId, setWarmupEditThreadId] = useState('')
-  const [warmupEditTurnId, setWarmupEditTurnId] = useState('')
-  const [warmupEditPayload, setWarmupEditPayload] = useState('{\n  "body": ""\n}')
-  const { data: warmupSuiteDetail } = useAdminWarmupSuiteDetail(selectedWarmupSuiteId)
+  const [selectedWarmupRunId, setSelectedWarmupRunId] = useState<string | null>(null)
+  const [warmupTargetPosts, setWarmupTargetPosts] = useState('4')
+  const [warmupMaxAttempts, setWarmupMaxAttempts] = useState('8')
+  const { data: warmupRunDetail } = useAdminWarmupRunDetail(selectedWarmupRunId)
 
   useEffect(() => {
-    if (selectedWarmupSuiteId || !(warmupSuites?.data?.length)) return
-    setSelectedWarmupSuiteId(warmupSuites.data[0]!.id)
-  }, [selectedWarmupSuiteId, warmupSuites])
+    if (selectedWarmupRunId || !warmupRuns?.data?.length) return
+    setSelectedWarmupRunId(warmupRuns.data[0]!.id)
+  }, [selectedWarmupRunId, warmupRuns])
 
   const handleSubmit = async () => {
     if (!targetId.trim()) return
@@ -198,9 +169,7 @@ export function useAdminPanelController() {
     domain: (typeof COMMUNITY_TOPIC_DOMAIN_OPTIONS)[number],
   ) => {
     setCommunityAllowedDomains((current) =>
-      current.includes(domain)
-        ? current.filter((item) => item !== domain)
-        : [...current, domain],
+      current.includes(domain) ? current.filter((item) => item !== domain) : [...current, domain],
     )
   }
 
@@ -266,100 +235,17 @@ export function useAdminPanelController() {
     await refreshCommunityProposalRecommendation.mutateAsync(proposalId)
   }
 
-  const toggleWarmupReason = (reasonCode: WarmupReviewReasonCode) => {
-    setWarmupReviewReasons((current) =>
-      current.includes(reasonCode)
-        ? current.filter((item) => item !== reasonCode)
-        : [...current, reasonCode],
-    )
-  }
-
-  const handleCreateWarmupSuite = async () => {
-    const response = await createWarmupSuite.mutateAsync({
-      suite_label: warmupSuiteLabel.trim() || null,
-      max_runtime_topup_posts: Number.parseInt(warmupTopupPosts, 10) || 0,
+  const handleStartWarmupRun = async () => {
+    const response = await startWarmupRun.mutateAsync({
+      target_posts: Number.parseInt(warmupTargetPosts, 10) || 1,
+      max_attempts: Number.parseInt(warmupMaxAttempts, 10) || 1,
     })
-    setSelectedWarmupSuiteId(response.data.suite_id)
+    setSelectedWarmupRunId(response.data.id)
   }
 
-  const handleReviewWarmupSuite = async (confirmActivation = false) => {
-    if (!selectedWarmupSuiteId) return
-    await reviewWarmupSuite.mutateAsync({
-      suiteId: selectedWarmupSuiteId,
-      decision: warmupReviewDecision,
-      reason_codes:
-        warmupReviewDecision === 'not_passed' ? warmupReviewReasons : [],
-      note: warmupReviewNote.trim() || null,
-      confirm_activation: confirmActivation,
-    })
-  }
-
-  const handleRetryWarmupSuite = async () => {
-    if (!selectedWarmupSuiteId) return
-    await retryWarmupSuite.mutateAsync(selectedWarmupSuiteId)
-  }
-
-  const handleRebuildWarmupSuite = async () => {
-    if (!selectedWarmupSuiteId) return
-    await rebuildWarmupSuite.mutateAsync({
-      suiteId: selectedWarmupSuiteId,
-      max_runtime_topup_posts: Number.parseInt(warmupTopupPosts, 10) || 0,
-    })
-  }
-
-  const handleStartWarmupSuite = async () => {
-    if (!selectedWarmupSuiteId) return
-    await startWarmupSuite.mutateAsync({
-      suiteId: selectedWarmupSuiteId,
-      max_runtime_topup_posts: Number.parseInt(warmupTopupPosts, 10) || 0,
-    })
-  }
-
-  const handleArchiveWarmupSuite = async () => {
-    if (!selectedWarmupSuiteId) return
-    await archiveWarmupSuite.mutateAsync(selectedWarmupSuiteId)
-  }
-
-  const handlePreviewWarmupGovernance = async () => {
-    if (!selectedWarmupSuiteId) return
-    await previewWarmupGovernance.mutateAsync({
-      action: warmupGovernanceAction,
-      suite_id: selectedWarmupSuiteId,
-    })
-  }
-
-  const handleExecuteWarmupGovernance = async () => {
-    if (!selectedWarmupSuiteId) return
-    await executeWarmupGovernance.mutateAsync({
-      action: warmupGovernanceAction,
-      suite_id: selectedWarmupSuiteId,
-    })
-  }
-
-  const handlePreviewWarmupEdit = async () => {
-    if (!selectedWarmupSuiteId) return
-    await previewWarmupSuiteEdit.mutateAsync(buildWarmupEditRequest({
-      suiteId: selectedWarmupSuiteId,
-      action: warmupEditAction,
-      reason: warmupEditReason,
-      postId: warmupEditPostId,
-      threadId: warmupEditThreadId,
-      turnId: warmupEditTurnId,
-      payloadText: warmupEditPayload,
-    }))
-  }
-
-  const handleApplyWarmupEdit = async () => {
-    if (!selectedWarmupSuiteId) return
-    await applyWarmupSuiteEdit.mutateAsync(buildWarmupEditRequest({
-      suiteId: selectedWarmupSuiteId,
-      action: warmupEditAction,
-      reason: warmupEditReason,
-      postId: warmupEditPostId,
-      threadId: warmupEditThreadId,
-      turnId: warmupEditTurnId,
-      payloadText: warmupEditPayload,
-    }))
+  const handleRollbackWarmupRun = async () => {
+    if (!selectedWarmupRunId) return
+    await rollbackWarmupRun.mutateAsync(selectedWarmupRunId)
   }
 
   const handleRunWarmupVerifier = async () => {
@@ -454,59 +340,21 @@ export function useAdminPanelController() {
       handleSetRoomControl,
     },
     warmup: {
-      suites: warmupSuites?.data ?? [],
-      selectedSuiteId: selectedWarmupSuiteId,
-      setSelectedSuiteId: setSelectedWarmupSuiteId,
-      detail: warmupSuiteDetail?.data ?? null,
+      kickoff: kickoffStatus?.data ?? null,
+      runs: warmupRuns?.data ?? [],
+      selectedRunId: selectedWarmupRunId,
+      setSelectedRunId: setSelectedWarmupRunId,
+      detail: warmupRunDetail?.data ?? null,
       latestVerifierRun: warmupVerifierLatestRun?.data ?? null,
-      createMutation: createWarmupSuite,
-      reviewMutation: reviewWarmupSuite,
-      retryMutation: retryWarmupSuite,
-      rebuildMutation: rebuildWarmupSuite,
-      startMutation: startWarmupSuite,
-      archiveMutation: archiveWarmupSuite,
+      startMutation: startWarmupRun,
+      rollbackMutation: rollbackWarmupRun,
       runVerifierMutation: runWarmupVerifier,
-      previewMutation: previewWarmupGovernance,
-      executeMutation: executeWarmupGovernance,
-      previewEditMutation: previewWarmupSuiteEdit,
-      applyEditMutation: applyWarmupSuiteEdit,
-      suiteLabel: warmupSuiteLabel,
-      setSuiteLabel: setWarmupSuiteLabel,
-      topupPosts: warmupTopupPosts,
-      setTopupPosts: setWarmupTopupPosts,
-      reviewDecision: warmupReviewDecision,
-      setReviewDecision: setWarmupReviewDecision,
-      reviewNote: warmupReviewNote,
-      setReviewNote: setWarmupReviewNote,
-      reviewReasons: warmupReviewReasons,
-      toggleReason: toggleWarmupReason,
-      governanceAction: warmupGovernanceAction,
-      setGovernanceAction: setWarmupGovernanceAction,
-      governancePreview: previewWarmupGovernance.data?.data ?? null,
-      editAction: warmupEditAction,
-      setEditAction: setWarmupEditAction,
-      editReason: warmupEditReason,
-      setEditReason: setWarmupEditReason,
-      editPostId: warmupEditPostId,
-      setEditPostId: setWarmupEditPostId,
-      editThreadId: warmupEditThreadId,
-      setEditThreadId: setWarmupEditThreadId,
-      editTurnId: warmupEditTurnId,
-      setEditTurnId: setWarmupEditTurnId,
-      editPayload: warmupEditPayload,
-      setEditPayload: setWarmupEditPayload,
-      editPreview: previewWarmupSuiteEdit.data?.data ?? null,
-      latestEditResult: applyWarmupSuiteEdit.data?.data ?? null,
-      handleCreateSuite: handleCreateWarmupSuite,
-      handleReviewSuite: handleReviewWarmupSuite,
-      handleRetrySuite: handleRetryWarmupSuite,
-      handleRebuildSuite: handleRebuildWarmupSuite,
-      handleStartWarmupSuite,
-      handleArchiveSuite: handleArchiveWarmupSuite,
-      handlePreviewGovernance: handlePreviewWarmupGovernance,
-      handleExecuteGovernance: handleExecuteWarmupGovernance,
-      handlePreviewEdit: handlePreviewWarmupEdit,
-      handleApplyEdit: handleApplyWarmupEdit,
+      targetPosts: warmupTargetPosts,
+      setTargetPosts: setWarmupTargetPosts,
+      maxAttempts: warmupMaxAttempts,
+      setMaxAttempts: setWarmupMaxAttempts,
+      handleStartWarmupRun,
+      handleRollbackWarmupRun,
       handleRunVerifier: handleRunWarmupVerifier,
     },
     communityGovernance: {
@@ -524,38 +372,6 @@ export function useAdminPanelController() {
       handleRefreshRecommendation: handleRefreshCommunityProposalRecommendation,
     },
   }
-}
-
-function buildWarmupEditRequest(input: {
-  suiteId: string
-  action: KickoffSuiteEditAction
-  reason: string
-  postId: string
-  threadId: string
-  turnId: string
-  payloadText: string
-}) {
-  const payload = parsePayloadText(input.payloadText)
-  return {
-    action: input.action,
-    target: {
-      suite_id: input.suiteId,
-      post_id: input.postId.trim() || null,
-      thread_id: input.threadId.trim() || null,
-      turn_id: input.turnId.trim() || null,
-    },
-    payload,
-    reason: input.reason.trim() || 'local kickoff repair',
-  }
-}
-
-function parsePayloadText(payloadText: string): Record<string, unknown> {
-  if (!payloadText.trim()) return {}
-  const parsed = JSON.parse(payloadText) as unknown
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('编辑 payload 必须是 JSON object')
-  }
-  return parsed as Record<string, unknown>
 }
 
 export type AdminPanelController = ReturnType<typeof useAdminPanelController>

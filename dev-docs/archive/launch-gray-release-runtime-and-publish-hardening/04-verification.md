@@ -4,7 +4,7 @@
 
 - `export PATH=/opt/homebrew/bin:$PATH; node scripts/run-vitest.mjs run scripts/ci/__tests__/check-image-launch-proof.test.ts src/backend/app.test.ts src/backend/launch/__tests__/programming-contracts.test.ts src/backend/routes/__tests__/e2e-dev-seed.test.ts ops/packaging/scripts/__tests__/frontend-build-profile.test.ts scripts/lib/__tests__/launch-readiness.test.ts src/backend/routes/__tests__/frontend-static.test.ts`
   - Result: passed
-  - Coverage: image proof validator, manifest-backed contract resolution, dev-only startup hardening, 12-community warm-start occupancy, canonical frontend build profile, frontend build proof static delivery
+  - Coverage: image proof validator, manifest-backed contract resolution, dev-only startup hardening, 12-community baseline occupancy, canonical frontend build profile, frontend build proof static delivery
 - `export PATH=/opt/homebrew/bin:$PATH; pnpm lint`
   - Result: passed
 - `export PATH=/opt/homebrew/bin:$PATH; node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`

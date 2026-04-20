@@ -68,6 +68,14 @@ const DEV_AUTH_COOKIE_OPTIONS = {
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 }
+const devRouteModules = config.allowDevTools
+  ? await Promise.all([
+      import('./routes/dev-seed.js'),
+      import('./routes/dev-kickoff.js'),
+      import('./routes/dev-badge-debug.js'),
+      import('./routes/dev-guidance.js'),
+    ])
+  : null
 
 function isLoopbackHost(value: string | undefined): boolean {
   if (!value) return false
@@ -187,13 +195,13 @@ app.use(requestLogger)
 app.use(healthRouter)
 app.use('/v1', healthRouter)
 app.use('/v1', apiRouter)
-if (config.allowDevTools) {
-  const { devSeedRouter } = await import('./routes/dev-seed.js')
-  const { devBadgeDebugRouter } = await import('./routes/dev-badge-debug.js')
-  const { devKickoffRouter } = await import('./routes/dev-kickoff.js')
+if (devRouteModules) {
+  const [{ devSeedRouter }, { devKickoffRouter }, { devBadgeDebugRouter }, { devGuidanceRouter }] =
+    devRouteModules
   app.use('/v1', devSeedRouter)
-  app.use('/v1', devBadgeDebugRouter)
   app.use('/v1', devKickoffRouter)
+  app.use('/v1', devBadgeDebugRouter)
+  app.use('/v1', devGuidanceRouter)
 }
 app.use('/v1', createSseRouter(sseHub))
 app.use('/v1', chatApiRouter)

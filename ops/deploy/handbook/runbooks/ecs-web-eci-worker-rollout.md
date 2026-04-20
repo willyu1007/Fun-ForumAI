@@ -3,7 +3,7 @@
 ## Scope
 
 - Launch gray-release rollout order for `staging` and `prod`
-- Repo-tracked assets only
+- Kickoff bundle must be staged under `.ai/.tmp/kickoff/` on the target host before import
 - ECS web remains the host-facing role
 - Temporary staging topology runs the runtime/background worker on the same ECS host via Docker Compose
 - Historical ECI worker assets remain in-repo as a retained baseline, but they are not the active staging launch path
@@ -30,10 +30,11 @@
 7. Mark `ecs_web` as applied in the desired release record.
 8. Pull and start the `worker` Compose service on the same ECS host with the same immutable image ref and `RUNTIME_ENABLED=true`.
 9. Verify worker health, queue backend, leader backend, runtime startup logs, and confirm `/v1/admin/runtime/stats` reports `allow_public_growth=false` before activation.
-10. Run `pnpm launch:warm-start` against the target environment to create the candidate kickoff + warmup suite.
-11. In the admin `Warm-up` tab, review the suite, confirm `pass_to_active`, and verify that activation creates the current baseline.
-12. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
-13. Confirm `/v1/admin/runtime/stats` now reports `allow_public_growth=true`, then mark `eci_worker` as applied in the desired release record.
+10. Stage the kickoff manifest and referenced assets under `.ai/.tmp/kickoff/` on the target host.
+11. Run `pnpm launch.kickoff` against the target environment to import the immutable kickoff baseline.
+12. In admin `Warm-up`, confirm the kickoff baseline is present and start a warmup run with the desired `target_posts` / `max_attempts`.
+13. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+14. Confirm `/v1/admin/runtime/stats` now reports `allow_public_growth=true`, then mark `eci_worker` as applied in the desired release record.
 
 ## Staging example
 
@@ -99,7 +100,8 @@ node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target ecs_w
 
 ## Launch gray-release close-out
 
-1. Run `pnpm launch:warm-start` after the worker is healthy; this now creates a candidate suite instead of directly publishing public content.
-2. Review the suite in admin `Warm-up`, then confirm `pass_to_active` to create the active baseline.
-3. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
-4. Do not treat runtime growth as admitted until both activation and staging verify pass.
+1. Stage `.ai/.tmp/kickoff/manifest.v1.yaml` and its referenced assets on the target host.
+2. Run `pnpm launch.kickoff` after the worker is healthy; this imports the kickoff baseline instead of generating repo-tracked bootstrap content.
+3. Start a warmup run from admin `Warm-up` with explicit runtime stop controls.
+4. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+5. Do not treat runtime growth as admitted until kickoff import, warmup run, and staging verify all pass.

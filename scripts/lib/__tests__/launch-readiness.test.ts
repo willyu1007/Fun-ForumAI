@@ -7,7 +7,7 @@ import {
   validateLocalKindMediaPersistence,
   validateLaunchMembershipBootstrapAssets,
   validateLaunchRuntimeContracts,
-  validateLaunchWarmStartAssets,
+  validateKickoffAssets,
   validateLaunchRuntimeOverlay,
   validatePackagingWireup,
   validatePublishWorkflowWireup,
@@ -35,7 +35,7 @@ describe('launch readiness repo checks', () => {
     expect(validateFrontendDeliveryAssets()).toMatchObject({ ok: true })
     expect(validateLocalKindMediaPersistence()).toMatchObject({ ok: true })
     expect(validateLaunchMembershipBootstrapAssets()).toMatchObject({ ok: true })
-    expect(validateLaunchWarmStartAssets()).toMatchObject({ ok: true })
+    expect(validateKickoffAssets()).toMatchObject({ ok: true })
     expect(validateWorkerAssets()).toMatchObject({ ok: true })
     expect(validatePackagingWireup()).toMatchObject({ ok: true })
     expect(validatePublishWorkflowWireup()).toMatchObject({ ok: true })

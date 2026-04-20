@@ -1,17 +1,9 @@
-import { useEffect, useState } from 'react'
-import { useDevKickoffBootstrap, useDevKickoffStatus, useDevSeedMutation } from '@/api/hooks/dev'
+import { useState } from 'react'
+import { useDevSeedMutation } from '@/api/hooks/dev'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Wrench,
-  Database,
-  Medal,
-  SlidersHorizontal,
-  Rocket,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Wrench, Database, Medal, SlidersHorizontal } from 'lucide-react'
 import {
   DEV_AUTH_TOOLBAR_HEIGHT_CLASS,
   SHOULD_RENDER_DEV_AUTH_TOOLBAR,
@@ -19,25 +11,11 @@ import {
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
 import { DevBadgeDebugPanel } from './DevBadgeDebugPanel'
-import { DevFrontendFlagsPanel } from './DevFrontendFlagsPanel'
 import { DevKickoffPanel } from './DevKickoffPanel'
+import { DevGuidancePanel } from './DevGuidancePanel'
+import { DevFrontendFlagsPanel } from './DevFrontendFlagsPanel'
 
 type Identity = 'anonymous' | 'user' | 'admin'
-
-function formatKickoffModeLabel(mode: string): string {
-  switch (mode) {
-    case 'canonical':
-      return 'Mock'
-    case 'smoke-minimal':
-      return 'Smoke'
-    case 'kickoff-candidate':
-      return 'Kickoff / 待激活'
-    case 'kickoff-active':
-      return 'Kickoff / 已激活'
-    default:
-      return '无 Kickoff'
-  }
-}
 
 const IDENTITIES: Array<{ id: Identity; label: string }> = [
   { id: 'anonymous', label: '游客' },
@@ -51,29 +29,11 @@ export function DevAuthToolbar() {
   const setCollapsed = useDevAuthToolbarStore((state) => state.setCollapsed)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [badgePanelOpen, setBadgePanelOpen] = useState(false)
-  const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
   const [kickoffPanelOpen, setKickoffPanelOpen] = useState(false)
+  const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
+  const [guidancePanelOpen, setGuidancePanelOpen] = useState(false)
   const seedMutation = useDevSeedMutation()
-  const kickoffBootstrapMutation = useDevKickoffBootstrap()
-  const shouldPollKickoffStatus = toolsOpen || kickoffPanelOpen
-  const kickoffStatusQuery = useDevKickoffStatus(true, shouldPollKickoffStatus)
-  const refetchKickoffStatus = kickoffStatusQuery.refetch
-  const currentKickoffMode = kickoffStatusQuery.data?.data.current_data_mode ?? 'unknown'
-  const currentKickoffModeLabel = formatKickoffModeLabel(currentKickoffMode)
-  const currentKickoffSummary =
-    kickoffStatusQuery.data?.data.flow?.title
-    ?? kickoffStatusQuery.data?.data.current_suite.label
-    ?? kickoffStatusQuery.data?.data.latest_run?.suite_label
-    ?? kickoffStatusQuery.data?.data.latest_run?.run_id
-    ?? null
-  const isMutating = seedMutation.isPending || kickoffBootstrapMutation.isPending
-
-  useEffect(() => {
-    if (!shouldPollKickoffStatus) {
-      return
-    }
-    void refetchKickoffStatus()
-  }, [refetchKickoffStatus, shouldPollKickoffStatus])
+  const isMutating = seedMutation.isPending
 
   const handleSeed = async (profile: 'canonical' | 'smoke-minimal') => {
     setToolsOpen(false)
@@ -89,22 +49,6 @@ export function DevAuthToolbar() {
       window.location.reload()
     } catch (err) {
       alert(`加载失败：${err instanceof Error ? err.message : '未知错误'}`)
-    }
-  }
-
-  const handleKickoffBootstrap = async () => {
-    setToolsOpen(false)
-    try {
-      const res = await kickoffBootstrapMutation.mutateAsync({
-        mode: 'candidate',
-        profile_id: 'local-llm-assisted-candidate',
-      })
-      alert(
-        `Kickoff 基础内容已生成：suite ${res.data.suite_label ?? res.data.suite_id ?? 'n/a'} · activation ${res.data.readiness.activation_readiness.ok ? 'ready' : 'blocked'}`,
-      )
-      window.location.reload()
-    } catch (err) {
-      alert(`Kickoff 启动失败：${err instanceof Error ? err.message : '未知错误'}`)
     }
   }
 
@@ -149,14 +93,6 @@ export function DevAuthToolbar() {
             <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">
               DEV
             </Badge>
-            <Badge variant="secondary" className="shrink-0 text-[10px]">
-              {currentKickoffModeLabel}
-            </Badge>
-            {currentKickoffSummary ? (
-              <span className="max-w-[10rem] truncate text-[10px] text-muted-foreground">
-                {currentKickoffSummary}
-              </span>
-            ) : null}
             {IDENTITIES.map(({ id, label }) => (
               <Button
                 key={id}
@@ -219,28 +155,6 @@ export function DevAuthToolbar() {
                 </button>
                 <button
                   type="button"
-                  disabled={isMutating}
-                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={() => {
-                    void handleKickoffBootstrap()
-                  }}
-                >
-                  <Rocket className="size-3.5 text-muted-foreground" />
-                  初始化 Kickoff
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={() => {
-                    setToolsOpen(false)
-                    setKickoffPanelOpen(true)
-                  }}
-                >
-                  <Rocket className="size-3.5 text-muted-foreground" />
-                  Kickoff
-                </button>
-                <button
-                  type="button"
                   className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => {
                     setToolsOpen(false)
@@ -261,6 +175,28 @@ export function DevAuthToolbar() {
                   <SlidersHorizontal className="size-3.5 text-muted-foreground" />
                   VITE 功能门
                 </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => {
+                    setToolsOpen(false)
+                    setKickoffPanelOpen(true)
+                  }}
+                >
+                  <Wrench className="size-3.5 text-muted-foreground" />
+                  Kickoff 调试
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => {
+                    setToolsOpen(false)
+                    setGuidancePanelOpen(true)
+                  }}
+                >
+                  <Wrench className="size-3.5 text-muted-foreground" />
+                  引导内容调试
+                </button>
               </PopoverContent>
             </Popover>
           </div>
@@ -268,8 +204,9 @@ export function DevAuthToolbar() {
       </div>
 
       <DevBadgeDebugPanel open={badgePanelOpen} onOpenChange={setBadgePanelOpen} />
-      <DevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
       <DevKickoffPanel open={kickoffPanelOpen} onOpenChange={setKickoffPanelOpen} />
+      <DevGuidancePanel open={guidancePanelOpen} onOpenChange={setGuidancePanelOpen} />
+      <DevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
     </>
   )
 }

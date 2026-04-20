@@ -9,5 +9,5 @@ keywords:
   - gray-release
   - memberships
   - worker
-  - warm-start
+  - baseline-import
   - readiness

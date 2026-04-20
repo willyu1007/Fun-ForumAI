@@ -40,9 +40,8 @@ export class WarmupRunArtifactService {
       run_id: runId,
       status: 'running',
       triggered_by_user_id: input?.triggered_by_user_id ?? null,
-      suite_id: null,
-      suite_label: null,
-      active_baseline_id: null,
+      kickoff_baseline_id: null,
+      kickoff_baseline_label: null,
       kickoff_batch_id: null,
       warmup_batch_id: null,
       probe_token: null,
@@ -66,8 +65,8 @@ export class WarmupRunArtifactService {
       completed_at: null,
     }
     await this.writeJson(artifacts.run_summary_path, summary)
-    await this.writeJson(artifacts.suite_snapshot_before_path, null)
-    await this.writeJson(artifacts.suite_snapshot_after_path, null)
+    await this.writeJson(artifacts.kickoff_snapshot_before_path, null)
+    await this.writeJson(artifacts.kickoff_snapshot_after_path, null)
     await this.writeJson(artifacts.baseline_admission_before_path, null)
     await this.writeJson(artifacts.baseline_admission_after_path, null)
     await this.writeJson(artifacts.probe_manifest_path, null)
@@ -75,7 +74,11 @@ export class WarmupRunArtifactService {
     await this.writeJson(artifacts.governance_drill_path, null)
     await this.writeJson(artifacts.diagnosis_path, [])
     await this.writeJson(artifacts.failure_log_path, [])
-    await writeFile(artifacts.result_summary_path, '# Warm-up Closure Verifier\n\nstatus: running\n', 'utf8')
+    await writeFile(
+      artifacts.result_summary_path,
+      '# Warm-up Closure Verifier\n\nstatus: running\n',
+      'utf8',
+    )
     await this.writeJson(LATEST_RUN_PATH(this.rootDir), { run_id: runId })
     return summary
   }
@@ -85,8 +88,8 @@ export class WarmupRunArtifactService {
     return {
       artifact_dir: artifactDir,
       run_summary_path: resolve(artifactDir, 'run-summary.json'),
-      suite_snapshot_before_path: resolve(artifactDir, 'suite-snapshot-before.json'),
-      suite_snapshot_after_path: resolve(artifactDir, 'suite-snapshot-after.json'),
+      kickoff_snapshot_before_path: resolve(artifactDir, 'kickoff-snapshot-before.json'),
+      kickoff_snapshot_after_path: resolve(artifactDir, 'kickoff-snapshot-after.json'),
       baseline_admission_before_path: resolve(artifactDir, 'baseline-admission-before.json'),
       baseline_admission_after_path: resolve(artifactDir, 'baseline-admission-after.json'),
       probe_manifest_path: resolve(artifactDir, 'probe-manifest.json'),
@@ -98,14 +101,14 @@ export class WarmupRunArtifactService {
     }
   }
 
-  async writeSuiteSnapshotBefore(runId: string, payload: unknown): Promise<string> {
-    const path = this.buildArtifacts(runId).suite_snapshot_before_path
+  async writeKickoffSnapshotBefore(runId: string, payload: unknown): Promise<string> {
+    const path = this.buildArtifacts(runId).kickoff_snapshot_before_path
     await this.writeJson(path, payload)
     return path
   }
 
-  async writeSuiteSnapshotAfter(runId: string, payload: unknown): Promise<string> {
-    const path = this.buildArtifacts(runId).suite_snapshot_after_path
+  async writeKickoffSnapshotAfter(runId: string, payload: unknown): Promise<string> {
+    const path = this.buildArtifacts(runId).kickoff_snapshot_after_path
     await this.writeJson(path, payload)
     return path
   }
@@ -122,19 +125,28 @@ export class WarmupRunArtifactService {
     return path
   }
 
-  async writeProbeManifest(runId: string, payload: WarmupVerifierProbeManifest | null): Promise<string> {
+  async writeProbeManifest(
+    runId: string,
+    payload: WarmupVerifierProbeManifest | null,
+  ): Promise<string> {
     const path = this.buildArtifacts(runId).probe_manifest_path
     await this.writeJson(path, payload)
     return path
   }
 
-  async writeSurfaceAudit(runId: string, payload: WarmupVerifierSurfaceAudit | null): Promise<string> {
+  async writeSurfaceAudit(
+    runId: string,
+    payload: WarmupVerifierSurfaceAudit | null,
+  ): Promise<string> {
     const path = this.buildArtifacts(runId).surface_audit_path
     await this.writeJson(path, payload)
     return path
   }
 
-  async writeGovernanceDrill(runId: string, payload: WarmupVerifierGovernanceDrill | null): Promise<string> {
+  async writeGovernanceDrill(
+    runId: string,
+    payload: WarmupVerifierGovernanceDrill | null,
+  ): Promise<string> {
     const path = this.buildArtifacts(runId).governance_drill_path
     await this.writeJson(path, payload)
     return path
@@ -148,7 +160,7 @@ export class WarmupRunArtifactService {
 
   async appendFailure(runId: string, entry: WarmupVerifierFailureLogEntry): Promise<string> {
     const path = this.buildArtifacts(runId).failure_log_path
-    const current = await safeReadJson<WarmupVerifierFailureLogEntry[]>(path) ?? []
+    const current = (await safeReadJson<WarmupVerifierFailureLogEntry[]>(path)) ?? []
     current.push(entry)
     await this.writeJson(path, current)
     return path
@@ -161,20 +173,22 @@ export class WarmupRunArtifactService {
     return path
   }
 
-  async completeRun(runId: string, input: {
-    status: WarmupVerifierTerminalRunStatus
-    failed_phase?: WarmupVerifierRunSummary['failed_phase']
-    suite_id?: string | null
-    suite_label?: string | null
-    active_baseline_id?: string | null
-    kickoff_batch_id?: string | null
-    warmup_batch_id?: string | null
-    probe_token?: string | null
-    probe_post_id?: string | null
-    diagnoses?: WarmupVerifierDiagnosis[]
-    surface_matrix?: WarmupVerifierRunSummary['surface_matrix']
-    governance_drill?: WarmupVerifierRunSummary['governance_drill']
-  }): Promise<WarmupVerifierRunSummary> {
+  async completeRun(
+    runId: string,
+    input: {
+      status: WarmupVerifierTerminalRunStatus
+      failed_phase?: WarmupVerifierRunSummary['failed_phase']
+      kickoff_baseline_id?: string | null
+      kickoff_baseline_label?: string | null
+      kickoff_batch_id?: string | null
+      warmup_batch_id?: string | null
+      probe_token?: string | null
+      probe_post_id?: string | null
+      diagnoses?: WarmupVerifierDiagnosis[]
+      surface_matrix?: WarmupVerifierRunSummary['surface_matrix']
+      governance_drill?: WarmupVerifierRunSummary['governance_drill']
+    },
+  ): Promise<WarmupVerifierRunSummary> {
     const summaryPath = this.buildArtifacts(runId).run_summary_path
     const current = (await safeReadJson<WarmupVerifierRunSummary>(summaryPath))!
     const topDiagnosis = input.diagnoses?.[0] ?? null
@@ -182,9 +196,9 @@ export class WarmupRunArtifactService {
       ...current,
       status: input.status,
       failed_phase: input.failed_phase ?? null,
-      suite_id: input.suite_id ?? current.suite_id,
-      suite_label: input.suite_label ?? current.suite_label,
-      active_baseline_id: input.active_baseline_id ?? current.active_baseline_id,
+      kickoff_baseline_id: input.kickoff_baseline_id ?? current.kickoff_baseline_id,
+      kickoff_baseline_label:
+        input.kickoff_baseline_label ?? current.kickoff_baseline_label,
       kickoff_batch_id: input.kickoff_batch_id ?? current.kickoff_batch_id,
       warmup_batch_id: input.warmup_batch_id ?? current.warmup_batch_id,
       probe_token: input.probe_token ?? current.probe_token,
@@ -210,15 +224,20 @@ export class WarmupRunArtifactService {
     const artifacts = this.buildArtifacts(runId)
     const summary = await safeReadJson<WarmupVerifierRunSummary>(artifacts.run_summary_path)
     if (!summary) return null
-    const diagnoses = await safeReadJson<WarmupVerifierDiagnosis[]>(artifacts.diagnosis_path) ?? []
+    const diagnoses =
+      (await safeReadJson<WarmupVerifierDiagnosis[]>(artifacts.diagnosis_path)) ?? []
     return {
       summary,
       artifacts,
       diagnoses,
       top_diagnosis: diagnoses[0] ?? null,
       surface_audit: await safeReadJson<WarmupVerifierSurfaceAudit>(artifacts.surface_audit_path),
-      governance_drill: await safeReadJson<WarmupVerifierGovernanceDrill>(artifacts.governance_drill_path),
-      probe_manifest: await safeReadJson<WarmupVerifierProbeManifest>(artifacts.probe_manifest_path),
+      governance_drill: await safeReadJson<WarmupVerifierGovernanceDrill>(
+        artifacts.governance_drill_path,
+      ),
+      probe_manifest: await safeReadJson<WarmupVerifierProbeManifest>(
+        artifacts.probe_manifest_path,
+      ),
     }
   }
 
@@ -229,7 +248,10 @@ export class WarmupRunArtifactService {
     } catch {
       return []
     }
-    const runDirs = entries.filter((entry) => !entry.endsWith('.json')).sort().reverse()
+    const runDirs = entries
+      .filter((entry) => !entry.endsWith('.json'))
+      .sort()
+      .reverse()
     const summaries: WarmupVerifierRunSummary[] = []
     for (const dir of runDirs.slice(0, limit)) {
       const summary = await safeReadJson<WarmupVerifierRunSummary>(

@@ -1,36 +1,26 @@
 import {
   Prisma,
-  type ActiveBaseline as PrismaActiveBaseline,
-  type GovernanceBatch as PrismaGovernanceBatch,
   type PrismaClient,
-  type WarmStartBatch as PrismaWarmStartBatch,
-  type WarmupSuite as PrismaWarmupSuite,
-  type WarmupSuiteReview as PrismaWarmupSuiteReview,
+  type GovernanceBatch as PrismaGovernanceBatch,
+  type KickoffBaseline as PrismaKickoffBaseline,
 } from '@prisma/client'
 import type {
-  ActiveBaseline,
-  CreateActiveBaselineInput,
   CreateGovernanceBatchInput,
-  CreateWarmStartBatchInput,
-  CreateWarmupSuiteInput,
-  CreateWarmupSuiteReviewInput,
-  GovernanceBatch,
-  UpdateActiveBaselineInput,
+  CreateKickoffBaselineInput,
   UpdateGovernanceBatchInput,
-  UpdateWarmStartBatchInput,
-  UpdateWarmupSuiteInput,
-  WarmStartBatch,
+  UpdateKickoffBaselineInput,
+  GovernanceBatch,
   WarmupGovernanceRepository,
-  WarmupSuite,
-  WarmupSuiteReview,
+  KickoffBaseline,
 } from '../index.js'
+import {
+  fromStorageBatchKind,
+  toStorageBatchKind,
+  type StorageBatchKind,
+} from '../types/warmup-governance.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
-}
-
-function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
-  return value as Prisma.InputJsonValue
 }
 
 export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository {
@@ -38,11 +28,11 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
 
   async hydrate(): Promise<void> {}
 
-  async createSuite(input: CreateWarmupSuiteInput): Promise<WarmupSuite> {
-    const row = await this.prisma.warmupSuite.create({
+  async createBaseline(input: CreateKickoffBaselineInput): Promise<KickoffBaseline> {
+    const row = await this.prisma.kickoffBaseline.create({
       data: {
         state: input.state ?? 'draft',
-        suiteLabel: input.suite_label ?? null,
+        baselineLabel: input.baseline_label ?? null,
         kickoffBatchId: input.kickoff_batch_id ?? null,
         warmupBatchId: input.warmup_batch_id ?? null,
         createdByUserId: input.created_by_user_id ?? null,
@@ -50,47 +40,49 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
         archivedAt: input.archived_at ?? null,
       },
     })
-    return this.toSuite(row)
+    return this.toBaseline(row)
   }
 
-  async findSuiteById(id: string): Promise<WarmupSuite | null> {
-    const row = await this.prisma.warmupSuite.findUnique({ where: { id } })
-    return row ? this.toSuite(row) : null
+  async findBaselineById(id: string): Promise<KickoffBaseline | null> {
+    const row = await this.prisma.kickoffBaseline.findUnique({ where: { id } })
+    return row ? this.toBaseline(row) : null
   }
 
-  async listSuites(): Promise<WarmupSuite[]> {
-    const rows = await this.prisma.warmupSuite.findMany({
+  async listBaselines(): Promise<KickoffBaseline[]> {
+    const rows = await this.prisma.kickoffBaseline.findMany({
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
-    return rows.map((row) => this.toSuite(row))
+    return rows.map((row) => this.toBaseline(row))
   }
 
-  async updateSuite(id: string, patch: UpdateWarmupSuiteInput): Promise<WarmupSuite | null> {
+  async updateBaseline(id: string, patch: UpdateKickoffBaselineInput): Promise<KickoffBaseline | null> {
     try {
-      const row = await this.prisma.warmupSuite.update({
+      const row = await this.prisma.kickoffBaseline.update({
         where: { id },
         data: {
           ...(patch.state !== undefined ? { state: patch.state } : {}),
-          ...(patch.suite_label !== undefined ? { suiteLabel: patch.suite_label } : {}),
-          ...(patch.kickoff_batch_id !== undefined ? { kickoffBatchId: patch.kickoff_batch_id } : {}),
+          ...(patch.baseline_label !== undefined ? { baselineLabel: patch.baseline_label } : {}),
+          ...(patch.kickoff_batch_id !== undefined
+            ? { kickoffBatchId: patch.kickoff_batch_id }
+            : {}),
           ...(patch.warmup_batch_id !== undefined ? { warmupBatchId: patch.warmup_batch_id } : {}),
           ...(patch.activated_at !== undefined ? { activatedAt: patch.activated_at } : {}),
           ...(patch.archived_at !== undefined ? { archivedAt: patch.archived_at } : {}),
           updatedAt: new Date(),
         },
       })
-      return this.toSuite(row)
+      return this.toBaseline(row)
     } catch (error) {
       if (isNotFoundError(error)) return null
       throw error
     }
   }
 
-  async createBatch(input: CreateWarmStartBatchInput): Promise<WarmStartBatch> {
-    const row = await this.prisma.warmStartBatch.create({
+  async createBatch(input: CreateGovernanceBatchInput): Promise<GovernanceBatch> {
+    const row = await this.prisma.governanceBatch.create({
       data: {
-        suiteId: input.suite_id,
-        batchKind: input.batch_kind,
+        baselineId: input.baseline_id,
+        batchKind: toStorageBatchKind(input.batch_kind),
         state: input.state ?? 'draft',
         sourceBatchId: input.source_batch_id ?? null,
         revisionKey: input.revision_key ?? null,
@@ -103,22 +95,22 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
     return this.toBatch(row)
   }
 
-  async findBatchById(id: string): Promise<WarmStartBatch | null> {
-    const row = await this.prisma.warmStartBatch.findUnique({ where: { id } })
+  async findBatchById(id: string): Promise<GovernanceBatch | null> {
+    const row = await this.prisma.governanceBatch.findUnique({ where: { id } })
     return row ? this.toBatch(row) : null
   }
 
-  async listBatchesBySuite(suiteId: string): Promise<WarmStartBatch[]> {
-    const rows = await this.prisma.warmStartBatch.findMany({
-      where: { suiteId },
+  async listBatchesByBaseline(baselineId: string): Promise<GovernanceBatch[]> {
+    const rows = await this.prisma.governanceBatch.findMany({
+      where: { baselineId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map((row) => this.toBatch(row))
   }
 
-  async updateBatch(id: string, patch: UpdateWarmStartBatchInput): Promise<WarmStartBatch | null> {
+  async updateBatch(id: string, patch: UpdateGovernanceBatchInput): Promise<GovernanceBatch | null> {
     try {
-      const row = await this.prisma.warmStartBatch.update({
+      const row = await this.prisma.governanceBatch.update({
         where: { id },
         data: {
           ...(patch.state !== undefined ? { state: patch.state } : {}),
@@ -138,141 +130,33 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
     }
   }
 
-  async createReview(input: CreateWarmupSuiteReviewInput): Promise<WarmupSuiteReview> {
-    const row = await this.prisma.warmupSuiteReview.create({
+  async compareAndSwapBatchRevision(input: {
+    id: string
+    expected_revision_key: string | null
+    next_revision_key: string
+  }): Promise<GovernanceBatch | null> {
+    const result = await this.prisma.governanceBatch.updateMany({
+      where: {
+        id: input.id,
+        revisionKey: input.expected_revision_key,
+      },
       data: {
-        suiteId: input.suite_id,
-        reviewerUserId: input.reviewer_user_id ?? null,
-        decision: input.decision,
-        reasonCodesJson: toPrismaJsonValue(input.reason_codes ?? []),
-        note: input.note ?? null,
+        revisionKey: input.next_revision_key,
+        updatedAt: new Date(),
       },
     })
-    return this.toReview(row)
-  }
-
-  async listReviewsBySuite(suiteId: string): Promise<WarmupSuiteReview[]> {
-    const rows = await this.prisma.warmupSuiteReview.findMany({
-      where: { suiteId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    })
-    return rows.map((row) => this.toReview(row))
-  }
-
-  async findLatestReviewBySuite(suiteId: string): Promise<WarmupSuiteReview | null> {
-    const row = await this.prisma.warmupSuiteReview.findFirst({
-      where: { suiteId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    })
-    return row ? this.toReview(row) : null
-  }
-
-  async createBaseline(input: CreateActiveBaselineInput): Promise<ActiveBaseline> {
-    const row = await this.prisma.activeBaseline.create({
-      data: {
-        suiteId: input.suite_id,
-        kickoffBatchId: input.kickoff_batch_id,
-        warmupBatchId: input.warmup_batch_id,
-        previousBaselineId: input.previous_baseline_id ?? null,
-        isCurrent: input.is_current ?? true,
-        activatedByUserId: input.activated_by_user_id ?? null,
-        activatedAt: input.activated_at ?? new Date(),
-        deactivatedAt: input.deactivated_at ?? null,
-      },
-    })
-    return this.toBaseline(row)
-  }
-
-  async listBaselines(): Promise<ActiveBaseline[]> {
-    const rows = await this.prisma.activeBaseline.findMany({
-      orderBy: [{ activatedAt: 'desc' }, { id: 'desc' }],
-    })
-    return rows.map((row) => this.toBaseline(row))
-  }
-
-  async findBaselineById(id: string): Promise<ActiveBaseline | null> {
-    const row = await this.prisma.activeBaseline.findUnique({ where: { id } })
-    return row ? this.toBaseline(row) : null
-  }
-
-  async findCurrentBaseline(): Promise<ActiveBaseline | null> {
-    const row = await this.prisma.activeBaseline.findFirst({
-      where: { isCurrent: true },
-      orderBy: [{ activatedAt: 'desc' }, { id: 'desc' }],
-    })
-    return row ? this.toBaseline(row) : null
-  }
-
-  async updateBaseline(id: string, patch: UpdateActiveBaselineInput): Promise<ActiveBaseline | null> {
-    try {
-      const row = await this.prisma.activeBaseline.update({
-        where: { id },
-        data: {
-          ...(patch.is_current !== undefined ? { isCurrent: patch.is_current } : {}),
-          ...(patch.previous_baseline_id !== undefined ? { previousBaselineId: patch.previous_baseline_id } : {}),
-          ...(patch.activated_by_user_id !== undefined ? { activatedByUserId: patch.activated_by_user_id } : {}),
-          ...(patch.activated_at !== undefined ? { activatedAt: patch.activated_at } : {}),
-          ...(patch.deactivated_at !== undefined ? { deactivatedAt: patch.deactivated_at } : {}),
-        },
-      })
-      return this.toBaseline(row)
-    } catch (error) {
-      if (isNotFoundError(error)) return null
-      throw error
+    if (result.count !== 1) {
+      return null
     }
+    const row = await this.prisma.governanceBatch.findUnique({ where: { id: input.id } })
+    return row ? this.toBatch(row) : null
   }
 
-  async createGovernanceBatch(input: CreateGovernanceBatchInput): Promise<GovernanceBatch> {
-    const row = await this.prisma.governanceBatch.create({
-      data: {
-        action: input.action,
-        requestedByUserId: input.requested_by_user_id ?? null,
-        suiteId: input.suite_id ?? null,
-        warmStartBatchIdsJson: toPrismaJsonValue(input.warm_start_batch_ids ?? []),
-        contentIdsJson: toPrismaJsonValue(input.content_ids ?? []),
-        scopeJson: toPrismaJsonValue(input.scope_json ?? {}),
-        previewJson: toPrismaJsonValue(input.preview_json ?? {}),
-        resultJson: input.result_json === undefined ? Prisma.DbNull : toPrismaJsonValue(input.result_json),
-        executedAt: input.executed_at ?? null,
-      },
-    })
-    return this.toGovernanceBatch(row)
-  }
-
-  async findGovernanceBatchById(id: string): Promise<GovernanceBatch | null> {
-    const row = await this.prisma.governanceBatch.findUnique({ where: { id } })
-    return row ? this.toGovernanceBatch(row) : null
-  }
-
-  async updateGovernanceBatch(id: string, patch: UpdateGovernanceBatchInput): Promise<GovernanceBatch | null> {
-    try {
-      const row = await this.prisma.governanceBatch.update({
-        where: { id },
-        data: {
-          ...(patch.preview_json !== undefined ? { previewJson: toPrismaJsonValue(patch.preview_json) } : {}),
-          ...(patch.result_json !== undefined
-            ? {
-                resultJson: patch.result_json === null
-                  ? Prisma.DbNull
-                  : toPrismaJsonValue(patch.result_json),
-              }
-            : {}),
-          ...(patch.executed_at !== undefined ? { executedAt: patch.executed_at } : {}),
-          updatedAt: new Date(),
-        },
-      })
-      return this.toGovernanceBatch(row)
-    } catch (error) {
-      if (isNotFoundError(error)) return null
-      throw error
-    }
-  }
-
-  private toSuite(row: PrismaWarmupSuite): WarmupSuite {
+  private toBaseline(row: PrismaKickoffBaseline): KickoffBaseline {
     return {
       id: row.id,
       state: row.state,
-      suite_label: row.suiteLabel,
+      baseline_label: row.baselineLabel,
       kickoff_batch_id: row.kickoffBatchId,
       warmup_batch_id: row.warmupBatchId,
       created_by_user_id: row.createdByUserId,
@@ -283,11 +167,11 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
     }
   }
 
-  private toBatch(row: PrismaWarmStartBatch): WarmStartBatch {
+  private toBatch(row: PrismaGovernanceBatch): GovernanceBatch {
     return {
       id: row.id,
-      suite_id: row.suiteId,
-      batch_kind: row.batchKind,
+      baseline_id: row.baselineId,
+      batch_kind: fromStorageBatchKind(row.batchKind as StorageBatchKind),
       state: row.state,
       source_batch_id: row.sourceBatchId,
       revision_key: row.revisionKey,
@@ -295,49 +179,6 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
       notes: row.notes,
       activated_at: row.activatedAt,
       archived_at: row.archivedAt,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-    }
-  }
-
-  private toReview(row: PrismaWarmupSuiteReview): WarmupSuiteReview {
-    return {
-      id: row.id,
-      suite_id: row.suiteId,
-      reviewer_user_id: row.reviewerUserId,
-      decision: row.decision,
-      reason_codes: ((row.reasonCodesJson as unknown[]) ?? []) as WarmupSuiteReview['reason_codes'],
-      note: row.note,
-      created_at: row.createdAt,
-    }
-  }
-
-  private toBaseline(row: PrismaActiveBaseline): ActiveBaseline {
-    return {
-      id: row.id,
-      suite_id: row.suiteId,
-      kickoff_batch_id: row.kickoffBatchId,
-      warmup_batch_id: row.warmupBatchId,
-      previous_baseline_id: row.previousBaselineId,
-      is_current: row.isCurrent,
-      activated_by_user_id: row.activatedByUserId,
-      activated_at: row.activatedAt,
-      deactivated_at: row.deactivatedAt,
-    }
-  }
-
-  private toGovernanceBatch(row: PrismaGovernanceBatch): GovernanceBatch {
-    return {
-      id: row.id,
-      action: row.action,
-      requested_by_user_id: row.requestedByUserId,
-      suite_id: row.suiteId,
-      warm_start_batch_ids: ((row.warmStartBatchIdsJson as unknown[]) ?? []) as string[],
-      content_ids: ((row.contentIdsJson as unknown[]) ?? []) as string[],
-      scope_json: ((row.scopeJson as Record<string, unknown> | null) ?? {}),
-      preview_json: ((row.previewJson as Record<string, unknown> | null) ?? {}),
-      result_json: (row.resultJson as Record<string, unknown> | null) ?? null,
-      executed_at: row.executedAt,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

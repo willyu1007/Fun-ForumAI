@@ -20,9 +20,9 @@ export const REQUIRED_WORKER_ASSETS = [
   'ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md',
 ]
 
-export const REQUIRED_WARM_START_ASSETS = [
-  'src/backend/dev/launch-warm-start.ts',
-  'src/backend/launch/launch-warm-start.ts',
+export const REQUIRED_KICKOFF_ASSETS = [
+  'src/backend/dev/launch-kickoff.ts',
+  'src/backend/launch/kickoff.ts',
 ]
 
 export const REQUIRED_FRONTEND_DELIVERY_ASSETS = [
@@ -215,10 +215,11 @@ export function validateLaunchRuntimeOverlay(relativePath, expectedAppEnv) {
   }
 
   const overlayKeys = Object.keys(parsed)
-  const legacyPins = overlayKeys.filter((key) =>
-    key.startsWith(LEGACY_BACKEND_FLAG_PREFIX)
-    || key.startsWith(LEGACY_FRONTEND_FLAG_PREFIX)
-    || key.startsWith(LEGACY_MOBILE_FLAG_PREFIX),
+  const legacyPins = overlayKeys.filter(
+    (key) =>
+      key.startsWith(LEGACY_BACKEND_FLAG_PREFIX) ||
+      key.startsWith(LEGACY_FRONTEND_FLAG_PREFIX) ||
+      key.startsWith(LEGACY_MOBILE_FLAG_PREFIX),
   )
   const issues = []
   if (parsed.APP_ENV !== expectedAppEnv) {
@@ -373,12 +374,7 @@ export function validatePackagingWireup() {
     return { ok: false, detail: `missing ${dockerignorePath}` }
   }
   const dockerignore = readText(dockerignorePath)
-  const requiredDockerignorePatterns = [
-    '**/__tests__/',
-    '**/*.test.*',
-    '**/*.spec.*',
-    'tests/',
-  ]
+  const requiredDockerignorePatterns = ['**/__tests__/', '**/*.test.*', '**/*.spec.*', 'tests/']
   const missingDockerignorePatterns = requiredDockerignorePatterns.filter(
     (pattern) => !dockerignore.includes(pattern),
   )
@@ -458,40 +454,85 @@ export function validateLaunchMembershipBootstrapAssets() {
   }
 }
 
-export function validateLaunchWarmStartAssets() {
+export function validateKickoffAssets() {
   const packageJson = JSON.parse(readText('package.json'))
-  const warmStartScript = packageJson.scripts?.['launch:warm-start']
-  if (warmStartScript !== 'tsx src/backend/dev/launch-warm-start.ts') {
+  const kickoffScript = packageJson.scripts?.['launch.kickoff']
+  if (kickoffScript !== 'tsx src/backend/dev/launch-kickoff.ts') {
     return {
       ok: false,
-      detail: 'package.json is missing launch:warm-start',
+      detail: 'package.json is missing launch.kickoff',
+    }
+  }
+  if (packageJson.scripts?.['launch:warm-start']) {
+    return {
+      ok: false,
+      detail: 'legacy launch:warm-start script must be removed',
     }
   }
 
-  const missing = REQUIRED_WARM_START_ASSETS.filter(
+  const missing = REQUIRED_KICKOFF_ASSETS.filter(
     (relativePath) => !existsSync(resolve(ROOT, relativePath)),
   )
   if (missing.length > 0) {
     return {
       ok: false,
-      detail: `missing warm-start assets: ${missing.join(', ')}`,
+      detail: `missing kickoff assets: ${missing.join(', ')}`,
     }
   }
 
-  const warmStartModule = readText('src/backend/launch/launch-warm-start.ts')
-  const warmStartCli = readText('src/backend/dev/launch-warm-start.ts')
+  const forbiddenKickoffAssets = [
+    'src/backend/assets/warm-start-foundation',
+    'public/kickoff-boards',
+  ].filter((relativePath) => existsSync(resolve(ROOT, relativePath)))
+  if (forbiddenKickoffAssets.length > 0) {
+    return {
+      ok: false,
+      detail: `kickoff assets must not live outside .ai/.tmp: ${forbiddenKickoffAssets.join(', ')}`,
+    }
+  }
+
+  const kickoffModule = readText('src/backend/launch/kickoff.ts')
+  const kickoffCli = readText('src/backend/dev/launch-kickoff.ts')
+  const warmStartService = readText('src/backend/services/warmup-governance-service.ts')
+  const adminKickoffRoutes = readText('src/backend/routes/admin/admin-kickoff-routes.ts')
+  const warmupVerifierShared = readText('src/shared/warmup-verifier.ts')
+  const launchVerifyScript = readText('scripts/verify-launch-readiness.mjs')
+  const driftTokens = [
+    'foundation_candidate',
+    'warmup_candidate',
+    'warmup_topup_candidate',
+    'suite_resolution',
+    'suite-snapshot',
+    'has_active_baseline',
+    'foundation_layer_ready',
+    'last_review_decision_ok',
+  ]
+  const driftFree = !driftTokens.some((token) =>
+    [
+      warmStartService,
+      adminKickoffRoutes,
+      warmupVerifierShared,
+      launchVerifyScript,
+    ].some((text) => text.includes(token)),
+  )
   const ok =
-    warmStartModule.includes('runLaunchWarmStart') &&
-    warmStartModule.includes('CURATED_LAUNCH_WARM_START_POSTS') &&
-    warmStartModule.includes('community_occupancy') &&
-    warmStartModule.includes('required_community_floor') &&
-    warmStartCli.includes('runLaunchWarmStart')
+    kickoffModule.includes('.ai/.tmp/kickoff/manifest.v1.yaml') &&
+    kickoffModule.includes('kickoff bundle paths must stay under') &&
+    kickoffCli.includes('warmupGovernanceService.importKickoffBaseline') &&
+    warmStartService.includes("generation_mode: 'kickoff_import'") &&
+    warmStartService.includes("generation_mode: 'warmup_runtime'") &&
+    adminKickoffRoutes.includes('/admin/kickoff') &&
+    adminKickoffRoutes.includes('/admin/warmup/runs') &&
+    warmupVerifierShared.includes('kickoff_resolution') &&
+    launchVerifyScript.includes('has_kickoff_baseline') &&
+    launchVerifyScript.includes('kickoff_layer_ready') &&
+    driftFree
 
   return {
     ok,
     detail: ok
-      ? 'launch warm-start command and curated bootstrap module exist'
-      : 'launch warm-start wiring or curated bootstrap assets are incomplete',
+      ? 'launch.kickoff wiring and runtime-only warmup guardrails are in place'
+      : 'launch kickoff wiring, runtime-only warmup guardrails, or drift checks are incomplete',
   }
 }
 
@@ -539,19 +580,22 @@ export function validateLaunchRuntimeContracts() {
 
 export function validateDevOnlyStartupHardening() {
   const appModule = readText('src/backend/app.ts')
-  const fixtureModule = readText('src/backend/dev/dev-seed-fixtures.ts')
+  const dockerfile = readText('ops/packaging/services/llm-forum.Dockerfile')
+  const kickoffCli = readText('src/backend/dev/launch-kickoff.ts')
   const ok =
-    !appModule.includes("import { devSeedRouter } from './routes/dev-seed.js'") &&
-    appModule.includes("await import('./routes/dev-seed.js')") &&
-    fixtureModule.includes('function getCanonicalCommunities()') &&
-    !fixtureModule.includes(
-      'const CANONICAL_COMMUNITIES: DevSeedCommunitySpec[] = listLaunchCommunitySeeds()',
-    )
+    !appModule.includes("await import('./routes/dev-seed.js')") &&
+    !appModule.includes("await import('./routes/dev-badge-debug.js')") &&
+    !appModule.includes("await import('./routes/dev-guidance.js')") &&
+    dockerfile.includes('COPY package.json ./package.json') &&
+    dockerfile.includes('COPY --from=builder /app/public ./public') &&
+    dockerfile.includes('mkdir -p /app/.ai/.tmp') &&
+    kickoffCli.includes('closeRuntimeInfrastructure') &&
+    kickoffCli.includes('disconnectPrisma')
 
   return {
     ok,
     detail: ok
-      ? 'production startup no longer statically imports dev-seed launch fixtures'
+      ? 'startup preserves ESM semantics, bundled public assets, writable .ai/.tmp, and clean kickoff CLI shutdown'
       : 'dev-only startup hardening is incomplete',
   }
 }

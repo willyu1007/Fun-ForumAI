@@ -47,11 +47,13 @@ RUN if [ -n "$FRONTEND_BUILD_PROFILE" ]; then node ops/packaging/scripts/fronten
 FROM node:20-alpine
 WORKDIR /app
 
+COPY package.json ./package.json
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/dist/frontend ./dist/frontend
+COPY --from=builder /app/public ./public
 COPY src/backend ./src/backend
 COPY src/shared ./src/shared
 COPY config ./config
@@ -79,7 +81,7 @@ RUN set -eu; \
     fi; \
   }; \
   check_no_repo_tests src scripts dist config docs env .ai packages; \
-  mkdir -p /app/var/inclination-assets && chown -R node:node /app/var
+  mkdir -p /app/.ai/.tmp /app/var/inclination-assets && chown -R node:node /app/.ai /app/var
 
 USER node
 EXPOSE 4000

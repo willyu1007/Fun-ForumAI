@@ -34,20 +34,24 @@ describe('WarmupRunArtifactService', () => {
     }
     expect(readFileSync(initialDetail!.artifacts.diagnosis_path, 'utf8')).toContain('[]')
 
-    const diagnoses: WarmupVerifierDiagnosis[] = [{
-      phase: 'surface_search',
-      subsystem: 'search_projection',
-      code: 'surface.search.missing_expected_content',
-      severity: 'error',
-      summary_zh: 'search 没有命中 probe 内容。',
-      evidence_refs: [{
-        artifact: 'surface-audit.json',
-        pointer: '$.initial.search',
-        note: null,
-      }],
-      recommended_next_check: '检查 search projection refresh。',
-      raw_reason: null,
-    }]
+    const diagnoses: WarmupVerifierDiagnosis[] = [
+      {
+        phase: 'surface_search',
+        subsystem: 'search_projection',
+        code: 'surface.search.missing_expected_content',
+        severity: 'error',
+        summary_zh: 'search 没有命中 probe 内容。',
+        evidence_refs: [
+          {
+            artifact: 'surface-audit.json',
+            pointer: '$.initial.search',
+            note: null,
+          },
+        ],
+        recommended_next_check: '检查 search projection refresh。',
+        raw_reason: null,
+      },
+    ]
 
     const probeManifest: WarmupVerifierProbeManifest = {
       run_id: run.run_id,
@@ -113,8 +117,8 @@ describe('WarmupRunArtifactService', () => {
       after_cleanup: null,
     }
 
-    await service.writeSuiteSnapshotBefore(run.run_id, { suite: 'before' })
-    await service.writeSuiteSnapshotAfter(run.run_id, { suite: 'after' })
+    await service.writeKickoffSnapshotBefore(run.run_id, { kickoff: 'before' })
+    await service.writeKickoffSnapshotAfter(run.run_id, { kickoff: 'after' })
     await service.writeBaselineAdmissionBefore(run.run_id, { allow_public_growth: true })
     await service.writeBaselineAdmissionAfter(run.run_id, { allow_public_growth: true })
     await service.writeProbeManifest(run.run_id, probeManifest)
@@ -149,9 +153,8 @@ describe('WarmupRunArtifactService', () => {
     await service.completeRun(run.run_id, {
       status: 'failed',
       failed_phase: 'surface_search',
-      suite_id: 'suite-1',
-      suite_label: 'suite label',
-      active_baseline_id: 'baseline-1',
+      kickoff_baseline_id: 'kickoff-1',
+      kickoff_baseline_label: 'kickoff label',
       kickoff_batch_id: 'kickoff-batch-1',
       warmup_batch_id: 'warmup-batch-1',
       probe_token: probeManifest.probe_token,

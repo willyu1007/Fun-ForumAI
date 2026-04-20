@@ -23,6 +23,7 @@
     "workspace-package-aliases.ts",
     "prisma.config.ts",
     "src/backend",
-    "src/shared"
+    "src/shared",
+    ".ai/.tmp/kickoff-local/src/shared"
   ]
 }

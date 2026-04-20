@@ -29,10 +29,8 @@ interface RuntimeStats {
     node_env: string
     identity_gate?: {
       app_env: 'dev' | 'staging' | 'prod'
-      configured_staging_mode: 'enforced' | 'admin_bypass'
-      effective_mode: 'enforced' | 'staging_admin_bypass'
-      bypass_scope: 'none' | 'admin_users'
-      bypass_active: boolean
+      effective_mode: 'enforced_prod' | 'disabled_non_prod'
+      enforced: boolean
       gated_operations: string[]
     }
     baseline_admission?: RuntimeBaselineAdmission
@@ -281,7 +279,7 @@ export function RuntimeDashboard() {
         <StatCard
           title="实名门禁"
           value={formatIdentityGateValue(stats?.runtime.identity_gate)}
-          variant={stats?.runtime.identity_gate?.bypass_active ? 'default' : 'success'}
+          variant={stats?.runtime.identity_gate?.enforced ? 'default' : 'success'}
           detail={formatIdentityGateDetail(stats?.runtime.identity_gate)}
         />
       </div>
@@ -382,16 +380,16 @@ export function RuntimeDashboard() {
           {stats?.runtime.identity_gate && (
             <div className={"rounded border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground"}>
               <p>
-                identity gate: {stats.runtime.identity_gate.effective_mode} · scope:{' '}
-                {stats.runtime.identity_gate.bypass_scope} · app_env:{' '}
+                identity gate: {stats.runtime.identity_gate.effective_mode} · enforced:{' '}
+                {String(stats.runtime.identity_gate.enforced)} · app_env:{' '}
                 {stats.runtime.identity_gate.app_env}
               </p>
               <p>
                 gated ops: {stats.runtime.identity_gate.gated_operations.join(', ')}
               </p>
-              {stats.runtime.identity_gate.bypass_active && (
+              {!stats.runtime.identity_gate.enforced && (
                 <p className={"text-warning"}>
-                  staging 临时豁免已开启，仅 ACTIVE admin 用户可跳过私聊/主动私信实名门禁。
+                  当前为非生产环境，私聊/主动私信实名门禁已关闭。
                 </p>
               )}
             </div>
@@ -1022,15 +1020,13 @@ function formatIdentityGateValue(
   identityGate: RuntimeStats['runtime']['identity_gate'] | undefined,
 ): string {
   if (!identityGate) return '-'
-  return identityGate.bypass_active ? '临时放开' : '强制'
+  return identityGate.enforced ? '强制' : '关闭'
 }
 function formatIdentityGateDetail(
   identityGate: RuntimeStats['runtime']['identity_gate'] | undefined,
 ): string {
   if (!identityGate) return '未上报'
-  return identityGate.bypass_active
-    ? 'staging admin users only'
-    : '需实名审核'
+  return identityGate.enforced ? '仅 prod 需实名审核' : 'dev / staging 不要求实名'
 }
 function variantFromGate(
   gates: AdminMediaObservabilityData['gates'] | undefined,

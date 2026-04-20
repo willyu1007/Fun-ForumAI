@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { config } from '../lib/config.js'
 import type { LLMGateway } from '../llm/llm-gateway.js'
-import type { GlobalHighlightsPayload, GlobalHighlightsService } from './global-highlights-service.js'
+import type {
+  GlobalHighlightsPayload,
+  GlobalHighlightsService,
+} from './global-highlights-service.js'
 import type { HomeProgrammingPayload, HomeProgrammingService } from './home-programming-service.js'
 import type { ForumReadService } from './forum-read-service.js'
 import type { SearchService } from './search-service.js'
@@ -9,15 +12,14 @@ import type { PostRepository } from '../repos/index.js'
 import type { SearchProjectionService } from './search-projection-service.js'
 import type { PostScheduler } from '../runtime/post-scheduler.js'
 import type {
+  KickoffBaselineDetail,
   RuntimeBaselineAdmission,
-  WarmupSuiteDetail,
   WarmupGovernanceService,
 } from './warmup-governance-service.js'
 import {
   createVerifierDiagnosis,
   mapActivationReasonToDiagnosis,
   mapBaselineReasonToDiagnosis,
-  mapReviewReasonToDiagnosis,
   sortDiagnoses,
 } from './warmup-verifier-diagnosis.js'
 import { WarmupRunArtifactService } from './warmup-run-artifact-service.js'
@@ -39,9 +41,15 @@ type SearchPayload = Awaited<ReturnType<SearchService['search']>>
 
 export interface WarmupClosureVerifierServiceDeps {
   artifactService: WarmupRunArtifactService
-  warmupGovernanceService: Pick<WarmupGovernanceService, 'getRuntimeBaselineAdmission' | 'getSuiteDetail'>
+  warmupGovernanceService: Pick<
+    WarmupGovernanceService,
+    'getRuntimeBaselineAdmission' | 'getKickoffDetail'
+  >
   postScheduler: Pick<PostScheduler, 'forcePost'>
-  postRepo: Pick<PostRepository, 'findById' | 'findByWarmStartBatches' | 'updateContent' | 'updateModerationMetadata'>
+  postRepo: Pick<
+    PostRepository,
+    'findById' | 'findByGovernanceBatches' | 'updateContent' | 'updateModerationMetadata'
+  >
   forumReadService: Pick<ForumReadService, 'getFeed'>
   searchService: Pick<SearchService, 'search'>
   homeProgrammingService: Pick<HomeProgrammingService, 'getHome'>
@@ -63,15 +71,13 @@ interface SurfaceAuditContext {
 export class WarmupClosureVerifierService {
   constructor(private readonly deps: WarmupClosureVerifierServiceDeps) {}
 
-  async run(input?: {
-    triggered_by_user_id?: string | null
-  }): Promise<WarmupVerifierRunDetail> {
+  async run(input?: { triggered_by_user_id?: string | null }): Promise<WarmupVerifierRunDetail> {
     const runSummary = await this.deps.artifactService.createRun({
       triggered_by_user_id: input?.triggered_by_user_id ?? null,
     })
     const runId = runSummary.run_id
     const diagnoses: WarmupVerifierDiagnosis[] = []
-    let suiteDetail: WarmupSuiteDetail | null = null
+    let kickoffDetail: KickoffBaselineDetail | null = null
     let admissionBefore: RuntimeBaselineAdmission | null = null
     let admissionAfter: RuntimeBaselineAdmission | null = null
     const surfaceAudit: WarmupVerifierSurfaceAudit = {
@@ -127,83 +133,93 @@ export class WarmupClosureVerifierService {
     try {
       admissionBefore = await runOrDiagnose(
         () => this.deps.warmupGovernanceService.getRuntimeBaselineAdmission(),
-        (message) => createVerifierDiagnosis({
-          phase: 'suite_resolution',
-          subsystem: 'warmup_governance',
-          code: 'suite_resolution.baseline_admission_read_failed',
-          summary_zh: `读取 baseline admission 失败：${message}`,
-          recommended_next_check: '检查 warmup governance service、baseline state 读取路径和运行时依赖。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'kickoff_resolution',
+            subsystem: 'warmup_governance',
+            code: 'kickoff_resolution.baseline_admission_read_failed',
+            summary_zh: `读取 baseline admission 失败：${message}`,
+            recommended_next_check:
+              '检查 warmup governance service、baseline state 读取路径和运行时依赖。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
-      if (!(await this.tryWriteArtifact(
-        'baseline_admission_before',
-        () => this.deps.artifactService.writeBaselineAdmissionBefore(runId, admissionBefore),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'baseline_admission_before',
+          () => this.deps.artifactService.writeBaselineAdmissionBefore(runId, admissionBefore),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
 
-      if (!admissionBefore.suite_id) {
-        addDiagnosis(mapBaselineReasonToDiagnosis('no_active_baseline', '$.reasons[0]'))
-        throw new Error('missing_active_baseline')
+      if (!admissionBefore.kickoff_baseline_id) {
+        addDiagnosis(mapBaselineReasonToDiagnosis('no_kickoff_baseline', '$.reasons[0]'))
+        throw new Error('missing_kickoff_baseline')
       }
-      const activeSuiteId = admissionBefore.suite_id
+      const activeSuiteId = admissionBefore.kickoff_baseline_id
 
-      const activeAdmission = admissionBefore
-      suiteDetail = await runOrDiagnose(
-        () => this.deps.warmupGovernanceService.getSuiteDetail(activeSuiteId),
-        (message) => createVerifierDiagnosis({
-          phase: 'suite_resolution',
-          subsystem: 'warmup_governance',
-          code: 'suite_resolution.suite_detail_read_failed',
-          summary_zh: `读取 active suite 详情失败：${message}`,
-          recommended_next_check: '检查 suite detail 查询路径、batch 关联和 governance 数据完整性。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+      const baselineAdmission = admissionBefore
+      kickoffDetail = await runOrDiagnose(
+        () => this.deps.warmupGovernanceService.getKickoffDetail(activeSuiteId),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'kickoff_resolution',
+            subsystem: 'warmup_governance',
+            code: 'kickoff_resolution.kickoff_detail_read_failed',
+            summary_zh: `读取 kickoff baseline 详情失败：${message}`,
+            recommended_next_check:
+              '检查 kickoff baseline 查询路径、batch 关联和 governance 数据完整性。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
-      if (!(await this.tryWriteArtifact(
-        'suite_snapshot_before',
-        () => this.deps.artifactService.writeSuiteSnapshotBefore(runId, suiteDetail),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'kickoff_snapshot_before',
+          () => this.deps.artifactService.writeKickoffSnapshotBefore(runId, kickoffDetail),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
 
       if (!this.deps.runtimeLoop.isRunning) {
-        addDiagnosis(createVerifierDiagnosis({
-          phase: 'baseline_admission',
-          subsystem: 'runtime_gate',
-          code: 'runtime.worker_not_running',
-          summary_zh: 'runtime loop 未运行，warm-up 闭环探针无法执行。',
-          recommended_next_check: '检查 worker 进程、runtime start 状态以及调度循环是否已启动。',
-          artifact: 'baseline-admission-before.json',
-        }))
+        addDiagnosis(
+          createVerifierDiagnosis({
+            phase: 'baseline_admission',
+            subsystem: 'runtime_gate',
+            code: 'runtime.worker_not_running',
+            summary_zh: 'runtime loop 未运行，warm-up 闭环探针无法执行。',
+            recommended_next_check: '检查 worker 进程、runtime start 状态以及调度循环是否已启动。',
+            artifact: 'baseline-admission-before.json',
+          }),
+        )
       }
 
       if (!this.deps.llmGateway.isConfigured) {
-        addDiagnosis(createVerifierDiagnosis({
-          phase: 'runtime_probe_write',
-          subsystem: 'post_scheduler',
-          code: 'runtime.llm_not_configured',
-          summary_zh: '当前没有可用 LLM 凭证，受控 probe 无法生成。',
-          recommended_next_check: '检查 worker 的 LLM 凭证装载、provider admission 和 runtime stats。',
-          artifact: 'failure-log.json',
-        }))
+        addDiagnosis(
+          createVerifierDiagnosis({
+            phase: 'runtime_probe_write',
+            subsystem: 'post_scheduler',
+            code: 'runtime.llm_not_configured',
+            summary_zh: '当前没有可用 LLM 凭证，受控 probe 无法生成。',
+            recommended_next_check:
+              '检查 worker 的 LLM 凭证装载、provider admission 和 runtime stats。',
+            artifact: 'failure-log.json',
+          }),
+        )
       }
 
-      if (!suiteDetail.activation_readiness.ok) {
-        for (const [index, reason] of suiteDetail.activation_readiness.reasons.entries()) {
-          addDiagnosis(mapActivationReasonToDiagnosis(reason, `$.activation_readiness.reasons[${index}]`))
-        }
-      }
-      if (suiteDetail.latest_review?.decision === 'not_passed') {
-        for (const [index, reason] of suiteDetail.latest_review.reason_codes.entries()) {
-          addDiagnosis(mapReviewReasonToDiagnosis(reason, `$.latest_review.reason_codes[${index}]`))
+      if (!kickoffDetail.verification.ok) {
+        for (const [index, reason] of kickoffDetail.verification.missing.entries()) {
+          addDiagnosis(
+            mapActivationReasonToDiagnosis(reason, `$.verification.missing[${index}]`),
+          )
         }
       }
 
@@ -223,55 +239,64 @@ export class WarmupClosureVerifierService {
         forced: true,
       }
       const probeResult = await runOrDiagnose(
-        () => this.deps.postScheduler.forcePost({
-          probe_context: probeContext,
-        }),
-        (message) => createVerifierDiagnosis({
-          phase: 'runtime_probe_write',
-          subsystem: 'post_scheduler',
-          code: 'runtime.probe_write_exception',
-          summary_zh: `受控 probe 调度抛出异常：${message}`,
-          recommended_next_check: '检查 PostScheduler、LLM 调用链和 runtime worker 日志。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+        () =>
+          this.deps.postScheduler.forcePost({
+            probe_context: probeContext,
+          }),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'runtime_probe_write',
+            subsystem: 'post_scheduler',
+            code: 'runtime.probe_write_exception',
+            summary_zh: `受控 probe 调度抛出异常：${message}`,
+            recommended_next_check: '检查 PostScheduler、LLM 调用链和 runtime worker 日志。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
       if (!probeResult.post_id) {
-        addDiagnosis(createVerifierDiagnosis({
-          phase: 'runtime_probe_write',
-          subsystem: 'post_scheduler',
-          code: probeResult.error ? 'runtime.probe_write_failed' : 'runtime.probe_not_persisted',
-          summary_zh: probeResult.error
-            ? `受控 probe 执行失败：${probeResult.error}`
-            : '受控 probe 没有写出可持久化的 post。',
-          recommended_next_check: '检查 PostScheduler 选人选社区、LLM 解析结果和 DataPlaneWriter 写入日志。',
-          artifact: 'failure-log.json',
-          raw_reason: probeResult.error ?? null,
-        }))
+        addDiagnosis(
+          createVerifierDiagnosis({
+            phase: 'runtime_probe_write',
+            subsystem: 'post_scheduler',
+            code: probeResult.error ? 'runtime.probe_write_failed' : 'runtime.probe_not_persisted',
+            summary_zh: probeResult.error
+              ? `受控 probe 执行失败：${probeResult.error}`
+              : '受控 probe 没有写出可持久化的 post。',
+            recommended_next_check:
+              '检查 PostScheduler 选人选社区、LLM 解析结果和 DataPlaneWriter 写入日志。',
+            artifact: 'failure-log.json',
+            raw_reason: probeResult.error ?? null,
+          }),
+        )
         throw new Error('probe_write_failed')
       }
 
       const probePost = await runOrDiagnose(
         () => this.deps.postRepo.findById(probeResult.post_id!),
-        (message) => createVerifierDiagnosis({
-          phase: 'runtime_probe_write',
-          subsystem: 'forum_write',
-          code: 'runtime.probe_post_read_failed',
-          summary_zh: `probe 写出后回读失败：${message}`,
-          recommended_next_check: '检查 post repository、事务提交与写后回读路径。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'runtime_probe_write',
+            subsystem: 'forum_write',
+            code: 'runtime.probe_post_read_failed',
+            summary_zh: `probe 写出后回读失败：${message}`,
+            recommended_next_check: '检查 post repository、事务提交与写后回读路径。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
       if (!probePost) {
-        addDiagnosis(createVerifierDiagnosis({
-          phase: 'runtime_probe_write',
-          subsystem: 'forum_write',
-          code: 'runtime.probe_post_missing_after_write',
-          summary_zh: 'probe 返回了 post_id，但持久层中找不到对应内容。',
-          recommended_next_check: '检查 ForumWriteService/DataPlaneWriter 是否出现写后回读不一致。',
-          artifact: 'probe-manifest.json',
-        }))
+        addDiagnosis(
+          createVerifierDiagnosis({
+            phase: 'runtime_probe_write',
+            subsystem: 'forum_write',
+            code: 'runtime.probe_post_missing_after_write',
+            summary_zh: 'probe 返回了 post_id，但持久层中找不到对应内容。',
+            recommended_next_check:
+              '检查 ForumWriteService/DataPlaneWriter 是否出现写后回读不一致。',
+            artifact: 'probe-manifest.json',
+          }),
+        )
         throw new Error('probe_post_missing')
       }
 
@@ -289,26 +314,30 @@ export class WarmupClosureVerifierService {
         state: probePost.state,
         created_at: new Date().toISOString(),
       }
-      if (!(await this.tryWriteArtifact(
-        'probe_manifest',
-        () => this.deps.artifactService.writeProbeManifest(runId, probeManifest),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'probe_manifest',
+          () => this.deps.artifactService.writeProbeManifest(runId, probeManifest),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
 
       const baselinePostIds = await runOrDiagnose(
-        () => this.loadBaselinePostIds(activeAdmission),
-        (message) => createVerifierDiagnosis({
-          phase: 'suite_resolution',
-          subsystem: 'warmup_governance',
-          code: 'suite_resolution.baseline_posts_resolution_failed',
-          summary_zh: `解析 active baseline 内容集合失败：${message}`,
-          recommended_next_check: '检查 kickoff/warmup batch 到 post 的解析链路和 repository 查询。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+        () => this.loadBaselinePostIds(baselineAdmission),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'kickoff_resolution',
+            subsystem: 'warmup_governance',
+            code: 'kickoff_resolution.baseline_posts_resolution_failed',
+            summary_zh: `解析 kickoff baseline 内容集合失败：${message}`,
+            recommended_next_check:
+              '检查 kickoff/warmup batch 到 post 的解析链路和 repository 查询。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
       surfaceAudit.initial = await this.auditSurfaces({
         probe_post_id: probePost.id,
@@ -318,12 +347,14 @@ export class WarmupClosureVerifierService {
         search_expectation: 'probe_visible',
         stage: 'initial',
       })
-      if (!(await this.tryWriteArtifact(
-        'surface_audit_initial',
-        () => this.deps.artifactService.writeSurfaceAudit(runId, surfaceAudit),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'surface_audit_initial',
+          () => this.deps.artifactService.writeSurfaceAudit(runId, surfaceAudit),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
       this.collectSurfaceDiagnoses(surfaceAudit.initial, addDiagnosis)
@@ -388,131 +419,161 @@ export class WarmupClosureVerifierService {
         addDiagnosis,
       })
 
-      if (!(await this.tryWriteArtifact(
-        'surface_audit',
-        () => this.deps.artifactService.writeSurfaceAudit(runId, surfaceAudit),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'surface_audit',
+          () => this.deps.artifactService.writeSurfaceAudit(runId, surfaceAudit),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
-      if (!(await this.tryWriteArtifact(
-        'governance_drill',
-        () => this.deps.artifactService.writeGovernanceDrill(runId, governanceDrill),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'governance_drill',
+          () => this.deps.artifactService.writeGovernanceDrill(runId, governanceDrill),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
 
       admissionAfter = await runOrDiagnose(
         () => this.deps.warmupGovernanceService.getRuntimeBaselineAdmission(),
-        (message) => createVerifierDiagnosis({
-          phase: 'suite_resolution',
-          subsystem: 'warmup_governance',
-          code: 'suite_resolution.baseline_admission_refresh_failed',
-          summary_zh: `回读 baseline admission 失败：${message}`,
-          recommended_next_check: '检查 governance read model 是否在 verifier 运行后仍可读取。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'kickoff_resolution',
+            subsystem: 'warmup_governance',
+            code: 'kickoff_resolution.baseline_admission_refresh_failed',
+            summary_zh: `回读 baseline admission 失败：${message}`,
+            recommended_next_check: '检查 governance read model 是否在 verifier 运行后仍可读取。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
-      if (!(await this.tryWriteArtifact(
-        'baseline_admission_after',
-        () => this.deps.artifactService.writeBaselineAdmissionAfter(runId, admissionAfter),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'baseline_admission_after',
+          () => this.deps.artifactService.writeBaselineAdmissionAfter(runId, admissionAfter),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
-      const refreshedSuite = await runOrDiagnose(
-        () => this.deps.warmupGovernanceService.getSuiteDetail(activeSuiteId),
-        (message) => createVerifierDiagnosis({
-          phase: 'suite_resolution',
-          subsystem: 'warmup_governance',
-          code: 'suite_resolution.suite_detail_refresh_failed',
-          summary_zh: `回读 suite 详情失败：${message}`,
-          recommended_next_check: '检查 suite read model 在 verifier 运行后的可读性和 batch 关联完整性。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }),
+      const refreshedKickoff = await runOrDiagnose(
+        () => this.deps.warmupGovernanceService.getKickoffDetail(activeSuiteId),
+        (message) =>
+          createVerifierDiagnosis({
+            phase: 'kickoff_resolution',
+            subsystem: 'warmup_governance',
+            code: 'kickoff_resolution.kickoff_detail_refresh_failed',
+            summary_zh: `回读 kickoff baseline 详情失败：${message}`,
+            recommended_next_check:
+              '检查 kickoff baseline read model 在 verifier 运行后的可读性和 batch 关联完整性。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
       )
-      if (!(await this.tryWriteArtifact(
-        'suite_snapshot_after',
-        () => this.deps.artifactService.writeSuiteSnapshotAfter(runId, refreshedSuite),
-        diagnoses,
-        recordFailure,
-      ))) {
+      if (
+        !(await this.tryWriteArtifact(
+          'kickoff_snapshot_after',
+          () => this.deps.artifactService.writeKickoffSnapshotAfter(runId, refreshedKickoff),
+          diagnoses,
+          recordFailure,
+        ))
+      ) {
         failedPhase ??= 'artifact_persist'
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'warmup_verifier_failed'
       if (!diagnoses.length) {
-        addDiagnosis(createVerifierDiagnosis({
-          phase: failedPhase ?? 'artifact_persist',
-          subsystem: failedPhase === 'artifact_persist' ? 'artifact_storage' : 'warmup_governance',
-          code: `verifier.${message}`,
-          summary_zh: `warm-up verifier 运行失败：${message}`,
-          recommended_next_check: '检查 failure-log、artifact 写入状态以及 verifier 服务日志。',
-          artifact: 'failure-log.json',
-          raw_reason: message,
-        }))
+        addDiagnosis(
+          createVerifierDiagnosis({
+            phase: failedPhase ?? 'artifact_persist',
+            subsystem:
+              failedPhase === 'artifact_persist' ? 'artifact_storage' : 'warmup_governance',
+            code: `verifier.${message}`,
+            summary_zh: `warm-up verifier 运行失败：${message}`,
+            recommended_next_check: '检查 failure-log、artifact 写入状态以及 verifier 服务日志。',
+            artifact: 'failure-log.json',
+            raw_reason: message,
+          }),
+        )
       }
       await recordFailure(failedPhase ?? 'artifact_persist', message)
     }
 
     const sortedDiagnoses = sortDiagnoses(diagnoses)
-    if (!(await this.tryWriteArtifact(
-      'suite_snapshot_after_fallback',
-      () => this.deps.artifactService.writeSuiteSnapshotAfter(runId, suiteDetail),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'kickoff_snapshot_after_fallback',
+        () => this.deps.artifactService.writeKickoffSnapshotAfter(runId, kickoffDetail),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
-    if (!(await this.tryWriteArtifact(
-      'baseline_admission_after_fallback',
-      () => this.deps.artifactService.writeBaselineAdmissionAfter(runId, admissionAfter ?? admissionBefore),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'baseline_admission_after_fallback',
+        () =>
+          this.deps.artifactService.writeBaselineAdmissionAfter(
+            runId,
+            admissionAfter ?? admissionBefore,
+          ),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
-    if (!(await this.tryWriteArtifact(
-      'probe_manifest_fallback',
-      () => this.deps.artifactService.writeProbeManifest(runId, probeManifest),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'probe_manifest_fallback',
+        () => this.deps.artifactService.writeProbeManifest(runId, probeManifest),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
-    if (!(await this.tryWriteArtifact(
-      'surface_audit_fallback',
-      () => this.deps.artifactService.writeSurfaceAudit(runId, surfaceAudit),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'surface_audit_fallback',
+        () => this.deps.artifactService.writeSurfaceAudit(runId, surfaceAudit),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
-    if (!(await this.tryWriteArtifact(
-      'governance_drill_fallback',
-      () => this.deps.artifactService.writeGovernanceDrill(runId, governanceDrill),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'governance_drill_fallback',
+        () => this.deps.artifactService.writeGovernanceDrill(runId, governanceDrill),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
-    if (!(await this.tryWriteArtifact(
-      'diagnosis',
-      () => this.deps.artifactService.writeDiagnosis(runId, sortedDiagnoses),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'diagnosis',
+        () => this.deps.artifactService.writeDiagnosis(runId, sortedDiagnoses),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
 
     const summaryMarkdown = this.buildResultSummary({
-      suiteDetail,
+      kickoffDetail,
       admissionBefore,
       admissionAfter,
       diagnoses: sortedDiagnoses,
@@ -520,12 +581,14 @@ export class WarmupClosureVerifierService {
       surfaceAudit,
       governanceDrill,
     })
-    if (!(await this.tryWriteArtifact(
-      'result_summary',
-      () => this.deps.artifactService.writeResultSummary(runId, summaryMarkdown),
-      diagnoses,
-      recordFailure,
-    ))) {
+    if (
+      !(await this.tryWriteArtifact(
+        'result_summary',
+        () => this.deps.artifactService.writeResultSummary(runId, summaryMarkdown),
+        diagnoses,
+        recordFailure,
+      ))
+    ) {
       failedPhase ??= 'artifact_persist'
     }
 
@@ -536,7 +599,7 @@ export class WarmupClosureVerifierService {
     const persistedDetailBeforeFinalize = await this.deps.artifactService.readRun(runId)
     const finalizedDiagnoses = persistedDetailBeforeFinalize?.diagnoses ?? []
     const detail = await this.finalizeRun(runId, {
-      suiteDetail,
+      kickoffDetail,
       admissionBefore,
       status: failedPhase || finalizedDiagnoses.length > 0 ? 'failed' : 'passed',
       diagnoses: finalizedDiagnoses,
@@ -562,7 +625,7 @@ export class WarmupClosureVerifierService {
   private async finalizeRun(
     runId: string,
     input: {
-      suiteDetail: WarmupSuiteDetail | null
+      kickoffDetail: KickoffBaselineDetail | null
       admissionBefore: RuntimeBaselineAdmission | null
       status: Exclude<WarmupVerifierRunStatus, 'running'>
       diagnoses: WarmupVerifierDiagnosis[]
@@ -575,9 +638,9 @@ export class WarmupClosureVerifierService {
     const summary = await this.deps.artifactService.completeRun(runId, {
       status: input.status,
       failed_phase: input.failedPhase,
-      suite_id: input.suiteDetail?.id ?? input.admissionBefore?.suite_id ?? null,
-      suite_label: input.suiteDetail?.suite_label ?? null,
-      active_baseline_id: input.admissionBefore?.active_baseline_id ?? null,
+      kickoff_baseline_id:
+        input.kickoffDetail?.id ?? input.admissionBefore?.kickoff_baseline_id ?? null,
+      kickoff_baseline_label: input.kickoffDetail?.baseline_label ?? null,
       kickoff_batch_id: input.admissionBefore?.kickoff_batch_id ?? null,
       warmup_batch_id: input.admissionBefore?.warmup_batch_id ?? null,
       probe_token: input.probeManifest?.probe_token ?? null,
@@ -593,18 +656,17 @@ export class WarmupClosureVerifierService {
     return summary ? this.deps.artifactService.readRun(runId) : null
   }
 
-  private async loadBaselinePostIds(
-    admission: RuntimeBaselineAdmission,
-  ): Promise<Set<string>> {
-    const batchIds = [
-      admission.kickoff_batch_id,
-      admission.warmup_batch_id,
-    ].filter((value): value is string => Boolean(value))
-    const posts = await this.deps.postRepo.findByWarmStartBatches(batchIds)
+  private async loadBaselinePostIds(admission: RuntimeBaselineAdmission): Promise<Set<string>> {
+    const batchIds = [admission.kickoff_batch_id, admission.warmup_batch_id].filter(
+      (value): value is string => Boolean(value),
+    )
+    const posts = await this.deps.postRepo.findByGovernanceBatches(batchIds)
     return new Set(posts.map((post) => post.id))
   }
 
-  private async auditSurfaces(input: SurfaceAuditContext): Promise<WarmupVerifierSurfaceAuditStage> {
+  private async auditSurfaces(
+    input: SurfaceAuditContext,
+  ): Promise<WarmupVerifierSurfaceAuditStage> {
     const [feed, search, home, highlights] = await Promise.all([
       this.readSurfaceCheckpoint({
         surface: 'feed',
@@ -615,11 +677,12 @@ export class WarmupClosureVerifierService {
       this.readSurfaceCheckpoint({
         surface: 'search',
         input,
-        operation: () => this.deps.searchService.search({
-          query: input.probe_token,
-          tab: 'posts',
-          limit: 20,
-        }),
+        operation: () =>
+          this.deps.searchService.search({
+            query: input.probe_token,
+            tab: 'posts',
+            limit: 20,
+          }),
         evaluate: (payload) => this.evaluateSearch(payload, input),
       }),
       this.readSurfaceCheckpoint({
@@ -673,15 +736,18 @@ export class WarmupClosureVerifierService {
         cleanupAudit.highlights,
       ].every((checkpoint) => checkpoint.ok)
       if (!ok) {
-        input.addDiagnosis(createVerifierDiagnosis({
-          phase: 'governance_quarantine',
-          subsystem: 'warmup_governance',
-          code: 'governance.cleanup.surface_check_failed',
-          summary_zh: 'verifier 收尾清理后的公共读面检查失败。',
-          recommended_next_check: '检查 probe 清理回写、search refresh，以及 cleanup 后四个公共读面的最终一致性。',
-          artifact: 'governance-drill.json',
-          pointer: '$.cleanup',
-        }))
+        input.addDiagnosis(
+          createVerifierDiagnosis({
+            phase: 'governance_quarantine',
+            subsystem: 'warmup_governance',
+            code: 'governance.cleanup.surface_check_failed',
+            summary_zh: 'verifier 收尾清理后的公共读面检查失败。',
+            recommended_next_check:
+              '检查 probe 清理回写、search refresh，以及 cleanup 后四个公共读面的最终一致性。',
+            artifact: 'governance-drill.json',
+            pointer: '$.cleanup',
+          }),
+        )
       }
       return {
         action: 'cleanup',
@@ -693,15 +759,18 @@ export class WarmupClosureVerifierService {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'probe_cleanup_failed'
-      input.addDiagnosis(createVerifierDiagnosis({
-        phase: 'governance_quarantine',
-        subsystem: 'warmup_governance',
-        code: 'governance.cleanup.execution_failed',
-        summary_zh: `verifier 收尾清理 probe 失败：${message}`,
-        recommended_next_check: '检查 probe 清理回写、projection refresh 以及内容可见性是否仍停留在 PUBLIC/GRAY。',
-        artifact: 'governance-drill.json',
-        raw_reason: message,
-      }))
+      input.addDiagnosis(
+        createVerifierDiagnosis({
+          phase: 'governance_quarantine',
+          subsystem: 'warmup_governance',
+          code: 'governance.cleanup.execution_failed',
+          summary_zh: `verifier 收尾清理 probe 失败：${message}`,
+          recommended_next_check:
+            '检查 probe 清理回写、projection refresh 以及内容可见性是否仍停留在 PUBLIC/GRAY。',
+          artifact: 'governance-drill.json',
+          raw_reason: message,
+        }),
+      )
       return {
         action: 'cleanup',
         ok: false,
@@ -733,11 +802,12 @@ export class WarmupClosureVerifierService {
     return {
       surface,
       ok: false,
-      expectation: surface === 'feed'
-        ? input.feed_expectation
-        : surface === 'search'
-          ? input.search_expectation
-          : 'baseline_content_present',
+      expectation:
+        surface === 'feed'
+          ? input.feed_expectation
+          : surface === 'search'
+            ? input.search_expectation
+            : 'baseline_content_present',
       detail: `${surface} read failed: ${message}`,
       failure_kind: 'read_exception',
       probe_post_id: input.probe_post_id,
@@ -759,9 +829,10 @@ export class WarmupClosureVerifierService {
       surface: 'feed',
       ok,
       expectation: input.feed_expectation,
-      detail: input.feed_expectation === 'probe_visible'
-        ? `feed should contain probe post ${input.probe_post_id}`
-        : `feed should hide probe post ${input.probe_post_id}`,
+      detail:
+        input.feed_expectation === 'probe_visible'
+          ? `feed should contain probe post ${input.probe_post_id}`
+          : `feed should hide probe post ${input.probe_post_id}`,
       probe_post_id: input.probe_post_id,
       observed_post_ids: observedPostIds,
       matched_probe: matchedProbe,
@@ -774,7 +845,9 @@ export class WarmupClosureVerifierService {
     input: SurfaceAuditContext,
   ): WarmupVerifierSurfaceCheckpoint {
     const observedPostIds = payload.items
-      .filter((item): item is SearchPayload['items'][number] & { type: 'post' } => item.type === 'post')
+      .filter(
+        (item): item is SearchPayload['items'][number] & { type: 'post' } => item.type === 'post',
+      )
       .map((item) => item.id)
     const matchedProbe = observedPostIds.includes(input.probe_post_id)
     const ok = input.search_expectation === 'probe_visible' ? matchedProbe : !matchedProbe
@@ -782,9 +855,10 @@ export class WarmupClosureVerifierService {
       surface: 'search',
       ok,
       expectation: input.search_expectation,
-      detail: input.search_expectation === 'probe_visible'
-        ? `search should resolve probe token ${input.probe_token}`
-        : `search should hide probe token ${input.probe_token}`,
+      detail:
+        input.search_expectation === 'probe_visible'
+          ? `search should resolve probe token ${input.probe_token}`
+          : `search should hide probe token ${input.probe_token}`,
       probe_post_id: input.probe_post_id,
       observed_post_ids: observedPostIds,
       matched_probe: matchedProbe,
@@ -798,19 +872,21 @@ export class WarmupClosureVerifierService {
   ): WarmupVerifierSurfaceCheckpoint {
     const observedPostIds = payload.shelves.flatMap((shelf) =>
       shelf.items.flatMap((item) =>
-        item.item_kind === 'post' || item.item_kind === 'aftershow_recap'
-          ? [item.id]
-          : []),
+        item.item_kind === 'post' || item.item_kind === 'aftershow_recap' ? [item.id] : [],
+      ),
     )
-    const baselineMatchCount = observedPostIds.filter((postId) => input.baseline_post_ids.has(postId)).length
+    const baselineMatchCount = observedPostIds.filter((postId) =>
+      input.baseline_post_ids.has(postId),
+    ).length
     const ok = payload.enabled === true && baselineMatchCount > 0
     return {
       surface: 'home',
       ok,
       expectation: 'baseline_content_present',
-      detail: payload.enabled === true
-        ? `home baseline match count=${baselineMatchCount}`
-        : 'home programming is disabled',
+      detail:
+        payload.enabled === true
+          ? `home baseline match count=${baselineMatchCount}`
+          : 'home programming is disabled',
       probe_post_id: input.probe_post_id,
       observed_post_ids: observedPostIds.slice(0, 30),
       baseline_match_count: baselineMatchCount,
@@ -826,15 +902,18 @@ export class WarmupClosureVerifierService {
       ...payload.hot_threads.map((item) => item.id),
       ...payload.controversy.map((item) => item.id),
     ]
-    const baselineMatchCount = observedPostIds.filter((postId) => input.baseline_post_ids.has(postId)).length
+    const baselineMatchCount = observedPostIds.filter((postId) =>
+      input.baseline_post_ids.has(postId),
+    ).length
     const ok = config.launch.capabilities.globalHighlightsV1 === true && baselineMatchCount > 0
     return {
       surface: 'highlights',
       ok,
       expectation: 'baseline_content_present',
-      detail: config.launch.capabilities.globalHighlightsV1 === true
-        ? `highlights baseline match count=${baselineMatchCount}`
-        : 'global highlights feature flag is disabled',
+      detail:
+        config.launch.capabilities.globalHighlightsV1 === true
+          ? `highlights baseline match count=${baselineMatchCount}`
+          : 'global highlights feature flag is disabled',
       probe_post_id: input.probe_post_id,
       observed_post_ids: observedPostIds.slice(0, 30),
       baseline_match_count: baselineMatchCount,
@@ -846,12 +925,9 @@ export class WarmupClosureVerifierService {
     stage: WarmupVerifierSurfaceAuditStage,
     addDiagnosis: (diagnosis: WarmupVerifierDiagnosis) => void,
   ): void {
-    const failed = [
-      stage.feed,
-      stage.home,
-      stage.highlights,
-      stage.search,
-    ].filter((checkpoint) => !checkpoint.ok)
+    const failed = [stage.feed, stage.home, stage.highlights, stage.search].filter(
+      (checkpoint) => !checkpoint.ok,
+    )
     for (const checkpoint of failed) {
       addDiagnosis(this.createSurfaceDiagnosis(stage.stage, checkpoint))
     }
@@ -873,44 +949,45 @@ export class WarmupClosureVerifierService {
       highlights: 'highlights_projection',
       search: 'search_projection',
     } as const
-    const codePrefix = stage === 'initial'
-      ? checkpoint.surface
-      : `${stage}.${checkpoint.surface}`
+    const codePrefix = stage === 'initial' ? checkpoint.surface : `${stage}.${checkpoint.surface}`
     if (checkpoint.failure_kind === 'read_exception') {
       return createVerifierDiagnosis({
         phase: phaseMap[checkpoint.surface],
         subsystem: subsystemMap[checkpoint.surface],
         code: `surface.${codePrefix}.read_failed`,
         summary_zh: `${checkpoint.surface} 读面读取失败：${checkpoint.detail}`,
-        recommended_next_check: checkpoint.surface === 'search'
-          ? '检查 search projection 查询链路、索引服务和 search API 依赖。'
-          : checkpoint.surface === 'feed'
-            ? '检查 feed read service、帖子读取链路和排序窗口依赖。'
-            : checkpoint.surface === 'home'
-              ? '检查 home programming service、shelf 组装依赖和对应 read model。'
-              : '检查 highlights 聚合服务、today window 计算和相关依赖查询。',
+        recommended_next_check:
+          checkpoint.surface === 'search'
+            ? '检查 search projection 查询链路、索引服务和 search API 依赖。'
+            : checkpoint.surface === 'feed'
+              ? '检查 feed read service、帖子读取链路和排序窗口依赖。'
+              : checkpoint.surface === 'home'
+                ? '检查 home programming service、shelf 组装依赖和对应 read model。'
+                : '检查 highlights 聚合服务、today window 计算和相关依赖查询。',
         artifact: 'surface-audit.json',
         pointer: `$.${stage}.${checkpoint.surface}`,
         raw_reason: checkpoint.detail,
       })
     }
-    const summary = checkpoint.surface === 'feed' || checkpoint.surface === 'search'
-      ? checkpoint.expectation === 'probe_visible'
-        ? `${checkpoint.surface} 没有命中刚生成的 probe 内容。`
-        : `${checkpoint.surface} 在预期隐藏后仍然能看到 probe 内容。`
-      : `${checkpoint.surface} 没有读到当前 active baseline 的有效编排内容。`
+    const summary =
+      checkpoint.surface === 'feed' || checkpoint.surface === 'search'
+        ? checkpoint.expectation === 'probe_visible'
+          ? `${checkpoint.surface} 没有命中刚生成的 probe 内容。`
+          : `${checkpoint.surface} 在预期隐藏后仍然能看到 probe 内容。`
+        : `${checkpoint.surface} 没有读到当前 kickoff baseline 的有效编排内容。`
     return createVerifierDiagnosis({
       phase: phaseMap[checkpoint.surface],
       subsystem: subsystemMap[checkpoint.surface],
       code: `surface.${codePrefix}.${checkpoint.expectation === 'probe_hidden' ? 'unexpected_visibility' : 'missing_expected_content'}`,
       summary_zh: summary,
-      recommended_next_check: checkpoint.surface === 'search'
-        ? '检查 search projection refresh、搜索索引内容和 query 命中项。'
-        : checkpoint.surface === 'feed'
-          ? '检查 feed read model、内容 visibility/state 以及排序窗口。'
-          : checkpoint.surface === 'home'
-            ? '检查 home programming shelves、baseline 内容投影和 enabled 状态。'
-            : '检查 highlights 聚合、globalHighlightsV1 开关和热榜选取结果。',
+      recommended_next_check:
+        checkpoint.surface === 'search'
+          ? '检查 search projection refresh、搜索索引内容和 query 命中项。'
+          : checkpoint.surface === 'feed'
+            ? '检查 feed read model、内容 visibility/state 以及排序窗口。'
+            : checkpoint.surface === 'home'
+              ? '检查 home programming shelves、baseline 内容投影和 enabled 状态。'
+              : '检查 highlights 聚合、globalHighlightsV1 开关和热榜选取结果。',
       artifact: 'surface-audit.json',
       pointer: `$.${stage}.${checkpoint.surface}`,
     })
@@ -929,19 +1006,25 @@ export class WarmupClosureVerifierService {
       const audit = await this.auditSurfaces(input.surfaceContext)
       input.surfaceAudit[input.stage] = audit
       this.collectSurfaceDiagnoses(audit, input.addDiagnosis)
-      const ok = [audit.feed, audit.search, audit.home, audit.highlights].every((checkpoint) => checkpoint.ok)
+      const ok = [audit.feed, audit.search, audit.home, audit.highlights].every(
+        (checkpoint) => checkpoint.ok,
+      )
       if (!ok) {
-        input.addDiagnosis(createVerifierDiagnosis({
-          phase: input.action === 'quarantine' ? 'governance_quarantine' : 'governance_restore',
-          subsystem: 'warmup_governance',
-          code: `governance.${input.action}.surface_check_failed`,
-          summary_zh: input.action === 'quarantine'
-            ? 'probe quarantine 后的可见性检查失败。'
-            : 'probe restore 后的可见性恢复检查失败。',
-          recommended_next_check: '检查内容 visibility/state 回写、projection refresh 和四个公共读面的一致性。',
-          artifact: 'governance-drill.json',
-          pointer: `$.${input.action}`,
-        }))
+        input.addDiagnosis(
+          createVerifierDiagnosis({
+            phase: input.action === 'quarantine' ? 'governance_quarantine' : 'governance_restore',
+            subsystem: 'warmup_governance',
+            code: `governance.${input.action}.surface_check_failed`,
+            summary_zh:
+              input.action === 'quarantine'
+                ? 'probe quarantine 后的可见性检查失败。'
+                : 'probe restore 后的可见性恢复检查失败。',
+            recommended_next_check:
+              '检查内容 visibility/state 回写、projection refresh 和四个公共读面的一致性。',
+            artifact: 'governance-drill.json',
+            pointer: `$.${input.action}`,
+          }),
+        )
       }
       return {
         action: input.action,
@@ -953,17 +1036,21 @@ export class WarmupClosureVerifierService {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : `${input.action}_failed`
-      input.addDiagnosis(createVerifierDiagnosis({
-        phase: input.action === 'quarantine' ? 'governance_quarantine' : 'governance_restore',
-        subsystem: 'warmup_governance',
-        code: `governance.${input.action}.execution_failed`,
-        summary_zh: input.action === 'quarantine'
-          ? `probe quarantine 执行失败：${message}`
-          : `probe restore 执行失败：${message}`,
-        recommended_next_check: '检查内容回写权限、repo update 路径以及 projection refresh 调用。',
-        artifact: 'governance-drill.json',
-        raw_reason: message,
-      }))
+      input.addDiagnosis(
+        createVerifierDiagnosis({
+          phase: input.action === 'quarantine' ? 'governance_quarantine' : 'governance_restore',
+          subsystem: 'warmup_governance',
+          code: `governance.${input.action}.execution_failed`,
+          summary_zh:
+            input.action === 'quarantine'
+              ? `probe quarantine 执行失败：${message}`
+              : `probe restore 执行失败：${message}`,
+          recommended_next_check:
+            '检查内容回写权限、repo update 路径以及 projection refresh 调用。',
+          artifact: 'governance-drill.json',
+          raw_reason: message,
+        }),
+      )
       return {
         action: input.action,
         ok: false,
@@ -983,7 +1070,7 @@ export class WarmupClosureVerifierService {
   }
 
   private buildResultSummary(input: {
-    suiteDetail: WarmupSuiteDetail | null
+    kickoffDetail: KickoffBaselineDetail | null
     admissionBefore: RuntimeBaselineAdmission | null
     admissionAfter: RuntimeBaselineAdmission | null
     diagnoses: WarmupVerifierDiagnosis[]
@@ -994,8 +1081,8 @@ export class WarmupClosureVerifierService {
     const lines = [
       '# Warm-up Closure Verifier',
       '',
-      `- suite: ${input.suiteDetail?.id ?? 'none'}`,
-      `- baseline: ${input.admissionBefore?.active_baseline_id ?? 'none'}`,
+      `- kickoff baseline: ${input.kickoffDetail?.id ?? 'none'}`,
+      `- kickoff baseline admission: ${input.admissionBefore?.kickoff_baseline_id ?? 'none'}`,
       `- probe post: ${input.probeManifest?.post_id ?? 'none'}`,
       `- probe token: ${input.probeManifest?.probe_token ?? 'none'}`,
       `- diagnoses: ${input.diagnoses.length}`,
@@ -1004,7 +1091,9 @@ export class WarmupClosureVerifierService {
         input.surfaceAudit.initial?.home.ok ?? false,
         input.surfaceAudit.initial?.highlights.ok ?? false,
         input.surfaceAudit.initial?.search.ok ?? false,
-      ].map((value) => value ? 'ok' : 'fail').join(' / ')}`,
+      ]
+        .map((value) => (value ? 'ok' : 'fail'))
+        .join(' / ')}`,
       `- governance quarantine: ${input.governanceDrill.quarantine?.ok === true ? 'ok' : input.governanceDrill.quarantine?.ok === false ? 'fail' : 'n/a'}`,
       `- governance restore: ${input.governanceDrill.restore?.ok === true ? 'ok' : input.governanceDrill.restore?.ok === false ? 'fail' : 'n/a'}`,
       `- governance cleanup: ${input.governanceDrill.cleanup?.ok === true ? 'ok' : input.governanceDrill.cleanup?.ok === false ? 'fail' : 'n/a'}`,
@@ -1020,7 +1109,10 @@ export class WarmupClosureVerifierService {
   private async persistDiagnoses(
     runId: string,
     diagnoses: WarmupVerifierDiagnosis[],
-    recordFailure: (phase: WarmupVerifierFailureLogEntry['phase'], message: string) => Promise<void>,
+    recordFailure: (
+      phase: WarmupVerifierFailureLogEntry['phase'],
+      message: string,
+    ) => Promise<void>,
   ): Promise<{ ok: boolean }> {
     try {
       await this.deps.artifactService.writeDiagnosis(runId, sortDiagnoses(diagnoses))
@@ -1036,22 +1128,28 @@ export class WarmupClosureVerifierService {
     label: string,
     writer: () => Promise<unknown>,
     diagnoses: WarmupVerifierDiagnosis[],
-    recordFailure: (phase: WarmupVerifierFailureLogEntry['phase'], message: string) => Promise<void>,
+    recordFailure: (
+      phase: WarmupVerifierFailureLogEntry['phase'],
+      message: string,
+    ) => Promise<void>,
   ): Promise<boolean> {
     try {
       await writer()
       return true
     } catch (error) {
       const message = error instanceof Error ? error.message : `${label}_write_failed`
-      diagnoses.push(createVerifierDiagnosis({
-        phase: 'artifact_persist',
-        subsystem: 'artifact_storage',
-        code: `artifact.${label}_write_failed`,
-        summary_zh: `artifact 写入失败：${label}`,
-        recommended_next_check: '检查 .ai/.tmp/warmup-runs 目录权限、磁盘状态和 artifact service 调用栈。',
-        artifact: 'failure-log.json',
-        raw_reason: message,
-      }))
+      diagnoses.push(
+        createVerifierDiagnosis({
+          phase: 'artifact_persist',
+          subsystem: 'artifact_storage',
+          code: `artifact.${label}_write_failed`,
+          summary_zh: `artifact 写入失败：${label}`,
+          recommended_next_check:
+            '检查 .ai/.tmp/warmup-runs 目录权限、磁盘状态和 artifact service 调用栈。',
+          artifact: 'failure-log.json',
+          raw_reason: message,
+        }),
+      )
       await recordFailure('artifact_persist', message)
       return false
     }

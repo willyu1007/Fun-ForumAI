@@ -147,6 +147,7 @@ model Agent {
   ownerId         String      @map("owner_id")
   displayName     String      @map("display_name")
   avatarUrl       String?     @map("avatar_url")
+  momentsCoverUrl String?     @map("moments_cover_url")
   model           String?
   personaVersion  Int         @default(1) @map("persona_version")
   reputationScore Float       @default(0) @map("reputation_score")
@@ -324,7 +325,7 @@ model Post {
   tagsJson                          Json?        @map("tags_json")
   visibility                        Visibility   @default(PUBLIC)
   state                             ContentState @default(PENDING)
-  warmStartBatchId                  String?      @map("warm_start_batch_id")
+  governanceBatchId                 String?      @map("warm_start_batch_id")
   generationMode                    String?      @map("generation_mode")
   moderationTopicSignalsJson        Json?        @map("moderation_topic_signals_json")
   moderationDistributionState       String       @default("NORMAL") @map("moderation_distribution_state")
@@ -357,7 +358,7 @@ model Post {
 
   @@index([communityId, createdAt])
   @@index([authorAgentId])
-  @@index([warmStartBatchId, createdAt])
+  @@index([governanceBatchId, createdAt])
   @@index([generationMode, createdAt])
   @@map("posts")
 }
@@ -375,57 +376,57 @@ enum PublicActorType {
 }
 
 model PublicStageThread {
-  id               String                 @id @default(cuid())
-  postId           String                 @map("post_id")
-  communityId      String                 @map("community_id")
-  authorActorType  PublicActorType        @default(AGENT) @map("author_actor_type")
-  authorAgentId    String?                @map("author_agent_id")
-  authorUserId     String?                @map("author_user_id")
-  body             String
-  visibility       Visibility             @default(PUBLIC)
-  state            ContentState           @default(PENDING)
-  warmStartBatchId String?                @map("warm_start_batch_id")
-  generationMode   String?                @map("generation_mode")
-  threadState      PublicStageThreadState @default(OPEN) @map("thread_state")
-  replyBudget      Int                    @default(6) @map("reply_budget")
-  activeRouteJson  Json?                  @map("active_route_json")
-  createdAt        DateTime               @default(now()) @map("created_at")
-  updatedAt        DateTime               @updatedAt @map("updated_at")
+  id                String                 @id @default(cuid())
+  postId            String                 @map("post_id")
+  communityId       String                 @map("community_id")
+  authorActorType   PublicActorType        @default(AGENT) @map("author_actor_type")
+  authorAgentId     String?                @map("author_agent_id")
+  authorUserId      String?                @map("author_user_id")
+  body              String
+  visibility        Visibility             @default(PUBLIC)
+  state             ContentState           @default(PENDING)
+  governanceBatchId String?                @map("warm_start_batch_id")
+  generationMode    String?                @map("generation_mode")
+  threadState       PublicStageThreadState @default(OPEN) @map("thread_state")
+  replyBudget       Int                    @default(6) @map("reply_budget")
+  activeRouteJson   Json?                  @map("active_route_json")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
 
-  post          Post                @relation("PostPublicStageThreads", fields: [postId], references: [id])
-  community     Community           @relation(fields: [communityId], references: [id])
-  authorAgent   Agent?              @relation("AgentPublicStageThreads", fields: [authorAgentId], references: [id])
-  authorUser    HumanUser?          @relation("HumanPublicStageThreads", fields: [authorUserId], references: [id])
-  turns         PublicStageTurn[]   @relation("ThreadTurns")
+  post           Post                @relation("PostPublicStageThreads", fields: [postId], references: [id])
+  community      Community           @relation(fields: [communityId], references: [id])
+  authorAgent    Agent?              @relation("AgentPublicStageThreads", fields: [authorAgentId], references: [id])
+  authorUser     HumanUser?          @relation("HumanPublicStageThreads", fields: [authorUserId], references: [id])
+  turns          PublicStageTurn[]   @relation("ThreadTurns")
   humanFollowers HumanThreadFollow[]
-  sceneMetadata ForumSceneMetadata? @relation("ThreadSceneMetadata")
+  sceneMetadata  ForumSceneMetadata? @relation("ThreadSceneMetadata")
 
   @@index([postId, createdAt])
   @@index([communityId, createdAt])
   @@index([authorAgentId])
   @@index([authorUserId])
-  @@index([warmStartBatchId, createdAt])
+  @@index([governanceBatchId, createdAt])
   @@map("public_stage_threads")
 }
 
 model PublicStageTurn {
-  id               String          @id @default(cuid())
-  threadId         String          @map("thread_id")
-  postId           String          @map("post_id")
-  authorActorType  PublicActorType @default(AGENT) @map("author_actor_type")
-  authorAgentId    String?         @map("author_agent_id")
-  authorUserId     String?         @map("author_user_id")
-  turnIndex        Int             @map("turn_index")
-  anchorTurnId     String?         @map("anchor_turn_id")
-  anchorIntent     String?         @map("anchor_intent")
-  quotedExcerpt    String?         @map("quoted_excerpt")
-  body             String
-  visibility       Visibility      @default(PUBLIC)
-  state            ContentState    @default(PENDING)
-  warmStartBatchId String?         @map("warm_start_batch_id")
-  generationMode   String?         @map("generation_mode")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  id                String          @id @default(cuid())
+  threadId          String          @map("thread_id")
+  postId            String          @map("post_id")
+  authorActorType   PublicActorType @default(AGENT) @map("author_actor_type")
+  authorAgentId     String?         @map("author_agent_id")
+  authorUserId      String?         @map("author_user_id")
+  turnIndex         Int             @map("turn_index")
+  anchorTurnId      String?         @map("anchor_turn_id")
+  anchorIntent      String?         @map("anchor_intent")
+  quotedExcerpt     String?         @map("quoted_excerpt")
+  body              String
+  visibility        Visibility      @default(PUBLIC)
+  state             ContentState    @default(PENDING)
+  governanceBatchId String?         @map("warm_start_batch_id")
+  generationMode    String?         @map("generation_mode")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
 
   thread        PublicStageThread   @relation("ThreadTurns", fields: [threadId], references: [id])
   post          Post                @relation(fields: [postId], references: [id])
@@ -440,7 +441,7 @@ model PublicStageTurn {
   @@index([threadId, createdAt])
   @@index([authorAgentId])
   @@index([authorUserId])
-  @@index([warmStartBatchId, createdAt])
+  @@index([governanceBatchId, createdAt])
   @@map("public_stage_turns")
 }
 
@@ -791,39 +792,39 @@ model HumanThreadFollow {
 }
 
 model MediaAsset {
-  id               String   @id @default(cuid())
-  stewardAgentId   String?  @map("steward_agent_id")
-  ownerUserId      String?  @map("owner_user_id")
-  sourceKind       String   @map("source_kind")
-  sourceSceneType  String?  @map("source_scene_type")
-  sourceSceneId    String?  @map("source_scene_id")
-  visibilityPolicy String   @map("visibility_policy")
-  lifecycleStatus  String   @map("lifecycle_status")
-  storageKey       String?  @map("storage_key")
-  originUrl        String?  @map("origin_url")
-  mimeType         String   @map("mime_type")
-  fileSizeBytes    Int      @map("file_size_bytes")
-  width            Int?
-  height           Int?
-  sha256           String
-  phash            String?
-  duplicateClusterId String? @map("duplicate_cluster_id")
-  duplicateDistance  Float?  @map("duplicate_distance")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(cuid())
+  stewardAgentId     String?  @map("steward_agent_id")
+  ownerUserId        String?  @map("owner_user_id")
+  sourceKind         String   @map("source_kind")
+  sourceSceneType    String?  @map("source_scene_type")
+  sourceSceneId      String?  @map("source_scene_id")
+  visibilityPolicy   String   @map("visibility_policy")
+  lifecycleStatus    String   @map("lifecycle_status")
+  storageKey         String?  @map("storage_key")
+  originUrl          String?  @map("origin_url")
+  mimeType           String   @map("mime_type")
+  fileSizeBytes      Int      @map("file_size_bytes")
+  width              Int?
+  height             Int?
+  sha256             String
+  phash              String?
+  duplicateClusterId String?  @map("duplicate_cluster_id")
+  duplicateDistance  Float?   @map("duplicate_distance")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
-  stewardAgent        Agent?                     @relation("MediaAssetSteward", fields: [stewardAgentId], references: [id])
-  owner               HumanUser?                 @relation("MediaAssetOwner", fields: [ownerUserId], references: [id])
-  semanticSnapshots   MediaSemanticSnapshot[]
-  sceneBindings       SceneMediaBinding[]
-  postMedia           PostMedia[]
-  generatedOutputJobs MediaGenerationJobRecord[] @relation("GeneratedJobOutputAsset")
-  catalogCards        MediaCatalogCardRecord[]
-  retrievalDocuments  MediaRetrievalDocumentRecord[]
-  duplicateCluster    MediaDuplicateClusterRecord? @relation("MediaDuplicateClusterMembership", fields: [duplicateClusterId], references: [id])
-  canonicalDuplicateClusters MediaDuplicateClusterRecord[] @relation("MediaDuplicateClusterCanonicalAsset")
-  resolvedImportItems MediaImportJobItemRecord[] @relation("MediaImportResolvedAsset")
-  sourceImportItems   MediaImportJobItemRecord[] @relation("MediaImportSourceAsset")
+  stewardAgent               Agent?                         @relation("MediaAssetSteward", fields: [stewardAgentId], references: [id])
+  owner                      HumanUser?                     @relation("MediaAssetOwner", fields: [ownerUserId], references: [id])
+  semanticSnapshots          MediaSemanticSnapshot[]
+  sceneBindings              SceneMediaBinding[]
+  postMedia                  PostMedia[]
+  generatedOutputJobs        MediaGenerationJobRecord[]     @relation("GeneratedJobOutputAsset")
+  catalogCards               MediaCatalogCardRecord[]
+  retrievalDocuments         MediaRetrievalDocumentRecord[]
+  duplicateCluster           MediaDuplicateClusterRecord?   @relation("MediaDuplicateClusterMembership", fields: [duplicateClusterId], references: [id])
+  canonicalDuplicateClusters MediaDuplicateClusterRecord[]  @relation("MediaDuplicateClusterCanonicalAsset")
+  resolvedImportItems        MediaImportJobItemRecord[]     @relation("MediaImportResolvedAsset")
+  sourceImportItems          MediaImportJobItemRecord[]     @relation("MediaImportSourceAsset")
 
   @@index([stewardAgentId, createdAt])
   @@index([ownerUserId, createdAt])
@@ -997,8 +998,8 @@ model MediaGenerationJobRecord {
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
 
-  plan        ImagePlanRecord?          @relation(fields: [planId], references: [id])
-  outputAsset MediaAsset?               @relation("GeneratedJobOutputAsset", fields: [outputAssetId], references: [id])
+  plan        ImagePlanRecord?           @relation(fields: [planId], references: [id])
+  outputAsset MediaAsset?                @relation("GeneratedJobOutputAsset", fields: [outputAssetId], references: [id])
   importItems MediaImportJobItemRecord[]
 
   @@index([agentId, createdAt])
@@ -1023,8 +1024,8 @@ model MediaCatalogCardRecord {
   isCurrent          Boolean  @default(true) @map("is_current")
   createdAt          DateTime @default(now()) @map("created_at")
 
-  asset              MediaAsset               @relation(fields: [assetId], references: [id])
-  semanticSnapshot   MediaSemanticSnapshot?   @relation(fields: [semanticSnapshotId], references: [id])
+  asset              MediaAsset                     @relation(fields: [assetId], references: [id])
+  semanticSnapshot   MediaSemanticSnapshot?         @relation(fields: [semanticSnapshotId], references: [id])
   retrievalDocuments MediaRetrievalDocumentRecord[]
 
   @@index([assetId, isCurrent, createdAt])
@@ -1057,9 +1058,9 @@ model MediaRetrievalDocumentRecord {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  asset              MediaAsset                  @relation(fields: [assetId], references: [id])
-  catalogCard        MediaCatalogCardRecord?     @relation(fields: [catalogCardId], references: [id])
-  duplicateCluster   MediaDuplicateClusterRecord? @relation(fields: [duplicateClusterId], references: [id])
+  asset              MediaAsset                     @relation(fields: [assetId], references: [id])
+  catalogCard        MediaCatalogCardRecord?        @relation(fields: [catalogCardId], references: [id])
+  duplicateCluster   MediaDuplicateClusterRecord?   @relation(fields: [duplicateClusterId], references: [id])
   embeddingSnapshots MediaEmbeddingSnapshotRecord[]
 
   @@index([assetId, docScope, createdAt])
@@ -1072,25 +1073,25 @@ model MediaRetrievalDocumentRecord {
 }
 
 model MediaEmbeddingSnapshotRecord {
-  id                  String                @id @default(cuid())
-  retrievalDocumentId String                @map("retrieval_document_id")
-  indexProfileId      String                @map("index_profile_id")
-  provider            String
-  modelName           String                @map("model_name")
-  outputType          String                @map("output_type")
-  vectorDimension     Int                   @map("vector_dimension")
-  documentContentHash String                @map("document_content_hash")
-  embeddingHash       String                @map("embedding_hash")
+  id                     String                       @id @default(cuid())
+  retrievalDocumentId    String                       @map("retrieval_document_id")
+  indexProfileId         String                       @map("index_profile_id")
+  provider               String
+  modelName              String                       @map("model_name")
+  outputType             String                       @map("output_type")
+  vectorDimension        Int                          @map("vector_dimension")
+  documentContentHash    String                       @map("document_content_hash")
+  embeddingHash          String                       @map("embedding_hash")
   // Local migration replay may downgrade this physical column to TEXT when pgvector is unavailable.
   // Repositories must use runtime storage-mode detection instead of assuming the Prisma type matches every environment.
-  embeddingVector     Unsupported("vector(1024)")? @map("embedding_vector")
-  searchStatus        String                @map("search_status")
-  isActive            Boolean               @default(false) @map("is_active")
-  activatedAt         DateTime?             @map("activated_at")
-  errorCode           String?               @map("error_code")
-  errorMessage        String?               @map("error_message") @db.Text
-  providerRequestSummary Json?              @map("provider_request_summary")
-  createdAt           DateTime              @default(now()) @map("created_at")
+  embeddingVector        Unsupported("vector(1024)")? @map("embedding_vector")
+  searchStatus           String                       @map("search_status")
+  isActive               Boolean                      @default(false) @map("is_active")
+  activatedAt            DateTime?                    @map("activated_at")
+  errorCode              String?                      @map("error_code")
+  errorMessage           String?                      @map("error_message") @db.Text
+  providerRequestSummary Json?                        @map("provider_request_summary")
+  createdAt              DateTime                     @default(now()) @map("created_at")
 
   retrievalDocument MediaRetrievalDocumentRecord @relation(fields: [retrievalDocumentId], references: [id])
 
@@ -1109,8 +1110,8 @@ model MediaDuplicateClusterRecord {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  canonicalAsset     MediaAsset                    @relation("MediaDuplicateClusterCanonicalAsset", fields: [canonicalAssetId], references: [id])
-  assets             MediaAsset[]                  @relation("MediaDuplicateClusterMembership")
+  canonicalAsset     MediaAsset                     @relation("MediaDuplicateClusterCanonicalAsset", fields: [canonicalAssetId], references: [id])
+  assets             MediaAsset[]                   @relation("MediaDuplicateClusterMembership")
   retrievalDocuments MediaRetrievalDocumentRecord[]
   importItems        MediaImportJobItemRecord[]
 
@@ -1120,41 +1121,41 @@ model MediaDuplicateClusterRecord {
 }
 
 model MediaImportJobRecord {
-  id                   String    @id @default(cuid())
-  status               String
-  phase                String
-  entrypoint           String
-  requestedByType      String    @map("requested_by_type")
-  requestedById        String    @map("requested_by_id")
-  manifestVersion      Int       @map("manifest_version")
-  intentFingerprint    String    @map("intent_fingerprint")
-  requestFingerprint   String    @unique @map("request_fingerprint")
-  stagingManifestKey   String?   @map("staging_manifest_key")
-  normalizedManifestKey String?  @map("normalized_manifest_key")
-  resultManifestKey    String?   @map("result_manifest_key")
-  failureLogKey        String?   @map("failure_log_key")
-  scopeSummaryJson     Json      @map("scope_summary_json")
-  totalItems           Int       @default(0) @map("total_items")
-  processedItems       Int       @default(0) @map("processed_items")
-  createdItems         Int       @default(0) @map("created_items")
-  reusedItems          Int       @default(0) @map("reused_items")
-  suppressedItems      Int       @default(0) @map("suppressed_items")
-  failedItems          Int       @default(0) @map("failed_items")
-  attemptCount         Int       @default(0) @map("attempt_count")
-  failedPhase          String?   @map("failed_phase")
-  errorCode            String?   @map("error_code")
-  errorMessage         String?   @map("error_message") @db.Text
-  claimedByWorker      String?   @map("claimed_by_worker")
-  startedAt            DateTime? @map("started_at")
-  finishedAt           DateTime? @map("finished_at")
-  lastHeartbeatAt      DateTime? @map("last_heartbeat_at")
-  retryOfJobId         String?   @map("retry_of_job_id")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(cuid())
+  status                String
+  phase                 String
+  entrypoint            String
+  requestedByType       String    @map("requested_by_type")
+  requestedById         String    @map("requested_by_id")
+  manifestVersion       Int       @map("manifest_version")
+  intentFingerprint     String    @map("intent_fingerprint")
+  requestFingerprint    String    @unique @map("request_fingerprint")
+  stagingManifestKey    String?   @map("staging_manifest_key")
+  normalizedManifestKey String?   @map("normalized_manifest_key")
+  resultManifestKey     String?   @map("result_manifest_key")
+  failureLogKey         String?   @map("failure_log_key")
+  scopeSummaryJson      Json      @map("scope_summary_json")
+  totalItems            Int       @default(0) @map("total_items")
+  processedItems        Int       @default(0) @map("processed_items")
+  createdItems          Int       @default(0) @map("created_items")
+  reusedItems           Int       @default(0) @map("reused_items")
+  suppressedItems       Int       @default(0) @map("suppressed_items")
+  failedItems           Int       @default(0) @map("failed_items")
+  attemptCount          Int       @default(0) @map("attempt_count")
+  failedPhase           String?   @map("failed_phase")
+  errorCode             String?   @map("error_code")
+  errorMessage          String?   @map("error_message") @db.Text
+  claimedByWorker       String?   @map("claimed_by_worker")
+  startedAt             DateTime? @map("started_at")
+  finishedAt            DateTime? @map("finished_at")
+  lastHeartbeatAt       DateTime? @map("last_heartbeat_at")
+  retryOfJobId          String?   @map("retry_of_job_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   items      MediaImportJobItemRecord[]
-  retryOfJob MediaImportJobRecord?  @relation("MediaImportJobRetryChain", fields: [retryOfJobId], references: [id])
-  retries    MediaImportJobRecord[] @relation("MediaImportJobRetryChain")
+  retryOfJob MediaImportJobRecord?      @relation("MediaImportJobRetryChain", fields: [retryOfJobId], references: [id])
+  retries    MediaImportJobRecord[]     @relation("MediaImportJobRetryChain")
 
   @@index([intentFingerprint, createdAt])
   @@index([status, createdAt])
@@ -1167,42 +1168,42 @@ model MediaImportJobRecord {
 }
 
 model MediaImportJobItemRecord {
-  id                 String    @id @default(cuid())
-  jobId              String    @map("job_id")
-  itemId             String    @map("item_id")
-  itemIndex          Int       @map("item_index")
-  status             String
-  inputKind          String    @map("input_kind")
-  sourceKind         String    @map("source_kind")
-  indexScope         String    @map("index_scope")
-  ownerUserId        String?   @map("owner_user_id")
-  stewardAgentId     String?   @map("steward_agent_id")
-  communityId        String?   @map("community_id")
-  stagingObjectKey   String?   @map("staging_object_key")
-  originUrl          String?   @map("origin_url")
-  sourceAssetId      String?   @map("source_asset_id")
-  generatedJobId     String?   @map("generated_job_id")
-  duplicateClusterId String?   @map("duplicate_cluster_id")
-  declaredSha256     String?   @map("declared_sha256")
-  mimeType           String?   @map("mime_type")
-  fileSizeBytes      Int?      @map("file_size_bytes")
-  width              Int?
-  height             Int?
-  failedPhase        String?   @map("failed_phase")
-  errorCode          String?   @map("error_code")
-  errorMessage       String?   @map("error_message") @db.Text
-  resolvedAssetId    String?   @map("resolved_asset_id")
-  resolvedRequestJson Json     @map("resolved_request_json")
-  resultSummaryJson  Json?     @map("result_summary_json")
-  startedAt          DateTime? @map("started_at")
-  finishedAt         DateTime? @map("finished_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(cuid())
+  jobId               String    @map("job_id")
+  itemId              String    @map("item_id")
+  itemIndex           Int       @map("item_index")
+  status              String
+  inputKind           String    @map("input_kind")
+  sourceKind          String    @map("source_kind")
+  indexScope          String    @map("index_scope")
+  ownerUserId         String?   @map("owner_user_id")
+  stewardAgentId      String?   @map("steward_agent_id")
+  communityId         String?   @map("community_id")
+  stagingObjectKey    String?   @map("staging_object_key")
+  originUrl           String?   @map("origin_url")
+  sourceAssetId       String?   @map("source_asset_id")
+  generatedJobId      String?   @map("generated_job_id")
+  duplicateClusterId  String?   @map("duplicate_cluster_id")
+  declaredSha256      String?   @map("declared_sha256")
+  mimeType            String?   @map("mime_type")
+  fileSizeBytes       Int?      @map("file_size_bytes")
+  width               Int?
+  height              Int?
+  failedPhase         String?   @map("failed_phase")
+  errorCode           String?   @map("error_code")
+  errorMessage        String?   @map("error_message") @db.Text
+  resolvedAssetId     String?   @map("resolved_asset_id")
+  resolvedRequestJson Json      @map("resolved_request_json")
+  resultSummaryJson   Json?     @map("result_summary_json")
+  startedAt           DateTime? @map("started_at")
+  finishedAt          DateTime? @map("finished_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  job              MediaImportJobRecord       @relation(fields: [jobId], references: [id])
-  sourceAsset      MediaAsset?                @relation("MediaImportSourceAsset", fields: [sourceAssetId], references: [id])
-  resolvedAsset    MediaAsset?                @relation("MediaImportResolvedAsset", fields: [resolvedAssetId], references: [id])
-  generatedJob     MediaGenerationJobRecord?  @relation(fields: [generatedJobId], references: [id])
+  job              MediaImportJobRecord         @relation(fields: [jobId], references: [id])
+  sourceAsset      MediaAsset?                  @relation("MediaImportSourceAsset", fields: [sourceAssetId], references: [id])
+  resolvedAsset    MediaAsset?                  @relation("MediaImportResolvedAsset", fields: [resolvedAssetId], references: [id])
+  generatedJob     MediaGenerationJobRecord?    @relation(fields: [generatedJobId], references: [id])
   duplicateCluster MediaDuplicateClusterRecord? @relation(fields: [duplicateClusterId], references: [id])
 
   @@unique([jobId, itemId])
@@ -1219,137 +1220,84 @@ model MediaImportJobItemRecord {
 }
 
 model PostMedia {
-  id               String   @id @default(cuid())
-  postId           String   @map("post_id")
-  assetId          String   @map("asset_id")
-  mediaUrl         String   @map("media_url")
-  mimeType         String   @map("mime_type")
-  warmStartBatchId String?  @map("warm_start_batch_id")
-  generationMode   String?  @map("generation_mode")
-  createdAt        DateTime @default(now()) @map("created_at")
+  id                String   @id @default(cuid())
+  postId            String   @map("post_id")
+  assetId           String   @map("asset_id")
+  mediaUrl          String   @map("media_url")
+  mimeType          String   @map("mime_type")
+  governanceBatchId String?  @map("warm_start_batch_id")
+  generationMode    String?  @map("generation_mode")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   post  Post       @relation(fields: [postId], references: [id])
   asset MediaAsset @relation(fields: [assetId], references: [id])
 
   @@index([postId, createdAt])
   @@index([assetId])
-  @@index([warmStartBatchId, createdAt])
+  @@index([governanceBatchId, createdAt])
   @@map("post_media")
 }
 
-enum WarmupSuiteState {
+enum KickoffBaselineState {
   draft
-  review_ready
   active
   archived
+
+  @@map("WarmupSuiteState")
 }
 
-enum WarmStartBatchKind {
+enum GovernanceBatchKind {
   kickoff
   warmup
+
+  @@map("WarmStartBatchKind")
 }
 
-enum WarmStartBatchState {
+enum GovernanceBatchState {
   draft
   generating
-  review_ready
   active
   archived
   failed
+
+  @@map("WarmStartBatchState")
 }
 
-enum WarmupReviewDecision {
-  pass_to_active
-  not_passed
-}
-
-enum GovernanceBatchAction {
-  quarantine
-  restore
-  archive
-}
-
-model WarmupSuite {
-  id              String           @id @default(cuid())
-  state           WarmupSuiteState @default(draft)
-  suiteLabel      String?          @map("suite_label")
-  kickoffBatchId  String?          @map("kickoff_batch_id")
-  warmupBatchId   String?          @map("warmup_batch_id")
-  createdByUserId String?          @map("created_by_user_id")
-  activatedAt     DateTime?        @map("activated_at")
-  archivedAt      DateTime?        @map("archived_at")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+model KickoffBaseline {
+  id              String               @id @default(cuid())
+  state           KickoffBaselineState @default(draft)
+  baselineLabel   String?              @map("suite_label")
+  /// Legacy storage field for the foundation batch link.
+  /// Product-facing read models and services must use `foundation_batch_id`.
+  kickoffBatchId  String?              @map("kickoff_batch_id")
+  warmupBatchId   String?              @map("warmup_batch_id")
+  createdByUserId String?              @map("created_by_user_id")
+  activatedAt     DateTime?            @map("activated_at")
+  archivedAt      DateTime?            @map("archived_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
 
   @@index([state, createdAt])
   @@map("warmup_suites")
 }
 
-model WarmStartBatch {
-  id            String              @id @default(cuid())
-  suiteId       String              @map("suite_id")
-  batchKind     WarmStartBatchKind  @map("batch_kind")
-  state         WarmStartBatchState @default(draft)
-  sourceBatchId String?             @map("source_batch_id")
-  revisionKey   String?             @map("revision_key")
-  packageHash   String?             @map("package_hash")
+model GovernanceBatch {
+  id            String               @id @default(cuid())
+  baselineId    String               @map("suite_id")
+  batchKind     GovernanceBatchKind  @map("batch_kind")
+  state         GovernanceBatchState @default(draft)
+  sourceBatchId String?              @map("source_batch_id")
+  revisionKey   String?              @map("revision_key")
+  packageHash   String?              @map("package_hash")
   notes         String?
-  activatedAt   DateTime?           @map("activated_at")
-  archivedAt    DateTime?           @map("archived_at")
-  createdAt     DateTime            @default(now()) @map("created_at")
-  updatedAt     DateTime            @updatedAt @map("updated_at")
+  activatedAt   DateTime?            @map("activated_at")
+  archivedAt    DateTime?            @map("archived_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
 
-  @@index([suiteId, batchKind, createdAt])
+  @@index([baselineId, batchKind, createdAt])
   @@index([state, createdAt])
   @@map("warm_start_batches")
-}
-
-model WarmupSuiteReview {
-  id              String               @id @default(cuid())
-  suiteId         String               @map("suite_id")
-  reviewerUserId  String?              @map("reviewer_user_id")
-  decision        WarmupReviewDecision
-  reasonCodesJson Json                 @map("reason_codes_json")
-  note            String?
-  createdAt       DateTime             @default(now()) @map("created_at")
-
-  @@index([suiteId, createdAt])
-  @@map("warmup_suite_reviews")
-}
-
-model ActiveBaseline {
-  id                 String    @id @default(cuid())
-  suiteId            String    @map("suite_id")
-  kickoffBatchId     String    @map("kickoff_batch_id")
-  warmupBatchId      String    @map("warmup_batch_id")
-  previousBaselineId String?   @map("previous_baseline_id")
-  isCurrent          Boolean   @default(true) @map("is_current")
-  activatedByUserId  String?   @map("activated_by_user_id")
-  activatedAt        DateTime  @default(now()) @map("activated_at")
-  deactivatedAt      DateTime? @map("deactivated_at")
-
-  @@index([isCurrent, activatedAt])
-  @@index([suiteId, activatedAt])
-  @@map("active_baselines")
-}
-
-model GovernanceBatch {
-  id                    String                @id @default(cuid())
-  action                GovernanceBatchAction
-  requestedByUserId     String?               @map("requested_by_user_id")
-  suiteId               String?               @map("suite_id")
-  warmStartBatchIdsJson Json                  @map("warm_start_batch_ids_json")
-  contentIdsJson        Json                  @map("content_ids_json")
-  scopeJson             Json                  @map("scope_json")
-  previewJson           Json                  @map("preview_json")
-  resultJson            Json?                 @map("result_json")
-  executedAt            DateTime?             @map("executed_at")
-  createdAt             DateTime              @default(now()) @map("created_at")
-  updatedAt             DateTime              @updatedAt @map("updated_at")
-
-  @@index([action, createdAt])
-  @@index([suiteId, createdAt])
-  @@map("governance_batches")
 }
 
 model MediaObservabilityEvent {
@@ -3795,9 +3743,7 @@ model GuidanceActorState {
   id                      String            @id @default(cuid())
   actorType               GuidanceActorType @map("actor_type")
   actorId                 String            @map("actor_id")
-  currentTrack            GuidanceTrack     @default(UNDECIDED) @map("current_track")
   stage                   GuidanceStage     @default(NEW_VISITOR)
-  explainedTwoTracks      Boolean           @default(false) @map("explained_two_tracks")
   followedFirstAgentAt    DateTime?         @map("followed_first_agent_at")
   followingFeedSeenAt     DateTime?         @map("following_feed_seen_at")
   agentCreatedAt          DateTime?         @map("agent_created_at")
@@ -3818,12 +3764,6 @@ model GuidanceActorState {
 enum GuidanceActorType {
   VISITOR
   USER
-}
-
-enum GuidanceTrack {
-  UNDECIDED
-  SPECTATOR
-  OWNER
 }
 
 enum GuidanceStage {

@@ -11,7 +11,7 @@ import {
   ROOT,
   validateLaunchMembershipBootstrapAssets,
   validateLaunchRuntimeContracts,
-  validateLaunchWarmStartAssets,
+  validateKickoffAssets,
   validateLaunchRuntimeOverlay,
   validatePackagingWireup,
   validatePublishWorkflowWireup,
@@ -147,23 +147,38 @@ function runRepoChecks() {
   const membershipCheck = validateLaunchMembershipBootstrapAssets()
   pushResult('Contract', 'Membership bootstrap assets', membershipCheck.ok, membershipCheck.detail)
 
-  const warmStartCheck = validateLaunchWarmStartAssets()
-  pushResult('Contract', 'Launch warm-start assets', warmStartCheck.ok, warmStartCheck.detail)
+  const warmStartCheck = validateKickoffAssets()
+  pushResult('Contract', 'Launch kickoff assets', warmStartCheck.ok, warmStartCheck.detail)
 
   const workerCheck = validateWorkerAssets()
   pushResult('Contract', 'Worker workload assets', workerCheck.ok, workerCheck.detail)
 
   const runtimeContractsCheck = validateLaunchRuntimeContracts()
-  pushResult('Contract', 'Runtime launch contracts', runtimeContractsCheck.ok, runtimeContractsCheck.detail)
+  pushResult(
+    'Contract',
+    'Runtime launch contracts',
+    runtimeContractsCheck.ok,
+    runtimeContractsCheck.detail,
+  )
 
   const stagingOverlayCheck = validateLaunchRuntimeOverlay(
     'env/values/staging-launch.yaml',
     'staging',
   )
-  pushResult('Contract', 'Staging launch runtime overlay', stagingOverlayCheck.ok, stagingOverlayCheck.detail)
+  pushResult(
+    'Contract',
+    'Staging launch runtime overlay',
+    stagingOverlayCheck.ok,
+    stagingOverlayCheck.detail,
+  )
 
   const prodOverlayCheck = validateLaunchRuntimeOverlay('env/values/prod-launch.yaml', 'prod')
-  pushResult('Contract', 'Prod launch runtime overlay', prodOverlayCheck.ok, prodOverlayCheck.detail)
+  pushResult(
+    'Contract',
+    'Prod launch runtime overlay',
+    prodOverlayCheck.ok,
+    prodOverlayCheck.detail,
+  )
 
   const canonicalProfileCheck = validateCanonicalLaunchBuildProfile()
   pushResult(
@@ -174,16 +189,36 @@ function runRepoChecks() {
   )
 
   const frontendDeliveryCheck = validateFrontendDeliveryAssets()
-  pushResult('Environment/Release', 'Frontend dist delivery', frontendDeliveryCheck.ok, frontendDeliveryCheck.detail)
+  pushResult(
+    'Environment/Release',
+    'Frontend dist delivery',
+    frontendDeliveryCheck.ok,
+    frontendDeliveryCheck.detail,
+  )
 
   const packagingCheck = validatePackagingWireup()
-  pushResult('Environment/Release', 'Packaging launch wireup', packagingCheck.ok, packagingCheck.detail)
+  pushResult(
+    'Environment/Release',
+    'Packaging launch wireup',
+    packagingCheck.ok,
+    packagingCheck.detail,
+  )
 
   const publishWorkflowCheck = validatePublishWorkflowWireup()
-  pushResult('Environment/Release', 'Publish workflow launch wireup', publishWorkflowCheck.ok, publishWorkflowCheck.detail)
+  pushResult(
+    'Environment/Release',
+    'Publish workflow launch wireup',
+    publishWorkflowCheck.ok,
+    publishWorkflowCheck.detail,
+  )
 
   const startupHardeningCheck = validateDevOnlyStartupHardening()
-  pushResult('Contract', 'Dev-only startup hardening', startupHardeningCheck.ok, startupHardeningCheck.detail)
+  pushResult(
+    'Contract',
+    'Dev-only startup hardening',
+    startupHardeningCheck.ok,
+    startupHardeningCheck.detail,
+  )
 
   const strictConvergenceCheck = validateStrictSemanticConvergence()
   pushResult(
@@ -324,11 +359,11 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
   pushResult(
-    'Kickoff Import',
-    'Worker active baseline present',
-    runtimeStats.status === 200 && baselineAdmission?.has_active_baseline === true,
+    'Foundation Activation',
+    'Worker kickoff baseline present',
+    runtimeStats.status === 200 && baselineAdmission?.has_kickoff_baseline === true,
     runtimeStats.status === 200
-      ? `has_active_baseline=${String(baselineAdmission?.has_active_baseline)}`
+      ? `has_kickoff_baseline=${String(baselineAdmission?.has_kickoff_baseline)}`
       : `status=${runtimeStats.status}`,
   )
   pushResult(
@@ -388,54 +423,58 @@ async function runStagingChecks() {
       : `status=${runtimeStats.status}`,
   )
 
-  const suitesResponse = await fetchJson(`${webBaseUrl}/v1/admin/warm-start/suites`, {
+  const kickoffResponse = await fetchJson(`${webBaseUrl}/v1/admin/kickoff`, {
     headers: authHeaders,
   })
-  const suites = Array.isArray(suitesResponse.body?.data) ? suitesResponse.body.data : []
-  const activeSuite = suites.find((suite) => suite?.state === 'active') ?? null
+  const activeKickoff = kickoffResponse.body?.data ?? null
   pushResult(
-    'Kickoff Import',
-    'Active warmup suite present',
-    suitesResponse.status === 200 && Boolean(activeSuite?.id),
-    suitesResponse.status === 200
-      ? `active_suite_id=${String(activeSuite?.id ?? '') || 'none'}`
-      : `status=${suitesResponse.status}`,
+    'Kickoff',
+    'Active kickoff baseline present',
+    kickoffResponse.status === 200 && Boolean(activeKickoff?.id),
+    kickoffResponse.status === 200
+      ? `kickoff_id=${String(activeKickoff?.id ?? '') || 'none'}`
+      : `status=${kickoffResponse.status}`,
   )
 
-  if (activeSuite?.id) {
-    const detailResponse = await fetchJson(`${webBaseUrl}/v1/admin/warm-start/suites/${activeSuite.id}`, {
-      headers: authHeaders,
-    })
-    const activeSuiteDetail = detailResponse.body?.data ?? null
+  if (activeKickoff?.id) {
     pushResult(
       'Runtime Readiness',
-      'Active suite review readiness',
-      detailResponse.status === 200 && activeSuiteDetail?.activation_readiness?.ok === true,
-      detailResponse.status === 200
-        ? `activation_readiness=${String(activeSuiteDetail?.activation_readiness?.ok)} reasons=${JSON.stringify(activeSuiteDetail?.activation_readiness?.reasons ?? [])}`
-        : `status=${detailResponse.status}`,
+      'Kickoff baseline verification',
+      activeKickoff?.verification?.ok === true,
+      `kickoff_ready=${String(activeKickoff?.verification?.ok)} reasons=${JSON.stringify(activeKickoff?.verification?.missing ?? [])}`,
     )
-    pushResult(
-      'Runtime Readiness',
-      'Active suite interaction floor',
-      detailResponse.status === 200
-        && (activeSuiteDetail?.summary?.threads ?? 0) > 0
-        && (activeSuiteDetail?.summary?.turns ?? 0) > 0
-        && (activeSuiteDetail?.summary?.votes ?? 0) > 0,
-      detailResponse.status === 200
-        ? `threads=${activeSuiteDetail?.summary?.threads ?? 0} turns=${activeSuiteDetail?.summary?.turns ?? 0} votes=${activeSuiteDetail?.summary?.votes ?? 0}`
-        : `status=${detailResponse.status}`,
-    )
+  }
+
+  const warmupRunsResponse = await fetchJson(`${webBaseUrl}/v1/admin/warmup/runs`, {
+    headers: authHeaders,
+  })
+  const warmupRuns = Array.isArray(warmupRunsResponse.body?.data) ? warmupRunsResponse.body.data : []
+  const currentWarmupRun = warmupRuns.find((run) => run?.is_current === true) ?? null
   pushResult(
-    'Runtime Readiness',
-    'Active suite media floor',
-      detailResponse.status === 200
-        && (activeSuiteDetail?.summary?.media ?? 0) > 0
-        && typeof activeSuiteDetail?.summary?.media_coverage_ratio === 'number'
-        && activeSuiteDetail.summary.media_coverage_ratio >= 0.35,
-      detailResponse.status === 200
-        ? `media=${activeSuiteDetail?.summary?.media ?? 0} ratio=${String(activeSuiteDetail?.summary?.media_coverage_ratio ?? 0)}`
-        : `status=${detailResponse.status}`,
+    'Warmup Runtime',
+    'Current warmup run present',
+    warmupRunsResponse.status === 200 && Boolean(currentWarmupRun?.id),
+    warmupRunsResponse.status === 200
+      ? `current_run_id=${String(currentWarmupRun?.id ?? '') || 'none'}`
+      : `status=${warmupRunsResponse.status}`,
+  )
+
+  if (currentWarmupRun?.id) {
+    pushResult(
+      'Runtime Readiness',
+      'Current warmup run interaction floor',
+      (currentWarmupRun?.stats?.threads ?? 0) > 0 &&
+        (currentWarmupRun?.stats?.turns ?? 0) > 0 &&
+        (currentWarmupRun?.stats?.votes ?? 0) > 0,
+      `threads=${currentWarmupRun?.stats?.threads ?? 0} turns=${currentWarmupRun?.stats?.turns ?? 0} votes=${currentWarmupRun?.stats?.votes ?? 0}`,
+    )
+    pushResult(
+      'Runtime Readiness',
+      'Current warmup run media floor',
+      (currentWarmupRun?.stats?.media ?? 0) > 0 &&
+        typeof currentWarmupRun?.stats?.media_coverage_ratio === 'number' &&
+        currentWarmupRun.stats.media_coverage_ratio >= 0.35,
+      `media=${currentWarmupRun?.stats?.media ?? 0} ratio=${String(currentWarmupRun?.stats?.media_coverage_ratio ?? 0)}`,
     )
   }
 
@@ -568,7 +607,12 @@ async function runStagingChecks() {
         stdio: ['ignore', 'pipe', 'pipe'],
       },
     )
-    pushResult('Environment/Release', 'Launch home browser smoke', true, `${webBaseUrl}/ renders Home Programming`)
+    pushResult(
+      'Environment/Release',
+      'Launch home browser smoke',
+      true,
+      `${webBaseUrl}/ renders Home Programming`,
+    )
   } catch (error) {
     const stdout = error?.stdout?.toString?.() ?? ''
     const stderr = error?.stderr?.toString?.() ?? ''

@@ -45,6 +45,20 @@
       "see_also": ["Control Plane", "Agent"]
     },
     {
+      "term": "Kickoff Baseline",
+      "definition": "The immutable imported baseline loaded from `.ai/.tmp/kickoff/` before runtime-only warmup can start.",
+      "scope": "kickoff",
+      "aliases": ["kickoff", "foundation-batch", "foundation-layer"],
+      "see_also": ["Warmup", "Active Baseline"]
+    },
+    {
+      "term": "Warmup",
+      "definition": "A runtime-only gray-release generation run executed after kickoff import. Operators can relax runtime budgets or stop after explicit attempt / post targets without changing the kickoff baseline.",
+      "scope": "warmup",
+      "aliases": ["warmup-run", "runtime-only-warmup"],
+      "see_also": ["Kickoff Baseline", "Active Baseline"]
+    },
+    {
       "term": "Showrunner",
       "definition": "A system orchestration agent that curates storylines, pacing, and highlights for watchability.",
       "scope": "global",

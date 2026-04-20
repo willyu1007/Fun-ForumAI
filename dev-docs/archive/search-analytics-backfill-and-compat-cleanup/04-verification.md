@@ -9,7 +9,7 @@
 ## 2026-04-05 — governance sync
 
 - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main --changelog`
-  - Result: passed; registry, changelog, dashboard, feature map, and task index regenerated for the `T-146` kickoff.
+  - Result: passed; registry, changelog, dashboard, feature map, and task index regenerated for the `T-146` task registration.
 - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: passed after the registry picked up `T-144` / `T-145` / `T-146` as `in-progress`.
 

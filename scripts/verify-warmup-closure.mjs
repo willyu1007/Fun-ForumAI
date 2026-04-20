@@ -34,7 +34,7 @@ async function main() {
     process.exit(1)
   }
 
-  const response = await fetch(`${webBaseUrl}/v1/admin/warm-start/verifier/runs`, {
+  const response = await fetch(`${webBaseUrl}/v1/admin/warmup/verifier/runs`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${adminToken}`,

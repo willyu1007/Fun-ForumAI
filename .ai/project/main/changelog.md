@@ -114,7 +114,6 @@ Project: `main`
 - 2026-04-06 task_id=T-939 slug=queue-admission-and-private-chat-realtime-v1 event=status from=planned to=in-progress
 - 2026-04-07 task_id=T-939 slug=queue-admission-and-private-chat-realtime-v1 event=status from=in-progress to=archived
 - 2026-04-11 task_id=T-952 slug=flag-metadata-legacy-cutover event=status from=in-progress to=archived
-- 2026-04-11 task_id=T-954 slug=staging-release-verification-followup event=registered dev_docs_path=dev-docs/active/staging-release-verification-followup
 - 2026-04-15 task_id=T-965 slug=forum-post-level-roaming-definition-temp event=registry_cleanup note="Removed ghost duplicate registry entry; canonical archive task remains T-960."
 - 2026-04-15 task_id=T-966 slug=forum-roaming-hardening-and-readpath-cleanup-temp event=registry_cleanup note="Removed orphan registry entry because no archive bundle exists on disk."
 - 2026-04-15 task_id=T-967 slug=live-e2e-regression-and-service-split-temp event=registry_cleanup note="Removed ghost duplicate registry entry; canonical archive task remains T-961."

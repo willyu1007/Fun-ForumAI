@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-14T22:03:49.489Z",
+  "updatedAt": "2026-04-19T02:23:11.291Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -116,6 +116,7 @@
       "name": "AuthVerificationPurpose",
       "values": [
         "EMAIL_SIGNUP",
+        "EMAIL_PASSWORD_RESET",
         "SMS_AUTH",
         "EMAIL_CHANGE",
         "PHONE_CHANGE"
@@ -339,11 +340,20 @@
       ]
     },
     {
-      "name": "GovernanceBatchAction",
+      "name": "GovernanceBatchKind",
       "values": [
-        "quarantine",
-        "restore",
-        "archive"
+        "kickoff",
+        "warmup"
+      ]
+    },
+    {
+      "name": "GovernanceBatchState",
+      "values": [
+        "draft",
+        "generating",
+        "active",
+        "archived",
+        "failed"
       ]
     },
     {
@@ -375,14 +385,6 @@
         "EXPLORING",
         "FIRST_SUCCESS",
         "RETAINED"
-      ]
-    },
-    {
-      "name": "GuidanceTrack",
-      "values": [
-        "UNDECIDED",
-        "SPECTATOR",
-        "OWNER"
       ]
     },
     {
@@ -440,6 +442,14 @@
       "values": [
         "ACTIVE",
         "DISABLED"
+      ]
+    },
+    {
+      "name": "KickoffBaselineState",
+      "values": [
+        "draft",
+        "active",
+        "archived"
       ]
     },
     {
@@ -731,170 +741,9 @@
         "TURN",
         "MESSAGE"
       ]
-    },
-    {
-      "name": "WarmStartBatchKind",
-      "values": [
-        "kickoff",
-        "warmup"
-      ]
-    },
-    {
-      "name": "WarmStartBatchState",
-      "values": [
-        "draft",
-        "generating",
-        "review_ready",
-        "active",
-        "archived",
-        "failed"
-      ]
-    },
-    {
-      "name": "WarmupReviewDecision",
-      "values": [
-        "pass_to_active",
-        "not_passed"
-      ]
-    },
-    {
-      "name": "WarmupSuiteState",
-      "values": [
-        "draft",
-        "review_ready",
-        "active",
-        "archived"
-      ]
     }
   ],
   "tables": [
-    {
-      "name": "ActiveBaseline",
-      "dbName": "active_baselines",
-      "schema": null,
-      "columns": [
-        {
-          "name": "activatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "activated_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "activatedByUserId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "activated_by_user_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "deactivatedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "deactivated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "isCurrent",
-          "type": "Boolean",
-          "nullable": false,
-          "list": false,
-          "dbName": "is_current",
-          "dbType": null,
-          "default": "true",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "kickoffBatchId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "kickoff_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "previousBaselineId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "previous_baseline_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "suiteId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "suite_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "warmupBatchId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "warmup_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "isCurrent",
-            "activatedAt"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "suiteId",
-            "activatedAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
     {
       "name": "ActiveTensionItem",
       "dbName": "active_tension_items",
@@ -1863,6 +1712,17 @@
           "nullable": true,
           "list": false,
           "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "momentsCoverUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "moments_cover_url",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -14406,26 +14266,48 @@
     },
     {
       "name": "GovernanceBatch",
-      "dbName": "governance_batches",
+      "dbName": "warm_start_batches",
       "schema": null,
       "columns": [
         {
-          "name": "action",
-          "type": "GovernanceBatchAction",
-          "nullable": false,
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": true,
           "list": false,
-          "dbName": null,
+          "dbName": "activated_at",
           "dbType": null,
           "default": null,
           "primaryKey": false,
           "unique": false
         },
         {
-          "name": "contentIdsJson",
-          "type": "Json",
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "baselineId",
+          "type": "String",
           "nullable": false,
           "list": false,
-          "dbName": "content_ids_json",
+          "dbName": "suite_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "batchKind",
+          "type": "GovernanceBatchKind",
+          "nullable": false,
+          "list": false,
+          "dbName": "batch_kind",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -14443,17 +14325,6 @@
           "unique": false
         },
         {
-          "name": "executedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "executed_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -14465,57 +14336,57 @@
           "unique": false
         },
         {
-          "name": "previewJson",
-          "type": "Json",
-          "nullable": false,
-          "list": false,
-          "dbName": "preview_json",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "requestedByUserId",
+          "name": "notes",
           "type": "String",
           "nullable": true,
           "list": false,
-          "dbName": "requested_by_user_id",
+          "dbName": null,
           "dbType": null,
           "default": null,
           "primaryKey": false,
           "unique": false
         },
         {
-          "name": "resultJson",
-          "type": "Json",
-          "nullable": true,
-          "list": false,
-          "dbName": "result_json",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "scopeJson",
-          "type": "Json",
-          "nullable": false,
-          "list": false,
-          "dbName": "scope_json",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "suiteId",
+          "name": "packageHash",
           "type": "String",
           "nullable": true,
           "list": false,
-          "dbName": "suite_id",
+          "dbName": "package_hash",
           "dbType": null,
           "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "revisionKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "revision_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "GovernanceBatchState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "draft",
           "primaryKey": false,
           "unique": false
         },
@@ -14529,17 +14400,6 @@
           "default": null,
           "primaryKey": false,
           "unique": false
-        },
-        {
-          "name": "warmStartBatchIdsJson",
-          "type": "Json",
-          "nullable": false,
-          "list": false,
-          "dbName": "warm_start_batch_ids_json",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
         }
       ],
       "relations": [],
@@ -14547,7 +14407,8 @@
         {
           "type": "index",
           "fields": [
-            "action",
+            "baselineId",
+            "batchKind",
             "createdAt"
           ],
           "name": null,
@@ -14556,7 +14417,7 @@
         {
           "type": "index",
           "fields": [
-            "suiteId",
+            "state",
             "createdAt"
           ],
           "name": null,
@@ -14610,28 +14471,6 @@
           "dbName": "created_at",
           "dbType": null,
           "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "currentTrack",
-          "type": "GuidanceTrack",
-          "nullable": false,
-          "list": false,
-          "dbName": "current_track",
-          "dbType": null,
-          "default": "UNDECIDED",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "explainedTwoTracks",
-          "type": "Boolean",
-          "nullable": false,
-          "list": false,
-          "dbName": "explained_two_tracks",
-          "dbType": null,
-          "default": "false",
           "primaryKey": false,
           "unique": false
         },
@@ -17281,6 +17120,135 @@
       "indexes": []
     },
     {
+      "name": "KickoffBaseline",
+      "dbName": "warmup_suites",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "activated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "archivedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "archived_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "baselineLabel",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "suite_label",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "kickoffBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "kickoff_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "KickoffBaselineState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "draft",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "warmupBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warmup_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "state",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "LlmUsageLedger",
       "dbName": "llm_usage_ledger",
       "schema": null,
@@ -17747,6 +17715,28 @@
           "unique": false
         },
         {
+          "name": "duplicateClusterId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "duplicate_cluster_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "duplicateDistance",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "duplicate_distance",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "fileSizeBytes",
           "type": "Int",
           "nullable": false,
@@ -17936,6 +17926,37 @@
       ],
       "relations": [
         {
+          "field": "canonicalDuplicateClusters",
+          "to": "MediaDuplicateClusterRecord",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaDuplicateClusterCanonicalAsset",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "catalogCards",
+          "to": "MediaCatalogCardRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "duplicateCluster",
+          "to": "MediaDuplicateClusterRecord",
+          "optional": true,
+          "list": false,
+          "relationName": "MediaDuplicateClusterMembership",
+          "fields": [
+            "duplicateClusterId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
           "field": "generatedOutputJobs",
           "to": "MediaGenerationJobRecord",
           "optional": false,
@@ -17967,6 +17988,24 @@
           "references": []
         },
         {
+          "field": "resolvedImportItems",
+          "to": "MediaImportJobItemRecord",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaImportResolvedAsset",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "retrievalDocuments",
+          "to": "MediaRetrievalDocumentRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "sceneBindings",
           "to": "SceneMediaBinding",
           "optional": false,
@@ -17985,6 +18024,15 @@
           "references": []
         },
         {
+          "field": "sourceImportItems",
+          "to": "MediaImportJobItemRecord",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaImportSourceAsset",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "stewardAgent",
           "to": "Agent",
           "optional": true,
@@ -17999,6 +18047,15 @@
         }
       ],
       "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "duplicateClusterId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
         {
           "type": "index",
           "fields": [
@@ -18039,6 +18096,202 @@
           "fields": [
             "visibilityPolicy",
             "lifecycleStatus",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaCatalogCardRecord",
+      "dbName": "media_catalog_cards",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "buildStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "build_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contentHash",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "content_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "isCurrent",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_current",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modality",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "schemaVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "schema_version",
+          "dbType": null,
+          "default": "\"media-catalog-card.v1\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "semanticSnapshotId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "semantic_snapshot_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "asset",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "assetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "retrievalDocuments",
+          "to": "MediaRetrievalDocumentRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "semanticSnapshot",
+          "to": "MediaSemanticSnapshot",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "semanticSnapshotId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assetId",
+            "isCurrent",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "semanticSnapshotId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sourceKind",
+            "buildStatus",
             "createdAt"
           ],
           "name": null,
@@ -18206,6 +18459,392 @@
             "bindingId",
             "projectionSurface",
             "projectionKind"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaDuplicateClusterRecord",
+      "dbName": "media_duplicate_clusters",
+      "schema": null,
+      "columns": [
+        {
+          "name": "canonicalAssetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "canonical_asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "duplicateKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "duplicate_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "assets",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaDuplicateClusterMembership",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "canonicalAsset",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": false,
+          "relationName": "MediaDuplicateClusterCanonicalAsset",
+          "fields": [
+            "canonicalAssetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "importItems",
+          "to": "MediaImportJobItemRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "retrievalDocuments",
+          "to": "MediaRetrievalDocumentRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "canonicalAssetId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "duplicateKind",
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaEmbeddingSnapshotRecord",
+      "dbName": "media_embedding_snapshots",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "activated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "documentContentHash",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "document_content_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "embeddingHash",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "embedding_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "embeddingVector",
+          "type": "Unsupported(\"vector(1024)\")",
+          "nullable": true,
+          "list": false,
+          "dbName": "embedding_vector",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorMessage",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_message",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "indexProfileId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "index_profile_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "isActive",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_active",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modelName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "model_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "outputType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "output_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "provider",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "providerRequestSummary",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "provider_request_summary",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "retrievalDocumentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "retrieval_document_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "searchStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "search_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "vectorDimension",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "vector_dimension",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "retrievalDocument",
+          "to": "MediaRetrievalDocumentRecord",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "retrievalDocumentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "indexProfileId",
+            "searchStatus",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "retrievalDocumentId",
+            "indexProfileId",
+            "isActive",
+            "createdAt"
           ],
           "name": null,
           "map": null
@@ -18484,6 +19123,15 @@
       ],
       "relations": [
         {
+          "field": "importItems",
+          "to": "MediaImportJobItemRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "outputAsset",
           "to": "MediaAsset",
           "optional": true,
@@ -18553,6 +19201,955 @@
           "type": "index",
           "fields": [
             "startedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaImportJobItemRecord",
+      "dbName": "media_import_job_items",
+      "schema": null,
+      "columns": [
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "declaredSha256",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "declared_sha256",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "duplicateClusterId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "duplicate_cluster_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorMessage",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_message",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "failedPhase",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "failed_phase",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "fileSizeBytes",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "file_size_bytes",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "finishedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "finished_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "generatedJobId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "generated_job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "height",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "indexScope",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "index_scope",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "inputKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "input_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "itemId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "item_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "itemIndex",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "item_index",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "jobId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mimeType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "mime_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "originUrl",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "origin_url",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ownerUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "owner_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolvedAssetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "resolved_asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resolvedRequestJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "resolved_request_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "resultSummaryJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "result_summary_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceAssetId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "source_asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stagingObjectKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "staging_object_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "startedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "started_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stewardAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "steward_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "width",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "duplicateCluster",
+          "to": "MediaDuplicateClusterRecord",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "duplicateClusterId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "generatedJob",
+          "to": "MediaGenerationJobRecord",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "generatedJobId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "job",
+          "to": "MediaImportJobRecord",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "jobId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "resolvedAsset",
+          "to": "MediaAsset",
+          "optional": true,
+          "list": false,
+          "relationName": "MediaImportResolvedAsset",
+          "fields": [
+            "resolvedAssetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "sourceAsset",
+          "to": "MediaAsset",
+          "optional": true,
+          "list": false,
+          "relationName": "MediaImportSourceAsset",
+          "fields": [
+            "sourceAssetId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "duplicateClusterId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "generatedJobId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "jobId",
+            "itemIndex"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "jobId",
+            "status",
+            "itemIndex"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "ownerUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "resolvedAssetId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "sourceAssetId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "stewardAgentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "jobId",
+            "itemId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaImportJobRecord",
+      "dbName": "media_import_jobs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "attemptCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "attempt_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "claimedByWorker",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "claimed_by_worker",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdItems",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_items",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "entrypoint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorMessage",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_message",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "failedItems",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "failed_items",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "failedPhase",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "failed_phase",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "failureLogKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "failure_log_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "finishedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "finished_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "intentFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "intent_fingerprint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastHeartbeatAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_heartbeat_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "manifestVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "manifest_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "normalizedManifestKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "normalized_manifest_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "phase",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "processedItems",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "processed_items",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedById",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "requested_by_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedByType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "requested_by_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestFingerprint",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "request_fingerprint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "resultManifestKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "result_manifest_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "retryOfJobId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "retry_of_job_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reusedItems",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "reused_items",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeSummaryJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_summary_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stagingManifestKey",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "staging_manifest_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "startedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "started_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "suppressedItems",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "suppressed_items",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "totalItems",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "total_items",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "items",
+          "to": "MediaImportJobItemRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "retries",
+          "to": "MediaImportJobRecord",
+          "optional": false,
+          "list": true,
+          "relationName": "MediaImportJobRetryChain",
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "retryOfJob",
+          "to": "MediaImportJobRecord",
+          "optional": true,
+          "list": false,
+          "relationName": "MediaImportJobRetryChain",
+          "fields": [
+            "retryOfJobId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "entrypoint",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "intentFingerprint",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "lastHeartbeatAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "phase",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "requestedByType",
+            "requestedById",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "retryOfJobId"
           ],
           "name": null,
           "map": null
@@ -19141,6 +20738,366 @@
           "type": "index",
           "fields": [
             "surface",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaRetrievalDocumentRecord",
+      "dbName": "media_retrieval_documents",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "catalogCardId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "catalog_card_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "docKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "doc_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "docScope",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "doc_scope",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "documentHash",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "document_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "documentMetaJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "document_meta_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "documentText",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "document_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "duplicateClusterId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "duplicate_cluster_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "isCanonical",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_canonical",
+          "dbType": null,
+          "default": "true",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lifecycleStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "lifecycle_status",
+          "dbType": null,
+          "default": "\"active\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modality",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "ownerUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "owner_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "schemaVersion",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "schema_version",
+          "dbType": null,
+          "default": "\"media-retrieval-doc.v1\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "segmentEndMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "segment_end_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "segmentStartMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "segment_start_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "stewardAgentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "steward_agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "trackKind",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "track_kind",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "asset",
+          "to": "MediaAsset",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "assetId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "catalogCard",
+          "to": "MediaCatalogCardRecord",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "catalogCardId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "duplicateCluster",
+          "to": "MediaDuplicateClusterRecord",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "duplicateClusterId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "embeddingSnapshots",
+          "to": "MediaEmbeddingSnapshotRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assetId",
+            "docScope",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "docScope",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "docScope",
+            "sourceKind",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "duplicateClusterId",
+            "isCanonical",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "lifecycleStatus",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "ownerUserId",
+            "docScope",
             "createdAt"
           ],
           "name": null,
@@ -19797,6 +21754,15 @@
           "references": [
             "id"
           ]
+        },
+        {
+          "field": "catalogCards",
+          "to": "MediaCatalogCardRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
         },
         {
           "field": "sceneBindings",
@@ -21172,6 +23138,17 @@
           "unique": false
         },
         {
+          "name": "governanceBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -21357,17 +23334,6 @@
           "default": "PUBLIC",
           "primaryKey": false,
           "unique": false
-        },
-        {
-          "name": "warmStartBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "warm_start_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
         }
       ],
       "relations": [
@@ -21518,7 +23484,7 @@
         {
           "type": "index",
           "fields": [
-            "warmStartBatchId",
+            "governanceBatchId",
             "createdAt"
           ],
           "name": null,
@@ -21559,6 +23525,17 @@
           "nullable": true,
           "list": false,
           "dbName": "generation_mode",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "governanceBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -21607,17 +23584,6 @@
           "default": null,
           "primaryKey": false,
           "unique": false
-        },
-        {
-          "name": "warmStartBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "warm_start_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
         }
       ],
       "relations": [
@@ -21660,7 +23626,7 @@
         {
           "type": "index",
           "fields": [
-            "postId",
+            "governanceBatchId",
             "createdAt"
           ],
           "name": null,
@@ -21669,7 +23635,7 @@
         {
           "type": "index",
           "fields": [
-            "warmStartBatchId",
+            "postId",
             "createdAt"
           ],
           "name": null,
@@ -23350,6 +25316,17 @@
           "unique": false
         },
         {
+          "name": "governanceBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -23423,17 +25400,6 @@
           "dbName": null,
           "dbType": null,
           "default": "PUBLIC",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "warmStartBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "warm_start_batch_id",
-          "dbType": null,
-          "default": null,
           "primaryKey": false,
           "unique": false
         }
@@ -23548,7 +25514,7 @@
         {
           "type": "index",
           "fields": [
-            "postId",
+            "governanceBatchId",
             "createdAt"
           ],
           "name": null,
@@ -23557,7 +25523,7 @@
         {
           "type": "index",
           "fields": [
-            "warmStartBatchId",
+            "postId",
             "createdAt"
           ],
           "name": null,
@@ -23659,6 +25625,17 @@
           "unique": false
         },
         {
+          "name": "governanceBatchId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "warm_start_batch_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -23743,17 +25720,6 @@
           "dbName": null,
           "dbType": null,
           "default": "PUBLIC",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "warmStartBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "warm_start_batch_id",
-          "dbType": null,
-          "default": null,
           "primaryKey": false,
           "unique": false
         }
@@ -23863,6 +25829,15 @@
         {
           "type": "index",
           "fields": [
+            "governanceBatchId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
             "postId",
             "createdAt"
           ],
@@ -23873,15 +25848,6 @@
           "type": "index",
           "fields": [
             "threadId",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "warmStartBatchId",
             "createdAt"
           ],
           "name": null,
@@ -30079,392 +32045,6 @@
             "voterAgentId",
             "targetType",
             "targetId"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
-    {
-      "name": "WarmStartBatch",
-      "dbName": "warm_start_batches",
-      "schema": null,
-      "columns": [
-        {
-          "name": "activatedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "activated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "archivedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "archived_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "batchKind",
-          "type": "WarmStartBatchKind",
-          "nullable": false,
-          "list": false,
-          "dbName": "batch_kind",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "notes",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "packageHash",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "package_hash",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "revisionKey",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "revision_key",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "sourceBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "source_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "state",
-          "type": "WarmStartBatchState",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "draft",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "suiteId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "suite_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "updatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "updated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "state",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        },
-        {
-          "type": "index",
-          "fields": [
-            "suiteId",
-            "batchKind",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
-    {
-      "name": "WarmupSuite",
-      "dbName": "warmup_suites",
-      "schema": null,
-      "columns": [
-        {
-          "name": "activatedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "activated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "archivedAt",
-          "type": "DateTime",
-          "nullable": true,
-          "list": false,
-          "dbName": "archived_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "createdByUserId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "created_by_user_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "kickoffBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "kickoff_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "state",
-          "type": "WarmupSuiteState",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "draft",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "suiteLabel",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "suite_label",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "updatedAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "updated_at",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "warmupBatchId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "warmup_batch_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "state",
-            "createdAt"
-          ],
-          "name": null,
-          "map": null
-        }
-      ]
-    },
-    {
-      "name": "WarmupSuiteReview",
-      "dbName": "warmup_suite_reviews",
-      "schema": null,
-      "columns": [
-        {
-          "name": "createdAt",
-          "type": "DateTime",
-          "nullable": false,
-          "list": false,
-          "dbName": "created_at",
-          "dbType": null,
-          "default": "now()",
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "decision",
-          "type": "WarmupReviewDecision",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "id",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": "cuid()",
-          "primaryKey": true,
-          "unique": false
-        },
-        {
-          "name": "note",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": null,
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "reasonCodesJson",
-          "type": "Json",
-          "nullable": false,
-          "list": false,
-          "dbName": "reason_codes_json",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "reviewerUserId",
-          "type": "String",
-          "nullable": true,
-          "list": false,
-          "dbName": "reviewer_user_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "suiteId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "suite_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        }
-      ],
-      "relations": [],
-      "indexes": [
-        {
-          "type": "index",
-          "fields": [
-            "suiteId",
-            "createdAt"
           ],
           "name": null,
           "map": null

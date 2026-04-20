@@ -1,5 +1,5 @@
 export const WARMUP_VERIFIER_PHASES = [
-  'suite_resolution',
+  'kickoff_resolution',
   'activation_precheck',
   'baseline_admission',
   'runtime_probe_write',
@@ -30,12 +30,7 @@ export const WARMUP_VERIFIER_SUBSYSTEMS = [
 
 export type WarmupVerifierSubsystem = (typeof WARMUP_VERIFIER_SUBSYSTEMS)[number]
 
-export const WARMUP_VERIFIER_SURFACES = [
-  'feed',
-  'home',
-  'highlights',
-  'search',
-] as const
+export const WARMUP_VERIFIER_SURFACES = ['feed', 'home', 'highlights', 'search'] as const
 
 export type WarmupVerifierSurface = (typeof WARMUP_VERIFIER_SURFACES)[number]
 
@@ -123,8 +118,8 @@ export interface WarmupVerifierSurfaceMatrix {
 export interface WarmupVerifierArtifactPaths {
   artifact_dir: string
   run_summary_path: string
-  suite_snapshot_before_path: string
-  suite_snapshot_after_path: string
+  kickoff_snapshot_before_path: string
+  kickoff_snapshot_after_path: string
   baseline_admission_before_path: string
   baseline_admission_after_path: string
   probe_manifest_path: string
@@ -139,9 +134,8 @@ export interface WarmupVerifierRunSummary {
   run_id: string
   status: WarmupVerifierRunStatus
   triggered_by_user_id: string | null
-  suite_id: string | null
-  suite_label: string | null
-  active_baseline_id: string | null
+  kickoff_baseline_id: string | null
+  kickoff_baseline_label: string | null
   kickoff_batch_id: string | null
   warmup_batch_id: string | null
   probe_token: string | null

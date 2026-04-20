@@ -26,9 +26,7 @@ import type {
   HotTopicAlert,
   HotTopicDashboardItem,
   IdentityVerification,
-  KickoffSuiteEditApplyPayload,
-  KickoffSuiteEditPreview,
-  KickoffSuiteEditRequest,
+  KickoffBaselineDetail,
   ReleasedReviewCase,
   ReviewCase,
   ReviewCaseDetail,
@@ -36,13 +34,9 @@ import type {
   RuntimeFeaturesData,
   MediaLifecycleRunResult,
   TransferredReviewCase,
-  WarmupGovernancePreview,
-  WarmupLaunchResult,
   WarmupVerifierRunDetail,
-  WarmupReviewDecision,
-  WarmupReviewReasonCode,
-  WarmupSuiteDetail,
-  WarmupSuiteListItem,
+  WarmupRunDetail,
+  WarmupRunListItem,
 } from '../types'
 
 function buildDisabledRuntimeFeaturesResponse(): ApiResponse<RuntimeFeaturesData> {
@@ -146,7 +140,7 @@ export function useRuntimeFeatures() {
         throw error
       }
     },
-    refetchInterval: (query) => query.state.data?.meta?.disabled === true ? false : 15_000,
+    refetchInterval: (query) => (query.state.data?.meta?.disabled === true ? false : 15_000),
     retry: false,
   })
 }
@@ -154,7 +148,8 @@ export function useRuntimeFeatures() {
 export function useAdminMediaObservability() {
   return useQuery({
     queryKey: queryKeys.adminMediaObservability,
-    queryFn: () => api.get('admin/media/observability').json<ApiResponse<AdminMediaObservabilityData>>(),
+    queryFn: () =>
+      api.get('admin/media/observability').json<ApiResponse<AdminMediaObservabilityData>>(),
     refetchInterval: 15_000,
   })
 }
@@ -163,7 +158,9 @@ export function useAdminMediaRolloutController() {
   return useQuery({
     queryKey: queryKeys.adminMediaRolloutController,
     queryFn: () =>
-      api.get('admin/media/rollout-controller').json<ApiResponse<AdminMediaRolloutControllerData>>(),
+      api
+        .get('admin/media/rollout-controller')
+        .json<ApiResponse<AdminMediaRolloutControllerData>>(),
     refetchInterval: 15_000,
   })
 }
@@ -175,26 +172,38 @@ export function useAdminLaunchProgrammingOps(enabled = true) {
       if (!enabled) {
         return buildDisabledLaunchProgrammingOpsResponse()
       }
-      return api.get('admin/launch/programming-ops').json<ApiResponse<LaunchProgrammingOpsPayload>>()
+      return api
+        .get('admin/launch/programming-ops')
+        .json<ApiResponse<LaunchProgrammingOpsPayload>>()
     },
-    refetchInterval: (query) => query.state.data?.data?.enabled === false ? false : 30_000,
+    refetchInterval: (query) => (query.state.data?.data?.enabled === false ? false : 30_000),
     retry: false,
   })
 }
 
-export function useAdminWarmupSuites() {
+export function useAdminKickoffStatus() {
   return useQuery({
-    queryKey: queryKeys.adminWarmupSuites,
-    queryFn: () => api.get('admin/warm-start/suites').json<ApiResponse<WarmupSuiteListItem[]>>(),
+    queryKey: queryKeys.adminKickoffStatus,
+    queryFn: () => api.get('admin/kickoff').json<ApiResponse<KickoffBaselineDetail | null>>(),
     refetchInterval: 15_000,
   })
 }
 
-export function useAdminWarmupSuiteDetail(suiteId: string | null) {
+export function useAdminWarmupRuns() {
   return useQuery({
-    queryKey: suiteId ? queryKeys.adminWarmupSuiteDetail(suiteId) : ['admin', 'warmup-suite-detail', 'idle'],
-    queryFn: () => api.get(`admin/warm-start/suites/${suiteId}`).json<ApiResponse<WarmupSuiteDetail>>(),
-    enabled: Boolean(suiteId),
+    queryKey: queryKeys.adminWarmupRuns,
+    queryFn: () => api.get('admin/warmup/runs').json<ApiResponse<WarmupRunListItem[]>>(),
+    refetchInterval: (query) =>
+      query.state.data?.data.some((item) => item.state === 'generating') ? 5_000 : 15_000,
+  })
+}
+
+export function useAdminWarmupRunDetail(runId: string | null) {
+  return useQuery({
+    queryKey: runId ? queryKeys.adminWarmupRunDetail(runId) : ['admin', 'warmup-run-detail', 'idle'],
+    queryFn: () => api.get(`admin/warmup/runs/${runId}`).json<ApiResponse<WarmupRunDetail>>(),
+    enabled: Boolean(runId),
+    refetchInterval: (query) => (query.state.data?.data.state === 'generating' ? 5_000 : false),
   })
 }
 
@@ -203,7 +212,9 @@ export function useAdminWarmupVerifierLatestRun() {
     queryKey: queryKeys.adminWarmupVerifierLatestRun,
     queryFn: async () => {
       try {
-        return await api.get('admin/warm-start/verifier/runs/latest').json<ApiResponse<WarmupVerifierRunDetail>>()
+        return await api
+          .get('admin/warmup/verifier/runs/latest')
+          .json<ApiResponse<WarmupVerifierRunDetail>>()
       } catch (error) {
         if (hasHttpStatus(error, 404)) {
           return { data: null } as ApiResponse<WarmupVerifierRunDetail | null>
@@ -218,25 +229,14 @@ export function useAdminWarmupVerifierLatestRun() {
 
 export function useAdminWarmupVerifierRun(runId: string | null) {
   return useQuery({
-    queryKey: runId ? queryKeys.adminWarmupVerifierRun(runId) : ['admin', 'warmup-verifier-run', 'idle'],
-    queryFn: () => api.get(`admin/warm-start/verifier/runs/${runId}`).json<ApiResponse<WarmupVerifierRunDetail>>(),
+    queryKey: runId
+      ? queryKeys.adminWarmupVerifierRun(runId)
+      : ['admin', 'warmup-verifier-run', 'idle'],
+    queryFn: () =>
+      api
+        .get(`admin/warmup/verifier/runs/${runId}`)
+        .json<ApiResponse<WarmupVerifierRunDetail>>(),
     enabled: Boolean(runId),
-  })
-}
-
-export function useCreateAdminWarmupSuite() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (body?: { suite_label?: string | null; max_runtime_topup_posts?: number }) =>
-      api.post('admin/warm-start/suites', {
-        json: body ?? {},
-      }).json<ApiResponse<WarmupLaunchResult>>(),
-    onSuccess: (payload) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures })
-      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(payload.data.suite_id) })
-    },
   })
 }
 
@@ -244,15 +244,15 @@ export function useRunAdminWarmupVerifier() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      api.post('admin/warm-start/verifier/runs', {
-        json: {},
-      }).json<ApiResponse<WarmupVerifierRunDetail>>(),
-    onSuccess: (response) => {
+      api
+        .post('admin/warmup/verifier/runs', {
+          json: {},
+        })
+        .json<ApiResponse<WarmupVerifierRunDetail>>(),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminWarmupVerifierLatestRun })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      if (response.data.summary.suite_id) {
-        qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(response.data.summary.suite_id) })
-      }
+      qc.invalidateQueries({ queryKey: queryKeys.adminKickoffStatus })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupRuns })
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: queryKeys.adminRuntimeFeatures })
       qc.invalidateQueries({ queryKey: ['feed'] })
@@ -263,79 +263,19 @@ export function useRunAdminWarmupVerifier() {
   })
 }
 
-export function useReviewAdminWarmupSuite() {
+export function useStartAdminWarmupRun() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: {
-      suiteId: string
-      decision: WarmupReviewDecision
-      reason_codes?: WarmupReviewReasonCode[]
-      note?: string | null
-      confirm_activation?: boolean
-    }) =>
-      api.post(`admin/warm-start/suites/${input.suiteId}/review`, {
-        json: {
-          decision: input.decision,
-          reason_codes: input.reason_codes ?? [],
-          note: input.note ?? null,
-          confirm_activation: input.confirm_activation ?? false,
-        },
-      }).json<ApiResponse<{ review: { id: string }; suite: WarmupSuiteDetail }>>(),
-    onSuccess: (_response, input) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suiteId) })
-      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
-    },
-  })
-}
-
-export function useRetryAdminWarmupSuite() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (suiteId: string) =>
-      api.post(`admin/warm-start/suites/${suiteId}/retry`, {
-        json: {},
-      }).json<ApiResponse<WarmupSuiteDetail>>(),
-    onSuccess: (_response, suiteId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(suiteId) })
-      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
-    },
-  })
-}
-
-export function useRebuildAdminWarmupSuite() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { suiteId: string; max_runtime_topup_posts?: number }) =>
-      api.post(`admin/warm-start/suites/${input.suiteId}/rebuild`, {
-        json: {
-          max_runtime_topup_posts: input.max_runtime_topup_posts ?? 0,
-        },
-      }).json<ApiResponse<WarmupSuiteDetail>>(),
-    onSuccess: (_response, input) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suiteId) })
-    },
-  })
-}
-
-export function useStartAdminWarmupSuite() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { suiteId: string; max_runtime_topup_posts?: number }) =>
-      api.post(`admin/warm-start/suites/${input.suiteId}/warmup`, {
-        json: {
-          max_runtime_topup_posts: input.max_runtime_topup_posts ?? 0,
-        },
-      }).json<ApiResponse<WarmupSuiteDetail>>(),
-    onSuccess: (_response, input) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suiteId) })
+    mutationFn: (input: { target_posts: number; max_attempts: number }) =>
+      api
+        .post('admin/warmup/runs', {
+          json: input,
+        })
+        .json<ApiResponse<WarmupRunDetail>>(),
+    onSuccess: (response) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminKickoffStatus })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupRuns })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupRunDetail(response.data.id) })
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['homeProgramming'] })
@@ -345,84 +285,27 @@ export function useStartAdminWarmupSuite() {
   })
 }
 
-export function useArchiveAdminWarmupSuite() {
+export function useRollbackAdminWarmupRun() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (suiteId: string) =>
-      api.post(`admin/warm-start/suites/${suiteId}/archive`, {
-        json: {},
-      }).json<ApiResponse<WarmupSuiteDetail>>(),
-    onSuccess: (_response, suiteId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(suiteId) })
-      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
-    },
-  })
-}
-
-export function usePreviewAdminWarmupSuiteEdit() {
-  return useMutation({
-    mutationFn: (input: KickoffSuiteEditRequest) =>
-      api.post(`admin/warm-start/suites/${input.target.suite_id}/edits/preview`, {
-        json: input,
-      }).json<ApiResponse<KickoffSuiteEditPreview>>(),
-  })
-}
-
-export function useApplyAdminWarmupSuiteEdit() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: KickoffSuiteEditRequest) =>
-      api.post(`admin/warm-start/suites/${input.target.suite_id}/edits`, {
-        json: input,
-      }).json<ApiResponse<KickoffSuiteEditApplyPayload>>(),
-    onSuccess: (response, input) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.target.suite_id) })
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(response.data.suite_detail.id) })
-      qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
-    },
-  })
-}
-
-export function usePreviewAdminWarmupGovernanceBatch() {
-  return useMutation({
-    mutationFn: (input: {
-      action: WarmupGovernancePreview['action']
-      suite_id?: string | null
-      warm_start_batch_ids?: string[]
-      content_ids?: string[]
-    }) =>
-      api.post('admin/governance/batches/preview', {
-        json: input,
-      }).json<ApiResponse<WarmupGovernancePreview>>(),
-  })
-}
-
-export function useExecuteAdminWarmupGovernanceBatch() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: {
-      action: WarmupGovernancePreview['action']
-      suite_id?: string | null
-      warm_start_batch_ids?: string[]
-      content_ids?: string[]
-    }) =>
-      api.post('admin/governance/batches', {
-        json: input,
-      }).json<ApiResponse<{ batch: unknown; preview: WarmupGovernancePreview }>>(),
-    onSuccess: (_response, input) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuites })
-      if (input.suite_id) {
-        qc.invalidateQueries({ queryKey: queryKeys.adminWarmupSuiteDetail(input.suite_id) })
+    mutationFn: (runId: string) =>
+      api
+        .post(`admin/warmup/runs/${runId}/rollback`, {
+          json: {},
+        })
+        .json<ApiResponse<WarmupRunDetail>>(),
+    onSuccess: (response, runId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminKickoffStatus })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupRuns })
+      qc.invalidateQueries({ queryKey: queryKeys.adminWarmupRunDetail(runId) })
+      if (response.data.source_run_id) {
+        qc.invalidateQueries({ queryKey: queryKeys.adminWarmupRunDetail(response.data.source_run_id) })
       }
       qc.invalidateQueries({ queryKey: ['admin', 'runtime-stats'] })
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+      qc.invalidateQueries({ queryKey: ['search'] })
+      qc.invalidateQueries({ queryKey: ['globalHighlights'] })
     },
   })
 }
@@ -446,9 +329,11 @@ export function usePatchAdminMediaRolloutController() {
       lineage_required?: boolean | null
       reason?: string | null
     }) =>
-      api.patch('admin/media/rollout-controller', {
-        json: body,
-      }).json<ApiResponse<AdminMediaRolloutControllerData['active_override']>>(),
+      api
+        .patch('admin/media/rollout-controller', {
+          json: body,
+        })
+        .json<ApiResponse<AdminMediaRolloutControllerData['active_override']>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
@@ -460,9 +345,11 @@ export function useReleaseAdminMediaRolloutController() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: { override_id: string; reason?: string | null }) =>
-      api.post(`admin/media/rollout-controller/${body.override_id}/release`, {
-        json: { reason: body.reason ?? null },
-      }).json<ApiResponse<AdminMediaRolloutControllerData['active_override']>>(),
+      api
+        .post(`admin/media/rollout-controller/${body.override_id}/release`, {
+          json: { reason: body.reason ?? null },
+        })
+        .json<ApiResponse<AdminMediaRolloutControllerData['active_override']>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
@@ -487,13 +374,18 @@ export function useGovernanceAction() {
   return useMutation({
     mutationFn: (body: {
       action: GovernanceActionType
-      target_type: 'post' | 'thread_turn' | 'message' | 'agent' | 'private_session' | 'notification' | 'config_revision'
+      target_type:
+        | 'post'
+        | 'thread_turn'
+        | 'message'
+        | 'agent'
+        | 'private_session'
+        | 'notification'
+        | 'config_revision'
       target_id: string
       reason?: string
     }) =>
-      api
-        .post('admin/moderation/actions', { json: body })
-        .json<ApiResponse<GovernanceResult>>(),
+      api.post('admin/moderation/actions', { json: body }).json<ApiResponse<GovernanceResult>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['post'] })
@@ -513,37 +405,45 @@ export function useApplyCommunityHotTopicPolicy() {
       summary?: string
       reason?: string
     }) => {
-      const proposal = await api.post(`communities/${input.communityId}/config/proposals`, {
-        json: {
-          patch: {
-            hot_topic_policy_v1: {
-              mode: input.mode,
-              allowed_domains: input.allowedDomains,
-              scene_modes: input.sceneModes ?? {},
-              user_copy: input.userCopy ?? {},
+      const proposal = await api
+        .post(`communities/${input.communityId}/config/proposals`, {
+          json: {
+            patch: {
+              hot_topic_policy_v1: {
+                mode: input.mode,
+                allowed_domains: input.allowedDomains,
+                scene_modes: input.sceneModes ?? {},
+                user_copy: input.userCopy ?? {},
+              },
             },
+            summary: input.summary ?? 'Update hot topic policy',
+            reason: input.reason ?? 'Admin updated hot topic policy',
+            risk_level: 'HIGH',
           },
-          summary: input.summary ?? 'Update hot topic policy',
-          reason: input.reason ?? 'Admin updated hot topic policy',
-          risk_level: 'HIGH',
-        },
-      }).json<ApiResponse<CommunityConfigPatch>>()
+        })
+        .json<ApiResponse<CommunityConfigPatch>>()
 
-      await api.post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/validate`, {
-        json: {},
-      }).json<ApiResponse<CommunityConfigValidationResult>>()
+      await api
+        .post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/validate`, {
+          json: {},
+        })
+        .json<ApiResponse<CommunityConfigValidationResult>>()
 
-      await api.post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/approve`, {
-        json: {
-          reason: input.reason ?? 'Approve hot topic policy change',
-        },
-      }).json<ApiResponse<CommunityConfigPatch>>()
+      await api
+        .post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/approve`, {
+          json: {
+            reason: input.reason ?? 'Approve hot topic policy change',
+          },
+        })
+        .json<ApiResponse<CommunityConfigPatch>>()
 
-      return api.post(`communities/${input.communityId}/config/apply`, {
-        json: {
-          proposal_id: proposal.data.id,
-        },
-      }).json<ApiResponse<CommunityConfigApplyResult>>()
+      return api
+        .post(`communities/${input.communityId}/config/apply`, {
+          json: {
+            proposal_id: proposal.data.id,
+          },
+        })
+        .json<ApiResponse<CommunityConfigApplyResult>>()
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['communities'] })
@@ -557,7 +457,8 @@ export function useApplyCommunityHotTopicPolicy() {
 export function useAdminHotTopicDashboard() {
   return useQuery({
     queryKey: queryKeys.adminHotTopicDashboard,
-    queryFn: () => api.get('admin/hot-topic/dashboard').json<ApiResponse<HotTopicDashboardItem[]>>(),
+    queryFn: () =>
+      api.get('admin/hot-topic/dashboard').json<ApiResponse<HotTopicDashboardItem[]>>(),
     refetchInterval: 15_000,
   })
 }
@@ -573,8 +474,7 @@ export function useAdminHotTopicAlerts() {
 export function useAdminCommunityProposals() {
   return useQuery({
     queryKey: queryKeys.adminCommunityProposals,
-    queryFn: () =>
-      api.get('community-proposals').json<ApiResponse<CommunityProposalListItem[]>>(),
+    queryFn: () => api.get('community-proposals').json<ApiResponse<CommunityProposalListItem[]>>(),
     refetchInterval: 15_000,
   })
 }
@@ -583,9 +483,11 @@ export function useRefreshCommunityProposalRecommendation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (proposalId: string) =>
-      api.post(`community-proposals/${proposalId}/recommendation/refresh`, {
-        json: {},
-      }).json<ApiResponse<CommunityProposalListItem['recommendation']>>(),
+      api
+        .post(`community-proposals/${proposalId}/recommendation/refresh`, {
+          json: {},
+        })
+        .json<ApiResponse<CommunityProposalListItem['recommendation']>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminCommunityProposals })
     },
@@ -602,14 +504,16 @@ export function useApplyCommunityProposalAction() {
       incubation_visibility_mode?: CommunityIncubationVisibilityMode | null
       reason?: string | null
     }) =>
-      api.post(`community-proposals/${input.proposalId}/actions`, {
-        json: {
-          action: input.action,
-          target_community_id: input.target_community_id ?? null,
-          incubation_visibility_mode: input.incubation_visibility_mode ?? null,
-          reason: input.reason ?? null,
-        },
-      }).json<ApiResponse<CommunityProposalActionResult>>(),
+      api
+        .post(`community-proposals/${input.proposalId}/actions`, {
+          json: {
+            action: input.action,
+            target_community_id: input.target_community_id ?? null,
+            incubation_visibility_mode: input.incubation_visibility_mode ?? null,
+            reason: input.reason ?? null,
+          },
+        })
+        .json<ApiResponse<CommunityProposalActionResult>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminCommunityProposals })
       qc.invalidateQueries({ queryKey: ['communities'] })
@@ -625,12 +529,14 @@ export function useAdminHotTopicPostDistribution() {
       distribution_state: 'NORMAL' | 'NO_RECOMMEND'
       reason?: string | null
     }) =>
-      api.post(`admin/hot-topic/posts/${input.postId}/distribution`, {
-        json: {
-          distribution_state: input.distribution_state,
-          reason: input.reason ?? null,
-        },
-      }).json<ApiResponse<HotTopicDashboardItem>>(),
+      api
+        .post(`admin/hot-topic/posts/${input.postId}/distribution`, {
+          json: {
+            distribution_state: input.distribution_state,
+            reason: input.reason ?? null,
+          },
+        })
+        .json<ApiResponse<HotTopicDashboardItem>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicDashboard })
       qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicAlerts })
@@ -649,13 +555,15 @@ export function useAdminHotTopicRoomControl() {
       distribution_state?: 'NORMAL' | 'NO_RECOMMEND' | 'BLOCKED'
       reason?: string | null
     }) =>
-      api.post(`admin/hot-topic/rooms/${input.roomId}/control`, {
-        json: {
-          hot_topic_mode: input.hot_topic_mode,
-          distribution_state: input.distribution_state,
-          reason: input.reason ?? null,
-        },
-      }).json<ApiResponse<HotTopicDashboardItem>>(),
+      api
+        .post(`admin/hot-topic/rooms/${input.roomId}/control`, {
+          json: {
+            hot_topic_mode: input.hot_topic_mode,
+            distribution_state: input.distribution_state,
+            reason: input.reason ?? null,
+          },
+        })
+        .json<ApiResponse<HotTopicDashboardItem>>(),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicDashboard })
       qc.invalidateQueries({ queryKey: queryKeys.adminHotTopicAlerts })
@@ -676,7 +584,9 @@ export function useAdminFeedbackList(params?: {
   return useQuery({
     queryKey: queryKeys.adminFeedbackList(params),
     queryFn: () =>
-      api.get('admin/feedback', { searchParams: params }).json<ApiResponse<AdminFeedbackTicketSummary[]>>(),
+      api
+        .get('admin/feedback', { searchParams: params })
+        .json<ApiResponse<AdminFeedbackTicketSummary[]>>(),
   })
 }
 
@@ -734,13 +644,15 @@ export function useAdminUpdateFeedback() {
       public_resolution_note?: string | null
       internal_note?: string | null
     }) =>
-      api.patch(`admin/feedback/${body.feedback_id}`, {
-        json: {
-          status: body.status,
-          public_resolution_note: body.public_resolution_note,
-          internal_note: body.internal_note,
-        },
-      }).json<ApiResponse<AdminFeedbackTicketDetail>>(),
+      api
+        .patch(`admin/feedback/${body.feedback_id}`, {
+          json: {
+            status: body.status,
+            public_resolution_note: body.public_resolution_note,
+            internal_note: body.internal_note,
+          },
+        })
+        .json<ApiResponse<AdminFeedbackTicketDetail>>(),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['admin', 'feedback-list'] })
       qc.invalidateQueries({ queryKey: queryKeys.adminFeedbackDetail(variables.feedback_id) })
@@ -750,28 +662,41 @@ export function useAdminUpdateFeedback() {
   })
 }
 
-export function useModerationQueue(params?: { status?: string; case_type?: string; queue?: string; cursor?: string; limit?: number }) {
+export function useModerationQueue(params?: {
+  status?: string
+  case_type?: string
+  queue?: string
+  cursor?: string
+  limit?: number
+}) {
   return useQuery({
     queryKey: queryKeys.adminModerationQueue(params),
-    queryFn: () => api.get('admin/moderation/queue', { searchParams: params }).json<ApiResponse<ReviewCase[]>>(),
+    queryFn: () =>
+      api.get('admin/moderation/queue', { searchParams: params }).json<ApiResponse<ReviewCase[]>>(),
   })
 }
 
 export function useModerationCase(caseId: string | null) {
   return useQuery({
     queryKey: queryKeys.adminModerationCase(caseId ?? 'missing'),
-    queryFn: () => api.get(`admin/moderation/cases/${caseId}`).json<ApiResponse<ReviewCaseDetail>>(),
+    queryFn: () =>
+      api.get(`admin/moderation/cases/${caseId}`).json<ApiResponse<ReviewCaseDetail>>(),
     enabled: Boolean(caseId),
   })
 }
 
-export function useModerationEvidenceExport(caseId: string | null, redaction: 'operator' | 'share' = 'operator') {
+export function useModerationEvidenceExport(
+  caseId: string | null,
+  redaction: 'operator' | 'share' = 'operator',
+) {
   return useQuery({
     queryKey: queryKeys.adminModerationEvidenceExport(caseId ?? 'missing', redaction),
     queryFn: () =>
-      api.get(`admin/moderation/cases/${caseId}/evidence-export`, {
-        searchParams: { redaction },
-      }).json<ApiResponse<ReviewEvidenceExport>>(),
+      api
+        .get(`admin/moderation/cases/${caseId}/evidence-export`, {
+          searchParams: { redaction },
+        })
+        .json<ApiResponse<ReviewEvidenceExport>>(),
     enabled: Boolean(caseId),
   })
 }
@@ -786,9 +711,11 @@ export function useAssignModerationCase() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: { case_id: string; assignee_user_id?: string | null }) =>
-      api.post(`admin/moderation/cases/${body.case_id}/assign`, {
-        json: { assignee_user_id: body.assignee_user_id ?? null },
-      }).json<ApiResponse<ReviewCase>>(),
+      api
+        .post(`admin/moderation/cases/${body.case_id}/assign`, {
+          json: { assignee_user_id: body.assignee_user_id ?? null },
+        })
+        .json<ApiResponse<ReviewCase>>(),
     onSuccess: (_, variables) => {
       invalidateModerationCaseQueries(qc, variables.case_id)
     },
@@ -798,14 +725,21 @@ export function useAssignModerationCase() {
 export function useTransferModerationCase() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { case_id: string; assignee_user_id: string; assigned_role?: string | null; operator_note?: string | null }) =>
-      api.post(`admin/moderation/cases/${body.case_id}/transfer`, {
-        json: {
-          assignee_user_id: body.assignee_user_id,
-          assigned_role: body.assigned_role ?? null,
-          operator_note: body.operator_note ?? null,
-        },
-      }).json<ApiResponse<TransferredReviewCase>>(),
+    mutationFn: (body: {
+      case_id: string
+      assignee_user_id: string
+      assigned_role?: string | null
+      operator_note?: string | null
+    }) =>
+      api
+        .post(`admin/moderation/cases/${body.case_id}/transfer`, {
+          json: {
+            assignee_user_id: body.assignee_user_id,
+            assigned_role: body.assigned_role ?? null,
+            operator_note: body.operator_note ?? null,
+          },
+        })
+        .json<ApiResponse<TransferredReviewCase>>(),
     onSuccess: (_, variables) => {
       invalidateModerationCaseQueries(qc, variables.case_id)
     },
@@ -816,11 +750,13 @@ export function useReleaseModerationCase() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: { case_id: string; operator_note?: string | null }) =>
-      api.post(`admin/moderation/cases/${body.case_id}/release`, {
-        json: {
-          operator_note: body.operator_note ?? null,
-        },
-      }).json<ApiResponse<ReleasedReviewCase>>(),
+      api
+        .post(`admin/moderation/cases/${body.case_id}/release`, {
+          json: {
+            operator_note: body.operator_note ?? null,
+          },
+        })
+        .json<ApiResponse<ReleasedReviewCase>>(),
     onSuccess: (_, variables) => {
       invalidateModerationCaseQueries(qc, variables.case_id)
     },
@@ -830,13 +766,19 @@ export function useReleaseModerationCase() {
 export function useResolveModerationCase() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { case_id: string; resolution_action: string; resolution_note?: string | null }) =>
-      api.post(`admin/moderation/cases/${body.case_id}/resolve`, {
-        json: {
-          resolution_action: body.resolution_action,
-          resolution_note: body.resolution_note ?? null,
-        },
-      }).json<ApiResponse<ReviewCase>>(),
+    mutationFn: (body: {
+      case_id: string
+      resolution_action: string
+      resolution_note?: string | null
+    }) =>
+      api
+        .post(`admin/moderation/cases/${body.case_id}/resolve`, {
+          json: {
+            resolution_action: body.resolution_action,
+            resolution_note: body.resolution_note ?? null,
+          },
+        })
+        .json<ApiResponse<ReviewCase>>(),
     onSuccess: (_, variables) => {
       invalidateModerationCaseQueries(qc, variables.case_id)
     },
@@ -846,13 +788,20 @@ export function useResolveModerationCase() {
 export function useClaimModerationTask() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { task_id: string; case_id: string; assigned_role?: string | null; operator_note?: string | null }) =>
-      api.post(`admin/moderation/tasks/${body.task_id}/claim`, {
-        json: {
-          assigned_role: body.assigned_role ?? null,
-          operator_note: body.operator_note ?? null,
-        },
-      }).json<ApiResponse<ClaimedReviewTask>>(),
+    mutationFn: (body: {
+      task_id: string
+      case_id: string
+      assigned_role?: string | null
+      operator_note?: string | null
+    }) =>
+      api
+        .post(`admin/moderation/tasks/${body.task_id}/claim`, {
+          json: {
+            assigned_role: body.assigned_role ?? null,
+            operator_note: body.operator_note ?? null,
+          },
+        })
+        .json<ApiResponse<ClaimedReviewTask>>(),
     onSuccess: (_, variables) => {
       invalidateModerationCaseQueries(qc, variables.case_id)
     },
@@ -863,9 +812,11 @@ export function useReopenModerationCase() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: { case_id: string; opened_reason?: string }) =>
-      api.post(`admin/moderation/cases/${body.case_id}/reopen`, {
-        json: { opened_reason: body.opened_reason ?? 'manual_reopen' },
-      }).json<ApiResponse<ReviewCase>>(),
+      api
+        .post(`admin/moderation/cases/${body.case_id}/reopen`, {
+          json: { opened_reason: body.opened_reason ?? 'manual_reopen' },
+        })
+        .json<ApiResponse<ReviewCase>>(),
     onSuccess: (_, variables) => {
       invalidateModerationCaseQueries(qc, variables.case_id)
     },
@@ -875,7 +826,10 @@ export function useReopenModerationCase() {
 export function useIdentityReviews(params?: { status?: string; cursor?: string; limit?: number }) {
   return useQuery({
     queryKey: queryKeys.adminIdentityReviews(params),
-    queryFn: () => api.get('admin/identity-reviews', { searchParams: params }).json<ApiResponse<IdentityVerification[]>>(),
+    queryFn: () =>
+      api
+        .get('admin/identity-reviews', { searchParams: params })
+        .json<ApiResponse<IdentityVerification[]>>(),
   })
 }
 
@@ -887,9 +841,11 @@ export function useResolveIdentityReview() {
       status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED'
       reason?: string
     }) =>
-      api.post(`admin/identity-reviews/${body.user_id}`, {
-        json: { status: body.status, reason: body.reason },
-      }).json<ApiResponse<IdentityVerification>>(),
+      api
+        .post(`admin/identity-reviews/${body.user_id}`, {
+          json: { status: body.status, reason: body.reason },
+        })
+        .json<ApiResponse<IdentityVerification>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.adminIdentityReviews() })
     },
@@ -899,7 +855,8 @@ export function useResolveIdentityReview() {
 export function useAdminAgentRiskProfile(agentId: string | null) {
   return useQuery({
     queryKey: queryKeys.adminAgentRiskProfile(agentId ?? 'missing'),
-    queryFn: () => api.get(`admin/agents/${agentId}/risk-profile`).json<ApiResponse<AgentRiskProfile>>(),
+    queryFn: () =>
+      api.get(`admin/agents/${agentId}/risk-profile`).json<ApiResponse<AgentRiskProfile>>(),
     enabled: Boolean(agentId),
   })
 }
@@ -908,9 +865,11 @@ export function useDisclosureCaps(scopeType: 'agent' | 'community', scopeId: str
   return useQuery({
     queryKey: queryKeys.adminDisclosureCaps(scopeType, scopeId ?? 'missing'),
     queryFn: () =>
-      api.get('admin/disclosure-caps', {
-        searchParams: { scope_type: scopeType, scope_id: scopeId ?? '' },
-      }).json<ApiResponse<DisclosureCapQueryResult>>(),
+      api
+        .get('admin/disclosure-caps', {
+          searchParams: { scope_type: scopeType, scope_id: scopeId ?? '' },
+        })
+        .json<ApiResponse<DisclosureCapQueryResult>>(),
     enabled: Boolean(scopeId),
   })
 }
@@ -926,18 +885,22 @@ export function useCreateDisclosureCapOverride() {
       linked_case_id?: string | null
       linked_risk_event_id?: string | null
     }) =>
-      api.post('admin/disclosure-caps', {
-        json: {
-          scope_type: body.scope_type,
-          scope_id: body.scope_id,
-          cap_level: body.cap_level,
-          reason: body.reason ?? null,
-          linked_case_id: body.linked_case_id ?? null,
-          linked_risk_event_id: body.linked_risk_event_id ?? null,
-        },
-      }).json<ApiResponse<DisclosureCapOverride>>(),
+      api
+        .post('admin/disclosure-caps', {
+          json: {
+            scope_type: body.scope_type,
+            scope_id: body.scope_id,
+            cap_level: body.cap_level,
+            reason: body.reason ?? null,
+            linked_case_id: body.linked_case_id ?? null,
+            linked_risk_event_id: body.linked_risk_event_id ?? null,
+          },
+        })
+        .json<ApiResponse<DisclosureCapOverride>>(),
     onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminDisclosureCaps(variables.scope_type, variables.scope_id) })
+      qc.invalidateQueries({
+        queryKey: queryKeys.adminDisclosureCaps(variables.scope_type, variables.scope_id),
+      })
       if (variables.scope_type === 'agent') {
         qc.invalidateQueries({ queryKey: queryKeys.adminAgentRiskProfile(variables.scope_id) })
       }
@@ -954,11 +917,15 @@ export function useReleaseDisclosureCapOverride() {
       scope_id: string
       reason?: string | null
     }) =>
-      api.post(`admin/disclosure-caps/${body.override_id}/release`, {
-        json: { reason: body.reason ?? null },
-      }).json<ApiResponse<DisclosureCapOverride>>(),
+      api
+        .post(`admin/disclosure-caps/${body.override_id}/release`, {
+          json: { reason: body.reason ?? null },
+        })
+        .json<ApiResponse<DisclosureCapOverride>>(),
     onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.adminDisclosureCaps(variables.scope_type, variables.scope_id) })
+      qc.invalidateQueries({
+        queryKey: queryKeys.adminDisclosureCaps(variables.scope_type, variables.scope_id),
+      })
       if (variables.scope_type === 'agent') {
         qc.invalidateQueries({ queryKey: queryKeys.adminAgentRiskProfile(variables.scope_id) })
       }

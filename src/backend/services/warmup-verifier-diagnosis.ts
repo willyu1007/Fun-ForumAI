@@ -3,42 +3,33 @@ import type {
   WarmupVerifierPhase,
   WarmupVerifierSubsystem,
 } from '../../shared/warmup-verifier.js'
-import type { WarmupReviewReasonCode } from '../repos/types/warmup-governance.js'
 
 type DiagnosisTemplate = Omit<WarmupVerifierDiagnosis, 'evidence_refs' | 'raw_reason'>
 
 const baselineReasonMap: Record<string, DiagnosisTemplate> = {
-  no_active_baseline: {
+  no_kickoff_baseline: {
     phase: 'baseline_admission',
     subsystem: 'warmup_governance',
-    code: 'baseline.missing_active_baseline',
+    code: 'baseline.missing_kickoff_baseline',
     severity: 'error',
-    summary_zh: '当前没有生效中的 warm-up baseline，runtime 放量无法验证。',
-    recommended_next_check: '检查 active baseline 是否被 archive，或 suite activation 是否未完成。',
+    summary_zh: '当前没有已导入并生效的 kickoff baseline，runtime 放量无法验证。',
+    recommended_next_check: '检查 kickoff import 是否完成，以及 baseline 是否仍保持 active。',
   },
   kickoff_layer_not_ready: {
     phase: 'baseline_admission',
     subsystem: 'warmup_governance',
     code: 'baseline.kickoff_layer_not_ready',
     severity: 'error',
-    summary_zh: '当前 active baseline 的 kickoff 层未就绪。',
-    recommended_next_check: '检查 kickoff batch state、activation 时间戳和 suite 切换记录。',
+    summary_zh: '当前 kickoff baseline 的 kickoff 层未就绪。',
+    recommended_next_check: '检查 kickoff batch state、activation 时间戳和 baseline 链接。',
   },
   warmup_layer_not_ready: {
     phase: 'baseline_admission',
     subsystem: 'warmup_governance',
     code: 'baseline.warmup_layer_not_ready',
     severity: 'error',
-    summary_zh: '当前 active baseline 的 warm-up 层未就绪。',
-    recommended_next_check: '检查 warmup batch state、runtime top-up 和 active baseline 关联是否一致。',
-  },
-  review_not_fresh_or_not_passed: {
-    phase: 'baseline_admission',
-    subsystem: 'warmup_governance',
-    code: 'baseline.review_state_invalid',
-    severity: 'error',
-    summary_zh: '当前 suite 的 review 不是最新通过状态，baseline 准入被阻断。',
-    recommended_next_check: '检查 latest review、batch revision 和 activation 前后的 freshness 判定。',
+    summary_zh: '当前 baseline 的 warmup runtime 层未就绪。',
+    recommended_next_check: '检查当前 warmup run 的 state、activation 时间戳和回滚链。',
   },
   key_communities_not_ready: {
     phase: 'baseline_admission',
@@ -46,7 +37,8 @@ const baselineReasonMap: Record<string, DiagnosisTemplate> = {
     code: 'baseline.community_supply_not_ready',
     severity: 'error',
     summary_zh: '关键社区供给未达到 warm-up 准入要求。',
-    recommended_next_check: '检查 community supply floor、社区内容覆盖以及对应 launch schedule 映射。',
+    recommended_next_check:
+      '检查 community supply floor、社区内容覆盖以及对应 launch schedule 映射。',
   },
   key_shelves_not_ready: {
     phase: 'baseline_admission',
@@ -74,58 +66,18 @@ const baselineReasonMap: Record<string, DiagnosisTemplate> = {
   },
 }
 
-const reviewReasonMap: Record<WarmupReviewReasonCode, DiagnosisTemplate> = {
-  content_quality: {
-    phase: 'activation_precheck',
-    subsystem: 'warmup_governance',
-    code: 'review.content_quality_failed',
-    severity: 'error',
-    summary_zh: 'review 认为当前 suite 内容质量不足，未满足激活门槛。',
-    recommended_next_check: '检查 suite 样本内容、localized edit 记录以及 review note。',
-  },
-  distribution_density: {
-    phase: 'activation_precheck',
-    subsystem: 'warmup_governance',
-    code: 'review.distribution_density_failed',
-    severity: 'error',
-    summary_zh: 'review 认为当前 suite 的分布密度或互动密度不足。',
-    recommended_next_check: '检查 posts/threads/turns/votes 统计与关键社区分布。',
-  },
-  media_coverage: {
-    phase: 'activation_precheck',
-    subsystem: 'media_pipeline',
-    code: 'review.media_coverage_failed',
-    severity: 'error',
-    summary_zh: 'review 认为当前 suite 的媒体覆盖不足。',
-    recommended_next_check: '检查媒体挂载、coverage ratio 与 highlight packaging。',
-  },
-  kickoff_invalid: {
-    phase: 'activation_precheck',
-    subsystem: 'warmup_governance',
-    code: 'review.kickoff_invalid',
-    severity: 'error',
-    summary_zh: 'review 认为 kickoff 层内容不再有效，导致 suite 无法继续激活。',
-    recommended_next_check: '检查 kickoff batch 的 revision、局部修补和恢复记录。',
-  },
-  process_issue: {
-    phase: 'activation_precheck',
-    subsystem: 'warmup_governance',
-    code: 'review.process_issue',
-    severity: 'error',
-    summary_zh: 'review 发现了流程性问题，当前 suite 暂不允许激活。',
-    recommended_next_check: '检查 suite review、rebuild、retry 与 activation 操作链是否完整。',
-  },
-}
-
 function mapBatchFloorReason(reason: string): DiagnosisTemplate | null {
-  const match = reason.match(/^(kickoff|warmup|suite)_(posts|threads|turns|votes|media|communities|media_ratio)_(below_floor|above_ceiling)$/)
+  const match = reason.match(
+    /^(kickoff|warmup|suite)_(posts|threads|turns|votes|media|communities|media_ratio)_(below_floor|above_ceiling)$/,
+  )
   if (!match) return null
 
   const [, layer, metric, condition] = match
   const codeMetric = metric === 'media_ratio' ? 'media_ratio' : metric
   return {
     phase: 'activation_precheck',
-    subsystem: metric === 'media' || metric === 'media_ratio' ? 'media_pipeline' : 'warmup_governance',
+    subsystem:
+      metric === 'media' || metric === 'media_ratio' ? 'media_pipeline' : 'warmup_governance',
     code: `activation.${layer}_${codeMetric}_${condition}`,
     severity: 'error',
     summary_zh:
@@ -149,11 +101,13 @@ function withEvidence(
 ): WarmupVerifierDiagnosis {
   return {
     ...template,
-    evidence_refs: [{
-      artifact: input.artifact,
-      pointer: input.pointer ?? null,
-      note: input.raw_reason ?? null,
-    }],
+    evidence_refs: [
+      {
+        artifact: input.artifact,
+        pointer: input.pointer ?? null,
+        note: input.raw_reason ?? null,
+      },
+    ],
     raw_reason: input.raw_reason ?? null,
   }
 }
@@ -162,16 +116,17 @@ export function mapActivationReasonToDiagnosis(
   reason: string,
   pointer?: string,
 ): WarmupVerifierDiagnosis {
-  const template = mapBatchFloorReason(reason) ?? baselineReasonMap[reason] ?? {
-    phase: 'activation_precheck' as WarmupVerifierPhase,
-    subsystem: 'warmup_governance' as WarmupVerifierSubsystem,
-    code: `activation.${reason}`,
-    severity: 'error' as const,
-    summary_zh: `activation precheck 被原因 ${reason} 阻断。`,
-    recommended_next_check: '检查 suite detail.activation_readiness.reasons 和对应 batch 统计。',
-  }
+  const template = mapBatchFloorReason(reason) ??
+    baselineReasonMap[reason] ?? {
+      phase: 'activation_precheck' as WarmupVerifierPhase,
+      subsystem: 'warmup_governance' as WarmupVerifierSubsystem,
+      code: `activation.${reason}`,
+      severity: 'error' as const,
+      summary_zh: `activation precheck 被原因 ${reason} 阻断。`,
+      recommended_next_check: '检查 kickoff baseline verification.missing 和对应 batch 统计。',
+    }
   return withEvidence(template, {
-    artifact: 'suite-snapshot-before.json',
+    artifact: 'kickoff-snapshot-before.json',
     pointer,
     raw_reason: reason,
   })
@@ -196,17 +151,6 @@ export function mapBaselineReasonToDiagnosis(
   })
 }
 
-export function mapReviewReasonToDiagnosis(
-  reason: WarmupReviewReasonCode,
-  pointer?: string,
-): WarmupVerifierDiagnosis {
-  return withEvidence(reviewReasonMap[reason], {
-    artifact: 'suite-snapshot-before.json',
-    pointer,
-    raw_reason: reason,
-  })
-}
-
 export function createVerifierDiagnosis(input: {
   phase: WarmupVerifierPhase
   subsystem: WarmupVerifierSubsystem
@@ -218,18 +162,21 @@ export function createVerifierDiagnosis(input: {
   severity?: WarmupVerifierDiagnosis['severity']
   raw_reason?: string | null
 }): WarmupVerifierDiagnosis {
-  return withEvidence({
-    phase: input.phase,
-    subsystem: input.subsystem,
-    code: input.code,
-    severity: input.severity ?? 'error',
-    summary_zh: input.summary_zh,
-    recommended_next_check: input.recommended_next_check,
-  }, {
-    artifact: input.artifact,
-    pointer: input.pointer ?? null,
-    raw_reason: input.raw_reason ?? null,
-  })
+  return withEvidence(
+    {
+      phase: input.phase,
+      subsystem: input.subsystem,
+      code: input.code,
+      severity: input.severity ?? 'error',
+      summary_zh: input.summary_zh,
+      recommended_next_check: input.recommended_next_check,
+    },
+    {
+      artifact: input.artifact,
+      pointer: input.pointer ?? null,
+      raw_reason: input.raw_reason ?? null,
+    },
+  )
 }
 
 export function sortDiagnoses(diagnoses: WarmupVerifierDiagnosis[]): WarmupVerifierDiagnosis[] {

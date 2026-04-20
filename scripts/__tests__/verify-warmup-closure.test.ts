@@ -45,7 +45,7 @@ describe('verify-warmup-closure.mjs', () => {
 
   it('returns exit code 0 when the verifier run passes', async () => {
     const { server, baseUrl } = await startServer((req, res) => {
-      if (req.method === 'POST' && req.url === '/v1/admin/warm-start/verifier/runs') {
+      if (req.method === 'POST' && req.url === '/v1/admin/warmup/verifier/runs') {
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({
           data: {
@@ -94,7 +94,7 @@ describe('verify-warmup-closure.mjs', () => {
 
   it('returns exit code 1 when the verifier run fails', async () => {
     const { server, baseUrl } = await startServer((req, res) => {
-      if (req.method === 'POST' && req.url === '/v1/admin/warm-start/verifier/runs') {
+      if (req.method === 'POST' && req.url === '/v1/admin/warmup/verifier/runs') {
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({
           data: {

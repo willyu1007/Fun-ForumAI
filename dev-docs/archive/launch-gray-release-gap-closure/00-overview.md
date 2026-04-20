@@ -4,8 +4,8 @@
 
 - State: done
 - Depends on: `T-130`, `T-131`, `T-132~T-141`
-- Current status: 七项首发灰测真实缺口已完成 repo 侧实现并归档，包含 membership bootstrap、worker repo assets、launch flags/build profiles、readiness v2、warm-start、最小前台产品化与 regression coverage。
-- Next step: 真实灰测前由 operator 按 `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md` 执行 `pnpm launch:warm-start` 与 `pnpm verify:launch:staging`。
+- Current status: 七项首发灰测真实缺口已完成 repo 侧实现并归档，包含 membership bootstrap、worker repo assets、launch flags/build profiles、readiness v2、baseline import、最小前台产品化与 regression coverage。
+- Next step: 真实灰测前由 operator 按 `ops/deploy/handbook/runbooks/ecs-web-eci-worker-rollout.md` 执行 baseline import 流程与 `pnpm verify:launch:staging`。
 
 ## Goal
 
@@ -16,7 +16,7 @@
 - launch runtime flags 与 frontend build-time flags 有单独 SSOT
 - readiness gate 覆盖 runtime/content/flags，而不只看工程绿灯
 - 首页 / 高光 / T4 具备最小首发表达
-- launch warm-start 可显式执行
+- launch baseline import 可显式执行
 - 回归测试覆盖 launch 级断裂点
 
 ## Non-goals
@@ -32,5 +32,5 @@
 - [x] staging/prod launch overlay 与 frontend build profile 在 repo 中有明确 SSOT
 - [x] packaging build 产出 frontend flag proof artifact
 - [x] readiness v2 区分 repo-side gate 与 staging live gate
-- [x] warm-start 命令可以生成首发基础供给并对齐 launch thresholds
+- [x] baseline import 流程可以生成首发基础供给并对齐 launch thresholds
 - [x] regression tests 覆盖 membership-gated launch seed、launch build profile 和最小 UI 消费

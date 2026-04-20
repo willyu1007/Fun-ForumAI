@@ -32,9 +32,9 @@ export function AdminPanel() {
   if (controller.auth.currentIdentity !== 'admin') {
     return (
       <div className="space-y-4">
-        <h1 className={"text-lg font-bold"}>管控台</h1>
-        <div className={"rounded-md border border-dashed bg-muted/30 p-10 text-center"}>
-          <p className={"text-sm text-muted-foreground"}>
+        <h1 className={'text-lg font-bold'}>管控台</h1>
+        <div className={'rounded-md border border-dashed bg-muted/30 p-10 text-center'}>
+          <p className={'text-sm text-muted-foreground'}>
             请先通过下方工具栏切换为<strong>管理员</strong>身份。
           </p>
         </div>
@@ -45,26 +45,26 @@ export function AdminPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className={"text-lg font-bold"}>管控台</h1>
-        <p className={"text-xs text-muted-foreground"}>内容审核、治理操作与 Runtime 管理</p>
+        <h1 className={'text-lg font-bold'}>管控台</h1>
+        <p className={'text-xs text-muted-foreground'}>内容审核、治理操作与 Runtime 管理</p>
       </div>
 
       {controller.runtime.healthData && (
-        <div className={"flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-xs"}>
+        <div className={'flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-xs'}>
           <span>系统状态</span>
-          <Badge variant="outline" className={"bg-success/10 text-success text-[10px]"}>
+          <Badge variant="outline" className={'bg-success/10 text-success text-[10px]'}>
             {controller.runtime.healthData.ok ? '正常' : '异常'}
           </Badge>
-          <span className={"text-muted-foreground"}>
+          <span className={'text-muted-foreground'}>
             app {controller.runtime.healthData.checks.app}
           </span>
-          <span className={"text-muted-foreground"}>
+          <span className={'text-muted-foreground'}>
             db {controller.runtime.healthData.checks.db ?? 'skipped'}
           </span>
-          <span className={"text-muted-foreground"}>
+          <span className={'text-muted-foreground'}>
             redis {controller.runtime.healthData.checks.redis ?? 'skipped'}
           </span>
-          <span className={"text-muted-foreground"}>
+          <span className={'text-muted-foreground'}>
             版本 {controller.runtime.healthData.version}
           </span>
         </div>
@@ -79,14 +79,14 @@ export function AdminPanel() {
           <TabsTrigger value="feedback">意见箱</TabsTrigger>
           <TabsTrigger value="hot-topic">Hot Topic</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
-          <TabsTrigger value="warmup">Warm-up</TabsTrigger>
+          <TabsTrigger value="warmup">Kickoff / Warmup</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="programming" className={"mt-4"}>
+        <TabsContent value="programming" className={'mt-4'}>
           <ProgrammingTab />
         </TabsContent>
 
-        <TabsContent value="runtime" className={"mt-4"}>
+        <TabsContent value="runtime" className={'mt-4'}>
           <RuntimeDashboard />
         </TabsContent>
 
@@ -98,15 +98,15 @@ export function AdminPanel() {
           <HotTopicTab hotTopic={controller.hotTopic} />
         </TabsContent>
 
-        <TabsContent value="feedback" className={"mt-4"}>
+        <TabsContent value="feedback" className={'mt-4'}>
           <FeedbackInboxTab />
         </TabsContent>
 
-        <TabsContent value="admins" className={"mt-4"}>
+        <TabsContent value="admins" className={'mt-4'}>
           <AdminUsersTab />
         </TabsContent>
 
-        <TabsContent value="invites" className={"mt-4"}>
+        <TabsContent value="invites" className={'mt-4'}>
           <InviteCodesTab />
         </TabsContent>
 
