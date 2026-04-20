@@ -1690,13 +1690,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/agent-language-audit-and-delete-flow
     updated: 2026-04-11
-  - id: T-952
-    slug: flag-metadata-legacy-cutover
-    status: archived
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/archive/flag-metadata-legacy-cutover
-    updated: 2026-04-11
   - id: T-953
     slug: route-controller-split-and-avatar-asset-strategy-temp
     status: in-progress

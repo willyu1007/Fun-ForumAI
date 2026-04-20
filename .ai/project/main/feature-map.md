@@ -109,7 +109,6 @@ Project: `main`
 | T-949 forum-product-narrative-and-context-alignment-v1 | archived | dev-docs/archive/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | dev-docs/archive/agent-language-audit-and-delete-flow |
-| T-952 flag-metadata-legacy-cutover | archived | dev-docs/archive/flag-metadata-legacy-cutover |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-955 badge-visual-e2e-closeout-v1 | archived | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-960 forum-post-level-roaming-definition-temp | archived | dev-docs/archive/forum-post-level-roaming-definition-temp |

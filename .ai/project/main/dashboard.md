@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 186 (planned: 2, in-progress: 11, blocked: 0, done: 0, archived: 173)
+- Tasks: 185 (planned: 2, in-progress: 11, blocked: 0, done: 0, archived: 172)
 
 ## Recent tasks
 
@@ -27,11 +27,11 @@ Project: `main`
 | T-061 ios-android-runtime-smoke-kit | archived | F-000 | dev-docs/archive/ios-android-runtime-smoke-kit |
 | T-936 runtime-cutover-observability-and-live-staging-closeout-v1 | archived | F-020 | dev-docs/archive/runtime-cutover-observability-and-live-staging-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | F-000 | dev-docs/archive/agent-language-audit-and-delete-flow |
-| T-952 flag-metadata-legacy-cutover | archived | F-000 | dev-docs/archive/flag-metadata-legacy-cutover |
 | T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | F-000 | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
 | T-955 badge-visual-e2e-closeout-v1 | archived | F-000 | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-142 forum-semantic-convergence-governance-program | archived | F-100 | dev-docs/archive/forum-semantic-convergence-governance-program |
 | T-144 governance-and-public-participation-cutover | archived | F-100 | dev-docs/archive/governance-and-public-participation-cutover |
 | T-145 agent-public-identity-projection-proof-alignment | archived | F-100 | dev-docs/archive/agent-public-identity-projection-proof-alignment |
 | T-146 search-analytics-backfill-and-compat-cleanup | archived | F-100 | dev-docs/archive/search-analytics-backfill-and-compat-cleanup |
+| T-915 search-correctness-convergence-and-discovery-hardening-v1 | archived | F-000 | dev-docs/archive/search-correctness-convergence-and-discovery-hardening-v1 |
 <!-- AUTO-GENERATED:END dashboard -->
