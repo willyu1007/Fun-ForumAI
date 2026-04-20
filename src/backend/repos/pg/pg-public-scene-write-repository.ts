@@ -20,21 +20,26 @@ import type {
 } from '../types.js'
 import type { PublicSceneWriteRepository } from '../public-scene-write-repository.js'
 import {
+  fromStorageGenerationMode,
+  toStorageGenerationMode,
+} from '../types/warmup-governance.js'
+import {
   PgAgentRunRepository,
   PgEventRepository,
   toPrismaActorType,
   toPrismaPlane,
 } from './pg-event-repository.js'
-import {
-  buildPostModerationColumns,
-  readPostModerationColumns,
-} from './pg-content-moderation.js'
+import { buildPostModerationColumns, readPostModerationColumns } from './pg-content-moderation.js'
 
 function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue
 }
 
-function toPrismaPublicActorType(actorType: CreatePublicStageThreadInput['author_actor_type'] | CreatePublicStageTurnInput['author_actor_type']) {
+function toPrismaPublicActorType(
+  actorType:
+    | CreatePublicStageThreadInput['author_actor_type']
+    | CreatePublicStageTurnInput['author_actor_type'],
+) {
   return actorType === 'human' ? 'HUMAN' : 'AGENT'
 }
 
@@ -64,8 +69,10 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           tagsJson: (input.post.tags ?? []) as Prisma.InputJsonValue,
           visibility: input.post.visibility,
           state: input.post.state,
-          warmStartBatchId: input.post.warm_start_batch_id ?? null,
-          generationMode: input.post.generation_mode ?? null,
+          governanceBatchId: input.post.governance_batch_id ?? null,
+          generationMode: input.post.generation_mode
+            ? toStorageGenerationMode(input.post.generation_mode)
+            : null,
           ...buildPostModerationColumns(input.post.moderation_metadata),
         },
       })
@@ -159,13 +166,16 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           body: input.thread.body,
           visibility: input.thread.visibility,
           state: input.thread.state,
-          warmStartBatchId: input.thread.warm_start_batch_id ?? null,
-          generationMode: input.thread.generation_mode ?? null,
+          governanceBatchId: input.thread.governance_batch_id ?? null,
+          generationMode: input.thread.generation_mode
+            ? toStorageGenerationMode(input.thread.generation_mode)
+            : null,
           threadState: input.thread.thread_state ?? 'OPEN',
           replyBudget: input.thread.reply_budget ?? 6,
-          activeRouteJson: input.thread.active_route === null || input.thread.active_route === undefined
-            ? Prisma.DbNull
-            : toPrismaJsonValue(input.thread.active_route),
+          activeRouteJson:
+            input.thread.active_route === null || input.thread.active_route === undefined
+              ? Prisma.DbNull
+              : toPrismaJsonValue(input.thread.active_route),
         },
       })
 
@@ -245,8 +255,10 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           body: input.turn.body,
           visibility: input.turn.visibility,
           state: input.turn.state,
-          warmStartBatchId: input.turn.warm_start_batch_id ?? null,
-          generationMode: input.turn.generation_mode ?? null,
+          governanceBatchId: input.turn.governance_batch_id ?? null,
+          generationMode: input.turn.generation_mode
+            ? toStorageGenerationMode(input.turn.generation_mode)
+            : null,
         },
       })
 
@@ -315,8 +327,8 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
       tags: (row.tagsJson as string[] | null) ?? [],
       visibility: row.visibility,
       state: row.state,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as Post['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       moderation_metadata: readPostModerationColumns(row),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
@@ -334,8 +346,8 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
       body: row.body,
       visibility: row.visibility,
       state: row.state,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as PublicStageThread['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       thread_state: row.threadState,
       reply_budget: row.replyBudget,
       active_route: (row.activeRouteJson as PublicStageThread['active_route']) ?? null,
@@ -359,8 +371,8 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
       body: row.body,
       visibility: row.visibility,
       state: row.state,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as PublicStageTurn['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

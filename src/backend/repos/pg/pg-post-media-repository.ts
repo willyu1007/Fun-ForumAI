@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto'
 import type { PostMedia as PrismaPostMedia, PrismaClient } from '@prisma/client'
 import type { CreatePostMediaInput, PostMedia } from '../types.js'
 import type { PostMediaRepository } from '../post-media-repository.js'
+import {
+  fromStorageGenerationMode,
+  toStorageGenerationMode,
+} from '../types/warmup-governance.js'
 
 export class PgPostMediaRepository implements PostMediaRepository {
   private cache = new Map<string, PostMedia>()
@@ -25,24 +29,28 @@ export class PgPostMediaRepository implements PostMediaRepository {
       asset_id: input.asset_id,
       media_url: input.media_url,
       mime_type: input.mime_type,
-      warm_start_batch_id: input.warm_start_batch_id ?? null,
+      governance_batch_id: input.governance_batch_id ?? null,
       generation_mode: input.generation_mode ?? null,
       created_at: now,
     }
     this.cache.set(id, media)
 
-    this.prisma.postMedia.create({
-      data: {
-        id,
-        postId: media.post_id,
-        assetId: media.asset_id,
-        mediaUrl: media.media_url,
-        mimeType: media.mime_type,
-        warmStartBatchId: media.warm_start_batch_id ?? null,
-        generationMode: media.generation_mode ?? null,
-        createdAt: now,
-      },
-    }).catch((err: unknown) => console.error('[PgPostMediaRepo] create error:', err))
+    this.prisma.postMedia
+      .create({
+        data: {
+          id,
+          postId: media.post_id,
+          assetId: media.asset_id,
+          mediaUrl: media.media_url,
+          mimeType: media.mime_type,
+          governanceBatchId: media.governance_batch_id ?? null,
+          generationMode: media.generation_mode
+            ? toStorageGenerationMode(media.generation_mode)
+            : null,
+          createdAt: now,
+        },
+      })
+      .catch((err: unknown) => console.error('[PgPostMediaRepo] create error:', err))
 
     return media
   }
@@ -73,10 +81,22 @@ export class PgPostMediaRepository implements PostMediaRepository {
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
-  findByWarmStartBatch(batchId: string): PostMedia[] {
+  findByGovernanceBatch(batchId: string): PostMedia[] {
     return Array.from(this.cache.values())
-      .filter((item) => item.warm_start_batch_id === batchId)
+      .filter((item) => item.governance_batch_id === batchId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  async findByGovernanceBatchFresh(batchId: string): Promise<PostMedia[]> {
+    const rows = await this.prisma.postMedia.findMany({
+      where: {
+        governanceBatchId: batchId,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    })
+    return rows.map((row) => this.toDomain(row))
   }
 
   deleteByPostIds(postIds: string[]): number {
@@ -88,11 +108,13 @@ export class PgPostMediaRepository implements PostMediaRepository {
       this.cache.delete(id)
       deleted += 1
     }
-    void this.prisma.postMedia.deleteMany({
-      where: {
-        postId: { in: [...lookup] },
-      },
-    }).catch((err: unknown) => console.error('[PgPostMediaRepo] deleteByPostIds error:', err))
+    void this.prisma.postMedia
+      .deleteMany({
+        where: {
+          postId: { in: [...lookup] },
+        },
+      })
+      .catch((err: unknown) => console.error('[PgPostMediaRepo] deleteByPostIds error:', err))
     return deleted
   }
 
@@ -103,8 +125,8 @@ export class PgPostMediaRepository implements PostMediaRepository {
       asset_id: row.assetId,
       media_url: row.mediaUrl,
       mime_type: row.mimeType,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as PostMedia['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       created_at: row.createdAt,
     }
   }

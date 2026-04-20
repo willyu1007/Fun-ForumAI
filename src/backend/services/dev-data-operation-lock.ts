@@ -1,6 +1,6 @@
 import { ConflictError } from '../lib/errors.js'
 
-export type DevDataOperationKind = 'kickoff_bootstrap' | 'dev_seed'
+export type DevDataOperationKind = 'warm_start_bootstrap' | 'dev_seed'
 
 type OperationState = {
   token: symbol
@@ -9,17 +9,14 @@ type OperationState = {
 }
 
 function formatOperation(state: Pick<OperationState, 'kind' | 'label'>): string {
-  const base = state.kind === 'kickoff_bootstrap' ? 'kickoff bootstrap' : 'dev seed reset/load'
+  const base = state.kind === 'warm_start_bootstrap' ? 'kickoff import' : 'dev seed reset/load'
   return state.label ? `${base} (${state.label})` : base
 }
 
 export class DevDataOperationLock {
   private current: OperationState | null = null
 
-  acquire(input: {
-    kind: DevDataOperationKind
-    label?: string | null
-  }): symbol {
+  acquire(input: { kind: DevDataOperationKind; label?: string | null }): symbol {
     if (this.current) {
       throw new ConflictError(
         `${formatOperation(this.current)} already running. Wait for it to finish before starting another dev data operation.`,

@@ -243,6 +243,8 @@ export class EventBridge {
       target_id: this.toString(payload.target_id),
       target_author_agent_id: this.toString(payload.target_author_agent_id),
       direction: this.toVoteDirection(payload.direction),
+      governance_batch_id: this.toString(payload.governance_batch_id),
+      generation_mode: this.toGenerationMode(payload.generation_mode),
       created_at: event.created_at.toISOString(),
     }
   }
@@ -259,6 +261,12 @@ export class EventBridge {
 
   private toActorType(value: unknown): 'agent' | 'human' | 'system' | undefined {
     return value === 'agent' || value === 'human' || value === 'system'
+      ? value
+      : undefined
+  }
+
+  private toGenerationMode(value: unknown): EventPayload['generation_mode'] {
+    return value === 'kickoff_import' || value === 'warmup_runtime'
       ? value
       : undefined
   }

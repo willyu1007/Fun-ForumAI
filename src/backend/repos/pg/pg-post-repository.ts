@@ -1,16 +1,12 @@
 import { Prisma, type Post as PrismaPost, type PrismaClient } from '@prisma/client'
-import type {
-  CreatePostInput,
-  PaginatedResult,
-  PaginationOpts,
-  Post,
-} from '../types.js'
+import type { CreatePostInput, PaginatedResult, PaginationOpts, Post } from '../types.js'
 import type { PostRepository } from '../post-repository.js'
-import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
 import {
-  buildPostModerationColumns,
-  readPostModerationColumns,
-} from './pg-content-moderation.js'
+  fromStorageGenerationMode,
+  toStorageGenerationMode,
+} from '../types/warmup-governance.js'
+import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
+import { buildPostModerationColumns, readPostModerationColumns } from './pg-content-moderation.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -33,8 +29,10 @@ export class PgPostRepository implements PostRepository {
         tagsJson: (input.tags ?? []) as Prisma.InputJsonValue,
         visibility: input.visibility,
         state: input.state,
-        warmStartBatchId: input.warm_start_batch_id ?? null,
-        generationMode: input.generation_mode ?? null,
+        governanceBatchId: input.governance_batch_id ?? null,
+        generationMode: input.generation_mode
+          ? toStorageGenerationMode(input.generation_mode)
+          : null,
         ...buildPostModerationColumns(input.moderation_metadata),
       },
     })
@@ -46,18 +44,18 @@ export class PgPostRepository implements PostRepository {
     return row ? this.toDomain(row) : null
   }
 
-  async findByWarmStartBatch(batchId: string): Promise<Post[]> {
+  async findByGovernanceBatch(batchId: string): Promise<Post[]> {
     const rows = await this.prisma.post.findMany({
-      where: { warmStartBatchId: batchId },
+      where: { governanceBatchId: batchId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map((row) => this.toDomain(row))
   }
 
-  async findByWarmStartBatches(batchIds: string[]): Promise<Post[]> {
+  async findByGovernanceBatches(batchIds: string[]): Promise<Post[]> {
     if (batchIds.length === 0) return []
     const rows = await this.prisma.post.findMany({
-      where: { warmStartBatchId: { in: batchIds } },
+      where: { governanceBatchId: { in: batchIds } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map((row) => this.toDomain(row))
@@ -82,10 +80,7 @@ export class PgPostRepository implements PostRepository {
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
-  async findByAuthor(
-    agentId: string,
-    opts: PaginationOpts,
-  ): Promise<PaginatedResult<Post>> {
+  async findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>> {
     const rows = await this.prisma.post.findMany({
       where: { authorAgentId: agentId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -109,7 +104,7 @@ export class PgPostRepository implements PostRepository {
       visibility?: Post['visibility']
       state?: Post['state']
       moderation_metadata?: CreatePostInput['moderation_metadata']
-      warm_start_batch_id?: string | null
+      governance_batch_id?: string | null
       generation_mode?: Post['generation_mode']
     },
   ): Promise<Post | null> {
@@ -124,9 +119,19 @@ export class PgPostRepository implements PostRepository {
           ...(patch.tags !== undefined ? { tagsJson: patch.tags as Prisma.InputJsonValue } : {}),
           ...(patch.visibility !== undefined ? { visibility: patch.visibility } : {}),
           ...(patch.state !== undefined ? { state: patch.state } : {}),
-          ...(patch.warm_start_batch_id !== undefined ? { warmStartBatchId: patch.warm_start_batch_id } : {}),
-          ...(patch.generation_mode !== undefined ? { generationMode: patch.generation_mode } : {}),
-          ...(patch.moderation_metadata !== undefined ? buildPostModerationColumns(patch.moderation_metadata) : {}),
+          ...(patch.governance_batch_id !== undefined
+            ? { governanceBatchId: patch.governance_batch_id }
+            : {}),
+          ...(patch.generation_mode !== undefined
+            ? {
+                generationMode: patch.generation_mode
+                  ? toStorageGenerationMode(patch.generation_mode)
+                  : null,
+              }
+            : {}),
+          ...(patch.moderation_metadata !== undefined
+            ? buildPostModerationColumns(patch.moderation_metadata)
+            : {}),
           updatedAt: new Date(),
         },
       })
@@ -137,10 +142,7 @@ export class PgPostRepository implements PostRepository {
     }
   }
 
-  async updateVisibility(
-    id: string,
-    visibility: Post['visibility'],
-  ): Promise<Post | null> {
+  async updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null> {
     try {
       const row = await this.prisma.post.update({
         where: { id },
@@ -217,8 +219,8 @@ export class PgPostRepository implements PostRepository {
       tags: (row.tagsJson as string[] | null) ?? [],
       visibility: row.visibility,
       state: row.state,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as Post['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       moderation_metadata: readPostModerationColumns(row),
       created_at: row.createdAt,
       updated_at: row.updatedAt,

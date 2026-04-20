@@ -5,6 +5,10 @@ export type PgVectorStorageMode = 'vector' | 'text'
 
 const storageModeCache = new WeakMap<PrismaDbClient, Promise<PgVectorStorageMode>>()
 
+function toPgVectorStorageMode(udtName: string | null | undefined): PgVectorStorageMode {
+  return udtName === 'vector' ? 'vector' : 'text'
+}
+
 function serializeVector(vector: number[]): string {
   return `[${vector.map((value) => Number(value).toString()).join(',')}]`
 }
@@ -30,8 +34,8 @@ export async function detectPgVectorStorageMode(prisma: PrismaDbClient): Promise
       AND column_name = 'embedding_vector'
     LIMIT 1
   `)
-    .then((rows) => rows[0]?.udt_name === 'vector' ? 'vector' : 'text')
-    .catch(() => 'text')
+    .then<PgVectorStorageMode>((rows) => toPgVectorStorageMode(rows[0]?.udt_name))
+    .catch<PgVectorStorageMode>(() => 'text')
 
   storageModeCache.set(prisma, pending)
   return pending

@@ -3,6 +3,14 @@ import type { Vote, UpsertVoteInput } from './types.js'
 export interface VoteRepository {
   upsert(input: UpsertVoteInput): Vote
   findByTarget(targetType: Vote['target_type'], targetId: string): Vote[]
+  findByTargetsFresh?(targets: Array<{
+    target_type: Vote['target_type']
+    target_id: string
+  }>): Promise<Vote[]>
+  deleteByTargets(targets: Array<{
+    target_type: Vote['target_type']
+    target_id: string
+  }>): Promise<number>
   countByTarget(targetType: Vote['target_type'], targetId: string): { up: number; down: number; score: number }
   findByVoterAndTarget(voterId: string, targetType: Vote['target_type'], targetId: string): Vote | null
 }
@@ -49,6 +57,29 @@ export class InMemoryVoteRepository implements VoteRepository {
     return Array.from(this.store.values()).filter(
       (v) => v.target_type === targetType && v.target_id === targetId,
     )
+  }
+
+  async findByTargetsFresh(targets: Array<{
+    target_type: Vote['target_type']
+    target_id: string
+  }>): Promise<Vote[]> {
+    return targets.flatMap((target) => this.findByTarget(target.target_type, target.target_id))
+  }
+
+  async deleteByTargets(targets: Array<{
+    target_type: Vote['target_type']
+    target_id: string
+  }>): Promise<number> {
+    if (targets.length === 0) return 0
+    const keys = new Set(targets.map((target) => `${target.target_type}:${target.target_id}`))
+    let deleted = 0
+    for (const [id, vote] of this.store.entries()) {
+      if (!keys.has(`${vote.target_type}:${vote.target_id}`)) continue
+      this.store.delete(id)
+      this.voterIndex.delete(this.compositeKey(vote.voter_agent_id, vote.target_type, vote.target_id))
+      deleted += 1
+    }
+    return deleted
   }
 
   countByTarget(

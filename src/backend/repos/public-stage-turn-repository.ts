@@ -8,7 +8,7 @@ import type {
 export interface PublicStageTurnRepository {
   create(input: CreatePublicStageTurnInput): Promise<PublicStageTurn>
   findById(id: string): Promise<PublicStageTurn | null>
-  findByWarmStartBatch(batchId: string): Promise<PublicStageTurn[]>
+  findByGovernanceBatch(batchId: string): Promise<PublicStageTurn[]>
   findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>>
   findWindowByThread(threadId: string, opts: PublicStageTurnWindowOpts): Promise<PublicStageTurnWindowResult>
   findRecentByThread(threadId: string, limit: number): Promise<PublicStageTurn[]>
@@ -66,7 +66,7 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
       body: input.body,
       visibility: input.visibility,
       state: input.state,
-      warm_start_batch_id: input.warm_start_batch_id ?? null,
+      governance_batch_id: input.governance_batch_id ?? null,
       generation_mode: input.generation_mode ?? null,
       created_at: now,
       updated_at: now,
@@ -79,9 +79,9 @@ export class InMemoryPublicStageTurnRepository implements PublicStageTurnReposit
     return this.store.get(id) ?? null
   }
 
-  async findByWarmStartBatch(batchId: string): Promise<PublicStageTurn[]> {
+  async findByGovernanceBatch(batchId: string): Promise<PublicStageTurn[]> {
     return Array.from(this.store.values())
-      .filter((turn) => turn.warm_start_batch_id === batchId)
+      .filter((turn) => turn.governance_batch_id === batchId)
       .sort((a, b) => a.turn_index - b.turn_index || a.created_at.getTime() - b.created_at.getTime() || a.id.localeCompare(b.id))
   }
 

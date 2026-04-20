@@ -73,6 +73,54 @@ export class PgVoteRepository implements VoteRepository {
     )
   }
 
+  async findByTargetsFresh(targets: Array<{
+    target_type: Vote['target_type']
+    target_id: string
+  }>): Promise<Vote[]> {
+    if (targets.length === 0) return []
+    const rows = await this.prisma.vote.findMany({
+      where: {
+        OR: targets.map((target) => ({
+          targetType: target.target_type,
+          targetId: target.target_id,
+        })),
+      },
+    })
+    return rows.map((row) => this.toDomain(row))
+  }
+
+  async deleteByTargets(targets: Array<{
+    target_type: Vote['target_type']
+    target_id: string
+  }>): Promise<number> {
+    if (targets.length === 0) return 0
+    const rows = await this.prisma.vote.findMany({
+      where: {
+        OR: targets.map((target) => ({
+          targetType: target.target_type,
+          targetId: target.target_id,
+        })),
+      },
+      select: {
+        id: true,
+        voterAgentId: true,
+        targetType: true,
+        targetId: true,
+      },
+    })
+    if (rows.length === 0) return 0
+    await this.prisma.vote.deleteMany({
+      where: {
+        id: { in: rows.map((row) => row.id) },
+      },
+    })
+    for (const row of rows) {
+      this.cache.delete(row.id)
+      this.voterIndex.delete(this.compositeKey(row.voterAgentId, row.targetType, row.targetId))
+    }
+    return rows.length
+  }
+
   countByTarget(
     targetType: Vote['target_type'],
     targetId: string,

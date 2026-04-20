@@ -1047,4 +1047,33 @@ describe('PostScheduler', () => {
       public_media_prompt_injection_status: 'blocked_by_audit',
     }))
   })
+
+  it('routes warmup runtime posts through the lite visible tier', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-warmup-lite-1' }))
+    const deps = createDeps(write)
+    const generateVisibleText = deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>
+
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.forcePost({
+      governance_context: {
+        governance_batch_id: 'warmup-batch-1',
+        generation_mode: 'warmup_runtime',
+      },
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      post_id: 'post-warmup-lite-1',
+    }))
+    expect(generateVisibleText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestedTier: 'lite',
+        homeVoiceLineId: 'qwen-social-v1',
+      }),
+    )
+  })
 })

@@ -303,7 +303,15 @@ describe('media injection medium-sample regression', () => {
       }))
       const snapshot = createSemanticSnapshot(asset.id, inferSignalProfile(input.signal))
       await mediaSemanticSnapshotRepo.create(snapshot)
-      return { asset, snapshot }
+      return {
+        asset,
+        snapshot,
+        owner_note: null,
+        media_url: asset.origin_url ?? `https://cdn.test/${asset.storage_key ?? asset.id}`,
+        latest_post_id: null,
+        latest_public_attachment_at: null,
+        created_at: asset.created_at,
+      }
     }
 
     const seededExisting = await createManagedAsset({
@@ -333,7 +341,7 @@ describe('media injection medium-sample regression', () => {
             ? ({ id, output_asset_id: generatedExisting.asset.id })
             : null
         )),
-      },
+      } as never,
     })
 
     const worker = new MediaInjectionWorker({
@@ -346,14 +354,14 @@ describe('media injection medium-sample regression', () => {
             ? ({ id } as { id: string })
             : null
         )),
-      },
+      } as never,
       mediaGenerationJobRepo: {
         findById: vi.fn(async (id: string) => (
           id === 'generated-job-1'
             ? ({ id, output_asset_id: generatedExisting.asset.id })
             : null
         )),
-      },
+      } as never,
       mediaSemanticSnapshotRepo,
       mediaAssetService: {
         ingestOwnerUpload: vi.fn(async (input) => createManagedAsset({
@@ -397,7 +405,7 @@ describe('media injection medium-sample regression', () => {
         registerGeneratedPublicAsset: vi.fn(async () => null),
         registerPrivateDerivedPublicAsset: vi.fn(async () => null),
         registerSelfPublicArchiveAsset: vi.fn(async () => null),
-      },
+      } as never,
       mediaRetrievalService,
       mediaDuplicateService,
       mediaImportArtifactService: artifactService,

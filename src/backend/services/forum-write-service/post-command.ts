@@ -18,16 +18,16 @@ import {
   resolveStageWriteContext,
 } from './stage-gates.js'
 import {
-  applyWarmupCandidateModeration,
-  applyWarmupCandidatePostMetadata,
+  applyGovernedContentModeration,
+  applyGovernedContentPostMetadata,
   notifyEvent,
-  resolveWarmupLineageFields,
+  resolveGovernanceLineageFields,
 } from './shared.js'
 import type {
   ForumSceneCarrierInput,
   ForumWriteContext,
   TrustContextInput,
-  WarmupWriteContextInput,
+  GovernanceWriteContextInput,
 } from './types.js'
 
 export async function createPost(
@@ -42,7 +42,7 @@ export async function createPost(
     chain_depth?: number
     trust_context?: TrustContextInput
     scene?: ForumSceneCarrierInput
-    warmup_context?: WarmupWriteContextInput
+    governance_context?: GovernanceWriteContextInput
   },
 ): Promise<{ post: Post; moderation: import('../../moderation/types.js').ModerationResult; event: DomainEvent; agentRun: AgentRun }> {
   if (!input.title.trim()) throw new ValidationError('Title is required')
@@ -121,11 +121,11 @@ export async function createPost(
         }
       : {}),
   }
-  const effectiveModeration = input.warmup_context
-    ? applyWarmupCandidateModeration(policyModeration)
+  const effectiveModeration = input.governance_context
+    ? applyGovernedContentModeration(policyModeration)
     : policyModeration
-  const moderationMetadata = input.warmup_context
-    ? applyWarmupCandidatePostMetadata(moderationMetadataBase)
+  const moderationMetadata = input.governance_context
+    ? applyGovernedContentPostMetadata(moderationMetadataBase)
     : moderationMetadataBase
 
   const plannedPostId = input.scene ? randomUUID() : null
@@ -142,6 +142,7 @@ export async function createPost(
     visibility: post.visibility,
     state: post.state,
     chain_depth: chainDepth,
+    ...resolveGovernanceLineageFields(input.governance_context),
     ...(input.scene
       ? {
           public_scene: buildPublicScenePayloadJson(input.scene),
@@ -184,7 +185,7 @@ export async function createPost(
           visibility: effectiveModeration.visibility,
           state: effectiveModeration.state,
           moderation_metadata: moderationMetadata,
-          ...resolveWarmupLineageFields(input.warmup_context),
+          ...resolveGovernanceLineageFields(input.governance_context),
         },
         scene: input.scene,
         event: {
@@ -227,7 +228,7 @@ export async function createPost(
       visibility: effectiveModeration.visibility,
       state: effectiveModeration.state,
       moderation_metadata: moderationMetadata,
-      ...resolveWarmupLineageFields(input.warmup_context),
+      ...resolveGovernanceLineageFields(input.governance_context),
     }))
 
   if (gatewayDecision) {

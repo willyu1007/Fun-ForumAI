@@ -80,6 +80,8 @@ export interface PostSchedulerResult {
   latency_ms?: number
 }
 
+const WARMUP_RUNTIME_REQUESTED_TIER = 'lite'
+
 const DEFAULT_PERSONA: AgentPersona = {
   name: '匿名智能体',
   style: '中立客观，简洁明了',
@@ -154,7 +156,7 @@ export class PostScheduler {
   }
 
   async createPost(input?: {
-    warmup_context?: import('../services/forum-write-service/types.js').WarmupWriteContextInput
+    governance_context?: import('../services/forum-write-service/types.js').GovernanceWriteContextInput
     probe_context?: WarmupProbeContextInput
   }): Promise<PostSchedulerResult> {
     if (!this.shouldPost()) {
@@ -175,7 +177,9 @@ export class PostScheduler {
         return { triggered: false, error: 'No stage-eligible posting candidates' }
       }
       const { selected, writableCommunities } = candidate
-      const routing = await this.resolveVisibleRouting(selected.id, 'base')
+      const routing = input?.governance_context
+        ? this.resolveWarmupVisibleRouting(selected.id)
+        : await this.resolveVisibleRouting(selected.id, 'base')
       const fallbackCommunity = this.pickRandomCommunity(writableCommunities)
       if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
       const sceneSelection = this.deps.publicSceneSelectorService
@@ -462,8 +466,8 @@ export class PostScheduler {
       if (effectiveScenePayload) {
         instruction.public_scene = effectiveScenePayload
       }
-      if (input?.warmup_context) {
-        instruction.warmup_context = input.warmup_context
+      if (input?.governance_context) {
+        instruction.governance_context = input.governance_context
       }
       if (input?.probe_context && instruction.action === 'create_post') {
         instruction.title = this.applyProbeTitleSuffix(
@@ -558,7 +562,7 @@ export class PostScheduler {
 
   /** Force a post regardless of interval/quota (for dev endpoints). */
   async forcePost(input?: {
-    warmup_context?: import('../services/forum-write-service/types.js').WarmupWriteContextInput
+    governance_context?: import('../services/forum-write-service/types.js').GovernanceWriteContextInput
     probe_context?: WarmupProbeContextInput
   }): Promise<PostSchedulerResult> {
     const saved = { lastPostAt: this.lastPostAt, lastSkipAt: this.lastSkipAt, postsToday: this.postsToday }
@@ -815,12 +819,20 @@ export class PostScheduler {
     }
   }
 
-  private async resolveVisibleRouting(agentId: string, requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier): Promise<{
+  private async resolveVisibleRouting(
+    agentId: string,
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier,
+    requestedTierCeiling?: import('../../shared/agent-persona-catalog.js').RenderTier,
+  ): Promise<{
     homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
     requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
   }> {
     if (this.deps.inferenceProfileService) {
-      return this.deps.inferenceProfileService.resolveVisibleRoute({ agentId, requestedTier })
+      return this.deps.inferenceProfileService.resolveVisibleRoute({
+        agentId,
+        requestedTier,
+        requestedTierCeiling,
+      })
     }
     const agent = this.deps.agentService.getAgent(agentId)
     const latestConfig = this.deps.agentService.getLatestConfig(agentId)
@@ -829,6 +841,19 @@ export class PostScheduler {
     return {
       homeVoiceLineId,
       requestedTier,
+    }
+  }
+
+  private resolveWarmupVisibleRouting(agentId: string): {
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+  } {
+    const agent = this.deps.agentService.getAgent(agentId)
+    const latestConfig = this.deps.agentService.getLatestConfig(agentId)
+    const resolved = resolveAgentIdentity(agent, latestConfig)
+    return {
+      homeVoiceLineId: resolved.summary.home_voice_line_id,
+      requestedTier: WARMUP_RUNTIME_REQUESTED_TIER,
     }
   }
 

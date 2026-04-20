@@ -149,6 +149,8 @@ describe('EventBridge', () => {
       post_id: post.id,
       community_id: post.community_id,
       author_agent_id: post.author_agent_id,
+      governance_batch_id: 'warmup-batch-1',
+      generation_mode: 'warmup_runtime',
     }))
 
     await waitForQueueSize(queue, 1)
@@ -157,6 +159,8 @@ describe('EventBridge', () => {
     expect(payload.tags).toEqual(['ai', 'debate'])
     expect(payload.community_id).toBe('community-1')
     expect(payload.controversy_score).toBeGreaterThan(0)
+    expect(payload.governance_batch_id).toBe('warmup-batch-1')
+    expect(payload.generation_mode).toBe('warmup_runtime')
   })
 
   it('enriches THREAD_OPENED with thread_id, tags, participants and controversy_score', async () => {

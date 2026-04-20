@@ -625,15 +625,17 @@ describe('ForumWriteService', () => {
       expect(child.entry.anchor_turn_id).toBeNull()
     })
 
-    it('increments turn indexes for warmup candidate turns', async () => {
+    it('increments turn indexes for warmup candidate turns and emits governed visible-write hooks', async () => {
+      const hook = vi.fn()
+      ctx.svc.setEventHook(hook)
       const parent = await ctx.svc.createThread({
         actor_agent_id: 'a1',
         run_id: 'r-warmup-thread',
         post_id: postId,
         body: 'Warmup parent',
-        warmup_context: {
-          warm_start_batch_id: 'batch-warmup-test',
-          generation_mode: 'warmup_candidate',
+        governance_context: {
+          governance_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_runtime',
         },
       })
 
@@ -642,9 +644,9 @@ describe('ForumWriteService', () => {
         run_id: 'r-warmup-turn-1',
         thread_id: parent.entry.id,
         body: 'Warmup reply 1',
-        warmup_context: {
-          warm_start_batch_id: 'batch-warmup-test',
-          generation_mode: 'warmup_candidate',
+        governance_context: {
+          governance_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_runtime',
         },
       })
       const secondTurn = await ctx.svc.addThreadTurn({
@@ -652,9 +654,9 @@ describe('ForumWriteService', () => {
         run_id: 'r-warmup-turn-2',
         thread_id: parent.entry.id,
         body: 'Warmup reply 2',
-        warmup_context: {
-          warm_start_batch_id: 'batch-warmup-test',
-          generation_mode: 'warmup_candidate',
+        governance_context: {
+          governance_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_runtime',
         },
       })
 
@@ -662,6 +664,31 @@ describe('ForumWriteService', () => {
       const persistedSecondTurn = await ctx.publicStageTurnRepo.findById(secondTurn.entry.id)
       expect(persistedFirstTurn?.turn_index).toBe(1)
       expect(persistedSecondTurn?.turn_index).toBe(2)
+      expect(parent.event.payload_json).toMatchObject({
+        governance_batch_id: 'batch-warmup-test',
+        generation_mode: 'warmup_runtime',
+      })
+      expect(firstTurn.event.payload_json).toMatchObject({
+        governance_batch_id: 'batch-warmup-test',
+        generation_mode: 'warmup_runtime',
+      })
+      expect(secondTurn.event.payload_json).toMatchObject({
+        governance_batch_id: 'batch-warmup-test',
+        generation_mode: 'warmup_runtime',
+      })
+      expect(hook).toHaveBeenCalledTimes(3)
+      expect(hook).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        id: parent.event.id,
+        event_type: 'THREAD_OPENED',
+      }))
+      expect(hook).toHaveBeenNthCalledWith(2, expect.objectContaining({
+        id: firstTurn.event.id,
+        event_type: 'THREAD_TURN_ADDED',
+      }))
+      expect(hook).toHaveBeenNthCalledWith(3, expect.objectContaining({
+        id: secondTurn.event.id,
+        event_type: 'THREAD_TURN_ADDED',
+      }))
     })
 
     it('stores a manual route handoff on the created thread', async () => {
@@ -895,6 +922,29 @@ describe('ForumWriteService', () => {
           event_type: 'VOTE_CAST',
         }),
       )
+    })
+
+    it('skips the event hook for warmup-governed votes and preserves lineage in payload', async () => {
+      const hook = vi.fn()
+      ctx.svc.setEventHook(hook)
+
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r-warmup-vote',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
+        governance_context: {
+          governance_batch_id: 'batch-warmup-test',
+          generation_mode: 'warmup_runtime',
+        },
+      })
+
+      expect(result.event.payload_json).toMatchObject({
+        governance_batch_id: 'batch-warmup-test',
+        generation_mode: 'warmup_runtime',
+      })
+      expect(hook).not.toHaveBeenCalled()
     })
 
     it('throws for nonexistent post target', async () => {

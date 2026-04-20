@@ -173,6 +173,7 @@ export class MediaAssetControlService {
       owner_note: null,
       media_url,
       latest_post_id: null,
+      latest_public_attachment_at: null,
       created_at: promoted.asset.created_at,
     })
   }
@@ -199,6 +200,7 @@ export class MediaAssetControlService {
       owner_note: null,
       media_url,
       latest_post_id: null,
+      latest_public_attachment_at: null,
       created_at: demoted.asset.created_at,
     })
   }
@@ -214,7 +216,7 @@ export class MediaAssetControlService {
   attachPostMediaAndConsume(input: {
     asset_id: string
     post_id: string
-    warmup_context?: WarmupWriteContextInput
+    governance_context?: GovernanceWriteContextInput
   }): Promise<{ linked: boolean }> {
     return this.deps.mediaAssetService.attachAssetToForumPost(input)
   }
@@ -269,4 +271,4 @@ export class MediaAssetControlService {
     return value
   }
 }
-import type { WarmupWriteContextInput } from './forum-write-service/types.js'
+import type { GovernanceWriteContextInput } from './forum-write-service/types.js'

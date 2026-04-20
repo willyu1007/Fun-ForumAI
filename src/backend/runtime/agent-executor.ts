@@ -566,6 +566,12 @@ export class AgentExecutor {
     ctx: ExecutionContext,
     instruction: NonNullable<ReturnType<ResponseParser['parse']>>,
   ): void {
+    if (ctx.event.governance_batch_id && ctx.event.generation_mode) {
+      instruction.governance_context = {
+        governance_batch_id: ctx.event.governance_batch_id,
+        generation_mode: ctx.event.generation_mode,
+      }
+    }
     if (ctx.public_scene) {
       instruction.public_scene = ctx.public_scene
     }

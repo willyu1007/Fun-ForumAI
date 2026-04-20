@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import { resolve } from 'node:path'
 import type { LookupAddress } from 'node:dns'
 import type {
   MediaAsset,
@@ -1197,7 +1199,7 @@ export class MediaAssetService {
   attachAssetToForumPost(input: {
     asset_id: string
     post_id: string
-    warmup_context?: WarmupWriteContextInput
+    governance_context?: GovernanceWriteContextInput
   }): Promise<{ linked: boolean }> {
     return this.deps.mediaWriteBridge.attachAssetToPost(input)
   }
@@ -1207,12 +1209,43 @@ export class MediaAssetService {
     data: Buffer
   } | null> {
     const asset = await this.deps.mediaAssetRepo.findById(assetId)
-    if (!asset?.storage_key) return null
-    const object = await this.deps.storage.getObject(asset.storage_key)
-    if (!object) return null
-    return {
-      mime_type: asset.mime_type,
-      data: object.data,
+    if (!asset) return null
+    if (asset.storage_key) {
+      const object = await this.deps.storage.getObject(asset.storage_key)
+      if (object) {
+        return {
+          mime_type: asset.mime_type,
+          data: object.data,
+        }
+      }
+    }
+    return this.readBundledOriginMediaFile(asset.origin_url, asset.mime_type)
+  }
+
+  private async readBundledOriginMediaFile(
+    originUrl: string | null,
+    mimeType: string,
+  ): Promise<{
+    mime_type: string
+    data: Buffer
+  } | null> {
+    if (!originUrl || !originUrl.startsWith('/')) return null
+
+    const pathname = new URL(originUrl, 'http://localhost').pathname
+    const publicRoot = resolve(process.cwd(), 'public')
+    const filePath = resolve(publicRoot, `.${pathname}`)
+    if (!filePath.startsWith(`${publicRoot}/`) && filePath !== publicRoot) {
+      return null
+    }
+
+    try {
+      const data = await readFile(filePath)
+      return {
+        mime_type: mimeType,
+        data,
+      }
+    } catch {
+      return null
     }
   }
 
@@ -2008,4 +2041,4 @@ function buildPrivateSummary(summary: MediaSemanticSummary): PrivateMediaRuntime
       : {}),
   }
 }
-import type { WarmupWriteContextInput } from '../services/forum-write-service/types.js'
+import type { GovernanceWriteContextInput } from '../services/forum-write-service/types.js'

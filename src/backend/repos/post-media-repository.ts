@@ -5,7 +5,8 @@ export interface PostMediaRepository {
   findByPostId(postId: string): PostMedia[]
   findByPostIds(postIds: string[]): Record<string, PostMedia[]>
   findByAssetId(assetId: string): PostMedia[]
-  findByWarmStartBatch(batchId: string): PostMedia[]
+  findByGovernanceBatch(batchId: string): PostMedia[]
+  findByGovernanceBatchFresh?(batchId: string): Promise<PostMedia[]>
   deleteByPostIds(postIds: string[]): number
 }
 
@@ -24,7 +25,7 @@ export class InMemoryPostMediaRepository implements PostMediaRepository {
       asset_id: input.asset_id,
       media_url: input.media_url,
       mime_type: input.mime_type,
-      warm_start_batch_id: input.warm_start_batch_id ?? null,
+      governance_batch_id: input.governance_batch_id ?? null,
       generation_mode: input.generation_mode ?? null,
       created_at: new Date(),
     }
@@ -58,10 +59,14 @@ export class InMemoryPostMediaRepository implements PostMediaRepository {
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
-  findByWarmStartBatch(batchId: string): PostMedia[] {
+  findByGovernanceBatch(batchId: string): PostMedia[] {
     return Array.from(this.store.values())
-      .filter((item) => item.warm_start_batch_id === batchId)
+      .filter((item) => item.governance_batch_id === batchId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+  }
+
+  async findByGovernanceBatchFresh(batchId: string): Promise<PostMedia[]> {
+    return this.findByGovernanceBatch(batchId)
   }
 
   deleteByPostIds(postIds: string[]): number {

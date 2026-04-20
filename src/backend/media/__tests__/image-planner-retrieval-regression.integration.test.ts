@@ -102,7 +102,7 @@ function buildDirective(): PersistedVisualDirective {
     narrative_context: {
       hook: 'lantern harbor festival skyline',
       objective: 'highlight the lantern harbor festival mood',
-      tone_hint: 'vivid',
+      tone_hint: 'warm',
       relation_focus: 'none',
       semantic_query: 'lantern harbor festival skyline',
       required_elements: ['lantern festival', 'harbor skyline'],
@@ -195,7 +195,7 @@ async function seedCanonicalAsset(input: {
     asset_id: asset.id,
     semantic_snapshot_id: snapshot.id,
     binding_role: 'reference',
-    relation_to_scene: 'curated_for_platform',
+    relation_to_scene: 'selected_for_post',
     display_policy: 'original_allowed',
     created_by_type: 'system',
     created_by_id: 'system',
@@ -237,6 +237,7 @@ describe('image planner retrieval quality regression', () => {
     })
     const mediaCatalogService = new MediaCatalogService({
       mediaCatalogCardRepo,
+      mediaSemanticSnapshotRepo,
     })
     const embeddingGateway = {
       providerId: 'test-embedding',

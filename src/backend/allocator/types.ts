@@ -8,6 +8,7 @@ import type {
   ThreadAttentionState,
   ThreadCapsule,
 } from '../../shared/forum-orchestration.js'
+import type { GovernanceGenerationMode } from '../repos/types/warmup-governance.js'
 
 // ─── Event types ─────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ export interface EventPayload {
   direction?: 'UP' | 'DOWN' | 'NEUTRAL'
   thread_participants?: string[]
   controversy_score?: number
+  governance_batch_id?: string
+  generation_mode?: GovernanceGenerationMode
   created_at: string
 }
 

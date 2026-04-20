@@ -3,8 +3,8 @@ import type { Post, CreatePostInput, PaginatedResult, PaginationOpts } from './t
 export interface PostRepository {
   create(input: CreatePostInput): Promise<Post>
   findById(id: string): Promise<Post | null>
-  findByWarmStartBatch(batchId: string): Promise<Post[]>
-  findByWarmStartBatches(batchIds: string[]): Promise<Post[]>
+  findByGovernanceBatch(batchId: string): Promise<Post[]>
+  findByGovernanceBatches(batchIds: string[]): Promise<Post[]>
   findPublic(opts: PaginationOpts & { communityId?: string; authorAgentIds?: string[] }): Promise<PaginatedResult<Post>>
   findByAuthor(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<Post>>
   delete(id: string): Promise<void>
@@ -17,7 +17,7 @@ export interface PostRepository {
     visibility?: Post['visibility']
     state?: Post['state']
     moderation_metadata?: CreatePostInput['moderation_metadata']
-    warm_start_batch_id?: string | null
+    governance_batch_id?: string | null
     generation_mode?: Post['generation_mode']
   }): Promise<Post | null>
   updateVisibility(id: string, visibility: Post['visibility']): Promise<Post | null>
@@ -55,7 +55,7 @@ export class InMemoryPostRepository implements PostRepository {
       visibility: input.visibility,
       state: input.state,
       moderation_metadata: input.moderation_metadata ?? null,
-      warm_start_batch_id: input.warm_start_batch_id ?? null,
+      governance_batch_id: input.governance_batch_id ?? null,
       generation_mode: input.generation_mode ?? null,
       created_at: now,
       updated_at: now,
@@ -68,17 +68,17 @@ export class InMemoryPostRepository implements PostRepository {
     return this.store.get(id) ?? null
   }
 
-  async findByWarmStartBatch(batchId: string): Promise<Post[]> {
+  async findByGovernanceBatch(batchId: string): Promise<Post[]> {
     return Array.from(this.store.values())
-      .filter((post) => post.warm_start_batch_id === batchId)
+      .filter((post) => post.governance_batch_id === batchId)
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
-  async findByWarmStartBatches(batchIds: string[]): Promise<Post[]> {
+  async findByGovernanceBatches(batchIds: string[]): Promise<Post[]> {
     if (batchIds.length === 0) return []
     const ids = new Set(batchIds)
     return Array.from(this.store.values())
-      .filter((post) => post.warm_start_batch_id && ids.has(post.warm_start_batch_id))
+      .filter((post) => post.governance_batch_id && ids.has(post.governance_batch_id))
       .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
   }
 
@@ -121,7 +121,7 @@ export class InMemoryPostRepository implements PostRepository {
       visibility?: Post['visibility']
       state?: Post['state']
       moderation_metadata?: CreatePostInput['moderation_metadata']
-      warm_start_batch_id?: string | null
+      governance_batch_id?: string | null
       generation_mode?: Post['generation_mode']
     },
   ): Promise<Post | null> {
@@ -137,7 +137,7 @@ export class InMemoryPostRepository implements PostRepository {
     if (patch.moderation_metadata !== undefined) {
       post.moderation_metadata = patch.moderation_metadata
     }
-    if (patch.warm_start_batch_id !== undefined) post.warm_start_batch_id = patch.warm_start_batch_id
+    if (patch.governance_batch_id !== undefined) post.governance_batch_id = patch.governance_batch_id
     if (patch.generation_mode !== undefined) post.generation_mode = patch.generation_mode
     post.updated_at = new Date()
     return post

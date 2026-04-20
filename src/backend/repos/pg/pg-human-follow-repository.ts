@@ -113,9 +113,7 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     this.byUserAndAgent.delete(key)
     this.cache.delete(existingId)
 
-    await this.prisma.humanAgentFollow
-      .delete({ where: { id: existingId } })
-      .catch(() => { /* already deleted */ })
+    await this.prisma.humanAgentFollow.deleteMany({ where: { id: existingId } })
 
     return true
   }
@@ -215,9 +213,7 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     this.byUserAndCommunity.delete(key)
     this.communityCache.delete(existingId)
 
-    await this.prisma.humanCommunityFollow
-      .delete({ where: { id: existingId } })
-      .catch(() => { /* already deleted */ })
+    await this.prisma.humanCommunityFollow.deleteMany({ where: { id: existingId } })
 
     return true
   }
@@ -290,9 +286,7 @@ export class PgHumanFollowRepository implements HumanFollowRepository {
     this.byUserAndThread.delete(key)
     this.threadCache.delete(existingId)
 
-    await this.prisma.humanThreadFollow
-      .delete({ where: { id: existingId } })
-      .catch(() => { /* already deleted */ })
+    await this.prisma.humanThreadFollow.deleteMany({ where: { id: existingId } })
 
     return true
   }

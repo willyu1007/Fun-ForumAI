@@ -1455,4 +1455,119 @@ describe('AgentExecutor', () => {
       token_cost: 10,
     }))
   })
+
+  it('propagates governed event lineage into runtime writes', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-governed-1',
+        event_type: 'NewPostCreated' as const,
+        idempotency_key: 'idem-governed-1',
+        chain_depth: 1,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        governance_batch_id: 'warmup-batch-1',
+        generation_mode: 'warmup_runtime' as const,
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Governed Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: '验证 governed lineage 传递',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const generateVisibleText = vi.fn(async () => ({
+      content: '这条我先接成一个新 thread。',
+      usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+      latencyMs: 8,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'base',
+        profileId: 'profile-1',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'agent-reply-to-post',
+        promptVersion: 1,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToPostScene,
+    }))
+    const parse = vi.fn(() => ({
+      action: 'open_thread' as const,
+      community_id: 'community-1',
+      post_id: 'post-1',
+      body: '这条我先接成一个新 thread。',
+    }))
+    const write = vi.fn(async () => ({ success: true, content_id: 'thread-1' }))
+
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      inferenceProfileService: {
+        resolveVisibleRoute: vi.fn(async () => ({
+          homeVoiceLineId: 'qwen-social-v1',
+          requestedTier: 'base',
+        })),
+      } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-governed-1',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'open_thread',
+      governance_context: {
+        governance_batch_id: 'warmup-batch-1',
+        generation_mode: 'warmup_runtime',
+      },
+    }), 'agent-1', 'evt-governed-1', expect.anything(), expect.any(Number), 1, expect.anything())
+  })
 })

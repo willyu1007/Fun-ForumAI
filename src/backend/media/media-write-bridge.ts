@@ -25,7 +25,7 @@ import {
   readForumThreadIdFromThreadRootRef,
 } from './media-contract-utils.js'
 import { resolveAvailableMediaAssetUrl } from './media-url.js'
-import type { WarmupWriteContextInput } from '../services/forum-write-service/types.js'
+import type { GovernanceWriteContextInput } from '../services/forum-write-service/types.js'
 
 export interface MediaWriteBridgeDeps {
   mediaAssetRepo: MediaAssetRepository
@@ -50,7 +50,7 @@ export class MediaWriteBridge {
     asset_id: string
     post_id: string
     created_by_id?: string
-    warmup_context?: WarmupWriteContextInput
+    governance_context?: GovernanceWriteContextInput
   }): Promise<{ linked: boolean }> {
     const asset = await this.deps.mediaAssetRepo.findById(input.asset_id)
     if (!asset || asset.lifecycle_status !== 'active' || asset.visibility_policy === 'blocked') {
@@ -111,8 +111,8 @@ export class MediaWriteBridge {
         asset_id: asset.id,
         media_url: mediaUrl,
         mime_type: asset.mime_type,
-        warm_start_batch_id: input.warmup_context?.warm_start_batch_id ?? null,
-        generation_mode: input.warmup_context?.generation_mode ?? null,
+        governance_batch_id: input.governance_context?.governance_batch_id ?? null,
+        generation_mode: input.governance_context?.generation_mode ?? null,
       })
     }
 
@@ -124,7 +124,7 @@ export class MediaWriteBridge {
     scene_type: 'forum_post' | 'forum_thread' | 'forum_turn' | 'chat_room_message'
     scene_id: string
     created_by_id?: string
-    warmup_context?: WarmupWriteContextInput
+    governance_context?: GovernanceWriteContextInput
   }): Promise<{ linked: boolean }> {
     const plan = await this.deps.imagePlanRepo.findById(input.image_plan_id)
     if (!plan) {
@@ -205,7 +205,7 @@ export class MediaWriteBridge {
         asset.id,
         mediaUrl,
         asset.mime_type,
-        input.warmup_context,
+        input.governance_context,
       )
 
       linkedAssetIds.add(asset.id)
@@ -274,7 +274,7 @@ export class MediaWriteBridge {
         asset.id,
         mediaUrl,
         asset.mime_type,
-        input.warmup_context,
+        input.governance_context,
       )
       linkedAssetIds.add(asset.id)
       linked = true
@@ -502,7 +502,7 @@ export class MediaWriteBridge {
     assetId: string,
     mediaUrl: string,
     mimeType: string,
-    warmupContext?: WarmupWriteContextInput,
+    governanceContext?: GovernanceWriteContextInput,
   ): void {
     if (sceneType !== 'forum_post') return
     const hasPostMedia = this.deps.postMediaRepo.findByAssetId(assetId)
@@ -513,8 +513,8 @@ export class MediaWriteBridge {
       asset_id: assetId,
       media_url: mediaUrl,
       mime_type: mimeType,
-      warm_start_batch_id: warmupContext?.warm_start_batch_id ?? null,
-      generation_mode: warmupContext?.generation_mode ?? null,
+      governance_batch_id: governanceContext?.governance_batch_id ?? null,
+      generation_mode: governanceContext?.generation_mode ?? null,
     })
     void this.deps.mediaLineageService?.recordEdge({
       from_node_type: 'asset',

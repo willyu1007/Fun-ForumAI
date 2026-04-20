@@ -409,6 +409,66 @@ describe('MediaAssetService', () => {
     }))
   })
 
+  it('refreshes semantic snapshots for local bundled url_import assets', async () => {
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaObservabilityService = {
+      record: vi.fn(async () => {}),
+    }
+    const extract = vi.fn(async () => ({
+      schema_version: 'visual_core.v2',
+      model_provider: 'test',
+      model_name: 'vision',
+      model_version: '2',
+      extraction_status: 'completed' as const,
+      quality_grade: 'rich' as const,
+      summary: buildSummary('bundled-public', 'bundled internal summary'),
+    }))
+    const service = new MediaAssetService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      storage: createStorageStub(),
+      mediaSemanticService: {
+        extract,
+      } as never,
+      mediaBindingService: new MediaBindingService({ sceneMediaBindingRepo }),
+      mediaProjectionService: new MediaProjectionService({ mediaContextProjectionRepo }),
+      mediaWriteBridge: {} as never,
+      mediaObservabilityService: mediaObservabilityService as never,
+    })
+
+    const asset = await mediaAssetRepo.create({
+      id: 'asset-bundled-url-import',
+      steward_agent_id: 'agent-1',
+      owner_user_id: null,
+      source_kind: 'url_import',
+      visibility_policy: 'public_original_allowed',
+      lifecycle_status: 'active',
+      storage_key: null,
+      origin_url: '/community-banners/sea-glow.webp',
+      mime_type: 'image/webp',
+      file_size_bytes: 0,
+      sha256: 'seed-sha256-bundled',
+    })
+
+    const refreshed = await service.refreshSemanticSnapshot(asset.id)
+
+    expect(refreshed?.snapshot).not.toBeNull()
+    expect(extract).toHaveBeenCalledTimes(1)
+    expect(await mediaSemanticSnapshotRepo.findCurrentByAssetId(asset.id)).toMatchObject({
+      id: refreshed?.snapshot?.id,
+      schema_version: 'visual_core.v2',
+    })
+    expect(mediaObservabilityService.record).not.toHaveBeenCalledWith(expect.objectContaining({
+      event_type: 'semantic_snapshot_failed',
+      asset_id: asset.id,
+    }))
+  })
+
   it('does not return owner-pool attachment candidates when the stored object is missing', async () => {
     const mediaAssetRepo = new InMemoryMediaAssetRepository()
     const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()

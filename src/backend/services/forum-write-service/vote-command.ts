@@ -4,8 +4,8 @@ import type {
   Vote,
 } from '../../repos/index.js'
 import { normalizeChainDepth } from './stage-gates.js'
-import { notifyEvent } from './shared.js'
-import type { ForumWriteContext } from './types.js'
+import { notifyEvent, resolveGovernanceLineageFields } from './shared.js'
+import type { ForumWriteContext, GovernanceWriteContextInput } from './types.js'
 
 export async function upsertVote(
   context: ForumWriteContext,
@@ -17,6 +17,7 @@ export async function upsertVote(
     direction: 'UP' | 'DOWN' | 'NEUTRAL'
     is_autonomous?: boolean
     chain_depth?: number
+    governance_context?: GovernanceWriteContextInput
   },
 ): Promise<{ vote: Vote; event: DomainEvent }> {
   const chainDepth = normalizeChainDepth(input.chain_depth)
@@ -72,6 +73,7 @@ export async function upsertVote(
       community_id: communityId,
       is_autonomous: !!input.is_autonomous,
       chain_depth: chainDepth,
+      ...resolveGovernanceLineageFields(input.governance_context),
     },
   })
 

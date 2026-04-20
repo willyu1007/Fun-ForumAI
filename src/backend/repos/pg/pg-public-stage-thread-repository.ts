@@ -1,4 +1,8 @@
-import { Prisma, type PrismaClient, type PublicStageThread as PrismaPublicStageThread } from '@prisma/client'
+import {
+  Prisma,
+  type PrismaClient,
+  type PublicStageThread as PrismaPublicStageThread,
+} from '@prisma/client'
 import type {
   CreatePublicStageThreadInput,
   PaginatedResult,
@@ -7,6 +11,10 @@ import type {
 } from '../types.js'
 import type { PublicStageThreadRepository } from '../public-stage-thread-repository.js'
 import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
+import {
+  fromStorageGenerationMode,
+  toStorageGenerationMode,
+} from '../types/warmup-governance.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -31,19 +39,24 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
         ...(input.id ? { id: input.id } : {}),
         postId: input.post_id,
         communityId: input.community_id,
-        authorActorType: toPrismaActorType(input.author_actor_type) as PrismaPublicStageThread['authorActorType'],
+        authorActorType: toPrismaActorType(
+          input.author_actor_type,
+        ) as PrismaPublicStageThread['authorActorType'],
         authorAgentId: input.author_agent_id ?? null,
         authorUserId: input.author_user_id ?? null,
         body: input.body,
         visibility: input.visibility,
         state: input.state,
-        warmStartBatchId: input.warm_start_batch_id ?? null,
-        generationMode: input.generation_mode ?? null,
+        governanceBatchId: input.governance_batch_id ?? null,
+        generationMode: input.generation_mode
+          ? toStorageGenerationMode(input.generation_mode)
+          : null,
         threadState: input.thread_state ?? 'OPEN',
         replyBudget: input.reply_budget ?? 6,
-        activeRouteJson: input.active_route === null || input.active_route === undefined
-          ? Prisma.DbNull
-          : toPrismaJsonValue(input.active_route),
+        activeRouteJson:
+          input.active_route === null || input.active_route === undefined
+            ? Prisma.DbNull
+            : toPrismaJsonValue(input.active_route),
       },
     })
     return this.toDomain(row)
@@ -54,15 +67,18 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
     return row ? this.toDomain(row) : null
   }
 
-  async findByWarmStartBatch(batchId: string): Promise<PublicStageThread[]> {
+  async findByGovernanceBatch(batchId: string): Promise<PublicStageThread[]> {
     const rows = await this.prisma.publicStageThread.findMany({
-      where: { warmStartBatchId: batchId },
+      where: { governanceBatchId: batchId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map((row) => this.toDomain(row))
   }
 
-  async findByPost(postId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {
+  async findByPost(
+    postId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<PublicStageThread>> {
     const rows = await this.prisma.publicStageThread.findMany({
       where: {
         postId,
@@ -75,7 +91,10 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
-  async findByPostAll(postId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {
+  async findByPostAll(
+    postId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<PublicStageThread>> {
     const rows = await this.prisma.publicStageThread.findMany({
       where: { postId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -84,7 +103,10 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
-  async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageThread>> {
+  async findPublicByAuthorAgent(
+    agentId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<PublicStageThread>> {
     const rows = await this.prisma.publicStageThread.findMany({
       where: {
         authorActorType: 'AGENT',
@@ -134,7 +156,10 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
     await this.prisma.publicStageThread.deleteMany({ where: { id } })
   }
 
-  async updateVisibility(id: string, visibility: PublicStageThread['visibility']): Promise<PublicStageThread | null> {
+  async updateVisibility(
+    id: string,
+    visibility: PublicStageThread['visibility'],
+  ): Promise<PublicStageThread | null> {
     try {
       const row = await this.prisma.publicStageThread.update({
         where: { id },
@@ -147,7 +172,10 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
     }
   }
 
-  async updateState(id: string, state: PublicStageThread['state']): Promise<PublicStageThread | null> {
+  async updateState(
+    id: string,
+    state: PublicStageThread['state'],
+  ): Promise<PublicStageThread | null> {
     try {
       const row = await this.prisma.publicStageThread.update({
         where: { id },
@@ -174,9 +202,10 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
           ...(input.thread_state !== undefined ? { threadState: input.thread_state } : {}),
           ...(input.active_route !== undefined
             ? {
-                activeRouteJson: input.active_route === null
-                  ? Prisma.DbNull
-                  : toPrismaJsonValue(input.active_route),
+                activeRouteJson:
+                  input.active_route === null
+                    ? Prisma.DbNull
+                    : toPrismaJsonValue(input.active_route),
               }
             : {}),
           updatedAt: new Date(),
@@ -222,8 +251,8 @@ export class PgPublicStageThreadRepository implements PublicStageThreadRepositor
       body: row.body,
       visibility: row.visibility,
       state: row.state,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as PublicStageThread['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       thread_state: row.threadState,
       reply_budget: row.replyBudget,
       active_route: (row.activeRouteJson as PublicStageThread['active_route']) ?? null,

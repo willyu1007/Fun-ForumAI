@@ -3,7 +3,7 @@ import type { LlmTokenUsage } from '../llm/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
 import type {
   RouteHandoffInput,
-  WarmupWriteContextInput,
+  GovernanceWriteContextInput,
 } from '../services/forum-write-service/types.js'
 import type { PersonaRuntimeEnvelope } from './persona-runtime-types.js'
 import type {
@@ -539,7 +539,7 @@ export interface WriteInstruction {
   media_mime_type?: string
   public_scene?: PublicSceneWritePayload
   audit_metadata?: Record<string, unknown>
-  warmup_context?: WarmupWriteContextInput
+  governance_context?: GovernanceWriteContextInput
 }
 
 export interface AgentExecutionResult {

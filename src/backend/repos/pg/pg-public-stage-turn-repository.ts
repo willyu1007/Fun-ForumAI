@@ -1,4 +1,8 @@
-import { Prisma, type PrismaClient, type PublicStageTurn as PrismaPublicStageTurn } from '@prisma/client'
+import {
+  Prisma,
+  type PrismaClient,
+  type PublicStageTurn as PrismaPublicStageTurn,
+} from '@prisma/client'
 import type {
   CreatePublicStageTurnInput,
   PaginatedResult,
@@ -11,6 +15,10 @@ import type {
   PublicStageTurnWindowResult,
 } from '../public-stage-turn-repository.js'
 import { buildCursorPaginationQuery, toCursorPaginatedResult } from './cursor-pagination.js'
+import {
+  fromStorageGenerationMode,
+  toStorageGenerationMode,
+} from '../types/warmup-governance.js'
 
 function isNotFoundError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
@@ -31,7 +39,9 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
         ...(input.id ? { id: input.id } : {}),
         threadId: input.thread_id,
         postId: input.post_id,
-        authorActorType: toPrismaActorType(input.author_actor_type) as PrismaPublicStageTurn['authorActorType'],
+        authorActorType: toPrismaActorType(
+          input.author_actor_type,
+        ) as PrismaPublicStageTurn['authorActorType'],
         authorAgentId: input.author_agent_id ?? null,
         authorUserId: input.author_user_id ?? null,
         turnIndex: input.turn_index,
@@ -41,8 +51,10 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
         body: input.body,
         visibility: input.visibility,
         state: input.state,
-        warmStartBatchId: input.warm_start_batch_id ?? null,
-        generationMode: input.generation_mode ?? null,
+        governanceBatchId: input.governance_batch_id ?? null,
+        generationMode: input.generation_mode
+          ? toStorageGenerationMode(input.generation_mode)
+          : null,
       },
     })
     return this.toDomain(row)
@@ -53,15 +65,18 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     return row ? this.toDomain(row) : null
   }
 
-  async findByWarmStartBatch(batchId: string): Promise<PublicStageTurn[]> {
+  async findByGovernanceBatch(batchId: string): Promise<PublicStageTurn[]> {
     const rows = await this.prisma.publicStageTurn.findMany({
-      where: { warmStartBatchId: batchId },
+      where: { governanceBatchId: batchId },
       orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     })
     return rows.map((row) => this.toDomain(row))
   }
 
-  async findByThread(threadId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
+  async findByThread(
+    threadId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<PublicStageTurn>> {
     const rows = await this.prisma.publicStageTurn.findMany({
       where: this.visibleThreadWhere(threadId),
       orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
@@ -70,7 +85,10 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     return toCursorPaginatedResult(rows, opts, (row) => this.toDomain(row))
   }
 
-  async findWindowByThread(threadId: string, opts: PublicStageTurnWindowOpts): Promise<PublicStageTurnWindowResult> {
+  async findWindowByThread(
+    threadId: string,
+    opts: PublicStageTurnWindowOpts,
+  ): Promise<PublicStageTurnWindowResult> {
     if (!opts.aroundTurnId) {
       const page = await this.findByThread(threadId, {
         cursor: opts.cursor ?? undefined,
@@ -93,35 +111,37 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     }
 
     const halfWindow = Math.floor((opts.limit - 1) / 2)
-    const beforeRowsDesc = opts.limit > 1
-      ? await this.prisma.publicStageTurn.findMany({
-          where: {
-            ...this.visibleThreadWhere(threadId),
-            OR: [
-              { turnIndex: { lt: focus.turnIndex } },
-              { turnIndex: focus.turnIndex, createdAt: { lt: focus.createdAt } },
-              { turnIndex: focus.turnIndex, createdAt: focus.createdAt, id: { lt: focus.id } },
-            ],
-          },
-          orderBy: [{ turnIndex: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-          take: opts.limit - 1,
-        })
-      : []
+    const beforeRowsDesc =
+      opts.limit > 1
+        ? await this.prisma.publicStageTurn.findMany({
+            where: {
+              ...this.visibleThreadWhere(threadId),
+              OR: [
+                { turnIndex: { lt: focus.turnIndex } },
+                { turnIndex: focus.turnIndex, createdAt: { lt: focus.createdAt } },
+                { turnIndex: focus.turnIndex, createdAt: focus.createdAt, id: { lt: focus.id } },
+              ],
+            },
+            orderBy: [{ turnIndex: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            take: opts.limit - 1,
+          })
+        : []
     const beforeRows = [...beforeRowsDesc].reverse()
-    const afterRowsRaw = opts.limit > 0
-      ? await this.prisma.publicStageTurn.findMany({
-          where: {
-            ...this.visibleThreadWhere(threadId),
-            OR: [
-              { turnIndex: { gt: focus.turnIndex } },
-              { turnIndex: focus.turnIndex, createdAt: { gt: focus.createdAt } },
-              { turnIndex: focus.turnIndex, createdAt: focus.createdAt, id: { gte: focus.id } },
-            ],
-          },
-          orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
-          take: opts.limit + 1,
-        })
-      : []
+    const afterRowsRaw =
+      opts.limit > 0
+        ? await this.prisma.publicStageTurn.findMany({
+            where: {
+              ...this.visibleThreadWhere(threadId),
+              OR: [
+                { turnIndex: { gt: focus.turnIndex } },
+                { turnIndex: focus.turnIndex, createdAt: { gt: focus.createdAt } },
+                { turnIndex: focus.turnIndex, createdAt: focus.createdAt, id: { gte: focus.id } },
+              ],
+            },
+            orderBy: [{ turnIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+            take: opts.limit + 1,
+          })
+        : []
     let beforeTake = Math.min(beforeRows.length, halfWindow)
     let afterTake = Math.min(afterRowsRaw.length, opts.limit - beforeTake)
     if (afterTake < opts.limit - beforeTake) {
@@ -135,7 +155,7 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
 
     return {
       items: rows.map((row) => this.toDomain(row)),
-      next_cursor: hasMore ? rows[rows.length - 1]?.id ?? null : null,
+      next_cursor: hasMore ? (rows[rows.length - 1]?.id ?? null) : null,
       returned_mode: 'around',
     }
   }
@@ -150,7 +170,11 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     return [...rows].reverse().map((row) => this.toDomain(row))
   }
 
-  async findMatchingByThread(threadId: string, query: string, limit: number): Promise<PublicStageTurn[]> {
+  async findMatchingByThread(
+    threadId: string,
+    query: string,
+    limit: number,
+  ): Promise<PublicStageTurn[]> {
     const normalizedQuery = query.trim()
     if (!normalizedQuery || limit <= 0) return []
     const tokens = Array.from(new Set(normalizedQuery.split(/\s+/).filter(Boolean))).slice(0, 8)
@@ -177,7 +201,10 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     return rows.map((row) => this.toDomain(row))
   }
 
-  async findPublicByAuthorAgent(agentId: string, opts: PaginationOpts): Promise<PaginatedResult<PublicStageTurn>> {
+  async findPublicByAuthorAgent(
+    agentId: string,
+    opts: PaginationOpts,
+  ): Promise<PaginatedResult<PublicStageTurn>> {
     const rows = await this.prisma.publicStageTurn.findMany({
       where: {
         authorActorType: 'AGENT',
@@ -237,7 +264,10 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
     await this.prisma.publicStageTurn.deleteMany({ where: { threadId } })
   }
 
-  async updateVisibility(id: string, visibility: PublicStageTurn['visibility']): Promise<PublicStageTurn | null> {
+  async updateVisibility(
+    id: string,
+    visibility: PublicStageTurn['visibility'],
+  ): Promise<PublicStageTurn | null> {
     try {
       const row = await this.prisma.publicStageTurn.update({
         where: { id },
@@ -300,8 +330,8 @@ export class PgPublicStageTurnRepository implements PublicStageTurnRepository {
       body: row.body,
       visibility: row.visibility,
       state: row.state,
-      warm_start_batch_id: row.warmStartBatchId,
-      generation_mode: row.generationMode as PublicStageTurn['generation_mode'],
+      governance_batch_id: row.governanceBatchId,
+      generation_mode: fromStorageGenerationMode(row.generationMode),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }
