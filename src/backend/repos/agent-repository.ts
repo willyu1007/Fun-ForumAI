@@ -22,7 +22,7 @@ export interface AgentRepository {
   updateReputation(id: string, delta: number): Agent | null
   updateProfile(
     id: string,
-    patch: { display_name?: string; avatar_url?: string | null },
+    patch: { display_name?: string; avatar_url?: string | null; moments_cover_url?: string | null },
   ): Agent | null
 }
 
@@ -53,6 +53,7 @@ export class InMemoryAgentRepository implements AgentRepository {
       owner_id: input.owner_id,
       display_name: input.display_name,
       avatar_url: input.avatar_url ?? null,
+      moments_cover_url: null,
       persona_version: 1,
       reputation_score: 0,
       status: 'ACTIVE',
@@ -138,7 +139,7 @@ export class InMemoryAgentRepository implements AgentRepository {
 
   updateProfile(
     id: string,
-    patch: { display_name?: string; avatar_url?: string | null },
+    patch: { display_name?: string; avatar_url?: string | null; moments_cover_url?: string | null },
   ): Agent | null {
     const agent = this.store.get(id)
     if (!agent) return null
@@ -148,6 +149,9 @@ export class InMemoryAgentRepository implements AgentRepository {
     }
     if (patch.avatar_url !== undefined) {
       agent.avatar_url = patch.avatar_url
+    }
+    if (patch.moments_cover_url !== undefined) {
+      agent.moments_cover_url = patch.moments_cover_url
     }
 
     agent.updated_at = new Date()

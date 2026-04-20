@@ -21,61 +21,74 @@ beforeEach(() => {
 
 afterAll(() => {
   featureFlags.guidanceV1 = originalGuidanceFlag
-  featureFlags.guidanceRecallV1 = originalGuidanceRecallFlag
+  featureFlags.guidanceRecallFlag = originalGuidanceRecallFlag
 })
 
 describe('Guidance API', () => {
-  it('shows only dual entry on first anonymous visit, then reveals checklist after spectator CTA', async () => {
+  it('builds a fact-driven checklist summary on first anonymous visit and accepts rail snooze events', async () => {
     const first = await request(app).get('/v1/guidance/summary')
     expect(first.status).toBe(200)
 
-    const firstModules = first.body.data.modules as Array<{ type: string }>
-    expect(firstModules.some((module) => module.type === 'DUAL_ENTRY')).toBe(true)
-    expect(firstModules.some((module) => module.type === 'CHECKLIST')).toBe(false)
-    expect(firstModules.every((module) => ['DUAL_ENTRY', 'CHECKLIST', 'CARD', 'RECEIPT'].includes(module.type))).toBe(true)
-    expect(firstModules.some((module) => module.type === 'PROOF')).toBe(false)
-
-    expect(first.body.data.modules[0]).toMatchObject({
-      type: 'DUAL_ENTRY',
-      hero_body: expect.any(String),
-      cards: [
-        expect.objectContaining({
-          track: 'SPECTATOR',
-          entry_cta: expect.objectContaining({
-            event_name: 'DUAL_ENTRY_CTA_CLICKED',
-          }),
-        }),
-        expect.objectContaining({
-          track: 'OWNER',
-          entry_cta: expect.objectContaining({
-            event_name: 'DUAL_ENTRY_CTA_CLICKED',
-          }),
-        }),
-      ],
+    const firstModules = first.body.data.modules as Array<{ type: string; items?: Array<{ reason_code: string; completed: boolean }> }>
+    expect(firstModules.every((module) => ['CHECKLIST', 'CARD', 'RECEIPT'].includes(module.type))).toBe(true)
+    expect(first.body.data.actor).toMatchObject({
+      actor_type: 'VISITOR',
+      actor_id: expect.any(String),
+      stage: 'NEW_VISITOR',
     })
+    expect(first.body.data.actor).not.toHaveProperty(['current', 'track'].join('_'))
+
+    const firstChecklist = firstModules.find((module) => module.type === 'CHECKLIST')
+    expect(firstChecklist?.items).toEqual([
+      expect.objectContaining({
+        reason_code: 'FOLLOW_FIRST_AGENT',
+        completed: false,
+      }),
+    ])
 
     const visitorCookie = extractVisitorCookie(first.headers['set-cookie'])
     expect(visitorCookie).toBeTruthy()
 
-    const eventRes = await request(app)
+    const followEventRes = await request(app)
       .post('/v1/guidance/client-events')
       .set('Cookie', visitorCookie!)
       .send({
-        event_type: 'DUAL_ENTRY_CTA_CLICKED',
-        payload: { track: 'SPECTATOR' },
+        event_type: 'AGENT_FOLLOWED',
+        payload: { agent_id: 'agent-visitor-1' },
       })
-    expect(eventRes.status).toBe(202)
+    expect(followEventRes.status).toBe(202)
 
     const second = await request(app)
       .get('/v1/guidance/summary')
       .set('Cookie', visitorCookie!)
     expect(second.status).toBe(200)
-    expect(second.body.data.actor.current_track).toBe('SPECTATOR')
 
-    const secondModules = second.body.data.modules as Array<{ type: string; items?: Array<{ reason_code: string }> }>
-    const checklist = secondModules.find((module) => module.type === 'CHECKLIST')
-    expect(checklist).toBeTruthy()
-    expect(checklist?.items?.some((item) => item.reason_code === 'FOLLOW_FIRST_AGENT')).toBe(true)
+    const secondChecklist = (second.body.data.modules as Array<{ type: string; items?: Array<{ reason_code: string; completed: boolean }> }>)
+      .find((module) => module.type === 'CHECKLIST')
+    expect(secondChecklist?.items).toEqual([
+      expect.objectContaining({
+        reason_code: 'FOLLOW_FIRST_AGENT',
+        completed: true,
+      }),
+      expect.objectContaining({
+        reason_code: 'USE_FOLLOWING_FEED',
+        completed: false,
+      }),
+    ])
+
+    const snoozeRes = await request(app)
+      .post('/v1/guidance/client-events')
+      .set('Cookie', visitorCookie!)
+      .send({
+        event_type: 'GUIDANCE_TAKEOVER_SNOOZED',
+        payload: {
+          reason: 'NO_AGENT_BOOTSTRAP',
+          scope_key: 'global',
+          expires_at: '2026-04-17T00:00:00.000Z',
+          surface: 'home_right_rail',
+        },
+      })
+    expect(snoozeRes.status).toBe(202)
   })
 
   it('scopes inbox actions to the current actor and supports receipt read state updates', async () => {
@@ -143,8 +156,8 @@ describe('Guidance API', () => {
       .post('/v1/guidance/client-events')
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
-        event_type: 'DUAL_ENTRY_CTA_CLICKED',
-        payload: { track: 'OWNER' },
+        event_type: 'AGENT_CREATED',
+        payload: { agent_id: 'agent-off-1' },
       })
     expect(eventRes.status).toBe(202)
 
@@ -153,7 +166,6 @@ describe('Guidance API', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
     expect(summaryOff.status).toBe(200)
     expect(summaryOff.body.data.modules).toEqual([])
-    expect(summaryOff.body.data.actor.current_track).toBe('UNDECIDED')
     expect(summaryOff.body.data.actor.reveal).toEqual({
       style: true,
       instructions: true,
@@ -175,12 +187,7 @@ describe('Guidance API', () => {
       .get('/v1/guidance/summary')
       .set('Authorization', `Bearer ${ownerToken}`)
     expect(summaryOn.status).toBe(200)
-    expect(summaryOn.body.data.actor.current_track).toBe('UNDECIDED')
-    expect(summaryOn.body.data.modules[0]).toMatchObject({
-      type: 'DUAL_ENTRY',
-      reason_code: 'HOME_DUAL_ENTRY',
-    })
-    expect(summaryOn.body.data.modules.some((module: { type: string }) => module.type === 'CHECKLIST')).toBe(false)
+    expect(summaryOn.body.data.modules.some((module: { type: string }) => module.type === 'CHECKLIST')).toBe(true)
   })
 
   it('returns only bell-eligible canonical guidance items without duplicates', async () => {

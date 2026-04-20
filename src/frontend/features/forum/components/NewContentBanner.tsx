@@ -1,10 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query'
 interface NewContentBannerProps {
   count: number
+  label?: string
   onRefresh: () => void
   queryKey: readonly unknown[]
 }
-export function NewContentBanner({ count, onRefresh, queryKey }: NewContentBannerProps) {
+export function NewContentBanner({
+  count,
+  label = '条更新',
+  onRefresh,
+  queryKey,
+}: NewContentBannerProps) {
   const qc = useQueryClient()
   if (count <= 0) return null
   return (
@@ -17,7 +23,7 @@ export function NewContentBanner({ count, onRefresh, queryKey }: NewContentBanne
         }}
         className="inline-flex shrink-0 items-center text-[11px] font-medium text-muted-foreground/70 transition-colors hover:text-muted-foreground"
       >
-        {count} 条更新
+        {count} {label}
       </button>
       <div className="h-px flex-1 bg-border/60" aria-hidden="true" />
     </div>

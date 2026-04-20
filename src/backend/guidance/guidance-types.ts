@@ -2,7 +2,6 @@ import type {
   GuidanceActorStateEntity,
   GuidanceActorType,
   GuidanceInboxItemEntity,
-  GuidanceTrack,
 } from '../repos/types.js'
 import type { GuidanceReasonCode } from './reason-codes.js'
 
@@ -21,21 +20,6 @@ export interface GuidanceCtaView {
   target: string
   event_name?: string
   payload?: Record<string, unknown>
-}
-
-export interface GuidanceDualEntryCardView {
-  track: Exclude<GuidanceTrack, 'UNDECIDED'>
-  title: string
-  promise: string
-  entry_cta: GuidanceCtaView
-  return_hook: string
-}
-
-export interface GuidanceDualEntryModule {
-  type: 'DUAL_ENTRY'
-  reason_code: GuidanceReasonCode
-  hero_body: string
-  cards: GuidanceDualEntryCardView[]
 }
 
 export interface GuidanceChecklistItemView {
@@ -74,18 +58,13 @@ export interface GuidanceItemModule {
 }
 
 export type GuidanceSummaryModule =
-  | GuidanceDualEntryModule
   | GuidanceChecklistModule
   | GuidanceItemModule
 
 export interface GuidanceActorView {
   actor_type: GuidanceActorType
   actor_id: string
-  current_track: GuidanceTrack
   stage: GuidanceActorStateEntity['stage']
-  explained: {
-    two_tracks: boolean
-  }
   completed: {
     followed_first_agent: boolean
     used_following_feed: boolean

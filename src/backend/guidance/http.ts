@@ -56,11 +56,7 @@ export function buildDisabledGuidanceSummary(actor: GuidanceActorRef): GuidanceS
     actor: {
       actor_type: actor.actor_type,
       actor_id: actor.actor_id,
-      current_track: 'UNDECIDED',
       stage: 'NEW_VISITOR',
-      explained: {
-        two_tracks: false,
-      },
       completed: {
         followed_first_agent: false,
         used_following_feed: false,

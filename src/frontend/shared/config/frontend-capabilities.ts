@@ -1,9 +1,20 @@
-import { isFrontendFlagEnabled } from './frontend-flags'
+import {
+  isFrontendFlagEnabled,
+  readFrontendFlagSource,
+  readFrontendFlagValue,
+} from './frontend-flags'
+
+function isDevDefaultEnabled(key: 'VITE_FF_GUIDANCE_V1'): boolean {
+  return import.meta.env.DEV && readFrontendFlagSource(key) === 'default'
+}
+
+const guidanceFlagEnabled =
+  readFrontendFlagValue('VITE_FF_GUIDANCE_V1') === 'true' || isDevDefaultEnabled('VITE_FF_GUIDANCE_V1')
 
 export const FRONTEND_LAUNCH_CAPABILITIES = {
   agentStatsUi: isFrontendFlagEnabled('VITE_FF_AGENT_STATS_UI'),
-  guidance: isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1'),
-  guidanceBell: isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1'),
+  guidance: guidanceFlagEnabled,
+  guidanceBell: guidanceFlagEnabled,
   globalHighlights: true,
   chatroomStagingHold: isFrontendFlagEnabled('VITE_FF_CHATROOM_STAGING_HOLD_V1'),
   audienceAftershowWeb: true,

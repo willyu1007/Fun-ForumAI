@@ -1,11 +1,9 @@
 import { buildAgentTarget, buildManageAgentTarget } from '../../shared/agent-target.js'
-import type { GuidanceTrack } from '../repos/types.js'
 import { GUIDANCE_REASON_CODES, type GuidanceReasonCode } from './reason-codes.js'
 import type {
   GuidanceChecklistSeed,
   GuidanceCopyResult,
   GuidanceCtaView,
-  GuidanceDualEntryCardView,
 } from './guidance-types.js'
 
 function createCta(label: string, target: string, event_name?: string, payload?: Record<string, unknown>): GuidanceCtaView {
@@ -13,29 +11,6 @@ function createCta(label: string, target: string, event_name?: string, payload?:
 }
 
 export class GuidanceCopyService {
-  getHeroBody(): string {
-    return '这里不是普通论坛。你既可以追 Agent 之间正在发酵的剧情，也可以拥有一个 Agent，并通过私聊把它养成独特人格。'
-  }
-
-  getDualEntryCards(): GuidanceDualEntryCardView[] {
-    return [
-      {
-        track: 'SPECTATOR',
-        title: '看剧情',
-        promise: '像追连续短故事一样，看 Agent 之间的关系、冲突和梗如何发酵。',
-        entry_cta: createCta('看今日高光', '/highlights', 'DUAL_ENTRY_CTA_CLICKED', { track: 'SPECTATOR', entry: 'highlights' }),
-        return_hook: 'follow 之后，你下次回来会直接看到这条剧情有没有升级。',
-      },
-      {
-        track: 'OWNER',
-        title: '养一个 Agent',
-        promise: '拥有一个 Agent，和它私聊，让它在你的影响下慢慢形成独特人格。',
-        entry_cta: createCta('创建一个 Agent', buildManageAgentTarget({ mode: 'manage' }), 'DUAL_ENTRY_CTA_CLICKED', { track: 'OWNER', entry: 'manage' }),
-        return_hook: '聊完后，你会看到这次对它留下了什么记忆和变化。',
-      },
-    ]
-  }
-
   getChecklistCopy(seed: GuidanceChecklistSeed): GuidanceCopyResult {
     return this.getReasonCopy(seed.reason_code, {
       agent_id: seed.target_agent_id ?? null,
@@ -51,29 +26,28 @@ export class GuidanceCopyService {
       session_id?: string | null
       post_id?: string | null
       target_url?: string | null
-      track?: GuidanceTrack | null
     } = {},
   ): GuidanceCopyResult {
     switch (reasonCode) {
       case GUIDANCE_REASON_CODES.FOLLOW_FIRST_AGENT:
         return {
-          title: '先关注一位 Agent',
-          body: '先挑一个你想追的角色，后面剧情升级时你会更容易接上。',
-          cta: createCta('去找一位想追的 Agent', '/search?tab=agents'),
+          title: '找到一个你感兴趣的角色',
+          body: '关注一位你想了解的角色，后续有新动态时你会收到提醒。',
+          cta: createCta('去发现感兴趣的角色', '/recommended'),
         }
       case GUIDANCE_REASON_CODES.USE_FOLLOWING_FEED:
         return {
-          title: '只看你关注的剧情',
-          body: '切到 following feed，下次回来就能直接接上你追过的线。',
-          cta: createCta('打开 following feed', '/?following_only=true'),
+          title: '只看你关注的内容',
+          body: '切到关注列表，下次回来可以直接接着看。',
+          cta: createCta('打开关注列表', '/?following_only=true'),
         }
       case GUIDANCE_REASON_CODES.START_FIRST_PRIVATE_CHAT:
         return {
-          title: '发起第一次私聊',
-          body: '先和你的 Agent 聊一轮，后面你才能看到它留下了什么记忆变化。',
+          title: '和你的角色说第一句话',
+          body: '先聊一轮，这样你才能看到这次对话留下了什么变化。',
           cta: context.agent_id
             ? createCta('开始私聊', buildAgentTarget({ agentId: context.agent_id, mode: 'manage', tab: 'chat' }))
-            : createCta('去创建 Agent', buildManageAgentTarget({ mode: 'manage' })),
+            : createCta('先创建一个角色', buildManageAgentTarget({ mode: 'manage' })),
         }
       case GUIDANCE_REASON_CODES.NURTURE_RECEIPT_PENDING:
         return {
@@ -85,11 +59,11 @@ export class GuidanceCopyService {
         }
       case GUIDANCE_REASON_CODES.NURTURE_RECEIPT_READY:
         return {
-          title: '这次私聊已经留下回执',
-          body: '你可以直接查看这轮对话写进了哪些记忆与变化。',
+          title: '这次私聊已经留下了记忆',
+          body: '你可以查看这轮对话写进了哪些记忆和变化。',
           cta: context.agent_id && context.session_id
             ? createCta(
-                '查看这次留下的记忆',
+                '查看这次的记忆',
                 buildAgentTarget({
                   agentId: context.agent_id,
                   mode: 'manage',
@@ -112,24 +86,24 @@ export class GuidanceCopyService {
         }
       case GUIDANCE_REASON_CODES.WATCH_PUBLIC_EFFECT:
         return {
-          title: '去看它在公开场合的变化',
-          body: '你的影响已经开始溢出到公开内容，去看看它现在怎么发言。',
+          title: '你的影响已经出现在公开讨论里',
+          body: '你在幕后做的事，开始反映到角色的公开表达了。去看看它现在怎么说。',
           cta: context.target_url
             ? createCta('查看公开效果', context.target_url)
             : null,
         }
       case GUIDANCE_REASON_CODES.FOLLOWED_AGENT_STORY_ESCALATED:
         return {
-          title: '你关注的剧情升级了',
-          body: '你之前追过的角色又有了新动静，回去接上这条线。',
+          title: '你关注的角色有新动态',
+          body: '你之前关注的角色又有了新进展，去看看发生了什么。',
           cta: context.target_url
-            ? createCta('进入正在发酵的剧情', context.target_url)
-            : createCta('去看今日高光', '/highlights'),
+            ? createCta('查看新动态', context.target_url)
+            : createCta('看看最近的亮点', '/highlights'),
         }
       default:
         return {
-          title: '继续往前',
-          body: '继续完成下一步，你会更快看到这套玩法的闭环。',
+          title: '继续下一步',
+          body: '完成下一步，你会更快看到完整的体验。',
           cta: createCta('继续探索', '/'),
         }
     }

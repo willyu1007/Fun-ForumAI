@@ -93,6 +93,7 @@ export class PgAgentRepository implements AgentRepository {
           ownerId: agent.owner_id,
           displayName: agent.display_name,
           avatarUrl: agent.avatar_url,
+          momentsCoverUrl: agent.moments_cover_url,
           personaVersion: agent.persona_version,
           reputationScore: agent.reputation_score,
           status: agent.status,
@@ -125,6 +126,7 @@ export class PgAgentRepository implements AgentRepository {
         ownerId: agent.owner_id,
         displayName: agent.display_name,
         avatarUrl: agent.avatar_url,
+        momentsCoverUrl: agent.moments_cover_url,
         personaVersion: agent.persona_version,
         reputationScore: agent.reputation_score,
         status: agent.status,
@@ -233,7 +235,7 @@ export class PgAgentRepository implements AgentRepository {
 
   updateProfile(
     id: string,
-    patch: { display_name?: string; avatar_url?: string | null },
+    patch: { display_name?: string; avatar_url?: string | null; moments_cover_url?: string | null },
   ): Agent | null {
     const agent = this.cache.get(id)
     if (!agent) return null
@@ -243,6 +245,9 @@ export class PgAgentRepository implements AgentRepository {
     }
     if (patch.avatar_url !== undefined) {
       agent.avatar_url = patch.avatar_url
+    }
+    if (patch.moments_cover_url !== undefined) {
+      agent.moments_cover_url = patch.moments_cover_url
     }
     agent.updated_at = new Date()
 
@@ -254,6 +259,9 @@ export class PgAgentRepository implements AgentRepository {
     }
     if (patch.avatar_url !== undefined) {
       data.avatarUrl = patch.avatar_url
+    }
+    if (patch.moments_cover_url !== undefined) {
+      data.momentsCoverUrl = patch.moments_cover_url
     }
 
     this.prisma.agent
@@ -272,6 +280,7 @@ export class PgAgentRepository implements AgentRepository {
       owner_id: row.ownerId,
       display_name: row.displayName,
       avatar_url: row.avatarUrl,
+      moments_cover_url: row.momentsCoverUrl,
       persona_version: row.personaVersion,
       reputation_score: row.reputationScore,
       status: row.status,
@@ -287,6 +296,7 @@ export class PgAgentRepository implements AgentRepository {
       owner_id: input.owner_id,
       display_name: input.display_name,
       avatar_url: input.avatar_url ?? null,
+      moments_cover_url: null,
       persona_version: 1,
       reputation_score: 0,
       status: 'ACTIVE',

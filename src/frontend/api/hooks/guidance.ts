@@ -71,7 +71,11 @@ export function useGuidanceClientEvent() {
       ? api.post('guidance/client-events', { json: input }).json<ApiResponse<{ accepted: boolean }>>()
       : Promise.resolve({ data: { accepted: true } }),
     onSuccess: (_data, variables) => {
-      if (!enabled || variables.event_type === 'GUIDANCE_MODULE_VIEWED' || variables.event_type === 'GUIDANCE_BELL_OPENED') {
+      if (
+        !enabled
+        || variables.event_type === 'GUIDANCE_BELL_OPENED'
+        || variables.event_type === 'GUIDANCE_TAKEOVER_SNOOZED'
+      ) {
         return
       }
       qc.invalidateQueries({ queryKey: queryKeys.guidanceSummary })

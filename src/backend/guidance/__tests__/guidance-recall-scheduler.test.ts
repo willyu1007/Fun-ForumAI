@@ -52,7 +52,6 @@ describe('GuidanceRecallScheduler', () => {
     await ctx.stateRepo.upsert({
       actor_type: 'USER',
       actor_id: 'user-1',
-      current_track: 'OWNER',
       stage: 'FIRST_SUCCESS',
       nurture_receipt_ready_at: new Date(now.getTime() - 3 * 60 * 60_000),
       latest_owner_agent_id: 'agent-1',
@@ -98,7 +97,6 @@ describe('GuidanceRecallScheduler', () => {
     await ctx.stateRepo.upsert({
       actor_type: 'USER',
       actor_id: 'user-2',
-      current_track: 'SPECTATOR',
       stage: 'EXPLORING',
       followed_first_agent_at: new Date(now.getTime() - 90 * 60_000),
     })
@@ -117,7 +115,6 @@ describe('GuidanceRecallScheduler', () => {
     await ctx.stateRepo.upsert({
       actor_type: 'USER',
       actor_id: 'user-3',
-      current_track: 'SPECTATOR',
       stage: 'EXPLORING',
       followed_first_agent_at: new Date(now.getTime() - 4 * 60 * 60_000),
     })
@@ -152,7 +149,6 @@ describe('GuidanceRecallScheduler', () => {
     await ctx.stateRepo.upsert({
       actor_type: 'USER',
       actor_id: 'user-4',
-      current_track: 'OWNER',
       stage: 'EXPLORING',
       agent_created_at: new Date(now.getTime() - 8 * 60 * 60_000),
       latest_owner_agent_id: 'agent-24h',
@@ -189,7 +185,6 @@ describe('GuidanceRecallScheduler', () => {
     await ctx.stateRepo.upsert({
       actor_type: 'VISITOR',
       actor_id: 'visitor-1',
-      current_track: 'SPECTATOR',
       stage: 'EXPLORING',
       followed_first_agent_at: new Date(now.getTime() - 5 * 60 * 60_000),
     })

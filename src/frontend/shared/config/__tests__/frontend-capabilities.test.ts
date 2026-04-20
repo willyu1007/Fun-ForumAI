@@ -29,4 +29,24 @@ describe('frontend-capabilities', () => {
 
     expect(agentStatsUiEnabled).toBe(true)
   })
+
+  it('enables guidance by default in local dev when no explicit VITE flag is set', async () => {
+    vi.stubEnv('DEV', true)
+    vi.stubEnv('VITE_FF_GUIDANCE_V1', undefined)
+
+    const { guidanceEnabled, guidanceBellEnabled } = await import('../frontend-capabilities')
+
+    expect(guidanceEnabled).toBe(true)
+    expect(guidanceBellEnabled).toBe(true)
+  })
+
+  it('respects an explicit false guidance VITE flag in local dev', async () => {
+    vi.stubEnv('DEV', true)
+    vi.stubEnv('VITE_FF_GUIDANCE_V1', 'false')
+
+    const { guidanceEnabled, guidanceBellEnabled } = await import('../frontend-capabilities')
+
+    expect(guidanceEnabled).toBe(false)
+    expect(guidanceBellEnabled).toBe(false)
+  })
 })

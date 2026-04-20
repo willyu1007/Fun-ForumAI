@@ -36,12 +36,12 @@ describe('GuidanceItemCard', () => {
             id: 'item-1',
             module_type: 'CARD',
             reason_code: 'USE_FOLLOWING_FEED',
-            title: '只看你关注的剧情',
-            body: '切到 following feed。',
+            title: '只看你关注的内容',
+            body: '切到关注列表查看。',
             unread: true,
             status: 'ACTIVE',
             cta: {
-              label: '打开 following feed',
+              label: '打开关注列表',
               target: '/?following_only=true',
             },
             payload: null,
@@ -54,7 +54,7 @@ describe('GuidanceItemCard', () => {
       </MemoryRouter>,
     )
 
-    const link = screen.getByRole('link', { name: '登录后继续追剧情' })
+    const link = screen.getByRole('link', { name: '登录后继续' })
     expect(link.getAttribute('href')).toBe('/login')
   })
 })

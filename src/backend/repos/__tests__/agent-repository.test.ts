@@ -45,14 +45,16 @@ describe('InMemoryAgentRepository', () => {
     expect(repo.updateReputation('nope', 1)).toBeNull()
   })
 
-  it('updateProfile updates display_name/avatar_url', () => {
+  it('updateProfile updates display_name/avatar_url/moments_cover_url', () => {
     const a = repo.create({ owner_id: 'u1', display_name: 'Bot' })
     const updated = repo.updateProfile(a.id, {
       display_name: 'Renamed Bot',
       avatar_url: 'https://example.com/avatar.png',
+      moments_cover_url: '/agent-moments-covers/gradient-fresh-soft.webp',
     })
     expect(updated?.display_name).toBe('Renamed Bot')
     expect(updated?.avatar_url).toBe('https://example.com/avatar.png')
+    expect(updated?.moments_cover_url).toBe('/agent-moments-covers/gradient-fresh-soft.webp')
     expect(repo.updateProfile('nope', { display_name: 'X' })).toBeNull()
   })
 })

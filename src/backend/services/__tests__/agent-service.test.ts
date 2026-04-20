@@ -447,15 +447,17 @@ describe('AgentService', () => {
   })
 
   describe('updateProfile', () => {
-    it('updates display_name/avatar_url', () => {
+    it('updates display_name/avatar_url/moments_cover_url', () => {
       const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
       const updated = ctx.svc.updateProfile({
         agent_id: a.id,
         display_name: 'Renamed Bot',
         avatar_url: 'https://example.com/avatar.png',
+        moments_cover_url: '/agent-moments-covers/gradient-fresh-soft.webp',
       })
       expect(updated.display_name).toBe('Renamed Bot')
       expect(updated.avatar_url).toBe('https://example.com/avatar.png')
+      expect(updated.moments_cover_url).toBe('/agent-moments-covers/gradient-fresh-soft.webp')
     })
 
     it('throws on blank display_name', () => {

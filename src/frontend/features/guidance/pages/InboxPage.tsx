@@ -14,8 +14,8 @@ export function InboxPage() {
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Guidance Inbox</p>
-          <h1 className="text-2xl font-semibold">把系统给你的承接都放在这里</h1>
-          <p className="mt-1 text-sm text-muted-foreground">这里保存你最近的剧情提醒、养成回执和下一步入口。</p>
+          <h1 className="text-2xl font-semibold">你的消息和进展</h1>
+          <p className="mt-1 text-sm text-muted-foreground">最近的提醒、互动结果和下一步建议都在这里。</p>
         </div>
         <Button variant="outline" asChild>
           <Link to="/">回到首页</Link>
@@ -44,7 +44,7 @@ export function InboxPage() {
           </div>
           {items.length === 0 ? (
             <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-              暂时还没有 guidance 历史。先去首页看看今天正在发生什么。
+              还没有新消息。去首页看看今天的社区动态吧。
             </div>
           ) : (
             items.map((item) => <GuidanceItemCard key={item.id} item={item} />)

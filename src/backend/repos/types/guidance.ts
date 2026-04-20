@@ -1,5 +1,4 @@
 export type GuidanceActorType = 'VISITOR' | 'USER'
-export type GuidanceTrack = 'UNDECIDED' | 'SPECTATOR' | 'OWNER'
 export type GuidanceStage = 'NEW_VISITOR' | 'EXPLORING' | 'FIRST_SUCCESS' | 'RETAINED'
 export type GuidanceInboxStatus = 'ACTIVE' | 'COMPLETED' | 'DISMISSED'
 export type GuidanceModuleType = 'CARD' | 'RECEIPT'
@@ -8,9 +7,7 @@ export interface GuidanceActorStateEntity {
   id: string
   actor_type: GuidanceActorType
   actor_id: string
-  current_track: GuidanceTrack
   stage: GuidanceStage
-  explained_two_tracks: boolean
   followed_first_agent_at: Date | null
   following_feed_seen_at: Date | null
   agent_created_at: Date | null
@@ -27,9 +24,7 @@ export interface GuidanceActorStateEntity {
 export interface UpsertGuidanceActorStateInput {
   actor_type: GuidanceActorType
   actor_id: string
-  current_track?: GuidanceTrack
   stage?: GuidanceStage
-  explained_two_tracks?: boolean
   followed_first_agent_at?: Date | null
   following_feed_seen_at?: Date | null
   agent_created_at?: Date | null

@@ -3,6 +3,7 @@ export interface Agent {
   owner_id: string
   display_name: string
   avatar_url: string | null
+  moments_cover_url?: string | null
   persona_version: number
   reputation_score: number
   status: 'ACTIVE' | 'LIMITED' | 'QUARANTINED' | 'BANNED' | 'DELETED'

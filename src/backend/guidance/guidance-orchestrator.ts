@@ -78,20 +78,8 @@ export class GuidanceOrchestrator {
     const state = await this.deps.stateService.getOrCreateActorState(actor)
     let shouldPublish = false
     switch (eventType) {
-      case 'DUAL_ENTRY_CTA_CLICKED': {
-        const track = payload.track === 'OWNER' || payload.track === 'SPECTATOR'
-          ? payload.track
-          : state.current_track
-        await this.deps.stateService.saveActorState(actor, {
-          explained_two_tracks: true,
-          current_track: track,
-        })
-        shouldPublish = true
-        break
-      }
       case 'AGENT_FOLLOWED': {
         await this.deps.stateService.saveActorState(actor, {
-          current_track: state.current_track === 'OWNER' ? 'OWNER' : 'SPECTATOR',
           followed_first_agent_at: state.followed_first_agent_at ?? now,
         })
         shouldPublish = true
@@ -99,7 +87,6 @@ export class GuidanceOrchestrator {
       }
       case 'FOLLOWING_FEED_VIEWED': {
         await this.deps.stateService.saveActorState(actor, {
-          current_track: state.current_track === 'UNDECIDED' ? 'SPECTATOR' : state.current_track,
           following_feed_seen_at: state.following_feed_seen_at ?? now,
         })
         await this.completeReason(actor, GUIDANCE_REASON_CODES.USE_FOLLOWING_FEED)
@@ -108,7 +95,6 @@ export class GuidanceOrchestrator {
       }
       case 'AGENT_CREATED': {
         await this.deps.stateService.saveActorState(actor, {
-          current_track: 'OWNER',
           agent_created_at: state.agent_created_at ?? now,
           latest_owner_agent_id: typeof payload.agent_id === 'string' ? payload.agent_id : state.latest_owner_agent_id,
         })
@@ -118,7 +104,6 @@ export class GuidanceOrchestrator {
       case 'PRIVATE_SESSION_CREATED':
       case 'PRIVATE_FIRST_MESSAGE_SENT': {
         await this.deps.stateService.saveActorState(actor, {
-          current_track: 'OWNER',
           private_session_created_at: state.private_session_created_at ?? now,
           latest_owner_agent_id: typeof payload.agent_id === 'string' ? payload.agent_id : state.latest_owner_agent_id,
           latest_receipt_session_id: typeof payload.session_id === 'string' ? payload.session_id : state.latest_receipt_session_id,
@@ -131,7 +116,6 @@ export class GuidanceOrchestrator {
         const agentId = typeof payload.agent_id === 'string' ? payload.agent_id : state.latest_owner_agent_id
         const sessionId = typeof payload.session_id === 'string' ? payload.session_id : state.latest_receipt_session_id
         await this.deps.stateService.saveActorState(actor, {
-          current_track: 'OWNER',
           private_session_ended_at: now,
           latest_owner_agent_id: agentId ?? null,
           latest_receipt_session_id: sessionId ?? null,
@@ -150,9 +134,9 @@ export class GuidanceOrchestrator {
       case 'PRIVATE_DIGEST_READY': {
         const agentId = typeof payload.agent_id === 'string' ? payload.agent_id : state.latest_owner_agent_id
         const sessionId = typeof payload.session_id === 'string' ? payload.session_id : state.latest_receipt_session_id
+        // nurture_receipt_ready_at is intentionally NOT set here; it is set in MEMORIES_VIEWED
+        // when the user actually opens the receipt, so the progress bar step reflects the user action.
         await this.deps.stateService.saveActorState(actor, {
-          current_track: 'OWNER',
-          nurture_receipt_ready_at: now,
           latest_owner_agent_id: agentId ?? null,
           latest_receipt_session_id: sessionId ?? null,
         })
@@ -192,6 +176,9 @@ export class GuidanceOrchestrator {
           const item = await this.deps.inboxRepo.findByDedupKey(actor.actor_type, actor.actor_id, `nurture_receipt:${sessionId}`)
           if (item) {
             await this.completeItem(actor, item)
+            await this.deps.stateService.saveActorState(actor, {
+              nurture_receipt_ready_at: state.nurture_receipt_ready_at ?? now,
+            })
             shouldPublish = true
           }
         }

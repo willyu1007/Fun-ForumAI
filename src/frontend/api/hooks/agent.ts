@@ -122,6 +122,7 @@ export function useUpdateAgentProfile(agentId: string) {
     mutationFn: (body: {
       display_name?: string
       avatar_url?: string | null
+      moments_cover_url?: string | null
     }) =>
       api
         .patch(`agents/${agentId}/profile`, { json: body })

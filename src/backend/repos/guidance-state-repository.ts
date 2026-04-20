@@ -2,8 +2,6 @@ import { randomUUID } from 'node:crypto'
 import type {
   GuidanceActorStateEntity,
   GuidanceActorType,
-  GuidanceStage,
-  GuidanceTrack,
   UpsertGuidanceActorStateInput,
 } from './types.js'
 
@@ -23,9 +21,7 @@ function createDefaultState(
     id: randomUUID(),
     actor_type: actorType,
     actor_id: actorId,
-    current_track: 'UNDECIDED',
     stage: 'NEW_VISITOR',
-    explained_two_tracks: false,
     followed_first_agent_at: null,
     following_feed_seen_at: null,
     agent_created_at: null,
@@ -46,9 +42,7 @@ function mergeState(
 ): GuidanceActorStateEntity {
   return {
     ...base,
-    current_track: input.current_track ?? base.current_track,
     stage: input.stage ?? base.stage,
-    explained_two_tracks: input.explained_two_tracks ?? base.explained_two_tracks,
     followed_first_agent_at: input.followed_first_agent_at !== undefined ? input.followed_first_agent_at : base.followed_first_agent_at,
     following_feed_seen_at: input.following_feed_seen_at !== undefined ? input.following_feed_seen_at : base.following_feed_seen_at,
     agent_created_at: input.agent_created_at !== undefined ? input.agent_created_at : base.agent_created_at,
@@ -90,29 +84,5 @@ export class InMemoryGuidanceActorStateRepository implements GuidanceActorStateR
 
   async deleteByActor(actorType: GuidanceActorType, actorId: string): Promise<void> {
     this.store.delete(this.key(actorType, actorId))
-  }
-}
-
-export function guidanceTrackPriority(track: GuidanceTrack): number {
-  switch (track) {
-    case 'OWNER':
-      return 3
-    case 'SPECTATOR':
-      return 2
-    default:
-      return 1
-  }
-}
-
-export function guidanceStagePriority(stage: GuidanceStage): number {
-  switch (stage) {
-    case 'RETAINED':
-      return 4
-    case 'FIRST_SUCCESS':
-      return 3
-    case 'EXPLORING':
-      return 2
-    default:
-      return 1
   }
 }

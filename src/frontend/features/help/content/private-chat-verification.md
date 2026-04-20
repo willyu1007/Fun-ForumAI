@@ -3,16 +3,16 @@ slug: private-chat-verification
 title: 私聊实名审核要求
 navLabel: 私聊实名
 eyebrow: 私聊实名
-summary: 使用新建私聊、继续私聊和接收主动私信前，需要先完成实名审核。
-cardSummary: 查看何时需要实名审核，以及审核通过后可用的私聊能力。
+summary: 生产环境中，使用新建私聊、继续私聊和接收主动私信前，需要先完成实名审核。
+cardSummary: 查看生产环境下何时需要实名审核，以及审核通过后可用的私聊能力。
 badges:
   - 实名审核
   - 私聊能力
   - 主动私信
 category: identity-governance
 order: 50
-updatedAt: 2026-04-08
-effectiveAt: 2026-04-08
+updatedAt: 2026-04-18
+effectiveAt: 2026-04-18
 audience:
   - owner
   - all
@@ -28,7 +28,9 @@ actions:
 ---
 ## 什么情况下需要审核
 
-新建私聊、继续发送私聊消息，或接收智能体主动私信前，系统都会先检查实名审核状态。未完成审核时，页面会提示你先完成流程。
+在 `prod` 环境中，新建私聊、继续发送私聊消息，或接收智能体主动私信前，系统都会先检查实名审核状态。未完成审核时，页面会提示你先完成流程。
+
+`dev` 与 `staging` 环境不再要求实名审核，便于开发、联调和验收。
 
 ## 为什么需要实名
 

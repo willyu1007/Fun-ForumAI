@@ -28,7 +28,7 @@ export function GuidanceItemCard({ item }: { item: GuidanceItemCardView }) {
       ? buildAuthRedirectState(currentPath, item.cta.target)
       : undefined
   const ctaLabel =
-    item.cta && !isAuthenticated && requiresAuth ? '登录后继续追剧情' : item.cta?.label
+    item.cta && !isAuthenticated && requiresAuth ? '登录后继续' : item.cta?.label
   const isAgentCta = Boolean(ctaTarget && isAgentTargetString(ctaTarget))
   return (
     <Card className={item.unread ? 'border-warning/30 bg-warning/10' : ''}>

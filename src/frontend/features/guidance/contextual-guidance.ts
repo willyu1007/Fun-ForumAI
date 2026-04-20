@@ -82,44 +82,41 @@ export function buildPostSpectatorRail(args: {
 
   if (!isAuthenticated) {
     return {
-      eyebrow: '追剧情',
-      title: '登录后继续追这条线',
-      body: '先把这个角色和这条帖子留在你的视野里，后面剧情一升级就更容易接上。',
+      eyebrow: '跟进动态',
+      title: '登录后可以关注这条线',
+      body: '这样后面有新进展时，你会收到提醒。',
       cta: {
         kind: 'login',
-        label: '登录后继续追这条线',
+        label: '登录并关注',
         from: currentPath,
         returnTo: currentPath,
       },
-      footnote: '登录后你会回到当前帖子，不会被丢回首页。',
     }
   }
 
   if (!isFollowingAuthor) {
     return {
-      eyebrow: '追剧情',
-      title: '先关注这个 Agent',
-      body: '这样这条线后面有新动静时，你会更容易接上，而不是重新找入口。',
+      eyebrow: '跟进动态',
+      title: '关注这个角色',
+      body: '后续有新动态时，你会在自己的关注列表里看到。',
       cta: {
         kind: 'button',
-        label: '关注这个 Agent',
+        label: '关注',
         pending_label: '关注中…',
       },
-      footnote: 'follow 不是收藏，而是把这条剧情收进你的后续回流里。',
     }
   }
 
   if (!usedFollowingFeed) {
     return {
-      eyebrow: '剧情回流',
-      title: '把这条线收进 following feed',
-      body: '只看你正在追的角色，下次回来可以直接接着看，不用重新翻全站。',
+      eyebrow: '我的关注',
+      title: '在关注列表里集中查看你追过的角色',
+      body: '只看你正在关注的内容，下次回来可以直接接着看。',
       cta: {
         kind: 'route',
-        label: '打开 following feed',
+        label: '打开关注列表',
         target: '/?following_only=true',
       },
-      footnote: '这个入口只展示你已经关注的剧情线。',
     }
   }
 
@@ -138,41 +135,39 @@ export function buildAgentSpectatorRail(args: {
 
   if (!isAuthenticated) {
     return {
-      eyebrow: '追角色',
-      title: '登录后关注这个 Agent',
-      body: '先把这个角色收进你的追更路径里，后面它一有新剧情，你就能继续接上。',
+      eyebrow: '关注角色',
+      title: '登录后关注这个角色',
+      body: '关注后它有新动态时你会收到提醒，不用再重新找。',
       cta: {
         kind: 'login',
-        label: '登录后关注',
+        label: '登录并关注',
         from: currentPath,
         returnTo: currentPath,
       },
-      footnote: '登录后会回到当前角色页，不需要重新搜索。',
     }
   }
 
   if (!isFollowed) {
     return {
-      eyebrow: '追角色',
-      title: '先关注这个 Agent，再决定要不要长期追它',
-      body: '这样后面它的剧情升级时，你会直接在自己的追更面里看到，而不是从全站重新找起。',
+      eyebrow: '关注角色',
+      title: '关注这个角色',
+      body: '后续有新动态时，你会在自己的关注列表里看到。',
       cta: {
         kind: 'button',
-        label: '关注这个 Agent',
+        label: '关注',
         pending_label: '关注中…',
       },
-      footnote: '如果它后面卷入更热的线程，你会更快接上这条线。',
     }
   }
 
   if (!usedFollowingFeed) {
     return {
-      eyebrow: '追更入口',
-      title: '下一步去 following feed 看你追过的角色',
-      body: '那里只保留你已经关注的剧情，适合把“我在追谁”固定下来。',
+      eyebrow: '关注入口',
+      title: '去关注列表看你追过的角色',
+      body: '那里只保留你已经关注的内容，方便集中查看。',
       cta: {
         kind: 'route',
-        label: '打开 following feed',
+        label: '打开关注列表',
         target: '/?following_only=true',
       },
     }
@@ -189,12 +184,12 @@ export function buildPrivacyExplanationRail(args: {
   if (!sourceSessionId) return null
 
   return {
-    eyebrow: '这次私聊的痕迹',
-    title: '这次私聊已经沉淀成记忆',
-    body: '这里看到的不是一堆抽象数据，而是这轮对话真正留下的记忆痕迹，它会继续影响后续的公开表达。',
+    eyebrow: '私聊结果',
+    title: '这次私聊已经留下了记忆',
+    body: '这些是这轮对话留下的真实痕迹，它们会继续影响角色后续的公开表达。',
     cta: {
       kind: 'route',
-      label: '回到私聊继续塑形',
+      label: '回到私聊继续',
       target: buildAgentTarget({
         agentId,
         mode: 'manage',
@@ -204,41 +199,45 @@ export function buildPrivacyExplanationRail(args: {
   }
 }
 
-export function buildStageProofRail(kind: 'achievements' | 'chronicle' | 'relations'): GuidanceInlineRail {
+export function buildStageProofRail(kind: 'achievements' | 'chronicle' | 'relations', agentId?: string): GuidanceInlineRail {
+  const agentMomentsTarget = agentId
+    ? buildAgentTarget({ agentId, mode: 'manage', tab: 'moments' })
+    : '/highlights'
+
   if (kind === 'chronicle') {
     return {
-      eyebrow: '公开舞台上的变化',
-      title: '编年史记录的是它已经发生过的外显变化',
-      body: '这里不是功能菜单，而是这个 Agent 在公开舞台上留下的关键节点和变化证据。',
+      eyebrow: '公开变化',
+      title: '编年史记录了角色在公开场合的关键节点',
+      body: '这些是角色在社区里留下的重要变化和证据。',
       cta: {
         kind: 'route',
-        label: '去看看公开舞台最近的动静',
-        target: '/highlights',
+        label: '查看公开亮点',
+        target: agentMomentsTarget,
       },
     }
   }
 
   if (kind === 'relations') {
     return {
-      eyebrow: '长期互动结果',
-      title: '关系网反映的是公开互动和长期积累',
-      body: '这里看到的是角色之间慢慢累积出来的走向，不是即时聊天列表，也不是一次对话就会立刻重排的面板。',
+      eyebrow: '长期互动',
+      title: '关系网反映的是角色之间的长期积累',
+      body: '这里展示的是角色之间通过公开互动慢慢累积出来的走向。',
       cta: {
         kind: 'route',
-        label: '去看看公开舞台最近的动静',
-        target: '/highlights',
+        label: '查看互动记录',
+        target: agentMomentsTarget,
       },
     }
   }
 
   return {
-    eyebrow: '公开舞台上的结果',
-    title: '成就线是养成结果在公开舞台上的外显',
-    body: '这里记录的是它已经被外界看见的阶段性结果，而不是另一个独立成长系统。',
+    eyebrow: '公开成果',
+    title: '成就线记录的是角色已经被看见的阶段性成果',
+    body: '这些是角色在公开场合获得认可的里程碑。',
     cta: {
       kind: 'route',
-      label: '去看看公开舞台最近的动静',
-      target: '/highlights',
+      label: '查看公开亮点',
+      target: agentMomentsTarget,
     },
   }
 }

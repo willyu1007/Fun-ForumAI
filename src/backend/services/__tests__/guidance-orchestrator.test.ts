@@ -58,27 +58,35 @@ describe('GuidanceOrchestrator', () => {
 
     expect(summary.modules).toHaveLength(1)
     expect(summary.modules[0]).toMatchObject({
-      type: 'DUAL_ENTRY',
-      reason_code: 'HOME_DUAL_ENTRY',
-      hero_body: expect.any(String),
-      cards: [
+      type: 'CHECKLIST',
+      title: '继续推进',
+      items: [
         expect.objectContaining({
-          track: 'SPECTATOR',
-          title: '看剧情',
-          entry_cta: expect.objectContaining({
-            event_name: 'DUAL_ENTRY_CTA_CLICKED',
-          }),
-        }),
-        expect.objectContaining({
-          track: 'OWNER',
-          title: '养一个 Agent',
-          entry_cta: expect.objectContaining({
-            event_name: 'DUAL_ENTRY_CTA_CLICKED',
-          }),
+          reason_code: 'FOLLOW_FIRST_AGENT',
+          completed: false,
         }),
       ],
     })
-    expect(summary.modules.some((module) => module.type === 'CHECKLIST')).toBe(false)
+  })
+
+  it('derives actor stage from facts instead of trusting a stale stored stage', async () => {
+    const ctx = createGuidanceContext()
+
+    await ctx.stateRepo.upsert({
+      actor_type: 'USER',
+      actor_id: 'user-stage-1',
+      stage: 'NEW_VISITOR',
+      followed_first_agent_at: new Date('2026-04-16T00:00:00.000Z'),
+    })
+
+    const summary = await ctx.stateService.buildSummary({
+      actor_type: 'USER',
+      actor_id: 'user-stage-1',
+      visitor_id: 'visitor-stage-1',
+      user_id: 'user-stage-1',
+    })
+
+    expect(summary.actor.stage).toBe('EXPLORING')
   })
 
   it('upgrades nurture receipt in place instead of creating a duplicate item', async () => {
@@ -113,8 +121,11 @@ describe('GuidanceOrchestrator', () => {
       visitor_id: 'visitor-1',
       user_id: 'user-1',
     })
-    expect(summary.actor.reveal.style).toBe(true)
-    expect(summary.actor.reveal.instructions).toBe(true)
+    // nurture_receipt_ready_at is NOT set until the user views memories (MEMORIES_VIEWED).
+    // PRIVATE_DIGEST_READY only creates the inbox item; the completed flag stays false.
+    expect(summary.actor.completed.nurture_receipt_ready).toBe(false)
+    expect(summary.actor.reveal.style).toBe(false)
+    expect(summary.actor.reveal.instructions).toBe(false)
     expect(summary.actor.reveal.advanced).toBe(false)
     const receipt = summary.modules.find((module) => module.type === 'RECEIPT')
     expect(receipt).toMatchObject({
@@ -138,11 +149,6 @@ describe('GuidanceOrchestrator', () => {
     const ctx = createGuidanceContext()
     await ctx.orchestrator.ingestEvent(
       { actor_type: 'VISITOR', actor_id: 'visitor-1' },
-      'DUAL_ENTRY_CTA_CLICKED',
-      { track: 'SPECTATOR' },
-    )
-    await ctx.orchestrator.ingestEvent(
-      { actor_type: 'VISITOR', actor_id: 'visitor-1' },
       'AGENT_FOLLOWED',
       { agent_id: 'agent-1' },
     )
@@ -155,9 +161,12 @@ describe('GuidanceOrchestrator', () => {
       user_id: 'user-1',
     })
 
-    expect(summary.actor.current_track).toBe('SPECTATOR')
-    expect(summary.actor.explained.two_tracks).toBe(true)
     expect(summary.actor.completed.followed_first_agent).toBe(true)
+    expect(summary.actor).toMatchObject({
+      actor_type: 'USER',
+      actor_id: 'user-1',
+      stage: 'EXPLORING',
+    })
   })
 
   it('creates owner and follower guidance items when a public post is produced', async () => {
@@ -244,7 +253,7 @@ describe('GuidanceOrchestrator', () => {
     expect(followerInbox.items).toHaveLength(0)
   })
 
-  it('unlocks advanced owner reveal only after the user opens the linked public effect', async () => {
+  it('keeps public-effect progress separate from advanced reveal unlocks', async () => {
     const ctx = createGuidanceContext()
     const agent = ctx.agentRepo.create({ owner_id: 'owner-1', display_name: 'Owner Bot' })
     const actor = { actor_type: 'USER' as const, actor_id: 'owner-1' }
@@ -267,8 +276,24 @@ describe('GuidanceOrchestrator', () => {
       visitor_id: 'visitor-1',
       user_id: 'owner-1',
     })
+    expect(summary.actor.completed.nurture_receipt_ready).toBe(false)
     expect(summary.actor.completed.watch_public_effect).toBe(false)
     expect(summary.actor.reveal.advanced).toBe(false)
+
+    await ctx.orchestrator.ingestEvent(actor, 'MEMORIES_VIEWED', {
+      agent_id: agent.id,
+      source_session_id: 'session-1',
+    })
+
+    summary = await ctx.stateService.buildSummary({
+      actor_type: 'USER',
+      actor_id: 'owner-1',
+      visitor_id: 'visitor-1',
+      user_id: 'owner-1',
+    })
+    expect(summary.actor.completed.nurture_receipt_ready).toBe(true)
+    expect(summary.actor.completed.watch_public_effect).toBe(false)
+    expect(summary.actor.reveal.advanced).toBe(true)
 
     await ctx.orchestrator.ingestEvent(actor, 'POST_VIEWED', { post_id: 'post-miss' })
     summary = await ctx.stateService.buildSummary({
@@ -278,7 +303,7 @@ describe('GuidanceOrchestrator', () => {
       user_id: 'owner-1',
     })
     expect(summary.actor.completed.watch_public_effect).toBe(false)
-    expect(summary.actor.reveal.advanced).toBe(false)
+    expect(summary.actor.reveal.advanced).toBe(true)
 
     await ctx.orchestrator.ingestEvent(actor, 'POST_VIEWED', { post_id: 'post-1' })
 
@@ -319,9 +344,19 @@ describe('GuidanceOrchestrator', () => {
     const completionEvents = await ctx.eventLogRepo.listByActor('USER', 'owner-2', {
       eventTypes: ['GUIDANCE_ITEM_COMPLETED'],
     })
+    const summary = await ctx.stateService.buildSummary({
+      actor_type: 'USER',
+      actor_id: 'owner-2',
+      visitor_id: 'visitor-owner-2',
+      user_id: 'owner-2',
+    })
 
     expect(receipt?.status).toBe('COMPLETED')
     expect(receipt?.unread).toBe(false)
     expect(completionEvents.some((event) => event.payload_json?.reason_code === 'NURTURE_RECEIPT_READY')).toBe(true)
+    // Viewing memories sets nurture_receipt_ready_at → completed flag and reveal panels unlock.
+    expect(summary.actor.completed.nurture_receipt_ready).toBe(true)
+    expect(summary.actor.reveal.style).toBe(true)
+    expect(summary.actor.reveal.instructions).toBe(true)
   })
 })

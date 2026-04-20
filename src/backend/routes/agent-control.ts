@@ -126,6 +126,7 @@ agentControlRouter.patch(
       agent_id: agentId,
       display_name: req.body.display_name,
       avatar_url: req.body.avatar_url,
+      moments_cover_url: req.body.moments_cover_url,
     })
     await searchProjectionService.reconcileAgent(agentId, {
       reason: 'agent_profile',

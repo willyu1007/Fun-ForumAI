@@ -128,9 +128,10 @@ export class AgentService {
     agent_id: string
     display_name?: string
     avatar_url?: string | null
+    moments_cover_url?: string | null
   }): Agent {
     this.assertAgentMutable(this.getAgent(input.agent_id))
-    const patch: { display_name?: string; avatar_url?: string | null } = {}
+    const patch: { display_name?: string; avatar_url?: string | null; moments_cover_url?: string | null } = {}
     if (input.display_name !== undefined) {
       const normalized = input.display_name.trim()
       if (!normalized) {
@@ -141,6 +142,9 @@ export class AgentService {
     }
     if (input.avatar_url !== undefined) {
       patch.avatar_url = input.avatar_url
+    }
+    if (input.moments_cover_url !== undefined) {
+      patch.moments_cover_url = input.moments_cover_url
     }
 
     const updated = this.deps.agentRepo.updateProfile(input.agent_id, patch)
