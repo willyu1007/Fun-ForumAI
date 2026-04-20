@@ -86,7 +86,7 @@ variables:
     required: false
     scopes: [staging]
     default: enforced
-    description: Staging-only identity gate mode. `admin_bypass` temporarily allows ACTIVE admin users through private/proactive identity checks without changing formal verification status.
+    description: Deprecated. Non-prod no longer enforces private/proactive identity checks; prod always enforces them.
 
   AUTH_OTP_TTL_SECONDS:
     type: int

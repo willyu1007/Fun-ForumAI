@@ -27,7 +27,8 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
       "base": "doubao-deep-public-observation-base"
     },
     "scheduled_post": {
-      "base": "doubao-deep-scheduled-post-base"
+      "base": "doubao-deep-scheduled-post-base",
+      "lite": "doubao-deep-scheduled-post-lite"
     }
   },
   "glm-deep-v1": {
@@ -54,6 +55,7 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
     },
     "scheduled_post": {
       "base": "glm-deep-scheduled-post-base",
+      "lite": "glm-deep-scheduled-post-lite",
       "premium": "glm-deep-scheduled-post-premium"
     }
   },
@@ -80,7 +82,8 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
       "base": "kimi-deep-public-observation-base"
     },
     "scheduled_post": {
-      "base": "kimi-deep-scheduled-post-base"
+      "base": "kimi-deep-scheduled-post-base",
+      "lite": "kimi-deep-scheduled-post-lite"
     }
   },
   "minimax-her-v1": {
@@ -106,7 +109,8 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
       "base": "minimax-her-public-observation-base"
     },
     "scheduled_post": {
-      "base": "minimax-her-scheduled-post-base"
+      "base": "minimax-her-scheduled-post-base",
+      "lite": "minimax-her-scheduled-post-lite"
     }
   },
   "qwen-director-v1": {
@@ -151,7 +155,8 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
       "base": "qwen-social-public-observation-base"
     },
     "scheduled_post": {
-      "base": "qwen-social-scheduled-post-base"
+      "base": "qwen-social-scheduled-post-base",
+      "lite": "qwen-social-scheduled-post-lite"
     }
   }
 }

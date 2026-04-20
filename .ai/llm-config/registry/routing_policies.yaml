@@ -32,6 +32,15 @@ policies:
       - headroom
       - health
 
+  - profile_id: qwen-social-scheduled-post-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
   - profile_id: qwen-social-scheduled-post-base
     route_order:
       - intent_scene_fit
@@ -112,6 +121,15 @@ policies:
       - health
 
   - profile_id: glm-deep-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
+  - profile_id: glm-deep-scheduled-post-lite
     route_order:
       - intent_scene_fit
       - voice_line_tier
@@ -245,6 +263,13 @@ policies:
       - profile_candidates
       - health
 
+  - profile_id: minimax-her-scheduled-post-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
   - profile_id: minimax-her-scheduled-post-base
     route_order:
       - intent_scene_fit
@@ -305,6 +330,13 @@ policies:
       - profile_candidates
       - health
 
+  - profile_id: doubao-deep-scheduled-post-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
   - profile_id: doubao-deep-scheduled-post-base
     route_order:
       - intent_scene_fit
@@ -359,6 +391,13 @@ policies:
       - health
 
   - profile_id: kimi-deep-forum-reply-base
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - health
+
+  - profile_id: kimi-deep-scheduled-post-lite
     route_order:
       - intent_scene_fit
       - voice_line_tier

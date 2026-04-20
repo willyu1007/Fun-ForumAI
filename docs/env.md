@@ -97,7 +97,7 @@ Generated at (UTC): `2026-04-17T11:42:45Z`
 | `FF_STAGE_ROTATION_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable stage template rotation scripts/control-plane integrations. |
 | `FF_STAGE_SPEC_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable StageSpec v1 typed parsing/validation and control-plane API. |
 | `FF_STAGE_TIER_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable Agent Stage Tier scoring and casting pool tier gating. |
-| `IDENTITY_GATE_STAGING_MODE` | `active` | `enum` | no | no | `enforced` | `` | `staging` | `` | `` | `` | Staging-only identity gate mode. `admin_bypass` temporarily allows ACTIVE admin users through private/proactive identity checks without changing formal verification status. |
+| `IDENTITY_GATE_STAGING_MODE` | `active` | `enum` | no | no | `enforced` | `` | `staging` | `` | `` | `` | Deprecated. Non-prod no longer enforces private/proactive identity checks; prod always enforces them. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
 | `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to the primary DashScope credential when unavailable. |

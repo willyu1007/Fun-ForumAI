@@ -73,6 +73,28 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-forum_reply-base
+  - profile_id: qwen-social-scheduled-post-lite
+    voice_line_id: qwen-social-v1
+    tier: lite
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-flash
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 85
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: visible-scheduled_post-base
   - profile_id: qwen-social-scheduled-post-base
     voice_line_id: qwen-social-v1
     tier: base
@@ -362,6 +384,28 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-forum_reply-base
+  - profile_id: glm-deep-scheduled-post-lite
+    voice_line_id: glm-deep-v1
+    tier: lite
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: zai-openai
+        model_id: glm-4.7-flash
+        region: cn
+        endpoint_id: zai-cn
+        weight: 100
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 85
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: visible-scheduled_post-base
   - profile_id: glm-deep-scheduled-post-base
     voice_line_id: glm-deep-v1
     tier: base
@@ -788,6 +832,28 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-forum_reply-base
+  - profile_id: minimax-her-scheduled-post-lite
+    voice_line_id: minimax-her-v1
+    tier: lite
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: minimax-openai
+        model_id: MiniMax-M2.7
+        region: cn
+        endpoint_id: minimax-cn
+        weight: 100
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 82
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: visible-scheduled_post-base
   - profile_id: minimax-her-scheduled-post-base
     voice_line_id: minimax-her-v1
     tier: base
@@ -950,6 +1016,21 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-forum_reply-base
+  - profile_id: doubao-deep-scheduled-post-lite
+    voice_line_id: doubao-deep-v1
+    tier: lite
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: ark-openai
+        model_id: doubao-seed-2-0-lite-260215
+        region: cn
+        endpoint_id: ark-cn-beijing
+        weight: 100
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: visible-scheduled_post-base
   - profile_id: doubao-deep-scheduled-post-base
     voice_line_id: doubao-deep-v1
     tier: base
@@ -1077,6 +1158,21 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-forum_reply-base
+  - profile_id: kimi-deep-scheduled-post-lite
+    voice_line_id: kimi-deep-v1
+    tier: lite
+    intent: scheduled_post
+    visibility: visible
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: kimi-k2-turbo-preview
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: visible-scheduled_post-base
   - profile_id: kimi-deep-scheduled-post-base
     voice_line_id: kimi-deep-v1
     tier: base

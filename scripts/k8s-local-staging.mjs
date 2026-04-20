@@ -95,6 +95,12 @@ function decodeSecretData(data) {
   return out
 }
 
+function readEnvOverride(name) {
+  return Object.prototype.hasOwnProperty.call(process.env, name)
+    ? process.env[name]
+    : undefined
+}
+
 async function runCommandWithStdin(cmd, args, stdinText) {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] })
@@ -865,28 +871,49 @@ async function main() {
 
   const mergedSecretData = {
     ...preservedSecretData,
-    DATABASE_URL: existingSecretData.DATABASE_URL || defaultDatabaseUrl(String(args.k8sNamespace)),
-    REDIS_URL: existingSecretData.REDIS_URL || defaultRedisUrl(String(args.k8sNamespace)),
-    JWT_SECRET: process.env.JWT_SECRET || existingSecretData.JWT_SECRET || 'local-dev-jwt-secret',
+    DATABASE_URL:
+      readEnvOverride('DATABASE_URL')
+      ?? existingSecretData.DATABASE_URL
+      ?? defaultDatabaseUrl(String(args.k8sNamespace)),
+    REDIS_URL:
+      readEnvOverride('REDIS_URL')
+      ?? existingSecretData.REDIS_URL
+      ?? defaultRedisUrl(String(args.k8sNamespace)),
+    JWT_SECRET:
+      readEnvOverride('JWT_SECRET')
+      ?? existingSecretData.JWT_SECRET
+      ?? 'local-dev-jwt-secret',
     SERVICE_AUTH_SECRET:
-      process.env.SERVICE_AUTH_SECRET ||
-      existingSecretData.SERVICE_AUTH_SECRET ||
+      readEnvOverride('SERVICE_AUTH_SECRET')
+      ?? existingSecretData.SERVICE_AUTH_SECRET
+      ??
       'local-dev-service-auth-secret',
     DASHSCOPE_API_KEY: dashscopeApiKey,
     DASHSCOPE_API_KEY_SECONDARY: dashscopeSecondaryApiKey,
-    ZAI_API_KEY: process.env.ZAI_API_KEY || existingSecretData.ZAI_API_KEY || '',
+    ZAI_API_KEY: readEnvOverride('ZAI_API_KEY') ?? existingSecretData.ZAI_API_KEY ?? '',
     ZAI_API_KEY_SECONDARY:
-      process.env.ZAI_API_KEY_SECONDARY || existingSecretData.ZAI_API_KEY_SECONDARY || '',
-    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || existingSecretData.DEEPSEEK_API_KEY || '',
-    MOONSHOT_API_KEY: process.env.MOONSHOT_API_KEY || existingSecretData.MOONSHOT_API_KEY || '',
-    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY || existingSecretData.MINIMAX_API_KEY || '',
+      readEnvOverride('ZAI_API_KEY_SECONDARY')
+      ?? existingSecretData.ZAI_API_KEY_SECONDARY
+      ?? '',
+    DEEPSEEK_API_KEY:
+      readEnvOverride('DEEPSEEK_API_KEY') ?? existingSecretData.DEEPSEEK_API_KEY ?? '',
+    MOONSHOT_API_KEY:
+      readEnvOverride('MOONSHOT_API_KEY') ?? existingSecretData.MOONSHOT_API_KEY ?? '',
+    MINIMAX_API_KEY:
+      readEnvOverride('MINIMAX_API_KEY') ?? existingSecretData.MINIMAX_API_KEY ?? '',
     MINIMAX_API_KEY_SECONDARY:
-      process.env.MINIMAX_API_KEY_SECONDARY || existingSecretData.MINIMAX_API_KEY_SECONDARY || '',
+      readEnvOverride('MINIMAX_API_KEY_SECONDARY')
+      ?? existingSecretData.MINIMAX_API_KEY_SECONDARY
+      ?? '',
     TENCENT_HUNYUAN_API_KEY:
-      process.env.TENCENT_HUNYUAN_API_KEY || existingSecretData.TENCENT_HUNYUAN_API_KEY || '',
-    ARK_API_KEY: process.env.ARK_API_KEY || existingSecretData.ARK_API_KEY || '',
+      readEnvOverride('TENCENT_HUNYUAN_API_KEY')
+      ?? existingSecretData.TENCENT_HUNYUAN_API_KEY
+      ?? '',
+    ARK_API_KEY: readEnvOverride('ARK_API_KEY') ?? existingSecretData.ARK_API_KEY ?? '',
     ARK_API_KEY_SECONDARY:
-      process.env.ARK_API_KEY_SECONDARY || existingSecretData.ARK_API_KEY_SECONDARY || '',
+      readEnvOverride('ARK_API_KEY_SECONDARY')
+      ?? existingSecretData.ARK_API_KEY_SECONDARY
+      ?? '',
     MEDIA_GENERATION_API_KEY: mediaGenerationApiKey,
   }
 

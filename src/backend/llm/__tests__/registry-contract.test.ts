@@ -315,6 +315,21 @@ describe('LLM registry contract', () => {
   })
 
   it('falls back to the nearest available tier when a requested tier is not explicitly defined', () => {
+    expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'scheduled_post', 'lite')).toBe(
+      'qwen-social-scheduled-post-lite',
+    )
+    expect(resolveVoiceLineTierProfileRef('glm-deep-v1', 'scheduled_post', 'lite')).toBe(
+      'glm-deep-scheduled-post-lite',
+    )
+    expect(resolveVoiceLineTierProfileRef('doubao-deep-v1', 'scheduled_post', 'lite')).toBe(
+      'doubao-deep-scheduled-post-lite',
+    )
+    expect(resolveVoiceLineTierProfileRef('kimi-deep-v1', 'scheduled_post', 'lite')).toBe(
+      'kimi-deep-scheduled-post-lite',
+    )
+    expect(resolveVoiceLineTierProfileRef('minimax-her-v1', 'scheduled_post', 'lite')).toBe(
+      'minimax-her-scheduled-post-lite',
+    )
     expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'scheduled_post', 'premium')).toBe(
       'qwen-social-scheduled-post-base',
     )

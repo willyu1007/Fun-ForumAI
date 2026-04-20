@@ -1,32 +1,27 @@
 {
   "schema_version": 1,
   "env": "staging",
-  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d",
-  "git_sha": "04a06dc9837ab2ec183347114ee8e014e659440d",
-  "published_at": "2026-04-07T06:12:06.537Z",
-  "approved_at": "2026-04-07T06:12:06.537Z",
-  "approved_by": "phoenix",
-  "recorded_at": "2026-04-07T06:12:06.537Z",
-  "updated_at": "2026-04-07T07:35:54.665Z",
+  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-1118d1374bbf9ceb630b910a7ec3d103bb8f4390",
+  "git_sha": "1118d1374bbf9ceb630b910a7ec3d103bb8f4390",
+  "published_at": "2026-04-18T14:38:46.793Z",
+  "approved_at": "2026-04-18T14:38:46.793Z",
+  "approved_by": "unknown",
+  "recorded_at": "2026-04-18T14:38:46.793Z",
+  "updated_at": "2026-04-18T14:38:46.793Z",
   "db_compat": "backwards",
   "db_plan": "",
-  "notes": "",
+  "notes": "refresh desired release after warmup runtime parity fix",
   "targets": {
     "ecs_web": {
-      "status": "applied",
+      "status": "pending",
       "notes": "",
-      "updated_at": "2026-04-07T06:15:01.624Z",
-      "applied_at": "2026-04-07T06:15:01.624Z",
-      "applied_image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d"
+      "updated_at": "2026-04-18T14:38:46.793Z"
     },
     "eci_worker": {
-      "status": "applied",
+      "status": "pending",
       "notes": "",
-      "updated_at": "2026-04-07T07:35:54.665Z",
-      "applied_at": "2026-04-07T07:35:54.665Z",
-      "applied_image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-04a06dc9837ab2ec183347114ee8e014e659440d"
+      "updated_at": "2026-04-18T14:38:46.793Z"
     }
   },
-  "status": "fulfilled",
-  "fulfilled_at": "2026-04-07T07:35:54.665Z"
+  "status": "pending"
 }
