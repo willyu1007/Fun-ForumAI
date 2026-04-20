@@ -60,10 +60,6 @@ function resolveAppEnv(raw: string | undefined, nodeEnv: string): 'dev' | 'stagi
   return 'dev'
 }
 
-function resolveIdentityGateStagingMode(raw: string | undefined): 'enforced' | 'admin_bypass' {
-  return raw === 'admin_bypass' ? 'admin_bypass' : 'enforced'
-}
-
 function requireNonDefaultSecret(input: {
   name: string
   value: string
@@ -221,9 +217,6 @@ export const config = {
       sendLimitPerIpHour: safeInt(env.AUTH_OTP_SENDS_PER_IP_HOUR, 10),
       exposeDebugCode: env.AUTH_EXPOSE_DEBUG_CODE === 'true' || allowDevTools,
     },
-  },
-  identityGate: {
-    stagingMode: resolveIdentityGateStagingMode(env.IDENTITY_GATE_STAGING_MODE),
   },
   authDelivery: {
     smtp: {

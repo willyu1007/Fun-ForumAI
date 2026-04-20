@@ -3,7 +3,6 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const runDevSeed = vi.fn()
-const recordDataMode = vi.fn()
 const warmPersistenceState = vi.fn()
 const execFileSync = vi.fn()
 
@@ -18,9 +17,6 @@ vi.mock('../../dev/dev-seed-runner.js', () => ({
 }))
 
 vi.mock('../../container.js', () => ({
-  kickoffRunArtifactService: {
-    recordDataMode,
-  },
   warmPersistenceState,
 }))
 
@@ -67,12 +63,10 @@ describe('dev seed route', () => {
 
   it('resets the local database before loading canonical seed when requested', async () => {
     const app = await createApp()
-    const res = await request(app)
-      .post('/v1/dev/seed')
-      .send({
-        profile: 'canonical',
-        reset_before_seed: true,
-      })
+    const res = await request(app).post('/v1/dev/seed').send({
+      profile: 'canonical',
+      reset_before_seed: true,
+    })
 
     expect(res.status).toBe(200)
     expect(execFileSync).toHaveBeenNthCalledWith(
@@ -93,27 +87,21 @@ describe('dev seed route', () => {
     )
     expect(warmPersistenceState).toHaveBeenCalledTimes(1)
     expect(runDevSeed).toHaveBeenCalledWith({ profile: 'canonical' })
-    expect(recordDataMode).toHaveBeenCalledWith({
-      mode: 'canonical',
-      profile: 'canonical',
-    })
   })
 
   it('returns 409 when another dev data operation is already running', async () => {
     const app = await createApp()
     const { devDataOperationLock } = await import('../../services/dev-data-operation-lock.js')
     const token = devDataOperationLock.acquire({
-      kind: 'kickoff_bootstrap',
+      kind: 'warm_start_bootstrap',
       label: 'run-123',
     })
 
     try {
-      const res = await request(app)
-        .post('/v1/dev/seed')
-        .send({
-          profile: 'canonical',
-          reset_before_seed: true,
-        })
+      const res = await request(app).post('/v1/dev/seed').send({
+        profile: 'canonical',
+        reset_before_seed: true,
+      })
 
       expect(res.status).toBe(409)
       expect(res.body.error.code).toBe('CONFLICT')

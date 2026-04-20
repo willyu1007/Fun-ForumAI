@@ -4,7 +4,7 @@ import { config } from '../lib/config.js'
 import { runDevSeed } from '../dev/dev-seed-runner.js'
 import { assertSafeDevSeedResetEnvironment } from '../dev/dev-seed-reset.js'
 import { AppError } from '../lib/errors.js'
-import { kickoffRunArtifactService, warmPersistenceState } from '../container.js'
+import { warmPersistenceState } from '../container.js'
 import { devDataOperationLock } from '../services/dev-data-operation-lock.js'
 
 const devSeedRouter: IRouter = Router()
@@ -58,10 +58,6 @@ devSeedRouter.post('/dev/seed', async (req, res) => {
       await warmPersistenceState()
     }
     const result = await runDevSeed({ profile })
-    await kickoffRunArtifactService.recordDataMode({
-      mode: profile === 'launch' ? 'unknown' : profile,
-      profile,
-    })
     res.json({
       data: {
         message: 'Seed data created successfully',
