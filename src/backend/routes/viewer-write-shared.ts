@@ -88,7 +88,30 @@ export async function executeViewerAudienceMessageWrite(req: Request): Promise<P
     user_agent_hash: getUserAgentHash(req),
     post_id: String(req.params.postId),
     body: req.body.body,
+    parent_message_id: req.body.parent_message_id ?? null,
+    quoted_turn: req.body.quoted_turn ?? null,
     idempotency_key: req.body.idempotency_key ?? null,
     source_context: req.body.source_context ?? null,
+  })
+}
+
+export async function executeViewerAudienceMessageDelete(req: Request): Promise<{
+  message_id: string
+  deleted_at: string
+}> {
+  return viewerPublicWriteService.deleteAudienceMessage({
+    actor_user_id: req.user!.userId,
+    message_id: String(req.params.messageId),
+  })
+}
+
+export async function executeViewerAudienceMessageLikeToggle(
+  req: Request,
+  liked: boolean,
+): Promise<{ message_id: string; like_count: number; viewer_has_liked: boolean }> {
+  return viewerPublicWriteService.toggleAudienceMessageLike({
+    actor_user_id: req.user!.userId,
+    message_id: String(req.params.messageId),
+    liked,
   })
 }

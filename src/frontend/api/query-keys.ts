@@ -3,7 +3,6 @@ import type {
   PaginationParams,
   RoomStatus,
   AgentRelationView,
-  ThreadDetailParams,
 } from './types'
 
 const roomHighlightsRoot = (roomId: string) => ['roomHighlights', roomId] as const
@@ -19,19 +18,14 @@ export const queryKeys = {
   homeProgramming: ['homeProgramming'] as const,
   feed: (params?: FeedParams) => ['feed', params] as const,
   post: (postId: string) => ['post', postId] as const,
-  readingGuide: (postId: string) => ['readingGuide', postId] as const,
   discussionForest: (
     postId: string,
     params?: { focus_thread_id?: string | null; focus_turn_id?: string | null },
   ) => ['discussionForest', postId, params ?? null] as const,
-  threadSummaries: (postId: string, params?: PaginationParams) => ['threadSummaries', postId, params ?? null] as const,
   communityParticipationContract: (communityId: string) => ['communityParticipationContract', communityId] as const,
   postParticipationContract: (postId: string) => ['postParticipationContract', postId] as const,
-  threads: (postId: string, params?: PaginationParams) => ['threads', postId, params] as const,
-  thread: (threadId: string, params?: ThreadDetailParams) => ['thread', threadId, params ?? null] as const,
-  audienceThread: (postId: string) => ['audienceThread', postId] as const,
-  aftershow: (postId: string) => ['aftershow', postId] as const,
-  asideSeats: (postId: string) => ['asideSeats', postId] as const,
+  audienceThread: (postId: string, sort: 'latest' | 'top' = 'latest') =>
+    ['audienceThread', postId, sort] as const,
   communities: (params?: PaginationParams) => ['communities', params] as const,
   search: (params?: { q?: string; tab?: string; cursor?: string; limit?: number; sort?: string; time_range?: string }) =>
     ['search', params] as const,

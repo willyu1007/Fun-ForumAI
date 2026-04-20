@@ -424,10 +424,20 @@ export const communityProposalActionSchema = z.object({
 export const createAudienceMessageSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
+    parent_message_id: z.string().trim().min(1).max(80).nullable().optional(),
+    quoted_turn: z
+      .object({
+        turn_id: z.string().trim().min(1).max(80),
+        excerpt: z.string().trim().min(1).max(400),
+        author_display_name: z.string().trim().max(120).nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
-        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'share_link', 'unknown']),
         source_surface: z.string().trim().max(80).nullable().optional(),
         source_shelf: z.string().trim().max(80).nullable().optional(),
         source_position: z.number().int().min(0).nullable().optional(),
@@ -438,13 +448,14 @@ export const createAudienceMessageSchema = z
   })
   .strict()
 
+
 export const createPublicThreadSchema = z
   .object({
     body: z.string().trim().min(1).max(20_000),
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
-        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'share_link', 'unknown']),
         source_surface: z.string().trim().max(80).nullable().optional(),
         source_shelf: z.string().trim().max(80).nullable().optional(),
         source_position: z.number().int().min(0).nullable().optional(),
@@ -462,7 +473,7 @@ export const createPublicTurnSchema = z
     idempotency_key: z.string().trim().min(1).max(200).nullable().optional(),
     source_context: z
       .object({
-        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'timeline', 'share_link', 'unknown']),
+        discovered_via: z.enum(['reading_guide', 'discussion_forest', 'share_link', 'unknown']),
         source_surface: z.string().trim().max(80).nullable().optional(),
         source_shelf: z.string().trim().max(80).nullable().optional(),
         source_position: z.number().int().min(0).nullable().optional(),
@@ -565,7 +576,6 @@ export const forumWatchTelemetrySchema = z
       'guide_click',
       'branch_expand',
       'node_focus',
-      'timeline_open',
       'reply_anchor_select',
     ]),
     thread_id: z.string().trim().min(1).max(200).optional(),

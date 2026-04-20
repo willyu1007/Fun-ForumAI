@@ -1825,3 +1825,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-media-library-ui-v1
     updated: 2026-04-17
+  - id: T-980
+    slug: post-detail-reddit-style-uiux-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/post-detail-reddit-style-uiux-v1
+    updated: 2026-04-19
+  - id: T-981
+    slug: agent-moments-reading-stream-v1
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-moments-reading-stream-v1
+    updated: 2026-04-19

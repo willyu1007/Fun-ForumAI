@@ -1,47 +1,45 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState, type ReactElement } from 'react'
 import { Link } from 'react-router'
 import type {
   DiscussionBranchGroup,
   DiscussionForestProjection,
   TurnDisplayProjection,
+  ViewerWriteResult,
 } from '@/api/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { BadgeVisualChip } from '@/shared/components/BadgeVisualChip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { isAgentTargetString } from '@/shared/utils/agent-target'
-import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
-import { readAuthorBadgeChipItems, readProjectionText } from '@/shared/utils/public-author'
+import { readAuthorBadgeChipItems } from '@/shared/utils/public-author'
 import { tryOpenAgentModal } from '@/shared/stores/agent-modal-store'
 import { cn } from '@/lib/utils'
+import { useCreatePublicTurn } from '@/api/hooks'
 import { allowsDirectThreadReply, prefersRouteHandoff } from '../lib/thread-writeability'
+
+export type DiscussionForestSortMode = 'recommended' | 'latest_activity'
 
 interface DiscussionForestProps {
   postId: string
   forest: DiscussionForestProjection | null
   isLoading?: boolean
   selectedNodeId?: string | null
-  composerAnchorNodeId?: string | null
-  replyActionLabel?: string | null
-  onSelectNode?: (
-    node: TurnDisplayProjection,
-    source: 'guide' | 'node' | 'reply',
-  ) => void
-  onBranchExpand?: (group: DiscussionBranchGroup) => void
+  sortMode?: DiscussionForestSortMode
+  turnReplyEnabled?: boolean
+  audiencePostingEnabled?: boolean
+  onReplyOpen?: (node: TurnDisplayProjection) => void
+  onReplyAccepted?: (node: TurnDisplayProjection, result: ViewerWriteResult) => void
+  onDiscussInAudience?: (node: TurnDisplayProjection) => void
 }
 
-interface DiscussionClusterView {
+interface DiscussionTreeView {
   id: string
   thread_id: string
   group: DiscussionBranchGroup
-  root_node: TurnDisplayProjection | null
-  lead_node: TurnDisplayProjection
-  nodes: TurnDisplayProjection[]
-  participant_count: number
-  turn_count: number
+  root: TurnDisplayProjection
+  children_by_parent: Map<string, TurnDisplayProjection[]>
   latest_activity_at: string
 }
 
@@ -65,14 +63,14 @@ function sortNodes(nodes: TurnDisplayProjection[]): TurnDisplayProjection[] {
 }
 
 function collectSubtreeNodes(
-  leadNodeId: string,
-  threadNodes: TurnDisplayProjection[],
+  rootId: string,
+  pool: TurnDisplayProjection[],
 ): TurnDisplayProjection[] {
-  const descendants = new Set<string>([leadNodeId])
+  const descendants = new Set<string>([rootId])
   let changed = true
   while (changed) {
     changed = false
-    for (const node of threadNodes) {
+    for (const node of pool) {
       if (!node.display_parent_id) continue
       if (!descendants.has(node.display_parent_id)) continue
       if (descendants.has(node.id)) continue
@@ -80,112 +78,68 @@ function collectSubtreeNodes(
       changed = true
     }
   }
-  return threadNodes.filter((node) => descendants.has(node.id))
+  return pool.filter((node) => descendants.has(node.id))
 }
 
-function buildClusterViews(forest: DiscussionForestProjection): {
-  clusters: DiscussionClusterView[]
-  clusterIdByNodeId: Map<string, string>
-} {
-  const clusterIdByNodeId = new Map<string, string>()
-  const clusters: DiscussionClusterView[] = []
+function buildTreeViews(forest: DiscussionForestProjection): DiscussionTreeView[] {
   const nodesByThreadId = new Map<string, TurnDisplayProjection[]>()
-
   for (const node of forest.nodes) {
-    const existing = nodesByThreadId.get(node.thread_id) ?? []
-    existing.push(node)
-    nodesByThreadId.set(node.thread_id, existing)
+    const bucket = nodesByThreadId.get(node.thread_id) ?? []
+    bucket.push(node)
+    nodesByThreadId.set(node.thread_id, bucket)
   }
 
+  const trees: DiscussionTreeView[] = []
   for (const group of forest.branch_groups) {
     const threadNodes = sortNodes(nodesByThreadId.get(group.thread_id) ?? [])
     const rootNode = threadNodes.find((node) => node.entry_kind === 'THREAD') ?? null
     const turnNodes = threadNodes.filter((node) => node.entry_kind === 'TURN')
+
+    // A "tree" is seeded at each top-level lead (root, or turn directly under root).
+    // Without a root node we still surface each top-level turn as its own tree.
     const leadNodes = rootNode
       ? turnNodes.filter((node) => node.display_parent_id === rootNode.id)
-      : turnNodes
+      : turnNodes.filter((node) => !node.display_parent_id)
 
     if (leadNodes.length === 0 && rootNode) {
-      const clusterId = `cluster:${group.thread_id}:root`
-      clusterIdByNodeId.set(rootNode.id, clusterId)
-      clusters.push({
-        id: clusterId,
+      trees.push({
+        id: `tree:${group.thread_id}:${rootNode.id}`,
         thread_id: group.thread_id,
         group,
-        root_node: rootNode,
-        lead_node: rootNode,
-        nodes: [rootNode],
-        participant_count: 1,
-        turn_count: 0,
+        root: rootNode,
+        children_by_parent: new Map<string, TurnDisplayProjection[]>(),
         latest_activity_at: group.latest_activity_at,
       })
       continue
     }
 
-    for (const [index, leadNode] of leadNodes.entries()) {
-      const clusterNodes = sortNodes(collectSubtreeNodes(leadNode.id, threadNodes))
-      const clusterId = `cluster:${group.thread_id}:${leadNode.id}`
-      clusterIdByNodeId.set(leadNode.id, clusterId)
-      if (index === 0 && rootNode) {
-        clusterIdByNodeId.set(rootNode.id, clusterId)
+    for (const leadNode of leadNodes) {
+      const subtree = sortNodes(collectSubtreeNodes(leadNode.id, threadNodes))
+      const childrenByParent = new Map<string, TurnDisplayProjection[]>()
+      for (const node of subtree) {
+        if (node.id === leadNode.id) continue
+        const parentId = node.display_parent_id ?? leadNode.id
+        const bucket = childrenByParent.get(parentId) ?? []
+        bucket.push(node)
+        childrenByParent.set(parentId, bucket)
       }
-      for (const node of clusterNodes) {
-        clusterIdByNodeId.set(node.id, clusterId)
+      for (const [parentId, bucket] of childrenByParent.entries()) {
+        childrenByParent.set(parentId, sortNodes(bucket))
       }
       const latestActivityAt =
-        [...clusterNodes]
-          .sort((left, right) => right.created_at.localeCompare(left.created_at))[0]?.created_at
-        ?? group.latest_activity_at
-      clusters.push({
-        id: clusterId,
+        [...subtree].sort((left, right) => right.created_at.localeCompare(left.created_at))[0]
+          ?.created_at ?? group.latest_activity_at
+      trees.push({
+        id: `tree:${group.thread_id}:${leadNode.id}`,
         thread_id: group.thread_id,
         group,
-        root_node: rootNode,
-        lead_node: leadNode,
-        nodes: clusterNodes,
-        participant_count: new Set(clusterNodes.map((node) => node.author.id)).size,
-        turn_count: clusterNodes.filter((node) => node.entry_kind === 'TURN').length,
+        root: leadNode,
+        children_by_parent: childrenByParent,
         latest_activity_at: latestActivityAt,
       })
     }
   }
-
-  return { clusters, clusterIdByNodeId }
-}
-
-function getCollapsedNodes(
-  nodes: TurnDisplayProjection[],
-  selectedNodeId: string | null | undefined,
-): TurnDisplayProjection[] {
-  if (nodes.length <= 2) return nodes
-  const lead = nodes[0]
-  const latest = [...nodes].reverse().find((node) => node.entry_kind === 'TURN') ?? nodes[nodes.length - 1]
-  const selected = selectedNodeId
-    ? nodes.find((node) => node.id === selectedNodeId) ?? null
-    : null
-  const visible = [lead, selected, latest].filter((node): node is TurnDisplayProjection => Boolean(node))
-  const deduped: TurnDisplayProjection[] = []
-  const seen = new Set<string>()
-  for (const node of visible) {
-    if (seen.has(node.id)) continue
-    seen.add(node.id)
-    deduped.push(node)
-  }
-  return deduped
-}
-
-function buildChildrenByParent(nodes: TurnDisplayProjection[]): Map<string, TurnDisplayProjection[]> {
-  const map = new Map<string, TurnDisplayProjection[]>()
-  for (const node of nodes) {
-    const parentId = node.display_parent_id ?? '__root__'
-    const bucket = map.get(parentId) ?? []
-    bucket.push(node)
-    map.set(parentId, bucket)
-  }
-  for (const [parentId, bucket] of map.entries()) {
-    map.set(parentId, sortNodes(bucket))
-  }
-  return map
+  return trees
 }
 
 function readRouteAction(group: DiscussionBranchGroup): { label: string; target: string } | null {
@@ -198,116 +152,127 @@ function readRouteAction(group: DiscussionBranchGroup): { label: string; target:
       ? group.lifecycle.active_route.cta.target
       : null
 
-  if (!label || !target) {
-    return null
-  }
-
+  if (!label || !target) return null
   return { label, target }
 }
 
-function readPlacementBadge(node: TurnDisplayProjection): string | null {
-  if (node.is_late_entry || node.placement_reason === 'LATE_ENTRY_REATTACH') {
-    return '稍后接回'
-  }
-  if (node.placement_reason === 'DEPTH_CLAMP') {
-    return '承接上文'
-  }
-  return null
-}
-
-function renderRouteActionButton(routeAction: { label: string; target: string }) {
+function renderRouteActionLink(routeAction: { label: string; target: string }) {
+  const className =
+    'text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground'
   if (isAgentTargetString(routeAction.target)) {
     return (
-      <Button
+      <button
         type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2 text-xs"
+        className={className}
         onClick={() => {
           tryOpenAgentModal(routeAction.target, 'readonly')
         }}
       >
         {routeAction.label}
-      </Button>
+      </button>
     )
   }
   if (routeAction.target.startsWith('/')) {
     return (
-      <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-        <Link to={routeAction.target}>{routeAction.label}</Link>
-      </Button>
+      <Link to={routeAction.target} className={className}>
+        {routeAction.label}
+      </Link>
     )
   }
   return (
-    <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-      <a href={routeAction.target} target="_blank" rel="noreferrer">
-        {routeAction.label}
-      </a>
-    </Button>
+    <a href={routeAction.target} target="_blank" rel="noreferrer" className={className}>
+      {routeAction.label}
+    </a>
   )
 }
 
-function AuthorLine({
+function InlineNodeReplyComposer({
+  postId,
   node,
-  compact = false,
-  emphasizeBio = false,
-  showProofChips = false,
+  onSuccess,
+  onCancel,
 }: {
+  postId: string
   node: TurnDisplayProjection
-  compact?: boolean
-  emphasizeBio?: boolean
-  showProofChips?: boolean
+  onSuccess: (result: ViewerWriteResult) => void
+  onCancel: () => void
 }) {
-  const avatarSrc = resolveAgentAvatarSrc({
-    id: node.author.id,
-    display_name: node.author.display_name,
-    avatar_url: node.author.avatar_url,
-  })
-  const { identityChip, proofChips } = readAuthorBadgeChipItems(node.author, {
-    maxProofChips: showProofChips ? (compact ? 1 : 2) : 0,
-    policyId: 'public_author_compact',
-  })
+  const createPublicTurn = useCreatePublicTurn()
+  const [body, setBody] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const quotedExcerpt = (node.body ?? '').slice(0, 180)
+
+  const handleSubmit = async () => {
+    const trimmed = body.trim()
+    if (!trimmed) {
+      setError('请先输入内容再发送。')
+      return
+    }
+    setError(null)
+    setNotice(null)
+    try {
+      const response = await createPublicTurn.mutateAsync({
+        threadId: node.thread_id,
+        postId,
+        body: trimmed,
+        anchor_turn_id: node.id,
+        focused_turn_id: node.id,
+        actual_anchor_turn_id: node.id,
+        quoted_excerpt: quotedExcerpt || null,
+        idempotency_key: `viewer-stage:${postId}:${Date.now()}`,
+        source_context: {
+          discovered_via: 'discussion_forest',
+          source_shelf: 'forest',
+        },
+      })
+      const result = response.data
+      if (result.result === 'ACCEPTED') {
+        onSuccess(result)
+        return
+      }
+      if (result.result === 'PENDING_MODERATION') {
+        setNotice(result.message ?? '回应已提交，等待审核后公开显示。')
+        return
+      }
+      setError(result.message ?? '暂时无法提交这条回应。')
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '提交失败，请稍后再试。')
+    }
+  }
 
   return (
-    <div className="flex gap-3">
-      <Avatar className={cn('mt-0.5 shrink-0', compact ? 'size-8' : 'size-9')}>
-        <AvatarImage src={avatarSrc} alt={node.author.display_name} className="object-cover" />
-        <AvatarFallback className="bg-primary/10 text-[11px] text-primary">
-          {node.author.display_name.slice(0, 1).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{node.author.display_name}</span>
-          {identityChip ? (
-            <BadgeVisualChip
-              label={identityChip.label}
-              code={identityChip.code}
-              variant="outline"
-              className="px-1 py-0 text-[9px]"
-              iconClassName="size-3"
-            />
-          ) : null}
-          {showProofChips
-            ? proofChips.map((badge) => (
-                <BadgeVisualChip
-                  key={`${node.id}:${badge.code ?? 'display'}:${badge.label}`}
-                  label={badge.label}
-                  code={badge.code}
-                  variant="secondary"
-                  className="px-1 py-0 text-[9px]"
-                  iconClassName="size-3"
-                />
-              ))
-            : null}
-          <span>·</span>
-          <span>{relativeTime(node.created_at)}</span>
-          <span>·</span>
-          <span>{node.entry_kind === 'THREAD' ? '分支开场' : '后续发言'}</span>
-        </div>
-        {emphasizeBio && readProjectionText(node.author) ? (
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{readProjectionText(node.author)}</p>
-        ) : null}
+    <div className="mt-2 space-y-2" data-testid="inline-node-reply-composer">
+      <Textarea
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        placeholder="写下你的回应…"
+        rows={3}
+        className="min-h-[72px] text-sm"
+        data-testid="inline-node-reply-textarea"
+      />
+      {error ? <p className="text-[11px] text-destructive">{error}</p> : null}
+      {notice ? <p className="text-[11px] text-muted-foreground">{notice}</p> : null}
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          className="h-7 px-3 text-xs"
+          onClick={handleSubmit}
+          disabled={createPublicTurn.isPending || body.trim().length === 0}
+          data-testid="inline-node-reply-submit"
+        >
+          {createPublicTurn.isPending ? '发送中…' : '发送回应'}
+        </Button>
+        <button
+          type="button"
+          className="text-[11px] text-muted-foreground hover:text-foreground"
+          onClick={onCancel}
+          disabled={createPublicTurn.isPending}
+        >
+          取消
+        </button>
       </div>
     </div>
   )
@@ -318,136 +283,108 @@ export function DiscussionForest({
   forest,
   isLoading,
   selectedNodeId,
-  composerAnchorNodeId,
-  replyActionLabel,
-  onSelectNode,
-  onBranchExpand,
+  sortMode = 'recommended',
+  turnReplyEnabled = false,
+  audiencePostingEnabled = false,
+  onReplyOpen,
+  onReplyAccepted,
+  onDiscussInAudience,
 }: DiscussionForestProps) {
-  const [expandedByClusterId, setExpandedByClusterId] = useState<Record<string, boolean>>({})
-  const guideEntries = forest?.reading_guide.entries ?? []
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(() => new Set())
+  const [activeReplyNodeId, setActiveReplyNodeId] = useState<string | null>(null)
 
-  const { clusters, clusterIdByNodeId } = useMemo(() => {
-    if (!forest) {
-      return {
-        clusters: [] as DiscussionClusterView[],
-        clusterIdByNodeId: new Map<string, string>(),
-      }
+  const trees = useMemo(() => (forest ? buildTreeViews(forest) : []), [forest])
+
+  // Sort is driven purely by the tree's own temporal attributes so that
+  // interactive selection (opening a reply composer, highlighting a node) never
+  // reorders the list. Deep-link focus is handled in PostDetailPage by scrolling
+  // the target tree into view — it does not float to the top.
+  const sortedTrees = useMemo(() => {
+    if (sortMode === 'latest_activity') {
+      // "最新" — latest thread activity first (追更视图).
+      return [...trees].sort((left, right) =>
+        right.latest_activity_at.localeCompare(left.latest_activity_at),
+      )
     }
-    return buildClusterViews(forest)
-  }, [forest])
-
-  useEffect(() => {
-    if (!forest || clusters.length === 0) return
-    const preferredClusterId =
-      (selectedNodeId ? clusterIdByNodeId.get(selectedNodeId) : null)
-      ?? (forest.focus_turn_id ? clusterIdByNodeId.get(forest.focus_turn_id) : null)
-      ?? (forest.focus_thread_id ? clusterIdByNodeId.get(forest.focus_thread_id) : null)
-      ?? (forest.reading_guide.start_here_thread_ids[0]
-        ? clusterIdByNodeId.get(forest.reading_guide.start_here_thread_ids[0])
-        : null)
-      ?? clusters[0]?.id
-      ?? null
-    if (!preferredClusterId) return
-    setExpandedByClusterId((current) => (
-      Object.keys(current).length > 0
-        ? current
-        : { [preferredClusterId]: true }
-    ))
-  }, [clusterIdByNodeId, clusters, forest, selectedNodeId])
-
-  useEffect(() => {
-    if (!selectedNodeId) return
-    const clusterId = clusterIdByNodeId.get(selectedNodeId)
-    if (!clusterId) return
-    setExpandedByClusterId((current) => ({
-      ...current,
-      [clusterId]: true,
-    }))
-  }, [clusterIdByNodeId, selectedNodeId])
-
-  const sortedClusters = useMemo(() => {
-    const selectedClusterId = selectedNodeId ? clusterIdByNodeId.get(selectedNodeId) ?? null : null
-    const composerClusterId = composerAnchorNodeId ? clusterIdByNodeId.get(composerAnchorNodeId) ?? null : null
-    return [...clusters].sort((left, right) => {
-      const leftPriority =
-        left.id === composerClusterId ? 0
-          : left.id === selectedClusterId ? 1
-            : left.thread_id === forest?.focus_thread_id ? 2
-              : 3
-      const rightPriority =
-        right.id === composerClusterId ? 0
-          : right.id === selectedClusterId ? 1
-            : right.thread_id === forest?.focus_thread_id ? 2
-              : 3
-      if (leftPriority !== rightPriority) {
-        return leftPriority - rightPriority
-      }
-      return right.latest_activity_at.localeCompare(left.latest_activity_at)
-    })
-  }, [clusterIdByNodeId, clusters, composerAnchorNodeId, forest?.focus_thread_id, selectedNodeId])
+    // "综合" — earliest branch lead first (叙事顺序，保留因果顺序).
+    return [...trees].sort((left, right) =>
+      left.root.created_at.localeCompare(right.root.created_at),
+    )
+  }, [trees, sortMode])
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-48 rounded-xl" />
+      <div className="space-y-3 px-1 py-2">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-24 w-[90%]" />
+        <Skeleton className="h-20 w-[80%]" />
       </div>
     )
   }
 
-  if (!forest || sortedClusters.length === 0) {
+  if (!forest || sortedTrees.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border/60 bg-muted/15 p-5 text-sm text-muted-foreground">
-        还没有可展开的公开讨论分支。
-      </div>
+      <div className="px-1 py-6 text-sm text-muted-foreground">还没有可展开的公开讨论。</div>
     )
+  }
+
+  const toggleCollapsed = (nodeId: string) => {
+    setCollapsedNodeIds((current) => {
+      const next = new Set(current)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
+      return next
+    })
   }
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-border/60 bg-muted/15 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground">
-              公共观看摘要
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-foreground">先看这些公开支线</h2>
-            {forest.reading_guide.summary_line ? (
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {forest.reading_guide.summary_line}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          {guideEntries.map((entry, index) => {
-            const focusNode = forest.nodes.find((node) => node.id === (entry.focus_turn_id ?? entry.thread_id)) ?? null
-            const { identityChip, proofChips } = focusNode
-              ? readAuthorBadgeChipItems(focusNode.author, { maxProofChips: 1, policyId: 'public_author_compact' })
-              : { identityChip: null, proofChips: [] }
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                className="rounded-xl border border-border/60 bg-background/80 p-4 text-left transition-colors hover:border-foreground/20"
-                onClick={() => {
-                  const node = focusNode ?? forest.nodes.find((item) => item.id === entry.thread_id) ?? null
-                  if (!node) return
-                  const clusterId = clusterIdByNodeId.get(node.id)
-                  if (clusterId) {
-                    setExpandedByClusterId((current) => ({ ...current, [clusterId]: true }))
-                  }
-                  onSelectNode?.(node, 'guide')
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground">{entry.title || `观看入口 ${index + 1}`}</p>
-                  <span className="text-[11px] text-muted-foreground">{relativeTime(entry.latest_activity_at)}</span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-foreground/80">{entry.teaser}</p>
-                {focusNode ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="font-medium text-foreground">{focusNode.author.display_name}</span>
+    <ul className="space-y-5" data-testid="discussion-forest-tree">
+      {sortedTrees.map((tree) => {
+        const branchAllowsReply = allowsDirectThreadReply(tree.group.lifecycle?.writeability)
+        const preferRouteAction = prefersRouteHandoff(tree.group.lifecycle?.writeability)
+        const routeAction = readRouteAction(tree.group)
+
+        const renderNode = (node: TurnDisplayProjection, depth: number): ReactElement => {
+          const isRoot = node.id === tree.root.id
+          const collapsed = collapsedNodeIds.has(node.id)
+          const isReplyOpen = activeReplyNodeId === node.id
+          const selected = selectedNodeId === node.id
+          const children = tree.children_by_parent.get(node.id) ?? []
+          const canReplyHere = turnReplyEnabled && branchAllowsReply
+          const showRouteOnNode = isRoot && Boolean(routeAction)
+          const avatarTarget = `agent://${node.author.id}`
+          const { identityChip } = readAuthorBadgeChipItems(node.author, {
+            maxProofChips: 0,
+            policyId: 'public_author_compact',
+          })
+
+          return (
+            <li
+              key={node.id}
+              data-testid={isRoot ? 'discussion-tree' : 'discussion-node'}
+              data-node-id={node.id}
+              data-depth={depth}
+              className={cn(selected && 'rounded-sm bg-primary/[0.04]')}
+            >
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  aria-label={collapsed ? '展开子节点' : '折叠子节点'}
+                  className="mt-0.5 h-4 w-4 shrink-0 select-none text-[11px] font-mono leading-none text-muted-foreground/70 hover:text-foreground"
+                  onClick={() => toggleCollapsed(node.id)}
+                  data-testid="node-collapse-toggle"
+                >
+                  {collapsed ? '[+]' : '[−]'}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0 text-[11px] text-muted-foreground">
+                    <button
+                      type="button"
+                      className="truncate font-medium text-foreground hover:underline"
+                      onClick={() => tryOpenAgentModal(avatarTarget, 'readonly')}
+                    >
+                      {node.author.display_name}
+                    </button>
                     {identityChip ? (
                       <BadgeVisualChip
                         label={identityChip.label}
@@ -457,183 +394,100 @@ export function DiscussionForest({
                         iconClassName="size-3"
                       />
                     ) : null}
-                    {proofChips.map((badge) => (
-                      <BadgeVisualChip
-                        key={`${entry.id}:${badge.code ?? 'display'}:${badge.label}`}
-                        label={badge.label}
-                        code={badge.code}
-                        variant="secondary"
-                        className="px-1 py-0 text-[9px]"
-                        iconClassName="size-3"
+                    <span>·</span>
+                    <span>{relativeTime(node.created_at)}</span>
+                  </div>
+                  {!collapsed ? (
+                    <>
+                      {node.quoted_excerpt ? (
+                        <div className="mt-1 border-l-2 border-border/60 pl-2 text-[11px] leading-5 text-muted-foreground">
+                          {node.quoted_excerpt}
+                        </div>
+                      ) : null}
+                      <RichTextLite
+                        text={node.body}
+                        className="mt-1 text-sm leading-6 text-foreground"
                       />
-                    ))}
-                  </div>
-                ) : null}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{entry.participant_count} 位参与者</span>
-                  <span>·</span>
-                  <span>{entry.turn_count} 条后续发言</span>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        {sortedClusters.map((cluster) => {
-          const expanded = expandedByClusterId[cluster.id] ?? false
-          const displayedNodes = expanded ? cluster.nodes : getCollapsedNodes(cluster.nodes, selectedNodeId)
-          const childrenByParent = buildChildrenByParent(displayedNodes)
-          const routeAction = readRouteAction(cluster.group)
-          const canReplyInThread =
-            Boolean(replyActionLabel) && allowsDirectThreadReply(cluster.group.lifecycle?.writeability)
-          const preferRouteAction = prefersRouteHandoff(cluster.group.lifecycle?.writeability)
-          const rootNodes = displayedNodes.filter((node) =>
-            node.id === cluster.lead_node.id
-            || !displayedNodes.some((candidate) => candidate.id === node.display_parent_id))
-
-          const renderNode = (node: TurnDisplayProjection, depth: number) => {
-            const selected = selectedNodeId === node.id
-            const isComposerAnchor = composerAnchorNodeId === node.id
-            const showRouteAction = Boolean(routeAction) && node.id === cluster.lead_node.id
-            const placementBadge = readPlacementBadge(node)
-            const anchorChainCount = node.collapsed_anchor_chain.length
-
-            return (
-              <div key={node.id} className="space-y-3">
-                <article
-                  className={cn(
-                    'rounded-xl border border-border/50 bg-background/95 p-4',
-                    depth === 1 && 'ml-4',
-                    depth >= 2 && 'ml-8',
-                    selected && 'border-primary/40 bg-primary/5',
-                    isComposerAnchor && 'border-success/40 bg-success/10',
+                      <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+                        {canReplyHere && !isReplyOpen && !(showRouteOnNode && preferRouteAction) ? (
+                          <button
+                            type="button"
+                            className="hover:text-foreground"
+                            onClick={() => {
+                              setActiveReplyNodeId(node.id)
+                              onReplyOpen?.(node)
+                            }}
+                            data-testid="node-reply-open"
+                          >
+                            回复
+                          </button>
+                        ) : null}
+                        {showRouteOnNode && routeAction ? renderRouteActionLink(routeAction) : null}
+                        {audiencePostingEnabled && onDiscussInAudience ? (
+                          <button
+                            type="button"
+                            className="hover:text-foreground"
+                            onClick={() => onDiscussInAudience(node)}
+                            data-testid="node-discuss-in-audience"
+                          >
+                            观众席讨论
+                          </button>
+                        ) : null}
+                        <Link
+                          to={buildNodeHref(postId, node)}
+                          className="hover:text-foreground"
+                        >
+                          定位
+                        </Link>
+                      </div>
+                      {isReplyOpen ? (
+                        <InlineNodeReplyComposer
+                          postId={postId}
+                          node={node}
+                          onSuccess={(result) => {
+                            setActiveReplyNodeId(null)
+                            onReplyAccepted?.(node, result)
+                          }}
+                          onCancel={() => setActiveReplyNodeId(null)}
+                        />
+                      ) : null}
+                      {children.length > 0 ? (
+                        <ul
+                          className="mt-2 space-y-3 border-l-2 border-border/50 pl-3"
+                          data-testid="discussion-children"
+                        >
+                          {children.map((child) => renderNode(child, depth + 1))}
+                        </ul>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      已折叠 {collectSubtreeSize(node.id, tree.children_by_parent)} 条回应
+                    </p>
                   )}
-                >
-                  <AuthorLine
-                    node={node}
-                    compact={!selected}
-                    emphasizeBio={selected}
-                    showProofChips={selected}
-                  />
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">
-                      {node.entry_kind === 'THREAD' ? '分支开场' : '沿着这个点继续'}
-                    </span>
-                    {selected ? (
-                      <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                        当前聚焦
-                      </Badge>
-                    ) : null}
-                    {isComposerAnchor ? (
-                      <Badge variant="secondary" className="px-1 py-0 text-[9px]">
-                        准备回应
-                      </Badge>
-                    ) : null}
-                    {placementBadge ? (
-                      <Badge variant="outline" className="px-1 py-0 text-[9px]">
-                        {placementBadge}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  {node.quoted_excerpt ? (
-                    <div className="mt-3 rounded-lg border border-dashed border-border/60 bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-                      {node.quoted_excerpt}
-                    </div>
-                  ) : null}
-                  <RichTextLite text={node.body} className="mt-3 text-sm leading-7 text-foreground/85" />
-                  {anchorChainCount > 0 ? (
-                    <p className="mt-3 text-[11px] text-muted-foreground">
-                      承接更早的 {anchorChainCount} 处上下文
-                    </p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="flex-1" />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => onSelectNode?.(node, 'node')}
-                    >
-                      聚焦
-                    </Button>
-                    {preferRouteAction && routeAction && showRouteAction ? renderRouteActionButton(routeAction) : null}
-                    {canReplyInThread ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => onSelectNode?.(node, 'reply')}
-                      >
-                        {replyActionLabel}
-                      </Button>
-                    ) : null}
-                    {!preferRouteAction && routeAction && showRouteAction ? renderRouteActionButton(routeAction) : null}
-                    <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
-                      <Link to={buildNodeHref(postId, node)}>定位</Link>
-                    </Button>
-                  </div>
-                </article>
-                {(childrenByParent.get(node.id) ?? []).map((child) => renderNode(child, depth + 1))}
-              </div>
-            )
-          }
-
-          return (
-            <div
-              key={cluster.id}
-              data-testid="discussion-cluster"
-              className="rounded-xl border border-border/60 bg-background/90 p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/50 pb-3">
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                      支线簇
-                    </Badge>
-                    {cluster.group.display_title?.trim() ? (
-                      <p className="text-sm font-semibold text-foreground">{cluster.group.display_title}</p>
-                    ) : (
-                      <p className="text-sm font-semibold text-foreground">公开讨论分支</p>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {cluster.participant_count} 位参与者 · {cluster.turn_count} 条节点发言 · 更新于 {relativeTime(cluster.latest_activity_at)}
-                  </p>
-                  {cluster.root_node && cluster.root_node.id !== cluster.lead_node.id ? (
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      同一条讨论会按不同支线靠近原点展开，方便沿点继续阅读。
-                    </p>
-                  ) : null}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => {
-                    setExpandedByClusterId((current) => {
-                      const nextExpanded = !expanded
-                      if (nextExpanded) {
-                        onBranchExpand?.(cluster.group)
-                      }
-                      return { ...current, [cluster.id]: nextExpanded }
-                    })
-                  }}
-                >
-                  {expanded ? '收起支线' : `展开支线 (${Math.max(cluster.nodes.length - displayedNodes.length, 0)} 更多)`}
-                </Button>
               </div>
-              <div className="mt-4 space-y-3">
-                {rootNodes.map((node) => renderNode(node, node.id === cluster.lead_node.id ? 0 : 1))}
-              </div>
-            </div>
+            </li>
           )
-        })}
-      </section>
-    </div>
+        }
+
+        return renderNode(tree.root, 0)
+      })}
+    </ul>
   )
+}
+
+function collectSubtreeSize(
+  rootId: string,
+  childrenByParent: Map<string, TurnDisplayProjection[]>,
+): number {
+  let count = 0
+  const stack = [rootId]
+  while (stack.length > 0) {
+    const current = stack.pop() as string
+    const children = childrenByParent.get(current) ?? []
+    count += children.length
+    for (const child of children) stack.push(child.id)
+  }
+  return count
 }

@@ -754,6 +754,7 @@ export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
 export const searchDocRepo = repos.searchDocRepo
 export const warmupGovernanceRepo = repos.warmupGovernanceRepo
+export const audienceRepo = repos.audienceRepo
 
 export const sseHub = infra.sseHub
 export const eventQueue = infra.eventQueue

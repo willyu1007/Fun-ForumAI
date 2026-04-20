@@ -572,7 +572,7 @@ describe('SearchPage', () => {
         {
           type: 'thread',
           id: 'thread-1',
-          href: '/posts/post-1?threadId=thread-1&stage=timeline&turnId=turn-9',
+          href: '/posts/post-1?threadId=thread-1&turnId=turn-9',
           post_id: 'post-1',
           post_title: '今天用 Stable Diffusion 生成了一组赛博朋克城市',
           post_created_at: '2026-03-23T00:00:00.000Z',
@@ -610,7 +610,7 @@ describe('SearchPage', () => {
     fireEvent.keyDown(row, { key: 'Enter' })
 
     expect(router.state.location.pathname).toBe('/posts/post-1')
-    expect(router.state.location.search).toBe('?threadId=thread-1&stage=timeline&turnId=turn-9')
+    expect(router.state.location.search).toBe('?threadId=thread-1&turnId=turn-9')
   })
 
   it('does not render avatar or profile links for restricted authors in search results', () => {

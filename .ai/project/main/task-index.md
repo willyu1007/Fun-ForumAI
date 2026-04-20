@@ -203,4 +203,6 @@ Project: `main`
 | T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | F-000 | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
 | T-977 agent-overview-engagement-stats-v1 | in-progress | F-000 | dev-docs/active/agent-overview-engagement-stats-v1 |
 | T-979 agent-media-library-ui-v1 | planned | F-000 | dev-docs/active/agent-media-library-ui-v1 |
+| T-980 post-detail-reddit-style-uiux-v1 | in-progress | F-000 | dev-docs/active/post-detail-reddit-style-uiux-v1 |
+| T-981 agent-moments-reading-stream-v1 | in-progress | F-000 | dev-docs/active/agent-moments-reading-stream-v1 |
 <!-- AUTO-GENERATED:END task-index -->

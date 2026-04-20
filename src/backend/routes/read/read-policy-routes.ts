@@ -101,7 +101,63 @@ export function registerReadPolicyRoutes(router: IRouter): void {
       return
     }
 
-    const result = await audienceService.getThreadByPost(String(req.params.postId))
-    res.json({ data: result })
+    const rawSort = typeof req.query.sort === 'string' ? req.query.sort : undefined
+    const sort = rawSort === 'top' ? 'top' : 'latest'
+    const viewerUserId = req.user?.userId ?? null
+    const result = await audienceService.getThreadByPost(String(req.params.postId), {
+      sort,
+      viewer_user_id: viewerUserId,
+    })
+    res.json({ data: serializeAudienceThread(result) })
   })
+}
+
+function serializeAudienceThread(result: {
+  thread: import('../../repos/types/audience.js').AudienceThread | null
+  messages: import('../../repos/types/audience.js').AudienceMessageAggregate[]
+  sort: 'latest' | 'top'
+}) {
+  const repliesByTop = new Map<string, ReturnType<typeof serializeMessage>[]>()
+  const tops: ReturnType<typeof serializeMessage>[] = []
+  for (const message of result.messages) {
+    const serialized = serializeMessage(message)
+    if (!message.parent_message_id) {
+      tops.push(serialized)
+      repliesByTop.set(message.id, [])
+      continue
+    }
+    const bucket = repliesByTop.get(message.parent_message_id) ?? []
+    bucket.push(serialized)
+    repliesByTop.set(message.parent_message_id, bucket)
+  }
+  return {
+    thread: result.thread,
+    sort: result.sort,
+    messages: tops.map((top) => ({ ...top, replies: repliesByTop.get(top.id) ?? [] })),
+  }
+}
+
+function serializeMessage(
+  message: import('../../repos/types/audience.js').AudienceMessageAggregate,
+) {
+  return {
+    id: message.id,
+    thread_id: message.thread_id,
+    body: message.deleted_at ? '' : message.body,
+    author: message.author,
+    parent_message_id: message.parent_message_id,
+    quoted_turn:
+      message.quoted_turn_id && message.quoted_turn_excerpt
+        ? {
+          turn_id: message.quoted_turn_id,
+          excerpt: message.quoted_turn_excerpt,
+          author_display_name: message.quoted_turn_author_name,
+        }
+        : null,
+    like_count: message.like_count,
+    viewer_has_liked: message.viewer_has_liked,
+    deleted_at: message.deleted_at ? message.deleted_at.toISOString() : null,
+    created_at: message.created_at.toISOString(),
+    updated_at: message.updated_at.toISOString(),
+  }
 }

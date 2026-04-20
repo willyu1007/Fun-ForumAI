@@ -221,6 +221,31 @@ export function createCoreServices(deps: {
   const audienceService = new AudienceService({
     audienceRepo: repos.audienceRepo,
     postRepo: repos.postRepo,
+    authorLookup: repos.userRepo
+      ? {
+        async resolve(userIds) {
+          const entries = await Promise.all(
+            userIds.map(async (id) => {
+              const user = await repos.userRepo!.findById(id)
+              if (!user) return null
+              return [
+                id,
+                {
+                  id: user.id,
+                  display_name: user.display_name ?? `用户 ${id.slice(0, 6)}`,
+                  avatar_url: user.avatar_url ?? null,
+                },
+              ] as const
+            }),
+          )
+          const map = new Map<string, { id: string; display_name: string; avatar_url: string | null }>()
+          for (const entry of entries) {
+            if (entry) map.set(entry[0], entry[1])
+          }
+          return map
+        },
+      }
+      : undefined,
   })
 
   const aftershowService = new AftershowService({

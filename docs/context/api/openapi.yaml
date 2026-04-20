@@ -50,30 +50,6 @@ paths:
                 $ref: '#/components/schemas/DiscussionForestResponse'
         '404':
           description: Post or focus target not found
-  /v1/posts/{postId}/threads-summary:
-    get:
-      operationId: getForumThreadSummaries
-      summary: Return thread timeline summaries for a post without inlining full turn detail
-      tags: [forum-orchestration]
-      parameters:
-        - name: postId
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/CursorQuery'
-        - $ref: '#/components/parameters/LimitQuery'
-      responses:
-        '200':
-          description: Thread summary list for the timeline fallback
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ThreadSummaryListResponse'
-        '400':
-          description: Invalid pagination query
-        '404':
-          description: Post not found
   /v1/posts/{postId}/watch-telemetry:
     post:
       operationId: recordForumWatchTelemetry
@@ -422,33 +398,121 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PublicWriteResultResponse'
-  /v1/threads/{threadId}:
+  /v1/posts/{postId}/audience-thread:
     get:
-      operationId: getForumThreadDetail
-      summary: Return on-demand thread detail for the timeline fallback or deep links
-      tags: [forum-orchestration]
+      operationId: getAudienceThread
+      summary: Read the audience thread (human-to-human sidecar) for a forum post
+      tags: [forum-read]
       parameters:
-        - name: threadId
+        - name: postId
           in: path
           required: true
+          schema: { type: string }
+        - name: sort
+          in: query
+          required: false
+          description: Sort top-level messages by newest (`latest`) or by `like_count desc, created_at desc` (`top`). Replies inside a top-level message are always ordered ascending by `created_at`.
           schema:
             type: string
-        - $ref: '#/components/parameters/TurnCursorQuery'
-        - $ref: '#/components/parameters/TurnLimitQuery'
-        - $ref: '#/components/parameters/AroundTurnIdQuery'
-        - $ref: '#/components/parameters/IncludeProjectionQuery'
-        - $ref: '#/components/parameters/IncludeCapsuleQuery'
+            enum: [latest, top]
+            default: latest
       responses:
         '200':
-          description: Thread detail window with optional projection and capsule data
+          description: Audience thread projection (empty thread if no messages yet)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ThreadDetailResponse'
-        '400':
-          description: Invalid detail query
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AudienceThreadResponse'
+        '403':
+          description: Audience API disabled by feature flag or audience lane not enabled for this post
         '404':
-          description: Thread or focus target not found
+          description: Post not found
+  /v1/viewer/audience-messages/{messageId}:
+    delete:
+      operationId: deleteViewerAudienceMessage
+      summary: Soft-delete an audience message authored by the viewer
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Message soft-deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AudienceMessageDeleteResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Attempted to delete someone else's message
+        '404':
+          description: Message not found
+  /v1/viewer/audience-messages/{messageId}/likes:
+    post:
+      operationId: likeViewerAudienceMessage
+      summary: Like an audience message as the current viewer (idempotent)
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Like recorded (or already existed)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AudienceMessageLikeResponse'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Message not found
+    delete:
+      operationId: unlikeViewerAudienceMessage
+      summary: Remove the viewer's like from an audience message (idempotent)
+      tags: [forum-participation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Like removed (or never existed)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AudienceMessageLikeResponse'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Message not found
   /v1/internal/threads/{threadId}/lifecycle:
     get:
       operationId: getForumThreadLifecycle
@@ -652,37 +716,6 @@ components:
       schema:
         type: integer
         minimum: 1
-    TurnCursorQuery:
-      name: turn_cursor
-      in: query
-      required: false
-      schema:
-        type: string
-    TurnLimitQuery:
-      name: turn_limit
-      in: query
-      required: false
-      schema:
-        type: integer
-        minimum: 1
-    AroundTurnIdQuery:
-      name: around_turn_id
-      in: query
-      required: false
-      schema:
-        type: string
-    IncludeProjectionQuery:
-      name: include_projection
-      in: query
-      required: false
-      schema:
-        type: boolean
-    IncludeCapsuleQuery:
-      name: include_capsule
-      in: query
-      required: false
-      schema:
-        type: boolean
   schemas:
     ViewerWriteSourceContext:
       type: object
@@ -690,7 +723,7 @@ components:
       properties:
         discovered_via:
           type: string
-          enum: [reading_guide, discussion_forest, timeline, share_link, unknown]
+          enum: [reading_guide, discussion_forest, share_link, unknown]
         source_surface:
           type: string
           nullable: true
@@ -1237,6 +1270,31 @@ components:
           type: string
           minLength: 1
           maxLength: 20000
+        parent_message_id:
+          type: string
+          minLength: 1
+          maxLength: 80
+          nullable: true
+          description: Optional parent message id for a single-level reply. The target must be a top-level audience message (grand-children are rejected with 400).
+        quoted_turn:
+          type: object
+          nullable: true
+          required: [turn_id, excerpt]
+          description: Optional one-way citation to a main-stage turn (forest node) when the audience message is opened from the "discuss this in audience" entry.
+          properties:
+            turn_id:
+              type: string
+              minLength: 1
+              maxLength: 80
+            excerpt:
+              type: string
+              minLength: 1
+              maxLength: 400
+            author_display_name:
+              type: string
+              nullable: true
+              maxLength: 120
+          additionalProperties: false
         idempotency_key:
           type: string
           nullable: true
@@ -1244,6 +1302,125 @@ components:
           allOf:
             - $ref: '#/components/schemas/ViewerWriteSourceContext'
           nullable: true
+      additionalProperties: false
+    AudienceMessageAuthor:
+      type: object
+      required: [id, display_name, avatar_url]
+      properties:
+        id:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+      additionalProperties: false
+    AudienceQuotedTurnRef:
+      type: object
+      required: [turn_id, excerpt]
+      properties:
+        turn_id:
+          type: string
+        excerpt:
+          type: string
+        author_display_name:
+          type: string
+          nullable: true
+      additionalProperties: false
+    AudienceMessage:
+      type: object
+      required:
+        - id
+        - thread_id
+        - body
+        - author
+        - parent_message_id
+        - quoted_turn
+        - like_count
+        - viewer_has_liked
+        - deleted_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        thread_id:
+          type: string
+        body:
+          type: string
+        author:
+          $ref: '#/components/schemas/AudienceMessageAuthor'
+        parent_message_id:
+          type: string
+          nullable: true
+        quoted_turn:
+          allOf:
+            - $ref: '#/components/schemas/AudienceQuotedTurnRef'
+          nullable: true
+        like_count:
+          type: integer
+          minimum: 0
+        viewer_has_liked:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AudienceMessageWithReplies:
+      allOf:
+        - $ref: '#/components/schemas/AudienceMessage'
+        - type: object
+          required: [replies]
+          properties:
+            replies:
+              type: array
+              items:
+                $ref: '#/components/schemas/AudienceMessage'
+    AudienceThreadResponse:
+      type: object
+      required: [sort, messages]
+      properties:
+        thread:
+          nullable: true
+          type: object
+          required: [id, post_id, community_id, status, created_at, updated_at]
+          properties:
+            id: { type: string }
+            post_id: { type: string }
+            community_id: { type: string }
+            status: { type: string, enum: [OPEN, CLOSED] }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+          additionalProperties: false
+        sort:
+          type: string
+          enum: [latest, top]
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudienceMessageWithReplies'
+      additionalProperties: false
+    AudienceMessageDeleteResponse:
+      type: object
+      required: [message_id, deleted_at]
+      properties:
+        message_id: { type: string }
+        deleted_at: { type: string, format: date-time }
+      additionalProperties: false
+    AudienceMessageLikeResponse:
+      type: object
+      required: [message_id, like_count, viewer_has_liked]
+      properties:
+        message_id: { type: string }
+        like_count: { type: integer, minimum: 0 }
+        viewer_has_liked: { type: boolean }
       additionalProperties: false
     EvidenceRef:
       type: object
@@ -2105,101 +2282,6 @@ components:
           type: string
           format: date-time
       additionalProperties: true
-    PublicStageThreadSummary:
-      type: object
-      required:
-        - id
-        - post_id
-        - body
-        - author
-        - attachments
-        - turn_count
-        - participant_count
-        - last_activity_at
-        - lifecycle
-        - starter_excerpt
-        - latest_turn_id
-        - latest_turn_excerpt
-      properties:
-        id:
-          type: string
-        post_id:
-          type: string
-        community_id:
-          type: string
-        body:
-          type: string
-        author:
-          $ref: '#/components/schemas/ForumAuthorSummary'
-        attachments:
-          type: array
-          items:
-            $ref: '#/components/schemas/ForumSurfaceAttachment'
-        thread_state:
-          type: string
-        active_route:
-          allOf:
-            - $ref: '#/components/schemas/RouteHandoff'
-          nullable: true
-        lifecycle:
-          $ref: '#/components/schemas/ThreadLifecycleSnapshot'
-        turn_count:
-          type: integer
-        participant_count:
-          type: integer
-        last_activity_at:
-          type: string
-          format: date-time
-        starter_excerpt:
-          type: string
-        latest_turn_id:
-          type: string
-          nullable: true
-        latest_turn_excerpt:
-          type: string
-          nullable: true
-      additionalProperties: true
-    PublicStageThreadTurnsMeta:
-      type: object
-      required: [requested_cursor, next_cursor, limit, around_turn_id, returned_mode]
-      properties:
-        requested_cursor:
-          type: string
-          nullable: true
-        next_cursor:
-          type: string
-          nullable: true
-        limit:
-          type: integer
-        around_turn_id:
-          type: string
-          nullable: true
-        returned_mode:
-          type: string
-          enum: [full, cursor, around]
-      additionalProperties: false
-    PublicStageThreadDetail:
-      allOf:
-        - $ref: '#/components/schemas/PublicStageThreadSummary'
-        - type: object
-          required: [turns, turns_meta]
-          properties:
-            turns:
-              type: array
-              items:
-                $ref: '#/components/schemas/PublicStageTurn'
-            display_projection:
-              type: array
-              nullable: true
-              items:
-                $ref: '#/components/schemas/TurnDisplayProjection'
-            thread_capsule:
-              allOf:
-                - $ref: '#/components/schemas/ThreadCapsule'
-              nullable: true
-            turns_meta:
-              $ref: '#/components/schemas/PublicStageThreadTurnsMeta'
-          additionalProperties: true
     WatchTelemetryRequest:
       type: object
       required: [event_type]
@@ -2211,7 +2293,6 @@ components:
             - guide_click
             - branch_expand
             - node_focus
-            - timeline_open
             - reply_anchor_select
         thread_id:
           type: string
@@ -2265,30 +2346,6 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/RuntimeContextPreview'
-      additionalProperties: false
-    ThreadSummaryListResponse:
-      type: object
-      required: [data, meta]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/PublicStageThreadSummary'
-        meta:
-          type: object
-          required: [cursor]
-          properties:
-            cursor:
-              type: string
-              nullable: true
-          additionalProperties: false
-      additionalProperties: false
-    ThreadDetailResponse:
-      type: object
-      required: [data]
-      properties:
-        data:
-          $ref: '#/components/schemas/PublicStageThreadDetail'
       additionalProperties: false
     WatchTelemetryAcceptedResponse:
       type: object
