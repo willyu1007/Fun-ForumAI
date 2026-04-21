@@ -22,8 +22,8 @@ import {
 } from '@/shared/utils/public-author'
 import {
   openMyAgentsWorkspace,
+  openSpecificAgentInLastContext,
 } from '@/shared/utils/agent-modal-entry'
-import { useAgentModalStore } from '@/shared/stores/agent-modal-store'
 import { ShellIconHint } from './ShellIconHint'
 import { TopBarCountBadge } from './TopBarCountBadge'
 import { topBarIconTriggerClassName } from './top-bar-icon-trigger'
@@ -100,7 +100,6 @@ function summaryMarqueeSpeedClass(text: string): string {
 export function AgentPanelWidget() {
   const { data: agentsData } = useMyAgents()
   const { data: notifData } = useNotifications()
-  const openModal = useAgentModalStore((state) => state.openModal)
   const agents: Agent[] = agentsData?.data ?? []
   const notifications: NotifType[] = notifData?.data?.items ?? []
   const proactiveUnreadByAgent = new Map<string, NotifType[]>()
@@ -213,7 +212,7 @@ export function AgentPanelWidget() {
                   'flex cursor-pointer items-center gap-3 rounded-none px-5 py-3',
                   proactiveCount > 0 && 'bg-primary/5',
                 )}
-                onClick={() => openModal(agent.id, 'manage', 'chat')}
+                onClick={() => openSpecificAgentInLastContext(agent.id)}
               >
                 <div className="relative shrink-0">
                   <Avatar className="h-11 w-11">

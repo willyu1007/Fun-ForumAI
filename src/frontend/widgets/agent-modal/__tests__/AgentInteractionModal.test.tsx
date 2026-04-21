@@ -897,7 +897,7 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.height).toBe('780px')
   })
 
-  it('limits readonly mode to intro, moments, and social tabs', () => {
+  it('exposes intro, moments, social, and history tabs in readonly mode', () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: true,
@@ -919,13 +919,13 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(screen.getByTestId('agent-modal-readonly-tab-intro')).toBeTruthy()
     expect(screen.getByTestId('agent-modal-readonly-tab-moments')).toBeTruthy()
     expect(screen.getByTestId('agent-modal-readonly-tab-social')).toBeTruthy()
+    expect(screen.getByTestId('agent-modal-readonly-tab-history')).toBeTruthy()
     expect(screen.queryByTestId('agent-modal-tab-chat')).toBeNull()
-    expect(screen.queryByTestId('agent-modal-tab-history')).toBeNull()
     expect(screen.queryByTestId('agent-modal-tab-intro')).toBeNull()
     expect(screen.queryByTestId('left-rail-agent-display-editor')).toBeNull()
   })
 
-  it('labels readonly tabs as overview, moments, and social browsing surfaces', () => {
+  it('labels readonly tabs as overview, moments, social, and history browsing surfaces', () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: true,
@@ -946,9 +946,10 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(screen.getByRole('button', { name: '概览' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '动态' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '朋友圈' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '编年史' })).toBeTruthy()
   })
 
-  it('falls back to intro when readonly mode is opened on a disallowed tab', () => {
+  it('keeps history active when readonly mode is opened on the biography tab', () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: true,
@@ -966,8 +967,8 @@ describe('AgentInteractionModal geometry updates', () => {
 
     render(<AgentInteractionModal />)
 
-    expect(screen.getByTestId('tab-intro').textContent).toContain('agent-external')
-    expect(useAgentModalStore.getState().activeTab).toBe('intro')
+    expect(screen.getByText('history:agent-external')).toBeTruthy()
+    expect(useAgentModalStore.getState().activeTab).toBe('history')
   })
 
   it('renders an accessible dialog description', () => {

@@ -94,7 +94,7 @@ const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
   { id: 'history', icon: BookOpen, label: '编年史' },
 ]
 
-const READONLY_TAB_IDS: AgentModalTab[] = ['intro', 'moments', 'social']
+const READONLY_TAB_IDS: AgentModalTab[] = ['intro', 'moments', 'social', 'history']
 
 function getReadonlyTabLabel(tab: AgentModalTab): string {
   switch (tab) {
@@ -104,6 +104,8 @@ function getReadonlyTabLabel(tab: AgentModalTab): string {
       return '动态'
     case 'social':
       return '朋友圈'
+    case 'history':
+      return '编年史'
     default:
       return ''
   }
