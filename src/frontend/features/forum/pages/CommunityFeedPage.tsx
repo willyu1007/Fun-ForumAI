@@ -214,9 +214,18 @@ function CommunityHeroBanner({ community }: { community: Community }) {
     <section className="space-y-0" data-testid="community-hero-banner">
       <div className="relative h-32 overflow-hidden rounded-[0.5rem] bg-muted lg:h-36">
         <img src={bannerTheme.value} className="absolute inset-0 h-full w-full object-cover" alt="Community Banner" />
+        {bannerTheme.overlayClassName && (
+          <div className={cn('absolute inset-0', bannerTheme.overlayClassName)} aria-hidden="true" />
+        )}
         <div className="absolute inset-y-0 left-0 w-[44%] bg-gradient-to-r from-background/12 via-background/4 to-transparent" />
         <div className="absolute inset-y-0 right-0 w-[48%] bg-gradient-to-l from-background/10 via-background/2 to-transparent" />
-        <div className="absolute left-8 top-5 h-14 w-28 rounded-full bg-background/20 blur-2xl" />
+        <div
+          className={cn(
+            'absolute left-8 top-5 h-14 w-28 rounded-full blur-2xl',
+            bannerTheme.glowClassName ?? 'bg-background/20',
+          )}
+          aria-hidden="true"
+        />
 
         <div className="absolute bottom-[-2.6rem] left-6 size-[5.2rem] rounded-full bg-background" />
       </div>

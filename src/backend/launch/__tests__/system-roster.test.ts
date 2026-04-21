@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
+import { listLaunchCommunitySeeds } from '../community-rules.js'
 import {
   buildAgentSystemDisplayFields,
   buildLaunchSystemConfigSlice,
@@ -10,17 +11,26 @@ import {
   loadLaunchSystemRoster,
 } from '../system-roster.js'
 
+function readRequiredRuntimeRoles(community: { rules_json: Record<string, unknown> }): string[] {
+  const castPolicy = community.rules_json.cast_policy
+  if (!castPolicy || typeof castPolicy !== 'object' || Array.isArray(castPolicy)) {
+    return []
+  }
+  const roles = (castPolicy as { must_have_runtime_roles?: unknown }).must_have_runtime_roles
+  return Array.isArray(roles) ? roles.filter((role): role is string => typeof role === 'string') : []
+}
+
 describe('launch system roster', () => {
   it('loads the launch roster SSOT and derives public display fields', () => {
     const roster = getLaunchSystemRoster()
-    expect(roster.roster).toHaveLength(36)
+    expect(roster.roster).toHaveLength(40)
     expect(roster.role_mix).toMatchObject({
       anchor: 12,
       challenger: 8,
-      wildcard: 6,
-      mc: 4,
+      wildcard: 7,
+      mc: 6,
       creator: 4,
-      showrunner_editor: 2,
+      showrunner_editor: 3,
     })
     expect(roster.surface_display_policy).toMatchObject({
       display_mode: 'program_seat_only',
@@ -52,6 +62,34 @@ describe('launch system roster', () => {
     })
     expect(displayFields.surface_access.private_chat_enabled).toBe(false)
     expect(displayFields.public_identity?.identity_badges).toHaveLength(1)
+  })
+
+  it('covers home-community runtime role floors for launch communities after roster hardening', () => {
+    const roster = getLaunchSystemRoster()
+    const homeRolesByCommunity = new Map<string, Set<string>>()
+
+    for (const entry of roster.roster) {
+      const roles = homeRolesByCommunity.get(entry.home_community) ?? new Set<string>()
+      roles.add(entry.program_role)
+      homeRolesByCommunity.set(entry.home_community, roles)
+    }
+
+    for (const community of listLaunchCommunitySeeds()) {
+      const requiredRoles = readRequiredRuntimeRoles(community)
+      const homeRoles = homeRolesByCommunity.get(community.name) ?? new Set<string>()
+      expect({
+        community: community.slug,
+        missing_roles: requiredRoles.filter((role) => !homeRoles.has(role)),
+      }).toEqual({
+        community: community.slug,
+        missing_roles: [],
+      })
+    }
+
+    expect(homeRolesByCommunity.get('情感陪审团')).toEqual(new Set(['anchor', 'challenger', 'mc']))
+    expect(homeRolesByCommunity.get('深夜电台')).toEqual(new Set(['anchor', 'mc', 'wildcard']))
+    expect(homeRolesByCommunity.get('吐槽观察局')).toEqual(new Set(['anchor', 'challenger', 'wildcard', 'mc']))
+    expect(homeRolesByCommunity.get('限时企划')).toEqual(new Set(['anchor', 'wildcard', 'editor']))
   })
 
   it('rejects duplicate display names and invalid badge labels', () => {

@@ -71,6 +71,8 @@ export function getCommunityAvatarToneClassName(category: CommunityCategory) {
 export interface BannerTheme {
   type: 'custom_image'
   value: string
+  overlayClassName?: string
+  glowClassName?: string
 }
 
 export const PRESET_BANNERS: BannerTheme[] = [
@@ -117,6 +119,25 @@ export interface AvatarTheme {
   value: string // image URL
 }
 
+type LaunchCommunitySlug =
+  | 'hot-arena'
+  | 'emotion-jury'
+  | 'persona-chaos'
+  | 'values-stage'
+  | 'fail-postmortem'
+  | 'banter-watch'
+  | 'late-night-radio'
+  | 'plot-twist-club'
+  | 'creator-recommendation'
+  | 'creator-relationship'
+  | 'weekly-headline'
+  | 'limited-program'
+
+interface LaunchCommunityVisualTheme {
+  banner: BannerTheme
+  avatar: AvatarTheme
+}
+
 export const PRESET_AVATARS: AvatarTheme[] = [
   { type: 'preset', value: '/community-avatars/comm-avatar-01-pixel-sword.webp' },
   { type: 'preset', value: '/community-avatars/comm-avatar-02-vr-headset.webp' },
@@ -152,6 +173,117 @@ export const PRESET_AVATARS: AvatarTheme[] = [
   { type: 'preset', value: '/community-avatars/comm-avatar-32-vintage-compass.webp' },
 ]
 
+const LAUNCH_COMMUNITY_VISUAL_THEMES: Record<LaunchCommunitySlug, LaunchCommunityVisualTheme> = {
+  'hot-arena': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/ember-scene.webp',
+      overlayClassName: 'bg-gradient-to-r from-rose-950/60 via-orange-950/18 to-transparent',
+      glowClassName: 'bg-orange-500/24',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-01-pixel-sword.webp' },
+  },
+  'emotion-jury': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/blue-depth.webp',
+      overlayClassName: 'bg-gradient-to-r from-slate-950/62 via-blue-950/18 to-transparent',
+      glowClassName: 'bg-sky-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-27-scales-justice.webp' },
+  },
+  'persona-chaos': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/aurora-thread.webp',
+      overlayClassName: 'bg-gradient-to-r from-fuchsia-950/55 via-violet-950/18 to-transparent',
+      glowClassName: 'bg-fuchsia-500/22',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-24-glitch-portal.webp' },
+  },
+  'values-stage': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/lantern-stage.webp',
+      overlayClassName: 'bg-gradient-to-r from-amber-950/55 via-stone-950/14 to-transparent',
+      glowClassName: 'bg-amber-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-25-greek-column.webp' },
+  },
+  'fail-postmortem': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/soft-grid.webp',
+      overlayClassName: 'bg-gradient-to-r from-slate-950/64 via-zinc-950/18 to-transparent',
+      glowClassName: 'bg-slate-300/16',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-22-magic-hourglass.webp' },
+  },
+  'banter-watch': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/sea-glow.webp',
+      overlayClassName: 'bg-gradient-to-r from-emerald-950/52 via-cyan-950/16 to-transparent',
+      glowClassName: 'bg-cyan-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-10-retro-boombox.webp' },
+  },
+  'late-night-radio': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/midnight-arc.webp',
+      overlayClassName: 'bg-gradient-to-r from-indigo-950/64 via-slate-950/20 to-transparent',
+      glowClassName: 'bg-indigo-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-28-retro-mic.webp' },
+  },
+  'plot-twist-club': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/forest-ribbon.webp',
+      overlayClassName: 'bg-gradient-to-r from-green-950/54 via-emerald-950/14 to-transparent',
+      glowClassName: 'bg-emerald-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-08-goth-bat.webp' },
+  },
+  'creator-recommendation': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/plum-wave.webp',
+      overlayClassName: 'bg-gradient-to-r from-rose-950/50 via-fuchsia-950/14 to-transparent',
+      glowClassName: 'bg-pink-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-31-food-cloche.webp' },
+  },
+  'creator-relationship': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/forest-ribbon.webp',
+      overlayClassName: 'bg-gradient-to-r from-stone-950/54 via-rose-950/16 to-transparent',
+      glowClassName: 'bg-rose-300/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-14-bonsai-tree.webp' },
+  },
+  'weekly-headline': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/blue-depth.webp',
+      overlayClassName: 'bg-gradient-to-r from-slate-950/66 via-sky-950/16 to-transparent',
+      glowClassName: 'bg-sky-300/16',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-32-vintage-compass.webp' },
+  },
+  'limited-program': {
+    banner: {
+      type: 'custom_image',
+      value: '/community-banners/lantern-stage.webp',
+      overlayClassName: 'bg-gradient-to-r from-orange-950/52 via-amber-950/16 to-transparent',
+      glowClassName: 'bg-yellow-400/18',
+    },
+    avatar: { type: 'preset', value: '/community-avatars/comm-avatar-04-d20-dice.webp' },
+  },
+}
+
 function hashString(str: string): number {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
@@ -160,12 +292,27 @@ function hashString(str: string): number {
   return Math.abs(hash)
 }
 
+function resolveLaunchCommunityVisualTheme(
+  community: Pick<Community, 'slug'>,
+): LaunchCommunityVisualTheme | null {
+  const theme = LAUNCH_COMMUNITY_VISUAL_THEMES[community.slug as LaunchCommunitySlug]
+  return theme ?? null
+}
+
 export function getCommunityBannerTheme(community: Pick<Community, 'slug'>): BannerTheme {
+  const explicitTheme = resolveLaunchCommunityVisualTheme(community)
+  if (explicitTheme) {
+    return explicitTheme.banner
+  }
   const index = hashString(community.slug) % PRESET_BANNERS.length
   return PRESET_BANNERS[index]
 }
 
 export function getCommunityAvatarTheme(community: Pick<Community, 'slug'>): AvatarTheme {
+  const explicitTheme = resolveLaunchCommunityVisualTheme(community)
+  if (explicitTheme) {
+    return explicitTheme.avatar
+  }
   // Use a different seed/offset so the avatar doesn't always strictly pair with the same banner
   const index = hashString(community.slug + '-avatar') % PRESET_AVATARS.length
   return PRESET_AVATARS[index]

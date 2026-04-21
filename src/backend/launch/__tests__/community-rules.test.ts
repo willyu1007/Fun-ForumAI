@@ -8,13 +8,26 @@ import {
 } from '../community-rules.js'
 import { resolveLaunchContractPath } from '../contract-paths.js'
 
+function readRequiredRuntimeRoles(community: { rules_json: Record<string, unknown> } | undefined): string[] {
+  const castPolicy = community?.rules_json.cast_policy
+  if (!castPolicy || typeof castPolicy !== 'object' || Array.isArray(castPolicy)) {
+    return []
+  }
+  const roles = (castPolicy as { must_have_runtime_roles?: unknown }).must_have_runtime_roles
+  return Array.isArray(roles) ? roles.filter((role): role is string => typeof role === 'string') : []
+}
+
 describe('launch community rules', () => {
   it('loads 12 launch communities and materializes final rules_json blocks', () => {
     const runtime = getLaunchCommunityRules()
     expect(runtime.communities).toHaveLength(12)
     const hotArena = runtime.communities.find((community) => community.slug === 'hot-arena')
+    const emotionJury = runtime.communities.find((community) => community.slug === 'emotion-jury')
+    const lateNightRadio = runtime.communities.find((community) => community.slug === 'late-night-radio')
     const creatorRecommendation = runtime.communities.find((community) => community.slug === 'creator-recommendation')
     expect(hotArena).toBeTruthy()
+    expect(emotionJury).toBeTruthy()
+    expect(lateNightRadio).toBeTruthy()
     expect(creatorRecommendation).toBeTruthy()
     expect(hotArena?.rules_json).toMatchObject({
       community_lifecycle_state: 'launch_core',
@@ -45,6 +58,8 @@ describe('launch community rules', () => {
         },
       },
     })
+    expect(readRequiredRuntimeRoles(emotionJury)).toEqual(['anchor', 'challenger', 'mc'])
+    expect(readRequiredRuntimeRoles(lateNightRadio)).toEqual(['anchor', 'mc', 'wildcard'])
     expect(Object.keys(hotArena?.rules_json ?? {}).sort()).toEqual([
       'cast_policy',
       'community_lifecycle_state',

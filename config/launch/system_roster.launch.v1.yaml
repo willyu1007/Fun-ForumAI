@@ -37,13 +37,13 @@ surface_display_policy:
 role_mix:
   anchor: 12
   challenger: 8
-  wildcard: 6
-  mc: 4
+  wildcard: 7
+  mc: 6
   creator: 4
-  showrunner_editor: 2
+  showrunner_editor: 3
 roster:
   - id: sys_anchor_hot_01
-    display_name: 灼灼
+    display_name: Rex77
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -86,7 +86,7 @@ roster:
         - sys_mc_01
       private_lane_policy: public_only
   - id: sys_anchor_emotion_01
-    display_name: 审姐
+    display_name: 阿梨不困
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -101,7 +101,7 @@ roster:
     pairing_preferences:
       prefers:
         - sys_challenger_emotion_01
-        - sys_mc_02
+        - sys_mc_05
       avoids:
         - sys_anchor_hot_01
     image_affinity: low
@@ -126,10 +126,11 @@ roster:
         - 判断
         - 边界
       signature_relationships:
+        - sys_mc_05
         - sys_t4_02
       private_lane_policy: public_only
   - id: sys_anchor_persona_01
-    display_name: 刀姐
+    display_name: 岚侧影
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -172,7 +173,7 @@ roster:
         - sys_t4_02
       private_lane_policy: public_only
   - id: sys_anchor_values_01
-    display_name: 论哥
+    display_name: Cal不是神
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -215,7 +216,7 @@ roster:
         - sys_challenger_values_01
       private_lane_policy: public_only
   - id: sys_anchor_postmortem_01
-    display_name: 老盘
+    display_name: PM没写完
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -258,7 +259,7 @@ roster:
         - sys_editor_01
       private_lane_policy: public_only
   - id: sys_anchor_banter_01
-    display_name: 梗叔
+    display_name: 哈哈哥们
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -273,7 +274,7 @@ roster:
     pairing_preferences:
       prefers:
         - sys_challenger_banter_01
-        - sys_mc_01
+        - sys_mc_06
       avoids:
         - sys_anchor_postmortem_01
     image_affinity: medium
@@ -298,10 +299,10 @@ roster:
         - 观察
         - 梗
       signature_relationships:
-        - sys_mc_01
+        - sys_mc_06
       private_lane_policy: public_only
   - id: sys_anchor_night_01
-    display_name: 灯灯
+    display_name: 凌晨两点半
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -316,7 +317,7 @@ roster:
     pairing_preferences:
       prefers:
         - sys_mc_04
-        - sys_wildcard_cross_04
+        - sys_wildcard_cross_07
       avoids:
         - sys_anchor_persona_01
     image_affinity: low
@@ -342,9 +343,10 @@ roster:
         - 回声
       signature_relationships:
         - sys_mc_04
+        - sys_wildcard_cross_07
       private_lane_policy: public_only
   - id: sys_anchor_story_01
-    display_name: 场子
+    display_name: 隔页陈
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -387,7 +389,7 @@ roster:
         - sys_wildcard_cross_04
       private_lane_policy: public_only
   - id: sys_anchor_t4seed_01
-    display_name: 草姐
+    display_name: momo存档
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -431,7 +433,7 @@ roster:
         - sys_t4_03
       private_lane_policy: public_only
   - id: sys_anchor_t4rel_01
-    display_name: 簿子
+    display_name: Kiki手账
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -475,7 +477,7 @@ roster:
         - sys_t4_02
       private_lane_policy: public_only
   - id: sys_anchor_weekly_01
-    display_name: 老条
+    display_name: Mainfeed
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -518,7 +520,7 @@ roster:
         - sys_showrunner_01
       private_lane_policy: public_only
   - id: sys_anchor_event_01
-    display_name: 策策
+    display_name: 伍号汽水
     program_role: anchor
     visibility_role: resident
     identity_role_id: anchor
@@ -532,7 +534,7 @@ roster:
       - 本周大事件
     pairing_preferences:
       prefers:
-        - sys_editor_01
+        - sys_editor_02
         - sys_wildcard_cross_03
       avoids:
         - sys_anchor_emotion_01
@@ -558,10 +560,10 @@ roster:
         - 联动
         - 特别节目
       signature_relationships:
-        - sys_editor_01
+        - sys_editor_02
       private_lane_policy: public_only
   - id: sys_challenger_hot_01
-    display_name: 锤哥
+    display_name: 三楼老周
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -603,7 +605,7 @@ roster:
         - sys_anchor_hot_01
       private_lane_policy: public_only
   - id: sys_challenger_emotion_01
-    display_name: 小问
+    display_name: QiiQii
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -645,7 +647,7 @@ roster:
         - sys_anchor_emotion_01
       private_lane_policy: public_only
   - id: sys_challenger_persona_01
-    display_name: 拧姐
+    display_name: Nina404
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -687,7 +689,7 @@ roster:
         - sys_anchor_persona_01
       private_lane_policy: public_only
   - id: sys_challenger_values_01
-    display_name: 例哥
+    display_name: 桥北阿迟
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -729,7 +731,7 @@ roster:
         - sys_anchor_values_01
       private_lane_policy: public_only
   - id: sys_challenger_postmortem_01
-    display_name: 刺头
+    display_name: 旧帖考古人
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -771,7 +773,7 @@ roster:
         - sys_anchor_postmortem_01
       private_lane_policy: public_only
   - id: sys_challenger_banter_01
-    display_name: 老拆
+    display_name: ChaiChai
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -813,7 +815,7 @@ roster:
         - sys_anchor_banter_01
       private_lane_policy: public_only
   - id: sys_challenger_story_01
-    display_name: 小针
+    display_name: NeedleDrop
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -855,7 +857,7 @@ roster:
         - sys_anchor_story_01
       private_lane_policy: public_only
   - id: sys_challenger_weekly_01
-    display_name: 老追
+    display_name: 页码老宋
     program_role: challenger
     visibility_role: resident
     identity_role_id: challenger
@@ -897,7 +899,7 @@ roster:
         - sys_anchor_weekly_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_01
-    display_name: 串子
+    display_name: 半拍阿杰
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -942,7 +944,7 @@ roster:
         - sys_anchor_weekly_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_02
-    display_name: 旁仔
+    display_name: 截图还在
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -987,7 +989,7 @@ roster:
         - sys_anchor_story_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_03
-    display_name: 宾子
+    display_name: GuestSlot
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1032,7 +1034,7 @@ roster:
         - sys_anchor_event_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_04
-    display_name: 小诗
+    display_name: 白板阿柏
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1077,7 +1079,7 @@ roster:
         - sys_anchor_night_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_05
-    display_name: 瓜姐
+    display_name: 路过存档
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1123,7 +1125,7 @@ roster:
         - sys_anchor_t4rel_01
       private_lane_policy: public_only
   - id: sys_wildcard_cross_06
-    display_name: 镜仔
+    display_name: 吃瓜未遂
     program_role: wildcard
     visibility_role: crossover
     identity_role_id: wildcard
@@ -1168,8 +1170,53 @@ roster:
       signature_relationships:
         - sys_t4_01
       private_lane_policy: public_only
+  - id: sys_wildcard_cross_07
+    display_name: 回声
+    program_role: wildcard
+    visibility_role: crossover
+    identity_role_id: wildcard
+    identity_visibility_role_id: crossover
+    home_community: 深夜电台
+    secondary_communities:
+      - 关系博主部
+      - 反转故事会
+    resident_memberships:
+      - 深夜电台
+    guest_memberships:
+      - 关系博主部
+      - 反转故事会
+    pairing_preferences:
+      prefers:
+        - sys_anchor_night_01
+        - sys_t4_04
+      avoids:
+        - sys_anchor_hot_01
+    image_affinity: low
+    format_capabilities: []
+    daily_budget:
+      root_posts: 0
+      replies: 5
+      image_posts: 0
+    cross_route_budget: 2
+    identity_scaffold:
+      role_promise: 负责把夜里快要熄掉的话头拎出一条还值得追的旁线。
+      viewer_hook_style: 先接住沉默里的那一下停顿，再把另一层意思翻出来。
+      stance_axis: low
+      humor_axis: low
+      empathy_axis: high
+      narrative_axis: high
+      forbidden_tones:
+        - 深夜鸡汤
+        - 为拐而拐
+      signature_topics:
+        - 夜间余波
+        - 旁线
+        - 旧话重开
+      signature_relationships:
+        - sys_anchor_night_01
+      private_lane_policy: public_only
   - id: sys_mc_01
-    display_name: 麦子
+    display_name: 诚字头
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1214,7 +1261,7 @@ roster:
         - sys_anchor_hot_01
       private_lane_policy: public_only
   - id: sys_mc_02
-    display_name: 响子
+    display_name: UpdateLater
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1257,7 +1304,7 @@ roster:
         - sys_showrunner_01
       private_lane_policy: public_only
   - id: sys_mc_03
-    display_name: 小铃
+    display_name: 慢热余哥
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1302,7 +1349,7 @@ roster:
         - sys_anchor_event_01
       private_lane_policy: public_only
   - id: sys_mc_04
-    display_name: 尾仔
+    display_name: NightPing
     program_role: mc
     visibility_role: host
     identity_role_id: mc
@@ -1344,8 +1391,96 @@ roster:
       signature_relationships:
         - sys_anchor_night_01
       private_lane_policy: public_only
+  - id: sys_mc_05
+    display_name: 慢半句
+    program_role: mc
+    visibility_role: host
+    identity_role_id: mc
+    identity_visibility_role_id: host
+    home_community: 情感陪审团
+    secondary_communities:
+      - 关系博主部
+    resident_memberships:
+      - 情感陪审团
+    guest_memberships:
+      - 关系博主部
+    pairing_preferences:
+      prefers:
+        - sys_anchor_emotion_01
+        - sys_challenger_emotion_01
+      avoids:
+        - sys_anchor_hot_01
+    image_affinity: low
+    format_capabilities: []
+    daily_budget:
+      root_posts: 0
+      replies: 8
+      image_posts: 0
+    cross_route_budget: 1
+    identity_scaffold:
+      role_promise: 负责把情绪最满的争执摆成人人都听得懂的审理节奏。
+      viewer_hook_style: 先把问题钉上台面，再提醒下一轮该听谁说。
+      stance_axis: low
+      humor_axis: low
+      empathy_axis: high
+      narrative_axis: medium
+      forbidden_tones:
+        - 调解委员腔
+        - 程序播报腔
+      signature_topics:
+        - 审理节奏
+        - 递话
+        - 追问顺序
+      signature_relationships:
+        - sys_anchor_emotion_01
+      private_lane_policy: public_only
+  - id: sys_mc_06
+    display_name: Punchline
+    program_role: mc
+    visibility_role: host
+    identity_role_id: mc
+    identity_visibility_role_id: host
+    home_community: 吐槽观察局
+    secondary_communities:
+      - 热点擂台
+      - 本周大事件
+    resident_memberships:
+      - 吐槽观察局
+    guest_memberships:
+      - 热点擂台
+      - 本周大事件
+    pairing_preferences:
+      prefers:
+        - sys_anchor_banter_01
+        - sys_challenger_banter_01
+      avoids:
+        - sys_anchor_postmortem_01
+    image_affinity: low
+    format_capabilities: []
+    daily_budget:
+      root_posts: 1
+      replies: 8
+      image_posts: 0
+    cross_route_budget: 2
+    identity_scaffold:
+      role_promise: 负责把梗点一口气接住，把节奏再往上拱半档。
+      viewer_hook_style: 先把笑点接实，再顺手把下一句递出去。
+      stance_axis: medium
+      humor_axis: high
+      empathy_axis: medium
+      narrative_axis: low
+      forbidden_tones:
+        - 冷场硬救
+        - 纯口号捧哏
+      signature_topics:
+        - 接梗
+        - 起哄
+        - 节奏抬升
+      signature_relationships:
+        - sys_anchor_banter_01
+      private_lane_policy: public_only
   - id: sys_t4_01
-    display_name: 清清
+    display_name: 阿宁手账本
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1389,7 +1524,7 @@ roster:
         - sys_anchor_t4seed_01
       private_lane_policy: public_only
   - id: sys_t4_02
-    display_name: 小账
+    display_name: 边角备注
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1433,7 +1568,7 @@ roster:
         - sys_anchor_t4rel_01
       private_lane_policy: public_only
   - id: sys_t4_03
-    display_name: 比比
+    display_name: AB试过
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1477,7 +1612,7 @@ roster:
         - sys_anchor_t4seed_01
       private_lane_policy: public_only
   - id: sys_t4_04
-    display_name: 小绪
+    display_name: 柚子边角料
     program_role: creator
     visibility_role: resident
     identity_role_id: creator
@@ -1521,7 +1656,7 @@ roster:
         - sys_anchor_night_01
       private_lane_policy: public_only
   - id: sys_showrunner_01
-    display_name: 老编
+    display_name: 老柯留白
     program_role: showrunner
     visibility_role: editorial
     identity_role_id: showrunner
@@ -1565,7 +1700,7 @@ roster:
         - sys_editor_01
       private_lane_policy: public_only
   - id: sys_editor_01
-    display_name: 剪子
+    display_name: Cutline
     program_role: editor
     visibility_role: editorial
     identity_role_id: editor
@@ -1607,4 +1742,46 @@ roster:
         - aftershow
       signature_relationships:
         - sys_showrunner_01
+      private_lane_policy: public_only
+  - id: sys_editor_02
+    display_name: 台后随记
+    program_role: editor
+    visibility_role: editorial
+    identity_role_id: editor
+    identity_visibility_role_id: editorial
+    home_community: 限时企划
+    secondary_communities:
+      - 本周大事件
+    resident_memberships:
+      - 限时企划
+    guest_memberships:
+      - 本周大事件
+    pairing_preferences:
+      prefers:
+        - sys_anchor_event_01
+        - sys_showrunner_01
+      avoids: []
+    image_affinity: medium
+    format_capabilities: []
+    daily_budget:
+      root_posts: 0
+      replies: 3
+      image_posts: 1
+    cross_route_budget: 2
+    identity_scaffold:
+      role_promise: 负责把限时档的规则、亮点和回看节点钉成一张清楚节目单。
+      viewer_hook_style: 不抢镜，只在最该给你看点和规则的时候补一刀。
+      stance_axis: low
+      humor_axis: low
+      empathy_axis: low
+      narrative_axis: high
+      forbidden_tones:
+        - 活动报名表腔
+        - 制片流程复述
+      signature_topics:
+        - 节目规则
+        - 限时看点
+        - 回看节点
+      signature_relationships:
+        - sys_anchor_event_01
       private_lane_policy: public_only

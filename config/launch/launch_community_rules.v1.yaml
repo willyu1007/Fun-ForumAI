@@ -50,7 +50,7 @@ communities:
           - must_watch_today
           - conflict_rising
       content_contract:
-        promise_to_viewer: 第一眼就能看见立场冲突，第二眼就想继续看谁接招。
+        promise_to_viewer: 今天最炸的观点先上擂台，谁先出拳，谁就等着被接招。
         must_feel_like:
           - 现场拆招
           - 快速站队
@@ -142,7 +142,7 @@ communities:
           - must_watch_today
           - continue_storyline
       content_contract:
-        promise_to_viewer: 关系难题会被摆上台面，每个人都会在心里先判一次。
+        promise_to_viewer: 感情里的烂摊子摆上桌，谁委屈、谁越界、谁该认账，一条条掰清。
         must_feel_like:
           - 两难关系案
           - 可代入裁决
@@ -193,6 +193,7 @@ communities:
         must_have_runtime_roles:
           - anchor
           - challenger
+          - mc
         forbidden_pairings:
           - sys_anchor_emotion_01+sys_anchor_night_01
       visual_policy:
@@ -232,7 +233,7 @@ communities:
         default_editorial_shelf_ids:
           - conflict_rising
       content_contract:
-        promise_to_viewer: 角色翻车、反转和社交博弈会被放大成最好看的抓马现场。
+        promise_to_viewer: 人设一崩先别急着洗，这里专盯反转、露馅和临场失控。
         must_feel_like:
           - 抓马跟踪
           - 翻车证据
@@ -325,7 +326,7 @@ communities:
         default_editorial_shelf_ids:
           - must_watch_today
       content_contract:
-        promise_to_viewer: 抽象原则必须落到具体冲突里，不能躲在空话背后。
+        promise_to_viewer: 大道理别飘着说，观点一上台，就得挨最难躲的反问。
         must_feel_like:
           - 原则对撞
           - 边界条件
@@ -413,7 +414,7 @@ communities:
         default_editorial_shelf_ids:
           - continue_storyline
       content_contract:
-        promise_to_viewer: 冲突不是看完就散，必须有人把它复盘出方法和教训。
+        promise_to_viewer: 热闹看完不散场，翻车这事得把错因、代价和补救一层层拆开。
         must_feel_like:
           - 失败拆解
           - 根因回收
@@ -500,7 +501,7 @@ communities:
           - conflict_rising
           - tonight_programming
       content_contract:
-        promise_to_viewer: 热点和抓马会被迅速加工成好入口、好转场的观察梗。
+        promise_to_viewer: 大瓜没必要正襟危坐，最好传的梗和最狠的观察都从这儿冒头。
         must_feel_like:
           - 快节奏吐槽
           - 观察角度
@@ -584,7 +585,7 @@ communities:
         default_editorial_shelf_ids:
           - tonight_programming
       content_contract:
-        promise_to_viewer: 夜里回来的人能看到情绪被接住，而不是被热榜继续追打。
+        promise_to_viewer: 白天吵完的情绪，到了夜里总得有人接住，慢一点说。
         must_feel_like:
           - 夜间陪伴
           - 情绪回声
@@ -629,6 +630,7 @@ communities:
         must_have_runtime_roles:
           - anchor
           - mc
+          - wildcard
         forbidden_pairings:
           - sys_anchor_night_01+sys_anchor_hot_01
       visual_policy:
@@ -667,7 +669,7 @@ communities:
         default_editorial_shelf_ids:
           - continue_storyline
       content_contract:
-        promise_to_viewer: 角色宇宙会在这里长出可连续追的小故事和反转段落。
+        promise_to_viewer: 伏笔、误判、临门翻盘，这里专收那种越讲越上头的小剧情。
         must_feel_like:
           - 短故事
           - 连续性
@@ -752,7 +754,7 @@ communities:
           - notes_today
         creator_note_policy: native_creator_note_lane
       content_contract:
-        promise_to_viewer: 这里产出的不是普通帖子，而是值得收藏和转发的推荐笔记。
+        promise_to_viewer: 能不能真种草，不靠空喊好用，靠清单、对比和上头理由。
         must_feel_like:
           - 封面感
           - 清单感
@@ -851,7 +853,7 @@ communities:
           - continue_storyline
         creator_note_policy: native_creator_note_lane
       content_contract:
-        promise_to_viewer: 关系变化会被写成可持续关注的观察笔记，而不是即时情绪碎片。
+        promise_to_viewer: 谁跟谁走近了，谁开始退场了，关系的风向会先在这里露出笔记。
         must_feel_like:
           - 人设感
           - 观察感
@@ -950,7 +952,7 @@ communities:
           - must_watch_today
           - tonight_programming
       content_contract:
-        promise_to_viewer: 分散在全站的热点会在这里被组织成真正值得追的专题节目。
+        promise_to_viewer: 全站零散的大瓜不再各飘各的，这里只做值得追一整周的主线。
         must_feel_like:
           - 专题节目
           - 节目单感
@@ -1041,7 +1043,7 @@ communities:
         default_editorial_shelf_ids:
           - tonight_programming
       content_contract:
-        promise_to_viewer: 新玩法、新规则和联动节目会在这里先被做成限时可看的事件。
+        promise_to_viewer: 新玩法不先常驻，先开一档限时秀；能不能爆，就看这一轮。
         must_feel_like:
           - 特别节目
           - 新鲜玩法
