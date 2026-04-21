@@ -46,6 +46,10 @@ import { getLightweightPersonalizationRuntime } from '../../launch/lightweight-p
 import { resolveEffectiveLaunchVisualRollout } from '../../launch/visual-rollout.js'
 import { buildPrivateSessionRawEventId } from '../../context-memory/runtime.js'
 import { PRIVATE_SESSION_TIMEOUT_MS } from '../../services/private-channel-service.js'
+import {
+  parseRuntimeCloseoutFanoutOptions,
+  resolveRuntimeCloseoutCandidateIds,
+} from './runtime-closeout-fanout.js'
 
 function tryHandleAppError(res: Response, err: unknown): boolean {
   if (!(err instanceof AppError)) return false
@@ -90,11 +94,6 @@ function buildPrivateSessionCloseoutTraceIds(sessionId: string, agentId: string)
     distill_trace_id: `context-distill:${rawEventId}`,
     identity_trace_id: `identity-finalize:${agentId}:${rawEventId}`,
   }
-}
-
-function resolveRuntimeCloseoutCandidateIds(agentId: string): string[] {
-  if (agentId) return [agentId]
-  return agentService.listActiveAgents({ limit: 50 }).items.map((agent) => agent.id)
 }
 
 function resolveMinimumCloseoutStaleMinutes(messageCount: number): number {
@@ -300,8 +299,15 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
       const content = typeof req.body?.content === 'string' && req.body.content.trim()
         ? req.body.content.trim()
         : '请用一句简短的话回应，确认你已准备好继续这段私聊。'
-
-      const candidateIds = resolveRuntimeCloseoutCandidateIds(agentId)
+      const fanoutOptions = parseRuntimeCloseoutFanoutOptions(req.body)
+      const activeAgentIds = agentId
+        ? []
+        : agentService.listActiveAgents({ limit: fanoutOptions.maxAgentAttempts }).items.map((agent) => agent.id)
+      const candidateIds = resolveRuntimeCloseoutCandidateIds({
+        agentId,
+        activeAgentIds,
+        options: fanoutOptions,
+      })
 
       if (candidateIds.length === 0) {
         res.status(404).json({
@@ -350,7 +356,12 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
         error: {
           code: 'CLOSEOUT_VISIBLE_PRIVATE_REPLY_UNAVAILABLE',
           message: 'No eligible visible private-reply path succeeded for runtime closeout.',
-          details: { attempts: failures.slice(0, 20) },
+          details: {
+            attempted_agent_ids: candidateIds.slice(0, 20),
+            allow_agent_fanout: fanoutOptions.allowAgentFanout,
+            max_agent_attempts: fanoutOptions.maxAgentAttempts,
+            attempts: failures.slice(0, 20),
+          },
         },
       })
     },
@@ -373,7 +384,15 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
       const context = typeof req.body?.context === 'string' && req.body.context.trim()
         ? req.body.context.trim()
         : '请主动打个招呼，确认你已准备好继续这段交流，并保持一句话内完成。'
-      const candidateIds = resolveRuntimeCloseoutCandidateIds(agentId)
+      const fanoutOptions = parseRuntimeCloseoutFanoutOptions(req.body)
+      const activeAgentIds = agentId
+        ? []
+        : agentService.listActiveAgents({ limit: fanoutOptions.maxAgentAttempts }).items.map((agent) => agent.id)
+      const candidateIds = resolveRuntimeCloseoutCandidateIds({
+        agentId,
+        activeAgentIds,
+        options: fanoutOptions,
+      })
 
       if (candidateIds.length === 0) {
         res.status(404).json({
@@ -420,7 +439,12 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
         error: {
           code: 'CLOSEOUT_VISIBLE_PROACTIVE_OPENING_UNAVAILABLE',
           message: 'No eligible visible proactive-opening path succeeded for runtime closeout.',
-          details: { attempts: failures.slice(0, 20) },
+          details: {
+            attempted_agent_ids: candidateIds.slice(0, 20),
+            allow_agent_fanout: fanoutOptions.allowAgentFanout,
+            max_agent_attempts: fanoutOptions.maxAgentAttempts,
+            attempts: failures.slice(0, 20),
+          },
         },
       })
     },

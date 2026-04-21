@@ -1,5 +1,6 @@
-import type { Response, Router } from 'express'
+import { Router, type IRouter, type Response } from 'express'
 import {
+  kickoffPlanningReviewService,
   kickoffRunArtifactService,
   kickoffRuntimeReadinessService,
   kickoffSeedService,
@@ -10,9 +11,6 @@ import { AppError } from '../lib/errors.js'
 import { config } from '../lib/config.js'
 
 const devKickoffRouterModulePath = '../../../.ai/.tmp/kickoff-local/src/backend/routes/dev-kickoff.js'
-const { createDevKickoffRouter } = await import(devKickoffRouterModulePath) as {
-  createDevKickoffRouter: (deps: Record<string, unknown>) => Router
-}
 
 function tryHandleAppError(res: Response, err: unknown): boolean {
   if (!(err instanceof AppError)) {
@@ -29,12 +27,28 @@ function tryHandleAppError(res: Response, err: unknown): boolean {
   return true
 }
 
-export const devKickoffRouter = createDevKickoffRouter({
-  allowDevTools: config.allowDevTools,
-  warmPersistenceState,
-  kickoffSeedService,
-  kickoffRunArtifactService,
-  kickoffRuntimeReadinessService,
-  warmupGovernanceService,
-  tryHandleAppError,
-})
+async function createKickoffRouter(): Promise<IRouter> {
+  try {
+    const module = await import(devKickoffRouterModulePath) as {
+      createDevKickoffRouter: (deps: Record<string, unknown>) => IRouter
+    }
+    return module.createDevKickoffRouter({
+      allowDevTools: config.allowDevTools,
+      warmPersistenceState,
+      kickoffSeedService,
+      kickoffPlanningReviewService,
+      kickoffRunArtifactService,
+      kickoffRuntimeReadinessService,
+      warmupGovernanceService,
+      tryHandleAppError,
+    })
+  } catch (error) {
+    console.warn(
+      '[dev-kickoff] Optional kickoff-local router unavailable; skipping kickoff dev routes.',
+      error instanceof Error ? error.message : String(error),
+    )
+    return Router()
+  }
+}
+
+export const devKickoffRouter = await createKickoffRouter()

@@ -30,6 +30,7 @@ export type {
   KickoffSeedEntityPlan,
   KickoffSeedMeta,
   KickoffSeedPayload,
+  KickoffSeedRoleHints,
   KickoffSeedSlotBrief,
   KickoffSeedWavePlanDefaults,
   KickoffStatusPayload,

@@ -52,23 +52,72 @@ import { healthState } from '../health/state.js'
 
 const kickoffRunArtifactServiceModulePath =
   '../../../.ai/.tmp/kickoff-local/src/backend/services/kickoff-run-artifact-service.js'
+const kickoffPlanningReviewServiceModulePath =
+  '../../../.ai/.tmp/kickoff-local/src/backend/services/kickoff-planning-review-service.js'
 const kickoffRuntimeReadinessServiceModulePath =
   '../../../.ai/.tmp/kickoff-local/src/backend/services/kickoff-runtime-readiness-service.js'
 const kickoffSeedServiceModulePath =
   '../../../.ai/.tmp/kickoff-local/src/backend/services/kickoff-seed-service.js'
 
-const { KickoffRunArtifactService } = await import(kickoffRunArtifactServiceModulePath) as {
-  KickoffRunArtifactService: new () => unknown
-}
-const { KickoffRuntimeReadinessService } = await import(kickoffRuntimeReadinessServiceModulePath) as {
-  KickoffRuntimeReadinessService: new (deps: {
+class KickoffRunArtifactServiceFallback {}
+class KickoffPlanningReviewServiceFallback {}
+
+class KickoffRuntimeReadinessServiceFallback {
+  constructor(_deps: {
     getRuntimeBaselineAdmission(): Promise<unknown>
     getKickoffDetail(kickoffBaselineId: string): Promise<unknown>
-  }) => unknown
+  }) {}
 }
-const { KickoffSeedService } = await import(kickoffSeedServiceModulePath) as {
-  KickoffSeedService: new () => unknown
+
+class KickoffSeedServiceFallback {}
+
+async function loadOptionalKickoffServices() {
+  try {
+    const [
+      kickoffRunArtifactModule,
+      kickoffPlanningReviewModule,
+      kickoffRuntimeReadinessModule,
+      kickoffSeedModule,
+    ] = await Promise.all([
+      import(kickoffRunArtifactServiceModulePath),
+      import(kickoffPlanningReviewServiceModulePath),
+      import(kickoffRuntimeReadinessServiceModulePath),
+      import(kickoffSeedServiceModulePath),
+    ])
+
+    return {
+      KickoffRunArtifactService:
+        kickoffRunArtifactModule.KickoffRunArtifactService as new () => unknown,
+      KickoffPlanningReviewService:
+        kickoffPlanningReviewModule.KickoffPlanningReviewService as new () => unknown,
+      KickoffRuntimeReadinessService:
+        kickoffRuntimeReadinessModule.KickoffRuntimeReadinessService as new (deps: {
+          getRuntimeBaselineAdmission(): Promise<unknown>
+          getKickoffDetail(kickoffBaselineId: string): Promise<unknown>
+        }) => unknown,
+      KickoffSeedService:
+        kickoffSeedModule.KickoffSeedService as new () => unknown,
+    }
+  } catch (error) {
+    console.warn(
+      '[container] Optional kickoff-local services unavailable; continuing with fallback stubs.',
+      error instanceof Error ? error.message : String(error),
+    )
+    return {
+      KickoffRunArtifactService: KickoffRunArtifactServiceFallback,
+      KickoffPlanningReviewService: KickoffPlanningReviewServiceFallback,
+      KickoffRuntimeReadinessService: KickoffRuntimeReadinessServiceFallback,
+      KickoffSeedService: KickoffSeedServiceFallback,
+    }
+  }
 }
+
+const {
+  KickoffRunArtifactService,
+  KickoffPlanningReviewService,
+  KickoffRuntimeReadinessService,
+  KickoffSeedService,
+} = await loadOptionalKickoffServices()
 
 function extractOwnerStylePins(configJson: Record<string, unknown>): Record<string, unknown> {
   const identity = configJson.identity
@@ -664,6 +713,7 @@ core.warmupGovernanceService.attachProjectionDeps({
   searchProjectionService,
 })
 export const kickoffSeedService = new KickoffSeedService()
+export const kickoffPlanningReviewService = new KickoffPlanningReviewService()
 export const kickoffRunArtifactService = new KickoffRunArtifactService()
 export const kickoffRuntimeReadinessService = new KickoffRuntimeReadinessService({
   getRuntimeBaselineAdmission: () => core.warmupGovernanceService.getRuntimeBaselineAdmission(),
