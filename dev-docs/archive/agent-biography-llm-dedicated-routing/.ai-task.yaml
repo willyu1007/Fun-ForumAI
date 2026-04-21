@@ -1,0 +1,13 @@
+version: 1
+task_id: T-206
+project: main
+slug: agent-biography-llm-dedicated-routing
+status: archived
+updated: "2026-04-21"
+keywords:
+  - biography
+  - llm
+  - routing
+  - kimi
+  - qwen
+  - governance

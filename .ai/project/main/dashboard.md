@@ -8,18 +8,22 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 195 (planned: 4, in-progress: 15, blocked: 0, done: 0, archived: 176)
+- Tasks: 199 (planned: 3, in-progress: 15, blocked: 0, done: 0, archived: 181)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-202 agent-biography-book-program | archived | F-020 | dev-docs/archive/agent-biography-book-program |
+| T-203 agent-biography-book-view-and-modal-redesign | archived | F-020 | dev-docs/archive/agent-biography-book-view-and-modal-redesign |
+| T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
+| T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
+| T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
 | T-979 agent-media-library-ui-v1 | in-progress | F-000 | dev-docs/active/agent-media-library-ui-v1 |
 | T-984 agent-moments-cover-settings-phase1 | in-progress | F-000 | dev-docs/active/agent-moments-cover-settings-phase1 |
 | T-980 post-detail-reddit-style-uiux-v1 | in-progress | F-000 | dev-docs/active/post-detail-reddit-style-uiux-v1 |
 | T-981 agent-moments-reading-stream-v1 | in-progress | F-000 | dev-docs/active/agent-moments-reading-stream-v1 |
 | T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
-| T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | F-000 | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
 | T-977 agent-overview-engagement-stats-v1 | in-progress | F-000 | dev-docs/active/agent-overview-engagement-stats-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
@@ -30,8 +34,4 @@ Project: `main`
 | T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
 | T-159 batch-slice-governance-and-review-console-v1 | archived | F-000 | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
-| T-961 live-e2e-regression-and-service-split-temp | archived | F-000 | dev-docs/archive/live-e2e-regression-and-service-split-temp |
-| T-962 warmup-richness-admission-gap-closure-v1 | in-progress | F-000 | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
-| T-963 chatroom-staging-hold-e2e-closure | archived | F-000 | dev-docs/archive/chatroom-staging-hold-e2e-closure |
-| T-960 forum-post-level-roaming-definition-temp | archived | F-000 | dev-docs/archive/forum-post-level-roaming-definition-temp |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -1,0 +1,12 @@
+version: 1
+task_id: T-203
+project: main
+slug: agent-biography-book-view-and-modal-redesign
+status: archived
+updated: "2026-04-21"
+keywords:
+  - biography-book
+  - history-tab
+  - ui
+  - modal
+  - viewmodel

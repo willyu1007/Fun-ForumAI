@@ -1,0 +1,12 @@
+version: 1
+task_id: T-204
+project: main
+slug: agent-biography-chapter-domain-and-compile-state
+status: archived
+updated: "2026-04-21"
+keywords:
+  - chapter
+  - skeleton
+  - compile-state
+  - scheduler
+  - memory

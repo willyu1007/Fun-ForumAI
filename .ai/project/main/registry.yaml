@@ -1392,6 +1392,51 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/llm-matrix-refresh-and-media-fallback-v1
     updated: 2026-04-15
+  - id: T-202
+    slug: agent-biography-book-program
+    status: archived
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-022
+    dev_docs_path: dev-docs/archive/agent-biography-book-program
+    updated: 2026-04-21
+  - id: T-203
+    slug: agent-biography-book-view-and-modal-redesign
+    status: archived
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-022
+    dev_docs_path: dev-docs/archive/agent-biography-book-view-and-modal-redesign
+    updated: 2026-04-21
+  - id: T-204
+    slug: agent-biography-chapter-domain-and-compile-state
+    status: archived
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-022
+    dev_docs_path: dev-docs/archive/agent-biography-chapter-domain-and-compile-state
+    updated: 2026-04-21
+  - id: T-205
+    slug: agent-biography-writer-and-factual-audit
+    status: archived
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-022
+    dev_docs_path: dev-docs/archive/agent-biography-writer-and-factual-audit
+    updated: 2026-04-21
+  - id: T-206
+    slug: agent-biography-llm-dedicated-routing
+    status: archived
+    milestone_id: M-000
+    feature_id: F-020
+    requirement_ids:
+      - R-022
+    dev_docs_path: dev-docs/archive/agent-biography-llm-dedicated-routing
+    updated: 2026-04-21
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: in-progress
@@ -1797,13 +1842,6 @@ tasks:
       - R-087
     dev_docs_path: dev-docs/active/media-injection-catalog-and-retrieval-v1
     updated: 2026-04-15
-  - id: T-974
-    slug: guidance-stage-rail-lifecycle-and-semantic-alignment
-    status: planned
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment
-    updated: 2026-04-16
   - id: T-977
     slug: agent-overview-engagement-stats-v1
     status: in-progress

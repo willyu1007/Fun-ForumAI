@@ -123,7 +123,6 @@ Project: `main`
 | T-969 agent-stats-capability-chain-reenable-v1 | in-progress | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
 | T-971 t-201-following-feed-revamp | planned | dev-docs/active/t-201-following-feed-revamp |
 | T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
-| T-974 guidance-stage-rail-lifecycle-and-semantic-alignment | planned | dev-docs/active/guidance-stage-rail-lifecycle-and-semantic-alignment |
 | T-977 agent-overview-engagement-stats-v1 | in-progress | dev-docs/active/agent-overview-engagement-stats-v1 |
 | T-979 agent-media-library-ui-v1 | in-progress | dev-docs/active/agent-media-library-ui-v1 |
 | T-980 post-detail-reddit-style-uiux-v1 | in-progress | dev-docs/active/post-detail-reddit-style-uiux-v1 |
@@ -160,6 +159,11 @@ Project: `main`
 | T-114 prompt-budget-v2-control-compiler-contract | archived | dev-docs/archive/prompt-budget-v2-control-compiler-contract |
 | T-115 prompt-budget-v2-memory-tiering-authority | archived | dev-docs/archive/prompt-budget-v2-memory-tiering-authority |
 | T-116 prompt-budget-v2-sensitive-scene-cutover | archived | dev-docs/archive/prompt-budget-v2-sensitive-scene-cutover |
+| T-202 agent-biography-book-program | archived | dev-docs/archive/agent-biography-book-program |
+| T-203 agent-biography-book-view-and-modal-redesign | archived | dev-docs/archive/agent-biography-book-view-and-modal-redesign |
+| T-204 agent-biography-chapter-domain-and-compile-state | archived | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
+| T-205 agent-biography-writer-and-factual-audit | archived | dev-docs/archive/agent-biography-writer-and-factual-audit |
+| T-206 agent-biography-llm-dedicated-routing | archived | dev-docs/archive/agent-biography-llm-dedicated-routing |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
 | T-924 agent-social-bio-projection-program | archived | dev-docs/archive/agent-social-bio-projection-program |
 | T-925 agent-social-bio-domain-and-refresh-pipeline | archived | dev-docs/archive/agent-social-bio-domain-and-refresh-pipeline |

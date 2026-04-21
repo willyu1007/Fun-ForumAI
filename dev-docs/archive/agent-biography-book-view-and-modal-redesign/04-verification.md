@@ -1,0 +1,8 @@
+# 04 Verification — T-203
+
+- 2026-04-21 | `sed -n '1,240p' src/frontend/features/agents/components/modal/TabHistory.tsx` | pass | Confirmed `TabHistory` is already a thin container and is the correct insertion point for a new book panel.
+- 2026-04-21 | `sed -n '1,860p' src/frontend/features/agents/components/AchievementChroniclePanel.tsx` | pass | Confirmed the current panel mixes multiple incompatible surface intentions and must be replaced rather than cosmetically restyled.
+- 2026-04-21 | `sed -n '1,380p' src/frontend/features/agents/components/modal/TabMoments.tsx` and `sed -n '1,260p' src/frontend/widgets/agent-modal/AgentInteractionModal.tsx` | pass | Confirmed the modal favors a `max-w-3xl` single-column reading pattern and current manage-mode width supports a paper-book reading layout.
+- 2026-04-21 | `sed -n '1,260p' /Users/yurui/Downloads/agent_chronicle_biography_architecture.md` and UI section reads | pass | Confirmed the desired terminal surface is cover + chapter + folds + traces + directory rather than dashboard modules.
+- 2026-04-21 | `pnpm exec vitest run src/frontend/features/agents/components/__tests__/BiographyBookPanel.test.tsx src/frontend/features/agents/components/modal/__tests__/TabHistory.test.tsx` | pass | Verified the history tab renders the unified biography book surface, emits book/directory/chapter/later-note telemetry, and no longer depends on legacy owner/readonly split panels.
+- 2026-04-21 | `DATABASE_URL=postgresql://$USER@localhost:5432/<temp-clone> E2E_PERSISTENT_DB_ISOLATED=true pnpm exec vitest run src/backend/routes/__tests__/e2e-read-api.test.ts -t "biography"` | pass | Verified the shared read endpoint returns a single biography-book payload and accepts history telemetry events through the real router.
