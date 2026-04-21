@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
 import { listLaunchCommunitySeeds } from '../../launch/community-rules.js'
 import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-metadata-repository.js'
 import { DEFAULT_STAGE_SPEC_V1, type ScenePoolCatalog, type StageTemplateV2 } from '../../stage/index.js'
+import { ForumDirectorPlanEnrichmentService } from '../forum-director-plan-enrichment-service.js'
 import { PublicSceneCatalogService } from '../public-scene-catalog-service.js'
 import { PublicSceneSelectorService } from '../public-scene-selector-service.js'
 
@@ -132,6 +134,71 @@ function makeCatalog(): ScenePoolCatalog {
       actor_surfaces: ['forum_post', 'forum_thread', 'chat_room'],
       private_surfaces: ['private_chat', 'proactive_dm'],
     },
+  }
+}
+
+function buildDirectorPlanGatewayResponse(content: string) {
+  return {
+    content,
+    messages: [],
+    usage: {
+      prompt_tokens: 100,
+      completion_tokens: 20,
+      total_tokens: 120,
+    },
+    finishReason: 'stop',
+    latencyMs: 15,
+    platformRetryCount: 0,
+    renderDecision: {
+      voiceLineId: 'qwen-director-v1',
+      tier: 'base',
+      profileId: 'qwen-director-director-plan-base',
+      policyId: 'hidden-director_plan-base',
+      providerId: 'token-plan-openai',
+      modelId: 'qwen3.6-plus',
+      adapterId: 'openai-chat-completions-v1',
+      region: 'cn-beijing',
+      endpointId: 'token-plan-cn-beijing',
+      credentialId: 'cred-1',
+      fallbackLevel: 'none',
+      reasons: ['profile-default'],
+      promptTemplateId: PROMPT_TEMPLATE_REFS.internalForumScenePlan.id,
+      promptVersion: PROMPT_TEMPLATE_REFS.internalForumScenePlan.version,
+    },
+    executionPlan: {} as never,
+    promptRef: PROMPT_TEMPLATE_REFS.internalForumScenePlan,
+    warnings: [],
+  } as const
+}
+
+function makeSelectorWithDirectorPlan(input?: {
+  llmConfigured?: boolean
+  content?: string
+  rejectWith?: Error
+}) {
+  const repo = new InMemoryForumSceneMetadataRepository()
+  const generateHiddenArtifact = input?.rejectWith
+    ? vi.fn().mockRejectedValue(input.rejectWith)
+    : vi.fn().mockResolvedValue(buildDirectorPlanGatewayResponse(input?.content ?? '{}'))
+  const directorPlanEnrichmentService = new ForumDirectorPlanEnrichmentService({
+    llmGateway: {
+      isConfigured: input?.llmConfigured ?? true,
+      generateHiddenArtifact,
+    } as never,
+    sceneMetadataRepo: repo,
+  })
+  const service = new PublicSceneSelectorService({
+    catalogService: {
+      getLaunchCatalog: () => makeCatalog(),
+    } as never,
+    sceneMetadataRepo: repo,
+    directorPlanEnrichmentService,
+  })
+
+  return {
+    repo,
+    service,
+    generateHiddenArtifact,
   }
 }
 
@@ -288,6 +355,202 @@ describe('PublicSceneSelectorService', () => {
     if (result.kind !== 'scene') return
     expect(result.payload.scene_metadata.director_surface).toBe('forum')
     expect(result.payload.scene_metadata.scene_binding_id).toBe('binding-alpha')
+  })
+
+  it('applies director-plan enrichment to scheduled_post root scenes and preserves deterministic authority', async () => {
+    const { service, generateHiddenArtifact } = makeSelectorWithDirectorPlan({
+      content: JSON.stringify({
+        target_mood: 'playful',
+        must_hit_points: ['先抛判断', '给读者留一个继续接的线头'],
+        avoid_repeat: ['不要写成公告口吻'],
+        soft_constraints_append: ['先给态度再补观察', '不要像运营文案'],
+      }),
+    })
+
+    const result = await service.selectScheduledPost({
+      agent: {
+        id: 'agent-1',
+        display_name: 'Selector Agent',
+      },
+      eligible_communities: [
+        {
+          id: 'community-general',
+          slug: 'general',
+          name: 'General',
+          description: 'General community',
+          rules: 'Be specific.',
+        },
+        {
+          id: 'community-tech',
+          slug: 'tech',
+          name: 'Tech',
+          description: 'Tech community',
+          rules: 'Be concrete.',
+        },
+      ],
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(generateHiddenArtifact).toHaveBeenCalledTimes(1)
+    expect(generateHiddenArtifact.mock.calls[0]?.[0]).toMatchObject({
+      intent: 'director_plan',
+      promptRef: PROMPT_TEMPLATE_REFS.internalForumScenePlan,
+      traceId: expect.stringContaining('director-plan:forum-root:'),
+    })
+    expect(result.community.id).toBe('community-tech')
+    expect(result.payload.scene_metadata.scene_binding_id).toBe('binding-beta')
+    expect(result.payload.episode_brief.target_mood).toBe('playful')
+    expect(result.payload.episode_brief.must_hit_points).toEqual([
+      '先抛判断',
+      '给读者留一个继续接的线头',
+    ])
+    expect(result.payload.episode_brief.avoid_repeat).toEqual(['不要写成公告口吻'])
+    expect(result.payload.local_intent.soft_constraints).toEqual([
+      '让 template-beta 更可看',
+      '推动关系继续演化',
+      '先给态度再补观察',
+    ])
+    expect(result.payload.planning_audit?.director_plan_enrichment).toMatchObject({
+      status: 'applied',
+      prompt_ref: PROMPT_TEMPLATE_REFS.internalForumScenePlan,
+      merged_fields: [
+        'episode_brief.target_mood',
+        'episode_brief.must_hit_points',
+        'episode_brief.avoid_repeat',
+        'local_intent.soft_constraints',
+      ],
+    })
+  })
+
+  it('applies director-plan enrichment to forum_post_seed without changing the locked target or binding', async () => {
+    const { service } = makeSelectorWithDirectorPlan({
+      content: JSON.stringify({
+        target_mood: 'curious',
+        must_hit_points: ['先亮出核心判断'],
+      }),
+    })
+
+    const result = await service.selectForumPostSeed({
+      agent: {
+        id: 'agent-1',
+        display_name: 'Selector Agent',
+      },
+      community: {
+        id: 'community-general',
+        slug: 'general',
+        name: 'General',
+        description: 'General community',
+        rules: 'Be specific.',
+      },
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(result.community.id).toBe('community-general')
+    expect(result.payload.scene_metadata.scene_binding_id).toBe('binding-alpha')
+    expect(result.payload.episode_brief.target_mood).toBe('curious')
+    expect(result.payload.episode_brief.must_hit_points).toEqual(['先亮出核心判断'])
+    expect(result.payload.planning_audit?.director_plan_enrichment).toMatchObject({
+      status: 'applied',
+    })
+  })
+
+  it('records skipped_unconfigured when the hidden director planner is unavailable', async () => {
+    const { service, generateHiddenArtifact } = makeSelectorWithDirectorPlan({
+      llmConfigured: false,
+    })
+
+    const result = await service.selectScheduledPost({
+      agent: {
+        id: 'agent-1',
+        display_name: 'Selector Agent',
+      },
+      eligible_communities: [
+        {
+          id: 'community-tech',
+          slug: 'tech',
+          name: 'Tech',
+          description: 'Tech community',
+          rules: 'Be concrete.',
+        },
+      ],
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(generateHiddenArtifact).not.toHaveBeenCalled()
+    expect(result.payload.episode_brief.target_mood).toBeUndefined()
+    expect(result.payload.episode_brief.must_hit_points).toEqual([])
+    expect(result.payload.planning_audit?.director_plan_enrichment).toMatchObject({
+      status: 'skipped_unconfigured',
+      prompt_ref: PROMPT_TEMPLATE_REFS.internalForumScenePlan,
+    })
+  })
+
+  it('fails closed when the planner returns invalid json', async () => {
+    const { service } = makeSelectorWithDirectorPlan({
+      content: 'not-json',
+    })
+
+    const result = await service.selectScheduledPost({
+      agent: {
+        id: 'agent-1',
+        display_name: 'Selector Agent',
+      },
+      eligible_communities: [
+        {
+          id: 'community-tech',
+          slug: 'tech',
+          name: 'Tech',
+          description: 'Tech community',
+          rules: 'Be concrete.',
+        },
+      ],
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(result.payload.episode_brief.target_mood).toBeUndefined()
+    expect(result.payload.episode_brief.must_hit_points).toEqual([])
+    expect(result.payload.local_intent.soft_constraints).toEqual([
+      '让 template-beta 更可看',
+      '推动关系继续演化',
+    ])
+    expect(result.payload.planning_audit?.director_plan_enrichment).toMatchObject({
+      status: 'invalid_json',
+      error_code: 'invalid_json',
+    })
+  })
+
+  it('fails closed when the planner request errors', async () => {
+    const { service } = makeSelectorWithDirectorPlan({
+      rejectWith: new Error('planner timeout'),
+    })
+
+    const result = await service.selectScheduledPost({
+      agent: {
+        id: 'agent-1',
+        display_name: 'Selector Agent',
+      },
+      eligible_communities: [
+        {
+          id: 'community-tech',
+          slug: 'tech',
+          name: 'Tech',
+          description: 'Tech community',
+          rules: 'Be concrete.',
+        },
+      ],
+    })
+
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(result.payload.episode_brief.target_mood).toBeUndefined()
+    expect(result.payload.planning_audit?.director_plan_enrichment).toMatchObject({
+      status: 'llm_failed',
+      error_message: 'planner timeout',
+    })
   })
 
   it('rebuilds forum_thread_followup from minimal scene metadata without leaking full director brief', async () => {

@@ -347,6 +347,78 @@ templates:
       蒸馏结果：
       {{distill_json}}
 
+  - prompt_template_id: internal-forum-scene-plan
+    version: 1
+    description: Hidden director lane enrichment for root forum scene payloads
+    variables_schema:
+      type: object
+      properties:
+        entry_kind: { type: string }
+        community_slug: { type: string }
+        community_name: { type: string }
+        community_description: { type: string }
+        community_rules: { type: string }
+        template_id: { type: string }
+        template_version: { type: string }
+        template_category: { type: string }
+        scene_goal_viewer: { type: string }
+        scene_goal_growth: { type: string }
+        relation_objectives: { type: string }
+        base_tone_hint: { type: string }
+        base_relation_focus: { type: string }
+        base_soft_constraints: { type: string }
+        recent_scene_digest: { type: string }
+      required:
+        - entry_kind
+        - community_slug
+        - community_name
+        - community_description
+        - community_rules
+        - template_id
+        - template_version
+        - template_category
+        - scene_goal_viewer
+        - scene_goal_growth
+        - relation_objectives
+        - base_tone_hint
+        - base_relation_focus
+        - base_soft_constraints
+        - recent_scene_digest
+    system_prompt: |
+      你是一个隐藏的 forum 导演规划补强器。你只能补强 root 场景计划，不能改写规则选出的 community、template、binding、phase 或 target_ref。
+      你不能输出 turn-by-turn 战术脚本，也不能写成 showrunner prose。只返回严格 JSON：
+      {
+        "target_mood": "可选，1-40 字",
+        "must_hit_points": ["最多 3 条，必须是 episode-level 关注点"],
+        "avoid_repeat": ["最多 3 条，描述本次 root scene 应避免重复的表达或开场套路"],
+        "soft_constraints_append": ["最多 2 条，轻量表达/推进护栏"]
+      }
+      约束：
+      - 若没有必要补强，可返回空对象 `{}`。
+      - 不得改写 community/template/binding/phase/target_ref。
+      - `must_hit_points` 必须是本集 root scene 应命中的高层关注点，不得写成逐回合动作清单。
+      - `soft_constraints_append` 只能是轻量表达、节奏或推进护栏。
+      - 不要输出 markdown，不要输出解释，不要输出额外字段。
+    user_prompt: |
+      entry_kind: {{entry_kind}}
+      community_slug: {{community_slug}}
+      community_name: {{community_name}}
+      community_description: {{community_description}}
+      community_rules: {{community_rules}}
+
+      template_id: {{template_id}}
+      template_version: {{template_version}}
+      template_category: {{template_category}}
+      scene_goal_viewer: {{scene_goal_viewer}}
+      scene_goal_growth: {{scene_goal_growth}}
+      relation_objectives: {{relation_objectives}}
+      base_tone_hint: {{base_tone_hint}}
+      base_relation_focus: {{base_relation_focus}}
+      base_soft_constraints: {{base_soft_constraints}}
+
+      recent_scene_digest:
+      {{recent_scene_digest}}
+
   - prompt_template_id: internal-vision-summary
     version: 3
     description: Hidden multimodal image semantic extraction for media domain v3

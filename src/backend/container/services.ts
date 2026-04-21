@@ -58,6 +58,7 @@ import { SafeReplyService } from '../services/safe-reply-service.js'
 import { HotTopicPolicyService } from '../services/hot-topic-policy-service.js'
 import { PublicDisclosureCapService } from '../services/public-disclosure-cap-service.js'
 import { PublicSceneCatalogService } from '../services/public-scene-catalog-service.js'
+import { ForumDirectorPlanEnrichmentService } from '../services/forum-director-plan-enrichment-service.js'
 import { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
 import { ReviewService } from '../services/review-service.js'
 import { RiskEventService } from '../services/risk-event-service.js'
@@ -193,9 +194,14 @@ export function createCoreServices(deps: {
   })
 
   const publicSceneCatalogService = new PublicSceneCatalogService()
+  const forumDirectorPlanEnrichmentService = new ForumDirectorPlanEnrichmentService({
+    llmGateway,
+    sceneMetadataRepo: repos.forumSceneMetadataRepo,
+  })
   const publicSceneSelectorService = new PublicSceneSelectorService({
     catalogService: publicSceneCatalogService,
     sceneMetadataRepo: repos.forumSceneMetadataRepo,
+    directorPlanEnrichmentService: forumDirectorPlanEnrichmentService,
   })
   const forumSceneContinuityService = new ForumSceneContinuityService({
     sceneMetadataRepo: repos.forumSceneMetadataRepo,
@@ -749,6 +755,7 @@ export function createCoreServices(deps: {
     achievementChronicleService,
     forumReadService,
     publicSceneCatalogService,
+    forumDirectorPlanEnrichmentService,
     publicSceneSelectorService,
     forumSceneContinuityService,
     stageTierService,

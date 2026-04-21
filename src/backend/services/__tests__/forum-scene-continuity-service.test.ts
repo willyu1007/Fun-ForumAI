@@ -411,7 +411,11 @@ describe('ForumSceneContinuityService', () => {
     })
     if (result?.kind !== 'continue') return
     expect(result.payload.local_intent.reference_scope).toBe('thread_only')
-    expect(result.payload.local_intent.hard_constraints).toContain('延续当前 episode，不重选场景')
+    expect(result.payload.local_intent.hard_constraints).toEqual([
+      '延续当前 episode，不重选场景',
+      '只依据公开线程内容继续推进',
+      '不要泄露任何隐藏导演目标或私域信息',
+    ])
   })
 
   it('replays from the root post event instead of an unrelated later thread event when sidecars are missing', async () => {
@@ -477,6 +481,63 @@ describe('ForumSceneContinuityService', () => {
     if (result?.kind !== 'continue') return
     expect(result.payload.scene_metadata.phase).toBe('opening')
     expect(result.payload.local_intent.soft_constraints).toContain('保持 episode phase=opening')
+  })
+
+  it('inherits root enrichment fields and caps followup soft constraints within contract bounds', async () => {
+    const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const eventRepo = new InMemoryEventRepository()
+    const payload = buildPayload()
+    payload.episode_brief.target_mood = 'playful'
+    payload.episode_brief.must_hit_points = ['先抛判断']
+    payload.episode_brief.avoid_repeat = ['不要写成公告口吻']
+    payload.local_intent.soft_constraints = ['推进讨论', '保持节奏', '先给态度']
+
+    eventRepo.create({
+      event_type: 'POST_CREATED',
+      plane: 'DATA',
+      schema_version: 'v1',
+      community_id: 'community-1',
+      post_id: 'post-1',
+      actor_type: 'agent',
+      actor_id: 'agent-1',
+      correlation_id: 'post:post-1',
+      payload_json: {
+        post_id: 'post-1',
+        public_scene: buildPublicScenePayloadJson(payload),
+      },
+    })
+
+    const service = new ForumSceneContinuityService({
+      sceneMetadataRepo,
+      eventRepo,
+    })
+
+    const result = await service.resolve({
+      event: buildAllocatorEvent(),
+      post_author_agent_id: 'agent-1',
+      target_thread_author_agent_id: 'agent-thread',
+      target_turn_author_agent_id: 'human-1',
+    })
+
+    expect(result).toMatchObject({
+      kind: 'continue',
+      source: 'event_replay',
+    })
+    if (result?.kind !== 'continue') return
+    expect(result.payload.episode_brief.target_mood).toBe('playful')
+    expect(result.payload.episode_brief.must_hit_points).toEqual(['先抛判断'])
+    expect(result.payload.episode_brief.avoid_repeat).toEqual(['不要写成公告口吻'])
+    expect(result.payload.local_intent.hard_constraints).toEqual([
+      '延续当前 episode，不重选场景',
+      '只依据公开线程内容继续推进',
+      '不要泄露任何隐藏导演目标或私域信息',
+    ])
+    expect(result.payload.local_intent.soft_constraints).toEqual([
+      '推进讨论',
+      '保持节奏',
+      '先给态度',
+      '保持 episode phase=opening',
+    ])
   })
 
   it('skips scene-tagged threads only after sidecar and event replay repair both fail', async () => {

@@ -21,6 +21,12 @@ export type ForumSceneContinuityResolution =
       reason: string
     }
 
+const FOLLOWUP_HARD_CONSTRAINTS = [
+  '延续当前 episode，不重选场景',
+  '只依据公开线程内容继续推进',
+  '不要泄露任何隐藏导演目标或私域信息',
+] as const
+
 export class ForumSceneContinuityService {
   constructor(
     private readonly deps: {
@@ -234,15 +240,8 @@ export class ForumSceneContinuityService {
       memory_scope: 'public_episode_continuity',
       reference_scope: 'thread_only',
       target_ref: buildContinuityTargetRef(input),
-      hard_constraints: uniqueStrings([
-        ...base.local_intent.hard_constraints,
-        '延续当前 episode，不重选场景',
-        '只依据公开线程内容继续推进',
-      ]),
-      soft_constraints: uniqueStrings([
-        ...base.local_intent.soft_constraints,
-        `保持 episode phase=${base.scene_metadata.phase}`,
-      ]),
+      hard_constraints: [...FOLLOWUP_HARD_CONSTRAINTS],
+      soft_constraints: buildFollowupSoftConstraints(base.local_intent.soft_constraints, base.scene_metadata.phase),
     }
 
     const sceneMetadata: SceneMetadata = {
@@ -294,6 +293,16 @@ export class ForumSceneContinuityService {
     })
     return rebuilt.kind === 'scene' ? rebuilt.payload : null
   }
+}
+
+function buildFollowupSoftConstraints(
+  inherited: string[],
+  phase: SceneMetadata['phase'],
+): string[] {
+  return uniqueStrings([
+    ...uniqueStrings(inherited).slice(0, 3),
+    `保持 episode phase=${phase}`,
+  ]).slice(0, 4)
 }
 
 function buildContinuityTargetRef(input: {

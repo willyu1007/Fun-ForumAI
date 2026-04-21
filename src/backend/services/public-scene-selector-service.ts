@@ -14,6 +14,7 @@ import {
   generateSceneId,
   type PublicSceneWritePayload,
 } from './public-scene-runtime.js'
+import type { ForumDirectorPlanEnrichmentService } from './forum-director-plan-enrichment-service.js'
 import {
   getLaunchCreatorNoteTemplateRuntime,
   resolveLaunchCreatorNoteProjection,
@@ -34,6 +35,9 @@ interface SelectedAgentLike {
 interface EligibleTarget {
   community_id: string
   community_slug: string
+  community_name: string
+  community_description: string
+  community_rules: string
   writable: boolean
   membership_source: 'direct' | 'derived'
 }
@@ -117,6 +121,7 @@ export class PublicSceneSelectorService {
     private readonly deps: {
       catalogService: PublicSceneCatalogService
       sceneMetadataRepo: ForumSceneMetadataRepository
+      directorPlanEnrichmentService?: Pick<ForumDirectorPlanEnrichmentService, 'enrichRootScene'> | null
     },
   ) {}
 
@@ -127,6 +132,9 @@ export class PublicSceneSelectorService {
     const eligibleTargets = input.eligible_communities.map((community) => ({
       community_id: community.id,
       community_slug: community.slug,
+      community_name: community.name,
+      community_description: community.description,
+      community_rules: community.rules,
       writable: true,
       membership_source: 'direct' as const,
     }))
@@ -169,6 +177,9 @@ export class PublicSceneSelectorService {
       eligible_targets: [{
         community_id: input.community.id,
         community_slug: input.community.slug,
+        community_name: input.community.name,
+        community_description: input.community.description,
+        community_rules: input.community.rules,
         writable: true,
         membership_source: 'direct',
       }],
@@ -507,27 +518,80 @@ export class PublicSceneSelectorService {
       phase: 'opening',
     }
 
+    const enrichedRoot = await this.maybeEnrichRootScene({
+      entry_kind: input.entry_kind,
+      agent_id: input.selected_agent.id,
+      target: selected.target,
+      template: selected.template,
+      scene_metadata: sceneMetadata,
+      episode_brief: episodeBrief,
+      local_intent: localIntent,
+      planning_audit: planningAudit,
+    })
+
+    const launchProgramming = buildLaunchProgrammingHints({
+      communitySlug: selected.target.community_slug,
+      episodeBrief: enrichedRoot.episode_brief,
+      phase: enrichedRoot.episode_brief.phase,
+    })
+
     return {
       kind: 'scene',
       target: selected.target,
       payload: {
         scene_metadata: sceneMetadata,
-        episode_brief: episodeBrief,
-        local_intent: localIntent,
+        episode_brief: enrichedRoot.episode_brief,
+        local_intent: enrichedRoot.local_intent,
         local_intent_block: buildLaunchAwareLocalIntentBlock({
-          localIntent,
-          episodeBrief,
+          localIntent: enrichedRoot.local_intent,
+          episodeBrief: enrichedRoot.episode_brief,
           communitySlug: selected.target.community_slug,
         }),
         selection_audit: selectionAudit,
-        planning_audit: planningAudit,
-        launch_programming: buildLaunchProgrammingHints({
-          communitySlug: selected.target.community_slug,
-          episodeBrief,
-          phase: 'opening',
-        }),
+        planning_audit: enrichedRoot.planning_audit,
+        launch_programming: launchProgramming,
       },
     }
+  }
+
+  private async maybeEnrichRootScene(input: {
+    entry_kind: Extract<SelectorEntryKind, 'scheduled_post' | 'forum_post_seed'>
+    agent_id: string
+    target: EligibleTarget
+    template: StageTemplateV2
+    scene_metadata: SceneMetadata
+    episode_brief: EpisodeBrief
+    local_intent: LocalIntent
+    planning_audit: Record<string, unknown>
+  }): Promise<{
+    episode_brief: EpisodeBrief
+    local_intent: LocalIntent
+    planning_audit: Record<string, unknown>
+  }> {
+    if (!this.deps.directorPlanEnrichmentService) {
+      return {
+        episode_brief: input.episode_brief,
+        local_intent: input.local_intent,
+        planning_audit: input.planning_audit,
+      }
+    }
+
+    return this.deps.directorPlanEnrichmentService.enrichRootScene({
+      entry_kind: input.entry_kind,
+      agent_id: input.agent_id,
+      community: {
+        id: input.target.community_id,
+        slug: input.target.community_slug,
+        name: input.target.community_name,
+        description: input.target.community_description,
+        rules: input.target.community_rules,
+      },
+      template: input.template,
+      scene_metadata: input.scene_metadata,
+      episode_brief: input.episode_brief,
+      local_intent: input.local_intent,
+      planning_audit: input.planning_audit,
+    })
   }
 
   private async rankForumCandidates(
