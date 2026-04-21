@@ -1,0 +1,16 @@
+version: 1
+task_id: T-935
+project: main
+slug: cloud-environment-go-live-chain-v1
+status: archived
+updated: "2026-04-21"
+keywords:
+  - aliyun
+  - ecs
+  - eci
+  - alb
+  - redis
+  - rds
+  - dns
+  - ssl
+  - iac

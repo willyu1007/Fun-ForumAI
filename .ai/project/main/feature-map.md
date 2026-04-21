@@ -98,7 +98,7 @@ Project: `main`
 | T-932 invite-code-seed-registration-v1 | archived | dev-docs/archive/invite-code-seed-registration-v1 |
 | T-933 launch-gray-release-gap-closure | archived | dev-docs/archive/launch-gray-release-gap-closure |
 | T-934 launch-gray-release-runtime-and-publish-hardening | archived | dev-docs/archive/launch-gray-release-runtime-and-publish-hardening |
-| T-935 cloud-environment-go-live-chain-v1 | in-progress | dev-docs/active/cloud-environment-go-live-chain-v1 |
+| T-935 cloud-environment-go-live-chain-v1 | archived | dev-docs/archive/cloud-environment-go-live-chain-v1 |
 | T-937 forum-semantic-and-llm-runtime-residual-closeout | archived | dev-docs/archive/forum-semantic-and-llm-runtime-residual-closeout |
 | T-938 runtime-e2e-seed-and-media-closeout | archived | dev-docs/archive/runtime-e2e-seed-and-media-closeout |
 | T-939 queue-admission-and-private-chat-realtime-v1 | archived | dev-docs/archive/queue-admission-and-private-chat-realtime-v1 |
@@ -113,21 +113,19 @@ Project: `main`
 | T-949 forum-product-narrative-and-context-alignment-v1 | archived | dev-docs/archive/forum-product-narrative-and-context-alignment-v1 |
 | T-950 llm-runtime-authority-round4-closeout-v1 | archived | dev-docs/archive/llm-runtime-authority-round4-closeout-v1 |
 | T-951 agent-language-audit-and-delete-flow | archived | dev-docs/archive/agent-language-audit-and-delete-flow |
-| T-953 route-controller-split-and-avatar-asset-strategy-temp | in-progress | dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp |
-| T-954 staging-release-verification-followup | planned | dev-docs/active/staging-release-verification-followup |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | archived | dev-docs/archive/route-controller-split-and-avatar-asset-strategy-temp |
 | T-955 badge-visual-e2e-closeout-v1 | archived | dev-docs/archive/badge-visual-e2e-closeout-v1 |
 | T-960 forum-post-level-roaming-definition-temp | archived | dev-docs/archive/forum-post-level-roaming-definition-temp |
 | T-961 live-e2e-regression-and-service-split-temp | archived | dev-docs/archive/live-e2e-regression-and-service-split-temp |
-| T-962 warmup-richness-admission-gap-closure-v1 | in-progress | dev-docs/active/warmup-richness-admission-gap-closure-v1 |
 | T-963 chatroom-staging-hold-e2e-closure | archived | dev-docs/archive/chatroom-staging-hold-e2e-closure |
-| T-969 agent-stats-capability-chain-reenable-v1 | in-progress | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
-| T-971 t-201-following-feed-revamp | planned | dev-docs/active/t-201-following-feed-revamp |
-| T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
-| T-977 agent-overview-engagement-stats-v1 | in-progress | dev-docs/active/agent-overview-engagement-stats-v1 |
-| T-979 agent-media-library-ui-v1 | in-progress | dev-docs/active/agent-media-library-ui-v1 |
-| T-980 post-detail-reddit-style-uiux-v1 | in-progress | dev-docs/active/post-detail-reddit-style-uiux-v1 |
-| T-981 agent-moments-reading-stream-v1 | in-progress | dev-docs/active/agent-moments-reading-stream-v1 |
-| T-984 agent-moments-cover-settings-phase1 | in-progress | dev-docs/active/agent-moments-cover-settings-phase1 |
+| T-969 agent-stats-capability-chain-reenable-v1 | archived | dev-docs/archive/agent-stats-capability-chain-reenable-v1 |
+| T-971 t-201-following-feed-revamp | archived | dev-docs/archive/t-201-following-feed-revamp |
+| T-977 agent-overview-engagement-stats-v1 | archived | dev-docs/archive/agent-overview-engagement-stats-v1 |
+| T-979 agent-media-library-ui-v1 | archived | dev-docs/archive/agent-media-library-ui-v1 |
+| T-980 post-detail-reddit-style-uiux-v1 | archived | dev-docs/archive/post-detail-reddit-style-uiux-v1 |
+| T-981 agent-moments-reading-stream-v1 | archived | dev-docs/archive/agent-moments-reading-stream-v1 |
+| T-984 agent-moments-cover-settings-phase1 | archived | dev-docs/archive/agent-moments-cover-settings-phase1 |
+| T-985 token-plan-kind-hardening-v1 | archived | dev-docs/archive/token-plan-kind-hardening-v1 |
 
 ### F-010 Agent Stats System
 
@@ -234,7 +232,7 @@ Project: `main`
 | T-910 media-framework-audit-and-remediation | archived | dev-docs/archive/media-framework-audit-and-remediation |
 | T-914 visual-media-framework-v1-closure | archived | dev-docs/archive/visual-media-framework-v1-closure |
 | T-918 media-v1-hardening-contract-lineage-cutover | in-progress | dev-docs/active/media-v1-hardening-contract-lineage-cutover |
-| T-973 media-injection-catalog-and-retrieval-v1 | in-progress | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
+| T-973 media-injection-catalog-and-retrieval-v1 | archived | dev-docs/archive/media-injection-catalog-and-retrieval-v1 |
 
 ### F-090 Launch Identity & Programming
 

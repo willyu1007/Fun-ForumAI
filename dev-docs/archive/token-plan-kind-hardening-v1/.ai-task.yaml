@@ -1,0 +1,12 @@
+version: 1
+task_id: T-985
+project: main
+slug: token-plan-kind-hardening-v1
+status: archived
+updated: "2026-04-21"
+keywords:
+  - token-plan
+  - kind
+  - llm
+  - fallback
+  - execution-policy

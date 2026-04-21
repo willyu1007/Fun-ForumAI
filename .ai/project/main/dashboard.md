@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 199 (planned: 3, in-progress: 15, blocked: 0, done: 0, archived: 181)
+- Tasks: 197 (planned: 1, in-progress: 4, blocked: 0, done: 0, archived: 192)
 
 ## Recent tasks
 
@@ -19,19 +19,19 @@ Project: `main`
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
 | T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
 | T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
-| T-979 agent-media-library-ui-v1 | in-progress | F-000 | dev-docs/active/agent-media-library-ui-v1 |
-| T-984 agent-moments-cover-settings-phase1 | in-progress | F-000 | dev-docs/active/agent-moments-cover-settings-phase1 |
-| T-980 post-detail-reddit-style-uiux-v1 | in-progress | F-000 | dev-docs/active/post-detail-reddit-style-uiux-v1 |
-| T-981 agent-moments-reading-stream-v1 | in-progress | F-000 | dev-docs/active/agent-moments-reading-stream-v1 |
-| T-954 staging-release-verification-followup | planned | F-000 | dev-docs/active/staging-release-verification-followup |
-| T-977 agent-overview-engagement-stats-v1 | in-progress | F-000 | dev-docs/active/agent-overview-engagement-stats-v1 |
+| T-935 cloud-environment-go-live-chain-v1 | archived | F-000 | dev-docs/archive/cloud-environment-go-live-chain-v1 |
+| T-953 route-controller-split-and-avatar-asset-strategy-temp | archived | F-000 | dev-docs/archive/route-controller-split-and-avatar-asset-strategy-temp |
+| T-969 agent-stats-capability-chain-reenable-v1 | archived | F-000 | dev-docs/archive/agent-stats-capability-chain-reenable-v1 |
+| T-971 t-201-following-feed-revamp | archived | F-000 | dev-docs/archive/t-201-following-feed-revamp |
+| T-973 media-injection-catalog-and-retrieval-v1 | archived | F-080 | dev-docs/archive/media-injection-catalog-and-retrieval-v1 |
+| T-977 agent-overview-engagement-stats-v1 | archived | F-000 | dev-docs/archive/agent-overview-engagement-stats-v1 |
+| T-979 agent-media-library-ui-v1 | archived | F-000 | dev-docs/archive/agent-media-library-ui-v1 |
+| T-980 post-detail-reddit-style-uiux-v1 | archived | F-000 | dev-docs/archive/post-detail-reddit-style-uiux-v1 |
+| T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
+| T-984 agent-moments-cover-settings-phase1 | archived | F-000 | dev-docs/archive/agent-moments-cover-settings-phase1 |
+| T-985 token-plan-kind-hardening-v1 | archived | F-000 | dev-docs/archive/token-plan-kind-hardening-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
-| T-969 agent-stats-capability-chain-reenable-v1 | in-progress | F-000 | dev-docs/active/agent-stats-capability-chain-reenable-v1 |
-| T-971 t-201-following-feed-revamp | planned | F-000 | dev-docs/active/t-201-following-feed-revamp |
-| T-972 warmup-closure-verifier-and-diagnostics-v1 | in-progress | F-000 | dev-docs/active/warmup-closure-verifier-and-diagnostics-v1 |
-| T-973 media-injection-catalog-and-retrieval-v1 | in-progress | F-080 | dev-docs/active/media-injection-catalog-and-retrieval-v1 |
 | T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
 | T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
-| T-159 batch-slice-governance-and-review-console-v1 | archived | F-000 | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -1,0 +1,11 @@
+version: 1
+task_id: T-977
+project: main
+slug: agent-overview-engagement-stats-v1
+status: archived
+updated: "2026-04-21"
+keywords:
+  - agent-overview
+  - public-stats
+  - votes
+  - ui

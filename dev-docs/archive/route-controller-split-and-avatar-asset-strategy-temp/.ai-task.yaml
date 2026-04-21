@@ -1,0 +1,13 @@
+version: 1
+task_id: T-953
+project: main
+slug: route-controller-split-and-avatar-asset-strategy-temp
+status: archived
+updated: "2026-04-21"
+keywords:
+  - controller
+  - routes
+  - refactor
+  - assets
+  - webp
+  - oss

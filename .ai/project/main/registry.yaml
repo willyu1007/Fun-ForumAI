@@ -1642,11 +1642,11 @@ tasks:
     updated: 2026-04-01
   - id: T-935
     slug: cloud-environment-go-live-chain-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/cloud-environment-go-live-chain-v1
-    updated: 2026-04-03
+    dev_docs_path: dev-docs/archive/cloud-environment-go-live-chain-v1
+    updated: 2026-04-21
   - id: T-936
     slug: runtime-cutover-observability-and-live-staging-closeout-v1
     status: archived
@@ -1765,18 +1765,11 @@ tasks:
     updated: 2026-04-11
   - id: T-953
     slug: route-controller-split-and-avatar-asset-strategy-temp
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/route-controller-split-and-avatar-asset-strategy-temp
-    updated: 2026-04-11
-  - id: T-954
-    slug: staging-release-verification-followup
-    status: planned
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/staging-release-verification-followup
-    updated: 2026-04-16
+    dev_docs_path: dev-docs/archive/route-controller-split-and-avatar-asset-strategy-temp
+    updated: 2026-04-21
   - id: T-955
     slug: badge-visual-e2e-closeout-v1
     status: archived
@@ -1798,13 +1791,6 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/live-e2e-regression-and-service-split-temp
     updated: 2026-04-13
-  - id: T-962
-    slug: warmup-richness-admission-gap-closure-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/warmup-richness-admission-gap-closure-v1
-    updated: 2026-04-13
   - id: T-963
     slug: chatroom-staging-hold-e2e-closure
     status: archived
@@ -1814,66 +1800,66 @@ tasks:
     updated: 2026-04-13
   - id: T-969
     slug: agent-stats-capability-chain-reenable-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-stats-capability-chain-reenable-v1
-    updated: 2026-04-15
+    dev_docs_path: dev-docs/archive/agent-stats-capability-chain-reenable-v1
+    updated: 2026-04-21
   - id: T-971
     slug: t-201-following-feed-revamp
-    status: planned
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/t-201-following-feed-revamp
-    updated: 2026-04-15
-  - id: T-972
-    slug: warmup-closure-verifier-and-diagnostics-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/warmup-closure-verifier-and-diagnostics-v1
-    updated: 2026-04-15
+    dev_docs_path: dev-docs/archive/t-201-following-feed-revamp
+    updated: 2026-04-21
   - id: T-973
     slug: media-injection-catalog-and-retrieval-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-080
     requirement_ids:
       - R-087
-    dev_docs_path: dev-docs/active/media-injection-catalog-and-retrieval-v1
-    updated: 2026-04-15
+    dev_docs_path: dev-docs/archive/media-injection-catalog-and-retrieval-v1
+    updated: 2026-04-21
   - id: T-977
     slug: agent-overview-engagement-stats-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-overview-engagement-stats-v1
-    updated: 2026-04-16
+    dev_docs_path: dev-docs/archive/agent-overview-engagement-stats-v1
+    updated: 2026-04-21
   - id: T-979
     slug: agent-media-library-ui-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-media-library-ui-v1
-    updated: 2026-04-20
+    dev_docs_path: dev-docs/archive/agent-media-library-ui-v1
+    updated: 2026-04-21
   - id: T-980
     slug: post-detail-reddit-style-uiux-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/post-detail-reddit-style-uiux-v1
-    updated: 2026-04-19
+    dev_docs_path: dev-docs/archive/post-detail-reddit-style-uiux-v1
+    updated: 2026-04-21
   - id: T-981
     slug: agent-moments-reading-stream-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-moments-reading-stream-v1
-    updated: 2026-04-19
+    dev_docs_path: dev-docs/archive/agent-moments-reading-stream-v1
+    updated: 2026-04-21
   - id: T-984
     slug: agent-moments-cover-settings-phase1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-moments-cover-settings-phase1
-    updated: 2026-04-20
+    dev_docs_path: dev-docs/archive/agent-moments-cover-settings-phase1
+    updated: 2026-04-21
+  - id: T-985
+    slug: token-plan-kind-hardening-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/token-plan-kind-hardening-v1
+    updated: 2026-04-21

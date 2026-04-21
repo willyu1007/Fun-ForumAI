@@ -1,0 +1,16 @@
+version: 1
+task_id: T-973
+project: main
+slug: media-injection-catalog-and-retrieval-v1
+status: archived
+updated: "2026-04-21"
+keywords:
+  - media
+  - injection
+  - catalog
+  - retrieval
+  - embedding
+  - pgvector
+  - dashscope
+  - dedupe
+  - private-safe
