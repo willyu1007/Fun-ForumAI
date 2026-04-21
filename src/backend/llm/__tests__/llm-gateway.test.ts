@@ -4,7 +4,8 @@ import { CredentialBroker } from '../credential-broker.js'
 import { LLMGateway } from '../llm-gateway.js'
 import { LlmClient } from '../llm-client.js'
 import type { LLMGatewayRequest } from '../gateway-contract.js'
-import type { LlmRegistryBundle } from '../registry-loader.js'
+import { PROMPT_TEMPLATE_REFS } from '../prompt-template-refs.js'
+import { loadLlmRegistryBundle, type LlmRegistryBundle } from '../registry-loader.js'
 import { UsageLedgerWriter } from '../usage-ledger.js'
 
 type GatewayRequestInput = Omit<LLMGatewayRequest, 'visibility'>
@@ -506,6 +507,27 @@ function buildHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): G
     traceId: 'trace-hidden',
     requestedTier: 'premium',
     allowFallbackWithinLine: false,
+    allowCrossFamily: false,
+    ...overrides,
+  }
+}
+
+
+function buildBiographyHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
+  return {
+    intent: 'public_observation_digest',
+    scene: 'background_hidden',
+    modality: 'text',
+    responseMode: 'json_object',
+    agentId: 'agent-1',
+    homeVoiceLineId: 'biography-director-v1',
+    promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyChapterRender,
+    variables: {},
+    promptMessages: [{ role: 'user', content: 'render biography chapter' }],
+    budgetClass: 'hidden_background',
+    traceId: 'trace-biography-hidden',
+    requestedTier: 'premium',
+    allowFallbackWithinLine: true,
     allowCrossFamily: false,
     ...overrides,
   }
@@ -1955,6 +1977,115 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()[0]?.success).toBe(false)
     expect(usageLedger.list()[0]?.error_code).toBe('AuthError')
     expect(usageLedger.list()[1]?.success).toBe(true)
+  })
+
+
+  it('routes biography chapter renders to the biography premium profile with Moonshot primary', async () => {
+    const bundle = loadLlmRegistryBundle()
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: '{"chapter_title":"关系开始定型"}',
+        usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+        model: 'moonshot-v1-128k',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateHiddenArtifact(buildBiographyHiddenJsonRequest({
+      traceId: 'trace-biography-premium',
+      promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyChapterRender,
+      requestedTier: 'premium',
+    }))
+
+    expect(response.renderDecision.profileId).toBe('biography-director-public-observation-premium')
+    expect(response.renderDecision.policyId).toBe('hidden-public_observation_digest-agent-biography-premium')
+    expect(response.renderDecision.providerId).toBe('moonshot-openai')
+    expect(response.renderDecision.modelId).toBe('moonshot-v1-128k')
+  })
+
+  it('routes biography later notes to the biography base profile with Qwen primary', async () => {
+    const bundle = loadLlmRegistryBundle()
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: '{"note_id":"later-note-1","text":"后来再看"}',
+        usage: { prompt_tokens: 10, completion_tokens: 9, total_tokens: 19 },
+        model: 'qwen3.5-plus',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateHiddenArtifact(buildBiographyHiddenJsonRequest({
+      traceId: 'trace-biography-base',
+      promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyLaterNoteRender,
+      requestedTier: 'base',
+      promptMessages: [{ role: 'user', content: 'render biography later note' }],
+    }))
+
+    expect(response.renderDecision.profileId).toBe('biography-director-public-observation-base')
+    expect(response.renderDecision.policyId).toBe('hidden-public_observation_digest-agent-biography-base')
+    expect(response.renderDecision.providerId).toBe('dashscope-openai')
+    expect(response.renderDecision.modelId).toBe('qwen3.5-plus')
+  })
+
+  it('keeps same-line fallback available for biography premium routes', async () => {
+    const bundle = structuredClone(loadLlmRegistryBundle())
+    const premiumProfile = bundle.modelProfiles.profiles.find(
+      (profile) => profile.profile_id === 'biography-director-public-observation-premium',
+    )
+    if (!premiumProfile) {
+      expect.unreachable('Expected biography premium profile in registry bundle')
+    }
+    premiumProfile.candidates = premiumProfile.candidates.filter(
+      (candidate) => candidate.provider_id === 'moonshot-openai',
+    )
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: '{"chapter_title":"fallback"}',
+      usage: { prompt_tokens: 14, completion_tokens: 11, total_tokens: 25 },
+      model: 'qwen3.5-plus',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn((ref: string) => {
+            if (ref.toLowerCase().includes('moonshot')) {
+              throw new Error('Environment secret is missing: MOONSHOT_API_KEY')
+            }
+            return 'dashscope-secret'
+          }),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateHiddenArtifact(buildBiographyHiddenJsonRequest({
+      traceId: 'trace-biography-same-line-fallback',
+      promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyChapterRender,
+      requestedTier: 'premium',
+    }))
+
+    expect(response.renderDecision.profileId).toBe('biography-director-public-observation-base')
+    expect(response.renderDecision.policyId).toBe('hidden-public_observation_digest-agent-biography-base')
+    expect(response.renderDecision.providerId).toBe('dashscope-openai')
+    expect(response.renderDecision.modelId).toBe('qwen3.5-plus')
+    expect(response.renderDecision.fallbackLevel).toBe('same-line')
+    expect(usageLedger.list()).toHaveLength(3)
+    expect(usageLedger.list()[0]?.success).toBe(false)
+    expect(usageLedger.list()[1]?.success).toBe(false)
+    expect(usageLedger.list()[2]?.success).toBe(true)
+    expect(usageLedger.list()[2]?.fallback_history?.[0]?.profileId).toBe(
+      'biography-director-public-observation-premium',
+    )
   })
 
   it('falls back from llm_api_vision to llm_api_default for hidden multimodal routing', async () => {

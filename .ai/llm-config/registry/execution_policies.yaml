@@ -227,6 +227,40 @@ policies:
       allow_callsite_override_fields: []
       allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
+  - policy_id: hidden-public_observation_digest-agent-biography-base
+    lane: hidden_public_observation_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 1
+      max_tokens: 320
+      timeout_ms: 30000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId]
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
+
+  - policy_id: hidden-public_observation_digest-agent-biography-premium
+    lane: hidden_public_observation_digest
+    modality: text
+    response_mode: json_object
+    defaults:
+      temperature: 1
+      max_tokens: 1200
+      timeout_ms: 60000
+      max_retries: 2
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: [executionPolicyId]
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
+
   - policy_id: hidden-private_digest-base
     lane: hidden_private_digest
     modality: text

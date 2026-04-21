@@ -207,6 +207,22 @@ policies:
       - headroom
       - health
 
+  - profile_id: biography-director-public-observation-base
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
+  - profile_id: biography-director-public-observation-premium
+    route_order:
+      - intent_scene_fit
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
   - profile_id: qwen-director-private-digest-base
     route_order:
       - intent_scene_fit

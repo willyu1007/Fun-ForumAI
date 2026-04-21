@@ -26,6 +26,10 @@ function toArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? value as T[] : []
 }
 
+function toTypedObject<T extends object>(value: unknown): T {
+  return toRecord(value) as unknown as T
+}
+
 function toMaterial(row: {
   id: string
   agentId: string
@@ -53,14 +57,14 @@ function toMaterial(row: {
     title: row.title,
     factual_summary: row.factualSummary,
     actors: toArray<BiographyMaterial['actors'][number]>(row.actorsJson),
-    scene: row.sceneJson ? (toRecord(row.sceneJson) as BiographyMaterial['scene']) : undefined,
+    scene: row.sceneJson ? toTypedObject<NonNullable<BiographyMaterial['scene']>>(row.sceneJson) : undefined,
     possible_effects: toArray<BiographyMaterial['possible_effects'][number]>(row.possibleEffectsJson),
     importance_score: row.importanceScore,
     can_be_turning_point: row.canBeTurningPoint,
     can_be_later_note: row.canBeLaterNote,
     biography_hint: row.biographyHint ?? undefined,
     deferred_source: row.deferredSource,
-    raw_ref: toRecord(row.rawRefJson) as BiographyMaterial['raw_ref'],
+    raw_ref: toTypedObject<BiographyMaterial['raw_ref']>(row.rawRefJson),
   }
 }
 
@@ -89,11 +93,11 @@ function toChapter(row: {
     subtitle: row.subtitle ?? null,
     start_at: row.startAt.toISOString(),
     end_at: row.endAt?.toISOString() ?? null,
-    skeleton: toRecord(row.skeletonJson) as AgentBiographyChapter['skeleton'],
+    skeleton: toTypedObject<AgentBiographyChapter['skeleton']>(row.skeletonJson),
     current_revision_id: row.currentRevisionId,
     material_count: row.materialCount,
     chapter_digest: row.chapterDigestJson
-      ? (toRecord(row.chapterDigestJson) as AgentBiographyChapter['chapter_digest'])
+      ? toTypedObject<NonNullable<AgentBiographyChapter['chapter_digest']>>(row.chapterDigestJson)
       : null,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
@@ -126,12 +130,12 @@ function toRevision(row: {
     chapter_id: row.chapterId,
     agent_id: row.agentId,
     revision_no: row.revisionNo,
-    skeleton: toRecord(row.skeletonJson) as BiographyChapterRevision['skeleton'],
-    body: row.bodyJson ? (toRecord(row.bodyJson) as BiographyChapterRevision['body']) : null,
+    skeleton: toTypedObject<BiographyChapterRevision['skeleton']>(row.skeletonJson),
+    body: row.bodyJson ? toTypedObject<NonNullable<BiographyChapterRevision['body']>>(row.bodyJson) : null,
     body_kind: row.bodyKind as BiographyChapterRevision['body_kind'],
     later_notes: toArray<BiographyChapterRevision['later_notes'][number]>(row.laterNotesJson),
     material_digest: row.materialDigestJson
-      ? (toRecord(row.materialDigestJson) as BiographyChapterRevision['material_digest'])
+      ? toTypedObject<NonNullable<BiographyChapterRevision['material_digest']>>(row.materialDigestJson)
       : null,
     writer_config_id: row.writerConfigId,
     model_name: row.modelName,
@@ -141,7 +145,7 @@ function toRevision(row: {
     input_hash: row.inputHash,
     generation_status: row.generationStatus as BiographyChapterRevision['generation_status'],
     factual_audit: row.factualAuditJson
-      ? (toRecord(row.factualAuditJson) as BiographyChapterRevision['factual_audit'])
+      ? toTypedObject<NonNullable<BiographyChapterRevision['factual_audit']>>(row.factualAuditJson)
       : null,
     published_at: row.publishedAt?.toISOString() ?? null,
     created_at: row.createdAt.toISOString(),
@@ -202,7 +206,7 @@ function toCompileState(row: {
     published_body_revision: row.publishedBodyRevision,
     compile_status: row.compileStatus as AgentBiographyCompileState['compile_status'],
     latest_material_digest: row.latestMaterialDigestJson
-      ? (toRecord(row.latestMaterialDigestJson) as AgentBiographyCompileState['latest_material_digest'])
+      ? toTypedObject<NonNullable<AgentBiographyCompileState['latest_material_digest']>>(row.latestMaterialDigestJson)
       : null,
     stale_since: row.staleSince?.toISOString() ?? null,
     last_compiled_at: row.lastCompiledAt?.toISOString() ?? null,
@@ -214,7 +218,7 @@ function toBookMemory(row: {
   agentId: string
   memoryJson: unknown
 }): BiographyBookMemory {
-  return toRecord(row.memoryJson) as BiographyBookMemory
+  return toTypedObject<BiographyBookMemory>(row.memoryJson)
 }
 
 function toToneProfile(row: {
@@ -573,7 +577,7 @@ export class PgAgentBiographyRepository implements AgentBiographyRepository {
     const row = await this.prisma.agentBiographyBookView.findUnique({
       where: { agentId },
     })
-    return row ? (toRecord(row.viewJson) as AgentBiographyBookViewModel) : null
+    return row ? toTypedObject<AgentBiographyBookViewModel>(row.viewJson) : null
   }
 
   async savePublishedBookView(view: AgentBiographyBookViewModel): Promise<AgentBiographyBookViewModel> {
@@ -587,7 +591,7 @@ export class PgAgentBiographyRepository implements AgentBiographyRepository {
         viewJson: toJsonInput(view),
       },
     })
-    return toRecord(row.viewJson) as AgentBiographyBookViewModel
+    return toTypedObject<AgentBiographyBookViewModel>(row.viewJson)
   }
 
   async recordReadTelemetry(event: AgentBiographyReadTelemetryEvent): Promise<void> {

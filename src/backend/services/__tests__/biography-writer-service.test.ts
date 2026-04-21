@@ -414,8 +414,8 @@ describe('BiographyWriterService', () => {
     )
     expect(result.body.turning_point?.text).toContain('这件事慢慢把她推到了')
     expect(result.body.closing_line).not.toContain('。、')
-    expect(result.body.margin_notes).toHaveLength(1)
-    expect(result.body.margin_notes[0]?.text).toContain('白露')
+    expect(result.body.margin_notes ?? []).toHaveLength(1)
+    expect(result.body.margin_notes?.[0]?.text).toContain('白露')
   })
 
   it('renders later-note fallback when llmGateway.isConfigured is false', async () => {

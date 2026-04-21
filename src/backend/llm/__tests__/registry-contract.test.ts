@@ -314,6 +314,56 @@ describe('LLM registry contract', () => {
     }
   })
 
+
+  it('keeps biography routing hidden-only and aligned with the generated routing artifact', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+    const admissionVoiceLines = new Set(bundle.providerAdmission.pools.map((entry) => entry.voice_line_id))
+    const biographyLine = VOICE_LINE_CATALOG['biography-director-v1']
+
+    expect(biographyLine.visible).toBe(false)
+    expect(biographyLine.directorOnly).toBe(true)
+    expect(resolveVoiceLineTierProfileRef('biography-director-v1', 'public_observation_digest', 'premium')).toBe(
+      'biography-director-public-observation-premium',
+    )
+    expect(resolveVoiceLineTierProfileRef('biography-director-v1', 'public_observation_digest', 'base')).toBe(
+      'biography-director-public-observation-base',
+    )
+    expect(
+      GENERATED_VOICE_LINE_ROUTING['biography-director-v1']?.public_observation_digest?.premium,
+    ).toBe('biography-director-public-observation-premium')
+    expect(
+      GENERATED_VOICE_LINE_ROUTING['biography-director-v1']?.public_observation_digest?.base,
+    ).toBe('biography-director-public-observation-base')
+    expect(admissionVoiceLines.has('biography-director-v1')).toBe(false)
+    expect(profilesById.get('biography-director-public-observation-premium')?.policy_id).toBe(
+      'hidden-public_observation_digest-agent-biography-premium',
+    )
+    expect(profilesById.get('biography-director-public-observation-base')?.policy_id).toBe(
+      'hidden-public_observation_digest-agent-biography-base',
+    )
+    expect(
+      profilesById.get('biography-director-public-observation-premium')?.candidates[0],
+    ).toMatchObject({
+      provider_id: 'moonshot-openai',
+      model_id: 'moonshot-v1-128k',
+    })
+    expect(
+      profilesById.get('biography-director-public-observation-base')?.candidates[0],
+    ).toMatchObject({
+      provider_id: 'dashscope-openai',
+      model_id: 'qwen3.5-plus',
+    })
+    expect(
+      profilesById.get('biography-director-public-observation-premium')?.candidates[1],
+    ).toMatchObject({
+      provider_id: 'moonshot-openai',
+      model_id: 'kimi-k2.5',
+    })
+  })
+
   it('falls back to the nearest available tier when a requested tier is not explicitly defined', () => {
     expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'scheduled_post', 'lite')).toBe(
       'qwen-social-scheduled-post-lite',

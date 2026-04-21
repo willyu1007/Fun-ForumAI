@@ -68,6 +68,9 @@ function pickDistinctLine(reference: string, candidates: Array<string | undefine
   return ''
 }
 
+type BiographyBodySection = BiographyChapterBodyV1['body_sections'][number]
+type BiographyMarginNote = NonNullable<BiographyChapterBodyV1['margin_notes']>[number]
+
 function parseJsonObject(content: string): Record<string, unknown> | null {
   try {
     return JSON.parse(content) as Record<string, unknown>
@@ -218,9 +221,9 @@ export function buildDeterministicChapterBody(input: BiographyWriterInput): Biog
 }
 
 function normalizeBody(input: Record<string, unknown>, fallback: BiographyChapterBodyV1): BiographyChapterBodyV1 {
-  const bodySections = Array.isArray(input.body_sections)
+  const bodySections: BiographyBodySection[] = Array.isArray(input.body_sections)
     ? input.body_sections
-        .map((item) => {
+        .map((item): BiographyBodySection | null => {
           if (!item || typeof item !== 'object' || Array.isArray(item)) return null
           const row = item as Record<string, unknown>
           const text = ensureSentence(String(row.text ?? ''))
@@ -231,7 +234,7 @@ function normalizeBody(input: Record<string, unknown>, fallback: BiographyChapte
             visual_anchor: typeof row.visual_anchor === 'string' ? clip(row.visual_anchor, 40) : undefined,
           }
         })
-        .filter((item): item is BiographyChapterBodyV1['body_sections'][number] => item !== null)
+        .filter((item): item is BiographyBodySection => item !== null)
     : fallback.body_sections
 
   const turningPointCandidate = input.turning_point
@@ -242,6 +245,22 @@ function normalizeBody(input: Record<string, unknown>, fallback: BiographyChapte
           text: ensureSentence(String((turningPointCandidate as Record<string, unknown>).text ?? '')),
         }
       : fallback.turning_point
+
+  const marginNotes: BiographyMarginNote[] | undefined = Array.isArray(input.margin_notes)
+    ? input.margin_notes
+        .map((item): BiographyMarginNote | null => {
+          if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+          const row = item as Record<string, unknown>
+          const text = ensureSentence(String(row.text ?? ''))
+          if (!text) return null
+          return {
+            anchor_section_index:
+              typeof row.anchor_section_index === 'number' ? Math.max(0, Math.floor(row.anchor_section_index)) : 0,
+            text,
+          }
+        })
+        .filter((item): item is BiographyMarginNote => item !== null)
+    : fallback.margin_notes
 
   return {
     chapter_title:
@@ -277,20 +296,7 @@ function normalizeBody(input: Record<string, unknown>, fallback: BiographyChapte
       typeof input.trace_text === 'string' && input.trace_text.trim().length > 0
         ? ensureSentence(input.trace_text)
         : fallback.trace_text,
-    margin_notes: Array.isArray(input.margin_notes)
-      ? input.margin_notes
-          .map((item) => {
-            if (!item || typeof item !== 'object' || Array.isArray(item)) return null
-            const row = item as Record<string, unknown>
-            return {
-              anchor_section_index:
-                typeof row.anchor_section_index === 'number' ? Math.max(0, Math.floor(row.anchor_section_index)) : 0,
-              text: ensureSentence(String(row.text ?? '')),
-            }
-          })
-          .filter((item): item is NonNullable<BiographyChapterBodyV1['margin_notes']>[number] =>
-            item !== null && item.text.length > 0)
-      : fallback.margin_notes,
+    margin_notes: marginNotes,
   }
 }
 

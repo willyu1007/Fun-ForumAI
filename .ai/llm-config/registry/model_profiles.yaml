@@ -644,6 +644,53 @@ profiles:
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: hidden-public_observation_digest-base
+  - profile_id: biography-director-public-observation-base
+    voice_line_id: biography-director-v1
+    tier: base
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 100
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 85
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+    fallback: []
+    policy_id: hidden-public_observation_digest-agent-biography-base
+  - profile_id: biography-director-public-observation-premium
+    voice_line_id: biography-director-v1
+    tier: premium
+    intent: public_observation_digest
+    visibility: hidden
+    candidates:
+      - provider_id: moonshot-openai
+        model_id: moonshot-v1-128k
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 85
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
+    fallback:
+      - level: same-line
+        profile_id: biography-director-public-observation-base
+        reason: degrade_within_biography_line
+    policy_id: hidden-public_observation_digest-agent-biography-premium
   - profile_id: qwen-director-private-digest-base
     voice_line_id: qwen-director-v1
     tier: base

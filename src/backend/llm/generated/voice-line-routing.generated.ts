@@ -4,6 +4,12 @@
 import type { VoiceLineRoutingArtifact } from '../voice-line-routing-artifact.js'
 
 export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
+  "biography-director-v1": {
+    "public_observation_digest": {
+      "base": "biography-director-public-observation-base",
+      "premium": "biography-director-public-observation-premium"
+    }
+  },
   "doubao-deep-v1": {
     "chat_reply": {
       "lite": "doubao-deep-chat-reply-lite"

@@ -937,3 +937,135 @@ templates:
 
       渲染控制：
       {{render_context_json}}
+
+  - prompt_template_id: internal-agent-biography-chapter-render
+    version: 1
+    description: Hidden renderer for agent biography chapter bodies with strict JSON output
+    variables_schema:
+      type: object
+      properties:
+        writer_input_json: { type: string }
+        render_contract_json: { type: string }
+      required:
+        - writer_input_json
+        - render_contract_json
+    system_prompt: |
+      你正在把一个 Agent 的编年史章节 skeleton 渲染成“纸书编辑感”的人物传记正文。
+
+      输出必须是 JSON，不能输出解释文字、Markdown 或代码块。
+      JSON 结构：
+      {
+        "chapter_title": "string",
+        "chapter_subtitle": "string | optional",
+        "epigraph": "string | optional",
+        "opening": "string",
+        "body_sections": [
+          { "title": "string | optional", "text": "string", "visual_anchor": "string | optional" }
+        ],
+        "turning_point": { "title": "string", "text": "string" },
+        "afterword": "string",
+        "closing_line": "string",
+        "trace_text": "string",
+        "margin_notes": [
+          { "anchor_section_index": 0, "text": "string" }
+        ]
+      }
+
+      硬约束：
+      - 只能依据输入里的 current_chapter_skeleton 与 current_material_digest 写作
+      - book_memory / previous_chapter_digest 只能提供连续性，不能当成新事实来源
+      - 不要暴露私聊细节、聊天原话、session id、owner 直呼、系统机制、prompt / model / token 等元信息
+      - later note 不要单独写成伪章节
+      - 章节按人物变化切，不按时间轴流水账切
+      - 文风要像编辑过的纸书人物传记，不要写成后台面板或运营总结
+      - 每个 body_section 保持紧凑，避免堆砌修辞
+    user_prompt: |
+      Writer 输入：
+      {{writer_input_json}}
+
+      渲染合同：
+      {{render_contract_json}}
+
+  - prompt_template_id: internal-agent-biography-chapter-render
+    version: 2
+    description: Hidden renderer for agent biography chapter bodies with stricter biography guardrails and controlled section length
+    variables_schema:
+      type: object
+      properties:
+        writer_input_json: { type: string }
+        render_contract_json: { type: string }
+      required:
+        - writer_input_json
+        - render_contract_json
+    system_prompt: |
+      你正在把一个 Agent 的编年史章节 skeleton 渲染成“纸书编辑感”的人物传记正文。
+
+      输出必须是 JSON，不能输出解释文字、Markdown 或代码块。
+      JSON 结构：
+      {
+        "chapter_title": "string",
+        "chapter_subtitle": "string | optional",
+        "epigraph": "string | optional",
+        "opening": "string",
+        "body_sections": [
+          { "title": "string | optional", "text": "string", "visual_anchor": "string | optional" }
+        ],
+        "turning_point": { "title": "string", "text": "string" },
+        "afterword": "string",
+        "closing_line": "string",
+        "trace_text": "string",
+        "margin_notes": [
+          { "anchor_section_index": 0, "text": "string" }
+        ]
+      }
+
+      硬约束：
+      - 只能依据输入里的 current_chapter_skeleton 与 current_material_digest 写作
+      - book_memory / previous_chapter_digest 只能提供连续性，不能当成新事实来源
+      - 不要暴露私聊细节、聊天原话、session id、owner 直呼、系统机制、prompt / model / token 等元信息
+      - later note 不要单独写成伪章节
+      - 章节按人物变化切，不按时间轴流水账切
+      - 文风要像编辑过的纸书人物传记，不要写成后台面板或运营总结
+      - 不要引入输入里不存在的人格标签、抽象设定词或关系身份词，例如 Persona、人设、命运、宿命、秘密、真实的她
+      - 不要把较私密的经历扩写成具体私聊、秘密事实或原始对话
+      - 不要写小说式旁白、舞台说明、设定解说，也不要补写“注定”“唯一”“从不”这类绝对化判断
+      - opening 只能写 1-2 句
+      - body_sections 必须写 2-4 段；每段只能写 2-4 句；每段都要紧扣 skeleton 已经给出的变化，不要另开新设定
+      - afterword 只能写 1-2 句
+      - closing_line 只能写 1 句
+      - margin_notes 最多 1-2 条，只能做纸页边缘的补笔，不要重复正文
+      - turning_point 只能写输入里已有的转折，不要新造“真正原因”或“深层秘密”
+    user_prompt: |
+      Writer 输入：
+      {{writer_input_json}}
+
+      渲染合同：
+      {{render_contract_json}}
+
+  - prompt_template_id: internal-agent-biography-later-note-render
+    version: 1
+    description: Hidden renderer for inline later notes in agent biography chapters
+    variables_schema:
+      type: object
+      properties:
+        later_note_context_json: { type: string }
+      required:
+        - later_note_context_json
+    system_prompt: |
+      你正在为一个已经成章的传记章节补写 inline later note。
+
+      输出必须是 JSON，不能输出解释文字、Markdown 或代码块。
+      JSON 结构：
+      {
+        "note_id": "string",
+        "text": "1-2 句 later note"
+      }
+
+      硬约束：
+      - 只写“后来再看”式补记，不要重写整章
+      - 只能依据输入 note_seed 与 writer_input 提供的信息
+      - 不能暴露私聊细节、原始对话、owner 直呼、系统机制
+      - later note 要保持保守传记化，像纸页边缘的补笔
+    user_prompt: |
+      Later note 上下文：
+      {{later_note_context_json}}

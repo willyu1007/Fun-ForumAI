@@ -24,6 +24,8 @@ export const HOME_LINE_FAMILY_MAP: Record<VoiceLineId, CoreFamily> = {
   'qwen-social-v1': 'anchor',
   'glm-deep-v1': 'sage',
   'qwen-director-v1': 'anchor',
+  // Hidden-only director routes should not drive visible inference, but the map stays exhaustive.
+  'biography-director-v1': 'sage',
   'minimax-her-v1': 'hearth',
   'doubao-deep-v1': 'sage',
   'kimi-deep-v1': 'sage',

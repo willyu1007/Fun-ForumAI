@@ -746,23 +746,23 @@ export class AgentBiographyService {
       .slice()
       .sort((left, right) => Date.parse(left.occurred_at) - Date.parse(right.occurred_at))
 
-    let plannedGroups: BiographyMaterial[][] = []
-    if (existing.length === 0) {
-      plannedGroups = this.partitionMaterials(sortedAsc)
-    } else {
-      const closed = existing.filter((item) => item.status !== 'ACTIVE')
-      const active = existing.find((item) => item.status === 'ACTIVE') ?? existing[existing.length - 1]
-      const relevant = sortedAsc.filter((item) => Date.parse(item.occurred_at) >= Date.parse(active.start_at))
-      const nextGroups = this.partitionMaterials(relevant)
-      plannedGroups = [
-        ...(closed.map((item) =>
-          sortedAsc.filter((material) =>
-            Date.parse(material.occurred_at) >= Date.parse(item.start_at)
-            && Date.parse(material.occurred_at) <= (parseDate(item.end_at) || Number.MAX_SAFE_INTEGER),
-          ))),
-        ...nextGroups,
-      ].filter((group) => group.length > 0)
-    }
+    const plannedGroups =
+      existing.length === 0
+        ? this.partitionMaterials(sortedAsc)
+        : (() => {
+            const closed = existing.filter((item) => item.status !== 'ACTIVE')
+            const active = existing.find((item) => item.status === 'ACTIVE') ?? existing[existing.length - 1]
+            const relevant = sortedAsc.filter((item) => Date.parse(item.occurred_at) >= Date.parse(active.start_at))
+            const nextGroups = this.partitionMaterials(relevant)
+            return [
+              ...(closed.map((item) =>
+                sortedAsc.filter((material) =>
+                  Date.parse(material.occurred_at) >= Date.parse(item.start_at)
+                  && Date.parse(material.occurred_at) <= (parseDate(item.end_at) || Number.MAX_SAFE_INTEGER),
+                ))),
+              ...nextGroups,
+            ].filter((group) => group.length > 0)
+          })()
 
     const nextChapters: AgentBiographyChapter[] = []
     const previousByNumber = new Map(existing.map((item) => [item.chapter_no, item]))
@@ -1104,9 +1104,8 @@ export class AgentBiographyService {
       auditFailureCategory = primaryAuditFailureCategory(rescueAudit) ?? auditFailureCategory
     }
 
-    let publishedBody: BiographyChapterBodyV1 | null = null
-    let generationStatus: BiographyChapterRevision['generation_status'] = 'FAILED'
-    let revisionToPublish: BiographyChapterRevision | null = null
+    let publishedBody: BiographyChapterBodyV1 | null
+    let generationStatus: BiographyChapterRevision['generation_status']
     const previousPublished = (await this.deps.repo.listRevisions(input.chapter.id))
       .slice()
       .reverse()
@@ -1144,7 +1143,7 @@ export class AgentBiographyService {
       published_at: generationStatus === 'PUBLISHED' ? new Date().toISOString() : null,
       created_at: new Date().toISOString(),
     })
-    revisionToPublish = revision.generation_status === 'PUBLISHED' ? revision : previousPublished ?? null
+    const revisionToPublish = revision.generation_status === 'PUBLISHED' ? revision : previousPublished ?? null
 
     await this.deps.repo.recordWriterTelemetry({
       agent_id: input.chapter.agent_id,
@@ -1195,7 +1194,7 @@ export class AgentBiographyService {
       emotional_temperature:
         /乐观|warm|热/u.test(mood) ? 'WARM' : /critical|sharp|挑剔/i.test(mood) ? 'SHARP' : 'COOL',
       rhythm: worldview?.worldview.relations.mutual_effective ? 'BALANCED' : 'SHORT',
-      imagery: worldview?.worldview.public_history.top_chronicle_summaries.length > 1 ? 'MEDIUM' : 'LOW',
+      imagery: (worldview?.worldview.public_history.top_chronicle_summaries?.length ?? 0) > 1 ? 'MEDIUM' : 'LOW',
       humor: worldview?.worldview.projection.banter_style === 'playful' ? 'LIGHT' : 'NONE',
       self_awareness: narrative?.migrationNote ? 'HIGH' : 'MEDIUM',
       metaphor_density: worldview?.worldview.owner_history.private_memory_summaries.length ? 'MEDIUM' : 'LOW',

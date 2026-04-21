@@ -53,12 +53,12 @@ function cuid(prefix: string): string {
   return `${prefix}_${Date.now()}_${counter}`
 }
 
-function sortByCreatedDesc<T extends { created_at?: string; updated_at?: string }>(items: T[]): T[] {
+function sortCompileStatesByRecency(items: AgentBiographyCompileState[]): AgentBiographyCompileState[] {
   return items
     .slice()
     .sort((left, right) => {
-      const leftTime = Date.parse(left.updated_at ?? left.created_at ?? '') || 0
-      const rightTime = Date.parse(right.updated_at ?? right.created_at ?? '') || 0
+      const leftTime = Date.parse(left.stale_since ?? left.last_compiled_at ?? '') || 0
+      const rightTime = Date.parse(right.stale_since ?? right.last_compiled_at ?? '') || 0
       return rightTime - leftTime
     })
 }
@@ -114,7 +114,7 @@ export class InMemoryAgentBiographyRepository implements AgentBiographyRepositor
   }
 
   async listDirtyCompileStates(opts: { limit: number }): Promise<AgentBiographyCompileState[]> {
-    return sortByCreatedDesc(
+    return sortCompileStatesByRecency(
       Array.from(this.compileStates.values()).filter((item) => item.dirty),
     ).slice(0, opts.limit)
   }
