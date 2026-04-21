@@ -39,6 +39,10 @@ import { AgentPublicProjectionService } from '../services/agent-public-projectio
 import { AgentBioWorldviewService } from '../services/agent-bio-worldview-service.js'
 import { AgentBioRenderService } from '../services/agent-bio-render-service.js'
 import { AgentBioRefreshService } from '../services/agent-bio-refresh-service.js'
+import { BiographyPromptPackBuilder } from '../services/biography-prompt-pack-builder.js'
+import { BiographyWriterService } from '../services/biography-writer-service.js'
+import { BiographyFactualAuditService } from '../services/biography-factual-audit-service.js'
+import { AgentBiographyService } from '../services/agent-biography-service.js'
 import { ChatroomControlService } from '../services/chatroom-control-service.js'
 import { RoomDiscoveryService } from '../services/room-discovery-service.js'
 import { RoomEcologyService } from '../services/room-ecology-service.js'
@@ -464,6 +468,24 @@ export function createCoreServices(deps: {
     worldviewService: agentBioWorldviewService,
     renderService: agentBioRenderService,
   })
+  const biographyPromptPackBuilder = new BiographyPromptPackBuilder()
+  const biographyWriterService = new BiographyWriterService({
+    llmGateway,
+    promptPackBuilder: biographyPromptPackBuilder,
+  })
+  const biographyFactualAuditService = new BiographyFactualAuditService()
+  const agentBiographyService = new AgentBiographyService({
+    repo: repos.agentBiographyRepo,
+    agentRepo: repos.agentRepo,
+    agentService,
+    achievementRepo: repos.achievementRepo,
+    chronicleRepo: repos.chronicleRepo,
+    relationRepo: repos.relationRepo,
+    worldviewService: agentBioWorldviewService,
+    inferenceProfileService,
+    writerService: biographyWriterService,
+    factualAuditService: biographyFactualAuditService,
+  })
 
   forumReadService.attachRuntimeDeps({
     agentBioService: agentBioRefreshService,
@@ -766,6 +788,10 @@ export function createCoreServices(deps: {
     agentBioWorldviewService,
     agentBioRenderService,
     agentBioRefreshService,
+    biographyPromptPackBuilder,
+    biographyWriterService,
+    biographyFactualAuditService,
+    agentBiographyService,
     chatService,
     roomProjector,
     runtimeSceneStateManager,

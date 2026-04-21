@@ -38,6 +38,7 @@ import { InMemoryRoomRepository } from '../repos/room-repository.js'
 import { InMemoryRoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import { InMemoryAgentPublicProjectionRepository } from '../repos/agent-public-projection-repository.js'
 import { InMemoryAgentBioRepository } from '../repos/agent-bio-repository.js'
+import { InMemoryAgentBiographyRepository } from '../repos/agent-biography-repository.js'
 import { InMemoryMessageRepository } from '../repos/message-repository.js'
 import { InMemoryPublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import { InMemoryStatsRepository } from '../repos/stats-repository.js'
@@ -103,6 +104,7 @@ import type { RoomRepository } from '../repos/room-repository.js'
 import type { RoomWatchabilityRepository } from '../repos/room-watchability-repository.js'
 import type { AgentPublicProjectionRepository } from '../repos/agent-public-projection-repository.js'
 import type { AgentBioRepository } from '../repos/agent-bio-repository.js'
+import type { AgentBiographyRepository } from '../repos/agent-biography-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
 import type { PublicSceneWriteRepository } from '../repos/public-scene-write-repository.js'
 import type { RelationRepository } from '../repos/relation-repository.js'
@@ -174,6 +176,7 @@ export interface Repositories {
   roomWatchabilityRepo: RoomWatchabilityRepository
   agentPublicProjectionRepo: AgentPublicProjectionRepository
   agentBioRepo: AgentBioRepository
+  agentBiographyRepo: AgentBiographyRepository
   messageRepo: MessageRepository
   relationRepo: RelationRepository | null
   userRepo: UserRepository | null
@@ -252,6 +255,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgRoomWatchabilityRepository } = await import('../repos/pg/pg-room-watchability-repository.js')
     const { PgAgentPublicProjectionRepository } = await import('../repos/pg/pg-agent-public-projection-repository.js')
     const { PgAgentBioRepository } = await import('../repos/pg/pg-agent-bio-repository.js')
+    const { PgAgentBiographyRepository } = await import('../repos/pg/pg-agent-biography-repository.js')
     const { PgMessageRepository } = await import('../repos/pg/pg-message-repository.js')
     const { PgUserRepository } = await import('../repos/pg/pg-user-repository.js')
     const { PgRelationRepository } = await import('../repos/pg/pg-relation-repository.js')
@@ -321,6 +325,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const rwr = new PgRoomWatchabilityRepository(prisma)
     const appr = new PgAgentPublicProjectionRepository(prisma)
     const abr = new PgAgentBioRepository(prisma)
+    const agentBiographyRepo = new PgAgentBiographyRepository(prisma)
     const mr = new PgMessageRepository(prisma)
     const relr = new PgRelationRepository(prisma)
     const sr = new PgStatsRepository(prisma)
@@ -351,7 +356,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     })
 
     hydratables.push(
-      pr, publicStageThreadRepo, publicStageTurnRepo, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, abr, mr,
+      pr, publicStageThreadRepo, publicStageTurnRepo, vr, hvr, hfr, pmr, ar, acr, amr, aslr, cmr, cdr, er, arr, forumSceneMetadataRepo, runtimeSceneStateRepo, rr, rwr, appr, abr, agentBiographyRepo, mr,
       sr, achar, chr, ppr, stageTier, roleAssignmentRepo, psr,
       warmupGovernanceRepo,
     )
@@ -378,7 +383,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         agentRepo: ar, agentConfigRepo: acr, agentCommunityMembershipRepo: amr,
         agentSignalLogRepo: aslr, communityRepo: cmr, communityCultureDigestRepo: cdr,
         eventRepo: er, agentRunRepo: arr, forumSceneMetadataRepo, runtimeSceneStateRepo, publicSceneWriteRepo,
-        roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, agentBioRepo: abr, messageRepo: mr,
+        roomRepo: rr, roomWatchabilityRepo: rwr, agentPublicProjectionRepo: appr, agentBioRepo: abr, agentBiographyRepo, messageRepo: mr,
         relationRepo: relr, userRepo: new PgUserRepository(prisma), inviteCodeRepo: new PgInviteCodeRepository(prisma),
         statsRepo: sr, personaStateRepo: psr, achievementRepo: achar, chronicleRepo: chr,
         pprSnapshotRepo: ppr, stageTierSnapshotRepo: stageTier,
@@ -463,6 +468,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       roomWatchabilityRepo: new InMemoryRoomWatchabilityRepository(),
       agentPublicProjectionRepo: new InMemoryAgentPublicProjectionRepository(),
       agentBioRepo: new InMemoryAgentBioRepository(),
+      agentBiographyRepo: new InMemoryAgentBiographyRepository(),
       messageRepo: new InMemoryMessageRepository(),
       relationRepo: null,
       userRepo,

@@ -27,6 +27,7 @@ import {
   homeProgrammingSnapshotScheduler,
   communityConfigScheduler,
   agentBioRefreshScheduler,
+  agentBiographyCompileScheduler,
   roleAssignmentExpiryScheduler,
   directorHistoryMaintenanceScheduler,
   guidanceRecallScheduler,
@@ -582,6 +583,10 @@ export function startBackgroundServices(): void {
     agentBioRefreshScheduler.start()
   }
 
+  if (agentBiographyCompileScheduler) {
+    agentBiographyCompileScheduler.start()
+  }
+
   if (config.launch.capabilities.roleAssignmentV1 && roleAssignmentExpiryScheduler) {
     roleAssignmentExpiryScheduler.start()
   }
@@ -626,6 +631,7 @@ export function stopBackgroundServices(): void {
   homeProgrammingSnapshotScheduler?.stop()
   communityConfigScheduler?.stop()
   agentBioRefreshScheduler?.stop()
+  agentBiographyCompileScheduler?.stop()
   roleAssignmentExpiryScheduler?.stop()
   directorHistoryMaintenanceScheduler?.stop()
   guidanceRecallScheduler?.stop()

@@ -37,6 +37,7 @@ export interface InfraResult {
     cultureDigest: LeaderElector
     homeProgrammingSnapshotScheduler: LeaderElector
     agentBioRefreshScheduler: LeaderElector
+    agentBiographyCompileScheduler: LeaderElector
     communityConfigScheduler: LeaderElector
     roleAssignmentExpiryScheduler: LeaderElector
     directorHistoryMaintenanceScheduler: LeaderElector
@@ -193,6 +194,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       cultureDigest: createLeaderElector('culture-digest'),
       homeProgrammingSnapshotScheduler: createLeaderElector('home-programming-snapshot-scheduler'),
       agentBioRefreshScheduler: createLeaderElector('agent-bio-refresh-scheduler'),
+      agentBiographyCompileScheduler: createLeaderElector('agent-biography-compile-scheduler'),
       communityConfigScheduler: createLeaderElector('community-config-scheduler'),
       roleAssignmentExpiryScheduler: createLeaderElector('role-assignment-expiry-scheduler'),
       directorHistoryMaintenanceScheduler: createLeaderElector('director-history-maintenance-scheduler'),

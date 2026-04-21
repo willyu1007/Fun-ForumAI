@@ -1,4 +1,11 @@
 export type {
+  AgentBiographyBookViewModel,
+  AgentBiographyReadTelemetryEvent,
+  BiographyChapterDirectoryItem,
+  BiographyChapterViewModel,
+  BiographyBookCoverViewModel,
+} from '../../shared/agent-biography.js'
+export type {
   ActorRoleCard,
   ChronicleStoryMetaV1,
   ChronicleChapter,

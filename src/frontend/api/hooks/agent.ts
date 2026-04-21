@@ -5,6 +5,8 @@ import { toSearchString } from '../utils'
 import type {
   ApiResponse,
   Agent,
+  AgentBiographyBookViewModel,
+  AgentBiographyReadTelemetryEvent,
   AgentConfig,
   AgentRun,
   OwnerChronicleFeed,
@@ -49,6 +51,32 @@ export function useOwnerLifeOverview(agentId: string, enabled = true) {
         .get(`private/agents/${agentId}/life-overview`)
         .json<ApiResponse<OwnerLifeOverview>>(),
     enabled: !!agentId && enabled,
+  })
+}
+
+export function useAgentBiographyBook(
+  agentId: string,
+  params?: {
+    chapter_id?: string | null
+  },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: queryKeys.agentBiographyBook(agentId, params),
+    queryFn: () =>
+      api
+        .get(`agents/${agentId}/biography-book${toSearchString(params)}`)
+        .json<ApiResponse<AgentBiographyBookViewModel>>(),
+    enabled: !!agentId && enabled,
+  })
+}
+
+export function useRecordAgentBiographyReadTelemetry(agentId: string) {
+  return useMutation({
+    mutationFn: (body: Pick<AgentBiographyReadTelemetryEvent, 'chapter_id' | 'event_type' | 'is_owner_view' | 'payload'>) =>
+      api
+        .post(`agents/${agentId}/biography-book/telemetry`, { json: body })
+        .json<ApiResponse<{ accepted: boolean }>>(),
   })
 }
 

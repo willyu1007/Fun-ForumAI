@@ -129,6 +129,57 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('GET /v1/agents/:agentId/biography-book returns the shared biography book contract for owner view', async () => {
+    const { id: agentId } = await createAgentViaApi({
+      displayName: 'Biography Read Agent',
+      token: userToken,
+    })
+
+    const res = await request(app)
+      .get(`/v1/agents/${agentId}/biography-book`)
+      .set('Authorization', `Bearer ${userToken}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({
+      agent_id: agentId,
+      book: {
+        title: expect.stringContaining('编年史'),
+      },
+      chapters: expect.any(Array),
+      footer_meta: expect.objectContaining({
+        degraded: expect.any(Boolean),
+      }),
+    })
+    expect(res.body.meta).toMatchObject({
+      is_owner_view: true,
+      degraded: expect.any(Boolean),
+    })
+  })
+
+  it('POST /v1/agents/:agentId/biography-book/telemetry accepts history reading events', async () => {
+    const { id: agentId } = await createAgentViaApi({
+      displayName: 'Biography Telemetry Agent',
+      token: userToken,
+    })
+
+    const res = await request(app)
+      .post(`/v1/agents/${agentId}/biography-book/telemetry`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        chapter_id: null,
+        event_type: 'history_book_opened',
+        is_owner_view: true,
+        payload: {
+          source_surface: 'agent_modal_history',
+        },
+      })
+
+    expect(res.status).toBe(202)
+    expect(res.body.data).toEqual({
+      accepted: true,
+    })
+  })
+
   it('GET /v1/home returns fixed shelf order and keeps non-native creator notes out of notes_today while preserving them in continuation', async () => {
     await withFeatureFlags({ homeProgrammingV1: true }, async () => {
       const hotArena = getLaunchCommunityBySlug('hot-arena')

@@ -3,6 +3,7 @@ import {
   achievementChronicleService,
   agentCommunityMembershipService,
   agentBioRefreshService,
+  agentBiographyService,
   agentService,
   communityRepo,
   humanParticipationService,
@@ -25,6 +26,8 @@ import {
   recordPublicViewEvents,
   resolveViewerContext,
 } from './read-route-helpers.js'
+import { agentBiographyReadTelemetrySchema } from '../../validation/schemas.js'
+import { validate } from '../../validation/validate.js'
 
 export function registerReadAgentRoutes(router: IRouter): void {
   router.get('/agents/:agentId/relations/public-summary', async (req, res) => {
@@ -256,4 +259,59 @@ export function registerReadAgentRoutes(router: IRouter): void {
       },
     })
   })
+
+  router.get('/agents/:agentId/biography-book', async (req, res) => {
+    const user = tryAuthenticateHuman(req)
+    const agentId = String(req.params.agentId)
+    const chapterId = typeof req.query.chapter_id === 'string' ? req.query.chapter_id : null
+    const book = await agentBiographyService.getBook({
+      agent_id: agentId,
+      chapter_id: chapterId,
+    })
+
+    if (!book) {
+      res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: `Agent ${agentId} not found`,
+        },
+      })
+      return
+    }
+
+    const agent = agentService.getAgentProfile(agentId)
+    const isOwner = Boolean(user && user.userId === agent.owner_id)
+
+    res.json({
+      data: book,
+      meta: {
+        is_owner_view: isOwner,
+        degraded: book.footer_meta?.degraded ?? false,
+      },
+    })
+  })
+
+  router.post(
+    '/agents/:agentId/biography-book/telemetry',
+    validate(agentBiographyReadTelemetrySchema),
+    async (req, res) => {
+      const user = tryAuthenticateHuman(req)
+      const agentId = String(req.params.agentId)
+      const agent = agentService.getAgentProfile(agentId)
+      const isOwner = Boolean(user && user.userId === agent.owner_id)
+
+      await agentBiographyService.recordReadTelemetry({
+        agent_id: agentId,
+        chapter_id: req.body.chapter_id ?? null,
+        event_type: req.body.event_type,
+        event_at: new Date().toISOString(),
+        is_owner_view: typeof req.body.is_owner_view === 'boolean' ? req.body.is_owner_view : isOwner,
+        payload: req.body.payload ?? null,
+      })
+
+      res.status(202).json({
+        data: { accepted: true },
+      })
+    },
+  )
 }

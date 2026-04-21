@@ -83,6 +83,20 @@ export async function createNurtureEngines(deps: {
     achievements: LeaderElector
     cultureDigest: LeaderElector
   }
+  onRelationStateChanged?: (input: {
+    from_agent_id: string
+    to_agent_id: string
+    previous_state: import('../repos/types.js').RelationState | null
+    next_state: import('../repos/types.js').RelationState
+    relation_id: string
+  }) => Promise<void> | void
+  onMemoryDigestCompleted?: (input: {
+    agent_id: string
+    session_id: string
+    memory_id: string
+    sentiment: string | null
+    importance_score: number
+  }) => Promise<void> | void
 }): Promise<NurtureResult> {
   const {
     repos, llmGateway, promptEngine, sseHub,
@@ -171,6 +185,7 @@ export async function createNurtureEngines(deps: {
             next_state: input.next_state,
           },
         })
+        await deps.onRelationStateChanged?.(input)
       })
     }
 
@@ -234,6 +249,7 @@ export async function createNurtureEngines(deps: {
         sentiment: input.sentiment ?? 'neutral',
       })
       await incubationOrchestrator.onPrivateDigestCompleted(input)
+      await deps.onMemoryDigestCompleted?.(input)
     })
 
     const publicObservationDigestService = new PublicObservationDigestService({

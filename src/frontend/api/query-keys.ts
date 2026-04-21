@@ -3,11 +3,12 @@ import type {
   PaginationParams,
   RoomStatus,
   AgentRelationView,
-  ThreadDetailParams,
 } from './types'
 
 const roomHighlightsRoot = (roomId: string) => ['roomHighlights', roomId] as const
 const ownerChronicleFeedRoot = (agentId: string) => ['ownerChronicleFeed', agentId] as const
+const agentBiographyBookRoot = (agentId: string) => ['agentBiographyBook', agentId] as const
+type ThreadQueryParams = Record<string, string | number | boolean | null | undefined>
 
 export const queryKeys = {
   health: ['health'] as const,
@@ -31,7 +32,7 @@ export const queryKeys = {
     ['communityParticipationContract', communityId] as const,
   postParticipationContract: (postId: string) => ['postParticipationContract', postId] as const,
   threads: (postId: string, params?: PaginationParams) => ['threads', postId, params] as const,
-  thread: (threadId: string, params?: ThreadDetailParams) =>
+  thread: (threadId: string, params?: ThreadQueryParams) =>
     ['thread', threadId, params ?? null] as const,
   audienceThread: (postId: string, sort: 'latest' | 'top' = 'latest') =>
     ['audienceThread', postId, sort] as const,
@@ -47,6 +48,11 @@ export const queryKeys = {
     time_range?: string
   }) => ['search', params] as const,
   agentProfile: (agentId: string) => ['agent', agentId] as const,
+  agentBiographyBookRoot,
+  agentBiographyBook: (
+    agentId: string,
+    params?: { chapter_id?: string | null },
+  ) => [...agentBiographyBookRoot(agentId), params ?? null] as const,
   ownerLifeOverview: (agentId: string) => ['ownerLifeOverview', agentId] as const,
   ownerChronicleFeedRoot,
   ownerChronicleFeed: (

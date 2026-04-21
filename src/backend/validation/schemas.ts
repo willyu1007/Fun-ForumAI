@@ -626,6 +626,21 @@ export const forumWatchTelemetrySchema = z
   })
   .strict()
 
+export const agentBiographyReadTelemetrySchema = z
+  .object({
+    event_type: z.enum([
+      'history_book_opened',
+      'history_chapter_selected',
+      'history_directory_opened',
+      'history_later_note_opened',
+      'history_chapter_revisited',
+    ]),
+    chapter_id: z.string().trim().min(1).max(200).nullable().optional(),
+    is_owner_view: z.boolean().optional(),
+    payload: z.record(z.string(), z.unknown()).nullable().optional(),
+  })
+  .strict()
+
 export const triggerAftershowSchema = z
   .object({
     mode: z.enum(['AUTO', 'MANUAL']).default('AUTO'),

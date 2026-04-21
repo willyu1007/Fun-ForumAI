@@ -14,6 +14,7 @@ import { MediaImportJobWorker } from '../runtime/media-import-job-worker.js'
 import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
+import { AgentBiographyCompileScheduler } from '../runtime/agent-biography-compile-scheduler.js'
 import { getRuntimeBuildInfo } from '../lib/runtime-build-info.js'
 import { personaObservability } from '../runtime/persona-observability.js'
 import { NotFoundError } from '../lib/errors.js'
@@ -297,6 +298,9 @@ llm.mediaObservabilityService.attachGovernanceDeps({
 })
 
 core.achievementChronicleService.setRecordHook((input) => {
+  core.agentBiographyService.markDirty(input.agent_id, `chronicle:${input.type.toLowerCase()}`).catch((error) => {
+    console.error('[Container] biography dirty mark failed after chronicle record:', error)
+  })
   if (input.visibility !== 'PUBLIC') {
     return core.agentBioRefreshService
       .refresh(input.agent_id, {
@@ -317,6 +321,9 @@ core.achievementChronicleService.setRecordHook((input) => {
 })
 
 core.agentService.setConfigUpdatedHook((input) => {
+  core.agentBiographyService.markDirty(input.agent_id, 'identity_config').catch((error) => {
+    console.error('[Container] biography dirty mark failed after config update:', error)
+  })
   const beforePins = extractOwnerStylePins(input.before_config)
   const afterPins = extractOwnerStylePins(input.after_config)
   if (JSON.stringify(beforePins) !== JSON.stringify(afterPins)) {
@@ -408,6 +415,10 @@ const agentBioRefreshScheduler = new AgentBioRefreshScheduler({
   service: core.agentBioRefreshService,
   leaderElector: infra.leaderElectors.agentBioRefreshScheduler,
 })
+const agentBiographyCompileScheduler = new AgentBiographyCompileScheduler({
+  service: core.agentBiographyService,
+  leaderElector: infra.leaderElectors.agentBiographyCompileScheduler,
+})
 
 const directorHistoryMaintenanceScheduler = config.db.usePrisma
   ? new DirectorHistoryMaintenanceScheduler({
@@ -477,6 +488,13 @@ const nurture = await createNurtureEngines({
     achievements: infra.leaderElectors.achievements,
     cultureDigest: infra.leaderElectors.cultureDigest,
   },
+  onRelationStateChanged: (input) =>
+    core.agentBiographyService.markDirty(
+      input.from_agent_id,
+      `relation:${input.next_state.toLowerCase()}`,
+    ).then(() => undefined),
+  onMemoryDigestCompleted: (input) =>
+    core.agentBiographyService.markDirty(input.agent_id, 'private_digest').then(() => undefined),
 })
 
 core.agentBioWorldviewService.attachRuntimeDeps({
@@ -556,6 +574,9 @@ core.publicAgentRelationSummaryService.attachRuntimeDeps({
 ownerLifeOverviewService.attachRuntimeDeps({
   memoryService: nurture.privateChannelServices?.memoryService ?? null,
   relationService: nurture.relationService,
+})
+core.agentBiographyService.attachRuntimeDeps({
+  ownerLifeOverviewService,
 })
 
 export const agentDeletionService = new AgentDeletionService({
@@ -799,6 +820,10 @@ export const agentPublicProjectionService = core.agentPublicProjectionService
 export const agentBioWorldviewService = core.agentBioWorldviewService
 export const agentBioRenderService = core.agentBioRenderService
 export const agentBioRefreshService = core.agentBioRefreshService
+export const biographyPromptPackBuilder = core.biographyPromptPackBuilder
+export const biographyWriterService = core.biographyWriterService
+export const biographyFactualAuditService = core.biographyFactualAuditService
+export const agentBiographyService = core.agentBiographyService
 export const chatService = core.chatService
 export const roomDiscoveryService = core.roomDiscoveryService
 export const roomEcologyService = core.roomEcologyService
@@ -845,6 +870,7 @@ export {
   homeProgrammingSnapshotScheduler,
   communityConfigScheduler,
   agentBioRefreshScheduler,
+  agentBiographyCompileScheduler,
   roleAssignmentExpiryScheduler,
   directorHistoryMaintenanceScheduler,
   mediaGenerationWorker,
