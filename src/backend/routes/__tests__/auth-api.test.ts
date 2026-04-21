@@ -64,8 +64,8 @@ describe('Auth API', () => {
       .get('/v1/auth/me')
       .set('Cookie', cookies)
 
-    expect(meRes.status).toBe(401)
-    expect(meRes.body.error.code).toBe('UNAUTHORIZED')
+    expect(meRes.status).toBe(200)
+    expect(meRes.body.data.user).toBeNull()
   })
 
   it('hides the dev identity switch outside local dev hosts', async () => {

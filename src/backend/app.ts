@@ -48,8 +48,8 @@ import { agentDashboardRouter } from './routes/agent-dashboard-api.js'
 import { createAuthRouter } from './routes/auth-api.js'
 import {
   createDevToken,
-  requireHumanAuth,
   registerDevTokenSync,
+  tryAuthenticateHuman,
   type AuthenticatedUser,
 } from './middleware/human-auth.js'
 import { privateChannelRouter } from './routes/private-channel-api.js'
@@ -256,10 +256,11 @@ if (authService) {
   registerDevTokenSync(null)
   // Minimal dev-only auth/me so DevAuthToolbar works without DB
   const devAuthRouter = express.Router()
-  devAuthRouter.get('/auth/me', requireHumanAuth, (req, res) => {
+  devAuthRouter.get('/auth/me', (req, res) => {
+    const user = tryAuthenticateHuman(req)
     res.json({
       data: {
-        user: buildDevAuthProfile(req.user!),
+        user: user ? buildDevAuthProfile(user) : null,
       },
     })
   })

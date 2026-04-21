@@ -17,7 +17,7 @@ import {
   smsVerifySchema,
   updateProfileSchema,
 } from '../validation/auth-schemas.js'
-import { requireHumanAuth } from '../middleware/human-auth.js'
+import { requireHumanAuth, tryAuthenticateHuman } from '../middleware/human-auth.js'
 import type { AuthService } from '../services/auth-service.js'
 import { config } from '../lib/config.js'
 import { getTrustedClientIp } from '../lib/request-client-ip.js'
@@ -126,30 +126,36 @@ export function createAuthRouter(authService: AuthService): Router {
     res.json({ data: { message: '已退出登录' } })
   })
 
-  router.get('/auth/me', requireHumanAuth, async (req, res, next) => {
+  router.get('/auth/me', async (req, res, next) => {
     try {
-      if (req.user!._devToken && req.user!.email) {
+      const user = tryAuthenticateHuman(req)
+      if (!user) {
+        res.json({ data: { user: null } })
+        return
+      }
+
+      if (user._devToken && user.email) {
         await authService.ensureDevIdentity({
-          userId: req.user!.userId,
-          email: req.user!.email,
-          role: req.user!.role,
+          userId: user.userId,
+          email: user.email,
+          role: user.role,
         })
       }
 
-      const profile = await authService.getProfile(req.user!.userId)
+      const profile = await authService.getProfile(user.userId)
       if (!profile) {
-        if (req.user!._devToken) {
+        if (user._devToken) {
           res.json({
             data: {
               user: {
-                id: req.user!.userId,
-                email: req.user!.email,
-                phone: req.user!.phone ?? null,
-                displayName: req.user!.role === 'admin' ? '开发管理员' : '开发用户',
+                id: user.userId,
+                email: user.email,
+                phone: user.phone ?? null,
+                displayName: user.role === 'admin' ? '开发管理员' : '开发用户',
                 avatarUrl: null,
                 birthDate: null,
-                planTier: req.user!.role === 'admin' ? 'ADMIN' : 'FREE',
-                role: req.user!.role,
+                planTier: user.role === 'admin' ? 'ADMIN' : 'FREE',
+                role: user.role,
               },
             },
           })

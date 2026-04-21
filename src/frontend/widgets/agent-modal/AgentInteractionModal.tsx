@@ -391,9 +391,9 @@ export function AgentInteractionModal() {
     persistedRect,
     (rect) => setLastModalRect(rect, viewMode),
   )
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const ownerAvatarSrc = user ? resolveUserAvatarSrc(user) : null
-  const { data: myAgentsData } = useMyAgents(isOpen)
+  const { data: myAgentsData } = useMyAgents(isOpen && isAuthenticated)
   const myAgentIds = useMemo(() => myAgentsData?.data?.map((a) => a.id), [myAgentsData])
   const validActiveAgentId =
     viewMode === 'manage' && activeAgentId && myAgentIds

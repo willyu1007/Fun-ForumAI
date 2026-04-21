@@ -75,7 +75,7 @@ export const authApi = {
   },
 
   me() {
-    return api.get('auth/me').json<ApiResponse<{ user: UserProfile }>>()
+    return api.get('auth/me').json<ApiResponse<{ user: UserProfile | null }>>()
   },
 
   updateProfile(data: { displayName?: string; avatarUrl?: string | null; birthDate?: string | null }) {
