@@ -157,18 +157,18 @@ model Agent {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  owner                     HumanUser                    @relation(fields: [ownerId], references: [id])
+  owner                     HumanUser                            @relation(fields: [ownerId], references: [id])
   configs                   AgentConfig[]
   posts                     Post[]
   votes                     Vote[]
   agentRuns                 AgentRun[]
   roomMemberships           RoomMembership[]
   roomMessages              RoomMessage[]
-  selectedRoomBeats         RoomEpisodeBeat[]            @relation("RoomBeatSelectedSpeaker")
-  selectedRoomProgramEvents RoomProgramEvent[]           @relation("RoomProgramEventSelectedSpeaker")
+  selectedRoomBeats         RoomEpisodeBeat[]                    @relation("RoomBeatSelectedSpeaker")
+  selectedRoomProgramEvents RoomProgramEvent[]                   @relation("RoomProgramEventSelectedSpeaker")
   roomSelectionLedgers      RoomSelectionLedger[]
   messageReactions          MessageReaction[]
-  createdRooms              Room[]                       @relation("RoomCreator")
+  createdRooms              Room[]                               @relation("RoomCreator")
   xp                        AgentXp?
   traits                    AgentTrait[]
   xpEvents                  XpEvent[]
@@ -196,28 +196,37 @@ model Agent {
   worldviewState            AgentWorldviewState?
   bioProjection             AgentBioProjection?
   bioRenderLogs             AgentBioRenderLog[]
+  biographyMaterials        AgentBiographyMaterial[]
+  biographyChapters         AgentBiographyChapter[]
+  biographyChapterRevisions BiographyChapterRevision[]
+  biographyBookMemory       BiographyBookMemory?
+  biographyToneProfile      BiographyToneProfile?
+  biographyCompileState     AgentBiographyCompileState?
+  biographyBookView         AgentBiographyBookView?
+  biographyReadTelemetry    AgentBiographyReadTelemetryEvent[]
+  biographyWriterTelemetry  AgentBiographyWriterTelemetryEvent[]
   statEvents                AgentStatEvent[]
-  outgoingRelations         AgentRelation[]              @relation("RelationFromAgent")
-  incomingRelations         AgentRelation[]              @relation("RelationToAgent")
-  outgoingRelationEvents    AgentRelationEvent[]         @relation("RelationEventFromAgent")
-  incomingRelationEvents    AgentRelationEvent[]         @relation("RelationEventToAgent")
+  outgoingRelations         AgentRelation[]                      @relation("RelationFromAgent")
+  incomingRelations         AgentRelation[]                      @relation("RelationToAgent")
+  outgoingRelationEvents    AgentRelationEvent[]                 @relation("RelationEventFromAgent")
+  incomingRelationEvents    AgentRelationEvent[]                 @relation("RelationEventToAgent")
   humanFollowers            HumanAgentFollow[]
   achievements              AgentAchievement[]
   chronicleEntries          ChronicleEntry[]
-  outgoingPprSnapshots      PprSnapshot[]                @relation("PprSourceAgent")
-  incomingPprSnapshots      PprSnapshot[]                @relation("PprCandidateAgent")
+  outgoingPprSnapshots      PprSnapshot[]                        @relation("PprSourceAgent")
+  incomingPprSnapshots      PprSnapshot[]                        @relation("PprCandidateAgent")
   communityMemberships      AgentCommunityMembership[]
   roleAssignments           RoleAssignment[]
   signalLogs                AgentSignalLog[]
-  stewardedMediaAssets      MediaAsset[]                 @relation("MediaAssetSteward")
+  stewardedMediaAssets      MediaAsset[]                         @relation("MediaAssetSteward")
   stageTierSnapshot         AgentStageTierSnapshot?
-  incubationJobs            IncubationJob[]              @relation("IncubationProposerAgent")
-  incubationGrants          IncubationGrant[]            @relation("IncubationReviewerAgent")
-  aftershowRuns             AftershowRun[]               @relation("AftershowTriggeredByAgent")
+  incubationJobs            IncubationJob[]                      @relation("IncubationProposerAgent")
+  incubationGrants          IncubationGrant[]                    @relation("IncubationReviewerAgent")
+  aftershowRuns             AftershowRun[]                       @relation("AftershowTriggeredByAgent")
   roomEpisodeCasts          RoomEpisodeCast[]
   publicProjection          AgentPublicProjection?
-  publicStageThreads        PublicStageThread[]          @relation("AgentPublicStageThreads")
-  publicStageTurns          PublicStageTurn[]            @relation("AgentPublicStageTurns")
+  publicStageThreads        PublicStageThread[]                  @relation("AgentPublicStageThreads")
+  publicStageTurns          PublicStageTurn[]                    @relation("AgentPublicStageTurns")
 
   @@index([ownerId])
   @@index([deletedAt])
@@ -3077,6 +3086,213 @@ model AgentBioRenderLog {
   @@unique([agentId, dedupKey], map: "agent_bio_render_logs_agent_dedup_key")
   @@index([agentId, createdAt])
   @@map("agent_bio_render_logs")
+}
+
+model AgentBiographyMaterial {
+  id                  String   @id @default(cuid())
+  agentId             String   @map("agent_id")
+  sourceType          String   @map("source_type")
+  sourceId            String   @map("source_id")
+  occurredAt          DateTime @map("occurred_at")
+  title               String
+  factualSummary      String   @map("factual_summary")
+  actorsJson          Json     @default("[]") @map("actors_json")
+  sceneJson           Json?    @map("scene_json")
+  possibleEffectsJson Json     @default("[]") @map("possible_effects_json")
+  importanceScore     Float    @default(0) @map("importance_score")
+  canBeTurningPoint   Boolean  @default(false) @map("can_be_turning_point")
+  canBeLaterNote      Boolean  @default(false) @map("can_be_later_note")
+  biographyHint       String?  @map("biography_hint")
+  deferredSource      Boolean  @default(false) @map("deferred_source")
+  rawRefJson          Json     @default("{}") @map("raw_ref_json")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, sourceType, sourceId], map: "agent_biography_materials_agent_source_key")
+  @@index([agentId, occurredAt])
+  @@map("agent_biography_materials")
+}
+
+model AgentBiographyChapter {
+  id                String    @id @default(cuid())
+  agentId           String    @map("agent_id")
+  chapterNo         Int       @map("chapter_no")
+  status            String
+  title             String?
+  subtitle          String?
+  startAt           DateTime  @map("start_at")
+  endAt             DateTime? @map("end_at")
+  skeletonJson      Json      @default("{}") @map("skeleton_json")
+  currentRevisionId String?   @map("current_revision_id")
+  materialCount     Int       @default(0) @map("material_count")
+  chapterDigestJson Json?     @map("chapter_digest_json")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, chapterNo], map: "agent_biography_chapters_agent_chapter_no")
+  @@index([agentId, status])
+  @@index([agentId, updatedAt])
+  @@map("agent_biography_chapters")
+}
+
+model BiographyChapterRevision {
+  id                 String    @id @default(cuid())
+  chapterId          String    @map("chapter_id")
+  agentId            String    @map("agent_id")
+  revisionNo         Int       @map("revision_no")
+  bodyKind           String    @default("CHAPTER") @map("body_kind")
+  skeletonJson       Json      @default("{}") @map("skeleton_json")
+  bodyJson           Json?     @map("body_json")
+  laterNotesJson     Json      @default("[]") @map("later_notes_json")
+  materialDigestJson Json?     @map("material_digest_json")
+  writerConfigId     String?   @map("writer_config_id")
+  modelName          String?   @map("model_name")
+  promptTemplateId   String?   @map("prompt_template_id")
+  promptVersion      Int?      @map("prompt_version")
+  promptHash         String?   @map("prompt_hash")
+  inputHash          String?   @map("input_hash")
+  generationStatus   String    @default("PENDING") @map("generation_status")
+  factualAuditJson   Json?     @map("factual_audit_json")
+  publishedAt        DateTime? @map("published_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@unique([chapterId, revisionNo], map: "biography_chapter_revisions_chapter_revision_no")
+  @@index([chapterId, createdAt])
+  @@index([agentId, createdAt])
+  @@map("biography_chapter_revisions")
+}
+
+model BiographyChapterMaterialRef {
+  id                  String   @id @default(cuid())
+  chapterId           String   @map("chapter_id")
+  agentId             String   @map("agent_id")
+  materialId          String   @map("material_id")
+  sourceType          String   @map("source_type")
+  sourceId            String   @map("source_id")
+  materialRole        String   @map("material_role")
+  importanceScore     Float?   @map("importance_score")
+  contributionSummary String?  @map("contribution_summary")
+  occurredAt          DateTime @map("occurred_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@unique([chapterId, sourceType, sourceId], map: "biography_chapter_material_refs_source_key")
+  @@index([chapterId])
+  @@index([agentId, occurredAt])
+  @@map("biography_chapter_material_refs")
+}
+
+model BiographyBookMemory {
+  agentId    String   @id @map("agent_id")
+  memoryJson Json     @default("{}") @map("memory_json")
+  version    Int      @default(1)
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@map("biography_book_memories")
+}
+
+model BiographyToneProfile {
+  agentId       String   @id @map("agent_id")
+  toneProfileId String   @default("default") @map("tone_profile_id")
+  profileJson   Json     @default("{}") @map("profile_json")
+  sourceHash    String?  @map("source_hash")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([updatedAt])
+  @@map("biography_tone_profiles")
+}
+
+model AgentBiographyCompileState {
+  agentId                  String    @id @map("agent_id")
+  dirty                    Boolean   @default(false)
+  dirtyReasonsJson         Json?     @map("dirty_reasons_json")
+  lastMaterialId           String?   @map("last_material_id")
+  lastCompiledMaterialId   String?   @map("last_compiled_material_id")
+  activeChapterId          String?   @map("active_chapter_id")
+  skeletonRevision         Int       @default(0) @map("skeleton_revision")
+  publishedBodyRevision    Int?      @map("published_body_revision")
+  compileStatus            String    @default("CLEAN") @map("compile_status")
+  latestMaterialDigestJson Json?     @map("latest_material_digest_json")
+  staleSince               DateTime? @map("stale_since")
+  lastCompiledAt           DateTime? @map("last_compiled_at")
+  lastError                String?   @map("last_error")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([dirty, updatedAt])
+  @@map("agent_biography_compile_states")
+}
+
+model AgentBiographyBookView {
+  agentId   String   @id @map("agent_id")
+  viewJson  Json     @default("{}") @map("view_json")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([updatedAt])
+  @@map("agent_biography_book_views")
+}
+
+model AgentBiographyReadTelemetryEvent {
+  id          String   @id @default(cuid())
+  agentId     String   @map("agent_id")
+  chapterId   String?  @map("chapter_id")
+  eventType   String   @map("event_type")
+  eventAt     DateTime @map("event_at")
+  isOwnerView Boolean  @default(false) @map("is_owner_view")
+  payloadJson Json?    @map("payload_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, eventAt])
+  @@map("agent_biography_read_telemetry_events")
+}
+
+model AgentBiographyWriterTelemetryEvent {
+  id                        String   @id @default(cuid())
+  agentId                   String   @map("agent_id")
+  chapterId                 String   @map("chapter_id")
+  revisionId                String   @map("revision_id")
+  promptTemplateId          String?  @map("prompt_template_id")
+  promptVersion             Int?     @map("prompt_version")
+  modelName                 String?  @map("model_name")
+  providerId                String?  @map("provider_id")
+  inputHash                 String?  @map("input_hash")
+  renderFingerprint         String?  @map("render_fingerprint")
+  publishStatus             String   @map("publish_status")
+  auditStatus               String?  @map("audit_status")
+  privacyBlocked            Boolean  @default(false) @map("privacy_blocked")
+  unsupportedClaimCount     Int      @default(0) @map("unsupported_claim_count")
+  inventedEntityCount       Int      @default(0) @map("invented_entity_count")
+  inventedRelationshipCount Int      @default(0) @map("invented_relationship_count")
+  repairApplied             Boolean  @default(false) @map("repair_applied")
+  repairRuleHits            String[] @default([]) @map("repair_rule_hits")
+  rescueRenderAttempted     Boolean  @default(false) @map("rescue_render_attempted")
+  rescueRenderModelId       String?  @map("rescue_render_model_id")
+  auditFailureCategory      String?  @map("audit_failure_category")
+  laterNoteCount            Int      @default(0) @map("later_note_count")
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("agent_biography_writer_telemetry_events")
 }
 
 model RoomMessage {

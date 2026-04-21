@@ -14,6 +14,8 @@ export const PROMPT_TEMPLATE_REFS = {
   agentCreateRoom: { id: 'agent-create-room', version: 1 },
   internalPublicObservationDigest: { id: 'internal-public-observation-digest', version: 1 },
   internalAgentSocialBioRender: { id: 'internal-agent-social-bio-render', version: 2 },
+  internalAgentBiographyChapterRender: { id: 'internal-agent-biography-chapter-render', version: 2 },
+  internalAgentBiographyLaterNoteRender: { id: 'internal-agent-biography-later-note-render', version: 1 },
   internalPrivateChatSummaryExtract: { id: 'internal-private-chat-summary-extract', version: 1 },
   internalPrivateChatSummaryDistill: { id: 'internal-private-chat-summary-distill', version: 1 },
   internalPrivateChatIdentityFinalize: { id: 'internal-private-chat-identity-finalize', version: 1 },
