@@ -4,7 +4,8 @@ metadata:
   name: forum-app-config
   namespace: funforum
 data:
-  NODE_ENV: development
+  NODE_ENV: production
+  APP_ENV: staging
   NODE_OPTIONS: "--max-old-space-size=1536"
   CORS_ORIGINS: http://localhost:3000,http://localhost:3001
   MEDIA_LOCAL_DIR: /var/media-assets

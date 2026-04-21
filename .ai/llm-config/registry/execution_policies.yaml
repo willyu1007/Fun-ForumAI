@@ -97,9 +97,9 @@ policies:
     response_mode: text
     defaults:
       temperature: 0.78
-      max_tokens: 640
-      timeout_ms: 12000
-      max_retries: 1
+      max_tokens: 256
+      timeout_ms: 30000
+      max_retries: 0
     fallback:
       allow_fallback_within_line: true
       allow_cross_family: false

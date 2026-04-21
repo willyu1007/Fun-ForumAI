@@ -38,7 +38,7 @@ function buildEntry(
     credential_id: 'dashscope-primary',
     merge_trace: {
       hardCaps: { modality: 'text', responseMode: 'text', maxTokens: 8192, timeoutMs: 30000, maxRetries: 2 },
-      policyDefaults: { modality: 'text', responseMode: 'text', temperature: 0.78, maxTokens: 640, timeoutMs: 12000, maxRetries: 1 },
+      policyDefaults: { modality: 'text', responseMode: 'text', temperature: 0.78, maxTokens: 256, timeoutMs: 30000, maxRetries: 0 },
       callsiteOverrides: {},
       debugOverrides: {},
       appliedOverrideFields: [],

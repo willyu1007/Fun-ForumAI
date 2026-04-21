@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-17T11:42:45Z`
+Generated at (UTC): `2026-04-21T03:13:17Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -169,6 +169,7 @@ Generated at (UTC): `2026-04-17T11:42:45Z`
 | `SSE_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for SSE broadcast backend. |
 | `SSE_REDIS_URL` | `active` | `string` | no | yes | `` | `sse_redis_url` | `staging,prod` | `` | `` | `` | Redis connection URL for SSE cluster broadcast backend. |
 | `TENCENT_HUNYUAN_API_KEY` | `active` | `string` | yes | yes | `` | `tencent_hunyuan_api_key` | `staging,prod` | `` | `` | `` | Primary Tencent Hunyuan provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
+| `TOKEN_PLAN_OPENAI_API_KEY` | `active` | `string` | no | yes | `` | `token_plan_openai_api_key` | `staging` | `` | `` | `` | Experimental staging-only Token Plan provider API key for the dedicated OpenAI-compatible fallback pool. |
 | `VITE_API_URL` | `active` | `string` | no | no | `/v1` | `` | `*` | `` | `` | `` | Frontend API base URL (Vite env variable, only used in build). |
 | `VITE_FF_AFTERSHOW_V1` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for loading post aftershow summaries and highlight callouts. |
 | `VITE_FF_AGENT_STATS_UI` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Frontend toggle for exposing Agent Stats tab in owner profile. |

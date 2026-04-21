@@ -53,8 +53,8 @@ policies:
   - profile_id: qwen-social-private-reply-base
     route_order:
       - intent_scene_fit
-      - voice_line_tier
       - profile_candidates
+      - voice_line_tier
       - region_policy
       - headroom
       - health

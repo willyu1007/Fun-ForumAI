@@ -512,7 +512,6 @@ function buildHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): G
   }
 }
 
-
 function buildBiographyHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'public_observation_digest',
@@ -1979,6 +1978,118 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()[1]?.success).toBe(true)
   })
 
+  it('falls back from token plan to dashscope within the same qwen visible profile when token plan auth fails', async () => {
+    const bundle = loadLlmRegistryBundle()
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockImplementation(async (input) => {
+      if (input.provider.api_key === 'token-plan-bad-secret') {
+        throw new Error('LLM API 401: {"error":{"message":"invalid api key"}}')
+      }
+
+      return {
+        content: 'dashscope fallback ok',
+        usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+        model: input.model,
+        finish_reason: 'stop',
+      }
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn((ref: string) => {
+            if (ref === 'secret-ref:token_plan_openai_api_key') {
+              return 'token-plan-bad-secret'
+            }
+            if (
+              ref === 'secret-ref:dashscope_api_key' ||
+              ref === 'secret-ref:dashscope_api_key_secondary'
+            ) {
+              return 'dashscope-good-secret'
+            }
+            return 'secret'
+          }),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      intent: 'forum_reply',
+      scene: 'forum_thread',
+      promptRef: { id: 'agent-forum-thread-reply', version: 2 },
+      promptMessages: [{ role: 'user', content: 'reply' }],
+      allowFallbackWithinLine: false,
+      traceId: 'trace-token-plan-auth-fallback',
+    }))
+
+    expect(response.renderDecision.profileId).toBe('qwen-social-forum-reply-base')
+    expect(response.renderDecision.providerId).toBe('dashscope-openai')
+    expect(response.renderDecision.modelId).toBe('qwen3.5-plus')
+    expect(response.renderDecision.credentialId).toBe('dashscope-primary')
+    expect(chatSpy).toHaveBeenCalledTimes(2)
+    expect(chatSpy.mock.calls[0]?.[0]).toMatchObject({
+      model: 'qwen3.6-plus',
+      provider: { api_key: 'token-plan-bad-secret' },
+    })
+    expect(chatSpy.mock.calls[1]?.[0]).toMatchObject({
+      model: 'qwen3.5-plus',
+      provider: { api_key: 'dashscope-good-secret' },
+    })
+    expect(usageLedger.list()).toHaveLength(2)
+    expect(usageLedger.list()[0]?.success).toBe(false)
+    expect(usageLedger.list()[0]?.error_code).toBe('AuthError')
+    expect(usageLedger.list()[1]?.success).toBe(true)
+  })
+
+  it('keeps dashscope flash first within qwen private-reply realtime routing before balanced fallback', async () => {
+    const bundle = loadLlmRegistryBundle()
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'dashscope flash primary ok',
+      usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+      model: 'qwen3.5-flash',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn(() => 'dashscope-good-secret'),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      intent: 'private_reply',
+      scene: 'private_chat',
+      promptRef: { id: 'agent-private-chat-reply', version: 3 },
+      promptMessages: [{ role: 'user', content: 'reply' }],
+      traceId: 'trace-token-plan-private-reply-auth-fallback',
+    }))
+
+    expect(response.renderDecision.profileId).toBe('qwen-social-private-reply-base')
+    expect(response.renderDecision.providerId).toBe('dashscope-openai')
+    expect(response.renderDecision.modelId).toBe('qwen3.5-flash')
+    expect(chatSpy).toHaveBeenCalledTimes(1)
+    expect(chatSpy.mock.calls[0]?.[0]).toMatchObject({
+      model: 'qwen3.5-flash',
+      provider: { api_key: 'dashscope-good-secret' },
+    })
+    expect(usageLedger.list()).toHaveLength(1)
+    expect(usageLedger.list()[0]?.success).toBe(true)
+  })
 
   it('routes biography chapter renders to the biography premium profile with Moonshot primary', async () => {
     const bundle = loadLlmRegistryBundle()

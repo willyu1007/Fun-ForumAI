@@ -248,7 +248,7 @@ describe('LLM registry contract', () => {
       'qwen-social-identity-write-premium',
     )
     expect(profilesById.get('qwen-social-identity-write-base')?.candidates[0]?.model_id).toBe(
-      'qwen3.5-plus',
+      'qwen3.6-plus',
     )
     expect(profilesById.get('qwen-social-identity-write-base')?.policy_id).toBe(
       'identity_write-identity_write-base',
@@ -256,7 +256,7 @@ describe('LLM registry contract', () => {
     expect(
       profilesById
         .get('qwen-social-identity-write-premium')
-        ?.candidates.some((candidate) => candidate.model_id === 'qwen3.5-plus'),
+        ?.candidates.some((candidate) => candidate.model_id === 'qwen3.6-plus'),
     ).toBe(true)
     expect(
       profilesById
@@ -278,8 +278,26 @@ describe('LLM registry contract', () => {
       'qwen3.5-flash',
     )
     expect(profilesById.get('qwen-social-forum-reply-base')?.candidates[0]?.model_id).toBe(
-      'qwen3.5-plus',
+      'qwen3.6-plus',
     )
+  })
+
+  it('keeps qwen private-reply realtime routing flash-first with balanced dashscope fallback', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+
+    const candidateKeys =
+      profilesById.get('qwen-social-private-reply-base')?.candidates.map(
+        (candidate) => `${candidate.provider_id}/${candidate.model_id}`,
+      ) ?? []
+
+    expect(candidateKeys.slice(0, 3)).toEqual([
+      'dashscope-openai/qwen3.5-flash',
+      'dashscope-openai/qwen3.5-plus',
+      'ark-openai/doubao-seed-2-0-lite-260215',
+    ])
   })
 
   it('keeps qwen hidden digest profiles multi-homed for saturation resilience', () => {
@@ -298,11 +316,12 @@ describe('LLM registry contract', () => {
       ) ?? []
 
       expect(profile?.candidates[0]).toMatchObject({
-        provider_id: 'dashscope-openai',
-        model_id: 'qwen3.5-plus',
+        provider_id: 'token-plan-openai',
+        model_id: 'qwen3.6-plus',
       })
       expect(candidateKeys).toEqual(
         expect.arrayContaining([
+          'token-plan-openai/qwen3.6-plus',
           'dashscope-openai/qwen3.5-plus',
           'ark-openai/doubao-seed-2-0-lite-260215',
           'dashscope-openai/qwen3.5-flash',
@@ -313,7 +332,6 @@ describe('LLM registry contract', () => {
       ).toBe(true)
     }
   })
-
 
   it('keeps biography routing hidden-only and aligned with the generated routing artifact', () => {
     const bundle = loadLlmRegistryBundle()

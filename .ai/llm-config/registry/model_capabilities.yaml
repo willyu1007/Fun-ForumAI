@@ -6,6 +6,16 @@
 
 version: 1
 capabilities:
+  - provider_id: token-plan-openai
+    model_id: qwen3.6-plus
+    input_window_tokens: 1000000
+    max_output_tokens: 32768
+    recommended_operating_input_tokens: 262144
+    modalities:
+      - text
+    response_modes:
+      - text
+      - json_object
   - provider_id: dashscope-openai
     model_id: qwen3.5-plus
     input_window_tokens: 1000000

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveDashscopeSecretData } from '../k8s-secret-resolution.mjs'
+import {
+  resolveDashscopeSecretData,
+  resolveEnvBackedSecretValue,
+} from '../k8s-secret-resolution.mjs'
 
 describe('resolveDashscopeSecretData', () => {
   it('uses the configured primary env name instead of hardcoding DASHSCOPE_API_KEY', () => {
@@ -51,5 +54,35 @@ describe('resolveDashscopeSecretData', () => {
       dashscopeApiKey: 'existing-primary',
       dashscopeSecondaryApiKey: 'existing-secondary',
     })
+  })
+})
+
+describe('resolveEnvBackedSecretValue', () => {
+  it('prefers the explicit env override when present', () => {
+    const result = resolveEnvBackedSecretValue({
+      existingSecretData: {
+        TOKEN_PLAN_OPENAI_API_KEY: 'existing-token-plan',
+      },
+      envKey: 'ALT_TOKEN_PLAN_KEY',
+      secretKey: 'TOKEN_PLAN_OPENAI_API_KEY',
+      env: {
+        ALT_TOKEN_PLAN_KEY: 'fresh-token-plan',
+      },
+    })
+
+    expect(result).toBe('fresh-token-plan')
+  })
+
+  it('reuses the existing secret value when no env override is present', () => {
+    const result = resolveEnvBackedSecretValue({
+      existingSecretData: {
+        TOKEN_PLAN_OPENAI_API_KEY: 'existing-token-plan',
+      },
+      envKey: 'ALT_TOKEN_PLAN_KEY',
+      secretKey: 'TOKEN_PLAN_OPENAI_API_KEY',
+      env: {},
+    })
+
+    expect(result).toBe('existing-token-plan')
   })
 })

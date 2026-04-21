@@ -14,7 +14,10 @@ import {
   stopChildProcess,
 } from './k8s-smoke-utils.mjs'
 import { registerChildProcessCleanup } from './lib/k8s-process-cleanup.mjs'
-import { resolveDashscopeSecretData } from './lib/k8s-secret-resolution.mjs'
+import {
+  resolveDashscopeSecretData,
+  resolveEnvBackedSecretValue,
+} from './lib/k8s-secret-resolution.mjs'
 import {
   loadFrontendBuildProfile,
   toDockerBuildArgs,
@@ -23,6 +26,9 @@ import { validateLaunchImageProof } from './ci/check-image-launch-proof.mjs'
 
 const LEGACY_BACKEND_FLAG_PREFIX = ['FF', ''].join('_')
 const RUNTIME_ENV_PIN_KEYS = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
+const LOCAL_KIND_ADMIN_EMAIL = 'codex-admin+kind@local.test'
+const LOCAL_KIND_ADMIN_PASSWORD = 'CodexKind#2026'
+const LOCAL_KIND_ADMIN_DISPLAY_NAME = 'Codex Kind Admin'
 
 function usage(exitCode = 0) {
   console.log(`
@@ -39,6 +45,7 @@ Options:
   --overlay <path>                Kustomize overlay path (default: ops/deploy/k8s/overlays/local-kind)
   --secret-name <name>            Secret resource name (default: forum-app-secret)
   --dashscope-api-key-env <name>  Environment variable for the primary DashScope API key (default: DASHSCOPE_API_KEY)
+  --token-plan-api-key-env <name> Environment variable for the Token Plan API key (default: TOKEN_PLAN_OPENAI_API_KEY)
   --media-generation-api-key-env <name>
                                    Environment variable for the image generation API key (default: MEDIA_GENERATION_API_KEY)
   --frontend-build-profile <id>   Frontend build profile to bake into the image (default: launch, use "none" to skip)
@@ -64,6 +71,7 @@ Options:
 
 Examples:
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs
+  DASHSCOPE_API_KEY=*** TOKEN_PLAN_OPENAI_API_KEY=*** node scripts/k8s-local-staging.mjs
   DASHSCOPE_API_KEY=*** MEDIA_GENERATION_API_KEY=*** node scripts/k8s-local-staging.mjs
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --create-kind-if-missing
   DASHSCOPE_API_KEY=*** node scripts/k8s-local-staging.mjs --skip-db-migrate
@@ -79,10 +87,6 @@ function asInt(value, fallback, label) {
     throw new Error(`${label} must be a positive number`)
   }
   return parsed
-}
-
-function devToken(userId, email, role = 'user') {
-  return Buffer.from(JSON.stringify({ userId, email, role })).toString('base64url')
 }
 
 function decodeSecretData(data) {
@@ -622,6 +626,75 @@ async function fetchRuntimeFeatures(baseUrl, adminToken) {
   return res.json?.data
 }
 
+async function bootstrapLocalAdmin({
+  context,
+  namespace,
+  postgresLocalPort,
+  postgresServiceName = 'postgres',
+  postgresServicePort = 5432,
+  databaseName = 'llm_forum',
+}) {
+  const forwardResult = await startServicePortForwardWithFallback({
+    context,
+    namespace,
+    serviceName: postgresServiceName,
+    preferredLocalPort: Number(postgresLocalPort),
+    servicePort: Number(postgresServicePort),
+  })
+  const forward = forwardResult.child
+  try {
+    if (forwardResult.fellBackFromRequestedPort) {
+      console.warn(
+        `[staging] WARN: postgres local port ${postgresLocalPort} was unavailable, using ${forwardResult.localPort} instead`,
+      )
+    }
+    const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${forwardResult.localPort}/${databaseName}`
+    await runCommandCapture(
+      'node',
+      [
+        'scripts/bootstrap-admin-account.mjs',
+        '--email',
+        LOCAL_KIND_ADMIN_EMAIL,
+        '--password',
+        LOCAL_KIND_ADMIN_PASSWORD,
+        '--display-name',
+        LOCAL_KIND_ADMIN_DISPLAY_NAME,
+      ],
+      {
+        env: {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+          AUTH_BOOTSTRAP_ADMIN_EMAILS: LOCAL_KIND_ADMIN_EMAIL,
+        },
+      },
+    )
+  } finally {
+    await stopChildProcess(forward)
+  }
+}
+
+async function loginAdmin(baseUrl) {
+  const res = await requestJson(`${baseUrl}/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: LOCAL_KIND_ADMIN_EMAIL,
+      password: LOCAL_KIND_ADMIN_PASSWORD,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(`POST /v1/auth/login failed: ${res.status} ${res.text}`)
+  }
+  const token = res.json?.data?.token
+  if (typeof token !== 'string' || token.length === 0) {
+    throw new Error('POST /v1/auth/login succeeded but did not return a token')
+  }
+  return token
+}
+
 async function fetchFrontendBuildProof(baseUrl) {
   const res = await requestJson(`${baseUrl}/frontend-build-capabilities.json`, {
     headers: {
@@ -646,6 +719,26 @@ async function seedDevData(baseUrl, profile) {
     throw new Error(`POST /v1/dev/seed failed: ${res.status} ${res.text}`)
   }
   return res.json?.data
+}
+
+async function maybeSeedDevData(baseUrl, profile, runtimeFeatures) {
+  if (!profile) return null
+  try {
+    return await seedDevData(baseUrl, profile)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const nodeEnv = runtimeFeatures?.runtime?.node_env
+    if (/POST \/v1\/dev\/seed failed: 404\b/.test(message)) {
+      if (nodeEnv && nodeEnv !== 'production') {
+        throw error
+      }
+      console.warn(
+        '[staging] WARN: /v1/dev/seed is unavailable in production-like local-kind mode; skipping seed.',
+      )
+      return null
+    }
+    throw error
+  }
 }
 
 async function loadLocalRuntimeBuildInfo() {
@@ -729,6 +822,7 @@ async function main() {
     overlay: 'ops/deploy/k8s/overlays/local-kind',
     secretName: 'forum-app-secret',
     dashscopeApiKeyEnv: 'DASHSCOPE_API_KEY',
+    tokenPlanApiKeyEnv: 'TOKEN_PLAN_OPENAI_API_KEY',
     mediaGenerationApiKeyEnv: 'MEDIA_GENERATION_API_KEY',
     frontendBuildProfile: 'launch',
     imageTag: 'fun-forum-api:dev',
@@ -803,6 +897,12 @@ async function main() {
   const { dashscopeApiKey, dashscopeSecondaryApiKey } = resolveDashscopeSecretData({
     existingSecretData,
     dashscopeApiKeyEnv: args.dashscopeApiKeyEnv,
+    env: process.env,
+  })
+  const tokenPlanApiKey = resolveEnvBackedSecretValue({
+    existingSecretData,
+    envKey: args.tokenPlanApiKeyEnv,
+    secretKey: 'TOKEN_PLAN_OPENAI_API_KEY',
     env: process.env,
   })
   const mediaGenerationApiKey =
@@ -890,6 +990,7 @@ async function main() {
       'local-dev-service-auth-secret',
     DASHSCOPE_API_KEY: dashscopeApiKey,
     DASHSCOPE_API_KEY_SECONDARY: dashscopeSecondaryApiKey,
+    TOKEN_PLAN_OPENAI_API_KEY: tokenPlanApiKey,
     ZAI_API_KEY: readEnvOverride('ZAI_API_KEY') ?? existingSecretData.ZAI_API_KEY ?? '',
     ZAI_API_KEY_SECONDARY:
       readEnvOverride('ZAI_API_KEY_SECONDARY')
@@ -967,7 +1068,6 @@ async function main() {
   )
 
   const localBuildInfo = await loadLocalRuntimeBuildInfo()
-  const adminToken = devToken('admin-dev', 'admin-dev@local.test', 'admin')
   let backendForward = null
   try {
     const backendPods = await listRunningPods({
@@ -996,6 +1096,12 @@ async function main() {
 
     const baseUrl = `http://127.0.0.1:${backendLocalPort}`
     await waitForBackend(baseUrl)
+    await bootstrapLocalAdmin({
+      context: args.k8sContext,
+      namespace: args.k8sNamespace,
+      postgresLocalPort: Number(args.postgresLocalPort),
+    })
+    const adminToken = await loginAdmin(baseUrl)
     const runtimeFeatures = await fetchRuntimeFeatures(baseUrl, adminToken)
     validateRuntimeFeatures(runtimeFeatures, localBuildInfo)
     if (frontendBuildProfile) {
@@ -1007,9 +1113,11 @@ async function main() {
     }
     let seedSummary = null
     if (!args.skipSeed && seedProfile) {
-      seedSummary = await seedDevData(baseUrl, seedProfile)
+      seedSummary = await maybeSeedDevData(baseUrl, seedProfile, runtimeFeatures)
       if ((seedSummary?.counts?.communities ?? 0) < 1 || (seedSummary?.counts?.agents ?? 0) < 1) {
-        throw new Error(`Seed profile ${seedProfile} did not create usable entities`)
+        if (seedSummary) {
+          throw new Error(`Seed profile ${seedProfile} did not create usable entities`)
+        }
       }
     }
     console.log(

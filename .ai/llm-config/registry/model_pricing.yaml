@@ -5,6 +5,10 @@
 
 version: 1
 pricing:
+  - provider_id: token-plan-openai
+    model_id: qwen3.6-plus
+    prompt_per_1k_cny: 0.002
+    completion_per_1k_cny: 0.012
   - provider_id: dashscope-openai
     model_id: qwen3.5-plus
     prompt_per_1k_cny: 0.0008

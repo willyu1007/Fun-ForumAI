@@ -3,6 +3,17 @@ function readEnvString(env, key) {
   return typeof value === 'string' ? value : ''
 }
 
+export function resolveEnvBackedSecretValue({
+  existingSecretData,
+  envKey,
+  secretKey,
+  env = process.env,
+  fallback = '',
+}) {
+  const explicitValue = readEnvString(env, String(envKey))
+  return explicitValue || existingSecretData[String(secretKey)] || fallback
+}
+
 export function resolveDashscopeSecretData({
   existingSecretData,
   dashscopeApiKeyEnv = 'DASHSCOPE_API_KEY',

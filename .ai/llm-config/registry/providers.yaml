@@ -24,6 +24,24 @@ providers:
       timeout_ms: 30000
       max_retries: 2
 
+  - provider_id: token-plan-openai
+    display_name: Aliyun Token Plan OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
+    routing:
+      regions:
+        - cn-beijing
+      default_region: cn-beijing
+    capabilities:
+      chat: true
+      json_mode: true
+    defaults:
+      timeout_ms: 60000
+      max_retries: 1
+
   - provider_id: zai-openai
     display_name: ZAI OpenAI-Compatible
     gateway_kind: openai_compatible

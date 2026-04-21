@@ -50,6 +50,13 @@ profiles:
     intent: forum_reply
     visibility: visible
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -101,6 +108,13 @@ profiles:
     intent: scheduled_post
     visibility: visible
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -132,10 +146,17 @@ profiles:
     policy_id: visible-private_reply-realtime
     candidates:
       - provider_id: dashscope-openai
+        model_id: qwen3.5-flash
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 110
+        quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 100
+        weight: 94
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
       - provider_id: ark-openai
@@ -145,13 +166,6 @@ profiles:
         weight: 82
         quality_class: fast
         adapter_id: openai-chat-completions-v1
-      - provider_id: dashscope-openai
-        model_id: qwen3.5-flash
-        region: cn-beijing
-        endpoint_id: dashscope-cn-beijing
-        weight: 70
-        quality_class: fast
-        adapter_id: openai-chat-completions-v1
     fallback: []
   - profile_id: qwen-social-proactive-opening-base
     voice_line_id: qwen-social-v1
@@ -159,6 +173,13 @@ profiles:
     intent: proactive_opening
     visibility: visible
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -191,6 +212,13 @@ profiles:
     intent: proactive_opening
     visibility: visible
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -223,6 +251,13 @@ profiles:
     intent: identity_write
     visibility: identity_write
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -252,6 +287,13 @@ profiles:
     intent: identity_write
     visibility: identity_write
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -281,6 +323,13 @@ profiles:
     intent: public_observation_digest
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -310,6 +359,13 @@ profiles:
     intent: private_digest
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -621,6 +677,13 @@ profiles:
     intent: public_observation_digest
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -697,6 +760,13 @@ profiles:
     intent: private_digest
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -726,6 +796,13 @@ profiles:
     intent: private_digest
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -777,6 +854,13 @@ profiles:
     intent: director_plan
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing
@@ -809,6 +893,13 @@ profiles:
     intent: director_plan
     visibility: hidden
     candidates:
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        region: cn-beijing
+        endpoint_id: token-plan-cn-beijing
+        weight: 108
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         region: cn-beijing

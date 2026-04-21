@@ -18,6 +18,10 @@ pools:
         model_id: qwen3.5-flash
         admission: admitted
         note: active fast visible slot
+      - provider_id: token-plan-openai
+        model_id: qwen3.6-plus
+        admission: admitted
+        note: experimental Token Plan balanced slot admitted for fallback prepend
       - provider_id: dashscope-openai
         model_id: qwen3.5-plus
         admission: admitted
