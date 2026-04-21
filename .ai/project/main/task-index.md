@@ -207,4 +207,6 @@ Project: `main`
 | T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
 | T-984 agent-moments-cover-settings-phase1 | archived | F-000 | dev-docs/archive/agent-moments-cover-settings-phase1 |
 | T-985 token-plan-kind-hardening-v1 | archived | F-000 | dev-docs/archive/token-plan-kind-hardening-v1 |
+| T-986 kickoff-step3-live-run-human-loop | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-human-loop |
+| T-987 forum-director-plan-enrichment-v1 | archived | F-000 | dev-docs/archive/forum-director-plan-enrichment-v1 |
 <!-- AUTO-GENERATED:END task-index -->

@@ -1863,3 +1863,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/token-plan-kind-hardening-v1
     updated: 2026-04-21
+  - id: T-986
+    slug: kickoff-step3-live-run-human-loop
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-step3-live-run-human-loop
+    updated: 2026-04-21
+  - id: T-987
+    slug: forum-director-plan-enrichment-v1
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/forum-director-plan-enrichment-v1
+    updated: 2026-04-21

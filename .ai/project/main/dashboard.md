@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 197 (planned: 1, in-progress: 4, blocked: 0, done: 0, archived: 192)
+- Tasks: 199 (planned: 1, in-progress: 5, blocked: 0, done: 0, archived: 193)
 
 ## Recent tasks
 
@@ -30,8 +30,8 @@ Project: `main`
 | T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
 | T-984 agent-moments-cover-settings-phase1 | archived | F-000 | dev-docs/archive/agent-moments-cover-settings-phase1 |
 | T-985 token-plan-kind-hardening-v1 | archived | F-000 | dev-docs/archive/token-plan-kind-hardening-v1 |
+| T-986 kickoff-step3-live-run-human-loop | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-human-loop |
+| T-987 forum-director-plan-enrichment-v1 | archived | F-000 | dev-docs/archive/forum-director-plan-enrichment-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-156 staging-public-forum-warmup-governance-v1 | archived | F-000 | dev-docs/archive/staging-public-forum-warmup-governance-v1 |
-| T-157 warm-start-candidate-review-promote-v1 | archived | F-000 | dev-docs/archive/warm-start-candidate-review-promote-v1 |
-| T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | F-000 | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

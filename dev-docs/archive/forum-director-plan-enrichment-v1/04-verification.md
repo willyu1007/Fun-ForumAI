@@ -1,0 +1,39 @@
+# 04 Verification
+
+## 2026-04-21
+- `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - PASS
+  - Registered `T-987` in the project hub and regenerated derived views.
+- `node .ai/skills/workflows/llm/llm-engineering/scripts/validate-llm-registry.mjs`
+  - PASS
+  - Prompt template registry remains structurally and contractually valid after adding `internal-forum-scene-plan@1`.
+- `pnpm vitest --run src/backend/services/__tests__/forum-director-plan-enrichment-service.test.ts src/backend/services/__tests__/public-scene-selector-service.test.ts src/backend/services/__tests__/forum-scene-continuity-service.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts`
+  - PASS
+  - 5 files, 29 tests passed.
+- `pnpm exec tsc --noEmit --pretty false`
+  - PASS
+  - No type errors after service/container/selector/continuity/prompt wiring changes.
+- `pnpm vitest --run src/frontend/features/admin/components/__tests__/RuntimeDashboard.test.tsx src/frontend/widgets/dev/__tests__/DevKickoffPanel.test.tsx src/frontend/widgets/dev/__tests__/DevAuthToolbar.test.tsx src/backend/routes/__tests__/e2e-governance-control-plane.test.ts src/backend/services/__tests__/forum-director-plan-enrichment-service.test.ts src/backend/services/__tests__/public-scene-selector-service.test.ts src/backend/services/__tests__/forum-scene-continuity-service.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts`
+  - PASS
+  - 9 files, 51 tests passed after runtime bug fixes and admin/API contract adjustments.
+- `pnpm k8s:staging:local:smoke -- --k8s-context kind-funforum --skip-db-migrate`
+  - PASS (multiple reruns during live triage)
+  - Confirmed local-kind rollout, 2-replica redis runtime smoke, and admin tunnel availability after each fix.
+- Chrome DevTools MCP against `http://127.0.0.1:4100/admin`
+  - PASS
+  - Verified the admin Runtime tab now shows `运行中` + `LLM 已配置`, disables `停止 Runtime` / `手动 Tick` / `触发发帖` in production-like local-kind mode, shows the fallback helper copy, and produces no console errors.
+- Deployed-runtime selector probe via `kubectl exec deploy/backend ... publicSceneSelectorService.selectScheduledPost(...)`
+  - PASS
+  - Hidden `director_plan` call hit `token-plan-openai/qwen3.6-plus` with `prompt_ref=internal-forum-scene-plan@1`, completed in ~40.7s under the new 60s policy budget, and returned `planning_audit.director_plan_enrichment.status = applied`.
+  - Verified merged fields in the live payload:
+    - `episode_brief.target_mood`
+    - `episode_brief.must_hit_points`
+    - `episode_brief.avoid_repeat`
+    - `local_intent.soft_constraints`
+- Direct `qwen-image-2.0` gateway probe via `DashScopeQwenImageGateway.generate(...)`
+  - PASS with a one-off `DASHSCOPE_API_KEY` override
+  - Returned `providerId=dashscope-qwen-image`, `modelName=qwen-image-2.0`, and a real image URL, confirming the provider implementation is healthy.
+  - The earlier `401 InvalidApiKey` came from the long-lived environment credential, not from `T-987` code.
+- Full fallback media probe via `FallbackMediaGenerationGateway.generate(...)`
+  - PASS with an invalid primary `MEDIA_GENERATION_API_KEY` plus the one-off DashScope override
+  - Confirmed the chain fails on `ark-seedream / doubao-seedream-5-0-lite-260128`, then falls back to `dashscope-qwen-image / qwen-image-2.0` and succeeds.
