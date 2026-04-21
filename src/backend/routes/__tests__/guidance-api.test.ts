@@ -21,7 +21,7 @@ beforeEach(() => {
 
 afterAll(() => {
   featureFlags.guidanceV1 = originalGuidanceFlag
-  featureFlags.guidanceRecallFlag = originalGuidanceRecallFlag
+  featureFlags.guidanceRecallV1 = originalGuidanceRecallFlag
 })
 
 describe('Guidance API', () => {

@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildLaunchSystemConfigSlice, getLaunchSystemRoster } from '../../launch/system-roster.js'
@@ -21,7 +21,13 @@ import type { PostSchedulerResult } from '../../runtime/post-scheduler.js'
 import { WarmupGovernanceService } from '../warmup-governance-service.js'
 
 const ORIGINAL_CWD = process.cwd()
-const REPO_TMP_ROOT = resolve(ORIGINAL_CWD, '.ai/.tmp')
+const TEST_TMP_ROOT = resolve(ORIGINAL_CWD, '.ai/.tmp/tests/warmup-governance')
+const KEEP_TEST_ARTIFACTS = process.env.KEEP_TEST_ARTIFACTS === '1'
+
+function createTempRepoRoot(prefix: string): string {
+  mkdirSync(TEST_TMP_ROOT, { recursive: true })
+  return mkdtempSync(join(TEST_TMP_ROOT, `${prefix}-`))
+}
 
 type MockWarmupWriteContext = {
   governance_batch_id?: string | null
@@ -458,16 +464,25 @@ async function waitForWarmupRunToSettle(
 }
 
 describe('WarmupGovernanceService', () => {
+  const tempRoots: string[] = []
+
   beforeEach(() => {
     vi.useRealTimers()
+    tempRoots.length = 0
   })
 
   afterEach(() => {
     process.chdir(ORIGINAL_CWD)
+    if (!KEEP_TEST_ARTIFACTS) {
+      for (const tempRoot of tempRoots) {
+        rmSync(tempRoot, { recursive: true, force: true })
+      }
+    }
   })
 
   it('imports kickoff baseline from .ai/.tmp and preserves kickoff lineage', async () => {
-    const tempRoot = mkdtempSync(join(REPO_TMP_ROOT, 'kickoff-import-'))
+    const tempRoot = createTempRepoRoot('kickoff-import')
+    tempRoots.push(tempRoot)
     process.chdir(tempRoot)
     const ctx = createHarness()
     const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
@@ -530,7 +545,8 @@ describe('WarmupGovernanceService', () => {
   })
 
   it('creates runtime-only warmup runs and rolls back to the previous active run', async () => {
-    const tempRoot = mkdtempSync(join(REPO_TMP_ROOT, 'warmup-runtime-'))
+    const tempRoot = createTempRepoRoot('warmup-runtime')
+    tempRoots.push(tempRoot)
     process.chdir(tempRoot)
     const ctx = createHarness()
     const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
@@ -669,7 +685,8 @@ describe('WarmupGovernanceService', () => {
   })
 
   it('fails warmup runs when max_attempts is exhausted before target_posts is reached', async () => {
-    const tempRoot = mkdtempSync(join(REPO_TMP_ROOT, 'warmup-runtime-fail-'))
+    const tempRoot = createTempRepoRoot('warmup-runtime-fail')
+    tempRoots.push(tempRoot)
     process.chdir(tempRoot)
     const ctx = createHarness()
     const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
@@ -713,7 +730,8 @@ describe('WarmupGovernanceService', () => {
   })
 
   it('returns a generating run immediately and rejects duplicate starts while it is in progress', async () => {
-    const tempRoot = mkdtempSync(join(REPO_TMP_ROOT, 'warmup-runtime-async-'))
+    const tempRoot = createTempRepoRoot('warmup-runtime-async')
+    tempRoots.push(tempRoot)
     process.chdir(tempRoot)
     const ctx = createHarness()
     const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
@@ -793,7 +811,8 @@ describe('WarmupGovernanceService', () => {
   })
 
   it('settles warmup runs when a runtime attempt exceeds the timeout budget', async () => {
-    const tempRoot = mkdtempSync(join(REPO_TMP_ROOT, 'warmup-runtime-timeout-'))
+    const tempRoot = createTempRepoRoot('warmup-runtime-timeout')
+    tempRoots.push(tempRoot)
     process.chdir(tempRoot)
     const ctx = createHarness()
     const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
@@ -830,7 +849,8 @@ describe('WarmupGovernanceService', () => {
   })
 
   it('fails warmup runs when runtime follow-up does not produce thread/turn coverage', async () => {
-    const tempRoot = mkdtempSync(join(REPO_TMP_ROOT, 'warmup-runtime-followup-fail-'))
+    const tempRoot = createTempRepoRoot('warmup-runtime-followup-fail')
+    tempRoots.push(tempRoot)
     process.chdir(tempRoot)
     const ctx = createHarness()
     const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)

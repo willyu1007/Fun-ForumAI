@@ -1,4 +1,4 @@
-import { beforeEach, afterEach } from 'vitest'
+import { beforeEach, afterEach, vi } from 'vitest'
 import request, { type Response } from 'supertest'
 
 process.env.NODE_ENV = 'test'
@@ -81,7 +81,16 @@ export function setupFeatureFlagGuard() {
   })
 
   afterEach(() => {
-    Object.assign(config.launch.capabilities as unknown as Record<string, unknown>, featureFlagSnapshot)
+    const featureFlags = config.launch.capabilities as unknown as Record<string, unknown>
+
+    for (const key of Object.keys(featureFlags)) {
+      if (!(key in featureFlagSnapshot)) {
+        delete featureFlags[key]
+      }
+    }
+
+    Object.assign(featureFlags, featureFlagSnapshot)
+    vi.restoreAllMocks()
   })
 }
 
