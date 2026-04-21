@@ -1,6 +1,4 @@
 import { Suspense, type ReactNode } from 'react'
-import { LoginPage as LoginPageComponent } from '../features/auth/pages/LoginPage'
-import { RegisterPage as RegisterPageComponent } from '../features/auth/pages/RegisterPage'
 import { lazyWithDynamicImportRecovery } from './lazy-import-recovery'
 
 export const FeedPage = lazyWithDynamicImportRecovery(() =>
@@ -132,8 +130,18 @@ export const AccountSettingsPage = lazyWithDynamicImportRecovery(() =>
   })),
   'route:account-settings',
 )
-export const LoginPage = LoginPageComponent
-export const RegisterPage = RegisterPageComponent
+export const LoginPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/auth/pages/LoginPage').then((m) => ({
+    default: m.LoginPage,
+  })),
+  'route:login',
+)
+export const RegisterPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/auth/pages/RegisterPage').then((m) => ({
+    default: m.RegisterPage,
+  })),
+  'route:register',
+)
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">

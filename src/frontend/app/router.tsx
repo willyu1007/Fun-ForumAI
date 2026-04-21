@@ -33,12 +33,12 @@ import {
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <LoginPage />,
+    element: <SuspenseWrap><LoginPage /></SuspenseWrap>,
     errorElement: <RouteErrorBoundary />,
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: <SuspenseWrap><RegisterPage /></SuspenseWrap>,
     errorElement: <RouteErrorBoundary />,
   },
   {

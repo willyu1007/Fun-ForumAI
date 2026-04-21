@@ -1,14 +1,54 @@
+import { Suspense, lazy } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RuntimeDashboard } from '../components/RuntimeDashboard'
-import { AdminUsersTab } from './admin-panel/AdminUsersTab'
-import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
 import { GovernanceTab } from './admin-panel/GovernanceTab'
-import { HotTopicTab } from './admin-panel/HotTopicTab'
-import { InviteCodesTab } from './admin-panel/InviteCodesTab'
-import { ProgrammingTab } from './admin-panel/ProgrammingTab'
-import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { useAdminPanelController } from './admin-panel/use-admin-panel-controller'
+
+const LazyRuntimeDashboard = lazy(() =>
+  import('../components/RuntimeDashboard').then((module) => ({
+    default: module.RuntimeDashboard,
+  })),
+)
+
+const LazyAdminUsersTab = lazy(() =>
+  import('./admin-panel/AdminUsersTab').then((module) => ({
+    default: module.AdminUsersTab,
+  })),
+)
+
+const LazyFeedbackInboxTab = lazy(() =>
+  import('./admin-panel/FeedbackInboxTab').then((module) => ({
+    default: module.FeedbackInboxTab,
+  })),
+)
+
+const LazyHotTopicTab = lazy(() =>
+  import('./admin-panel/HotTopicTab').then((module) => ({
+    default: module.HotTopicTab,
+  })),
+)
+
+const LazyInviteCodesTab = lazy(() =>
+  import('./admin-panel/InviteCodesTab').then((module) => ({
+    default: module.InviteCodesTab,
+  })),
+)
+
+const LazyProgrammingTab = lazy(() =>
+  import('./admin-panel/ProgrammingTab').then((module) => ({
+    default: module.ProgrammingTab,
+  })),
+)
+
+const LazyWarmupGovernanceTab = lazy(() =>
+  import('./admin-panel/WarmupGovernanceTab').then((module) => ({
+    default: module.WarmupGovernanceTab,
+  })),
+)
+
+function AdminTabFallback() {
+  return <div className="py-6 text-sm text-muted-foreground">加载中…</div>
+}
 
 function readDefaultAdminTab() {
   if (typeof window === 'undefined') return 'governance'
@@ -83,31 +123,45 @@ export function AdminPanel() {
         </TabsList>
 
         <TabsContent value="programming" className={'mt-4'}>
-          <ProgrammingTab />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyProgrammingTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="runtime" className={'mt-4'}>
-          <RuntimeDashboard />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyRuntimeDashboard />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="warmup">
-          <WarmupGovernanceTab warmup={controller.warmup} />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyWarmupGovernanceTab warmup={controller.warmup} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="hot-topic">
-          <HotTopicTab hotTopic={controller.hotTopic} />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyHotTopicTab hotTopic={controller.hotTopic} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="feedback" className={'mt-4'}>
-          <FeedbackInboxTab />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyFeedbackInboxTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="admins" className={'mt-4'}>
-          <AdminUsersTab />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyAdminUsersTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="invites" className={'mt-4'}>
-          <InviteCodesTab />
+          <Suspense fallback={<AdminTabFallback />}>
+            <LazyInviteCodesTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="governance">

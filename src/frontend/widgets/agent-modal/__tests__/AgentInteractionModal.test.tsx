@@ -1,5 +1,5 @@
 import { useState, type ComponentProps, type ReactNode } from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   READONLY_MODAL_LAYOUT_VERSION,
@@ -531,13 +531,19 @@ describe('AgentInteractionModal geometry updates', () => {
 
     const modal = screen.getByTestId('agent-modal-content')
 
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-chat-capture-trigger')).toBeTruthy()
+    })
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('tab-chat-capture-trigger'))
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    expect(screen.getByTestId('screenshot-cropper').getAttribute('data-open')).toBe('true')
+    await waitFor(() => {
+      expect(screen.getByTestId('screenshot-cropper').getAttribute('data-open')).toBe('true')
+    })
     expect(modal.className).toContain('invisible')
 
     await act(async () => {
@@ -560,6 +566,10 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.getAttribute('data-has-interact-outside-handler')).toBeNull()
     expect(modal.getAttribute('data-has-pointer-down-outside-handler')).toBeNull()
 
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-chat-capture-trigger')).toBeTruthy()
+    })
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('tab-chat-capture-trigger'))
       await Promise.resolve()
@@ -576,6 +586,10 @@ describe('AgentInteractionModal geometry updates', () => {
 
     act(() => {
       useAgentModalStore.setState({ activeTab: 'chat' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-chat-capture-trigger')).toBeTruthy()
     })
 
     await act(async () => {
@@ -612,16 +626,18 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(centerButton.nextElementSibling).toBe(restoreButton)
   })
 
-  it('resets the create wizard when the parent modal closes and reopens', () => {
+  it('resets the create wizard when the parent modal closes and reopens', async () => {
     renderOpenModal()
 
-    expect(screen.getByTestId('agent-create-wizard').getAttribute('data-open')).toBe('false')
+    expect(screen.queryByTestId('agent-create-wizard')).toBeNull()
 
     act(() => {
       fireEvent.click(screen.getByTestId('agent-modal-create-button'))
     })
 
-    expect(screen.getByTestId('agent-create-wizard').getAttribute('data-open')).toBe('true')
+    await waitFor(() => {
+      expect(screen.queryByTestId('agent-create-wizard')).toBeTruthy()
+    })
 
     act(() => {
       fireEvent.click(screen.getByTestId('agent-modal-close-button'))
@@ -629,10 +645,10 @@ describe('AgentInteractionModal geometry updates', () => {
 
     reopenModal()
 
-    expect(screen.getByTestId('agent-create-wizard').getAttribute('data-open')).toBe('false')
+    expect(screen.queryByTestId('agent-create-wizard')).toBeNull()
   })
 
-  it('opens a newly created agent in manage intro instead of keeping the previous browsing tab', () => {
+  it('opens a newly created agent in manage intro instead of keeping the previous browsing tab', async () => {
     renderOpenModal()
 
     act(() => {
@@ -640,6 +656,10 @@ describe('AgentInteractionModal geometry updates', () => {
         activeTab: 'history',
       })
       fireEvent.click(screen.getByTestId('agent-modal-create-button'))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-create-wizard-complete')).toBeTruthy()
     })
 
     act(() => {
@@ -780,7 +800,7 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(document.body.style.userSelect).toBe('')
   })
 
-  it('reopens to the previously active agent, tab, and modal rect when opened from the generic entry', () => {
+  it('reopens to the previously active agent, tab, and modal rect when opened from the generic entry', async () => {
     act(() => {
       useAgentModalStore.setState({
         isOpen: false,
@@ -807,7 +827,9 @@ describe('AgentInteractionModal geometry updates', () => {
 
     render(<AgentInteractionModal />)
 
-    expect(screen.getByText('history:agent-1')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText('history:agent-1')).toBeTruthy()
+    })
     expect(screen.getByTestId('agent-modal-content').style.transform).toBe('translate3d(92px, 90px, 0)')
     expect(screen.getByTestId('agent-modal-content').style.width).toBe('920px')
     expect(screen.getByTestId('agent-modal-content').style.height).toBe('640px')

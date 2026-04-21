@@ -767,10 +767,12 @@ describe('AdminPanel', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Programming' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Programming' }))
 
-    expect(screen.getByText('Daypart Baseline')).toBeTruthy()
-    expect(screen.getByText('Slot Recommendations')).toBeTruthy()
-    expect(screen.getByText('main_conflict_slot')).toBeTruthy()
-    expect(screen.getByText('Aftershow 发布成功率低于 50%。')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText('Daypart Baseline')).toBeTruthy()
+      expect(screen.getByText('Slot Recommendations')).toBeTruthy()
+      expect(screen.getByText('main_conflict_slot')).toBeTruthy()
+      expect(screen.getByText('Aftershow 发布成功率低于 50%。')).toBeTruthy()
+    })
   })
 
   it('renames the warmup control-plane tab to kickoff and warmup semantics', () => {
@@ -1009,6 +1011,10 @@ describe('AdminPanel', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Hot Topic' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Hot Topic' }))
 
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Community ID')).toBeTruthy()
+    })
+
     fireEvent.change(screen.getByPlaceholderText('Community ID'), {
       target: { value: 'community-1' },
     })
@@ -1146,6 +1152,10 @@ describe('AdminPanel', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Hot Topic' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Hot Topic' }))
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('操作原因（将写入治理日志）')).toBeTruthy()
+    })
 
     fireEvent.change(screen.getByPlaceholderText('操作原因（将写入治理日志）'), {
       target: { value: 'manual hot topic control' },

@@ -128,7 +128,7 @@ describe('DevAuthToolbar', () => {
     expect(screen.getByText('勋章调试')).toBeTruthy()
   })
 
-  it('opens the guidance debug panel from the tools menu', () => {
+  it('opens the guidance debug panel from the tools menu', async () => {
     useDevAuthToolbarStoreMock.mockImplementation((selector) =>
       selector({
         collapsed: false,
@@ -142,7 +142,9 @@ describe('DevAuthToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
     fireEvent.click(screen.getByText('引导内容调试'))
 
-    expect(screen.getByTestId('guidance-panel')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByTestId('guidance-panel')).toBeTruthy()
+    })
   })
 
   it('loads mock data through the explicit dev seed mutation', async () => {

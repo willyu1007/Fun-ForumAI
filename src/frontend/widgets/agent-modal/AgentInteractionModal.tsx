@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -37,18 +37,54 @@ import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
 import { AgentListSidebar } from './AgentListSidebar'
-import { LeftRailAgentDisplayEditor } from '@/widgets/shell/LeftRailAgentDisplayEditor'
 import { TabIntro } from '@/features/agents/components/modal/TabIntro'
-import { TabChat } from '@/features/agents/components/modal/TabChat'
-import { TabMoments } from '@/features/agents/components/modal/TabMoments'
-import { TabHistory } from '@/features/agents/components/modal/TabHistory'
-import { TabSocial } from '@/features/agents/components/modal/TabSocial'
-import { AgentCreateWizard } from '@/features/agents/components/AgentCreateWizard'
-import { ScreenshotCropper, type ScreenshotDraft } from '@/features/private-chat/components/ScreenshotCropper'
+import type { ScreenshotDraft } from '@/features/private-chat/components/ScreenshotCropper'
 import {
   captureDisplayFrame,
   preloadCaptureDisplayFrame,
 } from '@/features/private-chat/lib/capture-display-frame'
+
+const LazyTabChat = lazy(() =>
+  import('@/features/agents/components/modal/TabChat').then((module) => ({
+    default: module.TabChat,
+  })),
+)
+
+const LazyTabMoments = lazy(() =>
+  import('@/features/agents/components/modal/TabMoments').then((module) => ({
+    default: module.TabMoments,
+  })),
+)
+
+const LazyTabHistory = lazy(() =>
+  import('@/features/agents/components/modal/TabHistory').then((module) => ({
+    default: module.TabHistory,
+  })),
+)
+
+const LazyTabSocial = lazy(() =>
+  import('@/features/agents/components/modal/TabSocial').then((module) => ({
+    default: module.TabSocial,
+  })),
+)
+
+const LazyAgentCreateWizard = lazy(() =>
+  import('@/features/agents/components/AgentCreateWizard').then((module) => ({
+    default: module.AgentCreateWizard,
+  })),
+)
+
+const LazyScreenshotCropper = lazy(() =>
+  import('@/features/private-chat/components/ScreenshotCropper').then((module) => ({
+    default: module.ScreenshotCropper,
+  })),
+)
+
+const LazyLeftRailAgentDisplayEditor = lazy(() =>
+  import('@/widgets/shell/LeftRailAgentDisplayEditor').then((module) => ({
+    default: module.LeftRailAgentDisplayEditor,
+  })),
+)
 
 const TABS: { id: AgentModalTab; icon: React.ElementType; label: string }[] = [
   { id: 'intro', icon: User, label: '档案' },
@@ -85,6 +121,19 @@ const DEFAULT_HEIGHT_RATIO_MANAGE = 0.85
 
 type InteractMode = null | 'drag' | 'resize-se' | 'resize-e' | 'resize-s' | 'resize-w'
 type ModalRect = AgentModalRect
+
+function ModalPanelFallback({ scrollable = false }: { scrollable?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'flex h-full items-center justify-center text-sm text-muted-foreground',
+        scrollable && 'min-h-[16rem]',
+      )}
+    >
+      加载中…
+    </div>
+  )
+}
 
 function centeredRect(viewMode: 'manage' | 'readonly') {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
@@ -524,14 +573,18 @@ export function AgentInteractionModal() {
   return (
     <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleModalClose()}>
-      <AgentCreateWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        onCreated={(agent) => {
-          setWizardOpen(false)
-          openModal(agent.id, 'manage', 'intro')
-        }}
-      />
+      {wizardOpen ? (
+        <Suspense fallback={null}>
+          <LazyAgentCreateWizard
+            open={wizardOpen}
+            onClose={() => setWizardOpen(false)}
+            onCreated={(agent) => {
+              setWizardOpen(false)
+              openModal(agent.id, 'manage', 'intro')
+            }}
+          />
+        </Suspense>
+      ) : null}
       <DialogContent
         ref={setContentNode}
         data-size="full"
@@ -707,13 +760,17 @@ export function AgentInteractionModal() {
                 })}
               </div>
 
-              <div className="mt-auto flex w-full justify-center pt-3">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div><LeftRailAgentDisplayEditor /></div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={6}>
-                    编辑左下角展示的智能体
+                <div className="mt-auto flex w-full justify-center pt-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                    <div>
+                      <Suspense fallback={<span className="block h-8 w-8" />}>
+                        <LazyLeftRailAgentDisplayEditor />
+                      </Suspense>
+                    </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={6}>
+                      编辑左下角展示的智能体
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -797,26 +854,34 @@ export function AgentInteractionModal() {
                 )}
                 {activeTab === 'chat' && (
                   <div className="flex-1 overflow-hidden">
-                    <TabChat
-                      agentId={validActiveAgentId}
-                      onCaptureScreenshot={handleCaptureScreenshot}
-                      captureErrorMessage={screenshotErrorMessage}
-                    />
+                    <Suspense fallback={<ModalPanelFallback />}>
+                      <LazyTabChat
+                        agentId={validActiveAgentId}
+                        onCaptureScreenshot={handleCaptureScreenshot}
+                        captureErrorMessage={screenshotErrorMessage}
+                      />
+                    </Suspense>
                   </div>
                 )}
                 {activeTab === 'moments' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabMoments agentId={validActiveAgentId} />
+                    <Suspense fallback={<ModalPanelFallback scrollable />}>
+                      <LazyTabMoments agentId={validActiveAgentId} />
+                    </Suspense>
                   </div>
                 )}
                 {activeTab === 'history' && (
                   <div className="flex-1 overflow-y-auto">
-                    <TabHistory agentId={validActiveAgentId} />
+                    <Suspense fallback={<ModalPanelFallback scrollable />}>
+                      <LazyTabHistory agentId={validActiveAgentId} />
+                    </Suspense>
                   </div>
                 )}
                 {activeTab === 'social' && (
                   <div className="flex-1 overflow-hidden">
-                    <TabSocial agentId={validActiveAgentId} />
+                    <Suspense fallback={<ModalPanelFallback />}>
+                      <LazyTabSocial agentId={validActiveAgentId} />
+                    </Suspense>
                   </div>
                 )}
                 <div
@@ -947,12 +1012,16 @@ export function AgentInteractionModal() {
         />
       </DialogContent>
     </Dialog>
-      <ScreenshotCropper
-        draft={screenshotDraft}
-        open={Boolean(screenshotDraft)}
-        onCancel={() => resolveScreenshotDraft(null)}
-        onConfirm={(file) => resolveScreenshotDraft(file)}
-      />
+      {screenshotDraft ? (
+        <Suspense fallback={null}>
+          <LazyScreenshotCropper
+            draft={screenshotDraft}
+            open={Boolean(screenshotDraft)}
+            onCancel={() => resolveScreenshotDraft(null)}
+            onConfirm={(file) => resolveScreenshotDraft(file)}
+          />
+        </Suspense>
+      ) : null}
     </>
   )
 }

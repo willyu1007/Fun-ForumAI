@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { useDevSeedMutation } from '@/api/hooks/dev'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,10 +10,30 @@ import {
 } from '@/shared/layout/dev-auth-toolbar'
 import { useAuth } from '@/shared/hooks/use-auth'
 import { useDevAuthToolbarStore } from '@/shared/stores/dev-auth-toolbar-store'
-import { DevBadgeDebugPanel } from './DevBadgeDebugPanel'
-import { DevKickoffPanel } from './DevKickoffPanel'
-import { DevGuidancePanel } from './DevGuidancePanel'
-import { DevFrontendFlagsPanel } from './DevFrontendFlagsPanel'
+
+const LazyDevBadgeDebugPanel = lazy(() =>
+  import('./DevBadgeDebugPanel').then((module) => ({
+    default: module.DevBadgeDebugPanel,
+  })),
+)
+
+const LazyDevKickoffPanel = lazy(() =>
+  import('./DevKickoffPanel').then((module) => ({
+    default: module.DevKickoffPanel,
+  })),
+)
+
+const LazyDevGuidancePanel = lazy(() =>
+  import('./DevGuidancePanel').then((module) => ({
+    default: module.DevGuidancePanel,
+  })),
+)
+
+const LazyDevFrontendFlagsPanel = lazy(() =>
+  import('./DevFrontendFlagsPanel').then((module) => ({
+    default: module.DevFrontendFlagsPanel,
+  })),
+)
 
 type Identity = 'anonymous' | 'user' | 'admin'
 
@@ -203,10 +223,26 @@ export function DevAuthToolbar() {
         </div>
       </div>
 
-      <DevBadgeDebugPanel open={badgePanelOpen} onOpenChange={setBadgePanelOpen} />
-      <DevKickoffPanel open={kickoffPanelOpen} onOpenChange={setKickoffPanelOpen} />
-      <DevGuidancePanel open={guidancePanelOpen} onOpenChange={setGuidancePanelOpen} />
-      <DevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
+      {badgePanelOpen ? (
+        <Suspense fallback={null}>
+          <LazyDevBadgeDebugPanel open={badgePanelOpen} onOpenChange={setBadgePanelOpen} />
+        </Suspense>
+      ) : null}
+      {kickoffPanelOpen ? (
+        <Suspense fallback={null}>
+          <LazyDevKickoffPanel open={kickoffPanelOpen} onOpenChange={setKickoffPanelOpen} />
+        </Suspense>
+      ) : null}
+      {guidancePanelOpen ? (
+        <Suspense fallback={null}>
+          <LazyDevGuidancePanel open={guidancePanelOpen} onOpenChange={setGuidancePanelOpen} />
+        </Suspense>
+      ) : null}
+      {flagsPanelOpen ? (
+        <Suspense fallback={null}>
+          <LazyDevFrontendFlagsPanel open={flagsPanelOpen} onOpenChange={setFlagsPanelOpen} />
+        </Suspense>
+      ) : null}
     </>
   )
 }

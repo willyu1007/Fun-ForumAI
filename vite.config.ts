@@ -12,6 +12,11 @@ type BundleChunkGroup = {
   packages: string[]
 }
 
+type AppChunkGroup = {
+  name: string
+  paths: string[]
+}
+
 type BundleBudgetConfig = {
   reportPath: string
   fallbackVendorChunkName?: string
@@ -41,6 +46,76 @@ const ROOT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const bundleBudgetConfig = JSON.parse(
   readFileSync(path.resolve(ROOT_DIR, 'ui/config/bundle-budget.json'), 'utf8'),
 ) as BundleBudgetConfig
+
+const appChunkGroups: AppChunkGroup[] = [
+  {
+    name: 'auth-pages',
+    paths: [
+      'src/frontend/features/auth/pages/LoginPage.tsx',
+      'src/frontend/features/auth/pages/RegisterPage.tsx',
+      'src/frontend/features/auth/components/',
+    ],
+  },
+  {
+    name: 'dev-toolbar',
+    paths: [
+      'src/frontend/widgets/dev/DevBadgeDebugPanel.tsx',
+      'src/frontend/widgets/dev/DevFrontendFlagsPanel.tsx',
+      'src/frontend/widgets/dev/DevGuidancePanel.tsx',
+      'src/frontend/widgets/dev/DevKickoffPanel.tsx',
+    ],
+  },
+  {
+    name: 'agent-create-wizard',
+    paths: [
+      'src/frontend/features/agents/components/AgentCreateWizard.tsx',
+      'src/frontend/features/agents/persona-seeds.ts',
+      'src/shared/agent-persona-catalog.ts',
+    ],
+  },
+  {
+    name: 'agent-modal-panels',
+    paths: [
+      'src/frontend/features/agents/components/modal/TabChat.tsx',
+      'src/frontend/features/agents/components/modal/TabHistory.tsx',
+      'src/frontend/features/agents/components/modal/TabMoments.tsx',
+      'src/frontend/features/agents/components/modal/TabSocial.tsx',
+      'src/frontend/widgets/shell/LeftRailAgentDisplayEditor.tsx',
+    ],
+  },
+  {
+    name: 'screenshot-cropper',
+    paths: ['src/frontend/features/private-chat/components/ScreenshotCropper.tsx'],
+  },
+  {
+    name: 'admin-runtime-dashboard',
+    paths: ['src/frontend/features/admin/components/RuntimeDashboard.tsx'],
+  },
+  {
+    name: 'admin-programming',
+    paths: ['src/frontend/features/admin/pages/admin-panel/ProgrammingTab.tsx'],
+  },
+  {
+    name: 'admin-hot-topic',
+    paths: ['src/frontend/features/admin/pages/admin-panel/HotTopicTab.tsx'],
+  },
+  {
+    name: 'admin-feedback',
+    paths: ['src/frontend/features/admin/pages/admin-panel/FeedbackInboxTab.tsx'],
+  },
+  {
+    name: 'admin-users',
+    paths: ['src/frontend/features/admin/pages/admin-panel/AdminUsersTab.tsx'],
+  },
+  {
+    name: 'admin-invite-codes',
+    paths: ['src/frontend/features/admin/pages/admin-panel/InviteCodesTab.tsx'],
+  },
+  {
+    name: 'admin-warmup',
+    paths: ['src/frontend/features/admin/pages/admin-panel/WarmupGovernanceTab.tsx'],
+  },
+]
 
 function normalizeModuleId(id: string | null | undefined): string | null {
   if (!id) {
@@ -81,6 +156,20 @@ function getNodeModulesPackageName(id: string): string | null {
 }
 
 function resolveManualChunk(id: string): string | undefined {
+  const normalized = normalizeModuleId(id)
+  if (normalized) {
+    for (const group of appChunkGroups) {
+      if (
+        group.paths.some(
+          (pathPrefix) =>
+            normalized === pathPrefix || normalized.startsWith(pathPrefix),
+        )
+      ) {
+        return group.name
+      }
+    }
+  }
+
   const packageName = getNodeModulesPackageName(id)
   if (!packageName) {
     return undefined
