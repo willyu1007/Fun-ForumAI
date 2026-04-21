@@ -210,18 +210,10 @@ export function useAdminWarmupRunDetail(runId: string | null) {
 export function useAdminWarmupVerifierLatestRun() {
   return useQuery({
     queryKey: queryKeys.adminWarmupVerifierLatestRun,
-    queryFn: async () => {
-      try {
-        return await api
-          .get('admin/warmup/verifier/runs/latest')
-          .json<ApiResponse<WarmupVerifierRunDetail>>()
-      } catch (error) {
-        if (hasHttpStatus(error, 404)) {
-          return { data: null } as ApiResponse<WarmupVerifierRunDetail | null>
-        }
-        throw error
-      }
-    },
+    queryFn: () =>
+      api
+        .get('admin/warmup/verifier/runs/latest')
+        .json<ApiResponse<WarmupVerifierRunDetail | null>>(),
     refetchInterval: 15_000,
     retry: false,
   })

@@ -124,12 +124,7 @@ export function registerAdminKickoffRoutes(router: IRouter): void {
       try {
         const data = await warmupClosureVerifierService.getLatestRun()
         if (!data) {
-          res.status(404).json({
-            error: {
-              code: 'NOT_FOUND',
-              message: 'No warm-up verifier run found',
-            },
-          })
+          res.json({ data: null })
           return
         }
         res.json({ data })

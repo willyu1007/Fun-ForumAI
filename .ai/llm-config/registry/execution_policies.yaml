@@ -319,7 +319,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 1200
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -336,7 +336,7 @@ policies:
     defaults:
       temperature: 0.18
       max_tokens: 1600
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false

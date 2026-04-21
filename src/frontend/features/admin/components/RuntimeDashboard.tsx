@@ -62,6 +62,12 @@ interface DevRuntimeStatus {
   llm_configured: boolean
   runtime_enabled: boolean
 }
+interface DevRuntimeStatusResponse {
+  data: DevRuntimeStatus | null
+  meta?: {
+    disabled?: boolean
+  }
+}
 interface TickResult {
   processed_events: number
   executions: Array<{
@@ -128,14 +134,38 @@ function useRuntimeStats() {
     refetchInterval: 5000,
   })
 }
-function useDevRuntimeStatus() {
+
+function hasHttpStatus(error: unknown, status: number): boolean {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return false
+  }
+  const response = (error as { response?: { status?: unknown } }).response
+  return response?.status === status
+}
+
+function useDevRuntimeStatus(enabled: boolean) {
   return useQuery({
     queryKey: ['dev', 'runtime-status'],
-    queryFn: () =>
-      api.get('dev/runtime/status').json<{
-        data: DevRuntimeStatus
-      }>(),
-    refetchInterval: 3000,
+    queryFn: async (): Promise<DevRuntimeStatusResponse> => {
+      try {
+        return await api.get('dev/runtime/status').json<{
+          data: DevRuntimeStatus
+        }>()
+      } catch (error) {
+        if (hasHttpStatus(error, 404)) {
+          return {
+            data: null,
+            meta: {
+              disabled: true,
+            },
+          }
+        }
+        throw error
+      }
+    },
+    enabled,
+    refetchInterval: (query) => (query.state.data?.meta?.disabled === true ? false : 3000),
+    retry: false,
   })
 }
 export function RuntimeDashboard() {
@@ -157,7 +187,10 @@ export function RuntimeDashboard() {
   const [strictAuditEnforced, setStrictAuditEnforced] = useState(true)
   const [lineageRequired, setLineageRequired] = useState(true)
   const { data: adminStats } = useRuntimeStats()
-  const { data: devStatus } = useDevRuntimeStatus()
+  const shouldPollDevRuntimeStatus = adminStats?.data != null
+    ? adminStats.data.runtime.node_env !== 'production'
+    : false
+  const { data: devStatus } = useDevRuntimeStatus(shouldPollDevRuntimeStatus)
   const { data: runtimeFeatures } = useRuntimeFeatures()
   const { data: mediaObservability } = useAdminMediaObservability()
   const { data: mediaRolloutController } = useAdminMediaRolloutController()
@@ -206,7 +239,12 @@ export function RuntimeDashboard() {
         }>(),
   })
   const stats = adminStats?.data
-  const status = devStatus?.data
+  const status = devStatus?.data ?? null
+  const devRuntimeControlsUnavailable =
+    stats?.runtime.node_env === 'production'
+    || devStatus?.meta?.disabled === true
+  const runtimeRunning = status?.running ?? stats?.runtime.running ?? false
+  const llmConfigured = status?.llm_configured ?? stats?.runtime.llm_configured ?? false
   const isProdNodeEnv = stats?.runtime.node_env === 'production'
   const baselineAdmission = stats?.runtime.baseline_admission
   const mediaRolloutData = mediaRolloutController?.data
@@ -240,9 +278,9 @@ export function RuntimeDashboard() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Runtime"
-          value={status?.running ? '运行中' : '已停止'}
-          variant={status?.running ? 'success' : 'muted'}
-          detail={status?.llm_configured ? 'LLM 已配置' : 'LLM 未配置'}
+          value={runtimeRunning ? '运行中' : '已停止'}
+          variant={runtimeRunning ? 'success' : 'muted'}
+          detail={llmConfigured ? 'LLM 已配置' : 'LLM 未配置'}
         />
         <StatCard
           title="事件队列"
@@ -290,12 +328,12 @@ export function RuntimeDashboard() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {status?.running ? (
+            {runtimeRunning ? (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => stopMutation.mutate()}
-                disabled={stopMutation.isPending}
+                disabled={stopMutation.isPending || devRuntimeControlsUnavailable}
               >
                 停止 Runtime
               </Button>
@@ -303,7 +341,7 @@ export function RuntimeDashboard() {
               <Button
                 size="sm"
                 onClick={() => startMutation.mutate()}
-                disabled={startMutation.isPending || !status?.llm_configured}
+                disabled={startMutation.isPending || devRuntimeControlsUnavailable || !llmConfigured}
               >
                 启动 Runtime
               </Button>
@@ -312,7 +350,7 @@ export function RuntimeDashboard() {
               size="sm"
               variant="outline"
               onClick={() => tickMutation.mutate()}
-              disabled={tickMutation.isPending}
+              disabled={tickMutation.isPending || devRuntimeControlsUnavailable}
             >
               {tickMutation.isPending ? '执行中…' : '手动 Tick'}
             </Button>
@@ -320,11 +358,18 @@ export function RuntimeDashboard() {
               size="sm"
               variant="outline"
               onClick={() => postMutation.mutate()}
-              disabled={postMutation.isPending || !status?.llm_configured}
+              disabled={postMutation.isPending || devRuntimeControlsUnavailable || !llmConfigured}
             >
               {postMutation.isPending ? '生成中…' : '触发发帖'}
             </Button>
           </div>
+
+          {devRuntimeControlsUnavailable && (
+            <p className={"text-xs text-muted-foreground"}>
+              当前部署未暴露 dev runtime controls；状态已回退为 admin/runtime/stats，启动、
+              手动 Tick 与触发发帖按钮在该环境中不可用。
+            </p>
+          )}
 
           <div className={"rounded border bg-muted/20 px-3 py-2"}>
             <p className={"text-xs font-medium"}>Season Rotation（Stage Template）</p>
@@ -371,7 +416,7 @@ export function RuntimeDashboard() {
             )}
           </div>
 
-          {!status?.llm_configured && (
+          {!llmConfigured && (
             <p className={"text-xs text-warning"}>
               LLM 未配置 — 设置 credential pool 对应的 provider API key 环境变量以启用 Runtime
             </p>

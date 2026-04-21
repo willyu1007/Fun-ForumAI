@@ -583,7 +583,10 @@ async function runSmokeSuite({ context, namespace, labelSelector, deployment }) 
       String(namespace),
       '--k8s-label-selector',
       String(labelSelector),
-      '--dev-auth',
+      '--admin-email',
+      LOCAL_KIND_ADMIN_EMAIL,
+      '--admin-password',
+      LOCAL_KIND_ADMIN_PASSWORD,
     ]
     const { stdout, stderr } = await runCommandCapture('node', scriptArgs)
     if (stdout.trim()) process.stdout.write(stdout)
