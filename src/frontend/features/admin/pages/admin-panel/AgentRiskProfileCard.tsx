@@ -1,25 +1,17 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import type { AdminPanelController } from './use-admin-panel-controller'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { useGovernanceController, useRiskProfileController } from './use-governance-controller'
 
-type GovernanceSlice = AdminPanelController['governance']
-type RiskProfileSlice = AdminPanelController['riskProfile']
+export function AgentRiskProfileCard() {
+  const governance = useGovernanceController()
+  const riskProfile = useRiskProfileController()
 
-export function AgentRiskProfileCard({
-  governance,
-  riskProfile,
-}: {
-  governance: GovernanceSlice
-  riskProfile: RiskProfileSlice
-}) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Agent 风险画像</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <section data-ui="section" data-variant="default" data-padding="md" className="border-b">
+      <h2 data-ui="text" data-variant="h3" className="mb-4 font-semibold">智能体风险画像</h2>
+      <div data-ui="stack" data-direction="col" data-gap="4">
         <div className="flex gap-2">
           <label htmlFor="agent-risk-profile-id" className="sr-only">
             Agent ID
@@ -33,44 +25,68 @@ export function AgentRiskProfileCard({
           />
         </div>
         {!riskProfile.data?.data && (
-          <p className={"text-[10px] text-muted-foreground"}>
-            输入 Agent ID 后查看 spillover、provenance 与 cap 历史。
+          <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
+            输入 Agent ID 后查看外溢事件 (spillover)、生成记录 (provenance) 与限流 (cap) 历史。
           </p>
         )}
         {riskProfile.data?.data && (
-          <div className="space-y-3">
+          <div data-ui="stack" data-direction="col" data-gap="4">
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">status {riskProfile.data.data.agent.status}</Badge>
               <Badge variant="outline">
-                effective cap {riskProfile.data.data.effective_disclosure_cap ?? 'none'}
+                生效限流等级 (effective cap): {riskProfile.data.data.effective_disclosure_cap ?? 'none'}
               </Badge>
               <Badge variant="outline">
-                spillover events {riskProfile.data.data.spillover_events.length}
+                外溢事件 (spillover events): {riskProfile.data.data.spillover_events.length}
               </Badge>
               <Badge variant="outline">
-                active caps {riskProfile.data.data.active_cap_overrides.length}
+                当前限流规则 (active caps): {riskProfile.data.data.active_cap_overrides.length}
               </Badge>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={
-                  governance.mutation.isPending ||
-                  riskProfile.data.data.agent.status === 'LIMITED'
-                }
-                onClick={async () => {
-                  const result = await governance.mutation.mutateAsync({
-                    action: 'limit_agent',
-                    target_type: 'agent',
-                    target_id: riskProfile.data!.data.agent.id,
-                    reason: 'hot_topic_manual_review_only',
-                  })
-                  governance.pushGovernanceResult(result.data)
-                }}
-              >
-                限制当前 Agent
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      governance.mutation.isPending ||
+                      riskProfile.data.data.agent.status === 'LIMITED'
+                    }
+                  >
+                    限制当前 Agent
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>确认限制 Agent</DialogTitle>
+                    <DialogDescription>
+                      您确定要限制此 Agent 吗？这会将其转为人工审核模式。
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline">取消</Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          const result = await governance.mutation.mutateAsync({
+                            action: 'limit_agent',
+                            target_type: 'agent',
+                            target_id: riskProfile.data!.data.agent.id,
+                            reason: 'hot_topic_manual_review_only',
+                          })
+                          governance.pushGovernanceResult(result.data)
+                        }}
+                      >
+                        确认限制
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Button
                 size="sm"
                 variant="outline"
@@ -91,50 +107,56 @@ export function AgentRiskProfileCard({
                 恢复当前 Agent
               </Button>
             </div>
-            <div className="space-y-2">
-              <p className={"text-xs font-medium"}>Recent Provenance</p>
-              {riskProfile.data.data.recent_private_provenance.slice(0, 3).map((item) => (
-                <div key={item.run_id} className={"rounded-md border p-3"}>
-                  <p className={"text-xs font-medium"}>{item.run_id}</p>
-                  <p className={"text-[10px] text-muted-foreground"}>
-                    requested {item.requested_disclosure_level} → effective{' '}
-                    {item.effective_disclosure_level} · {item.cap_source}
-                  </p>
-                  <p className={"text-[10px] text-muted-foreground"}>
-                    server caps:{' '}
-                    {item.server_cap_sources
-                      .map((source) => `${source.source_type}:${source.cap_level}`)
-                      .join(', ') || 'none'}
-                  </p>
-                </div>
-              ))}
+            <div data-ui="stack" data-direction="col" data-gap="2">
+              <p data-ui="text" data-variant="caption" className="font-medium">最近生成记录</p>
+              <ul data-ui="list" data-variant="admin-rows" className="space-y-2">
+                {riskProfile.data.data.recent_private_provenance.slice(0, 3).map((item) => (
+                  <li key={item.run_id} className="flex flex-col justify-center rounded-md border bg-card px-3 py-2">
+                    <p data-ui="text" data-variant="caption" className="font-medium">{item.run_id}</p>
+                    <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
+                      请求等级 {item.requested_disclosure_level} → 实际生效{' '}
+                      {item.effective_disclosure_level} · {item.cap_source}
+                    </p>
+                    <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
+                      服务器限流 (server caps):{' '}
+                      {item.server_cap_sources
+                        .map((source) => `${source.source_type}:${source.cap_level}`)
+                        .join(', ') || 'none'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="space-y-2">
-              <p className={"text-xs font-medium"}>Recent Spillover Events</p>
-              {riskProfile.data.data.spillover_events.slice(0, 3).map((event) => (
-                <div key={event.id} className={"rounded-md border p-3"}>
-                  <p className={"text-xs font-medium"}>
-                    {event.detail_text ?? event.event_type}
-                  </p>
-                  <p className={"text-[10px] text-muted-foreground"}>
-                    {event.action} · {event.risk_level ?? 'n/a'} ·{' '}
-                    {event.risk_categories.join(', ') || 'none'}
-                  </p>
-                </div>
-              ))}
+            <div data-ui="stack" data-direction="col" data-gap="2">
+              <p data-ui="text" data-variant="caption" className="font-medium">最近外溢事件</p>
+              <ul data-ui="list" data-variant="admin-rows" className="space-y-2">
+                {riskProfile.data.data.spillover_events.slice(0, 3).map((event) => (
+                  <li key={event.id} className="flex flex-col justify-center rounded-md border bg-card px-3 py-2">
+                    <p data-ui="text" data-variant="caption" className="font-medium">
+                      {event.detail_text ?? event.event_type}
+                    </p>
+                    <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
+                      {event.action} · {event.risk_level ?? 'n/a'} ·{' '}
+                      {event.risk_categories.join(', ') || 'none'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="space-y-2">
-              <p className={"text-xs font-medium"}>Recent Config Actions</p>
-              {riskProfile.data.data.recent_config_actions.slice(0, 3).map((item) => (
-                <div key={item.id} className={"rounded-md border p-3"}>
-                  <p className={"text-xs font-medium"}>{item.action}</p>
-                  <p className={"text-[10px] text-muted-foreground"}>{item.reason ?? '无备注'}</p>
-                </div>
-              ))}
+            <div data-ui="stack" data-direction="col" data-gap="2">
+              <p data-ui="text" data-variant="caption" className="font-medium">最近配置变更</p>
+              <ul data-ui="list" data-variant="admin-rows" className="space-y-2">
+                {riskProfile.data.data.recent_config_actions.slice(0, 3).map((item) => (
+                  <li key={item.id} className="flex flex-col justify-center rounded-md border bg-card px-3 py-2">
+                    <p data-ui="text" data-variant="caption" className="font-medium">{item.action}</p>
+                    <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">{item.reason ?? '无备注'}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

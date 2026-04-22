@@ -1,23 +1,17 @@
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { renderCapOverrideSummary } from './constants'
-import type { AdminPanelController } from './use-admin-panel-controller'
+import { useDisclosureCapsController } from './use-governance-controller'
 
-type DisclosureCapsSlice = AdminPanelController['disclosureCaps']
+export function DisclosureCapCard() {
+  const disclosureCaps = useDisclosureCapsController()
 
-export function DisclosureCapCard({
-  disclosureCaps,
-}: {
-  disclosureCaps: DisclosureCapsSlice
-}) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Disclosure Cap 管理</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-2 sm:grid-cols-3">
+    <section data-ui="section" data-variant="default" data-padding="md" className="border-b">
+      <h2 data-ui="text" data-variant="h3" className="mb-4 font-semibold">曝光限流管理</h2>
+      <div data-ui="stack" data-direction="col" data-gap="4">
+        <div data-ui="grid" data-gap="2" className="sm:grid-cols-3">
           <label htmlFor="disclosure-cap-scope-type" className="sr-only">
             Cap 作用域类型
           </label>
@@ -28,7 +22,7 @@ export function DisclosureCapCard({
             onChange={(event) =>
               disclosureCaps.setScopeType(event.target.value as 'agent' | 'community')
             }
-            className={"h-8 w-full rounded-md border bg-background px-2 text-xs"}
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
           >
             <option value="agent">agent</option>
             <option value="community">community</option>
@@ -51,7 +45,7 @@ export function DisclosureCapCard({
             name="disclosure-cap-level"
             value={disclosureCaps.capLevel}
             onChange={(event) => disclosureCaps.setCapLevel(event.target.value)}
-            className={"h-8 w-full rounded-md border bg-background px-2 text-xs"}
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
           >
             {[0, 1, 2, 3].map((value) => (
               <option key={value} value={value}>
@@ -90,36 +84,62 @@ export function DisclosureCapCard({
           onChange={(event) => disclosureCaps.setReleaseCapReason(event.target.value)}
         />
         {disclosureCaps.query?.data?.active_override && (
-          <div className={"rounded-md border p-3"}>
-            <p className={"text-xs font-medium"}>Active Override</p>
-            <p className={"text-[10px] text-muted-foreground"}>
+          <div className="rounded-md border p-3">
+            <p data-ui="text" data-variant="caption" className="font-medium">当前生效的限流规则</p>
+            <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
               {renderCapOverrideSummary(disclosureCaps.query.data.active_override)}
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className={"mt-2"}
-              onClick={() =>
-                disclosureCaps.handleReleaseCapOverride(
-                  disclosureCaps.query!.data.active_override!.id,
-                )
-              }
-              disabled={disclosureCaps.releaseMutation.isPending}
-            >
-              {disclosureCaps.releaseMutation.isPending ? '释放中…' : '释放当前 Override'}
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  disabled={disclosureCaps.releaseMutation.isPending}
+                >
+                  {disclosureCaps.releaseMutation.isPending ? '释放中…' : '释放当前 Override'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>确认释放 Override</DialogTitle>
+                  <DialogDescription>
+                    您确定要释放此 Disclosure Cap Override 吗？
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">取消</Button>
+                  </DialogClose>
+                  <DialogClose asChild>
+                    <Button
+                      variant="destructive"
+                      onClick={() =>
+                        disclosureCaps.handleReleaseCapOverride(
+                          disclosureCaps.query!.data.active_override!.id,
+                        )
+                      }
+                    >
+                      确认释放
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
-        <div className="space-y-2">
-          <p className={"text-xs font-medium"}>Recent Override History</p>
-          {(disclosureCaps.query?.data?.history ?? []).slice(0, 4).map((item) => (
-            <div key={item.id} className={"rounded-md border p-3"}>
-              <p className={"text-xs font-medium"}>{renderCapOverrideSummary(item)}</p>
-              <p className={"text-[10px] text-muted-foreground"}>{item.reason ?? '无原因'}</p>
-            </div>
-          ))}
+        <div data-ui="stack" data-direction="col" data-gap="2">
+          <p data-ui="text" data-variant="caption" className="font-medium">历史限流记录</p>
+          <ul data-ui="list" data-variant="admin-rows" className="space-y-2">
+            {(disclosureCaps.query?.data?.history ?? []).slice(0, 4).map((item) => (
+              <li key={item.id} className="flex flex-col justify-center rounded-md border bg-card px-3 py-2">
+                <p data-ui="text" data-variant="caption" className="font-medium">{renderCapOverrideSummary(item)}</p>
+                <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">{item.reason ?? '无原因'}</p>
+              </li>
+            ))}
+          </ul>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
