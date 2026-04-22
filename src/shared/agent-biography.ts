@@ -66,10 +66,10 @@ export type BiographyInfluenceSourceType =
   | 'REPEATED_BEHAVIOR'
 
 export type BiographyDirectoryStatusLabel =
-  | '正在书写'
-  | '已经定稿'
-  | '后来补记'
-  | '暂存片段'
+  | '审核中'
+  | '已发布'
+  | '补记'
+  | '待完成'
 
 export type BiographyVisualMotifType =
   | 'PAPER'

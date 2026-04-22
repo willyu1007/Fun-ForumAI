@@ -80,8 +80,14 @@ function parseDate(value: string | null | undefined): number {
 
 function sanitizeLegacyChapterTitle(value: string): string {
   return value
-    .replace(/^你与她的/u, '人物')
-    .replace(/^你和她的/u, '人物')
+    .replace(/^你与她的私域篇/u, '你们之间的那段日子')
+    .replace(/^你和她的私域篇/u, '你们之间的那段日子')
+    .replace(/^你们之间的私域篇/u, '你们之间的那段日子')
+    .replace(/^她和别人的关系篇/u, '和他人相交的那段日子')
+    .replace(/^与他人的关系篇/u, '和他人相交的那段日子')
+    .replace(/^她在世界里的经历篇/u, '走进世界的那段日子')
+    .replace(/^世界里的经历篇/u, '走进世界的那段日子')
+    .replace(/^系统与边界记录/u, '与边界擦肩的那段日子')
     .replace(/来自你/u, '私域回响')
 }
 
@@ -90,13 +96,13 @@ function statusLabelForChapter(
   revision: BiographyChapterRevision | null,
   compileStatus: BiographyCompileStatus | null,
 ): BiographyDirectoryStatusLabel {
-  if ((revision?.later_notes?.length ?? 0) > 0) return '后来补记'
-  if (!revision?.body) return '暂存片段'
+  if ((revision?.later_notes?.length ?? 0) > 0) return '补记'
+  if (!revision?.body) return '待完成'
   if (chapter.status === 'ACTIVE' && (compileStatus === 'WRITING' || compileStatus === 'AUDITING')) {
-    return '正在书写'
+    return '审核中'
   }
-  if (chapter.status === 'ACTIVE') return '正在书写'
-  return '已经定稿'
+  if (chapter.status === 'ACTIVE') return '审核中'
+  return '已发布'
 }
 
 function effectToAxis(effect: BiographyMaterialEffect): string {
@@ -125,7 +131,11 @@ function materialDominantAxis(material: BiographyMaterial): string {
 
 function relationSignalText(count: number, label: string): string {
   if (count <= 0) return ''
-  return `${label}形成了 ${count} 条有效关系线`
+  const normalized = label.trim()
+  if (!normalized) {
+    return `一路下来，已经结下 ${count} 条稳定的关系`
+  }
+  return `${normalized}结下了 ${count} 条稳定的关系`
 }
 
 function describeRelationState(state: string): string {
@@ -938,21 +948,21 @@ export class AgentBiographyService {
       mainline: {
         thesis:
           dominantAxis === 'RELATIONSHIP_PATTERN'
-            ? '她开始把关系视为真正会改变自己的力量'
+            ? '那段日子里，身边来来往往的人，开始真正参与进这段故事'
             : dominantAxis === 'PUBLIC_PERSONA'
-              ? '她在公开场里第一次显露出可被记住的轮廓'
+              ? '第一次在众人面前，留下了让人能记住的样子'
               : dominantAxis === 'INNER_TENDENCY'
-                ? '更内里的波动开始反过来改变她的表达'
-                : '她在反复经历里慢慢换了一种活法',
+                ? '那时心里暗自翻涌的念头，开始反过来影响开口和落笔的样子'
+                : '在一次又一次的经历里，慢慢换了一种活法',
         question: unresolvedHooks[0],
         emotional_direction: input.narrative?.stageNote ?? input.narrative?.growthNote ?? undefined,
         narrative_mode:
           input.digest.private_influence_signals.length > 0 ? 'QUIET_REFLECTION' : 'SCENE_DRIVEN',
       },
       start_state: {
-        self_expression: ensureSentence(first?.factual_summary ?? input.worldview?.worldview.identity.visible_style ?? '她仍旧维持着原来的表达方式'),
+        self_expression: ensureSentence(first?.factual_summary ?? input.worldview?.worldview.identity.visible_style ?? '那时还维持着早先的那套说话做事'),
         social_position: relationSignalText(input.worldview?.worldview.relations.mutual_effective ?? 0, '公开场里'),
-        relationship_pattern: relationSignalText(input.worldview?.worldview.relations.following_effective ?? 0, '她'),
+        relationship_pattern: relationSignalText(input.worldview?.worldview.relations.following_effective ?? 0, ''),
         inner_tendency: input.worldview?.worldview.owner_history.dominant_private_sentiment ?? undefined,
         public_persona: input.worldview?.worldview.public_history.tagline ?? undefined,
       },
@@ -992,9 +1002,9 @@ export class AgentBiographyService {
         })),
       ].slice(0, 3),
       end_state: {
-        self_expression: ensureSentence(last?.factual_summary ?? input.narrative?.summary ?? '她的表达方式已经发生了改变'),
-        social_position: relationSignalText(input.worldview?.worldview.relations.followers_effective ?? 0, '现在'),
-        relationship_pattern: relationSignalText(input.worldview?.worldview.relations.mutual_effective ?? 0, '她'),
+        self_expression: ensureSentence(last?.factual_summary ?? input.narrative?.summary ?? '说话做事的样子，已经悄悄换过一轮'),
+        social_position: relationSignalText(input.worldview?.worldview.relations.followers_effective ?? 0, '到如今'),
+        relationship_pattern: relationSignalText(input.worldview?.worldview.relations.mutual_effective ?? 0, ''),
         inner_tendency: input.narrative?.growthNote ?? undefined,
         public_persona: input.worldview?.worldview.public_history.tagline ?? undefined,
       },
@@ -1088,9 +1098,9 @@ export class AgentBiographyService {
       rescueRenderAttempted = true
       const rescueRender = await this.deps.writerService.renderChapter(writerInput, {
         allowFallbackWithinLine: false,
-        debugModelPin: {
+        routingConstraint: {
           provider_id: 'moonshot-openai',
-          model_id: 'kimi-k2.5',
+          model_id: 'moonshot-v1-128k',
         },
       })
       const rescueAudit = this.deps.factualAuditService.auditChapter({
@@ -1376,7 +1386,7 @@ export class AgentBiographyService {
       subtitle: memory?.recent_chapter_index[0]?.title ?? '人物传记',
       agent_name: agentName,
       current_stage: memory?.current_life_phase ?? '仍在成形',
-      cover_line: memory?.private_influence_pattern ?? memory?.public_position ?? '她的变化仍在被一点点写成章。',
+      cover_line: memory?.private_influence_pattern ?? memory?.public_position ?? '这段日子的变化，还在一页一页地写下去。',
       visual_motif: {
         motif_type:
           toneProfile?.preferred_motifs.includes('trace')
@@ -1453,7 +1463,7 @@ export class AgentBiographyService {
             chapter_no: 1,
             title: sanitizeLegacyChapterTitle(feed.chapter?.title ?? overview.hero.headline),
             subtitle: feed.chapter?.summary ?? overview.hero.tagline,
-            status_label: overview.meta.degraded ? '暂存片段' : '正在书写',
+            status_label: overview.meta.degraded ? '待完成' : '审核中',
             epigraph: overview.owner_projection.carryover_theme,
             opening: feed.chapter?.opening ?? overview.hero.supporting_line,
             body_sections: (feed.items.length > 0 ? feed.items : overview.recent_story_beats.slice(0, 3)).map((item) => ({
@@ -1482,7 +1492,7 @@ export class AgentBiographyService {
               chapter_no: index + 1,
               title: sanitizeLegacyChapterTitle(beat.chapter_title),
               one_line_summary: beat.summary,
-              status_label: '暂存片段',
+              status_label: '待完成',
               is_current: currentChapterId === `legacy:${key}`,
             }
           }),

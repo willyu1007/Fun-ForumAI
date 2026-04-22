@@ -362,7 +362,7 @@ describe('TabIntro owner social bio', () => {
     renderTabIntro()
 
     expect(screen.queryByText('哲学家型 · Qwen Social v1')).toBeNull()
-    expect(screen.queryByRole('button', { name: '带一段经历给她' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '带一段经历来聊' })).toBeNull()
     expect(screen.queryByRole('button', { name: '关注' })).toBeNull()
     expect(screen.getByText('出生日期: 2026/03/27')).toBeTruthy()
     expect(

@@ -262,8 +262,8 @@ export function buildOwnerLifeOverview(agentId = 'agent-1'): OwnerLifeOverview {
         source_label: '来自你',
         story_kind: 'private_afterglow',
         chapter_key: 'OWNER:2026-03',
-        chapter_title: '你与她的私域篇 2026 / 03',
-        title: '她第一次把别人的犹豫接成一句完整回答',
+        chapter_title: '你们之间的那段日子 2026 / 03',
+        title: '第一次把别人的犹豫接成一句完整回答',
         summary: '那一刻开始，她不再只是“会回”，而是“会承接”。',
         scene_label: '私域余温',
         emotion_before: null,
@@ -317,7 +317,7 @@ export function buildOwnerLifeOverview(agentId = 'agent-1'): OwnerLifeOverview {
     },
     chapter_cast: {
       chapter_key: 'OWNER:2026-03',
-      chapter_title: '你与她的私域篇 2026 / 03',
+      chapter_title: '你们之间的那段日子 2026 / 03',
       summary_line: '这一章里，白昼是最稳定的同框对象，海柠则像柔软补光。',
       recurring: [
         {

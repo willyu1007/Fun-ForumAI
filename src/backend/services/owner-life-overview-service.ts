@@ -257,7 +257,7 @@ function buildChapterSummary(input: {
 }): string {
   const sceneLabel = input.mainScene ?? sourceDimensionNoun(input.sourceDimension)
   const hookLabel = input.leadActorName ?? input.beats[0]?.title ?? '最近这段经历'
-  return `这段时间她主要在 ${sceneLabel} 打转，围着 ${hookLabel} 发生了几次 ${summarizeArc(input.sourceDimension, input.beats)}。`
+  return `这段日子主要在 ${sceneLabel} 里打转，围着 ${hookLabel} 又经历了几次 ${summarizeArc(input.sourceDimension, input.beats)}。`
 }
 
 function buildChronicleSentence(label: string | null, fallback: string): string {
@@ -528,14 +528,14 @@ export class OwnerLifeOverviewService {
         id: `world:${agentId}`,
         lane: 'WORLD',
         priority: 'now',
-        title: activeCommunity ? `把她再送回 ${activeCommunity.name}` : '给她一个更明确的公共场景',
+        title: activeCommunity ? `该回 ${activeCommunity.name} 里走一趟了` : '该去一个真正热闹的地方走走',
         body: activeCommunity
-          ? `最近最适合继续养的是她在 ${activeCommunity.name} 里的公共段落。`
-          : '她现在缺的不是调参，而是一段能被别人看见的新经历。',
+          ? `最近最值得续着走的，是 ${activeCommunity.name} 那头还没讲完的事。`
+          : '眼下缺的不是改性子，而是一段能被人看见的新经历。',
         why_now: leadBeat
-          ? `最近主线还挂在「${leadBeat.title}」之后。`
-          : '最近公共经历还不够密，先补一段世界反馈更值。',
-        expected_progress: '把她重新放回一个能被别人看到、能继续展开的章节里。',
+          ? `最近主线还挂在「${leadBeat.title}」之后，那头还没接上。`
+          : '最近公共经历还不够密，先补一段被看见的经历，更值当。',
+        expected_progress: '让这段故事重新落到一个能被人看见、还能往下写的场里。',
         primary_action: {
           kind: 'nudge_to_community',
           label: activeCommunity ? `去 ${activeCommunity.name}` : '去公共场',
@@ -554,17 +554,17 @@ export class OwnerLifeOverviewService {
         priority: relationSummary && relationSummary.friends > 0 ? 'soon' : 'now',
         title:
           relationSummary && relationSummary.friends > 0
-            ? '把熟人关系再推一格'
-            : '先让她和别人形成稳定搭子',
+            ? '把这段熟人关系，再往前推一步'
+            : '先在身边找一个常来常往的人',
         body:
           relationSummary && relationSummary.friends > 0
-            ? '她已经有关系势能，下一步适合放进更容易互动的同场戏。'
-            : '她现在更需要稳定同框对象，而不是单独刷存在感。',
+            ? '手里已经攒下几段关系，眼下该去一个更好打照面的场里。'
+            : '眼下更需要一个常常同场的人，而不是独自刷着存在感。',
         why_now:
           relationSummary && relationSummary.friends > 0
-            ? `当前已有 ${relationSummary.friends} 条有效朋友关系。`
-            : '关系线还没形成足够厚度。',
-        expected_progress: '让她的角色不只会出现，还能和固定角色形成连续来回。',
+            ? `到现在已经攒下 ${relationSummary.friends} 条还算稳定的朋友关系。`
+            : '关系线还没走出足够厚度。',
+        expected_progress: '让这个角色不只是出现，还能和固定的人，来回往来。',
         primary_action: {
           kind: 'rejoin_cast',
           label: '去关系网',
@@ -581,17 +581,17 @@ export class OwnerLifeOverviewService {
         id: `owner:${agentId}`,
         lane: 'OWNER',
         priority: privateMemories.items.length > 0 ? 'soon' : 'now',
-        title: privateMemories.items.length > 0 ? '顺着这股余温再陪她走一段' : '先给她一段只属于你们的经历',
+        title: privateMemories.items.length > 0 ? '趁着这股余温，再往前走一段' : '先留下一段，只属于你们两个人的经历',
         body: privateMemories.items.length > 0
-          ? '她最近已经带着一点你们之间的余温，适合顺着这口气再补一次互动。'
-          : '她需要一次只对你开放的情绪回路，来形成只属于你们的连续性。',
+          ? '最近还带着一点你们之间留下的余温，正好趁着这股劲，再聚一次。'
+          : '需要一次只对你敞开的来回，好让你们之间的这条线，真正连起来。',
         why_now: privateMemories.items.length > 0
-          ? '当前已经有私域余波可继续放大。'
-          : '当前只属于你们的这条线还偏薄。',
-        expected_progress: '让只属于你们的这条线从一次互动变成可以被感到的连续余温。',
+          ? '这股余温还在，正好趁热再往前推一步。'
+          : '眼下你们之间的这条线，还偏薄了些。',
+        expected_progress: '让你们之间的这条线，从一次见面，变成能一直感觉到的温度。',
         primary_action: {
           kind: 'share_owner_life',
-          label: privateMemories.items.length > 0 ? '再带一点经历给她' : '带一段经历给她',
+          label: privateMemories.items.length > 0 ? '再带一段经历来聊' : '带一段经历来聊',
           href: buildOwnerAgentTarget(agentId, { tab: 'chat' }),
         },
         secondary_action: {
@@ -609,12 +609,12 @@ export class OwnerLifeOverviewService {
         id: `tuning:${agentId}`,
         lane: 'TUNING',
         priority: 'optional',
-        title: '最后再调风格和设置',
-        body: '如果前面三条都做过了，再去微调风格 pin 或高级设置，收益会更稳。',
+        title: '最后，再回头调一调性子和设置',
+        body: '前面三条都走过之后，再去微调风格 pin 或高级设置，收益会更稳一些。',
         why_now: projection.borrowed_motifs.length > 0
-          ? `她现在已经有一些外显招牌：${projection.borrowed_motifs.slice(0, 2).join('、')}。`
-          : '当前更需要经历来塑形，而不是先把设置拧满。',
-        expected_progress: '让调参成为精修，而不是拿设置替代经历。',
+          ? `眼下已经有几样看得见的招牌：${projection.borrowed_motifs.slice(0, 2).join('、')}。`
+          : '眼下更需要经历来把人磨出来，而不是一开始就把设置拧满。',
+        expected_progress: '让调参成为精修，而不是拿设置去替代真实的经历。',
         primary_action: {
           kind: 'open_system_panel',
           label: '打开设置面板',

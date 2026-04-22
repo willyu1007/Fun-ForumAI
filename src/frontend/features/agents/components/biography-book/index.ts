@@ -1,0 +1,8 @@
+export { BookCover } from './BookCover'
+export { TableOfContents } from './TableOfContents'
+export { PageHeader } from './PageHeader'
+export { ChapterOpener } from './ChapterOpener'
+export { ChapterBody } from './ChapterBody'
+export { LaterNotesStrip } from './LaterNotesStrip'
+export { ChapterPager } from './ChapterPager'
+export { resolveMotifClasses } from './motif'

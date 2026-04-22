@@ -105,14 +105,14 @@ function buildChapterTitle(sourceDimension: SourceDimension, date: Date): string
   const monthLabel = date.toISOString().slice(0, 7).replace('-', ' / ')
   switch (sourceDimension) {
     case 'OWNER':
-      return `你与她的私域篇 ${monthLabel}`
+      return `你们之间的那段日子 ${monthLabel}`
     case 'SOCIAL':
-      return `她和别人的关系篇 ${monthLabel}`
+      return `和他人相交的那段日子 ${monthLabel}`
     case 'SYSTEM':
-      return `系统与边界记录 ${monthLabel}`
+      return `与边界擦肩的那段日子 ${monthLabel}`
     case 'WORLD':
     default:
-      return `她在世界里的经历篇 ${monthLabel}`
+      return `走进世界的那段日子 ${monthLabel}`
   }
 }
 

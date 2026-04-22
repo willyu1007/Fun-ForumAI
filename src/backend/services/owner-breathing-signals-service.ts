@@ -87,15 +87,15 @@ function buildPresenceLabel(input: {
   privateMemoryCount: number
 }): string {
   if (input.activeRoomName) {
-    return `她最近还挂在「${input.activeRoomName}」这类公域气压里。`
+    return `最近还泡在「${input.activeRoomName}」那样的场子里没走开。`
   }
   if (input.roomCount > 0) {
-    return '她最近仍在公共场景里有残余存在感。'
+    return '最近在公共场合里还留着一些影子。'
   }
   if (input.privateMemoryCount > 0) {
-    return '她最近主要在你的私域互动余波里呼吸。'
+    return '最近主要在你们之间留下的余温里过日子。'
   }
-  return '她最近没有强烈外放动作，但并不是静止的。'
+  return '最近没怎么大声说话，但也不是真的停下来了。'
 }
 
 function buildNextTendencyLabel(input: {
@@ -389,7 +389,7 @@ export class OwnerBreathingSignalsService {
           items.push({
             actor_id: actor.id,
             actor_name: actor.display_name,
-            tone_label: `最近总在「${room.name}」这类场里和她同框。`,
+            tone_label: `最近总在「${room.name}」那样的场子里碰面。`,
             chapter_key: null,
             chapter_title: recentBeatTitle,
           })

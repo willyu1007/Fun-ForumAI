@@ -28,7 +28,7 @@ export interface BiographyWriterResult {
 
 interface RenderChapterOptions {
   allowFallbackWithinLine?: boolean
-  debugModelPin?: {
+  routingConstraint?: {
     provider_id: string
     model_id: string
   } | null
@@ -92,9 +92,9 @@ function inferTraceText(input: BiographyWriterInput): string {
     .filter((item) => item.length > 0),
   ))
   if (influences.length === 0) {
-    return '这章仍带着上一阶段留下的纹理。'
+    return '这一章里，仍留着上一段日子磨出来的纹路。'
   }
-  return ensureSentence(`这一章的纸边还留着 ${influences.slice(0, 2).join('、')} 的痕迹`)
+  return ensureSentence(`这一章的纸边，还留着 ${influences.slice(0, 2).join('、')} 的痕迹`)
 }
 
 export function buildDeterministicChapterBody(input: BiographyWriterInput): BiographyChapterBodyV1 {
@@ -159,37 +159,35 @@ export function buildDeterministicChapterBody(input: BiographyWriterInput): Biog
     .slice(0, 2)
     .map((item, index) => ({
       anchor_section_index: Math.min(index, 1),
-      text: ensureSentence(`${item.source_label} 在这章里留下的影响是：${item.influence_summary}`),
+      text: ensureSentence(`${item.source_label} 在这一段里留下的痕迹：${item.influence_summary}`),
     }))
 
   return {
     chapter_title: skeleton.book_position.chapter_title,
     chapter_subtitle: skeleton.book_position.chapter_subtitle,
     epigraph: skeleton.mainline.question
-      ? ensureSentence(`她那时真正绕不开的问题，其实是：${skeleton.mainline.question}`)
+      ? ensureSentence(`那段日子里最放不下的一件事，是：${skeleton.mainline.question}`)
       : undefined,
     opening: ensureSentence(
       `${stripSentenceEnding(skeleton.mainline.thesis)}。${stripSentenceEnding(skeleton.mainline.emotional_direction ?? skeleton.start_state.self_expression)}`,
     ),
     body_sections: [
       {
-        title: primarySection ? '起势' : undefined,
         text: ensureSentence(
           primarySection
             ? primaryImpact
-              ? `${stripSentenceEnding(primarySection.what_happened)}。那一刻真正改变的是 ${primaryImpact}`
-              : `${stripSentenceEnding(primarySection.what_happened)}。这让她开始把自己的节奏往 ${stripSentenceEnding(skeleton.end_state.self_expression)} 靠过去`
-            : `${stripSentenceEnding(skeleton.start_state.self_expression)}。后来她慢慢把注意力移到了 ${stripSentenceEnding(skeleton.end_state.relationship_pattern)}`,
+              ? `${stripSentenceEnding(primarySection.what_happened)}。那一刻在暗处真正变了的，是 ${primaryImpact}`
+              : `${stripSentenceEnding(primarySection.what_happened)}。从那之后，说话做事的路数，也慢慢朝 ${stripSentenceEnding(skeleton.end_state.self_expression)} 靠过去`
+            : `${stripSentenceEnding(skeleton.start_state.self_expression)}。后来，心思慢慢挪到了 ${stripSentenceEnding(skeleton.end_state.relationship_pattern)}`,
         ),
       },
       {
-        title: secondarySection ? '沉积' : undefined,
         text: ensureSentence(
           secondarySection
             ? secondaryImpact
-              ? `${stripSentenceEnding(secondarySection.what_happened)}。后来它慢慢沉成 ${secondaryImpact}`
-              : `${stripSentenceEnding(secondarySection.what_happened)}。它最后留在她身上的，是 ${stripSentenceEnding(skeleton.end_state.relationship_pattern)}`
-            : `${stripSentenceEnding(skeleton.end_state.relationship_pattern)}。这也让她在公开场里的位置慢慢变成了 ${stripSentenceEnding(skeleton.end_state.social_position)}`,
+              ? `${stripSentenceEnding(secondarySection.what_happened)}。再后来，它慢慢沉成了 ${secondaryImpact}`
+              : `${stripSentenceEnding(secondarySection.what_happened)}。到最后，真正留下来的，是 ${stripSentenceEnding(skeleton.end_state.relationship_pattern)}`
+            : `${stripSentenceEnding(skeleton.end_state.relationship_pattern)}。在旁人眼里的位置，也慢慢变成了 ${stripSentenceEnding(skeleton.end_state.social_position)}`,
         ),
       },
     ].filter((section) => section.text.length > 0),
@@ -198,9 +196,9 @@ export function buildDeterministicChapterBody(input: BiographyWriterInput): Biog
           title: turningPoint.title,
           text: ensureSentence(
             canUseTurningTransition
-              ? `${stripSentenceEnding(turningPoint.moment)}。从那以后，她从 ${turningBefore} 转到了 ${turningAfter}`
+              ? `${stripSentenceEnding(turningPoint.moment)}。自那以后，故事便从 ${turningBefore} 慢慢转向了 ${turningAfter}`
               : turningAfter
-                ? `${stripSentenceEnding(turningPoint.moment)}。从那以后，这件事慢慢把她推到了 ${turningAfter}`
+                ? `${stripSentenceEnding(turningPoint.moment)}。自那以后，这件事也悄悄把后来的日子带向了 ${turningAfter}`
                 : stripSentenceEnding(turningPoint.moment),
           ),
         }
@@ -210,9 +208,9 @@ export function buildDeterministicChapterBody(input: BiographyWriterInput): Biog
     ),
     closing_line: ensureSentence(
       hooks.length > 0
-        ? `可真正没有散掉的，是 ${hooks.join('、')}`
+        ? `而真正没有散掉的，是 ${hooks.join('、')}`
         : traits.length > 0
-          ? `这一章最后留下来的，是 ${traits.join('、')}`
+          ? `这一章走到最后，真正留下来的，是 ${traits.join('、')}`
           : skeleton.end_state.social_position,
     ),
     trace_text: inferTraceText(input),
@@ -334,10 +332,10 @@ export class BiographyWriterService {
         localOverrides: {
           executionPolicyId: 'hidden-public_observation_digest-agent-biography-premium',
         },
-        debug: options?.debugModelPin
+        routingConstraint: options?.routingConstraint
           ? {
-              providerPin: options.debugModelPin.provider_id,
-              modelPin: options.debugModelPin.model_id,
+              providerId: options.routingConstraint.provider_id,
+              modelId: options.routingConstraint.model_id,
             }
           : undefined,
       })

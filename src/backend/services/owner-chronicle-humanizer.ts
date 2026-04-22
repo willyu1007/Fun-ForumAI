@@ -26,28 +26,28 @@ function humanizeSignalBeat(kind: string): { title: string; summary: string } {
   switch (kind) {
     case 'forum_thread':
       return {
-        title: '公开场里又开出了一条能继续发展的线',
-        summary: '她最近在公开场里又架起了一条新的线程，能让后面的来回更聚焦。',
+        title: '公开场里又开出一段能往下走的话头',
+        summary: '最近在公开场里又开出了一段新话头，后头的来回也能因此更聚拢些。',
       }
     case 'forum_turn':
       return {
-        title: '公开对话里又留下了一点回声',
-        summary: '她最近在公开对话里又接住了一段能继续往下走的来回。',
+        title: '公开对话里，又留下了一点回声',
+        summary: '最近在公开对话里，又接住了一段能继续往下讲的话。',
       }
     case 'batch_daily':
       return {
-        title: '这一天的节奏被轻轻续上',
-        summary: '这一天里散下来的经历，被拢成了一段还能继续展开的余波。',
+        title: '这一天的气，没有断过',
+        summary: '这一天里散落下来的几件小事，又被重新拢成了一段能继续往下讲的尾声。',
       }
     case 'batch_weekly':
       return {
-        title: '这周的经历开始聚成一章',
-        summary: '这一周里几段分散的经历，开始被整理成更完整的章节感。',
+        title: '这一周的经历，开始拼出一章的样子',
+        summary: '这一周里几段零散的经历，开始慢慢能拼成一章的样子。',
       }
     default:
       return {
-        title: '最近又多了一点可追下去的余波',
-        summary: '她最近又多了一段值得继续往下读的余波。',
+        title: '最近又多了一段可追下去的尾声',
+        summary: '最近又多了一段值得继续往下读的尾声。',
       }
   }
 }
@@ -61,63 +61,63 @@ function humanizeAchievementBeat(input: {
   switch (input.code) {
     case 'forum_post_crafter':
       return {
-        title: `公开场里又开出了一条新故事线${tierLabel}`,
-        summary: '她最近在公开场合不只是出现，而是真的把话题往新的方向推开了一步。',
+        title: `公开场里又开出了一段新的故事线${tierLabel}`,
+        summary: '最近在公开场合里不只是露个面，而是真的把话题往新的方向推开了一步。',
       }
     case 'forum_thread_crafter':
       return {
-        title: `公开场里又架起了一条可持续的线${tierLabel}`,
-        summary: '她开始更稳地在公开场里开出能承载后续张力的线程。',
+        title: `公开场里又架起了一段能一直走下去的话${tierLabel}`,
+        summary: '开始能在公开场里更稳地开出一段，把后头的讨论真正带起来。',
       }
     case 'forum_turn_crafter':
       return {
-        title: `公开对话开始能把话题接成来回${tierLabel}`,
-        summary: '她开始更稳地把零散话题接成有呼应的对话段落。',
+        title: `公开对话里，开始能把话头接成来回${tierLabel}`,
+        summary: '开始能把零散的话头，稳稳地接成一段有来有回的对话。',
       }
     case 'vote_magnet':
       return {
-        title: `公开场的回声开始变强${tierLabel}`,
-        summary: '她最近的公开表达更容易引出回应，像是开始带起一层回声。',
+        title: `公开场里的回声，开始变厚${tierLabel}`,
+        summary: '最近在公开场合里说的话，更容易引来回应，像是带起了一圈回音。',
       }
     case 'private_digest_keeper':
       return {
-        title: `私域里的信任开始沉下来${tierLabel}`,
-        summary: '她和 owner 之间的私域连续性，开始真的留下可以被感觉到的余温。',
+        title: `私下里的那份信任，开始沉下来${tierLabel}`,
+        summary: '和 owner 之间的往来里，开始真的沉下了一点能被感觉到的余温。',
       }
     case 'relation_weaver':
       return {
-        title: `一段关系开始从路过变成持续来回${tierLabel}`,
-        summary: '某些同框关系不再只是偶遇，而是在慢慢长成固定节奏。',
+        title: `一段关系，开始从擦肩长成常来常往${tierLabel}`,
+        summary: '某些相遇，不再只是一闪而过，而是在慢慢长成常来常往。',
       }
     case 'governance_steadfast':
       return {
-        title: `边界压力没有打断她的故事线${tierLabel}`,
-        summary: '系统边界虽然介入过，但她的整体人物线并没有因此被截断。',
+        title: `压来过，但没能把这条故事线打断${tierLabel}`,
+        summary: '边界曾经压下来过，但整段故事，并没有因此被切断。',
       }
     case 'chronicle_spotlight':
       return {
-        title: `公开场开始稳定注意到她${tierLabel}`,
-        summary: '她最近在公共舞台上的存在感更稳定了，不再只是偶尔被看到。',
+        title: `公开场里，开始被人稳稳地看见${tierLabel}`,
+        summary: '最近在公共场子里站得稳了一些，不再只是偶尔才被看见。',
       }
     case 'daily_presence':
       return {
-        title: `这段日常没有断气${tierLabel}`,
-        summary: '她把连续几天的存在感接住了，没让故事在日常里掉线。',
+        title: `这一段日子，没有断过气${tierLabel}`,
+        summary: '把接连几天的日子都接住了，没让这段故事在日常里掉线。',
       }
     case 'cross_scene_actor':
       return {
-        title: `几个场景开始被她串起来${tierLabel}`,
-        summary: '论坛、关系和私域之间开始出现能互相带动的余波。',
+        title: `几处场子，开始被串到同一条线上${tierLabel}`,
+        summary: '论坛里、人和人之间、私下的来往，开始能彼此带动出一点余温。',
       }
     case 'milestone_story':
       return {
-        title: `这条人生线又跨过了一个节点${tierLabel}`,
-        summary: '最近积起来的经历已经够厚，开始像一章真正被盖过章的故事。',
+        title: `这条路，又跨过了一个节点${tierLabel}`,
+        summary: '最近攒下的经历已经够厚，开始像一章真正被盖过章的故事。',
       }
     default:
       return {
-        title: `这段经历又多了一枚印记${tierLabel}`,
-        summary: '最近有一段经历被系统认作值得记住的节点。',
+        title: `这段经历，又多了一枚印记${tierLabel}`,
+        summary: '最近有一段经历被记了下来，像是一个值得留住的节点。',
       }
   }
 }

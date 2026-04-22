@@ -187,7 +187,7 @@ describe('BiographyWriterService', () => {
       promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyChapterRender,
       renderDecision: {
         providerId: 'moonshot-openai',
-        modelId: 'moonshot-v1-128k',
+        modelId: 'kimi-k2.5',
       },
     })
     const service = new BiographyWriterService({
@@ -211,7 +211,7 @@ describe('BiographyWriterService', () => {
       },
     }))
     expect(result.provider_id).toBe('moonshot-openai')
-    expect(result.model_name).toBe('moonshot-v1-128k')
+    expect(result.model_name).toBe('kimi-k2.5')
     expect(result.prompt_version).toBe(2)
   })
 
@@ -223,8 +223,8 @@ describe('BiographyWriterService', () => {
       }),
       promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyLaterNoteRender,
       renderDecision: {
-        providerId: 'dashscope-openai',
-        modelId: 'qwen3.5-plus',
+        providerId: 'moonshot-openai',
+        modelId: 'kimi-k2.5',
       },
     })
     const service = new BiographyWriterService({
@@ -295,7 +295,7 @@ describe('BiographyWriterService', () => {
       promptRef: PROMPT_TEMPLATE_REFS.internalAgentBiographyChapterRender,
       renderDecision: {
         providerId: 'moonshot-openai',
-        modelId: 'moonshot-v1-128k',
+        modelId: 'kimi-k2.5',
       },
     })
     const service = new BiographyWriterService({
@@ -323,7 +323,7 @@ describe('BiographyWriterService', () => {
     expect(splitSentences(result.body.closing_line).length).toBe(1)
   })
 
-  it('can pin the rescue render to kimi-k2.5 without same-line fallback', async () => {
+  it('can constrain the rescue render to kimi-k2.5 without same-line fallback', async () => {
     const generateHiddenArtifact = vi.fn().mockResolvedValue({
       content: JSON.stringify({
         chapter_title: '关系开始定型',
@@ -352,7 +352,7 @@ describe('BiographyWriterService', () => {
 
     const result = await service.renderChapter(buildWriterInput(), {
       allowFallbackWithinLine: false,
-      debugModelPin: {
+      routingConstraint: {
         provider_id: 'moonshot-openai',
         model_id: 'kimi-k2.5',
       },
@@ -360,9 +360,9 @@ describe('BiographyWriterService', () => {
 
     expect(generateHiddenArtifact).toHaveBeenCalledWith(expect.objectContaining({
       allowFallbackWithinLine: false,
-      debug: {
-        providerPin: 'moonshot-openai',
-        modelPin: 'kimi-k2.5',
+      routingConstraint: {
+        providerId: 'moonshot-openai',
+        modelId: 'kimi-k2.5',
       },
     }))
     expect(result.model_name).toBe('kimi-k2.5')
@@ -410,9 +410,9 @@ describe('BiographyWriterService', () => {
       '后来它慢慢沉成 她先把自己缩进页边，只留下很轻的一句回应',
     )
     expect(result.body.turning_point?.text).not.toContain(
-      '她从 一段更私密的互动留下了余温，并在后续表达里持续发酵 转到了',
+      '故事便从 一段更私密的互动留下了余温，并在后续表达里持续发酵 慢慢转向了',
     )
-    expect(result.body.turning_point?.text).toContain('这件事慢慢把她推到了')
+    expect(result.body.turning_point?.text).toContain('这件事也悄悄把后来的日子带向了')
     expect(result.body.closing_line).not.toContain('。、')
     expect(result.body.margin_notes ?? []).toHaveLength(1)
     expect(result.body.margin_notes?.[0]?.text).toContain('白露')

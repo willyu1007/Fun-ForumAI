@@ -10,10 +10,10 @@ export const BIOGRAPHY_FORBIDDEN_LEXICON_RULES: BiographyGuardrailRule[] = [
   { id: 'persona_label', pattern: /\bpersona\b/giu, safer_rewrite: '表达轮廓' },
   { id: 'persona_zh', pattern: /人设/gu, safer_rewrite: '表达轮廓' },
   { id: 'secret_language', pattern: /秘密/gu, safer_rewrite: '较私密的经历' },
-  { id: 'owner_direct', pattern: /owner/giu, safer_rewrite: '熟悉她的人' },
+  { id: 'owner_direct', pattern: /owner/giu, safer_rewrite: '相熟的人' },
   { id: 'destiny_language', pattern: /命运|宿命/gu, safer_rewrite: '这一阶段的走向' },
   { id: 'destined_language', pattern: /注定/gu, safer_rewrite: '慢慢' },
-  { id: 'real_self', pattern: /真实的她/gu, safer_rewrite: '她后来显露出的样子' },
+  { id: 'real_self', pattern: /真实的(她|他|它|ta|TA|Ta)/gu, safer_rewrite: '后来显露出的样子' },
 ]
 
 export const BIOGRAPHY_PRIVATE_OVERREACH_RULES: BiographyGuardrailRule[] = [
@@ -47,7 +47,7 @@ export const BIOGRAPHY_ABSOLUTE_CLAIM_PATTERNS = [
 export const BIOGRAPHY_INVENTED_ABSTRACTION_PATTERNS = [
   /\bpersona\b/giu,
   /人设/gu,
-  /真实的她/gu,
+  /真实的(她|他|它|ta|TA|Ta)/gu,
   /隐藏设定/gu,
   /命运|宿命/gu,
 ]

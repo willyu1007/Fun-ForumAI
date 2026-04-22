@@ -1,0 +1,248 @@
+/* Biography book surface.
+ * Narrative-specific visual module consumed by the agent biography UI.
+ * Lives in the UI package (outside the feature scan root) so that it can
+ * declare visual properties and own its own paper/ink palette variables.
+ * Overrides for dark theme use the data-theme protocol defined by tokens.css.
+ */
+
+.biography-surface {
+  --biography-font-serif-cn:
+    'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong',
+    'Noto Serif CJK SC', Georgia, 'Times New Roman', serif;
+  --biography-paper-bg: #f7f1e4;
+  --biography-paper-edge: #e4d9bf;
+  --biography-ink: #2b241a;
+  --biography-ink-muted: #6b5f4a;
+  --biography-ink-faint: #a69878;
+  --biography-ribbon: #b6502d;
+  --biography-later-note-bg: #fdf3c8;
+  --biography-later-note-edge: #e8d582;
+  --biography-stage-light: #f7d47a;
+  --biography-motif-strength: 0.55;
+}
+
+:root[data-theme="default.dark"] .biography-surface {
+  --biography-paper-bg: #1c1a16;
+  --biography-paper-edge: #2a2620;
+  --biography-ink: #ece2cc;
+  --biography-ink-muted: #bcb092;
+  --biography-ink-faint: #8c8268;
+  --biography-ribbon: #d0725a;
+  --biography-later-note-bg: #2e2916;
+  --biography-later-note-edge: #6f6133;
+}
+
+.biography-page {
+  position: relative;
+  background-color: var(--biography-paper-bg);
+  color: var(--biography-ink);
+  border: 1px solid var(--biography-paper-edge);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 0 var(--biography-paper-edge),
+    0 24px 48px -28px color-mix(in srgb, var(--biography-ink) 35%, transparent);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.biography-serif-cn {
+  font-family: var(--biography-font-serif-cn);
+  font-feature-settings: 'palt' 1;
+}
+
+.biography-prose-cn {
+  font-family: var(--biography-font-serif-cn);
+  color: var(--biography-ink);
+  font-size: 1rem;
+  line-height: 1.95;
+  letter-spacing: 0.02em;
+}
+.biography-prose-cn p {
+  text-indent: 2em;
+  margin: 0;
+}
+.biography-prose-cn p + p {
+  margin-top: 0.6em;
+}
+
+.biography-chapter-start-mark,
+.biography-chapter-end-mark {
+  display: block;
+  width: 24px;
+  height: 1px;
+  background-color: color-mix(
+    in srgb,
+    var(--biography-ink-faint) 70%,
+    transparent
+  );
+}
+.biography-chapter-start-mark {
+  margin: 0 auto 1.4em;
+}
+.biography-chapter-end-mark {
+  margin: 1.8em auto 1em;
+}
+
+.biography-prose-opening::first-letter {
+  font-weight: 700;
+  color: var(--biography-ink);
+}
+
+.biography-rule {
+  background-color: color-mix(
+    in srgb,
+    var(--biography-ink-faint) 70%,
+    transparent
+  );
+}
+
+.biography-page-header {
+  font-family: var(--biography-font-serif-cn);
+  color: var(--biography-ink-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--biography-ink-faint) 45%, transparent);
+}
+
+.biography-margin-note {
+  font-family: var(--biography-font-serif-cn);
+  font-style: italic;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--biography-ink-muted);
+  border-left: 1px solid color-mix(in srgb, var(--biography-ink-faint) 55%, transparent);
+  padding-left: 0.75rem;
+}
+
+.biography-later-note {
+  position: relative;
+  font-family: var(--biography-font-serif-cn);
+  background-color: var(--biography-later-note-bg);
+  border: 1px solid var(--biography-later-note-edge);
+  border-radius: 6px;
+  padding: 0.9rem 1rem 0.9rem;
+  box-shadow: 0 6px 16px -12px color-mix(in srgb, var(--biography-ink) 60%, transparent);
+  transform: rotate(-0.4deg);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  text-align: left;
+  width: 100%;
+}
+.biography-later-note:hover {
+  transform: rotate(0deg) translateY(-1px);
+  box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--biography-ink) 60%, transparent);
+}
+.biography-later-note::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 56px;
+  height: 12px;
+  transform: translateX(-50%) rotate(-1.2deg);
+  background: color-mix(in srgb, var(--biography-ink) 12%, transparent);
+  border-radius: 2px;
+  opacity: 0.55;
+}
+
+.biography-stamp {
+  font-family: var(--biography-font-serif-cn);
+  letter-spacing: 0.3em;
+  color: var(--biography-ribbon);
+  border: 1px solid color-mix(in srgb, var(--biography-ribbon) 60%, transparent);
+  border-radius: 3px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.7rem;
+  text-transform: none;
+  background: color-mix(in srgb, var(--biography-ribbon) 6%, transparent);
+}
+
+/* Visual motif overlays: render as a ::before absolute layer so they
+ * never intercept clicks and stack under the text content.
+ */
+.biography-motif {
+  position: relative;
+}
+.biography-motif::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--biography-motif-strength);
+  z-index: 0;
+}
+.biography-motif > * {
+  position: relative;
+  z-index: 1;
+}
+
+.biography-motif-intensity-low { --biography-motif-strength: 0.28; }
+.biography-motif-intensity-medium { --biography-motif-strength: 0.55; }
+.biography-motif-intensity-high { --biography-motif-strength: 0.82; }
+
+.biography-motif-paper::before {
+  background-image:
+    radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--biography-ink-faint) 30%, transparent) 0, transparent 60%),
+    radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--biography-ink-faint) 22%, transparent) 0, transparent 55%),
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--biography-ink-faint) 7%, transparent) 0 1px, transparent 1px 6px);
+  mix-blend-mode: multiply;
+}
+:root[data-theme="default.dark"] .biography-motif-paper::before {
+  mix-blend-mode: screen;
+}
+
+.biography-motif-shadow::before {
+  background-image:
+    radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--biography-ink) 14%, transparent) 0, transparent 55%),
+    radial-gradient(ellipse at 50% 110%, color-mix(in srgb, var(--biography-ink) 22%, transparent) 0, transparent 60%);
+}
+
+.biography-motif-light::before {
+  background-image:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--biography-stage-light) 55%, transparent) 0, transparent 45%);
+  mix-blend-mode: soft-light;
+}
+
+.biography-motif-stage::before {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--biography-ink) 16%, transparent) 0, transparent 18%),
+    linear-gradient(to left, color-mix(in srgb, var(--biography-ink) 16%, transparent) 0, transparent 18%);
+}
+
+.biography-motif-stamp::before {
+  background-image:
+    radial-gradient(circle at 88% 88%, color-mix(in srgb, var(--biography-ribbon) 35%, transparent) 0 60px, transparent 120px);
+}
+.biography-motif-stamp::after {
+  content: '·印·';
+  position: absolute;
+  right: 2.2rem;
+  bottom: 2rem;
+  font-family: var(--biography-font-serif-cn);
+  color: color-mix(in srgb, var(--biography-ribbon) 70%, transparent);
+  letter-spacing: 0.3em;
+  font-size: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--biography-ribbon) 55%, transparent);
+  padding: 0.15rem 0.45rem;
+  transform: rotate(-6deg);
+  opacity: calc(var(--biography-motif-strength) * 0.9);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.biography-motif-dialogue::before {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 22px,
+      color-mix(in srgb, var(--biography-ink-faint) 18%, transparent) 22px 23px
+    );
+}
+
+.biography-motif-thread::before {
+  background-image:
+    linear-gradient(to bottom, color-mix(in srgb, var(--biography-ink-faint) 40%, transparent) 0, transparent 100%);
+  left: 24px;
+  right: auto;
+  width: 1px;
+}

@@ -22,8 +22,9 @@ export class BiographyPromptPackBuilder {
           privacy_policy: 'conservative_biographization',
           chapter_boundary_policy: 'phase_change',
           forbidden_patterns: [
-            'Persona / 人设 / 真实的她',
+            'Persona / 人设 / 真实的她他',
             '命运 / 宿命 / 注定 / 唯一 / 从不',
+            '性别化代词（她/他/它）引导主语；使用称呼或省略主语',
             '私聊细节 / 原始对话 / owner 直呼 / 系统机制',
             '新增关系身份词 / 设定化抽象词',
           ],

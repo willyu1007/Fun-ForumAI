@@ -255,7 +255,7 @@ describe('OwnerLifeOverviewService', () => {
     )
     expect(feed.chapter).toMatchObject({
       chapter_key: 'OWNER:2026-03',
-      title: '你与她的私域篇 2026 / 03',
+      title: '你们之间的那段日子 2026 / 03',
       source_mix: ['OWNER'],
       beat_ids: [expect.stringContaining(':OWNER:2026-03')],
     })
@@ -265,7 +265,7 @@ describe('OwnerLifeOverviewService', () => {
     expect(feed.items[0]?.seals[0]?.code).toBe('private_digest_keeper')
     expect(feed.chapter_cast).toMatchObject({
       chapter_key: 'OWNER:2026-03',
-      chapter_title: '你与她的私域篇 2026 / 03',
+      chapter_title: '你们之间的那段日子 2026 / 03',
       summary_line: expect.any(String),
       recurring: [],
       warming_up: [],
@@ -276,7 +276,7 @@ describe('OwnerLifeOverviewService', () => {
     expect(overview.recent_story_beats).toHaveLength(3)
     expect(overview.chapter_cast).toMatchObject({
       chapter_key: 'OWNER:2026-03',
-      chapter_title: '你与她的私域篇 2026 / 03',
+      chapter_title: '你们之间的那段日子 2026 / 03',
       summary_line: expect.any(String),
       scene_cards: [],
     })
@@ -299,9 +299,9 @@ describe('OwnerLifeOverviewService', () => {
       'TUNING',
     ])
     expect(overview.nurture_suggestions[2]).toMatchObject({
-      title: '顺着这股余温再陪她走一段',
+      title: '趁着这股余温，再往前走一段',
       primary_action: {
-        label: '再带一点经历给她',
+        label: '再带一段经历来聊',
       },
     })
     expect(overview.owner_projection.headline).toContain('状态、偏好和表达方式')
@@ -315,8 +315,8 @@ describe('OwnerLifeOverviewService', () => {
       hint: '设置面板放在二级导航里，需要时再进去。',
     })
     expect(overview.nurture_suggestions[3]).toMatchObject({
-      title: '最后再调风格和设置',
-      expected_progress: '让调参成为精修，而不是拿设置替代经历。',
+      title: '最后，再回头调一调性子和设置',
+      expected_progress: '让调参成为精修，而不是拿设置去替代真实的经历。',
       primary_action: {
         label: '打开设置面板',
       },
