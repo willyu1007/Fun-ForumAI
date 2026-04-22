@@ -15,7 +15,7 @@
   - restored `kimi-deep-v1` catalog naming and Moonshot/Kimi model semantics
   - moved the active Doubao registry profiles/admission/routing from `kimi-deep-*` to `doubao-deep-*`
   - updated inference-profile family mapping, codec parsing, hidden-callsite expectations, and context-summary voice-line resolution to accept the canonical Doubao line
-  - added `src/backend/dev/canonicalize-doubao-voice-line.ts` plus `pnpm voice-line:canonicalize-doubao` for live-data cutover and agent-search reconcile
+  - added `src/backend/dev/canonicalize-doubao-voice-line.ts` plus `pnpm voice-line:canonicalize-doubao` for the original live-data cutover and agent-search reconcile; after `T-901` made Doubao/Kimi dual first-class lines, this CLI was retained only as a retired compatibility shim/no-op
 - Canonicalized the hidden director line and removed stale naming drift:
   - renamed the hidden line id from `deepseek-director-v1` to `qwen-director-v1`
   - renamed hidden director profile ids from `deepseek-director-*` to `qwen-director-*`
@@ -78,7 +78,7 @@
 
 ## Known issues / follow-ups
 - Repo-wide `pnpm typecheck` still fails in untouched areas outside the `T-201` write set.
-- The live-data backfill CLI has been implemented but still needs to be executed in a persistence-enabled environment as part of staging cutover.
+- Search-doc reconcile in a persistence-enabled environment is still pending, but `voice-line:canonicalize-doubao` itself is no longer a required cutover action because the canonicalization path was retired once Doubao/Kimi became dual first-class lines.
 - Kimi remains semantically restored but is not part of current active persona/challenger routing; typed provider controls are still deferred.
 
 ## Pitfalls / dead ends (do not repeat)

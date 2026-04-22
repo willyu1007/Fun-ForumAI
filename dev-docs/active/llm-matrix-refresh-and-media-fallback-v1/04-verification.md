@@ -50,7 +50,7 @@
     - routing artifact regenerated successfully with `50` profiles / `5` provider admission pools
     - registry validator passed after restoring Kimi as a semantically real line and moving active Doubao routing to `doubao-deep-*`
     - targeted routing/control-plane/runtime tests passed (`43` tests)
-    - `voice-line:canonicalize-doubao --dry-run` executed successfully against the current persistence state (`0` rows needed canonicalization in this workspace)
+    - `voice-line:canonicalize-doubao --dry-run` executed successfully against the then-current persistence state (`0` rows needed canonicalization in this workspace); after `T-901`, this command is retained only as a retired compatibility shim/no-op, not as a future required cutover
     - the new backfill CLI is covered by repository `typecheck`; no new canonicalization-specific compile failures surfaced
   - hidden director / media fallback cleanup validated:
     - `deepseek-director-*` no longer appears in active source, registry, or generated routing artifacts; only historical archive docs still retain the old id

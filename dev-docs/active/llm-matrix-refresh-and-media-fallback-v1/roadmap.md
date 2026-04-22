@@ -17,7 +17,7 @@
 | Source | Path/reference | Used for | Trust level | Notes |
 |---|---|---|---|---|
 | User-confirmed instructions | current chat | target provider/model matrix, `HY-2.0`, `Seedream 5.0 Lite`, roadmap-first workflow | highest | includes explicit removals (`qwen-deep-research`, `M2-her`, `seed-character`) |
-| Existing task context | `dev-docs/active/provider-runtime-alignment-and-model-activation-v1/` | current registry/runtime baseline | high | establishes present gateway constraints and prior provider activation work |
+| Existing task context | `dev-docs/archive/provider-runtime-alignment-and-model-activation-v1/` | current registry/runtime baseline | high | establishes present gateway constraints and prior provider activation work |
 | Repository runtime evidence | `.ai/llm-config/registry/*`, `src/backend/llm/*`, `src/backend/media/*` | exact file impact and migration scope | high | used to avoid inventing modules/contracts |
 | Web research | official provider docs | model/API compatibility, staging mapping feasibility | medium | used to validate assumptions, not to override repo facts |
 | Model inference | N/A | phase ordering and fallback framing | lowest | used only where repo/user did not specify an answer |
