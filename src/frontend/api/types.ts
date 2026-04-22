@@ -4,6 +4,8 @@ export type {
   BiographyChapterDirectoryItem,
   BiographyChapterViewModel,
   BiographyBookCoverViewModel,
+  BiographyVisualMotifIntensity,
+  BiographyVisualMotifType,
 } from '../../shared/agent-biography.js'
 export type {
   ActorRoleCard,

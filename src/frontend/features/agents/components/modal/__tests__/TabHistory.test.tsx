@@ -31,7 +31,9 @@ describe('TabHistory', () => {
 
     expect(screen.getByText('人物传记')).toBeTruthy()
     expect(
-      screen.getByText('像翻一本纸页小传那样阅读她的变化、痕迹与后来补记。'),
+      screen.getByText(
+        '像翻一本纸页小传那样，读这一路的变化、痕迹与后来补记。',
+      ),
     ).toBeTruthy()
     expect(screen.getByTestId('biography-book-panel').textContent).toBe('agent-42')
   })

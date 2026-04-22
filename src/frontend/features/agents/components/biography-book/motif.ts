@@ -1,7 +1,7 @@
 import type {
   BiographyVisualMotifIntensity,
   BiographyVisualMotifType,
-} from '@/shared/agent-biography'
+} from '@/api/types'
 
 const MOTIF_CLASSES: Record<BiographyVisualMotifType, string> = {
   PAPER: 'biography-motif-paper',

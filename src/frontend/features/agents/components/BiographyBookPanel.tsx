@@ -106,7 +106,7 @@ export function BiographyBookPanel({ agentId }: BiographyBookPanelProps) {
             这本传记还没翻得开
           </p>
           <p className="biography-serif-cn mt-4 text-sm text-[color:var(--biography-ink-muted)]">
-            她的故事正在成形，稍后再回来看看。
+            这一段还在慢慢写下来，稍后再回来看看。
           </p>
         </div>
       </div>

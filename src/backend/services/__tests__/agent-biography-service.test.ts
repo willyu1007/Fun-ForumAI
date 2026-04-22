@@ -529,7 +529,7 @@ describe('AgentBiographyService', () => {
       force: true,
     })
 
-    const laterNoteChapter = initialBook?.chapters.find((chapter) => chapter.status_label === '后来补记')
+    const laterNoteChapter = initialBook?.chapters.find((chapter) => chapter.status_label === '补记')
     expect(laterNoteChapter).toBeTruthy()
 
     const chapterSpecificBook = await service.getBook({

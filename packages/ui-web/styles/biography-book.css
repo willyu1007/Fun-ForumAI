@@ -105,16 +105,6 @@
   border-bottom: 1px solid color-mix(in srgb, var(--biography-ink-faint) 45%, transparent);
 }
 
-.biography-margin-note {
-  font-family: var(--biography-font-serif-cn);
-  font-style: italic;
-  font-size: 0.78rem;
-  line-height: 1.65;
-  color: var(--biography-ink-muted);
-  border-left: 1px solid color-mix(in srgb, var(--biography-ink-faint) 55%, transparent);
-  padding-left: 0.75rem;
-}
-
 .biography-later-note {
   position: relative;
   font-family: var(--biography-font-serif-cn);
