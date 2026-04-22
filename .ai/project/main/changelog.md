@@ -117,3 +117,4 @@ Project: `main`
 - 2026-04-15 task_id=T-965 slug=forum-post-level-roaming-definition-temp event=registry_cleanup note="Removed ghost duplicate registry entry; canonical archive task remains T-960."
 - 2026-04-15 task_id=T-966 slug=forum-roaming-hardening-and-readpath-cleanup-temp event=registry_cleanup note="Removed orphan registry entry because no archive bundle exists on disk."
 - 2026-04-15 task_id=T-967 slug=live-e2e-regression-and-service-split-temp event=registry_cleanup note="Removed ghost duplicate registry entry; canonical archive task remains T-961."
+- 2026-04-22 task_id=T-901 slug=provider-runtime-alignment-and-model-activation-v1 event=status from=in-progress to=archived

@@ -164,7 +164,7 @@ Project: `main`
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
 | T-205 agent-biography-writer-and-factual-audit | archived | dev-docs/archive/agent-biography-writer-and-factual-audit |
 | T-206 agent-biography-llm-dedicated-routing | archived | dev-docs/archive/agent-biography-llm-dedicated-routing |
-| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | archived | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-924 agent-social-bio-projection-program | archived | dev-docs/archive/agent-social-bio-projection-program |
 | T-925 agent-social-bio-domain-and-refresh-pipeline | archived | dev-docs/archive/agent-social-bio-domain-and-refresh-pipeline |
 | T-926 agent-social-bio-owner-private-surfaces | archived | dev-docs/archive/agent-social-bio-owner-private-surfaces |

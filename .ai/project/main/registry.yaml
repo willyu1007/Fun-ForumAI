@@ -1439,13 +1439,13 @@ tasks:
     updated: 2026-04-21
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-020
     requirement_ids:
       - R-027
-    dev_docs_path: dev-docs/active/provider-runtime-alignment-and-model-activation-v1
-    updated: 2026-04-07
+    dev_docs_path: dev-docs/archive/provider-runtime-alignment-and-model-activation-v1
+    updated: 2026-04-22
   - id: T-902
     slug: chronicle-chapter-summary-alignment
     status: archived

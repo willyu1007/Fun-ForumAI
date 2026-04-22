@@ -149,7 +149,7 @@ Project: `main`
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
 | T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
 | T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
-| T-901 provider-runtime-alignment-and-model-activation-v1 | in-progress | F-020 | dev-docs/active/provider-runtime-alignment-and-model-activation-v1 |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | F-000 | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-907 confirmed-technical-debt-paydown | archived | F-000 | dev-docs/archive/confirmed-technical-debt-paydown |

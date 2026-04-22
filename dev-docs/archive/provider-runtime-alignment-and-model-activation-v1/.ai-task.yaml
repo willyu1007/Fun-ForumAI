@@ -2,8 +2,8 @@ version: 1
 task_id: T-901
 project: main
 slug: provider-runtime-alignment-and-model-activation-v1
-status: in-progress
-updated: "2026-04-07"
+status: archived
+updated: "2026-04-22"
 keywords:
   - provider
   - llm
@@ -11,3 +11,5 @@ keywords:
   - admission
   - credential-pool
   - shadow-review
+  - voice-line
+  - search-docs
