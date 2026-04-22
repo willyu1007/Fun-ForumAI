@@ -282,9 +282,9 @@ export const searchProjectionService = new SearchProjectionService({
   aftershowService: core.aftershowService,
   guard: searchGuard,
 })
-core.humanParticipationService.setVoteRefreshHook(({ target_type, target_id }) =>
-  searchProjectionService.refreshVoteTarget(target_type, target_id),
-)
+core.humanParticipationService.setVoteRefreshHook(async ({ target_type, target_id }) => {
+  await searchProjectionService.refreshVoteTarget(target_type, target_id)
+})
 
 const postsSearchProvider = new PostSearchProvider({
   searchDocRepo: repos.searchDocRepo,

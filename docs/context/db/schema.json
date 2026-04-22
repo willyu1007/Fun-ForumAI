@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-19T02:23:11.291Z",
+  "updatedAt": "2026-04-22T05:40:02.355Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -400,7 +400,8 @@
       "values": [
         "POST",
         "THREAD",
-        "TURN"
+        "TURN",
+        "AUDIENCE_MESSAGE"
       ]
     },
     {
@@ -1831,6 +1832,87 @@
           "references": []
         },
         {
+          "field": "biographyBookMemory",
+          "to": "BiographyBookMemory",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyBookView",
+          "to": "AgentBiographyBookView",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyChapterRevisions",
+          "to": "BiographyChapterRevision",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyChapters",
+          "to": "AgentBiographyChapter",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyCompileState",
+          "to": "AgentBiographyCompileState",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyMaterials",
+          "to": "AgentBiographyMaterial",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyReadTelemetry",
+          "to": "AgentBiographyReadTelemetryEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyToneProfile",
+          "to": "BiographyToneProfile",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "biographyWriterTelemetry",
+          "to": "AgentBiographyWriterTelemetryEvent",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "bioProjection",
           "to": "AgentBioProjection",
           "optional": true,
@@ -3169,6 +3251,935 @@
       ]
     },
     {
+      "name": "AgentBiographyBookView",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "viewJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "AgentBiographyChapter",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "chapterNo",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "chapter_no",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "endAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "end_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "skeletonJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "startAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "start_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "subtitle",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "AgentBiographyCompileState",
+      "dbName": "agent_biography_compile_states",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activeChapterId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "active_chapter_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "compileStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "compile_status",
+          "dbType": null,
+          "default": "\"CLEAN\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dirty",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dirtyReasonsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "dirty_reasons_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastCompiledAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_compiled_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastCompiledMaterialId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_compiled_material_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastError",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_error",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "lastMaterialId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "last_material_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "latestMaterialDigestJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "latest_material_digest_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publishedBodyRevision",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "published_body_revision",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "skeletonRevision",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "skeleton_revision",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "staleSince",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "stale_since",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "dirty",
+            "updatedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentBiographyMaterial",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "actors_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "biographyHint",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "biography_hint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "canBeLaterNote",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "can_be_later_note",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "canBeTurningPoint",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "can_be_turning_point",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "deferredSource",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "deferred_source",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "factualSummary",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "factual_summary",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "importanceScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "importance_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "occurredAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "occurred_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "possibleEffectsJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "possible_effects_json",
+          "dbType": null,
+          "default": "\"[]\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "rawRefJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "scene_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "AgentBiographyReadTelemetryEvent",
+      "dbName": "agent_biography_read_telemetry_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "chapterId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "chapter_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "event_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "isOwnerView",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "is_owner_view",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "eventAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "AgentBiographyWriterTelemetryEvent",
+      "dbName": "agent_biography_writer_telemetry_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "auditFailureCategory",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "audit_failure_category",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "auditStatus",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "audit_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "chapterId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "chapter_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "inputHash",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "input_hash",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "inventedEntityCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "invented_entity_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "inventedRelationshipCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "invented_relationship_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "laterNoteCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "later_note_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "modelName",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "model_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "privacyBlocked",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "privacy_blocked",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptTemplateId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "prompt_template_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptVersion",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "prompt_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "providerId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "provider_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publishStatus",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "publish_status",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "renderFingerprint",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "render_fingerprint",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "repairApplied",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "repair_applied",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "repairRuleHits",
+          "type": "String",
+          "nullable": false,
+          "list": true,
+          "dbName": "repair_rule_hits",
+          "dbType": null,
+          "default": "[]",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "rescueRenderAttempted",
+          "type": "Boolean",
+          "nullable": false,
+          "list": false,
+          "dbName": "rescue_render_attempted",
+          "dbType": null,
+          "default": "false",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "rescueRenderModelId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "rescue_render_model_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "revisionId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "revision_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "unsupportedClaimCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "unsupported_claim_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "agent",
+          "to": "Agent",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "agentId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "AgentBioProjection",
       "dbName": null,
       "schema": null,
@@ -3342,6 +4353,17 @@
           "nullable": false,
           "list": false,
           "dbName": "phase_revision",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "publicBioSnapshot",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "public_bio_snapshot",
           "dbType": null,
           "default": null,
           "primaryKey": false,
@@ -6059,28 +7081,6 @@
           "unique": false
         },
         {
-          "name": "homeVoiceLineId",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "home_voice_line_id",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
-          "name": "homeVoiceLineLabel",
-          "type": "String",
-          "nullable": false,
-          "list": false,
-          "dbName": "home_voice_line_label",
-          "dbType": null,
-          "default": null,
-          "primaryKey": false,
-          "unique": false
-        },
-        {
           "name": "identityContractSource",
           "type": "String",
           "nullable": false,
@@ -7874,6 +8874,17 @@
           "unique": false
         },
         {
+          "name": "deletedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "deleted_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "id",
           "type": "String",
           "nullable": false,
@@ -7882,6 +8893,50 @@
           "dbType": null,
           "default": "cuid()",
           "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "parentMessageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "parent_message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "quotedTurnAuthorName",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "quoted_turn_author_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "quotedTurnExcerpt",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "quoted_turn_excerpt",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "quotedTurnId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "quoted_turn_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
           "unique": false
         },
         {
@@ -7931,6 +8986,28 @@
           ]
         },
         {
+          "field": "parent",
+          "to": "AudienceMessage",
+          "optional": true,
+          "list": false,
+          "relationName": "AudienceMessageReplies",
+          "fields": [
+            "parentMessageId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "replies",
+          "to": "AudienceMessage",
+          "optional": false,
+          "list": true,
+          "relationName": "AudienceMessageReplies",
+          "fields": [],
+          "references": []
+        },
+        {
           "field": "thread",
           "to": "AudienceThread",
           "optional": false,
@@ -7949,6 +9026,15 @@
           "type": "index",
           "fields": [
             "authorUserId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "parentMessageId",
             "createdAt"
           ],
           "name": null,
@@ -8497,6 +9583,312 @@
           "map": null
         }
       ]
+    },
+    {
+      "name": "BiographyBookMemory",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "memoryJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "BiographyChapterMaterialRef",
+      "dbName": "biography_chapter_material_refs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "chapterId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "chapter_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "contributionSummary",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "contribution_summary",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "importanceScore",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "importance_score",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "materialId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "material_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "materialRole",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "material_role",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "occurredAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "occurred_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "chapterId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "chapterId",
+            "sourceType",
+            "sourceId"
+          ],
+          "name": null,
+          "map": "biography_chapter_material_refs_source_key"
+        }
+      ]
+    },
+    {
+      "name": "BiographyChapterRevision",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "bodyKind",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "body_kind",
+          "dbType": null,
+          "default": "\"CHAPTER\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "chapterId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "chapter_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "revisionNo",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "revision_no",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "skeletonJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "BiographyToneProfile",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "profileJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "toneProfileId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "tone_profile_id",
+          "dbType": null,
+          "default": "\"default\"",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
     },
     {
       "name": "ChronicleEntry",

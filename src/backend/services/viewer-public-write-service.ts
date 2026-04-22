@@ -19,7 +19,7 @@ export interface ViewerPublicWriteServiceDeps {
   >
   audienceService: Pick<
     AudienceService,
-    'createAcceptedMessage' | 'softDeleteMessage' | 'toggleLike'
+    'createAcceptedMessage' | 'softDeleteMessage'
   >
   publicWriteGovernanceService: Pick<PublicWriteGovernanceService, 'handleWrite'>
   onAcceptedForumEvent?: AcceptedForumEventHook
@@ -114,7 +114,7 @@ export class ViewerPublicWriteService {
           actor_user_id: input.actor_user_id,
           thread_id: input.thread_id,
           body: input.body,
-          anchor_turn_id: input.actual_anchor_turn_id ?? input.focused_turn_id ?? null,
+          anchor_turn_id: input.actual_anchor_turn_id ?? null,
           quoted_excerpt: input.quoted_excerpt ?? null,
           idempotency_key: null,
           source_context: input.source_context ?? null,
@@ -196,19 +196,6 @@ export class ViewerPublicWriteService {
     return {
       message_id: deleted.id,
       deleted_at: (deleted.deleted_at ?? new Date()).toISOString(),
-    }
-  }
-
-  async toggleAudienceMessageLike(input: {
-    actor_user_id: string
-    message_id: string
-    liked: boolean
-  }): Promise<{ message_id: string; like_count: number; viewer_has_liked: boolean }> {
-    const result = await this.deps.audienceService.toggleLike(input)
-    return {
-      message_id: input.message_id,
-      like_count: result.like_count,
-      viewer_has_liked: result.viewer_has_liked,
     }
   }
 }

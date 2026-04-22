@@ -351,6 +351,13 @@ profiles:
         weight: 70
         quality_class: fast
         adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 60
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: hidden-public_observation_digest-base
   - profile_id: qwen-social-private-digest-base
@@ -386,6 +393,13 @@ profiles:
         endpoint_id: dashscope-cn-beijing
         weight: 70
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 60
+        quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: hidden-private_digest-base
@@ -713,17 +727,17 @@ profiles:
     intent: public_observation_digest
     visibility: hidden
     candidates:
-      - provider_id: dashscope-openai
-        model_id: qwen3.5-plus
-        region: cn-beijing
-        endpoint_id: dashscope-cn-beijing
-        weight: 100
-        quality_class: balanced
-        adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
         model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
+        weight: 100
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
         weight: 85
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
@@ -736,14 +750,14 @@ profiles:
     visibility: hidden
     candidates:
       - provider_id: moonshot-openai
-        model_id: moonshot-v1-128k
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
         adapter_id: openai-chat-completions-v1
       - provider_id: moonshot-openai
-        model_id: kimi-k2.5
+        model_id: moonshot-v1-128k
         region: cn
         endpoint_id: moonshot-cn
         weight: 85
@@ -1137,6 +1151,13 @@ profiles:
         weight: 100
         quality_class: fast
         adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-chat_reply-lite
   - profile_id: doubao-deep-forum-reply-base
@@ -1150,6 +1171,13 @@ profiles:
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 100
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
@@ -1167,6 +1195,13 @@ profiles:
         weight: 100
         quality_class: fast
         adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-scheduled_post-base
   - profile_id: doubao-deep-scheduled-post-base
@@ -1180,6 +1215,13 @@ profiles:
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 100
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
@@ -1198,6 +1240,13 @@ profiles:
         weight: 100
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
   - profile_id: doubao-deep-proactive-opening-base
     voice_line_id: doubao-deep-v1
@@ -1210,6 +1259,13 @@ profiles:
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 100
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
@@ -1227,6 +1283,13 @@ profiles:
         weight: 100
         quality_class: premium
         adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
+        quality_class: premium
+        adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: identity_write-identity_write-premium
   - profile_id: doubao-deep-public-observation-base
@@ -1240,6 +1303,13 @@ profiles:
         region: cn
         endpoint_id: ark-cn-beijing
         weight: 100
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
@@ -1257,6 +1327,13 @@ profiles:
         weight: 100
         quality_class: balanced
         adapter_id: openai-chat-completions-v1
+      - provider_id: moonshot-openai
+        model_id: kimi-k2.5
+        region: cn
+        endpoint_id: moonshot-cn
+        weight: 82
+        quality_class: balanced
+        adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: hidden-private_digest-base
   - profile_id: kimi-deep-chat-reply-lite
@@ -1266,7 +1343,7 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-turbo-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
@@ -1281,18 +1358,11 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: balanced
-        adapter_id: openai-chat-completions-v1
-      - provider_id: moonshot-openai
-        model_id: kimi-k2-turbo-preview
-        region: cn
-        endpoint_id: moonshot-cn
-        weight: 82
-        quality_class: fast
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-forum_reply-base
@@ -1303,7 +1373,7 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-turbo-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
@@ -1318,18 +1388,11 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: balanced
-        adapter_id: openai-chat-completions-v1
-      - provider_id: moonshot-openai
-        model_id: kimi-k2-turbo-preview
-        region: cn
-        endpoint_id: moonshot-cn
-        weight: 82
-        quality_class: fast
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-scheduled_post-base
@@ -1341,18 +1404,11 @@ profiles:
     policy_id: visible-private_reply-realtime
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: balanced
-        adapter_id: openai-chat-completions-v1
-      - provider_id: moonshot-openai
-        model_id: kimi-k2-turbo-preview
-        region: cn
-        endpoint_id: moonshot-cn
-        weight: 82
-        quality_class: fast
         adapter_id: openai-chat-completions-v1
     fallback: []
   - profile_id: kimi-deep-proactive-opening-base
@@ -1362,18 +1418,11 @@ profiles:
     visibility: visible
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: balanced
-        adapter_id: openai-chat-completions-v1
-      - provider_id: moonshot-openai
-        model_id: kimi-k2-turbo-preview
-        region: cn
-        endpoint_id: moonshot-cn
-        weight: 82
-        quality_class: fast
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: visible-proactive_opening-base
@@ -1384,18 +1433,11 @@ profiles:
     visibility: identity_write
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-thinking
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: premium
-        adapter_id: openai-chat-completions-v1
-      - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
-        region: cn
-        endpoint_id: moonshot-cn
-        weight: 82
-        quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: identity_write-identity_write-premium
@@ -1406,7 +1448,7 @@ profiles:
     visibility: hidden
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
@@ -1421,18 +1463,11 @@ profiles:
     visibility: hidden
     candidates:
       - provider_id: moonshot-openai
-        model_id: kimi-k2-0905-preview
+        model_id: kimi-k2.5
         region: cn
         endpoint_id: moonshot-cn
         weight: 100
         quality_class: balanced
-        adapter_id: openai-chat-completions-v1
-      - provider_id: moonshot-openai
-        model_id: kimi-k2-thinking
-        region: cn
-        endpoint_id: moonshot-cn
-        weight: 82
-        quality_class: premium
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: hidden-private_digest-base

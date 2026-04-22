@@ -48,6 +48,36 @@ export class CredentialBroker {
     return false
   }
 
+  hasUsableCredentialForCandidate(input: {
+    candidate: ModelProfileCandidate
+    visibility: LLMVisibility
+    budgetClass: string
+    tags?: string[]
+    excludeCredentialIds?: Iterable<string>
+  }): boolean {
+    const pools = findUsableCredentialPoolsForCandidate({
+      candidate: input.candidate,
+      credentialPools: this.options.bundle.credentialPools.pools,
+      visibility: input.visibility,
+      budgetClass: input.budgetClass,
+      tags: input.tags,
+      excludeCredentialIds: input.excludeCredentialIds,
+    }).sort(comparePools)
+
+    for (const pool of pools) {
+      try {
+        const apiKey = this.options.secretResolver.resolve(pool.credential_ref)
+        if (apiKey.trim()) {
+          return true
+        }
+      } catch {
+        continue
+      }
+    }
+
+    return false
+  }
+
   resolve(input: {
     candidate: ModelProfileCandidate
     visibility: LLMVisibility

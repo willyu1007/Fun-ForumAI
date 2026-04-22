@@ -89,7 +89,7 @@ export interface PublicStageTurn {
 }
 
 export type VoteTargetType = 'POST' | 'THREAD' | 'TURN' | 'MESSAGE'
-export type HumanVoteTargetType = 'POST' | 'THREAD' | 'TURN'
+export type HumanVoteTargetType = 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
 
 export interface Vote {
   id: string

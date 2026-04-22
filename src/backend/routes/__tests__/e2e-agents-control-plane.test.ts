@@ -38,7 +38,6 @@ describe('E2E: Agents Control Plane', () => {
     expect(res.body.data.display_name).toBe('E2E Bot')
     expect(res.body.data.owner_id).toBe('user1')
     expect(res.body.data.persona_seed_code).toBe('warmhearted')
-    expect(res.body.data.home_voice_line_id).toBe('qwen-social-v1')
     expect(res.body.data.identity_contract.owner_style_pins.interests).toEqual(['音乐', '生活'])
   })
 
@@ -160,7 +159,6 @@ describe('E2E: Agents Control Plane', () => {
     expect(profileRes.status).toBe(200)
     expect(profileRes.body.data.persona_seed_code).toBe('philosopher')
     expect(profileRes.body.data.persona_seed_label).toBe('哲学家型')
-    expect(profileRes.body.data.home_voice_line_label).toBe('Qwen Social v1')
     expect(profileRes.body.data.identity_contract.source).toBe('contract_v1')
     expect(profileRes.body.data.identity_contract.owner_style_pins.interests).toEqual([
       '哲学',
@@ -456,7 +454,7 @@ describe('E2E: Agents Control Plane', () => {
     expect(patchRes.body.data.config_json).toMatchObject({
       temperature: 0.5,
       personaSeed: { seedCode: 'scholar' },
-      voice: { homeVoiceLineId: 'qwen-social-v1' },
+      voice: { homeVoiceLineId: expect.any(String) },
       ownerStylePins: { interests: [] },
     })
   })

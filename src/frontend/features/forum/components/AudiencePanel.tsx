@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Heart, MessageSquare, MoreHorizontal, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ChevronDown, MessageCircle, MoreHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -11,15 +12,14 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Textarea } from '@/components/ui/textarea'
 import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import {
   useAudienceThread,
   useCreateAudienceMessage,
   useDeleteAudienceMessage,
-  useToggleAudienceMessageLike,
   useCreateReport,
+  queryKeys,
 } from '@/api/hooks'
 import type {
   AudienceMessage,
@@ -27,6 +27,7 @@ import type {
   AudienceQuotedTurnRef,
   AudienceThreadSort,
 } from '@/api/types'
+import { HumanVoteControls } from './HumanVoteControls'
 
 interface QuotedTurnPrefill {
   turn_id: string
@@ -65,6 +66,7 @@ export function AudiencePanel({
 }: AudiencePanelProps) {
   const [sort, setSort] = useState<AudienceThreadSort>('latest')
   const { data, isLoading } = useAudienceThread(postId, { sort, enabled: Boolean(postId) })
+  const qc = useQueryClient()
   const messages: AudienceMessageWithReplies[] = useMemo(
     () => data?.data?.messages ?? [],
     [data?.data?.messages],
@@ -72,7 +74,6 @@ export function AudiencePanel({
 
   const createMessage = useCreateAudienceMessage(postId)
   const deleteMessage = useDeleteAudienceMessage(postId)
-  const toggleLike = useToggleAudienceMessageLike(postId)
   const createReport = useCreateReport()
 
   const [composerOpen, setComposerOpen] = useState(false)
@@ -92,6 +93,13 @@ export function AudiencePanel({
       composerTextareaRef.current?.focus()
     })
   }, [composePrefill?.turn_id, composePrefill])
+
+  useEffect(() => {
+    if (!composerOpen) return
+    window.requestAnimationFrame(() => {
+      composerTextareaRef.current?.focus()
+    })
+  }, [composerOpen])
 
   // One-shot deep-link scroll.
   const lastScrolledRef = useRef<string | null>(null)
@@ -168,14 +176,6 @@ export function AudiencePanel({
     [canPost, createMessage, postId],
   )
 
-  const handleToggleLike = useCallback(
-    (message: AudienceMessage) => {
-      if (!isAuthenticated || !postId) return
-      void toggleLike.mutateAsync({ messageId: message.id, liked: !message.viewer_has_liked })
-    },
-    [isAuthenticated, postId, toggleLike],
-  )
-
   const handleDelete = useCallback(
     (messageId: string) => {
       if (!postId) return
@@ -201,6 +201,10 @@ export function AudiencePanel({
     [createReport],
   )
 
+  const handleVoteApplied = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
+  }, [postId, qc])
+
   const hasMessages = messages.length > 0
 
   return (
@@ -209,7 +213,7 @@ export function AudiencePanel({
       data-testid="audience-panel"
     >
       <header className="flex items-center justify-between gap-2 text-[12px]">
-        <span className="font-medium text-foreground">留言</span>
+        <span className="font-medium text-foreground">人类讨论区</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -281,7 +285,7 @@ export function AudiencePanel({
               activeReplyId={activeReplyId}
               onToggleReply={(id) => setActiveReplyId((current) => (current === id ? null : id))}
               onReplySubmit={handleReply}
-              onToggleLike={handleToggleLike}
+              onVoteApplied={handleVoteApplied}
               onDelete={handleDelete}
               onReport={handleReport}
               onNavigateToTurn={onNavigateToTurn}
@@ -334,25 +338,35 @@ function AudienceComposer({
       <button
         type="button"
         className={cn(
-          'flex w-full items-center gap-2 rounded-md border border-border/70 px-3 py-2 text-left text-xs',
+          'ui-focus-reset',
+          'relative w-full rounded-xl border border-border/70 bg-background/95 px-4 py-2.5 text-left transition-colors',
           disabled
-            ? 'cursor-not-allowed text-muted-foreground/70'
-            : 'text-muted-foreground hover:border-border hover:text-foreground',
+            ? 'cursor-not-allowed text-primary/45'
+            : 'text-primary/45 hover:border-foreground/30',
         )}
         disabled={disabled}
         onClick={() => onOpenChange(true)}
         data-testid="audience-composer-open"
       >
-        {placeholder}
+        <span className="block min-h-[88px] px-1 py-1 pb-9 text-[14px]">{placeholder}</span>
+        <span className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-end justify-between gap-3">
+          <span className="min-h-3.5 flex-1" />
+          <span className="inline-flex h-7 items-center justify-center rounded-full bg-primary/10 px-2.5 text-[11px] font-medium text-primary/65">
+            发布
+          </span>
+        </span>
       </button>
     )
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-border/70 p-2" data-testid="audience-composer">
+    <div
+      className="relative rounded-xl border border-border/70 bg-background/95 px-4 py-2.5 transition-colors focus-within:border-foreground/30"
+      data-testid="audience-composer"
+    >
       {quotedTurn ? (
         <div
-          className="flex items-start justify-between gap-2 rounded-sm bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground"
+          className="mb-2 flex items-start justify-between gap-2 rounded-lg bg-muted/45 px-3 py-2 text-[11px] text-muted-foreground"
           data-testid="audience-composer-quote"
         >
           <div className="min-w-0">
@@ -363,7 +377,7 @@ function AudienceComposer({
           </div>
           <button
             type="button"
-            className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+            className="ui-focus-reset shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
             onClick={onRemoveQuote}
             aria-label="移除引用"
           >
@@ -371,41 +385,42 @@ function AudienceComposer({
           </button>
         </div>
       ) : null}
-      <Textarea
+      <textarea
         ref={textareaRef}
         value={body}
         onChange={(event) => onBodyChange(event.target.value)}
         placeholder={placeholder}
         disabled={disabled}
         rows={3}
-        className="min-h-[4.5rem] text-[13px]"
+        className="ui-focus-reset min-h-[88px] w-full resize-none bg-transparent px-1 py-1 pb-9 text-[14px] leading-6 text-primary placeholder:text-primary/45 disabled:cursor-not-allowed disabled:text-primary/45"
         data-testid="audience-composer-textarea"
       />
-      {error ? (
-        <p className="text-[11px] text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 text-[11px] text-muted-foreground"
-          onClick={() => onOpenChange(false)}
-        >
-          取消
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          className="h-7 text-[11px]"
-          disabled={disabled || isPending || !body.trim()}
-          onClick={onSend}
-          data-testid="audience-composer-submit"
-        >
-          {isPending ? '发送中…' : '发布'}
-        </Button>
+      <div className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-end justify-between gap-3">
+        <div className="min-h-3.5 flex-1">
+          {error ? (
+            <p className="pointer-events-auto text-[11px] text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <div className="pointer-events-auto flex items-center gap-2">
+          <button
+            type="button"
+            className="ui-focus-reset inline-flex h-7 items-center justify-center rounded-full bg-primary/10 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-primary/15"
+            onClick={() => onOpenChange(false)}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="ui-focus-reset inline-flex h-7 items-center justify-center rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-60"
+            disabled={disabled || isPending || !body.trim()}
+            onClick={onSend}
+            data-testid="audience-composer-submit"
+          >
+            {isPending ? '发送中…' : '发布'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -422,7 +437,7 @@ interface AudienceMessageItemProps {
     parentId: string,
     body: string,
   ) => Promise<{ ok: boolean; error: string | null }>
-  onToggleLike: (message: AudienceMessage) => void
+  onVoteApplied?: () => void
   onDelete: (messageId: string) => void
   onReport: (messageId: string) => void
   onNavigateToTurn?: (turnId: string) => void
@@ -436,7 +451,7 @@ function AudienceMessageItem({
   activeReplyId,
   onToggleReply,
   onReplySubmit,
-  onToggleLike,
+  onVoteApplied,
   onDelete,
   onReport,
   onNavigateToTurn,
@@ -467,7 +482,7 @@ function AudienceMessageItem({
         isAuthenticated={isAuthenticated}
         canReply={canPost}
         deleted={deleted}
-        onToggleLike={() => onToggleLike(message)}
+        onVoteApplied={onVoteApplied}
         onToggleReply={() => onToggleReply(message.id)}
         onDelete={() => onDelete(message.id)}
         onReport={() => onReport(message.id)}
@@ -480,12 +495,12 @@ function AudienceMessageItem({
         />
       ) : null}
       {message.replies.length > 0 ? (
-        <ul className="mt-1 space-y-2 border-l-2 border-border/50 pl-3">
+        <ul className="mt-2 space-y-3 border-l-2 border-border/50 pl-5">
           {message.replies.map((reply) => (
             <li
               key={reply.id}
               data-audience-message-id={reply.id}
-              className="space-y-1 scroll-mt-20"
+              className="space-y-1.5 scroll-mt-20 py-0.5"
             >
               <AudienceMessageHeader message={reply} />
               {reply.deleted_at ? (
@@ -499,7 +514,7 @@ function AudienceMessageItem({
                 isAuthenticated={isAuthenticated}
                 canReply={false}
                 deleted={Boolean(reply.deleted_at)}
-                onToggleLike={() => onToggleLike(reply)}
+                onVoteApplied={onVoteApplied}
                 onDelete={() => onDelete(reply.id)}
                 onReport={() => onReport(reply.id)}
               />
@@ -538,7 +553,7 @@ function AudienceQuoteChip({
     <button
       type="button"
       onClick={onClick}
-      className="block w-full truncate rounded-sm bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+      className="ui-focus-reset block w-full truncate rounded-sm bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
       data-testid="audience-quote-chip"
     >
       ↳ {quote.author_display_name ?? '主线程'}「{quote.excerpt}」
@@ -552,7 +567,7 @@ interface AudienceActionRowProps {
   isAuthenticated: boolean
   canReply: boolean
   deleted: boolean
-  onToggleLike: () => void
+  onVoteApplied?: () => void
   onToggleReply?: () => void
   onDelete: () => void
   onReport: () => void
@@ -564,42 +579,34 @@ function AudienceActionRow({
   isAuthenticated,
   canReply,
   deleted,
-  onToggleLike,
+  onVoteApplied,
   onToggleReply,
   onDelete,
   onReport,
 }: AudienceActionRowProps) {
   return (
-    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-      <button
-        type="button"
-        className={cn(
-          'inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors',
-          message.viewer_has_liked
-            ? 'text-primary hover:text-primary'
-            : 'hover:text-foreground',
-          (!isAuthenticated || deleted) && 'cursor-not-allowed opacity-60 hover:text-muted-foreground',
-        )}
-        onClick={onToggleLike}
-        disabled={!isAuthenticated || deleted}
-        data-testid="audience-like-button"
-        aria-pressed={message.viewer_has_liked}
-      >
-        <Heart
-          className={cn('size-3.5', message.viewer_has_liked && 'fill-current')}
-          aria-hidden
+    <div className="flex min-h-[18px] items-center gap-2.5 text-[11px] text-muted-foreground">
+      {!deleted ? (
+        <HumanVoteControls
+          targetType="AUDIENCE_MESSAGE"
+          targetId={message.id}
+          humanUp={message.human_vote_up}
+          humanDown={message.human_vote_down}
+          initialDirection={message.viewer_human_vote_direction}
+          compact
+          appearance="plain"
+          onVoteApplied={onVoteApplied}
         />
-        <span className="tabular-nums">{message.like_count || ''}</span>
-      </button>
+      ) : null}
       {onToggleReply && canReply && !deleted ? (
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:text-foreground"
+          className="ui-focus-reset inline-flex h-[18px] items-center gap-1 rounded px-1 leading-none hover:text-foreground"
           onClick={onToggleReply}
           data-testid="audience-reply-button"
         >
-          <MessageSquare className="size-3.5" aria-hidden />
-          <span>回复</span>
+          <MessageCircle className="size-[14px]" aria-hidden />
+          <span className="inline-flex h-full items-center">回复</span>
         </button>
       ) : null}
       {!deleted ? (
@@ -607,11 +614,11 @@ function AudienceActionRow({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="rounded p-0.5 hover:text-foreground"
+              className="ui-focus-reset inline-flex size-[18px] items-center justify-center rounded hover:text-foreground"
               aria-label="更多操作"
               data-testid="audience-more-trigger"
             >
-              <MoreHorizontal className="size-3.5" />
+              <MoreHorizontal className="size-[14px]" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[7rem]">
@@ -657,49 +664,55 @@ function AudienceReplyComposer({
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   return (
-    <div className="mt-1 space-y-1 rounded-md border border-border/60 p-2" data-testid="audience-reply-composer">
-      <Textarea
+    <div
+      className="relative mt-2 rounded-xl border border-border/70 bg-background/95 px-4 py-2.5 transition-colors focus-within:border-foreground/30"
+      data-testid="audience-reply-composer"
+    >
+      <textarea
         value={body}
         onChange={(event) => setBody(event.target.value)}
         rows={2}
         placeholder="回复这条留言…"
-        className="min-h-[3.5rem] text-[12px]"
+        className="ui-focus-reset min-h-[88px] w-full resize-none bg-transparent px-1 py-1 pb-9 text-[14px] leading-6 text-primary placeholder:text-primary/45"
       />
-      {error ? <p className="text-[11px] text-destructive">{error}</p> : null}
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 text-[11px] text-muted-foreground"
-          onClick={() => {
-            setBody('')
-            setError(null)
-            onDone()
-          }}
-        >
-          取消
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          className="h-6 text-[11px]"
-          disabled={pending || !body.trim()}
-          onClick={async () => {
-            setPending(true)
-            const result = await onSubmit(parentId, body)
-            setPending(false)
-            if (result.ok) {
+      <div className="pointer-events-none absolute inset-x-4 bottom-2.5 flex items-end justify-between gap-3">
+        <div className="min-h-3.5 flex-1">
+          {error ? (
+            <p className="pointer-events-auto text-[11px] text-destructive">{error}</p>
+          ) : null}
+        </div>
+        <div className="pointer-events-auto flex items-center gap-2">
+          <button
+            type="button"
+            className="ui-focus-reset inline-flex h-7 items-center justify-center rounded-full bg-primary/10 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-primary/15"
+            onClick={() => {
               setBody('')
               setError(null)
               onDone()
-            } else {
-              setError(result.error ?? '发送失败，请稍后再试')
-            }
-          }}
-        >
-          {pending ? '发送中…' : '回复'}
-        </Button>
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="ui-focus-reset inline-flex h-7 items-center justify-center rounded-full bg-primary px-2.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-60"
+            disabled={pending || !body.trim()}
+            onClick={async () => {
+              setPending(true)
+              const result = await onSubmit(parentId, body)
+              setPending(false)
+              if (result.ok) {
+                setBody('')
+                setError(null)
+                onDone()
+              } else {
+                setError(result.error ?? '发送失败，请稍后再试')
+              }
+            }}
+          >
+            {pending ? '发送中…' : '回复'}
+          </button>
+        </div>
       </div>
     </div>
   )

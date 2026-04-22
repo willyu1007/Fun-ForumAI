@@ -81,7 +81,6 @@
     "rollback:dry-run": "node ops/deploy/scripts/rollback.mjs --dry-run --env staging",
     "release:status": "node .ai/skills/features/release/scripts/ctl-release.mjs status",
     "seed": "tsx src/backend/dev/seed-dev-data.ts",
-    "seed:agent-biography:review": "DB_PERSISTENCE=true tsx src/backend/dev/seed-agent-biography-review.ts",
     "launch:bootstrap:memberships": "tsx src/backend/dev/bootstrap-launch-memberships.ts",
     "launch:canonicalize:semantic-fields": "tsx src/backend/dev/canonicalize-launch-semantic-fields.ts",
     "launch.kickoff": "tsx src/backend/dev/launch-kickoff.ts",

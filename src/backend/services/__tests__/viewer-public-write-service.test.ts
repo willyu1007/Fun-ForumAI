@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { FORUM_PUBLIC_WRITE_RESULT_SCHEMA_VERSION } from '../../../shared/forum-orchestration.js'
-import type { AudienceMessage, AudienceThread, DomainEvent, PublicStageThread } from '../../repos/index.js'
+import type { AudienceMessage, AudienceThread, DomainEvent, PublicStageThread, PublicStageTurn } from '../../repos/index.js'
 import { ViewerPublicWriteService } from '../viewer-public-write-service.js'
 
 function makeEvent(overrides: Partial<DomainEvent> = {}): DomainEvent {
@@ -31,6 +31,29 @@ function makeEvent(overrides: Partial<DomainEvent> = {}): DomainEvent {
   }
 }
 
+function makePublicStageTurn(overrides: Partial<PublicStageTurn> = {}): PublicStageTurn {
+  return {
+    id: 'turn-1',
+    thread_id: 'thread-1',
+    post_id: 'post-1',
+    author_actor_type: 'human',
+    author_agent_id: null,
+    author_user_id: 'user-1',
+    turn_index: 1,
+    anchor_turn_id: null,
+    anchor_intent: null,
+    quoted_excerpt: null,
+    body: 'Root reply',
+    visibility: 'PUBLIC',
+    state: 'APPROVED',
+    governance_batch_id: null,
+    generation_mode: null,
+    created_at: new Date('2026-04-10T00:00:00.000Z'),
+    updated_at: new Date('2026-04-10T00:00:00.000Z'),
+    ...overrides,
+  }
+}
+
 describe('ViewerPublicWriteService', () => {
   it('dispatches accepted forum events for public thread writes', async () => {
     const forumEvent = makeEvent()
@@ -46,7 +69,6 @@ describe('ViewerPublicWriteService', () => {
       audienceService: {
         createAcceptedMessage: vi.fn(),
         softDeleteMessage: vi.fn(),
-        toggleLike: vi.fn(),
       },
       publicWriteGovernanceService: {
         handleWrite: vi.fn(async (input) => {
@@ -95,7 +117,6 @@ describe('ViewerPublicWriteService', () => {
           message: { id: 'aud-message-1' } as unknown as AudienceMessage,
         })),
         softDeleteMessage: vi.fn(),
-        toggleLike: vi.fn(),
       },
       publicWriteGovernanceService: {
         handleWrite: vi.fn(async (input) => {
@@ -147,7 +168,6 @@ describe('ViewerPublicWriteService', () => {
       audienceService: {
         createAcceptedMessage: vi.fn(),
         softDeleteMessage: vi.fn(),
-        toggleLike: vi.fn(),
       },
       publicWriteGovernanceService: {
         handleWrite: vi.fn(async (input) => ({
@@ -178,5 +198,72 @@ describe('ViewerPublicWriteService', () => {
     expect(result.result).toBe('PENDING_MODERATION')
     expect(humanParticipationService.createPublicThread).not.toHaveBeenCalled()
     expect(forumHook).not.toHaveBeenCalled()
+  })
+
+  it('does not backfill anchor_turn_id from focused_turn_id for thread-root replies', async () => {
+    const createPublicTurn = vi.fn(async () => ({
+      turn: makePublicStageTurn(),
+      event: makeEvent({
+        event_type: 'TURN_POSTED',
+        payload_json: {
+          post_id: 'post-1',
+          community_id: 'community-1',
+          author_actor_type: 'human',
+          author_agent_id: null,
+          author_user_id: 'user-1',
+          thread_id: 'thread-1',
+          turn_id: 'turn-1',
+        },
+      }),
+    }))
+    const service = new ViewerPublicWriteService({
+      humanParticipationService: {
+        createPublicThread: vi.fn(),
+        createPublicTurn,
+      },
+      audienceService: {
+        createAcceptedMessage: vi.fn(),
+        softDeleteMessage: vi.fn(),
+      },
+      publicWriteGovernanceService: {
+        handleWrite: vi.fn(async (input) => {
+          const created = await input.executeAcceptedWrite()
+          return {
+            schema_version: FORUM_PUBLIC_WRITE_RESULT_SCHEMA_VERSION,
+            action: input.action,
+            result: 'ACCEPTED' as const,
+            audit_id: 'audit-4',
+            thread_id: created.thread_id,
+            turn_id: created.turn_id,
+            audience_message_id: created.audience_message_id,
+            message: 'accepted',
+          }
+        }),
+      },
+    })
+
+    await service.createPublicTurn({
+      actor_user_id: 'user-1',
+      actor_role: 'user',
+      community_role: 'VIEWER',
+      client_ip: null,
+      session_id: null,
+      user_agent_hash: null,
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      body: 'Root reply',
+      focused_turn_id: 'thread-1',
+      actual_anchor_turn_id: null,
+    })
+
+    expect(createPublicTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        thread_id: 'thread-1',
+        body: 'Root reply',
+        anchor_turn_id: null,
+        focused_turn_id: 'thread-1',
+        actual_anchor_turn_id: null,
+      }),
+    )
   })
 })

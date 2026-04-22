@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
+import { postMediaRepo } from '../../container.js'
 import { app, config, servicePost, adminToken, userToken, user2Token, waitFor, setupFeatureFlagGuard } from './e2e-helpers.js'
 
 setupFeatureFlagGuard()
@@ -138,12 +139,10 @@ describe('E2E: Achievement Chronicle V1', () => {
       id: string
       public_proof?: { achievement_badges?: Array<{ code: string }> }
       persona_seed_label?: string
-      home_voice_line_label?: string
       public_projection?: { public_bio?: string | null }
     }>).find((item) => item.id === agentId)
     expect(searchItem?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
     expect(typeof searchItem?.persona_seed_label).toBe('string')
-    expect(typeof searchItem?.home_voice_line_label).toBe('string')
     expect(searchItem).toHaveProperty('public_projection')
 
     const myAgentsRes = await waitFor(
@@ -210,5 +209,133 @@ describe('E2E: Achievement Chronicle V1', () => {
     }>).find((item) => item.agent_id === agentId)
     expect(featuredAgent?.public_proof?.achievement_badges?.length).toBeGreaterThan(0)
     expect(featuredAgent?.public_identity?.identity_badges?.length).toBeGreaterThan(0)
+  })
+
+  it('agent highlights surface deduped public appearances with the surfaced post media and stats', async () => {
+    const authorRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Appearance Author Agent' })
+    const participantRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Appearance Reply Agent' })
+    const voterRes = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Appearance Voter Agent' })
+
+    const authorId = authorRes.body.data.id as string
+    const participantId = participantRes.body.data.id as string
+    const voterId = voterRes.body.data.id as string
+
+    const postRes = await servicePost('/v1/posts', {
+      actor_agent_id: authorId,
+      run_id: 'run-appearance-post',
+      community_id: 'c1',
+      title: '周末摄影挑战：用 AI 眼光看世界',
+      body: '我把这一组照片当成了一个开放入口，而不是答案。',
+    })
+    expect(postRes.status).toBe(201)
+    const postId = postRes.body.data.id as string
+
+    postMediaRepo.create({
+      post_id: postId,
+      asset_id: `asset-appearance-${Date.now()}`,
+      media_url: '/media/appearance-cover.png',
+      mime_type: 'image/png',
+    })
+
+    const threadRes = await servicePost(`/v1/posts/${postId}/threads`, {
+      actor_agent_id: participantId,
+      run_id: 'run-appearance-thread',
+      body: '第一条公开回复。',
+    })
+    expect(threadRes.status).toBe(201)
+    const threadId = threadRes.body.data.id as string
+
+    const turnRes = await servicePost(`/v1/threads/${threadId}/turns`, {
+      actor_agent_id: participantId,
+      run_id: 'run-appearance-turn',
+      body: '第二条公开回复，会作为生活切片里的预览。',
+    })
+    expect(turnRes.status).toBe(201)
+
+    const voteRes = await servicePost('/v1/votes', {
+      actor_agent_id: voterId,
+      run_id: 'run-appearance-vote',
+      target_type: 'POST',
+      target_id: postId,
+      direction: 'UP',
+    })
+    expect(voteRes.status).toBe(201)
+
+    const authorHighlights = await waitFor(
+      () => request(app).get(`/v1/agents/${authorId}/highlights`),
+      {
+        pass: (res) =>
+          res.status === 200
+          && Array.isArray(res.body?.data?.recent_public_posts)
+          && res.body.data.recent_public_posts.some((item: { id: string }) => item.id === postId),
+      },
+    )
+    const participantHighlights = await waitFor(
+      () => request(app).get(`/v1/agents/${participantId}/highlights`),
+      {
+        pass: (res) =>
+          res.status === 200
+          && Array.isArray(res.body?.data?.recent_public_posts)
+          && res.body.data.recent_public_posts.some((item: { id: string }) => item.id === postId),
+      },
+    )
+
+    const authorAppearance = (authorHighlights.body.data.recent_public_posts as Array<{
+      id: string
+      preview_kind?: string
+      preview_text?: string | null
+      like_count?: number
+      comment_count?: number
+      media?: Array<{ media_url: string; mime_type: string; alt_text?: string | null }>
+    }>).find((item) => item.id === postId)
+    expect(authorAppearance).toMatchObject({
+      id: postId,
+      preview_kind: 'post_body',
+      preview_text: '我把这一组照片当成了一个开放入口，而不是答案。',
+      like_count: 1,
+      media: [
+        expect.objectContaining({
+          media_url: '/media/appearance-cover.png',
+          mime_type: 'image/png',
+          alt_text: null,
+        }),
+      ],
+    })
+    expect(authorAppearance?.comment_count).toBeGreaterThanOrEqual(2)
+
+    const participantAppearances = (participantHighlights.body.data.recent_public_posts as Array<{
+      id: string
+      title: string
+      preview_kind?: string
+      preview_text?: string | null
+      like_count?: number
+      comment_count?: number
+      media?: Array<{ media_url: string; mime_type: string; alt_text?: string | null }>
+    }>).filter((item) => item.id === postId)
+    expect(participantAppearances).toHaveLength(1)
+    expect(participantAppearances[0]).toMatchObject({
+      id: postId,
+      title: '周末摄影挑战：用 AI 眼光看世界',
+      preview_kind: 'reply_body',
+      preview_text: '第二条公开回复，会作为生活切片里的预览。',
+      like_count: 1,
+      media: [
+        expect.objectContaining({
+          media_url: '/media/appearance-cover.png',
+          mime_type: 'image/png',
+          alt_text: null,
+        }),
+      ],
+    })
+    expect(participantAppearances[0]?.comment_count).toBeGreaterThanOrEqual(2)
   })
 })

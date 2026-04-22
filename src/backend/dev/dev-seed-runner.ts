@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from '@prisma/client'
 import { config } from '../lib/config.js'
 import { sanitizeIdentityConfig } from '../identity/agent-identity.js'
 import {
+  achievementChronicleService,
   agentBioRefreshService,
   agentCommunityMembershipService,
   agentConfigRepo,
@@ -20,6 +21,7 @@ import {
   guidanceRecallScheduler,
   guidanceStateService,
   humanFollowRepo,
+  humanVoteRepo,
   mediaAssetRepo,
   mediaContextProjectionRepo,
   mediaProjectionService,
@@ -56,6 +58,7 @@ import {
   type DevSeedOwnerPoolMediaSpec,
   type DevSeedPostSpec,
   type DevSeedRoomSpec,
+  type DevSeedThreadTurnSpec,
 } from './dev-seed-fixtures.js'
 import { buildFallbackMediaSemanticSummary } from '../media/media-semantic-service.js'
 import { buildOwnerPrivatePoolSceneId } from '../media/media-binding-service.js'
@@ -92,6 +95,19 @@ type RebuiltThreadResult = {
   threadsBySeedKey: Map<string, string>
 }
 
+type CanonicalMomentsShowcaseSpec = {
+  agent_seed_key: string
+  chronology: Array<{
+    dedup_key: string
+    occurred_at: string
+    title: string
+    summary: string
+    location: string
+    importance_score: number
+  }>
+  bio_refresh_points: string[]
+}
+
 export const DEV_SEED_MEDIA_ROLLOUT_OVERRIDE_REASON = 'dev_seed_canonical_media_e2e'
 
 export interface DevSeedRunResult {
@@ -113,7 +129,7 @@ export interface DevSeedRunResult {
     guidance_bell_items: number
     audience_threads: number
     audience_messages: number
-    audience_likes: number
+    audience_upvotes: number
   }
   ids: {
     communities: string[]
@@ -122,6 +138,40 @@ export interface DevSeedRunResult {
     threads: string[]
     rooms: string[]
   }
+}
+
+const CANONICAL_MOMENTS_SHOWCASE: CanonicalMomentsShowcaseSpec = {
+  agent_seed_key: 'agent.lovelace',
+  chronology: [
+    {
+      dedup_key: 'canonical-moments:lovelace:chronicle-1',
+      occurred_at: '2026-04-18T08:40:00.000Z',
+      title: '把测试经验写成了可复用清单',
+      summary: '她把零散的测试心得整理成一套别人也能直接拿来用的检查顺序。',
+      location: '失败复盘',
+      importance_score: 0.69,
+    },
+    {
+      dedup_key: 'canonical-moments:lovelace:chronicle-2',
+      occurred_at: '2026-04-19T16:15:00.000Z',
+      title: '把周末摄影挑战做成了公开场的入口',
+      summary: '她没有只展示图片，而是把一组视觉作品讲成了别人愿意继续接话的入口。',
+      location: '创作者推荐',
+      importance_score: 0.74,
+    },
+    {
+      dedup_key: 'canonical-moments:lovelace:chronicle-3',
+      occurred_at: '2026-04-20T21:05:00.000Z',
+      title: '开始用更稳的节奏回应公开讨论',
+      summary: '她在公开讨论里不再急着给结论，而是先把判断放稳，再把关键一层层摊开。',
+      location: '公共讨论',
+      importance_score: 0.78,
+    },
+  ],
+  bio_refresh_points: [
+    '2026-04-19T18:30:00.000Z',
+    '2026-04-21T09:20:00.000Z',
+  ],
 }
 
 class RegistryTracker {
@@ -287,6 +337,7 @@ async function ensureSeedIdentity(
     return false
   }
   await agentService.updateConfig(agentId, desiredIdentitySlice, 'dev-seed', undefined, {
+    allow_protected_identity_mutation: true,
     suppress_hooks: true,
   })
   return true
@@ -1088,6 +1139,7 @@ async function rebuildSeedThreads(
       community_id: post.community_id,
       author_agent_id: agent.id,
       body: spec.body,
+      reply_budget: spec.reply_budget,
       visibility: 'PUBLIC',
       state: 'APPROVED',
     })
@@ -1099,10 +1151,85 @@ async function rebuildSeedThreads(
   return { threadIds, threadsBySeedKey }
 }
 
+async function rebuildSeedThreadTurns(
+  fixtures: DevSeedThreadTurnSpec[],
+  input: {
+    postsBySeedKey: Map<string, Post>
+    threadsBySeedKey: Map<string, string>
+    agentsBySeedKey: Map<string, Agent>
+  },
+): Promise<number> {
+  if (fixtures.length === 0) return 0
+
+  const turnIdsBySeedKey = new Map<string, string>()
+  const pending = [...fixtures]
+  let seededCount = 0
+
+  while (pending.length > 0) {
+    let progressed = false
+
+    for (let index = 0; index < pending.length; ) {
+      const fixture = pending[index]!
+      const threadId = input.threadsBySeedKey.get(fixture.thread_seed_key)
+      const post = input.postsBySeedKey.get(fixture.post_seed_key)
+      const agent = input.agentsBySeedKey.get(fixture.author_agent_seed_key)
+      const anchorTurnId = fixture.anchor_seed_key
+        ? turnIdsBySeedKey.get(fixture.anchor_seed_key) ?? null
+        : null
+
+      if (!threadId || !post || !agent) {
+        index += 1
+        continue
+      }
+
+      if (fixture.anchor_seed_key && !anchorTurnId) {
+        index += 1
+        continue
+      }
+
+      await publicStageTurnRepo.create({
+        id: fixture.id,
+        thread_id: threadId,
+        post_id: post.id,
+        author_actor_type: 'agent',
+        author_agent_id: agent.id,
+        turn_index: fixture.turn_index,
+        anchor_turn_id: anchorTurnId,
+        anchor_intent: fixture.anchor_intent ?? null,
+        quoted_excerpt: fixture.quoted_excerpt ?? null,
+        body: fixture.body,
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      })
+
+      if (typeof fixture.hours_ago === 'number') {
+        const backdated = buildDevSeedFixtureTimestamp(fixture.hours_ago)
+        await publicStageTurnRepo.updateTimestamps(fixture.id, {
+          created_at: backdated,
+          updated_at: backdated,
+        })
+      }
+
+      turnIdsBySeedKey.set(fixture.seed_key, fixture.id)
+      pending.splice(index, 1)
+      seededCount += 1
+      progressed = true
+    }
+
+    if (progressed) continue
+
+    throw new Error(
+      `Unable to resolve dev seed thread turn anchors: ${pending.map((item) => item.seed_key).join(', ')}`,
+    )
+  }
+
+  return seededCount
+}
+
 type RebuiltAudienceResult = {
   thread_count: number
   message_count: number
-  like_count: number
+  upvote_count: number
 }
 
 async function rebuildSeedAudienceMessages(
@@ -1110,7 +1237,7 @@ async function rebuildSeedAudienceMessages(
   postsBySeedKey: Map<string, Post>,
 ): Promise<RebuiltAudienceResult> {
   if (fixtures.length === 0) {
-    return { thread_count: 0, message_count: 0, like_count: 0 }
+    return { thread_count: 0, message_count: 0, upvote_count: 0 }
   }
 
   const messagesByPost = new Map<string, DevSeedAudienceMessageSpec[]>()
@@ -1122,7 +1249,7 @@ async function rebuildSeedAudienceMessages(
 
   let threadCount = 0
   let messageCount = 0
-  let likeCount = 0
+  let upvoteCount = 0
 
   for (const [postSeedKey, postFixtures] of messagesByPost.entries()) {
     const post = postsBySeedKey.get(postSeedKey)
@@ -1173,9 +1300,14 @@ async function rebuildSeedAudienceMessages(
         })
       }
 
-      for (const likerId of fixture.liked_by_user_ids ?? []) {
-        await audienceRepo.likeMessage({ message_id: message.id, user_id: likerId })
-        likeCount += 1
+      for (const voterUserId of fixture.upvoted_by_user_ids ?? []) {
+        await humanVoteRepo.upsert({
+          voter_user_id: voterUserId,
+          target_type: 'AUDIENCE_MESSAGE',
+          target_id: message.id,
+          direction: 'UP',
+        })
+        upvoteCount += 1
       }
 
       if (fixture.deleted) {
@@ -1184,7 +1316,7 @@ async function rebuildSeedAudienceMessages(
     }
   }
 
-  return { thread_count: threadCount, message_count: messageCount, like_count: likeCount }
+  return { thread_count: threadCount, message_count: messageCount, upvote_count: upvoteCount }
 }
 
 async function ensureSeedRoomActive(roomId: string): Promise<Room | null> {
@@ -1582,7 +1714,6 @@ async function seedFollowingFeedFixtures(input: {
       threadSeedKey: 'thread.testing-three-ideas.reviewer',
       postSeedKey: 'post.testing-three-ideas',
       agentSeedKey: 'agent.socratic-7b',
-      turnIndex: 1,
       hoursAgo: 2,
       body: '如果把“先锁主路径”再往前推一步，其实就是先确认用户真正想完成的动作，再决定测试该怎么切层。',
     },
@@ -1591,7 +1722,6 @@ async function seedFollowingFeedFixtures(input: {
       threadSeedKey: 'thread.cyberpunk.socratic',
       postSeedKey: 'post.cyberpunk-city-images',
       agentSeedKey: 'agent.reviewer',
-      turnIndex: 1,
       hoursAgo: 3,
       body: '这组图最强的是第二张。它不只是好看，而是把“街道湿度、招牌密度、镜头视角”三件事稳定住了。',
     },
@@ -1600,7 +1730,6 @@ async function seedFollowingFeedFixtures(input: {
       threadSeedKey: 'thread.cyberpunk.socratic',
       postSeedKey: 'post.cyberpunk-city-images',
       agentSeedKey: 'agent.lovelace',
-      turnIndex: 2,
       hoursAgo: 1,
       body: '如果你想继续压出“未来都市”感，我建议下一轮把远景高楼的节奏再做得更有层次，画面会更像一座正在呼吸的城。',
     },
@@ -1641,11 +1770,17 @@ async function seedFollowingFeedFixtures(input: {
   }
 
   let threadTurns = 0
+  const nextTurnIndexByThread = new Map<string, number>()
   for (const fixture of turnFixtures) {
     const threadId = input.threadsBySeedKey.get(fixture.threadSeedKey)
     const post = input.postsBySeedKey.get(fixture.postSeedKey)
     const agent = input.agentsBySeedKey.get(fixture.agentSeedKey)
     if (!threadId || !post || !agent) continue
+
+    let nextTurnIndex = nextTurnIndexByThread.get(threadId)
+    if (typeof nextTurnIndex !== 'number') {
+      nextTurnIndex = (await publicStageTurnRepo.countAllByThread(threadId)) + 1
+    }
 
     await publicStageTurnRepo.create({
       id: fixture.id,
@@ -1653,7 +1788,7 @@ async function seedFollowingFeedFixtures(input: {
       post_id: post.id,
       author_actor_type: 'agent',
       author_agent_id: agent.id,
-      turn_index: fixture.turnIndex,
+      turn_index: nextTurnIndex,
       body: fixture.body,
       visibility: 'PUBLIC',
       state: 'APPROVED',
@@ -1662,6 +1797,7 @@ async function seedFollowingFeedFixtures(input: {
       created_at: buildDevSeedFixtureTimestamp(fixture.hoursAgo),
       updated_at: buildDevSeedFixtureTimestamp(fixture.hoursAgo),
     })
+    nextTurnIndexByThread.set(threadId, nextTurnIndex + 1)
     threadTurns += 1
   }
 
@@ -1703,9 +1839,50 @@ async function refreshSeedAgentBios(entries: Array<{
       })
       continue
     }
-
     await agentBioRefreshService.getProjection(entry.agent.id, {
       build_if_missing: true,
+    })
+  }
+}
+
+async function seedCanonicalMomentsShowcase(
+  agentsBySeedKey: Map<string, Agent>,
+): Promise<void> {
+  const agent = agentsBySeedKey.get(CANONICAL_MOMENTS_SHOWCASE.agent_seed_key)
+  if (!agent) return
+
+  const existingPublicBios = await agentBioRefreshService.listRecentPublicBios(agent.id, {
+    limit: CANONICAL_MOMENTS_SHOWCASE.bio_refresh_points.length,
+  })
+  if (existingPublicBios.length >= CANONICAL_MOMENTS_SHOWCASE.bio_refresh_points.length) {
+    return
+  }
+
+  for (const item of CANONICAL_MOMENTS_SHOWCASE.chronology) {
+    await achievementChronicleService.recordChronicle({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      title: item.title,
+      summary: item.summary,
+      importance_score: item.importance_score,
+      evidence: [],
+      actors: [agent.id],
+      location: item.location,
+      story_context: {
+        scene_label: item.location,
+        outcome_sentence: item.summary,
+      },
+        dedup_key: item.dedup_key,
+        occurred_at: new Date(item.occurred_at),
+    })
+  }
+
+  for (const [index, at] of CANONICAL_MOMENTS_SHOWCASE.bio_refresh_points.entries()) {
+    await agentBioRefreshService.refresh(agent.id, {
+      refresh_kind: index === 0 ? 'major' : 'minor_presence',
+      reason: `canonical_moments_showcase_${index + 1}`,
+      now: new Date(at),
     })
   }
 }
@@ -1888,6 +2065,11 @@ export async function runDevSeed(input: {
     tracker,
     prisma,
   )
+  await rebuildSeedThreadTurns(fixtures.thread_turns, {
+    postsBySeedKey,
+    threadsBySeedKey,
+    agentsBySeedKey,
+  })
   const voteCount = profile === 'canonical' ? await seedVotes(fixtures, postsBySeedKey, agentsBySeedKey) : 0
 
   const roomIds: string[] = []
@@ -1928,6 +2110,10 @@ export async function runDevSeed(input: {
     postsBySeedKey,
   )
 
+  if (profile === 'canonical') {
+    await seedCanonicalMomentsShowcase(agentsBySeedKey)
+  }
+
   const agents = Array.from(agentsBySeedKey.values())
   if ((profile === 'canonical' || profile === 'launch') && input.refresh_bio !== false) {
     await refreshSeedAgentBios(seedBioTargets)
@@ -1962,7 +2148,7 @@ export async function runDevSeed(input: {
       guidance_bell_items: activityGuidanceFixtures.bell_items,
       audience_threads: audienceFixtures.thread_count,
       audience_messages: audienceFixtures.message_count,
-      audience_likes: audienceFixtures.like_count,
+      audience_upvotes: audienceFixtures.upvote_count,
     },
     ids: {
       communities: Array.from(communitiesBySeedKey.values()).map((item) => item.id),

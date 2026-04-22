@@ -305,6 +305,9 @@ describe('LLM registry contract', () => {
     const profilesById = new Map(
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
     )
+    const executionPoliciesById = new Map(
+      bundle.executionPolicies.policies.map((entry) => [entry.policy_id, entry] as const),
+    )
 
     for (const profileId of [
       'qwen-social-public-observation-base',
@@ -325,11 +328,60 @@ describe('LLM registry contract', () => {
           'dashscope-openai/qwen3.5-plus',
           'ark-openai/doubao-seed-2-0-lite-260215',
           'dashscope-openai/qwen3.5-flash',
+          'moonshot-openai/kimi-k2.5',
         ]),
       )
       expect(
         profile?.candidates.some((candidate) => candidate.provider_id !== 'dashscope-openai'),
       ).toBe(true)
+    }
+
+    expect(
+      executionPoliciesById.get('hidden-public_observation_digest-base')?.merge
+        .allow_callsite_override_fields,
+    ).toContain('executionPolicyId')
+  })
+
+  it('keeps doubao line multi-homed so the runtime line remains usable when Ark is unavailable', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+    const doubaoAdmission = bundle.providerAdmission.pools.find((entry) => entry.voice_line_id === 'doubao-deep-v1')
+    const visibleProfileIds = [
+      'doubao-deep-chat-reply-lite',
+      'doubao-deep-forum-reply-base',
+      'doubao-deep-scheduled-post-lite',
+      'doubao-deep-scheduled-post-base',
+      'doubao-deep-private-reply-base',
+      'doubao-deep-proactive-opening-base',
+    ] as const
+    const hiddenProfileIds = [
+      'doubao-deep-identity-write-premium',
+      'doubao-deep-public-observation-base',
+      'doubao-deep-private-digest-base',
+    ] as const
+
+    expect(
+      doubaoAdmission?.candidates.map((candidate) => `${candidate.provider_id}/${candidate.model_id}`),
+    ).toEqual(
+      expect.arrayContaining([
+        'ark-openai/doubao-seed-2-0-lite-260215',
+        'moonshot-openai/kimi-k2.5',
+      ]),
+    )
+
+    for (const profileId of [...visibleProfileIds, ...hiddenProfileIds]) {
+      const candidateKeys =
+        profilesById.get(profileId)?.candidates.map(
+          (candidate) => `${candidate.provider_id}/${candidate.model_id}`,
+        ) ?? []
+      expect(candidateKeys).toEqual(
+        expect.arrayContaining([
+          'ark-openai/doubao-seed-2-0-lite-260215',
+          'moonshot-openai/kimi-k2.5',
+        ]),
+      )
     }
   })
 
@@ -366,19 +418,19 @@ describe('LLM registry contract', () => {
       profilesById.get('biography-director-public-observation-premium')?.candidates[0],
     ).toMatchObject({
       provider_id: 'moonshot-openai',
-      model_id: 'moonshot-v1-128k',
+      model_id: 'kimi-k2.5',
     })
     expect(
       profilesById.get('biography-director-public-observation-base')?.candidates[0],
     ).toMatchObject({
-      provider_id: 'dashscope-openai',
-      model_id: 'qwen3.5-plus',
+      provider_id: 'moonshot-openai',
+      model_id: 'kimi-k2.5',
     })
     expect(
       profilesById.get('biography-director-public-observation-premium')?.candidates[1],
     ).toMatchObject({
       provider_id: 'moonshot-openai',
-      model_id: 'kimi-k2.5',
+      model_id: 'moonshot-v1-128k',
     })
   })
 
@@ -467,6 +519,42 @@ describe('LLM registry contract', () => {
     for (const line of Object.values(VOICE_LINE_CATALOG).filter((entry) => entry.visible)) {
       expect(poolVoiceLines.has(line.id)).toBe(true)
     }
+  })
+
+  it('keeps deepseek premium identity-write candidates backed by an identity-write credential scope', () => {
+    const bundle = loadLlmRegistryBundle()
+    const deepseekPrimary = bundle.credentialPools.pools.find(
+      (entry) => entry.credential_id === 'deepseek-primary',
+    )
+    const glmIdentityPremium = bundle.modelProfiles.profiles.find(
+      (entry) => entry.profile_id === 'glm-deep-identity-write-premium',
+    )
+
+    expect(
+      glmIdentityPremium?.candidates.some((candidate) =>
+        candidate.provider_id === 'deepseek-openai' && candidate.model_id === 'deepseek-reasoner'),
+    ).toBe(true)
+    expect(deepseekPrimary?.scope_tags).toContain('identity_write')
+    expect(deepseekPrimary?.allowed_model_ids).toContain('deepseek-reasoner')
+  })
+
+  it('keeps minimax hidden profiles backed by hidden credential scopes', () => {
+    const bundle = loadLlmRegistryBundle()
+    const minimaxPools = bundle.credentialPools.pools.filter(
+      (entry) => entry.provider_id === 'minimax-openai',
+    )
+    const minimaxHiddenProfiles = bundle.modelProfiles.profiles.filter(
+      (entry) => entry.voice_line_id === 'minimax-her-v1' && entry.visibility === 'hidden',
+    )
+
+    expect(minimaxHiddenProfiles.length).toBeGreaterThan(0)
+    expect(
+      minimaxHiddenProfiles.every((profile) =>
+        profile.candidates.some((candidate) =>
+          candidate.provider_id === 'minimax-openai' && candidate.model_id === 'MiniMax-M2.7')),
+    ).toBe(true)
+    expect(minimaxPools.length).toBeGreaterThan(0)
+    expect(minimaxPools.every((pool) => pool.scope_tags?.includes('hidden') === true)).toBe(true)
   })
 
   it('requires every profile candidate to declare capability coverage compatible with its execution policy', () => {

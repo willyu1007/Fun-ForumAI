@@ -51,14 +51,21 @@ export function toRuntimeProfile(entity: {
   last_compiled_at: Date
   last_snapshot_json: Record<string, unknown>
   updated_at: Date
+}, options?: {
+  incumbentVoiceLineId?: VoiceLineId | null
 }): AgentInferenceProfile {
   const snapshotRaw = entity.last_snapshot_json
+  const incumbentFamily = parseCoreFamily(entity.incumbent_family) ?? 'anchor'
+  const challengerFamily = parseCoreFamily(entity.challenger_family)
+  const challengerVoiceLineId = parseVoiceLine(entity.challenger_voice_line_id)
   return {
     agentId: entity.agent_id,
     profileVersion: entity.profile_version,
-    incumbentFamily: parseCoreFamily(entity.incumbent_family) ?? 'anchor',
-    challengerFamily: parseCoreFamily(entity.challenger_family),
-    challengerVoiceLineId: parseVoiceLine(entity.challenger_voice_line_id),
+    incumbentFamily,
+    incumbentVoiceLineId: options?.incumbentVoiceLineId ?? null,
+    challengerFamily,
+    challengerVoiceLineId,
+    migrationScope: resolveMigrationScope(incumbentFamily, challengerFamily, challengerVoiceLineId),
     migrationState: parseMigrationState(entity.migration_state),
     consecutiveLeadWindows: entity.consecutive_lead_windows,
     challengerScoreDelta: entity.challenger_score_delta,
@@ -162,6 +169,17 @@ export function parseVoiceLine(value: string | null): VoiceLineId | null {
 
 export function parseRenderTier(value: unknown): RenderTier | null {
   return value === 'lite' || value === 'base' || value === 'premium' ? value : null
+}
+
+function resolveMigrationScope(
+  incumbentFamily: CoreFamily,
+  challengerFamily: CoreFamily | null,
+  challengerVoiceLineId: VoiceLineId | null,
+): AgentInferenceProfile['migrationScope'] {
+  if (!challengerFamily || !challengerVoiceLineId) {
+    return null
+  }
+  return challengerFamily === incumbentFamily ? 'same_family' : 'cross_family'
 }
 
 export function parseShadowReviewStatus(value: string): ShadowReviewStatus {

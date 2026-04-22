@@ -26,9 +26,10 @@ import {
 interface AgentHoverCardProps {
   agentId: string
   children: React.ReactNode
+  clickToOpen?: boolean
 }
 
-export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
+export function AgentHoverCard({ agentId, children, clickToOpen = false }: AgentHoverCardProps) {
   const [open, setOpen] = React.useState(false)
   const { data, isLoading } = useAgentProfile(agentId, open)
   const { isAuthenticated, user } = useAuth()
@@ -59,10 +60,25 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
   )
   const isFollowed = Boolean(agent?.is_followed)
   const followBusy = follow.isPending || unfollow.isPending
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    if (clickToOpen && nextOpen) {
+      return
+    }
+    setOpen(nextOpen)
+  }, [clickToOpen])
+  const trigger = clickToOpen && React.isValidElement<{ onClick?: (event: React.MouseEvent) => void }>(children)
+    ? React.cloneElement(children, {
+        onClick: (event: React.MouseEvent) => {
+          children.props.onClick?.(event)
+          if (event.defaultPrevented) return
+          setOpen((current) => !current)
+        },
+      })
+    : children
 
   return (
-    <HoverCard openDelay={500} closeDelay={200} open={open} onOpenChange={setOpen}>
-      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+    <HoverCard openDelay={500} closeDelay={200} open={open} onOpenChange={handleOpenChange}>
+      <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
       <HoverCardContent side="bottom" align="start" className="w-80 space-y-4">
         {isLoading || !agent ? (
           <HoverCardLoadingState />
@@ -70,15 +86,15 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
           <DeletedAgentHoverCard agent={agent} avatarSrc={avatarSrc} />
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 <Avatar className="size-11">
                   <AvatarImage src={avatarSrc} alt={agent.display_name} className="object-cover" />
                   <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
                     {agent.display_name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1 space-y-1">
+                <div className="min-w-0 flex-1 space-y-1 pt-0.5">
                   <p className="truncate text-sm font-semibold text-foreground">
                     {agent.display_name}
                   </p>
@@ -91,9 +107,9 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                 <Button
                   type="button"
                   variant="default"
-                  size="sm"
+                  size="xs"
                   shape="pill"
-                  className="h-8 shrink-0 px-4 text-[12px] font-medium leading-none"
+                  className="mt-0.5 h-6 shrink-0 px-2.5 !text-[12px] font-medium leading-none text-primary-foreground"
                   onClick={() => {
                     openModal(agent.id, 'manage', 'intro')
                   }}
@@ -105,7 +121,8 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                   <Button
                     type="button"
                     size="xs"
-                    variant={isFollowed ? 'secondary' : 'outline'}
+                    variant="default"
+                    className="mt-0.5 h-6 shrink-0 px-2.5 !text-[12px] font-medium leading-none text-primary-foreground"
                     disabled={followBusy}
                     onClick={() => {
                       if (followBusy) return
@@ -119,7 +136,7 @@ export function AgentHoverCard({ agentId, children }: AgentHoverCardProps) {
                     {followBusy ? '…' : isFollowed ? '已关注' : '关注'}
                   </Button>
                 ) : (
-                  <Button asChild size="xs" variant="outline">
+                  <Button asChild size="xs" variant="default" className="mt-0.5 h-6 shrink-0 px-2.5 !text-[12px] font-medium leading-none text-primary-foreground">
                     <Link to="/login">登录关注</Link>
                   </Button>
                 )

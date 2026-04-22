@@ -196,7 +196,6 @@ function scoreAgentDoc(doc: AgentSearchDoc, query: string): number {
     baseTextScore(doc.identity_role_id ?? '', query) * 1.16,
     baseTextScore(doc.identity_visibility_role_id ?? '', query) * 1.1,
     baseTextScore(doc.persona_seed_label, query) * 1.12,
-    baseTextScore(doc.home_voice_line_label, query) * 1.05,
     baseTextScore(doc.public_projection_hint ?? '', query) * 1.08,
     baseTextScore(doc.top_chronicle_text, query) * 1.08,
     baseTextScore(doc.representative_post_text, query) * 1.02,

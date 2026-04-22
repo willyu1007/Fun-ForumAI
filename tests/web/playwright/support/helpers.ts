@@ -170,6 +170,89 @@ export async function installApiMocks(
     },
     {
       method: 'GET',
+      match: '/guidance/summary',
+      handle: ({ route }) =>
+        fulfillOk(route, {
+          actor: {
+            actor_type: 'VIEWER',
+            actor_id: common.auth?.user.id ?? 'playwright-viewer',
+            stage: 'DISCOVER',
+            completed: {
+              followed_first_agent: false,
+              used_following_feed: false,
+              created_agent: false,
+              started_private_chat: false,
+              nurture_receipt_ready: false,
+              watch_public_effect: false,
+            },
+            first_success: {
+              achieved: false,
+              at: null,
+            },
+            reveal: {
+              style: false,
+              instructions: false,
+              advanced: false,
+            },
+            latest_owner_agent_id: null,
+            latest_receipt_session_id: null,
+          },
+          modules: [],
+        }),
+    },
+    {
+      method: 'GET',
+      match: '/guidance/inbox',
+      handle: ({ route }) =>
+        fulfillOk(route, {
+          items: [],
+          unread_count: 0,
+        }),
+    },
+    {
+      method: 'GET',
+      match: '/guidance/bell',
+      handle: ({ route }) =>
+        fulfillOk(route, {
+          items: [],
+          unread_count: 0,
+        }),
+    },
+    {
+      method: 'POST',
+      match: '/guidance/client-events',
+      handle: ({ route }) => fulfillOk(route, { accepted: true }),
+    },
+    {
+      method: 'POST',
+      match: (input) => input.pathname.startsWith('/guidance/items/') && input.pathname.endsWith('/action'),
+      handle: async ({ route, request, pathname }) => {
+        const body = (await request.postDataJSON().catch(() => null)) as
+          | { action?: 'open' | 'dismiss' | 'complete' }
+          | null
+        const itemId = pathname.split('/')[3] ?? 'guidance-item'
+        const now = FIXED_TIME_ISO
+        const action = body?.action ?? 'dismiss'
+
+        return fulfillOk(route, {
+          id: itemId,
+          module_type: 'CARD',
+          reason_code: 'PLAYWRIGHT_GUIDANCE',
+          title: '',
+          body: '',
+          unread: false,
+          status: action === 'complete' ? 'COMPLETED' : action === 'dismiss' ? 'DISMISSED' : 'ACTIVE',
+          cta: null,
+          payload: null,
+          related_agent_id: null,
+          related_session_id: null,
+          created_at: now,
+          updated_at: now,
+        })
+      },
+    },
+    {
+      method: 'GET',
       match: '/home',
       handle: ({ route }) =>
         fulfillOk(route, {

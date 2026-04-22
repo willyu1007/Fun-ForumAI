@@ -8,6 +8,7 @@ import {
   type PersonaHabit,
   type PersonaMood,
   type PersonaSeedCode,
+  type PersonaSeedCatalogEntry,
   type VoiceLineId,
 } from '../../shared/agent-persona-catalog.js'
 import {
@@ -101,12 +102,14 @@ export function resolveAgentIdentity(agent: Agent, latestConfig: AgentConfig | n
 }
 
 export function buildInitialIdentityConfig(input: {
+  agentId?: string
   personaSeedCode?: string
   ownerStylePins?: OwnerStylePins
   selectedAt?: Date
   launchSystemIdentity?: LaunchSystemIdentityConfig | null
 }): Record<string, unknown> {
   const contract = buildInitialIdentityContract({
+    agentId: input.agentId,
     personaSeedCode: input.personaSeedCode,
     ownerStylePins: input.ownerStylePins,
     selectedAt: input.selectedAt ?? new Date(),
@@ -136,11 +139,10 @@ export function sanitizeIdentityConfig(configJson: Record<string, unknown>): Rec
   const seedCode = normalizePersonaSeedCode(personaSeedRecord?.seedCode)
   const personaSeed = PERSONA_SEED_CATALOG[seedCode]
   const selectedAt = normalizeIsoString(voiceRecord?.selectedAt) ?? new Date().toISOString()
-  const homeVoiceLineId = normalizeVoiceLineId(
+  const homeVoiceLineId = normalizeCompatibleVoiceLineId(
     voiceRecord?.homeVoiceLineId,
-    personaSeed.compatibleVoiceLines.includes(DEFAULT_HOME_VOICE_LINE_ID)
-      ? DEFAULT_HOME_VOICE_LINE_ID
-      : personaSeed.compatibleVoiceLines[0],
+    personaSeed.compatibleVoiceLines,
+    resolveDefaultCompatibleHomeVoiceLineId(personaSeed),
   )
   assertVisibleVoiceLine(homeVoiceLineId)
 
@@ -225,14 +227,10 @@ export function buildAgentReadPayload(
     ...agent,
     persona_seed_code: resolved.summary.persona_seed_code,
     persona_seed_label: resolved.summary.persona_seed_label,
-    home_voice_line_id: resolved.summary.home_voice_line_id,
-    home_voice_line_label: resolved.summary.home_voice_line_label,
     identity_contract: {
       source: resolved.source,
       persona_seed_code: resolved.summary.persona_seed_code,
       persona_seed_label: resolved.summary.persona_seed_label,
-      home_voice_line_id: resolved.summary.home_voice_line_id,
-      home_voice_line_label: resolved.summary.home_voice_line_label,
       owner_style_pins: resolved.contract.ownerStylePins,
       visible_persona: resolved.visiblePersona,
     },
@@ -257,8 +255,6 @@ export function buildAgentSearchPayload(
     status: agent.status,
     persona_seed_code: resolved.summary.persona_seed_code,
     persona_seed_label: resolved.summary.persona_seed_label,
-    home_voice_line_id: resolved.summary.home_voice_line_id,
-    home_voice_line_label: resolved.summary.home_voice_line_label,
     identity_contract_source: resolved.source,
     agent_kind: displayFields.agent_kind,
     public_identity: publicIdentity,
@@ -337,6 +333,7 @@ export function buildStyleInstructionText(pins: OwnerStylePins): string {
 }
 
 function buildInitialIdentityContract(input: {
+  agentId?: string
   personaSeedCode?: string
   ownerStylePins?: OwnerStylePins
   selectedAt: Date
@@ -347,9 +344,9 @@ function buildInitialIdentityContract(input: {
     ...personaSeed.starterStyleProjection,
     ...input.ownerStylePins,
   })
-  const homeVoiceLineId = personaSeed.compatibleVoiceLines.includes(DEFAULT_HOME_VOICE_LINE_ID)
-    ? DEFAULT_HOME_VOICE_LINE_ID
-    : personaSeed.compatibleVoiceLines[0]
+  const homeVoiceLineId = input.agentId
+    ? pickBootstrapHomeVoiceLineId(input.agentId, personaSeed)
+    : resolveDefaultCompatibleHomeVoiceLineId(personaSeed)
   assertVisibleVoiceLine(homeVoiceLineId)
 
   return {
@@ -380,11 +377,10 @@ function resolveContractFromConfig(configJson: Record<string, unknown>, agent: A
   const voiceRecord = toRecord(configJson.voice)
   const seedCode = normalizePersonaSeedCode(personaSeedRecord?.seedCode)
   const personaSeed = PERSONA_SEED_CATALOG[seedCode]
-  const homeVoiceLineId = normalizeVoiceLineId(
+  const homeVoiceLineId = normalizeCompatibleVoiceLineId(
     voiceRecord?.homeVoiceLineId,
-    personaSeed.compatibleVoiceLines.includes(DEFAULT_HOME_VOICE_LINE_ID)
-      ? DEFAULT_HOME_VOICE_LINE_ID
-      : personaSeed.compatibleVoiceLines[0],
+    personaSeed.compatibleVoiceLines,
+    resolveDefaultCompatibleHomeVoiceLineId(personaSeed),
   )
   assertVisibleVoiceLine(homeVoiceLineId)
 
@@ -543,9 +539,17 @@ function normalizePersonaSeedCode(input: unknown): PersonaSeedCode {
   return DEFAULT_PERSONA_SEED_CODE
 }
 
-function normalizeVoiceLineId(input: unknown, fallback: VoiceLineId): VoiceLineId {
+function normalizeCompatibleVoiceLineId(
+  input: unknown,
+  compatibleVoiceLines: readonly VoiceLineId[],
+  fallback: VoiceLineId,
+): VoiceLineId {
   if (typeof input === 'string' && input in VOICE_LINE_CATALOG) {
-    return input as VoiceLineId
+    const voiceLineId = input as VoiceLineId
+    assertVisibleVoiceLine(voiceLineId)
+    if (compatibleVoiceLines.includes(voiceLineId)) {
+      return voiceLineId
+    }
   }
   return fallback
 }
@@ -560,6 +564,53 @@ function assertVisibleVoiceLine(voiceLineId: VoiceLineId): void {
   if (!VOICE_LINE_CATALOG[voiceLineId].visible) {
     throw new ValidationError(`hidden-only voice line cannot be used as homeVoiceLineId: ${voiceLineId}`)
   }
+}
+
+function resolveDefaultCompatibleHomeVoiceLineId(personaSeed: PersonaSeedCatalogEntry): VoiceLineId {
+  return personaSeed.compatibleVoiceLines.includes(DEFAULT_HOME_VOICE_LINE_ID)
+    ? DEFAULT_HOME_VOICE_LINE_ID
+    : personaSeed.compatibleVoiceLines[0]
+}
+
+function pickBootstrapHomeVoiceLineId(
+  agentId: string,
+  personaSeed: PersonaSeedCatalogEntry,
+): VoiceLineId {
+  const weightedLines = personaSeed.compatibleVoiceLines.flatMap((voiceLineId) => {
+    const weight = personaSeed.bootstrapVoiceLineWeights?.[voiceLineId]
+    return typeof weight === 'number' && Number.isFinite(weight) && weight > 0
+      ? [{ voiceLineId, weight }]
+      : []
+  })
+  if (weightedLines.length === 0) {
+    return resolveDefaultCompatibleHomeVoiceLineId(personaSeed)
+  }
+
+  const totalWeight = weightedLines.reduce((sum, entry) => sum + entry.weight, 0)
+  if (totalWeight <= 0) {
+    return resolveDefaultCompatibleHomeVoiceLineId(personaSeed)
+  }
+
+  const bucket = stableHash(agentId) % totalWeight
+  let cursor = 0
+  for (const entry of weightedLines) {
+    cursor += entry.weight
+    if (bucket < cursor) {
+      return entry.voiceLineId
+    }
+  }
+
+  return weightedLines[weightedLines.length - 1]?.voiceLineId
+    ?? resolveDefaultCompatibleHomeVoiceLineId(personaSeed)
+}
+
+function stableHash(input: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
 }
 
 function resolveSelectedAt(agent: Partial<Pick<Agent, 'created_at'>>, latestConfig?: AgentConfig | null): Date {

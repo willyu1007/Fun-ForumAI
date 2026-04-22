@@ -1,4 +1,5 @@
 import type { PostRepository } from '../repos/index.js'
+import type { HumanVoteRepository } from '../repos/human-vote-repository.js'
 import type {
   AudienceRepository,
   ListAudienceMessagesAggregatedOptions,
@@ -17,6 +18,7 @@ export interface AudienceAuthorLookup {
 export interface AudienceServiceDeps {
   audienceRepo: AudienceRepository
   postRepo: PostRepository
+  humanVoteRepo: HumanVoteRepository
   authorLookup?: AudienceAuthorLookup
 }
 
@@ -57,7 +59,7 @@ export class AudienceService {
   }
 
   /**
-   * List aggregated messages for a thread with author display info + like aggregates.
+   * List aggregated messages for a thread with author display info + human vote aggregates.
    * Consolidates author lookups so that PgAudienceRepository and InMemoryAudienceRepository
    * converge on the same projection shape without the service layer caring which one.
    */
@@ -69,20 +71,34 @@ export class AudienceService {
       threadId,
       options,
     )
-    if (!this.deps.authorLookup) return aggregated
     const missingIds = new Set<string>()
-    for (const message of aggregated) {
-      if (!message.author.display_name || message.author.display_name.startsWith('用户 ')) {
-        missingIds.add(message.author_user_id)
+    if (this.deps.authorLookup) {
+      for (const message of aggregated) {
+        if (!message.author.display_name || message.author.display_name.startsWith('用户 ')) {
+          missingIds.add(message.author_user_id)
+        }
       }
     }
-    if (missingIds.size === 0) return aggregated
-    const authors = await this.deps.authorLookup.resolve(Array.from(missingIds))
-    return aggregated.map((message) =>
-      authors.has(message.author_user_id)
-        ? { ...message, author: authors.get(message.author_user_id)! }
-        : message,
-    )
+    const authors = this.deps.authorLookup && missingIds.size > 0
+      ? await this.deps.authorLookup.resolve(Array.from(missingIds))
+      : new Map<string, AudienceMessageAuthor>()
+    return aggregated.map((message) => {
+      const voteSummary = this.deps.humanVoteRepo.countByTarget('AUDIENCE_MESSAGE', message.id)
+      return {
+        ...message,
+        author: authors.get(message.author_user_id) ?? message.author,
+        human_vote_up: voteSummary.up,
+        human_vote_down: voteSummary.down,
+        human_vote_score: voteSummary.score,
+        viewer_human_vote_direction: options?.viewer_user_id
+          ? this.deps.humanVoteRepo.findByVoterAndTarget(
+            options.viewer_user_id,
+            'AUDIENCE_MESSAGE',
+            message.id,
+          )?.direction ?? null
+          : null,
+      }
+    })
   }
 
   async createAcceptedMessage(input: {
@@ -155,37 +171,6 @@ export class AudienceService {
     return { ...message, deleted_at: new Date() }
   }
 
-  async toggleLike(input: {
-    actor_user_id: string
-    message_id: string
-    liked: boolean
-  }): Promise<{ like_count: number; viewer_has_liked: boolean }> {
-    const message = await this.deps.audienceRepo.findMessageById(input.message_id)
-    if (!message) throw new NotFoundError('AudienceMessage', input.message_id)
-    if (message.deleted_at) {
-      throw new ValidationError('Cannot like a deleted audience message')
-    }
-    if (input.liked) {
-      await this.deps.audienceRepo.likeMessage({
-        message_id: message.id,
-        user_id: input.actor_user_id,
-      })
-    } else {
-      await this.deps.audienceRepo.unlikeMessage({
-        message_id: message.id,
-        user_id: input.actor_user_id,
-      })
-    }
-    const counts = await this.deps.audienceRepo.countLikes([message.id])
-    const viewerLiked = await this.deps.audienceRepo.listLikedMessageIdsByViewer(
-      [message.id],
-      input.actor_user_id,
-    )
-    return {
-      like_count: counts.get(message.id) ?? 0,
-      viewer_has_liked: viewerLiked.has(message.id),
-    }
-  }
 }
 
 function sortAggregated(
@@ -208,7 +193,7 @@ function sortAggregated(
   }
   const sortedTops = [...tops].sort((a, b) => {
     if (sort === 'top') {
-      if (b.like_count !== a.like_count) return b.like_count - a.like_count
+      if (b.human_vote_score !== a.human_vote_score) return b.human_vote_score - a.human_vote_score
       return b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id)
     }
     return b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id)

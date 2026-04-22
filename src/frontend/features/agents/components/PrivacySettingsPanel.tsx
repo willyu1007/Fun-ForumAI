@@ -145,7 +145,7 @@ export function PrivacySettingsPanel({
                 guidanceIsAgentTarget ? (
                   <button
                     type="button"
-                    className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
+                    className="text-sm font-medium text-agent-panel-action-text transition-colors hover:text-agent-panel-action-text-hover"
                     onClick={() => {
                       guidanceItemAction.mutate({ item_id: guidanceItem.id, action: 'open' })
                       openAppTarget(navigate, resolvedGuidanceTarget, 'manage')
@@ -157,7 +157,7 @@ export function PrivacySettingsPanel({
                   <Link
                     to={resolvedGuidanceTarget}
                     state={guidanceTargetState}
-                    className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
+                    className="text-sm font-medium text-agent-panel-action-text transition-colors hover:text-agent-panel-action-text-hover"
                     onClick={() => guidanceItemAction.mutate({ item_id: guidanceItem.id, action: 'open' })}
                   >
                     {guidanceCtaLabel}
@@ -188,7 +188,7 @@ export function PrivacySettingsPanel({
               fallbackRail.cta.kind === 'button' ? (
                 <button
                   type="button"
-                  className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
+                  className="text-sm font-medium text-agent-panel-action-text transition-colors hover:text-agent-panel-action-text-hover"
                 >
                   {fallbackRail.cta.label}
                 </button>
@@ -196,14 +196,14 @@ export function PrivacySettingsPanel({
                 <Link
                   to="/login"
                   state={buildAuthRedirectState(fallbackRail.cta.from, fallbackRail.cta.returnTo)}
-                  className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
+                  className="text-sm font-medium text-agent-panel-action-text transition-colors hover:text-agent-panel-action-text-hover"
                 >
                   {fallbackRail.cta.label}
                 </Link>
               ) : fallbackRailRouteTarget && isAgentTargetString(fallbackRailRouteTarget) ? (
                 <button
                   type="button"
-                  className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
+                  className="text-sm font-medium text-agent-panel-action-text transition-colors hover:text-agent-panel-action-text-hover"
                   onClick={() => openAppTarget(navigate, fallbackRailRouteTarget, 'manage')}
                 >
                   {fallbackRail.cta.label}
@@ -211,7 +211,7 @@ export function PrivacySettingsPanel({
               ) : (
                 <Link
                   to={fallbackRailRouteTarget ?? '/login'}
-                  className="text-sm font-medium text-[#243B6B] transition-colors hover:text-[#1d3057]"
+                  className="text-sm font-medium text-agent-panel-action-text transition-colors hover:text-agent-panel-action-text-hover"
                 >
                   {fallbackRail.cta.label}
                 </Link>
@@ -246,7 +246,7 @@ export function PrivacySettingsPanel({
                 className="flex items-center gap-2.5 px-0 py-1.5 text-left transition-colors hover:text-foreground"
               >
                 <span className={`inline-flex w-4 shrink-0 items-center justify-center text-[11px] font-semibold ${
-                  currentLevel === level.value ? 'text-[#243B6B]' : 'text-transparent'
+                  currentLevel === level.value ? 'text-agent-panel-action-text' : 'text-transparent'
                 }`}>
                   ✓
                 </span>
@@ -317,7 +317,7 @@ export function PrivacySettingsPanel({
                 disabled={!hasChanges || updateSettings.isPending}
                 className={`text-sm font-medium transition-colors ${
                   hasChanges && !updateSettings.isPending
-                    ? 'text-[#243B6B] hover:text-[#1d3057]'
+                    ? 'text-agent-panel-action-text hover:text-agent-panel-action-text-hover'
                     : 'cursor-not-allowed text-foreground/30'
                 }`}
               >

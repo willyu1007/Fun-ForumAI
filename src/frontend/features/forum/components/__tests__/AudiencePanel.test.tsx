@@ -6,17 +6,49 @@ import {
   useAudienceThread,
   useCreateAudienceMessage,
   useDeleteAudienceMessage,
-  useToggleAudienceMessageLike,
   useCreateReport,
 } from '@/api/hooks'
 import type { AudienceMessageWithReplies } from '@/api/types'
+
+const invalidateQueriesMock = vi.fn()
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    invalidateQueries: invalidateQueriesMock,
+  }),
+}))
 
 vi.mock('@/api/hooks', () => ({
   useAudienceThread: vi.fn(),
   useCreateAudienceMessage: vi.fn(),
   useDeleteAudienceMessage: vi.fn(),
-  useToggleAudienceMessageLike: vi.fn(),
   useCreateReport: vi.fn(),
+  queryKeys: {
+    audienceThread: (postId: string, sort: 'latest' | 'top' = 'latest') =>
+      ['audienceThread', postId, sort] as const,
+  },
+}))
+
+vi.mock('../HumanVoteControls', () => ({
+  HumanVoteControls: ({
+    targetType,
+    targetId,
+    humanUp,
+    humanDown,
+  }: {
+    targetType: string
+    targetId: string
+    humanUp: number
+    humanDown: number
+  }) => (
+    <div
+      data-testid="human-vote-controls"
+      data-target-type={targetType}
+      data-target-id={targetId}
+      data-human-up={humanUp}
+      data-human-down={humanDown}
+    />
+  ),
 }))
 
 vi.mock('@/components/ui/avatar', () => ({
@@ -101,7 +133,6 @@ vi.mock('@/components/ui/dropdown-menu', async () => {
 const useAudienceThreadMock = vi.mocked(useAudienceThread)
 const useCreateAudienceMessageMock = vi.mocked(useCreateAudienceMessage)
 const useDeleteAudienceMessageMock = vi.mocked(useDeleteAudienceMessage)
-const useToggleAudienceMessageLikeMock = vi.mocked(useToggleAudienceMessageLike)
 const useCreateReportMock = vi.mocked(useCreateReport)
 
 function makeMessage(
@@ -117,8 +148,10 @@ function makeMessage(
     },
     parent_message_id: null,
     quoted_turn: null,
-    like_count: 0,
-    viewer_has_liked: false,
+    human_vote_up: 0,
+    human_vote_down: 0,
+    human_vote_score: 0,
+    viewer_human_vote_direction: null,
     deleted_at: null,
     created_at: '2026-03-01T00:00:00.000Z',
     updated_at: '2026-03-01T00:00:00.000Z',
@@ -137,10 +170,10 @@ function setThread(messages: AudienceMessageWithReplies[]) {
 describe('AudiencePanel', () => {
   const createMutate = vi.fn()
   const deleteMutate = vi.fn()
-  const toggleLikeMutate = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    invalidateQueriesMock.mockReset()
     setThread([])
     useCreateAudienceMessageMock.mockReturnValue({
       mutateAsync: createMutate,
@@ -148,10 +181,6 @@ describe('AudiencePanel', () => {
     } as never)
     useDeleteAudienceMessageMock.mockReturnValue({
       mutateAsync: deleteMutate,
-      isPending: false,
-    } as never)
-    useToggleAudienceMessageLikeMock.mockReturnValue({
-      mutateAsync: toggleLikeMutate,
       isPending: false,
     } as never)
     useCreateReportMock.mockReturnValue({
@@ -163,7 +192,6 @@ describe('AudiencePanel', () => {
   afterEach(() => {
     createMutate.mockReset()
     deleteMutate.mockReset()
-    toggleLikeMutate.mockReset()
   })
 
   it('shows an empty-state hint when there are no messages', () => {
@@ -173,19 +201,33 @@ describe('AudiencePanel', () => {
     expect(screen.getByText('还没有观众留言，成为第一个开口的人吧。')).toBeTruthy()
   })
 
-  it('renders a message with author, relative time, and like count', () => {
+  it('focuses the composer textarea when the opener is clicked', async () => {
+    render(<AudiencePanel postId="post-1" isAuthenticated canPost viewerUserId="user-1" />)
+
+    fireEvent.click(screen.getByTestId('audience-composer-open'))
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId('audience-composer-textarea'))
+    })
+  })
+
+  it('renders a message with author, relative time, and shared human vote controls', () => {
     setThread([
       makeMessage({
         id: 'msg-1',
         body: 'hello there',
         author: { id: 'user-42', display_name: 'Neo', avatar_url: null },
-        like_count: 3,
+        human_vote_up: 3,
+        human_vote_down: 1,
       }),
     ])
     render(<AudiencePanel postId="post-1" isAuthenticated canPost viewerUserId="user-1" />)
     expect(screen.getByText('Neo')).toBeTruthy()
     expect(screen.getByText('hello there')).toBeTruthy()
-    expect(screen.getByTestId('audience-like-button').textContent).toContain('3')
+    const controls = screen.getByTestId('human-vote-controls')
+    expect(controls.getAttribute('data-target-type')).toBe('AUDIENCE_MESSAGE')
+    expect(controls.getAttribute('data-human-up')).toBe('3')
+    expect(controls.getAttribute('data-human-down')).toBe('1')
   })
 
   it('expands composer on click and submits a message with quoted turn', async () => {
@@ -217,16 +259,6 @@ describe('AudiencePanel', () => {
       author_display_name: 'A1',
     })
     expect(onConsume).toHaveBeenCalled()
-  })
-
-  it('toggles a like using the mutation hook', () => {
-    setThread([makeMessage({ id: 'msg-1', like_count: 0, viewer_has_liked: false })])
-    toggleLikeMutate.mockResolvedValue({
-      data: { message_id: 'msg-1', like_count: 1, viewer_has_liked: true },
-    })
-    render(<AudiencePanel postId="post-1" isAuthenticated canPost viewerUserId="user-1" />)
-    fireEvent.click(screen.getByTestId('audience-like-button'))
-    expect(toggleLikeMutate).toHaveBeenCalledWith({ messageId: 'msg-1', liked: true })
   })
 
   it('shows a delete entry for author-owned messages and deletes on click', () => {

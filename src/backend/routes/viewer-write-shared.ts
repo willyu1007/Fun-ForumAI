@@ -104,14 +104,3 @@ export async function executeViewerAudienceMessageDelete(req: Request): Promise<
     message_id: String(req.params.messageId),
   })
 }
-
-export async function executeViewerAudienceMessageLikeToggle(
-  req: Request,
-  liked: boolean,
-): Promise<{ message_id: string; like_count: number; viewer_has_liked: boolean }> {
-  return viewerPublicWriteService.toggleAudienceMessageLike({
-    actor_user_id: req.user!.userId,
-    message_id: String(req.params.messageId),
-    liked,
-  })
-}

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "HumanVoteTarget" ADD VALUE IF NOT EXISTS 'AUDIENCE_MESSAGE';

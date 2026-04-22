@@ -59,6 +59,7 @@ export interface AgentModalState {
   setIntroSection: (introSection: AgentIntroSection | null) => void
   setActiveAgent: (agentId: string | null) => void
   switchActiveAgent: (agentId: string | null) => void
+  invalidateAgent: (agentId: string) => void
   setLastModalRect: (rect: AgentModalRect, mode: AgentTargetMode) => void
   setPendingCreateWizard: (pending: boolean) => void
 }
@@ -286,6 +287,25 @@ export const useAgentModalStore = create<AgentModalState>()(
             activeTab: browsingContext.tab,
             introSection: browsingContext.introSection,
             agentContextsById: upsertAgentContext(state.agentContextsById, agentId, browsingContext),
+          }
+        }),
+
+      invalidateAgent: (agentId) =>
+        set((state) => {
+          const remainingContexts = { ...state.agentContextsById }
+          delete remainingContexts[agentId]
+          const isActive = state.activeAgentId === agentId
+          return {
+            isCaptureHidden: isActive ? false : state.isCaptureHidden,
+            isOpen: isActive ? false : state.isOpen,
+            activeAgentId: isActive ? null : state.activeAgentId,
+            introSection: isActive ? null : state.introSection,
+            sourceSessionId: isActive ? null : state.sourceSessionId,
+            sourceSurface: isActive ? null : state.sourceSurface,
+            sourceShelf: isActive ? null : state.sourceShelf,
+            sourcePosition: isActive ? null : state.sourcePosition,
+            prefillMessage: isActive ? null : state.prefillMessage,
+            agentContextsById: remainingContexts,
           }
         }),
 

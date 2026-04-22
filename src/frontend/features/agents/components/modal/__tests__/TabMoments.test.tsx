@@ -62,7 +62,24 @@ const BASE_PROFILE = {
 }
 
 function chronicle(
-  overrides: Partial<{ id: string; title: string; summary: string; occurred_at: string; importance: number }> = {},
+  overrides: Partial<{
+    id: string
+    title: string
+    summary: string
+    occurred_at: string
+    importance: number
+      visual: {
+        asset_id: string
+        media_url: string
+        mime_type: string
+        width: number | null
+        height: number | null
+        alt_text: string | null
+        public_caption: string | null
+        slot: number
+        display_variant: 'original' | 'generated_derivative'
+      } | null
+  }> = {},
 ) {
   return {
     id: overrides.id ?? 'chronicle-1',
@@ -70,7 +87,7 @@ function chronicle(
     summary: overrides.summary ?? '',
     occurred_at: overrides.occurred_at ?? '2026-04-19T08:00:00.000Z',
     importance_score: overrides.importance ?? 0.5,
-    visual: null,
+    visual: overrides.visual ?? null,
   }
 }
 
@@ -89,6 +106,16 @@ function post(
     community_id: string
     community_name: string
     community_slug: string
+    media: Array<{
+      asset_id: string
+      media_url: string
+      mime_type: string
+      alt_text?: string | null
+    }>
+    preview_text: string | null
+    preview_kind: 'post_body' | 'reply_body'
+    like_count: number
+    comment_count: number
   }> = {},
 ) {
   return {
@@ -98,6 +125,11 @@ function post(
     community_id: overrides.community_id ?? 'community-1',
     community_name: overrides.community_name ?? '玻璃舞台',
     community_slug: overrides.community_slug ?? 'glass-stage',
+    media: overrides.media,
+    preview_text: overrides.preview_text ?? null,
+    preview_kind: overrides.preview_kind,
+    like_count: overrides.like_count ?? 0,
+    comment_count: overrides.comment_count ?? 0,
   }
 }
 
@@ -125,7 +157,15 @@ describe('TabMoments', () => {
             bio({ text: '最近会把旧地图讲成新入口。', refreshed_at: '2026-04-19T09:30:00.000Z' }),
           ],
           recent_public_posts: [
-            post({ id: 'p-1', title: '昨晚把旧录音接回主线', created_at: '2026-04-18T22:00:00.000Z' }),
+            post({
+              id: 'p-1',
+              title: '昨晚把旧录音接回主线',
+              created_at: '2026-04-18T22:00:00.000Z',
+              preview_text: '把断掉的录音重新接回主线后，讨论终于开始顺着真正的问题往下走。',
+              preview_kind: 'post_body',
+              like_count: 12,
+              comment_count: 4,
+            }),
           ],
         },
       },
@@ -133,6 +173,9 @@ describe('TabMoments', () => {
 
     renderWithRouter(<TabMoments agentId="agent-1" />)
 
+    expect(screen.getByTestId('moments-summary')).toBeTruthy()
+    expect(screen.getByText('生活切片')).toBeTruthy()
+    expect(screen.getByText(/有过公开更新/)).toBeTruthy()
     const feed = screen.getByTestId('moments-feed')
     const items = within(feed).getAllByTestId('moments-feed-item')
     expect(items.map((el) => el.getAttribute('data-event-kind'))).toEqual([
@@ -143,6 +186,10 @@ describe('TabMoments', () => {
     ])
     expect(items[0].getAttribute('data-event-id')).toBe('chronicle:c-new')
     expect(items[3].getAttribute('data-event-id')).toBe('chronicle:c-old')
+    expect(within(items[1]).queryByText('更新了自我介绍')).toBeNull()
+    expect(within(items[1]).queryByText(/小时前|天前|分钟前/)).toBeNull()
+    expect(within(items[1]).getByText('- 阿澈')).toBeTruthy()
+    expect(within(items[1]).getByText(/\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}/)).toBeTruthy()
   })
 
   it('caps bio refresh events at three entries inside the feed', () => {
@@ -203,6 +250,8 @@ describe('TabMoments', () => {
 
     renderWithRouter(<TabMoments agentId="agent-1" />)
     expect(screen.getAllByTestId('moments-feed-item')).toHaveLength(20)
+    expect(screen.getByTestId('moments-summary')).toBeTruthy()
+    expect(screen.getByText(/有过公开更新/)).toBeTruthy()
   })
 
   it('renders community appearance events with a link to the post and community', () => {
@@ -224,6 +273,10 @@ describe('TabMoments', () => {
               title: '一个公开发帖',
               community_slug: 'glass-stage',
               community_name: '玻璃舞台',
+              preview_text: '我先把问题摆在台面上，再慢慢把真正的分歧拆开。',
+              preview_kind: 'post_body',
+              like_count: 12,
+              comment_count: 4,
             }),
           ],
         },
@@ -235,9 +288,62 @@ describe('TabMoments', () => {
     const item = screen.getByTestId('moments-feed-item')
     expect(item.getAttribute('data-event-kind')).toBe('community_appearance')
     const postLink = within(item).getByTestId('moments-feed-item-post-link')
-    expect(postLink.getAttribute('href')).toBe('/c/glass-stage/posts/p-42')
+    expect(postLink.getAttribute('href')).toBe('/posts/p-42')
     const communityLink = within(item).getByRole('link', { name: '玻璃舞台' })
     expect(communityLink.getAttribute('href')).toBe('/c/glass-stage')
+    expect(within(item).getByText('2026.04.19 14:00')).toBeTruthy()
+    expect(within(item).getByText('我先把问题摆在台面上，再慢慢把真正的分歧拆开。')).toBeTruthy()
+    expect(within(item).queryByTestId('moments-feed-item-image')).toBeNull()
+    expect(within(item).getByText('12')).toBeTruthy()
+    expect(within(item).getByText('4')).toBeTruthy()
+  })
+
+  it('renders the lead image when a community appearance post includes media', () => {
+    useAgentProfileMock.mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: { data: BASE_PROFILE },
+    })
+    useAgentHighlightsMock.mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: {
+        data: {
+          top_chronicle: [],
+          recent_public_bios: [],
+          recent_public_posts: [
+            post({
+              id: 'p-visual',
+              title: '周末摄影挑战：用 AI 眼光看世界',
+              community_slug: 'creator-recommendation',
+              community_name: '创作推荐',
+              preview_text: '如果 AI 真能观看，它大概会先被这些几乎完美的结构和秩序吸引。',
+              preview_kind: 'post_body',
+              like_count: 8,
+              comment_count: 3,
+              media: [
+                {
+                  asset_id: 'asset-photo-1',
+                  media_url: '/agent-avatars/cinematic-intellectual-01.webp',
+                  mime_type: 'image/webp',
+                  alt_text: '对称的山峦倒影',
+                },
+              ],
+            }),
+          ],
+        },
+      },
+    })
+
+    renderWithRouter(<TabMoments agentId="agent-1" />)
+
+    const item = screen.getByTestId('moments-feed-item')
+    const image = within(item).getByTestId('moments-feed-item-image')
+    expect(image.getAttribute('src')).toBe('/agent-avatars/cinematic-intellectual-01.webp')
+    expect(image.getAttribute('alt')).toBe('对称的山峦倒影')
+    expect(within(item).getByText('如果 AI 真能观看，它大概会先被这些几乎完美的结构和秩序吸引。')).toBeTruthy()
+    expect(within(item).getByText('8')).toBeTruthy()
+    expect(within(item).getByText('3')).toBeTruthy()
   })
 
   it('shows the expand toggle only on long chronicle summaries', () => {

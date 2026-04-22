@@ -13,7 +13,7 @@ policies:
     defaults:
       temperature: 0.9
       max_tokens: 280
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -30,7 +30,7 @@ policies:
     defaults:
       temperature: 0.75
       max_tokens: 720
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -47,7 +47,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 160
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -62,9 +62,9 @@ policies:
     modality: text
     response_mode: text
     defaults:
-      temperature: 0.85
-      max_tokens: 900
-      timeout_ms: 30000
+      temperature: 0.8
+      max_tokens: 1200
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: true
@@ -81,7 +81,7 @@ policies:
     defaults:
       temperature: 0.8
       max_tokens: 1200
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: true
@@ -98,7 +98,7 @@ policies:
     defaults:
       temperature: 0.78
       max_tokens: 256
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 0
     fallback:
       allow_fallback_within_line: true
@@ -115,7 +115,7 @@ policies:
     defaults:
       temperature: 0.8
       max_tokens: 320
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: true
@@ -132,7 +132,7 @@ policies:
     defaults:
       temperature: 0.78
       max_tokens: 420
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: true
@@ -149,7 +149,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 600
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -166,7 +166,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 900
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -183,14 +183,14 @@ policies:
     defaults:
       temperature: 0.3
       max_tokens: 700
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
       allow_cross_family: false
       allowed_fallback_levels: [none]
     merge:
-      allow_callsite_override_fields: []
+      allow_callsite_override_fields: [executionPolicyId]
       allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
 
   - policy_id: hidden-public_observation_digest-agent-owned-base
@@ -200,7 +200,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 700
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -217,7 +217,7 @@ policies:
     defaults:
       temperature: 0.82
       max_tokens: 520
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -234,7 +234,7 @@ policies:
     defaults:
       temperature: 1
       max_tokens: 320
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: true
@@ -249,8 +249,8 @@ policies:
     modality: text
     response_mode: json_object
     defaults:
-      temperature: 1
-      max_tokens: 1200
+      temperature: 0.88
+      max_tokens: 1800
       timeout_ms: 60000
       max_retries: 2
     fallback:
@@ -268,7 +268,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 900
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false
@@ -285,7 +285,7 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 1200
-      timeout_ms: 30000
+      timeout_ms: 60000
       max_retries: 2
     fallback:
       allow_fallback_within_line: false

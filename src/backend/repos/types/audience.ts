@@ -31,19 +31,14 @@ export interface AudienceMessageAuthor {
 
 /**
  * Aggregated projection of an audience message returned by read paths:
- * merges like counts + viewer-specific `viewer_has_liked` + author display info.
+ * merges human-vote totals + viewer-specific direction + author display info.
  */
 export interface AudienceMessageAggregate extends AudienceMessage {
   author: AudienceMessageAuthor
-  like_count: number
-  viewer_has_liked: boolean
-}
-
-export interface AudienceMessageLike {
-  id: string
-  message_id: string
-  user_id: string
-  created_at: Date
+  human_vote_up: number
+  human_vote_down: number
+  human_vote_score: number
+  viewer_human_vote_direction: 'UP' | 'DOWN' | 'NEUTRAL' | null
 }
 
 export interface AudienceSummary {
@@ -113,11 +108,6 @@ export interface CreateAudienceMessageInput {
   quoted_turn_id?: string | null
   quoted_turn_excerpt?: string | null
   quoted_turn_author_name?: string | null
-}
-
-export interface ToggleAudienceMessageLikeInput {
-  message_id: string
-  user_id: string
 }
 
 export interface CreateAudienceSummaryInput {

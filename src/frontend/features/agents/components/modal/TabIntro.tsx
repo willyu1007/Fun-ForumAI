@@ -817,6 +817,9 @@ export function TabIntro({
                       {safeAgent.inference_profile_debug.profile.challengerFamily ?? 'none'}
                     </p>
                     <p className={'mt-1 text-xs text-muted-foreground'}>
+                      scope=
+                      {safeAgent.inference_profile_debug.profile.migrationScope ?? 'none'}
+                      {' · '}
                       migration={safeAgent.inference_profile_debug.profile.migrationState}
                       {' · '}lead={safeAgent.inference_profile_debug.profile.consecutiveLeadWindows}
                       {' · '}delta=
@@ -841,10 +844,10 @@ export function TabIntro({
                       {safeAgent.inference_profile_debug.profile.manualVoiceLineLock ? 'on' : 'off'}
                     </p>
                     <p className={'mt-1 text-xs text-muted-foreground'}>
-                      line=
-                      {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ??
-                        safeAgent.home_voice_line_id ??
-                        '-'}
+                      incumbent=
+                      {safeAgent.inference_profile_debug.profile.incumbentVoiceLineId ?? '-'}
+                      {' -> '}
+                      {safeAgent.inference_profile_debug.profile.challengerVoiceLineId ?? 'none'}
                     </p>
                   </div>
                 </div>

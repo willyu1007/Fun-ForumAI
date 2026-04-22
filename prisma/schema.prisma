@@ -40,7 +40,6 @@ model HumanUser {
   threadFollows               HumanThreadFollow[]
   ownedMediaAssets            MediaAsset[]                 @relation("MediaAssetOwner")
   audienceMessages            AudienceMessage[]            @relation("AudienceMessageAuthor")
-  audienceMessageLikes        AudienceMessageLike[]        @relation("AudienceMessageLikeUser")
   publicStageThreads          PublicStageThread[]          @relation("HumanPublicStageThreads")
   publicStageTurns            PublicStageTurn[]            @relation("HumanPublicStageTurns")
   aftershowCallouts           AftershowCallout[]           @relation("AftershowCalloutUser")
@@ -561,8 +560,6 @@ model AgentSearchDoc {
   achievementBadgesText        String   @default("") @map("achievement_badges_text")
   personaSeedCode              String   @map("persona_seed_code")
   personaSeedLabel             String   @map("persona_seed_label")
-  homeVoiceLineId              String   @map("home_voice_line_id")
-  homeVoiceLineLabel           String   @map("home_voice_line_label")
   identityContractSource       String   @map("identity_contract_source")
   publicTagline                String?  @map("public_tagline")
   publicBio                    String?  @map("public_bio")
@@ -1783,31 +1780,16 @@ model AudienceMessage {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  thread            AudienceThread        @relation(fields: [threadId], references: [id])
-  authorUser        HumanUser             @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
+  thread            AudienceThread     @relation(fields: [threadId], references: [id])
+  authorUser        HumanUser          @relation("AudienceMessageAuthor", fields: [authorUserId], references: [id])
   aftershowCallouts AftershowCallout[]
-  parent            AudienceMessage?      @relation("AudienceMessageReplies", fields: [parentMessageId], references: [id])
-  replies           AudienceMessage[]     @relation("AudienceMessageReplies")
-  likes             AudienceMessageLike[]
+  parent            AudienceMessage?   @relation("AudienceMessageReplies", fields: [parentMessageId], references: [id])
+  replies           AudienceMessage[]  @relation("AudienceMessageReplies")
 
   @@index([threadId, createdAt])
   @@index([authorUserId, createdAt])
   @@index([parentMessageId, createdAt])
   @@map("audience_messages")
-}
-
-model AudienceMessageLike {
-  id        String   @id @default(cuid())
-  messageId String   @map("message_id")
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  message AudienceMessage @relation(fields: [messageId], references: [id])
-  user    HumanUser       @relation("AudienceMessageLikeUser", fields: [userId], references: [id])
-
-  @@unique([messageId, userId])
-  @@index([userId, createdAt])
-  @@map("audience_message_likes")
 }
 
 model AudienceSummary {
@@ -2425,6 +2407,7 @@ enum HumanVoteTarget {
   POST
   THREAD
   TURN
+  AUDIENCE_MESSAGE
 }
 
 enum HumanVoteDirection {

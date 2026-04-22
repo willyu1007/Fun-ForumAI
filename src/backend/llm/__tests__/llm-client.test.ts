@@ -26,7 +26,7 @@ describe('LlmClient', () => {
             completion_tokens: 8,
             total_tokens: 20,
           },
-          model: 'kimi-k2-0905-preview',
+          model: 'kimi-k2.5',
         }),
         {
           status: 200,
@@ -42,7 +42,7 @@ describe('LlmClient', () => {
 
     const response = await client.chat({
       messages: [{ role: 'user', content: 'hello' }],
-      model: 'kimi-k2-0905-preview',
+      model: 'kimi-k2.5',
       max_tokens: 512,
       temperature: 0.7,
       adapter_id: 'openai-chat-completions-v1',
@@ -58,8 +58,67 @@ describe('LlmClient', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.moonshot.cn/v1/chat/completions')
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      model: 'kimi-k2.5',
+      temperature: 1,
+    })
     expect(response.provider_id).toBe('moonshot-openai')
-    expect(response.model).toBe('kimi-k2-0905-preview')
+    expect(response.model).toBe('kimi-k2.5')
+  })
+
+  it('preserves caller temperature for non-moonshot providers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: 'assistant',
+                content: 'ok',
+              },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 7,
+            total_tokens: 17,
+          },
+          model: 'qwen3.5-plus',
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = new LlmClient()
+
+    await client.chat({
+      messages: [{ role: 'user', content: 'hello' }],
+      model: 'qwen3.5-plus',
+      max_tokens: 512,
+      temperature: 0.7,
+      adapter_id: 'openai-chat-completions-v1',
+      provider: {
+        provider_id: 'dashscope-openai',
+        gateway_kind: 'openai_compatible',
+        base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        api_key: 'dashscope-secret',
+        timeout_ms: 30_000,
+        max_retries: 0,
+      },
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      model: 'qwen3.5-plus',
+      temperature: 0.7,
+    })
   })
 
   it('rejects provider runtimes that are not implemented by the client', async () => {
@@ -67,7 +126,7 @@ describe('LlmClient', () => {
 
     await expect(client.chat({
       messages: [{ role: 'user', content: 'hello' }],
-      model: 'kimi-k2-0905-preview',
+      model: 'kimi-k2.5',
       max_tokens: 512,
       temperature: 0.7,
       adapter_id: 'openai-chat-completions-v1',

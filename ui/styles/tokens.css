@@ -8,6 +8,20 @@
     --ui-color-accent: #E1703C;
     --ui-color-accent-active: #b85227;
     --ui-color-accent-hover: #cc5f30;
+    --ui-color-agent-panel-action-text: #243B6B;
+    --ui-color-agent-panel-action-text-hover: #1d3057;
+    --ui-color-agent-panel-selection-surface: #e7edf7;
+    --ui-color-agent-panel-selection-text: #233a63;
+    --ui-color-agent-panel-stat-cool: #48668f;
+    --ui-color-agent-panel-stat-cool-strong: #2b569d;
+    --ui-color-agent-panel-stat-cool-tint: rgba(72, 102, 143, 0.08);
+    --ui-color-agent-panel-stat-track-cool: rgba(54, 90, 140, 0.94);
+    --ui-color-agent-panel-stat-track-mid: rgba(215, 221, 230, 0.92);
+    --ui-color-agent-panel-stat-track-solid: rgba(54, 90, 140, 0.90);
+    --ui-color-agent-panel-stat-track-warm: rgba(184, 109, 58, 0.94);
+    --ui-color-agent-panel-stat-warm: #a36540;
+    --ui-color-agent-panel-stat-warm-strong: #d07a3c;
+    --ui-color-agent-panel-stat-warm-tint: rgba(163, 101, 64, 0.08);
     --ui-color-bg: #ffffff;
     --ui-color-border: #E5E7EB;
     --ui-color-border-subtle: #f3f4f6;
@@ -23,6 +37,7 @@
     --ui-color-primary: #283E68;
     --ui-color-primary-active: #162448;
     --ui-color-primary-hover: #1e3058;
+    --ui-color-selection: #e6ebf3;
     --ui-color-sentiment-negative: #BC8F8F;
     --ui-color-sentiment-positive: #70A985;
     --ui-color-success: #16a34a;
@@ -88,6 +103,7 @@
     --ui-color-primary: #5a7ab5;
     --ui-color-primary-active: #3e5f9a;
     --ui-color-primary-hover: #7994c7;
+    --ui-color-selection: #24344f;
     --ui-color-surface: #111b2e;
     --ui-color-surface-elevated: #16243d;
     --ui-color-text-muted: #94a3b8;

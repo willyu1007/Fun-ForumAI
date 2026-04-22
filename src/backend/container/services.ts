@@ -229,6 +229,7 @@ export function createCoreServices(deps: {
   const audienceService = new AudienceService({
     audienceRepo: repos.audienceRepo,
     postRepo: repos.postRepo,
+    humanVoteRepo: repos.humanVoteRepo,
     authorLookup: repos.userRepo
       ? {
         async resolve(userIds) {
@@ -673,6 +674,7 @@ export function createCoreServices(deps: {
     postRepo: repos.postRepo,
     publicStageThreadRepo: repos.publicStageThreadRepo,
     publicStageTurnRepo: repos.publicStageTurnRepo,
+    audienceRepo: repos.audienceRepo,
     voteRepo: repos.voteRepo,
     humanVoteRepo: repos.humanVoteRepo,
     humanFollowRepo: repos.humanFollowRepo,

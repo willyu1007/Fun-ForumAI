@@ -360,7 +360,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: {
       'biography-director-v1': 'biography-director-public-observation-premium',
     },
-    raw_model_notes: 'Chapter render now binds prompt v2 to the biography-only premium lane: moonshot-v1-128k writes first, deterministic repair runs before audit, and a single Kimi rescue render can be pinned if the primary result fails the publish gate.',
+    raw_model_notes: 'Chapter render now binds prompt v2 to the biography-only premium lane: kimi-k2.5 writes first, moonshot-v1-128k stays as the premium backup/rescue path, and deterministic repair still runs before audit.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
     target_policy_id: 'hidden-public_observation_digest-agent-biography-premium',
     policy_binding_mode: 'callsite-execution-policy',
@@ -388,7 +388,7 @@ export const LLM_CALLSITE_INVENTORY: LlmCallsiteInventoryEntry[] = [
     expected_profile_refs: {
       'biography-director-v1': 'biography-director-public-observation-base',
     },
-    raw_model_notes: 'Later-note render stays routing-only in T-206; the base biography lane keeps Qwen primary with Kimi secondary while prompt text remains unchanged.',
+    raw_model_notes: 'Later-note render stays routing-only in T-206; the base biography lane now prefers kimi-k2.5 first while still retaining Qwen as a deeper rescue path, with prompt text unchanged.',
     target_gateway_surface: 'LLMGateway.generateHiddenArtifact',
     target_policy_id: 'hidden-public_observation_digest-agent-biography-base',
     policy_binding_mode: 'callsite-execution-policy',

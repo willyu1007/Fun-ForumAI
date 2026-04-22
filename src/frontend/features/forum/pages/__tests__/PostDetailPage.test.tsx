@@ -6,7 +6,6 @@ import { PostDetailPage } from '../PostDetailPage'
 import type { PostWithMeta } from '@/api/types'
 import {
   usePost,
-  useCreatePublicTurn,
   useCreateAppeal,
   useCreateReport,
   useAgentProfile,
@@ -19,7 +18,6 @@ import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/api/hooks', () => ({
   usePost: vi.fn(),
-  useCreatePublicTurn: vi.fn(),
   useCreateReport: vi.fn(),
   useCreateAppeal: vi.fn(),
   useAgentProfile: vi.fn(),
@@ -180,7 +178,6 @@ vi.mock('@/features/agents/components/AgentHoverCard', () => ({
 }))
 
 const usePostMock = vi.mocked(usePost)
-const useCreatePublicTurnMock = vi.mocked(useCreatePublicTurn)
 const useCreateReportMock = vi.mocked(useCreateReport)
 const useCreateAppealMock = vi.mocked(useCreateAppeal)
 const useAgentProfileMock = vi.mocked(useAgentProfile)
@@ -309,11 +306,6 @@ describe('PostDetailPage', () => {
     useSseNewCountsMock.mockReturnValue({
       newThreadTurnCounts: {},
       clearNewThreadTurns: vi.fn(),
-    } as never)
-
-    useCreatePublicTurnMock.mockReturnValue({
-      isPending: false,
-      mutateAsync: vi.fn(),
     } as never)
 
     useCreateReportMock.mockReturnValue({
@@ -493,6 +485,89 @@ describe('PostDetailPage', () => {
     )
   })
 
+  it('treats deep-link focus as a transient flash instead of a persistent manual selection', async () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1?threadId=thread-42&turnId=turn-42')
+
+    await waitFor(() => {
+      expect(discussionForestMock).toHaveBeenCalled()
+    })
+    const lastProps = discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]?.[0] as
+      | { selectedNodeId?: string | null; flashNodeId?: string | null; flashToken?: number | null }
+      | undefined
+
+    expect(lastProps?.selectedNodeId).toBeNull()
+    expect(lastProps?.flashNodeId).toBe('turn-42')
+    expect(typeof lastProps?.flashToken).toBe('number')
+  })
+
+  it('re-triggers the jump flash when the same audience quote is clicked twice', async () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1')
+
+    const audiencePanelProps = audiencePanelMock.mock.calls[audiencePanelMock.mock.calls.length - 1]?.[0] as
+      | { onNavigateToTurn?: (turnId: string) => void }
+      | undefined
+    expect(audiencePanelProps?.onNavigateToTurn).toBeTypeOf('function')
+
+    act(() => {
+      audiencePanelProps?.onNavigateToTurn?.('turn-repeat')
+    })
+    const firstProps = discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]?.[0] as
+      | { flashNodeId?: string | null; flashToken?: number | null }
+      | undefined
+
+    act(() => {
+      audiencePanelProps?.onNavigateToTurn?.('turn-repeat')
+    })
+    const secondProps = discussionForestMock.mock.calls[discussionForestMock.mock.calls.length - 1]?.[0] as
+      | { flashNodeId?: string | null; flashToken?: number | null }
+      | undefined
+
+    expect(firstProps?.flashNodeId).toBe('turn-repeat')
+    expect(secondProps?.flashNodeId).toBe('turn-repeat')
+    expect(secondProps?.flashToken).not.toBe(firstProps?.flashToken)
+  })
+
+  it('clears stale thread focus when navigating from an audience quote', async () => {
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderPage('/posts/post-1?threadId=thread-stale&audience_message_id=msg-1')
+
+    const audiencePanelProps = audiencePanelMock.mock.calls[audiencePanelMock.mock.calls.length - 1]?.[0] as
+      | { onNavigateToTurn?: (turnId: string) => void }
+      | undefined
+
+    act(() => {
+      audiencePanelProps?.onNavigateToTurn?.('turn-fresh')
+    })
+
+    await waitFor(() => {
+      expect(useDiscussionForestMock).toHaveBeenLastCalledWith(
+        'post-1',
+        {
+          focus_thread_id: null,
+          focus_turn_id: 'turn-fresh',
+        },
+        { enabled: true },
+      )
+    })
+  })
+
   it('passes turnReplyEnabled=false to the forest when the participation contract closes in-thread replies', async () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
@@ -591,7 +666,7 @@ describe('PostDetailPage', () => {
     )
   })
 
-  it('hides the audience rail entirely when the contract disables the audience lane', () => {
+  it('keeps the audience rail and shows a lightweight placeholder when the contract disables the audience lane', () => {
     usePostMock.mockReturnValue({
       data: { data: buildPost({ includeAudienceFields: true }) },
       isLoading: false,
@@ -615,7 +690,40 @@ describe('PostDetailPage', () => {
 
     renderPage('/posts/post-1')
 
-    expect(screen.queryByTestId('post-detail-rail')).toBeNull()
+    expect(screen.getByTestId('post-detail-rail')).toBeTruthy()
+    expect(screen.getByTestId('audience-placeholder')).toBeTruthy()
+    expect(screen.queryByTestId('audience-panel')).toBeNull()
+  })
+
+  it('keeps the audience tab on mobile and renders the placeholder when the lane is disabled', async () => {
+    setViewportWidth(390)
+    usePostMock.mockReturnValue({
+      data: { data: buildPost({ includeAudienceFields: true }) },
+      isLoading: false,
+      error: null,
+    } as never)
+    usePostParticipationContractMock.mockReturnValue({
+      data: {
+        data: {
+          stage_open_reply: {
+            enabled: true,
+            new_thread_enabled: true,
+            turn_reply_enabled: true,
+          },
+          audience_lane: {
+            enabled: false,
+            posting_enabled: false,
+          },
+        },
+      },
+    } as never)
+
+    await renderPageAndFlush('/posts/post-1?audience_message_id=msg-1')
+
+    expect(screen.getByRole('tab', { name: '主线程' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: '观众席' }).getAttribute('aria-selected')).toBe('true')
+
+    expect(screen.getByTestId('audience-placeholder')).toBeTruthy()
     expect(screen.queryByTestId('audience-panel')).toBeNull()
   })
 

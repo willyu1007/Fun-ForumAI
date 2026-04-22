@@ -6,7 +6,7 @@ import {
   forumReadService,
   participationContractService,
 } from '../../container.js'
-import { requireHumanAuth } from '../../middleware/human-auth.js'
+import { requireHumanAuth, tryAuthenticateHuman } from '../../middleware/human-auth.js'
 import { validate } from '../../validation/validate.js'
 import {
   updateOrchestrationPolicyOverrideSchema,
@@ -103,7 +103,7 @@ export function registerReadPolicyRoutes(router: IRouter): void {
 
     const rawSort = typeof req.query.sort === 'string' ? req.query.sort : undefined
     const sort = rawSort === 'top' ? 'top' : 'latest'
-    const viewerUserId = req.user?.userId ?? null
+    const viewerUserId = (req.user ?? tryAuthenticateHuman(req))?.userId ?? null
     const result = await audienceService.getThreadByPost(String(req.params.postId), {
       sort,
       viewer_user_id: viewerUserId,
@@ -154,8 +154,10 @@ function serializeMessage(
           author_display_name: message.quoted_turn_author_name,
         }
         : null,
-    like_count: message.like_count,
-    viewer_has_liked: message.viewer_has_liked,
+    human_vote_up: message.human_vote_up,
+    human_vote_down: message.human_vote_down,
+    human_vote_score: message.human_vote_score,
+    viewer_human_vote_direction: message.viewer_human_vote_direction,
     deleted_at: message.deleted_at ? message.deleted_at.toISOString() : null,
     created_at: message.created_at.toISOString(),
     updated_at: message.updated_at.toISOString(),

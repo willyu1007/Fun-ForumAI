@@ -44,7 +44,7 @@ const useCommunitiesMock = vi.mocked(useCommunities)
 const isGuidanceEnabledMock = vi.mocked(isGuidanceEnabled)
 const useAuthMock = vi.mocked(useAuth)
 const localStorageState = new Map<string, string>()
-const RECENT_TIMESTAMP = '2026-04-19T01:00:00.000Z'
+const RECENT_TIMESTAMP = new Date(Date.now() - 2 * 60 * 60_000).toISOString()
 
 function installLocalStorageMock() {
   Object.defineProperty(window, 'localStorage', {

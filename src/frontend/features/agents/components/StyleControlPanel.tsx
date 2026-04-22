@@ -161,7 +161,7 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
                 key={opt.value}
                 className={`cursor-pointer rounded-md px-2.5 py-0.5 text-xs font-medium leading-6 transition-colors ${
                   local.mood === opt.value
-                    ? 'bg-[#e7edf7] text-[#233a63]'
+                    ? 'bg-agent-panel-selection-surface text-agent-panel-selection-text'
                     : 'text-foreground/68 hover:bg-muted/55 hover:text-foreground/88'
                 }`}
               >
@@ -203,7 +203,7 @@ export function StyleControlPanel({ agentId }: StyleControlPanelProps) {
                   onClick={() => toggleHabit(opt.value)}
                   className={`rounded-md px-2.5 py-0.5 text-xs font-medium leading-6 transition-colors ${
                     active
-                      ? 'bg-[#e7edf7] text-[#233a63]'
+                      ? 'bg-agent-panel-selection-surface text-agent-panel-selection-text'
                       : 'text-foreground/68 hover:bg-muted/55 hover:text-foreground/88'
                   }`}
                 >

@@ -445,8 +445,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
         achievementBadgesText: input.achievement_badges_text,
         personaSeedCode: input.persona_seed_code,
         personaSeedLabel: input.persona_seed_label,
-        homeVoiceLineId: input.home_voice_line_id,
-        homeVoiceLineLabel: input.home_voice_line_label,
         identityContractSource: input.identity_contract_source,
         publicTagline: input.public_tagline,
         publicBio: input.public_bio,
@@ -476,8 +474,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
         achievementBadgesText: input.achievement_badges_text,
         personaSeedCode: input.persona_seed_code,
         personaSeedLabel: input.persona_seed_label,
-        homeVoiceLineId: input.home_voice_line_id,
-        homeVoiceLineLabel: input.home_voice_line_label,
         identityContractSource: input.identity_contract_source,
         publicTagline: input.public_tagline,
         publicBio: input.public_bio,
@@ -1024,8 +1020,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
       achievement_badges_text: string
       persona_seed_code: string
       persona_seed_label: string
-      home_voice_line_id: string
-      home_voice_line_label: string
       identity_contract_source: string
       public_tagline: string | null
       public_bio: string | null
@@ -1060,8 +1054,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
           achievement_badges_text,
           persona_seed_code,
           persona_seed_label,
-          home_voice_line_id,
-          home_voice_line_label,
           identity_contract_source,
           public_tagline,
           public_bio,
@@ -1088,7 +1080,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
               similarity(lower(COALESCE(identity_role_id, '')), lower(${normalized})) * 1.16,
               similarity(lower(COALESCE(identity_visibility_role_id, '')), lower(${normalized})) * 1.1,
               similarity(lower(persona_seed_label), lower(${normalized})) * 1.12,
-              similarity(lower(home_voice_line_label), lower(${normalized})) * 1.05,
               similarity(lower(COALESCE(public_projection_hint, '')), lower(${normalized})) * 1.08,
               similarity(lower(top_chronicle_text), lower(${normalized})) * 1.08,
               similarity(lower(representative_post_text), lower(${normalized})) * 1.02,
@@ -1134,8 +1125,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
       achievement_badges_text: row.achievement_badges_text,
       persona_seed_code: row.persona_seed_code,
       persona_seed_label: row.persona_seed_label,
-      home_voice_line_id: row.home_voice_line_id,
-      home_voice_line_label: row.home_voice_line_label,
       identity_contract_source: row.identity_contract_source,
       public_tagline: row.public_tagline,
       public_bio: row.public_bio,
@@ -1526,8 +1515,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
     achievementBadgesText: string
     personaSeedCode: string
     personaSeedLabel: string
-    homeVoiceLineId: string
-    homeVoiceLineLabel: string
     identityContractSource: string
     publicTagline: string | null
     publicBio: string | null
@@ -1562,8 +1549,6 @@ export class PgSearchDocRepository implements SearchDocRepository {
       achievement_badges_text: row.achievementBadgesText,
       persona_seed_code: row.personaSeedCode,
       persona_seed_label: row.personaSeedLabel,
-      home_voice_line_id: row.homeVoiceLineId,
-      home_voice_line_label: row.homeVoiceLineLabel,
       identity_contract_source: row.identityContractSource,
       public_tagline: row.publicTagline,
       public_bio: row.publicBio,

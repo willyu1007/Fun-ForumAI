@@ -1,4 +1,5 @@
 import { resolveAgentIdentity } from '../../identity/agent-identity.js'
+import { PERSONA_SEED_CATALOG } from '../../../shared/agent-persona-catalog.js'
 import { runtimeFeatureMetrics } from '../../runtime/runtime-feature-metrics.js'
 import type { InferenceProfileSnapshot } from '../../runtime/inference-profile-types.js'
 import {
@@ -8,11 +9,13 @@ import {
   compileInferenceSignals,
   compileTemperamentAxes,
   findChallengerFamily,
+  findWinningFamily,
   resolveBlockedReason,
-  resolveChallengerVoiceLine,
   resolveGrowthGate,
   resolveMigrationState,
+  resolvePreferredVoiceLineForFamily,
   resolveRequestedTierFloor,
+  resolveSameFamilyVoiceLine,
   scoreFamilies,
 } from './compile.js'
 import { parseCoreFamily, serializeSnapshot, toRuntimeProfile, toRuntimeShadowReview } from './codec.js'
@@ -23,6 +26,8 @@ import type {
   InferenceProfileEvaluationResult,
   InferenceProfileServiceDeps,
 } from './types.js'
+
+const APPROVED_REANCHOR_SAME_FAMILY_COOLDOWN_MS = 24 * 60 * 60 * 1000
 
 export async function evaluateInferenceProfile(
   deps: InferenceProfileServiceDeps,
@@ -40,6 +45,7 @@ export async function evaluateInferenceProfile(
   const existing = await deps.personaStateRepo.findInferenceProfile(agentId)
   const existingShadowReview = await deps.personaStateRepo.findLatestInferenceShadowReview(agentId)
   const respecDetected = await detectRecentRespec(deps, agentId)
+  const now = new Date()
 
   const axes = compileTemperamentAxes(state.current, effectiveStats)
   const signals = compileInferenceSignals(axes, statsSnapshot.state, overlay)
@@ -60,17 +66,45 @@ export async function evaluateInferenceProfile(
     HOME_LINE_FAMILY_MAP[homeVoiceLineId] ??
     parseCoreFamily(existing?.incumbent_family) ??
     'anchor'
-  const { family: challengerFamily, scoreDelta } = findChallengerFamily(
+  const personaSeed = PERSONA_SEED_CATALOG[identity.contract.personaSeed.seedCode]
+  const migrationWeights = personaSeed.migrationVoiceLineWeightsByFamily
+  const winningFamily = findWinningFamily(familyScores)?.family ?? incumbentFamily
+  const { family: crossFamilyChallenger, scoreDelta: crossFamilyDelta } = findChallengerFamily(
     familyScores,
     incumbentFamily,
   )
-  const challengerVoiceLineId = challengerFamily
-    ? resolveChallengerVoiceLine(
-        challengerFamily,
-        identity.contract.personaSeed.compatibleVoiceLines,
-        homeVoiceLineId,
-      )
+  const sameFamilyReanchorCooldownActive = existing?.effective_at
+    ? now.getTime() - existing.effective_at.getTime() < APPROVED_REANCHOR_SAME_FAMILY_COOLDOWN_MS
+    : false
+  const sameFamilyCandidate =
+    !sameFamilyReanchorCooldownActive &&
+    winningFamily === incumbentFamily &&
+    winningFamily === 'sage'
+      ? resolveSameFamilyVoiceLine({
+          family: winningFamily,
+          compatibleVoiceLines: identity.contract.personaSeed.compatibleVoiceLines,
+          currentHomeVoiceLineId: homeVoiceLineId,
+          migrationVoiceLineWeights: migrationWeights?.[winningFamily],
+        })
+      : { voiceLineId: null, scoreDelta: null }
+  const crossFamilyVoiceLineId = crossFamilyChallenger
+    ? resolvePreferredVoiceLineForFamily({
+        family: crossFamilyChallenger,
+        compatibleVoiceLines: identity.contract.personaSeed.compatibleVoiceLines,
+        currentHomeVoiceLineId: homeVoiceLineId,
+        migrationVoiceLineWeights: migrationWeights?.[crossFamilyChallenger],
+      })
     : null
+  const challengerFamily = crossFamilyVoiceLineId
+    ? crossFamilyChallenger
+    : (sameFamilyCandidate.voiceLineId ? incumbentFamily : null)
+  const challengerVoiceLineId = crossFamilyVoiceLineId ?? sameFamilyCandidate.voiceLineId
+  const migrationScope = crossFamilyVoiceLineId
+    ? 'cross_family'
+    : sameFamilyCandidate.voiceLineId
+      ? 'same_family'
+      : null
+  const scoreDelta = crossFamilyVoiceLineId ? crossFamilyDelta : sameFamilyCandidate.scoreDelta
 
   const growthGate = resolveGrowthGate(growth.growthPointsTotal)
   const manualLock = existing?.manual_voice_line_lock ?? false
@@ -105,7 +139,6 @@ export async function evaluateInferenceProfile(
     shadowWindow,
   })
 
-  const now = new Date()
   const candidateSince =
     migrationState === 'candidate' || migrationState === 'shadow'
       ? sameChallenger
@@ -122,8 +155,10 @@ export async function evaluateInferenceProfile(
     agentId,
     profileVersion: existing?.profile_version ?? 1,
     incumbentFamily,
+    incumbentVoiceLineId: homeVoiceLineId,
     challengerFamily,
     challengerVoiceLineId,
+    migrationScope,
     migrationState,
     consecutiveLeadWindows,
     challengerScoreDelta: scoreDelta,
@@ -163,13 +198,17 @@ export async function evaluateInferenceProfile(
       agentId,
       incumbentFamily,
       homeVoiceLineId,
-      profile: toRuntimeProfile(persisted),
+      profile: toRuntimeProfile(persisted, {
+        incumbentVoiceLineId: homeVoiceLineId,
+      }),
       snapshot,
       existingShadowReview,
     })
     runtimeFeatureMetrics.recordInferenceProfileCompile(migrationState)
     return {
-      profile: toRuntimeProfile(persisted),
+      profile: toRuntimeProfile(persisted, {
+        incumbentVoiceLineId: homeVoiceLineId,
+      }),
       snapshot,
       narrative: buildNarrativeSummary(snapshot, nextProfile, growth),
       shadowReview,

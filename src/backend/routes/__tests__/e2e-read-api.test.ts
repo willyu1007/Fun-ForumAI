@@ -2098,13 +2098,66 @@ describe('E2E: Read API (public)', () => {
     expect(secondPage.body.data.items[0].id).not.toBe(firstPage.body.data.items[0].id)
   })
 
-  it('POST /v1/votes/human rejects MESSAGE target_type', async () => {
+  it('POST /v1/votes/human rejects legacy MESSAGE target_type', async () => {
     const res = await request(app)
       .post('/v1/votes/human')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ target_type: 'MESSAGE', target_id: 'm1', direction: 'UP' })
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
+  it('POST /v1/votes/human accepts AUDIENCE_MESSAGE targets', async () => {
+    await withFeatureFlags({ audienceZoneV1: true }, async () => {
+      const community = await createTestCommunity({
+        name: 'Audience Vote Community',
+        slug: `audience-vote-${Date.now()}`,
+      })
+      const agentRes = await request(app)
+        .post('/v1/agents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ display_name: 'Audience Vote Agent' })
+      expect(agentRes.status).toBe(201)
+
+      const postRes = await servicePost('/v1/posts', {
+        actor_agent_id: agentRes.body.data.id,
+        run_id: `run-audience-vote-${Date.now()}`,
+        community_id: community.id,
+        title: 'Audience vote target',
+        body: 'Target body',
+      })
+      expect(postRes.status).toBe(201)
+      const postId = postRes.body.data.id as string
+
+      const messageRes = await request(app)
+        .post(`/v1/viewer/posts/${postId}/audience-messages`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'Audience vote me.' })
+      expect(messageRes.status).toBe(201)
+      const messageId = messageRes.body.data.audience_message_id as string
+
+      const voteRes = await request(app)
+        .post('/v1/votes/human')
+        .set('Authorization', `Bearer ${user2Token}`)
+        .send({ target_type: 'AUDIENCE_MESSAGE', target_id: messageId, direction: 'UP' })
+      expect(voteRes.status).toBe(201)
+      expect(voteRes.body.data.vote.target_type).toBe('AUDIENCE_MESSAGE')
+      expect(voteRes.body.data.summary.human_up).toBe(1)
+
+      const audienceThreadRes = await request(app)
+        .get(`/v1/posts/${postId}/audience-thread`)
+        .set('Authorization', `Bearer ${user2Token}`)
+      expect(audienceThreadRes.status).toBe(200)
+      expect(audienceThreadRes.body.data.messages).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: messageId,
+          human_vote_up: 1,
+          human_vote_down: 0,
+          human_vote_score: 1,
+          viewer_human_vote_direction: 'UP',
+        }),
+      ]))
+    })
   })
 
   it('POST /v1/votes/human upserts the same user vote on a post', async () => {
@@ -2325,7 +2378,6 @@ describe('E2E: Read API (public)', () => {
     )
     expect(target).toBeTruthy()
     expect(target?.persona_seed_label).toBeTruthy()
-    expect(target?.home_voice_line_label).toBeTruthy()
     expect(target?.href).toBe(buildAgentTarget({
       agentId: target?.id as string,
       mode: 'readonly',

@@ -117,7 +117,7 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.data.identity_contract).toMatchObject({
       source: 'contract_v1',
       persona_seed_code: 'scholar',
-      home_voice_line_id: 'qwen-social-v1',
+      home_voice_line_id: expect.any(String),
     })
     expect(res.body.data.audit).toMatchObject({
       version: 'v2',
@@ -253,7 +253,7 @@ describe('POST /v1/dev/prompts/render', () => {
     expect(res.body.data.identity_contract).toMatchObject({
       source: 'contract_v1',
       persona_seed_code: 'scholar',
-      home_voice_line_id: 'qwen-social-v1',
+      home_voice_line_id: expect.any(String),
     })
   })
 

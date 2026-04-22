@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { AudienceService } from '../audience-service.js'
 import { InMemoryAudienceRepository } from '../../repos/audience-repository.js'
 import { InMemoryPostRepository } from '../../repos/post-repository.js'
+import { InMemoryHumanVoteRepository } from '../../repos/human-vote-repository.js'
 import type { PostRepository } from '../../repos/index.js'
 import type { AudienceRepository } from '../../repos/audience-repository.js'
 import { ForbiddenError, NotFoundError, ValidationError } from '../../lib/errors.js'
@@ -38,14 +39,17 @@ async function seedPost(postRepo: PostRepository, overrides?: { id?: string }) {
 describe('AudienceService', () => {
   let postRepo: PostRepository
   let audienceRepo: AudienceRepository
+  let humanVoteRepo: InMemoryHumanVoteRepository
   let service: AudienceService
 
   beforeEach(async () => {
     postRepo = new InMemoryPostRepository()
     audienceRepo = new InMemoryAudienceRepository()
+    humanVoteRepo = new InMemoryHumanVoteRepository()
     service = new AudienceService({
       postRepo,
       audienceRepo,
+      humanVoteRepo,
       authorLookup: authorLookupStub(),
     })
     await seedPost(postRepo)
@@ -66,8 +70,8 @@ describe('AudienceService', () => {
     expect(messages).toHaveLength(1)
     expect(messages[0]!.body).toBe('Hello audience')
     expect(messages[0]!.author.display_name).toBe('Display-user')
-    expect(messages[0]!.like_count).toBe(0)
-    expect(messages[0]!.viewer_has_liked).toBe(false)
+    expect(messages[0]!.human_vote_score).toBe(0)
+    expect(messages[0]!.viewer_human_vote_direction).toBeNull()
   })
 
   it('accepts a one-level reply and rejects nested replies', async () => {
@@ -159,36 +163,37 @@ describe('AudienceService', () => {
     expect(messages[0]!.deleted_at).toBeInstanceOf(Date)
   })
 
-  it('toggleLike increments and decrements counts idempotently per user', async () => {
+  it('projects audience message human votes from the generic vote repo', async () => {
     const created = await service.createAcceptedMessage({
       post_id: 'post-1',
       actor_user_id: 'user-1',
       body: 'hello',
     })
 
-    const a = await service.toggleLike({
-      actor_user_id: 'user-2',
-      message_id: created.message.id,
-      liked: true,
+    await humanVoteRepo.upsert({
+      voter_user_id: 'user-2',
+      target_type: 'AUDIENCE_MESSAGE',
+      target_id: created.message.id,
+      direction: 'UP',
     })
-    expect(a).toEqual({ like_count: 1, viewer_has_liked: true })
+    await humanVoteRepo.upsert({
+      voter_user_id: 'user-3',
+      target_type: 'AUDIENCE_MESSAGE',
+      target_id: created.message.id,
+      direction: 'DOWN',
+    })
 
-    const b = await service.toggleLike({
-      actor_user_id: 'user-2',
-      message_id: created.message.id,
-      liked: true,
+    const { messages } = await service.getThreadByPost('post-1', {
+      viewer_user_id: 'user-2',
     })
-    expect(b.like_count).toBe(1)
 
-    const c = await service.toggleLike({
-      actor_user_id: 'user-2',
-      message_id: created.message.id,
-      liked: false,
-    })
-    expect(c).toEqual({ like_count: 0, viewer_has_liked: false })
+    expect(messages[0]!.human_vote_up).toBe(1)
+    expect(messages[0]!.human_vote_down).toBe(1)
+    expect(messages[0]!.human_vote_score).toBe(0)
+    expect(messages[0]!.viewer_human_vote_direction).toBe('UP')
   })
 
-  it('sorts by top using like_count desc and includes viewer_has_liked flags', async () => {
+  it('sorts by top using human_vote_score desc and includes viewer_human_vote_direction', async () => {
     const m1 = await service.createAcceptedMessage({
       post_id: 'post-1',
       actor_user_id: 'user-1',
@@ -199,15 +204,25 @@ describe('AudienceService', () => {
       actor_user_id: 'user-2',
       body: 'hot',
     })
-    await service.toggleLike({ actor_user_id: 'user-3', message_id: m2.message.id, liked: true })
-    await service.toggleLike({ actor_user_id: 'user-4', message_id: m2.message.id, liked: true })
+    await humanVoteRepo.upsert({
+      voter_user_id: 'user-3',
+      target_type: 'AUDIENCE_MESSAGE',
+      target_id: m2.message.id,
+      direction: 'UP',
+    })
+    await humanVoteRepo.upsert({
+      voter_user_id: 'user-4',
+      target_type: 'AUDIENCE_MESSAGE',
+      target_id: m2.message.id,
+      direction: 'UP',
+    })
 
     const { messages } = await service.getThreadByPost('post-1', {
       sort: 'top',
       viewer_user_id: 'user-3',
     })
     expect(messages[0]!.id).toBe(m2.message.id)
-    expect(messages[0]!.viewer_has_liked).toBe(true)
+    expect(messages[0]!.viewer_human_vote_direction).toBe('UP')
     expect(messages[1]!.id).toBe(m1.message.id)
   })
 

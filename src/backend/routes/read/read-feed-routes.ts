@@ -332,9 +332,17 @@ export function registerReadFeedRoutes(router: IRouter): void {
       return
     }
 
-    if (targetTypeRaw !== 'POST' && targetTypeRaw !== 'THREAD' && targetTypeRaw !== 'TURN') {
+    if (
+      targetTypeRaw !== 'POST'
+      && targetTypeRaw !== 'THREAD'
+      && targetTypeRaw !== 'TURN'
+      && targetTypeRaw !== 'AUDIENCE_MESSAGE'
+    ) {
       res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'target_type must be POST, THREAD, or TURN' },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'target_type must be POST, THREAD, TURN, or AUDIENCE_MESSAGE',
+        },
       })
       return
     }
@@ -346,7 +354,7 @@ export function registerReadFeedRoutes(router: IRouter): void {
       return
     }
 
-    const targetType = targetTypeRaw as 'POST' | 'THREAD' | 'TURN'
+    const targetType = targetTypeRaw as 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
     const direction = directionRaw as 'UP' | 'DOWN' | 'NEUTRAL'
 
     const result = await humanParticipationService.upsertHumanVote({

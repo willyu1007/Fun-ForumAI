@@ -26,15 +26,10 @@ export class OpenAICompatibleProvider implements LlmProvider {
   async chat(request: LlmRequest, config: LlmProviderConfig): Promise<LlmResponse> {
     const url = `${config.base_url.replace(/\/+$/, '')}/chat/completions`
 
-    const body = {
-      model: request.model,
-      messages: request.messages,
-      max_tokens: request.max_tokens,
-      temperature: request.temperature,
-      ...(request.response_mode === 'json_object'
-        ? { response_format: { type: 'json_object' } }
-        : {}),
-    }
+    const body = normalizeOpenAICompatibleBody({
+      request,
+      providerId: config.provider_id,
+    })
 
     let lastError: Error | null = null
 
@@ -102,6 +97,40 @@ export class OpenAICompatibleProvider implements LlmProvider {
 
     throw lastError ?? new Error('LLM API call failed after retries')
   }
+}
+
+function normalizeOpenAICompatibleBody(input: {
+  request: LlmRequest
+  providerId: string
+}): Record<string, unknown> {
+  const {
+    request,
+    providerId,
+  } = input
+
+  const body: Record<string, unknown> = {
+      model: request.model,
+      messages: request.messages,
+      max_tokens: request.max_tokens,
+      ...(request.response_mode === 'json_object'
+        ? { response_format: { type: 'json_object' } }
+        : {}),
+    }
+
+  // Moonshot K2-family models reject caller-specified temperatures other than
+  // their fixed server-side values. We run them in the default thinking mode,
+  // so normalize to the accepted 1.0 instead of leaking policy temperatures.
+  if (providerId === 'moonshot-openai' && isMoonshotFixedTemperatureModel(request.model)) {
+    body.temperature = 1
+    return body
+  }
+
+  body.temperature = request.temperature
+  return body
+}
+
+function isMoonshotFixedTemperatureModel(modelId: string): boolean {
+  return /^kimi-k2([.-]|$)/.test(modelId)
 }
 
 function buildHeaders(config: LlmProviderConfig): Record<string, string> {

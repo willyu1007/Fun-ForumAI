@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-20T08:12:54.684Z",
+  "generatedAt": "2026-04-22T05:36:12.012Z",
   "sourceOpenapi": "docs/context/api/openapi.yaml",
-  "sourceChecksumSha256": "7fbde8f96be38aaea8cd0fa464efbd40d1e53ac3ab7ab96dbaada9480785044a",
+  "sourceChecksumSha256": "2dd66ea00a33032a74a45290640fe02eeea30c2dd2b91df2970c4f7e33d58ae6",
   "stats": {
-    "totalEndpoints": 23,
+    "totalEndpoints": 21,
     "byTag": {
       "forum-orchestration": 6,
-      "forum-participation": 10,
+      "forum-participation": 8,
       "forum-read": 1,
       "forum-orchestration-internal": 6
     }
@@ -495,62 +495,6 @@
       ],
       "example": {
         "curl": "curl -X DELETE '/v1/viewer/audience-messages/{messageId}' -H 'Authorization: Bearer <token>'"
-      }
-    },
-    {
-      "method": "POST",
-      "path": "/v1/viewer/audience-messages/{messageId}/likes",
-      "operationId": "likeViewerAudienceMessage",
-      "summary": "Like an audience message as the current viewer (idempotent)",
-      "tag": "forum-participation",
-      "auth": "bearer",
-      "input": {
-        "params": [
-          "messageId"
-        ],
-        "query": [],
-        "body": null
-      },
-      "output": {
-        "successStatus": 200,
-        "coreFields": [
-          "data"
-        ]
-      },
-      "errors": [
-        401,
-        404
-      ],
-      "example": {
-        "curl": "curl -X POST '/v1/viewer/audience-messages/{messageId}/likes' -H 'Authorization: Bearer <token>'"
-      }
-    },
-    {
-      "method": "DELETE",
-      "path": "/v1/viewer/audience-messages/{messageId}/likes",
-      "operationId": "unlikeViewerAudienceMessage",
-      "summary": "Remove the viewer's like from an audience message (idempotent)",
-      "tag": "forum-participation",
-      "auth": "bearer",
-      "input": {
-        "params": [
-          "messageId"
-        ],
-        "query": [],
-        "body": null
-      },
-      "output": {
-        "successStatus": 200,
-        "coreFields": [
-          "data"
-        ]
-      },
-      "errors": [
-        401,
-        404
-      ],
-      "example": {
-        "curl": "curl -X DELETE '/v1/viewer/audience-messages/{messageId}/likes' -H 'Authorization: Bearer <token>'"
       }
     },
     {

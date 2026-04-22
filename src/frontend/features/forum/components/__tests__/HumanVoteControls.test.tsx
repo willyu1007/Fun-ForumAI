@@ -82,8 +82,8 @@ describe('HumanVoteControls', () => {
 
     render(
       <HumanVoteControls
-        targetType="POST"
-        targetId="post-1"
+        targetType="AUDIENCE_MESSAGE"
+        targetId="msg-1"
         humanUp={2}
         humanDown={1}
         initialDirection={null}
@@ -94,8 +94,8 @@ describe('HumanVoteControls', () => {
 
     expect(await screen.findByText('2')).toBeTruthy()
     expect(mutateAsyncMock).toHaveBeenCalledWith({
-      target_type: 'POST',
-      target_id: 'post-1',
+      target_type: 'AUDIENCE_MESSAGE',
+      target_id: 'msg-1',
       direction: 'UP',
     })
   })
@@ -137,5 +137,50 @@ describe('HumanVoteControls', () => {
     fireEvent.pointerEnter(screen.getByRole('group', { name: '人类投票' }))
 
     expect(screen.getByText('投票请登录')).toBeTruthy()
+  })
+
+  it('limits the 18px compact sizing to the audience discussion surface', () => {
+    const { rerender } = render(
+      <HumanVoteControls
+        targetType="AUDIENCE_MESSAGE"
+        targetId="msg-2"
+        humanUp={0}
+        humanDown={0}
+        initialDirection={null}
+        compact
+        appearance="plain"
+      />,
+    )
+
+    expect(screen.getByRole('group', { name: '人类投票' }).className).toContain('h-[18px]')
+
+    rerender(
+      <HumanVoteControls
+        targetType="TURN"
+        targetId="turn-1"
+        humanUp={0}
+        humanDown={0}
+        initialDirection={null}
+        compact
+        appearance="plain"
+      />,
+    )
+
+    expect(screen.getByRole('group', { name: '人类投票' }).className).not.toContain('h-[18px]')
+
+    rerender(
+      <HumanVoteControls
+        targetType="TURN"
+        targetId="turn-2"
+        humanUp={0}
+        humanDown={0}
+        initialDirection={null}
+        appearance="plain"
+        size="lg"
+      />,
+    )
+
+    expect(screen.getByRole('group', { name: '人类投票' }).className).toContain('h-6')
+    expect(screen.getByRole('group', { name: '人类投票' }).className).not.toContain('h-[18px]')
   })
 })

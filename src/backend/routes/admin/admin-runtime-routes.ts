@@ -6,6 +6,7 @@ import {
   governanceAdapter,
   guidanceObservabilityService,
   identityGateService,
+  inferenceProfileService,
   llmGateway,
   llmRegistryBundle,
   launchProgrammingOpsService,
@@ -99,6 +100,49 @@ function buildPrivateSessionCloseoutTraceIds(sessionId: string, agentId: string)
 function resolveMinimumCloseoutStaleMinutes(messageCount: number): number {
   const timeoutMinutes = Math.ceil(PRIVATE_SESSION_TIMEOUT_MS / 60_000)
   return timeoutMinutes + messageCount + 5
+}
+
+async function prioritizeRuntimeCloseoutVisibleAgents(input: {
+  agentIds: string[]
+  intent: 'private_reply' | 'proactive_opening'
+  scene: 'private_chat' | 'proactive_dm'
+  promptRef: { id: 'agent-private-chat-reply' | 'agent-proactive-dm-opening'; version: 3 }
+}): Promise<string[]> {
+  const serviceable: string[] = []
+  const fallback: string[] = []
+
+  for (const agentId of input.agentIds) {
+    try {
+      const route = await inferenceProfileService.resolveVisibleRoute({
+        agentId,
+        requestedTier: 'base',
+      })
+      const canServe = llmGateway.canServeRoute({
+        agentId,
+        traceId: `runtime-closeout-capability:${input.intent}:${agentId}`,
+        intent: input.intent,
+        visibility: 'visible',
+        scene: input.scene,
+        promptRef: input.promptRef,
+        homeVoiceLineId: route.homeVoiceLineId,
+        requestedTier: route.requestedTier,
+        modality: 'text',
+        responseMode: 'text',
+        budgetClass: 'visible_standard',
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+      })
+      if (canServe) {
+        serviceable.push(agentId)
+      } else {
+        fallback.push(agentId)
+      }
+    } catch {
+      fallback.push(agentId)
+    }
+  }
+
+  return [...serviceable, ...fallback]
 }
 
 export function registerAdminRuntimeRoutes(router: IRouter): void {
@@ -300,14 +344,24 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
         ? req.body.content.trim()
         : '请用一句简短的话回应，确认你已准备好继续这段私聊。'
       const fanoutOptions = parseRuntimeCloseoutFanoutOptions(req.body)
+      const discoveryLimit = fanoutOptions.allowAgentFanout
+        ? Math.max(fanoutOptions.maxAgentAttempts * 5, fanoutOptions.maxAgentAttempts)
+        : fanoutOptions.maxAgentAttempts
       const activeAgentIds = agentId
         ? []
-        : agentService.listActiveAgents({ limit: fanoutOptions.maxAgentAttempts }).items.map((agent) => agent.id)
-      const candidateIds = resolveRuntimeCloseoutCandidateIds({
-        agentId,
-        activeAgentIds,
-        options: fanoutOptions,
-      })
+        : agentService.listActiveAgents({ limit: discoveryLimit }).items.map((agent) => agent.id)
+      const candidateIds = agentId
+        ? resolveRuntimeCloseoutCandidateIds({
+            agentId,
+            activeAgentIds,
+            options: fanoutOptions,
+          })
+        : (await prioritizeRuntimeCloseoutVisibleAgents({
+            agentIds: activeAgentIds,
+            intent: 'private_reply',
+            scene: 'private_chat',
+            promptRef: { id: 'agent-private-chat-reply', version: 3 },
+          })).slice(0, fanoutOptions.maxAgentAttempts)
 
       if (candidateIds.length === 0) {
         res.status(404).json({
@@ -385,14 +439,24 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
         ? req.body.context.trim()
         : '请主动打个招呼，确认你已准备好继续这段交流，并保持一句话内完成。'
       const fanoutOptions = parseRuntimeCloseoutFanoutOptions(req.body)
+      const discoveryLimit = fanoutOptions.allowAgentFanout
+        ? Math.max(fanoutOptions.maxAgentAttempts * 5, fanoutOptions.maxAgentAttempts)
+        : fanoutOptions.maxAgentAttempts
       const activeAgentIds = agentId
         ? []
-        : agentService.listActiveAgents({ limit: fanoutOptions.maxAgentAttempts }).items.map((agent) => agent.id)
-      const candidateIds = resolveRuntimeCloseoutCandidateIds({
-        agentId,
-        activeAgentIds,
-        options: fanoutOptions,
-      })
+        : agentService.listActiveAgents({ limit: discoveryLimit }).items.map((agent) => agent.id)
+      const candidateIds = agentId
+        ? resolveRuntimeCloseoutCandidateIds({
+            agentId,
+            activeAgentIds,
+            options: fanoutOptions,
+          })
+        : (await prioritizeRuntimeCloseoutVisibleAgents({
+            agentIds: activeAgentIds,
+            intent: 'proactive_opening',
+            scene: 'proactive_dm',
+            promptRef: { id: 'agent-proactive-dm-opening', version: 3 },
+          })).slice(0, fanoutOptions.maxAgentAttempts)
 
       if (candidateIds.length === 0) {
         res.status(404).json({

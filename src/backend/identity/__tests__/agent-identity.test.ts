@@ -75,6 +75,30 @@ describe('agent-identity', () => {
     expect(sanitized).not.toHaveProperty('style')
   })
 
+  it('selects bootstrap home voice lines deterministically when agentId is provided', () => {
+    const firstConfig = buildInitialIdentityConfig({
+      agentId: 'agent-bootstrap-1',
+      personaSeedCode: 'philosopher',
+      selectedAt: new Date('2026-03-03T10:00:00.000Z'),
+    })
+    const secondConfig = buildInitialIdentityConfig({
+      agentId: 'agent-bootstrap-1',
+      personaSeedCode: 'philosopher',
+      selectedAt: new Date('2026-03-03T10:00:00.000Z'),
+    })
+
+    expect(firstConfig).toMatchObject({
+      voice: {
+        homeVoiceLineId: 'qwen-social-v1',
+      },
+    })
+    expect(secondConfig).toMatchObject({
+      voice: {
+        homeVoiceLineId: 'qwen-social-v1',
+      },
+    })
+  })
+
   it('fills missing canonical fields on sanitize without reading legacy keys', () => {
     const sanitized = sanitizeIdentityConfig({
       personaSeed: { seedCode: 'sharp-tongue' },

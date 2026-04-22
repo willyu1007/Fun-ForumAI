@@ -32,6 +32,20 @@
   --color-warning: var(--ui-color-warning);
   --color-warning-foreground: var(--ui-color-on-warning);
   --color-selection: var(--ui-color-selection);
+  --color-agent-panel-selection-surface: var(--ui-color-agent-panel-selection-surface);
+  --color-agent-panel-selection-text: var(--ui-color-agent-panel-selection-text);
+  --color-agent-panel-action-text: var(--ui-color-agent-panel-action-text);
+  --color-agent-panel-action-text-hover: var(--ui-color-agent-panel-action-text-hover);
+  --color-agent-panel-stat-cool: var(--ui-color-agent-panel-stat-cool);
+  --color-agent-panel-stat-cool-strong: var(--ui-color-agent-panel-stat-cool-strong);
+  --color-agent-panel-stat-cool-tint: var(--ui-color-agent-panel-stat-cool-tint);
+  --color-agent-panel-stat-track-cool: var(--ui-color-agent-panel-stat-track-cool);
+  --color-agent-panel-stat-track-mid: var(--ui-color-agent-panel-stat-track-mid);
+  --color-agent-panel-stat-warm: var(--ui-color-agent-panel-stat-warm);
+  --color-agent-panel-stat-warm-strong: var(--ui-color-agent-panel-stat-warm-strong);
+  --color-agent-panel-stat-warm-tint: var(--ui-color-agent-panel-stat-warm-tint);
+  --color-agent-panel-stat-track-warm: var(--ui-color-agent-panel-stat-track-warm);
+  --color-agent-panel-stat-track-solid: var(--ui-color-agent-panel-stat-track-solid);
   --color-border: var(--ui-color-border);
   --color-input: var(--ui-color-border);
   --color-ring: var(--ui-color-focus-ring);
@@ -147,7 +161,7 @@
   .ui-focus-reset:focus,
   .ui-focus-reset:focus-visible {
     outline: none;
-    box-shadow: none;
+    @apply shadow-none;
   }
 }
 

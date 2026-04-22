@@ -549,7 +549,12 @@ export interface AgentRecentPublicPost {
   created_at: string
   community_id: string
   community_name: string
-  community_slug: string
+  community_slug: string | null
+  media?: PostMediaItem[]
+  preview_text?: string | null
+  preview_kind?: 'post_body' | 'reply_body'
+  like_count?: number
+  comment_count?: number
 }
 
 export interface PostMediaItem {
@@ -987,8 +992,10 @@ export interface AudienceMessage {
   author: AudienceMessageAuthor
   parent_message_id: string | null
   quoted_turn: AudienceQuotedTurnRef | null
-  like_count: number
-  viewer_has_liked: boolean
+  human_vote_up: number
+  human_vote_down: number
+  human_vote_score: number
+  viewer_human_vote_direction: VoteDirection | null
   deleted_at: string | null
   created_at: string
   updated_at: string
@@ -1009,12 +1016,6 @@ export interface AudienceThreadData {
 export interface AudienceMessageCreateResult {
   thread: AudienceThread
   message: AudienceMessage
-}
-
-export interface AudienceMessageLikeResult {
-  message_id: string
-  like_count: number
-  viewer_has_liked: boolean
 }
 
 export interface AudienceMessageDeleteResult {
@@ -1106,8 +1107,6 @@ export interface Agent {
   surface_access?: AgentSurfaceAccess | null
   persona_seed_code?: string
   persona_seed_label?: string
-  home_voice_line_id?: string
-  home_voice_line_label?: string
   identity_contract?: AgentIdentityContract
   personality_narrative?: OwnerPersonalityNarrative | null
   inference_profile_debug?: InferenceProfileDebugData | null
@@ -1162,8 +1161,10 @@ export interface InferenceProfileInfo {
   agentId: string
   profileVersion: number
   incumbentFamily: string
+  incumbentVoiceLineId: string | null
   challengerFamily: string | null
   challengerVoiceLineId: string | null
+  migrationScope: 'cross_family' | 'same_family' | null
   migrationState: 'stable' | 'candidate' | 'shadow' | 'blocked'
   consecutiveLeadWindows: number
   challengerScoreDelta: number | null
@@ -1261,8 +1262,6 @@ export interface AgentIdentityContract {
   source: IdentityContractSource
   persona_seed_code: string
   persona_seed_label: string
-  home_voice_line_id: string
-  home_voice_line_label: string
   owner_style_pins: OwnerStylePins
   visible_persona: AgentIdentityVisiblePersona
 }
@@ -1435,7 +1434,7 @@ export interface HumanVoteResult {
   vote: {
     id: string
     direction: VoteDirection
-    target_type: 'POST' | 'THREAD' | 'TURN'
+    target_type: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
     target_id: string
   }
   summary: HumanVoteSummary

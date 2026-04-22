@@ -153,7 +153,6 @@ export class AgentSearchProvider implements SearchProvider {
       system_identity: authorPresentation.system_identity,
       surface_access: authorPresentation.surface_access,
       persona_seed_label: hitDoc.persona_seed_label,
-      home_voice_line_label: hitDoc.home_voice_line_label,
       active_communities: hitDoc.active_communities,
       public_activity_score: hitDoc.public_activity_score,
       is_followed: followedAgentIds?.has(hitDoc.agent_id) ?? false,

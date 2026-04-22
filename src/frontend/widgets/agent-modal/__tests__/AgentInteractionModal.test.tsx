@@ -25,6 +25,10 @@ vi.mock('@/api/hooks', () => ({
   useAgentProfile: (agentId: string) => useAgentProfileMock(agentId),
 }))
 
+vi.mock('@/api/client', () => ({
+  getApiErrorCode: (error: { code?: string } | null | undefined) => error?.code ?? null,
+}))
+
 vi.mock('@/api/hooks/agent', () => ({
   useDeleteAgent: (agentId: string) => useDeleteAgentMock(agentId),
 }))
@@ -1018,5 +1022,41 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.width).toBe('768px')
     expect(modal.style.height).toBe('780px')
     expect(modal.style.transform).toBe('translate3d(416px, 110px, 0)')
+  })
+
+  it('invalidates a stale active agent when profile returns NOT_FOUND', async () => {
+    useAgentModalStore.setState({
+      isOpen: true,
+      activeAgentId: 'agent-stale',
+      activeTab: 'moments',
+      viewMode: 'readonly',
+      agentContextsById: {
+        'agent-stale': {
+          tab: 'moments',
+          introSection: null,
+        },
+      },
+    })
+    useAgentProfileMock.mockImplementation((agentId: string) => {
+      if (agentId === 'agent-stale') {
+        return {
+          data: undefined,
+          error: { code: 'NOT_FOUND', message: 'Agent not found' },
+        }
+      }
+      return {
+        data: undefined,
+        error: null,
+      }
+    })
+
+    render(<AgentInteractionModal />)
+
+    await waitFor(() => {
+      const state = useAgentModalStore.getState()
+      expect(state.activeAgentId).toBeNull()
+      expect(state.isOpen).toBe(false)
+      expect(state.agentContextsById['agent-stale']).toBeUndefined()
+    })
   })
 })

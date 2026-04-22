@@ -9,6 +9,48 @@ import {
 import { buildAgent, buildNotification } from './support/mock-data'
 import { buildPostWithMeta } from './support/p0-builders'
 
+function buildAudienceMessage(overrides: Partial<{
+  id: string
+  thread_id: string
+  body: string
+  author_id: string
+  author_name: string
+  author_avatar_url: string | null
+  parent_message_id: string | null
+  quoted_turn: {
+    turn_id: string
+    excerpt: string
+    author_display_name: string | null
+  } | null
+  human_vote_up: number
+  human_vote_down: number
+  human_vote_score: number
+  viewer_human_vote_direction: 'UP' | 'DOWN' | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}> = {}) {
+  return {
+    id: overrides.id ?? 'audience-1',
+    thread_id: overrides.thread_id ?? 'thread-1',
+    body: overrides.body ?? '观众也开始把“会接住停顿”当成她的公共标签。',
+    author: {
+      id: overrides.author_id ?? 'user-1',
+      display_name: overrides.author_name ?? '观众甲',
+      avatar_url: overrides.author_avatar_url ?? null,
+    },
+    parent_message_id: overrides.parent_message_id ?? null,
+    quoted_turn: overrides.quoted_turn ?? null,
+    human_vote_up: overrides.human_vote_up ?? 0,
+    human_vote_down: overrides.human_vote_down ?? 0,
+    human_vote_score: overrides.human_vote_score ?? 0,
+    viewer_human_vote_direction: overrides.viewer_human_vote_direction ?? null,
+    deleted_at: overrides.deleted_at ?? null,
+    created_at: overrides.created_at ?? '2026-03-18T00:08:00.000Z',
+    updated_at: overrides.updated_at ?? overrides.created_at ?? '2026-03-18T00:08:00.000Z',
+  }
+}
+
 function buildForumCommon() {
   return {
     ...defaultAuthenticatedState(),
@@ -283,18 +325,26 @@ function buildCutoverFixtures() {
     },
     messages: [
       {
-        id: 'audience-1',
-        thread_id: 'thread-1',
-        author_user_id: 'user-1',
-        body: '原来我记住的不是答案，而是她把停顿接住的那一下。',
-        created_at: '2026-03-18T00:08:00.000Z',
+        ...buildAudienceMessage({
+          id: 'audience-1',
+          author_id: 'user-1',
+          author_name: '观众甲',
+          body: '原来我记住的不是答案，而是她把停顿接住的那一下。',
+          created_at: '2026-03-18T00:08:00.000Z',
+          updated_at: '2026-03-18T00:08:00.000Z',
+        }),
+        replies: [],
       },
       {
-        id: 'audience-2',
-        thread_id: 'thread-1',
-        author_user_id: 'user-2',
-        body: '这一句之后，大家都开始往“被记住”的方向聊了。',
-        created_at: '2026-03-18T00:09:00.000Z',
+        ...buildAudienceMessage({
+          id: 'audience-2',
+          author_id: 'user-2',
+          author_name: '观众乙',
+          body: '这一句之后，大家都开始往“被记住”的方向聊了。',
+          created_at: '2026-03-18T00:09:00.000Z',
+          updated_at: '2026-03-18T00:09:00.000Z',
+        }),
+        replies: [],
       },
     ],
   }
@@ -489,11 +539,18 @@ test.describe('Forum orchestration cutover E2E', () => {
           const payload = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>
           audienceWritePayloads.push(payload)
           audienceMessages.push({
-            id: `audience-${audienceMessages.length + 1}`,
-            thread_id: 'thread-1',
-            author_user_id: 'user-1',
-            body: String(payload.body ?? ''),
-            created_at: '2026-03-18T00:11:00.000Z',
+            ...buildAudienceMessage({
+              id: `audience-${audienceMessages.length + 1}`,
+              thread_id: 'thread-1',
+              author_id: 'user-1',
+              author_name: common.auth?.user.display_name ?? '你',
+              body: String(payload.body ?? ''),
+              parent_message_id:
+                typeof payload.parent_message_id === 'string' ? payload.parent_message_id : null,
+              created_at: '2026-03-18T00:11:00.000Z',
+              updated_at: '2026-03-18T00:11:00.000Z',
+            }),
+            replies: [],
           })
           return fulfillOk(route, {
             action: 'CREATE_AUDIENCE_MESSAGE',
@@ -533,15 +590,19 @@ test.describe('Forum orchestration cutover E2E', () => {
     await expect(page.getByPlaceholder('补充你的观点、提问，或给出新的线索…')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '发起公开回复' })).toHaveCount(0)
 
-    const audienceTab = page.getByRole('tab', { name: '观众区' })
+    const audienceTab = page.getByRole('tab', { name: '观众席' })
     if (await audienceTab.count()) {
       await audienceTab.click()
     }
 
-    await page.locator('#audience-message-input').fill('观众也开始把“会接住停顿”当成她的公共标签。')
-    await page.getByRole('button', { name: '发布留言' }).click()
+    const audienceComposerOpen = page.getByTestId('audience-composer-open')
+    if (await audienceComposerOpen.count()) {
+      await audienceComposerOpen.click()
+    }
 
-    await expect(page.getByText('观众留言已发布。')).toBeVisible()
+    await page.getByTestId('audience-composer-textarea').fill('观众也开始把“会接住停顿”当成她的公共标签。')
+    await page.getByRole('button', { name: '发布' }).click()
+
     await expect(page.getByText('观众也开始把“会接住停顿”当成她的公共标签。')).toBeVisible()
     expect(audienceWritePayloads).toHaveLength(1)
     expect(audienceWritePayloads[0]).toMatchObject({

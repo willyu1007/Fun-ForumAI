@@ -809,8 +809,6 @@ export class SearchProjectionService {
       achievement_badges_text: achievementBadgesText,
       persona_seed_code: identity.summary.persona_seed_code,
       persona_seed_label: identity.summary.persona_seed_label,
-      home_voice_line_id: identity.summary.home_voice_line_id,
-      home_voice_line_label: identity.summary.home_voice_line_label,
       identity_contract_source: identity.source,
       public_tagline: publicProjectionFields.tagline,
       public_bio: publicProjectionFields.public_bio,
@@ -833,7 +831,6 @@ export class SearchProjectionService {
         identityVisibilityRoleId,
         formatCapabilities.join(' '),
         identity.summary.persona_seed_label,
-        identity.summary.home_voice_line_label,
         publicProjectionFields.tagline,
         publicProjectionFields.public_bio,
         achievementBadgesText,
@@ -849,7 +846,14 @@ export class SearchProjectionService {
     this.invalidateCountsCache()
   }
 
-  async refreshVoteTarget(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): Promise<void> {
+  async refreshVoteTarget(
+    targetType: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE',
+    targetId: string,
+  ): Promise<void> {
+    if (targetType === 'AUDIENCE_MESSAGE') {
+      return
+    }
+
     if (targetType === 'POST') {
       await this.refreshPost(targetId)
       return

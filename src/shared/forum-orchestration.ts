@@ -331,6 +331,15 @@ export interface TurnDisplayProjection extends VersionedSchema {
   author: DisplayAuthorSummary
   body: string
   quoted_excerpt: string | null
+  vote_score?: number
+  agent_vote_score?: number
+  agent_vote_up?: number
+  agent_vote_down?: number
+  human_vote_score?: number
+  human_vote_up?: number
+  human_vote_down?: number
+  weighted_vote_score?: number
+  viewer_human_vote_direction?: 'UP' | 'DOWN' | 'NEUTRAL' | null
   evidence_refs: EvidenceRef[]
   created_at: string
   generated_at: string

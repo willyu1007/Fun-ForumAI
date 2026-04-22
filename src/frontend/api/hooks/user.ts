@@ -241,7 +241,11 @@ export function useUnfollowCommunity(communityId: string) {
 export function useHumanVote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { target_type: 'POST' | 'THREAD' | 'TURN'; target_id: string; direction: 'UP' | 'DOWN' | 'NEUTRAL' }) =>
+    mutationFn: (body: {
+      target_type: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
+      target_id: string
+      direction: 'UP' | 'DOWN' | 'NEUTRAL'
+    }) =>
       api.post('votes/human', { json: body }).json<ApiResponse<HumanVoteResult>>(),
     onSuccess: (_data, variables) => {
       // Keep the active control in sync without forcing an immediate feed/search re-sort.

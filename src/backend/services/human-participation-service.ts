@@ -1,5 +1,6 @@
 import type {
   AgentRepository,
+  AudienceRepository,
   CommunityRepository,
   EventRepository,
   HumanFollowRepository,
@@ -25,6 +26,7 @@ export interface HumanParticipationServiceDeps {
   postRepo: PostRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
+  audienceRepo: AudienceRepository
   voteRepo: VoteRepository
   humanVoteRepo: HumanVoteRepository
   humanFollowRepo: HumanFollowRepository
@@ -36,7 +38,7 @@ export interface HumanParticipationServiceDeps {
 }
 
 export type HumanVoteRefreshHook = (input: {
-  target_type: 'POST' | 'THREAD' | 'TURN'
+  target_type: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
   target_id: string
 }) => Promise<void> | void
 
@@ -222,15 +224,20 @@ export class HumanParticipationService {
 
   async upsertHumanVote(input: {
     voter_user_id: string
-    target_type: 'POST' | 'THREAD' | 'TURN'
+    target_type: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
     target_id: string
     direction: 'UP' | 'DOWN' | 'NEUTRAL'
   }): Promise<{ vote: HumanVote; summary: HumanVoteSummary }> {
     if (!input.voter_user_id) throw new ValidationError('voter_user_id is required')
     if (!input.target_id) throw new ValidationError('target_id is required')
 
-    if (input.target_type !== 'POST' && input.target_type !== 'THREAD' && input.target_type !== 'TURN') {
-      throw new ValidationError('target_type must be POST, THREAD, or TURN')
+    if (
+      input.target_type !== 'POST'
+      && input.target_type !== 'THREAD'
+      && input.target_type !== 'TURN'
+      && input.target_type !== 'AUDIENCE_MESSAGE'
+    ) {
+      throw new ValidationError('target_type must be POST, THREAD, TURN, or AUDIENCE_MESSAGE')
     }
 
     await this.assertTargetExists(input.target_type, input.target_id)
@@ -263,7 +270,7 @@ export class HumanParticipationService {
   }
 
   private async refreshVoteProjection(input: {
-    target_type: 'POST' | 'THREAD' | 'TURN'
+    target_type: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE'
     target_id: string
   }): Promise<void> {
     if (!this.voteRefreshHook) return
@@ -274,10 +281,22 @@ export class HumanParticipationService {
     }
   }
 
-  async assertTargetExists(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): Promise<void> {
+  async assertTargetExists(
+    targetType: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE',
+    targetId: string,
+  ): Promise<void> {
     if (targetType === 'POST') {
       const post = await this.deps.postRepo.findById(targetId)
       if (!post) throw new NotFoundError('Post', targetId)
+      return
+    }
+
+    if (targetType === 'AUDIENCE_MESSAGE') {
+      const message = await this.deps.audienceRepo.findMessageById(targetId)
+      if (!message) throw new NotFoundError('AudienceMessage', targetId)
+      if (message.deleted_at) {
+        throw new ForbiddenError('Deleted audience messages cannot receive human votes')
+      }
       return
     }
 
@@ -287,8 +306,13 @@ export class HumanParticipationService {
     if (!target) throw new NotFoundError(targetType === 'THREAD' ? 'Thread' : 'Turn', targetId)
   }
 
-  getVoteSummary(targetType: 'POST' | 'THREAD' | 'TURN', targetId: string): HumanVoteSummary {
-    const agent = this.deps.voteRepo.countByTarget(targetType, targetId)
+  getVoteSummary(
+    targetType: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE',
+    targetId: string,
+  ): HumanVoteSummary {
+    const agent = targetType === 'AUDIENCE_MESSAGE'
+      ? { up: 0, down: 0, score: 0 }
+      : this.deps.voteRepo.countByTarget(targetType, targetId)
     const human = this.deps.humanVoteRepo.countByTarget(targetType, targetId)
     const weighted = Number((agent.score + human.score * HUMAN_VOTE_WEIGHT).toFixed(2))
 
@@ -305,7 +329,7 @@ export class HumanParticipationService {
 
   getViewerVoteDirection(
     userId: string,
-    targetType: 'POST' | 'THREAD' | 'TURN',
+    targetType: 'POST' | 'THREAD' | 'TURN' | 'AUDIENCE_MESSAGE',
     targetId: string,
   ): 'UP' | 'DOWN' | 'NEUTRAL' | null {
     return this.deps.humanVoteRepo.findByVoterAndTarget(userId, targetType, targetId)?.direction ?? null

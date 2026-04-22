@@ -15,9 +15,13 @@ import { InferenceProfileService } from '../inference-profile-service.js'
 import { PersonaStateService } from '../persona-state-service.js'
 import { ReviewService } from '../review-service.js'
 import { StatsService } from '../stats-service.js'
+import { resolveAgentIdentity } from '../../identity/agent-identity.js'
 
 async function createContext(
-  opts: { growthPointsTotal?: number } = {},
+  opts: {
+    growthPointsTotal?: number
+    homeVoiceLineId?: 'qwen-social-v1' | 'glm-deep-v1' | 'doubao-deep-v1' | 'kimi-deep-v1'
+  } = {},
 ) {
   personaObservability.reset()
   const agentRepo = new InMemoryAgentRepository()
@@ -48,6 +52,15 @@ async function createContext(
     owner_id: 'owner-1',
     display_name: 'Compiler Bot',
     persona_seed_code: 'philosopher',
+  })
+  await agentService.updateConfig(agent.id, {
+    voice: {
+      homeVoiceLineId: opts.homeVoiceLineId ?? 'qwen-social-v1',
+      selectedAt: agent.created_at.toISOString(),
+    },
+  }, 'system', undefined, {
+    allow_protected_identity_mutation: true,
+    suppress_hooks: true,
   })
 
   const service = new InferenceProfileService({
@@ -218,7 +231,7 @@ describe('InferenceProfileService', () => {
     expect(firstRoute.requestedTier).toBe('premium')
     expect(secondRoute.profile.challengerFamily).toBe('sage')
     expect(secondRoute.profile.migrationState).toBe('candidate')
-    expect(secondRoute.profile.challengerVoiceLineId).toBe('doubao-deep-v1')
+    expect(secondRoute.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
 
     const blocked = await service.setManualVoiceLineLock(agent.id, true)
     expect(blocked.manualVoiceLineLock).toBe(true)
@@ -248,6 +261,161 @@ describe('InferenceProfileService', () => {
     })
 
     expect(route.requestedTier).toBe('lite')
+  })
+
+  it('supports same-family line challengers within sage', async () => {
+    const { agent, agentService, service, usageLedgerRepo } = await createContext({
+      homeVoiceLineId: 'glm-deep-v1',
+    })
+
+    for (let index = 0; index < 5; index += 1) {
+      await service.resolveVisibleRoute({
+        agentId: agent.id,
+        requestedTier: 'base',
+      })
+    }
+
+    const debug = await service.getDebug(agent.id)
+    expect(debug.profile.incumbentFamily).toBe('sage')
+    expect(debug.profile.incumbentVoiceLineId).toBe('glm-deep-v1')
+    expect(debug.profile.challengerFamily).toBe('sage')
+    expect(debug.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
+    expect(debug.profile.migrationScope).toBe('same_family')
+    expect(debug.profile.migrationState).toBe('shadow')
+
+    const started = await service.startShadowReview(agent.id, 'admin-1')
+    expect(started.incumbentVoiceLineId).toBe('glm-deep-v1')
+    expect(started.challengerVoiceLineId).toBe('kimi-deep-v1')
+
+    for (let index = 0; index < 3; index += 1) {
+      await usageLedgerRepo.insert(
+        buildLedgerEntry({
+          traceId: `same-family-shadow-${index}`,
+          agentId: agent.id,
+          createdAt: new Date(Date.now() + index * 1_000).toISOString(),
+        }),
+      )
+    }
+
+    const collected = await service.collectShadowReview(agent.id, 'admin-1')
+    expect(collected.status).toBe('collected')
+    expect(collected.summary.recommendation).toBe('approve')
+
+    const approved = await service.approveShadow(agent.id, 'admin-1')
+    expect(approved.migrationState).toBe('stable')
+
+    const currentAgent = agentService.getAgent(agent.id)
+    const latestConfig = agentService.getLatestConfig(agent.id)
+    const identity = resolveAgentIdentity(currentAgent, latestConfig)
+    expect(identity.summary.home_voice_line_id).toBe('kimi-deep-v1')
+
+    const debugAfter = await service.getDebug(agent.id)
+    expect(debugAfter.profile.incumbentVoiceLineId).toBe('kimi-deep-v1')
+    expect(debugAfter.profile.challengerVoiceLineId).toBeNull()
+    expect(debugAfter.profile.migrationScope).toBeNull()
+    expect(debugAfter.profile.migrationState).toBe('stable')
+  })
+
+  it('resets the shadow review evidence window when restarting a collected review', async () => {
+    const { agent, service, usageLedgerRepo } = await createContext({
+      homeVoiceLineId: 'doubao-deep-v1',
+    })
+
+    for (let index = 0; index < 5; index += 1) {
+      await service.resolveVisibleRoute({
+        agentId: agent.id,
+        requestedTier: 'base',
+      })
+    }
+
+    const firstReview = await service.startShadowReview(agent.id, 'admin-1')
+    const firstStartedAtMs = new Date(firstReview.startedAt).getTime()
+
+    for (let index = 0; index < 2; index += 1) {
+      await usageLedgerRepo.insert(
+        buildLedgerEntry({
+          traceId: `first-window-failure-${index}`,
+          agentId: agent.id,
+          success: false,
+          createdAt: new Date(firstStartedAtMs + index).toISOString(),
+        }),
+      )
+    }
+
+    const firstCollected = await service.collectShadowReview(agent.id, 'admin-1')
+    expect(firstCollected.status).toBe('collected')
+    expect(firstCollected.summary.recommendation).toBe('reject')
+
+    await new Promise((resolve) => setTimeout(resolve, 5))
+
+    const restarted = await service.startShadowReview(agent.id, 'admin-1')
+    const restartedAtMs = new Date(restarted.startedAt).getTime()
+    expect(restartedAtMs).toBeGreaterThan(firstStartedAtMs)
+
+    for (let index = 0; index < 3; index += 1) {
+      await usageLedgerRepo.insert(
+        buildLedgerEntry({
+          traceId: `second-window-visible-${index}`,
+          agentId: agent.id,
+          createdAt: new Date(restartedAtMs + (index + 1) * 1_000).toISOString(),
+        }),
+      )
+    }
+    await usageLedgerRepo.insert(
+      buildLedgerEntry({
+        traceId: 'second-window-identity-success',
+        agentId: agent.id,
+        intent: 'identity_write',
+        visibility: 'identity_write',
+        createdAt: new Date(restartedAtMs + 100).toISOString(),
+      }),
+    )
+
+    const restartedCollected = await service.collectShadowReview(agent.id, 'admin-1')
+    expect(restartedCollected.status).toBe('collected')
+    expect(restartedCollected.summary.recommendation).toBe('approve')
+    expect(restartedCollected.evidence.window.visibleFailureCount).toBe(0)
+    expect(restartedCollected.evidence.fallbackEntries).toHaveLength(0)
+  })
+
+  it('allows doubao incumbents to promote kimi as a same-family shadow challenger', async () => {
+    const { agent, service } = await createContext({
+      homeVoiceLineId: 'doubao-deep-v1',
+    })
+
+    for (let index = 0; index < 5; index += 1) {
+      await service.resolveVisibleRoute({
+        agentId: agent.id,
+        requestedTier: 'base',
+      })
+    }
+
+    const debug = await service.getDebug(agent.id)
+    expect(debug.profile.incumbentVoiceLineId).toBe('doubao-deep-v1')
+    expect(debug.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
+    expect(debug.profile.migrationScope).toBe('same_family')
+    expect(debug.profile.challengerScoreDelta).toBeGreaterThanOrEqual(8)
+    expect(debug.profile.migrationState).toBe('shadow')
+  })
+
+  it('allows kimi incumbents to promote doubao as a same-family shadow challenger', async () => {
+    const { agent, service } = await createContext({
+      homeVoiceLineId: 'kimi-deep-v1',
+    })
+
+    for (let index = 0; index < 5; index += 1) {
+      await service.resolveVisibleRoute({
+        agentId: agent.id,
+        requestedTier: 'base',
+      })
+    }
+
+    const debug = await service.getDebug(agent.id)
+    expect(debug.profile.incumbentVoiceLineId).toBe('kimi-deep-v1')
+    expect(debug.profile.challengerVoiceLineId).toBe('doubao-deep-v1')
+    expect(debug.profile.migrationScope).toBe('same_family')
+    expect(debug.profile.challengerScoreDelta).toBeGreaterThanOrEqual(8)
+    expect(debug.profile.migrationState).toBe('shadow')
   })
 
   it('creates and collects shadow review evidence before allowing rare reanchor', async () => {

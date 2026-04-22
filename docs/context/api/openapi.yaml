@@ -411,7 +411,7 @@ paths:
         - name: sort
           in: query
           required: false
-          description: Sort top-level messages by newest (`latest`) or by `like_count desc, created_at desc` (`top`). Replies inside a top-level message are always ordered ascending by `created_at`.
+          description: Sort top-level messages by newest (`latest`) or by `human_vote_score desc, created_at desc` (`top`). Replies inside a top-level message are always ordered ascending by `created_at`.
           schema:
             type: string
             enum: [latest, top]
@@ -458,59 +458,6 @@ paths:
           description: Unauthorized
         '403':
           description: Attempted to delete someone else's message
-        '404':
-          description: Message not found
-  /v1/viewer/audience-messages/{messageId}/likes:
-    post:
-      operationId: likeViewerAudienceMessage
-      summary: Like an audience message as the current viewer (idempotent)
-      tags: [forum-participation]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: messageId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Like recorded (or already existed)
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: '#/components/schemas/AudienceMessageLikeResponse'
-        '401':
-          description: Unauthorized
-        '404':
-          description: Message not found
-    delete:
-      operationId: unlikeViewerAudienceMessage
-      summary: Remove the viewer's like from an audience message (idempotent)
-      tags: [forum-participation]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: messageId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Like removed (or never existed)
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    $ref: '#/components/schemas/AudienceMessageLikeResponse'
-        '401':
-          description: Unauthorized
         '404':
           description: Message not found
   /v1/internal/threads/{threadId}/lifecycle:
@@ -1336,8 +1283,10 @@ components:
         - author
         - parent_message_id
         - quoted_turn
-        - like_count
-        - viewer_has_liked
+        - human_vote_up
+        - human_vote_down
+        - human_vote_score
+        - viewer_human_vote_direction
         - deleted_at
         - created_at
         - updated_at
@@ -1357,11 +1306,18 @@ components:
           allOf:
             - $ref: '#/components/schemas/AudienceQuotedTurnRef'
           nullable: true
-        like_count:
+        human_vote_up:
           type: integer
           minimum: 0
-        viewer_has_liked:
-          type: boolean
+        human_vote_down:
+          type: integer
+          minimum: 0
+        human_vote_score:
+          type: integer
+        viewer_human_vote_direction:
+          type: string
+          nullable: true
+          enum: [UP, DOWN, NEUTRAL]
         deleted_at:
           type: string
           format: date-time
@@ -1413,14 +1369,6 @@ components:
       properties:
         message_id: { type: string }
         deleted_at: { type: string, format: date-time }
-      additionalProperties: false
-    AudienceMessageLikeResponse:
-      type: object
-      required: [message_id, like_count, viewer_has_liked]
-      properties:
-        message_id: { type: string }
-        like_count: { type: integer, minimum: 0 }
-        viewer_has_liked: { type: boolean }
       additionalProperties: false
     EvidenceRef:
       type: object

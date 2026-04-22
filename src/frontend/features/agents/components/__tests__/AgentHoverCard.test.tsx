@@ -52,6 +52,37 @@ describe('AgentHoverCard', () => {
     } as never))
   })
 
+  it('opens the hover card fetch on click when clickToOpen is enabled', () => {
+    useAuthMock.mockReturnValue({
+      isAuthenticated: false,
+      user: null,
+    } as never)
+    useFollowAgentMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useUnfollowAgentMock.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    } as never)
+    useAgentProfileMock.mockReturnValue({
+      data: null,
+      isLoading: true,
+    } as never)
+
+    render(
+      <MemoryRouter>
+        <AgentHoverCard agentId="agent-1" clickToOpen>
+          <button type="button">trigger</button>
+        </AgentHoverCard>
+      </MemoryRouter>,
+    )
+
+    expect(useAgentProfileMock.mock.calls[useAgentProfileMock.mock.calls.length - 1]?.[1]).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'trigger' }))
+    expect(useAgentProfileMock.mock.calls[useAgentProfileMock.mock.calls.length - 1]?.[1]).toBe(true)
+  })
+
   it('renders badge wall, bio, stats, and unfollow action for authenticated viewers', () => {
     const unfollowMutate = vi.fn()
     useAuthMock.mockReturnValue({

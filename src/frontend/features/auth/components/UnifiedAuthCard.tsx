@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getApiErrorCode } from '@/api/client'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/shared/hooks/use-auth'
+import { SCRIPT_CN_CSS } from '@/shared/utils/script-font'
 import { resolveAuthRedirectTarget } from '@/shared/utils/auth-redirect'
 import { WechatLoginButton } from './WechatLoginButton'
 
@@ -20,10 +21,7 @@ const authCardCss = `
   border-color: color-mix(in srgb, var(--ui-color-border) 88%, var(--ui-color-primary) 12%);
   background: color-mix(in srgb, var(--ui-color-surface) 76%, var(--ui-color-surface-elevated) 24%);
 }
-.auth-card-input-script {
-  font-family: "Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", serif;
-  letter-spacing: 0.02em;
-}
+${SCRIPT_CN_CSS}
 .auth-card-tabs {
   background: color-mix(in srgb, var(--ui-color-surface) 62%, var(--ui-color-surface-elevated) 38%);
   border: 1px solid color-mix(in srgb, var(--ui-color-border) 11%, transparent);

@@ -221,7 +221,7 @@ async function createRealSmokeHarness() {
 }
 
 describeReal('AgentBiographyService real biography smoke', () => {
-  it('publishes a chapter through the biography premium route with Moonshot primary', async () => {
+  it('publishes a chapter through the biography premium route with Kimi primary', async () => {
     const { service, repo, agent } = await createRealSmokeHarness()
 
     await service.compileAgent(agent.id, {

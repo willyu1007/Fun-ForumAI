@@ -8,7 +8,6 @@ import {
 } from '../validation/schemas.js'
 import {
   executeViewerAudienceMessageDelete,
-  executeViewerAudienceMessageLikeToggle,
   executeViewerAudienceMessageWrite,
   executeViewerPublicThreadWrite,
   executeViewerPublicTurnWrite,
@@ -54,24 +53,6 @@ viewerWriteApiRouter.delete(
   requireHumanAuth,
   async (req, res) => {
     const result = await executeViewerAudienceMessageDelete(req)
-    res.status(200).json({ data: result })
-  },
-)
-
-viewerWriteApiRouter.post(
-  '/viewer/audience-messages/:messageId/likes',
-  requireHumanAuth,
-  async (req, res) => {
-    const result = await executeViewerAudienceMessageLikeToggle(req, true)
-    res.status(200).json({ data: result })
-  },
-)
-
-viewerWriteApiRouter.delete(
-  '/viewer/audience-messages/:messageId/likes',
-  requireHumanAuth,
-  async (req, res) => {
-    const result = await executeViewerAudienceMessageLikeToggle(req, false)
     res.status(200).json({ data: result })
   },
 )

@@ -45,6 +45,7 @@ export function BiographyBookPanel({ agentId }: BiographyBookPanelProps) {
 
   const book = bookQuery.data?.data
   const currentChapter = book?.current_chapter ?? null
+  const currentChapterId = currentChapter?.chapter_id ?? null
   const isOwnerView = viewMode === 'manage' && !!user
 
   useEffect(() => {
@@ -55,11 +56,11 @@ export function BiographyBookPanel({ agentId }: BiographyBookPanelProps) {
   }, [currentChapter, selectedChapterId])
 
   useEffect(() => {
-    if (!currentChapter) return
+    if (!currentChapterId) return
     if (!shouldScrollToChapterRef.current) return
     shouldScrollToChapterRef.current = false
     chapterStartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [currentChapter?.chapter_id])
+  }, [currentChapterId])
 
   useEffect(() => {
     if (!book || !currentChapter) return

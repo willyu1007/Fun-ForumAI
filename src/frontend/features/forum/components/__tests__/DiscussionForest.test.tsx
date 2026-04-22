@@ -1,8 +1,71 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DiscussionForest } from '../DiscussionForest'
 import type { DiscussionForestProjection } from '@/api/types'
+
+const mutateAsyncMock = vi.fn()
+
+vi.mock('@/api/hooks', () => ({
+  useCreatePublicTurn: () => ({
+    isPending: false,
+    mutateAsync: mutateAsyncMock,
+  }),
+}))
+
+vi.mock('../HumanVoteControls', () => ({
+  HumanVoteControls: () => <div data-testid="human-vote-controls" />,
+}))
+
+vi.mock('../AgentSentimentBar', () => ({
+  AgentSentimentBar: () => <div data-testid="agent-sentiment-net" />,
+}))
+
+vi.mock('@/features/agents/components/AgentHoverCard', () => ({
+  AgentHoverCard: ({
+    children,
+    agentId,
+  }: {
+    children: ReactNode
+    agentId: string
+  }) => <div data-testid="agent-hover-card" data-agent-id={agentId}>{children}</div>,
+}))
+
+vi.mock('@/components/ui/dropdown-menu', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+
+  return {
+    DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DropdownMenuTrigger: ({ children, asChild }: { children: ReactNode; asChild?: boolean }) => {
+      if (asChild && React.isValidElement(children)) {
+        return React.cloneElement(children)
+      }
+      return <button type="button">{children}</button>
+    },
+    DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DropdownMenuItem: ({
+      children,
+      onSelect,
+      disabled,
+      ...rest
+    }: {
+      children: ReactNode
+      onSelect?: (event: { preventDefault: () => void }) => void
+      disabled?: boolean
+    } & Record<string, unknown>) => (
+      <button
+        type="button"
+        role="menuitem"
+        disabled={disabled}
+        onClick={() => onSelect?.({ preventDefault: () => {} })}
+        {...(rest as object)}
+      >
+        {children}
+      </button>
+    ),
+  }
+})
 
 function buildForest(): DiscussionForestProjection {
   return {
@@ -129,7 +192,19 @@ function buildForest(): DiscussionForestProjection {
           actor_type: 'agent',
           display_name: 'Agent 1',
           avatar_url: null,
-          public_identity: null,
+          public_identity: {
+            agent_kind: 'system',
+            identity_badges: [
+              {
+                badge_id: 'identity:system_resident_badge',
+                internal_code: 'system_resident_badge',
+                label: '常驻席',
+                source_kind: 'system_display',
+                priority_rank: 220,
+              },
+            ],
+            identity_visibility_role_id: 'host',
+          },
           public_projection: null,
           public_proof: null,
         },
@@ -166,6 +241,11 @@ function buildForest(): DiscussionForestProjection {
         },
         body: '原始支线节点',
         quoted_excerpt: null,
+        agent_vote_up: 4,
+        agent_vote_down: 1,
+        human_vote_up: 7,
+        human_vote_down: 2,
+        viewer_human_vote_direction: null,
         evidence_refs: [],
         created_at: '2026-03-01T00:00:01.000Z',
         generated_at: '2026-03-01T00:00:00.000Z',
@@ -197,6 +277,11 @@ function buildForest(): DiscussionForestProjection {
         },
         body: '稍后重新贴回旧点',
         quoted_excerpt: null,
+        agent_vote_up: 1,
+        agent_vote_down: 0,
+        human_vote_up: 2,
+        human_vote_down: 0,
+        viewer_human_vote_direction: null,
         evidence_refs: [],
         created_at: '2026-03-01T00:00:02.000Z',
         generated_at: '2026-03-01T00:00:00.000Z',
@@ -228,6 +313,11 @@ function buildForest(): DiscussionForestProjection {
         },
         body: '另一条支线',
         quoted_excerpt: null,
+        agent_vote_up: 0,
+        agent_vote_down: 0,
+        human_vote_up: 0,
+        human_vote_down: 0,
+        viewer_human_vote_direction: null,
         evidence_refs: [],
         created_at: '2026-03-01T00:00:03.000Z',
         generated_at: '2026-03-01T00:00:00.000Z',
@@ -240,6 +330,10 @@ function buildForest(): DiscussionForestProjection {
 }
 
 describe('DiscussionForest', () => {
+  beforeEach(() => {
+    mutateAsyncMock.mockReset()
+  })
+
   it('replaces the inline reply affordance with the active route CTA on route-only branches', () => {
     render(
       <MemoryRouter>
@@ -256,6 +350,16 @@ describe('DiscussionForest', () => {
     expect(screen.getAllByRole('link', { name: '查看 Aftershow' })[0]?.getAttribute('href')).toBe(
       '/posts/post-1#aftershow-panel',
     )
+  })
+
+  it('does not render author badges inside discussion nodes', () => {
+    render(
+      <MemoryRouter>
+        <DiscussionForest postId="post-1" forest={buildForest()} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText('常驻席')).toBeNull()
   })
 
   it('renders a flat tree of top-level nodes without cluster headers or reading-guide banners', () => {
@@ -276,10 +380,12 @@ describe('DiscussionForest', () => {
     expect(screen.queryByText('稍后接回')).toBeNull()
 
     const trees = screen.getAllByTestId('discussion-tree')
-    expect(trees).toHaveLength(2)
+    expect(trees).toHaveLength(1)
     const primaryTree = trees[0]!
+    expect(within(primaryTree).getByText('这条分支已经转去 Aftershow。')).toBeTruthy()
     expect(within(primaryTree).getByText('原始支线节点')).toBeTruthy()
     expect(within(primaryTree).getByText('稍后重新贴回旧点')).toBeTruthy()
+    expect(within(primaryTree).getByText('另一条支线')).toBeTruthy()
   })
 
   it('collapses a subtree when the [-] toggle is pressed', () => {
@@ -297,14 +403,18 @@ describe('DiscussionForest', () => {
     expect(screen.getByText('稍后重新贴回旧点')).toBeTruthy()
 
     const rootNode = screen.getByTestId('discussion-forest-tree').querySelector(
-      '[data-node-id="turn-root"]',
+      '[data-node-id="thread-route"]',
     ) as HTMLElement | null
     expect(rootNode).toBeTruthy()
     const toggle = within(rootNode as HTMLElement).getAllByTestId('node-collapse-toggle')[0]!
     fireEvent.click(toggle)
 
     expect(screen.queryByText('稍后重新贴回旧点')).toBeNull()
-    expect(screen.getByText(/已折叠 1 条回应/)).toBeTruthy()
+    expect(screen.queryByText('原始支线节点')).toBeNull()
+    expect(screen.queryByText('另一条支线')).toBeNull()
+    expect(screen.queryByText(/已折叠 1 条回应/)).toBeNull()
+    expect(within(rootNode as HTMLElement).getByLabelText('展开子节点')).toBeTruthy()
+    expect(within(rootNode as HTMLElement).getByText('Agent 1')).toBeTruthy()
   })
 
   it('exposes the audience-discussion entry only when audience posting is enabled', () => {
@@ -335,8 +445,215 @@ describe('DiscussionForest', () => {
     )
     const entries = screen.getAllByTestId('node-discuss-in-audience')
     expect(entries.length).toBeGreaterThan(0)
+    expect(screen.getAllByText('引用').length).toBeGreaterThan(0)
     fireEvent.click(entries[0]!)
     expect(onDiscussInAudience).toHaveBeenCalled()
+  })
+
+  it('renders reply footer modules for votes, discussion, and more actions', () => {
+    const forest = buildForest()
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_allowed = true
+    forest.branch_groups[0]!.lifecycle!.reply_budget.mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.thread_state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.active_route = null
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.writeability!.preferred_action = 'REPLY_IN_THREAD'
+    forest.branch_groups[0]!.lifecycle!.writeability!.reason_code = 'THREAD_OPEN'
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          selectedNodeId={null}
+          turnReplyEnabled
+          audiencePostingEnabled
+          onDiscussInAudience={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getAllByTestId('human-vote-controls').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('agent-sentiment-net').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('引用').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('node-more-actions').length).toBeGreaterThan(0)
+  })
+
+  it('submits root-thread replies without forging a turn anchor id', async () => {
+    mutateAsyncMock.mockResolvedValueOnce({
+      data: {
+        result: 'ACCEPTED',
+      },
+    })
+
+    const forest = buildForest()
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_allowed = true
+    forest.branch_groups[0]!.lifecycle!.reply_budget.mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.thread_state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.active_route = null
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.writeability!.preferred_action = 'REPLY_IN_THREAD'
+    forest.branch_groups[0]!.lifecycle!.writeability!.reason_code = 'THREAD_OPEN'
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          selectedNodeId={null}
+          turnReplyEnabled
+        />
+      </MemoryRouter>,
+    )
+
+    const rootNode = screen.getByTestId('discussion-forest-tree').querySelector(
+      '[data-node-id="thread-route"]',
+    ) as HTMLElement | null
+    expect(rootNode).toBeTruthy()
+
+    const replyButtons = within(rootNode as HTMLElement).getAllByTestId('node-reply-open')
+    fireEvent.click(replyButtons[0]!)
+    fireEvent.change(screen.getByTestId('inline-node-reply-textarea'), {
+      target: { value: '给根发言的回应' },
+    })
+    fireEvent.click(screen.getByTestId('inline-node-reply-submit'))
+
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          threadId: 'thread-route',
+          postId: 'post-1',
+          focused_turn_id: 'thread-route',
+          actual_anchor_turn_id: null,
+          anchor_turn_id: null,
+        }),
+      )
+    })
+  })
+
+  it('activates only the main branch rail when the shared spine hit area is hovered', () => {
+    const forest = buildForest()
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_allowed = true
+    forest.branch_groups[0]!.lifecycle!.reply_budget.mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.thread_state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.active_route = null
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.writeability!.preferred_action = 'REPLY_IN_THREAD'
+    forest.branch_groups[0]!.lifecycle!.writeability!.reason_code = 'THREAD_OPEN'
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          selectedNodeId={null}
+          turnReplyEnabled
+        />
+      </MemoryRouter>,
+    )
+
+    const rootNode = screen.getByTestId('discussion-forest-tree').querySelector(
+      '[data-node-id="thread-route"]',
+    ) as HTMLElement | null
+    expect(rootNode).toBeTruthy()
+
+    fireEvent.mouseEnter(screen.getByTestId('branch-rail-main-hit-area-thread-route'))
+
+    expect(rootNode?.getAttribute('data-rail-main-hovered')).toBe('true')
+    expect(rootNode?.getAttribute('data-rail-branch-hovered')).toBeNull()
+  })
+
+  it('activates only the hovered child branch path when the reply avatar is hovered', () => {
+    const forest = buildForest()
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_allowed = true
+    forest.branch_groups[0]!.lifecycle!.reply_budget.mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.thread_state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.active_route = null
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.writeability!.preferred_action = 'REPLY_IN_THREAD'
+    forest.branch_groups[0]!.lifecycle!.writeability!.reason_code = 'THREAD_OPEN'
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          selectedNodeId={null}
+          turnReplyEnabled
+        />
+      </MemoryRouter>,
+    )
+
+    const treeRootNode = screen.getByTestId('discussion-forest-tree').querySelector(
+      '[data-node-id="thread-route"]',
+    ) as HTMLElement | null
+    expect(treeRootNode).toBeTruthy()
+    const branchRootNode = screen.getByTestId('discussion-forest-tree').querySelector(
+      '[data-node-id="turn-root"]',
+    ) as HTMLElement | null
+    expect(branchRootNode).toBeTruthy()
+
+    fireEvent.mouseEnter(screen.getByLabelText('Agent 2'))
+
+    expect(treeRootNode?.getAttribute('data-rail-main-hovered')).toBeNull()
+    expect(treeRootNode?.getAttribute('data-rail-branch-hovered')).toBeNull()
+    expect(branchRootNode?.getAttribute('data-rail-branch-hovered')).toBe('turn-late')
+  })
+
+  it('collapses the branch when the main rail hit area is clicked', () => {
+    const forest = buildForest()
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_allowed = true
+    forest.branch_groups[0]!.lifecycle!.reply_budget.mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.thread_state = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.active_route = null
+    forest.branch_groups[0]!.lifecycle!.writeability!.reply_mode = 'OPEN'
+    forest.branch_groups[0]!.lifecycle!.writeability!.preferred_action = 'REPLY_IN_THREAD'
+    forest.branch_groups[0]!.lifecycle!.writeability!.reason_code = 'THREAD_OPEN'
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={forest}
+          selectedNodeId={null}
+          turnReplyEnabled
+        />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByTestId('branch-rail-main-hit-area-turn-root'))
+
+    expect(screen.queryByText('稍后重新贴回旧点')).toBeNull()
+    expect(screen.getByLabelText('展开子节点')).toBeTruthy()
+  })
+
+  it('toggles the more-menu label between locate and clear locate based on current selection', () => {
+    const onToggleNodeSelection = vi.fn()
+
+    render(
+      <MemoryRouter>
+        <DiscussionForest
+          postId="post-1"
+          forest={buildForest()}
+          selectedNodeId="turn-root"
+          onToggleNodeSelection={onToggleNodeSelection}
+        />
+      </MemoryRouter>,
+    )
+
+    const moreActions = screen.getAllByTestId('node-more-actions')
+    fireEvent.click(moreActions[0]!)
+    const clearItem = screen.getByText('取消定位')
+    expect(clearItem).toBeTruthy()
+    fireEvent.click(clearItem)
+    expect(onToggleNodeSelection).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'turn-root' }),
+    )
   })
 
   it('hides the inline reply button on all nodes when turnReplyEnabled is false', () => {
@@ -355,5 +672,38 @@ describe('DiscussionForest', () => {
     )
 
     expect(screen.queryByRole('button', { name: '回复' })).toBeNull()
+  })
+
+  it('renders a transient flash highlight that fades after a deep-link jump', () => {
+    vi.useFakeTimers()
+    try {
+      render(
+        <MemoryRouter>
+          <DiscussionForest
+            postId="post-1"
+            forest={buildForest()}
+            flashNodeId="thread-route"
+            flashToken={1}
+          />
+        </MemoryRouter>,
+      )
+
+      const rootNode = screen.getByTestId('discussion-forest-tree').querySelector(
+        '[data-node-id="thread-route"]',
+      ) as HTMLElement | null
+      expect(rootNode?.getAttribute('data-flash-state')).toBe('active')
+
+      act(() => {
+        vi.advanceTimersByTime(1400)
+      })
+      expect(rootNode?.getAttribute('data-flash-state')).toBe('fading')
+
+      act(() => {
+        vi.advanceTimersByTime(700)
+      })
+      expect(rootNode?.getAttribute('data-flash-state')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

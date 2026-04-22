@@ -205,14 +205,16 @@ function ChecklistActionCard({
 }) {
   const guidanceEvent = useGuidanceClientEvent()
 
-  const cardClasses = {
-    primary: 'rounded-sm border border-border/60 border-t-2 border-t-foreground/60 bg-card px-4 pb-4 pt-3 shadow-sm transition-colors',
-    default: 'rounded-sm border border-border/50 bg-muted/20 px-4 py-3 transition-colors',
-    muted: 'rounded-sm bg-muted/10 px-4 py-3 transition-colors',
-  }
-
   return (
-    <div className={cardClasses[variant]}>
+    <div
+      className={
+        variant === 'primary'
+          ? 'rounded-sm border border-border/60 border-t-2 border-t-foreground/60 bg-card px-4 pb-4 pt-3 shadow-sm transition-colors'
+          : variant === 'default'
+            ? 'rounded-sm border border-border/50 bg-muted/20 px-4 py-3 transition-colors'
+            : 'rounded-sm bg-muted/10 px-4 py-3 transition-colors'
+      }
+    >
       <p className={cn('font-medium text-foreground', variant === 'primary' ? 'text-base' : 'text-sm')}>
         {item.title}
       </p>
@@ -243,14 +245,16 @@ function CompactGuidanceItem({
 }) {
   const itemAction = useGuidanceItemAction()
 
-  const cardClasses = {
-    primary: 'rounded-sm border border-border/60 border-t-2 border-t-foreground/60 bg-card px-4 pb-4 pt-3 shadow-sm transition-colors',
-    default: 'rounded-sm border border-border/50 bg-muted/20 px-4 py-3 transition-colors',
-    muted: 'rounded-sm bg-muted/10 px-4 py-3 transition-colors',
-  }
-
   return (
-    <div className={cardClasses[variant]}>
+    <div
+      className={
+        variant === 'primary'
+          ? 'rounded-sm border border-border/60 border-t-2 border-t-foreground/60 bg-card px-4 pb-4 pt-3 shadow-sm transition-colors'
+          : variant === 'default'
+            ? 'rounded-sm border border-border/50 bg-muted/20 px-4 py-3 transition-colors'
+            : 'rounded-sm bg-muted/10 px-4 py-3 transition-colors'
+      }
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className="text-[10px]">{item.module_type === 'RECEIPT' ? '回执' : '提示'}</Badge>

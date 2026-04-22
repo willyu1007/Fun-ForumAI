@@ -5,12 +5,10 @@ import type {
   AudienceMessage,
   AudienceMessageAggregate,
   AudienceMessageAuthor,
-  AudienceMessageLike,
   AudienceSummary,
   CreateAudienceThreadInput,
   CreateAudienceMessageInput,
   CreateAudienceSummaryInput,
-  ToggleAudienceMessageLikeInput,
 } from '../types.js'
 import type {
   AudienceRepository,
@@ -62,15 +60,6 @@ function toMessage(row: RawMessageRow): AudienceMessage {
     deleted_at: row.deletedAt,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
-  }
-}
-
-function toLike(row: { id: string; messageId: string; userId: string; createdAt: Date }): AudienceMessageLike {
-  return {
-    id: row.id,
-    message_id: row.messageId,
-    user_id: row.userId,
-    created_at: row.createdAt,
   }
 }
 
@@ -177,13 +166,6 @@ export class PgAudienceRepository implements AudienceRepository {
       },
     })
     const messages = rows.map(toMessage)
-    const ids = messages.map((message) => message.id)
-    const [likeCounts, likedByViewer] = await Promise.all([
-      this.countLikes(ids),
-      options?.viewer_user_id
-        ? this.listLikedMessageIdsByViewer(ids, options.viewer_user_id)
-        : Promise.resolve(new Set<string>()),
-    ])
     const authors = new Map<string, AudienceMessageAuthor>()
     for (const row of rows) {
       if (row.authorUser) {
@@ -208,8 +190,10 @@ export class PgAudienceRepository implements AudienceRepository {
           display_name: `用户 ${message.author_user_id.slice(0, 6)}`,
           avatar_url: null,
         } satisfies AudienceMessageAuthor),
-      like_count: likeCounts.get(message.id) ?? 0,
-      viewer_has_liked: likedByViewer.has(message.id),
+      human_vote_up: 0,
+      human_vote_down: 0,
+      human_vote_score: 0,
+      viewer_human_vote_direction: null,
     }))
   }
 
@@ -272,52 +256,5 @@ export class PgAudienceRepository implements AudienceRepository {
     })
     if (!row) return null
     return toSummary(row)
-  }
-
-  async likeMessage(input: ToggleAudienceMessageLikeInput): Promise<AudienceMessageLike> {
-    const row = await this.prisma.audienceMessageLike.upsert({
-      where: { messageId_userId: { messageId: input.message_id, userId: input.user_id } },
-      create: {
-        id: randomUUID(),
-        messageId: input.message_id,
-        userId: input.user_id,
-      },
-      update: {},
-    })
-    return toLike(row)
-  }
-
-  async unlikeMessage(input: ToggleAudienceMessageLikeInput): Promise<void> {
-    await this.prisma.audienceMessageLike.deleteMany({
-      where: { messageId: input.message_id, userId: input.user_id },
-    })
-  }
-
-  async countLikes(messageIds: readonly string[]): Promise<Map<string, number>> {
-    const result = new Map<string, number>()
-    if (messageIds.length === 0) return result
-    const rows = await this.prisma.audienceMessageLike.groupBy({
-      by: ['messageId'],
-      where: { messageId: { in: [...messageIds] } },
-      _count: { _all: true },
-    })
-    for (const row of rows) {
-      result.set(row.messageId, row._count._all)
-    }
-    return result
-  }
-
-  async listLikedMessageIdsByViewer(
-    messageIds: readonly string[],
-    userId: string,
-  ): Promise<Set<string>> {
-    const result = new Set<string>()
-    if (messageIds.length === 0 || !userId) return result
-    const rows = await this.prisma.audienceMessageLike.findMany({
-      where: { userId, messageId: { in: [...messageIds] } },
-      select: { messageId: true },
-    })
-    for (const row of rows) result.add(row.messageId)
-    return result
   }
 }

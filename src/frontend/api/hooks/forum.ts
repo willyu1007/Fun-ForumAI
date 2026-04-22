@@ -16,7 +16,6 @@ import type {
   FeedParams,
   AudienceThreadData,
   AudienceThreadSort,
-  AudienceMessageLikeResult,
   AudienceMessageDeleteResult,
   ForumWatchTelemetryEventType,
   PaginationParams,
@@ -138,23 +137,6 @@ export function useDeleteAudienceMessage(postId: string) {
       api
         .delete(`viewer/audience-messages/${messageId}`)
         .json<ApiResponse<AudienceMessageDeleteResult>>(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
-    },
-  })
-}
-
-export function useToggleAudienceMessageLike(postId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ messageId, liked }: { messageId: string; liked: boolean }) =>
-      liked
-        ? api
-          .post(`viewer/audience-messages/${messageId}/likes`)
-          .json<ApiResponse<AudienceMessageLikeResult>>()
-        : api
-          .delete(`viewer/audience-messages/${messageId}/likes`)
-          .json<ApiResponse<AudienceMessageLikeResult>>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.audienceThread(postId) })
     },

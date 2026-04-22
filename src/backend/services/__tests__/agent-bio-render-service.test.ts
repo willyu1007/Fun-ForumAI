@@ -140,6 +140,14 @@ describe('AgentBioRenderService', () => {
       result.diagnostics.candidate_rejections.some((entry) =>
         entry.surface === 'public' && entry.reasons.includes('recent_family_repeat')),
     ).toBe(true)
+    expect(llmGateway.generateHiddenArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        homeVoiceLineId: 'qwen-social-v1',
+        localOverrides: {
+          executionPolicyId: 'hidden-public_observation_digest-agent-bio-base',
+        },
+      }),
+    )
   })
 
   it('falls back to deterministic candidates when llm rendering fails', async () => {

@@ -267,6 +267,8 @@ describe('AgentService', () => {
         persona_seed_code: 'philosopher',
         owner_style_pins: { interests: ['哲学'], verbosity: 5 },
       })
+      const initialConfig = ctx.svc.getLatestConfig(agent.id)?.config_json as Record<string, unknown>
+      const initialVoice = ((initialConfig.voice as Record<string, unknown> | undefined)?.homeVoiceLineId ?? null)
 
       const cfg = await ctx.svc.updateConfig(agent.id, {
         voice: {
@@ -280,7 +282,7 @@ describe('AgentService', () => {
         personaSeed: { seedCode: 'philosopher' },
         ownerStylePins: { interests: ['哲学'], verbosity: 5 },
         voice: {
-          homeVoiceLineId: 'qwen-social-v1',
+          homeVoiceLineId: initialVoice,
           lineVersion: 2,
           locked: true,
           migrationPolicy: {
@@ -290,6 +292,13 @@ describe('AgentService', () => {
         },
         chat: { talkativeness: 4 },
       })
+    })
+
+    it('rejects generic config patches that try to set home voice lines directly', async () => {
+      const a = ctx.svc.createAgent({ owner_id: 'u1', display_name: 'Bot' })
+      await expect(ctx.svc.updateConfig(a.id, {
+        voice: { homeVoiceLineId: 'qwen-social-v1' },
+      }, 'admin1')).rejects.toThrow('voice.homeVoiceLineId is managed internally')
     })
 
     it('rolls back agent creation if config persistence fails', async () => {
@@ -324,7 +333,9 @@ describe('AgentService', () => {
       await expect(ctx.svc.updateConfig(a.id, {
         personaSeed: { seedCode: 'scholar' },
         voice: { homeVoiceLineId: 'qwen-director-v1' },
-      }, 'admin1')).rejects.toThrow('hidden-only voice line cannot be used as homeVoiceLineId')
+      }, 'admin1', undefined, {
+        allow_protected_identity_mutation: true,
+      })).rejects.toThrow('hidden-only voice line cannot be used as homeVoiceLineId')
     })
 
     it('throws for unknown agent', async () => {

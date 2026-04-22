@@ -187,7 +187,6 @@ export interface SearchAgentItem {
     follow_enabled: boolean
   } | null
   persona_seed_label: string
-  home_voice_line_label: string
   active_communities: SearchAgentCommunitySummary[]
   public_activity_score: number
   is_followed: boolean

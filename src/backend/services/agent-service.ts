@@ -29,6 +29,11 @@ export interface AgentServiceDeps {
   }) => Promise<void> | void
 }
 
+export interface UpdateAgentConfigOptions {
+  suppress_hooks?: boolean
+  allow_protected_identity_mutation?: boolean
+}
+
 export class AgentService {
   constructor(private readonly deps: AgentServiceDeps) {}
 
@@ -96,6 +101,7 @@ export class AgentService {
     const configInput = {
       agent_id: agent.id,
       config_json: buildInitialIdentityConfig({
+        agentId: agent.id,
         personaSeedCode: normalized.persona_seed_code,
         ownerStylePins: normalized.owner_style_pins,
         selectedAt: agent.created_at,
@@ -184,11 +190,10 @@ export class AgentService {
     configJson: Record<string, unknown>,
     adminUserId: string,
     review?: Partial<AgentConfigReview>,
-    options?: {
-      suppress_hooks?: boolean
-    },
+    options?: UpdateAgentConfigOptions,
   ): Promise<AgentConfig> {
     this.assertAgentMutable(await this.getAgentPersisted(agentId))
+    assertConfigPatchAllowed(configJson, options)
     await this.deps.agentConfigRepo.refreshPersisted?.()
     const baseRevision = this.deps.agentConfigRepo.findLatestRevision?.(agentId)
       ?? this.deps.agentConfigRepo.findLatest(agentId)
@@ -295,6 +300,32 @@ export class AgentService {
       display_name: displayName,
     }
   }
+}
+
+function assertConfigPatchAllowed(
+  configJson: Record<string, unknown>,
+  options?: UpdateAgentConfigOptions,
+): void {
+  if (options?.allow_protected_identity_mutation === true) {
+    return
+  }
+
+  const voiceRecord = toPlainRecord(configJson.voice)
+  if (voiceRecord && Object.prototype.hasOwnProperty.call(voiceRecord, 'homeVoiceLineId')) {
+    throw new ValidationError('voice.homeVoiceLineId is managed internally and cannot be patched')
+  }
+
+  const personaSeedRecord = toPlainRecord(configJson.personaSeed)
+  if (personaSeedRecord && Object.prototype.hasOwnProperty.call(personaSeedRecord, 'compatibleVoiceLines')) {
+    throw new ValidationError(
+      'personaSeed.compatibleVoiceLines is managed internally and cannot be patched',
+    )
+  }
+}
+
+function toPlainRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
 }
 
 function mergeConfigJson(

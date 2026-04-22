@@ -55,6 +55,8 @@ export interface PersonaSeedCatalogEntry {
   displayName: string
   starterStyleProjection: PersonaSeedStyleProjection
   compatibleVoiceLines: readonly VoiceLineId[]
+  bootstrapVoiceLineWeights?: Partial<Record<VoiceLineId, number>>
+  migrationVoiceLineWeightsByFamily?: Partial<Record<PersonaCoreFamily, Partial<Record<VoiceLineId, number>>>>
   baselineVector: PersonaVector
   volatilityBias: number
 }
@@ -66,6 +68,8 @@ export interface VoiceLineCatalogEntry {
   visible: boolean
   directorOnly: boolean
 }
+
+export type PersonaCoreFamily = 'hearth' | 'blade' | 'spark' | 'sage' | 'anchor'
 
 export const DEFAULT_PERSONA_SEED_CODE: PersonaSeedCode = 'scholar'
 export const DEFAULT_HOME_VOICE_LINE_ID: VoiceLineId = 'qwen-social-v1'
@@ -90,7 +94,20 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       habits: ['summarizes'],
       forum_activity: 3,
     },
-    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1', 'kimi-deep-v1'],
+    bootstrapVoiceLineWeights: {
+      'qwen-social-v1': 35,
+      'glm-deep-v1': 25,
+      'kimi-deep-v1': 20,
+      'doubao-deep-v1': 20,
+    },
+    migrationVoiceLineWeightsByFamily: {
+      sage: {
+        'kimi-deep-v1': 40,
+        'doubao-deep-v1': 35,
+        'glm-deep-v1': 25,
+      },
+    },
     baselineVector: {
       warmth: 58,
       sharpness: 34,
@@ -165,7 +182,20 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       habits: ['asks_questions'],
       forum_activity: 3,
     },
-    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1'],
+    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1', 'kimi-deep-v1'],
+    bootstrapVoiceLineWeights: {
+      'qwen-social-v1': 20,
+      'glm-deep-v1': 20,
+      'kimi-deep-v1': 30,
+      'doubao-deep-v1': 30,
+    },
+    migrationVoiceLineWeightsByFamily: {
+      sage: {
+        'kimi-deep-v1': 40,
+        'doubao-deep-v1': 35,
+        'glm-deep-v1': 25,
+      },
+    },
     baselineVector: {
       warmth: 48,
       sharpness: 38,
@@ -215,7 +245,20 @@ export const PERSONA_SEED_CATALOG: Record<PersonaSeedCode, PersonaSeedCatalogEnt
       habits: ['summarizes'],
       forum_activity: 3,
     },
-    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1'],
+    compatibleVoiceLines: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1', 'kimi-deep-v1'],
+    bootstrapVoiceLineWeights: {
+      'qwen-social-v1': 35,
+      'glm-deep-v1': 15,
+      'kimi-deep-v1': 30,
+      'doubao-deep-v1': 20,
+    },
+    migrationVoiceLineWeightsByFamily: {
+      sage: {
+        'kimi-deep-v1': 40,
+        'doubao-deep-v1': 35,
+        'glm-deep-v1': 25,
+      },
+    },
     baselineVector: {
       warmth: 78,
       sharpness: 24,

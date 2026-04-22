@@ -6,6 +6,7 @@ type OperationState = {
   token: symbol
   kind: DevDataOperationKind
   label?: string | null
+  acquiredAt: number
 }
 
 function formatOperation(state: Pick<OperationState, 'kind' | 'label'>): string {
@@ -14,15 +15,20 @@ function formatOperation(state: Pick<OperationState, 'kind' | 'label'>): string 
 }
 
 export class DevDataOperationLock {
+  constructor(private readonly staleAfterMs = 10 * 60_000) {}
+
   private current: OperationState | null = null
 
   acquire(input: { kind: DevDataOperationKind; label?: string | null }): symbol {
+    this.clearIfStale()
+
     if (this.current) {
       throw new ConflictError(
         `${formatOperation(this.current)} already running. Wait for it to finish before starting another dev data operation.`,
         {
           current_operation: this.current.kind,
           current_label: this.current.label ?? null,
+          current_elapsed_ms: Date.now() - this.current.acquiredAt,
         },
       )
     }
@@ -32,6 +38,7 @@ export class DevDataOperationLock {
       token,
       kind: input.kind,
       label: input.label ?? null,
+      acquiredAt: Date.now(),
     }
     return token
   }
@@ -46,6 +53,12 @@ export class DevDataOperationLock {
 
   release(token: symbol): void {
     if (!this.current || this.current.token !== token) return
+    this.current = null
+  }
+
+  private clearIfStale(): void {
+    if (!this.current) return
+    if (Date.now() - this.current.acquiredAt <= this.staleAfterMs) return
     this.current = null
   }
 }

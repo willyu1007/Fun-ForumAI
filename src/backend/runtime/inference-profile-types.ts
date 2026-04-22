@@ -12,6 +12,9 @@ export type CoreFamily = (typeof CORE_FAMILIES)[number]
 export const INFERENCE_MIGRATION_STATES = ['stable', 'candidate', 'shadow', 'blocked'] as const
 export type InferenceMigrationState = (typeof INFERENCE_MIGRATION_STATES)[number]
 
+export const INFERENCE_MIGRATION_SCOPES = ['cross_family', 'same_family'] as const
+export type InferenceMigrationScope = (typeof INFERENCE_MIGRATION_SCOPES)[number]
+
 export const INFERENCE_BLOCKED_REASONS = [
   'risk_freeze',
   'manual_lock',
@@ -110,8 +113,10 @@ export interface AgentInferenceProfile {
   agentId: string
   profileVersion: number
   incumbentFamily: CoreFamily
+  incumbentVoiceLineId: VoiceLineId | null
   challengerFamily: CoreFamily | null
   challengerVoiceLineId: VoiceLineId | null
+  migrationScope: InferenceMigrationScope | null
   migrationState: InferenceMigrationState
   consecutiveLeadWindows: number
   challengerScoreDelta: number | null

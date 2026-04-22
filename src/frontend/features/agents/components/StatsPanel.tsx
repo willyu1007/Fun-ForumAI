@@ -116,12 +116,21 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
               <span className="font-semibold text-foreground">{xpData.level}</span>
             </div>
             <div className="w-24 max-w-full">
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted-foreground/15">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${Math.max(0, Math.min(100, xpData.level_progress * 100))}%` }}
+              <svg
+                viewBox="0 0 100 6"
+                preserveAspectRatio="none"
+                className="h-1.5 w-full overflow-hidden rounded-full"
+                aria-hidden="true"
+              >
+                <rect x="0" y="0" width="100" height="6" className="fill-muted-foreground/15" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={Math.max(0, Math.min(100, xpData.level_progress * 100))}
+                  height="6"
+                  className="fill-primary"
                 />
-              </div>
+              </svg>
             </div>
           </div>
         ) : (
@@ -293,52 +302,70 @@ function AxisAllocationField({
   onAdjust: (delta: -1 | 1) => void
 }) {
   const markerPercent = ((value - min) / Math.max(max - min, 1)) * 100
-  const draftAccent =
-    draftPoints === 0 ? 'text-foreground/92' : draftPoints > 0 ? 'text-[#d07a3c]' : 'text-[#2b569d]'
 
   return (
     <div className="space-y-2.5">
       <div className="text-sm font-medium tracking-tight text-foreground/92">{label}</div>
       <div className="flex items-center justify-between gap-4 text-[12px] leading-5">
-        <div className="flex items-center gap-1 text-[#48668f]">
+        <div className="flex items-center gap-1 text-agent-panel-stat-cool">
           <span>{leftLabel}</span>
           <button
             type="button"
             aria-label={`${label}向${leftLabel}加点`}
             onClick={() => onAdjust(-1)}
             disabled={!canTowardLeft}
-            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-[#48668f] transition-colors hover:bg-[#48668f]/8 disabled:cursor-not-allowed disabled:opacity-25"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-agent-panel-stat-cool transition-colors hover:bg-agent-panel-stat-cool-tint disabled:cursor-not-allowed disabled:opacity-25"
           >
             +
           </button>
         </div>
-        <div className="flex items-center gap-1 text-[#a36540]">
+        <div className="flex items-center gap-1 text-agent-panel-stat-warm">
           <span>{rightLabel}</span>
           <button
             type="button"
             aria-label={`${label}向${rightLabel}加点`}
             onClick={() => onAdjust(1)}
             disabled={!canTowardRight}
-            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-[#a36540] transition-colors hover:bg-[#a36540]/8 disabled:cursor-not-allowed disabled:opacity-25"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-agent-panel-stat-warm transition-colors hover:bg-agent-panel-stat-warm-tint disabled:cursor-not-allowed disabled:opacity-25"
           >
             +
           </button>
         </div>
       </div>
-      <div
-        className="relative h-1.5 rounded-full"
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(54,90,140,0.94) 0%, rgba(215,221,230,0.92) 50%, rgba(184,109,58,0.94) 100%)',
-        }}
-      >
-        <span
+      <div className="relative h-6">
+        <div className="absolute inset-x-0 top-[9px] h-1.5 rounded-full bg-linear-to-r from-agent-panel-stat-track-cool via-agent-panel-stat-track-mid to-agent-panel-stat-track-warm" />
+        <svg
+          viewBox="0 0 100 24"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-6 w-full overflow-visible"
           aria-hidden="true"
-          className="absolute top-1/2 h-4 min-w-7 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-border/60 bg-background px-1 text-center text-[10px] font-semibold leading-4 shadow-sm"
-          style={{ left: `${markerPercent}%` }}
         >
-          <span className={draftAccent}>{formatSignedValue(value)}</span>
-        </span>
+          <g transform={`translate(${markerPercent} 12)`}>
+            <rect
+              x="-8"
+              y="-8"
+              width="16"
+              height="16"
+              rx="2"
+              className="fill-background stroke-border/60 shadow-sm"
+            />
+            <text
+              x="0"
+              y="1"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className={
+                draftPoints === 0
+                  ? 'fill-foreground/92 text-[10px] font-semibold'
+                  : draftPoints > 0
+                    ? 'fill-agent-panel-stat-warm-strong text-[10px] font-semibold'
+                    : 'fill-agent-panel-stat-cool-strong text-[10px] font-semibold'
+              }
+            >
+              {formatSignedValue(value)}
+            </text>
+          </g>
+        </svg>
       </div>
     </div>
   )
@@ -368,7 +395,6 @@ function AbilityAllocationField({
   onAdjust: (delta: -1 | 1) => void
 }) {
   const markerPercent = ((value - min) / Math.max(max - min, 1)) * 100
-  const draftAccent = draftPoints === 0 ? 'text-foreground/92' : 'text-[#2b569d]'
 
   return (
     <div className="space-y-2.5">
@@ -386,32 +412,51 @@ function AbilityAllocationField({
             −
           </button>
         </div>
-        <div className="flex items-center gap-1 text-[#48668f]">
+        <div className="flex items-center gap-1 text-agent-panel-stat-cool">
           <span>{rightLabel}</span>
           <button
             type="button"
             aria-label={`${label}增加`}
             onClick={() => onAdjust(1)}
             disabled={!canIncrease}
-            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-[#48668f] transition-colors hover:bg-[#48668f]/8 disabled:cursor-not-allowed disabled:opacity-25"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-0.5 text-[12px] font-semibold text-agent-panel-stat-cool transition-colors hover:bg-agent-panel-stat-cool-tint disabled:cursor-not-allowed disabled:opacity-25"
           >
             +
           </button>
         </div>
       </div>
-      <div
-        className="relative h-1.5 rounded-full"
-        style={{
-          background: 'rgba(54,90,140,0.9)',
-        }}
-      >
-        <span
+      <div className="relative h-6">
+        <div className="absolute inset-x-0 top-[9px] h-1.5 rounded-full bg-agent-panel-stat-track-solid" />
+        <svg
+          viewBox="0 0 100 24"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-6 w-full overflow-visible"
           aria-hidden="true"
-          className="absolute top-1/2 h-4 min-w-7 -translate-x-1/2 -translate-y-1/2 rounded-sm border border-border/60 bg-background px-1 text-center text-[10px] font-semibold leading-4 shadow-sm"
-          style={{ left: `${markerPercent}%` }}
         >
-          <span className={draftAccent}>{value}</span>
-        </span>
+          <g transform={`translate(${markerPercent} 12)`}>
+            <rect
+              x="-8"
+              y="-8"
+              width="16"
+              height="16"
+              rx="2"
+              className="fill-background stroke-border/60 shadow-sm"
+            />
+            <text
+              x="0"
+              y="1"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className={
+                draftPoints === 0
+                  ? 'fill-foreground/92 text-[10px] font-semibold'
+                  : 'fill-agent-panel-stat-cool-strong text-[10px] font-semibold'
+              }
+            >
+              {value}
+            </text>
+          </g>
+        </svg>
       </div>
     </div>
   )

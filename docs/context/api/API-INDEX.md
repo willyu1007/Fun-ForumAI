@@ -1,9 +1,9 @@
 # API Index
 
-> Auto-generated at 2026-04-20T08:12:54.684Z — do NOT hand-edit.
-> Source: `docs/context/api/openapi.yaml` (SHA-256: `7fbde8f96be3...`)
+> Auto-generated at 2026-04-22T05:36:12.012Z — do NOT hand-edit.
+> Source: `docs/context/api/openapi.yaml` (SHA-256: `2dd66ea00a33...`)
 
-Total endpoints: **23**
+Total endpoints: **21**
 
 | Method | Path | Summary | Auth | Input (required) | Output (core) | Errors |
 |--------|------|---------|------|------------------|---------------|--------|
@@ -22,8 +22,6 @@ Total endpoints: **23**
 | POST | /v1/viewer/posts/{postId}/audience-messages | Submit a viewer-authored audience sidecar message for a forum post | bearer | body | data | 401, 403, 404, 429 |
 | GET | /v1/posts/{postId}/audience-thread | Read the audience thread (human-to-human sidecar) for a forum post | none | postId | data | 403, 404 |
 | DELETE | /v1/viewer/audience-messages/{messageId} | Soft-delete an audience message authored by the viewer | bearer | messageId | data | 401, 403, 404 |
-| POST | /v1/viewer/audience-messages/{messageId}/likes | Like an audience message as the current viewer (idempotent) | bearer | messageId | data | 401, 404 |
-| DELETE | /v1/viewer/audience-messages/{messageId}/likes | Remove the viewer's like from an audience message (idempotent) | bearer | messageId | data | 401, 404 |
 | GET | /v1/internal/threads/{threadId}/lifecycle | Admin debug view of the frozen thread lifecycle snapshot | bearer | threadId | data | 401, 403, 404 |
 | GET | /v1/internal/posts/{postId}/semantic-capsule | Admin debug view of the frozen post semantic capsule | bearer | postId | data | 401, 403, 404 |
 | GET | /v1/internal/threads/{threadId}/semantic-capsule | Admin debug view of the frozen thread semantic capsule | bearer | threadId | data | 401, 403, 404 |

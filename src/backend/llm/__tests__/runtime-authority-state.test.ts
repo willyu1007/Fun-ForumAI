@@ -65,7 +65,7 @@ describe('buildRuntimeAuthorityState', () => {
         buildEntry('trace-debug-pin', {
           debugRoutingOverrides: {
             providerPin: 'moonshot-openai',
-            modelPin: 'kimi-k2-0905-preview',
+            modelPin: 'kimi-k2.5',
           },
         }),
       ],
@@ -98,5 +98,22 @@ describe('buildRuntimeAuthorityState', () => {
         }),
       ]),
     )
+  })
+
+  it('ignores product routing constraints when no debug overrides were used', () => {
+    const state = buildRuntimeAuthorityState({
+      routingMode: 'policy_driven',
+      recentLedgerEntries: [
+        buildEntry('trace-routing-constraint', {
+          routingConstraint: {
+            providerId: 'moonshot-openai',
+            modelId: 'moonshot-v1-128k',
+          },
+        }),
+      ],
+    })
+
+    expect(state.debug_signals_present).toBe(false)
+    expect(state.debug_signal_sources).toEqual([])
   })
 })

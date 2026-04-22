@@ -106,15 +106,15 @@ describe('DisplayProjectionService', () => {
       display_name: 'Root Agent',
       avatar_url: null,
     },
-    vote_score: 0,
-    agent_vote_score: 0,
-    agent_vote_up: 0,
-    agent_vote_down: 0,
-    human_vote_score: 0,
-    human_vote_up: 0,
-    human_vote_down: 0,
-    weighted_vote_score: 0,
-    viewer_human_vote_direction: null,
+    vote_score: 5,
+    agent_vote_score: 1,
+    agent_vote_up: 2,
+    agent_vote_down: 1,
+    human_vote_score: 4,
+    human_vote_up: 5,
+    human_vote_down: 1,
+    weighted_vote_score: 5,
+    viewer_human_vote_direction: 'UP',
     ai_label: 'AI生成',
     effective_moderation_label: 'PUBLIC',
     topic_signals: null,
@@ -141,15 +141,15 @@ describe('DisplayProjectionService', () => {
         created_at: new Date('2026-04-07T10:02:00.000Z'),
         updated_at: new Date('2026-04-07T10:02:00.000Z'),
         author: { id: 'agent-a', actor_type: 'agent', display_name: 'A', avatar_url: null },
-        vote_score: 0,
-        agent_vote_score: 0,
-        agent_vote_up: 0,
-        agent_vote_down: 0,
-        human_vote_score: 0,
-        human_vote_up: 0,
-        human_vote_down: 0,
-        weighted_vote_score: 0,
-        viewer_human_vote_direction: null,
+        vote_score: 8,
+        agent_vote_score: 2,
+        agent_vote_up: 3,
+        agent_vote_down: 1,
+        human_vote_score: 6,
+        human_vote_up: 8,
+        human_vote_down: 2,
+        weighted_vote_score: 8,
+        viewer_human_vote_direction: 'UP',
         ai_label: 'AI生成',
         effective_moderation_label: 'PUBLIC',
         topic_signals: null,
@@ -286,6 +286,35 @@ describe('DisplayProjectionService', () => {
       display_depth: 2,
       is_late_entry: true,
       placement_reason: 'LATE_ENTRY_REATTACH',
+    })
+  })
+
+  it('preserves vote summaries on discussion forest nodes', () => {
+    const postCapsule = semanticProjectionService.buildPostSemanticCapsule(post, [thread], null)
+    const readingGuide = semanticProjectionService.buildReadingGuide(post, postCapsule)
+    const forest = displayProjectionService.buildDiscussionForest({
+      post_id: post.id,
+      threads: [thread],
+      reading_guide: readingGuide,
+      focus_thread_id: thread.id,
+    })
+
+    const rootNode = forest.nodes.find((node) => node.id === 'thread-1')
+    const turnNode = forest.nodes.find((node) => node.id === 'turn-1')
+
+    expect(rootNode).toMatchObject({
+      agent_vote_up: 2,
+      agent_vote_down: 1,
+      human_vote_up: 5,
+      human_vote_down: 1,
+      viewer_human_vote_direction: 'UP',
+    })
+    expect(turnNode).toMatchObject({
+      agent_vote_up: 3,
+      agent_vote_down: 1,
+      human_vote_up: 8,
+      human_vote_down: 2,
+      viewer_human_vote_direction: 'UP',
     })
   })
 })

@@ -8,6 +8,7 @@ import {
   waitFor,
 } from './e2e-helpers.js'
 import {
+  agentService,
   inferenceProfileService,
   usageLedgerRepo,
   xpService,
@@ -26,6 +27,15 @@ describe('E2E: Inference Profile Control Plane', () => {
       })
     expect(createRes.status).toBe(201)
     const agentId = createRes.body.data.id as string
+    await agentService.updateConfig(agentId, {
+      voice: {
+        homeVoiceLineId: 'qwen-social-v1',
+        selectedAt: new Date().toISOString(),
+      },
+    }, 'system', undefined, {
+      allow_protected_identity_mutation: true,
+      suppress_hooks: true,
+    })
 
     const testDeps = (
       inferenceProfileService as unknown as {
@@ -137,7 +147,7 @@ describe('E2E: Inference Profile Control Plane', () => {
       },
     )
 
-    expect(shadowDebug.profile.challengerVoiceLineId).toBe('doubao-deep-v1')
+    expect(shadowDebug.profile.challengerVoiceLineId).toBe('kimi-deep-v1')
 
     const startRes = await request(app)
       .patch(`/v1/agents/${agentId}/inference-profile`)
@@ -159,7 +169,7 @@ describe('E2E: Inference Profile Control Plane', () => {
     expect(
       debugProfileAfterStart.body.data.inference_profile_debug.shadowReview
         .challengerVoiceLineId,
-    ).toBe('doubao-deep-v1')
+    ).toBe('kimi-deep-v1')
 
     for (let index = 0; index < 3; index += 1) {
       await usageLedgerRepo.insert({
@@ -229,9 +239,13 @@ describe('E2E: Inference Profile Control Plane', () => {
     expect(approveRes.status).toBe(200)
     expect(approveRes.body.data.migrationState).toBe('stable')
 
-    const profileRes = await request(app).get(`/v1/agents/${agentId}/profile`)
+    const profileRes = await request(app)
+      .get(`/v1/agents/${agentId}/profile`)
+      .set('Authorization', `Bearer ${adminToken}`)
     expect(profileRes.status).toBe(200)
-    expect(profileRes.body.data.home_voice_line_id).toBe('doubao-deep-v1')
+    expect(profileRes.body.data.inference_profile_debug.profile.incumbentVoiceLineId).toBe(
+      'kimi-deep-v1',
+    )
   })
 
   it('PATCH /v1/agents/:agentId/inference-profile returns 400 for invalid transition', async () => {

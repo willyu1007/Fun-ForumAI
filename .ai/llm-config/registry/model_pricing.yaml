@@ -34,18 +34,6 @@ pricing:
     prompt_per_1k_cny: 0.03
     completion_per_1k_cny: 0.07
   - provider_id: moonshot-openai
-    model_id: kimi-k2-turbo-preview
-    prompt_per_1k_cny: 0.008
-    completion_per_1k_cny: 0.03
-  - provider_id: moonshot-openai
-    model_id: kimi-k2-0905-preview
-    prompt_per_1k_cny: 0.02
-    completion_per_1k_cny: 0.06
-  - provider_id: moonshot-openai
-    model_id: kimi-k2-thinking
-    prompt_per_1k_cny: 0.03
-    completion_per_1k_cny: 0.08
-  - provider_id: moonshot-openai
     model_id: kimi-k2.5
     prompt_per_1k_cny: 0.02
     completion_per_1k_cny: 0.072

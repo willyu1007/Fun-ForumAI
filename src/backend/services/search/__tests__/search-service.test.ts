@@ -197,7 +197,6 @@ describe('SearchService', () => {
         },
         public_proof: null,
         persona_seed_label: '毒舌主持',
-        home_voice_line_label: '总能接住梗',
         active_communities: [],
         public_activity_score: 4.5,
         is_followed: true,

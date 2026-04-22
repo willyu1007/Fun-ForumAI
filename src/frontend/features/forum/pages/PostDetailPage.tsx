@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ModerationBadge } from '../components/ModerationBadge'
 import { DiscussionForest, type DiscussionForestSortMode } from '../components/DiscussionForest'
 import { AudiencePanel } from '../components/AudiencePanel'
+import { HumanDiscussionRail } from '../components/HumanDiscussionRail'
 import { StageToolbar } from '../components/StageToolbar'
 import { NewContentBanner } from '../components/NewContentBanner'
 import { HumanVoteControls } from '../components/HumanVoteControls'
@@ -150,9 +151,13 @@ export function PostDetailPage({
   const stageOpenReplyPolicy = participationContract?.stage_open_reply ?? null
   const audienceLanePolicy = participationContract?.audience_lane ?? null
   const stageTurnReplyEnabled = stageOpenReplyPolicy?.turn_reply_enabled ?? false
-  const [selectedForestNodeId, setSelectedForestNodeId] = useState<string | null>(
-    focusedTurnIdFromQuery ?? focusedThreadIdFromQuery ?? null,
-  )
+  const [selectedForestNodeId, setSelectedForestNodeId] = useState<string | null>(null)
+  const [jumpTarget, setJumpTarget] = useState<{ nodeId: string; token: number } | null>(null)
+  const jumpTokenRef = useRef(0)
+  const queueJumpTarget = useCallback((nodeId: string) => {
+    jumpTokenRef.current += 1
+    setJumpTarget({ nodeId, token: jumpTokenRef.current })
+  }, [])
   const recordWatchTelemetry = useCallback(
     (input: {
       event_type: 'reply_anchor_select'
@@ -227,44 +232,41 @@ export function PostDetailPage({
       setSearchParams(
         (current) => {
           const next = new URLSearchParams(current)
+          next.delete('threadId')
+          next.delete('audience_message_id')
+          next.delete('audience_compose_for')
+          next.delete('audience_compose_excerpt')
+          next.delete('audience_compose_author')
           next.set('turnId', turnId)
           return next
         },
         { replace: true },
       )
+      queueJumpTarget(turnId)
       setMobileTab('stage')
     },
-    [setSearchParams],
+    [queueJumpTarget, setSearchParams],
   )
 
   useEffect(() => {
     const nextFocusedId = focusedTurnIdFromQuery ?? focusedThreadIdFromQuery ?? null
     if (nextFocusedId) {
-      setSelectedForestNodeId(nextFocusedId)
+      queueJumpTarget(nextFocusedId)
     }
-  }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery])
+  }, [focusedThreadIdFromQuery, focusedTurnIdFromQuery, queueJumpTarget])
 
-  // Deep-link scroll: when the URL explicitly points at a thread/turn, scroll
-  // the matching forest node into view once the forest has rendered. Purely
-  // URL-driven — interactive selection (reply, highlight) never triggers this.
-  const lastScrolledDeepLinkRef = useRef<string | null>(null)
   useEffect(() => {
-    const deepLinkNodeId = focusedTurnIdFromQuery ?? focusedThreadIdFromQuery ?? null
-    if (!deepLinkNodeId || !forest) {
-      return
-    }
-    if (lastScrolledDeepLinkRef.current === deepLinkNodeId) {
+    if (!jumpTarget || !forest) {
       return
     }
     const element = document.querySelector<HTMLElement>(
-      `[data-node-id="${deepLinkNodeId}"]`,
+      `[data-node-id="${jumpTarget.nodeId}"]`,
     )
     if (!element) {
       return
     }
-    lastScrolledDeepLinkRef.current = deepLinkNodeId
     element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [forest, focusedThreadIdFromQuery, focusedTurnIdFromQuery])
+  }, [forest, jumpTarget])
 
   if (postLoading) {
     return (
@@ -398,8 +400,8 @@ export function PostDetailPage({
                     <span className="truncate font-semibold text-foreground">
                       {author.display_name}
                     </span>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="shrink-0 text-xs text-muted-foreground/80">
+                    <span className="text-foreground/45">·</span>
+                    <span className="shrink-0 text-xs text-foreground/72">
                       {relativeTime(post.created_at)}
                     </span>
                   </div>
@@ -572,11 +574,12 @@ export function PostDetailPage({
             forest={forest}
             isLoading={forestLoading}
             selectedNodeId={selectedForestNodeId}
+            flashNodeId={jumpTarget?.nodeId ?? null}
+            flashToken={jumpTarget?.token ?? null}
             sortMode={sortMode}
             turnReplyEnabled={stageTurnReplyEnabled}
             audiencePostingEnabled={canUseAudienceComposer}
             onReplyOpen={(node) => {
-              setSelectedForestNodeId(node.id)
               recordWatchTelemetry({
                 event_type: 'reply_anchor_select',
                 thread_id: node.thread_id,
@@ -590,6 +593,9 @@ export function PostDetailPage({
                 excerpt: (node.body ?? '').slice(0, 200),
                 authorDisplayName: node.author?.display_name ?? null,
               })
+            }}
+            onToggleNodeSelection={(node) => {
+              setSelectedForestNodeId((current) => (current === node.id ? null : node.id))
             }}
           />
         </section>
@@ -611,13 +617,13 @@ export function PostDetailPage({
   ) : null
 
   return (
-    <div className="space-y-4 pt-2 lg:pt-4">
+    <div className="space-y-4 pt-2 lg:pt-0">
       {isDesktopLayout ? (
-        hideDiscussionArea || !audienceRailEnabled ? (
-          <div className="min-w-0">{stageContent}</div>
+        hideDiscussionArea ? (
+          <div className="mx-auto min-w-0 w-full max-w-[52rem]">{stageContent}</div>
         ) : (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,2.1fr)_minmax(18rem,1fr)] lg:gap-10">
-          <div className="min-w-0">{stageContent}</div>
+          <div className="min-w-0 lg:pt-4" data-testid="post-detail-stage-frame">{stageContent}</div>
           <aside className="hidden min-h-0 lg:block lg:self-stretch" data-testid="post-detail-rail">
             <div
               className={
@@ -628,13 +634,15 @@ export function PostDetailPage({
               data-testid="post-detail-rail-shell"
             >
               <div className="h-full overflow-y-auto border-l border-border/45">
-                {audiencePanel}
+                <HumanDiscussionRail enabled={audienceRailEnabled}>
+                  {audiencePanel}
+                </HumanDiscussionRail>
               </div>
             </div>
           </aside>
         </div>
         )
-      ) : audienceRailEnabled && !hideDiscussionArea ? (
+      ) : !hideDiscussionArea ? (
         <Tabs
           value={mobileTab}
           onValueChange={(value) => setMobileTab(value as 'stage' | 'audience')}
@@ -647,7 +655,9 @@ export function PostDetailPage({
             {stageContent}
           </TabsContent>
           <TabsContent value="audience" className="pt-4">
-            {audiencePanel}
+            <HumanDiscussionRail enabled={audienceRailEnabled}>
+              {audiencePanel}
+            </HumanDiscussionRail>
           </TabsContent>
         </Tabs>
       ) : (

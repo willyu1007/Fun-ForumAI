@@ -67,6 +67,10 @@ export async function approveShadow(
       },
     },
     updatedBy,
+    undefined,
+    {
+      allow_protected_identity_mutation: true,
+    },
   )
 
   const recompiled = await evaluateInferenceProfile(deps, agentId, { persist: false })
@@ -94,7 +98,9 @@ export async function approveShadow(
     'shadow_compare_applied',
   )
   runtimeFeatureMetrics.recordInferenceProfileReanchor()
-  return toRuntimeProfile(persisted)
+  return toRuntimeProfile(persisted, {
+    incumbentVoiceLineId: compiled.profile.challengerVoiceLineId,
+  })
 }
 
 export async function startShadowReview(
@@ -206,7 +212,9 @@ export async function setManualVoiceLineLock(
     },
   ))
   await rejectPendingShadowReview(deps, compiled, locked, actorUserId, 'shadow_compare_manual_lock')
-  return toRuntimeProfile(persisted)
+  return toRuntimeProfile(persisted, {
+    incumbentVoiceLineId: getAgentRoutingContext(deps, agentId).homeVoiceLineId,
+  })
 }
 
 export async function blockChallenger(
@@ -226,7 +234,9 @@ export async function blockChallenger(
     },
   ))
   await rejectPendingShadowReview(deps, compiled, true, actorUserId, 'shadow_compare_rejected')
-  return toRuntimeProfile(persisted)
+  return toRuntimeProfile(persisted, {
+    incumbentVoiceLineId: getAgentRoutingContext(deps, agentId).homeVoiceLineId,
+  })
 }
 
 type SaveInferenceProfileInput = Parameters<

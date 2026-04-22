@@ -106,6 +106,12 @@ export async function createShadowReview(
     previousReview: AgentInferenceShadowReview | null
   },
 ): Promise<AgentInferenceShadowReview> {
+  const reviewStartedAt = input.previousReview
+    ? new Date()
+    : input.shadowStartedAt
+      ? new Date(input.shadowStartedAt)
+      : new Date()
+
   if (
     input.previousReview &&
     (input.previousReview.status === 'running' || input.previousReview.status === 'collected')
@@ -137,7 +143,7 @@ export async function createShadowReview(
     status: 'running',
     summary_json: serializeShadowReviewSummary(summary),
     evidence_json: serializeShadowReviewEvidence(evidence),
-    started_at: input.shadowStartedAt ? new Date(input.shadowStartedAt) : new Date(),
+    started_at: reviewStartedAt,
   })
 
   let next = created

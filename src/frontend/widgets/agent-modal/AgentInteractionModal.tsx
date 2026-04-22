@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAgentProfile } from '@/api/hooks'
 import { useDeleteAgent } from '@/api/hooks/agent'
 import { useMyAgents } from '@/api/hooks/user'
+import { getApiErrorCode } from '@/api/client'
 import { useAuth } from '@/shared/hooks/use-auth'
 import {
   READONLY_MODAL_LAYOUT_VERSION,
@@ -419,6 +420,7 @@ export function AgentInteractionModal() {
   const pendingCreateWizard = useAgentModalStore((state) => state.pendingCreateWizard)
   const setPendingCreateWizard = useAgentModalStore((state) => state.setPendingCreateWizard)
   const setLastModalRect = useAgentModalStore((state) => state.setLastModalRect)
+  const invalidateAgent = useAgentModalStore((state) => state.invalidateAgent)
   const lastModalRect = useAgentModalStore((state) => state.lastModalRect)
   const lastModalRectMode = useAgentModalStore((state) => state.lastModalRectMode)
   const readonlyLayoutVersion = useAgentModalStore((state) => state.readonlyLayoutVersion)
@@ -450,7 +452,8 @@ export function AgentInteractionModal() {
     viewMode === 'manage' && activeAgentId && myAgentIds
       ? (myAgentIds.includes(activeAgentId) ? activeAgentId : null)
       : activeAgentId
-  const { data: activeAgentData } = useAgentProfile(validActiveAgentId ?? '', !!validActiveAgentId)
+  const activeAgentProfileQuery = useAgentProfile(validActiveAgentId ?? '', !!validActiveAgentId)
+  const { data: activeAgentData } = activeAgentProfileQuery
   const deleteAgentMutation = useDeleteAgent(validActiveAgentId ?? '')
   const activeAgent = activeAgentData?.data
   const deleteConfirmMatches = deleteConfirmValue.trim() === (activeAgent?.display_name ?? '')
@@ -507,6 +510,12 @@ export function AgentInteractionModal() {
     if (!isOpen) return
     preloadCaptureDisplayFrame()
   }, [isOpen])
+
+  useEffect(() => {
+    if (!validActiveAgentId) return
+    if (getApiErrorCode(activeAgentProfileQuery.error) !== 'NOT_FOUND') return
+    invalidateAgent(validActiveAgentId)
+  }, [activeAgentProfileQuery.error, invalidateAgent, validActiveAgentId])
 
   useEffect(() => {
     return () => {

@@ -125,6 +125,12 @@ export interface LLMGatewayDebugOverrides {
   regionHint?: string
 }
 
+export interface LLMGatewayRoutingConstraint {
+  providerId?: string | null
+  modelId?: string | null
+  adapterId?: string | null
+}
+
 export interface CredentialPoolEntry {
   credential_id: string
   provider_id: string
@@ -314,6 +320,12 @@ export interface DebugRoutingOverrideTrace {
   adapterPin?: string
 }
 
+export interface RoutingConstraintTrace {
+  providerId?: string
+  modelId?: string
+  adapterId?: string
+}
+
 export interface ExecutionParamMergeTrace {
   hardCaps: Partial<ResolvedExecutionParams>
   policyDefaults: Partial<ResolvedExecutionParams>
@@ -322,6 +334,7 @@ export interface ExecutionParamMergeTrace {
   appliedOverrideFields: LLMGatewayOverrideField[]
   appliedCallsiteOverrideFields?: LLMGatewayOverrideField[]
   appliedDebugOverrideFields?: LLMGatewayOverrideField[]
+  routingConstraint?: RoutingConstraintTrace
   debugRoutingOverrides?: DebugRoutingOverrideTrace
 }
 
@@ -372,6 +385,7 @@ export interface LLMGatewayRequest {
   promptMessages?: LlmMessage[]
   promptBudgetSummary?: PromptBudgetSummary
   localOverrides?: LLMGatewayLocalOverrides
+  routingConstraint?: LLMGatewayRoutingConstraint
   debug?: LLMGatewayDebugOverrides
 }
 

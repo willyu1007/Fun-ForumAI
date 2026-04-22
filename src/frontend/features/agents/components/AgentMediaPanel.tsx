@@ -300,7 +300,7 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
                   disabled={busy || !hasSelectedMedia || (mode === 'url' ? !sourceUrl.trim() : !file)}
                   className={`shrink-0 text-xs font-medium transition-colors ${
                     hasSelectedMedia
-                      ? 'text-[#243B6B] hover:text-[#1d3057]'
+                      ? 'text-agent-panel-action-text hover:text-agent-panel-action-text-hover'
                       : 'cursor-not-allowed text-foreground/30'
                   }`}
                   onClick={() => {
@@ -454,7 +454,7 @@ export function AgentMediaPanel({ agentId }: AgentMediaPanelProps) {
                 disabled={viewBusy}
                 className={`text-sm font-semibold transition-colors ${
                   selectedAsset.lifecycle_status === 'archived'
-                    ? 'text-[#243B6B] hover:text-[#1d3057]'
+                    ? 'text-agent-panel-action-text hover:text-agent-panel-action-text-hover'
                     : 'text-foreground/70 hover:text-foreground'
                 }`}
                 onClick={() => {

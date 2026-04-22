@@ -315,7 +315,6 @@ export class LLMGateway {
         while (true) {
           let renderDecision: RenderDecision | null = null
           let credential: ReturnType<CredentialBroker['resolve']> | null = null
-          let moveToNextCandidate = false
           const startedAt = Date.now()
 
           try {
@@ -524,17 +523,13 @@ export class LLMGateway {
               continue
             }
 
-            if (!shouldTryNextRoute(code)) {
-              throw toGatewayError(error, code)
+            if (shouldTryNextRoute(code)) {
+              break
             }
 
-            moveToNextCandidate = true
+            throw toGatewayError(error, code)
           } finally {
             credential?.release()
-          }
-
-          if (moveToNextCandidate) {
-            break
           }
         }
       }

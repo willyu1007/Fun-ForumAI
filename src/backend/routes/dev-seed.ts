@@ -8,6 +8,8 @@ import { warmPersistenceState } from '../container.js'
 import { devDataOperationLock } from '../services/dev-data-operation-lock.js'
 
 const devSeedRouter: IRouter = Router()
+const DEV_SEED_TIMEOUT_MS = 60_000
+const DEV_SEED_RESET_TIMEOUT_MS = 3 * 60_000
 
 function readProfile(raw: unknown): 'canonical' | 'smoke-minimal' | 'launch' {
   if (raw === 'smoke-minimal' || raw === 'launch') {
@@ -36,6 +38,27 @@ function resetDatabaseBeforeSeed(): void {
   })
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | null = null
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new AppError(
+            504,
+            'Dev seed operation timed out. Retry after the current run settles.',
+            'DEV_SEED_TIMEOUT',
+            { timeout_ms: timeoutMs },
+          ))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 devSeedRouter.post('/dev/seed', async (req, res) => {
   if (!config.allowDevTools) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } })
@@ -57,7 +80,10 @@ devSeedRouter.post('/dev/seed', async (req, res) => {
       resetDatabaseBeforeSeed()
       await warmPersistenceState()
     }
-    const result = await runDevSeed({ profile })
+    const result = await withTimeout(
+      runDevSeed({ profile }),
+      resetBeforeSeed ? DEV_SEED_RESET_TIMEOUT_MS : DEV_SEED_TIMEOUT_MS,
+    )
     res.json({
       data: {
         message: 'Seed data created successfully',

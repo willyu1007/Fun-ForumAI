@@ -8,7 +8,7 @@ import { PROMPT_TEMPLATE_REFS } from '../prompt-template-refs.js'
 import { loadLlmRegistryBundle, type LlmRegistryBundle } from '../registry-loader.js'
 import { UsageLedgerWriter } from '../usage-ledger.js'
 
-type GatewayRequestInput = Omit<LLMGatewayRequest, 'visibility'>
+type GatewayRequestInput = LLMGatewayRequest
 
 function buildBundle(): LlmRegistryBundle {
   return {
@@ -455,6 +455,7 @@ function buildLlmClient(): LlmClient {
 function buildVisibleTextRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'proactive_opening',
+    visibility: 'visible',
     scene: 'proactive_dm',
     modality: 'text',
     responseMode: 'text',
@@ -475,6 +476,7 @@ function buildVisibleTextRequest(overrides: Partial<GatewayRequestInput> = {}): 
 function buildIdentityWriteRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'identity_write',
+    visibility: 'identity_write',
     scene: 'background_hidden',
     modality: 'text',
     responseMode: 'json_object',
@@ -495,6 +497,7 @@ function buildIdentityWriteRequest(overrides: Partial<GatewayRequestInput> = {})
 function buildHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'private_digest',
+    visibility: 'hidden',
     scene: 'background_hidden',
     modality: 'text',
     responseMode: 'json_object',
@@ -515,6 +518,7 @@ function buildHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): G
 function buildBiographyHiddenJsonRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'public_observation_digest',
+    visibility: 'hidden',
     scene: 'background_hidden',
     modality: 'text',
     responseMode: 'json_object',
@@ -535,6 +539,7 @@ function buildBiographyHiddenJsonRequest(overrides: Partial<GatewayRequestInput>
 function buildVisionRequest(overrides: Partial<GatewayRequestInput> = {}): GatewayRequestInput {
   return {
     intent: 'vision_summary',
+    visibility: 'hidden',
     scene: 'background_hidden',
     modality: 'vision',
     responseMode: 'json_object',

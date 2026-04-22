@@ -17,6 +17,7 @@ import { registerChildProcessCleanup } from './lib/k8s-process-cleanup.mjs'
 import {
   resolveDashscopeSecretData,
   resolveEnvBackedSecretValue,
+  sanitizeSecretValue,
 } from './lib/k8s-secret-resolution.mjs'
 import {
   loadFrontendBuildProfile,
@@ -909,14 +910,14 @@ async function main() {
     env: process.env,
   })
   const mediaGenerationApiKey =
-    process.env[String(args.mediaGenerationApiKeyEnv)] ||
-    process.env.ARK_API_KEY ||
-    existingSecretData.MEDIA_GENERATION_API_KEY ||
-    existingSecretData.ARK_API_KEY ||
+    sanitizeSecretValue(process.env[String(args.mediaGenerationApiKeyEnv)]) ||
+    sanitizeSecretValue(process.env.ARK_API_KEY) ||
+    sanitizeSecretValue(existingSecretData.MEDIA_GENERATION_API_KEY) ||
+    sanitizeSecretValue(existingSecretData.ARK_API_KEY) ||
     ''
-  if (!dashscopeApiKey.trim()) {
+  if (!dashscopeApiKey.trim() && !tokenPlanApiKey.trim()) {
     throw new Error(
-      `Missing API key env "${args.dashscopeApiKeyEnv}" and no reusable DashScope API key was found in secret/${args.secretName}`,
+      `Missing usable text-provider credentials. Provide "${args.dashscopeApiKeyEnv}" and/or "${args.tokenPlanApiKeyEnv}", or ensure secret/${args.secretName} already contains a non-placeholder value.`,
     )
   }
 
@@ -994,30 +995,48 @@ async function main() {
     DASHSCOPE_API_KEY: dashscopeApiKey,
     DASHSCOPE_API_KEY_SECONDARY: dashscopeSecondaryApiKey,
     TOKEN_PLAN_OPENAI_API_KEY: tokenPlanApiKey,
-    ZAI_API_KEY: readEnvOverride('ZAI_API_KEY') ?? existingSecretData.ZAI_API_KEY ?? '',
+    ZAI_API_KEY: sanitizeSecretValue(
+      readEnvOverride('ZAI_API_KEY') ?? existingSecretData.ZAI_API_KEY ?? '',
+    ),
     ZAI_API_KEY_SECONDARY:
-      readEnvOverride('ZAI_API_KEY_SECONDARY')
-      ?? existingSecretData.ZAI_API_KEY_SECONDARY
-      ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('ZAI_API_KEY_SECONDARY')
+        ?? existingSecretData.ZAI_API_KEY_SECONDARY
+        ?? '',
+      ),
     DEEPSEEK_API_KEY:
-      readEnvOverride('DEEPSEEK_API_KEY') ?? existingSecretData.DEEPSEEK_API_KEY ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('DEEPSEEK_API_KEY') ?? existingSecretData.DEEPSEEK_API_KEY ?? '',
+      ),
     MOONSHOT_API_KEY:
-      readEnvOverride('MOONSHOT_API_KEY') ?? existingSecretData.MOONSHOT_API_KEY ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('MOONSHOT_API_KEY') ?? existingSecretData.MOONSHOT_API_KEY ?? '',
+      ),
     MINIMAX_API_KEY:
-      readEnvOverride('MINIMAX_API_KEY') ?? existingSecretData.MINIMAX_API_KEY ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('MINIMAX_API_KEY') ?? existingSecretData.MINIMAX_API_KEY ?? '',
+      ),
     MINIMAX_API_KEY_SECONDARY:
-      readEnvOverride('MINIMAX_API_KEY_SECONDARY')
-      ?? existingSecretData.MINIMAX_API_KEY_SECONDARY
-      ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('MINIMAX_API_KEY_SECONDARY')
+        ?? existingSecretData.MINIMAX_API_KEY_SECONDARY
+        ?? '',
+      ),
     TENCENT_HUNYUAN_API_KEY:
-      readEnvOverride('TENCENT_HUNYUAN_API_KEY')
-      ?? existingSecretData.TENCENT_HUNYUAN_API_KEY
-      ?? '',
-    ARK_API_KEY: readEnvOverride('ARK_API_KEY') ?? existingSecretData.ARK_API_KEY ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('TENCENT_HUNYUAN_API_KEY')
+        ?? existingSecretData.TENCENT_HUNYUAN_API_KEY
+        ?? '',
+      ),
+    ARK_API_KEY: sanitizeSecretValue(
+      readEnvOverride('ARK_API_KEY') ?? existingSecretData.ARK_API_KEY ?? '',
+    ),
     ARK_API_KEY_SECONDARY:
-      readEnvOverride('ARK_API_KEY_SECONDARY')
-      ?? existingSecretData.ARK_API_KEY_SECONDARY
-      ?? '',
+      sanitizeSecretValue(
+        readEnvOverride('ARK_API_KEY_SECONDARY')
+        ?? existingSecretData.ARK_API_KEY_SECONDARY
+        ?? '',
+      ),
     MEDIA_GENERATION_API_KEY: mediaGenerationApiKey,
   }
 

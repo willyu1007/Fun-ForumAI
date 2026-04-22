@@ -5,6 +5,7 @@ import {
   type CoreFamily,
   type FamilyScoreMap,
   type InferenceBlockedReason,
+  type InferenceMigrationScope,
   type InferenceMigrationState,
   type InferenceProfileSnapshot,
   type InferenceSignals,
@@ -16,7 +17,7 @@ export const FAMILY_LINE_PREFERENCE: Record<CoreFamily, VoiceLineId[]> = {
   hearth: ['minimax-her-v1', 'qwen-social-v1', 'glm-deep-v1'],
   blade: ['glm-deep-v1', 'qwen-social-v1', 'doubao-deep-v1'],
   spark: ['qwen-social-v1', 'glm-deep-v1', 'minimax-her-v1'],
-  sage: ['doubao-deep-v1', 'glm-deep-v1', 'qwen-social-v1'],
+  sage: ['kimi-deep-v1', 'doubao-deep-v1', 'glm-deep-v1', 'qwen-social-v1'],
   anchor: ['qwen-social-v1', 'glm-deep-v1', 'doubao-deep-v1'],
 }
 
@@ -184,10 +185,7 @@ export function findChallengerFamily(
   familyScores: FamilyScoreMap,
   incumbentFamily: CoreFamily,
 ): { family: CoreFamily | null; scoreDelta: number | null } {
-  const sorted = [...CORE_FAMILIES]
-    .map((family) => ({ family, score: familyScores[family] }))
-    .sort((a, b) => b.score - a.score)
-  const winner = sorted[0]
+  const winner = findWinningFamily(familyScores)
   const incumbentScore = familyScores[incumbentFamily]
   if (!winner || winner.family === incumbentFamily) {
     return { family: null, scoreDelta: 0 }
@@ -196,6 +194,15 @@ export function findChallengerFamily(
     family: winner.family,
     scoreDelta: round2(winner.score - incumbentScore),
   }
+}
+
+export function findWinningFamily(
+  familyScores: FamilyScoreMap,
+): { family: CoreFamily; score: number } | null {
+  const sorted = [...CORE_FAMILIES]
+    .map((family) => ({ family, score: familyScores[family] }))
+    .sort((a, b) => b.score - a.score)
+  return sorted[0] ?? null
 }
 
 export function resolveChallengerVoiceLine(
@@ -208,6 +215,53 @@ export function resolveChallengerVoiceLine(
       (line) => compatibleVoiceLines.includes(line) && line !== currentHomeVoiceLineId,
     ) ?? null
   )
+}
+
+export function resolvePreferredVoiceLineForFamily(input: {
+  family: CoreFamily
+  compatibleVoiceLines: readonly VoiceLineId[]
+  currentHomeVoiceLineId: VoiceLineId
+  migrationVoiceLineWeights?: Partial<Record<VoiceLineId, number>>
+}): VoiceLineId | null {
+  const weighted = resolveWeightedVoiceLine({
+    family: input.family,
+    compatibleVoiceLines: input.compatibleVoiceLines,
+    excludeVoiceLineId: input.currentHomeVoiceLineId,
+    weights: input.migrationVoiceLineWeights,
+  })
+  if (weighted) {
+    return weighted
+  }
+  return resolveChallengerVoiceLine(
+    input.family,
+    input.compatibleVoiceLines,
+    input.currentHomeVoiceLineId,
+  )
+}
+
+export function resolveSameFamilyVoiceLine(input: {
+  family: CoreFamily
+  compatibleVoiceLines: readonly VoiceLineId[]
+  currentHomeVoiceLineId: VoiceLineId
+  migrationVoiceLineWeights?: Partial<Record<VoiceLineId, number>>
+}): { voiceLineId: VoiceLineId | null; scoreDelta: number | null } {
+  const challengerVoiceLineId = resolveWeightedVoiceLine({
+    family: input.family,
+    compatibleVoiceLines: input.compatibleVoiceLines,
+    excludeVoiceLineId: input.currentHomeVoiceLineId,
+    weights: input.migrationVoiceLineWeights,
+  })
+  if (!challengerVoiceLineId) {
+    return { voiceLineId: null, scoreDelta: null }
+  }
+
+  return {
+    voiceLineId: challengerVoiceLineId,
+    scoreDelta: resolveSameFamilyLeadDelta(
+      input.migrationVoiceLineWeights,
+      challengerVoiceLineId,
+    ),
+  }
 }
 
 export function resolveBlockedReason(input: {
@@ -304,8 +358,10 @@ export function buildRuntimeProfile(input: {
   agentId: string
   profileVersion: number
   incumbentFamily: CoreFamily
+  incumbentVoiceLineId: VoiceLineId
   challengerFamily: CoreFamily | null
   challengerVoiceLineId: VoiceLineId | null
+  migrationScope: InferenceMigrationScope | null
   migrationState: InferenceMigrationState
   consecutiveLeadWindows: number
   challengerScoreDelta: number | null
@@ -324,8 +380,10 @@ export function buildRuntimeProfile(input: {
     agentId: input.agentId,
     profileVersion: input.profileVersion,
     incumbentFamily: input.incumbentFamily,
+    incumbentVoiceLineId: input.incumbentVoiceLineId,
     challengerFamily: input.challengerFamily,
     challengerVoiceLineId: input.challengerVoiceLineId,
+    migrationScope: input.migrationScope,
     migrationState: input.migrationState,
     consecutiveLeadWindows: input.consecutiveLeadWindows,
     challengerScoreDelta: input.challengerScoreDelta,
@@ -350,6 +408,64 @@ export function maxRenderTier(requested: RenderTier, floor: RenderTier | null): 
 
 function normalizeSigned(value: number): number {
   return clamp(value / 100, -1, 1)
+}
+
+function resolveWeightedVoiceLine(input: {
+  family: CoreFamily
+  compatibleVoiceLines: readonly VoiceLineId[]
+  excludeVoiceLineId?: VoiceLineId
+  weights?: Partial<Record<VoiceLineId, number>>
+}): VoiceLineId | null {
+  if (!input.weights) {
+    return null
+  }
+
+  const weightedCandidates = input.compatibleVoiceLines.flatMap((voiceLineId, index) => {
+    if (voiceLineId === input.excludeVoiceLineId) {
+      return []
+    }
+    const weight = input.weights?.[voiceLineId]
+    if (typeof weight !== 'number' || !Number.isFinite(weight) || weight <= 0) {
+      return []
+    }
+    const familyPriority = FAMILY_LINE_PREFERENCE[input.family].indexOf(voiceLineId)
+    return [{
+      voiceLineId,
+      weight,
+      familyPriority: familyPriority === -1 ? Number.MAX_SAFE_INTEGER : familyPriority,
+      compatibleIndex: index,
+    }]
+  })
+
+  weightedCandidates.sort((left, right) => (
+    right.weight - left.weight
+    || left.familyPriority - right.familyPriority
+    || left.compatibleIndex - right.compatibleIndex
+  ))
+
+  return weightedCandidates[0]?.voiceLineId ?? null
+}
+
+function readVoiceLineWeight(
+  weights: Partial<Record<VoiceLineId, number>> | undefined,
+  voiceLineId: VoiceLineId,
+): number {
+  const weight = weights?.[voiceLineId]
+  return typeof weight === 'number' && Number.isFinite(weight) ? weight : 0
+}
+
+function resolveSameFamilyLeadDelta(
+  weights: Partial<Record<VoiceLineId, number>> | undefined,
+  challengerVoiceLineId: VoiceLineId,
+): number | null {
+  if (!weights) return null
+  const challengerWeight = readVoiceLineWeight(weights, challengerVoiceLineId)
+  if (challengerWeight <= 0) return null
+  const positiveWeights = Object.values(weights)
+    .filter((weight): weight is number => typeof weight === 'number' && Number.isFinite(weight) && weight > 0)
+  if (positiveWeights.length === 0) return null
+  const floorWeight = Math.min(...positiveWeights)
+  return round2(Math.max(0, challengerWeight - floorWeight))
 }
 
 function normalizeAbility(value: number): number {

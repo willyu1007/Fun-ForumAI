@@ -184,7 +184,7 @@ async function createService(options?: {
       body: writerBody,
       prompt_template_id: 'internal-agent-biography-chapter-render',
       prompt_version: 2,
-      model_name: 'moonshot-v1-128k',
+      model_name: 'kimi-k2.5',
       provider_id: 'moonshot-openai',
       prompt_hash: 'prompt-hash',
       input_hash: 'input-hash',
@@ -271,7 +271,7 @@ describe('AgentBiographyService', () => {
     ])
   })
 
-  it('publishes the Kimi rescue body when the Moonshot primary render fails audit', async () => {
+  it('publishes the V1 rescue body when the Kimi primary render fails audit', async () => {
     const { service, repo, agent, writerService, factualAuditService } = await createService({
       renderChapterBody: {
         chapter_title: '可信正文',
@@ -320,7 +320,7 @@ describe('AgentBiographyService', () => {
         },
         prompt_template_id: 'internal-agent-biography-chapter-render',
         prompt_version: 2,
-        model_name: 'moonshot-v1-128k',
+        model_name: 'kimi-k2.5',
         provider_id: 'moonshot-openai',
         prompt_hash: 'prompt-hash-2',
         input_hash: 'input-hash-2',
@@ -332,7 +332,7 @@ describe('AgentBiographyService', () => {
         body: rescueWriterBody,
         prompt_template_id: 'internal-agent-biography-chapter-render',
         prompt_version: 2,
-        model_name: 'kimi-k2.5',
+        model_name: 'moonshot-v1-128k',
         provider_id: 'moonshot-openai',
         prompt_hash: 'prompt-hash-3',
         input_hash: 'input-hash-3',
@@ -390,12 +390,12 @@ describe('AgentBiographyService', () => {
     expect(writerService.renderChapter.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(writerService.renderChapter.mock.calls.some((call) =>
       call[1]?.allowFallbackWithinLine === false
-      && call[1]?.debugModelPin?.provider_id === 'moonshot-openai'
-      && call[1]?.debugModelPin?.model_id === 'kimi-k2.5')).toBe(true)
+      && call[1]?.routingConstraint?.provider_id === 'moonshot-openai'
+      && call[1]?.routingConstraint?.model_id === 'moonshot-v1-128k')).toBe(true)
     expect(latestRevision?.body).toEqual(rescueWriterBody)
-    expect(latestRevision?.model_name).toBe('kimi-k2.5')
+    expect(latestRevision?.model_name).toBe('moonshot-v1-128k')
     expect(rescueTelemetry?.rescue_render_attempted).toBe(true)
-    expect(rescueTelemetry?.rescue_render_model_id).toBe('kimi-k2.5')
+    expect(rescueTelemetry?.rescue_render_model_id).toBe('moonshot-v1-128k')
     expect(rescueTelemetry?.audit_failure_category).toBe('forbidden_lexicon')
     expect(rescueTelemetry?.publish_status).toBe('PUBLISHED')
   })
@@ -444,7 +444,7 @@ describe('AgentBiographyService', () => {
         },
         prompt_template_id: 'internal-agent-biography-chapter-render',
         prompt_version: 2,
-        model_name: 'moonshot-v1-128k',
+        model_name: 'kimi-k2.5',
         provider_id: 'moonshot-openai',
         prompt_hash: 'prompt-hash-2',
         input_hash: 'input-hash-2',
@@ -463,7 +463,7 @@ describe('AgentBiographyService', () => {
         },
         prompt_template_id: 'internal-agent-biography-chapter-render',
         prompt_version: 2,
-        model_name: 'kimi-k2.5',
+        model_name: 'moonshot-v1-128k',
         provider_id: 'moonshot-openai',
         prompt_hash: 'prompt-hash-3',
         input_hash: 'input-hash-3',
@@ -511,7 +511,7 @@ describe('AgentBiographyService', () => {
     expect(publishedRevision?.body).toBeTruthy()
     expect(latestRevision?.body).toEqual(publishedRevision?.body)
     expect(rescueTelemetry?.rescue_render_attempted).toBe(true)
-    expect(rescueTelemetry?.rescue_render_model_id).toBe('kimi-k2.5')
+    expect(rescueTelemetry?.rescue_render_model_id).toBe('moonshot-v1-128k')
     expect(rescueTelemetry?.audit_failure_category).toBe('private_overreach')
   })
 

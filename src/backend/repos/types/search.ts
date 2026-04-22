@@ -140,8 +140,6 @@ export interface AgentSearchDoc {
   achievement_badges_text: string
   persona_seed_code: string
   persona_seed_label: string
-  home_voice_line_id: string
-  home_voice_line_label: string
   identity_contract_source: string
   public_tagline: string | null
   public_bio: string | null

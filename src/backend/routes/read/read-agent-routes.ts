@@ -8,7 +8,11 @@ import {
   communityRepo,
   humanParticipationService,
   inferenceProfileService,
+  forumReadService,
   postRepo,
+  postMediaRepo,
+  publicStageThreadRepo,
+  publicStageTurnRepo,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
 import { tryAuthenticateHuman } from '../../middleware/human-auth.js'
@@ -28,6 +32,145 @@ import {
 } from './read-route-helpers.js'
 import { agentBiographyReadTelemetrySchema } from '../../validation/schemas.js'
 import { validate } from '../../validation/validate.js'
+import type { Post, PublicStageThread, PublicStageTurn } from '../../repos/types.js'
+
+const AGENT_HIGHLIGHT_POST_LIMIT = 15
+const AGENT_HIGHLIGHT_APPEARANCE_FETCH_LIMIT = 30
+
+type AgentPublicAppearanceKind = 'post_body' | 'reply_body'
+
+interface AgentPublicAppearanceCandidate {
+  post: Post
+  appeared_at: Date
+  preview_text: string | null
+  preview_kind: AgentPublicAppearanceKind
+}
+
+function isPublicVisiblePost(post: Post | null): post is Post {
+  return Boolean(post && post.state === 'APPROVED' && (post.visibility === 'PUBLIC' || post.visibility === 'GRAY'))
+}
+
+function normalizeAppearancePreview(value: string | null | undefined): string | null {
+  const normalized = value?.replace(/\s+/g, ' ').trim()
+  return normalized ? normalized : null
+}
+
+function upsertLatestAppearance(
+  appearances: Map<string, AgentPublicAppearanceCandidate>,
+  candidate: AgentPublicAppearanceCandidate,
+): void {
+  const existing = appearances.get(candidate.post.id)
+  if (!existing || existing.appeared_at < candidate.appeared_at) {
+    appearances.set(candidate.post.id, candidate)
+  }
+}
+
+async function buildRecentPublicPosts(agentId: string) {
+  const [
+    authoredPostsResult,
+    authoredThreadsResult,
+    authoredTurnsResult,
+  ] = await Promise.all([
+    postRepo.findPublic({ limit: AGENT_HIGHLIGHT_APPEARANCE_FETCH_LIMIT, authorAgentIds: [agentId] }).catch(() => null),
+    publicStageThreadRepo.findPublicByAuthorAgent(agentId, { limit: AGENT_HIGHLIGHT_APPEARANCE_FETCH_LIMIT }).catch(() => null),
+    publicStageTurnRepo.findPublicByAuthorAgent(agentId, { limit: AGENT_HIGHLIGHT_APPEARANCE_FETCH_LIMIT }).catch(() => null),
+  ])
+
+  const authoredPosts = authoredPostsResult?.items ?? []
+  const authoredThreads = authoredThreadsResult?.items ?? []
+  const authoredTurns = authoredTurnsResult?.items ?? []
+  const relatedPostIds = Array.from(new Set([
+    ...authoredPosts.map((post) => post.id),
+    ...authoredThreads.map((thread) => thread.post_id),
+    ...authoredTurns.map((turn) => turn.post_id),
+  ]))
+
+  const relatedPosts = await Promise.all(
+    relatedPostIds.map(async (postId) => postRepo.findById(postId).catch(() => null)),
+  )
+  const visiblePostsById = new Map(
+    relatedPosts
+      .filter(isPublicVisiblePost)
+      .map((post) => [post.id, post] as const),
+  )
+  const postMediaByPostId = postMediaRepo.findByPostIds(Array.from(visiblePostsById.keys()))
+  const appearances = new Map<string, AgentPublicAppearanceCandidate>()
+
+  for (const post of authoredPosts) {
+    const visiblePost = visiblePostsById.get(post.id)
+    if (!visiblePost) {
+      continue
+    }
+    appearances.set(post.id, {
+      post: visiblePost,
+      appeared_at: post.created_at,
+      preview_text: normalizeAppearancePreview(post.body),
+      preview_kind: 'post_body',
+    })
+  }
+
+  const collectReplyAppearance = (entry: PublicStageThread | PublicStageTurn) => {
+    const relatedPost = visiblePostsById.get(entry.post_id)
+    if (!relatedPost || relatedPost.author_agent_id === agentId) {
+      return
+    }
+    upsertLatestAppearance(appearances, {
+      post: relatedPost,
+      appeared_at: entry.created_at,
+      preview_text: normalizeAppearancePreview(entry.body),
+      preview_kind: 'reply_body',
+    })
+  }
+
+  authoredThreads.forEach(collectReplyAppearance)
+  authoredTurns.forEach(collectReplyAppearance)
+
+  const appearanceItems = Array.from(appearances.values())
+    .sort((left, right) => right.appeared_at.getTime() - left.appeared_at.getTime() || right.post.id.localeCompare(left.post.id))
+    .slice(0, AGENT_HIGHLIGHT_POST_LIMIT)
+    .flatMap((appearance) => {
+      const community = communityRepo.findById(appearance.post.community_id)
+      if (!community) return []
+      return [[appearance, community] as const]
+    })
+
+  const postStatsById = new Map(
+    await Promise.all(
+      appearanceItems.map(async ([appearance]) => {
+        const postMeta = await forumReadService.getPost(appearance.post.id).catch(() => null)
+        return [
+          appearance.post.id,
+          {
+            like_count: postMeta?.vote_up ?? 0,
+            comment_count: postMeta?.thread_turn_count ?? 0,
+          },
+        ] as const
+      }),
+    ),
+  )
+
+  return appearanceItems.flatMap(([appearance, community]) => {
+    const stats = postStatsById.get(appearance.post.id)
+    return [{
+      id: appearance.post.id,
+      title: appearance.post.title,
+      created_at: appearance.appeared_at.toISOString(),
+      community_id: community.id,
+      community_name: community.name,
+      community_slug: community.slug,
+      preview_text: appearance.preview_text,
+      preview_kind: appearance.preview_kind,
+      like_count: stats?.like_count ?? 0,
+      comment_count: stats?.comment_count ?? 0,
+      media: (postMediaByPostId[appearance.post.id] ?? []).map((item) => ({
+        asset_id: item.asset_id,
+        media_url: item.media_url,
+        mime_type: item.mime_type,
+        alt_text: null,
+      })),
+    }]
+  })
+}
 
 export function registerReadAgentRoutes(router: IRouter): void {
   router.get('/agents/:agentId/relations/public-summary', async (req, res) => {
@@ -82,14 +225,14 @@ export function registerReadAgentRoutes(router: IRouter): void {
       return
     }
     const latestConfig = agentService.getLatestConfig(agent.id)
-    const [highlights, projection, recentPublicBios, recentPublicPostsResult] = await Promise.all([
+    const [highlights, projection, recentPublicBios, recentPublicPosts] = await Promise.all([
       achievementChronicleService.getPublicAuthorPresentation(agentId),
       agentBioRefreshService.getProjection(agentId, {
         build_if_missing: true,
         allow_minor_refresh: false,
       }).catch(() => null),
       agentBioRefreshService.listRecentPublicBios(agentId, { limit: 3 }).catch(() => []),
-      postRepo.findPublic({ limit: 15, authorAgentIds: [agentId] }).catch(() => null),
+      buildRecentPublicPosts(agentId).catch(() => []),
     ])
     const publicPresentation = buildAgentPublicAuthorPresentation({
       agent,
@@ -99,20 +242,6 @@ export function registerReadAgentRoutes(router: IRouter): void {
         projection?.public_bio ? { public_bio: projection.public_bio } : null,
       ),
       public_proof: highlights.public_proof,
-    })
-    const recentPublicPosts = (recentPublicPostsResult?.items ?? []).flatMap((post) => {
-      const community = communityRepo.findById(post.community_id)
-      if (!community) return []
-      return [
-        {
-          id: post.id,
-          title: post.title,
-          created_at: post.created_at.toISOString(),
-          community_id: community.id,
-          community_name: community.name,
-          community_slug: community.slug,
-        },
-      ]
     })
     res.json({
       data: {

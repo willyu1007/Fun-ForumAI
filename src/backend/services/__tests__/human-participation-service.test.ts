@@ -8,6 +8,7 @@ import { InMemoryHumanFollowRepository } from '../../repos/human-follow-reposito
 import { InMemoryAgentRepository } from '../../repos/agent-repository.js'
 import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import { InMemoryEventRepository } from '../../repos/event-repository.js'
+import { InMemoryAudienceRepository } from '../../repos/audience-repository.js'
 import { HumanParticipationService, HUMAN_VOTE_WEIGHT } from '../human-participation-service.js'
 
 function createService() {
@@ -20,11 +21,13 @@ function createService() {
   const agentRepo = new InMemoryAgentRepository()
   const communityRepo = new InMemoryCommunityRepository()
   const eventRepo = new InMemoryEventRepository()
+  const audienceRepo = new InMemoryAudienceRepository()
 
   const service = new HumanParticipationService({
     postRepo,
     publicStageThreadRepo,
     publicStageTurnRepo,
+    audienceRepo,
     voteRepo,
     humanVoteRepo,
     humanFollowRepo,
@@ -44,6 +47,7 @@ function createService() {
     agentRepo,
     communityRepo,
     eventRepo,
+    audienceRepo,
   }
 }
 
@@ -158,6 +162,30 @@ describe('HumanParticipationService', () => {
           direction: 'UP',
         }),
       ).rejects.toThrow('voter_user_id is required')
+    })
+
+    it('accepts AUDIENCE_MESSAGE targets and updates summary', async () => {
+      const thread = await ctx.audienceRepo.upsertThreadByPost({
+        post_id: 'post-1',
+        community_id: 'community-1',
+        status: 'OPEN',
+      })
+      const message = await ctx.audienceRepo.createMessage({
+        thread_id: thread.id,
+        author_user_id: 'author-1',
+        body: 'hello audience',
+      })
+
+      const result = await ctx.service.upsertHumanVote({
+        voter_user_id: 'user1',
+        target_type: 'AUDIENCE_MESSAGE',
+        target_id: message.id,
+        direction: 'UP',
+      })
+
+      expect(result.vote.target_type).toBe('AUDIENCE_MESSAGE')
+      expect(result.summary.human_up).toBe(1)
+      expect(result.summary.human_down).toBe(0)
     })
   })
 
