@@ -619,6 +619,24 @@ describe('LLMGateway', () => {
     expect(gateway.isConfigured).toBe(false)
   })
 
+  it('detects whether a visible route has at least one usable credential-backed candidate', () => {
+    const { gateway } = buildGatewayHarness()
+
+    expect(gateway.canServeRoute(buildVisibleTextRequest({
+      traceId: 'trace-can-serve',
+      visibility: 'visible',
+    }))).toBe(true)
+
+    const unavailable = buildGatewayHarness({
+      resolveSecret: () => '',
+    }).gateway
+
+    expect(unavailable.canServeRoute(buildVisibleTextRequest({
+      traceId: 'trace-can-not-serve',
+      visibility: 'visible',
+    }))).toBe(false)
+  })
+
   it('falls back to a same-line profile when the initial candidate has no matching credential pool', async () => {
     const bundle = buildBundle()
     const usageLedger = new UsageLedgerWriter()
@@ -1301,6 +1319,52 @@ describe('LLMGateway', () => {
     })
   })
 
+  it('persists product routing constraints without marking them as debug pins', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    vi.spyOn(llmClient, 'chat').mockResolvedValue({
+      content: 'routing-constrained',
+      usage: { prompt_tokens: 12, completion_tokens: 6, total_tokens: 18 },
+      model: 'qwen-plus-character',
+      finish_reason: 'stop',
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: { resolve: vi.fn(() => 'secret') } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      traceId: 'trace-routing-constraint',
+      routingConstraint: {
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus-character',
+        adapterId: 'openai-chat-completions-v1',
+      },
+    }))
+
+    expect(response.executionPlan.mergeTrace.routingConstraint).toEqual({
+      providerId: 'dashscope-openai',
+      modelId: 'qwen-plus-character',
+      adapterId: 'openai-chat-completions-v1',
+    })
+    expect(response.executionPlan.mergeTrace.debugRoutingOverrides).toBeUndefined()
+    expect(usageLedger.list()[0]?.merge_trace?.routingConstraint).toEqual({
+      providerId: 'dashscope-openai',
+      modelId: 'qwen-plus-character',
+      adapterId: 'openai-chat-completions-v1',
+    })
+  })
+
   it('allows callsites to override execution policy only on explicit lanes', async () => {
     const bundle = buildBundle()
     bundle.modelProfiles.profiles.push({
@@ -1961,7 +2025,7 @@ describe('LLMGateway', () => {
       traceId: 'trace-visible-auth-skip',
     }))
 
-    expect(response.renderDecision.modelId).toBe('qwen-flash-character')
+    expect(response.renderDecision.modelId).toBe('qwen-plus-character')
     expect(response.renderDecision.credentialId).toBe('dashscope-good-shared')
     expect(chatSpy).toHaveBeenCalledTimes(2)
     expect(chatSpy.mock.calls[0]?.[0]).toMatchObject({
@@ -1969,13 +2033,112 @@ describe('LLMGateway', () => {
       provider: { api_key: 'bad-secret' },
     })
     expect(chatSpy.mock.calls[1]?.[0]).toMatchObject({
-      model: 'qwen-flash-character',
+      model: 'qwen-plus-character',
       provider: { api_key: 'good-secret' },
     })
     expect(usageLedger.list()).toHaveLength(2)
     expect(usageLedger.list()[0]?.success).toBe(false)
+    expect(usageLedger.list()[0]?.credential_id).toBe('dashscope-bad-shared')
     expect(usageLedger.list()[0]?.error_code).toBe('AuthError')
     expect(usageLedger.list()[1]?.success).toBe(true)
+    expect(usageLedger.list()[1]?.credential_id).toBe('dashscope-good-shared')
+  })
+
+  it('falls through to the next credential pool for the same candidate after an upstream auth failure', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools = [
+      {
+        credential_id: 'dashscope-primary',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:dashscope_api_key',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character'],
+      },
+      {
+        credential_id: 'dashscope-secondary',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:dashscope_api_key_secondary',
+        priority: 20,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character'],
+      },
+    ]
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockImplementation(async (input) => {
+      if (input.provider.api_key === 'dashscope-bad-secret') {
+        throw new Error('LLM API 401: {"error":{"message":"invalid api key"}}')
+      }
+      return {
+        content: 'ok',
+        usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
+        model: input.model,
+        finish_reason: 'stop',
+      }
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn((ref: string) => (
+            ref === 'secret-ref:dashscope_api_key'
+              ? 'dashscope-bad-secret'
+              : 'dashscope-good-secret'
+          )),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      traceId: 'trace-same-candidate-credential-failover',
+      debug: {
+        providerPin: 'dashscope-openai',
+        modelPin: 'qwen-plus-character',
+      },
+    }))
+
+    expect(response.renderDecision.providerId).toBe('dashscope-openai')
+    expect(response.renderDecision.modelId).toBe('qwen-plus-character')
+    expect(response.renderDecision.credentialId).toBe('dashscope-secondary')
+    expect(chatSpy).toHaveBeenCalledTimes(2)
+    expect(chatSpy.mock.calls[0]?.[0]).toMatchObject({
+      model: 'qwen-plus-character',
+      provider: { api_key: 'dashscope-bad-secret' },
+    })
+    expect(chatSpy.mock.calls[1]?.[0]).toMatchObject({
+      model: 'qwen-plus-character',
+      provider: { api_key: 'dashscope-good-secret' },
+    })
+    expect(usageLedger.list()).toHaveLength(2)
+    expect(usageLedger.list()[0]?.success).toBe(false)
+    expect(usageLedger.list()[0]?.credential_id).toBe('dashscope-primary')
+    expect(usageLedger.list()[0]?.error_code).toBe('AuthError')
+    expect(usageLedger.list()[1]?.success).toBe(true)
+    expect(usageLedger.list()[1]?.credential_id).toBe('dashscope-secondary')
+    expect(usageLedger.list()[1]?.fallback_history).toEqual([
+      expect.objectContaining({
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus-character',
+        errorCode: 'AuthError',
+      }),
+    ])
   })
 
   it('falls back from token plan to dashscope within the same qwen visible profile when token plan auth fails', async () => {
@@ -2091,14 +2254,14 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()[0]?.success).toBe(true)
   })
 
-  it('routes biography chapter renders to the biography premium profile with Moonshot primary', async () => {
+  it('routes biography chapter renders to the biography premium profile with Kimi primary', async () => {
     const bundle = loadLlmRegistryBundle()
     const { gateway } = buildGatewayHarness({
       bundle,
       response: {
         content: '{"chapter_title":"关系开始定型"}',
         usage: { prompt_tokens: 12, completion_tokens: 10, total_tokens: 22 },
-        model: 'moonshot-v1-128k',
+        model: 'kimi-k2.5',
         finish_reason: 'stop',
       },
     })
@@ -2112,17 +2275,17 @@ describe('LLMGateway', () => {
     expect(response.renderDecision.profileId).toBe('biography-director-public-observation-premium')
     expect(response.renderDecision.policyId).toBe('hidden-public_observation_digest-agent-biography-premium')
     expect(response.renderDecision.providerId).toBe('moonshot-openai')
-    expect(response.renderDecision.modelId).toBe('moonshot-v1-128k')
+    expect(response.renderDecision.modelId).toBe('kimi-k2.5')
   })
 
-  it('routes biography later notes to the biography base profile with Qwen primary', async () => {
+  it('routes biography later notes to the biography base profile with Kimi primary', async () => {
     const bundle = loadLlmRegistryBundle()
     const { gateway } = buildGatewayHarness({
       bundle,
       response: {
         content: '{"note_id":"later-note-1","text":"后来再看"}',
         usage: { prompt_tokens: 10, completion_tokens: 9, total_tokens: 19 },
-        model: 'qwen3.5-plus',
+        model: 'kimi-k2.5',
         finish_reason: 'stop',
       },
     })
@@ -2136,8 +2299,39 @@ describe('LLMGateway', () => {
 
     expect(response.renderDecision.profileId).toBe('biography-director-public-observation-base')
     expect(response.renderDecision.policyId).toBe('hidden-public_observation_digest-agent-biography-base')
-    expect(response.renderDecision.providerId).toBe('dashscope-openai')
-    expect(response.renderDecision.modelId).toBe('qwen3.5-plus')
+    expect(response.renderDecision.providerId).toBe('moonshot-openai')
+    expect(response.renderDecision.modelId).toBe('kimi-k2.5')
+  })
+
+  it('allows agent social bio renders to override onto the dedicated bio execution policy', async () => {
+    const bundle = loadLlmRegistryBundle()
+    const { gateway } = buildGatewayHarness({
+      bundle,
+      response: {
+        content: '{"surface_candidates":{"public":[],"owner":[],"private_header":[]}}',
+        usage: { prompt_tokens: 11, completion_tokens: 8, total_tokens: 19 },
+        model: 'qwen3.6-plus',
+        finish_reason: 'stop',
+      },
+    })
+
+    const response = await gateway.generateHiddenArtifact(buildHiddenJsonRequest({
+      intent: 'public_observation_digest',
+      homeVoiceLineId: 'qwen-social-v1',
+      promptRef: PROMPT_TEMPLATE_REFS.internalAgentSocialBioRender,
+      promptMessages: [{ role: 'user', content: 'render agent social bio' }],
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      localOverrides: {
+        executionPolicyId: 'hidden-public_observation_digest-agent-bio-base',
+      },
+      traceId: 'trace-agent-social-bio',
+    }))
+
+    expect(response.renderDecision.profileId).toBe('qwen-social-public-observation-base')
+    expect(response.renderDecision.policyId).toBe('hidden-public_observation_digest-agent-bio-base')
+    expect(response.renderDecision.providerId).toBe('token-plan-openai')
+    expect(response.renderDecision.modelId).toBe('qwen3.6-plus')
   })
 
   it('keeps same-line fallback available for biography premium routes', async () => {
@@ -2190,11 +2384,12 @@ describe('LLMGateway', () => {
     expect(response.renderDecision.providerId).toBe('dashscope-openai')
     expect(response.renderDecision.modelId).toBe('qwen3.5-plus')
     expect(response.renderDecision.fallbackLevel).toBe('same-line')
-    expect(usageLedger.list()).toHaveLength(3)
+    expect(usageLedger.list()).toHaveLength(4)
     expect(usageLedger.list()[0]?.success).toBe(false)
     expect(usageLedger.list()[1]?.success).toBe(false)
-    expect(usageLedger.list()[2]?.success).toBe(true)
-    expect(usageLedger.list()[2]?.fallback_history?.[0]?.profileId).toBe(
+    expect(usageLedger.list()[2]?.success).toBe(false)
+    expect(usageLedger.list()[3]?.success).toBe(true)
+    expect(usageLedger.list()[3]?.fallback_history?.[0]?.profileId).toBe(
       'biography-director-public-observation-premium',
     )
   })

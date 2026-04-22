@@ -30,7 +30,10 @@ function parseArgs(argv) {
       || '',
     adminToken: process.env.RUNTIME_CLOSEOUT_ADMIN_TOKEN || process.env.LAUNCH_ADMIN_TOKEN || '',
     pollMs: 10_000,
-    timeoutMs: 8 * 60_000,
+    // Hidden-worker closeout depends on the 5-minute private-session timeout scheduler
+    // plus the downstream digest/identity render chain, so keep the default window
+    // comfortably above one scheduler tick.
+    timeoutMs: 15 * 60_000,
     staleMinutes: 35,
     messageCount: 4,
     devAuth: false,
@@ -240,6 +243,12 @@ async function main() {
   const visible = await triggerVisibleCloseout(baseUrl, adminToken, {
     ...(args.agentId ? { agent_id: args.agentId } : {}),
     ...(args.humanUserId ? { human_user_id: args.humanUserId } : {}),
+    ...(!args.agentId
+      ? {
+          allow_agent_fanout: true,
+          max_agent_attempts: 5,
+        }
+      : {}),
   })
   assertCondition(Array.isArray(visible?.ledger_entries) && visible.ledger_entries.length > 0, 'Visible closeout produced no ledger entries', visible)
   assertCondition(
@@ -249,13 +258,15 @@ async function main() {
   )
 
   console.log('[runtime-closeout] creating hidden worker-backed stale fixture')
+  const hiddenFixtureAgentId = args.agentId || visible?.agent_id || ''
+  const hiddenFixtureHumanUserId = args.humanUserId || visible?.human_user_id || ''
   const fixture = await postAdminJson(
     baseUrl,
     adminToken,
     '/v1/admin/runtime/closeout/hidden-worker/private-session-fixture',
     {
-      ...(args.agentId ? { agent_id: args.agentId } : {}),
-      ...(args.humanUserId ? { human_user_id: args.humanUserId } : {}),
+      ...(hiddenFixtureAgentId ? { agent_id: hiddenFixtureAgentId } : {}),
+      ...(hiddenFixtureHumanUserId ? { human_user_id: hiddenFixtureHumanUserId } : {}),
       stale_minutes: args.staleMinutes,
       message_count: args.messageCount,
     },

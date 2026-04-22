@@ -147,6 +147,69 @@ export class LLMGateway {
     return this.options.credentialBroker.hasAnyUsableCredential()
   }
 
+  canServeRoute(input: Pick<
+    LLMGatewayRequest,
+    | 'agentId'
+    | 'traceId'
+    | 'intent'
+    | 'visibility'
+    | 'scene'
+    | 'promptRef'
+    | 'homeVoiceLineId'
+    | 'requestedTier'
+    | 'modality'
+    | 'responseMode'
+    | 'budgetClass'
+    | 'allowFallbackWithinLine'
+    | 'allowCrossFamily'
+    | 'providerTags'
+    | 'localOverrides'
+    | 'routingConstraint'
+  >): boolean {
+    try {
+      const request: LLMGatewayRequest = {
+        ...input,
+        variables: {},
+      }
+      const routePlan = this.buildRoutePlan(request)
+      for (const route of routePlan) {
+        const candidateResolution = this.resolveCandidatesForRequest(
+          route.profile,
+          request,
+          route.executionPolicy,
+        )
+        if (candidateResolution.candidates.length === 0) continue
+
+        const orderedCandidates = prioritizeCandidates({
+          candidates: candidateResolution.candidates,
+          routeOrder: route.routingPolicy.route_order,
+          route,
+          request,
+          providersById: this.providersById,
+          modelCapabilitiesByKey: this.modelCapabilitiesByKey,
+          adapterBindingsById: this.adapterBindingsById,
+          credentialPools: this.options.bundle.credentialPools.pools,
+          regionHint: this.resolveRegionHint(request, route.executionPolicy),
+        })
+
+        const hasUsableCandidate = orderedCandidates.some((candidate) =>
+          this.options.credentialBroker.hasUsableCredentialForCandidate({
+            candidate,
+            visibility: request.visibility,
+            budgetClass: request.budgetClass,
+            tags: request.providerTags,
+          }))
+        if (hasUsableCandidate) {
+          return true
+        }
+      }
+    } catch {
+      return false
+    }
+
+    return false
+  }
+
   setBudgetChecker(checker: ConstructorParameters<typeof BudgetGuard>[0]): void {
     this.options.budgetGuard.setChecker(checker ?? null)
   }
@@ -249,18 +312,20 @@ export class LLMGateway {
           estimatedCostCny: estimatedCost,
         })
 
-        let renderDecision: RenderDecision | null = null
-        let credential: ReturnType<CredentialBroker['resolve']> | null = null
-        const startedAt = Date.now()
+        while (true) {
+          let renderDecision: RenderDecision | null = null
+          let credential: ReturnType<CredentialBroker['resolve']> | null = null
+          let moveToNextCandidate = false
+          const startedAt = Date.now()
 
-        try {
-          credential = this.options.credentialBroker.resolve({
-            candidate,
-            visibility: request.visibility,
-            budgetClass: request.budgetClass,
-            tags: request.providerTags,
-            excludeCredentialIds: excludedCredentialIds,
-          })
+          try {
+            credential = this.options.credentialBroker.resolve({
+              candidate,
+              visibility: request.visibility,
+              budgetClass: request.budgetClass,
+              tags: request.providerTags,
+              excludeCredentialIds: excludedCredentialIds,
+            })
           if (!adapterSupportsProvider(adapterBinding, credential.provider)) {
             throw new LLMGatewayContractError(
               'RegistryResolutionError',
@@ -377,80 +442,100 @@ export class LLMGateway {
             promptRef: request.promptRef,
             warnings: executionWarnings,
           }
-        } catch (error) {
-          const code = classifyGatewayError(error)
-          lastError = error
-          const errorMessage = error instanceof Error ? error.message : 'Unknown gateway error'
+          } catch (error) {
+            const code = classifyGatewayError(error)
+            lastError = error
+            const errorMessage = error instanceof Error ? error.message : 'Unknown gateway error'
+            let retryWithNextCredential = false
 
-          if (code === 'AuthError') {
-            const failedCredentialId =
-              credential?.pool.credential_id ?? readFailedCredentialId(error)
-            if (failedCredentialId) {
-              excludedCredentialIds.add(failedCredentialId)
+            if (code === 'AuthError') {
+              const failedCredentialId =
+                credential?.pool.credential_id ?? readFailedCredentialId(error)
+              if (failedCredentialId) {
+                excludedCredentialIds.add(failedCredentialId)
+                retryWithNextCredential = hasRemainingCredentialPoolForCandidate({
+                  candidate,
+                  request,
+                  credentialPools: this.options.bundle.credentialPools.pools,
+                  excludeCredentialIds: excludedCredentialIds,
+                })
+              }
             }
-          }
 
-          fallbackHistory.push({
-            profileId: route.profile.profile_id,
-            providerId: candidate.provider_id,
-            modelId: candidate.model_id,
-            adapterId,
-            fallbackLevel: route.fallbackLevel,
-            errorCode: code,
-            reason: errorMessage,
-          })
-
-          this.options.usageLedger.write({
-            trace_id: request.traceId,
-            agent_id: request.agentId,
-            intent: request.intent,
-            visibility: request.visibility,
-            scene: request.scene,
-            prompt_ref: request.promptRef,
-            render_decision: renderDecision ?? {
-              voiceLineId: request.homeVoiceLineId,
-              tier: route.profile.tier,
+            fallbackHistory.push({
               profileId: route.profile.profile_id,
-              policyId: route.executionPolicy.policy_id,
               providerId: candidate.provider_id,
               modelId: candidate.model_id,
               adapterId,
-              region: candidate.region,
-              endpointId: candidate.endpoint_id,
               fallbackLevel: route.fallbackLevel,
-              reasons: renderReasons,
-              promptTemplateId: request.promptRef.id,
-              promptVersion: request.promptRef.version,
-            },
-            usage: undefined,
-            success: false,
-            provider_id: candidate.provider_id,
-            model_id: candidate.model_id,
-            profile_id: route.profile.profile_id,
-            policy_id: route.executionPolicy.policy_id,
-            adapter_id: adapterBinding.adapterId,
-            route_order: route.routingPolicy.route_order,
-            ordered_candidates: orderedCandidates.map(mapExecutionPlanCandidate),
-            fallback_chain: fallbackChain,
-            fallback_history: [...fallbackHistory],
-            merge_trace: mergeTrace,
-            resolved_params: resolvedParams,
-            billing_class: request.budgetClass,
-            estimated_cost_cny: estimatedCost,
-            reserved_cost_cny: estimatedCost,
-            actual_cost_cny: 0,
-            error_code: code,
-            gateway_warnings: executionWarnings,
-            prompt_budget_summary: measuredPromptBudgetSummary,
-            latency_ms: Date.now() - startedAt,
-            created_at: new Date().toISOString(),
-          })
+              errorCode: code,
+              reason: errorMessage,
+            })
 
-          if (!shouldTryNextRoute(code)) {
-            throw toGatewayError(error, code)
+            this.options.usageLedger.write({
+              trace_id: request.traceId,
+              agent_id: request.agentId,
+              intent: request.intent,
+              visibility: request.visibility,
+              scene: request.scene,
+              prompt_ref: request.promptRef,
+              render_decision: renderDecision ?? {
+                voiceLineId: request.homeVoiceLineId,
+                tier: route.profile.tier,
+                profileId: route.profile.profile_id,
+                policyId: route.executionPolicy.policy_id,
+                providerId: candidate.provider_id,
+                modelId: candidate.model_id,
+                adapterId,
+                region: candidate.region,
+                endpointId: candidate.endpoint_id,
+                fallbackLevel: route.fallbackLevel,
+                reasons: renderReasons,
+                promptTemplateId: request.promptRef.id,
+                promptVersion: request.promptRef.version,
+              },
+              usage: undefined,
+              success: false,
+              provider_id: candidate.provider_id,
+              model_id: candidate.model_id,
+              profile_id: route.profile.profile_id,
+              policy_id: route.executionPolicy.policy_id,
+              adapter_id: adapterBinding.adapterId,
+              pool_id: credential?.pool.credential_id,
+              credential_id: credential?.pool.credential_id,
+              route_order: route.routingPolicy.route_order,
+              ordered_candidates: orderedCandidates.map(mapExecutionPlanCandidate),
+              fallback_chain: fallbackChain,
+              fallback_history: [...fallbackHistory],
+              merge_trace: mergeTrace,
+              resolved_params: resolvedParams,
+              billing_class: request.budgetClass,
+              estimated_cost_cny: estimatedCost,
+              reserved_cost_cny: estimatedCost,
+              actual_cost_cny: 0,
+              error_code: code,
+              gateway_warnings: executionWarnings,
+              prompt_budget_summary: measuredPromptBudgetSummary,
+              latency_ms: Date.now() - startedAt,
+              created_at: new Date().toISOString(),
+            })
+
+            if (retryWithNextCredential) {
+              continue
+            }
+
+            if (!shouldTryNextRoute(code)) {
+              throw toGatewayError(error, code)
+            }
+
+            moveToNextCandidate = true
+          } finally {
+            credential?.release()
           }
-        } finally {
-          credential?.release()
+
+          if (moveToNextCandidate) {
+            break
+          }
         }
       }
     }
@@ -547,6 +632,17 @@ export class LLMGateway {
       if (filtered.filteredCounts.shadow > 0 || filtered.filteredCounts.blocked > 0) {
         reasons.push('provider_admission_filtered')
       }
+    }
+
+    const routingConstraintApplied = Boolean(
+      request.routingConstraint?.providerId
+      || request.routingConstraint?.modelId
+      || request.routingConstraint?.adapterId,
+    )
+    if (routingConstraintApplied) {
+      candidates = candidates.filter((candidate) =>
+        matchesRoutingConstraint(candidate, request.routingConstraint))
+      reasons.push('routing_constraint_filter')
     }
 
     const debugPinApplied = Boolean(
@@ -853,6 +949,7 @@ export class LLMGateway {
       maxRetries: request.debug?.maxRetries,
       regionHint: request.debug?.regionHint,
     })
+    const routingConstraint = sanitizeRoutingConstraint(request.routingConstraint)
     const debugRoutingOverrides = sanitizeDebugRoutingOverrides(request.debug)
     const hardCaps: Partial<ResolvedExecutionParams> = {
       modality: request.modality,
@@ -914,6 +1011,7 @@ export class LLMGateway {
           ...callsiteFields,
           ...debugFields,
         ]),
+        routingConstraint,
         debugRoutingOverrides,
       },
       warnings,
@@ -1312,6 +1410,22 @@ function candidateHealthScore(
   }))
 }
 
+function hasRemainingCredentialPoolForCandidate(input: {
+  candidate: ModelProfileEntry['candidates'][number]
+  request: Pick<LLMGatewayRequest, 'visibility' | 'budgetClass' | 'providerTags'>
+  credentialPools: LlmRegistryBundle['credentialPools']['pools']
+  excludeCredentialIds: Iterable<string>
+}): boolean {
+  return findUsableCredentialPoolsForCandidate({
+    candidate: input.candidate,
+    credentialPools: input.credentialPools,
+    visibility: input.request.visibility,
+    budgetClass: input.request.budgetClass,
+    tags: input.request.providerTags,
+    excludeCredentialIds: input.excludeCredentialIds,
+  }).length > 0
+}
+
 function buildExecutionPlan(input: {
   context: RouteContext
   route: RouteCandidate
@@ -1401,6 +1515,18 @@ function matchesDebugPins(
   if (debug.providerPin && candidate.provider_id !== debug.providerPin) return false
   if (debug.modelPin && candidate.model_id !== debug.modelPin) return false
   if (debug.adapterPin && adapterId !== debug.adapterPin) return false
+  return true
+}
+
+function matchesRoutingConstraint(
+  candidate: ModelProfileEntry['candidates'][number],
+  constraint: LLMGatewayRequest['routingConstraint'],
+): boolean {
+  if (!constraint) return true
+  const adapterId = candidate.adapter_id
+  if (constraint.providerId && candidate.provider_id !== constraint.providerId) return false
+  if (constraint.modelId && candidate.model_id !== constraint.modelId) return false
+  if (constraint.adapterId && adapterId !== constraint.adapterId) return false
   return true
 }
 
@@ -1498,6 +1624,26 @@ function sanitizeDebugRoutingOverrides(
   }
   if (typeof overrides?.adapterPin === 'string' && overrides.adapterPin.trim()) {
     output.adapterPin = overrides.adapterPin.trim()
+  }
+  return Object.keys(output).length > 0 ? output : undefined
+}
+
+function sanitizeRoutingConstraint(
+  constraint: LLMGatewayRequest['routingConstraint'] | undefined,
+) {
+  const output: {
+    providerId?: string
+    modelId?: string
+    adapterId?: string
+  } = {}
+  if (typeof constraint?.providerId === 'string' && constraint.providerId.trim()) {
+    output.providerId = constraint.providerId.trim()
+  }
+  if (typeof constraint?.modelId === 'string' && constraint.modelId.trim()) {
+    output.modelId = constraint.modelId.trim()
+  }
+  if (typeof constraint?.adapterId === 'string' && constraint.adapterId.trim()) {
+    output.adapterId = constraint.adapterId.trim()
   }
   return Object.keys(output).length > 0 ? output : undefined
 }
