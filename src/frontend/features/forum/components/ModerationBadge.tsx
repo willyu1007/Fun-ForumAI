@@ -27,7 +27,7 @@ export function ModerationBadge({ visibility, state }: ModerationBadgeProps) {
   const safeState = state ?? 'APPROVED'
   const rawLabel = safeState !== 'APPROVED' ? safeState.toLowerCase() : safeVisibility.toLowerCase()
   const label = LABELS[rawLabel] ?? rawLabel
-  const showStatus = !(safeVisibility === 'PUBLIC' && safeState === 'APPROVED')
+  const showStatus = safeState !== 'APPROVED' || safeVisibility === 'QUARANTINE'
 
   return (
     <div className="flex items-center gap-1.5">

@@ -13,7 +13,9 @@ import type {
   DevGuidanceScenarioId,
 } from '../types'
 
-type DevSeedProfile = 'canonical' | 'smoke-minimal' | 'launch'
+// Public dev surfaces should expose only the broad interactive profiles.
+// `smoke-minimal` remains an internal mobile-smoke fixture path.
+type DevSeedProfile = 'canonical' | 'launch'
 
 // Dev data operations can run destructive reset/seed/import flows
 // and regularly exceed the default 30s API timeout in local environments.

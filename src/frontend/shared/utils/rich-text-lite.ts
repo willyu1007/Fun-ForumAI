@@ -127,6 +127,20 @@ export function extractRichTextPreview(input: string, maxLength = 160): string {
   return normalizePreviewText(toPreviewText(firstReadable), maxLength)
 }
 
+export function extractRichTextPlainPreview(
+  input: string,
+  maxLength = 160,
+  options?: { reserve?: number },
+): string {
+  const blocks = parseRichTextLite(input)
+  const firstReadable = blocks.find((block) => block.type !== 'divider')
+  if (!firstReadable) {
+    return normalizePreviewText(input, maxLength, options)
+  }
+
+  return normalizePreviewText(toPlainPreviewText(firstReadable), maxLength, options)
+}
+
 export function toPlainText(block: RichTextLiteBlock): string {
   switch (block.type) {
     case 'paragraph':
@@ -152,6 +166,23 @@ function toPreviewText(block: RichTextLiteBlock): string {
       return block.items[0] ? `• ${block.items[0]}` : ''
     case 'quote':
       return block.lines[0] ? `> ${block.lines[0]}` : ''
+    case 'code_block':
+      return block.code
+    case 'math_block':
+      return block.expression
+    case 'divider':
+      return ''
+  }
+}
+
+function toPlainPreviewText(block: RichTextLiteBlock): string {
+  switch (block.type) {
+    case 'paragraph':
+      return block.text
+    case 'list':
+      return block.items.join(' ')
+    case 'quote':
+      return block.lines.join(' ')
     case 'code_block':
       return block.code
     case 'math_block':
@@ -213,8 +244,41 @@ function matchListLine(line: string): { style: 'unordered' | 'ordered'; text: st
   return null
 }
 
-function normalizePreviewText(text: string, maxLength: number): string {
+function normalizePreviewText(
+  text: string,
+  maxLength: number,
+  options?: { reserve?: number },
+): string {
   const normalized = text.replace(/\s+/g, ' ').trim()
   if (normalized.length <= maxLength) return normalized
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+
+  const hardLimit = Math.max(0, maxLength - 1)
+  const reserve = Math.max(0, Math.min(options?.reserve ?? 0, hardLimit))
+  const boundaryCutoff = reserve > 0
+    ? findPreviewBoundary(normalized, Math.max(0, hardLimit - reserve), hardLimit)
+    : null
+  const cutoff = boundaryCutoff ?? hardLimit
+
+  return `${normalized.slice(0, cutoff).trimEnd()}…`
+}
+
+function findPreviewBoundary(text: string, start: number, end: number): number | null {
+  let weakBoundary: number | null = null
+  let whitespaceBoundary: number | null = null
+
+  for (let index = end - 1; index >= start; index -= 1) {
+    const char = text[index] ?? ''
+    if (!char) continue
+    if (/[。！？!?；;…]/.test(char)) {
+      return index + 1
+    }
+    if (weakBoundary === null && /[，,、：:]/.test(char)) {
+      weakBoundary = index + 1
+    }
+    if (whitespaceBoundary === null && /\s/.test(char)) {
+      whitespaceBoundary = index
+    }
+  }
+
+  return weakBoundary ?? whitespaceBoundary
 }

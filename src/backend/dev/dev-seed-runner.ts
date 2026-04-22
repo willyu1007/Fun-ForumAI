@@ -840,6 +840,28 @@ async function resetWarmupGovernanceFixtures(prisma: PrismaClient | null): Promi
     select: { id: true },
   })
   const turnIds = turns.map((item) => item.id)
+  const audienceThreads = postIds.length > 0
+    ? await prisma.audienceThread.findMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+        select: { id: true },
+      })
+    : []
+  const audienceThreadIds = audienceThreads.map((item) => item.id)
+  const audienceMessages = audienceThreadIds.length > 0
+    ? await prisma.audienceMessage.findMany({
+        where: {
+          threadId: {
+            in: audienceThreadIds,
+          },
+        },
+        select: { id: true },
+      })
+    : []
+  const audienceMessageIds = audienceMessages.map((item) => item.id)
 
   const governedBindingRows = await prisma.sceneMediaBinding.findMany({
     where: {
@@ -966,6 +988,13 @@ async function resetWarmupGovernanceFixtures(prisma: PrismaClient | null): Promi
           },
         },
       })
+      await tx.audienceSummary.deleteMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+      })
     }
     if (threadIds.length > 0) {
       await tx.forumSceneMetadata.deleteMany({
@@ -997,6 +1026,43 @@ async function resetWarmupGovernanceFixtures(prisma: PrismaClient | null): Promi
           targetType: 'TURN',
           targetId: {
             in: turnIds,
+          },
+        },
+      })
+    }
+
+    if (audienceMessageIds.length > 0) {
+      await tx.aftershowCallout.deleteMany({
+        where: {
+          audienceMessageId: {
+            in: audienceMessageIds,
+          },
+        },
+      })
+      await tx.audienceMessage.deleteMany({
+        where: {
+          id: {
+            in: audienceMessageIds,
+          },
+        },
+      })
+    }
+
+    if (audienceThreadIds.length > 0) {
+      await tx.audienceSummary.deleteMany({
+        where: {
+          threadId: {
+            in: audienceThreadIds,
+          },
+        },
+      })
+    }
+
+    if (postIds.length > 0) {
+      await tx.audienceThread.deleteMany({
+        where: {
+          postId: {
+            in: postIds,
           },
         },
       })
@@ -1107,6 +1173,356 @@ async function resetWarmupGovernanceFixtures(prisma: PrismaClient | null): Promi
     })
     await tx.kickoffBaseline.deleteMany({})
   })
+
+  await searchDocRepo.clearAllDocs()
+}
+
+export async function resetNonGovernedDevSeedPublicFixtures(
+  prisma: PrismaClient | null,
+  profiles: readonly DevSeedProfile[] = ['canonical', 'smoke-minimal'],
+): Promise<void> {
+  if (!prisma) return
+
+  // Dev public data is exclusive by mode. Public mock/canonical loads must
+  // evict any residual smoke fixture, while kickoff/launch loads must evict
+  // both canonical and smoke fixtures before import.
+  const publicSeedProfiles = [...new Set(profiles)]
+  const registryRows = (
+    await Promise.all(publicSeedProfiles.map((profile) => devSeedRegistryRepo.listByProfile(profile)))
+  ).flat()
+
+  const postIds = registryRows
+    .filter((entry) => entry.entity_type === 'post')
+    .map((entry) => entry.entity_id)
+  const threadIds = registryRows
+    .filter((entry) => entry.entity_type === 'thread')
+    .map((entry) => entry.entity_id)
+  const roomIds = registryRows
+    .filter((entry) => entry.entity_type === 'room')
+    .map((entry) => entry.entity_id)
+
+  if (postIds.length === 0 && threadIds.length === 0 && roomIds.length === 0) {
+    return
+  }
+
+  const directMediaRows = postIds.length > 0
+    ? await prisma.postMedia.findMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+        select: { assetId: true },
+      })
+    : []
+  const directAssetIds = directMediaRows.map((row) => row.assetId)
+
+  const turns = await prisma.publicStageTurn.findMany({
+    where: {
+      OR: [
+        postIds.length > 0 ? { postId: { in: postIds } } : undefined,
+        threadIds.length > 0 ? { threadId: { in: threadIds } } : undefined,
+      ].filter(Boolean) as Prisma.PublicStageTurnWhereInput[],
+    },
+    select: { id: true },
+  })
+  const turnIds = turns.map((item) => item.id)
+  const audienceThreads = postIds.length > 0
+    ? await prisma.audienceThread.findMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+        select: { id: true },
+      })
+    : []
+  const audienceThreadIds = audienceThreads.map((item) => item.id)
+  const audienceMessages = audienceThreadIds.length > 0
+    ? await prisma.audienceMessage.findMany({
+        where: {
+          threadId: {
+            in: audienceThreadIds,
+          },
+        },
+        select: { id: true },
+      })
+    : []
+  const audienceMessageIds = audienceMessages.map((item) => item.id)
+
+  const bindingRows = await prisma.sceneMediaBinding.findMany({
+    where: {
+      OR: [
+        postIds.length > 0
+          ? {
+              sceneType: 'forum_post',
+              sceneId: { in: postIds },
+            }
+          : undefined,
+        threadIds.length > 0
+          ? {
+              sceneType: 'forum_thread',
+              sceneId: { in: threadIds },
+            }
+          : undefined,
+        turnIds.length > 0
+          ? {
+              sceneType: 'forum_turn',
+              sceneId: { in: turnIds },
+            }
+          : undefined,
+        directAssetIds.length > 0
+          ? {
+              assetId: { in: directAssetIds },
+            }
+          : undefined,
+      ].filter(Boolean) as Prisma.SceneMediaBindingWhereInput[],
+    },
+    select: {
+      id: true,
+      assetId: true,
+      semanticSnapshotId: true,
+    },
+  })
+  const bindingIds = bindingRows.map((row) => row.id)
+  const assetIds = Array.from(new Set([...directAssetIds, ...bindingRows.map((row) => row.assetId)]))
+  const semanticSnapshotIds = Array.from(
+    new Set(bindingRows.map((row) => row.semanticSnapshotId)),
+  )
+
+  await prisma.$transaction(async (tx) => {
+    if (threadIds.length > 0) {
+      await tx.humanThreadFollow.deleteMany({
+        where: {
+          threadId: {
+            in: threadIds,
+          },
+        },
+      })
+    }
+
+    if (postIds.length > 0) {
+      await tx.forumSceneMetadata.deleteMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+      })
+      await tx.postMedia.deleteMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+      })
+      await tx.vote.deleteMany({
+        where: {
+          targetType: 'POST',
+          targetId: {
+            in: postIds,
+          },
+        },
+      })
+    }
+
+    if (threadIds.length > 0) {
+      await tx.forumSceneMetadata.deleteMany({
+        where: {
+          threadId: {
+            in: threadIds,
+          },
+        },
+      })
+      await tx.vote.deleteMany({
+        where: {
+          targetType: 'THREAD',
+          targetId: {
+            in: threadIds,
+          },
+        },
+      })
+    }
+
+    if (turnIds.length > 0) {
+      await tx.forumSceneMetadata.deleteMany({
+        where: {
+          turnId: {
+            in: turnIds,
+          },
+        },
+      })
+      await tx.vote.deleteMany({
+        where: {
+          targetType: 'TURN',
+          targetId: {
+            in: turnIds,
+          },
+        },
+      })
+    }
+
+    if (audienceMessageIds.length > 0) {
+      await tx.aftershowCallout.deleteMany({
+        where: {
+          audienceMessageId: {
+            in: audienceMessageIds,
+          },
+        },
+      })
+      await tx.audienceMessage.deleteMany({
+        where: {
+          id: {
+            in: audienceMessageIds,
+          },
+        },
+      })
+    }
+
+    if (postIds.length > 0) {
+      await tx.audienceSummary.deleteMany({
+        where: {
+          postId: {
+            in: postIds,
+          },
+        },
+      })
+    }
+
+    if (audienceThreadIds.length > 0) {
+      await tx.audienceSummary.deleteMany({
+        where: {
+          threadId: {
+            in: audienceThreadIds,
+          },
+        },
+      })
+      await tx.audienceThread.deleteMany({
+        where: {
+          id: {
+            in: audienceThreadIds,
+          },
+        },
+      })
+    }
+
+    if (bindingIds.length > 0) {
+      await tx.mediaContextProjection.deleteMany({
+        where: {
+          bindingId: {
+            in: bindingIds,
+          },
+        },
+      })
+    }
+
+    if (bindingIds.length > 0 || assetIds.length > 0) {
+      await tx.sceneMediaBinding.deleteMany({
+        where: {
+          OR: [
+            bindingIds.length > 0 ? { id: { in: bindingIds } } : undefined,
+            assetIds.length > 0 ? { assetId: { in: assetIds } } : undefined,
+          ].filter(Boolean) as Prisma.SceneMediaBindingWhereInput[],
+        },
+      })
+    }
+
+    if (assetIds.length > 0) {
+      await tx.mediaReusePolicyRecord.deleteMany({
+        where: {
+          subjectType: 'asset',
+          subjectId: {
+            in: assetIds,
+          },
+        },
+      })
+    }
+
+    if (semanticSnapshotIds.length > 0) {
+      await tx.mediaLineageEdge.deleteMany({
+        where: {
+          OR: [
+            {
+              fromNodeType: 'asset',
+              fromNodeId: {
+                in: assetIds,
+              },
+            },
+            {
+              toNodeType: 'semantic_snapshot',
+              toNodeId: {
+                in: semanticSnapshotIds,
+              },
+            },
+          ],
+        },
+      })
+      await tx.mediaSemanticSnapshot.deleteMany({
+        where: {
+          id: {
+            in: semanticSnapshotIds,
+          },
+        },
+      })
+    }
+
+    if (assetIds.length > 0) {
+      await tx.mediaAsset.deleteMany({
+        where: {
+          id: {
+            in: assetIds,
+          },
+        },
+      })
+    }
+
+    if (turnIds.length > 0) {
+      await tx.publicStageTurn.deleteMany({
+        where: {
+          OR: [
+            { id: { in: turnIds } },
+            postIds.length > 0 ? { postId: { in: postIds } } : undefined,
+            threadIds.length > 0 ? { threadId: { in: threadIds } } : undefined,
+          ].filter(Boolean) as Prisma.PublicStageTurnWhereInput[],
+        },
+      })
+    }
+
+    if (threadIds.length > 0) {
+      await tx.publicStageThread.deleteMany({
+        where: {
+          OR: [
+            { id: { in: threadIds } },
+            postIds.length > 0 ? { postId: { in: postIds } } : undefined,
+          ].filter(Boolean) as Prisma.PublicStageThreadWhereInput[],
+        },
+      })
+    }
+
+    if (postIds.length > 0) {
+      await tx.post.deleteMany({
+        where: {
+          id: {
+            in: postIds,
+          },
+        },
+      })
+    }
+  })
+
+  for (const roomId of roomIds) {
+    await roomRepo.updateStatus(roomId, 'archived')
+  }
+
+  await Promise.all(
+    publicSeedProfiles.map(async (profile) => {
+      const seedKeys = registryRows
+        .filter((entry) => entry.profile === profile)
+        .map((entry) => entry.seed_key)
+      if (seedKeys.length === 0) return
+      await devSeedRegistryRepo.deleteByProfileAndSeedKeys(profile, seedKeys)
+    }),
+  )
 
   await searchDocRepo.clearAllDocs()
 }
@@ -1976,6 +2392,12 @@ export async function runDevSeed(input: {
   await agentRepo.refreshPersisted?.()
   await eventQueue.clear()
   await resetWarmupGovernanceFixtures(prisma)
+  if (profile === 'canonical') {
+    await resetNonGovernedDevSeedPublicFixtures(prisma, ['smoke-minimal'])
+  }
+  if (profile === 'launch') {
+    await resetNonGovernedDevSeedPublicFixtures(prisma)
+  }
   await ensureSeedUsers(fixtures.human_users, tracker)
 
   const communitiesBySeedKey = new Map<string, Community>()

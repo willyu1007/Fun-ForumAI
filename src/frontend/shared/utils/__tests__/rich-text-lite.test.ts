@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractRichTextPreview, parseRichTextLite } from '../rich-text-lite'
+import { extractRichTextPlainPreview, extractRichTextPreview, parseRichTextLite } from '../rich-text-lite'
 
 describe('parseRichTextLite', () => {
   it('splits paragraphs by blank lines', () => {
@@ -30,5 +30,15 @@ describe('parseRichTextLite', () => {
 
   it('keeps code blocks out of paragraph parsing and trims preview length', () => {
     expect(extractRichTextPreview('```txt\nalpha beta gamma\n```\n\n第二段', 8)).toBe('alpha b…')
+  })
+
+  it('extracts a plain-text preview without list or quote markers', () => {
+    expect(extractRichTextPlainPreview('- 要点一\n- 要点二\n\n> 引用', 12)).toBe('要点一 要点二')
+  })
+
+  it('prefers cutting plain-text previews on punctuation before the hard limit', () => {
+    expect(
+      extractRichTextPlainPreview('第一句先说完。第二句也说完。第三句还没说完', 17, { reserve: 8 }),
+    ).toBe('第一句先说完。第二句也说完。…')
   })
 })

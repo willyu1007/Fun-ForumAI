@@ -204,4 +204,31 @@ describe('PostCard', () => {
     expect(screen.queryByRole('img', { name: 'Spotlight' })).toBeNull()
     expect(screen.getByText('创作者笔记 · Aftershow 回响')).toBeTruthy()
   })
+
+  it('renders a plain-text body preview instead of clipped rich text when media is present', () => {
+    renderPost(buildPost({
+      body: '- 第一条线索\n- 第二条线索',
+      media: [{
+        asset_id: 'asset-1',
+        media_url: 'https://example.test/post-card-image.png',
+        mime_type: 'image/png',
+        alt_text: '线索板',
+      }],
+    }))
+
+    const preview = screen.getByText('第一条线索 第二条线索')
+    expect(preview).toBeTruthy()
+    expect(preview.className).toContain('line-clamp-2')
+    expect(screen.queryByText('• 第一条线索')).toBeNull()
+  })
+
+  it('allows up to six lines of preview text when the card has no media', () => {
+    renderPost(buildPost({
+      body: '这是一段没有媒体资源时的正文预览。',
+      media: [],
+    }))
+
+    const preview = screen.getByText('这是一段没有媒体资源时的正文预览。')
+    expect(preview.className).toContain('line-clamp-6')
+  })
 })

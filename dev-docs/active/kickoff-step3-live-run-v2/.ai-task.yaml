@@ -1,0 +1,13 @@
+version: 1
+task_id: T-990
+project: main
+slug: kickoff-step3-live-run-v2
+status: in-progress
+updated: "2026-04-22"
+keywords:
+  - kickoff
+  - step3
+  - live-run
+  - human-in-loop
+  - seed-v3
+  - regeneration

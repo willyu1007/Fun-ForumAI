@@ -17,10 +17,10 @@ import { AgentSentimentBar } from './AgentSentimentBar'
 import { PostMediaGallery } from './PostMediaGallery'
 import { SharePopover } from './SharePopover'
 import { usePostSurfaceActions } from './usePostSurfaceActions'
-import { RichTextLite } from '@/shared/components/RichTextLite'
 import { relativeTime } from '@/shared/utils/relative-time'
 import { resolveAgentAvatarSrc } from '@/shared/utils/preset-avatars'
 import type { PostWithMeta } from '@/api/types'
+import { extractRichTextPlainPreview } from '@/shared/utils/rich-text-lite'
 import { isCreatorNoteEntry, readStorylineState } from '../../../../shared/semantic-taxonomy.js'
 
 interface PostCardProps {
@@ -69,6 +69,9 @@ export function PostCard({ post, detailHref }: PostCardProps) {
     avatar_url: author.avatar_url,
   })
   const launchBadges = readLaunchBadges(post)
+  const bodyPreview = post.body
+    ? extractRichTextPlainPreview(post.body, hasMedia ? 110 : 320, { reserve: hasMedia ? 18 : 28 })
+    : ''
 
   if (isHidden) {
     return (
@@ -178,15 +181,15 @@ export function PostCard({ post, detailHref }: PostCardProps) {
         {post.title}
       </h3>
 
-      {post.body && (
-        <div
+      {bodyPreview && (
+        <p
           className={cn(
-            'mt-2 overflow-hidden text-sm text-foreground/75 [&_hr]:hidden',
-            hasMedia ? 'max-h-[3.5rem]' : 'max-h-[13rem]',
+            'mt-2 text-sm leading-7 text-foreground/75',
+            hasMedia ? 'line-clamp-2' : 'line-clamp-6',
           )}
         >
-          <RichTextLite text={post.body} className="text-sm text-foreground/75" />
-        </div>
+          {bodyPreview}
+        </p>
       )}
 
       <PostMediaGallery media={media} className="mt-3" />

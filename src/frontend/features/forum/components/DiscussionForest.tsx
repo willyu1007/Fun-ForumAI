@@ -324,7 +324,7 @@ const CHILD_RAIL_X = 44
 const CHILD_RAIL_ELBOW_HEIGHT = 16
 const CHILD_RAIL_RADIUS = 12
 const CHILD_RAIL_STROKE = 1.25
-const CHILD_AVATAR_CENTER_Y = 16
+const CHILD_AVATAR_CENTER_FALLBACK = 16
 const BRANCH_PARENT_TOGGLE_CENTER_FALLBACK = 55
 
 interface DiscussionChildrenRailLayout {
@@ -351,6 +351,7 @@ function DiscussionBranchRailOverlay({
   branchNodeId,
   railLeftClass,
   childrenClassName,
+  measurementVersion,
   spineHovered,
   hoveredBranchNodeId,
   onSpineHoverChange,
@@ -362,6 +363,7 @@ function DiscussionBranchRailOverlay({
   branchNodeId: string
   railLeftClass: string
   childrenClassName?: string
+  measurementVersion?: number
   spineHovered?: boolean
   hoveredBranchNodeId?: string | null
   onSpineHoverChange?: (nodeId: string | null) => void
@@ -396,9 +398,18 @@ function DiscussionBranchRailOverlay({
         .map((node, index) => {
           const element = itemRefs.current.get(node.id)
           if (!element) return null
-          const measuredTop =
-            element.offsetTop || element.getBoundingClientRect().top - branchRect.top
-          return measuredTop > 1 ? measuredTop + CHILD_AVATAR_CENTER_Y : 96 + index * 72
+          const avatarAnchor = element.querySelector<HTMLElement>('[data-role="node-avatar-anchor"]')
+          const avatarHeight =
+            avatarAnchor?.offsetHeight || avatarAnchor?.getBoundingClientRect().height || 0
+          const measuredAvatarCenter = avatarAnchor
+            ? avatarAnchor.getBoundingClientRect().top - branchRect.top + avatarHeight / 2
+            : null
+          if (measuredAvatarCenter !== null && measuredAvatarCenter > 1) {
+            return measuredAvatarCenter
+          }
+
+          const measuredTop = element.getBoundingClientRect().top - branchRect.top
+          return measuredTop > 1 ? measuredTop + CHILD_AVATAR_CENTER_FALLBACK : 96 + index * 72
         })
         .filter((value): value is number => value !== null)
 
@@ -436,7 +447,7 @@ function DiscussionBranchRailOverlay({
       resizeObserver?.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [nodes])
+  }, [nodes, measurementVersion])
 
   const activeBranchIndex =
     hoveredBranchNodeId !== null ? nodes.findIndex((node) => node.id === hoveredBranchNodeId) : -1
@@ -594,6 +605,7 @@ export function DiscussionForest({
   const [hoveredBranchNodeId, setHoveredBranchNodeId] = useState<string | null>(null)
   const [activeFlashNodeId, setActiveFlashNodeId] = useState<string | null>(null)
   const [flashFadingNodeId, setFlashFadingNodeId] = useState<string | null>(null)
+  const [railMeasurementVersion, setRailMeasurementVersion] = useState(0)
 
   const trees = useMemo(() => (forest ? buildTreeViews(forest) : []), [forest])
 
@@ -659,6 +671,7 @@ export function DiscussionForest({
       else next.add(nodeId)
       return next
     })
+    setRailMeasurementVersion((current) => current + 1)
   }
 
   return (
@@ -771,6 +784,7 @@ export function DiscussionForest({
                       className="ui-focus-reset relative z-30 shrink-0 rounded-full ring-4 ring-background"
                       onClick={() => tryOpenAgentModal(avatarTarget, 'readonly')}
                       aria-label={node.author.display_name}
+                      data-role="node-avatar-anchor"
                       onMouseEnter={() => setHoveredBranchNodeId(node.id)}
                       onMouseLeave={() =>
                         setHoveredBranchNodeId((current) => (current === node.id ? null : current))
@@ -980,6 +994,7 @@ export function DiscussionForest({
                   branchNodeId={node.id}
                   railLeftClass={anchorCenterClass}
                   childrenClassName={subtreeIndentClass}
+                  measurementVersion={railMeasurementVersion}
                   spineHovered={hoveredSpineNodeId === node.id}
                   hoveredBranchNodeId={hoveredBranchNodeId}
                   onSpineHoverChange={setHoveredSpineNodeId}

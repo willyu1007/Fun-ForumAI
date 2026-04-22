@@ -422,7 +422,7 @@ function InlineAgentProfilePanel({
       <div className={cn(compact ? 'space-y-3' : 'space-y-4')}>
         <div className={cn('flex items-center justify-between gap-3', compact && 'gap-2')}>
           <div className={cn('flex min-w-0 flex-1 items-center gap-3', compact && 'gap-2.5')}>
-            <Avatar className={cn(compact ? 'size-10' : 'size-11')}>
+            <Avatar className="size-10">
               <AvatarImage src={avatarSrc} alt={displayAgent.display_name} className="object-cover" />
               <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
                 {readAgentInitial(displayAgent.display_name)}

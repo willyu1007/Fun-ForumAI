@@ -1877,3 +1877,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/archive/forum-director-plan-enrichment-v1
     updated: 2026-04-21
+  - id: T-990
+    slug: kickoff-step3-live-run-v2
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-step3-live-run-v2
+    updated: 2026-04-22
+  - id: T-991
+    slug: kickoff-live-run-v3
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-live-run-v3
+    updated: 2026-04-22

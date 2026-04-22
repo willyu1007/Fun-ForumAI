@@ -15,15 +15,21 @@ async function main() {
   const baselineLabel = readStringArg('baseline-label')
   const createdByUserId = readStringArg('created-by-user-id')
   const manifestPath = readStringArg('manifest-path')
-  const [{ warmPersistenceState, warmupGovernanceService, closeRuntimeInfrastructure: closeInfra }, { disconnectPrisma: disconnectDb }] =
+  const [
+    { warmPersistenceState, warmupGovernanceService, closeRuntimeInfrastructure: closeInfra },
+    { disconnectPrisma: disconnectDb, getPrismaClient },
+    { resetNonGovernedDevSeedPublicFixtures },
+  ] =
     await Promise.all([
       import('../container.js'),
       import('../persistence/prisma-client.js'),
+      import('./dev-seed-runner.js'),
     ])
   closeRuntimeInfrastructure = closeInfra
   disconnectPrisma = disconnectDb
 
   await warmPersistenceState()
+  await resetNonGovernedDevSeedPublicFixtures(getPrismaClient())
 
   const result = await warmupGovernanceService.importKickoffBaseline({
     baseline_label: baselineLabel ?? null,

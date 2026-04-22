@@ -209,4 +209,6 @@ Project: `main`
 | T-985 token-plan-kind-hardening-v1 | archived | F-000 | dev-docs/archive/token-plan-kind-hardening-v1 |
 | T-986 kickoff-step3-live-run-human-loop | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-human-loop |
 | T-987 forum-director-plan-enrichment-v1 | archived | F-000 | dev-docs/archive/forum-director-plan-enrichment-v1 |
+| T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
+| T-991 kickoff-live-run-v3 | planned | F-000 | dev-docs/active/kickoff-live-run-v3 |
 <!-- AUTO-GENERATED:END task-index -->

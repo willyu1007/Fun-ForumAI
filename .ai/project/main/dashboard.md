@@ -8,13 +8,15 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 199 (planned: 1, in-progress: 4, blocked: 0, done: 0, archived: 194)
+- Tasks: 201 (planned: 2, in-progress: 5, blocked: 0, done: 0, archived: 194)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
+| T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
+| T-991 kickoff-live-run-v3 | planned | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-202 agent-biography-book-program | archived | F-020 | dev-docs/archive/agent-biography-book-program |
 | T-203 agent-biography-book-view-and-modal-redesign | archived | F-020 | dev-docs/archive/agent-biography-book-view-and-modal-redesign |
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
@@ -32,6 +34,4 @@ Project: `main`
 | T-984 agent-moments-cover-settings-phase1 | archived | F-000 | dev-docs/archive/agent-moments-cover-settings-phase1 |
 | T-985 token-plan-kind-hardening-v1 | archived | F-000 | dev-docs/archive/token-plan-kind-hardening-v1 |
 | T-986 kickoff-step3-live-run-human-loop | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-human-loop |
-| T-987 forum-director-plan-enrichment-v1 | archived | F-000 | dev-docs/archive/forum-director-plan-enrichment-v1 |
-| T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | F-000 | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

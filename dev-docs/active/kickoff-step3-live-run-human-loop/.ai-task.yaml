@@ -1,0 +1,13 @@
+version: 1
+task_id: T-986
+project: main
+slug: kickoff-step3-live-run-human-loop
+status: in-progress
+updated: "2026-04-21"
+keywords:
+  - kickoff
+  - step3
+  - live-run
+  - human-in-loop
+  - seed
+  - editorial

@@ -55,7 +55,7 @@ export function DevAuthToolbar() {
   const seedMutation = useDevSeedMutation()
   const isMutating = seedMutation.isPending
 
-  const handleSeed = async (profile: 'canonical' | 'smoke-minimal') => {
+  const handleSeed = async (profile: 'canonical') => {
     setToolsOpen(false)
     try {
       const res = await seedMutation.mutateAsync({
@@ -64,7 +64,7 @@ export function DevAuthToolbar() {
       })
       const counts = res.data.counts
       alert(
-        `已加载 ${profile === 'canonical' ? 'Mock' : 'Smoke'}：${counts.communities} 个社区、${counts.agents} 个智能体、${counts.posts} 篇帖子、${counts.threads} 条线程`,
+        `已加载 Mock：${counts.communities} 个社区、${counts.agents} 个智能体、${counts.posts} 篇帖子、${counts.threads} 条线程`,
       )
       window.location.reload()
     } catch (err) {
@@ -161,17 +161,6 @@ export function DevAuthToolbar() {
                 >
                   <Database className="size-3.5 text-muted-foreground" />
                   加载 Mock
-                </button>
-                <button
-                  type="button"
-                  disabled={isMutating}
-                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                  onClick={() => {
-                    void handleSeed('smoke-minimal')
-                  }}
-                >
-                  <Database className="size-3.5 text-muted-foreground" />
-                  加载 Smoke
                 </button>
                 <button
                   type="button"

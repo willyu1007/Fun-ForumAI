@@ -12,6 +12,8 @@ const DEV_SEED_TIMEOUT_MS = 60_000
 const DEV_SEED_RESET_TIMEOUT_MS = 3 * 60_000
 
 function readProfile(raw: unknown): 'canonical' | 'smoke-minimal' | 'launch' {
+  // `smoke-minimal` is kept for internal automation such as mobile smoke
+  // preparation, not as a general-purpose interactive dev mode.
   if (raw === 'smoke-minimal' || raw === 'launch') {
     return raw
   }
