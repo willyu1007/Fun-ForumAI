@@ -1,10 +1,10 @@
 # 00 Overview
 
 ## Status
-- State: preparing
+- State: completed
 - Depends on: Step 2 canonical seed `kickoff-foundation` v3 and current-planning-review `pass`.
-- Current status: Initializing a new live run under `.ai/.tmp/kickoff-exec/runs/2026-04-22T16-00-00-000Z-newrun01`. Seed and planning review snapshots have been copied.
-- Next step: Await further instructions.
+- Current status: `wave-06` completed. Full run packaged and successfully transitioned to `completed` state. All 42 slots generated and resolved safely into unresolved narrative states.
+- Next step: Operator review of `package/01-review-snapshot.yaml` and the final `00-content-package.yaml` outputs.
 
 ## Goal
 Generate a new set of kickoff data based on Step 2.
